@@ -22,6 +22,7 @@ package xdr
 import (
 	"bytes"
 	"encoding"
+	"errors"
 	"fmt"
 	"io"
 
@@ -49,14 +50,14 @@ type xdrType interface {
 }
 
 type decoderFrom interface {
-	DecodeFrom(d *xdr.Decoder) (int, error)
+	DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error)
 }
 
 // Unmarshal reads an xdr element from `r` into `v`.
 func Unmarshal(r io.Reader, v interface{}) (int, error) {
 	if decodable, ok := v.(decoderFrom); ok {
 		d := xdr.NewDecoder(r)
-		return decodable.DecodeFrom(d)
+		return decodable.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	}
 	// delegate to xdr package's Unmarshal
 	return xdr.Unmarshal(r, v)
@@ -94,7 +95,11 @@ func (s Value) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*Value)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *Value) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *Value) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding Value: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	(*s), nTmp, err = d.DecodeOpaque(0)
@@ -117,7 +122,7 @@ func (s Value) MarshalBinary() ([]byte, error) {
 func (s *Value) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -159,15 +164,19 @@ func (s *ScpBallot) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ScpBallot)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *ScpBallot) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *ScpBallot) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.Counter.DecodeFrom(d)
+	nTmp, err = s.Counter.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
 	}
-	nTmp, err = s.Value.DecodeFrom(d)
+	nTmp, err = s.Value.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Value: %s", err)
@@ -187,7 +196,7 @@ func (s ScpBallot) MarshalBinary() ([]byte, error) {
 func (s *ScpBallot) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -252,7 +261,11 @@ func (e ScpStatementType) EncodeTo(enc *xdr.Encoder) error {
 var _ decoderFrom = (*ScpStatementType)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *ScpStatementType) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *ScpStatementType) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding ScpStatementType: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding ScpStatementType: %s", err)
@@ -276,7 +289,7 @@ func (s ScpStatementType) MarshalBinary() ([]byte, error) {
 func (s *ScpStatementType) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -333,10 +346,14 @@ func (s *ScpNomination) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ScpNomination)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *ScpNomination) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *ScpNomination) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.QuorumSetHash.DecodeFrom(d)
+	nTmp, err = s.QuorumSetHash.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Hash: %s", err)
@@ -351,7 +368,7 @@ func (s *ScpNomination) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if l > 0 {
 		s.Votes = make([]Value, l)
 		for i := uint32(0); i < l; i++ {
-			nTmp, err = s.Votes[i].DecodeFrom(d)
+			nTmp, err = s.Votes[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
 				return n, fmt.Errorf("decoding Value: %s", err)
@@ -367,7 +384,7 @@ func (s *ScpNomination) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if l > 0 {
 		s.Accepted = make([]Value, l)
 		for i := uint32(0); i < l; i++ {
-			nTmp, err = s.Accepted[i].DecodeFrom(d)
+			nTmp, err = s.Accepted[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
 				return n, fmt.Errorf("decoding Value: %s", err)
@@ -389,7 +406,7 @@ func (s ScpNomination) MarshalBinary() ([]byte, error) {
 func (s *ScpNomination) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -461,15 +478,19 @@ func (s *ScpStatementPrepare) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ScpStatementPrepare)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *ScpStatementPrepare) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *ScpStatementPrepare) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.QuorumSetHash.DecodeFrom(d)
+	nTmp, err = s.QuorumSetHash.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Hash: %s", err)
 	}
-	nTmp, err = s.Ballot.DecodeFrom(d)
+	nTmp, err = s.Ballot.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ScpBallot: %s", err)
@@ -483,7 +504,7 @@ func (s *ScpStatementPrepare) DecodeFrom(d *xdr.Decoder) (int, error) {
 	s.Prepared = nil
 	if b {
 		s.Prepared = new(ScpBallot)
-		nTmp, err = s.Prepared.DecodeFrom(d)
+		nTmp, err = s.Prepared.DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ScpBallot: %s", err)
@@ -497,18 +518,18 @@ func (s *ScpStatementPrepare) DecodeFrom(d *xdr.Decoder) (int, error) {
 	s.PreparedPrime = nil
 	if b {
 		s.PreparedPrime = new(ScpBallot)
-		nTmp, err = s.PreparedPrime.DecodeFrom(d)
+		nTmp, err = s.PreparedPrime.DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ScpBallot: %s", err)
 		}
 	}
-	nTmp, err = s.NC.DecodeFrom(d)
+	nTmp, err = s.NC.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
 	}
-	nTmp, err = s.NH.DecodeFrom(d)
+	nTmp, err = s.NH.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
@@ -528,7 +549,7 @@ func (s ScpStatementPrepare) MarshalBinary() ([]byte, error) {
 func (s *ScpStatementPrepare) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -585,30 +606,34 @@ func (s *ScpStatementConfirm) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ScpStatementConfirm)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *ScpStatementConfirm) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *ScpStatementConfirm) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.Ballot.DecodeFrom(d)
+	nTmp, err = s.Ballot.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ScpBallot: %s", err)
 	}
-	nTmp, err = s.NPrepared.DecodeFrom(d)
+	nTmp, err = s.NPrepared.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
 	}
-	nTmp, err = s.NCommit.DecodeFrom(d)
+	nTmp, err = s.NCommit.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
 	}
-	nTmp, err = s.NH.DecodeFrom(d)
+	nTmp, err = s.NH.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
 	}
-	nTmp, err = s.QuorumSetHash.DecodeFrom(d)
+	nTmp, err = s.QuorumSetHash.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Hash: %s", err)
@@ -628,7 +653,7 @@ func (s ScpStatementConfirm) MarshalBinary() ([]byte, error) {
 func (s *ScpStatementConfirm) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -675,20 +700,24 @@ func (s *ScpStatementExternalize) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ScpStatementExternalize)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *ScpStatementExternalize) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *ScpStatementExternalize) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.Commit.DecodeFrom(d)
+	nTmp, err = s.Commit.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ScpBallot: %s", err)
 	}
-	nTmp, err = s.NH.DecodeFrom(d)
+	nTmp, err = s.NH.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
 	}
-	nTmp, err = s.CommitQuorumSetHash.DecodeFrom(d)
+	nTmp, err = s.CommitQuorumSetHash.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Hash: %s", err)
@@ -708,7 +737,7 @@ func (s ScpStatementExternalize) MarshalBinary() ([]byte, error) {
 func (s *ScpStatementExternalize) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -956,10 +985,14 @@ func (u ScpStatementPledges) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ScpStatementPledges)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *ScpStatementPledges) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *ScpStatementPledges) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding ScpStatementPledges: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.Type.DecodeFrom(d)
+	nTmp, err = u.Type.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ScpStatementType: %s", err)
@@ -967,7 +1000,7 @@ func (u *ScpStatementPledges) DecodeFrom(d *xdr.Decoder) (int, error) {
 	switch ScpStatementType(u.Type) {
 	case ScpStatementTypeScpStPrepare:
 		u.Prepare = new(ScpStatementPrepare)
-		nTmp, err = (*u.Prepare).DecodeFrom(d)
+		nTmp, err = (*u.Prepare).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ScpStatementPrepare: %s", err)
@@ -975,7 +1008,7 @@ func (u *ScpStatementPledges) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case ScpStatementTypeScpStConfirm:
 		u.Confirm = new(ScpStatementConfirm)
-		nTmp, err = (*u.Confirm).DecodeFrom(d)
+		nTmp, err = (*u.Confirm).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ScpStatementConfirm: %s", err)
@@ -983,7 +1016,7 @@ func (u *ScpStatementPledges) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case ScpStatementTypeScpStExternalize:
 		u.Externalize = new(ScpStatementExternalize)
-		nTmp, err = (*u.Externalize).DecodeFrom(d)
+		nTmp, err = (*u.Externalize).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ScpStatementExternalize: %s", err)
@@ -991,7 +1024,7 @@ func (u *ScpStatementPledges) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case ScpStatementTypeScpStNominate:
 		u.Nominate = new(ScpNomination)
-		nTmp, err = (*u.Nominate).DecodeFrom(d)
+		nTmp, err = (*u.Nominate).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ScpNomination: %s", err)
@@ -1013,7 +1046,7 @@ func (s ScpStatementPledges) MarshalBinary() ([]byte, error) {
 func (s *ScpStatementPledges) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -1092,20 +1125,24 @@ func (s *ScpStatement) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ScpStatement)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *ScpStatement) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *ScpStatement) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.NodeId.DecodeFrom(d)
+	nTmp, err = s.NodeId.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding NodeId: %s", err)
 	}
-	nTmp, err = s.SlotIndex.DecodeFrom(d)
+	nTmp, err = s.SlotIndex.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint64: %s", err)
 	}
-	nTmp, err = s.Pledges.DecodeFrom(d)
+	nTmp, err = s.Pledges.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ScpStatementPledges: %s", err)
@@ -1125,7 +1162,7 @@ func (s ScpStatement) MarshalBinary() ([]byte, error) {
 func (s *ScpStatement) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -1167,15 +1204,19 @@ func (s *ScpEnvelope) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ScpEnvelope)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *ScpEnvelope) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *ScpEnvelope) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.Statement.DecodeFrom(d)
+	nTmp, err = s.Statement.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ScpStatement: %s", err)
 	}
-	nTmp, err = s.Signature.DecodeFrom(d)
+	nTmp, err = s.Signature.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Signature: %s", err)
@@ -1195,7 +1236,7 @@ func (s ScpEnvelope) MarshalBinary() ([]byte, error) {
 func (s *ScpEnvelope) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -1252,10 +1293,14 @@ func (s *ScpQuorumSet) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ScpQuorumSet)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *ScpQuorumSet) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *ScpQuorumSet) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.Threshold.DecodeFrom(d)
+	nTmp, err = s.Threshold.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
@@ -1270,7 +1315,7 @@ func (s *ScpQuorumSet) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if l > 0 {
 		s.Validators = make([]NodeId, l)
 		for i := uint32(0); i < l; i++ {
-			nTmp, err = s.Validators[i].DecodeFrom(d)
+			nTmp, err = s.Validators[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
 				return n, fmt.Errorf("decoding NodeId: %s", err)
@@ -1286,7 +1331,7 @@ func (s *ScpQuorumSet) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if l > 0 {
 		s.InnerSets = make([]ScpQuorumSet, l)
 		for i := uint32(0); i < l; i++ {
-			nTmp, err = s.InnerSets[i].DecodeFrom(d)
+			nTmp, err = s.InnerSets[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
 				return n, fmt.Errorf("decoding ScpQuorumSet: %s", err)
@@ -1308,7 +1353,7 @@ func (s ScpQuorumSet) MarshalBinary() ([]byte, error) {
 func (s *ScpQuorumSet) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -1345,7 +1390,11 @@ func (s *Thresholds) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*Thresholds)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *Thresholds) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *Thresholds) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding Thresholds: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	nTmp, err = d.DecodeFixedOpaqueInplace(s[:])
@@ -1368,7 +1417,7 @@ func (s Thresholds) MarshalBinary() ([]byte, error) {
 func (s *Thresholds) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -1405,7 +1454,11 @@ func (s String32) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*String32)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *String32) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *String32) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding String32: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	var v string
@@ -1430,7 +1483,7 @@ func (s String32) MarshalBinary() ([]byte, error) {
 func (s *String32) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -1467,7 +1520,11 @@ func (s String64) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*String64)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *String64) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *String64) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding String64: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	var v string
@@ -1492,7 +1549,7 @@ func (s String64) MarshalBinary() ([]byte, error) {
 func (s *String64) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -1524,10 +1581,14 @@ func (s SequenceNumber) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*SequenceNumber)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *SequenceNumber) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *SequenceNumber) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding SequenceNumber: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = (*Int64)(s).DecodeFrom(d)
+	nTmp, err = (*Int64)(s).DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int64: %s", err)
@@ -1547,7 +1608,7 @@ func (s SequenceNumber) MarshalBinary() ([]byte, error) {
 func (s *SequenceNumber) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -1584,7 +1645,11 @@ func (s DataValue) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*DataValue)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *DataValue) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *DataValue) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding DataValue: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	(*s), nTmp, err = d.DecodeOpaque(64)
@@ -1607,7 +1672,7 @@ func (s DataValue) MarshalBinary() ([]byte, error) {
 func (s *DataValue) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -1639,10 +1704,14 @@ func (s *PoolId) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*PoolId)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *PoolId) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *PoolId) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding PoolId: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = (*Hash)(s).DecodeFrom(d)
+	nTmp, err = (*Hash)(s).DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Hash: %s", err)
@@ -1662,7 +1731,7 @@ func (s PoolId) MarshalBinary() ([]byte, error) {
 func (s *PoolId) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -1699,7 +1768,11 @@ func (s *AssetCode4) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*AssetCode4)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *AssetCode4) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *AssetCode4) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding AssetCode4: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	nTmp, err = d.DecodeFixedOpaqueInplace(s[:])
@@ -1722,7 +1795,7 @@ func (s AssetCode4) MarshalBinary() ([]byte, error) {
 func (s *AssetCode4) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -1759,7 +1832,11 @@ func (s *AssetCode12) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*AssetCode12)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *AssetCode12) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *AssetCode12) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding AssetCode12: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	nTmp, err = d.DecodeFixedOpaqueInplace(s[:])
@@ -1782,7 +1859,7 @@ func (s AssetCode12) MarshalBinary() ([]byte, error) {
 func (s *AssetCode12) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -1847,7 +1924,11 @@ func (e AssetType) EncodeTo(enc *xdr.Encoder) error {
 var _ decoderFrom = (*AssetType)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *AssetType) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *AssetType) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding AssetType: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding AssetType: %s", err)
@@ -1871,7 +1952,7 @@ func (s AssetType) MarshalBinary() ([]byte, error) {
 func (s *AssetType) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -2018,10 +2099,14 @@ func (u AssetCode) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*AssetCode)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *AssetCode) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *AssetCode) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding AssetCode: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.Type.DecodeFrom(d)
+	nTmp, err = u.Type.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding AssetType: %s", err)
@@ -2029,7 +2114,7 @@ func (u *AssetCode) DecodeFrom(d *xdr.Decoder) (int, error) {
 	switch AssetType(u.Type) {
 	case AssetTypeAssetTypeCreditAlphanum4:
 		u.AssetCode4 = new(AssetCode4)
-		nTmp, err = (*u.AssetCode4).DecodeFrom(d)
+		nTmp, err = (*u.AssetCode4).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding AssetCode4: %s", err)
@@ -2037,7 +2122,7 @@ func (u *AssetCode) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case AssetTypeAssetTypeCreditAlphanum12:
 		u.AssetCode12 = new(AssetCode12)
-		nTmp, err = (*u.AssetCode12).DecodeFrom(d)
+		nTmp, err = (*u.AssetCode12).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding AssetCode12: %s", err)
@@ -2059,7 +2144,7 @@ func (s AssetCode) MarshalBinary() ([]byte, error) {
 func (s *AssetCode) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -2101,15 +2186,19 @@ func (s *AlphaNum4) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*AlphaNum4)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *AlphaNum4) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *AlphaNum4) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.AssetCode.DecodeFrom(d)
+	nTmp, err = s.AssetCode.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding AssetCode4: %s", err)
 	}
-	nTmp, err = s.Issuer.DecodeFrom(d)
+	nTmp, err = s.Issuer.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding AccountId: %s", err)
@@ -2129,7 +2218,7 @@ func (s AlphaNum4) MarshalBinary() ([]byte, error) {
 func (s *AlphaNum4) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -2171,15 +2260,19 @@ func (s *AlphaNum12) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*AlphaNum12)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *AlphaNum12) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *AlphaNum12) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.AssetCode.DecodeFrom(d)
+	nTmp, err = s.AssetCode.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding AssetCode12: %s", err)
 	}
-	nTmp, err = s.Issuer.DecodeFrom(d)
+	nTmp, err = s.Issuer.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding AccountId: %s", err)
@@ -2199,7 +2292,7 @@ func (s AlphaNum12) MarshalBinary() ([]byte, error) {
 func (s *AlphaNum12) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -2356,10 +2449,14 @@ func (u Asset) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*Asset)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *Asset) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *Asset) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding Asset: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.Type.DecodeFrom(d)
+	nTmp, err = u.Type.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding AssetType: %s", err)
@@ -2370,7 +2467,7 @@ func (u *Asset) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case AssetTypeAssetTypeCreditAlphanum4:
 		u.AlphaNum4 = new(AlphaNum4)
-		nTmp, err = (*u.AlphaNum4).DecodeFrom(d)
+		nTmp, err = (*u.AlphaNum4).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding AlphaNum4: %s", err)
@@ -2378,7 +2475,7 @@ func (u *Asset) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case AssetTypeAssetTypeCreditAlphanum12:
 		u.AlphaNum12 = new(AlphaNum12)
-		nTmp, err = (*u.AlphaNum12).DecodeFrom(d)
+		nTmp, err = (*u.AlphaNum12).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding AlphaNum12: %s", err)
@@ -2400,7 +2497,7 @@ func (s Asset) MarshalBinary() ([]byte, error) {
 func (s *Asset) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -2442,15 +2539,19 @@ func (s *Price) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*Price)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *Price) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *Price) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.N.DecodeFrom(d)
+	nTmp, err = s.N.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int32: %s", err)
 	}
-	nTmp, err = s.D.DecodeFrom(d)
+	nTmp, err = s.D.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int32: %s", err)
@@ -2470,7 +2571,7 @@ func (s Price) MarshalBinary() ([]byte, error) {
 func (s *Price) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -2512,15 +2613,19 @@ func (s *Liabilities) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*Liabilities)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *Liabilities) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *Liabilities) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.Buying.DecodeFrom(d)
+	nTmp, err = s.Buying.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int64: %s", err)
 	}
-	nTmp, err = s.Selling.DecodeFrom(d)
+	nTmp, err = s.Selling.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int64: %s", err)
@@ -2540,7 +2645,7 @@ func (s Liabilities) MarshalBinary() ([]byte, error) {
 func (s *Liabilities) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -2605,7 +2710,11 @@ func (e ThresholdIndexes) EncodeTo(enc *xdr.Encoder) error {
 var _ decoderFrom = (*ThresholdIndexes)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *ThresholdIndexes) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *ThresholdIndexes) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding ThresholdIndexes: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding ThresholdIndexes: %s", err)
@@ -2629,7 +2738,7 @@ func (s ThresholdIndexes) MarshalBinary() ([]byte, error) {
 func (s *ThresholdIndexes) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -2712,7 +2821,11 @@ func (e LedgerEntryType) EncodeTo(enc *xdr.Encoder) error {
 var _ decoderFrom = (*LedgerEntryType)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *LedgerEntryType) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *LedgerEntryType) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding LedgerEntryType: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding LedgerEntryType: %s", err)
@@ -2736,7 +2849,7 @@ func (s LedgerEntryType) MarshalBinary() ([]byte, error) {
 func (s *LedgerEntryType) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -2778,15 +2891,19 @@ func (s *Signer) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*Signer)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *Signer) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *Signer) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.Key.DecodeFrom(d)
+	nTmp, err = s.Key.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding SignerKey: %s", err)
 	}
-	nTmp, err = s.Weight.DecodeFrom(d)
+	nTmp, err = s.Weight.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
@@ -2806,7 +2923,7 @@ func (s Signer) MarshalBinary() ([]byte, error) {
 func (s *Signer) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -2881,7 +2998,11 @@ func (e AccountFlags) EncodeTo(enc *xdr.Encoder) error {
 var _ decoderFrom = (*AccountFlags)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *AccountFlags) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *AccountFlags) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding AccountFlags: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding AccountFlags: %s", err)
@@ -2905,7 +3026,7 @@ func (s AccountFlags) MarshalBinary() ([]byte, error) {
 func (s *AccountFlags) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -2978,20 +3099,24 @@ func (s *AccountEntryExtensionV3) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*AccountEntryExtensionV3)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *AccountEntryExtensionV3) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *AccountEntryExtensionV3) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.Ext.DecodeFrom(d)
+	nTmp, err = s.Ext.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ExtensionPoint: %s", err)
 	}
-	nTmp, err = s.SeqLedger.DecodeFrom(d)
+	nTmp, err = s.SeqLedger.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
 	}
-	nTmp, err = s.SeqTime.DecodeFrom(d)
+	nTmp, err = s.SeqTime.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding TimePoint: %s", err)
@@ -3011,7 +3136,7 @@ func (s AccountEntryExtensionV3) MarshalBinary() ([]byte, error) {
 func (s *AccountEntryExtensionV3) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -3122,7 +3247,11 @@ func (u AccountEntryExtensionV2Ext) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*AccountEntryExtensionV2Ext)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *AccountEntryExtensionV2Ext) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *AccountEntryExtensionV2Ext) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding AccountEntryExtensionV2Ext: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	u.V, nTmp, err = d.DecodeInt()
@@ -3136,7 +3265,7 @@ func (u *AccountEntryExtensionV2Ext) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case 3:
 		u.V3 = new(AccountEntryExtensionV3)
-		nTmp, err = (*u.V3).DecodeFrom(d)
+		nTmp, err = (*u.V3).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding AccountEntryExtensionV3: %s", err)
@@ -3158,7 +3287,7 @@ func (s AccountEntryExtensionV2Ext) MarshalBinary() ([]byte, error) {
 func (s *AccountEntryExtensionV2Ext) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -3228,15 +3357,19 @@ func (s *AccountEntryExtensionV2) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*AccountEntryExtensionV2)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *AccountEntryExtensionV2) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *AccountEntryExtensionV2) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.NumSponsored.DecodeFrom(d)
+	nTmp, err = s.NumSponsored.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
 	}
-	nTmp, err = s.NumSponsoring.DecodeFrom(d)
+	nTmp, err = s.NumSponsoring.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
@@ -3263,7 +3396,7 @@ func (s *AccountEntryExtensionV2) DecodeFrom(d *xdr.Decoder) (int, error) {
 			s.SignerSponsoringIDs[i] = nil
 			if eb {
 				s.SignerSponsoringIDs[i] = new(AccountId)
-				nTmp, err = s.SignerSponsoringIDs[i].DecodeFrom(d)
+				nTmp, err = s.SignerSponsoringIDs[i].DecodeFrom(d, maxDepth)
 				n += nTmp
 				if err != nil {
 					return n, fmt.Errorf("decoding SponsorshipDescriptor: %s", err)
@@ -3271,7 +3404,7 @@ func (s *AccountEntryExtensionV2) DecodeFrom(d *xdr.Decoder) (int, error) {
 			}
 		}
 	}
-	nTmp, err = s.Ext.DecodeFrom(d)
+	nTmp, err = s.Ext.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding AccountEntryExtensionV2Ext: %s", err)
@@ -3291,7 +3424,7 @@ func (s AccountEntryExtensionV2) MarshalBinary() ([]byte, error) {
 func (s *AccountEntryExtensionV2) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -3402,7 +3535,11 @@ func (u AccountEntryExtensionV1Ext) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*AccountEntryExtensionV1Ext)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *AccountEntryExtensionV1Ext) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *AccountEntryExtensionV1Ext) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding AccountEntryExtensionV1Ext: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	u.V, nTmp, err = d.DecodeInt()
@@ -3416,7 +3553,7 @@ func (u *AccountEntryExtensionV1Ext) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case 2:
 		u.V2 = new(AccountEntryExtensionV2)
-		nTmp, err = (*u.V2).DecodeFrom(d)
+		nTmp, err = (*u.V2).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding AccountEntryExtensionV2: %s", err)
@@ -3438,7 +3575,7 @@ func (s AccountEntryExtensionV1Ext) MarshalBinary() ([]byte, error) {
 func (s *AccountEntryExtensionV1Ext) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -3488,15 +3625,19 @@ func (s *AccountEntryExtensionV1) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*AccountEntryExtensionV1)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *AccountEntryExtensionV1) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *AccountEntryExtensionV1) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.Liabilities.DecodeFrom(d)
+	nTmp, err = s.Liabilities.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Liabilities: %s", err)
 	}
-	nTmp, err = s.Ext.DecodeFrom(d)
+	nTmp, err = s.Ext.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding AccountEntryExtensionV1Ext: %s", err)
@@ -3516,7 +3657,7 @@ func (s AccountEntryExtensionV1) MarshalBinary() ([]byte, error) {
 func (s *AccountEntryExtensionV1) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -3627,7 +3768,11 @@ func (u AccountEntryExt) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*AccountEntryExt)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *AccountEntryExt) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *AccountEntryExt) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding AccountEntryExt: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	u.V, nTmp, err = d.DecodeInt()
@@ -3641,7 +3786,7 @@ func (u *AccountEntryExt) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case 1:
 		u.V1 = new(AccountEntryExtensionV1)
-		nTmp, err = (*u.V1).DecodeFrom(d)
+		nTmp, err = (*u.V1).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding AccountEntryExtensionV1: %s", err)
@@ -3663,7 +3808,7 @@ func (s AccountEntryExt) MarshalBinary() ([]byte, error) {
 func (s *AccountEntryExt) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -3770,25 +3915,29 @@ func (s *AccountEntry) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*AccountEntry)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *AccountEntry) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *AccountEntry) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.AccountId.DecodeFrom(d)
+	nTmp, err = s.AccountId.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding AccountId: %s", err)
 	}
-	nTmp, err = s.Balance.DecodeFrom(d)
+	nTmp, err = s.Balance.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int64: %s", err)
 	}
-	nTmp, err = s.SeqNum.DecodeFrom(d)
+	nTmp, err = s.SeqNum.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding SequenceNumber: %s", err)
 	}
-	nTmp, err = s.NumSubEntries.DecodeFrom(d)
+	nTmp, err = s.NumSubEntries.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
@@ -3802,23 +3951,23 @@ func (s *AccountEntry) DecodeFrom(d *xdr.Decoder) (int, error) {
 	s.InflationDest = nil
 	if b {
 		s.InflationDest = new(AccountId)
-		nTmp, err = s.InflationDest.DecodeFrom(d)
+		nTmp, err = s.InflationDest.DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding AccountId: %s", err)
 		}
 	}
-	nTmp, err = s.Flags.DecodeFrom(d)
+	nTmp, err = s.Flags.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
 	}
-	nTmp, err = s.HomeDomain.DecodeFrom(d)
+	nTmp, err = s.HomeDomain.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding String32: %s", err)
 	}
-	nTmp, err = s.Thresholds.DecodeFrom(d)
+	nTmp, err = s.Thresholds.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Thresholds: %s", err)
@@ -3836,14 +3985,14 @@ func (s *AccountEntry) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if l > 0 {
 		s.Signers = make([]Signer, l)
 		for i := uint32(0); i < l; i++ {
-			nTmp, err = s.Signers[i].DecodeFrom(d)
+			nTmp, err = s.Signers[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
 				return n, fmt.Errorf("decoding Signer: %s", err)
 			}
 		}
 	}
-	nTmp, err = s.Ext.DecodeFrom(d)
+	nTmp, err = s.Ext.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding AccountEntryExt: %s", err)
@@ -3863,7 +4012,7 @@ func (s AccountEntry) MarshalBinary() ([]byte, error) {
 func (s *AccountEntry) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -3930,7 +4079,11 @@ func (e TrustLineFlags) EncodeTo(enc *xdr.Encoder) error {
 var _ decoderFrom = (*TrustLineFlags)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *TrustLineFlags) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *TrustLineFlags) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding TrustLineFlags: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding TrustLineFlags: %s", err)
@@ -3954,7 +4107,7 @@ func (s TrustLineFlags) MarshalBinary() ([]byte, error) {
 func (s *TrustLineFlags) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -4025,7 +4178,11 @@ func (e LiquidityPoolType) EncodeTo(enc *xdr.Encoder) error {
 var _ decoderFrom = (*LiquidityPoolType)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *LiquidityPoolType) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *LiquidityPoolType) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding LiquidityPoolType: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding LiquidityPoolType: %s", err)
@@ -4049,7 +4206,7 @@ func (s LiquidityPoolType) MarshalBinary() ([]byte, error) {
 func (s *LiquidityPoolType) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -4249,10 +4406,14 @@ func (u TrustLineAsset) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*TrustLineAsset)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *TrustLineAsset) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *TrustLineAsset) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding TrustLineAsset: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.Type.DecodeFrom(d)
+	nTmp, err = u.Type.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding AssetType: %s", err)
@@ -4263,7 +4424,7 @@ func (u *TrustLineAsset) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case AssetTypeAssetTypeCreditAlphanum4:
 		u.AlphaNum4 = new(AlphaNum4)
-		nTmp, err = (*u.AlphaNum4).DecodeFrom(d)
+		nTmp, err = (*u.AlphaNum4).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding AlphaNum4: %s", err)
@@ -4271,7 +4432,7 @@ func (u *TrustLineAsset) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case AssetTypeAssetTypeCreditAlphanum12:
 		u.AlphaNum12 = new(AlphaNum12)
-		nTmp, err = (*u.AlphaNum12).DecodeFrom(d)
+		nTmp, err = (*u.AlphaNum12).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding AlphaNum12: %s", err)
@@ -4279,7 +4440,7 @@ func (u *TrustLineAsset) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case AssetTypeAssetTypePoolShare:
 		u.LiquidityPoolId = new(PoolId)
-		nTmp, err = (*u.LiquidityPoolId).DecodeFrom(d)
+		nTmp, err = (*u.LiquidityPoolId).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding PoolId: %s", err)
@@ -4301,7 +4462,7 @@ func (s TrustLineAsset) MarshalBinary() ([]byte, error) {
 func (s *TrustLineAsset) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -4370,7 +4531,11 @@ func (u TrustLineEntryExtensionV2Ext) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*TrustLineEntryExtensionV2Ext)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *TrustLineEntryExtensionV2Ext) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *TrustLineEntryExtensionV2Ext) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding TrustLineEntryExtensionV2Ext: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	u.V, nTmp, err = d.DecodeInt()
@@ -4398,7 +4563,7 @@ func (s TrustLineEntryExtensionV2Ext) MarshalBinary() ([]byte, error) {
 func (s *TrustLineEntryExtensionV2Ext) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -4446,15 +4611,19 @@ func (s *TrustLineEntryExtensionV2) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*TrustLineEntryExtensionV2)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *TrustLineEntryExtensionV2) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *TrustLineEntryExtensionV2) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.LiquidityPoolUseCount.DecodeFrom(d)
+	nTmp, err = s.LiquidityPoolUseCount.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int32: %s", err)
 	}
-	nTmp, err = s.Ext.DecodeFrom(d)
+	nTmp, err = s.Ext.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding TrustLineEntryExtensionV2Ext: %s", err)
@@ -4474,7 +4643,7 @@ func (s TrustLineEntryExtensionV2) MarshalBinary() ([]byte, error) {
 func (s *TrustLineEntryExtensionV2) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -4585,7 +4754,11 @@ func (u TrustLineEntryV1Ext) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*TrustLineEntryV1Ext)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *TrustLineEntryV1Ext) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *TrustLineEntryV1Ext) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding TrustLineEntryV1Ext: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	u.V, nTmp, err = d.DecodeInt()
@@ -4599,7 +4772,7 @@ func (u *TrustLineEntryV1Ext) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case 2:
 		u.V2 = new(TrustLineEntryExtensionV2)
-		nTmp, err = (*u.V2).DecodeFrom(d)
+		nTmp, err = (*u.V2).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding TrustLineEntryExtensionV2: %s", err)
@@ -4621,7 +4794,7 @@ func (s TrustLineEntryV1Ext) MarshalBinary() ([]byte, error) {
 func (s *TrustLineEntryV1Ext) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -4671,15 +4844,19 @@ func (s *TrustLineEntryV1) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*TrustLineEntryV1)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *TrustLineEntryV1) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *TrustLineEntryV1) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.Liabilities.DecodeFrom(d)
+	nTmp, err = s.Liabilities.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Liabilities: %s", err)
 	}
-	nTmp, err = s.Ext.DecodeFrom(d)
+	nTmp, err = s.Ext.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding TrustLineEntryV1Ext: %s", err)
@@ -4699,7 +4876,7 @@ func (s TrustLineEntryV1) MarshalBinary() ([]byte, error) {
 func (s *TrustLineEntryV1) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -4822,7 +4999,11 @@ func (u TrustLineEntryExt) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*TrustLineEntryExt)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *TrustLineEntryExt) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *TrustLineEntryExt) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding TrustLineEntryExt: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	u.V, nTmp, err = d.DecodeInt()
@@ -4836,7 +5017,7 @@ func (u *TrustLineEntryExt) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case 1:
 		u.V1 = new(TrustLineEntryV1)
-		nTmp, err = (*u.V1).DecodeFrom(d)
+		nTmp, err = (*u.V1).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding TrustLineEntryV1: %s", err)
@@ -4858,7 +5039,7 @@ func (s TrustLineEntryExt) MarshalBinary() ([]byte, error) {
 func (s *TrustLineEntryExt) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -4943,35 +5124,39 @@ func (s *TrustLineEntry) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*TrustLineEntry)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *TrustLineEntry) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *TrustLineEntry) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.AccountId.DecodeFrom(d)
+	nTmp, err = s.AccountId.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding AccountId: %s", err)
 	}
-	nTmp, err = s.Asset.DecodeFrom(d)
+	nTmp, err = s.Asset.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding TrustLineAsset: %s", err)
 	}
-	nTmp, err = s.Balance.DecodeFrom(d)
+	nTmp, err = s.Balance.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int64: %s", err)
 	}
-	nTmp, err = s.Limit.DecodeFrom(d)
+	nTmp, err = s.Limit.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int64: %s", err)
 	}
-	nTmp, err = s.Flags.DecodeFrom(d)
+	nTmp, err = s.Flags.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
 	}
-	nTmp, err = s.Ext.DecodeFrom(d)
+	nTmp, err = s.Ext.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding TrustLineEntryExt: %s", err)
@@ -4991,7 +5176,7 @@ func (s TrustLineEntry) MarshalBinary() ([]byte, error) {
 func (s *TrustLineEntry) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -5049,7 +5234,11 @@ func (e OfferEntryFlags) EncodeTo(enc *xdr.Encoder) error {
 var _ decoderFrom = (*OfferEntryFlags)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *OfferEntryFlags) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *OfferEntryFlags) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding OfferEntryFlags: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding OfferEntryFlags: %s", err)
@@ -5073,7 +5262,7 @@ func (s OfferEntryFlags) MarshalBinary() ([]byte, error) {
 func (s *OfferEntryFlags) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -5147,7 +5336,11 @@ func (u OfferEntryExt) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*OfferEntryExt)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *OfferEntryExt) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *OfferEntryExt) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding OfferEntryExt: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	u.V, nTmp, err = d.DecodeInt()
@@ -5175,7 +5368,7 @@ func (s OfferEntryExt) MarshalBinary() ([]byte, error) {
 func (s *OfferEntryExt) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -5260,45 +5453,49 @@ func (s *OfferEntry) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*OfferEntry)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *OfferEntry) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *OfferEntry) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.SellerId.DecodeFrom(d)
+	nTmp, err = s.SellerId.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding AccountId: %s", err)
 	}
-	nTmp, err = s.OfferId.DecodeFrom(d)
+	nTmp, err = s.OfferId.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int64: %s", err)
 	}
-	nTmp, err = s.Selling.DecodeFrom(d)
+	nTmp, err = s.Selling.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Asset: %s", err)
 	}
-	nTmp, err = s.Buying.DecodeFrom(d)
+	nTmp, err = s.Buying.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Asset: %s", err)
 	}
-	nTmp, err = s.Amount.DecodeFrom(d)
+	nTmp, err = s.Amount.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int64: %s", err)
 	}
-	nTmp, err = s.Price.DecodeFrom(d)
+	nTmp, err = s.Price.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Price: %s", err)
 	}
-	nTmp, err = s.Flags.DecodeFrom(d)
+	nTmp, err = s.Flags.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
 	}
-	nTmp, err = s.Ext.DecodeFrom(d)
+	nTmp, err = s.Ext.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding OfferEntryExt: %s", err)
@@ -5318,7 +5515,7 @@ func (s OfferEntry) MarshalBinary() ([]byte, error) {
 func (s *OfferEntry) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -5387,7 +5584,11 @@ func (u DataEntryExt) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*DataEntryExt)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *DataEntryExt) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *DataEntryExt) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding DataEntryExt: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	u.V, nTmp, err = d.DecodeInt()
@@ -5415,7 +5616,7 @@ func (s DataEntryExt) MarshalBinary() ([]byte, error) {
 func (s *DataEntryExt) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -5474,25 +5675,29 @@ func (s *DataEntry) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*DataEntry)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *DataEntry) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *DataEntry) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.AccountId.DecodeFrom(d)
+	nTmp, err = s.AccountId.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding AccountId: %s", err)
 	}
-	nTmp, err = s.DataName.DecodeFrom(d)
+	nTmp, err = s.DataName.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding String64: %s", err)
 	}
-	nTmp, err = s.DataValue.DecodeFrom(d)
+	nTmp, err = s.DataValue.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding DataValue: %s", err)
 	}
-	nTmp, err = s.Ext.DecodeFrom(d)
+	nTmp, err = s.Ext.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding DataEntryExt: %s", err)
@@ -5512,7 +5717,7 @@ func (s DataEntry) MarshalBinary() ([]byte, error) {
 func (s *DataEntry) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -5583,7 +5788,11 @@ func (e ClaimPredicateType) EncodeTo(enc *xdr.Encoder) error {
 var _ decoderFrom = (*ClaimPredicateType)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *ClaimPredicateType) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *ClaimPredicateType) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding ClaimPredicateType: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding ClaimPredicateType: %s", err)
@@ -5607,7 +5816,7 @@ func (s ClaimPredicateType) MarshalBinary() ([]byte, error) {
 func (s *ClaimPredicateType) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -5902,10 +6111,14 @@ func (u ClaimPredicate) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ClaimPredicate)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *ClaimPredicate) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *ClaimPredicate) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding ClaimPredicate: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.Type.DecodeFrom(d)
+	nTmp, err = u.Type.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ClaimPredicateType: %s", err)
@@ -5929,7 +6142,7 @@ func (u *ClaimPredicate) DecodeFrom(d *xdr.Decoder) (int, error) {
 		if l > 0 {
 			(*u.AndPredicates) = make([]ClaimPredicate, l)
 			for i := uint32(0); i < l; i++ {
-				nTmp, err = (*u.AndPredicates)[i].DecodeFrom(d)
+				nTmp, err = (*u.AndPredicates)[i].DecodeFrom(d, maxDepth)
 				n += nTmp
 				if err != nil {
 					return n, fmt.Errorf("decoding ClaimPredicate: %s", err)
@@ -5952,7 +6165,7 @@ func (u *ClaimPredicate) DecodeFrom(d *xdr.Decoder) (int, error) {
 		if l > 0 {
 			(*u.OrPredicates) = make([]ClaimPredicate, l)
 			for i := uint32(0); i < l; i++ {
-				nTmp, err = (*u.OrPredicates)[i].DecodeFrom(d)
+				nTmp, err = (*u.OrPredicates)[i].DecodeFrom(d, maxDepth)
 				n += nTmp
 				if err != nil {
 					return n, fmt.Errorf("decoding ClaimPredicate: %s", err)
@@ -5971,7 +6184,7 @@ func (u *ClaimPredicate) DecodeFrom(d *xdr.Decoder) (int, error) {
 		(*u.NotPredicate) = nil
 		if b {
 			(*u.NotPredicate) = new(ClaimPredicate)
-			nTmp, err = (*u.NotPredicate).DecodeFrom(d)
+			nTmp, err = (*u.NotPredicate).DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
 				return n, fmt.Errorf("decoding ClaimPredicate: %s", err)
@@ -5980,7 +6193,7 @@ func (u *ClaimPredicate) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case ClaimPredicateTypeClaimPredicateBeforeAbsoluteTime:
 		u.AbsBefore = new(Int64)
-		nTmp, err = (*u.AbsBefore).DecodeFrom(d)
+		nTmp, err = (*u.AbsBefore).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding Int64: %s", err)
@@ -5988,7 +6201,7 @@ func (u *ClaimPredicate) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case ClaimPredicateTypeClaimPredicateBeforeRelativeTime:
 		u.RelBefore = new(Int64)
-		nTmp, err = (*u.RelBefore).DecodeFrom(d)
+		nTmp, err = (*u.RelBefore).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding Int64: %s", err)
@@ -6010,7 +6223,7 @@ func (s ClaimPredicate) MarshalBinary() ([]byte, error) {
 func (s *ClaimPredicate) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -6066,7 +6279,11 @@ func (e ClaimantType) EncodeTo(enc *xdr.Encoder) error {
 var _ decoderFrom = (*ClaimantType)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *ClaimantType) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *ClaimantType) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding ClaimantType: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding ClaimantType: %s", err)
@@ -6090,7 +6307,7 @@ func (s ClaimantType) MarshalBinary() ([]byte, error) {
 func (s *ClaimantType) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -6132,15 +6349,19 @@ func (s *ClaimantV0) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ClaimantV0)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *ClaimantV0) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *ClaimantV0) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.Destination.DecodeFrom(d)
+	nTmp, err = s.Destination.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding AccountId: %s", err)
 	}
-	nTmp, err = s.Predicate.DecodeFrom(d)
+	nTmp, err = s.Predicate.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ClaimPredicate: %s", err)
@@ -6160,7 +6381,7 @@ func (s ClaimantV0) MarshalBinary() ([]byte, error) {
 func (s *ClaimantV0) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -6266,10 +6487,14 @@ func (u Claimant) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*Claimant)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *Claimant) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *Claimant) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding Claimant: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.Type.DecodeFrom(d)
+	nTmp, err = u.Type.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ClaimantType: %s", err)
@@ -6277,7 +6502,7 @@ func (u *Claimant) DecodeFrom(d *xdr.Decoder) (int, error) {
 	switch ClaimantType(u.Type) {
 	case ClaimantTypeClaimantTypeV0:
 		u.V0 = new(ClaimantV0)
-		nTmp, err = (*u.V0).DecodeFrom(d)
+		nTmp, err = (*u.V0).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ClaimantV0: %s", err)
@@ -6299,7 +6524,7 @@ func (s Claimant) MarshalBinary() ([]byte, error) {
 func (s *Claimant) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -6355,7 +6580,11 @@ func (e ClaimableBalanceIdType) EncodeTo(enc *xdr.Encoder) error {
 var _ decoderFrom = (*ClaimableBalanceIdType)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *ClaimableBalanceIdType) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *ClaimableBalanceIdType) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding ClaimableBalanceIdType: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding ClaimableBalanceIdType: %s", err)
@@ -6379,7 +6608,7 @@ func (s ClaimableBalanceIdType) MarshalBinary() ([]byte, error) {
 func (s *ClaimableBalanceIdType) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -6481,10 +6710,14 @@ func (u ClaimableBalanceId) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ClaimableBalanceId)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *ClaimableBalanceId) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *ClaimableBalanceId) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding ClaimableBalanceId: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.Type.DecodeFrom(d)
+	nTmp, err = u.Type.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ClaimableBalanceIdType: %s", err)
@@ -6492,7 +6725,7 @@ func (u *ClaimableBalanceId) DecodeFrom(d *xdr.Decoder) (int, error) {
 	switch ClaimableBalanceIdType(u.Type) {
 	case ClaimableBalanceIdTypeClaimableBalanceIdTypeV0:
 		u.V0 = new(Hash)
-		nTmp, err = (*u.V0).DecodeFrom(d)
+		nTmp, err = (*u.V0).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding Hash: %s", err)
@@ -6514,7 +6747,7 @@ func (s ClaimableBalanceId) MarshalBinary() ([]byte, error) {
 func (s *ClaimableBalanceId) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -6572,7 +6805,11 @@ func (e ClaimableBalanceFlags) EncodeTo(enc *xdr.Encoder) error {
 var _ decoderFrom = (*ClaimableBalanceFlags)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *ClaimableBalanceFlags) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *ClaimableBalanceFlags) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding ClaimableBalanceFlags: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding ClaimableBalanceFlags: %s", err)
@@ -6596,7 +6833,7 @@ func (s ClaimableBalanceFlags) MarshalBinary() ([]byte, error) {
 func (s *ClaimableBalanceFlags) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -6670,7 +6907,11 @@ func (u ClaimableBalanceEntryExtensionV1Ext) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ClaimableBalanceEntryExtensionV1Ext)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *ClaimableBalanceEntryExtensionV1Ext) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *ClaimableBalanceEntryExtensionV1Ext) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding ClaimableBalanceEntryExtensionV1Ext: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	u.V, nTmp, err = d.DecodeInt()
@@ -6698,7 +6939,7 @@ func (s ClaimableBalanceEntryExtensionV1Ext) MarshalBinary() ([]byte, error) {
 func (s *ClaimableBalanceEntryExtensionV1Ext) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -6746,15 +6987,19 @@ func (s *ClaimableBalanceEntryExtensionV1) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ClaimableBalanceEntryExtensionV1)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *ClaimableBalanceEntryExtensionV1) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *ClaimableBalanceEntryExtensionV1) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.Ext.DecodeFrom(d)
+	nTmp, err = s.Ext.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ClaimableBalanceEntryExtensionV1Ext: %s", err)
 	}
-	nTmp, err = s.Flags.DecodeFrom(d)
+	nTmp, err = s.Flags.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
@@ -6774,7 +7019,7 @@ func (s ClaimableBalanceEntryExtensionV1) MarshalBinary() ([]byte, error) {
 func (s *ClaimableBalanceEntryExtensionV1) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -6885,7 +7130,11 @@ func (u ClaimableBalanceEntryExt) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ClaimableBalanceEntryExt)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *ClaimableBalanceEntryExt) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *ClaimableBalanceEntryExt) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding ClaimableBalanceEntryExt: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	u.V, nTmp, err = d.DecodeInt()
@@ -6899,7 +7148,7 @@ func (u *ClaimableBalanceEntryExt) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case 1:
 		u.V1 = new(ClaimableBalanceEntryExtensionV1)
-		nTmp, err = (*u.V1).DecodeFrom(d)
+		nTmp, err = (*u.V1).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ClaimableBalanceEntryExtensionV1: %s", err)
@@ -6921,7 +7170,7 @@ func (s ClaimableBalanceEntryExt) MarshalBinary() ([]byte, error) {
 func (s *ClaimableBalanceEntryExt) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -6999,10 +7248,14 @@ func (s *ClaimableBalanceEntry) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ClaimableBalanceEntry)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *ClaimableBalanceEntry) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *ClaimableBalanceEntry) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.BalanceId.DecodeFrom(d)
+	nTmp, err = s.BalanceId.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ClaimableBalanceId: %s", err)
@@ -7020,24 +7273,24 @@ func (s *ClaimableBalanceEntry) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if l > 0 {
 		s.Claimants = make([]Claimant, l)
 		for i := uint32(0); i < l; i++ {
-			nTmp, err = s.Claimants[i].DecodeFrom(d)
+			nTmp, err = s.Claimants[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
 				return n, fmt.Errorf("decoding Claimant: %s", err)
 			}
 		}
 	}
-	nTmp, err = s.Asset.DecodeFrom(d)
+	nTmp, err = s.Asset.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Asset: %s", err)
 	}
-	nTmp, err = s.Amount.DecodeFrom(d)
+	nTmp, err = s.Amount.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int64: %s", err)
 	}
-	nTmp, err = s.Ext.DecodeFrom(d)
+	nTmp, err = s.Ext.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ClaimableBalanceEntryExt: %s", err)
@@ -7057,7 +7310,7 @@ func (s ClaimableBalanceEntry) MarshalBinary() ([]byte, error) {
 func (s *ClaimableBalanceEntry) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -7104,20 +7357,24 @@ func (s *LiquidityPoolConstantProductParameters) EncodeTo(e *xdr.Encoder) error 
 var _ decoderFrom = (*LiquidityPoolConstantProductParameters)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *LiquidityPoolConstantProductParameters) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *LiquidityPoolConstantProductParameters) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.AssetA.DecodeFrom(d)
+	nTmp, err = s.AssetA.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Asset: %s", err)
 	}
-	nTmp, err = s.AssetB.DecodeFrom(d)
+	nTmp, err = s.AssetB.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Asset: %s", err)
 	}
-	nTmp, err = s.Fee.DecodeFrom(d)
+	nTmp, err = s.Fee.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int32: %s", err)
@@ -7137,7 +7394,7 @@ func (s LiquidityPoolConstantProductParameters) MarshalBinary() ([]byte, error) 
 func (s *LiquidityPoolConstantProductParameters) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -7196,30 +7453,34 @@ func (s *LiquidityPoolEntryConstantProduct) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*LiquidityPoolEntryConstantProduct)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *LiquidityPoolEntryConstantProduct) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *LiquidityPoolEntryConstantProduct) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.Params.DecodeFrom(d)
+	nTmp, err = s.Params.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding LiquidityPoolConstantProductParameters: %s", err)
 	}
-	nTmp, err = s.ReserveA.DecodeFrom(d)
+	nTmp, err = s.ReserveA.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int64: %s", err)
 	}
-	nTmp, err = s.ReserveB.DecodeFrom(d)
+	nTmp, err = s.ReserveB.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int64: %s", err)
 	}
-	nTmp, err = s.TotalPoolShares.DecodeFrom(d)
+	nTmp, err = s.TotalPoolShares.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int64: %s", err)
 	}
-	nTmp, err = s.PoolSharesTrustLineCount.DecodeFrom(d)
+	nTmp, err = s.PoolSharesTrustLineCount.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int64: %s", err)
@@ -7239,7 +7500,7 @@ func (s LiquidityPoolEntryConstantProduct) MarshalBinary() ([]byte, error) {
 func (s *LiquidityPoolEntryConstantProduct) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -7350,10 +7611,14 @@ func (u LiquidityPoolEntryBody) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*LiquidityPoolEntryBody)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *LiquidityPoolEntryBody) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *LiquidityPoolEntryBody) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding LiquidityPoolEntryBody: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.Type.DecodeFrom(d)
+	nTmp, err = u.Type.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding LiquidityPoolType: %s", err)
@@ -7361,7 +7626,7 @@ func (u *LiquidityPoolEntryBody) DecodeFrom(d *xdr.Decoder) (int, error) {
 	switch LiquidityPoolType(u.Type) {
 	case LiquidityPoolTypeLiquidityPoolConstantProduct:
 		u.ConstantProduct = new(LiquidityPoolEntryConstantProduct)
-		nTmp, err = (*u.ConstantProduct).DecodeFrom(d)
+		nTmp, err = (*u.ConstantProduct).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding LiquidityPoolEntryConstantProduct: %s", err)
@@ -7383,7 +7648,7 @@ func (s LiquidityPoolEntryBody) MarshalBinary() ([]byte, error) {
 func (s *LiquidityPoolEntryBody) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -7440,15 +7705,19 @@ func (s *LiquidityPoolEntry) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*LiquidityPoolEntry)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *LiquidityPoolEntry) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *LiquidityPoolEntry) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.LiquidityPoolId.DecodeFrom(d)
+	nTmp, err = s.LiquidityPoolId.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding PoolId: %s", err)
 	}
-	nTmp, err = s.Body.DecodeFrom(d)
+	nTmp, err = s.Body.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding LiquidityPoolEntryBody: %s", err)
@@ -7468,7 +7737,7 @@ func (s LiquidityPoolEntry) MarshalBinary() ([]byte, error) {
 func (s *LiquidityPoolEntry) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -7526,7 +7795,11 @@ func (e ContractDataDurability) EncodeTo(enc *xdr.Encoder) error {
 var _ decoderFrom = (*ContractDataDurability)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *ContractDataDurability) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *ContractDataDurability) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding ContractDataDurability: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding ContractDataDurability: %s", err)
@@ -7550,7 +7823,7 @@ func (s ContractDataDurability) MarshalBinary() ([]byte, error) {
 func (s *ContractDataDurability) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -7607,30 +7880,34 @@ func (s *ContractDataEntry) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ContractDataEntry)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *ContractDataEntry) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *ContractDataEntry) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.Ext.DecodeFrom(d)
+	nTmp, err = s.Ext.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ExtensionPoint: %s", err)
 	}
-	nTmp, err = s.Contract.DecodeFrom(d)
+	nTmp, err = s.Contract.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ScAddress: %s", err)
 	}
-	nTmp, err = s.Key.DecodeFrom(d)
+	nTmp, err = s.Key.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ScVal: %s", err)
 	}
-	nTmp, err = s.Durability.DecodeFrom(d)
+	nTmp, err = s.Durability.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ContractDataDurability: %s", err)
 	}
-	nTmp, err = s.Val.DecodeFrom(d)
+	nTmp, err = s.Val.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ScVal: %s", err)
@@ -7650,7 +7927,7 @@ func (s ContractDataEntry) MarshalBinary() ([]byte, error) {
 func (s *ContractDataEntry) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -7697,15 +7974,19 @@ func (s *ContractCodeEntry) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ContractCodeEntry)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *ContractCodeEntry) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *ContractCodeEntry) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.Ext.DecodeFrom(d)
+	nTmp, err = s.Ext.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ExtensionPoint: %s", err)
 	}
-	nTmp, err = s.Hash.DecodeFrom(d)
+	nTmp, err = s.Hash.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Hash: %s", err)
@@ -7730,7 +8011,7 @@ func (s ContractCodeEntry) MarshalBinary() ([]byte, error) {
 func (s *ContractCodeEntry) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -7772,15 +8053,19 @@ func (s *ExpirationEntry) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ExpirationEntry)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *ExpirationEntry) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *ExpirationEntry) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.KeyHash.DecodeFrom(d)
+	nTmp, err = s.KeyHash.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Hash: %s", err)
 	}
-	nTmp, err = s.ExpirationLedgerSeq.DecodeFrom(d)
+	nTmp, err = s.ExpirationLedgerSeq.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
@@ -7800,7 +8085,7 @@ func (s ExpirationEntry) MarshalBinary() ([]byte, error) {
 func (s *ExpirationEntry) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -7869,7 +8154,11 @@ func (u LedgerEntryExtensionV1Ext) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*LedgerEntryExtensionV1Ext)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *LedgerEntryExtensionV1Ext) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *LedgerEntryExtensionV1Ext) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding LedgerEntryExtensionV1Ext: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	u.V, nTmp, err = d.DecodeInt()
@@ -7897,7 +8186,7 @@ func (s LedgerEntryExtensionV1Ext) MarshalBinary() ([]byte, error) {
 func (s *LedgerEntryExtensionV1Ext) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -7950,7 +8239,11 @@ func (s *LedgerEntryExtensionV1) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*LedgerEntryExtensionV1)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *LedgerEntryExtensionV1) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *LedgerEntryExtensionV1) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	var b bool
@@ -7962,13 +8255,13 @@ func (s *LedgerEntryExtensionV1) DecodeFrom(d *xdr.Decoder) (int, error) {
 	s.SponsoringId = nil
 	if b {
 		s.SponsoringId = new(AccountId)
-		nTmp, err = s.SponsoringId.DecodeFrom(d)
+		nTmp, err = s.SponsoringId.DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding SponsorshipDescriptor: %s", err)
 		}
 	}
-	nTmp, err = s.Ext.DecodeFrom(d)
+	nTmp, err = s.Ext.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding LedgerEntryExtensionV1Ext: %s", err)
@@ -7988,7 +8281,7 @@ func (s LedgerEntryExtensionV1) MarshalBinary() ([]byte, error) {
 func (s *LedgerEntryExtensionV1) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -8468,10 +8761,14 @@ func (u LedgerEntryData) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*LedgerEntryData)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *LedgerEntryData) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *LedgerEntryData) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding LedgerEntryData: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.Type.DecodeFrom(d)
+	nTmp, err = u.Type.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding LedgerEntryType: %s", err)
@@ -8479,7 +8776,7 @@ func (u *LedgerEntryData) DecodeFrom(d *xdr.Decoder) (int, error) {
 	switch LedgerEntryType(u.Type) {
 	case LedgerEntryTypeAccount:
 		u.Account = new(AccountEntry)
-		nTmp, err = (*u.Account).DecodeFrom(d)
+		nTmp, err = (*u.Account).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding AccountEntry: %s", err)
@@ -8487,7 +8784,7 @@ func (u *LedgerEntryData) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case LedgerEntryTypeTrustline:
 		u.TrustLine = new(TrustLineEntry)
-		nTmp, err = (*u.TrustLine).DecodeFrom(d)
+		nTmp, err = (*u.TrustLine).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding TrustLineEntry: %s", err)
@@ -8495,7 +8792,7 @@ func (u *LedgerEntryData) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case LedgerEntryTypeOffer:
 		u.Offer = new(OfferEntry)
-		nTmp, err = (*u.Offer).DecodeFrom(d)
+		nTmp, err = (*u.Offer).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding OfferEntry: %s", err)
@@ -8503,7 +8800,7 @@ func (u *LedgerEntryData) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case LedgerEntryTypeData:
 		u.Data = new(DataEntry)
-		nTmp, err = (*u.Data).DecodeFrom(d)
+		nTmp, err = (*u.Data).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding DataEntry: %s", err)
@@ -8511,7 +8808,7 @@ func (u *LedgerEntryData) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case LedgerEntryTypeClaimableBalance:
 		u.ClaimableBalance = new(ClaimableBalanceEntry)
-		nTmp, err = (*u.ClaimableBalance).DecodeFrom(d)
+		nTmp, err = (*u.ClaimableBalance).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ClaimableBalanceEntry: %s", err)
@@ -8519,7 +8816,7 @@ func (u *LedgerEntryData) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case LedgerEntryTypeLiquidityPool:
 		u.LiquidityPool = new(LiquidityPoolEntry)
-		nTmp, err = (*u.LiquidityPool).DecodeFrom(d)
+		nTmp, err = (*u.LiquidityPool).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding LiquidityPoolEntry: %s", err)
@@ -8527,7 +8824,7 @@ func (u *LedgerEntryData) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case LedgerEntryTypeContractData:
 		u.ContractData = new(ContractDataEntry)
-		nTmp, err = (*u.ContractData).DecodeFrom(d)
+		nTmp, err = (*u.ContractData).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ContractDataEntry: %s", err)
@@ -8535,7 +8832,7 @@ func (u *LedgerEntryData) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case LedgerEntryTypeContractCode:
 		u.ContractCode = new(ContractCodeEntry)
-		nTmp, err = (*u.ContractCode).DecodeFrom(d)
+		nTmp, err = (*u.ContractCode).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ContractCodeEntry: %s", err)
@@ -8543,7 +8840,7 @@ func (u *LedgerEntryData) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case LedgerEntryTypeConfigSetting:
 		u.ConfigSetting = new(ConfigSettingEntry)
-		nTmp, err = (*u.ConfigSetting).DecodeFrom(d)
+		nTmp, err = (*u.ConfigSetting).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ConfigSettingEntry: %s", err)
@@ -8551,7 +8848,7 @@ func (u *LedgerEntryData) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case LedgerEntryTypeExpiration:
 		u.Expiration = new(ExpirationEntry)
-		nTmp, err = (*u.Expiration).DecodeFrom(d)
+		nTmp, err = (*u.Expiration).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ExpirationEntry: %s", err)
@@ -8573,7 +8870,7 @@ func (s LedgerEntryData) MarshalBinary() ([]byte, error) {
 func (s *LedgerEntryData) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -8684,7 +8981,11 @@ func (u LedgerEntryExt) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*LedgerEntryExt)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *LedgerEntryExt) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *LedgerEntryExt) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding LedgerEntryExt: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	u.V, nTmp, err = d.DecodeInt()
@@ -8698,7 +8999,7 @@ func (u *LedgerEntryExt) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case 1:
 		u.V1 = new(LedgerEntryExtensionV1)
-		nTmp, err = (*u.V1).DecodeFrom(d)
+		nTmp, err = (*u.V1).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding LedgerEntryExtensionV1: %s", err)
@@ -8720,7 +9021,7 @@ func (s LedgerEntryExt) MarshalBinary() ([]byte, error) {
 func (s *LedgerEntryExt) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -8800,20 +9101,24 @@ func (s *LedgerEntry) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*LedgerEntry)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *LedgerEntry) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *LedgerEntry) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.LastModifiedLedgerSeq.DecodeFrom(d)
+	nTmp, err = s.LastModifiedLedgerSeq.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
 	}
-	nTmp, err = s.Data.DecodeFrom(d)
+	nTmp, err = s.Data.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding LedgerEntryData: %s", err)
 	}
-	nTmp, err = s.Ext.DecodeFrom(d)
+	nTmp, err = s.Ext.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding LedgerEntryExt: %s", err)
@@ -8833,7 +9138,7 @@ func (s LedgerEntry) MarshalBinary() ([]byte, error) {
 func (s *LedgerEntry) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -8870,10 +9175,14 @@ func (s *LedgerKeyAccount) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*LedgerKeyAccount)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *LedgerKeyAccount) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *LedgerKeyAccount) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.AccountId.DecodeFrom(d)
+	nTmp, err = s.AccountId.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding AccountId: %s", err)
@@ -8893,7 +9202,7 @@ func (s LedgerKeyAccount) MarshalBinary() ([]byte, error) {
 func (s *LedgerKeyAccount) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -8935,15 +9244,19 @@ func (s *LedgerKeyTrustLine) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*LedgerKeyTrustLine)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *LedgerKeyTrustLine) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *LedgerKeyTrustLine) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.AccountId.DecodeFrom(d)
+	nTmp, err = s.AccountId.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding AccountId: %s", err)
 	}
-	nTmp, err = s.Asset.DecodeFrom(d)
+	nTmp, err = s.Asset.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding TrustLineAsset: %s", err)
@@ -8963,7 +9276,7 @@ func (s LedgerKeyTrustLine) MarshalBinary() ([]byte, error) {
 func (s *LedgerKeyTrustLine) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -9005,15 +9318,19 @@ func (s *LedgerKeyOffer) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*LedgerKeyOffer)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *LedgerKeyOffer) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *LedgerKeyOffer) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.SellerId.DecodeFrom(d)
+	nTmp, err = s.SellerId.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding AccountId: %s", err)
 	}
-	nTmp, err = s.OfferId.DecodeFrom(d)
+	nTmp, err = s.OfferId.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int64: %s", err)
@@ -9033,7 +9350,7 @@ func (s LedgerKeyOffer) MarshalBinary() ([]byte, error) {
 func (s *LedgerKeyOffer) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -9075,15 +9392,19 @@ func (s *LedgerKeyData) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*LedgerKeyData)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *LedgerKeyData) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *LedgerKeyData) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.AccountId.DecodeFrom(d)
+	nTmp, err = s.AccountId.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding AccountId: %s", err)
 	}
-	nTmp, err = s.DataName.DecodeFrom(d)
+	nTmp, err = s.DataName.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding String64: %s", err)
@@ -9103,7 +9424,7 @@ func (s LedgerKeyData) MarshalBinary() ([]byte, error) {
 func (s *LedgerKeyData) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -9140,10 +9461,14 @@ func (s *LedgerKeyClaimableBalance) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*LedgerKeyClaimableBalance)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *LedgerKeyClaimableBalance) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *LedgerKeyClaimableBalance) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.BalanceId.DecodeFrom(d)
+	nTmp, err = s.BalanceId.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ClaimableBalanceId: %s", err)
@@ -9163,7 +9488,7 @@ func (s LedgerKeyClaimableBalance) MarshalBinary() ([]byte, error) {
 func (s *LedgerKeyClaimableBalance) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -9200,10 +9525,14 @@ func (s *LedgerKeyLiquidityPool) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*LedgerKeyLiquidityPool)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *LedgerKeyLiquidityPool) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *LedgerKeyLiquidityPool) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.LiquidityPoolId.DecodeFrom(d)
+	nTmp, err = s.LiquidityPoolId.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding PoolId: %s", err)
@@ -9223,7 +9552,7 @@ func (s LedgerKeyLiquidityPool) MarshalBinary() ([]byte, error) {
 func (s *LedgerKeyLiquidityPool) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -9270,20 +9599,24 @@ func (s *LedgerKeyContractData) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*LedgerKeyContractData)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *LedgerKeyContractData) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *LedgerKeyContractData) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.Contract.DecodeFrom(d)
+	nTmp, err = s.Contract.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ScAddress: %s", err)
 	}
-	nTmp, err = s.Key.DecodeFrom(d)
+	nTmp, err = s.Key.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ScVal: %s", err)
 	}
-	nTmp, err = s.Durability.DecodeFrom(d)
+	nTmp, err = s.Durability.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ContractDataDurability: %s", err)
@@ -9303,7 +9636,7 @@ func (s LedgerKeyContractData) MarshalBinary() ([]byte, error) {
 func (s *LedgerKeyContractData) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -9340,10 +9673,14 @@ func (s *LedgerKeyContractCode) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*LedgerKeyContractCode)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *LedgerKeyContractCode) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *LedgerKeyContractCode) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.Hash.DecodeFrom(d)
+	nTmp, err = s.Hash.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Hash: %s", err)
@@ -9363,7 +9700,7 @@ func (s LedgerKeyContractCode) MarshalBinary() ([]byte, error) {
 func (s *LedgerKeyContractCode) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -9400,10 +9737,14 @@ func (s *LedgerKeyConfigSetting) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*LedgerKeyConfigSetting)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *LedgerKeyConfigSetting) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *LedgerKeyConfigSetting) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.ConfigSettingId.DecodeFrom(d)
+	nTmp, err = s.ConfigSettingId.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ConfigSettingId: %s", err)
@@ -9423,7 +9764,7 @@ func (s LedgerKeyConfigSetting) MarshalBinary() ([]byte, error) {
 func (s *LedgerKeyConfigSetting) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -9461,10 +9802,14 @@ func (s *LedgerKeyExpiration) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*LedgerKeyExpiration)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *LedgerKeyExpiration) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *LedgerKeyExpiration) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.KeyHash.DecodeFrom(d)
+	nTmp, err = s.KeyHash.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Hash: %s", err)
@@ -9484,7 +9829,7 @@ func (s LedgerKeyExpiration) MarshalBinary() ([]byte, error) {
 func (s *LedgerKeyExpiration) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -10005,10 +10350,14 @@ func (u LedgerKey) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*LedgerKey)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *LedgerKey) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *LedgerKey) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding LedgerKey: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.Type.DecodeFrom(d)
+	nTmp, err = u.Type.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding LedgerEntryType: %s", err)
@@ -10016,7 +10365,7 @@ func (u *LedgerKey) DecodeFrom(d *xdr.Decoder) (int, error) {
 	switch LedgerEntryType(u.Type) {
 	case LedgerEntryTypeAccount:
 		u.Account = new(LedgerKeyAccount)
-		nTmp, err = (*u.Account).DecodeFrom(d)
+		nTmp, err = (*u.Account).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding LedgerKeyAccount: %s", err)
@@ -10024,7 +10373,7 @@ func (u *LedgerKey) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case LedgerEntryTypeTrustline:
 		u.TrustLine = new(LedgerKeyTrustLine)
-		nTmp, err = (*u.TrustLine).DecodeFrom(d)
+		nTmp, err = (*u.TrustLine).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding LedgerKeyTrustLine: %s", err)
@@ -10032,7 +10381,7 @@ func (u *LedgerKey) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case LedgerEntryTypeOffer:
 		u.Offer = new(LedgerKeyOffer)
-		nTmp, err = (*u.Offer).DecodeFrom(d)
+		nTmp, err = (*u.Offer).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding LedgerKeyOffer: %s", err)
@@ -10040,7 +10389,7 @@ func (u *LedgerKey) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case LedgerEntryTypeData:
 		u.Data = new(LedgerKeyData)
-		nTmp, err = (*u.Data).DecodeFrom(d)
+		nTmp, err = (*u.Data).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding LedgerKeyData: %s", err)
@@ -10048,7 +10397,7 @@ func (u *LedgerKey) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case LedgerEntryTypeClaimableBalance:
 		u.ClaimableBalance = new(LedgerKeyClaimableBalance)
-		nTmp, err = (*u.ClaimableBalance).DecodeFrom(d)
+		nTmp, err = (*u.ClaimableBalance).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding LedgerKeyClaimableBalance: %s", err)
@@ -10056,7 +10405,7 @@ func (u *LedgerKey) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case LedgerEntryTypeLiquidityPool:
 		u.LiquidityPool = new(LedgerKeyLiquidityPool)
-		nTmp, err = (*u.LiquidityPool).DecodeFrom(d)
+		nTmp, err = (*u.LiquidityPool).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding LedgerKeyLiquidityPool: %s", err)
@@ -10064,7 +10413,7 @@ func (u *LedgerKey) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case LedgerEntryTypeContractData:
 		u.ContractData = new(LedgerKeyContractData)
-		nTmp, err = (*u.ContractData).DecodeFrom(d)
+		nTmp, err = (*u.ContractData).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding LedgerKeyContractData: %s", err)
@@ -10072,7 +10421,7 @@ func (u *LedgerKey) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case LedgerEntryTypeContractCode:
 		u.ContractCode = new(LedgerKeyContractCode)
-		nTmp, err = (*u.ContractCode).DecodeFrom(d)
+		nTmp, err = (*u.ContractCode).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding LedgerKeyContractCode: %s", err)
@@ -10080,7 +10429,7 @@ func (u *LedgerKey) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case LedgerEntryTypeConfigSetting:
 		u.ConfigSetting = new(LedgerKeyConfigSetting)
-		nTmp, err = (*u.ConfigSetting).DecodeFrom(d)
+		nTmp, err = (*u.ConfigSetting).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding LedgerKeyConfigSetting: %s", err)
@@ -10088,7 +10437,7 @@ func (u *LedgerKey) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case LedgerEntryTypeExpiration:
 		u.Expiration = new(LedgerKeyExpiration)
-		nTmp, err = (*u.Expiration).DecodeFrom(d)
+		nTmp, err = (*u.Expiration).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding LedgerKeyExpiration: %s", err)
@@ -10110,7 +10459,7 @@ func (s LedgerKey) MarshalBinary() ([]byte, error) {
 func (s *LedgerKey) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -10193,7 +10542,11 @@ func (e EnvelopeType) EncodeTo(enc *xdr.Encoder) error {
 var _ decoderFrom = (*EnvelopeType)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *EnvelopeType) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *EnvelopeType) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding EnvelopeType: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding EnvelopeType: %s", err)
@@ -10217,7 +10570,7 @@ func (s EnvelopeType) MarshalBinary() ([]byte, error) {
 func (s *EnvelopeType) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -10254,7 +10607,11 @@ func (s UpgradeType) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*UpgradeType)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *UpgradeType) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *UpgradeType) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding UpgradeType: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	(*s), nTmp, err = d.DecodeOpaque(128)
@@ -10277,7 +10634,7 @@ func (s UpgradeType) MarshalBinary() ([]byte, error) {
 func (s *UpgradeType) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -10336,7 +10693,11 @@ func (e StellarValueType) EncodeTo(enc *xdr.Encoder) error {
 var _ decoderFrom = (*StellarValueType)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *StellarValueType) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *StellarValueType) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding StellarValueType: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding StellarValueType: %s", err)
@@ -10360,7 +10721,7 @@ func (s StellarValueType) MarshalBinary() ([]byte, error) {
 func (s *StellarValueType) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -10402,15 +10763,19 @@ func (s *LedgerCloseValueSignature) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*LedgerCloseValueSignature)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *LedgerCloseValueSignature) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *LedgerCloseValueSignature) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.NodeId.DecodeFrom(d)
+	nTmp, err = s.NodeId.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding NodeId: %s", err)
 	}
-	nTmp, err = s.Signature.DecodeFrom(d)
+	nTmp, err = s.Signature.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Signature: %s", err)
@@ -10430,7 +10795,7 @@ func (s LedgerCloseValueSignature) MarshalBinary() ([]byte, error) {
 func (s *LedgerCloseValueSignature) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -10541,10 +10906,14 @@ func (u StellarValueExt) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*StellarValueExt)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *StellarValueExt) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *StellarValueExt) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding StellarValueExt: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.V.DecodeFrom(d)
+	nTmp, err = u.V.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding StellarValueType: %s", err)
@@ -10555,7 +10924,7 @@ func (u *StellarValueExt) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case StellarValueTypeStellarValueSigned:
 		u.LcValueSignature = new(LedgerCloseValueSignature)
-		nTmp, err = (*u.LcValueSignature).DecodeFrom(d)
+		nTmp, err = (*u.LcValueSignature).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding LedgerCloseValueSignature: %s", err)
@@ -10577,7 +10946,7 @@ func (s StellarValueExt) MarshalBinary() ([]byte, error) {
 func (s *StellarValueExt) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -10649,15 +11018,19 @@ func (s *StellarValue) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*StellarValue)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *StellarValue) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *StellarValue) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.TxSetHash.DecodeFrom(d)
+	nTmp, err = s.TxSetHash.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Hash: %s", err)
 	}
-	nTmp, err = s.CloseTime.DecodeFrom(d)
+	nTmp, err = s.CloseTime.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding TimePoint: %s", err)
@@ -10675,14 +11048,14 @@ func (s *StellarValue) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if l > 0 {
 		s.Upgrades = make([]UpgradeType, l)
 		for i := uint32(0); i < l; i++ {
-			nTmp, err = s.Upgrades[i].DecodeFrom(d)
+			nTmp, err = s.Upgrades[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
 				return n, fmt.Errorf("decoding UpgradeType: %s", err)
 			}
 		}
 	}
-	nTmp, err = s.Ext.DecodeFrom(d)
+	nTmp, err = s.Ext.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding StellarValueExt: %s", err)
@@ -10702,7 +11075,7 @@ func (s StellarValue) MarshalBinary() ([]byte, error) {
 func (s *StellarValue) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -10769,7 +11142,11 @@ func (e LedgerHeaderFlags) EncodeTo(enc *xdr.Encoder) error {
 var _ decoderFrom = (*LedgerHeaderFlags)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *LedgerHeaderFlags) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *LedgerHeaderFlags) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding LedgerHeaderFlags: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding LedgerHeaderFlags: %s", err)
@@ -10793,7 +11170,7 @@ func (s LedgerHeaderFlags) MarshalBinary() ([]byte, error) {
 func (s *LedgerHeaderFlags) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -10862,7 +11239,11 @@ func (u LedgerHeaderExtensionV1Ext) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*LedgerHeaderExtensionV1Ext)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *LedgerHeaderExtensionV1Ext) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *LedgerHeaderExtensionV1Ext) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding LedgerHeaderExtensionV1Ext: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	u.V, nTmp, err = d.DecodeInt()
@@ -10890,7 +11271,7 @@ func (s LedgerHeaderExtensionV1Ext) MarshalBinary() ([]byte, error) {
 func (s *LedgerHeaderExtensionV1Ext) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -10938,15 +11319,19 @@ func (s *LedgerHeaderExtensionV1) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*LedgerHeaderExtensionV1)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *LedgerHeaderExtensionV1) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *LedgerHeaderExtensionV1) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.Flags.DecodeFrom(d)
+	nTmp, err = s.Flags.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
 	}
-	nTmp, err = s.Ext.DecodeFrom(d)
+	nTmp, err = s.Ext.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding LedgerHeaderExtensionV1Ext: %s", err)
@@ -10966,7 +11351,7 @@ func (s LedgerHeaderExtensionV1) MarshalBinary() ([]byte, error) {
 func (s *LedgerHeaderExtensionV1) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -11077,7 +11462,11 @@ func (u LedgerHeaderExt) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*LedgerHeaderExt)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *LedgerHeaderExt) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *LedgerHeaderExt) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding LedgerHeaderExt: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	u.V, nTmp, err = d.DecodeInt()
@@ -11091,7 +11480,7 @@ func (u *LedgerHeaderExt) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case 1:
 		u.V1 = new(LedgerHeaderExtensionV1)
-		nTmp, err = (*u.V1).DecodeFrom(d)
+		nTmp, err = (*u.V1).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding LedgerHeaderExtensionV1: %s", err)
@@ -11113,7 +11502,7 @@ func (s LedgerHeaderExt) MarshalBinary() ([]byte, error) {
 func (s *LedgerHeaderExt) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -11243,82 +11632,86 @@ func (s *LedgerHeader) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*LedgerHeader)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *LedgerHeader) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *LedgerHeader) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.LedgerVersion.DecodeFrom(d)
+	nTmp, err = s.LedgerVersion.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
 	}
-	nTmp, err = s.PreviousLedgerHash.DecodeFrom(d)
+	nTmp, err = s.PreviousLedgerHash.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Hash: %s", err)
 	}
-	nTmp, err = s.ScpValue.DecodeFrom(d)
+	nTmp, err = s.ScpValue.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding StellarValue: %s", err)
 	}
-	nTmp, err = s.TxSetResultHash.DecodeFrom(d)
+	nTmp, err = s.TxSetResultHash.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Hash: %s", err)
 	}
-	nTmp, err = s.BucketListHash.DecodeFrom(d)
+	nTmp, err = s.BucketListHash.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Hash: %s", err)
 	}
-	nTmp, err = s.LedgerSeq.DecodeFrom(d)
+	nTmp, err = s.LedgerSeq.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
 	}
-	nTmp, err = s.TotalCoins.DecodeFrom(d)
+	nTmp, err = s.TotalCoins.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int64: %s", err)
 	}
-	nTmp, err = s.FeePool.DecodeFrom(d)
+	nTmp, err = s.FeePool.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int64: %s", err)
 	}
-	nTmp, err = s.InflationSeq.DecodeFrom(d)
+	nTmp, err = s.InflationSeq.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
 	}
-	nTmp, err = s.IdPool.DecodeFrom(d)
+	nTmp, err = s.IdPool.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint64: %s", err)
 	}
-	nTmp, err = s.BaseFee.DecodeFrom(d)
+	nTmp, err = s.BaseFee.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
 	}
-	nTmp, err = s.BaseReserve.DecodeFrom(d)
+	nTmp, err = s.BaseReserve.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
 	}
-	nTmp, err = s.MaxTxSetSize.DecodeFrom(d)
+	nTmp, err = s.MaxTxSetSize.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
 	}
 	for i := 0; i < len(s.SkipList); i++ {
-		nTmp, err = s.SkipList[i].DecodeFrom(d)
+		nTmp, err = s.SkipList[i].DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding Hash: %s", err)
 		}
 	}
-	nTmp, err = s.Ext.DecodeFrom(d)
+	nTmp, err = s.Ext.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding LedgerHeaderExt: %s", err)
@@ -11338,7 +11731,7 @@ func (s LedgerHeader) MarshalBinary() ([]byte, error) {
 func (s *LedgerHeader) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -11412,7 +11805,11 @@ func (e LedgerUpgradeType) EncodeTo(enc *xdr.Encoder) error {
 var _ decoderFrom = (*LedgerUpgradeType)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *LedgerUpgradeType) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *LedgerUpgradeType) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding LedgerUpgradeType: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding LedgerUpgradeType: %s", err)
@@ -11436,7 +11833,7 @@ func (s LedgerUpgradeType) MarshalBinary() ([]byte, error) {
 func (s *LedgerUpgradeType) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -11477,15 +11874,19 @@ func (s *ConfigUpgradeSetKey) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ConfigUpgradeSetKey)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *ConfigUpgradeSetKey) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *ConfigUpgradeSetKey) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.ContractId.DecodeFrom(d)
+	nTmp, err = s.ContractId.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Hash: %s", err)
 	}
-	nTmp, err = s.ContentHash.DecodeFrom(d)
+	nTmp, err = s.ContentHash.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Hash: %s", err)
@@ -11505,7 +11906,7 @@ func (s ConfigUpgradeSetKey) MarshalBinary() ([]byte, error) {
 func (s *ConfigUpgradeSetKey) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -11862,10 +12263,14 @@ func (u LedgerUpgrade) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*LedgerUpgrade)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *LedgerUpgrade) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *LedgerUpgrade) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding LedgerUpgrade: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.Type.DecodeFrom(d)
+	nTmp, err = u.Type.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding LedgerUpgradeType: %s", err)
@@ -11873,7 +12278,7 @@ func (u *LedgerUpgrade) DecodeFrom(d *xdr.Decoder) (int, error) {
 	switch LedgerUpgradeType(u.Type) {
 	case LedgerUpgradeTypeLedgerUpgradeVersion:
 		u.NewLedgerVersion = new(Uint32)
-		nTmp, err = (*u.NewLedgerVersion).DecodeFrom(d)
+		nTmp, err = (*u.NewLedgerVersion).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding Uint32: %s", err)
@@ -11881,7 +12286,7 @@ func (u *LedgerUpgrade) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case LedgerUpgradeTypeLedgerUpgradeBaseFee:
 		u.NewBaseFee = new(Uint32)
-		nTmp, err = (*u.NewBaseFee).DecodeFrom(d)
+		nTmp, err = (*u.NewBaseFee).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding Uint32: %s", err)
@@ -11889,7 +12294,7 @@ func (u *LedgerUpgrade) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case LedgerUpgradeTypeLedgerUpgradeMaxTxSetSize:
 		u.NewMaxTxSetSize = new(Uint32)
-		nTmp, err = (*u.NewMaxTxSetSize).DecodeFrom(d)
+		nTmp, err = (*u.NewMaxTxSetSize).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding Uint32: %s", err)
@@ -11897,7 +12302,7 @@ func (u *LedgerUpgrade) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case LedgerUpgradeTypeLedgerUpgradeBaseReserve:
 		u.NewBaseReserve = new(Uint32)
-		nTmp, err = (*u.NewBaseReserve).DecodeFrom(d)
+		nTmp, err = (*u.NewBaseReserve).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding Uint32: %s", err)
@@ -11905,7 +12310,7 @@ func (u *LedgerUpgrade) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case LedgerUpgradeTypeLedgerUpgradeFlags:
 		u.NewFlags = new(Uint32)
-		nTmp, err = (*u.NewFlags).DecodeFrom(d)
+		nTmp, err = (*u.NewFlags).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding Uint32: %s", err)
@@ -11913,7 +12318,7 @@ func (u *LedgerUpgrade) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case LedgerUpgradeTypeLedgerUpgradeConfig:
 		u.NewConfig = new(ConfigUpgradeSetKey)
-		nTmp, err = (*u.NewConfig).DecodeFrom(d)
+		nTmp, err = (*u.NewConfig).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ConfigUpgradeSetKey: %s", err)
@@ -11921,7 +12326,7 @@ func (u *LedgerUpgrade) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case LedgerUpgradeTypeLedgerUpgradeMaxSorobanTxSetSize:
 		u.NewMaxSorobanTxSetSize = new(Uint32)
-		nTmp, err = (*u.NewMaxSorobanTxSetSize).DecodeFrom(d)
+		nTmp, err = (*u.NewMaxSorobanTxSetSize).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding Uint32: %s", err)
@@ -11943,7 +12348,7 @@ func (s LedgerUpgrade) MarshalBinary() ([]byte, error) {
 func (s *LedgerUpgrade) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -11984,7 +12389,11 @@ func (s *ConfigUpgradeSet) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ConfigUpgradeSet)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *ConfigUpgradeSet) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *ConfigUpgradeSet) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	var l uint32
@@ -11997,7 +12406,7 @@ func (s *ConfigUpgradeSet) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if l > 0 {
 		s.UpdatedEntry = make([]ConfigSettingEntry, l)
 		for i := uint32(0); i < l; i++ {
-			nTmp, err = s.UpdatedEntry[i].DecodeFrom(d)
+			nTmp, err = s.UpdatedEntry[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
 				return n, fmt.Errorf("decoding ConfigSettingEntry: %s", err)
@@ -12019,7 +12428,7 @@ func (s ConfigUpgradeSet) MarshalBinary() ([]byte, error) {
 func (s *ConfigUpgradeSet) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -12086,7 +12495,11 @@ func (e BucketEntryType) EncodeTo(enc *xdr.Encoder) error {
 var _ decoderFrom = (*BucketEntryType)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *BucketEntryType) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *BucketEntryType) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding BucketEntryType: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding BucketEntryType: %s", err)
@@ -12110,7 +12523,7 @@ func (s BucketEntryType) MarshalBinary() ([]byte, error) {
 func (s *BucketEntryType) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -12179,7 +12592,11 @@ func (u BucketMetadataExt) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*BucketMetadataExt)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *BucketMetadataExt) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *BucketMetadataExt) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding BucketMetadataExt: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	u.V, nTmp, err = d.DecodeInt()
@@ -12207,7 +12624,7 @@ func (s BucketMetadataExt) MarshalBinary() ([]byte, error) {
 func (s *BucketMetadataExt) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -12257,15 +12674,19 @@ func (s *BucketMetadata) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*BucketMetadata)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *BucketMetadata) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *BucketMetadata) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.LedgerVersion.DecodeFrom(d)
+	nTmp, err = s.LedgerVersion.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
 	}
-	nTmp, err = s.Ext.DecodeFrom(d)
+	nTmp, err = s.Ext.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding BucketMetadataExt: %s", err)
@@ -12285,7 +12706,7 @@ func (s BucketMetadata) MarshalBinary() ([]byte, error) {
 func (s *BucketMetadata) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -12487,10 +12908,14 @@ func (u BucketEntry) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*BucketEntry)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *BucketEntry) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *BucketEntry) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding BucketEntry: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.Type.DecodeFrom(d)
+	nTmp, err = u.Type.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding BucketEntryType: %s", err)
@@ -12498,7 +12923,7 @@ func (u *BucketEntry) DecodeFrom(d *xdr.Decoder) (int, error) {
 	switch BucketEntryType(u.Type) {
 	case BucketEntryTypeLiveentry:
 		u.LiveEntry = new(LedgerEntry)
-		nTmp, err = (*u.LiveEntry).DecodeFrom(d)
+		nTmp, err = (*u.LiveEntry).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding LedgerEntry: %s", err)
@@ -12506,7 +12931,7 @@ func (u *BucketEntry) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case BucketEntryTypeInitentry:
 		u.LiveEntry = new(LedgerEntry)
-		nTmp, err = (*u.LiveEntry).DecodeFrom(d)
+		nTmp, err = (*u.LiveEntry).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding LedgerEntry: %s", err)
@@ -12514,7 +12939,7 @@ func (u *BucketEntry) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case BucketEntryTypeDeadentry:
 		u.DeadEntry = new(LedgerKey)
-		nTmp, err = (*u.DeadEntry).DecodeFrom(d)
+		nTmp, err = (*u.DeadEntry).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding LedgerKey: %s", err)
@@ -12522,7 +12947,7 @@ func (u *BucketEntry) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case BucketEntryTypeMetaentry:
 		u.MetaEntry = new(BucketMetadata)
-		nTmp, err = (*u.MetaEntry).DecodeFrom(d)
+		nTmp, err = (*u.MetaEntry).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding BucketMetadata: %s", err)
@@ -12544,7 +12969,7 @@ func (s BucketEntry) MarshalBinary() ([]byte, error) {
 func (s *BucketEntry) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -12602,7 +13027,11 @@ func (e TxSetComponentType) EncodeTo(enc *xdr.Encoder) error {
 var _ decoderFrom = (*TxSetComponentType)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *TxSetComponentType) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *TxSetComponentType) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding TxSetComponentType: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding TxSetComponentType: %s", err)
@@ -12626,7 +13055,7 @@ func (s TxSetComponentType) MarshalBinary() ([]byte, error) {
 func (s *TxSetComponentType) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -12678,7 +13107,11 @@ func (s *TxSetComponentTxsMaybeDiscountedFee) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*TxSetComponentTxsMaybeDiscountedFee)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *TxSetComponentTxsMaybeDiscountedFee) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *TxSetComponentTxsMaybeDiscountedFee) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	var b bool
@@ -12690,7 +13123,7 @@ func (s *TxSetComponentTxsMaybeDiscountedFee) DecodeFrom(d *xdr.Decoder) (int, e
 	s.BaseFee = nil
 	if b {
 		s.BaseFee = new(Int64)
-		nTmp, err = s.BaseFee.DecodeFrom(d)
+		nTmp, err = s.BaseFee.DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding Int64: %s", err)
@@ -12706,7 +13139,7 @@ func (s *TxSetComponentTxsMaybeDiscountedFee) DecodeFrom(d *xdr.Decoder) (int, e
 	if l > 0 {
 		s.Txs = make([]TransactionEnvelope, l)
 		for i := uint32(0); i < l; i++ {
-			nTmp, err = s.Txs[i].DecodeFrom(d)
+			nTmp, err = s.Txs[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
 				return n, fmt.Errorf("decoding TransactionEnvelope: %s", err)
@@ -12728,7 +13161,7 @@ func (s TxSetComponentTxsMaybeDiscountedFee) MarshalBinary() ([]byte, error) {
 func (s *TxSetComponentTxsMaybeDiscountedFee) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -12834,10 +13267,14 @@ func (u TxSetComponent) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*TxSetComponent)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *TxSetComponent) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *TxSetComponent) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding TxSetComponent: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.Type.DecodeFrom(d)
+	nTmp, err = u.Type.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding TxSetComponentType: %s", err)
@@ -12845,7 +13282,7 @@ func (u *TxSetComponent) DecodeFrom(d *xdr.Decoder) (int, error) {
 	switch TxSetComponentType(u.Type) {
 	case TxSetComponentTypeTxsetCompTxsMaybeDiscountedFee:
 		u.TxsMaybeDiscountedFee = new(TxSetComponentTxsMaybeDiscountedFee)
-		nTmp, err = (*u.TxsMaybeDiscountedFee).DecodeFrom(d)
+		nTmp, err = (*u.TxsMaybeDiscountedFee).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding TxSetComponentTxsMaybeDiscountedFee: %s", err)
@@ -12867,7 +13304,7 @@ func (s TxSetComponent) MarshalBinary() ([]byte, error) {
 func (s *TxSetComponent) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -12974,7 +13411,11 @@ func (u TransactionPhase) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*TransactionPhase)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *TransactionPhase) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *TransactionPhase) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding TransactionPhase: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	u.V, nTmp, err = d.DecodeInt()
@@ -12995,7 +13436,7 @@ func (u *TransactionPhase) DecodeFrom(d *xdr.Decoder) (int, error) {
 		if l > 0 {
 			(*u.V0Components) = make([]TxSetComponent, l)
 			for i := uint32(0); i < l; i++ {
-				nTmp, err = (*u.V0Components)[i].DecodeFrom(d)
+				nTmp, err = (*u.V0Components)[i].DecodeFrom(d, maxDepth)
 				n += nTmp
 				if err != nil {
 					return n, fmt.Errorf("decoding TxSetComponent: %s", err)
@@ -13019,7 +13460,7 @@ func (s TransactionPhase) MarshalBinary() ([]byte, error) {
 func (s *TransactionPhase) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -13066,10 +13507,14 @@ func (s *TransactionSet) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*TransactionSet)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *TransactionSet) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *TransactionSet) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.PreviousLedgerHash.DecodeFrom(d)
+	nTmp, err = s.PreviousLedgerHash.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Hash: %s", err)
@@ -13084,7 +13529,7 @@ func (s *TransactionSet) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if l > 0 {
 		s.Txs = make([]TransactionEnvelope, l)
 		for i := uint32(0); i < l; i++ {
-			nTmp, err = s.Txs[i].DecodeFrom(d)
+			nTmp, err = s.Txs[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
 				return n, fmt.Errorf("decoding TransactionEnvelope: %s", err)
@@ -13106,7 +13551,7 @@ func (s TransactionSet) MarshalBinary() ([]byte, error) {
 func (s *TransactionSet) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -13153,10 +13598,14 @@ func (s *TransactionSetV1) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*TransactionSetV1)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *TransactionSetV1) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *TransactionSetV1) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.PreviousLedgerHash.DecodeFrom(d)
+	nTmp, err = s.PreviousLedgerHash.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Hash: %s", err)
@@ -13171,7 +13620,7 @@ func (s *TransactionSetV1) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if l > 0 {
 		s.Phases = make([]TransactionPhase, l)
 		for i := uint32(0); i < l; i++ {
-			nTmp, err = s.Phases[i].DecodeFrom(d)
+			nTmp, err = s.Phases[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
 				return n, fmt.Errorf("decoding TransactionPhase: %s", err)
@@ -13193,7 +13642,7 @@ func (s TransactionSetV1) MarshalBinary() ([]byte, error) {
 func (s *TransactionSetV1) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -13296,7 +13745,11 @@ func (u GeneralizedTransactionSet) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*GeneralizedTransactionSet)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *GeneralizedTransactionSet) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *GeneralizedTransactionSet) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding GeneralizedTransactionSet: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	u.V, nTmp, err = d.DecodeInt()
@@ -13307,7 +13760,7 @@ func (u *GeneralizedTransactionSet) DecodeFrom(d *xdr.Decoder) (int, error) {
 	switch int32(u.V) {
 	case 1:
 		u.V1TxSet = new(TransactionSetV1)
-		nTmp, err = (*u.V1TxSet).DecodeFrom(d)
+		nTmp, err = (*u.V1TxSet).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding TransactionSetV1: %s", err)
@@ -13329,7 +13782,7 @@ func (s GeneralizedTransactionSet) MarshalBinary() ([]byte, error) {
 func (s *GeneralizedTransactionSet) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -13371,15 +13824,19 @@ func (s *TransactionResultPair) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*TransactionResultPair)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *TransactionResultPair) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *TransactionResultPair) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.TransactionHash.DecodeFrom(d)
+	nTmp, err = s.TransactionHash.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Hash: %s", err)
 	}
-	nTmp, err = s.Result.DecodeFrom(d)
+	nTmp, err = s.Result.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding TransactionResult: %s", err)
@@ -13399,7 +13856,7 @@ func (s TransactionResultPair) MarshalBinary() ([]byte, error) {
 func (s *TransactionResultPair) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -13441,7 +13898,11 @@ func (s *TransactionResultSet) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*TransactionResultSet)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *TransactionResultSet) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *TransactionResultSet) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	var l uint32
@@ -13454,7 +13915,7 @@ func (s *TransactionResultSet) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if l > 0 {
 		s.Results = make([]TransactionResultPair, l)
 		for i := uint32(0); i < l; i++ {
-			nTmp, err = s.Results[i].DecodeFrom(d)
+			nTmp, err = s.Results[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
 				return n, fmt.Errorf("decoding TransactionResultPair: %s", err)
@@ -13476,7 +13937,7 @@ func (s TransactionResultSet) MarshalBinary() ([]byte, error) {
 func (s *TransactionResultSet) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -13587,7 +14048,11 @@ func (u TransactionHistoryEntryExt) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*TransactionHistoryEntryExt)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *TransactionHistoryEntryExt) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *TransactionHistoryEntryExt) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding TransactionHistoryEntryExt: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	u.V, nTmp, err = d.DecodeInt()
@@ -13601,7 +14066,7 @@ func (u *TransactionHistoryEntryExt) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case 1:
 		u.GeneralizedTxSet = new(GeneralizedTransactionSet)
-		nTmp, err = (*u.GeneralizedTxSet).DecodeFrom(d)
+		nTmp, err = (*u.GeneralizedTxSet).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding GeneralizedTransactionSet: %s", err)
@@ -13623,7 +14088,7 @@ func (s TransactionHistoryEntryExt) MarshalBinary() ([]byte, error) {
 func (s *TransactionHistoryEntryExt) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -13679,20 +14144,24 @@ func (s *TransactionHistoryEntry) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*TransactionHistoryEntry)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *TransactionHistoryEntry) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *TransactionHistoryEntry) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.LedgerSeq.DecodeFrom(d)
+	nTmp, err = s.LedgerSeq.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
 	}
-	nTmp, err = s.TxSet.DecodeFrom(d)
+	nTmp, err = s.TxSet.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding TransactionSet: %s", err)
 	}
-	nTmp, err = s.Ext.DecodeFrom(d)
+	nTmp, err = s.Ext.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding TransactionHistoryEntryExt: %s", err)
@@ -13712,7 +14181,7 @@ func (s TransactionHistoryEntry) MarshalBinary() ([]byte, error) {
 func (s *TransactionHistoryEntry) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -13781,7 +14250,11 @@ func (u TransactionHistoryResultEntryExt) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*TransactionHistoryResultEntryExt)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *TransactionHistoryResultEntryExt) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *TransactionHistoryResultEntryExt) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding TransactionHistoryResultEntryExt: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	u.V, nTmp, err = d.DecodeInt()
@@ -13809,7 +14282,7 @@ func (s TransactionHistoryResultEntryExt) MarshalBinary() ([]byte, error) {
 func (s *TransactionHistoryResultEntryExt) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -13863,20 +14336,24 @@ func (s *TransactionHistoryResultEntry) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*TransactionHistoryResultEntry)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *TransactionHistoryResultEntry) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *TransactionHistoryResultEntry) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.LedgerSeq.DecodeFrom(d)
+	nTmp, err = s.LedgerSeq.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
 	}
-	nTmp, err = s.TxResultSet.DecodeFrom(d)
+	nTmp, err = s.TxResultSet.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding TransactionResultSet: %s", err)
 	}
-	nTmp, err = s.Ext.DecodeFrom(d)
+	nTmp, err = s.Ext.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding TransactionHistoryResultEntryExt: %s", err)
@@ -13896,7 +14373,7 @@ func (s TransactionHistoryResultEntry) MarshalBinary() ([]byte, error) {
 func (s *TransactionHistoryResultEntry) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -13965,7 +14442,11 @@ func (u LedgerHeaderHistoryEntryExt) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*LedgerHeaderHistoryEntryExt)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *LedgerHeaderHistoryEntryExt) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *LedgerHeaderHistoryEntryExt) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding LedgerHeaderHistoryEntryExt: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	u.V, nTmp, err = d.DecodeInt()
@@ -13993,7 +14474,7 @@ func (s LedgerHeaderHistoryEntryExt) MarshalBinary() ([]byte, error) {
 func (s *LedgerHeaderHistoryEntryExt) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -14047,20 +14528,24 @@ func (s *LedgerHeaderHistoryEntry) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*LedgerHeaderHistoryEntry)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *LedgerHeaderHistoryEntry) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *LedgerHeaderHistoryEntry) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.Hash.DecodeFrom(d)
+	nTmp, err = s.Hash.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Hash: %s", err)
 	}
-	nTmp, err = s.Header.DecodeFrom(d)
+	nTmp, err = s.Header.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding LedgerHeader: %s", err)
 	}
-	nTmp, err = s.Ext.DecodeFrom(d)
+	nTmp, err = s.Ext.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding LedgerHeaderHistoryEntryExt: %s", err)
@@ -14080,7 +14565,7 @@ func (s LedgerHeaderHistoryEntry) MarshalBinary() ([]byte, error) {
 func (s *LedgerHeaderHistoryEntry) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -14127,10 +14612,14 @@ func (s *LedgerScpMessages) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*LedgerScpMessages)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *LedgerScpMessages) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *LedgerScpMessages) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.LedgerSeq.DecodeFrom(d)
+	nTmp, err = s.LedgerSeq.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
@@ -14145,7 +14634,7 @@ func (s *LedgerScpMessages) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if l > 0 {
 		s.Messages = make([]ScpEnvelope, l)
 		for i := uint32(0); i < l; i++ {
-			nTmp, err = s.Messages[i].DecodeFrom(d)
+			nTmp, err = s.Messages[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
 				return n, fmt.Errorf("decoding ScpEnvelope: %s", err)
@@ -14167,7 +14656,7 @@ func (s LedgerScpMessages) MarshalBinary() ([]byte, error) {
 func (s *LedgerScpMessages) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -14214,7 +14703,11 @@ func (s *ScpHistoryEntryV0) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ScpHistoryEntryV0)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *ScpHistoryEntryV0) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *ScpHistoryEntryV0) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	var l uint32
@@ -14227,14 +14720,14 @@ func (s *ScpHistoryEntryV0) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if l > 0 {
 		s.QuorumSets = make([]ScpQuorumSet, l)
 		for i := uint32(0); i < l; i++ {
-			nTmp, err = s.QuorumSets[i].DecodeFrom(d)
+			nTmp, err = s.QuorumSets[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
 				return n, fmt.Errorf("decoding ScpQuorumSet: %s", err)
 			}
 		}
 	}
-	nTmp, err = s.LedgerMessages.DecodeFrom(d)
+	nTmp, err = s.LedgerMessages.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding LedgerScpMessages: %s", err)
@@ -14254,7 +14747,7 @@ func (s ScpHistoryEntryV0) MarshalBinary() ([]byte, error) {
 func (s *ScpHistoryEntryV0) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -14356,7 +14849,11 @@ func (u ScpHistoryEntry) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ScpHistoryEntry)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *ScpHistoryEntry) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *ScpHistoryEntry) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding ScpHistoryEntry: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	u.V, nTmp, err = d.DecodeInt()
@@ -14367,7 +14864,7 @@ func (u *ScpHistoryEntry) DecodeFrom(d *xdr.Decoder) (int, error) {
 	switch int32(u.V) {
 	case 0:
 		u.V0 = new(ScpHistoryEntryV0)
-		nTmp, err = (*u.V0).DecodeFrom(d)
+		nTmp, err = (*u.V0).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ScpHistoryEntryV0: %s", err)
@@ -14389,7 +14886,7 @@ func (s ScpHistoryEntry) MarshalBinary() ([]byte, error) {
 func (s *ScpHistoryEntry) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -14454,7 +14951,11 @@ func (e LedgerEntryChangeType) EncodeTo(enc *xdr.Encoder) error {
 var _ decoderFrom = (*LedgerEntryChangeType)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *LedgerEntryChangeType) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *LedgerEntryChangeType) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding LedgerEntryChangeType: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding LedgerEntryChangeType: %s", err)
@@ -14478,7 +14979,7 @@ func (s LedgerEntryChangeType) MarshalBinary() ([]byte, error) {
 func (s *LedgerEntryChangeType) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -14706,10 +15207,14 @@ func (u LedgerEntryChange) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*LedgerEntryChange)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *LedgerEntryChange) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *LedgerEntryChange) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding LedgerEntryChange: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.Type.DecodeFrom(d)
+	nTmp, err = u.Type.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding LedgerEntryChangeType: %s", err)
@@ -14717,7 +15222,7 @@ func (u *LedgerEntryChange) DecodeFrom(d *xdr.Decoder) (int, error) {
 	switch LedgerEntryChangeType(u.Type) {
 	case LedgerEntryChangeTypeLedgerEntryCreated:
 		u.Created = new(LedgerEntry)
-		nTmp, err = (*u.Created).DecodeFrom(d)
+		nTmp, err = (*u.Created).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding LedgerEntry: %s", err)
@@ -14725,7 +15230,7 @@ func (u *LedgerEntryChange) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case LedgerEntryChangeTypeLedgerEntryUpdated:
 		u.Updated = new(LedgerEntry)
-		nTmp, err = (*u.Updated).DecodeFrom(d)
+		nTmp, err = (*u.Updated).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding LedgerEntry: %s", err)
@@ -14733,7 +15238,7 @@ func (u *LedgerEntryChange) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case LedgerEntryChangeTypeLedgerEntryRemoved:
 		u.Removed = new(LedgerKey)
-		nTmp, err = (*u.Removed).DecodeFrom(d)
+		nTmp, err = (*u.Removed).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding LedgerKey: %s", err)
@@ -14741,7 +15246,7 @@ func (u *LedgerEntryChange) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case LedgerEntryChangeTypeLedgerEntryState:
 		u.State = new(LedgerEntry)
-		nTmp, err = (*u.State).DecodeFrom(d)
+		nTmp, err = (*u.State).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding LedgerEntry: %s", err)
@@ -14763,7 +15268,7 @@ func (s LedgerEntryChange) MarshalBinary() ([]byte, error) {
 func (s *LedgerEntryChange) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -14800,7 +15305,11 @@ func (s LedgerEntryChanges) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*LedgerEntryChanges)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *LedgerEntryChanges) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *LedgerEntryChanges) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding LedgerEntryChanges: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	var l uint32
@@ -14813,7 +15322,7 @@ func (s *LedgerEntryChanges) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if l > 0 {
 		(*s) = make([]LedgerEntryChange, l)
 		for i := uint32(0); i < l; i++ {
-			nTmp, err = (*s)[i].DecodeFrom(d)
+			nTmp, err = (*s)[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
 				return n, fmt.Errorf("decoding LedgerEntryChange: %s", err)
@@ -14835,7 +15344,7 @@ func (s LedgerEntryChanges) MarshalBinary() ([]byte, error) {
 func (s *LedgerEntryChanges) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -14872,10 +15381,14 @@ func (s *OperationMeta) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*OperationMeta)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *OperationMeta) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *OperationMeta) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.Changes.DecodeFrom(d)
+	nTmp, err = s.Changes.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding LedgerEntryChanges: %s", err)
@@ -14895,7 +15408,7 @@ func (s OperationMeta) MarshalBinary() ([]byte, error) {
 func (s *OperationMeta) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -14942,10 +15455,14 @@ func (s *TransactionMetaV1) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*TransactionMetaV1)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *TransactionMetaV1) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *TransactionMetaV1) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.TxChanges.DecodeFrom(d)
+	nTmp, err = s.TxChanges.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding LedgerEntryChanges: %s", err)
@@ -14960,7 +15477,7 @@ func (s *TransactionMetaV1) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if l > 0 {
 		s.Operations = make([]OperationMeta, l)
 		for i := uint32(0); i < l; i++ {
-			nTmp, err = s.Operations[i].DecodeFrom(d)
+			nTmp, err = s.Operations[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
 				return n, fmt.Errorf("decoding OperationMeta: %s", err)
@@ -14982,7 +15499,7 @@ func (s TransactionMetaV1) MarshalBinary() ([]byte, error) {
 func (s *TransactionMetaV1) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -15036,10 +15553,14 @@ func (s *TransactionMetaV2) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*TransactionMetaV2)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *TransactionMetaV2) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *TransactionMetaV2) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.TxChangesBefore.DecodeFrom(d)
+	nTmp, err = s.TxChangesBefore.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding LedgerEntryChanges: %s", err)
@@ -15054,14 +15575,14 @@ func (s *TransactionMetaV2) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if l > 0 {
 		s.Operations = make([]OperationMeta, l)
 		for i := uint32(0); i < l; i++ {
-			nTmp, err = s.Operations[i].DecodeFrom(d)
+			nTmp, err = s.Operations[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
 				return n, fmt.Errorf("decoding OperationMeta: %s", err)
 			}
 		}
 	}
-	nTmp, err = s.TxChangesAfter.DecodeFrom(d)
+	nTmp, err = s.TxChangesAfter.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding LedgerEntryChanges: %s", err)
@@ -15081,7 +15602,7 @@ func (s TransactionMetaV2) MarshalBinary() ([]byte, error) {
 func (s *TransactionMetaV2) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -15143,7 +15664,11 @@ func (e ContractEventType) EncodeTo(enc *xdr.Encoder) error {
 var _ decoderFrom = (*ContractEventType)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *ContractEventType) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *ContractEventType) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding ContractEventType: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding ContractEventType: %s", err)
@@ -15167,7 +15692,7 @@ func (s ContractEventType) MarshalBinary() ([]byte, error) {
 func (s *ContractEventType) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -15214,7 +15739,11 @@ func (s *ContractEventV0) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ContractEventV0)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *ContractEventV0) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *ContractEventV0) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	var l uint32
@@ -15227,14 +15756,14 @@ func (s *ContractEventV0) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if l > 0 {
 		s.Topics = make([]ScVal, l)
 		for i := uint32(0); i < l; i++ {
-			nTmp, err = s.Topics[i].DecodeFrom(d)
+			nTmp, err = s.Topics[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
 				return n, fmt.Errorf("decoding ScVal: %s", err)
 			}
 		}
 	}
-	nTmp, err = s.Data.DecodeFrom(d)
+	nTmp, err = s.Data.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ScVal: %s", err)
@@ -15254,7 +15783,7 @@ func (s ContractEventV0) MarshalBinary() ([]byte, error) {
 func (s *ContractEventV0) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -15360,7 +15889,11 @@ func (u ContractEventBody) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ContractEventBody)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *ContractEventBody) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *ContractEventBody) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding ContractEventBody: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	u.V, nTmp, err = d.DecodeInt()
@@ -15371,7 +15904,7 @@ func (u *ContractEventBody) DecodeFrom(d *xdr.Decoder) (int, error) {
 	switch int32(u.V) {
 	case 0:
 		u.V0 = new(ContractEventV0)
-		nTmp, err = (*u.V0).DecodeFrom(d)
+		nTmp, err = (*u.V0).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ContractEventV0: %s", err)
@@ -15393,7 +15926,7 @@ func (s ContractEventBody) MarshalBinary() ([]byte, error) {
 func (s *ContractEventBody) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -15463,10 +15996,14 @@ func (s *ContractEvent) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ContractEvent)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *ContractEvent) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *ContractEvent) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.Ext.DecodeFrom(d)
+	nTmp, err = s.Ext.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ExtensionPoint: %s", err)
@@ -15480,18 +16017,18 @@ func (s *ContractEvent) DecodeFrom(d *xdr.Decoder) (int, error) {
 	s.ContractId = nil
 	if b {
 		s.ContractId = new(Hash)
-		nTmp, err = s.ContractId.DecodeFrom(d)
+		nTmp, err = s.ContractId.DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding Hash: %s", err)
 		}
 	}
-	nTmp, err = s.Type.DecodeFrom(d)
+	nTmp, err = s.Type.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ContractEventType: %s", err)
 	}
-	nTmp, err = s.Body.DecodeFrom(d)
+	nTmp, err = s.Body.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ContractEventBody: %s", err)
@@ -15511,7 +16048,7 @@ func (s ContractEvent) MarshalBinary() ([]byte, error) {
 func (s *ContractEvent) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -15553,7 +16090,11 @@ func (s *DiagnosticEvent) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*DiagnosticEvent)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *DiagnosticEvent) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *DiagnosticEvent) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	s.InSuccessfulContractCall, nTmp, err = d.DecodeBool()
@@ -15561,7 +16102,7 @@ func (s *DiagnosticEvent) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if err != nil {
 		return n, fmt.Errorf("decoding Bool: %s", err)
 	}
-	nTmp, err = s.Event.DecodeFrom(d)
+	nTmp, err = s.Event.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ContractEvent: %s", err)
@@ -15581,7 +16122,7 @@ func (s DiagnosticEvent) MarshalBinary() ([]byte, error) {
 func (s *DiagnosticEvent) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -15649,10 +16190,14 @@ func (s *SorobanTransactionMeta) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*SorobanTransactionMeta)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *SorobanTransactionMeta) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *SorobanTransactionMeta) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.Ext.DecodeFrom(d)
+	nTmp, err = s.Ext.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ExtensionPoint: %s", err)
@@ -15667,14 +16212,14 @@ func (s *SorobanTransactionMeta) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if l > 0 {
 		s.Events = make([]ContractEvent, l)
 		for i := uint32(0); i < l; i++ {
-			nTmp, err = s.Events[i].DecodeFrom(d)
+			nTmp, err = s.Events[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
 				return n, fmt.Errorf("decoding ContractEvent: %s", err)
 			}
 		}
 	}
-	nTmp, err = s.ReturnValue.DecodeFrom(d)
+	nTmp, err = s.ReturnValue.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ScVal: %s", err)
@@ -15688,7 +16233,7 @@ func (s *SorobanTransactionMeta) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if l > 0 {
 		s.DiagnosticEvents = make([]DiagnosticEvent, l)
 		for i := uint32(0); i < l; i++ {
-			nTmp, err = s.DiagnosticEvents[i].DecodeFrom(d)
+			nTmp, err = s.DiagnosticEvents[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
 				return n, fmt.Errorf("decoding DiagnosticEvent: %s", err)
@@ -15710,7 +16255,7 @@ func (s SorobanTransactionMeta) MarshalBinary() ([]byte, error) {
 func (s *SorobanTransactionMeta) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -15781,15 +16326,19 @@ func (s *TransactionMetaV3) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*TransactionMetaV3)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *TransactionMetaV3) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *TransactionMetaV3) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.Ext.DecodeFrom(d)
+	nTmp, err = s.Ext.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ExtensionPoint: %s", err)
 	}
-	nTmp, err = s.TxChangesBefore.DecodeFrom(d)
+	nTmp, err = s.TxChangesBefore.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding LedgerEntryChanges: %s", err)
@@ -15804,14 +16353,14 @@ func (s *TransactionMetaV3) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if l > 0 {
 		s.Operations = make([]OperationMeta, l)
 		for i := uint32(0); i < l; i++ {
-			nTmp, err = s.Operations[i].DecodeFrom(d)
+			nTmp, err = s.Operations[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
 				return n, fmt.Errorf("decoding OperationMeta: %s", err)
 			}
 		}
 	}
-	nTmp, err = s.TxChangesAfter.DecodeFrom(d)
+	nTmp, err = s.TxChangesAfter.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding LedgerEntryChanges: %s", err)
@@ -15825,7 +16374,7 @@ func (s *TransactionMetaV3) DecodeFrom(d *xdr.Decoder) (int, error) {
 	s.SorobanMeta = nil
 	if b {
 		s.SorobanMeta = new(SorobanTransactionMeta)
-		nTmp, err = s.SorobanMeta.DecodeFrom(d)
+		nTmp, err = s.SorobanMeta.DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding SorobanTransactionMeta: %s", err)
@@ -15846,7 +16395,7 @@ func (s TransactionMetaV3) MarshalBinary() ([]byte, error) {
 func (s *TransactionMetaV3) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -15893,10 +16442,14 @@ func (s *InvokeHostFunctionSuccessPreImage) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*InvokeHostFunctionSuccessPreImage)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *InvokeHostFunctionSuccessPreImage) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *InvokeHostFunctionSuccessPreImage) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.ReturnValue.DecodeFrom(d)
+	nTmp, err = s.ReturnValue.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ScVal: %s", err)
@@ -15911,7 +16464,7 @@ func (s *InvokeHostFunctionSuccessPreImage) DecodeFrom(d *xdr.Decoder) (int, err
 	if l > 0 {
 		s.Events = make([]ContractEvent, l)
 		for i := uint32(0); i < l; i++ {
-			nTmp, err = s.Events[i].DecodeFrom(d)
+			nTmp, err = s.Events[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
 				return n, fmt.Errorf("decoding ContractEvent: %s", err)
@@ -15933,7 +16486,7 @@ func (s InvokeHostFunctionSuccessPreImage) MarshalBinary() ([]byte, error) {
 func (s *InvokeHostFunctionSuccessPreImage) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -16166,7 +16719,11 @@ func (u TransactionMeta) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*TransactionMeta)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *TransactionMeta) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *TransactionMeta) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding TransactionMeta: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	u.V, nTmp, err = d.DecodeInt()
@@ -16187,7 +16744,7 @@ func (u *TransactionMeta) DecodeFrom(d *xdr.Decoder) (int, error) {
 		if l > 0 {
 			(*u.Operations) = make([]OperationMeta, l)
 			for i := uint32(0); i < l; i++ {
-				nTmp, err = (*u.Operations)[i].DecodeFrom(d)
+				nTmp, err = (*u.Operations)[i].DecodeFrom(d, maxDepth)
 				n += nTmp
 				if err != nil {
 					return n, fmt.Errorf("decoding OperationMeta: %s", err)
@@ -16197,7 +16754,7 @@ func (u *TransactionMeta) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case 1:
 		u.V1 = new(TransactionMetaV1)
-		nTmp, err = (*u.V1).DecodeFrom(d)
+		nTmp, err = (*u.V1).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding TransactionMetaV1: %s", err)
@@ -16205,7 +16762,7 @@ func (u *TransactionMeta) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case 2:
 		u.V2 = new(TransactionMetaV2)
-		nTmp, err = (*u.V2).DecodeFrom(d)
+		nTmp, err = (*u.V2).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding TransactionMetaV2: %s", err)
@@ -16213,7 +16770,7 @@ func (u *TransactionMeta) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case 3:
 		u.V3 = new(TransactionMetaV3)
-		nTmp, err = (*u.V3).DecodeFrom(d)
+		nTmp, err = (*u.V3).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding TransactionMetaV3: %s", err)
@@ -16235,7 +16792,7 @@ func (s TransactionMeta) MarshalBinary() ([]byte, error) {
 func (s *TransactionMeta) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -16282,20 +16839,24 @@ func (s *TransactionResultMeta) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*TransactionResultMeta)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *TransactionResultMeta) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *TransactionResultMeta) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.Result.DecodeFrom(d)
+	nTmp, err = s.Result.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding TransactionResultPair: %s", err)
 	}
-	nTmp, err = s.FeeProcessing.DecodeFrom(d)
+	nTmp, err = s.FeeProcessing.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding LedgerEntryChanges: %s", err)
 	}
-	nTmp, err = s.TxApplyProcessing.DecodeFrom(d)
+	nTmp, err = s.TxApplyProcessing.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding TransactionMeta: %s", err)
@@ -16315,7 +16876,7 @@ func (s TransactionResultMeta) MarshalBinary() ([]byte, error) {
 func (s *TransactionResultMeta) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -16357,15 +16918,19 @@ func (s *UpgradeEntryMeta) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*UpgradeEntryMeta)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *UpgradeEntryMeta) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *UpgradeEntryMeta) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.Upgrade.DecodeFrom(d)
+	nTmp, err = s.Upgrade.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding LedgerUpgrade: %s", err)
 	}
-	nTmp, err = s.Changes.DecodeFrom(d)
+	nTmp, err = s.Changes.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding LedgerEntryChanges: %s", err)
@@ -16385,7 +16950,7 @@ func (s UpgradeEntryMeta) MarshalBinary() ([]byte, error) {
 func (s *UpgradeEntryMeta) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -16466,15 +17031,19 @@ func (s *LedgerCloseMetaV0) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*LedgerCloseMetaV0)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *LedgerCloseMetaV0) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *LedgerCloseMetaV0) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.LedgerHeader.DecodeFrom(d)
+	nTmp, err = s.LedgerHeader.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding LedgerHeaderHistoryEntry: %s", err)
 	}
-	nTmp, err = s.TxSet.DecodeFrom(d)
+	nTmp, err = s.TxSet.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding TransactionSet: %s", err)
@@ -16489,7 +17058,7 @@ func (s *LedgerCloseMetaV0) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if l > 0 {
 		s.TxProcessing = make([]TransactionResultMeta, l)
 		for i := uint32(0); i < l; i++ {
-			nTmp, err = s.TxProcessing[i].DecodeFrom(d)
+			nTmp, err = s.TxProcessing[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
 				return n, fmt.Errorf("decoding TransactionResultMeta: %s", err)
@@ -16505,7 +17074,7 @@ func (s *LedgerCloseMetaV0) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if l > 0 {
 		s.UpgradesProcessing = make([]UpgradeEntryMeta, l)
 		for i := uint32(0); i < l; i++ {
-			nTmp, err = s.UpgradesProcessing[i].DecodeFrom(d)
+			nTmp, err = s.UpgradesProcessing[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
 				return n, fmt.Errorf("decoding UpgradeEntryMeta: %s", err)
@@ -16521,7 +17090,7 @@ func (s *LedgerCloseMetaV0) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if l > 0 {
 		s.ScpInfo = make([]ScpHistoryEntry, l)
 		for i := uint32(0); i < l; i++ {
-			nTmp, err = s.ScpInfo[i].DecodeFrom(d)
+			nTmp, err = s.ScpInfo[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
 				return n, fmt.Errorf("decoding ScpHistoryEntry: %s", err)
@@ -16543,7 +17112,7 @@ func (s LedgerCloseMetaV0) MarshalBinary() ([]byte, error) {
 func (s *LedgerCloseMetaV0) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -16624,15 +17193,19 @@ func (s *LedgerCloseMetaV1) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*LedgerCloseMetaV1)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *LedgerCloseMetaV1) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *LedgerCloseMetaV1) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.LedgerHeader.DecodeFrom(d)
+	nTmp, err = s.LedgerHeader.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding LedgerHeaderHistoryEntry: %s", err)
 	}
-	nTmp, err = s.TxSet.DecodeFrom(d)
+	nTmp, err = s.TxSet.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding GeneralizedTransactionSet: %s", err)
@@ -16647,7 +17220,7 @@ func (s *LedgerCloseMetaV1) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if l > 0 {
 		s.TxProcessing = make([]TransactionResultMeta, l)
 		for i := uint32(0); i < l; i++ {
-			nTmp, err = s.TxProcessing[i].DecodeFrom(d)
+			nTmp, err = s.TxProcessing[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
 				return n, fmt.Errorf("decoding TransactionResultMeta: %s", err)
@@ -16663,7 +17236,7 @@ func (s *LedgerCloseMetaV1) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if l > 0 {
 		s.UpgradesProcessing = make([]UpgradeEntryMeta, l)
 		for i := uint32(0); i < l; i++ {
-			nTmp, err = s.UpgradesProcessing[i].DecodeFrom(d)
+			nTmp, err = s.UpgradesProcessing[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
 				return n, fmt.Errorf("decoding UpgradeEntryMeta: %s", err)
@@ -16679,7 +17252,7 @@ func (s *LedgerCloseMetaV1) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if l > 0 {
 		s.ScpInfo = make([]ScpHistoryEntry, l)
 		for i := uint32(0); i < l; i++ {
-			nTmp, err = s.ScpInfo[i].DecodeFrom(d)
+			nTmp, err = s.ScpInfo[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
 				return n, fmt.Errorf("decoding ScpHistoryEntry: %s", err)
@@ -16701,7 +17274,7 @@ func (s LedgerCloseMetaV1) MarshalBinary() ([]byte, error) {
 func (s *LedgerCloseMetaV1) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -16823,20 +17396,24 @@ func (s *LedgerCloseMetaV2) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*LedgerCloseMetaV2)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *LedgerCloseMetaV2) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *LedgerCloseMetaV2) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.Ext.DecodeFrom(d)
+	nTmp, err = s.Ext.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ExtensionPoint: %s", err)
 	}
-	nTmp, err = s.LedgerHeader.DecodeFrom(d)
+	nTmp, err = s.LedgerHeader.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding LedgerHeaderHistoryEntry: %s", err)
 	}
-	nTmp, err = s.TxSet.DecodeFrom(d)
+	nTmp, err = s.TxSet.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding GeneralizedTransactionSet: %s", err)
@@ -16851,7 +17428,7 @@ func (s *LedgerCloseMetaV2) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if l > 0 {
 		s.TxProcessing = make([]TransactionResultMeta, l)
 		for i := uint32(0); i < l; i++ {
-			nTmp, err = s.TxProcessing[i].DecodeFrom(d)
+			nTmp, err = s.TxProcessing[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
 				return n, fmt.Errorf("decoding TransactionResultMeta: %s", err)
@@ -16867,7 +17444,7 @@ func (s *LedgerCloseMetaV2) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if l > 0 {
 		s.UpgradesProcessing = make([]UpgradeEntryMeta, l)
 		for i := uint32(0); i < l; i++ {
-			nTmp, err = s.UpgradesProcessing[i].DecodeFrom(d)
+			nTmp, err = s.UpgradesProcessing[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
 				return n, fmt.Errorf("decoding UpgradeEntryMeta: %s", err)
@@ -16883,14 +17460,14 @@ func (s *LedgerCloseMetaV2) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if l > 0 {
 		s.ScpInfo = make([]ScpHistoryEntry, l)
 		for i := uint32(0); i < l; i++ {
-			nTmp, err = s.ScpInfo[i].DecodeFrom(d)
+			nTmp, err = s.ScpInfo[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
 				return n, fmt.Errorf("decoding ScpHistoryEntry: %s", err)
 			}
 		}
 	}
-	nTmp, err = s.TotalByteSizeOfBucketList.DecodeFrom(d)
+	nTmp, err = s.TotalByteSizeOfBucketList.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint64: %s", err)
@@ -16904,7 +17481,7 @@ func (s *LedgerCloseMetaV2) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if l > 0 {
 		s.EvictedTemporaryLedgerKeys = make([]LedgerKey, l)
 		for i := uint32(0); i < l; i++ {
-			nTmp, err = s.EvictedTemporaryLedgerKeys[i].DecodeFrom(d)
+			nTmp, err = s.EvictedTemporaryLedgerKeys[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
 				return n, fmt.Errorf("decoding LedgerKey: %s", err)
@@ -16920,7 +17497,7 @@ func (s *LedgerCloseMetaV2) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if l > 0 {
 		s.EvictedPersistentLedgerEntries = make([]LedgerEntry, l)
 		for i := uint32(0); i < l; i++ {
-			nTmp, err = s.EvictedPersistentLedgerEntries[i].DecodeFrom(d)
+			nTmp, err = s.EvictedPersistentLedgerEntries[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
 				return n, fmt.Errorf("decoding LedgerEntry: %s", err)
@@ -16942,7 +17519,7 @@ func (s LedgerCloseMetaV2) MarshalBinary() ([]byte, error) {
 func (s *LedgerCloseMetaV2) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -17128,7 +17705,11 @@ func (u LedgerCloseMeta) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*LedgerCloseMeta)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *LedgerCloseMeta) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *LedgerCloseMeta) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding LedgerCloseMeta: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	u.V, nTmp, err = d.DecodeInt()
@@ -17139,7 +17720,7 @@ func (u *LedgerCloseMeta) DecodeFrom(d *xdr.Decoder) (int, error) {
 	switch int32(u.V) {
 	case 0:
 		u.V0 = new(LedgerCloseMetaV0)
-		nTmp, err = (*u.V0).DecodeFrom(d)
+		nTmp, err = (*u.V0).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding LedgerCloseMetaV0: %s", err)
@@ -17147,7 +17728,7 @@ func (u *LedgerCloseMeta) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case 1:
 		u.V1 = new(LedgerCloseMetaV1)
-		nTmp, err = (*u.V1).DecodeFrom(d)
+		nTmp, err = (*u.V1).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding LedgerCloseMetaV1: %s", err)
@@ -17155,7 +17736,7 @@ func (u *LedgerCloseMeta) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case 2:
 		u.V2 = new(LedgerCloseMetaV2)
-		nTmp, err = (*u.V2).DecodeFrom(d)
+		nTmp, err = (*u.V2).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding LedgerCloseMetaV2: %s", err)
@@ -17177,7 +17758,7 @@ func (s LedgerCloseMeta) MarshalBinary() ([]byte, error) {
 func (s *LedgerCloseMeta) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -17245,7 +17826,11 @@ func (e ErrorCode) EncodeTo(enc *xdr.Encoder) error {
 var _ decoderFrom = (*ErrorCode)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *ErrorCode) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *ErrorCode) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding ErrorCode: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding ErrorCode: %s", err)
@@ -17269,7 +17854,7 @@ func (s ErrorCode) MarshalBinary() ([]byte, error) {
 func (s *ErrorCode) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -17311,10 +17896,14 @@ func (s *Error) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*Error)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *Error) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *Error) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.Code.DecodeFrom(d)
+	nTmp, err = s.Code.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ErrorCode: %s", err)
@@ -17339,7 +17928,7 @@ func (s Error) MarshalBinary() ([]byte, error) {
 func (s *Error) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -17376,10 +17965,14 @@ func (s *SendMore) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*SendMore)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *SendMore) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *SendMore) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.NumMessages.DecodeFrom(d)
+	nTmp, err = s.NumMessages.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
@@ -17399,7 +17992,7 @@ func (s SendMore) MarshalBinary() ([]byte, error) {
 func (s *SendMore) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -17441,15 +18034,19 @@ func (s *SendMoreExtended) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*SendMoreExtended)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *SendMoreExtended) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *SendMoreExtended) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.NumMessages.DecodeFrom(d)
+	nTmp, err = s.NumMessages.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
 	}
-	nTmp, err = s.NumBytes.DecodeFrom(d)
+	nTmp, err = s.NumBytes.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
@@ -17469,7 +18066,7 @@ func (s SendMoreExtended) MarshalBinary() ([]byte, error) {
 func (s *SendMoreExtended) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -17516,20 +18113,24 @@ func (s *AuthCert) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*AuthCert)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *AuthCert) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *AuthCert) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.Pubkey.DecodeFrom(d)
+	nTmp, err = s.Pubkey.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Curve25519Public: %s", err)
 	}
-	nTmp, err = s.Expiration.DecodeFrom(d)
+	nTmp, err = s.Expiration.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint64: %s", err)
 	}
-	nTmp, err = s.Sig.DecodeFrom(d)
+	nTmp, err = s.Sig.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Signature: %s", err)
@@ -17549,7 +18150,7 @@ func (s AuthCert) MarshalBinary() ([]byte, error) {
 func (s *AuthCert) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -17626,25 +18227,29 @@ func (s *Hello) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*Hello)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *Hello) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *Hello) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.LedgerVersion.DecodeFrom(d)
+	nTmp, err = s.LedgerVersion.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
 	}
-	nTmp, err = s.OverlayVersion.DecodeFrom(d)
+	nTmp, err = s.OverlayVersion.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
 	}
-	nTmp, err = s.OverlayMinVersion.DecodeFrom(d)
+	nTmp, err = s.OverlayMinVersion.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
 	}
-	nTmp, err = s.NetworkId.DecodeFrom(d)
+	nTmp, err = s.NetworkId.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Hash: %s", err)
@@ -17659,17 +18264,17 @@ func (s *Hello) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if err != nil {
 		return n, fmt.Errorf("decoding Int: %s", err)
 	}
-	nTmp, err = s.PeerId.DecodeFrom(d)
+	nTmp, err = s.PeerId.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding NodeId: %s", err)
 	}
-	nTmp, err = s.Cert.DecodeFrom(d)
+	nTmp, err = s.Cert.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding AuthCert: %s", err)
 	}
-	nTmp, err = s.Nonce.DecodeFrom(d)
+	nTmp, err = s.Nonce.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint256: %s", err)
@@ -17689,7 +18294,7 @@ func (s Hello) MarshalBinary() ([]byte, error) {
 func (s *Hello) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -17731,7 +18336,11 @@ func (s *Auth) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*Auth)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *Auth) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *Auth) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	s.Flags, nTmp, err = d.DecodeInt()
@@ -17754,7 +18363,7 @@ func (s Auth) MarshalBinary() ([]byte, error) {
 func (s *Auth) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -17813,7 +18422,11 @@ func (e IpAddrType) EncodeTo(enc *xdr.Encoder) error {
 var _ decoderFrom = (*IpAddrType)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *IpAddrType) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *IpAddrType) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding IpAddrType: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding IpAddrType: %s", err)
@@ -17837,7 +18450,7 @@ func (s IpAddrType) MarshalBinary() ([]byte, error) {
 func (s *IpAddrType) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -17981,10 +18594,14 @@ func (u PeerAddressIp) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*PeerAddressIp)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *PeerAddressIp) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *PeerAddressIp) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding PeerAddressIp: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.Type.DecodeFrom(d)
+	nTmp, err = u.Type.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding IpAddrType: %s", err)
@@ -18022,7 +18639,7 @@ func (s PeerAddressIp) MarshalBinary() ([]byte, error) {
 func (s *PeerAddressIp) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -18076,20 +18693,24 @@ func (s *PeerAddress) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*PeerAddress)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *PeerAddress) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *PeerAddress) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.Ip.DecodeFrom(d)
+	nTmp, err = s.Ip.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding PeerAddressIp: %s", err)
 	}
-	nTmp, err = s.Port.DecodeFrom(d)
+	nTmp, err = s.Port.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
 	}
-	nTmp, err = s.NumFailures.DecodeFrom(d)
+	nTmp, err = s.NumFailures.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
@@ -18109,7 +18730,7 @@ func (s PeerAddress) MarshalBinary() ([]byte, error) {
 func (s *PeerAddress) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -18232,7 +18853,11 @@ func (e MessageType) EncodeTo(enc *xdr.Encoder) error {
 var _ decoderFrom = (*MessageType)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *MessageType) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *MessageType) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding MessageType: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding MessageType: %s", err)
@@ -18256,7 +18881,7 @@ func (s MessageType) MarshalBinary() ([]byte, error) {
 func (s *MessageType) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -18298,15 +18923,19 @@ func (s *DontHave) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*DontHave)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *DontHave) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *DontHave) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.Type.DecodeFrom(d)
+	nTmp, err = s.Type.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding MessageType: %s", err)
 	}
-	nTmp, err = s.ReqHash.DecodeFrom(d)
+	nTmp, err = s.ReqHash.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint256: %s", err)
@@ -18326,7 +18955,7 @@ func (s DontHave) MarshalBinary() ([]byte, error) {
 func (s *DontHave) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -18382,7 +19011,11 @@ func (e SurveyMessageCommandType) EncodeTo(enc *xdr.Encoder) error {
 var _ decoderFrom = (*SurveyMessageCommandType)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *SurveyMessageCommandType) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *SurveyMessageCommandType) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding SurveyMessageCommandType: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding SurveyMessageCommandType: %s", err)
@@ -18406,7 +19039,7 @@ func (s SurveyMessageCommandType) MarshalBinary() ([]byte, error) {
 func (s *SurveyMessageCommandType) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -18465,7 +19098,11 @@ func (e SurveyMessageResponseType) EncodeTo(enc *xdr.Encoder) error {
 var _ decoderFrom = (*SurveyMessageResponseType)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *SurveyMessageResponseType) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *SurveyMessageResponseType) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding SurveyMessageResponseType: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding SurveyMessageResponseType: %s", err)
@@ -18489,7 +19126,7 @@ func (s SurveyMessageResponseType) MarshalBinary() ([]byte, error) {
 func (s *SurveyMessageResponseType) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -18546,30 +19183,34 @@ func (s *SurveyRequestMessage) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*SurveyRequestMessage)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *SurveyRequestMessage) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *SurveyRequestMessage) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.SurveyorPeerId.DecodeFrom(d)
+	nTmp, err = s.SurveyorPeerId.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding NodeId: %s", err)
 	}
-	nTmp, err = s.SurveyedPeerId.DecodeFrom(d)
+	nTmp, err = s.SurveyedPeerId.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding NodeId: %s", err)
 	}
-	nTmp, err = s.LedgerNum.DecodeFrom(d)
+	nTmp, err = s.LedgerNum.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
 	}
-	nTmp, err = s.EncryptionKey.DecodeFrom(d)
+	nTmp, err = s.EncryptionKey.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Curve25519Public: %s", err)
 	}
-	nTmp, err = s.CommandType.DecodeFrom(d)
+	nTmp, err = s.CommandType.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding SurveyMessageCommandType: %s", err)
@@ -18589,7 +19230,7 @@ func (s SurveyRequestMessage) MarshalBinary() ([]byte, error) {
 func (s *SurveyRequestMessage) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -18631,15 +19272,19 @@ func (s *SignedSurveyRequestMessage) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*SignedSurveyRequestMessage)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *SignedSurveyRequestMessage) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *SignedSurveyRequestMessage) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.RequestSignature.DecodeFrom(d)
+	nTmp, err = s.RequestSignature.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Signature: %s", err)
 	}
-	nTmp, err = s.Request.DecodeFrom(d)
+	nTmp, err = s.Request.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding SurveyRequestMessage: %s", err)
@@ -18659,7 +19304,7 @@ func (s SignedSurveyRequestMessage) MarshalBinary() ([]byte, error) {
 func (s *SignedSurveyRequestMessage) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -18696,7 +19341,11 @@ func (s EncryptedBody) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*EncryptedBody)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *EncryptedBody) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *EncryptedBody) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding EncryptedBody: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	(*s), nTmp, err = d.DecodeOpaque(64000)
@@ -18719,7 +19368,7 @@ func (s EncryptedBody) MarshalBinary() ([]byte, error) {
 func (s *EncryptedBody) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -18776,30 +19425,34 @@ func (s *SurveyResponseMessage) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*SurveyResponseMessage)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *SurveyResponseMessage) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *SurveyResponseMessage) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.SurveyorPeerId.DecodeFrom(d)
+	nTmp, err = s.SurveyorPeerId.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding NodeId: %s", err)
 	}
-	nTmp, err = s.SurveyedPeerId.DecodeFrom(d)
+	nTmp, err = s.SurveyedPeerId.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding NodeId: %s", err)
 	}
-	nTmp, err = s.LedgerNum.DecodeFrom(d)
+	nTmp, err = s.LedgerNum.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
 	}
-	nTmp, err = s.CommandType.DecodeFrom(d)
+	nTmp, err = s.CommandType.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding SurveyMessageCommandType: %s", err)
 	}
-	nTmp, err = s.EncryptedBody.DecodeFrom(d)
+	nTmp, err = s.EncryptedBody.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding EncryptedBody: %s", err)
@@ -18819,7 +19472,7 @@ func (s SurveyResponseMessage) MarshalBinary() ([]byte, error) {
 func (s *SurveyResponseMessage) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -18861,15 +19514,19 @@ func (s *SignedSurveyResponseMessage) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*SignedSurveyResponseMessage)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *SignedSurveyResponseMessage) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *SignedSurveyResponseMessage) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.ResponseSignature.DecodeFrom(d)
+	nTmp, err = s.ResponseSignature.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Signature: %s", err)
 	}
-	nTmp, err = s.Response.DecodeFrom(d)
+	nTmp, err = s.Response.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding SurveyResponseMessage: %s", err)
@@ -18889,7 +19546,7 @@ func (s SignedSurveyResponseMessage) MarshalBinary() ([]byte, error) {
 func (s *SignedSurveyResponseMessage) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -18998,10 +19655,14 @@ func (s *PeerStats) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*PeerStats)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *PeerStats) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *PeerStats) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.Id.DecodeFrom(d)
+	nTmp, err = s.Id.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding NodeId: %s", err)
@@ -19011,67 +19672,67 @@ func (s *PeerStats) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if err != nil {
 		return n, fmt.Errorf("decoding VersionStr: %s", err)
 	}
-	nTmp, err = s.MessagesRead.DecodeFrom(d)
+	nTmp, err = s.MessagesRead.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint64: %s", err)
 	}
-	nTmp, err = s.MessagesWritten.DecodeFrom(d)
+	nTmp, err = s.MessagesWritten.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint64: %s", err)
 	}
-	nTmp, err = s.BytesRead.DecodeFrom(d)
+	nTmp, err = s.BytesRead.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint64: %s", err)
 	}
-	nTmp, err = s.BytesWritten.DecodeFrom(d)
+	nTmp, err = s.BytesWritten.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint64: %s", err)
 	}
-	nTmp, err = s.SecondsConnected.DecodeFrom(d)
+	nTmp, err = s.SecondsConnected.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint64: %s", err)
 	}
-	nTmp, err = s.UniqueFloodBytesRecv.DecodeFrom(d)
+	nTmp, err = s.UniqueFloodBytesRecv.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint64: %s", err)
 	}
-	nTmp, err = s.DuplicateFloodBytesRecv.DecodeFrom(d)
+	nTmp, err = s.DuplicateFloodBytesRecv.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint64: %s", err)
 	}
-	nTmp, err = s.UniqueFetchBytesRecv.DecodeFrom(d)
+	nTmp, err = s.UniqueFetchBytesRecv.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint64: %s", err)
 	}
-	nTmp, err = s.DuplicateFetchBytesRecv.DecodeFrom(d)
+	nTmp, err = s.DuplicateFetchBytesRecv.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint64: %s", err)
 	}
-	nTmp, err = s.UniqueFloodMessageRecv.DecodeFrom(d)
+	nTmp, err = s.UniqueFloodMessageRecv.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint64: %s", err)
 	}
-	nTmp, err = s.DuplicateFloodMessageRecv.DecodeFrom(d)
+	nTmp, err = s.DuplicateFloodMessageRecv.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint64: %s", err)
 	}
-	nTmp, err = s.UniqueFetchMessageRecv.DecodeFrom(d)
+	nTmp, err = s.UniqueFetchMessageRecv.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint64: %s", err)
 	}
-	nTmp, err = s.DuplicateFetchMessageRecv.DecodeFrom(d)
+	nTmp, err = s.DuplicateFetchMessageRecv.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint64: %s", err)
@@ -19091,7 +19752,7 @@ func (s PeerStats) MarshalBinary() ([]byte, error) {
 func (s *PeerStats) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -19133,7 +19794,11 @@ func (s PeerStatList) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*PeerStatList)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *PeerStatList) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *PeerStatList) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding PeerStatList: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	var l uint32
@@ -19149,7 +19814,7 @@ func (s *PeerStatList) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if l > 0 {
 		(*s) = make([]PeerStats, l)
 		for i := uint32(0); i < l; i++ {
-			nTmp, err = (*s)[i].DecodeFrom(d)
+			nTmp, err = (*s)[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
 				return n, fmt.Errorf("decoding PeerStats: %s", err)
@@ -19171,7 +19836,7 @@ func (s PeerStatList) MarshalBinary() ([]byte, error) {
 func (s *PeerStatList) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -19224,25 +19889,29 @@ func (s *TopologyResponseBodyV0) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*TopologyResponseBodyV0)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *TopologyResponseBodyV0) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *TopologyResponseBodyV0) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.InboundPeers.DecodeFrom(d)
+	nTmp, err = s.InboundPeers.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding PeerStatList: %s", err)
 	}
-	nTmp, err = s.OutboundPeers.DecodeFrom(d)
+	nTmp, err = s.OutboundPeers.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding PeerStatList: %s", err)
 	}
-	nTmp, err = s.TotalInboundPeerCount.DecodeFrom(d)
+	nTmp, err = s.TotalInboundPeerCount.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
 	}
-	nTmp, err = s.TotalOutboundPeerCount.DecodeFrom(d)
+	nTmp, err = s.TotalOutboundPeerCount.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
@@ -19262,7 +19931,7 @@ func (s TopologyResponseBodyV0) MarshalBinary() ([]byte, error) {
 func (s *TopologyResponseBodyV0) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -19326,35 +19995,39 @@ func (s *TopologyResponseBodyV1) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*TopologyResponseBodyV1)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *TopologyResponseBodyV1) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *TopologyResponseBodyV1) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.InboundPeers.DecodeFrom(d)
+	nTmp, err = s.InboundPeers.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding PeerStatList: %s", err)
 	}
-	nTmp, err = s.OutboundPeers.DecodeFrom(d)
+	nTmp, err = s.OutboundPeers.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding PeerStatList: %s", err)
 	}
-	nTmp, err = s.TotalInboundPeerCount.DecodeFrom(d)
+	nTmp, err = s.TotalInboundPeerCount.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
 	}
-	nTmp, err = s.TotalOutboundPeerCount.DecodeFrom(d)
+	nTmp, err = s.TotalOutboundPeerCount.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
 	}
-	nTmp, err = s.MaxInboundPeerCount.DecodeFrom(d)
+	nTmp, err = s.MaxInboundPeerCount.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
 	}
-	nTmp, err = s.MaxOutboundPeerCount.DecodeFrom(d)
+	nTmp, err = s.MaxOutboundPeerCount.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
@@ -19374,7 +20047,7 @@ func (s TopologyResponseBodyV1) MarshalBinary() ([]byte, error) {
 func (s *TopologyResponseBodyV1) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -19518,10 +20191,14 @@ func (u SurveyResponseBody) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*SurveyResponseBody)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *SurveyResponseBody) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *SurveyResponseBody) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding SurveyResponseBody: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.Type.DecodeFrom(d)
+	nTmp, err = u.Type.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding SurveyMessageResponseType: %s", err)
@@ -19529,7 +20206,7 @@ func (u *SurveyResponseBody) DecodeFrom(d *xdr.Decoder) (int, error) {
 	switch SurveyMessageResponseType(u.Type) {
 	case SurveyMessageResponseTypeSurveyTopologyResponseV0:
 		u.TopologyResponseBodyV0 = new(TopologyResponseBodyV0)
-		nTmp, err = (*u.TopologyResponseBodyV0).DecodeFrom(d)
+		nTmp, err = (*u.TopologyResponseBodyV0).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding TopologyResponseBodyV0: %s", err)
@@ -19537,7 +20214,7 @@ func (u *SurveyResponseBody) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case SurveyMessageResponseTypeSurveyTopologyResponseV1:
 		u.TopologyResponseBodyV1 = new(TopologyResponseBodyV1)
-		nTmp, err = (*u.TopologyResponseBodyV1).DecodeFrom(d)
+		nTmp, err = (*u.TopologyResponseBodyV1).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding TopologyResponseBodyV1: %s", err)
@@ -19559,7 +20236,7 @@ func (s SurveyResponseBody) MarshalBinary() ([]byte, error) {
 func (s *SurveyResponseBody) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -19606,7 +20283,11 @@ func (s TxAdvertVector) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*TxAdvertVector)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *TxAdvertVector) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *TxAdvertVector) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding TxAdvertVector: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	var l uint32
@@ -19622,7 +20303,7 @@ func (s *TxAdvertVector) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if l > 0 {
 		(*s) = make([]Hash, l)
 		for i := uint32(0); i < l; i++ {
-			nTmp, err = (*s)[i].DecodeFrom(d)
+			nTmp, err = (*s)[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
 				return n, fmt.Errorf("decoding Hash: %s", err)
@@ -19644,7 +20325,7 @@ func (s TxAdvertVector) MarshalBinary() ([]byte, error) {
 func (s *TxAdvertVector) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -19681,10 +20362,14 @@ func (s *FloodAdvert) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*FloodAdvert)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *FloodAdvert) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *FloodAdvert) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.TxHashes.DecodeFrom(d)
+	nTmp, err = s.TxHashes.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding TxAdvertVector: %s", err)
@@ -19704,7 +20389,7 @@ func (s FloodAdvert) MarshalBinary() ([]byte, error) {
 func (s *FloodAdvert) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -19751,7 +20436,11 @@ func (s TxDemandVector) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*TxDemandVector)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *TxDemandVector) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *TxDemandVector) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding TxDemandVector: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	var l uint32
@@ -19767,7 +20456,7 @@ func (s *TxDemandVector) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if l > 0 {
 		(*s) = make([]Hash, l)
 		for i := uint32(0); i < l; i++ {
-			nTmp, err = (*s)[i].DecodeFrom(d)
+			nTmp, err = (*s)[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
 				return n, fmt.Errorf("decoding Hash: %s", err)
@@ -19789,7 +20478,7 @@ func (s TxDemandVector) MarshalBinary() ([]byte, error) {
 func (s *TxDemandVector) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -19826,10 +20515,14 @@ func (s *FloodDemand) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*FloodDemand)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *FloodDemand) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *FloodDemand) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.TxHashes.DecodeFrom(d)
+	nTmp, err = s.TxHashes.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding TxDemandVector: %s", err)
@@ -19849,7 +20542,7 @@ func (s FloodDemand) MarshalBinary() ([]byte, error) {
 func (s *FloodDemand) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -20728,10 +21421,14 @@ func (u StellarMessage) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*StellarMessage)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *StellarMessage) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *StellarMessage) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding StellarMessage: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.Type.DecodeFrom(d)
+	nTmp, err = u.Type.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding MessageType: %s", err)
@@ -20739,7 +21436,7 @@ func (u *StellarMessage) DecodeFrom(d *xdr.Decoder) (int, error) {
 	switch MessageType(u.Type) {
 	case MessageTypeErrorMsg:
 		u.Error = new(Error)
-		nTmp, err = (*u.Error).DecodeFrom(d)
+		nTmp, err = (*u.Error).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding Error: %s", err)
@@ -20747,7 +21444,7 @@ func (u *StellarMessage) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case MessageTypeHello:
 		u.Hello = new(Hello)
-		nTmp, err = (*u.Hello).DecodeFrom(d)
+		nTmp, err = (*u.Hello).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding Hello: %s", err)
@@ -20755,7 +21452,7 @@ func (u *StellarMessage) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case MessageTypeAuth:
 		u.Auth = new(Auth)
-		nTmp, err = (*u.Auth).DecodeFrom(d)
+		nTmp, err = (*u.Auth).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding Auth: %s", err)
@@ -20763,7 +21460,7 @@ func (u *StellarMessage) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case MessageTypeDontHave:
 		u.DontHave = new(DontHave)
-		nTmp, err = (*u.DontHave).DecodeFrom(d)
+		nTmp, err = (*u.DontHave).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding DontHave: %s", err)
@@ -20787,7 +21484,7 @@ func (u *StellarMessage) DecodeFrom(d *xdr.Decoder) (int, error) {
 		if l > 0 {
 			(*u.Peers) = make([]PeerAddress, l)
 			for i := uint32(0); i < l; i++ {
-				nTmp, err = (*u.Peers)[i].DecodeFrom(d)
+				nTmp, err = (*u.Peers)[i].DecodeFrom(d, maxDepth)
 				n += nTmp
 				if err != nil {
 					return n, fmt.Errorf("decoding PeerAddress: %s", err)
@@ -20797,7 +21494,7 @@ func (u *StellarMessage) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case MessageTypeGetTxSet:
 		u.TxSetHash = new(Uint256)
-		nTmp, err = (*u.TxSetHash).DecodeFrom(d)
+		nTmp, err = (*u.TxSetHash).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding Uint256: %s", err)
@@ -20805,7 +21502,7 @@ func (u *StellarMessage) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case MessageTypeTxSet:
 		u.TxSet = new(TransactionSet)
-		nTmp, err = (*u.TxSet).DecodeFrom(d)
+		nTmp, err = (*u.TxSet).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding TransactionSet: %s", err)
@@ -20813,7 +21510,7 @@ func (u *StellarMessage) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case MessageTypeGeneralizedTxSet:
 		u.GeneralizedTxSet = new(GeneralizedTransactionSet)
-		nTmp, err = (*u.GeneralizedTxSet).DecodeFrom(d)
+		nTmp, err = (*u.GeneralizedTxSet).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding GeneralizedTransactionSet: %s", err)
@@ -20821,7 +21518,7 @@ func (u *StellarMessage) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case MessageTypeTransaction:
 		u.Transaction = new(TransactionEnvelope)
-		nTmp, err = (*u.Transaction).DecodeFrom(d)
+		nTmp, err = (*u.Transaction).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding TransactionEnvelope: %s", err)
@@ -20829,7 +21526,7 @@ func (u *StellarMessage) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case MessageTypeSurveyRequest:
 		u.SignedSurveyRequestMessage = new(SignedSurveyRequestMessage)
-		nTmp, err = (*u.SignedSurveyRequestMessage).DecodeFrom(d)
+		nTmp, err = (*u.SignedSurveyRequestMessage).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding SignedSurveyRequestMessage: %s", err)
@@ -20837,7 +21534,7 @@ func (u *StellarMessage) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case MessageTypeSurveyResponse:
 		u.SignedSurveyResponseMessage = new(SignedSurveyResponseMessage)
-		nTmp, err = (*u.SignedSurveyResponseMessage).DecodeFrom(d)
+		nTmp, err = (*u.SignedSurveyResponseMessage).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding SignedSurveyResponseMessage: %s", err)
@@ -20845,7 +21542,7 @@ func (u *StellarMessage) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case MessageTypeGetScpQuorumset:
 		u.QSetHash = new(Uint256)
-		nTmp, err = (*u.QSetHash).DecodeFrom(d)
+		nTmp, err = (*u.QSetHash).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding Uint256: %s", err)
@@ -20853,7 +21550,7 @@ func (u *StellarMessage) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case MessageTypeScpQuorumset:
 		u.QSet = new(ScpQuorumSet)
-		nTmp, err = (*u.QSet).DecodeFrom(d)
+		nTmp, err = (*u.QSet).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ScpQuorumSet: %s", err)
@@ -20861,7 +21558,7 @@ func (u *StellarMessage) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case MessageTypeScpMessage:
 		u.Envelope = new(ScpEnvelope)
-		nTmp, err = (*u.Envelope).DecodeFrom(d)
+		nTmp, err = (*u.Envelope).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ScpEnvelope: %s", err)
@@ -20869,7 +21566,7 @@ func (u *StellarMessage) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case MessageTypeGetScpState:
 		u.GetScpLedgerSeq = new(Uint32)
-		nTmp, err = (*u.GetScpLedgerSeq).DecodeFrom(d)
+		nTmp, err = (*u.GetScpLedgerSeq).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding Uint32: %s", err)
@@ -20877,7 +21574,7 @@ func (u *StellarMessage) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case MessageTypeSendMore:
 		u.SendMoreMessage = new(SendMore)
-		nTmp, err = (*u.SendMoreMessage).DecodeFrom(d)
+		nTmp, err = (*u.SendMoreMessage).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding SendMore: %s", err)
@@ -20885,7 +21582,7 @@ func (u *StellarMessage) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case MessageTypeSendMoreExtended:
 		u.SendMoreExtendedMessage = new(SendMoreExtended)
-		nTmp, err = (*u.SendMoreExtendedMessage).DecodeFrom(d)
+		nTmp, err = (*u.SendMoreExtendedMessage).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding SendMoreExtended: %s", err)
@@ -20893,7 +21590,7 @@ func (u *StellarMessage) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case MessageTypeFloodAdvert:
 		u.FloodAdvert = new(FloodAdvert)
-		nTmp, err = (*u.FloodAdvert).DecodeFrom(d)
+		nTmp, err = (*u.FloodAdvert).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding FloodAdvert: %s", err)
@@ -20901,7 +21598,7 @@ func (u *StellarMessage) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case MessageTypeFloodDemand:
 		u.FloodDemand = new(FloodDemand)
-		nTmp, err = (*u.FloodDemand).DecodeFrom(d)
+		nTmp, err = (*u.FloodDemand).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding FloodDemand: %s", err)
@@ -20923,7 +21620,7 @@ func (s StellarMessage) MarshalBinary() ([]byte, error) {
 func (s *StellarMessage) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -20970,20 +21667,24 @@ func (s *AuthenticatedMessageV0) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*AuthenticatedMessageV0)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *AuthenticatedMessageV0) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *AuthenticatedMessageV0) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.Sequence.DecodeFrom(d)
+	nTmp, err = s.Sequence.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint64: %s", err)
 	}
-	nTmp, err = s.Message.DecodeFrom(d)
+	nTmp, err = s.Message.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding StellarMessage: %s", err)
 	}
-	nTmp, err = s.Mac.DecodeFrom(d)
+	nTmp, err = s.Mac.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding HmacSha256Mac: %s", err)
@@ -21003,7 +21704,7 @@ func (s AuthenticatedMessageV0) MarshalBinary() ([]byte, error) {
 func (s *AuthenticatedMessageV0) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -21110,10 +21811,14 @@ func (u AuthenticatedMessage) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*AuthenticatedMessage)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *AuthenticatedMessage) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *AuthenticatedMessage) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding AuthenticatedMessage: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.V.DecodeFrom(d)
+	nTmp, err = u.V.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
@@ -21121,7 +21826,7 @@ func (u *AuthenticatedMessage) DecodeFrom(d *xdr.Decoder) (int, error) {
 	switch Uint32(u.V) {
 	case 0:
 		u.V0 = new(AuthenticatedMessageV0)
-		nTmp, err = (*u.V0).DecodeFrom(d)
+		nTmp, err = (*u.V0).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding AuthenticatedMessageV0: %s", err)
@@ -21143,7 +21848,7 @@ func (s AuthenticatedMessage) MarshalBinary() ([]byte, error) {
 func (s *AuthenticatedMessage) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -21250,10 +21955,14 @@ func (u LiquidityPoolParameters) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*LiquidityPoolParameters)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *LiquidityPoolParameters) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *LiquidityPoolParameters) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding LiquidityPoolParameters: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.Type.DecodeFrom(d)
+	nTmp, err = u.Type.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding LiquidityPoolType: %s", err)
@@ -21261,7 +21970,7 @@ func (u *LiquidityPoolParameters) DecodeFrom(d *xdr.Decoder) (int, error) {
 	switch LiquidityPoolType(u.Type) {
 	case LiquidityPoolTypeLiquidityPoolConstantProduct:
 		u.ConstantProduct = new(LiquidityPoolConstantProductParameters)
-		nTmp, err = (*u.ConstantProduct).DecodeFrom(d)
+		nTmp, err = (*u.ConstantProduct).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding LiquidityPoolConstantProductParameters: %s", err)
@@ -21283,7 +21992,7 @@ func (s LiquidityPoolParameters) MarshalBinary() ([]byte, error) {
 func (s *LiquidityPoolParameters) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -21325,15 +22034,19 @@ func (s *MuxedAccountMed25519) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*MuxedAccountMed25519)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *MuxedAccountMed25519) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *MuxedAccountMed25519) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.Id.DecodeFrom(d)
+	nTmp, err = s.Id.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint64: %s", err)
 	}
-	nTmp, err = s.Ed25519.DecodeFrom(d)
+	nTmp, err = s.Ed25519.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint256: %s", err)
@@ -21353,7 +22066,7 @@ func (s MuxedAccountMed25519) MarshalBinary() ([]byte, error) {
 func (s *MuxedAccountMed25519) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -21501,10 +22214,14 @@ func (u MuxedAccount) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*MuxedAccount)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *MuxedAccount) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *MuxedAccount) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding MuxedAccount: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.Type.DecodeFrom(d)
+	nTmp, err = u.Type.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding CryptoKeyType: %s", err)
@@ -21512,7 +22229,7 @@ func (u *MuxedAccount) DecodeFrom(d *xdr.Decoder) (int, error) {
 	switch CryptoKeyType(u.Type) {
 	case CryptoKeyTypeKeyTypeEd25519:
 		u.Ed25519 = new(Uint256)
-		nTmp, err = (*u.Ed25519).DecodeFrom(d)
+		nTmp, err = (*u.Ed25519).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding Uint256: %s", err)
@@ -21520,7 +22237,7 @@ func (u *MuxedAccount) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case CryptoKeyTypeKeyTypeMuxedEd25519:
 		u.Med25519 = new(MuxedAccountMed25519)
-		nTmp, err = (*u.Med25519).DecodeFrom(d)
+		nTmp, err = (*u.Med25519).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding MuxedAccountMed25519: %s", err)
@@ -21542,7 +22259,7 @@ func (s MuxedAccount) MarshalBinary() ([]byte, error) {
 func (s *MuxedAccount) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -21584,15 +22301,19 @@ func (s *DecoratedSignature) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*DecoratedSignature)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *DecoratedSignature) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *DecoratedSignature) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.Hint.DecodeFrom(d)
+	nTmp, err = s.Hint.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding SignatureHint: %s", err)
 	}
-	nTmp, err = s.Signature.DecodeFrom(d)
+	nTmp, err = s.Signature.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Signature: %s", err)
@@ -21612,7 +22333,7 @@ func (s DecoratedSignature) MarshalBinary() ([]byte, error) {
 func (s *DecoratedSignature) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -21746,7 +22467,11 @@ func (e OperationType) EncodeTo(enc *xdr.Encoder) error {
 var _ decoderFrom = (*OperationType)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *OperationType) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *OperationType) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding OperationType: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding OperationType: %s", err)
@@ -21770,7 +22495,7 @@ func (s OperationType) MarshalBinary() ([]byte, error) {
 func (s *OperationType) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -21812,15 +22537,19 @@ func (s *CreateAccountOp) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*CreateAccountOp)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *CreateAccountOp) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *CreateAccountOp) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.Destination.DecodeFrom(d)
+	nTmp, err = s.Destination.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding AccountId: %s", err)
 	}
-	nTmp, err = s.StartingBalance.DecodeFrom(d)
+	nTmp, err = s.StartingBalance.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int64: %s", err)
@@ -21840,7 +22569,7 @@ func (s CreateAccountOp) MarshalBinary() ([]byte, error) {
 func (s *CreateAccountOp) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -21887,20 +22616,24 @@ func (s *PaymentOp) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*PaymentOp)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *PaymentOp) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *PaymentOp) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.Destination.DecodeFrom(d)
+	nTmp, err = s.Destination.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding MuxedAccount: %s", err)
 	}
-	nTmp, err = s.Asset.DecodeFrom(d)
+	nTmp, err = s.Asset.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Asset: %s", err)
 	}
-	nTmp, err = s.Amount.DecodeFrom(d)
+	nTmp, err = s.Amount.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int64: %s", err)
@@ -21920,7 +22653,7 @@ func (s PaymentOp) MarshalBinary() ([]byte, error) {
 func (s *PaymentOp) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -21991,30 +22724,34 @@ func (s *PathPaymentStrictReceiveOp) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*PathPaymentStrictReceiveOp)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *PathPaymentStrictReceiveOp) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *PathPaymentStrictReceiveOp) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.SendAsset.DecodeFrom(d)
+	nTmp, err = s.SendAsset.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Asset: %s", err)
 	}
-	nTmp, err = s.SendMax.DecodeFrom(d)
+	nTmp, err = s.SendMax.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int64: %s", err)
 	}
-	nTmp, err = s.Destination.DecodeFrom(d)
+	nTmp, err = s.Destination.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding MuxedAccount: %s", err)
 	}
-	nTmp, err = s.DestAsset.DecodeFrom(d)
+	nTmp, err = s.DestAsset.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Asset: %s", err)
 	}
-	nTmp, err = s.DestAmount.DecodeFrom(d)
+	nTmp, err = s.DestAmount.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int64: %s", err)
@@ -22032,7 +22769,7 @@ func (s *PathPaymentStrictReceiveOp) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if l > 0 {
 		s.Path = make([]Asset, l)
 		for i := uint32(0); i < l; i++ {
-			nTmp, err = s.Path[i].DecodeFrom(d)
+			nTmp, err = s.Path[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
 				return n, fmt.Errorf("decoding Asset: %s", err)
@@ -22054,7 +22791,7 @@ func (s PathPaymentStrictReceiveOp) MarshalBinary() ([]byte, error) {
 func (s *PathPaymentStrictReceiveOp) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -22125,30 +22862,34 @@ func (s *PathPaymentStrictSendOp) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*PathPaymentStrictSendOp)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *PathPaymentStrictSendOp) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *PathPaymentStrictSendOp) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.SendAsset.DecodeFrom(d)
+	nTmp, err = s.SendAsset.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Asset: %s", err)
 	}
-	nTmp, err = s.SendAmount.DecodeFrom(d)
+	nTmp, err = s.SendAmount.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int64: %s", err)
 	}
-	nTmp, err = s.Destination.DecodeFrom(d)
+	nTmp, err = s.Destination.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding MuxedAccount: %s", err)
 	}
-	nTmp, err = s.DestAsset.DecodeFrom(d)
+	nTmp, err = s.DestAsset.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Asset: %s", err)
 	}
-	nTmp, err = s.DestMin.DecodeFrom(d)
+	nTmp, err = s.DestMin.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int64: %s", err)
@@ -22166,7 +22907,7 @@ func (s *PathPaymentStrictSendOp) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if l > 0 {
 		s.Path = make([]Asset, l)
 		for i := uint32(0); i < l; i++ {
-			nTmp, err = s.Path[i].DecodeFrom(d)
+			nTmp, err = s.Path[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
 				return n, fmt.Errorf("decoding Asset: %s", err)
@@ -22188,7 +22929,7 @@ func (s PathPaymentStrictSendOp) MarshalBinary() ([]byte, error) {
 func (s *PathPaymentStrictSendOp) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -22247,30 +22988,34 @@ func (s *ManageSellOfferOp) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ManageSellOfferOp)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *ManageSellOfferOp) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *ManageSellOfferOp) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.Selling.DecodeFrom(d)
+	nTmp, err = s.Selling.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Asset: %s", err)
 	}
-	nTmp, err = s.Buying.DecodeFrom(d)
+	nTmp, err = s.Buying.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Asset: %s", err)
 	}
-	nTmp, err = s.Amount.DecodeFrom(d)
+	nTmp, err = s.Amount.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int64: %s", err)
 	}
-	nTmp, err = s.Price.DecodeFrom(d)
+	nTmp, err = s.Price.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Price: %s", err)
 	}
-	nTmp, err = s.OfferId.DecodeFrom(d)
+	nTmp, err = s.OfferId.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int64: %s", err)
@@ -22290,7 +23035,7 @@ func (s ManageSellOfferOp) MarshalBinary() ([]byte, error) {
 func (s *ManageSellOfferOp) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -22350,30 +23095,34 @@ func (s *ManageBuyOfferOp) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ManageBuyOfferOp)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *ManageBuyOfferOp) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *ManageBuyOfferOp) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.Selling.DecodeFrom(d)
+	nTmp, err = s.Selling.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Asset: %s", err)
 	}
-	nTmp, err = s.Buying.DecodeFrom(d)
+	nTmp, err = s.Buying.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Asset: %s", err)
 	}
-	nTmp, err = s.BuyAmount.DecodeFrom(d)
+	nTmp, err = s.BuyAmount.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int64: %s", err)
 	}
-	nTmp, err = s.Price.DecodeFrom(d)
+	nTmp, err = s.Price.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Price: %s", err)
 	}
-	nTmp, err = s.OfferId.DecodeFrom(d)
+	nTmp, err = s.OfferId.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int64: %s", err)
@@ -22393,7 +23142,7 @@ func (s ManageBuyOfferOp) MarshalBinary() ([]byte, error) {
 func (s *ManageBuyOfferOp) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -22445,25 +23194,29 @@ func (s *CreatePassiveSellOfferOp) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*CreatePassiveSellOfferOp)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *CreatePassiveSellOfferOp) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *CreatePassiveSellOfferOp) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.Selling.DecodeFrom(d)
+	nTmp, err = s.Selling.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Asset: %s", err)
 	}
-	nTmp, err = s.Buying.DecodeFrom(d)
+	nTmp, err = s.Buying.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Asset: %s", err)
 	}
-	nTmp, err = s.Amount.DecodeFrom(d)
+	nTmp, err = s.Amount.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int64: %s", err)
 	}
-	nTmp, err = s.Price.DecodeFrom(d)
+	nTmp, err = s.Price.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Price: %s", err)
@@ -22483,7 +23236,7 @@ func (s CreatePassiveSellOfferOp) MarshalBinary() ([]byte, error) {
 func (s *CreatePassiveSellOfferOp) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -22612,7 +23365,11 @@ func (s *SetOptionsOp) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*SetOptionsOp)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *SetOptionsOp) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *SetOptionsOp) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	var b bool
@@ -22624,7 +23381,7 @@ func (s *SetOptionsOp) DecodeFrom(d *xdr.Decoder) (int, error) {
 	s.InflationDest = nil
 	if b {
 		s.InflationDest = new(AccountId)
-		nTmp, err = s.InflationDest.DecodeFrom(d)
+		nTmp, err = s.InflationDest.DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding AccountId: %s", err)
@@ -22638,7 +23395,7 @@ func (s *SetOptionsOp) DecodeFrom(d *xdr.Decoder) (int, error) {
 	s.ClearFlags = nil
 	if b {
 		s.ClearFlags = new(Uint32)
-		nTmp, err = s.ClearFlags.DecodeFrom(d)
+		nTmp, err = s.ClearFlags.DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding Uint32: %s", err)
@@ -22652,7 +23409,7 @@ func (s *SetOptionsOp) DecodeFrom(d *xdr.Decoder) (int, error) {
 	s.SetFlags = nil
 	if b {
 		s.SetFlags = new(Uint32)
-		nTmp, err = s.SetFlags.DecodeFrom(d)
+		nTmp, err = s.SetFlags.DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding Uint32: %s", err)
@@ -22666,7 +23423,7 @@ func (s *SetOptionsOp) DecodeFrom(d *xdr.Decoder) (int, error) {
 	s.MasterWeight = nil
 	if b {
 		s.MasterWeight = new(Uint32)
-		nTmp, err = s.MasterWeight.DecodeFrom(d)
+		nTmp, err = s.MasterWeight.DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding Uint32: %s", err)
@@ -22680,7 +23437,7 @@ func (s *SetOptionsOp) DecodeFrom(d *xdr.Decoder) (int, error) {
 	s.LowThreshold = nil
 	if b {
 		s.LowThreshold = new(Uint32)
-		nTmp, err = s.LowThreshold.DecodeFrom(d)
+		nTmp, err = s.LowThreshold.DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding Uint32: %s", err)
@@ -22694,7 +23451,7 @@ func (s *SetOptionsOp) DecodeFrom(d *xdr.Decoder) (int, error) {
 	s.MedThreshold = nil
 	if b {
 		s.MedThreshold = new(Uint32)
-		nTmp, err = s.MedThreshold.DecodeFrom(d)
+		nTmp, err = s.MedThreshold.DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding Uint32: %s", err)
@@ -22708,7 +23465,7 @@ func (s *SetOptionsOp) DecodeFrom(d *xdr.Decoder) (int, error) {
 	s.HighThreshold = nil
 	if b {
 		s.HighThreshold = new(Uint32)
-		nTmp, err = s.HighThreshold.DecodeFrom(d)
+		nTmp, err = s.HighThreshold.DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding Uint32: %s", err)
@@ -22722,7 +23479,7 @@ func (s *SetOptionsOp) DecodeFrom(d *xdr.Decoder) (int, error) {
 	s.HomeDomain = nil
 	if b {
 		s.HomeDomain = new(String32)
-		nTmp, err = s.HomeDomain.DecodeFrom(d)
+		nTmp, err = s.HomeDomain.DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding String32: %s", err)
@@ -22736,7 +23493,7 @@ func (s *SetOptionsOp) DecodeFrom(d *xdr.Decoder) (int, error) {
 	s.Signer = nil
 	if b {
 		s.Signer = new(Signer)
-		nTmp, err = s.Signer.DecodeFrom(d)
+		nTmp, err = s.Signer.DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding Signer: %s", err)
@@ -22757,7 +23514,7 @@ func (s SetOptionsOp) MarshalBinary() ([]byte, error) {
 func (s *SetOptionsOp) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -22957,10 +23714,14 @@ func (u ChangeTrustAsset) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ChangeTrustAsset)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *ChangeTrustAsset) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *ChangeTrustAsset) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding ChangeTrustAsset: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.Type.DecodeFrom(d)
+	nTmp, err = u.Type.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding AssetType: %s", err)
@@ -22971,7 +23732,7 @@ func (u *ChangeTrustAsset) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case AssetTypeAssetTypeCreditAlphanum4:
 		u.AlphaNum4 = new(AlphaNum4)
-		nTmp, err = (*u.AlphaNum4).DecodeFrom(d)
+		nTmp, err = (*u.AlphaNum4).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding AlphaNum4: %s", err)
@@ -22979,7 +23740,7 @@ func (u *ChangeTrustAsset) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case AssetTypeAssetTypeCreditAlphanum12:
 		u.AlphaNum12 = new(AlphaNum12)
-		nTmp, err = (*u.AlphaNum12).DecodeFrom(d)
+		nTmp, err = (*u.AlphaNum12).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding AlphaNum12: %s", err)
@@ -22987,7 +23748,7 @@ func (u *ChangeTrustAsset) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case AssetTypeAssetTypePoolShare:
 		u.LiquidityPool = new(LiquidityPoolParameters)
-		nTmp, err = (*u.LiquidityPool).DecodeFrom(d)
+		nTmp, err = (*u.LiquidityPool).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding LiquidityPoolParameters: %s", err)
@@ -23009,7 +23770,7 @@ func (s ChangeTrustAsset) MarshalBinary() ([]byte, error) {
 func (s *ChangeTrustAsset) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -23053,15 +23814,19 @@ func (s *ChangeTrustOp) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ChangeTrustOp)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *ChangeTrustOp) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *ChangeTrustOp) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.Line.DecodeFrom(d)
+	nTmp, err = s.Line.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ChangeTrustAsset: %s", err)
 	}
-	nTmp, err = s.Limit.DecodeFrom(d)
+	nTmp, err = s.Limit.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int64: %s", err)
@@ -23081,7 +23846,7 @@ func (s ChangeTrustOp) MarshalBinary() ([]byte, error) {
 func (s *ChangeTrustOp) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -23130,20 +23895,24 @@ func (s *AllowTrustOp) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*AllowTrustOp)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *AllowTrustOp) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *AllowTrustOp) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.Trustor.DecodeFrom(d)
+	nTmp, err = s.Trustor.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding AccountId: %s", err)
 	}
-	nTmp, err = s.Asset.DecodeFrom(d)
+	nTmp, err = s.Asset.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding AssetCode: %s", err)
 	}
-	nTmp, err = s.Authorize.DecodeFrom(d)
+	nTmp, err = s.Authorize.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
@@ -23163,7 +23932,7 @@ func (s AllowTrustOp) MarshalBinary() ([]byte, error) {
 func (s *AllowTrustOp) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -23210,10 +23979,14 @@ func (s *ManageDataOp) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ManageDataOp)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *ManageDataOp) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *ManageDataOp) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.DataName.DecodeFrom(d)
+	nTmp, err = s.DataName.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding String64: %s", err)
@@ -23227,7 +24000,7 @@ func (s *ManageDataOp) DecodeFrom(d *xdr.Decoder) (int, error) {
 	s.DataValue = nil
 	if b {
 		s.DataValue = new(DataValue)
-		nTmp, err = s.DataValue.DecodeFrom(d)
+		nTmp, err = s.DataValue.DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding DataValue: %s", err)
@@ -23248,7 +24021,7 @@ func (s ManageDataOp) MarshalBinary() ([]byte, error) {
 func (s *ManageDataOp) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -23285,10 +24058,14 @@ func (s *BumpSequenceOp) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*BumpSequenceOp)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *BumpSequenceOp) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *BumpSequenceOp) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.BumpTo.DecodeFrom(d)
+	nTmp, err = s.BumpTo.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding SequenceNumber: %s", err)
@@ -23308,7 +24085,7 @@ func (s BumpSequenceOp) MarshalBinary() ([]byte, error) {
 func (s *BumpSequenceOp) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -23360,15 +24137,19 @@ func (s *CreateClaimableBalanceOp) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*CreateClaimableBalanceOp)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *CreateClaimableBalanceOp) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *CreateClaimableBalanceOp) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.Asset.DecodeFrom(d)
+	nTmp, err = s.Asset.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Asset: %s", err)
 	}
-	nTmp, err = s.Amount.DecodeFrom(d)
+	nTmp, err = s.Amount.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int64: %s", err)
@@ -23386,7 +24167,7 @@ func (s *CreateClaimableBalanceOp) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if l > 0 {
 		s.Claimants = make([]Claimant, l)
 		for i := uint32(0); i < l; i++ {
-			nTmp, err = s.Claimants[i].DecodeFrom(d)
+			nTmp, err = s.Claimants[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
 				return n, fmt.Errorf("decoding Claimant: %s", err)
@@ -23408,7 +24189,7 @@ func (s CreateClaimableBalanceOp) MarshalBinary() ([]byte, error) {
 func (s *CreateClaimableBalanceOp) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -23445,10 +24226,14 @@ func (s *ClaimClaimableBalanceOp) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ClaimClaimableBalanceOp)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *ClaimClaimableBalanceOp) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *ClaimClaimableBalanceOp) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.BalanceId.DecodeFrom(d)
+	nTmp, err = s.BalanceId.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ClaimableBalanceId: %s", err)
@@ -23468,7 +24253,7 @@ func (s ClaimClaimableBalanceOp) MarshalBinary() ([]byte, error) {
 func (s *ClaimClaimableBalanceOp) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -23505,10 +24290,14 @@ func (s *BeginSponsoringFutureReservesOp) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*BeginSponsoringFutureReservesOp)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *BeginSponsoringFutureReservesOp) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *BeginSponsoringFutureReservesOp) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.SponsoredId.DecodeFrom(d)
+	nTmp, err = s.SponsoredId.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding AccountId: %s", err)
@@ -23528,7 +24317,7 @@ func (s BeginSponsoringFutureReservesOp) MarshalBinary() ([]byte, error) {
 func (s *BeginSponsoringFutureReservesOp) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -23587,7 +24376,11 @@ func (e RevokeSponsorshipType) EncodeTo(enc *xdr.Encoder) error {
 var _ decoderFrom = (*RevokeSponsorshipType)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *RevokeSponsorshipType) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *RevokeSponsorshipType) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding RevokeSponsorshipType: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding RevokeSponsorshipType: %s", err)
@@ -23611,7 +24404,7 @@ func (s RevokeSponsorshipType) MarshalBinary() ([]byte, error) {
 func (s *RevokeSponsorshipType) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -23653,15 +24446,19 @@ func (s *RevokeSponsorshipOpSigner) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*RevokeSponsorshipOpSigner)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *RevokeSponsorshipOpSigner) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *RevokeSponsorshipOpSigner) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.AccountId.DecodeFrom(d)
+	nTmp, err = s.AccountId.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding AccountId: %s", err)
 	}
-	nTmp, err = s.SignerKey.DecodeFrom(d)
+	nTmp, err = s.SignerKey.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding SignerKey: %s", err)
@@ -23681,7 +24478,7 @@ func (s RevokeSponsorshipOpSigner) MarshalBinary() ([]byte, error) {
 func (s *RevokeSponsorshipOpSigner) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -23829,10 +24626,14 @@ func (u RevokeSponsorshipOp) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*RevokeSponsorshipOp)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *RevokeSponsorshipOp) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *RevokeSponsorshipOp) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding RevokeSponsorshipOp: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.Type.DecodeFrom(d)
+	nTmp, err = u.Type.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding RevokeSponsorshipType: %s", err)
@@ -23840,7 +24641,7 @@ func (u *RevokeSponsorshipOp) DecodeFrom(d *xdr.Decoder) (int, error) {
 	switch RevokeSponsorshipType(u.Type) {
 	case RevokeSponsorshipTypeRevokeSponsorshipLedgerEntry:
 		u.LedgerKey = new(LedgerKey)
-		nTmp, err = (*u.LedgerKey).DecodeFrom(d)
+		nTmp, err = (*u.LedgerKey).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding LedgerKey: %s", err)
@@ -23848,7 +24649,7 @@ func (u *RevokeSponsorshipOp) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case RevokeSponsorshipTypeRevokeSponsorshipSigner:
 		u.Signer = new(RevokeSponsorshipOpSigner)
-		nTmp, err = (*u.Signer).DecodeFrom(d)
+		nTmp, err = (*u.Signer).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding RevokeSponsorshipOpSigner: %s", err)
@@ -23870,7 +24671,7 @@ func (s RevokeSponsorshipOp) MarshalBinary() ([]byte, error) {
 func (s *RevokeSponsorshipOp) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -23917,20 +24718,24 @@ func (s *ClawbackOp) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ClawbackOp)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *ClawbackOp) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *ClawbackOp) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.Asset.DecodeFrom(d)
+	nTmp, err = s.Asset.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Asset: %s", err)
 	}
-	nTmp, err = s.From.DecodeFrom(d)
+	nTmp, err = s.From.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding MuxedAccount: %s", err)
 	}
-	nTmp, err = s.Amount.DecodeFrom(d)
+	nTmp, err = s.Amount.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int64: %s", err)
@@ -23950,7 +24755,7 @@ func (s ClawbackOp) MarshalBinary() ([]byte, error) {
 func (s *ClawbackOp) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -23987,10 +24792,14 @@ func (s *ClawbackClaimableBalanceOp) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ClawbackClaimableBalanceOp)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *ClawbackClaimableBalanceOp) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *ClawbackClaimableBalanceOp) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.BalanceId.DecodeFrom(d)
+	nTmp, err = s.BalanceId.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ClaimableBalanceId: %s", err)
@@ -24010,7 +24819,7 @@ func (s ClawbackClaimableBalanceOp) MarshalBinary() ([]byte, error) {
 func (s *ClawbackClaimableBalanceOp) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -24063,25 +24872,29 @@ func (s *SetTrustLineFlagsOp) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*SetTrustLineFlagsOp)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *SetTrustLineFlagsOp) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *SetTrustLineFlagsOp) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.Trustor.DecodeFrom(d)
+	nTmp, err = s.Trustor.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding AccountId: %s", err)
 	}
-	nTmp, err = s.Asset.DecodeFrom(d)
+	nTmp, err = s.Asset.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Asset: %s", err)
 	}
-	nTmp, err = s.ClearFlags.DecodeFrom(d)
+	nTmp, err = s.ClearFlags.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
 	}
-	nTmp, err = s.SetFlags.DecodeFrom(d)
+	nTmp, err = s.SetFlags.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
@@ -24101,7 +24914,7 @@ func (s SetTrustLineFlagsOp) MarshalBinary() ([]byte, error) {
 func (s *SetTrustLineFlagsOp) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -24163,30 +24976,34 @@ func (s *LiquidityPoolDepositOp) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*LiquidityPoolDepositOp)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *LiquidityPoolDepositOp) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *LiquidityPoolDepositOp) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.LiquidityPoolId.DecodeFrom(d)
+	nTmp, err = s.LiquidityPoolId.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding PoolId: %s", err)
 	}
-	nTmp, err = s.MaxAmountA.DecodeFrom(d)
+	nTmp, err = s.MaxAmountA.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int64: %s", err)
 	}
-	nTmp, err = s.MaxAmountB.DecodeFrom(d)
+	nTmp, err = s.MaxAmountB.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int64: %s", err)
 	}
-	nTmp, err = s.MinPrice.DecodeFrom(d)
+	nTmp, err = s.MinPrice.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Price: %s", err)
 	}
-	nTmp, err = s.MaxPrice.DecodeFrom(d)
+	nTmp, err = s.MaxPrice.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Price: %s", err)
@@ -24206,7 +25023,7 @@ func (s LiquidityPoolDepositOp) MarshalBinary() ([]byte, error) {
 func (s *LiquidityPoolDepositOp) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -24258,25 +25075,29 @@ func (s *LiquidityPoolWithdrawOp) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*LiquidityPoolWithdrawOp)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *LiquidityPoolWithdrawOp) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *LiquidityPoolWithdrawOp) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.LiquidityPoolId.DecodeFrom(d)
+	nTmp, err = s.LiquidityPoolId.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding PoolId: %s", err)
 	}
-	nTmp, err = s.Amount.DecodeFrom(d)
+	nTmp, err = s.Amount.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int64: %s", err)
 	}
-	nTmp, err = s.MinAmountA.DecodeFrom(d)
+	nTmp, err = s.MinAmountA.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int64: %s", err)
 	}
-	nTmp, err = s.MinAmountB.DecodeFrom(d)
+	nTmp, err = s.MinAmountB.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int64: %s", err)
@@ -24296,7 +25117,7 @@ func (s LiquidityPoolWithdrawOp) MarshalBinary() ([]byte, error) {
 func (s *LiquidityPoolWithdrawOp) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -24358,7 +25179,11 @@ func (e HostFunctionType) EncodeTo(enc *xdr.Encoder) error {
 var _ decoderFrom = (*HostFunctionType)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *HostFunctionType) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *HostFunctionType) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding HostFunctionType: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding HostFunctionType: %s", err)
@@ -24382,7 +25207,7 @@ func (s HostFunctionType) MarshalBinary() ([]byte, error) {
 func (s *HostFunctionType) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -24441,7 +25266,11 @@ func (e ContractIdPreimageType) EncodeTo(enc *xdr.Encoder) error {
 var _ decoderFrom = (*ContractIdPreimageType)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *ContractIdPreimageType) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *ContractIdPreimageType) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding ContractIdPreimageType: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding ContractIdPreimageType: %s", err)
@@ -24465,7 +25294,7 @@ func (s ContractIdPreimageType) MarshalBinary() ([]byte, error) {
 func (s *ContractIdPreimageType) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -24507,15 +25336,19 @@ func (s *ContractIdPreimageFromAddress) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ContractIdPreimageFromAddress)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *ContractIdPreimageFromAddress) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *ContractIdPreimageFromAddress) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.Address.DecodeFrom(d)
+	nTmp, err = s.Address.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ScAddress: %s", err)
 	}
-	nTmp, err = s.Salt.DecodeFrom(d)
+	nTmp, err = s.Salt.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint256: %s", err)
@@ -24535,7 +25368,7 @@ func (s ContractIdPreimageFromAddress) MarshalBinary() ([]byte, error) {
 func (s *ContractIdPreimageFromAddress) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -24683,10 +25516,14 @@ func (u ContractIdPreimage) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ContractIdPreimage)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *ContractIdPreimage) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *ContractIdPreimage) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding ContractIdPreimage: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.Type.DecodeFrom(d)
+	nTmp, err = u.Type.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ContractIdPreimageType: %s", err)
@@ -24694,7 +25531,7 @@ func (u *ContractIdPreimage) DecodeFrom(d *xdr.Decoder) (int, error) {
 	switch ContractIdPreimageType(u.Type) {
 	case ContractIdPreimageTypeContractIdPreimageFromAddress:
 		u.FromAddress = new(ContractIdPreimageFromAddress)
-		nTmp, err = (*u.FromAddress).DecodeFrom(d)
+		nTmp, err = (*u.FromAddress).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ContractIdPreimageFromAddress: %s", err)
@@ -24702,7 +25539,7 @@ func (u *ContractIdPreimage) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case ContractIdPreimageTypeContractIdPreimageFromAsset:
 		u.FromAsset = new(Asset)
-		nTmp, err = (*u.FromAsset).DecodeFrom(d)
+		nTmp, err = (*u.FromAsset).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding Asset: %s", err)
@@ -24724,7 +25561,7 @@ func (s ContractIdPreimage) MarshalBinary() ([]byte, error) {
 func (s *ContractIdPreimage) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -24766,15 +25603,19 @@ func (s *CreateContractArgs) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*CreateContractArgs)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *CreateContractArgs) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *CreateContractArgs) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.ContractIdPreimage.DecodeFrom(d)
+	nTmp, err = s.ContractIdPreimage.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ContractIdPreimage: %s", err)
 	}
-	nTmp, err = s.Executable.DecodeFrom(d)
+	nTmp, err = s.Executable.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ContractExecutable: %s", err)
@@ -24794,7 +25635,7 @@ func (s CreateContractArgs) MarshalBinary() ([]byte, error) {
 func (s *CreateContractArgs) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -24845,15 +25686,19 @@ func (s *InvokeContractArgs) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*InvokeContractArgs)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *InvokeContractArgs) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *InvokeContractArgs) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.ContractAddress.DecodeFrom(d)
+	nTmp, err = s.ContractAddress.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ScAddress: %s", err)
 	}
-	nTmp, err = s.FunctionName.DecodeFrom(d)
+	nTmp, err = s.FunctionName.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ScSymbol: %s", err)
@@ -24868,7 +25713,7 @@ func (s *InvokeContractArgs) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if l > 0 {
 		s.Args = make([]ScVal, l)
 		for i := uint32(0); i < l; i++ {
-			nTmp, err = s.Args[i].DecodeFrom(d)
+			nTmp, err = s.Args[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
 				return n, fmt.Errorf("decoding ScVal: %s", err)
@@ -24890,7 +25735,7 @@ func (s InvokeContractArgs) MarshalBinary() ([]byte, error) {
 func (s *InvokeContractArgs) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -25076,10 +25921,14 @@ func (u HostFunction) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*HostFunction)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *HostFunction) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *HostFunction) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding HostFunction: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.Type.DecodeFrom(d)
+	nTmp, err = u.Type.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding HostFunctionType: %s", err)
@@ -25087,7 +25936,7 @@ func (u *HostFunction) DecodeFrom(d *xdr.Decoder) (int, error) {
 	switch HostFunctionType(u.Type) {
 	case HostFunctionTypeHostFunctionTypeInvokeContract:
 		u.InvokeContract = new(InvokeContractArgs)
-		nTmp, err = (*u.InvokeContract).DecodeFrom(d)
+		nTmp, err = (*u.InvokeContract).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding InvokeContractArgs: %s", err)
@@ -25095,7 +25944,7 @@ func (u *HostFunction) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case HostFunctionTypeHostFunctionTypeCreateContract:
 		u.CreateContract = new(CreateContractArgs)
-		nTmp, err = (*u.CreateContract).DecodeFrom(d)
+		nTmp, err = (*u.CreateContract).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding CreateContractArgs: %s", err)
@@ -25125,7 +25974,7 @@ func (s HostFunction) MarshalBinary() ([]byte, error) {
 func (s *HostFunction) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -25184,7 +26033,11 @@ func (e SorobanAuthorizedFunctionType) EncodeTo(enc *xdr.Encoder) error {
 var _ decoderFrom = (*SorobanAuthorizedFunctionType)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *SorobanAuthorizedFunctionType) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *SorobanAuthorizedFunctionType) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding SorobanAuthorizedFunctionType: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding SorobanAuthorizedFunctionType: %s", err)
@@ -25208,7 +26061,7 @@ func (s SorobanAuthorizedFunctionType) MarshalBinary() ([]byte, error) {
 func (s *SorobanAuthorizedFunctionType) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -25352,10 +26205,14 @@ func (u SorobanAuthorizedFunction) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*SorobanAuthorizedFunction)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *SorobanAuthorizedFunction) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *SorobanAuthorizedFunction) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding SorobanAuthorizedFunction: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.Type.DecodeFrom(d)
+	nTmp, err = u.Type.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding SorobanAuthorizedFunctionType: %s", err)
@@ -25363,7 +26220,7 @@ func (u *SorobanAuthorizedFunction) DecodeFrom(d *xdr.Decoder) (int, error) {
 	switch SorobanAuthorizedFunctionType(u.Type) {
 	case SorobanAuthorizedFunctionTypeSorobanAuthorizedFunctionTypeContractFn:
 		u.ContractFn = new(InvokeContractArgs)
-		nTmp, err = (*u.ContractFn).DecodeFrom(d)
+		nTmp, err = (*u.ContractFn).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding InvokeContractArgs: %s", err)
@@ -25371,7 +26228,7 @@ func (u *SorobanAuthorizedFunction) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case SorobanAuthorizedFunctionTypeSorobanAuthorizedFunctionTypeCreateContractHostFn:
 		u.CreateContractHostFn = new(CreateContractArgs)
-		nTmp, err = (*u.CreateContractHostFn).DecodeFrom(d)
+		nTmp, err = (*u.CreateContractHostFn).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding CreateContractArgs: %s", err)
@@ -25393,7 +26250,7 @@ func (s SorobanAuthorizedFunction) MarshalBinary() ([]byte, error) {
 func (s *SorobanAuthorizedFunction) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -25440,10 +26297,14 @@ func (s *SorobanAuthorizedInvocation) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*SorobanAuthorizedInvocation)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *SorobanAuthorizedInvocation) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *SorobanAuthorizedInvocation) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.Function.DecodeFrom(d)
+	nTmp, err = s.Function.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding SorobanAuthorizedFunction: %s", err)
@@ -25458,7 +26319,7 @@ func (s *SorobanAuthorizedInvocation) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if l > 0 {
 		s.SubInvocations = make([]SorobanAuthorizedInvocation, l)
 		for i := uint32(0); i < l; i++ {
-			nTmp, err = s.SubInvocations[i].DecodeFrom(d)
+			nTmp, err = s.SubInvocations[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
 				return n, fmt.Errorf("decoding SorobanAuthorizedInvocation: %s", err)
@@ -25480,7 +26341,7 @@ func (s SorobanAuthorizedInvocation) MarshalBinary() ([]byte, error) {
 func (s *SorobanAuthorizedInvocation) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -25532,25 +26393,29 @@ func (s *SorobanAddressCredentials) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*SorobanAddressCredentials)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *SorobanAddressCredentials) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *SorobanAddressCredentials) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.Address.DecodeFrom(d)
+	nTmp, err = s.Address.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ScAddress: %s", err)
 	}
-	nTmp, err = s.Nonce.DecodeFrom(d)
+	nTmp, err = s.Nonce.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int64: %s", err)
 	}
-	nTmp, err = s.SignatureExpirationLedger.DecodeFrom(d)
+	nTmp, err = s.SignatureExpirationLedger.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
 	}
-	nTmp, err = s.Signature.DecodeFrom(d)
+	nTmp, err = s.Signature.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ScVal: %s", err)
@@ -25570,7 +26435,7 @@ func (s SorobanAddressCredentials) MarshalBinary() ([]byte, error) {
 func (s *SorobanAddressCredentials) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -25629,7 +26494,11 @@ func (e SorobanCredentialsType) EncodeTo(enc *xdr.Encoder) error {
 var _ decoderFrom = (*SorobanCredentialsType)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *SorobanCredentialsType) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *SorobanCredentialsType) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding SorobanCredentialsType: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding SorobanCredentialsType: %s", err)
@@ -25653,7 +26522,7 @@ func (s SorobanCredentialsType) MarshalBinary() ([]byte, error) {
 func (s *SorobanCredentialsType) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -25764,10 +26633,14 @@ func (u SorobanCredentials) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*SorobanCredentials)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *SorobanCredentials) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *SorobanCredentials) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding SorobanCredentials: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.Type.DecodeFrom(d)
+	nTmp, err = u.Type.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding SorobanCredentialsType: %s", err)
@@ -25778,7 +26651,7 @@ func (u *SorobanCredentials) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case SorobanCredentialsTypeSorobanCredentialsAddress:
 		u.Address = new(SorobanAddressCredentials)
-		nTmp, err = (*u.Address).DecodeFrom(d)
+		nTmp, err = (*u.Address).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding SorobanAddressCredentials: %s", err)
@@ -25800,7 +26673,7 @@ func (s SorobanCredentials) MarshalBinary() ([]byte, error) {
 func (s *SorobanCredentials) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -25842,15 +26715,19 @@ func (s *SorobanAuthorizationEntry) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*SorobanAuthorizationEntry)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *SorobanAuthorizationEntry) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *SorobanAuthorizationEntry) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.Credentials.DecodeFrom(d)
+	nTmp, err = s.Credentials.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding SorobanCredentials: %s", err)
 	}
-	nTmp, err = s.RootInvocation.DecodeFrom(d)
+	nTmp, err = s.RootInvocation.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding SorobanAuthorizedInvocation: %s", err)
@@ -25870,7 +26747,7 @@ func (s SorobanAuthorizationEntry) MarshalBinary() ([]byte, error) {
 func (s *SorobanAuthorizationEntry) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -25919,10 +26796,14 @@ func (s *InvokeHostFunctionOp) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*InvokeHostFunctionOp)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *InvokeHostFunctionOp) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *InvokeHostFunctionOp) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.HostFunction.DecodeFrom(d)
+	nTmp, err = s.HostFunction.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding HostFunction: %s", err)
@@ -25937,7 +26818,7 @@ func (s *InvokeHostFunctionOp) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if l > 0 {
 		s.Auth = make([]SorobanAuthorizationEntry, l)
 		for i := uint32(0); i < l; i++ {
-			nTmp, err = s.Auth[i].DecodeFrom(d)
+			nTmp, err = s.Auth[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
 				return n, fmt.Errorf("decoding SorobanAuthorizationEntry: %s", err)
@@ -25959,7 +26840,7 @@ func (s InvokeHostFunctionOp) MarshalBinary() ([]byte, error) {
 func (s *InvokeHostFunctionOp) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -26001,15 +26882,19 @@ func (s *BumpFootprintExpirationOp) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*BumpFootprintExpirationOp)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *BumpFootprintExpirationOp) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *BumpFootprintExpirationOp) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.Ext.DecodeFrom(d)
+	nTmp, err = s.Ext.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ExtensionPoint: %s", err)
 	}
-	nTmp, err = s.LedgersToExpire.DecodeFrom(d)
+	nTmp, err = s.LedgersToExpire.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
@@ -26029,7 +26914,7 @@ func (s BumpFootprintExpirationOp) MarshalBinary() ([]byte, error) {
 func (s *BumpFootprintExpirationOp) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -26066,10 +26951,14 @@ func (s *RestoreFootprintOp) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*RestoreFootprintOp)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *RestoreFootprintOp) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *RestoreFootprintOp) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.Ext.DecodeFrom(d)
+	nTmp, err = s.Ext.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ExtensionPoint: %s", err)
@@ -26089,7 +26978,7 @@ func (s RestoreFootprintOp) MarshalBinary() ([]byte, error) {
 func (s *RestoreFootprintOp) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -27217,10 +28106,14 @@ func (u OperationBody) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*OperationBody)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *OperationBody) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *OperationBody) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding OperationBody: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.Type.DecodeFrom(d)
+	nTmp, err = u.Type.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding OperationType: %s", err)
@@ -27228,7 +28121,7 @@ func (u *OperationBody) DecodeFrom(d *xdr.Decoder) (int, error) {
 	switch OperationType(u.Type) {
 	case OperationTypeCreateAccount:
 		u.CreateAccountOp = new(CreateAccountOp)
-		nTmp, err = (*u.CreateAccountOp).DecodeFrom(d)
+		nTmp, err = (*u.CreateAccountOp).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding CreateAccountOp: %s", err)
@@ -27236,7 +28129,7 @@ func (u *OperationBody) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case OperationTypePayment:
 		u.PaymentOp = new(PaymentOp)
-		nTmp, err = (*u.PaymentOp).DecodeFrom(d)
+		nTmp, err = (*u.PaymentOp).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding PaymentOp: %s", err)
@@ -27244,7 +28137,7 @@ func (u *OperationBody) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case OperationTypePathPaymentStrictReceive:
 		u.PathPaymentStrictReceiveOp = new(PathPaymentStrictReceiveOp)
-		nTmp, err = (*u.PathPaymentStrictReceiveOp).DecodeFrom(d)
+		nTmp, err = (*u.PathPaymentStrictReceiveOp).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding PathPaymentStrictReceiveOp: %s", err)
@@ -27252,7 +28145,7 @@ func (u *OperationBody) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case OperationTypeManageSellOffer:
 		u.ManageSellOfferOp = new(ManageSellOfferOp)
-		nTmp, err = (*u.ManageSellOfferOp).DecodeFrom(d)
+		nTmp, err = (*u.ManageSellOfferOp).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ManageSellOfferOp: %s", err)
@@ -27260,7 +28153,7 @@ func (u *OperationBody) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case OperationTypeCreatePassiveSellOffer:
 		u.CreatePassiveSellOfferOp = new(CreatePassiveSellOfferOp)
-		nTmp, err = (*u.CreatePassiveSellOfferOp).DecodeFrom(d)
+		nTmp, err = (*u.CreatePassiveSellOfferOp).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding CreatePassiveSellOfferOp: %s", err)
@@ -27268,7 +28161,7 @@ func (u *OperationBody) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case OperationTypeSetOptions:
 		u.SetOptionsOp = new(SetOptionsOp)
-		nTmp, err = (*u.SetOptionsOp).DecodeFrom(d)
+		nTmp, err = (*u.SetOptionsOp).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding SetOptionsOp: %s", err)
@@ -27276,7 +28169,7 @@ func (u *OperationBody) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case OperationTypeChangeTrust:
 		u.ChangeTrustOp = new(ChangeTrustOp)
-		nTmp, err = (*u.ChangeTrustOp).DecodeFrom(d)
+		nTmp, err = (*u.ChangeTrustOp).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ChangeTrustOp: %s", err)
@@ -27284,7 +28177,7 @@ func (u *OperationBody) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case OperationTypeAllowTrust:
 		u.AllowTrustOp = new(AllowTrustOp)
-		nTmp, err = (*u.AllowTrustOp).DecodeFrom(d)
+		nTmp, err = (*u.AllowTrustOp).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding AllowTrustOp: %s", err)
@@ -27292,7 +28185,7 @@ func (u *OperationBody) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case OperationTypeAccountMerge:
 		u.Destination = new(MuxedAccount)
-		nTmp, err = (*u.Destination).DecodeFrom(d)
+		nTmp, err = (*u.Destination).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding MuxedAccount: %s", err)
@@ -27303,7 +28196,7 @@ func (u *OperationBody) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case OperationTypeManageData:
 		u.ManageDataOp = new(ManageDataOp)
-		nTmp, err = (*u.ManageDataOp).DecodeFrom(d)
+		nTmp, err = (*u.ManageDataOp).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ManageDataOp: %s", err)
@@ -27311,7 +28204,7 @@ func (u *OperationBody) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case OperationTypeBumpSequence:
 		u.BumpSequenceOp = new(BumpSequenceOp)
-		nTmp, err = (*u.BumpSequenceOp).DecodeFrom(d)
+		nTmp, err = (*u.BumpSequenceOp).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding BumpSequenceOp: %s", err)
@@ -27319,7 +28212,7 @@ func (u *OperationBody) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case OperationTypeManageBuyOffer:
 		u.ManageBuyOfferOp = new(ManageBuyOfferOp)
-		nTmp, err = (*u.ManageBuyOfferOp).DecodeFrom(d)
+		nTmp, err = (*u.ManageBuyOfferOp).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ManageBuyOfferOp: %s", err)
@@ -27327,7 +28220,7 @@ func (u *OperationBody) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case OperationTypePathPaymentStrictSend:
 		u.PathPaymentStrictSendOp = new(PathPaymentStrictSendOp)
-		nTmp, err = (*u.PathPaymentStrictSendOp).DecodeFrom(d)
+		nTmp, err = (*u.PathPaymentStrictSendOp).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding PathPaymentStrictSendOp: %s", err)
@@ -27335,7 +28228,7 @@ func (u *OperationBody) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case OperationTypeCreateClaimableBalance:
 		u.CreateClaimableBalanceOp = new(CreateClaimableBalanceOp)
-		nTmp, err = (*u.CreateClaimableBalanceOp).DecodeFrom(d)
+		nTmp, err = (*u.CreateClaimableBalanceOp).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding CreateClaimableBalanceOp: %s", err)
@@ -27343,7 +28236,7 @@ func (u *OperationBody) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case OperationTypeClaimClaimableBalance:
 		u.ClaimClaimableBalanceOp = new(ClaimClaimableBalanceOp)
-		nTmp, err = (*u.ClaimClaimableBalanceOp).DecodeFrom(d)
+		nTmp, err = (*u.ClaimClaimableBalanceOp).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ClaimClaimableBalanceOp: %s", err)
@@ -27351,7 +28244,7 @@ func (u *OperationBody) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case OperationTypeBeginSponsoringFutureReserves:
 		u.BeginSponsoringFutureReservesOp = new(BeginSponsoringFutureReservesOp)
-		nTmp, err = (*u.BeginSponsoringFutureReservesOp).DecodeFrom(d)
+		nTmp, err = (*u.BeginSponsoringFutureReservesOp).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding BeginSponsoringFutureReservesOp: %s", err)
@@ -27362,7 +28255,7 @@ func (u *OperationBody) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case OperationTypeRevokeSponsorship:
 		u.RevokeSponsorshipOp = new(RevokeSponsorshipOp)
-		nTmp, err = (*u.RevokeSponsorshipOp).DecodeFrom(d)
+		nTmp, err = (*u.RevokeSponsorshipOp).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding RevokeSponsorshipOp: %s", err)
@@ -27370,7 +28263,7 @@ func (u *OperationBody) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case OperationTypeClawback:
 		u.ClawbackOp = new(ClawbackOp)
-		nTmp, err = (*u.ClawbackOp).DecodeFrom(d)
+		nTmp, err = (*u.ClawbackOp).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ClawbackOp: %s", err)
@@ -27378,7 +28271,7 @@ func (u *OperationBody) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case OperationTypeClawbackClaimableBalance:
 		u.ClawbackClaimableBalanceOp = new(ClawbackClaimableBalanceOp)
-		nTmp, err = (*u.ClawbackClaimableBalanceOp).DecodeFrom(d)
+		nTmp, err = (*u.ClawbackClaimableBalanceOp).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ClawbackClaimableBalanceOp: %s", err)
@@ -27386,7 +28279,7 @@ func (u *OperationBody) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case OperationTypeSetTrustLineFlags:
 		u.SetTrustLineFlagsOp = new(SetTrustLineFlagsOp)
-		nTmp, err = (*u.SetTrustLineFlagsOp).DecodeFrom(d)
+		nTmp, err = (*u.SetTrustLineFlagsOp).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding SetTrustLineFlagsOp: %s", err)
@@ -27394,7 +28287,7 @@ func (u *OperationBody) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case OperationTypeLiquidityPoolDeposit:
 		u.LiquidityPoolDepositOp = new(LiquidityPoolDepositOp)
-		nTmp, err = (*u.LiquidityPoolDepositOp).DecodeFrom(d)
+		nTmp, err = (*u.LiquidityPoolDepositOp).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding LiquidityPoolDepositOp: %s", err)
@@ -27402,7 +28295,7 @@ func (u *OperationBody) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case OperationTypeLiquidityPoolWithdraw:
 		u.LiquidityPoolWithdrawOp = new(LiquidityPoolWithdrawOp)
-		nTmp, err = (*u.LiquidityPoolWithdrawOp).DecodeFrom(d)
+		nTmp, err = (*u.LiquidityPoolWithdrawOp).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding LiquidityPoolWithdrawOp: %s", err)
@@ -27410,7 +28303,7 @@ func (u *OperationBody) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case OperationTypeInvokeHostFunction:
 		u.InvokeHostFunctionOp = new(InvokeHostFunctionOp)
-		nTmp, err = (*u.InvokeHostFunctionOp).DecodeFrom(d)
+		nTmp, err = (*u.InvokeHostFunctionOp).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding InvokeHostFunctionOp: %s", err)
@@ -27418,7 +28311,7 @@ func (u *OperationBody) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case OperationTypeBumpFootprintExpiration:
 		u.BumpFootprintExpirationOp = new(BumpFootprintExpirationOp)
-		nTmp, err = (*u.BumpFootprintExpirationOp).DecodeFrom(d)
+		nTmp, err = (*u.BumpFootprintExpirationOp).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding BumpFootprintExpirationOp: %s", err)
@@ -27426,7 +28319,7 @@ func (u *OperationBody) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case OperationTypeRestoreFootprint:
 		u.RestoreFootprintOp = new(RestoreFootprintOp)
-		nTmp, err = (*u.RestoreFootprintOp).DecodeFrom(d)
+		nTmp, err = (*u.RestoreFootprintOp).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding RestoreFootprintOp: %s", err)
@@ -27448,7 +28341,7 @@ func (s OperationBody) MarshalBinary() ([]byte, error) {
 func (s *OperationBody) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -27556,7 +28449,11 @@ func (s *Operation) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*Operation)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *Operation) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *Operation) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	var b bool
@@ -27568,13 +28465,13 @@ func (s *Operation) DecodeFrom(d *xdr.Decoder) (int, error) {
 	s.SourceAccount = nil
 	if b {
 		s.SourceAccount = new(MuxedAccount)
-		nTmp, err = s.SourceAccount.DecodeFrom(d)
+		nTmp, err = s.SourceAccount.DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding MuxedAccount: %s", err)
 		}
 	}
-	nTmp, err = s.Body.DecodeFrom(d)
+	nTmp, err = s.Body.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding OperationBody: %s", err)
@@ -27594,7 +28491,7 @@ func (s Operation) MarshalBinary() ([]byte, error) {
 func (s *Operation) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -27641,20 +28538,24 @@ func (s *HashIdPreimageOperationId) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*HashIdPreimageOperationId)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *HashIdPreimageOperationId) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *HashIdPreimageOperationId) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.SourceAccount.DecodeFrom(d)
+	nTmp, err = s.SourceAccount.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding AccountId: %s", err)
 	}
-	nTmp, err = s.SeqNum.DecodeFrom(d)
+	nTmp, err = s.SeqNum.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding SequenceNumber: %s", err)
 	}
-	nTmp, err = s.OpNum.DecodeFrom(d)
+	nTmp, err = s.OpNum.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
@@ -27674,7 +28575,7 @@ func (s HashIdPreimageOperationId) MarshalBinary() ([]byte, error) {
 func (s *HashIdPreimageOperationId) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -27731,30 +28632,34 @@ func (s *HashIdPreimageRevokeId) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*HashIdPreimageRevokeId)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *HashIdPreimageRevokeId) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *HashIdPreimageRevokeId) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.SourceAccount.DecodeFrom(d)
+	nTmp, err = s.SourceAccount.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding AccountId: %s", err)
 	}
-	nTmp, err = s.SeqNum.DecodeFrom(d)
+	nTmp, err = s.SeqNum.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding SequenceNumber: %s", err)
 	}
-	nTmp, err = s.OpNum.DecodeFrom(d)
+	nTmp, err = s.OpNum.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
 	}
-	nTmp, err = s.LiquidityPoolId.DecodeFrom(d)
+	nTmp, err = s.LiquidityPoolId.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding PoolId: %s", err)
 	}
-	nTmp, err = s.Asset.DecodeFrom(d)
+	nTmp, err = s.Asset.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Asset: %s", err)
@@ -27774,7 +28679,7 @@ func (s HashIdPreimageRevokeId) MarshalBinary() ([]byte, error) {
 func (s *HashIdPreimageRevokeId) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -27816,15 +28721,19 @@ func (s *HashIdPreimageContractId) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*HashIdPreimageContractId)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *HashIdPreimageContractId) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *HashIdPreimageContractId) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.NetworkId.DecodeFrom(d)
+	nTmp, err = s.NetworkId.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Hash: %s", err)
 	}
-	nTmp, err = s.ContractIdPreimage.DecodeFrom(d)
+	nTmp, err = s.ContractIdPreimage.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ContractIdPreimage: %s", err)
@@ -27844,7 +28753,7 @@ func (s HashIdPreimageContractId) MarshalBinary() ([]byte, error) {
 func (s *HashIdPreimageContractId) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -27896,25 +28805,29 @@ func (s *HashIdPreimageSorobanAuthorization) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*HashIdPreimageSorobanAuthorization)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *HashIdPreimageSorobanAuthorization) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *HashIdPreimageSorobanAuthorization) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.NetworkId.DecodeFrom(d)
+	nTmp, err = s.NetworkId.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Hash: %s", err)
 	}
-	nTmp, err = s.Nonce.DecodeFrom(d)
+	nTmp, err = s.Nonce.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int64: %s", err)
 	}
-	nTmp, err = s.SignatureExpirationLedger.DecodeFrom(d)
+	nTmp, err = s.SignatureExpirationLedger.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
 	}
-	nTmp, err = s.Invocation.DecodeFrom(d)
+	nTmp, err = s.Invocation.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding SorobanAuthorizedInvocation: %s", err)
@@ -27934,7 +28847,7 @@ func (s HashIdPreimageSorobanAuthorization) MarshalBinary() ([]byte, error) {
 func (s *HashIdPreimageSorobanAuthorization) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -28184,10 +29097,14 @@ func (u HashIdPreimage) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*HashIdPreimage)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *HashIdPreimage) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *HashIdPreimage) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding HashIdPreimage: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.Type.DecodeFrom(d)
+	nTmp, err = u.Type.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding EnvelopeType: %s", err)
@@ -28195,7 +29112,7 @@ func (u *HashIdPreimage) DecodeFrom(d *xdr.Decoder) (int, error) {
 	switch EnvelopeType(u.Type) {
 	case EnvelopeTypeEnvelopeTypeOpId:
 		u.OperationId = new(HashIdPreimageOperationId)
-		nTmp, err = (*u.OperationId).DecodeFrom(d)
+		nTmp, err = (*u.OperationId).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding HashIdPreimageOperationId: %s", err)
@@ -28203,7 +29120,7 @@ func (u *HashIdPreimage) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case EnvelopeTypeEnvelopeTypePoolRevokeOpId:
 		u.RevokeId = new(HashIdPreimageRevokeId)
-		nTmp, err = (*u.RevokeId).DecodeFrom(d)
+		nTmp, err = (*u.RevokeId).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding HashIdPreimageRevokeId: %s", err)
@@ -28211,7 +29128,7 @@ func (u *HashIdPreimage) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case EnvelopeTypeEnvelopeTypeContractId:
 		u.ContractId = new(HashIdPreimageContractId)
-		nTmp, err = (*u.ContractId).DecodeFrom(d)
+		nTmp, err = (*u.ContractId).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding HashIdPreimageContractId: %s", err)
@@ -28219,7 +29136,7 @@ func (u *HashIdPreimage) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case EnvelopeTypeEnvelopeTypeSorobanAuthorization:
 		u.SorobanAuthorization = new(HashIdPreimageSorobanAuthorization)
-		nTmp, err = (*u.SorobanAuthorization).DecodeFrom(d)
+		nTmp, err = (*u.SorobanAuthorization).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding HashIdPreimageSorobanAuthorization: %s", err)
@@ -28241,7 +29158,7 @@ func (s HashIdPreimage) MarshalBinary() ([]byte, error) {
 func (s *HashIdPreimage) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -28309,7 +29226,11 @@ func (e MemoType) EncodeTo(enc *xdr.Encoder) error {
 var _ decoderFrom = (*MemoType)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *MemoType) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *MemoType) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding MemoType: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding MemoType: %s", err)
@@ -28333,7 +29254,7 @@ func (s MemoType) MarshalBinary() ([]byte, error) {
 func (s *MemoType) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -28570,10 +29491,14 @@ func (u Memo) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*Memo)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *Memo) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *Memo) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding Memo: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.Type.DecodeFrom(d)
+	nTmp, err = u.Type.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding MemoType: %s", err)
@@ -28592,7 +29517,7 @@ func (u *Memo) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case MemoTypeMemoId:
 		u.Id = new(Uint64)
-		nTmp, err = (*u.Id).DecodeFrom(d)
+		nTmp, err = (*u.Id).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding Uint64: %s", err)
@@ -28600,7 +29525,7 @@ func (u *Memo) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case MemoTypeMemoHash:
 		u.Hash = new(Hash)
-		nTmp, err = (*u.Hash).DecodeFrom(d)
+		nTmp, err = (*u.Hash).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding Hash: %s", err)
@@ -28608,7 +29533,7 @@ func (u *Memo) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case MemoTypeMemoReturn:
 		u.RetHash = new(Hash)
-		nTmp, err = (*u.RetHash).DecodeFrom(d)
+		nTmp, err = (*u.RetHash).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding Hash: %s", err)
@@ -28630,7 +29555,7 @@ func (s Memo) MarshalBinary() ([]byte, error) {
 func (s *Memo) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -28672,15 +29597,19 @@ func (s *TimeBounds) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*TimeBounds)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *TimeBounds) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *TimeBounds) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.MinTime.DecodeFrom(d)
+	nTmp, err = s.MinTime.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding TimePoint: %s", err)
 	}
-	nTmp, err = s.MaxTime.DecodeFrom(d)
+	nTmp, err = s.MaxTime.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding TimePoint: %s", err)
@@ -28700,7 +29629,7 @@ func (s TimeBounds) MarshalBinary() ([]byte, error) {
 func (s *TimeBounds) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -28742,15 +29671,19 @@ func (s *LedgerBounds) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*LedgerBounds)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *LedgerBounds) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *LedgerBounds) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.MinLedger.DecodeFrom(d)
+	nTmp, err = s.MinLedger.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
 	}
-	nTmp, err = s.MaxLedger.DecodeFrom(d)
+	nTmp, err = s.MaxLedger.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
@@ -28770,7 +29703,7 @@ func (s LedgerBounds) MarshalBinary() ([]byte, error) {
 func (s *LedgerBounds) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -28875,7 +29808,11 @@ func (s *PreconditionsV2) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*PreconditionsV2)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *PreconditionsV2) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *PreconditionsV2) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	var b bool
@@ -28887,7 +29824,7 @@ func (s *PreconditionsV2) DecodeFrom(d *xdr.Decoder) (int, error) {
 	s.TimeBounds = nil
 	if b {
 		s.TimeBounds = new(TimeBounds)
-		nTmp, err = s.TimeBounds.DecodeFrom(d)
+		nTmp, err = s.TimeBounds.DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding TimeBounds: %s", err)
@@ -28901,7 +29838,7 @@ func (s *PreconditionsV2) DecodeFrom(d *xdr.Decoder) (int, error) {
 	s.LedgerBounds = nil
 	if b {
 		s.LedgerBounds = new(LedgerBounds)
-		nTmp, err = s.LedgerBounds.DecodeFrom(d)
+		nTmp, err = s.LedgerBounds.DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding LedgerBounds: %s", err)
@@ -28915,18 +29852,18 @@ func (s *PreconditionsV2) DecodeFrom(d *xdr.Decoder) (int, error) {
 	s.MinSeqNum = nil
 	if b {
 		s.MinSeqNum = new(SequenceNumber)
-		nTmp, err = s.MinSeqNum.DecodeFrom(d)
+		nTmp, err = s.MinSeqNum.DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding SequenceNumber: %s", err)
 		}
 	}
-	nTmp, err = s.MinSeqAge.DecodeFrom(d)
+	nTmp, err = s.MinSeqAge.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Duration: %s", err)
 	}
-	nTmp, err = s.MinSeqLedgerGap.DecodeFrom(d)
+	nTmp, err = s.MinSeqLedgerGap.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
@@ -28944,7 +29881,7 @@ func (s *PreconditionsV2) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if l > 0 {
 		s.ExtraSigners = make([]SignerKey, l)
 		for i := uint32(0); i < l; i++ {
-			nTmp, err = s.ExtraSigners[i].DecodeFrom(d)
+			nTmp, err = s.ExtraSigners[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
 				return n, fmt.Errorf("decoding SignerKey: %s", err)
@@ -28966,7 +29903,7 @@ func (s PreconditionsV2) MarshalBinary() ([]byte, error) {
 func (s *PreconditionsV2) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -29028,7 +29965,11 @@ func (e PreconditionType) EncodeTo(enc *xdr.Encoder) error {
 var _ decoderFrom = (*PreconditionType)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *PreconditionType) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *PreconditionType) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding PreconditionType: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding PreconditionType: %s", err)
@@ -29052,7 +29993,7 @@ func (s PreconditionType) MarshalBinary() ([]byte, error) {
 func (s *PreconditionType) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -29205,10 +30146,14 @@ func (u Preconditions) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*Preconditions)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *Preconditions) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *Preconditions) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding Preconditions: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.Type.DecodeFrom(d)
+	nTmp, err = u.Type.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding PreconditionType: %s", err)
@@ -29219,7 +30164,7 @@ func (u *Preconditions) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case PreconditionTypePrecondTime:
 		u.TimeBounds = new(TimeBounds)
-		nTmp, err = (*u.TimeBounds).DecodeFrom(d)
+		nTmp, err = (*u.TimeBounds).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding TimeBounds: %s", err)
@@ -29227,7 +30172,7 @@ func (u *Preconditions) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case PreconditionTypePrecondV2:
 		u.V2 = new(PreconditionsV2)
-		nTmp, err = (*u.V2).DecodeFrom(d)
+		nTmp, err = (*u.V2).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding PreconditionsV2: %s", err)
@@ -29249,7 +30194,7 @@ func (s Preconditions) MarshalBinary() ([]byte, error) {
 func (s *Preconditions) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -29301,7 +30246,11 @@ func (s *LedgerFootprint) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*LedgerFootprint)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *LedgerFootprint) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *LedgerFootprint) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	var l uint32
@@ -29314,7 +30263,7 @@ func (s *LedgerFootprint) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if l > 0 {
 		s.ReadOnly = make([]LedgerKey, l)
 		for i := uint32(0); i < l; i++ {
-			nTmp, err = s.ReadOnly[i].DecodeFrom(d)
+			nTmp, err = s.ReadOnly[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
 				return n, fmt.Errorf("decoding LedgerKey: %s", err)
@@ -29330,7 +30279,7 @@ func (s *LedgerFootprint) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if l > 0 {
 		s.ReadWrite = make([]LedgerKey, l)
 		for i := uint32(0); i < l; i++ {
-			nTmp, err = s.ReadWrite[i].DecodeFrom(d)
+			nTmp, err = s.ReadWrite[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
 				return n, fmt.Errorf("decoding LedgerKey: %s", err)
@@ -29352,7 +30301,7 @@ func (s LedgerFootprint) MarshalBinary() ([]byte, error) {
 func (s *LedgerFootprint) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -29409,25 +30358,29 @@ func (s *SorobanResources) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*SorobanResources)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *SorobanResources) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *SorobanResources) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.Footprint.DecodeFrom(d)
+	nTmp, err = s.Footprint.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding LedgerFootprint: %s", err)
 	}
-	nTmp, err = s.Instructions.DecodeFrom(d)
+	nTmp, err = s.Instructions.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
 	}
-	nTmp, err = s.ReadBytes.DecodeFrom(d)
+	nTmp, err = s.ReadBytes.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
 	}
-	nTmp, err = s.WriteBytes.DecodeFrom(d)
+	nTmp, err = s.WriteBytes.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
@@ -29447,7 +30400,7 @@ func (s SorobanResources) MarshalBinary() ([]byte, error) {
 func (s *SorobanResources) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -29495,20 +30448,24 @@ func (s *SorobanTransactionData) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*SorobanTransactionData)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *SorobanTransactionData) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *SorobanTransactionData) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.Ext.DecodeFrom(d)
+	nTmp, err = s.Ext.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ExtensionPoint: %s", err)
 	}
-	nTmp, err = s.Resources.DecodeFrom(d)
+	nTmp, err = s.Resources.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding SorobanResources: %s", err)
 	}
-	nTmp, err = s.RefundableFee.DecodeFrom(d)
+	nTmp, err = s.RefundableFee.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int64: %s", err)
@@ -29528,7 +30485,7 @@ func (s SorobanTransactionData) MarshalBinary() ([]byte, error) {
 func (s *SorobanTransactionData) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -29597,7 +30554,11 @@ func (u TransactionV0Ext) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*TransactionV0Ext)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *TransactionV0Ext) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *TransactionV0Ext) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding TransactionV0Ext: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	u.V, nTmp, err = d.DecodeInt()
@@ -29625,7 +30586,7 @@ func (s TransactionV0Ext) MarshalBinary() ([]byte, error) {
 func (s *TransactionV0Ext) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -29707,20 +30668,24 @@ func (s *TransactionV0) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*TransactionV0)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *TransactionV0) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *TransactionV0) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.SourceAccountEd25519.DecodeFrom(d)
+	nTmp, err = s.SourceAccountEd25519.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint256: %s", err)
 	}
-	nTmp, err = s.Fee.DecodeFrom(d)
+	nTmp, err = s.Fee.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
 	}
-	nTmp, err = s.SeqNum.DecodeFrom(d)
+	nTmp, err = s.SeqNum.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding SequenceNumber: %s", err)
@@ -29734,13 +30699,13 @@ func (s *TransactionV0) DecodeFrom(d *xdr.Decoder) (int, error) {
 	s.TimeBounds = nil
 	if b {
 		s.TimeBounds = new(TimeBounds)
-		nTmp, err = s.TimeBounds.DecodeFrom(d)
+		nTmp, err = s.TimeBounds.DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding TimeBounds: %s", err)
 		}
 	}
-	nTmp, err = s.Memo.DecodeFrom(d)
+	nTmp, err = s.Memo.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Memo: %s", err)
@@ -29758,14 +30723,14 @@ func (s *TransactionV0) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if l > 0 {
 		s.Operations = make([]Operation, l)
 		for i := uint32(0); i < l; i++ {
-			nTmp, err = s.Operations[i].DecodeFrom(d)
+			nTmp, err = s.Operations[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
 				return n, fmt.Errorf("decoding Operation: %s", err)
 			}
 		}
 	}
-	nTmp, err = s.Ext.DecodeFrom(d)
+	nTmp, err = s.Ext.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding TransactionV0Ext: %s", err)
@@ -29785,7 +30750,7 @@ func (s TransactionV0) MarshalBinary() ([]byte, error) {
 func (s *TransactionV0) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -29834,10 +30799,14 @@ func (s *TransactionV0Envelope) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*TransactionV0Envelope)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *TransactionV0Envelope) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *TransactionV0Envelope) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.Tx.DecodeFrom(d)
+	nTmp, err = s.Tx.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding TransactionV0: %s", err)
@@ -29855,7 +30824,7 @@ func (s *TransactionV0Envelope) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if l > 0 {
 		s.Signatures = make([]DecoratedSignature, l)
 		for i := uint32(0); i < l; i++ {
-			nTmp, err = s.Signatures[i].DecodeFrom(d)
+			nTmp, err = s.Signatures[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
 				return n, fmt.Errorf("decoding DecoratedSignature: %s", err)
@@ -29877,7 +30846,7 @@ func (s TransactionV0Envelope) MarshalBinary() ([]byte, error) {
 func (s *TransactionV0Envelope) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -29988,7 +30957,11 @@ func (u TransactionExt) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*TransactionExt)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *TransactionExt) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *TransactionExt) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding TransactionExt: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	u.V, nTmp, err = d.DecodeInt()
@@ -30002,7 +30975,7 @@ func (u *TransactionExt) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case 1:
 		u.SorobanData = new(SorobanTransactionData)
-		nTmp, err = (*u.SorobanData).DecodeFrom(d)
+		nTmp, err = (*u.SorobanData).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding SorobanTransactionData: %s", err)
@@ -30024,7 +30997,7 @@ func (s TransactionExt) MarshalBinary() ([]byte, error) {
 func (s *TransactionExt) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -30114,30 +31087,34 @@ func (s *Transaction) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*Transaction)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *Transaction) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *Transaction) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.SourceAccount.DecodeFrom(d)
+	nTmp, err = s.SourceAccount.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding MuxedAccount: %s", err)
 	}
-	nTmp, err = s.Fee.DecodeFrom(d)
+	nTmp, err = s.Fee.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
 	}
-	nTmp, err = s.SeqNum.DecodeFrom(d)
+	nTmp, err = s.SeqNum.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding SequenceNumber: %s", err)
 	}
-	nTmp, err = s.Cond.DecodeFrom(d)
+	nTmp, err = s.Cond.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Preconditions: %s", err)
 	}
-	nTmp, err = s.Memo.DecodeFrom(d)
+	nTmp, err = s.Memo.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Memo: %s", err)
@@ -30155,14 +31132,14 @@ func (s *Transaction) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if l > 0 {
 		s.Operations = make([]Operation, l)
 		for i := uint32(0); i < l; i++ {
-			nTmp, err = s.Operations[i].DecodeFrom(d)
+			nTmp, err = s.Operations[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
 				return n, fmt.Errorf("decoding Operation: %s", err)
 			}
 		}
 	}
-	nTmp, err = s.Ext.DecodeFrom(d)
+	nTmp, err = s.Ext.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding TransactionExt: %s", err)
@@ -30182,7 +31159,7 @@ func (s Transaction) MarshalBinary() ([]byte, error) {
 func (s *Transaction) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -30231,10 +31208,14 @@ func (s *TransactionV1Envelope) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*TransactionV1Envelope)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *TransactionV1Envelope) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *TransactionV1Envelope) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.Tx.DecodeFrom(d)
+	nTmp, err = s.Tx.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Transaction: %s", err)
@@ -30252,7 +31233,7 @@ func (s *TransactionV1Envelope) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if l > 0 {
 		s.Signatures = make([]DecoratedSignature, l)
 		for i := uint32(0); i < l; i++ {
-			nTmp, err = s.Signatures[i].DecodeFrom(d)
+			nTmp, err = s.Signatures[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
 				return n, fmt.Errorf("decoding DecoratedSignature: %s", err)
@@ -30274,7 +31255,7 @@ func (s TransactionV1Envelope) MarshalBinary() ([]byte, error) {
 func (s *TransactionV1Envelope) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -30376,10 +31357,14 @@ func (u FeeBumpTransactionInnerTx) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*FeeBumpTransactionInnerTx)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *FeeBumpTransactionInnerTx) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *FeeBumpTransactionInnerTx) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding FeeBumpTransactionInnerTx: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.Type.DecodeFrom(d)
+	nTmp, err = u.Type.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding EnvelopeType: %s", err)
@@ -30387,7 +31372,7 @@ func (u *FeeBumpTransactionInnerTx) DecodeFrom(d *xdr.Decoder) (int, error) {
 	switch EnvelopeType(u.Type) {
 	case EnvelopeTypeEnvelopeTypeTx:
 		u.V1 = new(TransactionV1Envelope)
-		nTmp, err = (*u.V1).DecodeFrom(d)
+		nTmp, err = (*u.V1).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding TransactionV1Envelope: %s", err)
@@ -30409,7 +31394,7 @@ func (s FeeBumpTransactionInnerTx) MarshalBinary() ([]byte, error) {
 func (s *FeeBumpTransactionInnerTx) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -30478,7 +31463,11 @@ func (u FeeBumpTransactionExt) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*FeeBumpTransactionExt)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *FeeBumpTransactionExt) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *FeeBumpTransactionExt) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding FeeBumpTransactionExt: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	u.V, nTmp, err = d.DecodeInt()
@@ -30506,7 +31495,7 @@ func (s FeeBumpTransactionExt) MarshalBinary() ([]byte, error) {
 func (s *FeeBumpTransactionExt) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -30568,25 +31557,29 @@ func (s *FeeBumpTransaction) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*FeeBumpTransaction)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *FeeBumpTransaction) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *FeeBumpTransaction) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.FeeSource.DecodeFrom(d)
+	nTmp, err = s.FeeSource.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding MuxedAccount: %s", err)
 	}
-	nTmp, err = s.Fee.DecodeFrom(d)
+	nTmp, err = s.Fee.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int64: %s", err)
 	}
-	nTmp, err = s.InnerTx.DecodeFrom(d)
+	nTmp, err = s.InnerTx.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding FeeBumpTransactionInnerTx: %s", err)
 	}
-	nTmp, err = s.Ext.DecodeFrom(d)
+	nTmp, err = s.Ext.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding FeeBumpTransactionExt: %s", err)
@@ -30606,7 +31599,7 @@ func (s FeeBumpTransaction) MarshalBinary() ([]byte, error) {
 func (s *FeeBumpTransaction) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -30655,10 +31648,14 @@ func (s *FeeBumpTransactionEnvelope) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*FeeBumpTransactionEnvelope)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *FeeBumpTransactionEnvelope) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *FeeBumpTransactionEnvelope) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.Tx.DecodeFrom(d)
+	nTmp, err = s.Tx.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding FeeBumpTransaction: %s", err)
@@ -30676,7 +31673,7 @@ func (s *FeeBumpTransactionEnvelope) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if l > 0 {
 		s.Signatures = make([]DecoratedSignature, l)
 		for i := uint32(0); i < l; i++ {
-			nTmp, err = s.Signatures[i].DecodeFrom(d)
+			nTmp, err = s.Signatures[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
 				return n, fmt.Errorf("decoding DecoratedSignature: %s", err)
@@ -30698,7 +31695,7 @@ func (s FeeBumpTransactionEnvelope) MarshalBinary() ([]byte, error) {
 func (s *FeeBumpTransactionEnvelope) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -30884,10 +31881,14 @@ func (u TransactionEnvelope) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*TransactionEnvelope)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *TransactionEnvelope) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *TransactionEnvelope) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding TransactionEnvelope: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.Type.DecodeFrom(d)
+	nTmp, err = u.Type.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding EnvelopeType: %s", err)
@@ -30895,7 +31896,7 @@ func (u *TransactionEnvelope) DecodeFrom(d *xdr.Decoder) (int, error) {
 	switch EnvelopeType(u.Type) {
 	case EnvelopeTypeEnvelopeTypeTxV0:
 		u.V0 = new(TransactionV0Envelope)
-		nTmp, err = (*u.V0).DecodeFrom(d)
+		nTmp, err = (*u.V0).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding TransactionV0Envelope: %s", err)
@@ -30903,7 +31904,7 @@ func (u *TransactionEnvelope) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case EnvelopeTypeEnvelopeTypeTx:
 		u.V1 = new(TransactionV1Envelope)
-		nTmp, err = (*u.V1).DecodeFrom(d)
+		nTmp, err = (*u.V1).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding TransactionV1Envelope: %s", err)
@@ -30911,7 +31912,7 @@ func (u *TransactionEnvelope) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case EnvelopeTypeEnvelopeTypeTxFeeBump:
 		u.FeeBump = new(FeeBumpTransactionEnvelope)
-		nTmp, err = (*u.FeeBump).DecodeFrom(d)
+		nTmp, err = (*u.FeeBump).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding FeeBumpTransactionEnvelope: %s", err)
@@ -30933,7 +31934,7 @@ func (s TransactionEnvelope) MarshalBinary() ([]byte, error) {
 func (s *TransactionEnvelope) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -31078,10 +32079,14 @@ func (u TransactionSignaturePayloadTaggedTransaction) EncodeTo(e *xdr.Encoder) e
 var _ decoderFrom = (*TransactionSignaturePayloadTaggedTransaction)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *TransactionSignaturePayloadTaggedTransaction) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *TransactionSignaturePayloadTaggedTransaction) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding TransactionSignaturePayloadTaggedTransaction: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.Type.DecodeFrom(d)
+	nTmp, err = u.Type.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding EnvelopeType: %s", err)
@@ -31089,7 +32094,7 @@ func (u *TransactionSignaturePayloadTaggedTransaction) DecodeFrom(d *xdr.Decoder
 	switch EnvelopeType(u.Type) {
 	case EnvelopeTypeEnvelopeTypeTx:
 		u.Tx = new(Transaction)
-		nTmp, err = (*u.Tx).DecodeFrom(d)
+		nTmp, err = (*u.Tx).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding Transaction: %s", err)
@@ -31097,7 +32102,7 @@ func (u *TransactionSignaturePayloadTaggedTransaction) DecodeFrom(d *xdr.Decoder
 		return n, nil
 	case EnvelopeTypeEnvelopeTypeTxFeeBump:
 		u.FeeBump = new(FeeBumpTransaction)
-		nTmp, err = (*u.FeeBump).DecodeFrom(d)
+		nTmp, err = (*u.FeeBump).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding FeeBumpTransaction: %s", err)
@@ -31119,7 +32124,7 @@ func (s TransactionSignaturePayloadTaggedTransaction) MarshalBinary() ([]byte, e
 func (s *TransactionSignaturePayloadTaggedTransaction) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -31169,15 +32174,19 @@ func (s *TransactionSignaturePayload) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*TransactionSignaturePayload)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *TransactionSignaturePayload) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *TransactionSignaturePayload) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.NetworkId.DecodeFrom(d)
+	nTmp, err = s.NetworkId.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Hash: %s", err)
 	}
-	nTmp, err = s.TaggedTransaction.DecodeFrom(d)
+	nTmp, err = s.TaggedTransaction.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding TransactionSignaturePayloadTaggedTransaction: %s", err)
@@ -31197,7 +32206,7 @@ func (s TransactionSignaturePayload) MarshalBinary() ([]byte, error) {
 func (s *TransactionSignaturePayload) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -31259,7 +32268,11 @@ func (e ClaimAtomType) EncodeTo(enc *xdr.Encoder) error {
 var _ decoderFrom = (*ClaimAtomType)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *ClaimAtomType) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *ClaimAtomType) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding ClaimAtomType: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding ClaimAtomType: %s", err)
@@ -31283,7 +32296,7 @@ func (s ClaimAtomType) MarshalBinary() ([]byte, error) {
 func (s *ClaimAtomType) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -31350,35 +32363,39 @@ func (s *ClaimOfferAtomV0) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ClaimOfferAtomV0)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *ClaimOfferAtomV0) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *ClaimOfferAtomV0) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.SellerEd25519.DecodeFrom(d)
+	nTmp, err = s.SellerEd25519.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint256: %s", err)
 	}
-	nTmp, err = s.OfferId.DecodeFrom(d)
+	nTmp, err = s.OfferId.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int64: %s", err)
 	}
-	nTmp, err = s.AssetSold.DecodeFrom(d)
+	nTmp, err = s.AssetSold.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Asset: %s", err)
 	}
-	nTmp, err = s.AmountSold.DecodeFrom(d)
+	nTmp, err = s.AmountSold.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int64: %s", err)
 	}
-	nTmp, err = s.AssetBought.DecodeFrom(d)
+	nTmp, err = s.AssetBought.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Asset: %s", err)
 	}
-	nTmp, err = s.AmountBought.DecodeFrom(d)
+	nTmp, err = s.AmountBought.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int64: %s", err)
@@ -31398,7 +32415,7 @@ func (s ClaimOfferAtomV0) MarshalBinary() ([]byte, error) {
 func (s *ClaimOfferAtomV0) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -31465,35 +32482,39 @@ func (s *ClaimOfferAtom) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ClaimOfferAtom)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *ClaimOfferAtom) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *ClaimOfferAtom) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.SellerId.DecodeFrom(d)
+	nTmp, err = s.SellerId.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding AccountId: %s", err)
 	}
-	nTmp, err = s.OfferId.DecodeFrom(d)
+	nTmp, err = s.OfferId.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int64: %s", err)
 	}
-	nTmp, err = s.AssetSold.DecodeFrom(d)
+	nTmp, err = s.AssetSold.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Asset: %s", err)
 	}
-	nTmp, err = s.AmountSold.DecodeFrom(d)
+	nTmp, err = s.AmountSold.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int64: %s", err)
 	}
-	nTmp, err = s.AssetBought.DecodeFrom(d)
+	nTmp, err = s.AssetBought.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Asset: %s", err)
 	}
-	nTmp, err = s.AmountBought.DecodeFrom(d)
+	nTmp, err = s.AmountBought.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int64: %s", err)
@@ -31513,7 +32534,7 @@ func (s ClaimOfferAtom) MarshalBinary() ([]byte, error) {
 func (s *ClaimOfferAtom) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -31574,30 +32595,34 @@ func (s *ClaimLiquidityAtom) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ClaimLiquidityAtom)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *ClaimLiquidityAtom) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *ClaimLiquidityAtom) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.LiquidityPoolId.DecodeFrom(d)
+	nTmp, err = s.LiquidityPoolId.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding PoolId: %s", err)
 	}
-	nTmp, err = s.AssetSold.DecodeFrom(d)
+	nTmp, err = s.AssetSold.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Asset: %s", err)
 	}
-	nTmp, err = s.AmountSold.DecodeFrom(d)
+	nTmp, err = s.AmountSold.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int64: %s", err)
 	}
-	nTmp, err = s.AssetBought.DecodeFrom(d)
+	nTmp, err = s.AssetBought.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Asset: %s", err)
 	}
-	nTmp, err = s.AmountBought.DecodeFrom(d)
+	nTmp, err = s.AmountBought.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int64: %s", err)
@@ -31617,7 +32642,7 @@ func (s ClaimLiquidityAtom) MarshalBinary() ([]byte, error) {
 func (s *ClaimLiquidityAtom) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -31803,10 +32828,14 @@ func (u ClaimAtom) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ClaimAtom)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *ClaimAtom) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *ClaimAtom) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding ClaimAtom: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.Type.DecodeFrom(d)
+	nTmp, err = u.Type.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ClaimAtomType: %s", err)
@@ -31814,7 +32843,7 @@ func (u *ClaimAtom) DecodeFrom(d *xdr.Decoder) (int, error) {
 	switch ClaimAtomType(u.Type) {
 	case ClaimAtomTypeClaimAtomTypeV0:
 		u.V0 = new(ClaimOfferAtomV0)
-		nTmp, err = (*u.V0).DecodeFrom(d)
+		nTmp, err = (*u.V0).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ClaimOfferAtomV0: %s", err)
@@ -31822,7 +32851,7 @@ func (u *ClaimAtom) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case ClaimAtomTypeClaimAtomTypeOrderBook:
 		u.OrderBook = new(ClaimOfferAtom)
-		nTmp, err = (*u.OrderBook).DecodeFrom(d)
+		nTmp, err = (*u.OrderBook).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ClaimOfferAtom: %s", err)
@@ -31830,7 +32859,7 @@ func (u *ClaimAtom) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case ClaimAtomTypeClaimAtomTypeLiquidityPool:
 		u.LiquidityPool = new(ClaimLiquidityAtom)
-		nTmp, err = (*u.LiquidityPool).DecodeFrom(d)
+		nTmp, err = (*u.LiquidityPool).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ClaimLiquidityAtom: %s", err)
@@ -31852,7 +32881,7 @@ func (s ClaimAtom) MarshalBinary() ([]byte, error) {
 func (s *ClaimAtom) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -31924,7 +32953,11 @@ func (e CreateAccountResultCode) EncodeTo(enc *xdr.Encoder) error {
 var _ decoderFrom = (*CreateAccountResultCode)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *CreateAccountResultCode) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *CreateAccountResultCode) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding CreateAccountResultCode: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding CreateAccountResultCode: %s", err)
@@ -31948,7 +32981,7 @@ func (s CreateAccountResultCode) MarshalBinary() ([]byte, error) {
 func (s *CreateAccountResultCode) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -32050,10 +33083,14 @@ func (u CreateAccountResult) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*CreateAccountResult)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *CreateAccountResult) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *CreateAccountResult) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding CreateAccountResult: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.Code.DecodeFrom(d)
+	nTmp, err = u.Code.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding CreateAccountResultCode: %s", err)
@@ -32090,7 +33127,7 @@ func (s CreateAccountResult) MarshalBinary() ([]byte, error) {
 func (s *CreateAccountResult) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -32176,7 +33213,11 @@ func (e PaymentResultCode) EncodeTo(enc *xdr.Encoder) error {
 var _ decoderFrom = (*PaymentResultCode)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *PaymentResultCode) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *PaymentResultCode) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding PaymentResultCode: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding PaymentResultCode: %s", err)
@@ -32200,7 +33241,7 @@ func (s PaymentResultCode) MarshalBinary() ([]byte, error) {
 func (s *PaymentResultCode) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -32342,10 +33383,14 @@ func (u PaymentResult) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*PaymentResult)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *PaymentResult) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *PaymentResult) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding PaymentResult: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.Code.DecodeFrom(d)
+	nTmp, err = u.Code.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding PaymentResultCode: %s", err)
@@ -32397,7 +33442,7 @@ func (s PaymentResult) MarshalBinary() ([]byte, error) {
 func (s *PaymentResult) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -32501,7 +33546,11 @@ func (e PathPaymentStrictReceiveResultCode) EncodeTo(enc *xdr.Encoder) error {
 var _ decoderFrom = (*PathPaymentStrictReceiveResultCode)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *PathPaymentStrictReceiveResultCode) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *PathPaymentStrictReceiveResultCode) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding PathPaymentStrictReceiveResultCode: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding PathPaymentStrictReceiveResultCode: %s", err)
@@ -32525,7 +33574,7 @@ func (s PathPaymentStrictReceiveResultCode) MarshalBinary() ([]byte, error) {
 func (s *PathPaymentStrictReceiveResultCode) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -32572,20 +33621,24 @@ func (s *SimplePaymentResult) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*SimplePaymentResult)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *SimplePaymentResult) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *SimplePaymentResult) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.Destination.DecodeFrom(d)
+	nTmp, err = s.Destination.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding AccountId: %s", err)
 	}
-	nTmp, err = s.Asset.DecodeFrom(d)
+	nTmp, err = s.Asset.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Asset: %s", err)
 	}
-	nTmp, err = s.Amount.DecodeFrom(d)
+	nTmp, err = s.Amount.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int64: %s", err)
@@ -32605,7 +33658,7 @@ func (s SimplePaymentResult) MarshalBinary() ([]byte, error) {
 func (s *SimplePaymentResult) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -32652,7 +33705,11 @@ func (s *PathPaymentStrictReceiveResultSuccess) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*PathPaymentStrictReceiveResultSuccess)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *PathPaymentStrictReceiveResultSuccess) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *PathPaymentStrictReceiveResultSuccess) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	var l uint32
@@ -32665,14 +33722,14 @@ func (s *PathPaymentStrictReceiveResultSuccess) DecodeFrom(d *xdr.Decoder) (int,
 	if l > 0 {
 		s.Offers = make([]ClaimAtom, l)
 		for i := uint32(0); i < l; i++ {
-			nTmp, err = s.Offers[i].DecodeFrom(d)
+			nTmp, err = s.Offers[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
 				return n, fmt.Errorf("decoding ClaimAtom: %s", err)
 			}
 		}
 	}
-	nTmp, err = s.Last.DecodeFrom(d)
+	nTmp, err = s.Last.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding SimplePaymentResult: %s", err)
@@ -32692,7 +33749,7 @@ func (s PathPaymentStrictReceiveResultSuccess) MarshalBinary() ([]byte, error) {
 func (s *PathPaymentStrictReceiveResultSuccess) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -32931,10 +33988,14 @@ func (u PathPaymentStrictReceiveResult) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*PathPaymentStrictReceiveResult)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *PathPaymentStrictReceiveResult) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *PathPaymentStrictReceiveResult) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding PathPaymentStrictReceiveResult: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.Code.DecodeFrom(d)
+	nTmp, err = u.Code.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding PathPaymentStrictReceiveResultCode: %s", err)
@@ -32942,7 +34003,7 @@ func (u *PathPaymentStrictReceiveResult) DecodeFrom(d *xdr.Decoder) (int, error)
 	switch PathPaymentStrictReceiveResultCode(u.Code) {
 	case PathPaymentStrictReceiveResultCodePathPaymentStrictReceiveSuccess:
 		u.Success = new(PathPaymentStrictReceiveResultSuccess)
-		nTmp, err = (*u.Success).DecodeFrom(d)
+		nTmp, err = (*u.Success).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding PathPaymentStrictReceiveResultSuccess: %s", err)
@@ -32974,7 +34035,7 @@ func (u *PathPaymentStrictReceiveResult) DecodeFrom(d *xdr.Decoder) (int, error)
 		return n, nil
 	case PathPaymentStrictReceiveResultCodePathPaymentStrictReceiveNoIssuer:
 		u.NoIssuer = new(Asset)
-		nTmp, err = (*u.NoIssuer).DecodeFrom(d)
+		nTmp, err = (*u.NoIssuer).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding Asset: %s", err)
@@ -33005,7 +34066,7 @@ func (s PathPaymentStrictReceiveResult) MarshalBinary() ([]byte, error) {
 func (s *PathPaymentStrictReceiveResult) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -33108,7 +34169,11 @@ func (e PathPaymentStrictSendResultCode) EncodeTo(enc *xdr.Encoder) error {
 var _ decoderFrom = (*PathPaymentStrictSendResultCode)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *PathPaymentStrictSendResultCode) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *PathPaymentStrictSendResultCode) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding PathPaymentStrictSendResultCode: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding PathPaymentStrictSendResultCode: %s", err)
@@ -33132,7 +34197,7 @@ func (s PathPaymentStrictSendResultCode) MarshalBinary() ([]byte, error) {
 func (s *PathPaymentStrictSendResultCode) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -33179,7 +34244,11 @@ func (s *PathPaymentStrictSendResultSuccess) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*PathPaymentStrictSendResultSuccess)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *PathPaymentStrictSendResultSuccess) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *PathPaymentStrictSendResultSuccess) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	var l uint32
@@ -33192,14 +34261,14 @@ func (s *PathPaymentStrictSendResultSuccess) DecodeFrom(d *xdr.Decoder) (int, er
 	if l > 0 {
 		s.Offers = make([]ClaimAtom, l)
 		for i := uint32(0); i < l; i++ {
-			nTmp, err = s.Offers[i].DecodeFrom(d)
+			nTmp, err = s.Offers[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
 				return n, fmt.Errorf("decoding ClaimAtom: %s", err)
 			}
 		}
 	}
-	nTmp, err = s.Last.DecodeFrom(d)
+	nTmp, err = s.Last.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding SimplePaymentResult: %s", err)
@@ -33219,7 +34288,7 @@ func (s PathPaymentStrictSendResultSuccess) MarshalBinary() ([]byte, error) {
 func (s *PathPaymentStrictSendResultSuccess) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -33457,10 +34526,14 @@ func (u PathPaymentStrictSendResult) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*PathPaymentStrictSendResult)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *PathPaymentStrictSendResult) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *PathPaymentStrictSendResult) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding PathPaymentStrictSendResult: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.Code.DecodeFrom(d)
+	nTmp, err = u.Code.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding PathPaymentStrictSendResultCode: %s", err)
@@ -33468,7 +34541,7 @@ func (u *PathPaymentStrictSendResult) DecodeFrom(d *xdr.Decoder) (int, error) {
 	switch PathPaymentStrictSendResultCode(u.Code) {
 	case PathPaymentStrictSendResultCodePathPaymentStrictSendSuccess:
 		u.Success = new(PathPaymentStrictSendResultSuccess)
-		nTmp, err = (*u.Success).DecodeFrom(d)
+		nTmp, err = (*u.Success).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding PathPaymentStrictSendResultSuccess: %s", err)
@@ -33500,7 +34573,7 @@ func (u *PathPaymentStrictSendResult) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case PathPaymentStrictSendResultCodePathPaymentStrictSendNoIssuer:
 		u.NoIssuer = new(Asset)
-		nTmp, err = (*u.NoIssuer).DecodeFrom(d)
+		nTmp, err = (*u.NoIssuer).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding Asset: %s", err)
@@ -33531,7 +34604,7 @@ func (s PathPaymentStrictSendResult) MarshalBinary() ([]byte, error) {
 func (s *PathPaymentStrictSendResult) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -33633,7 +34706,11 @@ func (e ManageSellOfferResultCode) EncodeTo(enc *xdr.Encoder) error {
 var _ decoderFrom = (*ManageSellOfferResultCode)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *ManageSellOfferResultCode) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *ManageSellOfferResultCode) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding ManageSellOfferResultCode: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding ManageSellOfferResultCode: %s", err)
@@ -33657,7 +34734,7 @@ func (s ManageSellOfferResultCode) MarshalBinary() ([]byte, error) {
 func (s *ManageSellOfferResultCode) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -33719,7 +34796,11 @@ func (e ManageOfferEffect) EncodeTo(enc *xdr.Encoder) error {
 var _ decoderFrom = (*ManageOfferEffect)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *ManageOfferEffect) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *ManageOfferEffect) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding ManageOfferEffect: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding ManageOfferEffect: %s", err)
@@ -33743,7 +34824,7 @@ func (s ManageOfferEffect) MarshalBinary() ([]byte, error) {
 func (s *ManageOfferEffect) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -33869,10 +34950,14 @@ func (u ManageOfferSuccessResultOffer) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ManageOfferSuccessResultOffer)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *ManageOfferSuccessResultOffer) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *ManageOfferSuccessResultOffer) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding ManageOfferSuccessResultOffer: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.Effect.DecodeFrom(d)
+	nTmp, err = u.Effect.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ManageOfferEffect: %s", err)
@@ -33880,7 +34965,7 @@ func (u *ManageOfferSuccessResultOffer) DecodeFrom(d *xdr.Decoder) (int, error) 
 	switch ManageOfferEffect(u.Effect) {
 	case ManageOfferEffectManageOfferCreated:
 		u.Offer = new(OfferEntry)
-		nTmp, err = (*u.Offer).DecodeFrom(d)
+		nTmp, err = (*u.Offer).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding OfferEntry: %s", err)
@@ -33888,7 +34973,7 @@ func (u *ManageOfferSuccessResultOffer) DecodeFrom(d *xdr.Decoder) (int, error) 
 		return n, nil
 	case ManageOfferEffectManageOfferUpdated:
 		u.Offer = new(OfferEntry)
-		nTmp, err = (*u.Offer).DecodeFrom(d)
+		nTmp, err = (*u.Offer).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding OfferEntry: %s", err)
@@ -33913,7 +34998,7 @@ func (s ManageOfferSuccessResultOffer) MarshalBinary() ([]byte, error) {
 func (s *ManageOfferSuccessResultOffer) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -33970,7 +35055,11 @@ func (s *ManageOfferSuccessResult) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ManageOfferSuccessResult)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *ManageOfferSuccessResult) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *ManageOfferSuccessResult) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	var l uint32
@@ -33983,14 +35072,14 @@ func (s *ManageOfferSuccessResult) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if l > 0 {
 		s.OffersClaimed = make([]ClaimAtom, l)
 		for i := uint32(0); i < l; i++ {
-			nTmp, err = s.OffersClaimed[i].DecodeFrom(d)
+			nTmp, err = s.OffersClaimed[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
 				return n, fmt.Errorf("decoding ClaimAtom: %s", err)
 			}
 		}
 	}
-	nTmp, err = s.Offer.DecodeFrom(d)
+	nTmp, err = s.Offer.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ManageOfferSuccessResultOffer: %s", err)
@@ -34010,7 +35099,7 @@ func (s ManageOfferSuccessResult) MarshalBinary() ([]byte, error) {
 func (s *ManageOfferSuccessResult) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -34209,10 +35298,14 @@ func (u ManageSellOfferResult) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ManageSellOfferResult)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *ManageSellOfferResult) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *ManageSellOfferResult) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding ManageSellOfferResult: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.Code.DecodeFrom(d)
+	nTmp, err = u.Code.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ManageSellOfferResultCode: %s", err)
@@ -34220,7 +35313,7 @@ func (u *ManageSellOfferResult) DecodeFrom(d *xdr.Decoder) (int, error) {
 	switch ManageSellOfferResultCode(u.Code) {
 	case ManageSellOfferResultCodeManageSellOfferSuccess:
 		u.Success = new(ManageOfferSuccessResult)
-		nTmp, err = (*u.Success).DecodeFrom(d)
+		nTmp, err = (*u.Success).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ManageOfferSuccessResult: %s", err)
@@ -34278,7 +35371,7 @@ func (s ManageSellOfferResult) MarshalBinary() ([]byte, error) {
 func (s *ManageSellOfferResult) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -34377,7 +35470,11 @@ func (e ManageBuyOfferResultCode) EncodeTo(enc *xdr.Encoder) error {
 var _ decoderFrom = (*ManageBuyOfferResultCode)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *ManageBuyOfferResultCode) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *ManageBuyOfferResultCode) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding ManageBuyOfferResultCode: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding ManageBuyOfferResultCode: %s", err)
@@ -34401,7 +35498,7 @@ func (s ManageBuyOfferResultCode) MarshalBinary() ([]byte, error) {
 func (s *ManageBuyOfferResultCode) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -34600,10 +35697,14 @@ func (u ManageBuyOfferResult) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ManageBuyOfferResult)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *ManageBuyOfferResult) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *ManageBuyOfferResult) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding ManageBuyOfferResult: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.Code.DecodeFrom(d)
+	nTmp, err = u.Code.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ManageBuyOfferResultCode: %s", err)
@@ -34611,7 +35712,7 @@ func (u *ManageBuyOfferResult) DecodeFrom(d *xdr.Decoder) (int, error) {
 	switch ManageBuyOfferResultCode(u.Code) {
 	case ManageBuyOfferResultCodeManageBuyOfferSuccess:
 		u.Success = new(ManageOfferSuccessResult)
-		nTmp, err = (*u.Success).DecodeFrom(d)
+		nTmp, err = (*u.Success).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ManageOfferSuccessResult: %s", err)
@@ -34669,7 +35770,7 @@ func (s ManageBuyOfferResult) MarshalBinary() ([]byte, error) {
 func (s *ManageBuyOfferResult) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -34758,7 +35859,11 @@ func (e SetOptionsResultCode) EncodeTo(enc *xdr.Encoder) error {
 var _ decoderFrom = (*SetOptionsResultCode)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *SetOptionsResultCode) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *SetOptionsResultCode) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding SetOptionsResultCode: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding SetOptionsResultCode: %s", err)
@@ -34782,7 +35887,7 @@ func (s SetOptionsResultCode) MarshalBinary() ([]byte, error) {
 func (s *SetOptionsResultCode) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -34932,10 +36037,14 @@ func (u SetOptionsResult) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*SetOptionsResult)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *SetOptionsResult) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *SetOptionsResult) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding SetOptionsResult: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.Code.DecodeFrom(d)
+	nTmp, err = u.Code.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding SetOptionsResultCode: %s", err)
@@ -34990,7 +36099,7 @@ func (s SetOptionsResult) MarshalBinary() ([]byte, error) {
 func (s *SetOptionsResult) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -35076,7 +36185,11 @@ func (e ChangeTrustResultCode) EncodeTo(enc *xdr.Encoder) error {
 var _ decoderFrom = (*ChangeTrustResultCode)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *ChangeTrustResultCode) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *ChangeTrustResultCode) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding ChangeTrustResultCode: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding ChangeTrustResultCode: %s", err)
@@ -35100,7 +36213,7 @@ func (s ChangeTrustResultCode) MarshalBinary() ([]byte, error) {
 func (s *ChangeTrustResultCode) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -35234,10 +36347,14 @@ func (u ChangeTrustResult) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ChangeTrustResult)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *ChangeTrustResult) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *ChangeTrustResult) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding ChangeTrustResult: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.Code.DecodeFrom(d)
+	nTmp, err = u.Code.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ChangeTrustResultCode: %s", err)
@@ -35286,7 +36403,7 @@ func (s ChangeTrustResult) MarshalBinary() ([]byte, error) {
 func (s *ChangeTrustResult) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -35364,7 +36481,11 @@ func (e AllowTrustResultCode) EncodeTo(enc *xdr.Encoder) error {
 var _ decoderFrom = (*AllowTrustResultCode)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *AllowTrustResultCode) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *AllowTrustResultCode) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding AllowTrustResultCode: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding AllowTrustResultCode: %s", err)
@@ -35388,7 +36509,7 @@ func (s AllowTrustResultCode) MarshalBinary() ([]byte, error) {
 func (s *AllowTrustResultCode) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -35506,10 +36627,14 @@ func (u AllowTrustResult) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*AllowTrustResult)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *AllowTrustResult) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *AllowTrustResult) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding AllowTrustResult: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.Code.DecodeFrom(d)
+	nTmp, err = u.Code.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding AllowTrustResultCode: %s", err)
@@ -35552,7 +36677,7 @@ func (s AllowTrustResult) MarshalBinary() ([]byte, error) {
 func (s *AllowTrustResult) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -35632,7 +36757,11 @@ func (e AccountMergeResultCode) EncodeTo(enc *xdr.Encoder) error {
 var _ decoderFrom = (*AccountMergeResultCode)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *AccountMergeResultCode) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *AccountMergeResultCode) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding AccountMergeResultCode: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding AccountMergeResultCode: %s", err)
@@ -35656,7 +36785,7 @@ func (s AccountMergeResultCode) MarshalBinary() ([]byte, error) {
 func (s *AccountMergeResultCode) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -35815,10 +36944,14 @@ func (u AccountMergeResult) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*AccountMergeResult)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *AccountMergeResult) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *AccountMergeResult) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding AccountMergeResult: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.Code.DecodeFrom(d)
+	nTmp, err = u.Code.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding AccountMergeResultCode: %s", err)
@@ -35826,7 +36959,7 @@ func (u *AccountMergeResult) DecodeFrom(d *xdr.Decoder) (int, error) {
 	switch AccountMergeResultCode(u.Code) {
 	case AccountMergeResultCodeAccountMergeSuccess:
 		u.SourceAccountBalance = new(Int64)
-		nTmp, err = (*u.SourceAccountBalance).DecodeFrom(d)
+		nTmp, err = (*u.SourceAccountBalance).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding Int64: %s", err)
@@ -35869,7 +37002,7 @@ func (s AccountMergeResult) MarshalBinary() ([]byte, error) {
 func (s *AccountMergeResult) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -35930,7 +37063,11 @@ func (e InflationResultCode) EncodeTo(enc *xdr.Encoder) error {
 var _ decoderFrom = (*InflationResultCode)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *InflationResultCode) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *InflationResultCode) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding InflationResultCode: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding InflationResultCode: %s", err)
@@ -35954,7 +37091,7 @@ func (s InflationResultCode) MarshalBinary() ([]byte, error) {
 func (s *InflationResultCode) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -35996,15 +37133,19 @@ func (s *InflationPayout) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*InflationPayout)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *InflationPayout) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *InflationPayout) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.Destination.DecodeFrom(d)
+	nTmp, err = s.Destination.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding AccountId: %s", err)
 	}
-	nTmp, err = s.Amount.DecodeFrom(d)
+	nTmp, err = s.Amount.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int64: %s", err)
@@ -36024,7 +37165,7 @@ func (s InflationPayout) MarshalBinary() ([]byte, error) {
 func (s *InflationPayout) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -36140,10 +37281,14 @@ func (u InflationResult) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*InflationResult)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *InflationResult) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *InflationResult) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding InflationResult: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.Code.DecodeFrom(d)
+	nTmp, err = u.Code.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding InflationResultCode: %s", err)
@@ -36161,7 +37306,7 @@ func (u *InflationResult) DecodeFrom(d *xdr.Decoder) (int, error) {
 		if l > 0 {
 			(*u.Payouts) = make([]InflationPayout, l)
 			for i := uint32(0); i < l; i++ {
-				nTmp, err = (*u.Payouts)[i].DecodeFrom(d)
+				nTmp, err = (*u.Payouts)[i].DecodeFrom(d, maxDepth)
 				n += nTmp
 				if err != nil {
 					return n, fmt.Errorf("decoding InflationPayout: %s", err)
@@ -36188,7 +37333,7 @@ func (s InflationResult) MarshalBinary() ([]byte, error) {
 func (s *InflationResult) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -36260,7 +37405,11 @@ func (e ManageDataResultCode) EncodeTo(enc *xdr.Encoder) error {
 var _ decoderFrom = (*ManageDataResultCode)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *ManageDataResultCode) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *ManageDataResultCode) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding ManageDataResultCode: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding ManageDataResultCode: %s", err)
@@ -36284,7 +37433,7 @@ func (s ManageDataResultCode) MarshalBinary() ([]byte, error) {
 func (s *ManageDataResultCode) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -36386,10 +37535,14 @@ func (u ManageDataResult) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ManageDataResult)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *ManageDataResult) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *ManageDataResult) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding ManageDataResult: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.Code.DecodeFrom(d)
+	nTmp, err = u.Code.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ManageDataResultCode: %s", err)
@@ -36426,7 +37579,7 @@ func (s ManageDataResult) MarshalBinary() ([]byte, error) {
 func (s *ManageDataResult) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -36487,7 +37640,11 @@ func (e BumpSequenceResultCode) EncodeTo(enc *xdr.Encoder) error {
 var _ decoderFrom = (*BumpSequenceResultCode)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *BumpSequenceResultCode) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *BumpSequenceResultCode) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding BumpSequenceResultCode: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding BumpSequenceResultCode: %s", err)
@@ -36511,7 +37668,7 @@ func (s BumpSequenceResultCode) MarshalBinary() ([]byte, error) {
 func (s *BumpSequenceResultCode) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -36589,10 +37746,14 @@ func (u BumpSequenceResult) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*BumpSequenceResult)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *BumpSequenceResult) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *BumpSequenceResult) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding BumpSequenceResult: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.Code.DecodeFrom(d)
+	nTmp, err = u.Code.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding BumpSequenceResultCode: %s", err)
@@ -36620,7 +37781,7 @@ func (s BumpSequenceResult) MarshalBinary() ([]byte, error) {
 func (s *BumpSequenceResult) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -36691,7 +37852,11 @@ func (e CreateClaimableBalanceResultCode) EncodeTo(enc *xdr.Encoder) error {
 var _ decoderFrom = (*CreateClaimableBalanceResultCode)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *CreateClaimableBalanceResultCode) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *CreateClaimableBalanceResultCode) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding CreateClaimableBalanceResultCode: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding CreateClaimableBalanceResultCode: %s", err)
@@ -36715,7 +37880,7 @@ func (s CreateClaimableBalanceResultCode) MarshalBinary() ([]byte, error) {
 func (s *CreateClaimableBalanceResultCode) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -36859,10 +38024,14 @@ func (u CreateClaimableBalanceResult) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*CreateClaimableBalanceResult)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *CreateClaimableBalanceResult) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *CreateClaimableBalanceResult) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding CreateClaimableBalanceResult: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.Code.DecodeFrom(d)
+	nTmp, err = u.Code.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding CreateClaimableBalanceResultCode: %s", err)
@@ -36870,7 +38039,7 @@ func (u *CreateClaimableBalanceResult) DecodeFrom(d *xdr.Decoder) (int, error) {
 	switch CreateClaimableBalanceResultCode(u.Code) {
 	case CreateClaimableBalanceResultCodeCreateClaimableBalanceSuccess:
 		u.BalanceId = new(ClaimableBalanceId)
-		nTmp, err = (*u.BalanceId).DecodeFrom(d)
+		nTmp, err = (*u.BalanceId).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ClaimableBalanceId: %s", err)
@@ -36907,7 +38076,7 @@ func (s CreateClaimableBalanceResult) MarshalBinary() ([]byte, error) {
 func (s *CreateClaimableBalanceResult) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -36978,7 +38147,11 @@ func (e ClaimClaimableBalanceResultCode) EncodeTo(enc *xdr.Encoder) error {
 var _ decoderFrom = (*ClaimClaimableBalanceResultCode)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *ClaimClaimableBalanceResultCode) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *ClaimClaimableBalanceResultCode) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding ClaimClaimableBalanceResultCode: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding ClaimClaimableBalanceResultCode: %s", err)
@@ -37002,7 +38175,7 @@ func (s ClaimClaimableBalanceResultCode) MarshalBinary() ([]byte, error) {
 func (s *ClaimClaimableBalanceResultCode) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -37112,10 +38285,14 @@ func (u ClaimClaimableBalanceResult) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ClaimClaimableBalanceResult)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *ClaimClaimableBalanceResult) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *ClaimClaimableBalanceResult) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding ClaimClaimableBalanceResult: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.Code.DecodeFrom(d)
+	nTmp, err = u.Code.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ClaimClaimableBalanceResultCode: %s", err)
@@ -37155,7 +38332,7 @@ func (s ClaimClaimableBalanceResult) MarshalBinary() ([]byte, error) {
 func (s *ClaimClaimableBalanceResult) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -37223,7 +38400,11 @@ func (e BeginSponsoringFutureReservesResultCode) EncodeTo(enc *xdr.Encoder) erro
 var _ decoderFrom = (*BeginSponsoringFutureReservesResultCode)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *BeginSponsoringFutureReservesResultCode) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *BeginSponsoringFutureReservesResultCode) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding BeginSponsoringFutureReservesResultCode: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding BeginSponsoringFutureReservesResultCode: %s", err)
@@ -37247,7 +38428,7 @@ func (s BeginSponsoringFutureReservesResultCode) MarshalBinary() ([]byte, error)
 func (s *BeginSponsoringFutureReservesResultCode) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -37342,10 +38523,14 @@ func (u BeginSponsoringFutureReservesResult) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*BeginSponsoringFutureReservesResult)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *BeginSponsoringFutureReservesResult) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *BeginSponsoringFutureReservesResult) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding BeginSponsoringFutureReservesResult: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.Code.DecodeFrom(d)
+	nTmp, err = u.Code.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding BeginSponsoringFutureReservesResultCode: %s", err)
@@ -37379,7 +38564,7 @@ func (s BeginSponsoringFutureReservesResult) MarshalBinary() ([]byte, error) {
 func (s *BeginSponsoringFutureReservesResult) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -37441,7 +38626,11 @@ func (e EndSponsoringFutureReservesResultCode) EncodeTo(enc *xdr.Encoder) error 
 var _ decoderFrom = (*EndSponsoringFutureReservesResultCode)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *EndSponsoringFutureReservesResultCode) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *EndSponsoringFutureReservesResultCode) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding EndSponsoringFutureReservesResultCode: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding EndSponsoringFutureReservesResultCode: %s", err)
@@ -37465,7 +38654,7 @@ func (s EndSponsoringFutureReservesResultCode) MarshalBinary() ([]byte, error) {
 func (s *EndSponsoringFutureReservesResultCode) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -37544,10 +38733,14 @@ func (u EndSponsoringFutureReservesResult) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*EndSponsoringFutureReservesResult)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *EndSponsoringFutureReservesResult) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *EndSponsoringFutureReservesResult) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding EndSponsoringFutureReservesResult: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.Code.DecodeFrom(d)
+	nTmp, err = u.Code.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding EndSponsoringFutureReservesResultCode: %s", err)
@@ -37575,7 +38768,7 @@ func (s EndSponsoringFutureReservesResult) MarshalBinary() ([]byte, error) {
 func (s *EndSponsoringFutureReservesResult) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -37649,7 +38842,11 @@ func (e RevokeSponsorshipResultCode) EncodeTo(enc *xdr.Encoder) error {
 var _ decoderFrom = (*RevokeSponsorshipResultCode)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *RevokeSponsorshipResultCode) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *RevokeSponsorshipResultCode) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding RevokeSponsorshipResultCode: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding RevokeSponsorshipResultCode: %s", err)
@@ -37673,7 +38870,7 @@ func (s RevokeSponsorshipResultCode) MarshalBinary() ([]byte, error) {
 func (s *RevokeSponsorshipResultCode) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -37783,10 +38980,14 @@ func (u RevokeSponsorshipResult) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*RevokeSponsorshipResult)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *RevokeSponsorshipResult) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *RevokeSponsorshipResult) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding RevokeSponsorshipResult: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.Code.DecodeFrom(d)
+	nTmp, err = u.Code.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding RevokeSponsorshipResultCode: %s", err)
@@ -37826,7 +39027,7 @@ func (s RevokeSponsorshipResult) MarshalBinary() ([]byte, error) {
 func (s *RevokeSponsorshipResult) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -37897,7 +39098,11 @@ func (e ClawbackResultCode) EncodeTo(enc *xdr.Encoder) error {
 var _ decoderFrom = (*ClawbackResultCode)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *ClawbackResultCode) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *ClawbackResultCode) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding ClawbackResultCode: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding ClawbackResultCode: %s", err)
@@ -37921,7 +39126,7 @@ func (s ClawbackResultCode) MarshalBinary() ([]byte, error) {
 func (s *ClawbackResultCode) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -38023,10 +39228,14 @@ func (u ClawbackResult) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ClawbackResult)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *ClawbackResult) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *ClawbackResult) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding ClawbackResult: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.Code.DecodeFrom(d)
+	nTmp, err = u.Code.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ClawbackResultCode: %s", err)
@@ -38063,7 +39272,7 @@ func (s ClawbackResult) MarshalBinary() ([]byte, error) {
 func (s *ClawbackResult) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -38131,7 +39340,11 @@ func (e ClawbackClaimableBalanceResultCode) EncodeTo(enc *xdr.Encoder) error {
 var _ decoderFrom = (*ClawbackClaimableBalanceResultCode)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *ClawbackClaimableBalanceResultCode) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *ClawbackClaimableBalanceResultCode) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding ClawbackClaimableBalanceResultCode: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding ClawbackClaimableBalanceResultCode: %s", err)
@@ -38155,7 +39368,7 @@ func (s ClawbackClaimableBalanceResultCode) MarshalBinary() ([]byte, error) {
 func (s *ClawbackClaimableBalanceResultCode) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -38250,10 +39463,14 @@ func (u ClawbackClaimableBalanceResult) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ClawbackClaimableBalanceResult)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *ClawbackClaimableBalanceResult) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *ClawbackClaimableBalanceResult) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding ClawbackClaimableBalanceResult: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.Code.DecodeFrom(d)
+	nTmp, err = u.Code.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ClawbackClaimableBalanceResultCode: %s", err)
@@ -38287,7 +39504,7 @@ func (s ClawbackClaimableBalanceResult) MarshalBinary() ([]byte, error) {
 func (s *ClawbackClaimableBalanceResult) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -38362,7 +39579,11 @@ func (e SetTrustLineFlagsResultCode) EncodeTo(enc *xdr.Encoder) error {
 var _ decoderFrom = (*SetTrustLineFlagsResultCode)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *SetTrustLineFlagsResultCode) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *SetTrustLineFlagsResultCode) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding SetTrustLineFlagsResultCode: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding SetTrustLineFlagsResultCode: %s", err)
@@ -38386,7 +39607,7 @@ func (s SetTrustLineFlagsResultCode) MarshalBinary() ([]byte, error) {
 func (s *SetTrustLineFlagsResultCode) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -38496,10 +39717,14 @@ func (u SetTrustLineFlagsResult) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*SetTrustLineFlagsResult)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *SetTrustLineFlagsResult) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *SetTrustLineFlagsResult) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding SetTrustLineFlagsResult: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.Code.DecodeFrom(d)
+	nTmp, err = u.Code.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding SetTrustLineFlagsResultCode: %s", err)
@@ -38539,7 +39764,7 @@ func (s SetTrustLineFlagsResult) MarshalBinary() ([]byte, error) {
 func (s *SetTrustLineFlagsResult) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -38623,7 +39848,11 @@ func (e LiquidityPoolDepositResultCode) EncodeTo(enc *xdr.Encoder) error {
 var _ decoderFrom = (*LiquidityPoolDepositResultCode)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *LiquidityPoolDepositResultCode) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *LiquidityPoolDepositResultCode) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding LiquidityPoolDepositResultCode: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding LiquidityPoolDepositResultCode: %s", err)
@@ -38647,7 +39876,7 @@ func (s LiquidityPoolDepositResultCode) MarshalBinary() ([]byte, error) {
 func (s *LiquidityPoolDepositResultCode) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -38773,10 +40002,14 @@ func (u LiquidityPoolDepositResult) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*LiquidityPoolDepositResult)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *LiquidityPoolDepositResult) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *LiquidityPoolDepositResult) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding LiquidityPoolDepositResult: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.Code.DecodeFrom(d)
+	nTmp, err = u.Code.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding LiquidityPoolDepositResultCode: %s", err)
@@ -38822,7 +40055,7 @@ func (s LiquidityPoolDepositResult) MarshalBinary() ([]byte, error) {
 func (s *LiquidityPoolDepositResult) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -38899,7 +40132,11 @@ func (e LiquidityPoolWithdrawResultCode) EncodeTo(enc *xdr.Encoder) error {
 var _ decoderFrom = (*LiquidityPoolWithdrawResultCode)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *LiquidityPoolWithdrawResultCode) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *LiquidityPoolWithdrawResultCode) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding LiquidityPoolWithdrawResultCode: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding LiquidityPoolWithdrawResultCode: %s", err)
@@ -38923,7 +40160,7 @@ func (s LiquidityPoolWithdrawResultCode) MarshalBinary() ([]byte, error) {
 func (s *LiquidityPoolWithdrawResultCode) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -39033,10 +40270,14 @@ func (u LiquidityPoolWithdrawResult) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*LiquidityPoolWithdrawResult)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *LiquidityPoolWithdrawResult) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *LiquidityPoolWithdrawResult) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding LiquidityPoolWithdrawResult: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.Code.DecodeFrom(d)
+	nTmp, err = u.Code.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding LiquidityPoolWithdrawResultCode: %s", err)
@@ -39076,7 +40317,7 @@ func (s LiquidityPoolWithdrawResult) MarshalBinary() ([]byte, error) {
 func (s *LiquidityPoolWithdrawResult) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -39150,7 +40391,11 @@ func (e InvokeHostFunctionResultCode) EncodeTo(enc *xdr.Encoder) error {
 var _ decoderFrom = (*InvokeHostFunctionResultCode)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *InvokeHostFunctionResultCode) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *InvokeHostFunctionResultCode) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding InvokeHostFunctionResultCode: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding InvokeHostFunctionResultCode: %s", err)
@@ -39174,7 +40419,7 @@ func (s InvokeHostFunctionResultCode) MarshalBinary() ([]byte, error) {
 func (s *InvokeHostFunctionResultCode) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -39317,10 +40562,14 @@ func (u InvokeHostFunctionResult) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*InvokeHostFunctionResult)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *InvokeHostFunctionResult) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *InvokeHostFunctionResult) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding InvokeHostFunctionResult: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.Code.DecodeFrom(d)
+	nTmp, err = u.Code.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding InvokeHostFunctionResultCode: %s", err)
@@ -39328,7 +40577,7 @@ func (u *InvokeHostFunctionResult) DecodeFrom(d *xdr.Decoder) (int, error) {
 	switch InvokeHostFunctionResultCode(u.Code) {
 	case InvokeHostFunctionResultCodeInvokeHostFunctionSuccess:
 		u.Success = new(Hash)
-		nTmp, err = (*u.Success).DecodeFrom(d)
+		nTmp, err = (*u.Success).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding Hash: %s", err)
@@ -39365,7 +40614,7 @@ func (s InvokeHostFunctionResult) MarshalBinary() ([]byte, error) {
 func (s *InvokeHostFunctionResult) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -39433,7 +40682,11 @@ func (e BumpFootprintExpirationResultCode) EncodeTo(enc *xdr.Encoder) error {
 var _ decoderFrom = (*BumpFootprintExpirationResultCode)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *BumpFootprintExpirationResultCode) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *BumpFootprintExpirationResultCode) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding BumpFootprintExpirationResultCode: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding BumpFootprintExpirationResultCode: %s", err)
@@ -39457,7 +40710,7 @@ func (s BumpFootprintExpirationResultCode) MarshalBinary() ([]byte, error) {
 func (s *BumpFootprintExpirationResultCode) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -39551,10 +40804,14 @@ func (u BumpFootprintExpirationResult) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*BumpFootprintExpirationResult)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *BumpFootprintExpirationResult) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *BumpFootprintExpirationResult) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding BumpFootprintExpirationResult: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.Code.DecodeFrom(d)
+	nTmp, err = u.Code.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding BumpFootprintExpirationResultCode: %s", err)
@@ -39588,7 +40845,7 @@ func (s BumpFootprintExpirationResult) MarshalBinary() ([]byte, error) {
 func (s *BumpFootprintExpirationResult) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -39656,7 +40913,11 @@ func (e RestoreFootprintResultCode) EncodeTo(enc *xdr.Encoder) error {
 var _ decoderFrom = (*RestoreFootprintResultCode)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *RestoreFootprintResultCode) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *RestoreFootprintResultCode) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding RestoreFootprintResultCode: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding RestoreFootprintResultCode: %s", err)
@@ -39680,7 +40941,7 @@ func (s RestoreFootprintResultCode) MarshalBinary() ([]byte, error) {
 func (s *RestoreFootprintResultCode) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -39774,10 +41035,14 @@ func (u RestoreFootprintResult) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*RestoreFootprintResult)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *RestoreFootprintResult) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *RestoreFootprintResult) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding RestoreFootprintResult: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.Code.DecodeFrom(d)
+	nTmp, err = u.Code.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding RestoreFootprintResultCode: %s", err)
@@ -39811,7 +41076,7 @@ func (s RestoreFootprintResult) MarshalBinary() ([]byte, error) {
 func (s *RestoreFootprintResult) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -39886,7 +41151,11 @@ func (e OperationResultCode) EncodeTo(enc *xdr.Encoder) error {
 var _ decoderFrom = (*OperationResultCode)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *OperationResultCode) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *OperationResultCode) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding OperationResultCode: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding OperationResultCode: %s", err)
@@ -39910,7 +41179,7 @@ func (s OperationResultCode) MarshalBinary() ([]byte, error) {
 func (s *OperationResultCode) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -41104,10 +42373,14 @@ func (u OperationResultTr) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*OperationResultTr)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *OperationResultTr) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *OperationResultTr) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding OperationResultTr: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.Type.DecodeFrom(d)
+	nTmp, err = u.Type.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding OperationType: %s", err)
@@ -41115,7 +42388,7 @@ func (u *OperationResultTr) DecodeFrom(d *xdr.Decoder) (int, error) {
 	switch OperationType(u.Type) {
 	case OperationTypeCreateAccount:
 		u.CreateAccountResult = new(CreateAccountResult)
-		nTmp, err = (*u.CreateAccountResult).DecodeFrom(d)
+		nTmp, err = (*u.CreateAccountResult).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding CreateAccountResult: %s", err)
@@ -41123,7 +42396,7 @@ func (u *OperationResultTr) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case OperationTypePayment:
 		u.PaymentResult = new(PaymentResult)
-		nTmp, err = (*u.PaymentResult).DecodeFrom(d)
+		nTmp, err = (*u.PaymentResult).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding PaymentResult: %s", err)
@@ -41131,7 +42404,7 @@ func (u *OperationResultTr) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case OperationTypePathPaymentStrictReceive:
 		u.PathPaymentStrictReceiveResult = new(PathPaymentStrictReceiveResult)
-		nTmp, err = (*u.PathPaymentStrictReceiveResult).DecodeFrom(d)
+		nTmp, err = (*u.PathPaymentStrictReceiveResult).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding PathPaymentStrictReceiveResult: %s", err)
@@ -41139,7 +42412,7 @@ func (u *OperationResultTr) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case OperationTypeManageSellOffer:
 		u.ManageSellOfferResult = new(ManageSellOfferResult)
-		nTmp, err = (*u.ManageSellOfferResult).DecodeFrom(d)
+		nTmp, err = (*u.ManageSellOfferResult).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ManageSellOfferResult: %s", err)
@@ -41147,7 +42420,7 @@ func (u *OperationResultTr) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case OperationTypeCreatePassiveSellOffer:
 		u.CreatePassiveSellOfferResult = new(ManageSellOfferResult)
-		nTmp, err = (*u.CreatePassiveSellOfferResult).DecodeFrom(d)
+		nTmp, err = (*u.CreatePassiveSellOfferResult).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ManageSellOfferResult: %s", err)
@@ -41155,7 +42428,7 @@ func (u *OperationResultTr) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case OperationTypeSetOptions:
 		u.SetOptionsResult = new(SetOptionsResult)
-		nTmp, err = (*u.SetOptionsResult).DecodeFrom(d)
+		nTmp, err = (*u.SetOptionsResult).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding SetOptionsResult: %s", err)
@@ -41163,7 +42436,7 @@ func (u *OperationResultTr) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case OperationTypeChangeTrust:
 		u.ChangeTrustResult = new(ChangeTrustResult)
-		nTmp, err = (*u.ChangeTrustResult).DecodeFrom(d)
+		nTmp, err = (*u.ChangeTrustResult).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ChangeTrustResult: %s", err)
@@ -41171,7 +42444,7 @@ func (u *OperationResultTr) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case OperationTypeAllowTrust:
 		u.AllowTrustResult = new(AllowTrustResult)
-		nTmp, err = (*u.AllowTrustResult).DecodeFrom(d)
+		nTmp, err = (*u.AllowTrustResult).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding AllowTrustResult: %s", err)
@@ -41179,7 +42452,7 @@ func (u *OperationResultTr) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case OperationTypeAccountMerge:
 		u.AccountMergeResult = new(AccountMergeResult)
-		nTmp, err = (*u.AccountMergeResult).DecodeFrom(d)
+		nTmp, err = (*u.AccountMergeResult).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding AccountMergeResult: %s", err)
@@ -41187,7 +42460,7 @@ func (u *OperationResultTr) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case OperationTypeInflation:
 		u.InflationResult = new(InflationResult)
-		nTmp, err = (*u.InflationResult).DecodeFrom(d)
+		nTmp, err = (*u.InflationResult).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding InflationResult: %s", err)
@@ -41195,7 +42468,7 @@ func (u *OperationResultTr) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case OperationTypeManageData:
 		u.ManageDataResult = new(ManageDataResult)
-		nTmp, err = (*u.ManageDataResult).DecodeFrom(d)
+		nTmp, err = (*u.ManageDataResult).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ManageDataResult: %s", err)
@@ -41203,7 +42476,7 @@ func (u *OperationResultTr) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case OperationTypeBumpSequence:
 		u.BumpSeqResult = new(BumpSequenceResult)
-		nTmp, err = (*u.BumpSeqResult).DecodeFrom(d)
+		nTmp, err = (*u.BumpSeqResult).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding BumpSequenceResult: %s", err)
@@ -41211,7 +42484,7 @@ func (u *OperationResultTr) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case OperationTypeManageBuyOffer:
 		u.ManageBuyOfferResult = new(ManageBuyOfferResult)
-		nTmp, err = (*u.ManageBuyOfferResult).DecodeFrom(d)
+		nTmp, err = (*u.ManageBuyOfferResult).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ManageBuyOfferResult: %s", err)
@@ -41219,7 +42492,7 @@ func (u *OperationResultTr) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case OperationTypePathPaymentStrictSend:
 		u.PathPaymentStrictSendResult = new(PathPaymentStrictSendResult)
-		nTmp, err = (*u.PathPaymentStrictSendResult).DecodeFrom(d)
+		nTmp, err = (*u.PathPaymentStrictSendResult).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding PathPaymentStrictSendResult: %s", err)
@@ -41227,7 +42500,7 @@ func (u *OperationResultTr) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case OperationTypeCreateClaimableBalance:
 		u.CreateClaimableBalanceResult = new(CreateClaimableBalanceResult)
-		nTmp, err = (*u.CreateClaimableBalanceResult).DecodeFrom(d)
+		nTmp, err = (*u.CreateClaimableBalanceResult).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding CreateClaimableBalanceResult: %s", err)
@@ -41235,7 +42508,7 @@ func (u *OperationResultTr) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case OperationTypeClaimClaimableBalance:
 		u.ClaimClaimableBalanceResult = new(ClaimClaimableBalanceResult)
-		nTmp, err = (*u.ClaimClaimableBalanceResult).DecodeFrom(d)
+		nTmp, err = (*u.ClaimClaimableBalanceResult).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ClaimClaimableBalanceResult: %s", err)
@@ -41243,7 +42516,7 @@ func (u *OperationResultTr) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case OperationTypeBeginSponsoringFutureReserves:
 		u.BeginSponsoringFutureReservesResult = new(BeginSponsoringFutureReservesResult)
-		nTmp, err = (*u.BeginSponsoringFutureReservesResult).DecodeFrom(d)
+		nTmp, err = (*u.BeginSponsoringFutureReservesResult).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding BeginSponsoringFutureReservesResult: %s", err)
@@ -41251,7 +42524,7 @@ func (u *OperationResultTr) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case OperationTypeEndSponsoringFutureReserves:
 		u.EndSponsoringFutureReservesResult = new(EndSponsoringFutureReservesResult)
-		nTmp, err = (*u.EndSponsoringFutureReservesResult).DecodeFrom(d)
+		nTmp, err = (*u.EndSponsoringFutureReservesResult).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding EndSponsoringFutureReservesResult: %s", err)
@@ -41259,7 +42532,7 @@ func (u *OperationResultTr) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case OperationTypeRevokeSponsorship:
 		u.RevokeSponsorshipResult = new(RevokeSponsorshipResult)
-		nTmp, err = (*u.RevokeSponsorshipResult).DecodeFrom(d)
+		nTmp, err = (*u.RevokeSponsorshipResult).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding RevokeSponsorshipResult: %s", err)
@@ -41267,7 +42540,7 @@ func (u *OperationResultTr) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case OperationTypeClawback:
 		u.ClawbackResult = new(ClawbackResult)
-		nTmp, err = (*u.ClawbackResult).DecodeFrom(d)
+		nTmp, err = (*u.ClawbackResult).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ClawbackResult: %s", err)
@@ -41275,7 +42548,7 @@ func (u *OperationResultTr) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case OperationTypeClawbackClaimableBalance:
 		u.ClawbackClaimableBalanceResult = new(ClawbackClaimableBalanceResult)
-		nTmp, err = (*u.ClawbackClaimableBalanceResult).DecodeFrom(d)
+		nTmp, err = (*u.ClawbackClaimableBalanceResult).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ClawbackClaimableBalanceResult: %s", err)
@@ -41283,7 +42556,7 @@ func (u *OperationResultTr) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case OperationTypeSetTrustLineFlags:
 		u.SetTrustLineFlagsResult = new(SetTrustLineFlagsResult)
-		nTmp, err = (*u.SetTrustLineFlagsResult).DecodeFrom(d)
+		nTmp, err = (*u.SetTrustLineFlagsResult).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding SetTrustLineFlagsResult: %s", err)
@@ -41291,7 +42564,7 @@ func (u *OperationResultTr) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case OperationTypeLiquidityPoolDeposit:
 		u.LiquidityPoolDepositResult = new(LiquidityPoolDepositResult)
-		nTmp, err = (*u.LiquidityPoolDepositResult).DecodeFrom(d)
+		nTmp, err = (*u.LiquidityPoolDepositResult).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding LiquidityPoolDepositResult: %s", err)
@@ -41299,7 +42572,7 @@ func (u *OperationResultTr) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case OperationTypeLiquidityPoolWithdraw:
 		u.LiquidityPoolWithdrawResult = new(LiquidityPoolWithdrawResult)
-		nTmp, err = (*u.LiquidityPoolWithdrawResult).DecodeFrom(d)
+		nTmp, err = (*u.LiquidityPoolWithdrawResult).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding LiquidityPoolWithdrawResult: %s", err)
@@ -41307,7 +42580,7 @@ func (u *OperationResultTr) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case OperationTypeInvokeHostFunction:
 		u.InvokeHostFunctionResult = new(InvokeHostFunctionResult)
-		nTmp, err = (*u.InvokeHostFunctionResult).DecodeFrom(d)
+		nTmp, err = (*u.InvokeHostFunctionResult).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding InvokeHostFunctionResult: %s", err)
@@ -41315,7 +42588,7 @@ func (u *OperationResultTr) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case OperationTypeBumpFootprintExpiration:
 		u.BumpFootprintExpirationResult = new(BumpFootprintExpirationResult)
-		nTmp, err = (*u.BumpFootprintExpirationResult).DecodeFrom(d)
+		nTmp, err = (*u.BumpFootprintExpirationResult).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding BumpFootprintExpirationResult: %s", err)
@@ -41323,7 +42596,7 @@ func (u *OperationResultTr) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case OperationTypeRestoreFootprint:
 		u.RestoreFootprintResult = new(RestoreFootprintResult)
-		nTmp, err = (*u.RestoreFootprintResult).DecodeFrom(d)
+		nTmp, err = (*u.RestoreFootprintResult).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding RestoreFootprintResult: %s", err)
@@ -41345,7 +42618,7 @@ func (s OperationResultTr) MarshalBinary() ([]byte, error) {
 func (s *OperationResultTr) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -41553,10 +42826,14 @@ func (u OperationResult) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*OperationResult)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *OperationResult) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *OperationResult) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding OperationResult: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.Code.DecodeFrom(d)
+	nTmp, err = u.Code.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding OperationResultCode: %s", err)
@@ -41564,7 +42841,7 @@ func (u *OperationResult) DecodeFrom(d *xdr.Decoder) (int, error) {
 	switch OperationResultCode(u.Code) {
 	case OperationResultCodeOpInner:
 		u.Tr = new(OperationResultTr)
-		nTmp, err = (*u.Tr).DecodeFrom(d)
+		nTmp, err = (*u.Tr).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding OperationResultTr: %s", err)
@@ -41604,7 +42881,7 @@ func (s OperationResult) MarshalBinary() ([]byte, error) {
 func (s *OperationResult) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -41718,7 +42995,11 @@ func (e TransactionResultCode) EncodeTo(enc *xdr.Encoder) error {
 var _ decoderFrom = (*TransactionResultCode)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *TransactionResultCode) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *TransactionResultCode) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding TransactionResultCode: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding TransactionResultCode: %s", err)
@@ -41742,7 +43023,7 @@ func (s TransactionResultCode) MarshalBinary() ([]byte, error) {
 func (s *TransactionResultCode) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -41992,10 +43273,14 @@ func (u InnerTransactionResultResult) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*InnerTransactionResultResult)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *InnerTransactionResultResult) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *InnerTransactionResultResult) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding InnerTransactionResultResult: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.Code.DecodeFrom(d)
+	nTmp, err = u.Code.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding TransactionResultCode: %s", err)
@@ -42013,7 +43298,7 @@ func (u *InnerTransactionResultResult) DecodeFrom(d *xdr.Decoder) (int, error) {
 		if l > 0 {
 			(*u.Results) = make([]OperationResult, l)
 			for i := uint32(0); i < l; i++ {
-				nTmp, err = (*u.Results)[i].DecodeFrom(d)
+				nTmp, err = (*u.Results)[i].DecodeFrom(d, maxDepth)
 				n += nTmp
 				if err != nil {
 					return n, fmt.Errorf("decoding OperationResult: %s", err)
@@ -42033,7 +43318,7 @@ func (u *InnerTransactionResultResult) DecodeFrom(d *xdr.Decoder) (int, error) {
 		if l > 0 {
 			(*u.Results) = make([]OperationResult, l)
 			for i := uint32(0); i < l; i++ {
-				nTmp, err = (*u.Results)[i].DecodeFrom(d)
+				nTmp, err = (*u.Results)[i].DecodeFrom(d, maxDepth)
 				n += nTmp
 				if err != nil {
 					return n, fmt.Errorf("decoding OperationResult: %s", err)
@@ -42102,7 +43387,7 @@ func (s InnerTransactionResultResult) MarshalBinary() ([]byte, error) {
 func (s *InnerTransactionResultResult) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -42171,7 +43456,11 @@ func (u InnerTransactionResultExt) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*InnerTransactionResultExt)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *InnerTransactionResultExt) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *InnerTransactionResultExt) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding InnerTransactionResultExt: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	u.V, nTmp, err = d.DecodeInt()
@@ -42199,7 +43488,7 @@ func (s InnerTransactionResultExt) MarshalBinary() ([]byte, error) {
 func (s *InnerTransactionResultExt) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -42279,20 +43568,24 @@ func (s *InnerTransactionResult) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*InnerTransactionResult)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *InnerTransactionResult) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *InnerTransactionResult) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.FeeCharged.DecodeFrom(d)
+	nTmp, err = s.FeeCharged.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int64: %s", err)
 	}
-	nTmp, err = s.Result.DecodeFrom(d)
+	nTmp, err = s.Result.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding InnerTransactionResultResult: %s", err)
 	}
-	nTmp, err = s.Ext.DecodeFrom(d)
+	nTmp, err = s.Ext.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding InnerTransactionResultExt: %s", err)
@@ -42312,7 +43605,7 @@ func (s InnerTransactionResult) MarshalBinary() ([]byte, error) {
 func (s *InnerTransactionResult) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -42354,15 +43647,19 @@ func (s *InnerTransactionResultPair) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*InnerTransactionResultPair)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *InnerTransactionResultPair) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *InnerTransactionResultPair) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.TransactionHash.DecodeFrom(d)
+	nTmp, err = s.TransactionHash.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Hash: %s", err)
 	}
-	nTmp, err = s.Result.DecodeFrom(d)
+	nTmp, err = s.Result.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding InnerTransactionResult: %s", err)
@@ -42382,7 +43679,7 @@ func (s InnerTransactionResultPair) MarshalBinary() ([]byte, error) {
 func (s *InnerTransactionResultPair) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -42688,10 +43985,14 @@ func (u TransactionResultResult) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*TransactionResultResult)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *TransactionResultResult) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *TransactionResultResult) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding TransactionResultResult: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.Code.DecodeFrom(d)
+	nTmp, err = u.Code.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding TransactionResultCode: %s", err)
@@ -42699,7 +44000,7 @@ func (u *TransactionResultResult) DecodeFrom(d *xdr.Decoder) (int, error) {
 	switch TransactionResultCode(u.Code) {
 	case TransactionResultCodeTxFeeBumpInnerSuccess:
 		u.InnerResultPair = new(InnerTransactionResultPair)
-		nTmp, err = (*u.InnerResultPair).DecodeFrom(d)
+		nTmp, err = (*u.InnerResultPair).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding InnerTransactionResultPair: %s", err)
@@ -42707,7 +44008,7 @@ func (u *TransactionResultResult) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case TransactionResultCodeTxFeeBumpInnerFailed:
 		u.InnerResultPair = new(InnerTransactionResultPair)
-		nTmp, err = (*u.InnerResultPair).DecodeFrom(d)
+		nTmp, err = (*u.InnerResultPair).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding InnerTransactionResultPair: %s", err)
@@ -42725,7 +44026,7 @@ func (u *TransactionResultResult) DecodeFrom(d *xdr.Decoder) (int, error) {
 		if l > 0 {
 			(*u.Results) = make([]OperationResult, l)
 			for i := uint32(0); i < l; i++ {
-				nTmp, err = (*u.Results)[i].DecodeFrom(d)
+				nTmp, err = (*u.Results)[i].DecodeFrom(d, maxDepth)
 				n += nTmp
 				if err != nil {
 					return n, fmt.Errorf("decoding OperationResult: %s", err)
@@ -42745,7 +44046,7 @@ func (u *TransactionResultResult) DecodeFrom(d *xdr.Decoder) (int, error) {
 		if l > 0 {
 			(*u.Results) = make([]OperationResult, l)
 			for i := uint32(0); i < l; i++ {
-				nTmp, err = (*u.Results)[i].DecodeFrom(d)
+				nTmp, err = (*u.Results)[i].DecodeFrom(d, maxDepth)
 				n += nTmp
 				if err != nil {
 					return n, fmt.Errorf("decoding OperationResult: %s", err)
@@ -42814,7 +44115,7 @@ func (s TransactionResultResult) MarshalBinary() ([]byte, error) {
 func (s *TransactionResultResult) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -42883,7 +44184,11 @@ func (u TransactionResultExt) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*TransactionResultExt)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *TransactionResultExt) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *TransactionResultExt) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding TransactionResultExt: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	u.V, nTmp, err = d.DecodeInt()
@@ -42911,7 +44216,7 @@ func (s TransactionResultExt) MarshalBinary() ([]byte, error) {
 func (s *TransactionResultExt) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -42992,20 +44297,24 @@ func (s *TransactionResult) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*TransactionResult)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *TransactionResult) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *TransactionResult) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.FeeCharged.DecodeFrom(d)
+	nTmp, err = s.FeeCharged.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int64: %s", err)
 	}
-	nTmp, err = s.Result.DecodeFrom(d)
+	nTmp, err = s.Result.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding TransactionResultResult: %s", err)
 	}
-	nTmp, err = s.Ext.DecodeFrom(d)
+	nTmp, err = s.Ext.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding TransactionResultExt: %s", err)
@@ -43025,7 +44334,7 @@ func (s TransactionResult) MarshalBinary() ([]byte, error) {
 func (s *TransactionResult) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -43062,7 +44371,11 @@ func (s *Hash) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*Hash)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *Hash) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *Hash) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding Hash: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	nTmp, err = d.DecodeFixedOpaqueInplace(s[:])
@@ -43085,7 +44398,7 @@ func (s Hash) MarshalBinary() ([]byte, error) {
 func (s *Hash) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -43122,7 +44435,11 @@ func (s *Uint256) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*Uint256)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *Uint256) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *Uint256) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding Uint256: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	nTmp, err = d.DecodeFixedOpaqueInplace(s[:])
@@ -43145,7 +44462,7 @@ func (s Uint256) MarshalBinary() ([]byte, error) {
 func (s *Uint256) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -43177,7 +44494,11 @@ func (s Uint32) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*Uint32)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *Uint32) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *Uint32) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding Uint32: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	var v uint32
@@ -43202,7 +44523,7 @@ func (s Uint32) MarshalBinary() ([]byte, error) {
 func (s *Uint32) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -43234,7 +44555,11 @@ func (s Int32) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*Int32)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *Int32) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *Int32) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding Int32: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	var v int32
@@ -43259,7 +44584,7 @@ func (s Int32) MarshalBinary() ([]byte, error) {
 func (s *Int32) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -43291,7 +44616,11 @@ func (s Uint64) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*Uint64)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *Uint64) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *Uint64) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding Uint64: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	var v uint64
@@ -43316,7 +44645,7 @@ func (s Uint64) MarshalBinary() ([]byte, error) {
 func (s *Uint64) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -43348,7 +44677,11 @@ func (s Int64) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*Int64)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *Int64) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *Int64) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding Int64: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	var v int64
@@ -43373,7 +44706,7 @@ func (s Int64) MarshalBinary() ([]byte, error) {
 func (s *Int64) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -43405,10 +44738,14 @@ func (s TimePoint) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*TimePoint)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *TimePoint) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *TimePoint) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding TimePoint: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = (*Uint64)(s).DecodeFrom(d)
+	nTmp, err = (*Uint64)(s).DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint64: %s", err)
@@ -43428,7 +44765,7 @@ func (s TimePoint) MarshalBinary() ([]byte, error) {
 func (s *TimePoint) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -43460,10 +44797,14 @@ func (s Duration) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*Duration)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *Duration) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *Duration) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding Duration: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = (*Uint64)(s).DecodeFrom(d)
+	nTmp, err = (*Uint64)(s).DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint64: %s", err)
@@ -43483,7 +44824,7 @@ func (s Duration) MarshalBinary() ([]byte, error) {
 func (s *Duration) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -43552,7 +44893,11 @@ func (u ExtensionPoint) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ExtensionPoint)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *ExtensionPoint) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *ExtensionPoint) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding ExtensionPoint: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	u.V, nTmp, err = d.DecodeInt()
@@ -43580,7 +44925,7 @@ func (s ExtensionPoint) MarshalBinary() ([]byte, error) {
 func (s *ExtensionPoint) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -43650,7 +44995,11 @@ func (e CryptoKeyType) EncodeTo(enc *xdr.Encoder) error {
 var _ decoderFrom = (*CryptoKeyType)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *CryptoKeyType) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *CryptoKeyType) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding CryptoKeyType: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding CryptoKeyType: %s", err)
@@ -43674,7 +45023,7 @@ func (s CryptoKeyType) MarshalBinary() ([]byte, error) {
 func (s *CryptoKeyType) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -43730,7 +45079,11 @@ func (e PublicKeyType) EncodeTo(enc *xdr.Encoder) error {
 var _ decoderFrom = (*PublicKeyType)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *PublicKeyType) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *PublicKeyType) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding PublicKeyType: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding PublicKeyType: %s", err)
@@ -43754,7 +45107,7 @@ func (s PublicKeyType) MarshalBinary() ([]byte, error) {
 func (s *PublicKeyType) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -43819,7 +45172,11 @@ func (e SignerKeyType) EncodeTo(enc *xdr.Encoder) error {
 var _ decoderFrom = (*SignerKeyType)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *SignerKeyType) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *SignerKeyType) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding SignerKeyType: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding SignerKeyType: %s", err)
@@ -43843,7 +45200,7 @@ func (s SignerKeyType) MarshalBinary() ([]byte, error) {
 func (s *SignerKeyType) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -43945,10 +45302,14 @@ func (u PublicKey) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*PublicKey)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *PublicKey) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *PublicKey) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding PublicKey: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.Type.DecodeFrom(d)
+	nTmp, err = u.Type.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding PublicKeyType: %s", err)
@@ -43956,7 +45317,7 @@ func (u *PublicKey) DecodeFrom(d *xdr.Decoder) (int, error) {
 	switch PublicKeyType(u.Type) {
 	case PublicKeyTypePublicKeyTypeEd25519:
 		u.Ed25519 = new(Uint256)
-		nTmp, err = (*u.Ed25519).DecodeFrom(d)
+		nTmp, err = (*u.Ed25519).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding Uint256: %s", err)
@@ -43978,7 +45339,7 @@ func (s PublicKey) MarshalBinary() ([]byte, error) {
 func (s *PublicKey) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -44022,10 +45383,14 @@ func (s *SignerKeyEd25519SignedPayload) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*SignerKeyEd25519SignedPayload)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *SignerKeyEd25519SignedPayload) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *SignerKeyEd25519SignedPayload) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.Ed25519.DecodeFrom(d)
+	nTmp, err = s.Ed25519.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint256: %s", err)
@@ -44050,7 +45415,7 @@ func (s SignerKeyEd25519SignedPayload) MarshalBinary() ([]byte, error) {
 func (s *SignerKeyEd25519SignedPayload) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -44286,10 +45651,14 @@ func (u SignerKey) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*SignerKey)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *SignerKey) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *SignerKey) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding SignerKey: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.Type.DecodeFrom(d)
+	nTmp, err = u.Type.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding SignerKeyType: %s", err)
@@ -44297,7 +45666,7 @@ func (u *SignerKey) DecodeFrom(d *xdr.Decoder) (int, error) {
 	switch SignerKeyType(u.Type) {
 	case SignerKeyTypeSignerKeyTypeEd25519:
 		u.Ed25519 = new(Uint256)
-		nTmp, err = (*u.Ed25519).DecodeFrom(d)
+		nTmp, err = (*u.Ed25519).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding Uint256: %s", err)
@@ -44305,7 +45674,7 @@ func (u *SignerKey) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case SignerKeyTypeSignerKeyTypePreAuthTx:
 		u.PreAuthTx = new(Uint256)
-		nTmp, err = (*u.PreAuthTx).DecodeFrom(d)
+		nTmp, err = (*u.PreAuthTx).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding Uint256: %s", err)
@@ -44313,7 +45682,7 @@ func (u *SignerKey) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case SignerKeyTypeSignerKeyTypeHashX:
 		u.HashX = new(Uint256)
-		nTmp, err = (*u.HashX).DecodeFrom(d)
+		nTmp, err = (*u.HashX).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding Uint256: %s", err)
@@ -44321,7 +45690,7 @@ func (u *SignerKey) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case SignerKeyTypeSignerKeyTypeEd25519SignedPayload:
 		u.Ed25519SignedPayload = new(SignerKeyEd25519SignedPayload)
-		nTmp, err = (*u.Ed25519SignedPayload).DecodeFrom(d)
+		nTmp, err = (*u.Ed25519SignedPayload).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding SignerKeyEd25519SignedPayload: %s", err)
@@ -44343,7 +45712,7 @@ func (s SignerKey) MarshalBinary() ([]byte, error) {
 func (s *SignerKey) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -44380,7 +45749,11 @@ func (s Signature) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*Signature)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *Signature) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *Signature) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding Signature: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	(*s), nTmp, err = d.DecodeOpaque(64)
@@ -44403,7 +45776,7 @@ func (s Signature) MarshalBinary() ([]byte, error) {
 func (s *Signature) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -44440,7 +45813,11 @@ func (s *SignatureHint) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*SignatureHint)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *SignatureHint) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *SignatureHint) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding SignatureHint: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	nTmp, err = d.DecodeFixedOpaqueInplace(s[:])
@@ -44463,7 +45840,7 @@ func (s SignatureHint) MarshalBinary() ([]byte, error) {
 func (s *SignatureHint) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -44526,10 +45903,14 @@ func (s NodeId) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*NodeId)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *NodeId) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *NodeId) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding NodeId: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = (*PublicKey)(s).DecodeFrom(d)
+	nTmp, err = (*PublicKey)(s).DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding PublicKey: %s", err)
@@ -44549,7 +45930,7 @@ func (s NodeId) MarshalBinary() ([]byte, error) {
 func (s *NodeId) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -44612,10 +45993,14 @@ func (s AccountId) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*AccountId)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *AccountId) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *AccountId) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding AccountId: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = (*PublicKey)(s).DecodeFrom(d)
+	nTmp, err = (*PublicKey)(s).DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding PublicKey: %s", err)
@@ -44635,7 +46020,7 @@ func (s AccountId) MarshalBinary() ([]byte, error) {
 func (s *AccountId) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -44672,7 +46057,11 @@ func (s *Curve25519Secret) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*Curve25519Secret)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *Curve25519Secret) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *Curve25519Secret) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	nTmp, err = d.DecodeFixedOpaqueInplace(s.Key[:])
@@ -44695,7 +46084,7 @@ func (s Curve25519Secret) MarshalBinary() ([]byte, error) {
 func (s *Curve25519Secret) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -44732,7 +46121,11 @@ func (s *Curve25519Public) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*Curve25519Public)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *Curve25519Public) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *Curve25519Public) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	nTmp, err = d.DecodeFixedOpaqueInplace(s.Key[:])
@@ -44755,7 +46148,7 @@ func (s Curve25519Public) MarshalBinary() ([]byte, error) {
 func (s *Curve25519Public) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -44792,7 +46185,11 @@ func (s *HmacSha256Key) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*HmacSha256Key)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *HmacSha256Key) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *HmacSha256Key) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	nTmp, err = d.DecodeFixedOpaqueInplace(s.Key[:])
@@ -44815,7 +46212,7 @@ func (s HmacSha256Key) MarshalBinary() ([]byte, error) {
 func (s *HmacSha256Key) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -44852,7 +46249,11 @@ func (s *HmacSha256Mac) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*HmacSha256Mac)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *HmacSha256Mac) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *HmacSha256Mac) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	nTmp, err = d.DecodeFixedOpaqueInplace(s.Mac[:])
@@ -44875,7 +46276,7 @@ func (s HmacSha256Mac) MarshalBinary() ([]byte, error) {
 func (s *HmacSha256Mac) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -44931,7 +46332,11 @@ func (e ScEnvMetaKind) EncodeTo(enc *xdr.Encoder) error {
 var _ decoderFrom = (*ScEnvMetaKind)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *ScEnvMetaKind) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *ScEnvMetaKind) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding ScEnvMetaKind: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding ScEnvMetaKind: %s", err)
@@ -44955,7 +46360,7 @@ func (s ScEnvMetaKind) MarshalBinary() ([]byte, error) {
 func (s *ScEnvMetaKind) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -45057,10 +46462,14 @@ func (u ScEnvMetaEntry) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ScEnvMetaEntry)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *ScEnvMetaEntry) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *ScEnvMetaEntry) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding ScEnvMetaEntry: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.Kind.DecodeFrom(d)
+	nTmp, err = u.Kind.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ScEnvMetaKind: %s", err)
@@ -45068,7 +46477,7 @@ func (u *ScEnvMetaEntry) DecodeFrom(d *xdr.Decoder) (int, error) {
 	switch ScEnvMetaKind(u.Kind) {
 	case ScEnvMetaKindScEnvMetaKindInterfaceVersion:
 		u.InterfaceVersion = new(Uint64)
-		nTmp, err = (*u.InterfaceVersion).DecodeFrom(d)
+		nTmp, err = (*u.InterfaceVersion).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding Uint64: %s", err)
@@ -45090,7 +46499,7 @@ func (s ScEnvMetaEntry) MarshalBinary() ([]byte, error) {
 func (s *ScEnvMetaEntry) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -45132,7 +46541,11 @@ func (s *ScMetaV0) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ScMetaV0)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *ScMetaV0) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *ScMetaV0) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	s.Key, nTmp, err = d.DecodeString(0)
@@ -45160,7 +46573,7 @@ func (s ScMetaV0) MarshalBinary() ([]byte, error) {
 func (s *ScMetaV0) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -45216,7 +46629,11 @@ func (e ScMetaKind) EncodeTo(enc *xdr.Encoder) error {
 var _ decoderFrom = (*ScMetaKind)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *ScMetaKind) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *ScMetaKind) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding ScMetaKind: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding ScMetaKind: %s", err)
@@ -45240,7 +46657,7 @@ func (s ScMetaKind) MarshalBinary() ([]byte, error) {
 func (s *ScMetaKind) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -45342,10 +46759,14 @@ func (u ScMetaEntry) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ScMetaEntry)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *ScMetaEntry) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *ScMetaEntry) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding ScMetaEntry: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.Kind.DecodeFrom(d)
+	nTmp, err = u.Kind.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ScMetaKind: %s", err)
@@ -45353,7 +46774,7 @@ func (u *ScMetaEntry) DecodeFrom(d *xdr.Decoder) (int, error) {
 	switch ScMetaKind(u.Kind) {
 	case ScMetaKindScMetaV0:
 		u.V0 = new(ScMetaV0)
-		nTmp, err = (*u.V0).DecodeFrom(d)
+		nTmp, err = (*u.V0).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ScMetaV0: %s", err)
@@ -45375,7 +46796,7 @@ func (s ScMetaEntry) MarshalBinary() ([]byte, error) {
 func (s *ScMetaEntry) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -45514,7 +46935,11 @@ func (e ScSpecType) EncodeTo(enc *xdr.Encoder) error {
 var _ decoderFrom = (*ScSpecType)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *ScSpecType) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *ScSpecType) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding ScSpecType: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding ScSpecType: %s", err)
@@ -45538,7 +46963,7 @@ func (s ScSpecType) MarshalBinary() ([]byte, error) {
 func (s *ScSpecType) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -45575,10 +47000,14 @@ func (s *ScSpecTypeOption) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ScSpecTypeOption)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *ScSpecTypeOption) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *ScSpecTypeOption) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.ValueType.DecodeFrom(d)
+	nTmp, err = s.ValueType.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ScSpecTypeDef: %s", err)
@@ -45598,7 +47027,7 @@ func (s ScSpecTypeOption) MarshalBinary() ([]byte, error) {
 func (s *ScSpecTypeOption) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -45640,15 +47069,19 @@ func (s *ScSpecTypeResult) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ScSpecTypeResult)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *ScSpecTypeResult) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *ScSpecTypeResult) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.OkType.DecodeFrom(d)
+	nTmp, err = s.OkType.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ScSpecTypeDef: %s", err)
 	}
-	nTmp, err = s.ErrorType.DecodeFrom(d)
+	nTmp, err = s.ErrorType.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ScSpecTypeDef: %s", err)
@@ -45668,7 +47101,7 @@ func (s ScSpecTypeResult) MarshalBinary() ([]byte, error) {
 func (s *ScSpecTypeResult) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -45705,10 +47138,14 @@ func (s *ScSpecTypeVec) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ScSpecTypeVec)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *ScSpecTypeVec) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *ScSpecTypeVec) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.ElementType.DecodeFrom(d)
+	nTmp, err = s.ElementType.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ScSpecTypeDef: %s", err)
@@ -45728,7 +47165,7 @@ func (s ScSpecTypeVec) MarshalBinary() ([]byte, error) {
 func (s *ScSpecTypeVec) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -45770,15 +47207,19 @@ func (s *ScSpecTypeMap) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ScSpecTypeMap)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *ScSpecTypeMap) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *ScSpecTypeMap) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.KeyType.DecodeFrom(d)
+	nTmp, err = s.KeyType.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ScSpecTypeDef: %s", err)
 	}
-	nTmp, err = s.ValueType.DecodeFrom(d)
+	nTmp, err = s.ValueType.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ScSpecTypeDef: %s", err)
@@ -45798,7 +47239,7 @@ func (s ScSpecTypeMap) MarshalBinary() ([]byte, error) {
 func (s *ScSpecTypeMap) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -45840,7 +47281,11 @@ func (s *ScSpecTypeTuple) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ScSpecTypeTuple)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *ScSpecTypeTuple) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *ScSpecTypeTuple) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	var l uint32
@@ -45856,7 +47301,7 @@ func (s *ScSpecTypeTuple) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if l > 0 {
 		s.ValueTypes = make([]ScSpecTypeDef, l)
 		for i := uint32(0); i < l; i++ {
-			nTmp, err = s.ValueTypes[i].DecodeFrom(d)
+			nTmp, err = s.ValueTypes[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
 				return n, fmt.Errorf("decoding ScSpecTypeDef: %s", err)
@@ -45878,7 +47323,7 @@ func (s ScSpecTypeTuple) MarshalBinary() ([]byte, error) {
 func (s *ScSpecTypeTuple) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -45915,10 +47360,14 @@ func (s *ScSpecTypeBytesN) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ScSpecTypeBytesN)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *ScSpecTypeBytesN) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *ScSpecTypeBytesN) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.N.DecodeFrom(d)
+	nTmp, err = s.N.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
@@ -45938,7 +47387,7 @@ func (s ScSpecTypeBytesN) MarshalBinary() ([]byte, error) {
 func (s *ScSpecTypeBytesN) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -45975,7 +47424,11 @@ func (s *ScSpecTypeUdt) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ScSpecTypeUdt)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *ScSpecTypeUdt) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *ScSpecTypeUdt) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	s.Name, nTmp, err = d.DecodeString(60)
@@ -45998,7 +47451,7 @@ func (s ScSpecTypeUdt) MarshalBinary() ([]byte, error) {
 func (s *ScSpecTypeUdt) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -46497,10 +47950,14 @@ func (u ScSpecTypeDef) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ScSpecTypeDef)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *ScSpecTypeDef) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *ScSpecTypeDef) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding ScSpecTypeDef: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.Type.DecodeFrom(d)
+	nTmp, err = u.Type.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ScSpecType: %s", err)
@@ -46562,7 +48019,7 @@ func (u *ScSpecTypeDef) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case ScSpecTypeScSpecTypeOption:
 		u.Option = new(ScSpecTypeOption)
-		nTmp, err = (*u.Option).DecodeFrom(d)
+		nTmp, err = (*u.Option).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ScSpecTypeOption: %s", err)
@@ -46570,7 +48027,7 @@ func (u *ScSpecTypeDef) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case ScSpecTypeScSpecTypeResult:
 		u.Result = new(ScSpecTypeResult)
-		nTmp, err = (*u.Result).DecodeFrom(d)
+		nTmp, err = (*u.Result).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ScSpecTypeResult: %s", err)
@@ -46578,7 +48035,7 @@ func (u *ScSpecTypeDef) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case ScSpecTypeScSpecTypeVec:
 		u.Vec = new(ScSpecTypeVec)
-		nTmp, err = (*u.Vec).DecodeFrom(d)
+		nTmp, err = (*u.Vec).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ScSpecTypeVec: %s", err)
@@ -46586,7 +48043,7 @@ func (u *ScSpecTypeDef) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case ScSpecTypeScSpecTypeMap:
 		u.Map = new(ScSpecTypeMap)
-		nTmp, err = (*u.Map).DecodeFrom(d)
+		nTmp, err = (*u.Map).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ScSpecTypeMap: %s", err)
@@ -46594,7 +48051,7 @@ func (u *ScSpecTypeDef) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case ScSpecTypeScSpecTypeTuple:
 		u.Tuple = new(ScSpecTypeTuple)
-		nTmp, err = (*u.Tuple).DecodeFrom(d)
+		nTmp, err = (*u.Tuple).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ScSpecTypeTuple: %s", err)
@@ -46602,7 +48059,7 @@ func (u *ScSpecTypeDef) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case ScSpecTypeScSpecTypeBytesN:
 		u.BytesN = new(ScSpecTypeBytesN)
-		nTmp, err = (*u.BytesN).DecodeFrom(d)
+		nTmp, err = (*u.BytesN).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ScSpecTypeBytesN: %s", err)
@@ -46610,7 +48067,7 @@ func (u *ScSpecTypeDef) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case ScSpecTypeScSpecTypeUdt:
 		u.Udt = new(ScSpecTypeUdt)
-		nTmp, err = (*u.Udt).DecodeFrom(d)
+		nTmp, err = (*u.Udt).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ScSpecTypeUdt: %s", err)
@@ -46632,7 +48089,7 @@ func (s ScSpecTypeDef) MarshalBinary() ([]byte, error) {
 func (s *ScSpecTypeDef) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -46679,7 +48136,11 @@ func (s *ScSpecUdtStructFieldV0) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ScSpecUdtStructFieldV0)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *ScSpecUdtStructFieldV0) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *ScSpecUdtStructFieldV0) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	s.Doc, nTmp, err = d.DecodeString(1024)
@@ -46692,7 +48153,7 @@ func (s *ScSpecUdtStructFieldV0) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if err != nil {
 		return n, fmt.Errorf("decoding Name: %s", err)
 	}
-	nTmp, err = s.Type.DecodeFrom(d)
+	nTmp, err = s.Type.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ScSpecTypeDef: %s", err)
@@ -46712,7 +48173,7 @@ func (s ScSpecUdtStructFieldV0) MarshalBinary() ([]byte, error) {
 func (s *ScSpecUdtStructFieldV0) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -46769,7 +48230,11 @@ func (s *ScSpecUdtStructV0) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ScSpecUdtStructV0)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *ScSpecUdtStructV0) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *ScSpecUdtStructV0) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	s.Doc, nTmp, err = d.DecodeString(1024)
@@ -46800,7 +48265,7 @@ func (s *ScSpecUdtStructV0) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if l > 0 {
 		s.Fields = make([]ScSpecUdtStructFieldV0, l)
 		for i := uint32(0); i < l; i++ {
-			nTmp, err = s.Fields[i].DecodeFrom(d)
+			nTmp, err = s.Fields[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
 				return n, fmt.Errorf("decoding ScSpecUdtStructFieldV0: %s", err)
@@ -46822,7 +48287,7 @@ func (s ScSpecUdtStructV0) MarshalBinary() ([]byte, error) {
 func (s *ScSpecUdtStructV0) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -46864,7 +48329,11 @@ func (s *ScSpecUdtUnionCaseVoidV0) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ScSpecUdtUnionCaseVoidV0)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *ScSpecUdtUnionCaseVoidV0) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *ScSpecUdtUnionCaseVoidV0) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	s.Doc, nTmp, err = d.DecodeString(1024)
@@ -46892,7 +48361,7 @@ func (s ScSpecUdtUnionCaseVoidV0) MarshalBinary() ([]byte, error) {
 func (s *ScSpecUdtUnionCaseVoidV0) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -46944,7 +48413,11 @@ func (s *ScSpecUdtUnionCaseTupleV0) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ScSpecUdtUnionCaseTupleV0)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *ScSpecUdtUnionCaseTupleV0) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *ScSpecUdtUnionCaseTupleV0) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	s.Doc, nTmp, err = d.DecodeString(1024)
@@ -46970,7 +48443,7 @@ func (s *ScSpecUdtUnionCaseTupleV0) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if l > 0 {
 		s.Type = make([]ScSpecTypeDef, l)
 		for i := uint32(0); i < l; i++ {
-			nTmp, err = s.Type[i].DecodeFrom(d)
+			nTmp, err = s.Type[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
 				return n, fmt.Errorf("decoding ScSpecTypeDef: %s", err)
@@ -46992,7 +48465,7 @@ func (s ScSpecUdtUnionCaseTupleV0) MarshalBinary() ([]byte, error) {
 func (s *ScSpecUdtUnionCaseTupleV0) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -47051,7 +48524,11 @@ func (e ScSpecUdtUnionCaseV0Kind) EncodeTo(enc *xdr.Encoder) error {
 var _ decoderFrom = (*ScSpecUdtUnionCaseV0Kind)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *ScSpecUdtUnionCaseV0Kind) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *ScSpecUdtUnionCaseV0Kind) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding ScSpecUdtUnionCaseV0Kind: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding ScSpecUdtUnionCaseV0Kind: %s", err)
@@ -47075,7 +48552,7 @@ func (s ScSpecUdtUnionCaseV0Kind) MarshalBinary() ([]byte, error) {
 func (s *ScSpecUdtUnionCaseV0Kind) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -47219,10 +48696,14 @@ func (u ScSpecUdtUnionCaseV0) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ScSpecUdtUnionCaseV0)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *ScSpecUdtUnionCaseV0) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *ScSpecUdtUnionCaseV0) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding ScSpecUdtUnionCaseV0: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.Kind.DecodeFrom(d)
+	nTmp, err = u.Kind.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ScSpecUdtUnionCaseV0Kind: %s", err)
@@ -47230,7 +48711,7 @@ func (u *ScSpecUdtUnionCaseV0) DecodeFrom(d *xdr.Decoder) (int, error) {
 	switch ScSpecUdtUnionCaseV0Kind(u.Kind) {
 	case ScSpecUdtUnionCaseV0KindScSpecUdtUnionCaseVoidV0:
 		u.VoidCase = new(ScSpecUdtUnionCaseVoidV0)
-		nTmp, err = (*u.VoidCase).DecodeFrom(d)
+		nTmp, err = (*u.VoidCase).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ScSpecUdtUnionCaseVoidV0: %s", err)
@@ -47238,7 +48719,7 @@ func (u *ScSpecUdtUnionCaseV0) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case ScSpecUdtUnionCaseV0KindScSpecUdtUnionCaseTupleV0:
 		u.TupleCase = new(ScSpecUdtUnionCaseTupleV0)
-		nTmp, err = (*u.TupleCase).DecodeFrom(d)
+		nTmp, err = (*u.TupleCase).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ScSpecUdtUnionCaseTupleV0: %s", err)
@@ -47260,7 +48741,7 @@ func (s ScSpecUdtUnionCaseV0) MarshalBinary() ([]byte, error) {
 func (s *ScSpecUdtUnionCaseV0) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -47317,7 +48798,11 @@ func (s *ScSpecUdtUnionV0) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ScSpecUdtUnionV0)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *ScSpecUdtUnionV0) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *ScSpecUdtUnionV0) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	s.Doc, nTmp, err = d.DecodeString(1024)
@@ -47348,7 +48833,7 @@ func (s *ScSpecUdtUnionV0) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if l > 0 {
 		s.Cases = make([]ScSpecUdtUnionCaseV0, l)
 		for i := uint32(0); i < l; i++ {
-			nTmp, err = s.Cases[i].DecodeFrom(d)
+			nTmp, err = s.Cases[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
 				return n, fmt.Errorf("decoding ScSpecUdtUnionCaseV0: %s", err)
@@ -47370,7 +48855,7 @@ func (s ScSpecUdtUnionV0) MarshalBinary() ([]byte, error) {
 func (s *ScSpecUdtUnionV0) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -47417,7 +48902,11 @@ func (s *ScSpecUdtEnumCaseV0) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ScSpecUdtEnumCaseV0)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *ScSpecUdtEnumCaseV0) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *ScSpecUdtEnumCaseV0) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	s.Doc, nTmp, err = d.DecodeString(1024)
@@ -47430,7 +48919,7 @@ func (s *ScSpecUdtEnumCaseV0) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if err != nil {
 		return n, fmt.Errorf("decoding Name: %s", err)
 	}
-	nTmp, err = s.Value.DecodeFrom(d)
+	nTmp, err = s.Value.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
@@ -47450,7 +48939,7 @@ func (s ScSpecUdtEnumCaseV0) MarshalBinary() ([]byte, error) {
 func (s *ScSpecUdtEnumCaseV0) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -47507,7 +48996,11 @@ func (s *ScSpecUdtEnumV0) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ScSpecUdtEnumV0)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *ScSpecUdtEnumV0) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *ScSpecUdtEnumV0) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	s.Doc, nTmp, err = d.DecodeString(1024)
@@ -47538,7 +49031,7 @@ func (s *ScSpecUdtEnumV0) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if l > 0 {
 		s.Cases = make([]ScSpecUdtEnumCaseV0, l)
 		for i := uint32(0); i < l; i++ {
-			nTmp, err = s.Cases[i].DecodeFrom(d)
+			nTmp, err = s.Cases[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
 				return n, fmt.Errorf("decoding ScSpecUdtEnumCaseV0: %s", err)
@@ -47560,7 +49053,7 @@ func (s ScSpecUdtEnumV0) MarshalBinary() ([]byte, error) {
 func (s *ScSpecUdtEnumV0) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -47607,7 +49100,11 @@ func (s *ScSpecUdtErrorEnumCaseV0) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ScSpecUdtErrorEnumCaseV0)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *ScSpecUdtErrorEnumCaseV0) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *ScSpecUdtErrorEnumCaseV0) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	s.Doc, nTmp, err = d.DecodeString(1024)
@@ -47620,7 +49117,7 @@ func (s *ScSpecUdtErrorEnumCaseV0) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if err != nil {
 		return n, fmt.Errorf("decoding Name: %s", err)
 	}
-	nTmp, err = s.Value.DecodeFrom(d)
+	nTmp, err = s.Value.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
@@ -47640,7 +49137,7 @@ func (s ScSpecUdtErrorEnumCaseV0) MarshalBinary() ([]byte, error) {
 func (s *ScSpecUdtErrorEnumCaseV0) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -47697,7 +49194,11 @@ func (s *ScSpecUdtErrorEnumV0) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ScSpecUdtErrorEnumV0)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *ScSpecUdtErrorEnumV0) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *ScSpecUdtErrorEnumV0) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	s.Doc, nTmp, err = d.DecodeString(1024)
@@ -47728,7 +49229,7 @@ func (s *ScSpecUdtErrorEnumV0) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if l > 0 {
 		s.Cases = make([]ScSpecUdtErrorEnumCaseV0, l)
 		for i := uint32(0); i < l; i++ {
-			nTmp, err = s.Cases[i].DecodeFrom(d)
+			nTmp, err = s.Cases[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
 				return n, fmt.Errorf("decoding ScSpecUdtErrorEnumCaseV0: %s", err)
@@ -47750,7 +49251,7 @@ func (s ScSpecUdtErrorEnumV0) MarshalBinary() ([]byte, error) {
 func (s *ScSpecUdtErrorEnumV0) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -47797,7 +49298,11 @@ func (s *ScSpecFunctionInputV0) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ScSpecFunctionInputV0)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *ScSpecFunctionInputV0) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *ScSpecFunctionInputV0) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	s.Doc, nTmp, err = d.DecodeString(1024)
@@ -47810,7 +49315,7 @@ func (s *ScSpecFunctionInputV0) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if err != nil {
 		return n, fmt.Errorf("decoding Name: %s", err)
 	}
-	nTmp, err = s.Type.DecodeFrom(d)
+	nTmp, err = s.Type.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ScSpecTypeDef: %s", err)
@@ -47830,7 +49335,7 @@ func (s ScSpecFunctionInputV0) MarshalBinary() ([]byte, error) {
 func (s *ScSpecFunctionInputV0) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -47892,7 +49397,11 @@ func (s *ScSpecFunctionV0) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ScSpecFunctionV0)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *ScSpecFunctionV0) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *ScSpecFunctionV0) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	s.Doc, nTmp, err = d.DecodeString(1024)
@@ -47900,7 +49409,7 @@ func (s *ScSpecFunctionV0) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if err != nil {
 		return n, fmt.Errorf("decoding Doc: %s", err)
 	}
-	nTmp, err = s.Name.DecodeFrom(d)
+	nTmp, err = s.Name.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ScSymbol: %s", err)
@@ -47918,7 +49427,7 @@ func (s *ScSpecFunctionV0) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if l > 0 {
 		s.Inputs = make([]ScSpecFunctionInputV0, l)
 		for i := uint32(0); i < l; i++ {
-			nTmp, err = s.Inputs[i].DecodeFrom(d)
+			nTmp, err = s.Inputs[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
 				return n, fmt.Errorf("decoding ScSpecFunctionInputV0: %s", err)
@@ -47937,7 +49446,7 @@ func (s *ScSpecFunctionV0) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if l > 0 {
 		s.Outputs = make([]ScSpecTypeDef, l)
 		for i := uint32(0); i < l; i++ {
-			nTmp, err = s.Outputs[i].DecodeFrom(d)
+			nTmp, err = s.Outputs[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
 				return n, fmt.Errorf("decoding ScSpecTypeDef: %s", err)
@@ -47959,7 +49468,7 @@ func (s ScSpecFunctionV0) MarshalBinary() ([]byte, error) {
 func (s *ScSpecFunctionV0) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -48027,7 +49536,11 @@ func (e ScSpecEntryKind) EncodeTo(enc *xdr.Encoder) error {
 var _ decoderFrom = (*ScSpecEntryKind)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *ScSpecEntryKind) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *ScSpecEntryKind) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding ScSpecEntryKind: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding ScSpecEntryKind: %s", err)
@@ -48051,7 +49564,7 @@ func (s ScSpecEntryKind) MarshalBinary() ([]byte, error) {
 func (s *ScSpecEntryKind) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -48321,10 +49834,14 @@ func (u ScSpecEntry) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ScSpecEntry)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *ScSpecEntry) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *ScSpecEntry) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding ScSpecEntry: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.Kind.DecodeFrom(d)
+	nTmp, err = u.Kind.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ScSpecEntryKind: %s", err)
@@ -48332,7 +49849,7 @@ func (u *ScSpecEntry) DecodeFrom(d *xdr.Decoder) (int, error) {
 	switch ScSpecEntryKind(u.Kind) {
 	case ScSpecEntryKindScSpecEntryFunctionV0:
 		u.FunctionV0 = new(ScSpecFunctionV0)
-		nTmp, err = (*u.FunctionV0).DecodeFrom(d)
+		nTmp, err = (*u.FunctionV0).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ScSpecFunctionV0: %s", err)
@@ -48340,7 +49857,7 @@ func (u *ScSpecEntry) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case ScSpecEntryKindScSpecEntryUdtStructV0:
 		u.UdtStructV0 = new(ScSpecUdtStructV0)
-		nTmp, err = (*u.UdtStructV0).DecodeFrom(d)
+		nTmp, err = (*u.UdtStructV0).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ScSpecUdtStructV0: %s", err)
@@ -48348,7 +49865,7 @@ func (u *ScSpecEntry) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case ScSpecEntryKindScSpecEntryUdtUnionV0:
 		u.UdtUnionV0 = new(ScSpecUdtUnionV0)
-		nTmp, err = (*u.UdtUnionV0).DecodeFrom(d)
+		nTmp, err = (*u.UdtUnionV0).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ScSpecUdtUnionV0: %s", err)
@@ -48356,7 +49873,7 @@ func (u *ScSpecEntry) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case ScSpecEntryKindScSpecEntryUdtEnumV0:
 		u.UdtEnumV0 = new(ScSpecUdtEnumV0)
-		nTmp, err = (*u.UdtEnumV0).DecodeFrom(d)
+		nTmp, err = (*u.UdtEnumV0).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ScSpecUdtEnumV0: %s", err)
@@ -48364,7 +49881,7 @@ func (u *ScSpecEntry) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case ScSpecEntryKindScSpecEntryUdtErrorEnumV0:
 		u.UdtErrorEnumV0 = new(ScSpecUdtErrorEnumV0)
-		nTmp, err = (*u.UdtErrorEnumV0).DecodeFrom(d)
+		nTmp, err = (*u.UdtErrorEnumV0).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ScSpecUdtErrorEnumV0: %s", err)
@@ -48386,7 +49903,7 @@ func (s ScSpecEntry) MarshalBinary() ([]byte, error) {
 func (s *ScSpecEntry) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -48534,7 +50051,11 @@ func (e ScValType) EncodeTo(enc *xdr.Encoder) error {
 var _ decoderFrom = (*ScValType)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *ScValType) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *ScValType) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding ScValType: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding ScValType: %s", err)
@@ -48558,7 +50079,7 @@ func (s ScValType) MarshalBinary() ([]byte, error) {
 func (s *ScValType) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -48641,7 +50162,11 @@ func (e ScErrorType) EncodeTo(enc *xdr.Encoder) error {
 var _ decoderFrom = (*ScErrorType)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *ScErrorType) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *ScErrorType) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding ScErrorType: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding ScErrorType: %s", err)
@@ -48665,7 +50190,7 @@ func (s ScErrorType) MarshalBinary() ([]byte, error) {
 func (s *ScErrorType) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -48748,7 +50273,11 @@ func (e ScErrorCode) EncodeTo(enc *xdr.Encoder) error {
 var _ decoderFrom = (*ScErrorCode)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *ScErrorCode) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *ScErrorCode) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding ScErrorCode: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding ScErrorCode: %s", err)
@@ -48772,7 +50301,7 @@ func (s ScErrorCode) MarshalBinary() ([]byte, error) {
 func (s *ScErrorCode) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -49036,10 +50565,14 @@ func (u ScError) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ScError)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *ScError) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *ScError) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding ScError: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.Type.DecodeFrom(d)
+	nTmp, err = u.Type.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ScErrorType: %s", err)
@@ -49047,7 +50580,7 @@ func (u *ScError) DecodeFrom(d *xdr.Decoder) (int, error) {
 	switch ScErrorType(u.Type) {
 	case ScErrorTypeSceContract:
 		u.ContractCode = new(Uint32)
-		nTmp, err = (*u.ContractCode).DecodeFrom(d)
+		nTmp, err = (*u.ContractCode).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding Uint32: %s", err)
@@ -49055,7 +50588,7 @@ func (u *ScError) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case ScErrorTypeSceWasmVm:
 		u.Code = new(ScErrorCode)
-		nTmp, err = (*u.Code).DecodeFrom(d)
+		nTmp, err = (*u.Code).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ScErrorCode: %s", err)
@@ -49063,7 +50596,7 @@ func (u *ScError) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case ScErrorTypeSceContext:
 		u.Code = new(ScErrorCode)
-		nTmp, err = (*u.Code).DecodeFrom(d)
+		nTmp, err = (*u.Code).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ScErrorCode: %s", err)
@@ -49071,7 +50604,7 @@ func (u *ScError) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case ScErrorTypeSceStorage:
 		u.Code = new(ScErrorCode)
-		nTmp, err = (*u.Code).DecodeFrom(d)
+		nTmp, err = (*u.Code).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ScErrorCode: %s", err)
@@ -49079,7 +50612,7 @@ func (u *ScError) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case ScErrorTypeSceObject:
 		u.Code = new(ScErrorCode)
-		nTmp, err = (*u.Code).DecodeFrom(d)
+		nTmp, err = (*u.Code).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ScErrorCode: %s", err)
@@ -49087,7 +50620,7 @@ func (u *ScError) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case ScErrorTypeSceCrypto:
 		u.Code = new(ScErrorCode)
-		nTmp, err = (*u.Code).DecodeFrom(d)
+		nTmp, err = (*u.Code).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ScErrorCode: %s", err)
@@ -49095,7 +50628,7 @@ func (u *ScError) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case ScErrorTypeSceEvents:
 		u.Code = new(ScErrorCode)
-		nTmp, err = (*u.Code).DecodeFrom(d)
+		nTmp, err = (*u.Code).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ScErrorCode: %s", err)
@@ -49103,7 +50636,7 @@ func (u *ScError) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case ScErrorTypeSceBudget:
 		u.Code = new(ScErrorCode)
-		nTmp, err = (*u.Code).DecodeFrom(d)
+		nTmp, err = (*u.Code).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ScErrorCode: %s", err)
@@ -49111,7 +50644,7 @@ func (u *ScError) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case ScErrorTypeSceValue:
 		u.Code = new(ScErrorCode)
-		nTmp, err = (*u.Code).DecodeFrom(d)
+		nTmp, err = (*u.Code).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ScErrorCode: %s", err)
@@ -49119,7 +50652,7 @@ func (u *ScError) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case ScErrorTypeSceAuth:
 		u.Code = new(ScErrorCode)
-		nTmp, err = (*u.Code).DecodeFrom(d)
+		nTmp, err = (*u.Code).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ScErrorCode: %s", err)
@@ -49141,7 +50674,7 @@ func (s ScError) MarshalBinary() ([]byte, error) {
 func (s *ScError) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -49182,15 +50715,19 @@ func (s *UInt128Parts) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*UInt128Parts)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *UInt128Parts) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *UInt128Parts) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.Hi.DecodeFrom(d)
+	nTmp, err = s.Hi.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint64: %s", err)
 	}
-	nTmp, err = s.Lo.DecodeFrom(d)
+	nTmp, err = s.Lo.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint64: %s", err)
@@ -49210,7 +50747,7 @@ func (s UInt128Parts) MarshalBinary() ([]byte, error) {
 func (s *UInt128Parts) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -49251,15 +50788,19 @@ func (s *Int128Parts) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*Int128Parts)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *Int128Parts) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *Int128Parts) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.Hi.DecodeFrom(d)
+	nTmp, err = s.Hi.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int64: %s", err)
 	}
-	nTmp, err = s.Lo.DecodeFrom(d)
+	nTmp, err = s.Lo.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint64: %s", err)
@@ -49279,7 +50820,7 @@ func (s Int128Parts) MarshalBinary() ([]byte, error) {
 func (s *Int128Parts) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -49330,25 +50871,29 @@ func (s *UInt256Parts) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*UInt256Parts)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *UInt256Parts) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *UInt256Parts) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.HiHi.DecodeFrom(d)
+	nTmp, err = s.HiHi.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint64: %s", err)
 	}
-	nTmp, err = s.HiLo.DecodeFrom(d)
+	nTmp, err = s.HiLo.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint64: %s", err)
 	}
-	nTmp, err = s.LoHi.DecodeFrom(d)
+	nTmp, err = s.LoHi.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint64: %s", err)
 	}
-	nTmp, err = s.LoLo.DecodeFrom(d)
+	nTmp, err = s.LoLo.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint64: %s", err)
@@ -49368,7 +50913,7 @@ func (s UInt256Parts) MarshalBinary() ([]byte, error) {
 func (s *UInt256Parts) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -49419,25 +50964,29 @@ func (s *Int256Parts) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*Int256Parts)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *Int256Parts) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *Int256Parts) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.HiHi.DecodeFrom(d)
+	nTmp, err = s.HiHi.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int64: %s", err)
 	}
-	nTmp, err = s.HiLo.DecodeFrom(d)
+	nTmp, err = s.HiLo.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint64: %s", err)
 	}
-	nTmp, err = s.LoHi.DecodeFrom(d)
+	nTmp, err = s.LoHi.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint64: %s", err)
 	}
-	nTmp, err = s.LoLo.DecodeFrom(d)
+	nTmp, err = s.LoLo.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint64: %s", err)
@@ -49457,7 +51006,7 @@ func (s Int256Parts) MarshalBinary() ([]byte, error) {
 func (s *Int256Parts) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -49516,7 +51065,11 @@ func (e ContractExecutableType) EncodeTo(enc *xdr.Encoder) error {
 var _ decoderFrom = (*ContractExecutableType)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *ContractExecutableType) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *ContractExecutableType) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding ContractExecutableType: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding ContractExecutableType: %s", err)
@@ -49540,7 +51093,7 @@ func (s ContractExecutableType) MarshalBinary() ([]byte, error) {
 func (s *ContractExecutableType) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -49651,10 +51204,14 @@ func (u ContractExecutable) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ContractExecutable)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *ContractExecutable) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *ContractExecutable) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding ContractExecutable: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.Type.DecodeFrom(d)
+	nTmp, err = u.Type.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ContractExecutableType: %s", err)
@@ -49662,7 +51219,7 @@ func (u *ContractExecutable) DecodeFrom(d *xdr.Decoder) (int, error) {
 	switch ContractExecutableType(u.Type) {
 	case ContractExecutableTypeContractExecutableWasm:
 		u.WasmHash = new(Hash)
-		nTmp, err = (*u.WasmHash).DecodeFrom(d)
+		nTmp, err = (*u.WasmHash).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding Hash: %s", err)
@@ -49687,7 +51244,7 @@ func (s ContractExecutable) MarshalBinary() ([]byte, error) {
 func (s *ContractExecutable) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -49746,7 +51303,11 @@ func (e ScAddressType) EncodeTo(enc *xdr.Encoder) error {
 var _ decoderFrom = (*ScAddressType)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *ScAddressType) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *ScAddressType) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding ScAddressType: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding ScAddressType: %s", err)
@@ -49770,7 +51331,7 @@ func (s ScAddressType) MarshalBinary() ([]byte, error) {
 func (s *ScAddressType) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -49914,10 +51475,14 @@ func (u ScAddress) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ScAddress)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *ScAddress) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *ScAddress) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding ScAddress: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.Type.DecodeFrom(d)
+	nTmp, err = u.Type.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ScAddressType: %s", err)
@@ -49925,7 +51490,7 @@ func (u *ScAddress) DecodeFrom(d *xdr.Decoder) (int, error) {
 	switch ScAddressType(u.Type) {
 	case ScAddressTypeScAddressTypeAccount:
 		u.AccountId = new(AccountId)
-		nTmp, err = (*u.AccountId).DecodeFrom(d)
+		nTmp, err = (*u.AccountId).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding AccountId: %s", err)
@@ -49933,7 +51498,7 @@ func (u *ScAddress) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case ScAddressTypeScAddressTypeContract:
 		u.ContractId = new(Hash)
-		nTmp, err = (*u.ContractId).DecodeFrom(d)
+		nTmp, err = (*u.ContractId).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding Hash: %s", err)
@@ -49955,7 +51520,7 @@ func (s ScAddress) MarshalBinary() ([]byte, error) {
 func (s *ScAddress) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -49997,7 +51562,11 @@ func (s ScVec) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ScVec)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *ScVec) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *ScVec) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding ScVec: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	var l uint32
@@ -50010,7 +51579,7 @@ func (s *ScVec) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if l > 0 {
 		(*s) = make([]ScVal, l)
 		for i := uint32(0); i < l; i++ {
-			nTmp, err = (*s)[i].DecodeFrom(d)
+			nTmp, err = (*s)[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
 				return n, fmt.Errorf("decoding ScVal: %s", err)
@@ -50032,7 +51601,7 @@ func (s ScVec) MarshalBinary() ([]byte, error) {
 func (s *ScVec) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -50069,7 +51638,11 @@ func (s ScMap) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ScMap)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *ScMap) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *ScMap) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding ScMap: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	var l uint32
@@ -50082,7 +51655,7 @@ func (s *ScMap) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if l > 0 {
 		(*s) = make([]ScMapEntry, l)
 		for i := uint32(0); i < l; i++ {
-			nTmp, err = (*s)[i].DecodeFrom(d)
+			nTmp, err = (*s)[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
 				return n, fmt.Errorf("decoding ScMapEntry: %s", err)
@@ -50104,7 +51677,7 @@ func (s ScMap) MarshalBinary() ([]byte, error) {
 func (s *ScMap) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -50136,7 +51709,11 @@ func (s ScBytes) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ScBytes)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *ScBytes) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *ScBytes) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding ScBytes: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	(*s), nTmp, err = d.DecodeOpaque(0)
@@ -50159,7 +51736,7 @@ func (s ScBytes) MarshalBinary() ([]byte, error) {
 func (s *ScBytes) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -50191,7 +51768,11 @@ func (s ScString) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ScString)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *ScString) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *ScString) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding ScString: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	var v string
@@ -50216,7 +51797,7 @@ func (s ScString) MarshalBinary() ([]byte, error) {
 func (s *ScString) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -50253,7 +51834,11 @@ func (s ScSymbol) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ScSymbol)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *ScSymbol) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *ScSymbol) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding ScSymbol: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	var v string
@@ -50278,7 +51863,7 @@ func (s ScSymbol) MarshalBinary() ([]byte, error) {
 func (s *ScSymbol) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -50314,10 +51899,14 @@ func (s *ScNonceKey) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ScNonceKey)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *ScNonceKey) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *ScNonceKey) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.Nonce.DecodeFrom(d)
+	nTmp, err = s.Nonce.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int64: %s", err)
@@ -50337,7 +51926,7 @@ func (s ScNonceKey) MarshalBinary() ([]byte, error) {
 func (s *ScNonceKey) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -50383,10 +51972,14 @@ func (s *ScContractInstance) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ScContractInstance)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *ScContractInstance) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *ScContractInstance) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.Executable.DecodeFrom(d)
+	nTmp, err = s.Executable.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ContractExecutable: %s", err)
@@ -50400,7 +51993,7 @@ func (s *ScContractInstance) DecodeFrom(d *xdr.Decoder) (int, error) {
 	s.Storage = nil
 	if b {
 		s.Storage = new(ScMap)
-		nTmp, err = s.Storage.DecodeFrom(d)
+		nTmp, err = s.Storage.DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ScMap: %s", err)
@@ -50421,7 +52014,7 @@ func (s ScContractInstance) MarshalBinary() ([]byte, error) {
 func (s *ScContractInstance) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -51363,10 +52956,14 @@ func (u ScVal) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ScVal)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *ScVal) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *ScVal) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding ScVal: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.Type.DecodeFrom(d)
+	nTmp, err = u.Type.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ScValType: %s", err)
@@ -51385,7 +52982,7 @@ func (u *ScVal) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case ScValTypeScvError:
 		u.Error = new(ScError)
-		nTmp, err = (*u.Error).DecodeFrom(d)
+		nTmp, err = (*u.Error).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ScError: %s", err)
@@ -51393,7 +52990,7 @@ func (u *ScVal) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case ScValTypeScvU32:
 		u.U32 = new(Uint32)
-		nTmp, err = (*u.U32).DecodeFrom(d)
+		nTmp, err = (*u.U32).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding Uint32: %s", err)
@@ -51401,7 +52998,7 @@ func (u *ScVal) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case ScValTypeScvI32:
 		u.I32 = new(Int32)
-		nTmp, err = (*u.I32).DecodeFrom(d)
+		nTmp, err = (*u.I32).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding Int32: %s", err)
@@ -51409,7 +53006,7 @@ func (u *ScVal) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case ScValTypeScvU64:
 		u.U64 = new(Uint64)
-		nTmp, err = (*u.U64).DecodeFrom(d)
+		nTmp, err = (*u.U64).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding Uint64: %s", err)
@@ -51417,7 +53014,7 @@ func (u *ScVal) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case ScValTypeScvI64:
 		u.I64 = new(Int64)
-		nTmp, err = (*u.I64).DecodeFrom(d)
+		nTmp, err = (*u.I64).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding Int64: %s", err)
@@ -51425,7 +53022,7 @@ func (u *ScVal) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case ScValTypeScvTimepoint:
 		u.Timepoint = new(TimePoint)
-		nTmp, err = (*u.Timepoint).DecodeFrom(d)
+		nTmp, err = (*u.Timepoint).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding TimePoint: %s", err)
@@ -51433,7 +53030,7 @@ func (u *ScVal) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case ScValTypeScvDuration:
 		u.Duration = new(Duration)
-		nTmp, err = (*u.Duration).DecodeFrom(d)
+		nTmp, err = (*u.Duration).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding Duration: %s", err)
@@ -51441,7 +53038,7 @@ func (u *ScVal) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case ScValTypeScvU128:
 		u.U128 = new(UInt128Parts)
-		nTmp, err = (*u.U128).DecodeFrom(d)
+		nTmp, err = (*u.U128).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding UInt128Parts: %s", err)
@@ -51449,7 +53046,7 @@ func (u *ScVal) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case ScValTypeScvI128:
 		u.I128 = new(Int128Parts)
-		nTmp, err = (*u.I128).DecodeFrom(d)
+		nTmp, err = (*u.I128).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding Int128Parts: %s", err)
@@ -51457,7 +53054,7 @@ func (u *ScVal) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case ScValTypeScvU256:
 		u.U256 = new(UInt256Parts)
-		nTmp, err = (*u.U256).DecodeFrom(d)
+		nTmp, err = (*u.U256).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding UInt256Parts: %s", err)
@@ -51465,7 +53062,7 @@ func (u *ScVal) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case ScValTypeScvI256:
 		u.I256 = new(Int256Parts)
-		nTmp, err = (*u.I256).DecodeFrom(d)
+		nTmp, err = (*u.I256).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding Int256Parts: %s", err)
@@ -51473,7 +53070,7 @@ func (u *ScVal) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case ScValTypeScvBytes:
 		u.Bytes = new(ScBytes)
-		nTmp, err = (*u.Bytes).DecodeFrom(d)
+		nTmp, err = (*u.Bytes).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ScBytes: %s", err)
@@ -51481,7 +53078,7 @@ func (u *ScVal) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case ScValTypeScvString:
 		u.Str = new(ScString)
-		nTmp, err = (*u.Str).DecodeFrom(d)
+		nTmp, err = (*u.Str).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ScString: %s", err)
@@ -51489,7 +53086,7 @@ func (u *ScVal) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case ScValTypeScvSymbol:
 		u.Sym = new(ScSymbol)
-		nTmp, err = (*u.Sym).DecodeFrom(d)
+		nTmp, err = (*u.Sym).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ScSymbol: %s", err)
@@ -51506,7 +53103,7 @@ func (u *ScVal) DecodeFrom(d *xdr.Decoder) (int, error) {
 		(*u.Vec) = nil
 		if b {
 			(*u.Vec) = new(ScVec)
-			nTmp, err = (*u.Vec).DecodeFrom(d)
+			nTmp, err = (*u.Vec).DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
 				return n, fmt.Errorf("decoding ScVec: %s", err)
@@ -51524,7 +53121,7 @@ func (u *ScVal) DecodeFrom(d *xdr.Decoder) (int, error) {
 		(*u.Map) = nil
 		if b {
 			(*u.Map) = new(ScMap)
-			nTmp, err = (*u.Map).DecodeFrom(d)
+			nTmp, err = (*u.Map).DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
 				return n, fmt.Errorf("decoding ScMap: %s", err)
@@ -51533,7 +53130,7 @@ func (u *ScVal) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case ScValTypeScvAddress:
 		u.Address = new(ScAddress)
-		nTmp, err = (*u.Address).DecodeFrom(d)
+		nTmp, err = (*u.Address).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ScAddress: %s", err)
@@ -51544,7 +53141,7 @@ func (u *ScVal) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case ScValTypeScvLedgerKeyNonce:
 		u.NonceKey = new(ScNonceKey)
-		nTmp, err = (*u.NonceKey).DecodeFrom(d)
+		nTmp, err = (*u.NonceKey).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ScNonceKey: %s", err)
@@ -51552,7 +53149,7 @@ func (u *ScVal) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case ScValTypeScvContractInstance:
 		u.Instance = new(ScContractInstance)
-		nTmp, err = (*u.Instance).DecodeFrom(d)
+		nTmp, err = (*u.Instance).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ScContractInstance: %s", err)
@@ -51574,7 +53171,7 @@ func (s ScVal) MarshalBinary() ([]byte, error) {
 func (s *ScVal) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -51616,15 +53213,19 @@ func (s *ScMapEntry) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ScMapEntry)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *ScMapEntry) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *ScMapEntry) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.Key.DecodeFrom(d)
+	nTmp, err = s.Key.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ScVal: %s", err)
 	}
-	nTmp, err = s.Val.DecodeFrom(d)
+	nTmp, err = s.Val.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ScVal: %s", err)
@@ -51644,7 +53245,7 @@ func (s ScMapEntry) MarshalBinary() ([]byte, error) {
 func (s *ScMapEntry) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -51788,7 +53389,11 @@ func (u StoredTransactionSet) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*StoredTransactionSet)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *StoredTransactionSet) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *StoredTransactionSet) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding StoredTransactionSet: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	u.V, nTmp, err = d.DecodeInt()
@@ -51799,7 +53404,7 @@ func (u *StoredTransactionSet) DecodeFrom(d *xdr.Decoder) (int, error) {
 	switch int32(u.V) {
 	case 0:
 		u.TxSet = new(TransactionSet)
-		nTmp, err = (*u.TxSet).DecodeFrom(d)
+		nTmp, err = (*u.TxSet).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding TransactionSet: %s", err)
@@ -51807,7 +53412,7 @@ func (u *StoredTransactionSet) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case 1:
 		u.GeneralizedTxSet = new(GeneralizedTransactionSet)
-		nTmp, err = (*u.GeneralizedTxSet).DecodeFrom(d)
+		nTmp, err = (*u.GeneralizedTxSet).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding GeneralizedTransactionSet: %s", err)
@@ -51829,7 +53434,7 @@ func (s StoredTransactionSet) MarshalBinary() ([]byte, error) {
 func (s *StoredTransactionSet) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -51891,7 +53496,11 @@ func (s *PersistedScpStateV0) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*PersistedScpStateV0)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *PersistedScpStateV0) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *PersistedScpStateV0) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	var l uint32
@@ -51904,7 +53513,7 @@ func (s *PersistedScpStateV0) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if l > 0 {
 		s.ScpEnvelopes = make([]ScpEnvelope, l)
 		for i := uint32(0); i < l; i++ {
-			nTmp, err = s.ScpEnvelopes[i].DecodeFrom(d)
+			nTmp, err = s.ScpEnvelopes[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
 				return n, fmt.Errorf("decoding ScpEnvelope: %s", err)
@@ -51920,7 +53529,7 @@ func (s *PersistedScpStateV0) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if l > 0 {
 		s.QuorumSets = make([]ScpQuorumSet, l)
 		for i := uint32(0); i < l; i++ {
-			nTmp, err = s.QuorumSets[i].DecodeFrom(d)
+			nTmp, err = s.QuorumSets[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
 				return n, fmt.Errorf("decoding ScpQuorumSet: %s", err)
@@ -51936,7 +53545,7 @@ func (s *PersistedScpStateV0) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if l > 0 {
 		s.TxSets = make([]StoredTransactionSet, l)
 		for i := uint32(0); i < l; i++ {
-			nTmp, err = s.TxSets[i].DecodeFrom(d)
+			nTmp, err = s.TxSets[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
 				return n, fmt.Errorf("decoding StoredTransactionSet: %s", err)
@@ -51958,7 +53567,7 @@ func (s PersistedScpStateV0) MarshalBinary() ([]byte, error) {
 func (s *PersistedScpStateV0) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -52011,7 +53620,11 @@ func (s *PersistedScpStateV1) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*PersistedScpStateV1)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *PersistedScpStateV1) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *PersistedScpStateV1) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	var l uint32
@@ -52024,7 +53637,7 @@ func (s *PersistedScpStateV1) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if l > 0 {
 		s.ScpEnvelopes = make([]ScpEnvelope, l)
 		for i := uint32(0); i < l; i++ {
-			nTmp, err = s.ScpEnvelopes[i].DecodeFrom(d)
+			nTmp, err = s.ScpEnvelopes[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
 				return n, fmt.Errorf("decoding ScpEnvelope: %s", err)
@@ -52040,7 +53653,7 @@ func (s *PersistedScpStateV1) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if l > 0 {
 		s.QuorumSets = make([]ScpQuorumSet, l)
 		for i := uint32(0); i < l; i++ {
-			nTmp, err = s.QuorumSets[i].DecodeFrom(d)
+			nTmp, err = s.QuorumSets[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
 				return n, fmt.Errorf("decoding ScpQuorumSet: %s", err)
@@ -52062,7 +53675,7 @@ func (s PersistedScpStateV1) MarshalBinary() ([]byte, error) {
 func (s *PersistedScpStateV1) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -52206,7 +53819,11 @@ func (u PersistedScpState) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*PersistedScpState)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *PersistedScpState) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *PersistedScpState) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding PersistedScpState: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	u.V, nTmp, err = d.DecodeInt()
@@ -52217,7 +53834,7 @@ func (u *PersistedScpState) DecodeFrom(d *xdr.Decoder) (int, error) {
 	switch int32(u.V) {
 	case 0:
 		u.V0 = new(PersistedScpStateV0)
-		nTmp, err = (*u.V0).DecodeFrom(d)
+		nTmp, err = (*u.V0).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding PersistedScpStateV0: %s", err)
@@ -52225,7 +53842,7 @@ func (u *PersistedScpState) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case 1:
 		u.V1 = new(PersistedScpStateV1)
-		nTmp, err = (*u.V1).DecodeFrom(d)
+		nTmp, err = (*u.V1).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding PersistedScpStateV1: %s", err)
@@ -52247,7 +53864,7 @@ func (s PersistedScpState) MarshalBinary() ([]byte, error) {
 func (s *PersistedScpState) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -52285,10 +53902,14 @@ func (s *ConfigSettingContractExecutionLanesV0) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ConfigSettingContractExecutionLanesV0)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *ConfigSettingContractExecutionLanesV0) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *ConfigSettingContractExecutionLanesV0) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.LedgerMaxTxCount.DecodeFrom(d)
+	nTmp, err = s.LedgerMaxTxCount.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
@@ -52308,7 +53929,7 @@ func (s ConfigSettingContractExecutionLanesV0) MarshalBinary() ([]byte, error) {
 func (s *ConfigSettingContractExecutionLanesV0) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -52366,25 +53987,29 @@ func (s *ConfigSettingContractComputeV0) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ConfigSettingContractComputeV0)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *ConfigSettingContractComputeV0) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *ConfigSettingContractComputeV0) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.LedgerMaxInstructions.DecodeFrom(d)
+	nTmp, err = s.LedgerMaxInstructions.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int64: %s", err)
 	}
-	nTmp, err = s.TxMaxInstructions.DecodeFrom(d)
+	nTmp, err = s.TxMaxInstructions.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int64: %s", err)
 	}
-	nTmp, err = s.FeeRatePerInstructionsIncrement.DecodeFrom(d)
+	nTmp, err = s.FeeRatePerInstructionsIncrement.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int64: %s", err)
 	}
-	nTmp, err = s.TxMemoryLimit.DecodeFrom(d)
+	nTmp, err = s.TxMemoryLimit.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
@@ -52404,7 +54029,7 @@ func (s ConfigSettingContractComputeV0) MarshalBinary() ([]byte, error) {
 func (s *ConfigSettingContractComputeV0) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -52528,80 +54153,84 @@ func (s *ConfigSettingContractLedgerCostV0) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ConfigSettingContractLedgerCostV0)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *ConfigSettingContractLedgerCostV0) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *ConfigSettingContractLedgerCostV0) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.LedgerMaxReadLedgerEntries.DecodeFrom(d)
+	nTmp, err = s.LedgerMaxReadLedgerEntries.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
 	}
-	nTmp, err = s.LedgerMaxReadBytes.DecodeFrom(d)
+	nTmp, err = s.LedgerMaxReadBytes.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
 	}
-	nTmp, err = s.LedgerMaxWriteLedgerEntries.DecodeFrom(d)
+	nTmp, err = s.LedgerMaxWriteLedgerEntries.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
 	}
-	nTmp, err = s.LedgerMaxWriteBytes.DecodeFrom(d)
+	nTmp, err = s.LedgerMaxWriteBytes.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
 	}
-	nTmp, err = s.TxMaxReadLedgerEntries.DecodeFrom(d)
+	nTmp, err = s.TxMaxReadLedgerEntries.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
 	}
-	nTmp, err = s.TxMaxReadBytes.DecodeFrom(d)
+	nTmp, err = s.TxMaxReadBytes.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
 	}
-	nTmp, err = s.TxMaxWriteLedgerEntries.DecodeFrom(d)
+	nTmp, err = s.TxMaxWriteLedgerEntries.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
 	}
-	nTmp, err = s.TxMaxWriteBytes.DecodeFrom(d)
+	nTmp, err = s.TxMaxWriteBytes.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
 	}
-	nTmp, err = s.FeeReadLedgerEntry.DecodeFrom(d)
+	nTmp, err = s.FeeReadLedgerEntry.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int64: %s", err)
 	}
-	nTmp, err = s.FeeWriteLedgerEntry.DecodeFrom(d)
+	nTmp, err = s.FeeWriteLedgerEntry.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int64: %s", err)
 	}
-	nTmp, err = s.FeeRead1Kb.DecodeFrom(d)
+	nTmp, err = s.FeeRead1Kb.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int64: %s", err)
 	}
-	nTmp, err = s.BucketListTargetSizeBytes.DecodeFrom(d)
+	nTmp, err = s.BucketListTargetSizeBytes.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int64: %s", err)
 	}
-	nTmp, err = s.WriteFee1KbBucketListLow.DecodeFrom(d)
+	nTmp, err = s.WriteFee1KbBucketListLow.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int64: %s", err)
 	}
-	nTmp, err = s.WriteFee1KbBucketListHigh.DecodeFrom(d)
+	nTmp, err = s.WriteFee1KbBucketListHigh.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int64: %s", err)
 	}
-	nTmp, err = s.BucketListWriteFeeGrowthFactor.DecodeFrom(d)
+	nTmp, err = s.BucketListWriteFeeGrowthFactor.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
@@ -52621,7 +54250,7 @@ func (s ConfigSettingContractLedgerCostV0) MarshalBinary() ([]byte, error) {
 func (s *ConfigSettingContractLedgerCostV0) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -52658,10 +54287,14 @@ func (s *ConfigSettingContractHistoricalDataV0) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ConfigSettingContractHistoricalDataV0)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *ConfigSettingContractHistoricalDataV0) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *ConfigSettingContractHistoricalDataV0) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.FeeHistorical1Kb.DecodeFrom(d)
+	nTmp, err = s.FeeHistorical1Kb.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int64: %s", err)
@@ -52681,7 +54314,7 @@ func (s ConfigSettingContractHistoricalDataV0) MarshalBinary() ([]byte, error) {
 func (s *ConfigSettingContractHistoricalDataV0) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -52725,15 +54358,19 @@ func (s *ConfigSettingContractEventsV0) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ConfigSettingContractEventsV0)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *ConfigSettingContractEventsV0) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *ConfigSettingContractEventsV0) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.TxMaxContractEventsSizeBytes.DecodeFrom(d)
+	nTmp, err = s.TxMaxContractEventsSizeBytes.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
 	}
-	nTmp, err = s.FeeContractEvents1Kb.DecodeFrom(d)
+	nTmp, err = s.FeeContractEvents1Kb.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int64: %s", err)
@@ -52753,7 +54390,7 @@ func (s ConfigSettingContractEventsV0) MarshalBinary() ([]byte, error) {
 func (s *ConfigSettingContractEventsV0) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -52804,20 +54441,24 @@ func (s *ConfigSettingContractBandwidthV0) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ConfigSettingContractBandwidthV0)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *ConfigSettingContractBandwidthV0) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *ConfigSettingContractBandwidthV0) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.LedgerMaxTxsSizeBytes.DecodeFrom(d)
+	nTmp, err = s.LedgerMaxTxsSizeBytes.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
 	}
-	nTmp, err = s.TxMaxSizeBytes.DecodeFrom(d)
+	nTmp, err = s.TxMaxSizeBytes.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
 	}
-	nTmp, err = s.FeeTxSize1Kb.DecodeFrom(d)
+	nTmp, err = s.FeeTxSize1Kb.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int64: %s", err)
@@ -52837,7 +54478,7 @@ func (s ConfigSettingContractBandwidthV0) MarshalBinary() ([]byte, error) {
 func (s *ConfigSettingContractBandwidthV0) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -53005,7 +54646,11 @@ func (e ContractCostType) EncodeTo(enc *xdr.Encoder) error {
 var _ decoderFrom = (*ContractCostType)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *ContractCostType) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *ContractCostType) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding ContractCostType: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding ContractCostType: %s", err)
@@ -53029,7 +54674,7 @@ func (s ContractCostType) MarshalBinary() ([]byte, error) {
 func (s *ContractCostType) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -53077,20 +54722,24 @@ func (s *ContractCostParamEntry) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ContractCostParamEntry)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *ContractCostParamEntry) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *ContractCostParamEntry) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.Ext.DecodeFrom(d)
+	nTmp, err = s.Ext.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ExtensionPoint: %s", err)
 	}
-	nTmp, err = s.ConstTerm.DecodeFrom(d)
+	nTmp, err = s.ConstTerm.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int64: %s", err)
 	}
-	nTmp, err = s.LinearTerm.DecodeFrom(d)
+	nTmp, err = s.LinearTerm.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int64: %s", err)
@@ -53110,7 +54759,7 @@ func (s ContractCostParamEntry) MarshalBinary() ([]byte, error) {
 func (s *ContractCostParamEntry) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -53196,50 +54845,54 @@ func (s *StateExpirationSettings) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*StateExpirationSettings)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *StateExpirationSettings) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *StateExpirationSettings) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.MaxEntryExpiration.DecodeFrom(d)
+	nTmp, err = s.MaxEntryExpiration.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
 	}
-	nTmp, err = s.MinTempEntryExpiration.DecodeFrom(d)
+	nTmp, err = s.MinTempEntryExpiration.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
 	}
-	nTmp, err = s.MinPersistentEntryExpiration.DecodeFrom(d)
+	nTmp, err = s.MinPersistentEntryExpiration.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
 	}
-	nTmp, err = s.PersistentRentRateDenominator.DecodeFrom(d)
+	nTmp, err = s.PersistentRentRateDenominator.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int64: %s", err)
 	}
-	nTmp, err = s.TempRentRateDenominator.DecodeFrom(d)
+	nTmp, err = s.TempRentRateDenominator.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int64: %s", err)
 	}
-	nTmp, err = s.MaxEntriesToExpire.DecodeFrom(d)
+	nTmp, err = s.MaxEntriesToExpire.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
 	}
-	nTmp, err = s.BucketListSizeWindowSampleSize.DecodeFrom(d)
+	nTmp, err = s.BucketListSizeWindowSampleSize.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
 	}
-	nTmp, err = s.EvictionScanSize.DecodeFrom(d)
+	nTmp, err = s.EvictionScanSize.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint64: %s", err)
 	}
-	nTmp, err = s.StartingEvictionScanLevel.DecodeFrom(d)
+	nTmp, err = s.StartingEvictionScanLevel.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
@@ -53259,7 +54912,7 @@ func (s StateExpirationSettings) MarshalBinary() ([]byte, error) {
 func (s *StateExpirationSettings) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -53305,10 +54958,14 @@ func (s *EvictionIterator) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*EvictionIterator)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *EvictionIterator) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *EvictionIterator) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.BucketListLevel.DecodeFrom(d)
+	nTmp, err = s.BucketListLevel.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
@@ -53318,7 +54975,7 @@ func (s *EvictionIterator) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if err != nil {
 		return n, fmt.Errorf("decoding Bool: %s", err)
 	}
-	nTmp, err = s.BucketFileOffset.DecodeFrom(d)
+	nTmp, err = s.BucketFileOffset.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint64: %s", err)
@@ -53338,7 +54995,7 @@ func (s EvictionIterator) MarshalBinary() ([]byte, error) {
 func (s *EvictionIterator) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -53385,7 +55042,11 @@ func (s ContractCostParams) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ContractCostParams)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *ContractCostParams) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *ContractCostParams) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding ContractCostParams: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
 	var l uint32
@@ -53401,7 +55062,7 @@ func (s *ContractCostParams) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if l > 0 {
 		(*s) = make([]ContractCostParamEntry, l)
 		for i := uint32(0); i < l; i++ {
-			nTmp, err = (*s)[i].DecodeFrom(d)
+			nTmp, err = (*s)[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
 				return n, fmt.Errorf("decoding ContractCostParamEntry: %s", err)
@@ -53423,7 +55084,7 @@ func (s ContractCostParams) MarshalBinary() ([]byte, error) {
 func (s *ContractCostParams) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -53518,7 +55179,11 @@ func (e ConfigSettingId) EncodeTo(enc *xdr.Encoder) error {
 var _ decoderFrom = (*ConfigSettingId)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *ConfigSettingId) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *ConfigSettingId) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding ConfigSettingId: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	v, n, err := d.DecodeInt()
 	if err != nil {
 		return n, fmt.Errorf("decoding ConfigSettingId: %s", err)
@@ -53542,7 +55207,7 @@ func (s ConfigSettingId) MarshalBinary() ([]byte, error) {
 func (s *ConfigSettingId) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
@@ -54195,10 +55860,14 @@ func (u ConfigSettingEntry) EncodeTo(e *xdr.Encoder) error {
 var _ decoderFrom = (*ConfigSettingEntry)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *ConfigSettingEntry) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *ConfigSettingEntry) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, errors.New("decoding ConfigSettingEntry: maximum decoding depth reached")
+	}
+	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = u.ConfigSettingId.DecodeFrom(d)
+	nTmp, err = u.ConfigSettingId.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ConfigSettingId: %s", err)
@@ -54206,7 +55875,7 @@ func (u *ConfigSettingEntry) DecodeFrom(d *xdr.Decoder) (int, error) {
 	switch ConfigSettingId(u.ConfigSettingId) {
 	case ConfigSettingIdConfigSettingContractMaxSizeBytes:
 		u.ContractMaxSizeBytes = new(Uint32)
-		nTmp, err = (*u.ContractMaxSizeBytes).DecodeFrom(d)
+		nTmp, err = (*u.ContractMaxSizeBytes).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding Uint32: %s", err)
@@ -54214,7 +55883,7 @@ func (u *ConfigSettingEntry) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case ConfigSettingIdConfigSettingContractComputeV0:
 		u.ContractCompute = new(ConfigSettingContractComputeV0)
-		nTmp, err = (*u.ContractCompute).DecodeFrom(d)
+		nTmp, err = (*u.ContractCompute).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ConfigSettingContractComputeV0: %s", err)
@@ -54222,7 +55891,7 @@ func (u *ConfigSettingEntry) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case ConfigSettingIdConfigSettingContractLedgerCostV0:
 		u.ContractLedgerCost = new(ConfigSettingContractLedgerCostV0)
-		nTmp, err = (*u.ContractLedgerCost).DecodeFrom(d)
+		nTmp, err = (*u.ContractLedgerCost).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ConfigSettingContractLedgerCostV0: %s", err)
@@ -54230,7 +55899,7 @@ func (u *ConfigSettingEntry) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case ConfigSettingIdConfigSettingContractHistoricalDataV0:
 		u.ContractHistoricalData = new(ConfigSettingContractHistoricalDataV0)
-		nTmp, err = (*u.ContractHistoricalData).DecodeFrom(d)
+		nTmp, err = (*u.ContractHistoricalData).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ConfigSettingContractHistoricalDataV0: %s", err)
@@ -54238,7 +55907,7 @@ func (u *ConfigSettingEntry) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case ConfigSettingIdConfigSettingContractEventsV0:
 		u.ContractEvents = new(ConfigSettingContractEventsV0)
-		nTmp, err = (*u.ContractEvents).DecodeFrom(d)
+		nTmp, err = (*u.ContractEvents).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ConfigSettingContractEventsV0: %s", err)
@@ -54246,7 +55915,7 @@ func (u *ConfigSettingEntry) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case ConfigSettingIdConfigSettingContractBandwidthV0:
 		u.ContractBandwidth = new(ConfigSettingContractBandwidthV0)
-		nTmp, err = (*u.ContractBandwidth).DecodeFrom(d)
+		nTmp, err = (*u.ContractBandwidth).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ConfigSettingContractBandwidthV0: %s", err)
@@ -54254,7 +55923,7 @@ func (u *ConfigSettingEntry) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case ConfigSettingIdConfigSettingContractCostParamsCpuInstructions:
 		u.ContractCostParamsCpuInsns = new(ContractCostParams)
-		nTmp, err = (*u.ContractCostParamsCpuInsns).DecodeFrom(d)
+		nTmp, err = (*u.ContractCostParamsCpuInsns).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ContractCostParams: %s", err)
@@ -54262,7 +55931,7 @@ func (u *ConfigSettingEntry) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case ConfigSettingIdConfigSettingContractCostParamsMemoryBytes:
 		u.ContractCostParamsMemBytes = new(ContractCostParams)
-		nTmp, err = (*u.ContractCostParamsMemBytes).DecodeFrom(d)
+		nTmp, err = (*u.ContractCostParamsMemBytes).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ContractCostParams: %s", err)
@@ -54270,7 +55939,7 @@ func (u *ConfigSettingEntry) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case ConfigSettingIdConfigSettingContractDataKeySizeBytes:
 		u.ContractDataKeySizeBytes = new(Uint32)
-		nTmp, err = (*u.ContractDataKeySizeBytes).DecodeFrom(d)
+		nTmp, err = (*u.ContractDataKeySizeBytes).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding Uint32: %s", err)
@@ -54278,7 +55947,7 @@ func (u *ConfigSettingEntry) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case ConfigSettingIdConfigSettingContractDataEntrySizeBytes:
 		u.ContractDataEntrySizeBytes = new(Uint32)
-		nTmp, err = (*u.ContractDataEntrySizeBytes).DecodeFrom(d)
+		nTmp, err = (*u.ContractDataEntrySizeBytes).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding Uint32: %s", err)
@@ -54286,7 +55955,7 @@ func (u *ConfigSettingEntry) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case ConfigSettingIdConfigSettingStateExpiration:
 		u.StateExpirationSettings = new(StateExpirationSettings)
-		nTmp, err = (*u.StateExpirationSettings).DecodeFrom(d)
+		nTmp, err = (*u.StateExpirationSettings).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding StateExpirationSettings: %s", err)
@@ -54294,7 +55963,7 @@ func (u *ConfigSettingEntry) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case ConfigSettingIdConfigSettingContractExecutionLanes:
 		u.ContractExecutionLanes = new(ConfigSettingContractExecutionLanesV0)
-		nTmp, err = (*u.ContractExecutionLanes).DecodeFrom(d)
+		nTmp, err = (*u.ContractExecutionLanes).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ConfigSettingContractExecutionLanesV0: %s", err)
@@ -54312,7 +55981,7 @@ func (u *ConfigSettingEntry) DecodeFrom(d *xdr.Decoder) (int, error) {
 		if l > 0 {
 			(*u.BucketListSizeWindow) = make([]Uint64, l)
 			for i := uint32(0); i < l; i++ {
-				nTmp, err = (*u.BucketListSizeWindow)[i].DecodeFrom(d)
+				nTmp, err = (*u.BucketListSizeWindow)[i].DecodeFrom(d, maxDepth)
 				n += nTmp
 				if err != nil {
 					return n, fmt.Errorf("decoding Uint64: %s", err)
@@ -54322,7 +55991,7 @@ func (u *ConfigSettingEntry) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, nil
 	case ConfigSettingIdConfigSettingEvictionIterator:
 		u.EvictionIterator = new(EvictionIterator)
-		nTmp, err = (*u.EvictionIterator).DecodeFrom(d)
+		nTmp, err = (*u.EvictionIterator).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding EvictionIterator: %s", err)
@@ -54344,7 +56013,7 @@ func (s ConfigSettingEntry) MarshalBinary() ([]byte, error) {
 func (s *ConfigSettingEntry) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
+	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
 	return err
 }
 
