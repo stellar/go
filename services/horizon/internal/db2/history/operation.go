@@ -8,6 +8,7 @@ import (
 	"text/template"
 
 	sq "github.com/Masterminds/squirrel"
+
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/toid"
@@ -394,7 +395,7 @@ var selectOperation = sq.Select(
 		"hop.details, " +
 		"hop.source_account, " +
 		"hop.source_account_muxed, " +
-		"hop.is_payment, " +
+		"COALESCE(hop.is_payment, false) as is_payment, " +
 		"ht.transaction_hash, " +
 		"ht.tx_result, " +
 		"COALESCE(ht.successful, true) as transaction_successful").

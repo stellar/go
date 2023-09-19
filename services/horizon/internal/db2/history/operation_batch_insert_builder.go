@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/guregu/null"
+
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/xdr"
 )
@@ -49,7 +50,7 @@ func (i *operationBatchInsertBuilder) Add(
 	sourceAccountMuxed null.String,
 	isPayment bool,
 ) error {
-	return i.builder.Row(map[string]interface{}{
+	row := map[string]interface{}{
 		"id":                   id,
 		"transaction_id":       transactionID,
 		"application_order":    applicationOrder,
@@ -57,9 +58,12 @@ func (i *operationBatchInsertBuilder) Add(
 		"details":              string(details),
 		"source_account":       sourceAccount,
 		"source_account_muxed": sourceAccountMuxed,
-		"is_payment":           isPayment,
-	})
-
+		"is_payment":           nil,
+	}
+	if isPayment {
+		row["is_payment"] = true
+	}
+	return i.builder.Row(row)
 }
 
 func (i *operationBatchInsertBuilder) Exec(ctx context.Context, session db.SessionInterface) error {
