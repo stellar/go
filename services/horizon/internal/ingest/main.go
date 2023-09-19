@@ -58,8 +58,7 @@ const (
 	//       claimable balances for claimant queries.
 	// - 17: Add contract_id column to exp_asset_stats table which is derived by ingesting
 	//       contract data ledger entries.
-	// - 18: Add asset column to claimable_balance_claimants table to support searching for claimants by asset (#4907)
-	CurrentVersion = 18
+	CurrentVersion = 17
 
 	// MaxDBConnections is the size of the postgres connection pool dedicated to Horizon ingestion:
 	//  * Ledger ingestion,

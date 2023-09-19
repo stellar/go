@@ -240,7 +240,6 @@ func insertClaimants(q *Q, tt *test.T, cBalance ClaimableBalance) error {
 			BalanceID:          cBalance.BalanceID,
 			Destination:        claimant.Destination,
 			LastModifiedLedger: cBalance.LastModifiedLedger,
-			Asset:              cBalance.Asset,
 		}
 		err := claimantsInsertBuilder.Add(tt.Ctx, claimant)
 		if err != nil {
@@ -250,7 +249,29 @@ func insertClaimants(q *Q, tt *test.T, cBalance ClaimableBalance) error {
 	return claimantsInsertBuilder.Exec(tt.Ctx)
 }
 
-// TestFindClaimableBalancesByDestinationWithLimit tests querying claimable balances by destination and asset with query limit = 1.
+func validateClaimableBalanceQuery(t *test.T, q *Q, query ClaimableBalancesQuery, expectedLen int, expectedClaimants []string, expectedAsset string, expectedSponsor string) {
+	cbs, err := q.GetClaimableBalances(t.Ctx, query)
+	t.Assert.NoError(err)
+	t.Assert.Len(cbs, expectedLen)
+
+	if expectedLen > 0 {
+		t.Assert.Equal(expectedClaimants[0], cbs[0].Claimants[0].Destination)
+	}
+
+	if expectedLen > 1 {
+		t.Assert.Equal(expectedClaimants[1], cbs[0].Claimants[1].Destination)
+	}
+
+	if expectedAsset != "" {
+		t.Assert.Equal(expectedAsset, cbs[0].Asset.String())
+	}
+
+	if expectedSponsor != "" {
+		t.Assert.Equal(expectedSponsor, cbs[0].Sponsor.String)
+	}
+}
+
+// TestFindClaimableBalancesByDestinationWithLimit tests querying claimable balances by destination and asset
 func TestFindClaimableBalancesByDestinationWithLimit(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
@@ -262,9 +283,11 @@ func TestFindClaimableBalancesByDestinationWithLimit(t *testing.T) {
 	asset1 := xdr.MustNewCreditAsset("ASSET1", assetIssuer)
 	asset2 := xdr.MustNewCreditAsset("ASSET2", assetIssuer)
 
+	sponsor1 := "GA25GQLHJU3LPEJXEIAXK23AWEA5GWDUGRSHTQHDFT6HXHVMRULSQJUJ"
+	sponsor2 := "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H"
+
 	dest1 := "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"
 	dest2 := "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H"
-	dest3 := "GA25GQLHJU3LPEJXEIAXK23AWEA5GWDUGRSHTQHDFT6HXHVMRULSQJUJ"
 
 	claimants := []Claimant{
 		{
@@ -291,11 +314,21 @@ func TestFindClaimableBalancesByDestinationWithLimit(t *testing.T) {
 		BalanceID:          id,
 		Claimants:          claimants,
 		Asset:              asset1,
+		Sponsor:            null.StringFrom(sponsor1),
 		LastModifiedLedger: 123,
 		Amount:             10,
 	}
 	err = q.UpsertClaimableBalances(tt.Ctx, []ClaimableBalance{cBalance1})
 	tt.Assert.NoError(err)
+
+	claimants2 := []Claimant{
+		{
+			Destination: dest2,
+			Predicate: xdr.ClaimPredicate{
+				Type: xdr.ClaimPredicateTypeClaimPredicateUnconditional,
+			},
+		},
+	}
 
 	balanceID2 := xdr.ClaimableBalanceId{
 		Type: xdr.ClaimableBalanceIdTypeClaimableBalanceIdTypeV0,
@@ -304,9 +337,11 @@ func TestFindClaimableBalancesByDestinationWithLimit(t *testing.T) {
 	id, err = xdr.MarshalHex(balanceID2)
 	tt.Assert.NoError(err)
 	cBalance2 := ClaimableBalance{
-		BalanceID:          id,
-		Claimants:          claimants,
-		Asset:              asset2,
+		BalanceID: id,
+		Claimants: claimants2,
+		Asset:     asset2,
+		Sponsor:   null.StringFrom(sponsor2),
+
 		LastModifiedLedger: 456,
 		Amount:             10,
 	}
@@ -319,32 +354,54 @@ func TestFindClaimableBalancesByDestinationWithLimit(t *testing.T) {
 	err = insertClaimants(q, tt, cBalance2)
 	tt.Assert.NoError(err)
 
+	pageQuery := db2.MustPageQuery("", false, "", 1)
+
+	// no claimant parameter, no filters
 	query := ClaimableBalancesQuery{
+		PageQuery: pageQuery,
+	}
+	validateClaimableBalanceQuery(tt, q, query, 1, []string{dest1, dest2}, "", "")
+
+	// invalid claimant parameter
+	query = ClaimableBalancesQuery{
+		PageQuery: pageQuery,
+		Claimant:  xdr.MustAddressPtr("GA25GQLHJU3LPEJXEIAXK23AWEA5GWDUGRSHTQHDFT6HXHVMRULSQJUJ"),
 		Asset:     &asset2,
-		PageQuery: db2.MustPageQuery("", false, "", 1),
+		Sponsor:   xdr.MustAddressPtr(sponsor1),
+	}
+	validateClaimableBalanceQuery(tt, q, query, 0, []string{}, "", "")
+
+	// claimant parameter, no filters
+	query = ClaimableBalancesQuery{
+		PageQuery: pageQuery,
 		Claimant:  xdr.MustAddressPtr(dest1),
 	}
+	validateClaimableBalanceQuery(tt, q, query, 1, []string{dest1, dest2}, "", "")
 
-	// Validate the query with claimant parameter
-	cbs, err := q.GetClaimableBalances(tt.Ctx, query)
-	tt.Assert.NoError(err)
-	tt.Assert.Len(cbs, 1)
-	tt.Assert.Equal(dest1, cbs[0].Claimants[0].Destination)
-	tt.Assert.Equal(dest2, cbs[0].Claimants[1].Destination)
+	// claimant parameter, asset filter
+	query = ClaimableBalancesQuery{
+		PageQuery: pageQuery,
+		Claimant:  xdr.MustAddressPtr(dest2),
+		Asset:     &asset1,
+	}
+	validateClaimableBalanceQuery(tt, q, query, 1, []string{dest1, dest2}, asset1.String(), "")
 
-	// Validate the query with a different claimant parameter
-	query.Claimant = xdr.MustAddressPtr(dest1)
-	cbs, err = q.GetClaimableBalances(tt.Ctx, query)
-	tt.Assert.NoError(err)
-	tt.Assert.Len(cbs, 1)
-	tt.Assert.Equal(dest1, cbs[0].Claimants[0].Destination)
-	tt.Assert.Equal(dest2, cbs[0].Claimants[1].Destination)
+	// claimant parameter, sponsor filter
+	query = ClaimableBalancesQuery{
+		PageQuery: pageQuery,
+		Claimant:  xdr.MustAddressPtr(dest2),
+		Sponsor:   xdr.MustAddressPtr(sponsor1),
+	}
+	validateClaimableBalanceQuery(tt, q, query, 1, []string{dest1, dest2}, "", sponsor1)
 
-	// Validate the query with unknown claimant parameter
-	query.Claimant = xdr.MustAddressPtr(dest3)
-	cbs, err = q.GetClaimableBalances(tt.Ctx, query)
-	tt.Assert.NoError(err)
-	tt.Assert.Len(cbs, 0)
+	//claimant parameter, asset filter, sponsor filter
+	query = ClaimableBalancesQuery{
+		PageQuery: pageQuery,
+		Claimant:  xdr.MustAddressPtr(dest2),
+		Asset:     &asset2,
+		Sponsor:   xdr.MustAddressPtr(sponsor2),
+	}
+	validateClaimableBalanceQuery(tt, q, query, 1, []string{dest2}, asset2.String(), sponsor2)
 }
 
 func TestUpdateClaimableBalance(t *testing.T) {

@@ -9,10 +9,6 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 ### Breaking Changes
 - The command line flag `--remote-captive-core-url` has been removed, as remote captive core functionality is now deprecated ([4940](https://github.com/stellar/go/pull/4940)).
 
-### DB Schema Migration
-
-- Added `asset` column and an index to `claimable_balance_claimant` table ([5032](https://github.com/stellar/go/pull/5032)).
-
 ### Added
 - Added new command-line flag `--network` to specify the Stellar network (pubnet or testnet), aiming at simplifying the configuration process by automatically configuring the following parameters based on the chosen network: `--history-archive-urls`, `--network-passphrase`, and `--captive-core-config-path` ([4949](https://github.com/stellar/go/pull/4949)).
 

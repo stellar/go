@@ -88,10 +88,9 @@ func applyClaimableBalancesQueriesCursor(sql sq.SelectBuilder, lCursor int64, rC
 // ClaimableBalanceClaimant is a row of data from the `claimable_balances_claimants` table.
 // This table exists to allow faster querying for claimable balances for a specific claimant.
 type ClaimableBalanceClaimant struct {
-	BalanceID          string    `db:"id"`
-	Destination        string    `db:"destination"`
-	LastModifiedLedger uint32    `db:"last_modified_ledger"`
-	Asset              xdr.Asset `db:"asset"`
+	BalanceID          string `db:"id"`
+	Destination        string `db:"destination"`
+	LastModifiedLedger uint32 `db:"last_modified_ledger"`
 }
 
 // ClaimableBalance is a row of data from the `claimable_balances` table.
@@ -248,23 +247,30 @@ func (q *Q) GetClaimableBalances(ctx context.Context, query ClaimableBalancesQue
 		return nil, errors.Wrap(err, "could not apply query to page")
 	}
 
-	if query.Asset != nil {
-		// when search by asset, profiling has shown best performance to have the LIMIT on inner query
-		sql = sql.Where("cb.asset = ?", query.Asset)
-	}
+	if query.Asset != nil || query.Sponsor != nil {
 
-	if query.Sponsor != nil {
-		sql = sql.Where("cb.sponsor = ?", query.Sponsor.Address())
-	}
+		// JOIN with claimable_balance_claimants table to query by claimants
+		if query.Claimant != nil {
+			sql = sql.Join("claimable_balance_claimants on claimable_balance_claimants.id = cb.id")
+			sql = sql.Where("claimable_balance_claimants.destination = ?", query.Claimant.Address())
+		}
 
-	if query.Claimant != nil {
+		// Apply filters for asset and sponsor
+		if query.Asset != nil {
+			sql = sql.Where("cb.asset = ?", query.Asset)
+		}
+		if query.Sponsor != nil {
+			sql = sql.Where("cb.sponsor = ?", query.Sponsor.Address())
+		}
+
+	} else if query.Claimant != nil {
+		// If only the claimant is provided without additional filters, a JOIN with claimable_balance_claimants
+		// does not perform efficiently. Instead, use a subquery (with LIMIT) to retrieve claimable balances based on
+		// the claimant's address.
+
 		var selectClaimableBalanceClaimants = sq.Select("id").From("claimable_balance_claimants").
 			Where("destination = ?", query.Claimant.Address())
 
-		// https://github.com/stellar/go/issues/4907
-		if query.Asset != nil {
-			selectClaimableBalanceClaimants = selectClaimableBalanceClaimants.Where("asset = ?", query.Asset)
-		}
 		selectClaimableBalanceClaimants.Limit(query.PageQuery.Limit)
 
 		subSql, err := applyClaimableBalancesQueriesCursor(selectClaimableBalanceClaimants, l, r, query.PageQuery.Order)
@@ -285,7 +291,7 @@ func (q *Q) GetClaimableBalances(ctx context.Context, query ClaimableBalancesQue
 
 	var results []ClaimableBalance
 	if err := q.Select(ctx, &results, sql); err != nil {
-		return nil, errors.Wrap(err, "could not run select query")
+		return nil, errors.Wrap(err, fmt.Sprintf("could not run select query"))
 	}
 
 	return results, nil
