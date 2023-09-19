@@ -291,7 +291,7 @@ func (q *Q) GetClaimableBalances(ctx context.Context, query ClaimableBalancesQue
 
 	var results []ClaimableBalance
 	if err := q.Select(ctx, &results, sql); err != nil {
-		return nil, errors.Wrap(err, fmt.Sprintf("could not run select query"))
+		return nil, errors.Wrap(err, "could not run select query")
 	}
 
 	return results, nil

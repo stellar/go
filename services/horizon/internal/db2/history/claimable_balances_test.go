@@ -249,25 +249,25 @@ func insertClaimants(q *Q, tt *test.T, cBalance ClaimableBalance) error {
 	return claimantsInsertBuilder.Exec(tt.Ctx)
 }
 
-func validateClaimableBalanceQuery(t *test.T, q *Q, query ClaimableBalancesQuery, expectedLen int, expectedClaimants []string, expectedAsset string, expectedSponsor string) {
+type claimableBalanceQueryResult struct {
+	Claimants []string
+	Asset     string
+	Sponsor   string
+}
+
+func validateClaimableBalanceQuery(t *test.T, q *Q, query ClaimableBalancesQuery, expectedQueryResult []claimableBalanceQueryResult) {
 	cbs, err := q.GetClaimableBalances(t.Ctx, query)
 	t.Assert.NoError(err)
-	t.Assert.Len(cbs, expectedLen)
-
-	if expectedLen > 0 {
-		t.Assert.Equal(expectedClaimants[0], cbs[0].Claimants[0].Destination)
-	}
-
-	if expectedLen > 1 {
-		t.Assert.Equal(expectedClaimants[1], cbs[0].Claimants[1].Destination)
-	}
-
-	if expectedAsset != "" {
-		t.Assert.Equal(expectedAsset, cbs[0].Asset.String())
-	}
-
-	if expectedSponsor != "" {
-		t.Assert.Equal(expectedSponsor, cbs[0].Sponsor.String)
+	for i, expected := range expectedQueryResult {
+		for j, claimant := range expected.Claimants {
+			t.Assert.Equal(claimant, cbs[i].Claimants[j].Destination)
+		}
+		if expected.Asset != "" {
+			t.Assert.Equal(expected.Asset, cbs[i].Asset.String())
+		}
+		if expected.Sponsor != "" {
+			t.Assert.Equal(expected.Sponsor, cbs[i].Sponsor.String)
+		}
 	}
 }
 
@@ -360,7 +360,9 @@ func TestFindClaimableBalancesByDestinationWithLimit(t *testing.T) {
 	query := ClaimableBalancesQuery{
 		PageQuery: pageQuery,
 	}
-	validateClaimableBalanceQuery(tt, q, query, 1, []string{dest1, dest2}, "", "")
+	validateClaimableBalanceQuery(tt, q, query, []claimableBalanceQueryResult{
+		{Claimants: []string{dest1, dest2}},
+	})
 
 	// invalid claimant parameter
 	query = ClaimableBalancesQuery{
@@ -369,14 +371,16 @@ func TestFindClaimableBalancesByDestinationWithLimit(t *testing.T) {
 		Asset:     &asset2,
 		Sponsor:   xdr.MustAddressPtr(sponsor1),
 	}
-	validateClaimableBalanceQuery(tt, q, query, 0, []string{}, "", "")
+	validateClaimableBalanceQuery(tt, q, query, []claimableBalanceQueryResult{})
 
 	// claimant parameter, no filters
 	query = ClaimableBalancesQuery{
 		PageQuery: pageQuery,
 		Claimant:  xdr.MustAddressPtr(dest1),
 	}
-	validateClaimableBalanceQuery(tt, q, query, 1, []string{dest1, dest2}, "", "")
+	validateClaimableBalanceQuery(tt, q, query, []claimableBalanceQueryResult{
+		{Claimants: []string{dest1, dest2}},
+	})
 
 	// claimant parameter, asset filter
 	query = ClaimableBalancesQuery{
@@ -384,7 +388,9 @@ func TestFindClaimableBalancesByDestinationWithLimit(t *testing.T) {
 		Claimant:  xdr.MustAddressPtr(dest2),
 		Asset:     &asset1,
 	}
-	validateClaimableBalanceQuery(tt, q, query, 1, []string{dest1, dest2}, asset1.String(), "")
+	validateClaimableBalanceQuery(tt, q, query, []claimableBalanceQueryResult{
+		{Claimants: []string{dest1, dest2}, Asset: asset1.String()},
+	})
 
 	// claimant parameter, sponsor filter
 	query = ClaimableBalancesQuery{
@@ -392,7 +398,9 @@ func TestFindClaimableBalancesByDestinationWithLimit(t *testing.T) {
 		Claimant:  xdr.MustAddressPtr(dest2),
 		Sponsor:   xdr.MustAddressPtr(sponsor1),
 	}
-	validateClaimableBalanceQuery(tt, q, query, 1, []string{dest1, dest2}, "", sponsor1)
+	validateClaimableBalanceQuery(tt, q, query, []claimableBalanceQueryResult{
+		{Claimants: []string{dest1, dest2}, Sponsor: sponsor1},
+	})
 
 	//claimant parameter, asset filter, sponsor filter
 	query = ClaimableBalancesQuery{
@@ -401,7 +409,9 @@ func TestFindClaimableBalancesByDestinationWithLimit(t *testing.T) {
 		Asset:     &asset2,
 		Sponsor:   xdr.MustAddressPtr(sponsor2),
 	}
-	validateClaimableBalanceQuery(tt, q, query, 1, []string{dest2}, asset2.String(), sponsor2)
+	validateClaimableBalanceQuery(tt, q, query, []claimableBalanceQueryResult{
+		{Claimants: []string{dest2}, Asset: asset2.String(), Sponsor: sponsor2},
+	})
 }
 
 func TestUpdateClaimableBalance(t *testing.T) {
