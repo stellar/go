@@ -269,9 +269,7 @@ func (q *Q) GetClaimableBalances(ctx context.Context, query ClaimableBalancesQue
 		// the claimant's address.
 
 		var selectClaimableBalanceClaimants = sq.Select("id").From("claimable_balance_claimants").
-			Where("destination = ?", query.Claimant.Address())
-
-		selectClaimableBalanceClaimants.Limit(query.PageQuery.Limit)
+			Where("destination = ?", query.Claimant.Address()).Limit(query.PageQuery.Limit)
 
 		subSql, err := applyClaimableBalancesQueriesCursor(selectClaimableBalanceClaimants, l, r, query.PageQuery.Order)
 		if err != nil {
