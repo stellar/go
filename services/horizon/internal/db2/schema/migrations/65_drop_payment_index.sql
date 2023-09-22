@@ -5,5 +5,3 @@
 DROP INDEX IF EXISTS "index_history_operations_on_is_payment";
 
 -- +migrate Down
-
-CREATE INDEX "index_history_operations_on_is_payment" ON history_operations USING btree (is_payment);
