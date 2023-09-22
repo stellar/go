@@ -60,7 +60,8 @@
 // migrations/61_trust_lines_by_account_type_code_issuer.sql (383B)
 // migrations/62_claimable_balance_claimants.sql (1.428kB)
 // migrations/63_add_contract_id_to_asset_stats.sql (153B)
-// migrations/64_add_payment_flag_history_ops.sql (300B)
+// migrations/64_add_payment_flag_history_ops.sql (145B)
+// migrations/65_drop_payment_index.sql (260B)
 // migrations/6_create_assets_table.sql (366B)
 // migrations/7_modify_trades_table.sql (2.303kB)
 // migrations/8_add_aggregators.sql (907B)
@@ -1334,7 +1335,7 @@ func migrations63_add_contract_id_to_asset_statsSql() (*asset, error) {
 	return a, nil
 }
 
-var _migrations64_add_payment_flag_history_opsSql = []byte("\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff\x94\x8f\x41\xca\xc2\x30\x10\x46\xf7\x73\x8a\xa1\xab\xff\x47\x7a\x82\xac\x62\x13\xa4\x50\x53\xa9\x2d\xb8\x0b\x29\x0e\x1a\xb0\x99\x92\x06\xb4\xb7\x17\xdc\xb4\xa0\x20\xee\xe7\xcd\xfb\x5e\x9e\xe3\x66\xf0\x97\xe8\x12\x61\x37\x02\xc8\xaa\xd5\x0d\xb6\x72\x5b\x69\xbc\xfa\x29\x71\x9c\x2d\x8f\x14\x5d\xf2\x1c\x26\x94\x4a\xa1\x9f\xec\xe8\xe6\x81\x42\xc2\x9e\xf9\x46\x2e\x08\x28\x1a\x2d\x5b\x8d\xa5\x51\xfa\x84\x99\x0f\x67\x7a\xd8\x77\xdc\x72\xb0\x0b\x9d\x61\x6d\x3e\x39\xba\x63\x69\x76\xd8\xa7\x48\x84\x7f\xcb\xf9\xbf\x00\x58\xaf\x55\x7c\x0f\x00\xaa\xa9\x0f\x3f\x6a\xc5\xb7\xc8\xd7\xcf\xa2\xae\xba\xbd\x59\xc5\x0a\x78\x06\x00\x00\xff\xff\xc0\xa1\x37\xd4\x2c\x01\x00\x00")
+var _migrations64_add_payment_flag_history_opsSql = []byte("\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff\xd2\xd5\x55\xd0\xce\xcd\x4c\x2f\x4a\x2c\x49\x55\x08\x2d\xe0\xe2\x72\xf4\x09\x71\x0d\x52\x08\x71\x74\xf2\x71\x55\xc8\xc8\x2c\x2e\xc9\x2f\xaa\x8c\xcf\x2f\x48\x2d\x4a\x2c\xc9\xcc\xcf\x2b\x56\x70\x74\x71\x51\xc8\x2c\x8e\x2f\x48\xac\xcc\x4d\xcd\x2b\x51\x48\xca\xcf\xcf\x49\x4d\xcc\xb3\xe6\xe2\x42\x36\xc7\x25\xbf\x3c\x8f\xa0\x49\x2e\x41\xfe\x01\x0a\xce\xfe\x3e\xa1\xbe\x7e\x48\x26\x5a\x73\x01\x02\x00\x00\xff\xff\xcc\xf9\x34\xcb\x91\x00\x00\x00")
 
 func migrations64_add_payment_flag_history_opsSqlBytes() ([]byte, error) {
 	return bindataRead(
@@ -1350,7 +1351,27 @@ func migrations64_add_payment_flag_history_opsSql() (*asset, error) {
 	}
 
 	info := bindataFileInfo{name: "migrations/64_add_payment_flag_history_ops.sql", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
-	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0x7e, 0x2d, 0x87, 0xe0, 0xa7, 0x38, 0xdc, 0xb7, 0xfb, 0xda, 0xc5, 0xad, 0xfb, 0x70, 0x15, 0xde, 0xb, 0x27, 0x97, 0x87, 0xc, 0xdb, 0xd3, 0x4b, 0x6c, 0x51, 0x39, 0x3a, 0xb4, 0xd3, 0x20, 0x42}}
+	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0xa7, 0x6d, 0xb6, 0x2e, 0x50, 0x40, 0x71, 0x1f, 0x97, 0xd9, 0xd9, 0xfb, 0xcf, 0x45, 0x0, 0xd1, 0x93, 0x79, 0x5d, 0x70, 0xb3, 0x2e, 0x31, 0x44, 0x13, 0x63, 0xdf, 0x70, 0xd9, 0xc9, 0x6b, 0x43}}
+	return a, nil
+}
+
+var _migrations65_drop_payment_indexSql = []byte("\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff\x8c\xcf\xc1\x4a\xc3\x40\x10\xc6\xf1\x7b\x9e\xe2\xa3\x57\x8d\xeb\xc1\x0a\xea\x35\x15\x72\x51\xb1\x0a\xbd\x2d\xdb\x66\x48\x06\x9a\x99\x65\x67\x96\x9a\xb7\x17\x5b\xf0\xdc\x07\xf8\x7e\x7c\xff\xb6\xc5\xcd\xcc\x63\x49\x4e\xf8\xce\x4d\xd3\xb6\x60\x19\xe8\x27\x4e\x6c\xae\x65\x89\x9a\xa9\x24\x67\x15\x8b\x2a\x91\x2d\xe6\xb4\xcc\x24\x8e\x53\x32\xa4\x61\xa0\x01\x2c\xb8\x10\xac\x82\xc7\x07\xec\xab\x83\x1d\x5e\x8b\x18\xb4\xfa\x1f\xea\x13\x5d\xe0\xf3\x4e\xd4\x21\x74\x20\xb3\x54\x96\x5b\x18\x11\x26\xf7\x6c\xcf\x21\x8c\xec\x53\xdd\xdf\x1d\x74\x0e\xe6\x74\x3c\xa6\x12\x46\x0d\x6c\x56\xc9\xc2\xfa\x7e\xfd\xd4\x74\x9f\xef\x1f\xe8\xdf\xba\xcd\x0e\xfd\x2b\x36\xbb\x7e\xfb\xb5\xc5\xea\xba\xd7\xab\x97\x73\xe2\x7f\x72\xa7\x27\x69\x7e\x03\x00\x00\xff\xff\x15\xa3\x47\xcb\x04\x01\x00\x00")
+
+func migrations65_drop_payment_indexSqlBytes() ([]byte, error) {
+	return bindataRead(
+		_migrations65_drop_payment_indexSql,
+		"migrations/65_drop_payment_index.sql",
+	)
+}
+
+func migrations65_drop_payment_indexSql() (*asset, error) {
+	bytes, err := migrations65_drop_payment_indexSqlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "migrations/65_drop_payment_index.sql", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0xf2, 0xe4, 0xb0, 0xad, 0x98, 0x6a, 0x5, 0xb8, 0x1e, 0xbb, 0xf6, 0x3d, 0x63, 0x93, 0xd5, 0x45, 0x29, 0xd7, 0x23, 0x23, 0x9b, 0xfc, 0x27, 0xb5, 0x8f, 0x37, 0x20, 0x66, 0x6c, 0x97, 0x45, 0x4a}}
 	return a, nil
 }
 
@@ -1606,6 +1627,7 @@ var _bindata = map[string]func() (*asset, error){
 	"migrations/62_claimable_balance_claimants.sql":                      migrations62_claimable_balance_claimantsSql,
 	"migrations/63_add_contract_id_to_asset_stats.sql":                   migrations63_add_contract_id_to_asset_statsSql,
 	"migrations/64_add_payment_flag_history_ops.sql":                     migrations64_add_payment_flag_history_opsSql,
+	"migrations/65_drop_payment_index.sql":                               migrations65_drop_payment_indexSql,
 	"migrations/6_create_assets_table.sql":                               migrations6_create_assets_tableSql,
 	"migrations/7_modify_trades_table.sql":                               migrations7_modify_trades_tableSql,
 	"migrations/8_add_aggregators.sql":                                   migrations8_add_aggregatorsSql,
@@ -1718,6 +1740,7 @@ var _bintree = &bintree{nil, map[string]*bintree{
 		"62_claimable_balance_claimants.sql":                      {migrations62_claimable_balance_claimantsSql, map[string]*bintree{}},
 		"63_add_contract_id_to_asset_stats.sql":                   {migrations63_add_contract_id_to_asset_statsSql, map[string]*bintree{}},
 		"64_add_payment_flag_history_ops.sql":                     {migrations64_add_payment_flag_history_opsSql, map[string]*bintree{}},
+		"65_drop_payment_index.sql":                               {migrations65_drop_payment_indexSql, map[string]*bintree{}},
 		"6_create_assets_table.sql":                               {migrations6_create_assets_tableSql, map[string]*bintree{}},
 		"7_modify_trades_table.sql":                               {migrations7_modify_trades_tableSql, map[string]*bintree{}},
 		"8_add_aggregators.sql":                                   {migrations8_add_aggregatorsSql, map[string]*bintree{}},
