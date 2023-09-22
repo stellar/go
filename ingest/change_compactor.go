@@ -2,7 +2,6 @@ package ingest
 
 import (
 	"encoding/base64"
-	"sync"
 
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
@@ -50,7 +49,6 @@ import (
 type ChangeCompactor struct {
 	// ledger key => Change
 	cache          map[string]Change
-	mutex          sync.Mutex
 	encodingBuffer *xdr.EncodingBuffer
 }
 
@@ -70,9 +68,6 @@ func NewChangeCompactor() *ChangeCompactor {
 // cache takes too much memory, you apply changes returned by GetChanges and
 // create a new ChangeCompactor object to continue ingestion.
 func (c *ChangeCompactor) AddChange(change Change) error {
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
-
 	switch {
 	case change.Pre == nil && change.Post != nil:
 		return c.addCreatedChange(change)
@@ -89,9 +84,13 @@ func (c *ChangeCompactor) AddChange(change Change) error {
 // change is unexpected.
 func (c *ChangeCompactor) addCreatedChange(change Change) error {
 	// safe, since we later cast to string (causing a copy)
-	ledgerKey, err := c.encodingBuffer.UnsafeMarshalBinary(change.Post.LedgerKey())
+	key, err := change.Post.LedgerKey()
 	if err != nil {
-		return errors.Wrap(err, "Error MarshalBinary")
+		return errors.Wrap(err, "error getting ledger key for new entry")
+	}
+	ledgerKey, err := c.encodingBuffer.UnsafeMarshalBinary(key)
+	if err != nil {
+		return errors.Wrap(err, "error marshaling ledger key for new entry")
 	}
 
 	ledgerKeyString := string(ledgerKey)
@@ -117,7 +116,7 @@ func (c *ChangeCompactor) addCreatedChange(change Change) error {
 		// If existing type is removed it means that this entry does exist
 		// in a DB so we update entry change.
 		c.cache[ledgerKeyString] = Change{
-			Type: change.Post.LedgerKey().Type,
+			Type: key.Type,
 			Pre:  existingChange.Pre,
 			Post: change.Post,
 		}
@@ -132,9 +131,13 @@ func (c *ChangeCompactor) addCreatedChange(change Change) error {
 // change is unexpected.
 func (c *ChangeCompactor) addUpdatedChange(change Change) error {
 	// safe, since we later cast to string (causing a copy)
-	ledgerKey, err := c.encodingBuffer.UnsafeMarshalBinary(change.Post.LedgerKey())
+	key, err := change.Post.LedgerKey()
 	if err != nil {
-		return errors.Wrap(err, "Error MarshalBinary")
+		return errors.Wrap(err, "error getting ledger key for updated entry")
+	}
+	ledgerKey, err := c.encodingBuffer.UnsafeMarshalBinary(key)
+	if err != nil {
+		return errors.Wrap(err, "error marshaling ledger key for updated entry")
 	}
 
 	ledgerKeyString := string(ledgerKey)
@@ -150,13 +153,13 @@ func (c *ChangeCompactor) addUpdatedChange(change Change) error {
 		// If existing type is created it means that this entry does not
 		// exist in a DB so we update entry change.
 		c.cache[ledgerKeyString] = Change{
-			Type: change.Post.LedgerKey().Type,
+			Type: key.Type,
 			Pre:  existingChange.Pre, // = nil
 			Post: change.Post,
 		}
 	case xdr.LedgerEntryChangeTypeLedgerEntryUpdated:
 		c.cache[ledgerKeyString] = Change{
-			Type: change.Post.LedgerKey().Type,
+			Type: key.Type,
 			Pre:  existingChange.Pre,
 			Post: change.Post,
 		}
@@ -176,9 +179,13 @@ func (c *ChangeCompactor) addUpdatedChange(change Change) error {
 // change is unexpected.
 func (c *ChangeCompactor) addRemovedChange(change Change) error {
 	// safe, since we later cast to string (causing a copy)
-	ledgerKey, err := c.encodingBuffer.UnsafeMarshalBinary(change.Pre.LedgerKey())
+	key, err := change.Pre.LedgerKey()
 	if err != nil {
-		return errors.Wrap(err, "Error MarshalBinary")
+		return errors.Wrap(err, "error getting ledger key for removed entry")
+	}
+	ledgerKey, err := c.encodingBuffer.UnsafeMarshalBinary(key)
+	if err != nil {
+		return errors.Wrap(err, "error marshaling ledger key for removed entry")
 	}
 
 	ledgerKeyString := string(ledgerKey)
@@ -196,7 +203,7 @@ func (c *ChangeCompactor) addRemovedChange(change Change) error {
 		delete(c.cache, ledgerKeyString)
 	case xdr.LedgerEntryChangeTypeLedgerEntryUpdated:
 		c.cache[ledgerKeyString] = Change{
-			Type: change.Pre.LedgerKey().Type,
+			Type: key.Type,
 			Pre:  existingChange.Pre,
 			Post: nil,
 		}
@@ -215,9 +222,6 @@ func (c *ChangeCompactor) addRemovedChange(change Change) error {
 // GetChanges returns a slice of Changes in the cache. The order of changes is
 // random but each change is connected to a separate entry.
 func (c *ChangeCompactor) GetChanges() []Change {
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
-
 	changes := make([]Change, 0, len(c.cache))
 
 	for _, entryChange := range c.cache {
@@ -229,7 +233,5 @@ func (c *ChangeCompactor) GetChanges() []Change {
 
 // Size returns number of ledger entries in the cache.
 func (c *ChangeCompactor) Size() int {
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
 	return len(c.cache)
 }

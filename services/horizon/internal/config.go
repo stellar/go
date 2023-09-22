@@ -21,7 +21,6 @@ type Config struct {
 
 	EnableCaptiveCoreIngestion  bool
 	EnableIngestionFiltering    bool
-	UsingDefaultPubnetConfig    bool
 	CaptiveCoreBinaryPath       string
 	RemoteCaptiveCoreURL        string
 	CaptiveCoreConfigPath       string
@@ -41,6 +40,8 @@ type Config struct {
 
 	SSEUpdateFrequency time.Duration
 	ConnectionTimeout  time.Duration
+	// MaxHTTPRequestSize is the maximum allowed request payload size
+	MaxHTTPRequestSize uint
 	RateQuota          *throttled.RateQuota
 	FriendbotURL       *url.URL
 	LogLevel           logrus.Level
@@ -89,6 +90,14 @@ type Config struct {
 	// IngestDisableStateVerification disables state verification
 	// `System.verifyState()` when set to `true`.
 	IngestDisableStateVerification bool
+	// IngestStateVerificationCheckpointFrequency configures how often state verification is performed.
+	// If IngestStateVerificationCheckpointFrequency is set to 1 state verification is run on every checkpoint,
+	// If IngestStateVerificationCheckpointFrequency is set to 2 state verification is run on every second checkpoint,
+	// etc...
+	IngestStateVerificationCheckpointFrequency uint
+	// IngestStateVerificationTimeout configures a timeout on the state verification routine.
+	// If IngestStateVerificationTimeout is set to 0 the timeout is disabled.
+	IngestStateVerificationTimeout time.Duration
 	// IngestEnableExtendedLogLedgerStats enables extended ledger stats in
 	// logging.
 	IngestEnableExtendedLogLedgerStats bool
@@ -106,4 +115,8 @@ type Config struct {
 	BehindAWSLoadBalancer bool
 	// RoundingSlippageFilter excludes trades from /trade_aggregations with rounding slippage >x bps
 	RoundingSlippageFilter int
+	// Stellar network: 'testnet' or 'pubnet'
+	Network string
+	// DisableTxSub disables transaction submission functionality for Horizon.
+	DisableTxSub bool
 }

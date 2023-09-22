@@ -95,7 +95,7 @@ func (r *System) clearBefore(ctx context.Context, startSeq, endSeq int32) error 
 			return err
 		}
 
-		err = r.HistoryQ.Begin()
+		err = r.HistoryQ.Begin(ctx)
 		if err != nil {
 			return errors.Wrap(err, "Error in begin")
 		}

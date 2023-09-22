@@ -3,6 +3,7 @@
 package history
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"database/sql/driver"
@@ -35,11 +36,20 @@ const (
 	// EffectAccountRemoved effects occur when one account is merged into another
 	EffectAccountRemoved EffectType = 1 // from merge_account
 
-	// EffectAccountCredited effects occur when an account receives some currency
-	EffectAccountCredited EffectType = 2 // from create_account, payment, path_payment, merge_account
+	// EffectAccountCredited effects occur when an account receives some
+	// currency
+	//
+	// from create_account, payment, path_payment, merge_account, and SAC events
+	// involving transfers, mints, and burns.
+	EffectAccountCredited EffectType = 2
 
 	// EffectAccountDebited effects occur when an account sends some currency
-	EffectAccountDebited EffectType = 3 // from create_account, payment, path_payment, create_account
+	//
+	// from create_account, payment, path_payment, create_account, and SAC
+	// involving transfers, mints, and burns.
+	//
+	// https://github.com/stellar/rs-soroban-env/blob/5695440da452837555d8f7f259cc33341fdf07b0/soroban-env-host/src/native_contract/token/contract.rs#L51-L63
+	EffectAccountDebited EffectType = 3
 
 	// EffectAccountThresholdsUpdated effects occur when an account changes its
 	// multisig thresholds.
@@ -208,6 +218,16 @@ const (
 
 	// EffectLiquidityPoolRevoked occurs when a liquidity pool is revoked
 	EffectLiquidityPoolRevoked EffectType = 95 // from change_trust_line_flags and allow_trust
+
+	// EffectContractCredited effects occur when a contract receives some
+	// currency from SAC events involving transfers, mints, and burns.
+	// https://github.com/stellar/rs-soroban-env/blob/5695440da452837555d8f7f259cc33341fdf07b0/soroban-env-host/src/native_contract/token/contract.rs#L51-L63
+	EffectContractCredited EffectType = 96
+
+	// EffectContractDebited effects occur when a contract sends some currency
+	// from SAC events involving transfers, mints, and burns.
+	// https://github.com/stellar/rs-soroban-env/blob/5695440da452837555d8f7f259cc33341fdf07b0/soroban-env-host/src/native_contract/token/contract.rs#L51-L63
+	EffectContractDebited EffectType = 97
 )
 
 // Account is a row of data from the `history_accounts` table
@@ -267,8 +287,8 @@ type IngestionQ interface {
 	QTransactions
 	QTrustLines
 
-	Begin() error
-	BeginTx(*sql.TxOptions) error
+	Begin(context.Context) error
+	BeginTx(context.Context, *sql.TxOptions) error
 	Commit() error
 	CloneIngestionQ() IngestionQ
 	Close() error
@@ -284,6 +304,7 @@ type IngestionQ interface {
 	TruncateIngestStateTables(context.Context) error
 	DeleteRangeAll(ctx context.Context, start, end int64) error
 	DeleteTransactionsFilteredTmpOlderThan(ctx context.Context, howOldInSeconds uint64) (int64, error)
+	TryStateVerificationLock(ctx context.Context) (bool, error)
 }
 
 // QAccounts defines account related queries.
@@ -352,6 +373,8 @@ type ExpAssetStat struct {
 	Balances    ExpAssetStatBalances `db:"balances"`
 	Amount      string               `db:"amount"`
 	NumAccounts int32                `db:"num_accounts"`
+	ContractID  *[]byte              `db:"contract_id"`
+	// make sure to update Equals() when adding new fields to ExpAssetStat
 }
 
 // PagingToken returns a cursor for this asset stat
@@ -370,6 +393,7 @@ type ExpAssetStatAccounts struct {
 	AuthorizedToMaintainLiabilities int32 `json:"authorized_to_maintain_liabilities"`
 	ClaimableBalances               int32 `json:"claimable_balances"`
 	LiquidityPools                  int32 `json:"liquidity_pools"`
+	Contracts                       int32 `json:"contracts"`
 	Unauthorized                    int32 `json:"unauthorized"`
 }
 
@@ -386,6 +410,39 @@ func (e *ExpAssetStatAccounts) Scan(src interface{}) error {
 	return json.Unmarshal(source, &e)
 }
 
+func (e *ExpAssetStat) Equals(o ExpAssetStat) bool {
+	if (e.ContractID == nil) != (o.ContractID == nil) {
+		return false
+	}
+	if e.ContractID != nil && !bytes.Equal(*e.ContractID, *o.ContractID) {
+		return false
+	}
+
+	return e.AssetType == o.AssetType &&
+		e.AssetCode == o.AssetCode &&
+		e.AssetIssuer == o.AssetIssuer &&
+		e.Accounts == o.Accounts &&
+		e.Balances == o.Balances &&
+		e.Amount == o.Amount &&
+		e.NumAccounts == o.NumAccounts
+}
+
+func (e *ExpAssetStat) GetContractID() ([32]byte, bool) {
+	var val [32]byte
+	if e.ContractID == nil {
+		return val, false
+	}
+	if size := copy(val[:], (*e.ContractID)[:]); size != 32 {
+		panic("contract id is not 32 bytes")
+	}
+	return val, true
+}
+
+func (e *ExpAssetStat) SetContractID(contractID [32]byte) {
+	contractIDBytes := contractID[:]
+	e.ContractID = &contractIDBytes
+}
+
 func (a ExpAssetStatAccounts) Add(b ExpAssetStatAccounts) ExpAssetStatAccounts {
 	return ExpAssetStatAccounts{
 		Authorized:                      a.Authorized + b.Authorized,
@@ -393,6 +450,7 @@ func (a ExpAssetStatAccounts) Add(b ExpAssetStatAccounts) ExpAssetStatAccounts {
 		ClaimableBalances:               a.ClaimableBalances + b.ClaimableBalances,
 		LiquidityPools:                  a.LiquidityPools + b.LiquidityPools,
 		Unauthorized:                    a.Unauthorized + b.Unauthorized,
+		Contracts:                       a.Contracts + b.Contracts,
 	}
 }
 
@@ -407,7 +465,19 @@ type ExpAssetStatBalances struct {
 	AuthorizedToMaintainLiabilities string `json:"authorized_to_maintain_liabilities"`
 	ClaimableBalances               string `json:"claimable_balances"`
 	LiquidityPools                  string `json:"liquidity_pools"`
+	Contracts                       string `json:"contracts"`
 	Unauthorized                    string `json:"unauthorized"`
+}
+
+func (e ExpAssetStatBalances) IsZero() bool {
+	return e == ExpAssetStatBalances{
+		Authorized:                      "0",
+		AuthorizedToMaintainLiabilities: "0",
+		ClaimableBalances:               "0",
+		LiquidityPools:                  "0",
+		Contracts:                       "0",
+		Unauthorized:                    "0",
+	}
 }
 
 func (e ExpAssetStatBalances) Value() (driver.Value, error) {
@@ -441,6 +511,9 @@ func (e *ExpAssetStatBalances) Scan(src interface{}) error {
 	if e.Unauthorized == "" {
 		e.Unauthorized = "0"
 	}
+	if e.Contracts == "" {
+		e.Contracts = "0"
+	}
 
 	return nil
 }
@@ -451,6 +524,8 @@ type QAssetStats interface {
 	InsertAssetStat(ctx context.Context, stat ExpAssetStat) (int64, error)
 	UpdateAssetStat(ctx context.Context, stat ExpAssetStat) (int64, error)
 	GetAssetStat(ctx context.Context, assetType xdr.AssetType, assetCode, assetIssuer string) (ExpAssetStat, error)
+	GetAssetStatByContract(ctx context.Context, contractID [32]byte) (ExpAssetStat, error)
+	GetAssetStatByContracts(ctx context.Context, contractIDs [][32]byte) ([]ExpAssetStat, error)
 	RemoveAssetStat(ctx context.Context, assetType xdr.AssetType, assetCode, assetIssuer string) (int64, error)
 	GetAssetStats(ctx context.Context, assetCode, assetIssuer string, page db2.PageQuery) ([]ExpAssetStat, error)
 	CountTrustLines(ctx context.Context) (int, error)
@@ -609,6 +684,7 @@ type Operation struct {
 	SourceAccount         string            `db:"source_account"`
 	SourceAccountMuxed    null.String       `db:"source_account_muxed"`
 	TransactionSuccessful bool              `db:"transaction_successful"`
+	IsPayment             bool              `db:"is_payment"`
 }
 
 // ManageOffer is a struct of data from `operations.DetailsString`

@@ -516,7 +516,7 @@ func TestSponsorships(t *testing.T) {
 				Selling:       txnbuild.NativeAsset{},
 				Buying:        asset,
 				Amount:        "3",
-				Price:         xdr.Price{1, 1},
+				Price:         xdr.Price{N: 1, D: 1},
 			})
 
 		signers := []*keypair.Full{sponsorPair, newAccountPair}

@@ -4,6 +4,7 @@ package codes
 
 import (
 	"github.com/go-errors/errors"
+
 	"github.com/stellar/go/xdr"
 )
 
@@ -491,6 +492,43 @@ func String(code interface{}) (string, error) {
 		case xdr.LiquidityPoolWithdrawResultCodeLiquidityPoolWithdrawUnderMinimum:
 			return "op_under_minimum", nil
 		}
+	case xdr.InvokeHostFunctionResultCode:
+		switch code {
+		case xdr.InvokeHostFunctionResultCodeInvokeHostFunctionSuccess:
+			return OpSuccess, nil
+		case xdr.InvokeHostFunctionResultCodeInvokeHostFunctionMalformed:
+			return OpMalformed, nil
+		case xdr.InvokeHostFunctionResultCodeInvokeHostFunctionTrapped:
+			return "function_trapped", nil
+		case xdr.InvokeHostFunctionResultCodeInvokeHostFunctionResourceLimitExceeded:
+			return "resource_limit_exceeded", nil
+		case xdr.InvokeHostFunctionResultCodeInvokeHostFunctionEntryExpired:
+			return "entry_expired", nil
+		case xdr.InvokeHostFunctionResultCodeInvokeHostFunctionInsufficientRefundableFee:
+			return "insufficient_refundable_fee", nil
+		}
+	case xdr.BumpFootprintExpirationResultCode:
+		switch code {
+		case xdr.BumpFootprintExpirationResultCodeBumpFootprintExpirationSuccess:
+			return OpSuccess, nil
+		case xdr.BumpFootprintExpirationResultCodeBumpFootprintExpirationMalformed:
+			return OpMalformed, nil
+		case xdr.BumpFootprintExpirationResultCodeBumpFootprintExpirationResourceLimitExceeded:
+			return "resource_limit_exceeded", nil
+		case xdr.BumpFootprintExpirationResultCodeBumpFootprintExpirationInsufficientRefundableFee:
+			return "insufficient_refundable_fee", nil
+		}
+	case xdr.RestoreFootprintResultCode:
+		switch code {
+		case xdr.RestoreFootprintResultCodeRestoreFootprintSuccess:
+			return OpSuccess, nil
+		case xdr.RestoreFootprintResultCodeRestoreFootprintMalformed:
+			return OpMalformed, nil
+		case xdr.RestoreFootprintResultCodeRestoreFootprintResourceLimitExceeded:
+			return "resource_limit_exceeded", nil
+		case xdr.RestoreFootprintResultCodeRestoreFootprintInsufficientRefundableFee:
+			return "insufficient_refundable_fee", nil
+		}
 	}
 
 	return "", errors.New(ErrUnknownCode)
@@ -555,6 +593,12 @@ func ForOperationResult(opr xdr.OperationResult) (string, error) {
 		ic = ir.MustLiquidityPoolDepositResult().Code
 	case xdr.OperationTypeLiquidityPoolWithdraw:
 		ic = ir.MustLiquidityPoolWithdrawResult().Code
+	case xdr.OperationTypeInvokeHostFunction:
+		ic = ir.MustInvokeHostFunctionResult().Code
+	case xdr.OperationTypeBumpFootprintExpiration:
+		ic = ir.MustBumpFootprintExpirationResult().Code
+	case xdr.OperationTypeRestoreFootprint:
+		ic = ir.MustRestoreFootprintResult().Code
 	}
 
 	return String(ic)

@@ -30,9 +30,25 @@ func (e ErrReingestRangeConflict) Error() string {
 	return fmt.Sprintf("reingest range overlaps with horizon ingestion, supplied range shouldn't contain ledger %d", e.maximumLedgerSequence)
 }
 
+type State int
+
+const (
+	None State = iota
+	Start
+	Stop
+	Build
+	Resume
+	WaitForCheckpoint
+	StressTest
+	VerifyRange
+	HistoryRange
+	ReingestHistoryRange
+)
+
 type stateMachineNode interface {
 	run(*system) (transition, error)
 	String() string
+	GetState() State
 }
 
 type transition struct {
@@ -105,6 +121,10 @@ func (stopState) String() string {
 	return "stop"
 }
 
+func (stopState) GetState() State {
+	return Stop
+}
+
 func (stopState) run(s *system) (transition, error) {
 	return stop(), errors.New("Cannot run terminal state")
 }
@@ -117,8 +137,12 @@ func (startState) String() string {
 	return "start"
 }
 
+func (startState) GetState() State {
+	return Start
+}
+
 func (state startState) run(s *system) (transition, error) {
-	if err := s.historyQ.Begin(); err != nil {
+	if err := s.historyQ.Begin(s.ctx); err != nil {
 		return start(), errors.Wrap(err, "Error starting a transaction")
 	}
 	defer s.historyQ.Rollback()
@@ -234,6 +258,10 @@ func (b buildState) String() string {
 	return fmt.Sprintf("buildFromCheckpoint(checkpointLedger=%d, skipChecks=%t)", b.checkpointLedger, b.skipChecks)
 }
 
+func (buildState) GetState() State {
+	return Build
+}
+
 func (b buildState) run(s *system) (transition, error) {
 	var nextFailState = start()
 	if b.stop {
@@ -274,7 +302,7 @@ func (b buildState) run(s *system) (transition, error) {
 		bucketListHash = ledgerCloseMeta.BucketListHash()
 	}
 
-	if err := s.historyQ.Begin(); err != nil {
+	if err := s.historyQ.Begin(s.ctx); err != nil {
 		return nextFailState, errors.Wrap(err, "Error starting a transaction")
 	}
 	defer s.historyQ.Rollback()
@@ -377,6 +405,10 @@ func (r resumeState) String() string {
 	return fmt.Sprintf("resume(latestSuccessfullyProcessedLedger=%d)", r.latestSuccessfullyProcessedLedger)
 }
 
+func (resumeState) GetState() State {
+	return Resume
+}
+
 func (r resumeState) run(s *system) (transition, error) {
 	if r.latestSuccessfullyProcessedLedger == 0 {
 		return start(), errors.New("unexpected latestSuccessfullyProcessedLedger value")
@@ -403,9 +435,7 @@ func (r resumeState) run(s *system) (transition, error) {
 		"duration": duration,
 	}).Info("Ledger returned from the backend")
 
-	s.Metrics().LedgerFetchDurationSummary.Observe(float64(duration))
-
-	if err = s.historyQ.Begin(); err != nil {
+	if err = s.historyQ.Begin(s.ctx); err != nil {
 		return retryResume(r),
 			errors.Wrap(err, "Error starting a transaction")
 	}
@@ -431,8 +461,6 @@ func (r resumeState) run(s *system) (transition, error) {
 			// Don't return updateCursor error.
 			log.WithError(err).Warn("error updating stellar-core cursor")
 		}
-
-		s.maybeVerifyState(ingestLedger)
 
 		// resume immediately so Captive-Core catchup is not slowed down
 		return resumeImmediately(lastIngestedLedger), nil
@@ -568,6 +596,10 @@ func (h historyRangeState) String() string {
 	)
 }
 
+func (historyRangeState) GetState() State {
+	return HistoryRange
+}
+
 // historyRangeState is used when catching up history data
 func (h historyRangeState) run(s *system) (transition, error) {
 	if h.fromLedger == 0 || h.toLedger == 0 ||
@@ -580,7 +612,7 @@ func (h historyRangeState) run(s *system) (transition, error) {
 		return start(), err
 	}
 
-	if err = s.historyQ.Begin(); err != nil {
+	if err = s.historyQ.Begin(s.ctx); err != nil {
 		return start(), errors.Wrap(err, "Error starting a transaction")
 	}
 	defer s.historyQ.Rollback()
@@ -681,6 +713,10 @@ func (h reingestHistoryRangeState) String() string {
 	)
 }
 
+func (reingestHistoryRangeState) GetState() State {
+	return ReingestHistoryRange
+}
+
 func (h reingestHistoryRangeState) ingestRange(s *system, fromLedger, toLedger uint32) error {
 	if s.historyQ.GetTx() == nil {
 		return errors.New("expected transaction to be present")
@@ -756,7 +792,7 @@ func (h reingestHistoryRangeState) run(s *system) (transition, error) {
 		}
 		startTime = time.Now()
 
-		if err := s.historyQ.Begin(); err != nil {
+		if err := s.historyQ.Begin(s.ctx); err != nil {
 			return stop(), errors.Wrap(err, "Error starting a transaction")
 		}
 		defer s.historyQ.Rollback()
@@ -792,7 +828,7 @@ func (h reingestHistoryRangeState) run(s *system) (transition, error) {
 
 		for cur := h.fromLedger; cur <= h.toLedger; cur++ {
 			err = func(ledger uint32) error {
-				if e := s.historyQ.Begin(); e != nil {
+				if e := s.historyQ.Begin(s.ctx); e != nil {
 					return errors.Wrap(e, "Error starting a transaction")
 				}
 				defer s.historyQ.Rollback()
@@ -835,6 +871,10 @@ func (waitForCheckpointState) String() string {
 	return "waitForCheckpoint"
 }
 
+func (waitForCheckpointState) GetState() State {
+	return WaitForCheckpoint
+}
+
 func (waitForCheckpointState) run(*system) (transition, error) {
 	log.Info("Waiting for the next checkpoint...")
 	time.Sleep(10 * time.Second)
@@ -856,13 +896,17 @@ func (v verifyRangeState) String() string {
 	)
 }
 
+func (verifyRangeState) GetState() State {
+	return VerifyRange
+}
+
 func (v verifyRangeState) run(s *system) (transition, error) {
 	if v.fromLedger == 0 || v.toLedger == 0 ||
 		v.fromLedger > v.toLedger {
 		return stop(), errors.Errorf("invalid range: [%d, %d]", v.fromLedger, v.toLedger)
 	}
 
-	if err := s.historyQ.Begin(); err != nil {
+	if err := s.historyQ.Begin(s.ctx); err != nil {
 		err = errors.Wrap(err, "Error starting a transaction")
 		return stop(), err
 	}
@@ -933,7 +977,7 @@ func (v verifyRangeState) run(s *system) (transition, error) {
 		}).Info("Processing ledger")
 		startTime := time.Now()
 
-		if err = s.historyQ.Begin(); err != nil {
+		if err = s.historyQ.Begin(s.ctx); err != nil {
 			err = errors.Wrap(err, "Error starting a transaction")
 			return stop(), err
 		}
@@ -987,8 +1031,12 @@ func (stressTestState) String() string {
 	return "stressTest"
 }
 
+func (stressTestState) GetState() State {
+	return StressTest
+}
+
 func (stressTestState) run(s *system) (transition, error) {
-	if err := s.historyQ.Begin(); err != nil {
+	if err := s.historyQ.Begin(s.ctx); err != nil {
 		err = errors.Wrap(err, "Error starting a transaction")
 		return stop(), err
 	}

@@ -75,7 +75,7 @@ func TestGetOrFundIssuerAccount_failsIfNotDefaultTesntet(t *testing.T) {
 
 	_, err := getOrFundIssuerAccount(issuerKP.Address(), &horizonMock)
 	wantErrMsg := fmt.Sprintf("getting detail for account %s: problem: not_found", issuerKP.Address())
-	require.EqualError(t, err, wantErrMsg)
+	require.True(t, strings.Contains(err.Error(), wantErrMsg))
 }
 
 func TestSetup(t *testing.T) {

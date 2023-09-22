@@ -1,6 +1,4 @@
-FROM ubuntu:20.04
-
-MAINTAINER Bartek Nowotarski <bartek@stellar.org>
+FROM ubuntu:22.04
 
 ARG STELLAR_CORE_VERSION 
 ENV STELLAR_CORE_VERSION=${STELLAR_CORE_VERSION:-*}
