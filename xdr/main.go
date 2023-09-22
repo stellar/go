@@ -112,7 +112,7 @@ func NewBytesDecoder() *BytesDecoder {
 
 func (d *BytesDecoder) DecodeBytes(v DecoderFrom, b []byte) (int, error) {
 	d.reader.Reset(b)
-	return v.DecodeFrom(d.decoder)
+	return v.DecodeFrom(d.decoder, xdr.DecodeDefaultMaxDepth)
 }
 
 func marshalString(encoder func([]byte) string, v interface{}) (string, error) {
