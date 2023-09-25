@@ -10,7 +10,11 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 - Add a deprecation warning for using command-line flags when running Horizon ([5051](https://github.com/stellar/go/pull/5051))
 - Deprecate configuration flags related to legacy non-captive core ingestion ([5100](https://github.com/stellar/go/pull/5100))
 
-## 2.27.0
+## 2.27.0-rc2
+### Fixed
+- treat null is_payment values as equivalent to false values, avoid sql nil conversion errors([5060](https://github.com/stellar/go/pull/5060)).
+
+## 2.27.0-rc1
 
 **Upgrading to this version from <= 2.26.1 will trigger a state rebuild. During this process (which will take at least 10 minutes), Horizon will not ingest new ledgers.**
 
