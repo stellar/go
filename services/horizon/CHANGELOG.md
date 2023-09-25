@@ -4,7 +4,11 @@ All notable changes to this project will be documented in this
 file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 
-## 2.27.0
+## 2.27.0-rc2
+### Fixed
+- treat null is_payment values as equivalent to false values, avoid sql nil conversion errors([5060](https://github.com/stellar/go/pull/5060)).
+
+## 2.27.0-rc1
 
 **Upgrading to this version from <= 2.26.1 will trigger a state rebuild. During this process (which will take at least 10 minutes), Horizon will not ingest new ledgers.**
 
