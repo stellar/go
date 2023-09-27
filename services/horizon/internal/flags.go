@@ -779,6 +779,10 @@ func createCaptiveCoreConfigFromParameters(config *Config) error {
 	if config.CaptiveCoreConfigPath != "" {
 		return loadCaptiveCoreTomlFromFile(config)
 	} else {
+		config.CaptiveCoreTomlParams.CoreBinaryPath = config.CaptiveCoreBinaryPath
+		config.CaptiveCoreTomlParams.HistoryArchiveURLs = config.HistoryArchiveURLs
+		config.CaptiveCoreTomlParams.NetworkPassphrase = config.NetworkPassphrase
+
 		var err error
 		config.CaptiveCoreToml, err = ledgerbackend.NewCaptiveCoreToml(config.CaptiveCoreTomlParams)
 		if err != nil {
