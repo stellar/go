@@ -139,6 +139,7 @@ func (r *LedgerChangeReader) Read() (Change, error) {
 				Post: nil,
 			}
 		}
+		changes = sortChanges(changes)
 		r.pending = append(r.pending, changes...)
 		r.state++
 		return r.Read()

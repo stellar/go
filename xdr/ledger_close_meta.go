@@ -1,6 +1,8 @@
 package xdr
 
-import "fmt"
+import (
+	"fmt"
+)
 
 func (l LedgerCloseMeta) LedgerHeaderHistoryEntry() LedgerHeaderHistoryEntry {
 	switch l.V {
