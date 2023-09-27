@@ -2,6 +2,7 @@ package ingest
 
 import (
 	"bytes"
+	"sort"
 
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
@@ -18,6 +19,32 @@ type Change struct {
 	Type xdr.LedgerEntryType
 	Pre  *xdr.LedgerEntry
 	Post *xdr.LedgerEntry
+}
+
+func (c Change) ledgerKey() xdr.LedgerKey {
+	if c.Pre != nil {
+		return c.Pre.LedgerKey()
+	}
+	return c.Post.LedgerKey()
+}
+
+func (c Change) marshalBinary() ([]byte, error) {
+	var binary []byte
+	if c.Pre != nil {
+		bin, err := c.Pre.MarshalBinary()
+		if err != nil {
+			return nil, err
+		}
+		binary = append(binary, bin...)
+	}
+	if c.Post != nil {
+		bin, err := c.Post.MarshalBinary()
+		if err != nil {
+			return nil, err
+		}
+		binary = append(binary, bin...)
+	}
+	return binary, nil
 }
 
 // GetChangesFromLedgerEntryChanges transforms LedgerEntryChanges to []Change.
@@ -65,6 +92,39 @@ func GetChangesFromLedgerEntryChanges(ledgerEntryChanges xdr.LedgerEntryChanges)
 		}
 	}
 
+	return sortChanges(changes)
+}
+
+func sortChanges(changes []Change) []Change {
+	sort.Slice(changes, func(i, j int) bool {
+		lk := changes[i].ledgerKey()
+		lkBytes, err := lk.MarshalBinary()
+		if err != nil {
+			panic(err)
+		}
+		otherLk := changes[j].ledgerKey()
+		otherLkBytes, err := otherLk.MarshalBinary()
+		if err != nil {
+			panic(err)
+		}
+		result := bytes.Compare(lkBytes, otherLkBytes)
+		if result < 0 {
+			return true
+		}
+		if result > 0 {
+			return false
+		}
+
+		leBytes, err := changes[i].marshalBinary()
+		if err != nil {
+			panic(err)
+		}
+		otherLeBytes, err := changes[j].marshalBinary()
+		if err != nil {
+			panic(err)
+		}
+		return bytes.Compare(leBytes, otherLeBytes) < 0
+	})
 	return changes
 }
 
