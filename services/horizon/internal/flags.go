@@ -827,7 +827,7 @@ func setCaptiveCoreConfiguration(config *Config) error {
 func ApplyFlags(config *Config, flags support.ConfigOptions, options ApplyOptions) error {
 	// Check if the user has passed any flags and if so, print a DEPRECATED warning message.
 	flagsPassedByUser := flags.GetAllFlagsPassedByUser()
-	if flagsPassedByUser != nil && len(flagsPassedByUser) > 0 {
+	if len(flagsPassedByUser) > 0 {
 		result := fmt.Sprintf("DEPRECATED - the use of command-line flags: %s, has been deprecated in favor of environment variables. "+
 			"Please consult our Configuring section in the developer documentation on how to use them - https://developers.stellar.org/docs/run-api-server/configuring", flagsPassedByUser)
 		stdLog.Println(result)
