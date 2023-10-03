@@ -87,43 +87,92 @@ func Test_createCaptiveCoreConfig(t *testing.T) {
 
 	var errorMsgConfig = "%s must be set"
 	tests := []struct {
-		name               string
-		config             Config
-		networkPassphrase  string
-		historyArchiveURLs []string
-		errStr             string
+		name                     string
+		requireCaptiveCoreConfig bool
+		config                   Config
+		networkPassphrase        string
+		historyArchiveURLs       []string
+		errStr                   string
 	}{
 		{
-			name: "no network specified",
+			name:                     "no network specified; valid parameters",
+			requireCaptiveCoreConfig: true,
 			config: Config{
-				NetworkPassphrase:  "NetworkPassphrase",
-				HistoryArchiveURLs: []string{"HistoryArchiveURLs"},
+				NetworkPassphrase:     PubnetConf.NetworkPassphrase,
+				HistoryArchiveURLs:    PubnetConf.HistoryArchiveURLs,
+				CaptiveCoreConfigPath: "configs/captive-core-pubnet.cfg",
 			},
-			networkPassphrase:  "NetworkPassphrase",
-			historyArchiveURLs: []string{"HistoryArchiveURLs"},
+			networkPassphrase:  PubnetConf.NetworkPassphrase,
+			historyArchiveURLs: PubnetConf.HistoryArchiveURLs,
 		},
 		{
-			name: "no network specified; passphrase not supplied",
+			name:                     "no network specified; passphrase not supplied",
+			requireCaptiveCoreConfig: true,
 			config: Config{
 				HistoryArchiveURLs: []string{"HistoryArchiveURLs"},
 			},
 			errStr: fmt.Sprintf(errorMsgConfig, NetworkPassphraseFlagName),
 		},
 		{
-			name: "no network specified; history archive urls not supplied",
+			name:                     "no network specified; history archive urls not supplied",
+			requireCaptiveCoreConfig: true,
 			config: Config{
 				NetworkPassphrase: "NetworkPassphrase",
 			},
 			errStr: fmt.Sprintf(errorMsgConfig, HistoryArchiveURLsFlagName),
 		},
+		{
+			name:                     "no network specified; captive-core-config-path not supplied",
+			requireCaptiveCoreConfig: true,
+			config: Config{
+				NetworkPassphrase:  PubnetConf.NetworkPassphrase,
+				HistoryArchiveURLs: PubnetConf.HistoryArchiveURLs,
+			},
+			errStr: fmt.Sprintf("invalid config: captive core requires that --%s is set",
+				CaptiveCoreConfigPathName),
+		},
+		{
+			name:                     "no network specified; captive-core-config-path invalid file",
+			requireCaptiveCoreConfig: true,
+			config: Config{
+				NetworkPassphrase:     PubnetConf.NetworkPassphrase,
+				HistoryArchiveURLs:    PubnetConf.HistoryArchiveURLs,
+				CaptiveCoreConfigPath: "xyz.cfg",
+			},
+			errStr: "invalid captive core toml file: could not load toml path:" +
+				" open xyz.cfg: no such file or directory",
+		},
+		{
+			name:                     "no network specified; captive-core-config-path incorrect config",
+			requireCaptiveCoreConfig: true,
+			config: Config{
+				NetworkPassphrase:     PubnetConf.NetworkPassphrase,
+				HistoryArchiveURLs:    PubnetConf.HistoryArchiveURLs,
+				CaptiveCoreConfigPath: "configs/captive-core-testnet.cfg",
+			},
+			errStr: fmt.Sprintf("invalid captive core toml file: invalid captive core toml: "+
+				"NETWORK_PASSPHRASE in captive core config file: %s does not match Horizon "+
+				"network-passphrase flag: %s", TestnetConf.NetworkPassphrase, PubnetConf.NetworkPassphrase),
+		},
+		{
+			name:                     "no network specified; captive-core-config not required",
+			requireCaptiveCoreConfig: false,
+			config: Config{
+				NetworkPassphrase:  PubnetConf.NetworkPassphrase,
+				HistoryArchiveURLs: PubnetConf.HistoryArchiveURLs,
+			},
+			networkPassphrase:  PubnetConf.NetworkPassphrase,
+			historyArchiveURLs: PubnetConf.HistoryArchiveURLs,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			e := createCaptiveCoreConfigFromParameters(&tt.config)
+			e := createCaptiveCoreConfigFromParameters(&tt.config,
+				ApplyOptions{RequireCaptiveCoreConfig: tt.requireCaptiveCoreConfig})
 			if tt.errStr == "" {
 				assert.NoError(t, e)
-				assert.Equal(t, tt.networkPassphrase, tt.config.NetworkPassphrase)
-				assert.Equal(t, tt.historyArchiveURLs, tt.config.HistoryArchiveURLs)
+				assert.Equal(t, tt.networkPassphrase, tt.config.CaptiveCoreTomlParams.NetworkPassphrase)
+				assert.Equal(t, tt.historyArchiveURLs, tt.config.CaptiveCoreTomlParams.HistoryArchiveURLs)
 			} else {
 				require.Error(t, e)
 				assert.Equal(t, tt.errStr, e.Error())
