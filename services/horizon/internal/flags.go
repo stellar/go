@@ -642,8 +642,6 @@ func Flags() (*Config, support.ConfigOptions) {
 
 // NewAppFromFlags constructs a new Horizon App from the given command line flags
 func NewAppFromFlags(config *Config, flags support.ConfigOptions) (*App, error) {
-	stdLog.Println("DEPRECATED - the use of command-line flags has been deprecated in favor of environment variables. " +
-		"Please consult our Configuring section in the developer documentation on how to use them - https://developers.stellar.org/docs/run-api-server/configuring")
 	err := ApplyFlags(config, flags, ApplyOptions{RequireCaptiveCoreConfig: true, AlwaysIngest: false})
 	if err != nil {
 		return nil, err
@@ -827,10 +825,19 @@ func setCaptiveCoreConfiguration(config *Config) error {
 
 // ApplyFlags applies the command line flags on the given Config instance
 func ApplyFlags(config *Config, flags support.ConfigOptions, options ApplyOptions) error {
+	// Check if the user has passed any flags and if so, print a DEPRECATED warning message.
+	flagsPassedByUser := flags.GetAllFlagsPassedByUser()
+	if flagsPassedByUser != nil && len(flagsPassedByUser) > 0 {
+		result := fmt.Sprintf("DEPRECATED - the use of command-line flags: %s, has been deprecated in favor of environment variables. "+
+			"Please consult our Configuring section in the developer documentation on how to use them - https://developers.stellar.org/docs/run-api-server/configuring", flagsPassedByUser)
+		stdLog.Println(result)
+	}
+
 	// Verify required options and load the config struct
 	if err := flags.RequireE(); err != nil {
 		return err
 	}
+
 	if err := flags.SetValues(); err != nil {
 		return err
 	}

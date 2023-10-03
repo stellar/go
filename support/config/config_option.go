@@ -58,6 +58,16 @@ func (cos ConfigOptions) SetValues() error {
 	return nil
 }
 
+func (cos ConfigOptions) GetAllFlagsPassedByUser() []string {
+	var flagsPassedByUser []string
+	for _, co := range cos {
+		if co.flag.Changed {
+			flagsPassedByUser = append(flagsPassedByUser, "--"+co.flag.Name)
+		}
+	}
+	return flagsPassedByUser
+}
+
 // ConfigOption is a complete description of the configuration of a command line option
 type ConfigOption struct {
 	Name           string                    // e.g. "db-url"

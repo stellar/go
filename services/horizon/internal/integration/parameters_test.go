@@ -508,9 +508,10 @@ func TestDeprecatedOutputs(t *testing.T) {
 		_ = r.Close()
 		os.Stderr = originalStderr
 
-		assert.Contains(t, string(outputBytes), "DEPRECATED - the use of command-line flags has been deprecated "+
-			"in favor of environment variables. Please consult our Configuring section in the developer documentation on "+
-			"how to use them - https://developers.stellar.org/docs/run-api-server/configuring")
+		assert.Contains(t, string(outputBytes), "DEPRECATED - the use of command-line flags: "+
+			"[--db-url --captive-core-config-path --captive-core-use-db --enable-captive-core-ingestion --captive-core-http-port --captive-core-storage-path --stellar-core-db-url --stellar-core-url --history-archive-urls --port --admin-port --max-db-connections --per-hour-rate-limit --network-passphrase --ingest --apply-migrations --checkpoint-frequency], "+
+			"has been deprecated in favor of environment variables. Please consult our Configuring section in the developer "+
+			"documentation on how to use them - https://developers.stellar.org/docs/run-api-server/configuring")
 	})
 }
 
