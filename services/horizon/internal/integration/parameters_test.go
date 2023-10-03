@@ -485,12 +485,31 @@ func TestDeprecatedOutputs(t *testing.T) {
 		r, w, _ := os.Pipe()
 		os.Stderr = w
 		stdLog.SetOutput(os.Stderr)
+		
+		config, flags := horizon.Flags()
 
-		testConfig := integration.GetTestConfig()
-		test := integration.NewTest(t, *testConfig)
-		err := test.StartHorizon()
-		assert.NoError(t, err)
-		test.WaitForHorizon()
+		horizonCmd := &cobra.Command{
+			Use:           "horizon",
+			Short:         "Client-facing api server for the Stellar network",
+			SilenceErrors: true,
+			SilenceUsage:  true,
+			Long:          "Client-facing API server for the Stellar network.",
+			RunE: func(cmd *cobra.Command, args []string) error {
+				_, err := horizon.NewAppFromFlags(config, flags)
+				if err != nil {
+					return err
+				}
+				return nil
+			},
+		}
+
+		horizonCmd.SetArgs([]string{"--disable-tx-sub=true"})
+		if err := flags.Init(horizonCmd); err != nil {
+			fmt.Println(err)
+		}
+		if err := horizonCmd.Execute(); err != nil {
+			fmt.Println(err)
+		}
 
 		// Use a wait group to wait for the goroutine to finish before proceeding
 		var wg sync.WaitGroup
@@ -509,8 +528,9 @@ func TestDeprecatedOutputs(t *testing.T) {
 		os.Stderr = originalStderr
 
 		assert.Contains(t, string(outputBytes), "DEPRECATED - the use of command-line flags: "+
-			"[--db-url --stellar-core-binary-path --captive-core-config-path --captive-core-use-db --enable-captive-core-ingestion --captive-core-http-port --captive-core-storage-path --stellar-core-db-url --stellar-core-url --history-archive-urls --port --admin-port --max-db-connections --per-hour-rate-limit --network-passphrase --ingest --apply-migrations --checkpoint-frequency], "+
-			"has been deprecated in favor of environment variables. Please consult our Configuring section in the developer documentation on how to use them - https://developers.stellar.org/docs/run-api-server/configuring")
+			"[--disable-tx-sub], has been deprecated in favor of environment variables. Please consult our "+
+			"Configuring section in the developer documentation on how to use them - "+
+			"https://developers.stellar.org/docs/run-api-server/configuring")
 	})
 }
 
