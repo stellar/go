@@ -3,6 +3,7 @@ package horizon
 import (
 	"fmt"
 	"github.com/spf13/cobra"
+	"github.com/stellar/go/services/horizon/internal/test"
 	"os"
 	"testing"
 
@@ -200,7 +201,7 @@ func TestEnvironmentVariables(t *testing.T) {
 		"CAPTIVE_CORE_CONFIG_PATH":      "../docker/captive-core-classic-integration-tests.cfg",
 		"CAPTIVE_CORE_USE_DB":           "true",
 	}
-	envManager := NewEnvironmentManager()
+	envManager := test.NewEnvironmentManager()
 	if err := envManager.InitializeEnvironmentVariables(environmentVars); err != nil {
 		fmt.Println(err)
 	}

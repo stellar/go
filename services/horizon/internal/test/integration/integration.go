@@ -4,6 +4,7 @@ package integration
 import (
 	"context"
 	"fmt"
+	"github.com/stellar/go/services/horizon/internal/test"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -96,7 +97,7 @@ type Test struct {
 	config              Config
 	coreConfig          CaptiveConfig
 	horizonIngestConfig horizon.Config
-	environment         *horizon.EnvironmentManager
+	environment         *test.EnvironmentManager
 
 	horizonClient      *sdk.Client
 	horizonAdminClient *sdk.AdminClient
@@ -151,7 +152,7 @@ func NewTest(t *testing.T, config Config) *Test {
 			config:      config,
 			composePath: composePath,
 			passPhrase:  StandaloneNetworkPassphrase,
-			environment: horizon.NewEnvironmentManager(),
+			environment: test.NewEnvironmentManager(),
 		}
 		i.configureCaptiveCore()
 		// Only run Stellar Core container and its dependencies.
@@ -160,7 +161,7 @@ func NewTest(t *testing.T, config Config) *Test {
 		i = &Test{
 			t:           t,
 			config:      config,
-			environment: horizon.NewEnvironmentManager(),
+			environment: test.NewEnvironmentManager(),
 		}
 	}
 
