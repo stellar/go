@@ -485,7 +485,7 @@ func TestDeprecatedOutputs(t *testing.T) {
 		r, w, _ := os.Pipe()
 		os.Stderr = w
 		stdLog.SetOutput(os.Stderr)
-		
+
 		config, flags := horizon.Flags()
 
 		horizonCmd := &cobra.Command{
