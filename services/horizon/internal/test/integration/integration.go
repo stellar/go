@@ -96,7 +96,7 @@ type Test struct {
 	config              Config
 	coreConfig          CaptiveConfig
 	horizonIngestConfig horizon.Config
-	environment         *EnvironmentManager
+	environment         *horizon.EnvironmentManager
 
 	horizonClient      *sdk.Client
 	horizonAdminClient *sdk.AdminClient
@@ -151,7 +151,7 @@ func NewTest(t *testing.T, config Config) *Test {
 			config:      config,
 			composePath: composePath,
 			passPhrase:  StandaloneNetworkPassphrase,
-			environment: NewEnvironmentManager(),
+			environment: horizon.NewEnvironmentManager(),
 		}
 		i.configureCaptiveCore()
 		// Only run Stellar Core container and its dependencies.
@@ -160,7 +160,7 @@ func NewTest(t *testing.T, config Config) *Test {
 		i = &Test{
 			t:           t,
 			config:      config,
-			environment: NewEnvironmentManager(),
+			environment: horizon.NewEnvironmentManager(),
 		}
 	}
 
