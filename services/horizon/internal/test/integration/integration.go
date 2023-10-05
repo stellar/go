@@ -4,7 +4,6 @@ package integration
 import (
 	"context"
 	"fmt"
-	"github.com/stellar/go/services/horizon/internal/test"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -16,6 +15,8 @@ import (
 	"syscall"
 	"testing"
 	"time"
+
+	"github.com/stellar/go/services/horizon/internal/test"
 
 	"github.com/2opremio/pretty"
 	"github.com/creachadair/jrpc2"
