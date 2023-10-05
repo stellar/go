@@ -201,10 +201,15 @@ func TestEnvironmentVariables(t *testing.T) {
 		"CAPTIVE_CORE_CONFIG_PATH":      "../docker/captive-core-classic-integration-tests.cfg",
 		"CAPTIVE_CORE_USE_DB":           "true",
 	}
+
 	envManager := test.NewEnvironmentManager()
+	defer func() {
+		envManager.Restore()
+	}()
 	if err := envManager.InitializeEnvironmentVariables(environmentVars); err != nil {
 		fmt.Println(err)
 	}
+
 	config, flags := Flags()
 	horizonCmd := &cobra.Command{
 		Use:           "horizon",
@@ -233,5 +238,4 @@ func TestEnvironmentVariables(t *testing.T) {
 	assert.Equal(t, config.CaptiveCoreBinaryPath, os.Getenv("HORIZON_INTEGRATION_TESTS_CAPTIVE_CORE_BIN"))
 	assert.Equal(t, config.CaptiveCoreConfigPath, "../docker/captive-core-classic-integration-tests.cfg")
 	assert.Equal(t, config.CaptiveCoreConfigUseDB, true)
-	envManager.Restore()
 }
