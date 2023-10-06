@@ -9,6 +9,10 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 - Add a deprecation warning for using command-line flags when running Horizon ([5051](https://github.com/stellar/go/pull/5051))
 - Deprecate configuration flags related to legacy non-captive core ingestion ([5100](https://github.com/stellar/go/pull/5100))
+## 2.27.0
+
+### Fixed
+- Ordering of effects are now deterministic. Previously the order of some Horizon effects could vary upon reingestion but this issue has now been fixed ([5070](https://github.com/stellar/go/pull/5070)).
 
 ## 2.27.0-rc2
 ### Fixed
