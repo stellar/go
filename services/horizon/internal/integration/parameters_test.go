@@ -475,10 +475,9 @@ func TestDeprecatedOutputs(t *testing.T) {
 		os.Stderr = originalStderr
 
 		assert.Contains(t, string(outputBytes), "DEPRECATED - No ingestion filter rules are defined by default, which equates to "+
-			"no filtering of historical data. If you have never added filter rules to this deployment, then nothing further needed. "+
-			"If you have defined ingestion filter rules prior but disabled filtering overall by setting this flag disabled with "+
-			"--exp-enable-ingestion-filtering=false, then you should now delete the filter rules using the Horizon Admin API to achieve "+
-			"the same no-filtering result. Remove usage of this flag in all cases.")
+			"no filtering of historical data. If you have never added filter rules to this deployment, then no further action is needed. "+
+			"If you have defined ingestion filter rules previously but disabled filtering overall by setting the env variable EXP_ENABLE_INGESTION_FILTERING=false, "+
+			"then you should now delete the filter rules using the Horizon Admin API to achieve the same no-filtering result. Remove usage of this variable in all cases.")
 	})
 	t.Run("deprecated output for command-line flags", func(t *testing.T) {
 		originalStderr := os.Stderr

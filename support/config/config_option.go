@@ -58,7 +58,8 @@ func (cos ConfigOptions) SetValues() error {
 	return nil
 }
 
-func (cos ConfigOptions) GetAllFlagsPassedByUser() []string {
+// GetCommandLineFlagsPassedByUser returns a list of command-line flags that were passed by the user when running Horizon.
+func (cos ConfigOptions) GetCommandLineFlagsPassedByUser() []string {
 	var flagsPassedByUser []string
 	for _, co := range cos {
 		if co.flag.Changed {
