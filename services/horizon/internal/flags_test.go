@@ -243,7 +243,7 @@ func TestEnvironmentVariables(t *testing.T) {
 	if err := flags.Init(horizonCmd); err != nil {
 		fmt.Println(err)
 	}
-	if err := ApplyFlags(config, flags, ApplyOptions{RequireCaptiveCoreConfig: true, AlwaysIngest: false}); err != nil {
+	if err := ApplyFlags(config, flags, ApplyOptions{RequireCaptiveCoreFullConfig: true, AlwaysIngest: false}); err != nil {
 		fmt.Println(err)
 	}
 	assert.Equal(t, config.Ingest, false)
