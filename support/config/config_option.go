@@ -63,7 +63,7 @@ func (cos ConfigOptions) GetCommandLineFlagsPassedByUser() []string {
 	var flagsPassedByUser []string
 	for _, co := range cos {
 		if co.flag.Changed {
-			flagsPassedByUser = append(flagsPassedByUser, "--"+co.flag.Name)
+			flagsPassedByUser = append(flagsPassedByUser, co.flag.Name)
 		}
 	}
 	return flagsPassedByUser
