@@ -16,7 +16,11 @@ var (
 		Short:         "client-facing api server for the Stellar network",
 		SilenceErrors: true,
 		SilenceUsage:  true,
-		Long:          "Client-facing API server for the Stellar network. It acts as the interface between Stellar Core and applications that want to access the Stellar network. It allows you to submit transactions to the network, check the status of accounts, subscribe to event streams and more.",
+		Long: "Client-facing API server for the Stellar network. It acts as the interface between Stellar Core " +
+			"and applications that want to access the Stellar network. It allows you to submit transactions to the " +
+			"network, check the status of accounts, subscribe to event streams and more.\n" +
+			"DEPRECATED - the use of command-line flags has been deprecated in favor of environment variables. Please" +
+			"consult our Configuring section in the developer documentation on how to use them - https://developers.stellar.org/docs/run-api-server/configuring",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			app, err := horizon.NewAppFromFlags(config, flags)
 			if err != nil {

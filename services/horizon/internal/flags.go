@@ -238,11 +238,10 @@ func Flags() (*Config, support.ConfigOptions) {
 
 				if val := viper.GetString(opt.Name); val != "" {
 					stdLog.Printf(
-						"DEPRECATED - No ingestion filter rules are defined by default, which equates to no filtering " +
-							"of historical data. If you have never added filter rules to this deployment, then nothing further needed. " +
-							"If you have defined ingestion filter rules prior but disabled filtering overall by setting this flag " +
-							"disabled with --exp-enable-ingestion-filtering=false, then you should now delete the filter rules using " +
-							"the Horizon Admin API to achieve the same no-filtering result. Remove usage of this flag in all cases.",
+						"DEPRECATED - No ingestion filter rules are defined by default, which equates to " +
+							"no filtering of historical data. If you have never added filter rules to this deployment, then no further action is needed. " +
+							"If you have defined ingestion filter rules previously but disabled filtering overall by setting the env variable EXP_ENABLE_INGESTION_FILTERING=false, " +
+							"then you should now delete the filter rules using the Horizon Admin API to achieve the same no-filtering result. Remove usage of this variable in all cases.",
 					)
 				}
 				return nil
@@ -801,10 +800,19 @@ func setCaptiveCoreConfiguration(config *Config, options ApplyOptions) error {
 
 // ApplyFlags applies the command line flags on the given Config instance
 func ApplyFlags(config *Config, flags support.ConfigOptions, options ApplyOptions) error {
+	// Check if the user has passed any flags and if so, print a DEPRECATED warning message.
+	flagsPassedByUser := flags.GetCommandLineFlagsPassedByUser()
+	if len(flagsPassedByUser) > 0 {
+		result := fmt.Sprintf("DEPRECATED - the use of command-line flags: [%s], has been deprecated in favor of environment variables. "+
+			"Please consult our Configuring section in the developer documentation on how to use them - https://developers.stellar.org/docs/run-api-server/configuring", "--"+strings.Join(flagsPassedByUser, ",--"))
+		stdLog.Println(result)
+	}
+
 	// Verify required options and load the config struct
 	if err := flags.RequireE(); err != nil {
 		return err
 	}
+
 	if err := flags.SetValues(); err != nil {
 		return err
 	}

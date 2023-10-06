@@ -2,7 +2,11 @@ package horizon
 
 import (
 	"fmt"
+	"os"
 	"testing"
+
+	"github.com/spf13/cobra"
+	"github.com/stellar/go/services/horizon/internal/test"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -200,4 +204,60 @@ func Test_createCaptiveCoreConfig(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestEnvironmentVariables(t *testing.T) {
+	environmentVars := map[string]string{
+		"INGEST":                        "false",
+		"HISTORY_ARCHIVE_URLS":          "http://localhost:1570",
+		"DATABASE_URL":                  "postgres://postgres@localhost/test_332cb65e6b00?sslmode=disable&timezone=UTC",
+		"STELLAR_CORE_URL":              "http://localhost:11626",
+		"NETWORK_PASSPHRASE":            "Standalone Network ; February 2017",
+		"APPLY_MIGRATIONS":              "true",
+		"ENABLE_CAPTIVE_CORE_INGESTION": "false",
+		"CHECKPOINT_FREQUENCY":          "8",
+		"MAX_DB_CONNECTIONS":            "50",
+		"ADMIN_PORT":                    "6060",
+		"PORT":                          "8001",
+		"CAPTIVE_CORE_BINARY_PATH":      os.Getenv("HORIZON_INTEGRATION_TESTS_CAPTIVE_CORE_BIN"),
+		"CAPTIVE_CORE_CONFIG_PATH":      "../docker/captive-core-classic-integration-tests.cfg",
+		"CAPTIVE_CORE_USE_DB":           "true",
+	}
+
+	envManager := test.NewEnvironmentManager()
+	defer func() {
+		envManager.Restore()
+	}()
+	if err := envManager.InitializeEnvironmentVariables(environmentVars); err != nil {
+		fmt.Println(err)
+	}
+
+	config, flags := Flags()
+	horizonCmd := &cobra.Command{
+		Use:           "horizon",
+		Short:         "Client-facing api server for the Stellar network",
+		SilenceErrors: true,
+		SilenceUsage:  true,
+		Long:          "Client-facing API server for the Stellar network.",
+	}
+	if err := flags.Init(horizonCmd); err != nil {
+		fmt.Println(err)
+	}
+	if err := ApplyFlags(config, flags, ApplyOptions{RequireCaptiveCoreFullConfig: true, AlwaysIngest: false}); err != nil {
+		fmt.Println(err)
+	}
+	assert.Equal(t, config.Ingest, false)
+	assert.Equal(t, config.HistoryArchiveURLs, []string{"http://localhost:1570"})
+	assert.Equal(t, config.DatabaseURL, "postgres://postgres@localhost/test_332cb65e6b00?sslmode=disable&timezone=UTC")
+	assert.Equal(t, config.StellarCoreURL, "http://localhost:11626")
+	assert.Equal(t, config.NetworkPassphrase, "Standalone Network ; February 2017")
+	assert.Equal(t, config.ApplyMigrations, true)
+	assert.Equal(t, config.EnableCaptiveCoreIngestion, false)
+	assert.Equal(t, config.CheckpointFrequency, uint32(8))
+	assert.Equal(t, config.MaxDBConnections, 50)
+	assert.Equal(t, config.AdminPort, uint(6060))
+	assert.Equal(t, config.Port, uint(8001))
+	assert.Equal(t, config.CaptiveCoreBinaryPath, os.Getenv("HORIZON_INTEGRATION_TESTS_CAPTIVE_CORE_BIN"))
+	assert.Equal(t, config.CaptiveCoreConfigPath, "../docker/captive-core-classic-integration-tests.cfg")
+	assert.Equal(t, config.CaptiveCoreConfigUseDB, true)
 }

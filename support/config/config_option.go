@@ -58,6 +58,17 @@ func (cos ConfigOptions) SetValues() error {
 	return nil
 }
 
+// GetCommandLineFlagsPassedByUser returns a list of command-line flags that were passed by the user when running Horizon.
+func (cos ConfigOptions) GetCommandLineFlagsPassedByUser() []string {
+	var flagsPassedByUser []string
+	for _, co := range cos {
+		if co.flag.Changed {
+			flagsPassedByUser = append(flagsPassedByUser, co.flag.Name)
+		}
+	}
+	return flagsPassedByUser
+}
+
 // ConfigOption is a complete description of the configuration of a command line option
 type ConfigOption struct {
 	Name           string                    // e.g. "db-url"

@@ -431,12 +431,6 @@ func TestDisableTxSub(t *testing.T) {
 		test.Shutdown()
 	})
 	t.Run("horizon starts successfully when DISABLE_TX_SUB=true and INGEST=true", func(t *testing.T) {
-		//localParams := integration.MergeMaps(networkParamArgs, map[string]string{
-		//	//horizon.NetworkFlagName:           "testnet",
-		//	horizon.IngestFlagName:            "true",
-		//	horizon.DisableTxSubFlagName:      "true",
-		//	horizon.StellarCoreBinaryPathName: "/usr/bin/stellar-core",
-		//})
 		testConfig := integration.GetTestConfig()
 		testConfig.HorizonIngestParameters = map[string]string{
 			"disable-tx-sub": "true",
@@ -450,40 +444,93 @@ func TestDisableTxSub(t *testing.T) {
 	})
 }
 
-func TestDeprecatedOutputForIngestionFilteringFlag(t *testing.T) {
-	originalStderr := os.Stderr
-	r, w, _ := os.Pipe()
-	os.Stderr = w
-	stdLog.SetOutput(os.Stderr)
+func TestDeprecatedOutputs(t *testing.T) {
+	t.Run("deprecated output for ingestion filtering", func(t *testing.T) {
+		originalStderr := os.Stderr
+		r, w, _ := os.Pipe()
+		os.Stderr = w
+		stdLog.SetOutput(os.Stderr)
 
-	testConfig := integration.GetTestConfig()
-	testConfig.HorizonIngestParameters = map[string]string{"exp-enable-ingestion-filtering": "false"}
-	test := integration.NewTest(t, *testConfig)
-	err := test.StartHorizon()
-	assert.NoError(t, err)
-	test.WaitForHorizon()
+		testConfig := integration.GetTestConfig()
+		testConfig.HorizonIngestParameters = map[string]string{"exp-enable-ingestion-filtering": "false"}
+		test := integration.NewTest(t, *testConfig)
+		err := test.StartHorizon()
+		assert.NoError(t, err)
+		test.WaitForHorizon()
 
-	// Use a wait group to wait for the goroutine to finish before proceeding
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		if err := w.Close(); err != nil {
-			t.Errorf("Failed to close Stdout")
-			return
+		// Use a wait group to wait for the goroutine to finish before proceeding
+		var wg sync.WaitGroup
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if err := w.Close(); err != nil {
+				t.Errorf("Failed to close Stdout")
+				return
+			}
+		}()
+
+		outputBytes, _ := io.ReadAll(r)
+		wg.Wait() // Wait for the goroutine to finish before proceeding
+		_ = r.Close()
+		os.Stderr = originalStderr
+
+		assert.Contains(t, string(outputBytes), "DEPRECATED - No ingestion filter rules are defined by default, which equates to "+
+			"no filtering of historical data. If you have never added filter rules to this deployment, then no further action is needed. "+
+			"If you have defined ingestion filter rules previously but disabled filtering overall by setting the env variable EXP_ENABLE_INGESTION_FILTERING=false, "+
+			"then you should now delete the filter rules using the Horizon Admin API to achieve the same no-filtering result. Remove usage of this variable in all cases.")
+	})
+	t.Run("deprecated output for command-line flags", func(t *testing.T) {
+		originalStderr := os.Stderr
+		r, w, _ := os.Pipe()
+		os.Stderr = w
+		stdLog.SetOutput(os.Stderr)
+
+		config, flags := horizon.Flags()
+
+		horizonCmd := &cobra.Command{
+			Use:           "horizon",
+			Short:         "Client-facing api server for the Stellar network",
+			SilenceErrors: true,
+			SilenceUsage:  true,
+			Long:          "Client-facing API server for the Stellar network.",
+			RunE: func(cmd *cobra.Command, args []string) error {
+				_, err := horizon.NewAppFromFlags(config, flags)
+				if err != nil {
+					return err
+				}
+				return nil
+			},
 		}
-	}()
 
-	outputBytes, _ := io.ReadAll(r)
-	wg.Wait() // Wait for the goroutine to finish before proceeding
-	_ = r.Close()
-	os.Stderr = originalStderr
+		horizonCmd.SetArgs([]string{"--disable-tx-sub=true"})
+		if err := flags.Init(horizonCmd); err != nil {
+			fmt.Println(err)
+		}
+		if err := horizonCmd.Execute(); err != nil {
+			fmt.Println(err)
+		}
 
-	assert.Contains(t, string(outputBytes), "DEPRECATED - No ingestion filter rules are defined by default, which equates to "+
-		"no filtering of historical data. If you have never added filter rules to this deployment, then nothing further needed. "+
-		"If you have defined ingestion filter rules prior but disabled filtering overall by setting this flag disabled with "+
-		"--exp-enable-ingestion-filtering=false, then you should now delete the filter rules using the Horizon Admin API to achieve "+
-		"the same no-filtering result. Remove usage of this flag in all cases.")
+		// Use a wait group to wait for the goroutine to finish before proceeding
+		var wg sync.WaitGroup
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if err := w.Close(); err != nil {
+				t.Errorf("Failed to close Stdout")
+				return
+			}
+		}()
+
+		outputBytes, _ := io.ReadAll(r)
+		wg.Wait() // Wait for the goroutine to finish before proceeding
+		_ = r.Close()
+		os.Stderr = originalStderr
+
+		assert.Contains(t, string(outputBytes), "DEPRECATED - the use of command-line flags: "+
+			"[--disable-tx-sub], has been deprecated in favor of environment variables. Please consult our "+
+			"Configuring section in the developer documentation on how to use them - "+
+			"https://developers.stellar.org/docs/run-api-server/configuring")
+	})
 }
 
 func TestHelpOutput(t *testing.T) {
@@ -505,7 +552,7 @@ func TestHelpOutput(t *testing.T) {
 	}
 
 	var writer io.Writer = &bytes.Buffer{}
-	horizonCmd.SetOutput(writer)
+	horizonCmd.SetOut(writer)
 
 	horizonCmd.SetArgs([]string{"-h"})
 	if err := flags.Init(horizonCmd); err != nil {

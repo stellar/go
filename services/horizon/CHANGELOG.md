@@ -15,6 +15,7 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 - The same slippage calculation from the [`v2.26.1`](#2261) hotfix now properly excludes spikes for smoother trade aggregation plots ([4999](https://github.com/stellar/go/pull/4999)).
+- Add a deprecation warning for using command-line flags when running Horizon ([5051](https://github.com/stellar/go/pull/5051))
 
 
 ## 2.26.1
