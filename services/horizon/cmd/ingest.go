@@ -94,7 +94,7 @@ var ingestVerifyRangeCmd = &cobra.Command{
 			co.SetValue()
 		}
 
-		if err := horizon.ApplyFlags(config, flags, horizon.ApplyOptions{RequireCaptiveCoreConfig: false, AlwaysIngest: true}); err != nil {
+		if err := horizon.ApplyFlags(config, flags, horizon.ApplyOptions{RequireCaptiveCoreFullConfig: false, AlwaysIngest: true}); err != nil {
 			return err
 		}
 
@@ -203,7 +203,7 @@ var ingestStressTestCmd = &cobra.Command{
 			co.SetValue()
 		}
 
-		if err := horizon.ApplyFlags(config, flags, horizon.ApplyOptions{RequireCaptiveCoreConfig: false, AlwaysIngest: true}); err != nil {
+		if err := horizon.ApplyFlags(config, flags, horizon.ApplyOptions{RequireCaptiveCoreFullConfig: false, AlwaysIngest: true}); err != nil {
 			return err
 		}
 
@@ -267,7 +267,7 @@ var ingestTriggerStateRebuildCmd = &cobra.Command{
 	Short: "updates a database to trigger state rebuild, state will be rebuilt by a running Horizon instance, DO NOT RUN production DB, some endpoints will be unavailable until state is rebuilt",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := context.Background()
-		if err := horizon.ApplyFlags(config, flags, horizon.ApplyOptions{RequireCaptiveCoreConfig: false, AlwaysIngest: true}); err != nil {
+		if err := horizon.ApplyFlags(config, flags, horizon.ApplyOptions{RequireCaptiveCoreFullConfig: false, AlwaysIngest: true}); err != nil {
 			return err
 		}
 
@@ -291,7 +291,7 @@ var ingestInitGenesisStateCmd = &cobra.Command{
 	Short: "ingests genesis state (ledger 1)",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := context.Background()
-		if err := horizon.ApplyFlags(config, flags, horizon.ApplyOptions{RequireCaptiveCoreConfig: false, AlwaysIngest: true}); err != nil {
+		if err := horizon.ApplyFlags(config, flags, horizon.ApplyOptions{RequireCaptiveCoreFullConfig: false, AlwaysIngest: true}); err != nil {
 			return err
 		}
 
@@ -363,7 +363,7 @@ var ingestBuildStateCmd = &cobra.Command{
 			co.SetValue()
 		}
 
-		if err := horizon.ApplyFlags(config, flags, horizon.ApplyOptions{RequireCaptiveCoreConfig: false, AlwaysIngest: true}); err != nil {
+		if err := horizon.ApplyFlags(config, flags, horizon.ApplyOptions{RequireCaptiveCoreFullConfig: false, AlwaysIngest: true}); err != nil {
 			return err
 		}
 

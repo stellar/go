@@ -642,7 +642,7 @@ func Flags() (*Config, support.ConfigOptions) {
 
 // NewAppFromFlags constructs a new Horizon App from the given command line flags
 func NewAppFromFlags(config *Config, flags support.ConfigOptions) (*App, error) {
-	err := ApplyFlags(config, flags, ApplyOptions{RequireCaptiveCoreConfig: true, AlwaysIngest: false})
+	err := ApplyFlags(config, flags, ApplyOptions{RequireCaptiveCoreFullConfig: true, AlwaysIngest: false})
 	if err != nil {
 		return nil, err
 	}
@@ -663,8 +663,8 @@ func NewAppFromFlags(config *Config, flags support.ConfigOptions) (*App, error) 
 }
 
 type ApplyOptions struct {
-	AlwaysIngest             bool
-	RequireCaptiveCoreConfig bool
+	AlwaysIngest                 bool
+	RequireCaptiveCoreFullConfig bool
 }
 
 type networkConfig struct {
@@ -703,97 +703,30 @@ func getCaptiveCoreBinaryPath() (string, error) {
 	return result, nil
 }
 
-// loadDefaultCaptiveCoreToml loads the default Captive Core TOML based on the default config data.
-func loadDefaultCaptiveCoreToml(config *Config, defaultConfigData []byte) error {
-
-	config.CaptiveCoreTomlParams.CoreBinaryPath = config.CaptiveCoreBinaryPath
-	config.CaptiveCoreTomlParams.HistoryArchiveURLs = config.HistoryArchiveURLs
-	config.CaptiveCoreTomlParams.NetworkPassphrase = config.NetworkPassphrase
-
-	var err error
-	config.CaptiveCoreToml, err = ledgerbackend.NewCaptiveCoreTomlFromData(defaultConfigData, config.CaptiveCoreTomlParams)
-	if err != nil {
-		return errors.Wrap(err, "invalid captive core toml")
-	}
-	return nil
-}
-
-// loadCaptiveCoreTomlFromFile loads the Captive Core TOML file from the specified path provided config.
-func loadCaptiveCoreTomlFromFile(config *Config) error {
-	var err error
-
-	config.CaptiveCoreTomlParams.CoreBinaryPath = config.CaptiveCoreBinaryPath
-	config.CaptiveCoreTomlParams.HistoryArchiveURLs = config.HistoryArchiveURLs
-	config.CaptiveCoreTomlParams.NetworkPassphrase = config.NetworkPassphrase
-
-	config.CaptiveCoreToml, err = ledgerbackend.NewCaptiveCoreTomlFromFile(config.CaptiveCoreConfigPath, config.CaptiveCoreTomlParams)
-	if err != nil {
-		return errors.Wrap(err, "invalid captive core toml file")
-	}
-	return nil
-}
-
-// createCaptiveCoreConfigFromNetwork generates the default Captive Core configuration.
-// validates the configuration settings, sets default values, and loads the Captive Core TOML file.
-func createCaptiveCoreConfigFromNetwork(config *Config) error {
+// getCaptiveCoreConfigFromNetworkParameter returns the default Captive Core configuration based on the network.
+func getCaptiveCoreConfigFromNetworkParameter(config *Config) (networkConfig, error) {
+	var defaultNetworkConfig networkConfig
 
 	if config.NetworkPassphrase != "" {
-		return fmt.Errorf("invalid config: %s parameter not allowed with the %s parameter", NetworkPassphraseFlagName, NetworkFlagName)
+		return defaultNetworkConfig, fmt.Errorf("invalid config: %s parameter not allowed with the %s parameter",
+			NetworkPassphraseFlagName, NetworkFlagName)
 	}
 
 	if len(config.HistoryArchiveURLs) > 0 {
-		return fmt.Errorf("invalid config: %s parameter not allowed with the %s parameter", HistoryArchiveURLsFlagName, NetworkFlagName)
+		return defaultNetworkConfig, fmt.Errorf("invalid config: %s parameter not allowed with the %s parameter",
+			HistoryArchiveURLsFlagName, NetworkFlagName)
 	}
 
-	var defaultNetworkConfig networkConfig
 	switch config.Network {
 	case StellarPubnet:
 		defaultNetworkConfig = PubnetConf
 	case StellarTestnet:
 		defaultNetworkConfig = TestnetConf
 	default:
-		return fmt.Errorf("no default configuration found for network %s", config.Network)
-	}
-	config.NetworkPassphrase = defaultNetworkConfig.NetworkPassphrase
-	config.HistoryArchiveURLs = defaultNetworkConfig.HistoryArchiveURLs
-
-	if config.CaptiveCoreConfigPath == "" {
-		return loadDefaultCaptiveCoreToml(config, defaultNetworkConfig.defaultConfig)
+		return defaultNetworkConfig, fmt.Errorf("no default configuration found for network %s", config.Network)
 	}
 
-	return loadCaptiveCoreTomlFromFile(config)
-}
-
-// createCaptiveCoreConfigFromParameters generates the Captive Core configuration.
-// validates the configuration settings, sets necessary values, and loads the Captive Core TOML file.
-func createCaptiveCoreConfigFromParameters(config *Config, options ApplyOptions) error {
-
-	if config.NetworkPassphrase == "" {
-		return fmt.Errorf("%s must be set", NetworkPassphraseFlagName)
-	}
-
-	if len(config.HistoryArchiveURLs) == 0 {
-		return fmt.Errorf("%s must be set", HistoryArchiveURLsFlagName)
-	}
-
-	if config.CaptiveCoreConfigPath != "" {
-		return loadCaptiveCoreTomlFromFile(config)
-	} else if options.RequireCaptiveCoreConfig {
-		return fmt.Errorf(
-			"invalid config: captive core requires that --%s is set", CaptiveCoreConfigPathName)
-	} else {
-		config.CaptiveCoreTomlParams.CoreBinaryPath = config.CaptiveCoreBinaryPath
-		config.CaptiveCoreTomlParams.HistoryArchiveURLs = config.HistoryArchiveURLs
-		config.CaptiveCoreTomlParams.NetworkPassphrase = config.NetworkPassphrase
-
-		var err error
-		config.CaptiveCoreToml, err = ledgerbackend.NewCaptiveCoreToml(config.CaptiveCoreTomlParams)
-		if err != nil {
-			return errors.Wrap(err, "invalid captive core toml file")
-		}
-	}
-
-	return nil
+	return defaultNetworkConfig, nil
 }
 
 // setCaptiveCoreConfiguration prepares configuration for the Captive Core
@@ -809,16 +742,52 @@ func setCaptiveCoreConfiguration(config *Config, options ApplyOptions) error {
 		}
 	}
 
+	var defaultNetworkConfig networkConfig
 	if config.Network != "" {
-		err := createCaptiveCoreConfigFromNetwork(config)
+		var err error
+		defaultNetworkConfig, err = getCaptiveCoreConfigFromNetworkParameter(config)
 		if err != nil {
 			return err
+		}
+		config.NetworkPassphrase = defaultNetworkConfig.NetworkPassphrase
+		config.HistoryArchiveURLs = defaultNetworkConfig.HistoryArchiveURLs
+	} else {
+		if config.NetworkPassphrase == "" {
+			return fmt.Errorf("%s must be set", NetworkPassphraseFlagName)
+		}
+
+		if len(config.HistoryArchiveURLs) == 0 {
+			return fmt.Errorf("%s must be set", HistoryArchiveURLsFlagName)
+		}
+	}
+
+	config.CaptiveCoreTomlParams.CoreBinaryPath = config.CaptiveCoreBinaryPath
+	config.CaptiveCoreTomlParams.HistoryArchiveURLs = config.HistoryArchiveURLs
+	config.CaptiveCoreTomlParams.NetworkPassphrase = config.NetworkPassphrase
+
+	var err error
+	if config.CaptiveCoreConfigPath != "" {
+		config.CaptiveCoreToml, err = ledgerbackend.NewCaptiveCoreTomlFromFile(config.CaptiveCoreConfigPath,
+			config.CaptiveCoreTomlParams)
+		if err != nil {
+			return errors.Wrap(err, "invalid captive core toml file")
+		}
+	} else if !options.RequireCaptiveCoreFullConfig {
+		// Creates a minimal captive-core config (without quorum information), just enough to run captive core.
+		// This is used by certain database commands, such as `reingest and fill-gaps, to reingest historical data.
+		config.CaptiveCoreToml, err = ledgerbackend.NewCaptiveCoreToml(config.CaptiveCoreTomlParams)
+		if err != nil {
+			return errors.Wrap(err, "invalid captive core toml file")
+		}
+	} else if len(defaultNetworkConfig.defaultConfig) != 0 {
+		config.CaptiveCoreToml, err = ledgerbackend.NewCaptiveCoreTomlFromData(defaultNetworkConfig.defaultConfig,
+			config.CaptiveCoreTomlParams)
+		if err != nil {
+			return errors.Wrap(err, "invalid captive core toml file")
 		}
 	} else {
-		err := createCaptiveCoreConfigFromParameters(config, options)
-		if err != nil {
-			return err
-		}
+		return fmt.Errorf("invalid config: captive core requires that --%s is set or you can set the --%s "+
+			"parameter to use the default captive core config", CaptiveCoreConfigPathName, NetworkFlagName)
 	}
 
 	// If we don't supply an explicit core URL and running captive core process with the http port enabled,
