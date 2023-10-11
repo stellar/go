@@ -38,7 +38,7 @@ func requireAndSetFlags(names ...string) error {
 	for _, name := range names {
 		set[name] = true
 	}
-	for _, flag := range flags {
+	for _, flag := range globalFlags {
 		if set[flag.Name] {
 			flag.Require()
 			if err := flag.SetValue(); err != nil {
@@ -66,7 +66,7 @@ var dbInitCmd = &cobra.Command{
 			return err
 		}
 
-		db, err := sql.Open("postgres", config.DatabaseURL)
+		db, err := sql.Open("postgres", globalConfig.DatabaseURL)
 		if err != nil {
 			return err
 		}
@@ -86,12 +86,12 @@ var dbInitCmd = &cobra.Command{
 }
 
 func migrate(dir schema.MigrateDir, count int) error {
-	if !config.Ingest {
+	if !globalConfig.Ingest {
 		log.Println("Skipping migrations because ingest flag is not enabled")
 		return nil
 	}
 
-	dbConn, err := db.Open("postgres", config.DatabaseURL)
+	dbConn, err := db.Open("postgres", globalConfig.DatabaseURL)
 	if err != nil {
 		return err
 	}
@@ -172,7 +172,7 @@ var dbMigrateStatusCmd = &cobra.Command{
 			return ErrUsage{cmd}
 		}
 
-		dbConn, err := db.Open("postgres", config.DatabaseURL)
+		dbConn, err := db.Open("postgres", globalConfig.DatabaseURL)
 		if err != nil {
 			return err
 		}
@@ -220,7 +220,7 @@ var dbReapCmd = &cobra.Command{
 	Short: "reaps (i.e. removes) any reapable history data",
 	Long:  "reap removes any historical data that is earlier than the configured retention cutoff",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		app, err := horizon.NewAppFromFlags(config, flags)
+		app, err := horizon.NewAppFromFlags(globalConfig, globalFlags)
 		if err != nil {
 			return err
 		}
@@ -321,7 +321,7 @@ var dbReingestRangeCmd = &cobra.Command{
 			}
 		}
 
-		err := horizon.ApplyFlags(config, flags, horizon.ApplyOptions{RequireCaptiveCoreFullConfig: false, AlwaysIngest: true})
+		err := horizon.ApplyFlags(globalConfig, globalFlags, horizon.ApplyOptions{RequireCaptiveCoreFullConfig: false, AlwaysIngest: true})
 		if err != nil {
 			return err
 		}
@@ -329,7 +329,7 @@ var dbReingestRangeCmd = &cobra.Command{
 			[]history.LedgerRange{{StartSequence: argsUInt32[0], EndSequence: argsUInt32[1]}},
 			reingestForce,
 			parallelWorkers,
-			*config,
+			*globalConfig,
 		)
 	},
 }
@@ -369,26 +369,26 @@ var dbFillGapsCmd = &cobra.Command{
 			withRange = true
 		}
 
-		err := horizon.ApplyFlags(config, flags, horizon.ApplyOptions{RequireCaptiveCoreFullConfig: false, AlwaysIngest: true})
+		err := horizon.ApplyFlags(globalConfig, globalFlags, horizon.ApplyOptions{RequireCaptiveCoreFullConfig: false, AlwaysIngest: true})
 		if err != nil {
 			return err
 		}
 		var gaps []history.LedgerRange
 		if withRange {
-			gaps, err = runDBDetectGapsInRange(*config, uint32(start), uint32(end))
+			gaps, err = runDBDetectGapsInRange(*globalConfig, uint32(start), uint32(end))
 			if err != nil {
 				return err
 			}
 			hlog.Infof("found gaps %v within range [%v, %v]", gaps, start, end)
 		} else {
-			gaps, err = runDBDetectGaps(*config)
+			gaps, err = runDBDetectGaps(*globalConfig)
 			if err != nil {
 				return err
 			}
 			hlog.Infof("found gaps %v", gaps)
 		}
 
-		return runDBReingestRange(gaps, reingestForce, parallelWorkers, *config)
+		return runDBReingestRange(gaps, reingestForce, parallelWorkers, *globalConfig)
 	},
 }
 
@@ -479,7 +479,7 @@ var dbDetectGapsCmd = &cobra.Command{
 		if len(args) != 0 {
 			return ErrUsage{cmd}
 		}
-		gaps, err := runDBDetectGaps(*config)
+		gaps, err := runDBDetectGaps(*globalConfig)
 		if err != nil {
 			return err
 		}

@@ -81,6 +81,7 @@ type ConfigOption struct {
 	ConfigKey      interface{}               // Pointer to the final key in the linked Config struct
 	flag           *pflag.Flag               // The persistent flag that the config option is attached to
 	Hidden         bool                      // Indicates whether to hide the flag from --help output
+	UsedInCommands []string                  // the list of sub-comands this flag is relevant in
 }
 
 // Init handles initialisation steps, including configuring and binding the env variable name.
@@ -97,8 +98,14 @@ func (co *ConfigOption) Init(cmd *cobra.Command) error {
 // SetDeprecated Hides the deprecated flag from --help output
 func (co *ConfigOption) SetDeprecated(cmd *cobra.Command) {
 	if co.Hidden {
-		co.flag.Hidden = true
+		co.ToggleHidden(true)
 	}
+}
+
+// ToggleHidden sets the hidden attibute on the persistent flag associated to
+// this config option
+func (co *ConfigOption) ToggleHidden(hidden bool) {
+	co.flag.Hidden = hidden
 }
 
 // Bind binds the config option to viper.
