@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestBumpFootPrintExpiration(t *testing.T) {
+func TestExtendFootprintTtl(t *testing.T) {
 	if integration.GetCoreMaxSupportedProtocol() < 20 {
 		t.Skip("This test run does not support less than Protocol 20")
 	}
@@ -40,19 +40,20 @@ func TestBumpFootPrintExpiration(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	bumpFootPrint := txnbuild.BumpFootprintExpiration{
-		LedgersToExpire: 10000,
-		SourceAccount:   "",
+	bumpFootPrint := txnbuild.ExtendFootprintTtl{
+		ExtendTo:      10000,
+		SourceAccount: "",
 		Ext: xdr.TransactionExt{
 			V: 1,
 			SorobanData: &xdr.SorobanTransactionData{
+				Ext: xdr.ExtensionPoint{},
 				Resources: xdr.SorobanResources{
 					Footprint: xdr.LedgerFootprint{
 						ReadOnly:  preFlightOp.Ext.SorobanData.Resources.Footprint.ReadWrite,
 						ReadWrite: nil,
 					},
 				},
-				RefundableFee: 0,
+				ResourceFee: 0,
 			},
 		},
 	}
@@ -63,6 +64,6 @@ func TestBumpFootPrintExpiration(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, ops.Embedded.Records, 1)
 
-	op := ops.Embedded.Records[0].(operations.BumpFootprintExpiration)
-	require.Equal(t, uint32(10000), op.LedgersToExpire)
+	op := ops.Embedded.Records[0].(operations.ExtendFootprintTtl)
+	require.Equal(t, uint32(10000), op.ExtendTo)
 }

@@ -437,7 +437,7 @@ func AssetToContractData(isNative bool, code, issuer string, contractID [32]byte
 				Type: xdr.ScValTypeScvContractInstance,
 				Instance: &xdr.ScContractInstance{
 					Executable: xdr.ContractExecutable{
-						Type: xdr.ContractExecutableTypeContractExecutableToken,
+						Type: xdr.ContractExecutableTypeContractExecutableStellarAsset,
 					},
 					Storage: storageMap,
 				},

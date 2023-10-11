@@ -78,8 +78,8 @@ func operationFromXDR(xdrOp xdr.Operation) (Operation, error) {
 		newOp = &LiquidityPoolWithdraw{}
 	case xdr.OperationTypeInvokeHostFunction:
 		newOp = &InvokeHostFunction{}
-	case xdr.OperationTypeBumpFootprintExpiration:
-		newOp = &BumpFootprintExpiration{}
+	case xdr.OperationTypeExtendFootprintTtl:
+		newOp = &ExtendFootprintTtl{}
 	case xdr.OperationTypeRestoreFootprint:
 		newOp = &RestoreFootprint{}
 	default:

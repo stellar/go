@@ -143,7 +143,7 @@ func TestInvokeHostFunctionRoundTrip(t *testing.T) {
 					ReadBytes:    0,
 					WriteBytes:   0,
 				},
-				RefundableFee: 1,
+				ResourceFee: 1,
 				Ext: xdr.ExtensionPoint{
 					V: 0,
 				},

@@ -215,7 +215,7 @@ func (s *OperationsProcessorTestSuiteLedger) TestOperationTypeInvokeHostFunction
 									},
 								},
 								Executable: xdr.ContractExecutable{
-									Type: xdr.ContractExecutableTypeContractExecutableToken,
+									Type: xdr.ContractExecutableTypeContractExecutableStellarAsset,
 								},
 							},
 						},

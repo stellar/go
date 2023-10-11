@@ -34,7 +34,7 @@ func (s ContractExecutable) Equals(o ContractExecutable) bool {
 		return false
 	}
 	switch s.Type {
-	case ContractExecutableTypeContractExecutableToken:
+	case ContractExecutableTypeContractExecutableStellarAsset:
 		return true
 	case ContractExecutableTypeContractExecutableWasm:
 		return s.MustWasmHash().Equals(o.MustWasmHash())

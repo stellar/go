@@ -707,8 +707,8 @@ func (i *Test) syncWithSorobanRPC(ledgerToWaitFor uint32) {
 }
 
 func (i *Test) PreflightBumpFootprintExpiration(
-	sourceAccount txnbuild.Account, bumpFootprint txnbuild.BumpFootprintExpiration,
-) (txnbuild.BumpFootprintExpiration, int64) {
+	sourceAccount txnbuild.Account, bumpFootprint txnbuild.ExtendFootprintTtl,
+) (txnbuild.ExtendFootprintTtl, int64) {
 	result, transactionData := i.simulateTransaction(sourceAccount, &bumpFootprint)
 	bumpFootprint.Ext = xdr.TransactionExt{
 		V:           1,

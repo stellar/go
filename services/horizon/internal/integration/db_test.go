@@ -167,9 +167,9 @@ func submitSorobanOps(itest *integration.Test, tt *assert.Assertions) (submitted
 	installContractOp := assembleInstallContractCodeOp(itest.CurrentTest(), itest.Master().Address(), add_u64_contract)
 	itest.MustSubmitOperations(itest.MasterAccount(), itest.Master(), installContractOp)
 
-	bumpFootprintExpirationOp := &txnbuild.BumpFootprintExpiration{
-		LedgersToExpire: 100,
-		SourceAccount:   itest.Master().Address(),
+	bumpFootprintExpirationOp := &txnbuild.ExtendFootprintTtl{
+		ExtendTo:      100,
+		SourceAccount: itest.Master().Address(),
 	}
 	itest.MustSubmitOperations(itest.MasterAccount(), itest.Master(), bumpFootprintExpirationOp)
 
@@ -441,7 +441,7 @@ func initializeDBIntegrationTest(t *testing.T) (*integration.Test, int32) {
 		submitters = append(submitters, submitSorobanOps)
 	} else {
 		delete(allOpTypes, xdr.OperationTypeInvokeHostFunction)
-		delete(allOpTypes, xdr.OperationTypeBumpFootprintExpiration)
+		delete(allOpTypes, xdr.OperationTypeExtendFootprintTtl)
 		delete(allOpTypes, xdr.OperationTypeRestoreFootprint)
 	}
 

@@ -242,7 +242,7 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool) error {
 					return errors.Wrap(err, "Error running assetStats.AddContractData")
 				}
 				totalByType["contract_data"]++
-			case xdr.LedgerEntryTypeExpiration:
+			case xdr.LedgerEntryTypeTtl:
 				// we don't store expiration entries in the db,
 				// so there is nothing to verify in that case.
 				if err = verifier.Write(entry); err != nil {
