@@ -197,8 +197,8 @@ func (stats *StatsChangeProcessorResults) Map() map[string]interface{} {
 		"stats_config_settings_updated": stats.ConfigSettingsUpdated,
 		"stats_config_settings_removed": stats.ConfigSettingsRemoved,
 
-		"stats_expiration_created": stats.TtlCreated,
-		"stats_expiration_updated": stats.TtlUpdated,
-		"stats_expiration_removed": stats.TtlRemoved,
+		"stats_ttl_created": stats.TtlCreated,
+		"stats_ttl_updated": stats.TtlUpdated,
+		"stats_ttl_removed": stats.TtlRemoved,
 	}
 }

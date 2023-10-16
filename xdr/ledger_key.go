@@ -188,9 +188,9 @@ func (key *LedgerKey) SetConfigSetting(configSettingID ConfigSettingId) error {
 	return nil
 }
 
-// SetExpiration mutates `key` such that it represents the identity of an
+// SetTtl mutates `key` such that it represents the identity of an
 // expiration entry.
-func (key *LedgerKey) SetExpiration(keyHash Hash) error {
+func (key *LedgerKey) SetTtl(keyHash Hash) error {
 	data := LedgerKeyTtl{
 		KeyHash: keyHash,
 	}

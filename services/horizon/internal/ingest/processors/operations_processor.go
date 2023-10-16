@@ -688,7 +688,7 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 		}
 	case xdr.OperationTypeExtendFootprintTtl:
 		op := operation.operation.Body.MustExtendFootprintTtlOp()
-		details["ledgers_to_expire"] = op.ExtendTo
+		details["extend_to"] = op.ExtendTo
 	case xdr.OperationTypeRestoreFootprint:
 	default:
 		panic(fmt.Errorf("unknown operation type: %s", operation.OperationType()))

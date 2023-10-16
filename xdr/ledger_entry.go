@@ -174,7 +174,7 @@ func (data *LedgerEntryData) LedgerKey() (LedgerKey, error) {
 			return key, err
 		}
 	case LedgerEntryTypeTtl:
-		if err := key.SetExpiration(data.Ttl.KeyHash); err != nil {
+		if err := key.SetTtl(data.Ttl.KeyHash); err != nil {
 			return key, err
 		}
 	default:

@@ -167,18 +167,18 @@ func submitSorobanOps(itest *integration.Test, tt *assert.Assertions) (submitted
 	installContractOp := assembleInstallContractCodeOp(itest.CurrentTest(), itest.Master().Address(), add_u64_contract)
 	itest.MustSubmitOperations(itest.MasterAccount(), itest.Master(), installContractOp)
 
-	bumpFootprintExpirationOp := &txnbuild.ExtendFootprintTtl{
+	extendFootprintTtlOp := &txnbuild.ExtendFootprintTtl{
 		ExtendTo:      100,
 		SourceAccount: itest.Master().Address(),
 	}
-	itest.MustSubmitOperations(itest.MasterAccount(), itest.Master(), bumpFootprintExpirationOp)
+	itest.MustSubmitOperations(itest.MasterAccount(), itest.Master(), extendFootprintTtlOp)
 
 	restoreFootprintOp := &txnbuild.RestoreFootprint{
 		SourceAccount: itest.Master().Address(),
 	}
 	txResp := itest.MustSubmitOperations(itest.MasterAccount(), itest.Master(), restoreFootprintOp)
 
-	return []txnbuild.Operation{installContractOp, bumpFootprintExpirationOp, restoreFootprintOp}, txResp.Ledger
+	return []txnbuild.Operation{installContractOp, extendFootprintTtlOp, restoreFootprintOp}, txResp.Ledger
 }
 
 func submitSponsorshipOps(itest *integration.Test, tt *assert.Assertions) (submittedOperations []txnbuild.Operation, lastLedger int32) {
