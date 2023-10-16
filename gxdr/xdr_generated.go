@@ -23624,7 +23624,7 @@ func (u *XdrAnon_OperationResult_Tr) XdrRecurse(x XDR, name string) {
 		x.Marshal(x.Sprintf("%sinvokeHostFunctionResult", name), XDR_InvokeHostFunctionResult(u.InvokeHostFunctionResult()))
 		return
 	case EXTEND_FOOTPRINT_TTL:
-		x.Marshal(x.Sprintf("%sExtendFootprintTTLResult", name), XDR_ExtendFootprintTTLResult(u.ExtendFootprintTTLResult()))
+		x.Marshal(x.Sprintf("%sextendFootprintTTLResult", name), XDR_ExtendFootprintTTLResult(u.ExtendFootprintTTLResult()))
 		return
 	case RESTORE_FOOTPRINT:
 		x.Marshal(x.Sprintf("%srestoreFootprintResult", name), XDR_RestoreFootprintResult(u.RestoreFootprintResult()))

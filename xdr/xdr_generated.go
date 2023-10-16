@@ -41,7 +41,7 @@ var XdrFilesSHA256 = map[string]string{
 	"xdr/Stellar-ledger-entries.x":          "4f8f2324f567a40065f54f696ea1428740f043ea4154f5986d9f499ad00ac333",
 	"xdr/Stellar-ledger.x":                  "2c842f3fe6e269498af5467f849cf6818554e90babc845f34c87cda471298d0f",
 	"xdr/Stellar-overlay.x":                 "de3957c58b96ae07968b3d3aebea84f83603e95322d1fa336360e13e3aba737a",
-	"xdr/Stellar-transaction.x":             "da2c6af5761f7aa9754964955ccfd1bf74d1f4cf3ab903cf913492e445fb01c6",
+	"xdr/Stellar-transaction.x":             "c5dd8507bc84e10b67bf3bc74c8f716a660b425814b015025c6f6b6f20cb70e7",
 	"xdr/Stellar-types.x":                   "6e3b13f0d3e360b09fa5e2b0e55d43f4d974a769df66afb34e8aecbb329d3f15",
 }
 
@@ -41047,7 +41047,7 @@ var _ xdrType = (*OperationResultCode)(nil)
 //	     case INVOKE_HOST_FUNCTION:
 //	         InvokeHostFunctionResult invokeHostFunctionResult;
 //	     case EXTEND_FOOTPRINT_TTL:
-//	         ExtendFootprintTTLResult ExtendFootprintTTLResult;
+//	         ExtendFootprintTTLResult extendFootprintTTLResult;
 //	     case RESTORE_FOOTPRINT:
 //	         RestoreFootprintResult restoreFootprintResult;
 //	     }
@@ -42489,7 +42489,7 @@ var _ xdrType = (*OperationResultTr)(nil)
 //	     case INVOKE_HOST_FUNCTION:
 //	         InvokeHostFunctionResult invokeHostFunctionResult;
 //	     case EXTEND_FOOTPRINT_TTL:
-//	         ExtendFootprintTTLResult ExtendFootprintTTLResult;
+//	         ExtendFootprintTTLResult extendFootprintTTLResult;
 //	     case RESTORE_FOOTPRINT:
 //	         RestoreFootprintResult restoreFootprintResult;
 //	     }
