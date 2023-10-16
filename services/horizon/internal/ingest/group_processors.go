@@ -7,7 +7,9 @@ import (
 
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/ingest/processors"
+	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/xdr"
 )
 
 type processorsRunDurations map[string]time.Duration
@@ -51,21 +53,23 @@ func (g groupChangeProcessors) Commit(ctx context.Context) error {
 }
 
 type groupTransactionProcessors struct {
-	processors []horizonTransactionProcessor
+	processors  []horizonTransactionProcessor
+	lazyLoaders []horizonLazyLoader
 	processorsRunDurations
 }
 
-func newGroupTransactionProcessors(processors []horizonTransactionProcessor) *groupTransactionProcessors {
+func newGroupTransactionProcessors(processors []horizonTransactionProcessor, lazyLoaders []horizonLazyLoader) *groupTransactionProcessors {
 	return &groupTransactionProcessors{
 		processors:             processors,
 		processorsRunDurations: make(map[string]time.Duration),
+		lazyLoaders:            lazyLoaders,
 	}
 }
 
-func (g groupTransactionProcessors) ProcessTransaction(ctx context.Context, tx ingest.LedgerTransaction) error {
+func (g groupTransactionProcessors) ProcessTransaction(lcm xdr.LedgerCloseMeta, tx ingest.LedgerTransaction) error {
 	for _, p := range g.processors {
 		startTime := time.Now()
-		if err := p.ProcessTransaction(ctx, tx); err != nil {
+		if err := p.ProcessTransaction(lcm, tx); err != nil {
 			return errors.Wrapf(err, "error in %T.ProcessTransaction", p)
 		}
 		g.AddRunDuration(fmt.Sprintf("%T", p), startTime)
@@ -73,11 +77,21 @@ func (g groupTransactionProcessors) ProcessTransaction(ctx context.Context, tx i
 	return nil
 }
 
-func (g groupTransactionProcessors) Commit(ctx context.Context) error {
+func (g groupTransactionProcessors) Flush(ctx context.Context, session db.SessionInterface) error {
+	// need to trigger all lazy loaders to now resolve their future placeholders
+	// with real db values first
+	for _, loader := range g.lazyLoaders {
+		if err := loader.Exec(ctx, session); err != nil {
+			return errors.Wrapf(err, "error during lazy loader resolution, %T.Exec", loader)
+		}
+	}
+
+	// now flush each processor which may call loader.GetNow(), which
+	// required the prior loader.Exec() to have been called.
 	for _, p := range g.processors {
 		startTime := time.Now()
-		if err := p.Commit(ctx); err != nil {
-			return errors.Wrapf(err, "error in %T.Commit", p)
+		if err := p.Flush(ctx, session); err != nil {
+			return errors.Wrapf(err, "error in %T.Flush", p)
 		}
 		g.AddRunDuration(fmt.Sprintf("%T", p), startTime)
 	}
