@@ -30,7 +30,7 @@ func TestExtendFootprintTtl(t *testing.T) {
 
 	installContractOp := assembleInstallContractCodeOp(t, itest.Master().Address(), add_u64_contract)
 	preFlightOp, minFee := itest.PreflightHostFunctions(&sourceAccount, *installContractOp)
-	tx := itest.MustSubmitOperationsWithFee(&sourceAccount, itest.Master(), minFee, &preFlightOp)
+	tx := itest.MustSubmitOperationsWithFee(&sourceAccount, itest.Master(), minFee+txnbuild.MinBaseFee, &preFlightOp)
 
 	_, err = itest.Client().TransactionDetail(tx.Hash)
 	require.NoError(t, err)
@@ -58,7 +58,7 @@ func TestExtendFootprintTtl(t *testing.T) {
 		},
 	}
 	bumpFootPrint, minFee = itest.PreflightBumpFootprintExpiration(&sourceAccount, bumpFootPrint)
-	tx = itest.MustSubmitOperationsWithFee(&sourceAccount, itest.Master(), minFee, &bumpFootPrint)
+	tx = itest.MustSubmitOperationsWithFee(&sourceAccount, itest.Master(), minFee+txnbuild.MinBaseFee, &bumpFootPrint)
 
 	ops, err := itest.Client().Operations(horizonclient.OperationRequest{ForTransaction: tx.Hash})
 	require.NoError(t, err)
