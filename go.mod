@@ -1,8 +1,6 @@
 module github.com/stellar/go
 
-go 1.21
-
-toolchain go1.21.1
+go 1.20
 
 require (
 	firebase.google.com/go v3.12.0+incompatible
@@ -67,6 +65,7 @@ require (
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/go-gorp/gorp/v3 v3.1.0 // indirect
 	github.com/gobuffalo/packd v1.0.2 // indirect
+	github.com/google/pprof v0.0.0-20210720184732-4bb14d4b1be1 // indirect
 	github.com/google/s2a-go v0.1.7 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.1 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
