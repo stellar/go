@@ -55,7 +55,7 @@ type StatsLedgerTransactionProcessorResults struct {
 	OperationsLiquidityPoolDeposit          int64
 	OperationsLiquidityPoolWithdraw         int64
 	OperationsInvokeHostFunction            int64
-	OperationsBumpFootprintExpiration       int64
+	OperationsExtendFootprintTtl            int64
 	OperationsRestoreFootprint              int64
 }
 
@@ -129,8 +129,8 @@ func (p *StatsLedgerTransactionProcessor) ProcessTransaction(lcm xdr.LedgerClose
 			p.results.OperationsLiquidityPoolWithdraw++
 		case xdr.OperationTypeInvokeHostFunction:
 			p.results.OperationsInvokeHostFunction++
-		case xdr.OperationTypeBumpFootprintExpiration:
-			p.results.OperationsBumpFootprintExpiration++
+		case xdr.OperationTypeExtendFootprintTtl:
+			p.results.OperationsExtendFootprintTtl++
 		case xdr.OperationTypeRestoreFootprint:
 			p.results.OperationsRestoreFootprint++
 		default:

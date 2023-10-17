@@ -99,24 +99,24 @@ func TestSortChanges(t *testing.T) {
 					Post: nil,
 				},
 				{
-					Type: xdr.LedgerEntryTypeExpiration,
+					Type: xdr.LedgerEntryTypeTtl,
 					Pre: &xdr.LedgerEntry{
 						LastModifiedLedgerSeq: 11,
 						Data: xdr.LedgerEntryData{
-							Type: xdr.LedgerEntryTypeExpiration,
-							Expiration: &xdr.ExpirationEntry{
-								KeyHash:             xdr.Hash{1},
-								ExpirationLedgerSeq: 50,
+							Type: xdr.LedgerEntryTypeTtl,
+							Ttl: &xdr.TtlEntry{
+								KeyHash:            xdr.Hash{1},
+								LiveUntilLedgerSeq: 50,
 							},
 						},
 					},
 					Post: &xdr.LedgerEntry{
 						LastModifiedLedgerSeq: 11,
 						Data: xdr.LedgerEntryData{
-							Type: xdr.LedgerEntryTypeExpiration,
-							Expiration: &xdr.ExpirationEntry{
-								KeyHash:             xdr.Hash{1},
-								ExpirationLedgerSeq: 100,
+							Type: xdr.LedgerEntryTypeTtl,
+							Ttl: &xdr.TtlEntry{
+								KeyHash:            xdr.Hash{1},
+								LiveUntilLedgerSeq: 100,
 							},
 						},
 					},
@@ -181,24 +181,24 @@ func TestSortChanges(t *testing.T) {
 				},
 
 				{
-					Type: xdr.LedgerEntryTypeExpiration,
+					Type: xdr.LedgerEntryTypeTtl,
 					Pre: &xdr.LedgerEntry{
 						LastModifiedLedgerSeq: 11,
 						Data: xdr.LedgerEntryData{
-							Type: xdr.LedgerEntryTypeExpiration,
-							Expiration: &xdr.ExpirationEntry{
-								KeyHash:             xdr.Hash{1},
-								ExpirationLedgerSeq: 50,
+							Type: xdr.LedgerEntryTypeTtl,
+							Ttl: &xdr.TtlEntry{
+								KeyHash:            xdr.Hash{1},
+								LiveUntilLedgerSeq: 50,
 							},
 						},
 					},
 					Post: &xdr.LedgerEntry{
 						LastModifiedLedgerSeq: 11,
 						Data: xdr.LedgerEntryData{
-							Type: xdr.LedgerEntryTypeExpiration,
-							Expiration: &xdr.ExpirationEntry{
-								KeyHash:             xdr.Hash{1},
-								ExpirationLedgerSeq: 100,
+							Type: xdr.LedgerEntryTypeTtl,
+							Ttl: &xdr.TtlEntry{
+								KeyHash:            xdr.Hash{1},
+								LiveUntilLedgerSeq: 100,
 							},
 						},
 					},

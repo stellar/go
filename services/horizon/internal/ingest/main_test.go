@@ -131,7 +131,7 @@ func TestStateMachineTransition(t *testing.T) {
 	}
 
 	historyQ.On("GetTx").Return(nil).Once()
-	historyQ.On("Begin", mock.AnythingOfType("*context.emptyCtx")).Return(errors.New("my error")).Once()
+	historyQ.On("Begin", mock.Anything).Return(errors.New("my error")).Once()
 	historyQ.On("GetTx").Return(&sqlx.Tx{}).Once()
 
 	assert.PanicsWithValue(t, "unexpected transaction", func() {

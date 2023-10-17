@@ -173,8 +173,8 @@ func (data *LedgerEntryData) LedgerKey() (LedgerKey, error) {
 		if err := key.SetConfigSetting(data.ConfigSetting.ConfigSettingId); err != nil {
 			return key, err
 		}
-	case LedgerEntryTypeExpiration:
-		if err := key.SetExpiration(data.Expiration.KeyHash); err != nil {
+	case LedgerEntryTypeTtl:
+		if err := key.SetTtl(data.Ttl.KeyHash); err != nil {
 			return key, err
 		}
 	default:

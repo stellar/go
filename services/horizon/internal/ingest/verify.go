@@ -242,13 +242,13 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool) error {
 					return errors.Wrap(err, "Error running assetStats.AddContractData")
 				}
 				totalByType["contract_data"]++
-			case xdr.LedgerEntryTypeExpiration:
-				// we don't store expiration entries in the db,
+			case xdr.LedgerEntryTypeTtl:
+				// we don't store ttl entries in the db,
 				// so there is nothing to verify in that case.
 				if err = verifier.Write(entry); err != nil {
 					return err
 				}
-				totalByType["expiration"]++
+				totalByType["ttl"]++
 			default:
 				return errors.New("GetLedgerEntries return unexpected type")
 			}
@@ -322,7 +322,7 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool) error {
 
 	err = verifier.Verify(
 		countAccounts + countData + countOffers + countTrustLines + countClaimableBalances +
-			countLiquidityPools + int(totalByType["contract_data"]) + int(totalByType["expiration"]),
+			countLiquidityPools + int(totalByType["contract_data"]) + int(totalByType["ttl"]),
 	)
 	if err != nil {
 		return errors.Wrap(err, "verifier.Verify failed")

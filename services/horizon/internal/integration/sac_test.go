@@ -894,7 +894,7 @@ func createSAC(itest *integration.Test, sourceAccount string, asset xdr.Asset) *
 					FromAsset: &asset,
 				},
 				Executable: xdr.ContractExecutable{
-					Type:     xdr.ContractExecutableTypeContractExecutableToken,
+					Type:     xdr.ContractExecutableTypeContractExecutableStellarAsset,
 					WasmHash: nil,
 				},
 			},

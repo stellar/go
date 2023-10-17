@@ -10,8 +10,6 @@ func (l LedgerCloseMeta) LedgerHeaderHistoryEntry() LedgerHeaderHistoryEntry {
 		return l.MustV0().LedgerHeader
 	case 1:
 		return l.MustV1().LedgerHeader
-	case 2:
-		return l.MustV2().LedgerHeader
 	default:
 		panic(fmt.Sprintf("Unsupported LedgerCloseMeta.V: %d", l.V))
 	}
@@ -43,8 +41,7 @@ func (l LedgerCloseMeta) CountTransactions() int {
 		return len(l.MustV0().TxProcessing)
 	case 1:
 		return len(l.MustV1().TxProcessing)
-	case 2:
-		return len(l.MustV2().TxProcessing)
+
 	default:
 		panic(fmt.Sprintf("Unsupported LedgerCloseMeta.V: %d", l.V))
 	}
@@ -54,15 +51,9 @@ func (l LedgerCloseMeta) TransactionEnvelopes() []TransactionEnvelope {
 	switch l.V {
 	case 0:
 		return l.MustV0().TxSet.Txs
-	case 1, 2:
+	case 1:
 		var envelopes = make([]TransactionEnvelope, 0, l.CountTransactions())
-		var phases []TransactionPhase
-		if l.V == 1 {
-			phases = l.MustV1().TxSet.V1TxSet.Phases
-		} else {
-			phases = l.MustV2().TxSet.V1TxSet.Phases
-		}
-		for _, phase := range phases {
+		for _, phase := range l.MustV1().TxSet.V1TxSet.Phases {
 			for _, component := range *phase.V0Components {
 				envelopes = append(envelopes, component.TxsMaybeDiscountedFee.Txs...)
 			}
@@ -80,8 +71,6 @@ func (l LedgerCloseMeta) TransactionHash(i int) Hash {
 		return l.MustV0().TxProcessing[i].Result.TransactionHash
 	case 1:
 		return l.MustV1().TxProcessing[i].Result.TransactionHash
-	case 2:
-		return l.MustV2().TxProcessing[i].Result.TransactionHash
 	default:
 		panic(fmt.Sprintf("Unsupported LedgerCloseMeta.V: %d", l.V))
 	}
@@ -94,8 +83,6 @@ func (l LedgerCloseMeta) TransactionResultPair(i int) TransactionResultPair {
 		return l.MustV0().TxProcessing[i].Result
 	case 1:
 		return l.MustV1().TxProcessing[i].Result
-	case 2:
-		return l.MustV2().TxProcessing[i].Result
 	default:
 		panic(fmt.Sprintf("Unsupported LedgerCloseMeta.V: %d", l.V))
 	}
@@ -108,8 +95,6 @@ func (l LedgerCloseMeta) FeeProcessing(i int) LedgerEntryChanges {
 		return l.MustV0().TxProcessing[i].FeeProcessing
 	case 1:
 		return l.MustV1().TxProcessing[i].FeeProcessing
-	case 2:
-		return l.MustV2().TxProcessing[i].FeeProcessing
 	default:
 		panic(fmt.Sprintf("Unsupported LedgerCloseMeta.V: %d", l.V))
 	}
@@ -121,12 +106,10 @@ func (l LedgerCloseMeta) TxApplyProcessing(i int) TransactionMeta {
 	case 0:
 		return l.MustV0().TxProcessing[i].TxApplyProcessing
 	case 1:
-		return l.MustV1().TxProcessing[i].TxApplyProcessing
-	case 2:
-		if l.MustV2().TxProcessing[i].TxApplyProcessing.V != 3 {
-			panic("TransactionResult unavailable because LedgerCloseMeta.V = 2 and TransactionMeta.V != 3")
+		if l.MustV1().TxProcessing[i].TxApplyProcessing.V != 3 {
+			panic("TransactionResult unavailable because LedgerCloseMeta.V = 1 and TransactionMeta.V != 3")
 		}
-		return l.MustV2().TxProcessing[i].TxApplyProcessing
+		return l.MustV1().TxProcessing[i].TxApplyProcessing
 	default:
 		panic(fmt.Sprintf("Unsupported LedgerCloseMeta.V: %d", l.V))
 	}
@@ -139,8 +122,6 @@ func (l LedgerCloseMeta) UpgradesProcessing() []UpgradeEntryMeta {
 		return l.MustV0().UpgradesProcessing
 	case 1:
 		return l.MustV1().UpgradesProcessing
-	case 2:
-		return l.MustV2().UpgradesProcessing
 	default:
 		panic(fmt.Sprintf("Unsupported LedgerCloseMeta.V: %d", l.V))
 	}
@@ -150,10 +131,10 @@ func (l LedgerCloseMeta) UpgradesProcessing() []UpgradeEntryMeta {
 // temporary ledger entries that have been evicted in this ledger.
 func (l LedgerCloseMeta) EvictedTemporaryLedgerKeys() ([]LedgerKey, error) {
 	switch l.V {
-	case 0, 1:
+	case 0:
 		return nil, nil
-	case 2:
-		return l.MustV2().EvictedTemporaryLedgerKeys, nil
+	case 1:
+		return l.MustV1().EvictedTemporaryLedgerKeys, nil
 	default:
 		panic(fmt.Sprintf("Unsupported LedgerCloseMeta.V: %d", l.V))
 	}
@@ -163,10 +144,10 @@ func (l LedgerCloseMeta) EvictedTemporaryLedgerKeys() ([]LedgerKey, error) {
 // which have been evicted in this ledger.
 func (l LedgerCloseMeta) EvictedPersistentLedgerEntries() ([]LedgerEntry, error) {
 	switch l.V {
-	case 0, 1:
+	case 0:
 		return nil, nil
-	case 2:
-		return l.MustV2().EvictedPersistentLedgerEntries, nil
+	case 1:
+		return l.MustV1().EvictedPersistentLedgerEntries, nil
 	default:
 		panic(fmt.Sprintf("Unsupported LedgerCloseMeta.V: %d", l.V))
 	}
