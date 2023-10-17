@@ -39,7 +39,7 @@ var TypeNames = map[xdr.OperationType]string{
 	xdr.OperationTypeLiquidityPoolDeposit:          "liquidity_pool_deposit",
 	xdr.OperationTypeLiquidityPoolWithdraw:         "liquidity_pool_withdraw",
 	xdr.OperationTypeInvokeHostFunction:            "invoke_host_function",
-	xdr.OperationTypeBumpFootprintExpiration:       "bump_footprint_expiration",
+	xdr.OperationTypeExtendFootprintTtl:            "extend_footprint_ttl",
 	xdr.OperationTypeRestoreFootprint:              "restore_footprint",
 }
 
@@ -373,11 +373,11 @@ type HostFunctionParameter struct {
 	Type  string `json:"type"`
 }
 
-// BumpFootprintExpiration is the json resource representing a single BumpFootprintExpirationOp.
-// The model for BumpFootprintExpiration assimilates BumpFootprintExpirationOp, but is simplified.
-type BumpFootprintExpiration struct {
+// ExtendFootprintTtl is the json resource representing a single ExtendFootprintTtlOp.
+// The model for ExtendFootprintTtl assimilates ExtendFootprintTtlOp, but is simplified.
+type ExtendFootprintTtl struct {
 	Base
-	LedgersToExpire uint32 `json:"ledgers_to_expire"`
+	ExtendTo uint32 `json:"extend_to"`
 }
 
 // RestoreFootprint is the json resource representing a single RestoreFootprint.
@@ -642,8 +642,8 @@ func UnmarshalOperation(operationTypeID int32, dataString []byte) (ops Operation
 			return
 		}
 		ops = op
-	case xdr.OperationTypeBumpFootprintExpiration:
-		var op BumpFootprintExpiration
+	case xdr.OperationTypeExtendFootprintTtl:
+		var op ExtendFootprintTtl
 		if err = json.Unmarshal(dataString, &op); err != nil {
 			return
 		}

@@ -53,9 +53,9 @@ func (key *LedgerKey) Equals(other LedgerKey) bool {
 		l := key.MustClaimableBalance()
 		r := other.MustClaimableBalance()
 		return l.BalanceId.MustV0() == r.BalanceId.MustV0()
-	case LedgerEntryTypeExpiration:
-		l := key.MustExpiration()
-		r := other.MustExpiration()
+	case LedgerEntryTypeTtl:
+		l := key.MustTtl()
+		r := other.MustTtl()
 		return l.KeyHash == r.KeyHash
 	default:
 		panic(fmt.Errorf("unknown ledger key type: %v", key.Type))
@@ -188,13 +188,13 @@ func (key *LedgerKey) SetConfigSetting(configSettingID ConfigSettingId) error {
 	return nil
 }
 
-// SetExpiration mutates `key` such that it represents the identity of an
+// SetTtl mutates `key` such that it represents the identity of an
 // expiration entry.
-func (key *LedgerKey) SetExpiration(keyHash Hash) error {
-	data := LedgerKeyExpiration{
+func (key *LedgerKey) SetTtl(keyHash Hash) error {
+	data := LedgerKeyTtl{
 		KeyHash: keyHash,
 	}
-	nkey, err := NewLedgerKey(LedgerEntryTypeExpiration, data)
+	nkey, err := NewLedgerKey(LedgerEntryTypeTtl, data)
 	if err != nil {
 		return err
 	}
@@ -259,8 +259,8 @@ func (e *EncodingBuffer) ledgerKeyCompressEncodeTo(key LedgerKey) error {
 		return err
 	case LedgerEntryTypeConfigSetting:
 		return key.ConfigSetting.ConfigSettingId.EncodeTo(e.encoder)
-	case LedgerEntryTypeExpiration:
-		return key.Expiration.KeyHash.EncodeTo(e.encoder)
+	case LedgerEntryTypeTtl:
+		return key.Ttl.KeyHash.EncodeTo(e.encoder)
 	default:
 		panic("Unknown type")
 	}

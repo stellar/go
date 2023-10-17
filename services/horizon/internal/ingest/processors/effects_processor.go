@@ -245,7 +245,7 @@ func (operation *transactionOperationWrapper) effects() ([]effect, error) {
 		// For now, the only effects are related to the events themselves.
 		// Possible add'l work: https://github.com/stellar/go/issues/4585
 		err = wrapper.addInvokeHostFunctionEffects(filterEvents(diagnosticEvents))
-	case xdr.OperationTypeBumpFootprintExpiration, xdr.OperationTypeRestoreFootprint:
+	case xdr.OperationTypeExtendFootprintTtl, xdr.OperationTypeRestoreFootprint:
 		// do not produce effects for these operations as horizon only provides
 		// limited visibility into soroban operations
 	default:
