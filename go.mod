@@ -32,13 +32,13 @@ require (
 	github.com/onsi/gomega v1.27.10
 	github.com/pelletier/go-toml v1.9.0
 	github.com/pkg/errors v0.9.1
-	github.com/prometheus/client_golang v0.9.3-0.20190127221311-3c4408c8b829
-	github.com/prometheus/client_model v0.0.0-20190812154241-14fe0d1b01d4
+	github.com/prometheus/client_golang v1.11.1
+	github.com/prometheus/client_model v0.2.0
 	github.com/rs/cors v0.0.0-20160617231935-a62a804a8a00
 	github.com/rubenv/sql-migrate v0.0.0-20190717103323-87ce952f7079
 	github.com/segmentio/go-loggly v0.5.1-0.20171222203950-eb91657e62b2
 	github.com/shurcooL/httpfs v0.0.0-20230704072500-f1e31cf0ba5c
-	github.com/sirupsen/logrus v1.4.2
+	github.com/sirupsen/logrus v1.6.0
 	github.com/spf13/cobra v0.0.5
 	github.com/spf13/pflag v1.0.3
 	github.com/spf13/viper v1.3.2
@@ -59,6 +59,7 @@ require (
 	cloud.google.com/go/iam v1.1.1 // indirect
 	cloud.google.com/go/longrunning v0.5.1 // indirect
 	github.com/andybalholm/brotli v1.0.4 // indirect
+	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/gobuffalo/envy v1.10.2 // indirect
 	github.com/gobuffalo/packd v1.0.2 // indirect
@@ -80,7 +81,7 @@ require (
 	cloud.google.com/go/firestore v1.11.0 // indirect
 	cloud.google.com/go/storage v1.30.1 // indirect
 	github.com/ajg/form v0.0.0-20160822230020-523a5da1a92f // indirect
-	github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973 // indirect
+	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/buger/goreplay v1.3.2
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/fatih/structs v1.0.0 // indirect
@@ -96,7 +97,7 @@ require (
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/klauspost/compress v1.15.0 // indirect
-	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
+	github.com/konsorten/go-windows-terminal-sequences v1.0.3 // indirect
 	github.com/kr/text v0.1.0 // indirect
 	github.com/lann/builder v0.0.0-20180802200727-47ae307949d0 // indirect
 	github.com/lann/ps v0.0.0-20150810152359-62de8c46ede0 // indirect
@@ -107,8 +108,8 @@ require (
 	github.com/moul/http2curl v0.0.0-20161031194548-4e24498b31db // indirect
 	github.com/opentracing/opentracing-go v1.1.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/prometheus/common v0.2.0 // indirect
-	github.com/prometheus/procfs v0.0.0-20190117184657-bf6a532e95b1 // indirect
+	github.com/prometheus/common v0.26.0 // indirect
+	github.com/prometheus/procfs v0.6.0 // indirect
 	github.com/rs/xhandler v0.0.0-20160618193221-ed27b6fd6521 // indirect
 	github.com/sergi/go-diff v0.0.0-20161205080420-83532ca1c1ca // indirect
 	github.com/spf13/cast v1.3.0 // indirect
