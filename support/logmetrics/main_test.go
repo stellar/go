@@ -41,7 +41,7 @@ func TestLogPackageMetrics(t *testing.T) {
 			levelString = "warn"
 		}
 		expectedDesc := fmt.Sprintf(
-			"Desc{fqName: \"horizon_log_%s_total\", help: \"\", constLabels: {}, variableLabels: []}",
+			"Desc{fqName: \"horizon_log_%s_total\", help: \"\", constLabels: {}, variableLabels: {}}",
 			levelString,
 		)
 		assert.Equal(t, expectedDesc, meter.Desc().String())
