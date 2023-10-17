@@ -42,7 +42,7 @@ func TestContractInvokeHostFunctionInstallContract(t *testing.T) {
 
 	installContractOp := assembleInstallContractCodeOp(t, itest.Master().Address(), add_u64_contract)
 	preFlightOp, minFee := itest.PreflightHostFunctions(&sourceAccount, *installContractOp)
-	tx := itest.MustSubmitOperationsWithFee(&sourceAccount, itest.Master(), minFee, &preFlightOp)
+	tx := itest.MustSubmitOperationsWithFee(&sourceAccount, itest.Master(), minFee+txnbuild.MinBaseFee, &preFlightOp)
 
 	clientTx, err := itest.Client().TransactionDetail(tx.Hash)
 	require.NoError(t, err)
