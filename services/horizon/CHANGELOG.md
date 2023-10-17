@@ -8,12 +8,15 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Breaking Changes
 - The command line flag `--remote-captive-core-url` has been removed, as remote captive core functionality is now deprecated ([4940](https://github.com/stellar/go/pull/4940)).
+- The functionality of generating default captive core configuration based on the --network-passphrase is now deprecated. Use the --network command instead ([4949](https://github.com/stellar/go/pull/4949)).
 
 ### Added
 - Added new command-line flag `--network` to specify the Stellar network (pubnet or testnet), aiming at simplifying the configuration process by automatically configuring the following parameters based on the chosen network: `--history-archive-urls`, `--network-passphrase`, and `--captive-core-config-path` ([4949](https://github.com/stellar/go/pull/4949)).
 
 ### Fixed
 - The same slippage calculation from the [`v2.26.1`](#2261) hotfix now properly excludes spikes for smoother trade aggregation plots ([4999](https://github.com/stellar/go/pull/4999)).
+- Limit the display of global flags on command line help `-h` output ([5077](https://github.com/stellar/go/pull/5077)).
+- Add a deprecation warning for using command-line flags when running Horizon ([5051](https://github.com/stellar/go/pull/5051))
 
 
 ## 2.26.1

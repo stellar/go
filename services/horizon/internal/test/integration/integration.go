@@ -16,6 +16,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stellar/go/services/horizon/internal/test"
+
 	"github.com/2opremio/pretty"
 	"github.com/creachadair/jrpc2"
 	"github.com/creachadair/jrpc2/jhttp"
@@ -96,7 +98,7 @@ type Test struct {
 	config              Config
 	coreConfig          CaptiveConfig
 	horizonIngestConfig horizon.Config
-	environment         *EnvironmentManager
+	environment         *test.EnvironmentManager
 
 	horizonClient      *sdk.Client
 	horizonAdminClient *sdk.AdminClient
@@ -151,7 +153,7 @@ func NewTest(t *testing.T, config Config) *Test {
 			config:      config,
 			composePath: composePath,
 			passPhrase:  StandaloneNetworkPassphrase,
-			environment: NewEnvironmentManager(),
+			environment: test.NewEnvironmentManager(),
 		}
 		i.configureCaptiveCore()
 		// Only run Stellar Core container and its dependencies.
@@ -160,7 +162,7 @@ func NewTest(t *testing.T, config Config) *Test {
 		i = &Test{
 			t:           t,
 			config:      config,
-			environment: NewEnvironmentManager(),
+			environment: test.NewEnvironmentManager(),
 		}
 	}
 

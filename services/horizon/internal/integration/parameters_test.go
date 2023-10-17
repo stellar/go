@@ -15,10 +15,10 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-
 	"github.com/stellar/go/services/horizon/internal/paths"
 	"github.com/stellar/go/services/horizon/internal/simplepath"
 
+	horizoncmd "github.com/stellar/go/services/horizon/cmd"
 	horizon "github.com/stellar/go/services/horizon/internal"
 	"github.com/stellar/go/services/horizon/internal/test/integration"
 
@@ -431,12 +431,6 @@ func TestDisableTxSub(t *testing.T) {
 		test.Shutdown()
 	})
 	t.Run("horizon starts successfully when DISABLE_TX_SUB=true and INGEST=true", func(t *testing.T) {
-		//localParams := integration.MergeMaps(networkParamArgs, map[string]string{
-		//	//horizon.NetworkFlagName:           "testnet",
-		//	horizon.IngestFlagName:            "true",
-		//	horizon.DisableTxSubFlagName:      "true",
-		//	horizon.StellarCoreBinaryPathName: "/usr/bin/stellar-core",
-		//})
 		testConfig := integration.GetTestConfig()
 		testConfig.HorizonIngestParameters = map[string]string{
 			"disable-tx-sub": "true",
@@ -450,72 +444,212 @@ func TestDisableTxSub(t *testing.T) {
 	})
 }
 
-func TestDeprecatedOutputForIngestionFilteringFlag(t *testing.T) {
-	originalStderr := os.Stderr
-	r, w, _ := os.Pipe()
-	os.Stderr = w
-	stdLog.SetOutput(os.Stderr)
+func TestDeprecatedOutputs(t *testing.T) {
+	t.Run("deprecated output for ingestion filtering", func(t *testing.T) {
+		originalStderr := os.Stderr
+		r, w, _ := os.Pipe()
+		os.Stderr = w
+		stdLog.SetOutput(os.Stderr)
 
-	testConfig := integration.GetTestConfig()
-	testConfig.HorizonIngestParameters = map[string]string{"exp-enable-ingestion-filtering": "false"}
-	test := integration.NewTest(t, *testConfig)
-	err := test.StartHorizon()
-	assert.NoError(t, err)
-	test.WaitForHorizon()
+		testConfig := integration.GetTestConfig()
+		testConfig.HorizonIngestParameters = map[string]string{"exp-enable-ingestion-filtering": "false"}
+		test := integration.NewTest(t, *testConfig)
+		err := test.StartHorizon()
+		assert.NoError(t, err)
+		test.WaitForHorizon()
 
-	// Use a wait group to wait for the goroutine to finish before proceeding
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		if err := w.Close(); err != nil {
-			t.Errorf("Failed to close Stdout")
-			return
+		// Use a wait group to wait for the goroutine to finish before proceeding
+		var wg sync.WaitGroup
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if err := w.Close(); err != nil {
+				t.Errorf("Failed to close Stdout")
+				return
+			}
+		}()
+
+		outputBytes, _ := io.ReadAll(r)
+		wg.Wait() // Wait for the goroutine to finish before proceeding
+		_ = r.Close()
+		os.Stderr = originalStderr
+
+		assert.Contains(t, string(outputBytes), "DEPRECATED - No ingestion filter rules are defined by default, which equates to "+
+			"no filtering of historical data. If you have never added filter rules to this deployment, then no further action is needed. "+
+			"If you have defined ingestion filter rules previously but disabled filtering overall by setting the env variable EXP_ENABLE_INGESTION_FILTERING=false, "+
+			"then you should now delete the filter rules using the Horizon Admin API to achieve the same no-filtering result. Remove usage of this variable in all cases.")
+	})
+	t.Run("deprecated output for command-line flags", func(t *testing.T) {
+		originalStderr := os.Stderr
+		r, w, _ := os.Pipe()
+		os.Stderr = w
+		stdLog.SetOutput(os.Stderr)
+
+		config, flags := horizon.Flags()
+
+		horizonCmd := &cobra.Command{
+			Use:           "horizon",
+			Short:         "Client-facing api server for the Stellar network",
+			SilenceErrors: true,
+			SilenceUsage:  true,
+			Long:          "Client-facing API server for the Stellar network.",
+			RunE: func(cmd *cobra.Command, args []string) error {
+				_, err := horizon.NewAppFromFlags(config, flags)
+				if err != nil {
+					return err
+				}
+				return nil
+			},
 		}
-	}()
 
-	outputBytes, _ := io.ReadAll(r)
-	wg.Wait() // Wait for the goroutine to finish before proceeding
-	_ = r.Close()
-	os.Stderr = originalStderr
+		horizonCmd.SetArgs([]string{"--disable-tx-sub=true"})
+		if err := flags.Init(horizonCmd); err != nil {
+			fmt.Println(err)
+		}
+		if err := horizonCmd.Execute(); err != nil {
+			fmt.Println(err)
+		}
 
-	assert.Contains(t, string(outputBytes), "DEPRECATED - No ingestion filter rules are defined by default, which equates to "+
-		"no filtering of historical data. If you have never added filter rules to this deployment, then nothing further needed. "+
-		"If you have defined ingestion filter rules prior but disabled filtering overall by setting this flag disabled with "+
-		"--exp-enable-ingestion-filtering=false, then you should now delete the filter rules using the Horizon Admin API to achieve "+
-		"the same no-filtering result. Remove usage of this flag in all cases.")
+		// Use a wait group to wait for the goroutine to finish before proceeding
+		var wg sync.WaitGroup
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if err := w.Close(); err != nil {
+				t.Errorf("Failed to close Stdout")
+				return
+			}
+		}()
+
+		outputBytes, _ := io.ReadAll(r)
+		wg.Wait() // Wait for the goroutine to finish before proceeding
+		_ = r.Close()
+		os.Stderr = originalStderr
+
+		assert.Contains(t, string(outputBytes), "DEPRECATED - the use of command-line flags: "+
+			"[--disable-tx-sub], has been deprecated in favor of environment variables. Please consult our "+
+			"Configuring section in the developer documentation on how to use them - "+
+			"https://developers.stellar.org/docs/run-api-server/configuring")
+	})
 }
 
-func TestHelpOutput(t *testing.T) {
-	config, flags := horizon.Flags()
+func TestGlobalFlagsOutput(t *testing.T) {
 
-	horizonCmd := &cobra.Command{
-		Use:           "horizon",
-		Short:         "Client-facing api server for the Stellar network",
-		SilenceErrors: true,
-		SilenceUsage:  true,
-		Long:          "Client-facing API server for the Stellar network.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			_, err := horizon.NewAppFromFlags(config, flags)
-			if err != nil {
-				return err
-			}
-			return nil
+	// verify Help and Usage output from cli, both help and usage output follow the same
+	// output rules of no globals when sub-comands exist, and only relevant globals
+	// when down to leaf node command.
+
+	dbParams := []string{"--max-db-connections", "--db-url"}
+	// the space after '--ingest' is intentional to ensure correct matching behavior to
+	// help output, as other flags also start with same prefix.
+	apiParams := []string{"--port ", "--per-hour-rate-limit", "--ingest ", "sentry-dsn"}
+	ingestionParams := []string{"--stellar-core-binary-path", "--history-archive-urls", "--ingest-state-verification-checkpoint-frequency"}
+	allParams := append(apiParams, append(dbParams, ingestionParams...)...)
+
+	testCases := []struct {
+		horizonHelpCommand          []string
+		helpPrintedGlobalParams     []string
+		helpPrintedSubCommandParams []string
+		helpSkippedGlobalParams     []string
+	}{
+		{
+			horizonHelpCommand:          []string{"ingest", "trigger-state-rebuild", "-h"},
+			helpPrintedGlobalParams:     dbParams,
+			helpPrintedSubCommandParams: []string{},
+			helpSkippedGlobalParams:     append(apiParams, ingestionParams...),
+		},
+		{
+			horizonHelpCommand:          []string{"ingest", "verify-range", "-h"},
+			helpPrintedGlobalParams:     append(dbParams, ingestionParams...),
+			helpPrintedSubCommandParams: []string{"--verify-state", "--from"},
+			helpSkippedGlobalParams:     apiParams,
+		},
+		{
+			horizonHelpCommand:          []string{"db", "reingest", "range", "-h"},
+			helpPrintedGlobalParams:     append(dbParams, ingestionParams...),
+			helpPrintedSubCommandParams: []string{"--parallel-workers", "--force"},
+			helpSkippedGlobalParams:     apiParams,
+		},
+		{
+			horizonHelpCommand:          []string{"db", "reingest", "range"},
+			helpPrintedGlobalParams:     append(dbParams, ingestionParams...),
+			helpPrintedSubCommandParams: []string{"--parallel-workers", "--force"},
+			helpSkippedGlobalParams:     apiParams,
+		},
+		{
+			horizonHelpCommand:          []string{"db", "fill-gaps", "-h"},
+			helpPrintedGlobalParams:     append(dbParams, ingestionParams...),
+			helpPrintedSubCommandParams: []string{"--parallel-workers", "--force"},
+			helpSkippedGlobalParams:     apiParams,
+		},
+		{
+			horizonHelpCommand:          []string{"db", "migrate", "up", "-h"},
+			helpPrintedGlobalParams:     dbParams,
+			helpPrintedSubCommandParams: []string{},
+			helpSkippedGlobalParams:     append(apiParams, ingestionParams...),
+		},
+		{
+			horizonHelpCommand:          []string{"db", "-h"},
+			helpPrintedGlobalParams:     []string{},
+			helpPrintedSubCommandParams: []string{},
+			helpSkippedGlobalParams:     allParams,
+		},
+		{
+			horizonHelpCommand:          []string{"db"},
+			helpPrintedGlobalParams:     []string{},
+			helpPrintedSubCommandParams: []string{},
+			helpSkippedGlobalParams:     allParams,
+		},
+		{
+			horizonHelpCommand:          []string{"-h"},
+			helpPrintedGlobalParams:     []string{},
+			helpPrintedSubCommandParams: []string{},
+			helpSkippedGlobalParams:     allParams,
+		},
+		{
+			horizonHelpCommand:          []string{"db", "reingest", "-h"},
+			helpPrintedGlobalParams:     []string{},
+			helpPrintedSubCommandParams: []string{},
+			helpSkippedGlobalParams:     apiParams,
+		},
+		{
+			horizonHelpCommand:          []string{"db", "reingest"},
+			helpPrintedGlobalParams:     []string{},
+			helpPrintedSubCommandParams: []string{},
+			helpSkippedGlobalParams:     apiParams,
+		},
+		{
+			horizonHelpCommand:          []string{"serve", "-h"},
+			helpPrintedGlobalParams:     allParams,
+			helpPrintedSubCommandParams: []string{},
+			helpSkippedGlobalParams:     []string{},
+		},
+		{
+			horizonHelpCommand:          []string{"record-metrics", "-h"},
+			helpPrintedGlobalParams:     []string{"--admin-port"},
+			helpPrintedSubCommandParams: []string{},
+			helpSkippedGlobalParams:     allParams,
 		},
 	}
+	for _, testCase := range testCases {
+		t.Run(fmt.Sprintf("Horizon command line parameter %v", testCase.horizonHelpCommand), func(t *testing.T) {
+			horizoncmd.RootCmd.SetArgs(testCase.horizonHelpCommand)
+			var writer io.Writer = &bytes.Buffer{}
+			horizoncmd.RootCmd.SetOutput(writer)
+			horizoncmd.RootCmd.Execute()
 
-	var writer io.Writer = &bytes.Buffer{}
-	horizonCmd.SetOutput(writer)
-
-	horizonCmd.SetArgs([]string{"-h"})
-	if err := flags.Init(horizonCmd); err != nil {
-		fmt.Println(err)
+			output := writer.(*bytes.Buffer).String()
+			for _, requiredParam := range testCase.helpPrintedSubCommandParams {
+				assert.Contains(t, output, requiredParam, testCase.horizonHelpCommand)
+			}
+			for _, requiredParam := range testCase.helpPrintedGlobalParams {
+				assert.Contains(t, output, requiredParam, testCase.horizonHelpCommand)
+			}
+			for _, skippedParam := range testCase.helpSkippedGlobalParams {
+				assert.NotContains(t, output, skippedParam, testCase.horizonHelpCommand)
+			}
+		})
 	}
-	if err := horizonCmd.Execute(); err != nil {
-		fmt.Println(err)
-	}
-	output := writer.(*bytes.Buffer).String()
-	assert.NotContains(t, output, "--exp-enable-ingestion-filtering")
 }
 
 // validateNoBucketDirPath ensures the Stellar Core auto-generated configuration

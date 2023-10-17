@@ -67,6 +67,32 @@ const (
 	defaultMaxHTTPRequestSize = uint(200 * 1024)
 )
 
+var (
+	IngestCmd        = "ingest"
+	RecordMetricsCmd = "record-metrics"
+	DbCmd            = "db"
+	ServeCmd         = "serve"
+	HorizonCmd       = "horizon"
+
+	DbFillGapsCmd             = "fill-gaps"
+	DbReingestCmd             = "reingest"
+	IngestTriggerStateRebuild = "trigger-state-rebuild"
+	IngestInitGenesisStateCmd = "init-genesis-state"
+	IngestBuildStateCmd       = "build-state"
+	IngestStressTestCmd       = "stress-test"
+	IngestVerifyRangeCmd      = "verify-range"
+
+	ApiServerCommands = []string{HorizonCmd, ServeCmd}
+	IngestionCommands = append(ApiServerCommands,
+		IngestInitGenesisStateCmd,
+		IngestBuildStateCmd,
+		IngestStressTestCmd,
+		IngestVerifyRangeCmd,
+		DbFillGapsCmd,
+		DbReingestCmd)
+	DatabaseBoundCommands = append(ApiServerCommands, DbCmd, IngestCmd)
+)
+
 // validateBothOrNeither ensures that both options are provided, if either is provided.
 func validateBothOrNeither(option1, option2 string) error {
 	arg1, arg2 := viper.GetString(option1), viper.GetString(option2)
@@ -130,36 +156,40 @@ func Flags() (*Config, support.ConfigOptions) {
 	// Add a new entry here to connect a new field in the horizon.Config struct
 	var flags = support.ConfigOptions{
 		&support.ConfigOption{
-			Name:      DatabaseURLFlagName,
-			EnvVar:    "DATABASE_URL",
-			ConfigKey: &config.DatabaseURL,
-			OptType:   types.String,
-			Required:  true,
-			Usage:     "horizon postgres database to connect with",
+			Name:           DatabaseURLFlagName,
+			EnvVar:         "DATABASE_URL",
+			ConfigKey:      &config.DatabaseURL,
+			OptType:        types.String,
+			Required:       true,
+			Usage:          "horizon postgres database to connect with",
+			UsedInCommands: DatabaseBoundCommands,
 		},
 		&support.ConfigOption{
-			Name:      "ro-database-url",
-			ConfigKey: &config.RoDatabaseURL,
-			OptType:   types.String,
-			Required:  false,
-			Usage:     "horizon postgres read-replica to connect with, when set it will return stale history error when replica is behind primary",
+			Name:           "ro-database-url",
+			ConfigKey:      &config.RoDatabaseURL,
+			OptType:        types.String,
+			Required:       false,
+			Usage:          "horizon postgres read-replica to connect with, when set it will return stale history error when replica is behind primary",
+			UsedInCommands: IngestionCommands,
 		},
 		&support.ConfigOption{
-			Name:        StellarCoreBinaryPathName,
-			OptType:     types.String,
-			FlagDefault: "",
-			Required:    false,
-			Usage:       "path to stellar core binary, look for the stellar-core binary in $PATH by default.",
-			ConfigKey:   &config.CaptiveCoreBinaryPath,
+			Name:           StellarCoreBinaryPathName,
+			OptType:        types.String,
+			FlagDefault:    "",
+			Required:       false,
+			Usage:          "path to stellar core binary, look for the stellar-core binary in $PATH by default.",
+			ConfigKey:      &config.CaptiveCoreBinaryPath,
+			UsedInCommands: IngestionCommands,
 		},
 		&support.ConfigOption{
-			Name:        DisableTxSubFlagName,
-			OptType:     types.Bool,
-			FlagDefault: false,
-			Required:    false,
-			Usage:       "disables the transaction submission functionality of Horizon.",
-			ConfigKey:   &config.DisableTxSub,
-			Hidden:      false,
+			Name:           DisableTxSubFlagName,
+			OptType:        types.Bool,
+			FlagDefault:    false,
+			Required:       false,
+			Usage:          "disables the transaction submission functionality of Horizon.",
+			ConfigKey:      &config.DisableTxSub,
+			Hidden:         false,
+			UsedInCommands: ApiServerCommands,
 		},
 		&support.ConfigOption{
 			Name:        captiveCoreConfigAppendPathName,
@@ -183,6 +213,7 @@ func Flags() (*Config, support.ConfigOptions) {
 				}
 				return nil
 			},
+			UsedInCommands: IngestionCommands,
 		},
 		&support.ConfigOption{
 			Name:        CaptiveCoreConfigPathName,
@@ -197,6 +228,7 @@ func Flags() (*Config, support.ConfigOptions) {
 				}
 				return nil
 			},
+			UsedInCommands: IngestionCommands,
 		},
 		&support.ConfigOption{
 			Name:        CaptiveCoreConfigUseDB,
@@ -215,15 +247,17 @@ func Flags() (*Config, support.ConfigOptions) {
 				}
 				return nil
 			},
-			ConfigKey: &config.CaptiveCoreConfigUseDB,
+			ConfigKey:      &config.CaptiveCoreConfigUseDB,
+			UsedInCommands: IngestionCommands,
 		},
 		&support.ConfigOption{
-			Name:        "enable-captive-core-ingestion",
-			OptType:     types.Bool,
-			FlagDefault: true,
-			Required:    false,
-			Usage:       "causes Horizon to ingest from a Captive Stellar Core process instead of a persistent Stellar Core database",
-			ConfigKey:   &config.EnableCaptiveCoreIngestion,
+			Name:           "enable-captive-core-ingestion",
+			OptType:        types.Bool,
+			FlagDefault:    true,
+			Required:       false,
+			Usage:          "causes Horizon to ingest from a Captive Stellar Core process instead of a persistent Stellar Core database",
+			ConfigKey:      &config.EnableCaptiveCoreIngestion,
+			UsedInCommands: IngestionCommands,
 		},
 		&support.ConfigOption{
 			Name:        EnableIngestionFilteringFlagName,
@@ -238,11 +272,10 @@ func Flags() (*Config, support.ConfigOptions) {
 
 				if val := viper.GetString(opt.Name); val != "" {
 					stdLog.Printf(
-						"DEPRECATED - No ingestion filter rules are defined by default, which equates to no filtering " +
-							"of historical data. If you have never added filter rules to this deployment, then nothing further needed. " +
-							"If you have defined ingestion filter rules prior but disabled filtering overall by setting this flag " +
-							"disabled with --exp-enable-ingestion-filtering=false, then you should now delete the filter rules using " +
-							"the Horizon Admin API to achieve the same no-filtering result. Remove usage of this flag in all cases.",
+						"DEPRECATED - No ingestion filter rules are defined by default, which equates to " +
+							"no filtering of historical data. If you have never added filter rules to this deployment, then no further action is needed. " +
+							"If you have defined ingestion filter rules previously but disabled filtering overall by setting the env variable EXP_ENABLE_INGESTION_FILTERING=false, " +
+							"then you should now delete the filter rules using the Horizon Admin API to achieve the same no-filtering result. Remove usage of this variable in all cases.",
 					)
 				}
 				return nil
@@ -257,6 +290,7 @@ func Flags() (*Config, support.ConfigOptions) {
 			FlagDefault:    uint(0),
 			Usage:          "HTTP port for Captive Core to listen on (0 disables the HTTP server)",
 			ConfigKey:      &config.CaptiveCoreTomlParams.HTTPPort,
+			UsedInCommands: IngestionCommands,
 		},
 		&support.ConfigOption{
 			Name:    "captive-core-storage-path",
@@ -273,9 +307,10 @@ func Flags() (*Config, support.ConfigOptions) {
 				*opt.ConfigKey.(*string) = existingValue
 				return nil
 			},
-			Required:  false,
-			Usage:     "Storage location for Captive Core bucket data. If not set, the current working directory is used as the default location.",
-			ConfigKey: &config.CaptiveCoreStoragePath,
+			Required:       false,
+			Usage:          "Storage location for Captive Core bucket data. If not set, the current working directory is used as the default location.",
+			ConfigKey:      &config.CaptiveCoreStoragePath,
+			UsedInCommands: IngestionCommands,
 		},
 		&support.ConfigOption{
 			Name:           "captive-core-peer-port",
@@ -285,20 +320,23 @@ func Flags() (*Config, support.ConfigOptions) {
 			Required:       false,
 			Usage:          "port for Captive Core to bind to for connecting to the Stellar swarm (0 uses Stellar Core's default)",
 			ConfigKey:      &config.CaptiveCoreTomlParams.PeerPort,
+			UsedInCommands: IngestionCommands,
 		},
 		&support.ConfigOption{
-			Name:      StellarCoreDBURLFlagName,
-			EnvVar:    "STELLAR_CORE_DATABASE_URL",
-			ConfigKey: &config.StellarCoreDatabaseURL,
-			OptType:   types.String,
-			Required:  false,
-			Usage:     "stellar-core postgres database to connect with",
+			Name:           StellarCoreDBURLFlagName,
+			EnvVar:         "STELLAR_CORE_DATABASE_URL",
+			ConfigKey:      &config.StellarCoreDatabaseURL,
+			OptType:        types.String,
+			Required:       false,
+			Usage:          "stellar-core postgres database to connect with",
+			UsedInCommands: IngestionCommands,
 		},
 		&support.ConfigOption{
-			Name:      StellarCoreURLFlagName,
-			ConfigKey: &config.StellarCoreURL,
-			OptType:   types.String,
-			Usage:     "stellar-core to connect with (for http commands). If unset and the local Captive core is enabled, it will use http://localhost:<stellar_captive_core_http_port>",
+			Name:           StellarCoreURLFlagName,
+			ConfigKey:      &config.StellarCoreURL,
+			OptType:        types.String,
+			Usage:          "stellar-core to connect with (for http commands). If unset and the local Captive core is enabled, it will use http://localhost:<stellar_captive_core_http_port>",
+			UsedInCommands: IngestionCommands,
 		},
 		&support.ConfigOption{
 			Name:      HistoryArchiveURLsFlagName,
@@ -316,42 +354,48 @@ func Flags() (*Config, support.ConfigOptions) {
 				}
 				return nil
 			},
-			Usage: "comma-separated list of stellar history archives to connect with",
+			Usage:          "comma-separated list of stellar history archives to connect with",
+			UsedInCommands: IngestionCommands,
 		},
 		&support.ConfigOption{
-			Name:        "port",
-			ConfigKey:   &config.Port,
-			OptType:     types.Uint,
-			FlagDefault: uint(8000),
-			Usage:       "tcp port to listen on for http requests",
+			Name:           "port",
+			ConfigKey:      &config.Port,
+			OptType:        types.Uint,
+			FlagDefault:    uint(8000),
+			Usage:          "tcp port to listen on for http requests",
+			UsedInCommands: ApiServerCommands,
 		},
 		&support.ConfigOption{
-			Name:        "admin-port",
-			ConfigKey:   &config.AdminPort,
-			OptType:     types.Uint,
-			FlagDefault: uint(0),
-			Usage:       "WARNING: this should not be accessible from the Internet and does not use TLS, tcp port to listen on for admin http requests, 0 (default) disables the admin server",
+			Name:           "admin-port",
+			ConfigKey:      &config.AdminPort,
+			OptType:        types.Uint,
+			FlagDefault:    uint(0),
+			Usage:          "WARNING: this should not be accessible from the Internet and does not use TLS, tcp port to listen on for admin http requests, 0 (default) disables the admin server",
+			UsedInCommands: append(ApiServerCommands, RecordMetricsCmd),
 		},
 		&support.ConfigOption{
-			Name:        "max-db-connections",
-			ConfigKey:   &config.MaxDBConnections,
-			OptType:     types.Int,
-			FlagDefault: 0,
-			Usage:       "when set has a priority over horizon-db-max-open-connections, horizon-db-max-idle-connections. max horizon database open connections may need to be increased when responses are slow but DB CPU is normal",
+			Name:           "max-db-connections",
+			ConfigKey:      &config.MaxDBConnections,
+			OptType:        types.Int,
+			FlagDefault:    0,
+			Usage:          "when set has a priority over horizon-db-max-open-connections, horizon-db-max-idle-connections. max horizon database open connections may need to be increased when responses are slow but DB CPU is normal",
+			UsedInCommands: DatabaseBoundCommands,
 		},
 		&support.ConfigOption{
-			Name:        "horizon-db-max-open-connections",
-			ConfigKey:   &config.HorizonDBMaxOpenConnections,
-			OptType:     types.Int,
-			FlagDefault: 20,
-			Usage:       "max horizon database open connections. may need to be increased when responses are slow but DB CPU is normal",
+			Name:           "horizon-db-max-open-connections",
+			ConfigKey:      &config.HorizonDBMaxOpenConnections,
+			OptType:        types.Int,
+			FlagDefault:    20,
+			Usage:          "max horizon database open connections. may need to be increased when responses are slow but DB CPU is normal",
+			UsedInCommands: DatabaseBoundCommands,
 		},
 		&support.ConfigOption{
-			Name:        "horizon-db-max-idle-connections",
-			ConfigKey:   &config.HorizonDBMaxIdleConnections,
-			OptType:     types.Int,
-			FlagDefault: 20,
-			Usage:       "max horizon database idle connections. may need to be set to the same value as horizon-db-max-open-connections when responses are slow and DB CPU is normal, because it may indicate that a lot of time is spent closing/opening idle connections. This can happen in case of high variance in number of requests. must be equal or lower than max open connections",
+			Name:           "horizon-db-max-idle-connections",
+			ConfigKey:      &config.HorizonDBMaxIdleConnections,
+			OptType:        types.Int,
+			FlagDefault:    20,
+			Usage:          "max horizon database idle connections. may need to be set to the same value as horizon-db-max-open-connections when responses are slow and DB CPU is normal, because it may indicate that a lot of time is spent closing/opening idle connections. This can happen in case of high variance in number of requests. must be equal or lower than max open connections",
+			UsedInCommands: DatabaseBoundCommands,
 		},
 		&support.ConfigOption{
 			Name:           "sse-update-frequency",
@@ -360,6 +404,7 @@ func Flags() (*Config, support.ConfigOptions) {
 			FlagDefault:    5,
 			CustomSetValue: support.SetDuration,
 			Usage:          "defines how often streams should check if there's a new ledger (in seconds), may need to increase in case of big number of streams",
+			UsedInCommands: ApiServerCommands,
 		},
 		&support.ConfigOption{
 			Name:           "connection-timeout",
@@ -368,13 +413,15 @@ func Flags() (*Config, support.ConfigOptions) {
 			FlagDefault:    55,
 			CustomSetValue: support.SetDuration,
 			Usage:          "defines the timeout of connection after which 504 response will be sent or stream will be closed, if Horizon is behind a load balancer with idle connection timeout, this should be set to a few seconds less that idle timeout, does not apply to POST /transactions",
+			UsedInCommands: ApiServerCommands,
 		},
 		&support.ConfigOption{
-			Name:        "max-http-request-size",
-			ConfigKey:   &config.MaxHTTPRequestSize,
-			OptType:     types.Uint,
-			FlagDefault: defaultMaxHTTPRequestSize,
-			Usage:       "sets the limit on the maximum allowed http request payload size, default is 200kb, to disable the limit check, set to 0, only do so if you acknowledge the implications of accepting unbounded http request payload sizes.",
+			Name:           "max-http-request-size",
+			ConfigKey:      &config.MaxHTTPRequestSize,
+			OptType:        types.Uint,
+			FlagDefault:    defaultMaxHTTPRequestSize,
+			Usage:          "sets the limit on the maximum allowed http request payload size, default is 200kb, to disable the limit check, set to 0, only do so if you acknowledge the implications of accepting unbounded http request payload sizes.",
+			UsedInCommands: ApiServerCommands,
 		},
 		&support.ConfigOption{
 			Name:        "per-hour-rate-limit",
@@ -393,7 +440,8 @@ func Flags() (*Config, support.ConfigOptions) {
 				}
 				return nil
 			},
-			Usage: "max count of requests allowed in a one hour period, by remote ip address",
+			Usage:          "max count of requests allowed in a one hour period, by remote ip address",
+			UsedInCommands: ApiServerCommands,
 		},
 		&support.ConfigOption{
 			Name:           "friendbot-url",
@@ -401,6 +449,7 @@ func Flags() (*Config, support.ConfigOptions) {
 			OptType:        types.String,
 			CustomSetValue: support.SetURL,
 			Usage:          "friendbot service to redirect to",
+			UsedInCommands: ApiServerCommands,
 		},
 		&support.ConfigOption{
 			Name:        "log-level",
@@ -430,36 +479,41 @@ func Flags() (*Config, support.ConfigOptions) {
 			CustomSetValue: support.SetOptionalString,
 			Required:       false,
 			Usage:          "name of the path for Core logs (leave empty to log w/ Horizon only)",
+			UsedInCommands: IngestionCommands,
 		},
 		&support.ConfigOption{
-			Name:        "max-path-length",
-			ConfigKey:   &config.MaxPathLength,
-			OptType:     types.Uint,
-			FlagDefault: uint(3),
-			Usage:       "the maximum number of assets on the path in `/paths` endpoint, warning: increasing this value will increase /paths response time",
+			Name:           "max-path-length",
+			ConfigKey:      &config.MaxPathLength,
+			OptType:        types.Uint,
+			FlagDefault:    uint(3),
+			Usage:          "the maximum number of assets on the path in `/paths` endpoint, warning: increasing this value will increase /paths response time",
+			UsedInCommands: ApiServerCommands,
 		},
 		&support.ConfigOption{
-			Name:        "max-assets-per-path-request",
-			ConfigKey:   &config.MaxAssetsPerPathRequest,
-			OptType:     types.Int,
-			FlagDefault: int(15),
-			Usage:       "the maximum number of assets in '/paths/strict-send' and '/paths/strict-receive' endpoints",
+			Name:           "max-assets-per-path-request",
+			ConfigKey:      &config.MaxAssetsPerPathRequest,
+			OptType:        types.Int,
+			FlagDefault:    int(15),
+			Usage:          "the maximum number of assets in '/paths/strict-send' and '/paths/strict-receive' endpoints",
+			UsedInCommands: ApiServerCommands,
 		},
 		&support.ConfigOption{
-			Name:        "disable-pool-path-finding",
-			ConfigKey:   &config.DisablePoolPathFinding,
-			OptType:     types.Bool,
-			FlagDefault: false,
-			Required:    false,
-			Usage:       "excludes liquidity pools from consideration in the `/paths` endpoint",
+			Name:           "disable-pool-path-finding",
+			ConfigKey:      &config.DisablePoolPathFinding,
+			OptType:        types.Bool,
+			FlagDefault:    false,
+			Required:       false,
+			Usage:          "excludes liquidity pools from consideration in the `/paths` endpoint",
+			UsedInCommands: ApiServerCommands,
 		},
 		&support.ConfigOption{
-			Name:        "disable-path-finding",
-			ConfigKey:   &config.DisablePathFinding,
-			OptType:     types.Bool,
-			FlagDefault: false,
-			Required:    false,
-			Usage:       "disables the path finding endpoints",
+			Name:           "disable-path-finding",
+			ConfigKey:      &config.DisablePathFinding,
+			OptType:        types.Bool,
+			FlagDefault:    false,
+			Required:       false,
+			Usage:          "disables the path finding endpoints",
+			UsedInCommands: ApiServerCommands,
 		},
 		&support.ConfigOption{
 			Name:        "max-path-finding-requests",
@@ -469,19 +523,22 @@ func Flags() (*Config, support.ConfigOptions) {
 			Required:    false,
 			Usage: "The maximum number of path finding requests per second horizon will allow." +
 				" A value of zero (the default) disables the limit.",
+			UsedInCommands: ApiServerCommands,
 		},
 		&support.ConfigOption{
-			Name:      NetworkPassphraseFlagName,
-			ConfigKey: &config.NetworkPassphrase,
-			OptType:   types.String,
-			Required:  false,
-			Usage:     "Override the network passphrase",
+			Name:           NetworkPassphraseFlagName,
+			ConfigKey:      &config.NetworkPassphrase,
+			OptType:        types.String,
+			Required:       false,
+			Usage:          "Override the network passphrase",
+			UsedInCommands: IngestionCommands,
 		},
 		&support.ConfigOption{
-			Name:      "sentry-dsn",
-			ConfigKey: &config.SentryDSN,
-			OptType:   types.String,
-			Usage:     "Sentry URL to which panics and errors should be reported",
+			Name:           "sentry-dsn",
+			ConfigKey:      &config.SentryDSN,
+			OptType:        types.String,
+			Usage:          "Sentry URL to which panics and errors should be reported",
+			UsedInCommands: ApiServerCommands,
 		},
 		&support.ConfigOption{
 			Name:      "loggly-token",
@@ -497,59 +554,67 @@ func Flags() (*Config, support.ConfigOptions) {
 			Usage:       "Tag to be added to every loggly log event",
 		},
 		&support.ConfigOption{
-			Name:      "tls-cert",
-			ConfigKey: &config.TLSCert,
-			OptType:   types.String,
-			Usage:     "TLS certificate file to use for securing connections to horizon",
+			Name:           "tls-cert",
+			ConfigKey:      &config.TLSCert,
+			OptType:        types.String,
+			Usage:          "TLS certificate file to use for securing connections to horizon",
+			UsedInCommands: ApiServerCommands,
 		},
 		&support.ConfigOption{
-			Name:      "tls-key",
-			ConfigKey: &config.TLSKey,
-			OptType:   types.String,
-			Usage:     "TLS private key file to use for securing connections to horizon",
+			Name:           "tls-key",
+			ConfigKey:      &config.TLSKey,
+			OptType:        types.String,
+			Usage:          "TLS private key file to use for securing connections to horizon",
+			UsedInCommands: ApiServerCommands,
 		},
 		&support.ConfigOption{
-			Name:        IngestFlagName,
-			ConfigKey:   &config.Ingest,
-			OptType:     types.Bool,
-			FlagDefault: true,
-			Usage:       "causes this horizon process to ingest data from stellar-core into horizon's db",
+			Name:           IngestFlagName,
+			ConfigKey:      &config.Ingest,
+			OptType:        types.Bool,
+			FlagDefault:    true,
+			Usage:          "causes this horizon process to ingest data from stellar-core into horizon's db",
+			UsedInCommands: ApiServerCommands,
 		},
 		&support.ConfigOption{
-			Name:        "cursor-name",
-			EnvVar:      "CURSOR_NAME",
-			ConfigKey:   &config.CursorName,
-			OptType:     types.String,
-			FlagDefault: "HORIZON",
-			Usage:       "ingestor cursor used by horizon to ingest from stellar core. must be uppercase and unique for each horizon instance ingesting from that core instance.",
+			Name:           "cursor-name",
+			EnvVar:         "CURSOR_NAME",
+			ConfigKey:      &config.CursorName,
+			OptType:        types.String,
+			FlagDefault:    "HORIZON",
+			Usage:          "ingestor cursor used by horizon to ingest from stellar core. must be uppercase and unique for each horizon instance ingesting from that core instance.",
+			UsedInCommands: IngestionCommands,
 		},
 		&support.ConfigOption{
-			Name:        "history-retention-count",
-			ConfigKey:   &config.HistoryRetentionCount,
-			OptType:     types.Uint,
-			FlagDefault: uint(0),
-			Usage:       "the minimum number of ledgers to maintain within horizon's history tables.  0 signifies an unlimited number of ledgers will be retained",
+			Name:           "history-retention-count",
+			ConfigKey:      &config.HistoryRetentionCount,
+			OptType:        types.Uint,
+			FlagDefault:    uint(0),
+			Usage:          "the minimum number of ledgers to maintain within horizon's history tables.  0 signifies an unlimited number of ledgers will be retained",
+			UsedInCommands: IngestionCommands,
 		},
 		&support.ConfigOption{
-			Name:        "history-stale-threshold",
-			ConfigKey:   &config.StaleThreshold,
-			OptType:     types.Uint,
-			FlagDefault: uint(0),
-			Usage:       "the maximum number of ledgers the history db is allowed to be out of date from the connected stellar-core db before horizon considers history stale",
+			Name:           "history-stale-threshold",
+			ConfigKey:      &config.StaleThreshold,
+			OptType:        types.Uint,
+			FlagDefault:    uint(0),
+			Usage:          "the maximum number of ledgers the history db is allowed to be out of date from the connected stellar-core db before horizon considers history stale",
+			UsedInCommands: IngestionCommands,
 		},
 		&support.ConfigOption{
-			Name:        "skip-cursor-update",
-			ConfigKey:   &config.SkipCursorUpdate,
-			OptType:     types.Bool,
-			FlagDefault: false,
-			Usage:       "causes the ingester to skip reporting the last imported ledger state to stellar-core",
+			Name:           "skip-cursor-update",
+			ConfigKey:      &config.SkipCursorUpdate,
+			OptType:        types.Bool,
+			FlagDefault:    false,
+			Usage:          "causes the ingester to skip reporting the last imported ledger state to stellar-core",
+			UsedInCommands: IngestionCommands,
 		},
 		&support.ConfigOption{
-			Name:        "ingest-disable-state-verification",
-			ConfigKey:   &config.IngestDisableStateVerification,
-			OptType:     types.Bool,
-			FlagDefault: false,
-			Usage:       "ingestion system runs a verification routing to compare state in local database with history buckets, this can be disabled however it's not recommended",
+			Name:           "ingest-disable-state-verification",
+			ConfigKey:      &config.IngestDisableStateVerification,
+			OptType:        types.Bool,
+			FlagDefault:    false,
+			Usage:          "ingestion system runs a verification routing to compare state in local database with history buckets, this can be disabled however it's not recommended",
+			UsedInCommands: IngestionCommands,
 		},
 		&support.ConfigOption{
 			Name:        "ingest-state-verification-checkpoint-frequency",
@@ -559,6 +624,7 @@ func Flags() (*Config, support.ConfigOptions) {
 			Usage: "the frequency in units per checkpoint for how often state verification is executed. " +
 				"A value of 1 implies running state verification on every checkpoint. " +
 				"A value of 2 implies running state verification on every second checkpoint.",
+			UsedInCommands: IngestionCommands,
 		},
 		&support.ConfigOption{
 			Name:           "ingest-state-verification-timeout",
@@ -568,53 +634,60 @@ func Flags() (*Config, support.ConfigOptions) {
 			CustomSetValue: support.SetDurationMinutes,
 			Usage: "defines an upper bound in minutes for on how long state verification is allowed to run. " +
 				"A value of 0 disables the timeout.",
+			UsedInCommands: IngestionCommands,
 		},
 		&support.ConfigOption{
-			Name:        "ingest-enable-extended-log-ledger-stats",
-			ConfigKey:   &config.IngestEnableExtendedLogLedgerStats,
-			OptType:     types.Bool,
-			FlagDefault: false,
-			Usage:       "enables extended ledger stats in the log (ledger entry changes and operations stats)",
+			Name:           "ingest-enable-extended-log-ledger-stats",
+			ConfigKey:      &config.IngestEnableExtendedLogLedgerStats,
+			OptType:        types.Bool,
+			FlagDefault:    false,
+			Usage:          "enables extended ledger stats in the log (ledger entry changes and operations stats)",
+			UsedInCommands: IngestionCommands,
 		},
 		&support.ConfigOption{
-			Name:        "apply-migrations",
-			ConfigKey:   &config.ApplyMigrations,
-			OptType:     types.Bool,
-			FlagDefault: false,
-			Required:    false,
-			Usage:       "applies pending migrations before starting horizon",
+			Name:           "apply-migrations",
+			ConfigKey:      &config.ApplyMigrations,
+			OptType:        types.Bool,
+			FlagDefault:    false,
+			Required:       false,
+			Usage:          "applies pending migrations before starting horizon",
+			UsedInCommands: DatabaseBoundCommands,
 		},
 		&support.ConfigOption{
-			Name:        "checkpoint-frequency",
-			ConfigKey:   &config.CheckpointFrequency,
-			OptType:     types.Uint32,
-			FlagDefault: uint32(64),
-			Required:    false,
-			Usage:       "establishes how many ledgers exist between checkpoints, do NOT change this unless you really know what you are doing",
+			Name:           "checkpoint-frequency",
+			ConfigKey:      &config.CheckpointFrequency,
+			OptType:        types.Uint32,
+			FlagDefault:    uint32(64),
+			Required:       false,
+			Usage:          "establishes how many ledgers exist between checkpoints, do NOT change this unless you really know what you are doing",
+			UsedInCommands: IngestionCommands,
 		},
 		&support.ConfigOption{
-			Name:        "behind-cloudflare",
-			ConfigKey:   &config.BehindCloudflare,
-			OptType:     types.Bool,
-			FlagDefault: false,
-			Required:    false,
-			Usage:       "determines if Horizon instance is behind Cloudflare, in such case client IP in the logs will be replaced with Cloudflare header (cannot be used with --behind-aws-load-balancer)",
+			Name:           "behind-cloudflare",
+			ConfigKey:      &config.BehindCloudflare,
+			OptType:        types.Bool,
+			FlagDefault:    false,
+			Required:       false,
+			Usage:          "determines if Horizon instance is behind Cloudflare, in such case client IP in the logs will be replaced with Cloudflare header (cannot be used with --behind-aws-load-balancer)",
+			UsedInCommands: ApiServerCommands,
 		},
 		&support.ConfigOption{
-			Name:        "behind-aws-load-balancer",
-			ConfigKey:   &config.BehindAWSLoadBalancer,
-			OptType:     types.Bool,
-			FlagDefault: false,
-			Required:    false,
-			Usage:       "determines if Horizon instance is behind AWS load balances like ELB or ALB, in such case client IP in the logs will be replaced with the last IP in X-Forwarded-For header (cannot be used with --behind-cloudflare)",
+			Name:           "behind-aws-load-balancer",
+			ConfigKey:      &config.BehindAWSLoadBalancer,
+			OptType:        types.Bool,
+			FlagDefault:    false,
+			Required:       false,
+			Usage:          "determines if Horizon instance is behind AWS load balances like ELB or ALB, in such case client IP in the logs will be replaced with the last IP in X-Forwarded-For header (cannot be used with --behind-cloudflare)",
+			UsedInCommands: ApiServerCommands,
 		},
 		&support.ConfigOption{
-			Name:        "rounding-slippage-filter",
-			ConfigKey:   &config.RoundingSlippageFilter,
-			OptType:     types.Int,
-			FlagDefault: 1000,
-			Required:    false,
-			Usage:       "excludes trades from /trade_aggregations unless their rounding slippage is <x bps",
+			Name:           "rounding-slippage-filter",
+			ConfigKey:      &config.RoundingSlippageFilter,
+			OptType:        types.Int,
+			FlagDefault:    1000,
+			Required:       false,
+			Usage:          "excludes trades from /trade_aggregations unless their rounding slippage is <x bps",
+			UsedInCommands: IngestionCommands,
 		},
 		&support.ConfigOption{
 			Name:      NetworkFlagName,
@@ -634,6 +707,7 @@ func Flags() (*Config, support.ConfigOptions) {
 				" It automatically configures network settings, including %s, %s, and %s.",
 				StellarPubnet, StellarTestnet, NetworkPassphraseFlagName,
 				HistoryArchiveURLsFlagName, CaptiveCoreConfigPathName),
+			UsedInCommands: IngestionCommands,
 		},
 	}
 
@@ -642,7 +716,7 @@ func Flags() (*Config, support.ConfigOptions) {
 
 // NewAppFromFlags constructs a new Horizon App from the given command line flags
 func NewAppFromFlags(config *Config, flags support.ConfigOptions) (*App, error) {
-	err := ApplyFlags(config, flags, ApplyOptions{RequireCaptiveCoreConfig: true, AlwaysIngest: false})
+	err := ApplyFlags(config, flags, ApplyOptions{RequireCaptiveCoreFullConfig: true, AlwaysIngest: false})
 	if err != nil {
 		return nil, err
 	}
@@ -663,8 +737,8 @@ func NewAppFromFlags(config *Config, flags support.ConfigOptions) (*App, error) 
 }
 
 type ApplyOptions struct {
-	AlwaysIngest             bool
-	RequireCaptiveCoreConfig bool
+	AlwaysIngest                 bool
+	RequireCaptiveCoreFullConfig bool
 }
 
 type networkConfig struct {
@@ -703,94 +777,34 @@ func getCaptiveCoreBinaryPath() (string, error) {
 	return result, nil
 }
 
-// loadDefaultCaptiveCoreToml loads the default Captive Core TOML based on the default config data.
-func loadDefaultCaptiveCoreToml(config *Config, defaultConfigData []byte) error {
-
-	config.CaptiveCoreTomlParams.CoreBinaryPath = config.CaptiveCoreBinaryPath
-	config.CaptiveCoreTomlParams.HistoryArchiveURLs = config.HistoryArchiveURLs
-	config.CaptiveCoreTomlParams.NetworkPassphrase = config.NetworkPassphrase
-
-	var err error
-	config.CaptiveCoreToml, err = ledgerbackend.NewCaptiveCoreTomlFromData(defaultConfigData, config.CaptiveCoreTomlParams)
-	if err != nil {
-		return errors.Wrap(err, "invalid captive core toml")
-	}
-	return nil
-}
-
-// loadCaptiveCoreTomlFromFile loads the Captive Core TOML file from the specified path provided config.
-func loadCaptiveCoreTomlFromFile(config *Config) error {
-	var err error
-
-	config.CaptiveCoreTomlParams.CoreBinaryPath = config.CaptiveCoreBinaryPath
-	config.CaptiveCoreTomlParams.HistoryArchiveURLs = config.HistoryArchiveURLs
-	config.CaptiveCoreTomlParams.NetworkPassphrase = config.NetworkPassphrase
-
-	config.CaptiveCoreToml, err = ledgerbackend.NewCaptiveCoreTomlFromFile(config.CaptiveCoreConfigPath, config.CaptiveCoreTomlParams)
-	if err != nil {
-		return errors.Wrap(err, "invalid captive core toml file")
-	}
-	return nil
-}
-
-// createCaptiveCoreConfigFromNetwork generates the default Captive Core configuration.
-// validates the configuration settings, sets default values, and loads the Captive Core TOML file.
-func createCaptiveCoreConfigFromNetwork(config *Config) error {
+// getCaptiveCoreConfigFromNetworkParameter returns the default Captive Core configuration based on the network.
+func getCaptiveCoreConfigFromNetworkParameter(config *Config) (networkConfig, error) {
+	var defaultNetworkConfig networkConfig
 
 	if config.NetworkPassphrase != "" {
-		return fmt.Errorf("invalid config: %s parameter not allowed with the %s parameter", NetworkPassphraseFlagName, NetworkFlagName)
+		return defaultNetworkConfig, fmt.Errorf("invalid config: %s parameter not allowed with the %s parameter",
+			NetworkPassphraseFlagName, NetworkFlagName)
 	}
 
 	if len(config.HistoryArchiveURLs) > 0 {
-		return fmt.Errorf("invalid config: %s parameter not allowed with the %s parameter", HistoryArchiveURLsFlagName, NetworkFlagName)
+		return defaultNetworkConfig, fmt.Errorf("invalid config: %s parameter not allowed with the %s parameter",
+			HistoryArchiveURLsFlagName, NetworkFlagName)
 	}
 
-	var defaultNetworkConfig networkConfig
 	switch config.Network {
 	case StellarPubnet:
 		defaultNetworkConfig = PubnetConf
 	case StellarTestnet:
 		defaultNetworkConfig = TestnetConf
 	default:
-		return fmt.Errorf("no default configuration found for network %s", config.Network)
-	}
-	config.NetworkPassphrase = defaultNetworkConfig.NetworkPassphrase
-	config.HistoryArchiveURLs = defaultNetworkConfig.HistoryArchiveURLs
-
-	if config.CaptiveCoreConfigPath == "" {
-		return loadDefaultCaptiveCoreToml(config, defaultNetworkConfig.defaultConfig)
+		return defaultNetworkConfig, fmt.Errorf("no default configuration found for network %s", config.Network)
 	}
 
-	return loadCaptiveCoreTomlFromFile(config)
-}
-
-// createCaptiveCoreConfigFromParameters generates the Captive Core configuration.
-// validates the configuration settings, sets necessary values, and loads the Captive Core TOML file.
-func createCaptiveCoreConfigFromParameters(config *Config) error {
-
-	if config.NetworkPassphrase == "" {
-		return fmt.Errorf("%s must be set", NetworkPassphraseFlagName)
-	}
-
-	if len(config.HistoryArchiveURLs) == 0 {
-		return fmt.Errorf("%s must be set", HistoryArchiveURLsFlagName)
-	}
-
-	if config.CaptiveCoreConfigPath != "" {
-		return loadCaptiveCoreTomlFromFile(config)
-	} else {
-		var err error
-		config.CaptiveCoreToml, err = ledgerbackend.NewCaptiveCoreToml(config.CaptiveCoreTomlParams)
-		if err != nil {
-			return errors.Wrap(err, "invalid captive core toml file")
-		}
-	}
-
-	return nil
+	return defaultNetworkConfig, nil
 }
 
 // setCaptiveCoreConfiguration prepares configuration for the Captive Core
-func setCaptiveCoreConfiguration(config *Config) error {
+func setCaptiveCoreConfiguration(config *Config, options ApplyOptions) error {
 	stdLog.Println("Preparing captive core...")
 
 	// If the user didn't specify a Stellar Core binary, we can check the
@@ -802,16 +816,52 @@ func setCaptiveCoreConfiguration(config *Config) error {
 		}
 	}
 
+	var defaultNetworkConfig networkConfig
 	if config.Network != "" {
-		err := createCaptiveCoreConfigFromNetwork(config)
+		var err error
+		defaultNetworkConfig, err = getCaptiveCoreConfigFromNetworkParameter(config)
 		if err != nil {
 			return err
+		}
+		config.NetworkPassphrase = defaultNetworkConfig.NetworkPassphrase
+		config.HistoryArchiveURLs = defaultNetworkConfig.HistoryArchiveURLs
+	} else {
+		if config.NetworkPassphrase == "" {
+			return fmt.Errorf("%s must be set", NetworkPassphraseFlagName)
+		}
+
+		if len(config.HistoryArchiveURLs) == 0 {
+			return fmt.Errorf("%s must be set", HistoryArchiveURLsFlagName)
+		}
+	}
+
+	config.CaptiveCoreTomlParams.CoreBinaryPath = config.CaptiveCoreBinaryPath
+	config.CaptiveCoreTomlParams.HistoryArchiveURLs = config.HistoryArchiveURLs
+	config.CaptiveCoreTomlParams.NetworkPassphrase = config.NetworkPassphrase
+
+	var err error
+	if config.CaptiveCoreConfigPath != "" {
+		config.CaptiveCoreToml, err = ledgerbackend.NewCaptiveCoreTomlFromFile(config.CaptiveCoreConfigPath,
+			config.CaptiveCoreTomlParams)
+		if err != nil {
+			return errors.Wrap(err, "invalid captive core toml file")
+		}
+	} else if !options.RequireCaptiveCoreFullConfig {
+		// Creates a minimal captive-core config (without quorum information), just enough to run captive core.
+		// This is used by certain database commands, such as `reingest and fill-gaps, to reingest historical data.
+		config.CaptiveCoreToml, err = ledgerbackend.NewCaptiveCoreToml(config.CaptiveCoreTomlParams)
+		if err != nil {
+			return errors.Wrap(err, "invalid captive core toml file")
+		}
+	} else if len(defaultNetworkConfig.defaultConfig) != 0 {
+		config.CaptiveCoreToml, err = ledgerbackend.NewCaptiveCoreTomlFromData(defaultNetworkConfig.defaultConfig,
+			config.CaptiveCoreTomlParams)
+		if err != nil {
+			return errors.Wrap(err, "invalid captive core toml file")
 		}
 	} else {
-		err := createCaptiveCoreConfigFromParameters(config)
-		if err != nil {
-			return err
-		}
+		return fmt.Errorf("invalid config: captive core requires that --%s is set or you can set the --%s "+
+			"parameter to use the default captive core config", CaptiveCoreConfigPathName, NetworkFlagName)
 	}
 
 	// If we don't supply an explicit core URL and running captive core process with the http port enabled,
@@ -825,10 +875,19 @@ func setCaptiveCoreConfiguration(config *Config) error {
 
 // ApplyFlags applies the command line flags on the given Config instance
 func ApplyFlags(config *Config, flags support.ConfigOptions, options ApplyOptions) error {
+	// Check if the user has passed any flags and if so, print a DEPRECATED warning message.
+	flagsPassedByUser := flags.GetCommandLineFlagsPassedByUser()
+	if len(flagsPassedByUser) > 0 {
+		result := fmt.Sprintf("DEPRECATED - the use of command-line flags: [%s], has been deprecated in favor of environment variables. "+
+			"Please consult our Configuring section in the developer documentation on how to use them - https://developers.stellar.org/docs/run-api-server/configuring", "--"+strings.Join(flagsPassedByUser, ",--"))
+		stdLog.Println(result)
+	}
+
 	// Verify required options and load the config struct
 	if err := flags.RequireE(); err != nil {
 		return err
 	}
+
 	if err := flags.SetValues(); err != nil {
 		return err
 	}
@@ -858,7 +917,7 @@ func ApplyFlags(config *Config, flags support.ConfigOptions, options ApplyOption
 		}
 
 		if config.EnableCaptiveCoreIngestion {
-			err := setCaptiveCoreConfiguration(config)
+			err := setCaptiveCoreConfiguration(config, options)
 			if err != nil {
 				return errors.Wrap(err, "error generating captive core configuration")
 			}
