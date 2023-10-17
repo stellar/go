@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/guregu/null"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/stellar/go/support/db/dbtest"
@@ -21,7 +22,7 @@ func TestFastBatchInsertBuilder(t *testing.T) {
 		insertBuilder.Row(map[string]interface{}{
 			"name":         "bubba",
 			"hunger_level": "1",
-			"json_value":   []byte(`{\"bump_to\":\"98\"}`),
+			"json_value":   []byte(`{"bump_to": "97"}`),
 		}),
 	)
 
@@ -36,7 +37,7 @@ func TestFastBatchInsertBuilder(t *testing.T) {
 		insertBuilder.Row(map[string]interface{}{
 			"name":       "bubba",
 			"city":       "London",
-			"json_value": []byte(`{\"bump_to\":\"98\"}`),
+			"json_value": []byte(`{"bump_to": "98"}`),
 		}),
 		"column \"hunger_level\" does not exist",
 	)
@@ -45,7 +46,7 @@ func TestFastBatchInsertBuilder(t *testing.T) {
 		insertBuilder.RowStruct(hungerRow{
 			Name:        "bubba2",
 			HungerLevel: "9",
-			JsonValue:   []byte(`{\"bump_to\":\"98\"}`),
+			JsonValue:   []byte(`{"bump_to": "98"}`),
 		}),
 	)
 
@@ -77,8 +78,8 @@ func TestFastBatchInsertBuilder(t *testing.T) {
 		t,
 		found,
 		[]person{
-			{Name: "bubba", HungerLevel: "1"},
-			{Name: "bubba2", HungerLevel: "9"},
+			{Name: "bubba", HungerLevel: "1", JsonValue: null.NewString(`{"bump_to": "97"}`, true)},
+			{Name: "bubba2", HungerLevel: "9", JsonValue: null.NewString(`{"bump_to": "98"}`, true)},
 		},
 	)
 
@@ -119,8 +120,8 @@ func TestFastBatchInsertBuilder(t *testing.T) {
 		t,
 		found,
 		[]person{
-			{Name: "bubba", HungerLevel: "1"},
-			{Name: "bubba2", HungerLevel: "9"},
+			{Name: "bubba", HungerLevel: "1", JsonValue: null.NewString(`{"bump_to": "97"}`, true)},
+			{Name: "bubba2", HungerLevel: "9", JsonValue: null.NewString(`{"bump_to": "98"}`, true)},
 		},
 	)
 	assert.NoError(t, sess.Rollback())
