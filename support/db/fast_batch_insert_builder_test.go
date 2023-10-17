@@ -21,6 +21,7 @@ func TestFastBatchInsertBuilder(t *testing.T) {
 		insertBuilder.Row(map[string]interface{}{
 			"name":         "bubba",
 			"hunger_level": "1",
+			"json_value":   []byte(`{\"bump_to\":\"98\"}`),
 		}),
 	)
 
@@ -28,13 +29,14 @@ func TestFastBatchInsertBuilder(t *testing.T) {
 		insertBuilder.Row(map[string]interface{}{
 			"name": "bubba",
 		}),
-		"invalid number of columns (expected=2, actual=1)",
+		"invalid number of columns (expected=3, actual=1)",
 	)
 
 	assert.EqualError(t,
 		insertBuilder.Row(map[string]interface{}{
-			"name": "bubba",
-			"city": "London",
+			"name":       "bubba",
+			"city":       "London",
+			"json_value": []byte(`{\"bump_to\":\"98\"}`),
 		}),
 		"column \"hunger_level\" does not exist",
 	)
@@ -43,6 +45,7 @@ func TestFastBatchInsertBuilder(t *testing.T) {
 		insertBuilder.RowStruct(hungerRow{
 			Name:        "bubba2",
 			HungerLevel: "9",
+			JsonValue:   []byte(`{\"bump_to\":\"98\"}`),
 		}),
 	)
 

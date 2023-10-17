@@ -135,7 +135,6 @@ func (s *ProcessorRunner) buildTransactionProcessor(
 	ledgerTransactionStats *processors.StatsLedgerTransactionProcessor,
 	tradeProcessor *processors.TradeProcessor,
 	ledger xdr.LedgerCloseMeta,
-	txBuilder history.TransactionBatchInsertBuilder,
 ) *groupTransactionProcessors {
 	accountLoader := history.NewAccountLoader()
 	assetLoader := history.NewAssetLoader()
@@ -157,7 +156,7 @@ func (s *ProcessorRunner) buildTransactionProcessor(
 		tradeProcessor,
 		processors.NewParticipantsProcessor(accountLoader,
 			s.historyQ.NewTransactionParticipantsBatchInsertBuilder(), s.historyQ.NewOperationParticipantBatchInsertBuilder()),
-		processors.NewTransactionProcessor(txBuilder),
+		processors.NewTransactionProcessor(s.historyQ.NewTransactionBatchInsertBuilder()),
 		processors.NewClaimableBalancesTransactionProcessor(history.NewClaimableBalanceLoader(),
 			s.historyQ.NewTransactionClaimableBalanceBatchInsertBuilder(), s.historyQ.NewOperationClaimableBalanceBatchInsertBuilder()),
 		processors.NewLiquidityPoolsTransactionProcessor(lpLoader,
@@ -175,11 +174,11 @@ func (s *ProcessorRunner) buildTransactionFilterer() *groupTransactionFilterers 
 	return newGroupTransactionFilterers(f)
 }
 
-func (s *ProcessorRunner) buildFilteredOutProcessor(txBuilder history.TransactionBatchInsertBuilder) *groupTransactionProcessors {
+func (s *ProcessorRunner) buildFilteredOutProcessor() *groupTransactionProcessors {
 	// when in online mode, the submission result processor must always run (regardless of filtering)
 	var p []horizonTransactionProcessor
 	if s.config.EnableIngestionFiltering {
-		txSubProc := processors.NewTransactionFilteredTmpProcessor(txBuilder)
+		txSubProc := processors.NewTransactionFilteredTmpProcessor(s.historyQ.NewTransactionFilteredTmpBatchInsertBuilder())
 		p = append(p, txSubProc)
 	}
 
@@ -333,11 +332,10 @@ func (s *ProcessorRunner) RunTransactionProcessorsOnLedger(ledger xdr.LedgerClos
 		return
 	}
 
-	txBuilder := s.historyQ.NewTransactionBatchInsertBuilder()
 	groupTransactionFilterers := s.buildTransactionFilterer()
-	groupFilteredOutProcessors := s.buildFilteredOutProcessor(txBuilder)
+	groupFilteredOutProcessors := s.buildFilteredOutProcessor()
 	groupTransactionProcessors := s.buildTransactionProcessor(
-		&ledgerTransactionStats, &tradeProcessor, ledger, txBuilder)
+		&ledgerTransactionStats, &tradeProcessor, ledger)
 	err = processors.StreamLedgerTransactions(s.ctx,
 		groupTransactionFilterers,
 		groupFilteredOutProcessors,
@@ -351,6 +349,11 @@ func (s *ProcessorRunner) RunTransactionProcessorsOnLedger(ledger xdr.LedgerClos
 	}
 
 	if s.config.EnableIngestionFiltering {
+		err = groupFilteredOutProcessors.Flush(s.ctx, s.session)
+		if err != nil {
+			err = errors.Wrap(err, "Error flushing temp filtered tx from processor")
+			return
+		}
 		if time.Since(s.lastTransactionsTmpGC) > transactionsFilteredTmpGCPeriod {
 			s.historyQ.DeleteTransactionsFilteredTmpOlderThan(s.ctx, uint64(transactionsFilteredTmpGCPeriod.Seconds()))
 		}

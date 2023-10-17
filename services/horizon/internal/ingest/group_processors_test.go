@@ -43,7 +43,7 @@ func (m *mockHorizonTransactionProcessor) ProcessTransaction(lcm xdr.LedgerClose
 }
 
 func (m *mockHorizonTransactionProcessor) Flush(ctx context.Context, session db.SessionInterface) error {
-	args := m.Called(ctx)
+	args := m.Called(ctx, session)
 	return args.Error(0)
 }
 
