@@ -18,6 +18,8 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 - Limit the display of global flags on command line help `-h` output ([5077](https://github.com/stellar/go/pull/5077)).
 - Add a deprecation warning for using command-line flags when running Horizon ([5051](https://github.com/stellar/go/pull/5051))
 
+### DB Schema Migration
+- Drop unused indices from the Horizon database. For the database with full history, the migration is anticipated to take up to an hour and is expected to free up approximately 1.3TB of storage ([5081](https://github.com/stellar/go/pull/5081)).
 
 ## 2.26.1
 
