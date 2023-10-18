@@ -99,9 +99,10 @@ func (r *Router) addMiddleware(config *RouterConfig,
 	r.Use(chimiddleware.Compress(flate.DefaultCompression, "application/hal+json"))
 
 	c := cors.New(cors.Options{
-		AllowedOrigins: []string{"*"},
-		AllowedHeaders: []string{"*"},
-		ExposedHeaders: []string{"Date", "Latest-Ledger"},
+		AllowedOrigins:         []string{},
+		AllowOriginRequestFunc: func(*http.Request, string) bool { return true },
+		AllowedHeaders:         []string{"*"},
+		ExposedHeaders:         []string{"Date", "Latest-Ledger"},
 	})
 	r.Use(c.Handler)
 
