@@ -271,6 +271,9 @@ func TestStateVerifierLockBusy(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &history.Q{&db.Session{DB: tt.HorizonDB}}
 
+	q.SessionInterface.BeginTx(tt.Ctx, &sql.TxOptions{})
+	defer q.SessionInterface.Rollback()
+
 	checkpointLedger := uint32(63)
 	changeProcessor := buildChangeProcessor(q, &ingest.StatsChangeProcessor{}, ledgerSource, checkpointLedger, "")
 
@@ -324,8 +327,15 @@ func TestStateVerifier(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &history.Q{&db.Session{DB: tt.HorizonDB}}
 
+	q.SessionInterface.BeginTx(tt.Ctx, &sql.TxOptions{})
+	defer q.SessionInterface.Rollback()
+
 	checkpointLedger := uint32(63)
+<<<<<<< HEAD
 	changeProcessor := buildChangeProcessor(q, &ingest.StatsChangeProcessor{}, ledgerSource, checkpointLedger, "")
+=======
+	changeProcessor := buildChangeProcessor(q, q.SessionInterface, &ingest.StatsChangeProcessor{}, ledgerSource, checkpointLedger, "")
+>>>>>>> 8f1836b1 (Use FastBatchInsertBuilder to insert to insert into claimable_balances and claimable_balance_claimants tables)
 	mockChangeReader := &ingest.MockChangeReader{}
 
 	gen := randxdr.NewGenerator()
@@ -353,6 +363,8 @@ func TestStateVerifier(t *testing.T) {
 	}
 	tt.Assert.NoError(changeProcessor.Commit(tt.Ctx))
 	tt.Assert.Equal(len(xdr.LedgerEntryTypeMap), len(coverage))
+
+	q.SessionInterface.Commit()
 
 	q.UpdateLastLedgerIngest(tt.Ctx, checkpointLedger)
 

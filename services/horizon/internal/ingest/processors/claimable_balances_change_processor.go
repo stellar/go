@@ -6,20 +6,24 @@ import (
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/xdr"
 )
 
 type ClaimableBalancesChangeProcessor struct {
-	encodingBuffer         *xdr.EncodingBuffer
-	qClaimableBalances     history.QClaimableBalances
-	cache                  *ingest.ChangeCompactor
-	claimantsInsertBuilder history.ClaimableBalanceClaimantBatchInsertBuilder
+	encodingBuffer                *xdr.EncodingBuffer
+	qClaimableBalances            history.QClaimableBalances
+	cache                         *ingest.ChangeCompactor
+	claimantsInsertBuilder        history.ClaimableBalanceClaimantBatchInsertBuilder
+	claimableBalanceInsertBuilder history.ClaimableBalanceBatchInsertBuilder
+	session                       db.SessionInterface
 }
 
-func NewClaimableBalancesChangeProcessor(Q history.QClaimableBalances) *ClaimableBalancesChangeProcessor {
+func NewClaimableBalancesChangeProcessor(Q history.QClaimableBalances, session db.SessionInterface) *ClaimableBalancesChangeProcessor {
 	p := &ClaimableBalancesChangeProcessor{
 		encodingBuffer:     xdr.NewEncodingBuffer(),
 		qClaimableBalances: Q,
+		session:            session,
 	}
 	p.reset()
 	return p
@@ -27,7 +31,8 @@ func NewClaimableBalancesChangeProcessor(Q history.QClaimableBalances) *Claimabl
 
 func (p *ClaimableBalancesChangeProcessor) reset() {
 	p.cache = ingest.NewChangeCompactor()
-	p.claimantsInsertBuilder = p.qClaimableBalances.NewClaimableBalanceClaimantBatchInsertBuilder(maxBatchSize)
+	p.claimantsInsertBuilder = p.qClaimableBalances.NewClaimableBalanceClaimantBatchInsertBuilder()
+	p.claimableBalanceInsertBuilder = p.qClaimableBalances.NewClaimableBalanceBatchInsertBuilder()
 }
 
 func (p *ClaimableBalancesChangeProcessor) ProcessChange(ctx context.Context, change ingest.Change) error {
@@ -53,20 +58,19 @@ func (p *ClaimableBalancesChangeProcessor) ProcessChange(ctx context.Context, ch
 
 func (p *ClaimableBalancesChangeProcessor) Commit(ctx context.Context) error {
 	var (
-		cbsToUpsert   []history.ClaimableBalance
+		cbsToInsert   []history.ClaimableBalance
 		cbIDsToDelete []string
 	)
 	changes := p.cache.GetChanges()
 	for _, change := range changes {
-		switch {
-		case change.Pre == nil && change.Post != nil:
+		if change.Post != nil {
 			// Created
 			row, err := p.ledgerEntryToRow(change.Post)
 			if err != nil {
 				return err
 			}
-			cbsToUpsert = append(cbsToUpsert, row)
-		case change.Pre != nil && change.Post == nil:
+			cbsToInsert = append(cbsToInsert, row)
+		} else {
 			// Removed
 			cBalance := change.Pre.Data.MustClaimableBalance()
 			id, err := p.encodingBuffer.MarshalHex(cBalance.BalanceId)
@@ -74,39 +78,11 @@ func (p *ClaimableBalancesChangeProcessor) Commit(ctx context.Context) error {
 				return err
 			}
 			cbIDsToDelete = append(cbIDsToDelete, id)
-		default:
-			// Updated
-			row, err := p.ledgerEntryToRow(change.Post)
-			if err != nil {
-				return err
-			}
-			cbsToUpsert = append(cbsToUpsert, row)
 		}
 	}
 
-	if len(cbsToUpsert) > 0 {
-		if err := p.qClaimableBalances.UpsertClaimableBalances(ctx, cbsToUpsert); err != nil {
-			return errors.Wrap(err, "error executing upsert")
-		}
-
-		// Add ClaimableBalanceClaimants
-		for _, cb := range cbsToUpsert {
-			for _, claimant := range cb.Claimants {
-				claimant := history.ClaimableBalanceClaimant{
-					BalanceID:          cb.BalanceID,
-					Destination:        claimant.Destination,
-					LastModifiedLedger: cb.LastModifiedLedger,
-				}
-				if err := p.claimantsInsertBuilder.Add(ctx, claimant); err != nil {
-					return errors.Wrap(err, "error adding to claimantsInsertBuilder")
-				}
-			}
-		}
-
-		err := p.claimantsInsertBuilder.Exec(ctx)
-		if err != nil {
-			return errors.Wrap(err, "error executing claimantsInsertBuilder")
-		}
+	if err := p.InsertClaimableBalanceAndClaimants(ctx, cbsToInsert); err != nil {
+		return errors.Wrap(err, "error inserting claimable balance")
 	}
 
 	if len(cbIDsToDelete) > 0 {
@@ -129,6 +105,45 @@ func (p *ClaimableBalancesChangeProcessor) Commit(ctx context.Context) error {
 		}
 	}
 
+	return nil
+}
+
+func (p *ClaimableBalancesChangeProcessor) InsertClaimableBalanceAndClaimants(ctx context.Context, claimableBalances []history.ClaimableBalance) error {
+	if len(claimableBalances) == 0 {
+		return nil
+	}
+
+	defer p.claimantsInsertBuilder.Reset()
+	defer p.claimableBalanceInsertBuilder.Reset()
+
+	for _, cb := range claimableBalances {
+
+		if err := p.claimableBalanceInsertBuilder.Add(cb); err != nil {
+			return errors.Wrap(err, "error executing insert")
+		}
+		// Add claimants
+		for _, claimant := range cb.Claimants {
+			claimant := history.ClaimableBalanceClaimant{
+				BalanceID:          cb.BalanceID,
+				Destination:        claimant.Destination,
+				LastModifiedLedger: cb.LastModifiedLedger,
+			}
+
+			if err := p.claimantsInsertBuilder.Add(claimant); err != nil {
+				return errors.Wrap(err, "error adding to claimantsInsertBuilder")
+			}
+		}
+	}
+
+	err := p.claimantsInsertBuilder.Exec(ctx, p.session)
+	if err != nil {
+		return errors.Wrap(err, "error executing claimableBalanceInsertBuilder")
+	}
+
+	err = p.claimableBalanceInsertBuilder.Exec(ctx, p.session)
+	if err != nil {
+		return errors.Wrap(err, "error executing claimantsInsertBuilder")
+	}
 	return nil
 }
 
