@@ -134,6 +134,7 @@ func buildChangeProcessor(
 func (s *ProcessorRunner) buildTransactionProcessor(
 	ledgerTransactionStats *processors.StatsLedgerTransactionProcessor,
 	tradeProcessor *processors.TradeProcessor,
+	ledgersProcessor *processors.LedgersProcessor,
 	ledger xdr.LedgerCloseMeta,
 ) *groupTransactionProcessors {
 	accountLoader := history.NewAccountLoader()
@@ -151,7 +152,7 @@ func (s *ProcessorRunner) buildTransactionProcessor(
 	processors := []horizonTransactionProcessor{
 		statsLedgerTransactionProcessor,
 		processors.NewEffectProcessor(accountLoader, s.historyQ.NewEffectBatchInsertBuilder()),
-		processors.NewLedgerProcessor(s.historyQ.NewLedgerBatchInsertBuilder(), int(ledger.LedgerHeaderHistoryEntry().Header.LedgerVersion)),
+		ledgersProcessor,
 		processors.NewOperationProcessor(s.historyQ.NewOperationBatchInsertBuilder()),
 		tradeProcessor,
 		processors.NewParticipantsProcessor(accountLoader,
@@ -321,21 +322,25 @@ func (s *ProcessorRunner) RunTransactionProcessorsOnLedger(ledger xdr.LedgerClos
 		transactionReader      *ingest.LedgerTransactionReader
 	)
 
+	if err = s.checkIfProtocolVersionSupported(ledger.ProtocolVersion()); err != nil {
+		err = errors.Wrap(err, "Error while checking for supported protocol version")
+		return
+	}
+
+	// ensure capture of the ledger to history regardless of whether it has transactions.
+	ledgersProcessor := processors.NewLedgerProcessor(s.historyQ.NewLedgerBatchInsertBuilder(), int(ledger.LedgerHeaderHistoryEntry().Header.LedgerVersion))
+	ledgersProcessor.ProcessLedger(ledger)
+
 	transactionReader, err = ingest.NewLedgerTransactionReaderFromLedgerCloseMeta(s.config.NetworkPassphrase, ledger)
 	if err != nil {
 		err = errors.Wrap(err, "Error creating ledger reader")
 		return
 	}
 
-	if err = s.checkIfProtocolVersionSupported(ledger.ProtocolVersion()); err != nil {
-		err = errors.Wrap(err, "Error while checking for supported protocol version")
-		return
-	}
-
 	groupTransactionFilterers := s.buildTransactionFilterer()
 	groupFilteredOutProcessors := s.buildFilteredOutProcessor()
 	groupTransactionProcessors := s.buildTransactionProcessor(
-		&ledgerTransactionStats, &tradeProcessor, ledger)
+		&ledgerTransactionStats, &tradeProcessor, ledgersProcessor, ledger)
 	err = processors.StreamLedgerTransactions(s.ctx,
 		groupTransactionFilterers,
 		groupFilteredOutProcessors,

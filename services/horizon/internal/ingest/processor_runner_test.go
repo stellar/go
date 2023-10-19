@@ -273,9 +273,10 @@ func TestProcessorRunnerBuildTransactionProcessor(t *testing.T) {
 			LedgerHeader: xdr.LedgerHeaderHistoryEntry{},
 		},
 	}
-	processor := runner.buildTransactionProcessor(stats, trades, ledger)
-	assert.IsType(t, &groupTransactionProcessors{}, processor)
+	ledgersProcessor := &processors.LedgersProcessor{}
 
+	processor := runner.buildTransactionProcessor(stats, trades, ledgersProcessor, ledger)
+	assert.IsType(t, &groupTransactionProcessors{}, processor)
 	assert.IsType(t, &statsLedgerTransactionProcessor{}, processor.processors[0])
 	assert.IsType(t, &processors.EffectProcessor{}, processor.processors[1])
 	assert.IsType(t, &processors.LedgersProcessor{}, processor.processors[2])
