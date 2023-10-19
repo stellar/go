@@ -41,7 +41,7 @@ func (i *claimableBalanceBatchInsertBuilder) Exec(ctx context.Context, session d
 	return i.builder.Exec(ctx, session, i.table)
 }
 
-func (i *claimableBalanceBatchInsertBuilder) Reset() error{
+func (i *claimableBalanceBatchInsertBuilder) Reset() error {
 	i.builder.Reset()
 	return nil
 }
