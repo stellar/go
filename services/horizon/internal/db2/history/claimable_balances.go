@@ -107,7 +107,8 @@ type ClaimableBalance struct {
 type Claimants []Claimant
 
 func (c Claimants) Value() (driver.Value, error) {
-	return json.Marshal(c)
+	val, err := json.Marshal(c)
+	return string(val), err
 }
 
 func (c *Claimants) Scan(value interface{}) error {
