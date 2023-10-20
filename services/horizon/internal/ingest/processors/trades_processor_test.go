@@ -727,12 +727,15 @@ func (s *TradeProcessorTestSuiteLedger) mockReadTradeTransactions() []history.In
 }
 
 func (s *TradeProcessorTestSuiteLedger) stubLoaders() {
+	s.accountLoader.Sealed()
 	for key, id := range s.unmuxedAccountToID {
 		s.accountLoader.Insert(key, id)
 	}
+	s.assetLoader.Sealed()
 	for key, id := range s.assetToID {
 		s.assetLoader.Insert(key, id.ID)
 	}
+	s.lpLoader.Sealed()
 	for key, id := range s.lpToID {
 		s.lpLoader.Insert(PoolIDToString(key), id)
 	}

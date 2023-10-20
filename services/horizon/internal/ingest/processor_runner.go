@@ -140,8 +140,9 @@ func (s *ProcessorRunner) buildTransactionProcessor(
 	accountLoader := history.NewAccountLoader()
 	assetLoader := history.NewAssetLoader()
 	lpLoader := history.NewLiquidityPoolLoader()
+	cbLoader := history.NewClaimableBalanceLoader()
 
-	lazyLoaders := []horizonLazyLoader{accountLoader, assetLoader, lpLoader}
+	lazyLoaders := []horizonLazyLoader{accountLoader, assetLoader, lpLoader, cbLoader}
 
 	statsLedgerTransactionProcessor := &statsLedgerTransactionProcessor{
 		StatsLedgerTransactionProcessor: ledgerTransactionStats,
@@ -158,7 +159,7 @@ func (s *ProcessorRunner) buildTransactionProcessor(
 		processors.NewParticipantsProcessor(accountLoader,
 			s.historyQ.NewTransactionParticipantsBatchInsertBuilder(), s.historyQ.NewOperationParticipantBatchInsertBuilder()),
 		processors.NewTransactionProcessor(s.historyQ.NewTransactionBatchInsertBuilder()),
-		processors.NewClaimableBalancesTransactionProcessor(history.NewClaimableBalanceLoader(),
+		processors.NewClaimableBalancesTransactionProcessor(cbLoader,
 			s.historyQ.NewTransactionClaimableBalanceBatchInsertBuilder(), s.historyQ.NewOperationClaimableBalanceBatchInsertBuilder()),
 		processors.NewLiquidityPoolsTransactionProcessor(lpLoader,
 			s.historyQ.NewTransactionLiquidityPoolBatchInsertBuilder(), s.historyQ.NewOperationLiquidityPoolBatchInsertBuilder())}
@@ -328,7 +329,7 @@ func (s *ProcessorRunner) RunTransactionProcessorsOnLedger(ledger xdr.LedgerClos
 	}
 
 	// ensure capture of the ledger to history regardless of whether it has transactions.
-	ledgersProcessor := processors.NewLedgerProcessor(s.historyQ.NewLedgerBatchInsertBuilder(), int(ledger.LedgerHeaderHistoryEntry().Header.LedgerVersion))
+	ledgersProcessor := processors.NewLedgerProcessor(s.historyQ.NewLedgerBatchInsertBuilder(), CurrentVersion)
 	ledgersProcessor.ProcessLedger(ledger)
 
 	transactionReader, err = ingest.NewLedgerTransactionReaderFromLedgerCloseMeta(s.config.NetworkPassphrase, ledger)
@@ -406,9 +407,6 @@ func (s *ProcessorRunner) RunAllProcessorsOnLedger(ledger xdr.LedgerCloseMeta) (
 
 	stats.transactionStats, stats.transactionDurations, stats.tradeStats, err =
 		s.RunTransactionProcessorsOnLedger(ledger)
-	if err != nil {
-		return
-	}
 
 	return
 }

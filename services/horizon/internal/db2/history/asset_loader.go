@@ -41,7 +41,7 @@ type FutureAssetID struct {
 
 // Value implements the database/sql/driver Valuer interface.
 func (a FutureAssetID) Value() (driver.Value, error) {
-	return a.loader.GetNow(a.asset), nil
+	return a.loader.GetNow(a.asset)
 }
 
 // AssetLoader will map assets to their history
@@ -81,11 +81,15 @@ func (a *AssetLoader) GetFuture(asset AssetKey) FutureAssetID {
 // GetNow should only be called on values which were registered by
 // GetFuture() calls. Also, Exec() must be called before any GetNow
 // call can succeed.
-func (a *AssetLoader) GetNow(asset AssetKey) int64 {
-	if id, ok := a.ids[asset]; !ok {
-		panic(fmt.Errorf("asset %v not present", asset))
+func (a *AssetLoader) GetNow(asset AssetKey) (int64, error) {
+	if !a.sealed {
+		return 0, fmt.Errorf(`invalid asset loader state,  
+		Exec was not called yet to properly seal and resolve %v id`, asset)
+	}
+	if internalID, ok := a.ids[asset]; !ok {
+		return 0, fmt.Errorf(`asset loader id %v was not found`, asset)
 	} else {
-		return id
+		return internalID, nil
 	}
 }
 
@@ -212,4 +216,8 @@ func NewAssetLoaderStub() AssetLoaderStub {
 // address is mapped to the provided history asset id
 func (a AssetLoaderStub) Insert(asset AssetKey, id int64) {
 	a.Loader.ids[asset] = id
+}
+
+func (a AssetLoaderStub) Sealed() {
+	a.Loader.sealed = true
 }

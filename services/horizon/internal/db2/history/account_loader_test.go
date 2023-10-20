@@ -22,16 +22,11 @@ func TestAccountLoader(t *testing.T) {
 	}
 
 	loader := NewAccountLoader()
-	var futures []FutureAccountID
 	for _, address := range addresses {
 		future := loader.GetFuture(address)
-		futures = append(futures, future)
-		assert.Panics(t, func() {
-			loader.GetNow(address)
-		})
-		assert.Panics(t, func() {
-			future.Value()
-		})
+		_, err := future.Value()
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), `invalid account loader state,`)
 		duplicateFuture := loader.GetFuture(address)
 		assert.Equal(t, future, duplicateFuture)
 	}
@@ -42,15 +37,16 @@ func TestAccountLoader(t *testing.T) {
 	})
 
 	q := &Q{session}
-	for i, address := range addresses {
-		future := futures[i]
-		id := loader.GetNow(address)
-		val, err := future.Value()
+	for _, address := range addresses {
+		internalId, err := loader.GetNow(address)
 		assert.NoError(t, err)
-		assert.Equal(t, id, val)
 		var account Account
 		assert.NoError(t, q.AccountByAddress(context.Background(), &account, address))
-		assert.Equal(t, account.ID, id)
+		assert.Equal(t, account.ID, internalId)
 		assert.Equal(t, account.Address, address)
 	}
+
+	_, err := loader.GetNow("not present")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), `was not found`)
 }

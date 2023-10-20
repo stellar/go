@@ -32,12 +32,9 @@ func TestClaimableBalanceLoader(t *testing.T) {
 	for _, id := range ids {
 		future := loader.GetFuture(id)
 		futures = append(futures, future)
-		assert.Panics(t, func() {
-			loader.getNow(id)
-		})
-		assert.Panics(t, func() {
-			future.Value()
-		})
+		_, err := future.Value()
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), `invalid claimable balance loader state,`)
 		duplicateFuture := loader.GetFuture(id)
 		assert.Equal(t, future, duplicateFuture)
 	}
@@ -50,13 +47,16 @@ func TestClaimableBalanceLoader(t *testing.T) {
 	q := &Q{session}
 	for i, id := range ids {
 		future := futures[i]
-		internalID := loader.getNow(id)
-		val, err := future.Value()
+		internalID, err := future.Value()
 		assert.NoError(t, err)
-		assert.Equal(t, internalID, val)
 		cb, err := q.ClaimableBalanceByID(context.Background(), id)
 		assert.NoError(t, err)
 		assert.Equal(t, cb.BalanceID, id)
 		assert.Equal(t, cb.InternalID, internalID)
 	}
+
+	futureCb := &FutureClaimableBalanceID{id: "not-present", loader: loader}
+	_, err := futureCb.Value()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), `was not found`)
 }

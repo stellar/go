@@ -36,16 +36,11 @@ func TestAssetLoader(t *testing.T) {
 	}
 
 	loader := NewAssetLoader()
-	var futures []FutureAssetID
 	for _, key := range keys {
 		future := loader.GetFuture(key)
-		futures = append(futures, future)
-		assert.Panics(t, func() {
-			loader.GetNow(key)
-		})
-		assert.Panics(t, func() {
-			future.Value()
-		})
+		_, err := future.Value()
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), `invalid asset loader state,`)
 		duplicateFuture := loader.GetFuture(key)
 		assert.Equal(t, future, duplicateFuture)
 	}
@@ -56,12 +51,9 @@ func TestAssetLoader(t *testing.T) {
 	})
 
 	q := &Q{session}
-	for i, key := range keys {
-		future := futures[i]
-		internalID := loader.GetNow(key)
-		val, err := future.Value()
+	for _, key := range keys {
+		internalID, err := loader.GetNow(key)
 		assert.NoError(t, err)
-		assert.Equal(t, internalID, val)
 		var assetXDR xdr.Asset
 		if key.Type == "native" {
 			assetXDR = xdr.MustNewNativeAsset()
@@ -72,4 +64,8 @@ func TestAssetLoader(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, assetID, internalID)
 	}
+
+	_, err := loader.GetNow(AssetKey{})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), `was not found`)
 }

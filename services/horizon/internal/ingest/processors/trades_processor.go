@@ -92,17 +92,38 @@ func (p *TradeProcessor) Flush(ctx context.Context, session db.SessionInterface)
 	for _, trade := range p.trades {
 		row := trade.row
 		if trade.sellerAccount != "" {
-			row.BaseAccountID = null.IntFrom(p.accountLoader.GetNow(trade.sellerAccount))
+			val, err := p.accountLoader.GetNow(trade.sellerAccount)
+			if err != nil {
+				return err
+			}
+			row.BaseAccountID = null.IntFrom(val)
 		}
 		if trade.buyerAccount != "" {
-			row.CounterAccountID = null.IntFrom(p.accountLoader.GetNow(trade.buyerAccount))
+			val, err := p.accountLoader.GetNow(trade.buyerAccount)
+			if err != nil {
+				return err
+			}
+			row.CounterAccountID = null.IntFrom(val)
 		}
 		if trade.liquidityPoolID != "" {
-			row.BaseLiquidityPoolID = null.IntFrom(p.lpLoader.GetNow(trade.liquidityPoolID))
+			val, err := p.lpLoader.GetNow(trade.liquidityPoolID)
+			if err != nil {
+				return err
+			}
+			row.BaseLiquidityPoolID = null.IntFrom(val)
 		}
 
-		row.BaseAssetID = p.assetLoader.GetNow(history.AssetKeyFromXDR(trade.soldAsset))
-		row.CounterAssetID = p.assetLoader.GetNow(history.AssetKeyFromXDR(trade.boughtAsset))
+		val, err := p.assetLoader.GetNow(history.AssetKeyFromXDR(trade.soldAsset))
+		if err != nil {
+			return err
+		}
+		row.BaseAssetID = val
+
+		val, err = p.assetLoader.GetNow(history.AssetKeyFromXDR(trade.boughtAsset))
+		if err != nil {
+			return err
+		}
+		row.CounterAssetID = val
 
 		if row.BaseAssetID > row.CounterAssetID {
 			row.BaseIsSeller = false
