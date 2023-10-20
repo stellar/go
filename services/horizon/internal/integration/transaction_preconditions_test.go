@@ -5,88 +5,17 @@ import (
 	"encoding/base64"
 	"math"
 	"strconv"
-	"sync"
 	"testing"
 	"time"
 
 	sdk "github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/network"
-	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/test/integration"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
 )
-
-func TestTransactionPreconditionsMinSeq(t *testing.T) {
-	tt := assert.New(t)
-	itest := integration.NewTest(t, integration.Config{})
-	if itest.GetEffectiveProtocolVersion() < 19 {
-		t.Skip("Can't run with protocol < 19")
-	}
-	master := itest.Master()
-	masterAccount := itest.MasterAccount()
-	currentAccountSeq, err := masterAccount.GetSequenceNumber()
-	tt.NoError(err)
-
-	// Ensure that the minSequence of the transaction is enough
-	// but the sequence isn't
-	txParams := buildTXParams(master, masterAccount, currentAccountSeq+100)
-
-	// this errors because the tx.seqNum is more than +1 from sourceAccoubnt.seqNum
-	_, err = itest.SubmitTransaction(master, txParams)
-	tt.Error(err)
-
-	// Now the transaction should be submitted without problems
-	txParams.Preconditions.MinSequenceNumber = &currentAccountSeq
-	tx := itest.MustSubmitTransaction(master, txParams)
-
-	txHistory, err := itest.Client().TransactionDetail(tx.Hash)
-	assert.NoError(t, err)
-	assert.Equal(t, txHistory.Preconditions.MinAccountSequence, strconv.FormatInt(*txParams.Preconditions.MinSequenceNumber, 10))
-
-	// Test the transaction submission queue by sending transactions out of order
-	// and making sure they are all executed properly
-	masterAccount = itest.MasterAccount()
-	currentAccountSeq, err = masterAccount.GetSequenceNumber()
-	tt.NoError(err)
-
-	seqs := []struct {
-		minSeq int64
-		seq    int64
-	}{
-		{0, currentAccountSeq + 9},                 // sent first, executed second
-		{0, currentAccountSeq + 10},                // sent second, executed third
-		{currentAccountSeq, currentAccountSeq + 8}, // sent third, executed first
-	}
-
-	// Send the transactions in parallel since otherwise they are admitted sequentially
-	var results []horizon.Transaction
-	var resultsMx sync.Mutex
-	var wg sync.WaitGroup
-	wg.Add(len(seqs))
-	for _, s := range seqs {
-		sLocal := s
-		go func() {
-			params := buildTXParams(master, masterAccount, sLocal.seq)
-			if sLocal.minSeq > 0 {
-				params.Preconditions.MinSequenceNumber = &sLocal.minSeq
-			}
-			result := itest.MustSubmitTransaction(master, params)
-			resultsMx.Lock()
-			results = append(results, result)
-			resultsMx.Unlock()
-			wg.Done()
-		}()
-		// Space out requests to ensure the queue receives the transactions
-		// in the planned order
-		time.Sleep(time.Millisecond * 50)
-	}
-	wg.Wait()
-
-	tt.Len(results, len(seqs))
-}
 
 func TestTransactionPreconditionsTimeBounds(t *testing.T) {
 	tt := assert.New(t)

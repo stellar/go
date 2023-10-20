@@ -24,7 +24,7 @@ func TestAssetLoader(t *testing.T) {
 		if i == 0 {
 			key = AssetKeyFromXDR(xdr.Asset{Type: xdr.AssetTypeAssetTypeNative})
 		} else if i%2 == 0 {
-			code := [4]byte{0,0,0,0}
+			code := [4]byte{0, 0, 0, 0}
 			copy(code[:], fmt.Sprintf("ab%d", i))
 			key = AssetKeyFromXDR(xdr.Asset{
 				Type: xdr.AssetTypeAssetTypeCreditAlphanum4,
@@ -32,7 +32,7 @@ func TestAssetLoader(t *testing.T) {
 					AssetCode: code,
 					Issuer:    xdr.MustAddress(keypair.MustRandom().Address())}})
 		} else {
-			code := [12]byte{0,0,0,0,0,0,0,0,0,0,0,0}
+			code := [12]byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 			copy(code[:], fmt.Sprintf("abcdef%d", i))
 			key = AssetKeyFromXDR(xdr.Asset{
 				Type: xdr.AssetTypeAssetTypeCreditAlphanum12,
