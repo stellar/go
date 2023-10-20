@@ -107,6 +107,11 @@ type ClaimableBalance struct {
 type Claimants []Claimant
 
 func (c Claimants) Value() (driver.Value, error) {
+	// Convert the byte array into a string as a workaround to bypass buggy encoding in the pq driver
+	// (More info about this bug here https://github.com/stellar/go/issues/5086#issuecomment-1773215436).
+	// By doing so, the data will be written as a string rather than hex encoded bytes.
+	// According to this https://www.postgresql.org/docs/current/datatype-json.html
+	// this may even improve write performance due to reduced conversion overhead.
 	val, err := json.Marshal(c)
 	return string(val), err
 }
