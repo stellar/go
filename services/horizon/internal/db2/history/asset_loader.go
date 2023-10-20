@@ -5,6 +5,7 @@ import (
 	"database/sql/driver"
 	"fmt"
 	"sort"
+	"strings"
 
 	sq "github.com/Masterminds/squirrel"
 
@@ -25,7 +26,7 @@ type AssetKey struct {
 func AssetKeyFromXDR(asset xdr.Asset) AssetKey {
 	return AssetKey{
 		Type:   xdr.AssetTypeToString[asset.Type],
-		Code:   asset.GetCode(),
+		Code:   strings.TrimRight(asset.GetCode(), "\x00"),
 		Issuer: asset.GetIssuer(),
 	}
 }

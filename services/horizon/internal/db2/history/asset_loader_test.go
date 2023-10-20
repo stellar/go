@@ -22,15 +22,24 @@ func TestAssetLoader(t *testing.T) {
 	for i := 0; i < 100; i++ {
 		var key AssetKey
 		if i == 0 {
-			key.Type = "native"
+			key = AssetKeyFromXDR(xdr.Asset{Type: xdr.AssetTypeAssetTypeNative})
 		} else if i%2 == 0 {
-			key.Type = "credit_alphanum4"
-			key.Code = fmt.Sprintf("ab%d", i)
-			key.Issuer = keypair.MustRandom().Address()
+			code := [4]byte{0,0,0,0}
+			copy(code[:], fmt.Sprintf("ab%d", i))
+			key = AssetKeyFromXDR(xdr.Asset{
+				Type: xdr.AssetTypeAssetTypeCreditAlphanum4,
+				AlphaNum4: &xdr.AlphaNum4{
+					AssetCode: code,
+					Issuer:    xdr.MustAddress(keypair.MustRandom().Address())}})
 		} else {
-			key.Type = "credit_alphanum12"
-			key.Code = fmt.Sprintf("abcdef%d", i)
-			key.Issuer = keypair.MustRandom().Address()
+			code := [12]byte{0,0,0,0,0,0,0,0,0,0,0,0}
+			copy(code[:], fmt.Sprintf("abcdef%d", i))
+			key = AssetKeyFromXDR(xdr.Asset{
+				Type: xdr.AssetTypeAssetTypeCreditAlphanum12,
+				AlphaNum12: &xdr.AlphaNum12{
+					AssetCode: code,
+					Issuer:    xdr.MustAddress(keypair.MustRandom().Address())}})
+
 		}
 		keys = append(keys, key)
 	}
