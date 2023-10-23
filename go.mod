@@ -1,6 +1,6 @@
 module github.com/stellar/go
 
-go 1.19
+go 1.20
 
 require (
 	firebase.google.com/go v3.12.0+incompatible
@@ -11,7 +11,7 @@ require (
 	github.com/adjust/goautoneg v0.0.0-20150426214442-d788f35a0315
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2
 	github.com/aws/aws-sdk-go v1.45.26
-	github.com/creachadair/jrpc2 v1.1.1
+	github.com/creachadair/jrpc2 v1.1.0
 	github.com/elazarl/go-bindata-assetfs v1.0.1
 	github.com/getsentry/raven-go v0.2.0
 	github.com/go-chi/chi v4.1.2+incompatible
@@ -61,7 +61,7 @@ require (
 	github.com/andybalholm/brotli v1.0.4 // indirect
 	github.com/certifi/gocertifi v0.0.0-20210507211836-431795d63e8d // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
-	github.com/creachadair/mds v0.2.3 // indirect
+	github.com/creachadair/mds v0.0.1 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/go-gorp/gorp/v3 v3.1.0 // indirect
 	github.com/gobuffalo/packd v1.0.2 // indirect
