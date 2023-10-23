@@ -14,11 +14,11 @@ func TestTxsub(t *testing.T) {
 	itest := integration.NewTest(t, integration.Config{})
 	master := itest.Master()
 
-	// Sanity check: create 20 accounts and submit 2 txs from each of them as
-	// a source at the same time. Then check if the results are correct.
 	t.Run("Sanity", func(t *testing.T) {
+		// simplify this to one tx per account, to align with core capabilities of one
+		// tx per account per ledger.
 		testAccounts := 20
-		subsPerAccont := 2
+		subsPerAccont := 1
 		keys, accounts := itest.CreateAccounts(testAccounts, "1000")
 
 		var wg sync.WaitGroup
