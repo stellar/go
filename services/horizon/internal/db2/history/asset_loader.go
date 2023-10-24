@@ -22,6 +22,10 @@ type AssetKey struct {
 	Issuer string
 }
 
+func (key AssetKey) String() string {
+	return key.Type + "/" + key.Code + "/" + key.Issuer
+}
+
 // AssetKeyFromXDR constructs an AssetKey from an xdr asset
 func AssetKeyFromXDR(asset xdr.Asset) AssetKey {
 	return AssetKey{
@@ -142,6 +146,11 @@ func (a *AssetLoader) Exec(ctx context.Context, session db.SessionInterface) err
 	assetTypes := make([]string, 0, len(a.set)-len(a.ids))
 	assetCodes := make([]string, 0, len(a.set)-len(a.ids))
 	assetIssuers := make([]string, 0, len(a.set)-len(a.ids))
+	// sort entries before inserting rows to prevent deadlocks on acquiring a ShareLock
+	// https://github.com/stellar/go/issues/2370
+	sort.Slice(keys, func(i, j int) bool {
+		return keys[i].String() < keys[j].String()
+	})
 	insert := 0
 	for _, key := range keys {
 		if _, ok := a.ids[key]; ok {
@@ -157,20 +166,6 @@ func (a *AssetLoader) Exec(ctx context.Context, session db.SessionInterface) err
 		return nil
 	}
 	keys = keys[:insert]
-	// sort entries before inserting rows to prevent deadlocks on acquiring a ShareLock
-	// https://github.com/stellar/go/issues/2370
-	sort.Slice(keys, func(i, j int) bool {
-		if keys[i].Type < keys[j].Type {
-			return true
-		}
-		if keys[i].Code < keys[j].Code {
-			return true
-		}
-		if keys[i].Issuer < keys[j].Issuer {
-			return true
-		}
-		return false
-	})
 
 	err := bulkInsert(
 		ctx,
