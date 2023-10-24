@@ -23,6 +23,9 @@ type AssetKey struct {
 }
 
 func (key AssetKey) String() string {
+	if key.Type == xdr.AssetTypeToString[xdr.AssetTypeAssetTypeNative] {
+		return key.Type
+	}
 	return key.Type + "/" + key.Code + "/" + key.Issuer
 }
 

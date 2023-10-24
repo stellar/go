@@ -12,6 +12,28 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
+func TestAssetKeyToString(t *testing.T) {
+	num4key := AssetKey{
+		Type:   "credit_alphanum4",
+		Code:   "USD",
+		Issuer: "A1B2C3",
+	}
+
+	num12key := AssetKey{
+		Type:   "credit_alphanum12",
+		Code:   "USDABC",
+		Issuer: "A1B2C3",
+	}
+
+	nativekey := AssetKey{
+		Type: "native",
+	}
+
+	assert.Equal(t, num4key.String(), "credit_alphanum4/USD/A1B2C3")
+	assert.Equal(t, num12key.String(), "credit_alphanum12/USDABC/A1B2C3")
+	assert.Equal(t, nativekey.String(), "native")
+}
+
 func TestAssetLoader(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
