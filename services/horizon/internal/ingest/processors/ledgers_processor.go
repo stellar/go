@@ -10,7 +10,7 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-type LedgerInfo struct {
+type ledgerInfo struct {
 	header         xdr.LedgerHeaderHistoryEntry
 	successTxCount int
 	failedTxCount  int
@@ -20,23 +20,23 @@ type LedgerInfo struct {
 
 type LedgersProcessor struct {
 	batch         history.LedgerBatchInsertBuilder
-	ledgers       map[uint32]*LedgerInfo
+	ledgers       map[uint32]*ledgerInfo
 	ingestVersion int
 }
 
 func NewLedgerProcessor(batch history.LedgerBatchInsertBuilder, ingestVersion int) *LedgersProcessor {
 	return &LedgersProcessor{
 		batch:         batch,
-		ledgers:       map[uint32]*LedgerInfo{},
+		ledgers:       map[uint32]*ledgerInfo{},
 		ingestVersion: ingestVersion,
 	}
 }
 
-func (p *LedgersProcessor) ProcessLedger(lcm xdr.LedgerCloseMeta) *LedgerInfo {
+func (p *LedgersProcessor) ProcessLedger(lcm xdr.LedgerCloseMeta) *ledgerInfo {
 	sequence := lcm.LedgerSequence()
 	entry, ok := p.ledgers[sequence]
 	if !ok {
-		entry = &LedgerInfo{header: lcm.LedgerHeaderHistoryEntry()}
+		entry = &ledgerInfo{header: lcm.LedgerHeaderHistoryEntry()}
 		p.ledgers[sequence] = entry
 	}
 	return entry

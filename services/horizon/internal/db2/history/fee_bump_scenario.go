@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"testing"
 	"time"
 
@@ -271,7 +270,6 @@ func FeeBumpScenario(tt *test.T, q *Q, successful bool) FeeBumpFixture {
 		"bump_to": "98",
 	})
 
-	fmt.Print(string(details))
 	tt.Assert.NoError(err)
 
 	tt.Assert.NoError(opBuilder.Add(

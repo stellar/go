@@ -21,6 +21,3 @@ cd stellar-go
 git config --add remote.origin.fetch "+refs/pull/*/head:refs/remotes/origin/pull/*"
 git fetch --force --quiet origin
 /usr/local/go/bin/go build -v ./services/horizon/.
-
-
-
