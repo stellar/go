@@ -413,7 +413,7 @@ func metadataObjFromAsset(isNative bool, code, issuer string) (*xdr.ScMap, error
 // ledger entry containing the asset info entry written to contract storage by the
 // Stellar Asset Contract.
 //
-// Warning: Only for use in tests. This does not set a realistic expirationLedgerSeq
+// Warning: Only for use in tests. This does not create the accompanied TTLEntry which would typically be created by core.
 func AssetToContractData(isNative bool, code, issuer string, contractID [32]byte) (xdr.LedgerEntryData, error) {
 	storageMap, err := metadataObjFromAsset(isNative, code, issuer)
 	if err != nil {
@@ -450,7 +450,7 @@ func AssetToContractData(isNative bool, code, issuer string, contractID [32]byte
 // creates a ledger entry containing the asset balance of a contract holder
 // written to contract storage by the Stellar Asset Contract.
 //
-// Warning: Only for use in tests. This does not set a realistic expirationLedgerSeq
+// Warning: Only for use in tests. This does not create the accompanied TTLEntry which would typically be created by core.
 func BalanceToContractData(assetContractId, holderID [32]byte, amt uint64) xdr.LedgerEntryData {
 	return balanceToContractData(assetContractId, holderID, xdr.Int128Parts{
 		Lo: xdr.Uint64(amt),
