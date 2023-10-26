@@ -135,7 +135,6 @@ func (s *ProcessorRunner) buildTransactionProcessor(
 	ledgerTransactionStats *processors.StatsLedgerTransactionProcessor,
 	tradeProcessor *processors.TradeProcessor,
 	ledgersProcessor *processors.LedgersProcessor,
-	ledger xdr.LedgerCloseMeta,
 ) *groupTransactionProcessors {
 	accountLoader := history.NewAccountLoader()
 	assetLoader := history.NewAssetLoader()
@@ -341,7 +340,7 @@ func (s *ProcessorRunner) RunTransactionProcessorsOnLedger(ledger xdr.LedgerClos
 	groupTransactionFilterers := s.buildTransactionFilterer()
 	groupFilteredOutProcessors := s.buildFilteredOutProcessor()
 	groupTransactionProcessors := s.buildTransactionProcessor(
-		&ledgerTransactionStats, &tradeProcessor, ledgersProcessor, ledger)
+		&ledgerTransactionStats, &tradeProcessor, ledgersProcessor)
 	err = processors.StreamLedgerTransactions(s.ctx,
 		groupTransactionFilterers,
 		groupFilteredOutProcessors,
