@@ -23,7 +23,7 @@ type FutureLiquidityPoolID struct {
 
 // Value implements the database/sql/driver Valuer interface.
 func (a FutureLiquidityPoolID) Value() (driver.Value, error) {
-	return a.loader.GetNow(a.id), nil
+	return a.loader.GetNow(a.id)
 }
 
 // LiquidityPoolLoader will map liquidity pools to their internal
@@ -64,11 +64,15 @@ func (a *LiquidityPoolLoader) GetFuture(id string) FutureLiquidityPoolID {
 // GetNow should only be called on values which were registered by
 // GetFuture() calls. Also, Exec() must be called before any GetNow
 // call can succeed.
-func (a *LiquidityPoolLoader) GetNow(id string) int64 {
-	if id, ok := a.ids[id]; !ok {
-		panic(fmt.Errorf("id %v not present", id))
+func (a *LiquidityPoolLoader) GetNow(id string) (int64, error) {
+	if !a.sealed {
+		return 0, fmt.Errorf(`invalid liquidity pool loader state,  
+		Exec was not called yet to properly seal and resolve %v id`, id)
+	}
+	if internalID, ok := a.ids[id]; !ok {
+		return 0, fmt.Errorf(`liquidity pool loader id %q was not found`, id)
 	} else {
-		return id
+		return internalID, nil
 	}
 }
 
@@ -156,5 +160,6 @@ func NewLiquidityPoolLoaderStub() LiquidityPoolLoaderStub {
 // Insert updates the wrapped LiquidityPoolLoader so that the given liquidity pool
 // is mapped to the provided history liquidity pool id
 func (a LiquidityPoolLoaderStub) Insert(lp string, id int64) {
+	a.Loader.sealed = true
 	a.Loader.ids[lp] = id
 }

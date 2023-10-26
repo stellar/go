@@ -269,6 +269,7 @@ func FeeBumpScenario(tt *test.T, q *Q, successful bool) FeeBumpFixture {
 	details, err := json.Marshal(map[string]string{
 		"bump_to": "98",
 	})
+
 	tt.Assert.NoError(err)
 
 	tt.Assert.NoError(opBuilder.Add(
@@ -296,9 +297,10 @@ func FeeBumpScenario(tt *test.T, q *Q, successful bool) FeeBumpFixture {
 		EffectSequenceBumped,
 		details,
 	)
+
 	tt.Assert.NoError(err)
-	tt.Assert.NoError(accountLoader.Exec(ctx, q))
-	tt.Assert.NoError(effectBuilder.Exec(ctx, q))
+	tt.Assert.NoError(accountLoader.Exec(ctx, q.SessionInterface))
+	tt.Assert.NoError(effectBuilder.Exec(ctx, q.SessionInterface))
 
 	tt.Assert.NoError(q.Commit())
 

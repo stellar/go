@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/stellar/go/ingest"
+	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/xdr"
 )
 
@@ -51,7 +52,11 @@ type StatsLedgerTransactionProcessorResults struct {
 	OperationsLiquidityPoolWithdraw         int64
 }
 
-func (p *StatsLedgerTransactionProcessor) ProcessTransaction(ctx context.Context, transaction ingest.LedgerTransaction) error {
+func (p *StatsLedgerTransactionProcessor) Flush(ctx context.Context, session db.SessionInterface) error {
+	return nil
+}
+
+func (p *StatsLedgerTransactionProcessor) ProcessTransaction(lcm xdr.LedgerCloseMeta, transaction ingest.LedgerTransaction) error {
 	p.results.Transactions++
 	ops := int64(len(transaction.Envelope.Operations()))
 	p.results.Operations += ops

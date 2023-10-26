@@ -1,7 +1,6 @@
 package processors
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -23,12 +22,14 @@ func TestStatsLedgerTransactionProcessoAllOpTypesCovered(t *testing.T) {
 			},
 		},
 	}
+	lcm := xdr.LedgerCloseMeta{}
+
 	for typ, s := range xdr.OperationTypeToStringMap {
 		tx := txTemplate
 		txTemplate.Envelope.V1.Tx.Operations[0].Body.Type = xdr.OperationType(typ)
 		f := func() {
 			var p StatsLedgerTransactionProcessor
-			p.ProcessTransaction(context.Background(), tx)
+			p.ProcessTransaction(lcm, tx)
 		}
 		assert.NotPanics(t, f, s)
 	}
@@ -38,16 +39,17 @@ func TestStatsLedgerTransactionProcessoAllOpTypesCovered(t *testing.T) {
 	txTemplate.Envelope.V1.Tx.Operations[0].Body.Type = 20000
 	f := func() {
 		var p StatsLedgerTransactionProcessor
-		p.ProcessTransaction(context.Background(), tx)
+		p.ProcessTransaction(lcm, tx)
 	}
 	assert.Panics(t, f)
 }
 
 func TestStatsLedgerTransactionProcessor(t *testing.T) {
 	processor := &StatsLedgerTransactionProcessor{}
+	lcm := xdr.LedgerCloseMeta{}
 
 	// Successful
-	assert.NoError(t, processor.ProcessTransaction(context.Background(), ingest.LedgerTransaction{
+	assert.NoError(t, processor.ProcessTransaction(lcm, ingest.LedgerTransaction{
 		Result: xdr.TransactionResultPair{
 			Result: xdr.TransactionResult{
 				Result: xdr.TransactionResultResult{
@@ -88,7 +90,7 @@ func TestStatsLedgerTransactionProcessor(t *testing.T) {
 	}))
 
 	// Failed
-	assert.NoError(t, processor.ProcessTransaction(context.Background(), ingest.LedgerTransaction{
+	assert.NoError(t, processor.ProcessTransaction(lcm, ingest.LedgerTransaction{
 		Result: xdr.TransactionResultPair{
 			Result: xdr.TransactionResult{
 				Result: xdr.TransactionResultResult{

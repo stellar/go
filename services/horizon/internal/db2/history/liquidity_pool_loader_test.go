@@ -25,16 +25,11 @@ func TestLiquidityPoolLoader(t *testing.T) {
 	}
 
 	loader := NewLiquidityPoolLoader()
-	var futures []FutureLiquidityPoolID
 	for _, id := range ids {
 		future := loader.GetFuture(id)
-		futures = append(futures, future)
-		assert.Panics(t, func() {
-			loader.GetNow(id)
-		})
-		assert.Panics(t, func() {
-			future.Value()
-		})
+		_, err := future.Value()
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), `invalid liquidity pool loader state,`)
 		duplicateFuture := loader.GetFuture(id)
 		assert.Equal(t, future, duplicateFuture)
 	}
@@ -45,15 +40,16 @@ func TestLiquidityPoolLoader(t *testing.T) {
 	})
 
 	q := &Q{session}
-	for i, id := range ids {
-		future := futures[i]
-		internalID := loader.GetNow(id)
-		val, err := future.Value()
+	for _, id := range ids {
+		internalID, err := loader.GetNow(id)
 		assert.NoError(t, err)
-		assert.Equal(t, internalID, val)
 		lp, err := q.LiquidityPoolByID(context.Background(), id)
 		assert.NoError(t, err)
 		assert.Equal(t, lp.PoolID, id)
 		assert.Equal(t, lp.InternalID, internalID)
 	}
+
+	_, err := loader.GetNow("not present")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), `was not found`)
 }

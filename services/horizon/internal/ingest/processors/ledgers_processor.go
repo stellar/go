@@ -32,14 +32,18 @@ func NewLedgerProcessor(batch history.LedgerBatchInsertBuilder, ingestVersion in
 	}
 }
 
-func (p *LedgersProcessor) ProcessTransaction(lcm xdr.LedgerCloseMeta, transaction ingest.LedgerTransaction) error {
+func (p *LedgersProcessor) ProcessLedger(lcm xdr.LedgerCloseMeta) *ledgerInfo {
 	sequence := lcm.LedgerSequence()
 	entry, ok := p.ledgers[sequence]
 	if !ok {
 		entry = &ledgerInfo{header: lcm.LedgerHeaderHistoryEntry()}
 		p.ledgers[sequence] = entry
 	}
+	return entry
+}
 
+func (p *LedgersProcessor) ProcessTransaction(lcm xdr.LedgerCloseMeta, transaction ingest.LedgerTransaction) error {
+	entry := p.ProcessLedger(lcm)
 	opCount := len(transaction.Envelope.Operations())
 	entry.txSetOpCount += opCount
 	if transaction.Result.Successful() {

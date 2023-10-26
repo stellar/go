@@ -11,8 +11,8 @@ echo "deb https://apt.stellar.org $(lsb_release -cs) stable" | sudo tee -a /etc/
 apt-get update
 apt-get install -y stellar-core=${STELLAR_CORE_VERSION}
 
-wget -q https://dl.google.com/go/go1.18.linux-amd64.tar.gz
-tar -C /usr/local -xzf go1.18.linux-amd64.tar.gz
+wget -q https://dl.google.com/go/go1.20.linux-amd64.tar.gz
+tar -C /usr/local -xzf go1.20.linux-amd64.tar.gz
 
 git clone https://github.com/stellar/go.git stellar-go
 cd stellar-go
@@ -20,4 +20,4 @@ cd stellar-go
 # Below ensures we also fetch PR refs
 git config --add remote.origin.fetch "+refs/pull/*/head:refs/remotes/origin/pull/*"
 git fetch --force --quiet origin
-/usr/local/go/bin/go build -v ./services/horizon
+/usr/local/go/bin/go build -v ./services/horizon/.

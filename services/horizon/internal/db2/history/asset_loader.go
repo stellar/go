@@ -5,6 +5,7 @@ import (
 	"database/sql/driver"
 	"fmt"
 	"sort"
+	"strings"
 
 	sq "github.com/Masterminds/squirrel"
 
@@ -21,11 +22,18 @@ type AssetKey struct {
 	Issuer string
 }
 
+func (key AssetKey) String() string {
+	if key.Type == xdr.AssetTypeToString[xdr.AssetTypeAssetTypeNative] {
+		return key.Type
+	}
+	return key.Type + "/" + key.Code + "/" + key.Issuer
+}
+
 // AssetKeyFromXDR constructs an AssetKey from an xdr asset
 func AssetKeyFromXDR(asset xdr.Asset) AssetKey {
 	return AssetKey{
 		Type:   xdr.AssetTypeToString[asset.Type],
-		Code:   asset.GetCode(),
+		Code:   strings.TrimRight(asset.GetCode(), "\x00"),
 		Issuer: asset.GetIssuer(),
 	}
 }
@@ -41,7 +49,7 @@ type FutureAssetID struct {
 
 // Value implements the database/sql/driver Valuer interface.
 func (a FutureAssetID) Value() (driver.Value, error) {
-	return a.loader.GetNow(a.asset), nil
+	return a.loader.GetNow(a.asset)
 }
 
 // AssetLoader will map assets to their history
@@ -81,11 +89,15 @@ func (a *AssetLoader) GetFuture(asset AssetKey) FutureAssetID {
 // GetNow should only be called on values which were registered by
 // GetFuture() calls. Also, Exec() must be called before any GetNow
 // call can succeed.
-func (a *AssetLoader) GetNow(asset AssetKey) int64 {
-	if id, ok := a.ids[asset]; !ok {
-		panic(fmt.Errorf("asset %v not present", asset))
+func (a *AssetLoader) GetNow(asset AssetKey) (int64, error) {
+	if !a.sealed {
+		return 0, fmt.Errorf(`invalid asset loader state,  
+		Exec was not called yet to properly seal and resolve %v id`, asset)
+	}
+	if internalID, ok := a.ids[asset]; !ok {
+		return 0, fmt.Errorf(`asset loader id %v was not found`, asset)
 	} else {
-		return id
+		return internalID, nil
 	}
 }
 
@@ -137,6 +149,11 @@ func (a *AssetLoader) Exec(ctx context.Context, session db.SessionInterface) err
 	assetTypes := make([]string, 0, len(a.set)-len(a.ids))
 	assetCodes := make([]string, 0, len(a.set)-len(a.ids))
 	assetIssuers := make([]string, 0, len(a.set)-len(a.ids))
+	// sort entries before inserting rows to prevent deadlocks on acquiring a ShareLock
+	// https://github.com/stellar/go/issues/2370
+	sort.Slice(keys, func(i, j int) bool {
+		return keys[i].String() < keys[j].String()
+	})
 	insert := 0
 	for _, key := range keys {
 		if _, ok := a.ids[key]; ok {
@@ -152,20 +169,6 @@ func (a *AssetLoader) Exec(ctx context.Context, session db.SessionInterface) err
 		return nil
 	}
 	keys = keys[:insert]
-	// sort entries before inserting rows to prevent deadlocks on acquiring a ShareLock
-	// https://github.com/stellar/go/issues/2370
-	sort.Slice(keys, func(i, j int) bool {
-		if keys[i].Type < keys[j].Type {
-			return true
-		}
-		if keys[i].Code < keys[j].Code {
-			return true
-		}
-		if keys[i].Issuer < keys[j].Issuer {
-			return true
-		}
-		return false
-	})
 
 	err := bulkInsert(
 		ctx,
@@ -211,5 +214,6 @@ func NewAssetLoaderStub() AssetLoaderStub {
 // Insert updates the wrapped AssetLoaderStub so that the given asset
 // address is mapped to the provided history asset id
 func (a AssetLoaderStub) Insert(asset AssetKey, id int64) {
+	a.Loader.sealed = true
 	a.Loader.ids[asset] = id
 }

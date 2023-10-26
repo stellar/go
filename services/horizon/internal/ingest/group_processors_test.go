@@ -11,6 +11,8 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/stellar/go/ingest"
+	"github.com/stellar/go/support/db"
+	"github.com/stellar/go/xdr"
 )
 
 var _ horizonChangeProcessor = (*mockHorizonChangeProcessor)(nil)
@@ -35,13 +37,13 @@ type mockHorizonTransactionProcessor struct {
 	mock.Mock
 }
 
-func (m *mockHorizonTransactionProcessor) ProcessTransaction(ctx context.Context, transaction ingest.LedgerTransaction) error {
-	args := m.Called(ctx, transaction)
+func (m *mockHorizonTransactionProcessor) ProcessTransaction(lcm xdr.LedgerCloseMeta, transaction ingest.LedgerTransaction) error {
+	args := m.Called(lcm, transaction)
 	return args.Error(0)
 }
 
-func (m *mockHorizonTransactionProcessor) Commit(ctx context.Context) error {
-	args := m.Called(ctx)
+func (m *mockHorizonTransactionProcessor) Flush(ctx context.Context, session db.SessionInterface) error {
+	args := m.Called(ctx, session)
 	return args.Error(0)
 }
 
@@ -124,6 +126,7 @@ type GroupTransactionProcessorsTestSuiteLedger struct {
 	processors *groupTransactionProcessors
 	processorA *mockHorizonTransactionProcessor
 	processorB *mockHorizonTransactionProcessor
+	session    db.SessionInterface
 }
 
 func TestGroupTransactionProcessorsTestSuiteLedger(t *testing.T) {
@@ -137,7 +140,8 @@ func (s *GroupTransactionProcessorsTestSuiteLedger) SetupTest() {
 	s.processors = newGroupTransactionProcessors([]horizonTransactionProcessor{
 		s.processorA,
 		s.processorB,
-	})
+	}, nil)
+	s.session = &db.MockSession{}
 }
 
 func (s *GroupTransactionProcessorsTestSuiteLedger) TearDownTest() {
@@ -147,46 +151,48 @@ func (s *GroupTransactionProcessorsTestSuiteLedger) TearDownTest() {
 
 func (s *GroupTransactionProcessorsTestSuiteLedger) TestProcessTransactionFails() {
 	transaction := ingest.LedgerTransaction{}
+	closeMeta := xdr.LedgerCloseMeta{}
 	s.processorA.
-		On("ProcessTransaction", s.ctx, transaction).
+		On("ProcessTransaction", closeMeta, transaction).
 		Return(errors.New("transient error")).Once()
 
-	err := s.processors.ProcessTransaction(s.ctx, transaction)
+	err := s.processors.ProcessTransaction(closeMeta, transaction)
 	s.Assert().Error(err)
 	s.Assert().EqualError(err, "error in *ingest.mockHorizonTransactionProcessor.ProcessTransaction: transient error")
 }
 
 func (s *GroupTransactionProcessorsTestSuiteLedger) TestProcessTransactionSucceeds() {
 	transaction := ingest.LedgerTransaction{}
+	closeMeta := xdr.LedgerCloseMeta{}
 	s.processorA.
-		On("ProcessTransaction", s.ctx, transaction).
+		On("ProcessTransaction", closeMeta, transaction).
 		Return(nil).Once()
 	s.processorB.
-		On("ProcessTransaction", s.ctx, transaction).
+		On("ProcessTransaction", closeMeta, transaction).
 		Return(nil).Once()
 
-	err := s.processors.ProcessTransaction(s.ctx, transaction)
+	err := s.processors.ProcessTransaction(closeMeta, transaction)
 	s.Assert().NoError(err)
 }
 
-func (s *GroupTransactionProcessorsTestSuiteLedger) TestCommitFails() {
+func (s *GroupTransactionProcessorsTestSuiteLedger) TestFlushFails() {
 	s.processorA.
-		On("Commit", s.ctx).
+		On("Flush", s.ctx, s.session).
 		Return(errors.New("transient error")).Once()
 
-	err := s.processors.Commit(s.ctx)
+	err := s.processors.Flush(s.ctx, s.session)
 	s.Assert().Error(err)
-	s.Assert().EqualError(err, "error in *ingest.mockHorizonTransactionProcessor.Commit: transient error")
+	s.Assert().EqualError(err, "error in *ingest.mockHorizonTransactionProcessor.Flush: transient error")
 }
 
-func (s *GroupTransactionProcessorsTestSuiteLedger) TestCommitSucceeds() {
+func (s *GroupTransactionProcessorsTestSuiteLedger) TestFlushSucceeds() {
 	s.processorA.
-		On("Commit", s.ctx).
+		On("Flush", s.ctx, s.session).
 		Return(nil).Once()
 	s.processorB.
-		On("Commit", s.ctx).
+		On("Flush", s.ctx, s.session).
 		Return(nil).Once()
 
-	err := s.processors.Commit(s.ctx)
+	err := s.processors.Flush(s.ctx, s.session)
 	s.Assert().NoError(err)
 }

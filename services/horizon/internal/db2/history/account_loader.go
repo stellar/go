@@ -28,7 +28,7 @@ const loaderLookupBatchSize = 50000
 
 // Value implements the database/sql/driver Valuer interface.
 func (a FutureAccountID) Value() (driver.Value, error) {
-	return a.loader.GetNow(a.address), nil
+	return a.loader.GetNow(a.address)
 }
 
 // AccountLoader will map account addresses to their history
@@ -71,11 +71,15 @@ func (a *AccountLoader) GetFuture(address string) FutureAccountID {
 // GetNow should only be called on values which were registered by
 // GetFuture() calls. Also, Exec() must be called before any GetNow
 // call can succeed.
-func (a *AccountLoader) GetNow(address string) int64 {
-	if id, ok := a.ids[address]; !ok {
-		panic(fmt.Errorf("address %v not present", address))
+func (a *AccountLoader) GetNow(address string) (int64, error) {
+	if !a.sealed {
+		return 0, fmt.Errorf(`invalid account loader state,  
+		Exec was not called yet to properly seal and resolve %v id`, address)
+	}
+	if internalID, ok := a.ids[address]; !ok {
+		return 0, fmt.Errorf(`account loader address %q was not found`, address)
 	} else {
-		return id
+		return internalID, nil
 	}
 }
 
@@ -205,5 +209,6 @@ func NewAccountLoaderStub() AccountLoaderStub {
 // Insert updates the wrapped AccountLoader so that the given account
 // address is mapped to the provided history account id
 func (a AccountLoaderStub) Insert(address string, id int64) {
+	a.Loader.sealed = true
 	a.Loader.ids[address] = id
 }

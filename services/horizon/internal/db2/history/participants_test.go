@@ -63,7 +63,9 @@ func TestTransactionParticipantsBatch(t *testing.T) {
 		{TransactionID: 2},
 	}
 	for i := range expected {
-		expected[i].AccountID = accountLoader.GetNow(addresses[i])
+		val, err := accountLoader.GetNow(addresses[i])
+		tt.Assert.NoError(err)
+		expected[i].AccountID = val
 	}
 	tt.Assert.ElementsMatch(expected, participants)
 }

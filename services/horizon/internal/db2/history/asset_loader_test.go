@@ -12,6 +12,28 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
+func TestAssetKeyToString(t *testing.T) {
+	num4key := AssetKey{
+		Type:   "credit_alphanum4",
+		Code:   "USD",
+		Issuer: "A1B2C3",
+	}
+
+	num12key := AssetKey{
+		Type:   "credit_alphanum12",
+		Code:   "USDABC",
+		Issuer: "A1B2C3",
+	}
+
+	nativekey := AssetKey{
+		Type: "native",
+	}
+
+	assert.Equal(t, num4key.String(), "credit_alphanum4/USD/A1B2C3")
+	assert.Equal(t, num12key.String(), "credit_alphanum12/USDABC/A1B2C3")
+	assert.Equal(t, nativekey.String(), "native")
+}
+
 func TestAssetLoader(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
@@ -22,30 +44,34 @@ func TestAssetLoader(t *testing.T) {
 	for i := 0; i < 100; i++ {
 		var key AssetKey
 		if i == 0 {
-			key.Type = "native"
+			key = AssetKeyFromXDR(xdr.Asset{Type: xdr.AssetTypeAssetTypeNative})
 		} else if i%2 == 0 {
-			key.Type = "credit_alphanum4"
-			key.Code = fmt.Sprintf("ab%d", i)
-			key.Issuer = keypair.MustRandom().Address()
+			code := [4]byte{0, 0, 0, 0}
+			copy(code[:], fmt.Sprintf("ab%d", i))
+			key = AssetKeyFromXDR(xdr.Asset{
+				Type: xdr.AssetTypeAssetTypeCreditAlphanum4,
+				AlphaNum4: &xdr.AlphaNum4{
+					AssetCode: code,
+					Issuer:    xdr.MustAddress(keypair.MustRandom().Address())}})
 		} else {
-			key.Type = "credit_alphanum12"
-			key.Code = fmt.Sprintf("abcdef%d", i)
-			key.Issuer = keypair.MustRandom().Address()
+			code := [12]byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+			copy(code[:], fmt.Sprintf("abcdef%d", i))
+			key = AssetKeyFromXDR(xdr.Asset{
+				Type: xdr.AssetTypeAssetTypeCreditAlphanum12,
+				AlphaNum12: &xdr.AlphaNum12{
+					AssetCode: code,
+					Issuer:    xdr.MustAddress(keypair.MustRandom().Address())}})
+
 		}
 		keys = append(keys, key)
 	}
 
 	loader := NewAssetLoader()
-	var futures []FutureAssetID
 	for _, key := range keys {
 		future := loader.GetFuture(key)
-		futures = append(futures, future)
-		assert.Panics(t, func() {
-			loader.GetNow(key)
-		})
-		assert.Panics(t, func() {
-			future.Value()
-		})
+		_, err := future.Value()
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), `invalid asset loader state,`)
 		duplicateFuture := loader.GetFuture(key)
 		assert.Equal(t, future, duplicateFuture)
 	}
@@ -56,12 +82,9 @@ func TestAssetLoader(t *testing.T) {
 	})
 
 	q := &Q{session}
-	for i, key := range keys {
-		future := futures[i]
-		internalID := loader.GetNow(key)
-		val, err := future.Value()
+	for _, key := range keys {
+		internalID, err := loader.GetNow(key)
 		assert.NoError(t, err)
-		assert.Equal(t, internalID, val)
 		var assetXDR xdr.Asset
 		if key.Type == "native" {
 			assetXDR = xdr.MustNewNativeAsset()
@@ -72,4 +95,8 @@ func TestAssetLoader(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, assetID, internalID)
 	}
+
+	_, err := loader.GetNow(AssetKey{})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), `was not found`)
 }
