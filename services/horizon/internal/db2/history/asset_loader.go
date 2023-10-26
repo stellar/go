@@ -214,9 +214,6 @@ func NewAssetLoaderStub() AssetLoaderStub {
 // Insert updates the wrapped AssetLoaderStub so that the given asset
 // address is mapped to the provided history asset id
 func (a AssetLoaderStub) Insert(asset AssetKey, id int64) {
-	a.Loader.ids[asset] = id
-}
-
-func (a AssetLoaderStub) Sealed() {
 	a.Loader.sealed = true
+	a.Loader.ids[asset] = id
 }

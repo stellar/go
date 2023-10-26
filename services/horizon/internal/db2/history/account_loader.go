@@ -209,9 +209,6 @@ func NewAccountLoaderStub() AccountLoaderStub {
 // Insert updates the wrapped AccountLoader so that the given account
 // address is mapped to the provided history account id
 func (a AccountLoaderStub) Insert(address string, id int64) {
-	a.Loader.ids[address] = id
-}
-
-func (a AccountLoaderStub) Sealed() {
 	a.Loader.sealed = true
+	a.Loader.ids[address] = id
 }

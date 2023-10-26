@@ -160,9 +160,6 @@ func NewLiquidityPoolLoaderStub() LiquidityPoolLoaderStub {
 // Insert updates the wrapped LiquidityPoolLoader so that the given liquidity pool
 // is mapped to the provided history liquidity pool id
 func (a LiquidityPoolLoaderStub) Insert(lp string, id int64) {
-	a.Loader.ids[lp] = id
-}
-
-func (a LiquidityPoolLoaderStub) Sealed() {
 	a.Loader.sealed = true
+	a.Loader.ids[lp] = id
 }
