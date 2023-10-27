@@ -336,22 +336,26 @@ func (s *system) initMetrics() {
 
 	s.metrics.LedgerIngestionDuration = prometheus.NewSummary(prometheus.SummaryOpts{
 		Namespace: "horizon", Subsystem: "ingest", Name: "ledger_ingestion_duration_seconds",
-		Help: "ledger ingestion durations, sliding window = 10m",
+		Help:       "ledger ingestion durations, sliding window = 10m",
+		Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
 	})
 
 	s.metrics.LedgerIngestionTradeAggregationDuration = prometheus.NewSummary(prometheus.SummaryOpts{
 		Namespace: "horizon", Subsystem: "ingest", Name: "ledger_ingestion_trade_aggregation_duration_seconds",
-		Help: "ledger ingestion trade aggregation rebuild durations, sliding window = 10m",
+		Help:       "ledger ingestion trade aggregation rebuild durations, sliding window = 10m",
+		Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
 	})
 
 	s.metrics.LedgerIngestionReapLookupTablesDuration = prometheus.NewSummary(prometheus.SummaryOpts{
 		Namespace: "horizon", Subsystem: "ingest", Name: "ledger_ingestion_reap_lookup_tables_duration_seconds",
-		Help: "ledger ingestion reap lookup tables durations, sliding window = 10m",
+		Help:       "ledger ingestion reap lookup tables durations, sliding window = 10m",
+		Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
 	})
 
 	s.metrics.StateVerifyDuration = prometheus.NewSummary(prometheus.SummaryOpts{
 		Namespace: "horizon", Subsystem: "ingest", Name: "state_verify_duration_seconds",
-		Help: "state verification durations, sliding window = 10m",
+		Help:       "state verification durations, sliding window = 10m",
+		Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
 	})
 
 	s.metrics.StateInvalidGauge = prometheus.NewGaugeFunc(
@@ -400,7 +404,8 @@ func (s *system) initMetrics() {
 	s.metrics.ProcessorsRunDurationSummary = prometheus.NewSummaryVec(
 		prometheus.SummaryOpts{
 			Namespace: "horizon", Subsystem: "ingest", Name: "processor_run_duration_seconds",
-			Help: "run durations of ingestion processors, sliding window = 10m",
+			Help:       "run durations of ingestion processors, sliding window = 10m",
+			Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
 		},
 		[]string{"name"},
 	)
