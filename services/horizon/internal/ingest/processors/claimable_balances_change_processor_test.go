@@ -13,6 +13,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/xdr"
+	"github.com/stretchr/testify/suite"
 )
 
 func TestClaimableBalancesChangeProcessorTestSuiteState(t *testing.T) {
