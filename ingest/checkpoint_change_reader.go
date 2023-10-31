@@ -325,6 +325,8 @@ func (r *CheckpointChangeReader) streamBucketContents(hash historyarchive.Hash, 
 	var batch []xdr.BucketEntry
 	lastBatch := false
 
+	preloadKeys := make([]string, 0, preloadedEntries)
+
 LoopBucketEntry:
 	for {
 		// Preload entries for faster retrieve from temp store.
@@ -332,8 +334,10 @@ LoopBucketEntry:
 			if lastBatch {
 				return true
 			}
+			batch = make([]xdr.BucketEntry, 0, preloadedEntries)
 
-			preloadKeys := []string{}
+			// reset the content of the preloadKeys
+			preloadKeys = preloadKeys[:0]
 
 			for i := 0; i < preloadedEntries; i++ {
 				var entry xdr.BucketEntry
