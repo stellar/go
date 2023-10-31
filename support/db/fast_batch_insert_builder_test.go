@@ -61,14 +61,15 @@ func TestFastBatchInsertBuilder(t *testing.T) {
 	assert.Equal(t, 2, insertBuilder.Len())
 	assert.Equal(t, false, insertBuilder.sealed)
 
+	ctx := context.Background()
 	assert.EqualError(t,
-		insertBuilder.Exec(context.Background(), sess, "people"),
+		insertBuilder.Exec(ctx, sess, "people"),
 		"cannot call Exec() outside of a transaction",
 	)
 	assert.Equal(t, true, insertBuilder.sealed)
 
-	assert.NoError(t, sess.Begin())
-	assert.NoError(t, insertBuilder.Exec(context.Background(), sess, "people"))
+	assert.NoError(t, sess.Begin(ctx))
+	assert.NoError(t, insertBuilder.Exec(ctx, sess, "people"))
 	assert.Equal(t, 2, insertBuilder.Len())
 	assert.Equal(t, true, insertBuilder.sealed)
 

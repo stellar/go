@@ -44,7 +44,7 @@ func TestDataActions_Show(t *testing.T) {
 	ht.Assert.NoError(err)
 	err = q.UpdateIngestVersion(ht.Ctx, ingest.CurrentVersion)
 	ht.Assert.NoError(err)
-	ht.Assert.NoError(q.Begin())
+	ht.Assert.NoError(q.Begin(ht.Ctx))
 	ledgerBatch := q.NewLedgerBatchInsertBuilder()
 	err = ledgerBatch.Add(xdr.LedgerHeaderHistoryEntry{
 		Header: xdr.LedgerHeader{

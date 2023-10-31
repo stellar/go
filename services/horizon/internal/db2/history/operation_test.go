@@ -78,7 +78,7 @@ func TestOperationByLiquidityPool(t *testing.T) {
 	opID1 := toid.New(sequence, txIndex, 1).ToInt64()
 	opID2 := toid.New(sequence, txIndex, 2).ToInt64()
 
-	tt.Assert.NoError(q.Begin())
+	tt.Assert.NoError(q.Begin(tt.Ctx))
 
 	// Insert a phony transaction
 	transactionBuilder := q.NewTransactionBatchInsertBuilder()

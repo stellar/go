@@ -15,7 +15,7 @@ func TestAddEffect(t *testing.T) {
 	defer tt.Finish()
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
-	tt.Assert.NoError(q.Begin())
+	tt.Assert.NoError(q.Begin(tt.Ctx))
 
 	address := "GAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSTVY"
 	muxedAddres := "MAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSAAAAAAAAAAE2LP26"

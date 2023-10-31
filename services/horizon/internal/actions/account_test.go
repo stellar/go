@@ -228,7 +228,7 @@ func TestAccountInfo(t *testing.T) {
 	assert.NoError(t, err)
 
 	ledgerFourCloseTime := time.Now().Unix()
-	assert.NoError(t, q.Begin())
+	assert.NoError(t, q.Begin(tt.Ctx))
 	ledgerBatch := q.NewLedgerBatchInsertBuilder()
 	err = ledgerBatch.Add(xdr.LedgerHeaderHistoryEntry{
 		Header: xdr.LedgerHeader{
@@ -412,7 +412,7 @@ func TestGetAccountsHandlerPageResultsByAsset(t *testing.T) {
 	err := q.UpsertAccounts(tt.Ctx, []history.AccountEntry{account1, account2})
 	assert.NoError(t, err)
 	ledgerCloseTime := time.Now().Unix()
-	assert.NoError(t, q.Begin())
+	assert.NoError(t, q.Begin(tt.Ctx))
 	ledgerBatch := q.NewLedgerBatchInsertBuilder()
 	err = ledgerBatch.Add(xdr.LedgerHeaderHistoryEntry{
 		Header: xdr.LedgerHeader{
@@ -519,7 +519,7 @@ func TestGetAccountsHandlerPageResultsByLiquidityPool(t *testing.T) {
 	assert.NoError(t, err)
 
 	ledgerCloseTime := time.Now().Unix()
-	assert.NoError(t, q.Begin())
+	assert.NoError(t, q.Begin(tt.Ctx))
 	ledgerBatch := q.NewLedgerBatchInsertBuilder()
 	err = ledgerBatch.Add(xdr.LedgerHeaderHistoryEntry{
 		Header: xdr.LedgerHeader{

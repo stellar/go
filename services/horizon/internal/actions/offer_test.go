@@ -79,7 +79,7 @@ func TestGetOfferByIDHandler(t *testing.T) {
 	handler := GetOfferByID{}
 
 	ledgerCloseTime := time.Now().Unix()
-	assert.NoError(t, q.Begin())
+	assert.NoError(t, q.Begin(tt.Ctx))
 	ledgerBatch := q.NewLedgerBatchInsertBuilder()
 	err := ledgerBatch.Add(xdr.LedgerHeaderHistoryEntry{
 		Header: xdr.LedgerHeader{
@@ -190,7 +190,7 @@ func TestGetOffersHandler(t *testing.T) {
 	handler := GetOffersHandler{}
 
 	ledgerCloseTime := time.Now().Unix()
-	assert.NoError(t, q.Begin())
+	assert.NoError(t, q.Begin(tt.Ctx))
 	ledgerBatch := q.NewLedgerBatchInsertBuilder()
 	err := ledgerBatch.Add(xdr.LedgerHeaderHistoryEntry{
 		Header: xdr.LedgerHeader{

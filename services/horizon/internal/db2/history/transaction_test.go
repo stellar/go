@@ -57,7 +57,7 @@ func TestTransactionByLiquidityPool(t *testing.T) {
 	}, 0, 0, 0, 0, 0)
 	tt.Assert.NoError(err)
 
-	tt.Assert.NoError(q.Begin())
+	tt.Assert.NoError(q.Begin(tt.Ctx))
 
 	tt.Assert.NoError(ledgerBatch.Exec(tt.Ctx, q.SessionInterface))
 
@@ -209,7 +209,7 @@ func TestInsertTransactionDoesNotAllowDuplicateIndex(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	tt.Assert.NoError(q.Begin())
+	tt.Assert.NoError(q.Begin(tt.Ctx))
 
 	sequence := uint32(123)
 	insertBuilder := q.NewTransactionBatchInsertBuilder()
@@ -235,7 +235,7 @@ func TestInsertTransactionDoesNotAllowDuplicateIndex(t *testing.T) {
 	tt.Assert.NoError(insertBuilder.Exec(tt.Ctx, q))
 	tt.Assert.NoError(q.Commit())
 
-	tt.Assert.NoError(q.Begin())
+	tt.Assert.NoError(q.Begin(tt.Ctx))
 	insertBuilder = q.NewTransactionBatchInsertBuilder()
 	tt.Assert.NoError(insertBuilder.Add(secondTransaction, sequence))
 	tt.Assert.EqualError(
@@ -828,7 +828,7 @@ func TestInsertTransaction(t *testing.T) {
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			insertBuilder := q.NewTransactionBatchInsertBuilder()
-			tt.Assert.NoError(q.Begin())
+			tt.Assert.NoError(q.Begin(tt.Ctx))
 			tt.Assert.NoError(insertBuilder.Add(testCase.toInsert, sequence))
 			tt.Assert.NoError(insertBuilder.Exec(tt.Ctx, q))
 			tt.Assert.NoError(q.Commit())

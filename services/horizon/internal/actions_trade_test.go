@@ -820,7 +820,7 @@ func IngestTestTrade(
 		return err
 	}
 
-	if err = q.Begin(); err != nil {
+	if err = q.Begin(ctx); err != nil {
 		return err
 	}
 	batch := q.NewTradeBatchInsertBuilder()

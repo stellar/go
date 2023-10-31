@@ -11,8 +11,8 @@ import (
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/protocols/horizon/base"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/contractevents"
+	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/toid"
 	"github.com/stellar/go/xdr"
@@ -20,13 +20,13 @@ import (
 
 // OperationProcessor operations processor
 type OperationProcessor struct {
-	batch history.OperationBatchInsertBuilder
-	network  string
+	batch   history.OperationBatchInsertBuilder
+	network string
 }
 
 func NewOperationProcessor(batch history.OperationBatchInsertBuilder, network string) *OperationProcessor {
 	return &OperationProcessor{
-		batch: batch,
+		batch:   batch,
 		network: network,
 	}
 }

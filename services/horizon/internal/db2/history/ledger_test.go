@@ -129,7 +129,7 @@ func TestInsertLedger(t *testing.T) {
 		int(expectedLedger.ImporterVersion),
 	)
 	tt.Assert.NoError(err)
-	tt.Assert.NoError(q.Begin())
+	tt.Assert.NoError(q.Begin(tt.Ctx))
 	tt.Assert.NoError(ledgerBatch.Exec(tt.Ctx, q.SessionInterface))
 	tt.Assert.NoError(q.Commit())
 
@@ -217,7 +217,7 @@ func insertLedgerWithSequence(tt *test.T, q *Q, seq uint32) {
 		int(expectedLedger.ImporterVersion),
 	)
 	tt.Assert.NoError(err)
-	tt.Assert.NoError(q.Begin())
+	tt.Assert.NoError(q.Begin(tt.Ctx))
 	tt.Assert.NoError(ledgerBatch.Exec(tt.Ctx, q.SessionInterface))
 	tt.Assert.NoError(q.Commit())
 }

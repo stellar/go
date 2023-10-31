@@ -58,6 +58,10 @@ func (b *FastBatchInsertBuilder) Row(row map[string]interface{}) error {
 		if !ok {
 			return errors.Errorf(`column "%s" does not exist`, column)
 		}
+
+		if b, ok := val.([]byte); ok {
+			val = string(b)
+		}
 		rowSlice = append(rowSlice, val)
 	}
 	b.rows = append(b.rows, rowSlice)
@@ -91,7 +95,11 @@ func (b *FastBatchInsertBuilder) RowStruct(row interface{}) error {
 	// convert fields values to interface{}
 	columnValues := make([]interface{}, len(b.columns))
 	for i, rval := range rvals {
-		columnValues[i] = rval.Interface()
+		if b, ok := rval.Interface().([]byte); ok {
+			columnValues[i] = string(b)
+		} else {
+			columnValues[i] = rval.Interface()
+		}
 	}
 
 	b.rows = append(b.rows, columnValues)

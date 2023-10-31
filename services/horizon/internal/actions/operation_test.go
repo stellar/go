@@ -36,17 +36,21 @@ func TestInvokeHostFnDetailsInPaymentOperations(t *testing.T) {
 	opID1 := toid.New(sequence, txIndex, 1).ToInt64()
 
 	ledgerCloseTime := time.Now().Unix()
-	_, err := q.InsertLedger(tt.Ctx, xdr.LedgerHeaderHistoryEntry{
-		Header: xdr.LedgerHeader{
-			LedgerSeq: xdr.Uint32(sequence),
-			ScpValue: xdr.StellarValue{
-				CloseTime: xdr.TimePoint(ledgerCloseTime),
+	ledgerBatch := q.NewLedgerBatchInsertBuilder()
+	err := ledgerBatch.Add(
+		xdr.LedgerHeaderHistoryEntry{
+			Header: xdr.LedgerHeader{
+				LedgerSeq: xdr.Uint32(sequence),
+				ScpValue: xdr.StellarValue{
+					CloseTime: xdr.TimePoint(ledgerCloseTime),
+				},
 			},
-		},
-	}, 1, 0, 1, 0, 0)
+		}, 1, 0, 1, 0, 0)
 	tt.Assert.NoError(err)
+	tt.Assert.NoError(q.Begin(tt.Ctx))
+	tt.Assert.NoError(ledgerBatch.Exec(tt.Ctx, q))
 
-	transactionBuilder := q.NewTransactionBatchInsertBuilder(1)
+	transactionBuilder := q.NewTransactionBatchInsertBuilder()
 	firstTransaction := buildLedgerTransaction(tt.T, testTransaction{
 		index:         uint32(txIndex),
 		envelopeXDR:   "AAAAACiSTRmpH6bHC6Ekna5e82oiGY5vKDEEUgkq9CB//t+rAAAAyAEXUhsAADDRAAAAAAAAAAAAAAABAAAAAAAAAAsBF1IbAABX4QAAAAAAAAAA",
@@ -55,11 +59,13 @@ func TestInvokeHostFnDetailsInPaymentOperations(t *testing.T) {
 		metaXDR:       "AAAAAQAAAAAAAAAA",
 		hash:          "19aaa18db88605aedec04659fb45e06f240b022eb2d429e05133e4d53cd945ba",
 	})
-	err = transactionBuilder.Add(tt.Ctx, firstTransaction, uint32(sequence))
+	err = transactionBuilder.Add(firstTransaction, uint32(sequence))
 	tt.Assert.NoError(err)
+	tt.Assert.NoError(transactionBuilder.Exec(tt.Ctx, q))
 
-	operationBuilder := q.NewOperationBatchInsertBuilder(1)
-	err = operationBuilder.Add(tt.Ctx,
+	operationBuilder := q.NewOperationBatchInsertBuilder()
+
+	err = operationBuilder.Add(
 		opID1,
 		txID,
 		1,
@@ -118,6 +124,8 @@ func TestInvokeHostFnDetailsInPaymentOperations(t *testing.T) {
 		null.String{},
 		true)
 	tt.Assert.NoError(err)
+	tt.Assert.NoError(operationBuilder.Exec(tt.Ctx, q))
+	tt.Assert.NoError(q.Commit())
 
 	records, err := handler.GetResourcePage(
 		httptest.NewRecorder(),

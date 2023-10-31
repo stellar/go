@@ -16,7 +16,7 @@ func TestAddOperation(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	tt.Assert.NoError(q.Begin())
+	tt.Assert.NoError(q.Begin(tt.Ctx))
 
 	txBatch := q.NewTransactionBatchInsertBuilder()
 
@@ -64,7 +64,6 @@ func TestAddOperation(t *testing.T) {
 
 	err = builder.Exec(tt.Ctx, q)
 	tt.Assert.NoError(err)
-
 	tt.Assert.NoError(q.Commit())
 
 	ops := []Operation{}
