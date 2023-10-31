@@ -1477,7 +1477,9 @@ func (e *effectsWrapper) addInvokeHostFunctionEffects(events []contractevents.Ev
 		}
 
 		details := make(map[string]interface{}, 4)
-		addAssetDetails(details, evt.GetAsset(), "")
+		if err := addAssetDetails(details, evt.GetAsset(), ""); err != nil {
+			return errors.Wrapf(err, "invokeHostFunction asset details had an error")
+		}
 
 		//
 		// Note: We ignore effects that involve contracts (until the day we have
@@ -1496,24 +1498,28 @@ func (e *effectsWrapper) addInvokeHostFunctionEffects(events []contractevents.Ev
 			}
 
 			if strkey.IsValidEd25519PublicKey(transferEvent.From) {
-				e.add(
+				if err := e.add(
 					transferEvent.From,
 					null.String{},
 					history.EffectAccountDebited,
 					details,
-				)
+				); err != nil {
+					return errors.Wrapf(err, "invokeHostFunction asset details from contract xfr-from had an error")
+				}
 			} else {
 				details["contract"] = transferEvent.From
 				e.addMuxed(source, history.EffectContractDebited, details)
 			}
 
 			if strkey.IsValidEd25519PublicKey(transferEvent.To) {
-				e.add(
+				if err := e.add(
 					transferEvent.To,
 					null.String{},
 					history.EffectAccountCredited,
 					toDetails,
-				)
+				); err != nil {
+					return errors.Wrapf(err, "invokeHostFunction asset details from contract xfr-to had an error")
+				}
 			} else {
 				toDetails["contract"] = transferEvent.To
 				e.addMuxed(source, history.EffectContractCredited, toDetails)
@@ -1525,12 +1531,14 @@ func (e *effectsWrapper) addInvokeHostFunctionEffects(events []contractevents.Ev
 			mintEvent := evt.(*contractevents.MintEvent)
 			details["amount"] = amount.String128(mintEvent.Amount)
 			if strkey.IsValidEd25519PublicKey(mintEvent.To) {
-				e.add(
+				if err := e.add(
 					mintEvent.To,
 					null.String{},
 					history.EffectAccountCredited,
 					details,
-				)
+				); err != nil {
+					return errors.Wrapf(err, "invokeHostFunction asset details from contract mint had an error")
+				}
 			} else {
 				details["contract"] = mintEvent.To
 				e.addMuxed(source, history.EffectContractCredited, details)
@@ -1542,12 +1550,14 @@ func (e *effectsWrapper) addInvokeHostFunctionEffects(events []contractevents.Ev
 			cbEvent := evt.(*contractevents.ClawbackEvent)
 			details["amount"] = amount.String128(cbEvent.Amount)
 			if strkey.IsValidEd25519PublicKey(cbEvent.From) {
-				e.add(
+				if err := e.add(
 					cbEvent.From,
 					null.String{},
 					history.EffectAccountDebited,
 					details,
-				)
+				); err != nil {
+					return errors.Wrapf(err, "invokeHostFunction asset details from contract clawback had an error")
+				}
 			} else {
 				details["contract"] = cbEvent.From
 				e.addMuxed(source, history.EffectContractDebited, details)
@@ -1557,12 +1567,14 @@ func (e *effectsWrapper) addInvokeHostFunctionEffects(events []contractevents.Ev
 			burnEvent := evt.(*contractevents.BurnEvent)
 			details["amount"] = amount.String128(burnEvent.Amount)
 			if strkey.IsValidEd25519PublicKey(burnEvent.From) {
-				e.add(
+				if err := e.add(
 					burnEvent.From,
 					null.String{},
 					history.EffectAccountDebited,
 					details,
-				)
+				); err != nil {
+					return errors.Wrapf(err, "invokeHostFunction asset details from contract burn had an error")
+				}
 			} else {
 				details["contract"] = burnEvent.From
 				e.addMuxed(source, history.EffectContractDebited, details)
