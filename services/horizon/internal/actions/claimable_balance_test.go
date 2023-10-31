@@ -21,8 +21,10 @@ func TestGetClaimableBalanceByID(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &history.Q{tt.HorizonSession()}
 
-	q.SessionInterface.BeginTx(tt.Ctx, &sql.TxOptions{})
-	defer q.SessionInterface.Rollback()
+	tt.Assert.NoError(q.SessionInterface.BeginTx(&sql.TxOptions{}))
+	defer func() {
+		_ = q.SessionInterface.Rollback()
+	}()
 
 	accountID := "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"
 	asset := xdr.MustNewCreditAsset("USD", accountID)
@@ -154,8 +156,15 @@ func TestGetClaimableBalances(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &history.Q{tt.HorizonSession()}
 
+<<<<<<< HEAD
 	q.SessionInterface.BeginTx(tt.Ctx, &sql.TxOptions{})
 	defer q.SessionInterface.Rollback()
+=======
+	tt.Assert.NoError(q.SessionInterface.BeginTx(&sql.TxOptions{}))
+	defer func() {
+		_ = q.SessionInterface.Rollback()
+	}()
+>>>>>>> c7bd7ac1 (Fix linter errors)
 
 	entriesMeta := []struct {
 		id        xdr.Hash

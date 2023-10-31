@@ -21,7 +21,6 @@ func (m *MockClaimableBalanceClaimantBatchInsertBuilder) Exec(ctx context.Contex
 	return a.Error(0)
 }
 
-func (m *MockClaimableBalanceClaimantBatchInsertBuilder) Reset() error {
-	a := m.Called()
-	return a.Error(0)
+func (m *MockClaimableBalanceClaimantBatchInsertBuilder) Reset() {
+	m.Called()
 }
