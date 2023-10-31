@@ -32,8 +32,7 @@ type Change struct {
 // stellar-core source:
 // https://github.com/stellar/stellar-core/blob/e584b43/src/ledger/LedgerTxn.cpp#L582
 func GetChangesFromLedgerEntryChanges(ledgerEntryChanges xdr.LedgerEntryChanges) []Change {
-	changes := []Change{}
-
+	changes := make([]Change, 0, len(ledgerEntryChanges))
 	for i, entryChange := range ledgerEntryChanges {
 		switch entryChange.Type {
 		case xdr.LedgerEntryChangeTypeLedgerEntryCreated:

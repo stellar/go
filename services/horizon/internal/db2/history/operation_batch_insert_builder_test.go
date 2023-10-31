@@ -58,6 +58,7 @@ func TestAddOperation(t *testing.T) {
 		details,
 		sourceAccount,
 		null.StringFrom(sourceAccountMuxed),
+		true,
 	)
 	tt.Assert.NoError(err)
 

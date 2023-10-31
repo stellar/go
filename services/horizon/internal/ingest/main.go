@@ -6,7 +6,6 @@ package ingest
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"runtime"
 	"sync"
 	"time"
@@ -28,7 +27,7 @@ import (
 const (
 	// MaxSupportedProtocolVersion defines the maximum supported version of
 	// the Stellar protocol.
-	MaxSupportedProtocolVersion uint32 = 19
+	MaxSupportedProtocolVersion uint32 = 20
 
 	// CurrentVersion reflects the latest version of the ingestion
 	// algorithm. This value is stored in KV store and is used to decide
@@ -57,7 +56,9 @@ const (
 	// - 15: Fixed bug in asset stat ingestion where clawback is enabled (#3846).
 	// - 16: Extract claimants to a separate table for better performance of
 	//       claimable balances for claimant queries.
-	CurrentVersion = 16
+	// - 17: Add contract_id column to exp_asset_stats table which is derived by ingesting
+	//       contract data ledger entries.
+	CurrentVersion = 17
 
 	// MaxDBConnections is the size of the postgres connection pool dedicated to Horizon ingestion:
 	//  * Ledger ingestion,
@@ -172,18 +173,6 @@ type Metrics struct {
 
 	// ProcessorsRunDurationSummary exposes processors run durations.
 	ProcessorsRunDurationSummary *prometheus.SummaryVec
-
-	// LedgerFetchDurationSummary exposes a summary of durations required to
-	// fetch data from ledger backend.
-	LedgerFetchDurationSummary prometheus.Summary
-
-	// CaptiveStellarCoreSynced exposes synced status of Captive Stellar-Core.
-	// 1 if sync, 0 if not synced, -1 if unable to connect or HTTP server disabled.
-	CaptiveStellarCoreSynced prometheus.GaugeFunc
-
-	// CaptiveCoreSupportedProtocolVersion exposes the maximum protocol version
-	// supported by the running Captive-Core.
-	CaptiveCoreSupportedProtocolVersion prometheus.GaugeFunc
 }
 
 type System interface {
@@ -416,73 +405,6 @@ func (s *system) initMetrics() {
 		},
 		[]string{"name"},
 	)
-
-	s.metrics.LedgerFetchDurationSummary = prometheus.NewSummary(
-		prometheus.SummaryOpts{
-			Namespace: "horizon", Subsystem: "ingest", Name: "ledger_fetch_duration_seconds",
-			Help: "duration of fetching ledgers from ledger backend, sliding window = 10m",
-		},
-	)
-
-	s.metrics.CaptiveStellarCoreSynced = prometheus.NewGaugeFunc(
-		prometheus.GaugeOpts{
-			Namespace: "horizon", Subsystem: "ingest", Name: "captive_stellar_core_synced",
-			Help: "1 if sync, 0 if not synced, -1 if unable to connect or HTTP server disabled.",
-		},
-		func() float64 {
-			if !s.config.LocalCaptiveCoreEnabled() || // local captive core is disabled
-				(s.config.CaptiveCoreToml.HTTPPort == 0) { // captive core http port is disabled
-				return -1
-			}
-
-			client := stellarcore.Client{
-				HTTP: &http.Client{
-					Timeout: 2 * time.Second,
-				},
-				URL: fmt.Sprintf("http://localhost:%d", s.config.CaptiveCoreToml.HTTPPort),
-			}
-
-			info, err := client.Info(s.ctx)
-			if err != nil {
-				log.WithError(err).Error("Cannot connect to Captive Stellar-Core HTTP server")
-				return -1
-			}
-
-			if info.IsSynced() {
-				return 1
-			} else {
-				return 0
-			}
-		},
-	)
-
-	s.metrics.CaptiveCoreSupportedProtocolVersion = prometheus.NewGaugeFunc(
-		prometheus.GaugeOpts{
-			Namespace: "horizon", Subsystem: "ingest", Name: "captive_stellar_core_supported_protocol_version",
-			Help: "determines the supported version of the protocol by Captive-Core",
-		},
-		func() float64 {
-			if !s.config.LocalCaptiveCoreEnabled() || // local captive core is disabled
-				(s.config.CaptiveCoreToml.HTTPPort == 0) { // captive core http port is disabled
-				return -1
-			}
-
-			client := stellarcore.Client{
-				HTTP: &http.Client{
-					Timeout: 2 * time.Second,
-				},
-				URL: fmt.Sprintf("http://localhost:%d", s.config.CaptiveCoreToml.HTTPPort),
-			}
-
-			info, err := client.Info(s.ctx)
-			if err != nil {
-				log.WithError(err).Error("Cannot connect to Captive Stellar-Core HTTP server")
-				return -1
-			}
-
-			return float64(info.Info.ProtocolVersion)
-		},
-	)
 }
 
 func (s *system) GetCurrentState() State {
@@ -507,10 +429,8 @@ func (s *system) RegisterMetrics(registry *prometheus.Registry) {
 	registry.MustRegister(s.metrics.LedgerStatsCounter)
 	registry.MustRegister(s.metrics.ProcessorsRunDuration)
 	registry.MustRegister(s.metrics.ProcessorsRunDurationSummary)
-	registry.MustRegister(s.metrics.CaptiveStellarCoreSynced)
-	registry.MustRegister(s.metrics.CaptiveCoreSupportedProtocolVersion)
-	registry.MustRegister(s.metrics.LedgerFetchDurationSummary)
 	registry.MustRegister(s.metrics.StateVerifyLedgerEntriesCount)
+	s.ledgerBackend = ledgerbackend.WithMetrics(s.ledgerBackend, registry, "horizon")
 }
 
 // Run starts ingestion system. Ingestion system supports distributed ingestion
@@ -667,7 +587,7 @@ func (s *system) runStateMachine(cur stateMachineNode) error {
 				"current_state": cur,
 				"next_state":    next.node,
 			})
-			if isCancelledError(err) {
+			if isCancelledError(s.ctx, err) {
 				// We only expect context.Canceled errors to occur when horizon is shutting down
 				// so we log these errors using the info log level
 				logger.Info("Error in ingestion state machine")
@@ -700,7 +620,7 @@ func (s *system) runStateMachine(cur stateMachineNode) error {
 func (s *system) maybeVerifyState(lastIngestedLedger uint32) {
 	stateInvalid, err := s.historyQ.GetExpStateInvalid(s.ctx)
 	if err != nil {
-		if !isCancelledError(err) {
+		if !isCancelledError(s.ctx, err) {
 			log.WithField("err", err).Error("Error getting state invalid value")
 		}
 		return
@@ -716,7 +636,7 @@ func (s *system) maybeVerifyState(lastIngestedLedger uint32) {
 
 			err := s.verifyState(true)
 			if err != nil {
-				if isCancelledError(err) {
+				if isCancelledError(s.ctx, err) {
 					return
 				}
 
@@ -755,7 +675,7 @@ func (s *system) maybeReapLookupTables(lastIngestedLedger uint32) {
 		return
 	}
 
-	err = s.historyQ.Begin()
+	err = s.historyQ.Begin(s.ctx)
 	if err != nil {
 		log.WithField("err", err).Error("Error starting a transaction")
 		return
@@ -860,7 +780,8 @@ func markStateInvalid(ctx context.Context, historyQ history.IngestionQ, err erro
 	}
 }
 
-func isCancelledError(err error) bool {
+func isCancelledError(ctx context.Context, err error) bool {
 	cause := errors.Cause(err)
-	return cause == context.Canceled || cause == db.ErrCancelled
+	return cause == context.Canceled || cause == db.ErrCancelled ||
+		(ctx.Err() == context.Canceled && cause == db.ErrAlreadyRolledback)
 }
