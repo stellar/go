@@ -272,7 +272,7 @@ func TestTradeAggregations(t *testing.T) {
 	for _, scenario := range scenarios {
 		t.Run(scenario.name, func(t *testing.T) {
 			// Run each in a txn so the ids don't conflict.
-			assert.NoError(t, historyQ.Begin())
+			assert.NoError(t, historyQ.Begin(ctx))
 			defer func() {
 				assert.NoError(t, historyQ.Rollback())
 			}()

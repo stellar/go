@@ -50,6 +50,9 @@ type StatsLedgerTransactionProcessorResults struct {
 	OperationsSetTrustLineFlags             int64
 	OperationsLiquidityPoolDeposit          int64
 	OperationsLiquidityPoolWithdraw         int64
+	OperationsInvokeHostFunction            int64
+	OperationsBumpFootprintExpiration       int64
+	OperationsRestoreFootprint              int64
 }
 
 func (p *StatsLedgerTransactionProcessor) Flush(ctx context.Context, session db.SessionInterface) error {
@@ -120,6 +123,12 @@ func (p *StatsLedgerTransactionProcessor) ProcessTransaction(lcm xdr.LedgerClose
 			p.results.OperationsLiquidityPoolDeposit++
 		case xdr.OperationTypeLiquidityPoolWithdraw:
 			p.results.OperationsLiquidityPoolWithdraw++
+		case xdr.OperationTypeInvokeHostFunction:
+			p.results.OperationsInvokeHostFunction++
+		case xdr.OperationTypeBumpFootprintExpiration:
+			p.results.OperationsBumpFootprintExpiration++
+		case xdr.OperationTypeRestoreFootprint:
+			p.results.OperationsRestoreFootprint++
 		default:
 			panic(fmt.Sprintf("Unknown operation type: %d", op.Body.Type))
 		}
@@ -166,6 +175,7 @@ func (stats *StatsLedgerTransactionProcessorResults) Map() map[string]interface{
 		"stats_operations_clawback_claimable_balance":       stats.OperationsClawbackClaimableBalance,
 		"stats_operations_liquidity_pool_deposit":           stats.OperationsLiquidityPoolDeposit,
 		"stats_operations_liquidity_pool_withdraw":          stats.OperationsLiquidityPoolWithdraw,
+		"stats_operations_invoke_host_function":             stats.OperationsInvokeHostFunction,
 	}
 }
 

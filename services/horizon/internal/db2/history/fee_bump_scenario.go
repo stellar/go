@@ -248,7 +248,7 @@ func FeeBumpScenario(tt *test.T, q *Q, successful bool) FeeBumpFixture {
 		hash:          "edba3051b2f2d9b713e8a08709d631eccb72c59864ff3c564c68792271bb24a7",
 	})
 	ctx := context.Background()
-	tt.Assert.NoError(q.Begin())
+	tt.Assert.NoError(q.Begin(ctx))
 
 	insertBuilder := q.NewTransactionBatchInsertBuilder()
 	prefilterInsertBuilder := q.NewTransactionFilteredTmpBatchInsertBuilder()
@@ -280,6 +280,7 @@ func FeeBumpScenario(tt *test.T, q *Q, successful bool) FeeBumpFixture {
 		details,
 		account.Address(),
 		null.String{},
+		false,
 	))
 	tt.Assert.NoError(opBuilder.Exec(ctx, q))
 

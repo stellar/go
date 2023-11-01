@@ -8,8 +8,8 @@ fi
 rm -rf "$PGDATA"/* 
 sudo chown -R postgres "$PGDATA"
 sudo chmod -R 775 "$PGDATA"
-sudo -u postgres --preserve-env=PGDATA /usr/lib/postgresql/12/bin/initdb
-sudo -u postgres --preserve-env=PGDATA /usr/lib/postgresql/12/bin/pg_ctl start
+sudo -u postgres --preserve-env=PGDATA /usr/lib/postgresql/14/bin/initdb
+sudo -u postgres --preserve-env=PGDATA /usr/lib/postgresql/14/bin/pg_ctl start
 sudo -u postgres createdb horizon
 sudo -u postgres psql -c "ALTER USER postgres PASSWORD 'postgres';"
 
@@ -50,7 +50,8 @@ dump_horizon_db() {
 	echo "dumping history_ledgers"
 	psql "postgres://postgres:postgres@localhost:5432/horizon?sslmode=disable" -t -A -F"," --variable="FETCH_COUNT=100" -c "select sequence, ledger_hash, previous_ledger_hash, transaction_count, operation_count, closed_at, id, total_coins, fee_pool, base_fee, base_reserve, max_tx_set_size, protocol_version, ledger_header, successful_transaction_count, failed_transaction_count from history_ledgers order by sequence asc" > "${1}_ledgers"
 	echo "dumping history_operations"
-	psql "postgres://postgres:postgres@localhost:5432/horizon?sslmode=disable" -t -A -F"," --variable="FETCH_COUNT=100" -c "select * from history_operations order by id asc" > "${1}_operations"
+	# skip is_payment column which was only introduced in the most recent horizon v2.27.0
+	psql "postgres://postgres:postgres@localhost:5432/horizon?sslmode=disable" -t -A -F"," --variable="FETCH_COUNT=100" -c "select id, transaction_id, application_order, type, details, source_account, source_account_muxed from history_operations order by id asc" > "${1}_operations"
 	echo "dumping history_operation_claimable_balances"
 	psql "postgres://postgres:postgres@localhost:5432/horizon?sslmode=disable" -t -A -F"," --variable="FETCH_COUNT=100" -c "select history_operation_id, history_claimable_balance_id from history_operation_claimable_balances left join history_claimable_balances on history_claimable_balances.id = history_operation_claimable_balances.history_claimable_balance_id order by history_operation_id asc, id asc" > "${1}_operation_claimable_balances"
 	echo "dumping history_operation_participants"

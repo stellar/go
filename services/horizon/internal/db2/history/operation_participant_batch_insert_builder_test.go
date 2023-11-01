@@ -17,7 +17,7 @@ func TestAddOperationParticipants(t *testing.T) {
 
 	accountLoader := NewAccountLoader()
 	address := keypair.MustRandom().Address()
-	tt.Assert.NoError(q.Begin())
+	tt.Assert.NoError(q.Begin(tt.Ctx))
 	builder := q.NewOperationParticipantBatchInsertBuilder()
 	err := builder.Add(240518172673, accountLoader.GetFuture(address))
 	tt.Assert.NoError(err)

@@ -229,7 +229,7 @@ func TradeScenario(tt *test.T, q *Q) TradeFixtures {
 
 	inserts := createInsertTrades(accountIDs, assetIDs, poolIDs, 3)
 
-	tt.Assert.NoError(q.Begin())
+	tt.Assert.NoError(q.Begin(tt.Ctx))
 	tt.Assert.NoError(
 		builder.Add(inserts...),
 	)

@@ -5,13 +5,13 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-
 	"github.com/guregu/null"
 
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/protocols/horizon/base"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/support/contractevents"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/toid"
@@ -20,12 +20,14 @@ import (
 
 // OperationProcessor operations processor
 type OperationProcessor struct {
-	batch history.OperationBatchInsertBuilder
+	batch   history.OperationBatchInsertBuilder
+	network string
 }
 
-func NewOperationProcessor(batch history.OperationBatchInsertBuilder) *OperationProcessor {
+func NewOperationProcessor(batch history.OperationBatchInsertBuilder, network string) *OperationProcessor {
 	return &OperationProcessor{
-		batch: batch,
+		batch:   batch,
+		network: network,
 	}
 }
 
@@ -37,6 +39,7 @@ func (p *OperationProcessor) ProcessTransaction(lcm xdr.LedgerCloseMeta, transac
 			transaction:    transaction,
 			operation:      op,
 			ledgerSequence: lcm.LedgerSequence(),
+			network:        p.network,
 		}
 		details, err := operation.Details()
 		if err != nil {
@@ -62,6 +65,7 @@ func (p *OperationProcessor) ProcessTransaction(lcm xdr.LedgerCloseMeta, transac
 			detailsJSON,
 			acID.Address(),
 			sourceAccountMuxed,
+			operation.IsPayment(),
 		); err != nil {
 			return errors.Wrap(err, "Error batch inserting operation rows")
 		}
@@ -80,6 +84,7 @@ type transactionOperationWrapper struct {
 	transaction    ingest.LedgerTransaction
 	operation      xdr.Operation
 	ledgerSequence uint32
+	network        string
 }
 
 // ID returns the ID for the operation.
@@ -243,6 +248,45 @@ func (operation *transactionOperationWrapper) OperationResult() *xdr.OperationRe
 	results, _ := operation.transaction.Result.OperationResults()
 	tr := results[operation.index].MustTr()
 	return &tr
+}
+
+// Determines if an operation is qualified to represent a payment in horizon terms.
+func (operation *transactionOperationWrapper) IsPayment() bool {
+	switch operation.OperationType() {
+	case xdr.OperationTypeCreateAccount:
+		return true
+	case xdr.OperationTypePayment:
+		return true
+	case xdr.OperationTypePathPaymentStrictReceive:
+		return true
+	case xdr.OperationTypePathPaymentStrictSend:
+		return true
+	case xdr.OperationTypeAccountMerge:
+		return true
+	case xdr.OperationTypeInvokeHostFunction:
+		diagnosticEvents, err := operation.transaction.GetDiagnosticEvents()
+		if err != nil {
+			return false
+		}
+		// scan all the contract events for at least one SAC event, qualified to be a payment
+		// in horizon
+		for _, contractEvent := range filterEvents(diagnosticEvents) {
+			if sacEvent, err := contractevents.NewStellarAssetContractEvent(&contractEvent, operation.network); err == nil {
+				switch sacEvent.GetType() {
+				case contractevents.EventTypeTransfer:
+					return true
+				case contractevents.EventTypeMint:
+					return true
+				case contractevents.EventTypeClawback:
+					return true
+				case contractevents.EventTypeBurn:
+					return true
+				}
+			}
+		}
+	}
+
+	return false
 }
 
 func (operation *transactionOperationWrapper) findInitatingBeginSponsoringOp() *transactionOperationWrapper {
@@ -615,9 +659,68 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 			{Asset: assetA, Amount: amount.String(receivedA)},
 			{Asset: assetB, Amount: amount.String(receivedB)},
 		}
+	case xdr.OperationTypeInvokeHostFunction:
+		op := operation.operation.Body.MustInvokeHostFunctionOp()
+		details["function"] = op.HostFunction.Type.String()
 
+		switch op.HostFunction.Type {
+		case xdr.HostFunctionTypeHostFunctionTypeInvokeContract:
+			invokeArgs := op.HostFunction.MustInvokeContract()
+			args := make([]xdr.ScVal, 0, len(invokeArgs.Args)+2)
+			args = append(args, xdr.ScVal{Type: xdr.ScValTypeScvAddress, Address: &invokeArgs.ContractAddress})
+			args = append(args, xdr.ScVal{Type: xdr.ScValTypeScvSymbol, Sym: &invokeArgs.FunctionName})
+			args = append(args, invokeArgs.Args...)
+			params := make([]map[string]string, 0, len(args))
+
+			for _, param := range args {
+				serializedParam := map[string]string{}
+				serializedParam["value"] = "n/a"
+				serializedParam["type"] = "n/a"
+
+				if scValTypeName, ok := param.ArmForSwitch(int32(param.Type)); ok {
+					serializedParam["type"] = scValTypeName
+					if raw, err := param.MarshalBinary(); err == nil {
+						serializedParam["value"] = base64.StdEncoding.EncodeToString(raw)
+					}
+				}
+				params = append(params, serializedParam)
+			}
+			details["parameters"] = params
+
+			if balanceChanges, err := operation.parseAssetBalanceChangesFromContractEvents(); err != nil {
+				return nil, err
+			} else {
+				details["asset_balance_changes"] = balanceChanges
+			}
+
+		case xdr.HostFunctionTypeHostFunctionTypeCreateContract:
+			args := op.HostFunction.MustCreateContract()
+			switch args.ContractIdPreimage.Type {
+			case xdr.ContractIdPreimageTypeContractIdPreimageFromAddress:
+				fromAddress := args.ContractIdPreimage.MustFromAddress()
+				address, err := fromAddress.Address.String()
+				if err != nil {
+					panic(fmt.Errorf("error obtaining address for: %s", args.ContractIdPreimage.Type))
+				}
+				details["from"] = "address"
+				details["address"] = address
+				details["salt"] = fromAddress.Salt.String()
+			case xdr.ContractIdPreimageTypeContractIdPreimageFromAsset:
+				details["from"] = "asset"
+				details["asset"] = args.ContractIdPreimage.MustFromAsset().StringCanonical()
+			default:
+				panic(fmt.Errorf("unknown contract id type: %s", args.ContractIdPreimage.Type))
+			}
+		case xdr.HostFunctionTypeHostFunctionTypeUploadContractWasm:
+		default:
+			panic(fmt.Errorf("unknown host function type: %s", op.HostFunction.Type))
+		}
+	case xdr.OperationTypeBumpFootprintExpiration:
+		op := operation.operation.Body.MustBumpFootprintExpirationOp()
+		details["ledgers_to_expire"] = op.LedgersToExpire
+	case xdr.OperationTypeRestoreFootprint:
 	default:
-		panic(fmt.Errorf("Unknown operation type: %s", operation.OperationType()))
+		panic(fmt.Errorf("unknown operation type: %s", operation.OperationType()))
 	}
 
 	sponsor, err := operation.getSponsor()
@@ -629,6 +732,74 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 	}
 
 	return details, nil
+}
+
+// Searches an operation for SAC events that are of a type which represent
+// asset balances having changed.
+//
+// SAC events have a one-to-one association to SAC contract fn invocations.
+// i.e. invoke the 'mint' function, will trigger one Mint Event to be emitted capturing the fn args.
+//
+// SAC events that involve asset balance changes follow some standard data formats.
+// The 'amount' in the event is expressed as Int128Parts, which carries a sign, however it's expected
+// that value will not be signed as it represents a absolute delta, the event type can provide the
+// context of whether an amount was considered incremental or decremental, i.e. credit or debit to a balance.
+func (operation *transactionOperationWrapper) parseAssetBalanceChangesFromContractEvents() ([]map[string]interface{}, error) {
+	balanceChanges := []map[string]interface{}{}
+
+	diagnosticEvents, err := operation.transaction.GetDiagnosticEvents()
+	if err != nil {
+		// this operation in this context must be an InvokeHostFunctionOp, therefore V3Meta should be present
+		// as it's in same soroban model, so if any err, it's real,
+		return nil, err
+	}
+
+	for _, contractEvent := range filterEvents(diagnosticEvents) {
+		// Parse the xdr contract event to contractevents.StellarAssetContractEvent model
+
+		// has some convenience like to/from attributes are expressed in strkey format for accounts(G...) and contracts(C...)
+		if sacEvent, err := contractevents.NewStellarAssetContractEvent(&contractEvent, operation.network); err == nil {
+			switch sacEvent.GetType() {
+			case contractevents.EventTypeTransfer:
+				transferEvt := sacEvent.(*contractevents.TransferEvent)
+				balanceChanges = append(balanceChanges, createSACBalanceChangeEntry(transferEvt.From, transferEvt.To, transferEvt.Amount, transferEvt.Asset, "transfer"))
+			case contractevents.EventTypeMint:
+				mintEvt := sacEvent.(*contractevents.MintEvent)
+				balanceChanges = append(balanceChanges, createSACBalanceChangeEntry("", mintEvt.To, mintEvt.Amount, mintEvt.Asset, "mint"))
+			case contractevents.EventTypeClawback:
+				clawbackEvt := sacEvent.(*contractevents.ClawbackEvent)
+				balanceChanges = append(balanceChanges, createSACBalanceChangeEntry(clawbackEvt.From, "", clawbackEvt.Amount, clawbackEvt.Asset, "clawback"))
+			case contractevents.EventTypeBurn:
+				burnEvt := sacEvent.(*contractevents.BurnEvent)
+				balanceChanges = append(balanceChanges, createSACBalanceChangeEntry(burnEvt.From, "", burnEvt.Amount, burnEvt.Asset, "burn"))
+			}
+		}
+	}
+
+	return balanceChanges, nil
+}
+
+// fromAccount   - strkey format of contract or address
+// toAccount     - strkey format of contract or address, or nillable
+// amountChanged - absolute value that asset balance changed
+// asset         - the fully qualified issuer:code for asset that had balance change
+// changeType    - the type of source sac event that triggered this change
+//
+// return        - a balance changed record expressed as map of key/value's
+func createSACBalanceChangeEntry(fromAccount string, toAccount string, amountChanged xdr.Int128Parts, asset xdr.Asset, changeType string) map[string]interface{} {
+	balanceChange := map[string]interface{}{}
+
+	if fromAccount != "" {
+		balanceChange["from"] = fromAccount
+	}
+	if toAccount != "" {
+		balanceChange["to"] = toAccount
+	}
+
+	balanceChange["type"] = changeType
+	balanceChange["amount"] = amount.String128(amountChanged)
+	addAssetDetails(balanceChange, asset, "")
+	return balanceChange
 }
 
 func addLiquidityPoolAssetDetails(result map[string]interface{}, lpp xdr.LiquidityPoolParameters) error {
@@ -840,8 +1011,14 @@ func (operation *transactionOperationWrapper) Participants() ([]xdr.AccountId, e
 		// the only direct participant is the source_account
 	case xdr.OperationTypeLiquidityPoolWithdraw:
 		// the only direct participant is the source_account
+	case xdr.OperationTypeInvokeHostFunction:
+		// the only direct participant is the source_account
+	case xdr.OperationTypeBumpFootprintExpiration:
+		// the only direct participant is the source_account
+	case xdr.OperationTypeRestoreFootprint:
+		// the only direct participant is the source_account
 	default:
-		return participants, fmt.Errorf("Unknown operation type: %s", op.Body.Type)
+		return participants, fmt.Errorf("unknown operation type: %s", op.Body.Type)
 	}
 
 	sponsor, err := operation.getSponsor()

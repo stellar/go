@@ -19,7 +19,6 @@ import (
 
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/test"
-	"github.com/stellar/go/services/horizon/internal/txsub/sequence"
 	"github.com/stellar/go/xdr"
 )
 
@@ -42,9 +41,8 @@ func (suite *SystemTestSuite) SetupTest() {
 	suite.db = &mockDBQ{}
 
 	suite.system = &System{
-		Pending:         NewDefaultSubmissionList(),
-		Submitter:       suite.submitter,
-		SubmissionQueue: sequence.NewManager(),
+		Pending:   NewDefaultSubmissionList(),
+		Submitter: suite.submitter,
 		DB: func(ctx context.Context) HorizonDB {
 			return suite.db
 		},
@@ -124,11 +122,6 @@ func (suite *SystemTestSuite) TearDownTest() {
 
 // Returns the result provided by the ResultProvider.
 func (suite *SystemTestSuite) TestSubmit_Basic() {
-	suite.db.On("BeginTx", &sql.TxOptions{
-		Isolation: sql.LevelRepeatableRead,
-		ReadOnly:  true,
-	}).Return(nil).Once()
-	suite.db.On("Rollback").Return(nil).Once()
 	suite.db.On("PreFilteredTransactionByHash", suite.ctx, mock.Anything, suite.successTx.Transaction.TransactionHash).
 		Run(func(args mock.Arguments) {
 			ptr := args.Get(1).(*history.Transaction)
@@ -148,17 +141,12 @@ func (suite *SystemTestSuite) TestSubmit_Basic() {
 	assert.False(suite.T(), suite.submitter.WasSubmittedTo)
 }
 
-func (suite *SystemTestSuite) TestTimeoutDuringSequnceLoop() {
+func (suite *SystemTestSuite) TestTimeoutDuringSequenceLoop() {
 	var cancel context.CancelFunc
 	suite.ctx, cancel = context.WithTimeout(suite.ctx, time.Duration(0))
 	defer cancel()
 
 	suite.submitter.R = suite.badSeq
-	suite.db.On("BeginTx", &sql.TxOptions{
-		Isolation: sql.LevelRepeatableRead,
-		ReadOnly:  true,
-	}).Return(nil).Once()
-	suite.db.On("Rollback").Return(nil).Once()
 	suite.db.On("PreFilteredTransactionByHash", suite.ctx, mock.Anything, suite.successTx.Transaction.TransactionHash).
 		Return(sql.ErrNoRows).Once()
 	suite.db.On("TransactionByHash", suite.ctx, mock.Anything, suite.successTx.Transaction.TransactionHash).
@@ -178,16 +166,11 @@ func (suite *SystemTestSuite) TestTimeoutDuringSequnceLoop() {
 	assert.Equal(suite.T(), ErrTimeout, r.Err)
 }
 
-func (suite *SystemTestSuite) TestClientDisconnectedDuringSequnceLoop() {
+func (suite *SystemTestSuite) TestClientDisconnectedDuringSequenceLoop() {
 	var cancel context.CancelFunc
 	suite.ctx, cancel = context.WithCancel(suite.ctx)
 
 	suite.submitter.R = suite.badSeq
-	suite.db.On("BeginTx", &sql.TxOptions{
-		Isolation: sql.LevelRepeatableRead,
-		ReadOnly:  true,
-	}).Return(nil).Once()
-	suite.db.On("Rollback").Return(nil).Once()
 	suite.db.On("PreFilteredTransactionByHash", suite.ctx, mock.Anything, suite.successTx.Transaction.TransactionHash).
 		Return(sql.ErrNoRows).Once()
 	suite.db.On("TransactionByHash", suite.ctx, mock.Anything, suite.successTx.Transaction.TransactionHash).
@@ -196,7 +179,7 @@ func (suite *SystemTestSuite) TestClientDisconnectedDuringSequnceLoop() {
 	suite.db.On("GetSequenceNumbers", suite.ctx, []string{suite.unmuxedSource.Address()}).
 		Return(map[string]uint64{suite.unmuxedSource.Address(): 0}, nil).
 		Run(func(args mock.Arguments) {
-			// simulate client disconnecting while looping on sequnce number check
+			// simulate client disconnecting while looping on sequence number check
 			cancel()
 			suite.ctx.Deadline()
 		}).
@@ -226,19 +209,11 @@ func getMetricValue(metric prometheus.Metric) *dto.Metric {
 
 // Returns the error from submission if no result is found by hash and the suite.submitter returns an error.
 func (suite *SystemTestSuite) TestSubmit_NotFoundError() {
-	suite.db.On("BeginTx", &sql.TxOptions{
-		Isolation: sql.LevelRepeatableRead,
-		ReadOnly:  true,
-	}).Return(nil).Once()
-	suite.db.On("Rollback").Return(nil).Once()
 	suite.db.On("PreFilteredTransactionByHash", suite.ctx, mock.Anything, suite.successTx.Transaction.TransactionHash).
 		Return(sql.ErrNoRows).Once()
 	suite.db.On("TransactionByHash", suite.ctx, mock.Anything, suite.successTx.Transaction.TransactionHash).
 		Return(sql.ErrNoRows).Once()
 	suite.db.On("NoRows", sql.ErrNoRows).Return(true).Twice()
-	suite.db.On("GetSequenceNumbers", suite.ctx, []string{suite.unmuxedSource.Address()}).
-		Return(map[string]uint64{suite.unmuxedSource.Address(): 0}, nil).
-		Once()
 
 	suite.submitter.R.Err = errors.New("busted for some reason")
 	r := <-suite.system.Submit(
@@ -258,11 +233,6 @@ func (suite *SystemTestSuite) TestSubmit_NotFoundError() {
 // If the error is bad_seq and the result at the transaction's sequence number is for the same hash, return result.
 func (suite *SystemTestSuite) TestSubmit_BadSeq() {
 	suite.submitter.R = suite.badSeq
-	suite.db.On("BeginTx", &sql.TxOptions{
-		Isolation: sql.LevelRepeatableRead,
-		ReadOnly:  true,
-	}).Return(nil).Once()
-	suite.db.On("Rollback").Return(nil).Once()
 	suite.db.On("NoRows", sql.ErrNoRows).Return(true).Once()
 	suite.db.On("GetSequenceNumbers", suite.ctx, []string{suite.unmuxedSource.Address()}).
 		Return(map[string]uint64{suite.unmuxedSource.Address(): 0}, nil).
@@ -298,11 +268,6 @@ func (suite *SystemTestSuite) TestSubmit_BadSeq() {
 // If error is bad_seq and no result is found, return error.
 func (suite *SystemTestSuite) TestSubmit_BadSeqNotFound() {
 	suite.submitter.R = suite.badSeq
-	suite.db.On("BeginTx", &sql.TxOptions{
-		Isolation: sql.LevelRepeatableRead,
-		ReadOnly:  true,
-	}).Return(nil).Once()
-	suite.db.On("Rollback").Return(nil).Once()
 	suite.db.On("PreFilteredTransactionByHash", suite.ctx, mock.Anything, suite.successTx.Transaction.TransactionHash).
 		Return(sql.ErrNoRows).Twice()
 	suite.db.On("NoRows", sql.ErrNoRows).Return(true).Twice()
@@ -333,19 +298,11 @@ func (suite *SystemTestSuite) TestSubmit_BadSeqNotFound() {
 
 // If no result found and no error submitting, add to open transaction list.
 func (suite *SystemTestSuite) TestSubmit_OpenTransactionList() {
-	suite.db.On("BeginTx", &sql.TxOptions{
-		Isolation: sql.LevelRepeatableRead,
-		ReadOnly:  true,
-	}).Return(nil).Once()
-	suite.db.On("Rollback").Return(nil).Once()
 	suite.db.On("PreFilteredTransactionByHash", suite.ctx, mock.Anything, suite.successTx.Transaction.TransactionHash).
 		Return(sql.ErrNoRows).Once()
 	suite.db.On("TransactionByHash", suite.ctx, mock.Anything, suite.successTx.Transaction.TransactionHash).
 		Return(sql.ErrNoRows).Once()
 	suite.db.On("NoRows", sql.ErrNoRows).Return(true).Twice()
-	suite.db.On("GetSequenceNumbers", suite.ctx, []string{suite.unmuxedSource.Address()}).
-		Return(map[string]uint64{suite.unmuxedSource.Address(): 0}, nil).
-		Once()
 
 	suite.system.Submit(
 		suite.ctx,
@@ -353,7 +310,7 @@ func (suite *SystemTestSuite) TestSubmit_OpenTransactionList() {
 		suite.successXDR,
 		suite.successTx.Transaction.TransactionHash,
 	)
-	pending := suite.system.Pending.Pending(suite.ctx)
+	pending := suite.system.Pending.Pending()
 	assert.Equal(suite.T(), 1, len(pending))
 	assert.Equal(suite.T(), suite.successTx.Transaction.TransactionHash, pending[0])
 	assert.Equal(suite.T(), float64(1), getMetricValue(suite.system.Metrics.SuccessfulSubmissionsCounter).GetCounter().GetValue())
@@ -363,36 +320,11 @@ func (suite *SystemTestSuite) TestSubmit_OpenTransactionList() {
 
 // Tick should be a no-op if there are no open submissions.
 func (suite *SystemTestSuite) TestTick_Noop() {
-	suite.db.On("BeginTx", &sql.TxOptions{
+	suite.db.On("BeginTx", mock.AnythingOfType("*context.valueCtx"), &sql.TxOptions{
 		Isolation: sql.LevelRepeatableRead,
 		ReadOnly:  true,
 	}).Return(nil).Once()
 	suite.db.On("Rollback").Return(nil).Once()
-
-	suite.system.Tick(suite.ctx)
-}
-
-// TestTick_Deadlock is a regression test for Tick() deadlock: if for any reason
-// call to Tick() takes more time and another Tick() is called.
-// This test starts two go routines: both calling Tick() but the call to
-// `sys.Sequences.Get(addys)` is delayed by 1 second. It allows to simulate two
-// calls to `Tick()` executed at the same time.
-func (suite *SystemTestSuite) TestTick_Deadlock() {
-	suite.db.On("BeginTx", &sql.TxOptions{
-		Isolation: sql.LevelRepeatableRead,
-		ReadOnly:  true,
-	}).Return(nil).Once()
-	suite.db.On("Rollback").Return(nil).Once()
-
-	// Start first Tick
-	suite.system.SubmissionQueue.Push("address", 0, nil)
-	suite.db.On("GetSequenceNumbers", suite.ctx, []string{"address"}).
-		Return(map[string]uint64{}, nil).
-		Run(func(args mock.Arguments) {
-			// Start second tick
-			suite.system.Tick(suite.ctx)
-		}).
-		Once()
 
 	suite.system.Tick(suite.ctx)
 }
@@ -400,9 +332,9 @@ func (suite *SystemTestSuite) TestTick_Deadlock() {
 // Test that Tick finishes any available transactions,
 func (suite *SystemTestSuite) TestTick_FinishesTransactions() {
 	l := make(chan Result, 1)
-	suite.system.Pending.Add(suite.ctx, suite.successTx.Transaction.TransactionHash, l)
+	suite.system.Pending.Add(suite.successTx.Transaction.TransactionHash, l)
 
-	suite.db.On("BeginTx", &sql.TxOptions{
+	suite.db.On("BeginTx", mock.AnythingOfType("*context.valueCtx"), &sql.TxOptions{
 		Isolation: sql.LevelRepeatableRead,
 		ReadOnly:  true,
 	}).Return(nil).Once()
@@ -414,9 +346,9 @@ func (suite *SystemTestSuite) TestTick_FinishesTransactions() {
 	suite.system.Tick(suite.ctx)
 
 	assert.Equal(suite.T(), 0, len(l))
-	assert.Equal(suite.T(), 1, len(suite.system.Pending.Pending(suite.ctx)))
+	assert.Equal(suite.T(), 1, len(suite.system.Pending.Pending()))
 
-	suite.db.On("BeginTx", &sql.TxOptions{
+	suite.db.On("BeginTx", mock.AnythingOfType("*context.valueCtx"), &sql.TxOptions{
 		Isolation: sql.LevelRepeatableRead,
 		ReadOnly:  true,
 	}).Return(nil).Once()
@@ -427,7 +359,7 @@ func (suite *SystemTestSuite) TestTick_FinishesTransactions() {
 	suite.system.Tick(suite.ctx)
 
 	assert.Equal(suite.T(), 1, len(l))
-	assert.Equal(suite.T(), 0, len(suite.system.Pending.Pending(suite.ctx)))
+	assert.Equal(suite.T(), 0, len(suite.system.Pending.Pending()))
 }
 
 func (suite *SystemTestSuite) TestTickFinishFeeBumpTransaction() {
@@ -450,25 +382,17 @@ func (suite *SystemTestSuite) TestTickFinishFeeBumpTransaction() {
 		},
 	}
 
-	suite.db.On("BeginTx", &sql.TxOptions{
-		Isolation: sql.LevelRepeatableRead,
-		ReadOnly:  true,
-	}).Return(nil).Once()
-	suite.db.On("Rollback").Return(nil).Once()
 	suite.db.On("PreFilteredTransactionByHash", suite.ctx, mock.Anything, innerHash).
 		Return(sql.ErrNoRows).Once()
 	suite.db.On("TransactionByHash", suite.ctx, mock.Anything, innerHash).
 		Return(sql.ErrNoRows).Once()
 	suite.db.On("NoRows", sql.ErrNoRows).Return(true).Twice()
-	suite.db.On("GetSequenceNumbers", suite.ctx, []string{"GABQGAYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB2MX"}).
-		Return(map[string]uint64{"GABQGAYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB2MX": 96}, nil).
-		Once()
 
 	l := suite.system.Submit(suite.ctx, innerTxEnvelope, parsedInnerTx, innerHash)
 	assert.Equal(suite.T(), 0, len(l))
-	assert.Equal(suite.T(), 1, len(suite.system.Pending.Pending(suite.ctx)))
+	assert.Equal(suite.T(), 1, len(suite.system.Pending.Pending()))
 
-	suite.db.On("BeginTx", &sql.TxOptions{
+	suite.db.On("BeginTx", mock.AnythingOfType("*context.valueCtx"), &sql.TxOptions{
 		Isolation: sql.LevelRepeatableRead,
 		ReadOnly:  true,
 	}).Return(nil).Once()
@@ -479,7 +403,7 @@ func (suite *SystemTestSuite) TestTickFinishFeeBumpTransaction() {
 	suite.system.Tick(suite.ctx)
 
 	assert.Equal(suite.T(), 1, len(l))
-	assert.Equal(suite.T(), 0, len(suite.system.Pending.Pending(suite.ctx)))
+	assert.Equal(suite.T(), 0, len(suite.system.Pending.Pending()))
 	r := <-l
 	assert.NoError(suite.T(), r.Err)
 	assert.Equal(suite.T(), feeBumpTx, r)
@@ -489,10 +413,10 @@ func (suite *SystemTestSuite) TestTickFinishFeeBumpTransaction() {
 func (suite *SystemTestSuite) TestTick_RemovesStaleSubmissions() {
 	l := make(chan Result, 1)
 	suite.system.SubmissionTimeout = 100 * time.Millisecond
-	suite.system.Pending.Add(suite.ctx, suite.successTx.Transaction.TransactionHash, l)
+	suite.system.Pending.Add(suite.successTx.Transaction.TransactionHash, l)
 	<-time.After(101 * time.Millisecond)
 
-	suite.db.On("BeginTx", &sql.TxOptions{
+	suite.db.On("BeginTx", mock.AnythingOfType("*context.valueCtx"), &sql.TxOptions{
 		Isolation: sql.LevelRepeatableRead,
 		ReadOnly:  true,
 	}).Return(nil).Once()
@@ -503,7 +427,7 @@ func (suite *SystemTestSuite) TestTick_RemovesStaleSubmissions() {
 
 	suite.system.Tick(suite.ctx)
 
-	assert.Equal(suite.T(), 0, len(suite.system.Pending.Pending(suite.ctx)))
+	assert.Equal(suite.T(), 0, len(suite.system.Pending.Pending()))
 	assert.Equal(suite.T(), 1, len(l))
 	<-l
 	select {

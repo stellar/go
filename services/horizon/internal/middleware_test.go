@@ -285,7 +285,7 @@ func TestStateMiddleware(t *testing.T) {
 			stateMiddleware.NoStateVerification = testCase.noStateVerification
 			tt.Assert.NoError(q.UpdateExpStateInvalid(context.Background(), testCase.stateInvalid))
 
-			tt.Assert.NoError(q.Begin())
+			tt.Assert.NoError(q.Begin(tt.Ctx))
 			ledgerBatch := q.NewLedgerBatchInsertBuilder()
 			err = ledgerBatch.Add(xdr.LedgerHeaderHistoryEntry{
 				Hash: xdr.Hash{byte(i)},

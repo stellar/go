@@ -181,8 +181,14 @@ func (p *TradeProcessor) findOperationChange(tx ingest.LedgerTransaction, opidx 
 	var change ingest.Change
 	for i := len(changes) - 1; i >= 0; i-- {
 		change = changes[i]
-		if change.Pre != nil && key.Equals(change.Pre.LedgerKey()) {
-			return change, nil
+		if change.Pre != nil {
+			preKey, err := change.Pre.LedgerKey()
+			if err != nil {
+				return ingest.Change{}, errors.Wrap(err, "could not determine ledger key for change")
+			}
+			if key.Equals(preKey) {
+				return change, nil
+			}
 		}
 	}
 	return ingest.Change{}, errors.Errorf("could not find operation for key %v", key)
@@ -251,8 +257,8 @@ func (p *TradeProcessor) roundingSlippage(
 		)
 		if !ok {
 			// Temporary workaround for https://github.com/stellar/go/issues/4203
-			// Give strict receives that would underflow here, maximum slippage so
-			// they get excluded.
+			// Given strict receives that would underflow here, set maximum
+			// slippage so they get excluded.
 			roundingSlippageBips = xdr.Int64(math.MaxInt64)
 		}
 		return null.IntFrom(int64(roundingSlippageBips)), nil
@@ -266,7 +272,10 @@ func (p *TradeProcessor) roundingSlippage(
 			true,
 		)
 		if !ok {
-			return null.Int{}, errors.New("Liquidity pool overflows from this exchange")
+			// Temporary workaround for https://github.com/stellar/go/issues/4203
+			// Given strict sends that would overflow here, set maximum slippage
+			// so they get excluded.
+			roundingSlippageBips = xdr.Int64(math.MaxInt64)
 		}
 		return null.IntFrom(int64(roundingSlippageBips)), nil
 	default:

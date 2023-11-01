@@ -24,7 +24,7 @@ func TestOfferActions_Show(t *testing.T) {
 	ht.Assert.NoError(err)
 
 	ledgerCloseTime := time.Now().Unix()
-	ht.Assert.NoError(q.Begin())
+	ht.Assert.NoError(q.Begin(ctx))
 	ledgerBatch := q.NewLedgerBatchInsertBuilder()
 	err = ledgerBatch.Add(xdr.LedgerHeaderHistoryEntry{
 		Header: xdr.LedgerHeader{

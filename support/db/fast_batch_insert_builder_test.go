@@ -22,7 +22,7 @@ func TestFastBatchInsertBuilder(t *testing.T) {
 		insertBuilder.Row(map[string]interface{}{
 			"name":         "bubba",
 			"hunger_level": "1",
-			"json_value":   []byte(`{"bump_to": "97"}`),
+			"json_value":   `{"bump_to": "97"}`,
 		}),
 	)
 
@@ -37,7 +37,7 @@ func TestFastBatchInsertBuilder(t *testing.T) {
 		insertBuilder.Row(map[string]interface{}{
 			"name":       "bubba",
 			"city":       "London",
-			"json_value": []byte(`{"bump_to": "98"}`),
+			"json_value": `{"bump_to": "98"}`,
 		}),
 		"column \"hunger_level\" does not exist",
 	)
@@ -46,7 +46,7 @@ func TestFastBatchInsertBuilder(t *testing.T) {
 		insertBuilder.RowStruct(hungerRow{
 			Name:        "bubba2",
 			HungerLevel: "9",
-			JsonValue:   []byte(`{"bump_to": "98"}`),
+			JsonValue:   `{"bump_to": "98"}`,
 		}),
 	)
 
@@ -61,14 +61,15 @@ func TestFastBatchInsertBuilder(t *testing.T) {
 	assert.Equal(t, 2, insertBuilder.Len())
 	assert.Equal(t, false, insertBuilder.sealed)
 
+	ctx := context.Background()
 	assert.EqualError(t,
-		insertBuilder.Exec(context.Background(), sess, "people"),
+		insertBuilder.Exec(ctx, sess, "people"),
 		"cannot call Exec() outside of a transaction",
 	)
 	assert.Equal(t, true, insertBuilder.sealed)
 
-	assert.NoError(t, sess.Begin())
-	assert.NoError(t, insertBuilder.Exec(context.Background(), sess, "people"))
+	assert.NoError(t, sess.Begin(ctx))
+	assert.NoError(t, insertBuilder.Exec(ctx, sess, "people"))
 	assert.Equal(t, 2, insertBuilder.Len())
 	assert.Equal(t, true, insertBuilder.sealed)
 
