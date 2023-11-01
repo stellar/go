@@ -22,7 +22,7 @@ func TestFastBatchInsertBuilder(t *testing.T) {
 		insertBuilder.Row(map[string]interface{}{
 			"name":         "bubba",
 			"hunger_level": "1",
-			"json_value":   []byte(`{"bump_to": "97"}`),
+			"json_value":   `{"bump_to": "97"}`,
 		}),
 	)
 
@@ -37,7 +37,7 @@ func TestFastBatchInsertBuilder(t *testing.T) {
 		insertBuilder.Row(map[string]interface{}{
 			"name":       "bubba",
 			"city":       "London",
-			"json_value": []byte(`{"bump_to": "98"}`),
+			"json_value": `{"bump_to": "98"}`,
 		}),
 		"column \"hunger_level\" does not exist",
 	)
@@ -46,7 +46,7 @@ func TestFastBatchInsertBuilder(t *testing.T) {
 		insertBuilder.RowStruct(hungerRow{
 			Name:        "bubba2",
 			HungerLevel: "9",
-			JsonValue:   []byte(`{"bump_to": "98"}`),
+			JsonValue:   `{"bump_to": "98"}`,
 		}),
 	)
 
