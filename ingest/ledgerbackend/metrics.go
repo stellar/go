@@ -17,7 +17,8 @@ func WithMetrics(base LedgerBackend, registry *prometheus.Registry, namespace st
 	summary := prometheus.NewSummary(
 		prometheus.SummaryOpts{
 			Namespace: namespace, Subsystem: "ingest", Name: "ledger_fetch_duration_seconds",
-			Help: "duration of fetching ledgers from ledger backend, sliding window = 10m",
+			Help:       "duration of fetching ledgers from ledger backend, sliding window = 10m",
+			Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
 		},
 	)
 	registry.MustRegister(summary)
