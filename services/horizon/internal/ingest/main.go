@@ -299,6 +299,7 @@ func NewSystem(config Config) (System, error) {
 			ctx:            ctx,
 			config:         config,
 			historyQ:       historyQ,
+			session:        historyQ,
 			historyAdapter: historyAdapter,
 			filters:        filters,
 		},

@@ -5,6 +5,7 @@ import (
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/guregu/null"
+
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/toid"
@@ -77,8 +78,10 @@ func TestOperationByLiquidityPool(t *testing.T) {
 	opID1 := toid.New(sequence, txIndex, 1).ToInt64()
 	opID2 := toid.New(sequence, txIndex, 2).ToInt64()
 
+	tt.Assert.NoError(q.Begin(tt.Ctx))
+
 	// Insert a phony transaction
-	transactionBuilder := q.NewTransactionBatchInsertBuilder(2)
+	transactionBuilder := q.NewTransactionBatchInsertBuilder()
 	firstTransaction := buildLedgerTransaction(tt.T, testTransaction{
 		index:         uint32(txIndex),
 		envelopeXDR:   "AAAAACiSTRmpH6bHC6Ekna5e82oiGY5vKDEEUgkq9CB//t+rAAAAyAEXUhsAADDRAAAAAAAAAAAAAAABAAAAAAAAAAsBF1IbAABX4QAAAAAAAAAA",
@@ -87,15 +90,14 @@ func TestOperationByLiquidityPool(t *testing.T) {
 		metaXDR:       "AAAAAQAAAAAAAAAA",
 		hash:          "19aaa18db88605aedec04659fb45e06f240b022eb2d429e05133e4d53cd945ba",
 	})
-	err := transactionBuilder.Add(tt.Ctx, firstTransaction, uint32(sequence))
+	err := transactionBuilder.Add(firstTransaction, uint32(sequence))
 	tt.Assert.NoError(err)
-	err = transactionBuilder.Exec(tt.Ctx)
+	err = transactionBuilder.Exec(tt.Ctx, q)
 	tt.Assert.NoError(err)
 
 	// Insert a two phony operations
-	operationBuilder := q.NewOperationBatchInsertBuilder(2)
+	operationBuilder := q.NewOperationBatchInsertBuilder()
 	err = operationBuilder.Add(
-		tt.Ctx,
 		opID1,
 		txID,
 		1,
@@ -106,11 +108,8 @@ func TestOperationByLiquidityPool(t *testing.T) {
 		false,
 	)
 	tt.Assert.NoError(err)
-	err = operationBuilder.Exec(tt.Ctx)
-	tt.Assert.NoError(err)
 
 	err = operationBuilder.Add(
-		tt.Ctx,
 		opID2,
 		txID,
 		1,
@@ -121,23 +120,20 @@ func TestOperationByLiquidityPool(t *testing.T) {
 		false,
 	)
 	tt.Assert.NoError(err)
-	err = operationBuilder.Exec(tt.Ctx)
+	err = operationBuilder.Exec(tt.Ctx, q)
 	tt.Assert.NoError(err)
 
 	// Insert Liquidity Pool history
 	liquidityPoolID := "a2f38836a839de008cf1d782c81f45e1253cc5d3dad9110b872965484fec0a49"
-	toInternalID, err := q.CreateHistoryLiquidityPools(tt.Ctx, []string{liquidityPoolID}, 2)
-	tt.Assert.NoError(err)
-	lpOperationBuilder := q.NewOperationLiquidityPoolBatchInsertBuilder(3)
-	tt.Assert.NoError(err)
-	internalID, ok := toInternalID[liquidityPoolID]
-	tt.Assert.True(ok)
-	err = lpOperationBuilder.Add(tt.Ctx, opID1, internalID)
-	tt.Assert.NoError(err)
-	err = lpOperationBuilder.Add(tt.Ctx, opID2, internalID)
-	tt.Assert.NoError(err)
-	err = lpOperationBuilder.Exec(tt.Ctx)
-	tt.Assert.NoError(err)
+	lpLoader := NewLiquidityPoolLoader()
+
+	lpOperationBuilder := q.NewOperationLiquidityPoolBatchInsertBuilder()
+	tt.Assert.NoError(lpOperationBuilder.Add(opID1, lpLoader.GetFuture(liquidityPoolID)))
+	tt.Assert.NoError(lpOperationBuilder.Add(opID2, lpLoader.GetFuture(liquidityPoolID)))
+	tt.Assert.NoError(lpLoader.Exec(tt.Ctx, q))
+	tt.Assert.NoError(lpOperationBuilder.Exec(tt.Ctx, q))
+
+	tt.Assert.NoError(q.Commit())
 
 	// Check ascending order
 	pq := db2.PageQuery{

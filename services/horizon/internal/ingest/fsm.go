@@ -457,6 +457,7 @@ func (r resumeState) run(s *system) (transition, error) {
 
 		// Update cursor if there's more than one ingesting instance: either
 		// Captive-Core or DB ingestion connected to another Stellar-Core.
+		// remove now?
 		if err = s.updateCursor(lastIngestedLedger); err != nil {
 			// Don't return updateCursor error.
 			log.WithError(err).Warn("error updating stellar-core cursor")
@@ -522,6 +523,7 @@ func (r resumeState) run(s *system) (transition, error) {
 		return retryResume(r), err
 	}
 
+	//TODO remove now? stellar-core-db-url is removed
 	if err = s.updateCursor(ingestLedger); err != nil {
 		// Don't return updateCursor error.
 		log.WithError(err).Warn("error updating stellar-core cursor")

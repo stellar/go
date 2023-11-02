@@ -275,11 +275,11 @@ type IngestionQ interface {
 	// QParticipants
 	// Copy the small interfaces with shared methods directly, otherwise error:
 	// duplicate method CreateAccounts
-	NewTransactionParticipantsBatchInsertBuilder(maxBatchSize int) TransactionParticipantsBatchInsertBuilder
-	NewOperationParticipantBatchInsertBuilder(maxBatchSize int) OperationParticipantBatchInsertBuilder
+	NewTransactionParticipantsBatchInsertBuilder() TransactionParticipantsBatchInsertBuilder
+	NewOperationParticipantBatchInsertBuilder() OperationParticipantBatchInsertBuilder
 	QSigners
 	//QTrades
-	NewTradeBatchInsertBuilder(maxBatchSize int) TradeBatchInsertBuilder
+	NewTradeBatchInsertBuilder() TradeBatchInsertBuilder
 	RebuildTradeAggregationTimes(ctx context.Context, from, to strtime.Millis, roundingSlippageFilter int) error
 	RebuildTradeAggregationBuckets(ctx context.Context, fromLedger, toLedger uint32, roundingSlippageFilter int) error
 	ReapLookupTables(ctx context.Context, offsets map[string]int64) (map[string]int64, map[string]int64, error)

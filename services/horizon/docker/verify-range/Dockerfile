@@ -6,7 +6,7 @@ ENV STELLAR_CORE_VERSION=${STELLAR_CORE_VERSION:-*}
 ENV DEBIAN_FRONTEND=noninteractive
 
 ADD dependencies /
-RUN ["chmod", "+x", "dependencies"]
+RUN ["chmod", "+x", "/dependencies"]
 RUN /dependencies
 
 ADD stellar-core.cfg /
