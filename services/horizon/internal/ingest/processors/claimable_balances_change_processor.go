@@ -81,8 +81,10 @@ func (p *ClaimableBalancesChangeProcessor) Commit(ctx context.Context) error {
 		}
 	}
 
-	if err := p.InsertClaimableBalanceAndClaimants(ctx, cbsToInsert); err != nil {
-		return errors.Wrap(err, "error inserting claimable balance")
+	if len(cbsToInsert) > 0 {
+		if err := p.insertClaimableBalancesAndClaimants(ctx, cbsToInsert); err != nil {
+			return errors.Wrap(err, "error inserting claimable balance")
+		}
 	}
 
 	if len(cbIDsToDelete) > 0 {
@@ -108,19 +110,18 @@ func (p *ClaimableBalancesChangeProcessor) Commit(ctx context.Context) error {
 	return nil
 }
 
-func (p *ClaimableBalancesChangeProcessor) InsertClaimableBalanceAndClaimants(ctx context.Context, claimableBalances []history.ClaimableBalance) error {
-	if len(claimableBalances) == 0 {
-		return nil
-	}
-
+func (p *ClaimableBalancesChangeProcessor) insertClaimableBalancesAndClaimants(ctx context.Context,
+	claimableBalances []history.ClaimableBalance) error {
 	defer p.claimantsInsertBuilder.Reset()
 	defer p.claimableBalanceInsertBuilder.Reset()
 
 	for _, cb := range claimableBalances {
 
+		// Add claimable balance
 		if err := p.claimableBalanceInsertBuilder.Add(cb); err != nil {
-			return errors.Wrap(err, "error executing insert")
+			return errors.Wrap(err, "error adding to ClaimableBalanceBatchInsertBuilder")
 		}
+
 		// Add claimants
 		for _, claimant := range cb.Claimants {
 			claimant := history.ClaimableBalanceClaimant{
@@ -130,19 +131,19 @@ func (p *ClaimableBalancesChangeProcessor) InsertClaimableBalanceAndClaimants(ct
 			}
 
 			if err := p.claimantsInsertBuilder.Add(claimant); err != nil {
-				return errors.Wrap(err, "error adding to claimantsInsertBuilder")
+				return errors.Wrap(err, "error adding to ClaimableBalanceClaimantBatchInsertBuilder")
 			}
 		}
 	}
 
 	err := p.claimantsInsertBuilder.Exec(ctx, p.session)
 	if err != nil {
-		return errors.Wrap(err, "error executing claimableBalanceInsertBuilder")
+		return errors.Wrap(err, "error executing ClaimableBalanceClaimantBatchInsertBuilder")
 	}
 
 	err = p.claimableBalanceInsertBuilder.Exec(ctx, p.session)
 	if err != nil {
-		return errors.Wrap(err, "error executing claimantsInsertBuilder")
+		return errors.Wrap(err, "error executing ClaimableBalanceBatchInsertBuilder")
 	}
 	return nil
 }

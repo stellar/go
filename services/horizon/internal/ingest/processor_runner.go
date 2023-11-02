@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/stellar/go/support/db"
 	"time"
 
 	"github.com/stellar/go/ingest"
@@ -407,10 +406,7 @@ func (s *ProcessorRunner) RunAllProcessorsOnLedger(ledger xdr.LedgerCloseMeta) (
 
 	groupChangeProcessors := buildChangeProcessor(
 		s.historyQ,
-<<<<<<< HEAD
-=======
 		s.session,
->>>>>>> 8f1836b1 (Use FastBatchInsertBuilder to insert to insert into claimable_balances and claimable_balance_claimants tables)
 		&changeStatsProcessor,
 		ledgerSource,
 		ledger.LedgerSequence(),

@@ -200,7 +200,7 @@ func TestProcessorRunnerBuildChangeProcessor(t *testing.T) {
 	}
 
 	stats := &ingest.StatsChangeProcessor{}
-	processor := buildChangeProcessor(runner.historyQ, stats, ledgerSource, 123, "")
+	processor := buildChangeProcessor(runner.historyQ, &db.MockSession{}, stats, ledgerSource, 123, "")
 	assert.IsType(t, &groupChangeProcessors{}, processor)
 
 	assert.IsType(t, &statsChangeProcessor{}, processor.processors[0])
@@ -221,11 +221,7 @@ func TestProcessorRunnerBuildChangeProcessor(t *testing.T) {
 		filters:  &MockFilters{},
 	}
 
-<<<<<<< HEAD
-	processor = buildChangeProcessor(runner.historyQ, stats, historyArchiveSource, 456, "")
-=======
 	processor = buildChangeProcessor(runner.historyQ, &db.MockSession{}, stats, historyArchiveSource, 456, "")
->>>>>>> 8f1836b1 (Use FastBatchInsertBuilder to insert to insert into claimable_balances and claimable_balance_claimants tables)
 	assert.IsType(t, &groupChangeProcessors{}, processor)
 
 	assert.IsType(t, &statsChangeProcessor{}, processor.processors[0])

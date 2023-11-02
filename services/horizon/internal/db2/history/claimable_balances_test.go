@@ -3,9 +3,9 @@ package history
 import (
 	"database/sql"
 	"fmt"
+	"github.com/guregu/null"
 	"testing"
 
-	"github.com/guregu/null"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/xdr"
@@ -16,7 +16,7 @@ func TestRemoveClaimableBalance(t *testing.T) {
 	defer tt.Finish()
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
-	tt.Assert.NoError(q.SessionInterface.BeginTx(&sql.TxOptions{}))
+	tt.Assert.NoError(q.SessionInterface.BeginTx(tt.Ctx, &sql.TxOptions{}))
 	defer func() {
 		_ = q.SessionInterface.Rollback()
 	}()
@@ -69,7 +69,7 @@ func TestRemoveClaimableBalanceClaimants(t *testing.T) {
 	defer tt.Finish()
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
-	tt.Assert.NoError(q.SessionInterface.BeginTx(&sql.TxOptions{}))
+	tt.Assert.NoError(q.SessionInterface.BeginTx(tt.Ctx, &sql.TxOptions{}))
 	defer func() {
 		_ = q.SessionInterface.Rollback()
 	}()
@@ -112,7 +112,7 @@ func TestFindClaimableBalancesByDestination(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	tt.Assert.NoError(q.SessionInterface.BeginTx(&sql.TxOptions{}))
+	tt.Assert.NoError(q.SessionInterface.BeginTx(tt.Ctx, &sql.TxOptions{}))
 	defer func() {
 		_ = q.SessionInterface.Rollback()
 	}()
@@ -409,9 +409,7 @@ func TestFindClaimableBalance(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	q.SessionInterface.BeginTx(tt.Ctx, &sql.TxOptions{})
-	defer q.SessionInterface.Rollback()
-	tt.Assert.NoError(q.SessionInterface.BeginTx(&sql.TxOptions{}))
+	tt.Assert.NoError(q.SessionInterface.BeginTx(tt.Ctx, &sql.TxOptions{}))
 	defer func() {
 		_ = q.SessionInterface.Rollback()
 	}()
@@ -460,9 +458,7 @@ func TestGetClaimableBalancesByID(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	q.SessionInterface.BeginTx(tt.Ctx, &sql.TxOptions{})
-	defer q.SessionInterface.Rollback()
-	tt.Assert.NoError(q.SessionInterface.BeginTx(&sql.TxOptions{}))
+	tt.Assert.NoError(q.SessionInterface.BeginTx(tt.Ctx, &sql.TxOptions{}))
 	defer func() {
 		_ = q.SessionInterface.Rollback()
 	}()
