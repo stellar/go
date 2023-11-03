@@ -606,7 +606,15 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 }
 
 func (s *VerifyRangeStateTestSuite) TestVerifyFailsWhenAssetStatsMismatch() {
-	set := processors.NewAssetStatSet(s.system.config.NetworkPassphrase)
+	set := processors.NewAssetStatSet()
+	contractAssetStatsSet := processors.NewContractAssetStatSet(
+		s.historyQ,
+		s.system.config.NetworkPassphrase,
+		map[xdr.Hash]uint32{},
+		map[xdr.Hash]uint32{},
+		map[xdr.Hash][2]uint32{},
+		100,
+	)
 
 	trustLineIssuer := xdr.MustAddress("GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
 	set.AddTrustline(
@@ -652,7 +660,7 @@ func (s *VerifyRangeStateTestSuite) TestVerifyFailsWhenAssetStatsMismatch() {
 		Limit:  assetStatsBatchSize,
 	}).Return([]history.AssetAndContractStat{}, nil).Once()
 
-	err := checkAssetStats(s.ctx, set, s.historyQ)
+	err := checkAssetStats(s.ctx, set, contractAssetStatsSet, s.historyQ, s.system.config.NetworkPassphrase)
 	s.Assert().Contains(err.Error(), fmt.Sprintf("db asset stat with code EUR issuer %s does not match asset stat from HAS", trustLineIssuer.Address()))
 
 	// Satisfy the mock

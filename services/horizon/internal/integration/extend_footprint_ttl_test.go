@@ -3,13 +3,13 @@ package integration
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/protocols/horizon/operations"
 	"github.com/stellar/go/services/horizon/internal/test/integration"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stellar/go/xdr"
-
-	"github.com/stretchr/testify/require"
 )
 
 func TestExtendFootprintTtl(t *testing.T) {

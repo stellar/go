@@ -202,8 +202,8 @@ func TestProcessorRunnerBuildChangeProcessor(t *testing.T) {
 	assert.IsType(t, &processors.AccountsProcessor{}, processor.processors[2])
 	assert.IsType(t, &processors.OffersProcessor{}, processor.processors[3])
 	assert.IsType(t, &processors.AssetStatsProcessor{}, processor.processors[4])
-	assert.True(t, reflect.ValueOf(processor.processors[4]).
-		Elem().FieldByName("useLedgerEntryCache").Bool())
+	assert.False(t, reflect.ValueOf(processor.processors[4]).
+		Elem().FieldByName("ingestFromHistoryArchive").Bool())
 	assert.IsType(t, &processors.SignersProcessor{}, processor.processors[5])
 	assert.True(t, reflect.ValueOf(processor.processors[5]).
 		Elem().FieldByName("useLedgerEntryCache").Bool())
@@ -223,8 +223,8 @@ func TestProcessorRunnerBuildChangeProcessor(t *testing.T) {
 	assert.IsType(t, &processors.AccountsProcessor{}, processor.processors[2])
 	assert.IsType(t, &processors.OffersProcessor{}, processor.processors[3])
 	assert.IsType(t, &processors.AssetStatsProcessor{}, processor.processors[4])
-	assert.False(t, reflect.ValueOf(processor.processors[4]).
-		Elem().FieldByName("useLedgerEntryCache").Bool())
+	assert.True(t, reflect.ValueOf(processor.processors[4]).
+		Elem().FieldByName("ingestFromHistoryArchive").Bool())
 	assert.IsType(t, &processors.SignersProcessor{}, processor.processors[5])
 	assert.False(t, reflect.ValueOf(processor.processors[5]).
 		Elem().FieldByName("useLedgerEntryCache").Bool())
@@ -283,6 +283,7 @@ func TestProcessorRunnerWithFilterEnabled(t *testing.T) {
 			LedgerHeader: xdr.LedgerHeaderHistoryEntry{
 				Header: xdr.LedgerHeader{
 					BucketListHash: xdr.Hash([32]byte{0, 1, 2}),
+					LedgerSeq:      23,
 				},
 			},
 		},
@@ -319,6 +320,17 @@ func TestProcessorRunnerWithFilterEnabled(t *testing.T) {
 	q.MockQLedgers.On("InsertLedger", ctx, ledger.V0.LedgerHeader, 0, 0, 0, 0, CurrentVersion).
 		Return(int64(1), nil).Once()
 
+	q.MockQAssetStats.On("RemoveContractAssetBalances", ctx, []xdr.Hash(nil)).
+		Return(nil).Once()
+	q.MockQAssetStats.On("UpdateContractAssetBalanceAmounts", ctx, []xdr.Hash{}, []string{}).
+		Return(nil).Once()
+	q.MockQAssetStats.On("InsertContractAssetBalances", ctx, []history.ContractAssetBalance(nil)).
+		Return(nil).Once()
+	q.MockQAssetStats.On("UpdateContractAssetBalanceExpirations", ctx, []xdr.Hash{}, []uint32{}).
+		Return(nil).Once()
+	q.MockQAssetStats.On("GetContractAssetBalancesExpiringAt", ctx, uint32(22)).
+		Return([]history.ContractAssetBalance{}, nil).Once()
+
 	runner := ProcessorRunner{
 		ctx:      ctx,
 		config:   config,
@@ -346,6 +358,7 @@ func TestProcessorRunnerRunAllProcessorsOnLedger(t *testing.T) {
 			LedgerHeader: xdr.LedgerHeaderHistoryEntry{
 				Header: xdr.LedgerHeader{
 					BucketListHash: xdr.Hash([32]byte{0, 1, 2}),
+					LedgerSeq:      23,
 				},
 			},
 		},
@@ -374,6 +387,17 @@ func TestProcessorRunnerRunAllProcessorsOnLedger(t *testing.T) {
 
 	q.MockQLedgers.On("InsertLedger", ctx, ledger.V0.LedgerHeader, 0, 0, 0, 0, CurrentVersion).
 		Return(int64(1), nil).Once()
+
+	q.MockQAssetStats.On("RemoveContractAssetBalances", ctx, []xdr.Hash(nil)).
+		Return(nil).Once()
+	q.MockQAssetStats.On("UpdateContractAssetBalanceAmounts", ctx, []xdr.Hash{}, []string{}).
+		Return(nil).Once()
+	q.MockQAssetStats.On("InsertContractAssetBalances", ctx, []history.ContractAssetBalance(nil)).
+		Return(nil).Once()
+	q.MockQAssetStats.On("UpdateContractAssetBalanceExpirations", ctx, []xdr.Hash{}, []uint32{}).
+		Return(nil).Once()
+	q.MockQAssetStats.On("GetContractAssetBalancesExpiringAt", ctx, uint32(22)).
+		Return([]history.ContractAssetBalance{}, nil).Once()
 
 	runner := ProcessorRunner{
 		ctx:      ctx,

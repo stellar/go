@@ -1,10 +1,13 @@
 package history
 
 import (
+	"bytes"
+	"context"
 	"database/sql"
 	"sort"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"golang.org/x/exp/slices"
 
 	"github.com/stellar/go/services/horizon/internal/db2"
@@ -82,7 +85,7 @@ func TestAssetStatContracts(t *testing.T) {
 		assetStats[i].SetContractID(contractID)
 		contractID[0]++
 	}
-	tt.Assert.NoError(q.InsertAssetStats(tt.Ctx, assetStats, 1))
+	tt.Assert.NoError(q.InsertAssetStats(tt.Ctx, assetStats))
 
 	contractID[0] = 0
 	for i := 0; i < 2; i++ {
@@ -93,22 +96,9 @@ func TestAssetStatContracts(t *testing.T) {
 		contractID[0]++
 	}
 
-	contractIDs := make([][32]byte, 2)
-	contractIDs[1][0]++
-	rows, err := q.GetAssetStatByContracts(tt.Ctx, contractIDs)
-	tt.Assert.NoError(err)
-	tt.Assert.Len(rows, 2)
-	sort.Slice(rows, func(i, j int) bool {
-		return rows[i].AssetCode < rows[j].AssetCode
-	})
-
-	for i, row := range rows {
-		tt.Assert.True(row.Equals(assetStats[i]))
-	}
-
 	usd := assetStats[2]
 	usd.SetContractID([32]byte{})
-	_, err = q.UpdateAssetStat(tt.Ctx, usd)
+	_, err := q.UpdateAssetStat(tt.Ctx, usd)
 	tt.Assert.EqualError(err, "exec failed: pq: duplicate key value violates unique constraint \"exp_asset_stats_contract_id_key\"")
 
 	usd.SetContractID([32]byte{2})
@@ -125,18 +115,6 @@ func TestAssetStatContracts(t *testing.T) {
 		tt.Assert.True(assetStat.Equals(assetStats[i]))
 		contractID[0]++
 	}
-
-	contractIDs = [][32]byte{{}, {1}, {2}}
-	rows, err = q.GetAssetStatByContracts(tt.Ctx, contractIDs)
-	tt.Assert.NoError(err)
-	tt.Assert.Len(rows, 3)
-	sort.Slice(rows, func(i, j int) bool {
-		return rows[i].AssetCode < rows[j].AssetCode
-	})
-
-	for i, row := range rows {
-		tt.Assert.True(row.Equals(assetStats[i]))
-	}
 }
 
 func TestAssetContractStats(t *testing.T) {
@@ -148,27 +126,33 @@ func TestAssetContractStats(t *testing.T) {
 	c1 := ContractStatRow{
 		ContractID: []byte{1},
 		Stat: ContractStat{
-			Balance: "100",
-			Holders: 2,
+			ActiveBalance:   "100",
+			ActiveHolders:   2,
+			ArchivedBalance: "0",
+			ArchivedHolders: 0,
 		},
 	}
 	c2 := ContractStatRow{
 		ContractID: []byte{2},
 		Stat: ContractStat{
-			Balance: "40",
-			Holders: 1,
+			ActiveBalance:   "40",
+			ActiveHolders:   1,
+			ArchivedBalance: "0",
+			ArchivedHolders: 0,
 		},
 	}
 	c3 := ContractStatRow{
 		ContractID: []byte{3},
 		Stat: ContractStat{
-			Balance: "900",
-			Holders: 12,
+			ActiveBalance:   "900",
+			ActiveHolders:   12,
+			ArchivedBalance: "23",
+			ArchivedHolders: 3,
 		},
 	}
 
 	rows := []ContractStatRow{c1, c2, c3}
-	tt.Assert.NoError(q.InsertAssetContractStats(tt.Ctx, rows, 5))
+	tt.Assert.NoError(q.InsertAssetContractStats(tt.Ctx, rows))
 
 	for _, row := range rows {
 		result, err := q.GetAssetContractStat(tt.Ctx, row.ContractID)
@@ -176,8 +160,10 @@ func TestAssetContractStats(t *testing.T) {
 		tt.Assert.Equal(result, row)
 	}
 
-	c2.Stat.Holders = 3
-	c2.Stat.Balance = "20"
+	c2.Stat.ActiveHolders = 3
+	c2.Stat.ActiveBalance = "20"
+	c3.Stat.ArchivedBalance = "900"
+	c2.Stat.ActiveHolders = 5
 	numRows, err := q.UpdateAssetContractStat(tt.Ctx, c2)
 	tt.Assert.NoError(err)
 	tt.Assert.Equal(int64(1), numRows)
@@ -204,7 +190,7 @@ func TestInsertAssetStats(t *testing.T) {
 	defer tt.Finish()
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
-	tt.Assert.NoError(q.InsertAssetStats(tt.Ctx, []ExpAssetStat{}, 1))
+	tt.Assert.NoError(q.InsertAssetStats(tt.Ctx, []ExpAssetStat{}))
 
 	assetStats := []ExpAssetStat{
 		{
@@ -246,7 +232,7 @@ func TestInsertAssetStats(t *testing.T) {
 			NumAccounts: 1,
 		},
 	}
-	tt.Assert.NoError(q.InsertAssetStats(tt.Ctx, assetStats, 1))
+	tt.Assert.NoError(q.InsertAssetStats(tt.Ctx, assetStats))
 
 	for _, assetStat := range assetStats {
 		got, err := q.GetAssetStat(tt.Ctx, assetStat.AssetType, assetStat.AssetCode, assetStat.AssetIssuer)
@@ -608,8 +594,10 @@ func TestGetAssetStatsFiltersAndCursor(t *testing.T) {
 
 	q := &Q{tt.HorizonSession()}
 	zero := ContractStat{
-		Balance: "0",
-		Holders: 0,
+		ActiveBalance:   "0",
+		ActiveHolders:   0,
+		ArchivedBalance: "0",
+		ArchivedHolders: 0,
 	}
 	usdAssetStat := AssetAndContractStat{
 		ExpAssetStat: ExpAssetStat{
@@ -698,8 +686,10 @@ func TestGetAssetStatsFiltersAndCursor(t *testing.T) {
 			NumAccounts: 3,
 		},
 		Contracts: ContractStat{
-			Balance: "120",
-			Holders: 3,
+			ActiveBalance:   "120",
+			ActiveHolders:   3,
+			ArchivedBalance: "90",
+			ArchivedHolders: 1,
 		},
 	}
 	eurAssetStat.SetContractID([32]byte{})
@@ -728,8 +718,10 @@ func TestGetAssetStatsFiltersAndCursor(t *testing.T) {
 	numChanged, err := q.InsertAssetContractStat(tt.Ctx, ContractStatRow{
 		ContractID: []byte{1},
 		Stat: ContractStat{
-			Balance: "400",
-			Holders: 30,
+			ActiveBalance:   "400",
+			ActiveHolders:   30,
+			ArchivedBalance: "0",
+			ArchivedHolders: 0,
 		},
 	})
 	tt.Assert.NoError(err)
@@ -994,4 +986,213 @@ func TestGetAssetStatsFiltersAndCursor(t *testing.T) {
 			}
 		})
 	}
+}
+
+func assertContractAssetBalancesEqual(t *testing.T, balances, otherBalances []ContractAssetBalance) {
+	assert.Equal(t, len(balances), len(otherBalances))
+
+	sort.Slice(balances, func(i, j int) bool {
+		return bytes.Compare(balances[i].KeyHash, balances[j].KeyHash) < 0
+	})
+	sort.Slice(otherBalances, func(i, j int) bool {
+		return bytes.Compare(otherBalances[i].KeyHash, otherBalances[j].KeyHash) < 0
+	})
+
+	for i, balance := range balances {
+		other := otherBalances[i]
+		assert.Equal(t, balance, other)
+	}
+}
+
+func TestInsertContractAssetBalances(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	test.ResetHorizonDB(t, tt.HorizonDB)
+
+	q := &Q{tt.HorizonSession()}
+
+	keyHash := [32]byte{}
+	contractID := [32]byte{1}
+	balance := ContractAssetBalance{
+		KeyHash:          keyHash[:],
+		ContractID:       contractID[:],
+		Amount:           "100",
+		ExpirationLedger: 10,
+	}
+
+	otherKeyHash := [32]byte{2}
+	otherContractID := [32]byte{3}
+	otherBalance := ContractAssetBalance{
+		KeyHash:          otherKeyHash[:],
+		ContractID:       otherContractID[:],
+		Amount:           "101",
+		ExpirationLedger: 11,
+	}
+
+	tt.Assert.NoError(
+		q.InsertContractAssetBalances(context.Background(), []ContractAssetBalance{balance, otherBalance}),
+	)
+
+	nonExistantKeyHash := [32]byte{4}
+	balances, err := q.GetContractAssetBalances(context.Background(), []xdr.Hash{keyHash, otherKeyHash, nonExistantKeyHash})
+	tt.Assert.NoError(err)
+
+	assertContractAssetBalancesEqual(t, balances, []ContractAssetBalance{balance, otherBalance})
+}
+
+func TestRemoveContractAssetBalances(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	test.ResetHorizonDB(t, tt.HorizonDB)
+
+	q := &Q{tt.HorizonSession()}
+
+	keyHash := [32]byte{}
+	contractID := [32]byte{1}
+	balance := ContractAssetBalance{
+		KeyHash:          keyHash[:],
+		ContractID:       contractID[:],
+		Amount:           "100",
+		ExpirationLedger: 10,
+	}
+
+	otherKeyHash := [32]byte{2}
+	otherContractID := [32]byte{3}
+	otherBalance := ContractAssetBalance{
+		KeyHash:          otherKeyHash[:],
+		ContractID:       otherContractID[:],
+		Amount:           "101",
+		ExpirationLedger: 11,
+	}
+
+	tt.Assert.NoError(
+		q.InsertContractAssetBalances(context.Background(), []ContractAssetBalance{balance, otherBalance}),
+	)
+	nonExistantKeyHash := xdr.Hash{4}
+
+	tt.Assert.NoError(
+		q.RemoveContractAssetBalances(context.Background(), []xdr.Hash{nonExistantKeyHash}),
+	)
+	balances, err := q.GetContractAssetBalances(context.Background(), []xdr.Hash{keyHash, otherKeyHash, nonExistantKeyHash})
+	tt.Assert.NoError(err)
+
+	assertContractAssetBalancesEqual(t, balances, []ContractAssetBalance{balance, otherBalance})
+
+	tt.Assert.NoError(
+		q.RemoveContractAssetBalances(context.Background(), []xdr.Hash{nonExistantKeyHash, otherKeyHash}),
+	)
+
+	balances, err = q.GetContractAssetBalances(context.Background(), []xdr.Hash{keyHash, otherKeyHash, nonExistantKeyHash})
+	tt.Assert.NoError(err)
+
+	assertContractAssetBalancesEqual(t, balances, []ContractAssetBalance{balance})
+}
+
+func TestUpdateContractAssetBalanceAmounts(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	test.ResetHorizonDB(t, tt.HorizonDB)
+
+	q := &Q{tt.HorizonSession()}
+
+	keyHash := [32]byte{}
+	contractID := [32]byte{1}
+	balance := ContractAssetBalance{
+		KeyHash:          keyHash[:],
+		ContractID:       contractID[:],
+		Amount:           "100",
+		ExpirationLedger: 10,
+	}
+
+	otherKeyHash := [32]byte{2}
+	otherContractID := [32]byte{3}
+	otherBalance := ContractAssetBalance{
+		KeyHash:          otherKeyHash[:],
+		ContractID:       otherContractID[:],
+		Amount:           "101",
+		ExpirationLedger: 11,
+	}
+
+	tt.Assert.NoError(
+		q.InsertContractAssetBalances(context.Background(), []ContractAssetBalance{balance, otherBalance}),
+	)
+
+	nonExistantKeyHash := xdr.Hash{4}
+
+	tt.Assert.NoError(
+		q.UpdateContractAssetBalanceAmounts(
+			context.Background(),
+			[]xdr.Hash{otherKeyHash, keyHash, nonExistantKeyHash},
+			[]string{"1", "2", "3"},
+		),
+	)
+
+	balances, err := q.GetContractAssetBalances(context.Background(), []xdr.Hash{keyHash, otherKeyHash})
+	tt.Assert.NoError(err)
+
+	balance.Amount = "2"
+	otherBalance.Amount = "1"
+	assertContractAssetBalancesEqual(t, balances, []ContractAssetBalance{balance, otherBalance})
+}
+
+func TestUpdateContractAssetBalanceExpirations(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	test.ResetHorizonDB(t, tt.HorizonDB)
+
+	q := &Q{tt.HorizonSession()}
+
+	keyHash := [32]byte{}
+	contractID := [32]byte{1}
+	balance := ContractAssetBalance{
+		KeyHash:          keyHash[:],
+		ContractID:       contractID[:],
+		Amount:           "100",
+		ExpirationLedger: 10,
+	}
+
+	otherKeyHash := [32]byte{2}
+	otherContractID := [32]byte{3}
+	otherBalance := ContractAssetBalance{
+		KeyHash:          otherKeyHash[:],
+		ContractID:       otherContractID[:],
+		Amount:           "101",
+		ExpirationLedger: 11,
+	}
+
+	tt.Assert.NoError(
+		q.InsertContractAssetBalances(context.Background(), []ContractAssetBalance{balance, otherBalance}),
+	)
+
+	balances, err := q.GetContractAssetBalancesExpiringAt(context.Background(), 10)
+	tt.Assert.NoError(err)
+	assertContractAssetBalancesEqual(t, balances, []ContractAssetBalance{balance})
+
+	balances, err = q.GetContractAssetBalancesExpiringAt(context.Background(), 11)
+	tt.Assert.NoError(err)
+	assertContractAssetBalancesEqual(t, balances, []ContractAssetBalance{otherBalance})
+
+	nonExistantKeyHash := xdr.Hash{4}
+
+	tt.Assert.NoError(
+		q.UpdateContractAssetBalanceExpirations(
+			context.Background(),
+			[]xdr.Hash{otherKeyHash, keyHash, nonExistantKeyHash},
+			[]uint32{200, 200, 500},
+		),
+	)
+
+	balances, err = q.GetContractAssetBalances(context.Background(), []xdr.Hash{keyHash, otherKeyHash})
+	tt.Assert.NoError(err)
+	balance.ExpirationLedger = 200
+	otherBalance.ExpirationLedger = 200
+	assertContractAssetBalancesEqual(t, balances, []ContractAssetBalance{balance, otherBalance})
+
+	balances, err = q.GetContractAssetBalancesExpiringAt(context.Background(), 10)
+	tt.Assert.NoError(err)
+	assert.Empty(t, balances)
+
+	balances, err = q.GetContractAssetBalancesExpiringAt(context.Background(), 200)
+	tt.Assert.NoError(err)
+	assertContractAssetBalancesEqual(t, balances, []ContractAssetBalance{balance, otherBalance})
 }

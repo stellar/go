@@ -14,8 +14,38 @@ type MockQAssetStats struct {
 	mock.Mock
 }
 
-func (m *MockQAssetStats) InsertAssetContractStats(ctx context.Context, rows []ContractStatRow, batchSize int) error {
-	a := m.Called(ctx, rows, batchSize)
+func (m *MockQAssetStats) InsertContractAssetBalances(ctx context.Context, rows []ContractAssetBalance) error {
+	a := m.Called(ctx, rows)
+	return a.Error(0)
+}
+
+func (m *MockQAssetStats) RemoveContractAssetBalances(ctx context.Context, keys []xdr.Hash) error {
+	a := m.Called(ctx, keys)
+	return a.Error(0)
+}
+
+func (m *MockQAssetStats) UpdateContractAssetBalanceAmounts(ctx context.Context, keys []xdr.Hash, amounts []string) error {
+	a := m.Called(ctx, keys, amounts)
+	return a.Error(0)
+}
+
+func (m *MockQAssetStats) UpdateContractAssetBalanceExpirations(ctx context.Context, keys []xdr.Hash, expirationLedgers []uint32) error {
+	a := m.Called(ctx, keys, expirationLedgers)
+	return a.Error(0)
+}
+
+func (m *MockQAssetStats) GetContractAssetBalances(ctx context.Context, keys []xdr.Hash) ([]ContractAssetBalance, error) {
+	a := m.Called(ctx, keys)
+	return a.Get(0).([]ContractAssetBalance), a.Error(1)
+}
+
+func (m *MockQAssetStats) GetContractAssetBalancesExpiringAt(ctx context.Context, ledger uint32) ([]ContractAssetBalance, error) {
+	a := m.Called(ctx, ledger)
+	return a.Get(0).([]ContractAssetBalance), a.Error(1)
+}
+
+func (m *MockQAssetStats) InsertAssetContractStats(ctx context.Context, rows []ContractStatRow) error {
+	a := m.Called(ctx, rows)
 	return a.Error(0)
 }
 
@@ -39,8 +69,8 @@ func (m *MockQAssetStats) RemoveAssetContractStat(ctx context.Context, contractI
 	return a.Get(0).(int64), a.Error(1)
 }
 
-func (m *MockQAssetStats) InsertAssetStats(ctx context.Context, assetStats []ExpAssetStat, batchSize int) error {
-	a := m.Called(ctx, assetStats, batchSize)
+func (m *MockQAssetStats) InsertAssetStats(ctx context.Context, assetStats []ExpAssetStat) error {
+	a := m.Called(ctx, assetStats)
 	return a.Error(0)
 }
 
@@ -59,7 +89,7 @@ func (m *MockQAssetStats) GetAssetStat(ctx context.Context, assetType xdr.AssetT
 	return a.Get(0).(ExpAssetStat), a.Error(1)
 }
 
-func (m *MockQAssetStats) GetAssetStatByContract(ctx context.Context, contractID [32]byte) (ExpAssetStat, error) {
+func (m *MockQAssetStats) GetAssetStatByContract(ctx context.Context, contractID xdr.Hash) (ExpAssetStat, error) {
 	a := m.Called(ctx, contractID)
 	return a.Get(0).(ExpAssetStat), a.Error(1)
 }
@@ -74,7 +104,7 @@ func (m *MockQAssetStats) GetAssetStats(ctx context.Context, assetCode, assetIss
 	return a.Get(0).([]AssetAndContractStat), a.Error(1)
 }
 
-func (m *MockQAssetStats) GetAssetStatByContracts(ctx context.Context, contractIDs [][32]byte) ([]ExpAssetStat, error) {
+func (m *MockQAssetStats) GetAssetStatByContracts(ctx context.Context, contractIDs []xdr.Hash) ([]ExpAssetStat, error) {
 	a := m.Called(ctx, contractIDs)
 	return a.Get(0).([]ExpAssetStat), a.Error(1)
 }

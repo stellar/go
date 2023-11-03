@@ -35,8 +35,10 @@ func TestPopulateExpAssetStat(t *testing.T) {
 			NumAccounts: 429,
 		},
 		Contracts: history.ContractStat{
-			Balance: "900000000000000000",
-			Holders: 6,
+			ActiveBalance:   "900000000000000000",
+			ActiveHolders:   6,
+			ArchivedBalance: "700000000000000000",
+			ArchivedHolders: 3,
 		},
 	}
 	issuer := history.AccountEntry{
@@ -57,12 +59,14 @@ func TestPopulateExpAssetStat(t *testing.T) {
 	assert.Equal(t, int32(107), res.Accounts.Unauthorized)
 	assert.Equal(t, int32(12), res.NumClaimableBalances)
 	assert.Equal(t, int32(6), res.NumContracts)
+	assert.Equal(t, int32(3), res.NumArchivedContracts)
 	assert.Equal(t, "10000000000000.0000000", res.Balances.Authorized)
 	assert.Equal(t, "5000000000000.0000000", res.Balances.AuthorizedToMaintainLiabilities)
 	assert.Equal(t, "250000000000.0000000", res.Balances.Unauthorized)
 	assert.Equal(t, "120000000000.0000000", res.ClaimableBalancesAmount)
 	assert.Equal(t, "770000000000.0000000", res.LiquidityPoolsAmount)
 	assert.Equal(t, "90000000000.0000000", res.ContractsAmount)
+	assert.Equal(t, "70000000000.0000000", res.ArchivedContractsAmount)
 	assert.Equal(t, "10000000000000.0000000", res.Amount)
 	assert.Equal(t, int32(429), res.NumAccounts)
 	assert.Equal(t, horizon.AccountFlags{}, res.Flags)

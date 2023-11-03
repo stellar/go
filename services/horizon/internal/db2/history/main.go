@@ -365,8 +365,10 @@ type Asset struct {
 }
 
 type ContractStat struct {
-	Balance string `json:"balance"`
-	Holders int32  `json:"holders"`
+	ActiveBalance   string `json:"balance"`
+	ActiveHolders   int32  `json:"holders"`
+	ArchivedBalance string `json:"archived_balance"`
+	ArchivedHolders int32  `json:"archived_holders"`
 }
 
 func (c ContractStat) Value() (driver.Value, error) {
@@ -375,7 +377,8 @@ func (c ContractStat) Value() (driver.Value, error) {
 
 func (c *ContractStat) Scan(src interface{}) error {
 	if src == nil {
-		c.Balance = "0"
+		c.ActiveBalance = "0"
+		c.ArchivedBalance = "0"
 		return nil
 	}
 
@@ -390,8 +393,11 @@ func (c *ContractStat) Scan(src interface{}) error {
 	}
 
 	// Sets zero values for empty balances
-	if c.Balance == "" {
-		c.Balance = "0"
+	if c.ActiveBalance == "" {
+		c.ActiveBalance = "0"
+	}
+	if c.ArchivedBalance == "" {
+		c.ArchivedBalance = "0"
 	}
 
 	return nil
@@ -551,15 +557,20 @@ func (e *ExpAssetStatBalances) Scan(src interface{}) error {
 
 // QAssetStats defines exp_asset_stats related queries.
 type QAssetStats interface {
-	InsertAssetStats(ctx context.Context, stats []ExpAssetStat, batchSize int) error
-	InsertAssetContractStats(ctx context.Context, rows []ContractStatRow, batchSize int) error
+	InsertContractAssetBalances(ctx context.Context, rows []ContractAssetBalance) error
+	RemoveContractAssetBalances(ctx context.Context, keys []xdr.Hash) error
+	UpdateContractAssetBalanceAmounts(ctx context.Context, keys []xdr.Hash, amounts []string) error
+	UpdateContractAssetBalanceExpirations(ctx context.Context, keys []xdr.Hash, expirationLedgers []uint32) error
+	GetContractAssetBalances(ctx context.Context, keys []xdr.Hash) ([]ContractAssetBalance, error)
+	GetContractAssetBalancesExpiringAt(ctx context.Context, ledger uint32) ([]ContractAssetBalance, error)
+	InsertAssetStats(ctx context.Context, stats []ExpAssetStat) error
+	InsertAssetContractStats(ctx context.Context, rows []ContractStatRow) error
 	InsertAssetStat(ctx context.Context, stat ExpAssetStat) (int64, error)
 	InsertAssetContractStat(ctx context.Context, row ContractStatRow) (int64, error)
 	UpdateAssetStat(ctx context.Context, stat ExpAssetStat) (int64, error)
 	UpdateAssetContractStat(ctx context.Context, row ContractStatRow) (int64, error)
 	GetAssetStat(ctx context.Context, assetType xdr.AssetType, assetCode, assetIssuer string) (ExpAssetStat, error)
-	GetAssetStatByContract(ctx context.Context, contractID [32]byte) (ExpAssetStat, error)
-	GetAssetStatByContracts(ctx context.Context, contractIDs [][32]byte) ([]ExpAssetStat, error)
+	GetAssetStatByContract(ctx context.Context, contractID xdr.Hash) (ExpAssetStat, error)
 	GetAssetContractStat(ctx context.Context, contractID []byte) (ContractStatRow, error)
 	RemoveAssetStat(ctx context.Context, assetType xdr.AssetType, assetCode, assetIssuer string) (int64, error)
 	RemoveAssetContractStat(ctx context.Context, contractID []byte) (int64, error)

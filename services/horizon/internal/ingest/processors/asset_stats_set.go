@@ -1,8 +1,6 @@
 package processors
 
 import (
-	"encoding/hex"
-	"fmt"
 	"math/big"
 
 	"github.com/stellar/go/ingest"
@@ -116,39 +114,17 @@ func (value assetStatValue) ConvertToHistoryObject() history.ExpAssetStat {
 	}
 }
 
-type assetContractStatValue struct {
-	contractID [32]byte
-	balance    *big.Int
-	numHolders int32
-}
-
-func (v assetContractStatValue) ConvertToHistoryObject() history.ContractStatRow {
-	return history.ContractStatRow{
-		ContractID: v.contractID[:],
-		Stat: history.ContractStat{
-			Balance: v.balance.String(),
-			Holders: v.numHolders,
-		},
-	}
-}
-
 // AssetStatSet represents a collection of asset stats and a mapping
 // of Soroban contract IDs to classic assets (which is unique to each
 // network).
 type AssetStatSet struct {
-	classicAssetStats  map[assetStatKey]*assetStatValue
-	contractToAsset    map[[32]byte]*xdr.Asset
-	contractAssetStats map[[32]byte]assetContractStatValue
-	networkPassphrase  string
+	classicAssetStats map[assetStatKey]*assetStatValue
 }
 
 // NewAssetStatSet constructs a new AssetStatSet instance
-func NewAssetStatSet(networkPassphrase string) AssetStatSet {
+func NewAssetStatSet() AssetStatSet {
 	return AssetStatSet{
-		classicAssetStats:  map[assetStatKey]*assetStatValue{},
-		contractToAsset:    map[[32]byte]*xdr.Asset{},
-		contractAssetStats: map[[32]byte]assetContractStatValue{},
-		networkPassphrase:  networkPassphrase,
+		classicAssetStats: map[assetStatKey]*assetStatValue{},
 	}
 }
 
@@ -363,221 +339,12 @@ func (s AssetStatSet) AddClaimableBalance(change ingest.Change) error {
 	return nil
 }
 
-// AddContractData updates the set to account for how a given contract data entry has changed.
-// change must be a xdr.LedgerEntryTypeContractData type.
-func (s AssetStatSet) AddContractData(change ingest.Change) error {
-	if err := s.ingestAssetContractMetadata(change); err != nil {
-		return err
-	}
-	s.ingestAssetContractBalance(change)
-	return nil
-}
-
-func (s AssetStatSet) ingestAssetContractMetadata(change ingest.Change) error {
-	if change.Pre != nil {
-		asset := AssetFromContractData(*change.Pre, s.networkPassphrase)
-		if asset == nil {
-			return nil
-		}
-		pContractID := change.Pre.Data.MustContractData().Contract.ContractId
-		if pContractID == nil {
-			return nil
-		}
-		contractID := *pContractID
-		if change.Post == nil {
-			s.contractToAsset[contractID] = nil
-			return nil
-		}
-		// The contract id for a stellar asset should never change and
-		// therefore we return a fatal ingestion error if we encounter
-		// a stellar asset changing contract ids.
-		postAsset := AssetFromContractData(*change.Post, s.networkPassphrase)
-		if postAsset == nil || !(*postAsset).Equals(*asset) {
-			return ingest.NewStateError(fmt.Errorf("asset contract changed asset"))
-		}
-	} else if change.Post != nil {
-		asset := AssetFromContractData(*change.Post, s.networkPassphrase)
-		if asset == nil {
-			return nil
-		}
-		if pContactID := change.Post.Data.MustContractData().Contract.ContractId; pContactID != nil {
-			s.contractToAsset[*pContactID] = asset
-		}
-	}
-	return nil
-}
-
-func (s AssetStatSet) ingestAssetContractBalance(change ingest.Change) {
-	if change.Pre != nil {
-		pContractID := change.Pre.Data.MustContractData().Contract.ContractId
-		if pContractID == nil {
-			return
-		}
-		holder, amt, ok := ContractBalanceFromContractData(*change.Pre, s.networkPassphrase)
-		if !ok {
-			return
-		}
-		stats, ok := s.contractAssetStats[*pContractID]
-		if !ok {
-			stats = assetContractStatValue{
-				contractID: *pContractID,
-				balance:    big.NewInt(0),
-				numHolders: 0,
-			}
-		}
-
-		if change.Post == nil {
-			// the balance was removed so we need to deduct from
-			// contract holders and contract balance amount
-			stats.balance = new(big.Int).Sub(stats.balance, amt)
-			// only decrement holders if the removed balance
-			// contained a positive amount of the asset.
-			if amt.Cmp(big.NewInt(0)) > 0 {
-				stats.numHolders--
-			}
-			s.maybeAddContractAssetStat(*pContractID, stats)
-			return
-		}
-		// if the updated ledger entry is not in the expected format then this
-		// cannot be emitted by the stellar asset contract, so ignore it
-		postHolder, postAmt, postOk := ContractBalanceFromContractData(*change.Post, s.networkPassphrase)
-		if !postOk || postHolder != holder {
-			return
-		}
-
-		delta := new(big.Int).Sub(postAmt, amt)
-		stats.balance.Add(stats.balance, delta)
-		if postAmt.Cmp(big.NewInt(0)) == 0 && amt.Cmp(big.NewInt(0)) > 0 {
-			// if the pre amount is equal to the post amount it means the balance was wiped out so
-			// we can decrement the number of contract holders
-			stats.numHolders--
-		} else if amt.Cmp(big.NewInt(0)) == 0 && postAmt.Cmp(big.NewInt(0)) > 0 {
-			// if the pre amount was zero and the post amount is positive the number of
-			// contract holders increased
-			stats.numHolders++
-		}
-		s.maybeAddContractAssetStat(*pContractID, stats)
-		return
-	}
-	// in this case there was no balance before the change
-	pContractID := change.Post.Data.MustContractData().Contract.ContractId
-	if pContractID == nil {
-		return
-	}
-
-	_, amt, ok := ContractBalanceFromContractData(*change.Post, s.networkPassphrase)
-	if !ok {
-		return
-	}
-
-	// ignore zero balance amounts
-	if amt.Cmp(big.NewInt(0)) == 0 {
-		return
-	}
-
-	// increase the number of contract holders because previously
-	// there was no balance
-	stats, ok := s.contractAssetStats[*pContractID]
-	if !ok {
-		stats = assetContractStatValue{
-			contractID: *pContractID,
-			balance:    amt,
-			numHolders: 1,
-		}
-	} else {
-		stats.balance = new(big.Int).Add(stats.balance, amt)
-		stats.numHolders++
-	}
-
-	s.maybeAddContractAssetStat(*pContractID, stats)
-}
-
-func (s AssetStatSet) maybeAddContractAssetStat(contractID [32]byte, stat assetContractStatValue) {
-	if stat.numHolders == 0 && stat.balance.Cmp(big.NewInt(0)) == 0 {
-		delete(s.contractAssetStats, contractID)
-	} else {
-		s.contractAssetStats[contractID] = stat
-	}
-}
-
 // All returns a list of all `history.ExpAssetStat` contained within the set
 // along with all contract id attribution changes in the set.
-func (s AssetStatSet) All() ([]history.ExpAssetStat, map[[32]byte]*xdr.Asset, map[[32]byte]assetContractStatValue) {
+func (s AssetStatSet) All() []history.ExpAssetStat {
 	assetStats := make([]history.ExpAssetStat, 0, len(s.classicAssetStats))
 	for _, value := range s.classicAssetStats {
 		assetStats = append(assetStats, value.ConvertToHistoryObject())
 	}
-	contractToAsset := make(map[[32]byte]*xdr.Asset, len(s.contractToAsset))
-	for key, val := range s.contractToAsset {
-		contractToAsset[key] = val
-	}
-	contractAssetStats := make(map[[32]byte]assetContractStatValue, len(s.contractAssetStats))
-	for key, val := range s.contractAssetStats {
-		contractAssetStats[key] = val
-	}
-	return assetStats, contractToAsset, contractAssetStats
-}
-
-// AllFromSnapshot returns a list of all `history.ExpAssetStat` contained within the set.
-// AllFromSnapshot should only be invoked when the AssetStatSet has been derived from ledger
-// entry changes consisting of only inserts (no updates) reflecting the current state of
-// the ledger without any missing entries (e.g. history archives).
-func (s AssetStatSet) AllFromSnapshot() ([]history.ExpAssetStat, []history.ContractStatRow, error) {
-	// merge assetStatsDeltas and contractToAsset into one list of history.ExpAssetStat.
-	assetStatsDeltas, contractToAsset, contractAssetStats := s.All()
-
-	// modify the asset stat row to update the contract_id column whenever we encounter a
-	// contract data ledger entry with the Stellar asset metadata.
-	for i, assetStatDelta := range assetStatsDeltas {
-		// asset stats only supports non-native assets
-		asset := xdr.MustNewCreditAsset(assetStatDelta.AssetCode, assetStatDelta.AssetIssuer)
-		contractID, err := asset.ContractID(s.networkPassphrase)
-		if err != nil {
-			return nil, nil, errors.Wrap(err, "cannot compute contract id for asset")
-		}
-		if asset, ok := contractToAsset[contractID]; ok && asset == nil {
-			return nil, nil, ingest.NewStateError(fmt.Errorf(
-				"unexpected contract data removal in history archives: %s",
-				hex.EncodeToString(contractID[:]),
-			))
-		} else if ok {
-			assetStatDelta.SetContractID(contractID)
-			delete(contractToAsset, contractID)
-		}
-
-		assetStatsDeltas[i] = assetStatDelta
-	}
-
-	// There is also a corner case where a Stellar Asset contract is initialized before there exists any
-	// trustlines / claimable balances for the Stellar Asset. In this case, when ingesting contract data
-	// ledger entries, there will be no existing asset stat row. We handle this case by inserting a row
-	// with zero stats just so we can populate the contract id.
-	for contractID, asset := range contractToAsset {
-		if asset == nil {
-			return nil, nil, ingest.NewStateError(fmt.Errorf(
-				"unexpected contract data removal in history archives: %s",
-				hex.EncodeToString(contractID[:]),
-			))
-		}
-		var assetType xdr.AssetType
-		var assetCode, assetIssuer string
-		asset.MustExtract(&assetType, &assetCode, &assetIssuer)
-		row := history.ExpAssetStat{
-			AssetType:   assetType,
-			AssetCode:   assetCode,
-			AssetIssuer: assetIssuer,
-			Accounts:    history.ExpAssetStatAccounts{},
-			Balances:    newAssetStatBalance().ConvertToHistoryObject(),
-			Amount:      "0",
-			NumAccounts: 0,
-		}
-		row.SetContractID(contractID)
-		assetStatsDeltas = append(assetStatsDeltas, row)
-	}
-
-	contractStatRows := make([]history.ContractStatRow, 0, len(contractAssetStats))
-	for _, stat := range contractAssetStats {
-		contractStatRows = append(contractStatRows, stat.ConvertToHistoryObject())
-	}
-	return assetStatsDeltas, contractStatRows, nil
+	return assetStats
 }
