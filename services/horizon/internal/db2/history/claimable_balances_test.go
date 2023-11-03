@@ -3,9 +3,9 @@ package history
 import (
 	"database/sql"
 	"fmt"
-	"github.com/guregu/null"
 	"testing"
 
+	"github.com/guregu/null"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/xdr"
@@ -264,8 +264,10 @@ func TestFindClaimableBalancesByDestinationWithLimit(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	q.SessionInterface.BeginTx(tt.Ctx, &sql.TxOptions{})
-	defer q.Rollback()
+	tt.Assert.NoError(q.SessionInterface.BeginTx(tt.Ctx, &sql.TxOptions{}))
+	defer func() {
+		_ = q.SessionInterface.Rollback()
+	}()
 
 	assetIssuer := "GA25GQLHJU3LPEJXEIAXK23AWEA5GWDUGRSHTQHDFT6HXHVMRULSQJUJ"
 	asset1 := xdr.MustNewCreditAsset("ASSET1", assetIssuer)

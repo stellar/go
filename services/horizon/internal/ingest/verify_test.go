@@ -366,7 +366,7 @@ func TestStateVerifier(t *testing.T) {
 	tt.Assert.NoError(changeProcessor.Commit(tt.Ctx))
 	tt.Assert.Equal(len(xdr.LedgerEntryTypeMap), len(coverage))
 
-	q.SessionInterface.Commit()
+	tt.Assert.NoError(q.SessionInterface.Commit())
 
 	q.UpdateLastLedgerIngest(tt.Ctx, checkpointLedger)
 

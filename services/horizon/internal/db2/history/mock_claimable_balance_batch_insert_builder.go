@@ -2,8 +2,8 @@ package history
 
 import (
 	"context"
-	"github.com/stellar/go/support/db"
 
+	"github.com/stellar/go/support/db"
 	"github.com/stretchr/testify/mock"
 )
 
