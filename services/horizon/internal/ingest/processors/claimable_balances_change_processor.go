@@ -31,8 +31,8 @@ func NewClaimableBalancesChangeProcessor(Q history.QClaimableBalances, session d
 
 func (p *ClaimableBalancesChangeProcessor) reset() {
 	p.cache = ingest.NewChangeCompactor()
-	p.claimantsInsertBuilder = p.qClaimableBalances.NewClaimableBalanceClaimantBatchInsertBuilder()
-	p.claimableBalanceInsertBuilder = p.qClaimableBalances.NewClaimableBalanceBatchInsertBuilder()
+	p.claimantsInsertBuilder = p.qClaimableBalances.NewClaimableBalanceClaimantBatchInsertBuilder(p.session)
+	p.claimableBalanceInsertBuilder = p.qClaimableBalances.NewClaimableBalanceBatchInsertBuilder(p.session)
 }
 
 func (p *ClaimableBalancesChangeProcessor) ProcessChange(ctx context.Context, change ingest.Change) error {
@@ -112,8 +112,6 @@ func (p *ClaimableBalancesChangeProcessor) Commit(ctx context.Context) error {
 
 func (p *ClaimableBalancesChangeProcessor) insertClaimableBalancesAndClaimants(ctx context.Context,
 	claimableBalances []history.ClaimableBalance) error {
-	defer p.claimantsInsertBuilder.Reset()
-	defer p.claimableBalanceInsertBuilder.Reset()
 
 	for _, cb := range claimableBalances {
 
@@ -136,12 +134,12 @@ func (p *ClaimableBalancesChangeProcessor) insertClaimableBalancesAndClaimants(c
 		}
 	}
 
-	err := p.claimantsInsertBuilder.Exec(ctx, p.session)
+	err := p.claimantsInsertBuilder.Exec(ctx)
 	if err != nil {
 		return errors.Wrap(err, "error executing ClaimableBalanceClaimantBatchInsertBuilder")
 	}
 
-	err = p.claimableBalanceInsertBuilder.Exec(ctx, p.session)
+	err = p.claimableBalanceInsertBuilder.Exec(ctx)
 	if err != nil {
 		return errors.Wrap(err, "error executing ClaimableBalanceBatchInsertBuilder")
 	}

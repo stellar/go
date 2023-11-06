@@ -3,6 +3,7 @@ package history
 import (
 	"context"
 
+	"github.com/stellar/go/support/db"
 	"github.com/stretchr/testify/mock"
 )
 
@@ -31,13 +32,13 @@ func (m *MockQClaimableBalances) RemoveClaimableBalanceClaimants(ctx context.Con
 	return a.Get(0).(int64), a.Error(1)
 }
 
-func (m *MockQClaimableBalances) NewClaimableBalanceClaimantBatchInsertBuilder() ClaimableBalanceClaimantBatchInsertBuilder {
-	a := m.Called()
+func (m *MockQClaimableBalances) NewClaimableBalanceClaimantBatchInsertBuilder(session db.SessionInterface) ClaimableBalanceClaimantBatchInsertBuilder {
+	a := m.Called(session)
 	return a.Get(0).(ClaimableBalanceClaimantBatchInsertBuilder)
 }
 
-func (m *MockQClaimableBalances) NewClaimableBalanceBatchInsertBuilder() ClaimableBalanceBatchInsertBuilder {
-	a := m.Called()
+func (m *MockQClaimableBalances) NewClaimableBalanceBatchInsertBuilder(session db.SessionInterface) ClaimableBalanceBatchInsertBuilder {
+	a := m.Called(session)
 	return a.Get(0).(ClaimableBalanceBatchInsertBuilder)
 }
 

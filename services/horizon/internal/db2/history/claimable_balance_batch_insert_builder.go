@@ -4,30 +4,28 @@ import (
 	"context"
 
 	"github.com/stellar/go/support/db"
-	"github.com/stellar/go/xdr"
 )
 
 // ClaimableBalanceBatchInsertBuilder is used to insert claimable balance into the
 // claimable_balances table
 type ClaimableBalanceBatchInsertBuilder interface {
 	Add(claimableBalance ClaimableBalance) error
-	Exec(ctx context.Context, session db.SessionInterface) error
-	Reset()
+	Exec(ctx context.Context) error
 }
 
 // ClaimableBalanceBatchInsertBuilder is a simple wrapper around db.FastBatchInsertBuilder
 type claimableBalanceBatchInsertBuilder struct {
-	encodingBuffer *xdr.EncodingBuffer
-	builder        db.FastBatchInsertBuilder
-	table          string
+	session db.SessionInterface
+	builder db.FastBatchInsertBuilder
+	table   string
 }
 
 // NewClaimableBalanceBatchInsertBuilder constructs a new ClaimableBalanceBatchInsertBuilder instance
-func (q *Q) NewClaimableBalanceBatchInsertBuilder() ClaimableBalanceBatchInsertBuilder {
+func (q *Q) NewClaimableBalanceBatchInsertBuilder(session db.SessionInterface) ClaimableBalanceBatchInsertBuilder {
 	return &claimableBalanceBatchInsertBuilder{
-		encodingBuffer: xdr.NewEncodingBuffer(),
-		builder:        db.FastBatchInsertBuilder{},
-		table:          "claimable_balances",
+		session: session,
+		builder: db.FastBatchInsertBuilder{},
+		table:   "claimable_balances",
 	}
 }
 
@@ -37,11 +35,6 @@ func (i *claimableBalanceBatchInsertBuilder) Add(claimableBalance ClaimableBalan
 }
 
 // Exec writes the batch of claimable balances to the database.
-func (i *claimableBalanceBatchInsertBuilder) Exec(ctx context.Context, session db.SessionInterface) error {
-	return i.builder.Exec(ctx, session, i.table)
-}
-
-// Reset clears out the current batch of claimable balances
-func (i *claimableBalanceBatchInsertBuilder) Reset() {
-	i.builder.Reset()
+func (i *claimableBalanceBatchInsertBuilder) Exec(ctx context.Context) error {
+	return i.builder.Exec(ctx, i.session, i.table)
 }

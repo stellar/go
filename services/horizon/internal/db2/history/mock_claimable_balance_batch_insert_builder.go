@@ -3,7 +3,6 @@ package history
 import (
 	"context"
 
-	"github.com/stellar/go/support/db"
 	"github.com/stretchr/testify/mock"
 )
 
@@ -16,11 +15,7 @@ func (m *MockClaimableBalanceBatchInsertBuilder) Add(claimableBalance ClaimableB
 	return a.Error(0)
 }
 
-func (m *MockClaimableBalanceBatchInsertBuilder) Exec(ctx context.Context, session db.SessionInterface) error {
-	a := m.Called(ctx, session)
+func (m *MockClaimableBalanceBatchInsertBuilder) Exec(ctx context.Context) error {
+	a := m.Called(ctx)
 	return a.Error(0)
-}
-
-func (m *MockClaimableBalanceBatchInsertBuilder) Reset() {
-	m.Called()
 }

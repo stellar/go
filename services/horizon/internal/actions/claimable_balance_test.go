@@ -49,10 +49,10 @@ func TestGetClaimableBalanceByID(t *testing.T) {
 		LastModifiedLedger: 123,
 	}
 
-	balanceInsertBuilder := q.NewClaimableBalanceBatchInsertBuilder()
+	balanceInsertBuilder := q.NewClaimableBalanceBatchInsertBuilder(q.SessionInterface)
 	tt.Assert.NoError(balanceInsertBuilder.Add(cBalance))
 
-	claimantsInsertBuilder := q.NewClaimableBalanceClaimantBatchInsertBuilder()
+	claimantsInsertBuilder := q.NewClaimableBalanceClaimantBatchInsertBuilder(q.SessionInterface)
 	for _, claimant := range cBalance.Claimants {
 		claimant := history.ClaimableBalanceClaimant{
 			BalanceID:          cBalance.BalanceID,
@@ -62,8 +62,8 @@ func TestGetClaimableBalanceByID(t *testing.T) {
 		tt.Assert.NoError(claimantsInsertBuilder.Add(claimant))
 	}
 
-	tt.Assert.NoError(balanceInsertBuilder.Exec(tt.Ctx, q.SessionInterface))
-	tt.Assert.NoError(claimantsInsertBuilder.Exec(tt.Ctx, q.SessionInterface))
+	tt.Assert.NoError(balanceInsertBuilder.Exec(tt.Ctx))
+	tt.Assert.NoError(claimantsInsertBuilder.Exec(tt.Ctx))
 
 	handler := GetClaimableBalanceByIDHandler{}
 	response, err := handler.GetResource(httptest.NewRecorder(), makeRequest(
@@ -200,9 +200,9 @@ func TestGetClaimableBalances(t *testing.T) {
 		hCBs = append(hCBs, cb)
 	}
 
-	balanceInsertbuilder := q.NewClaimableBalanceBatchInsertBuilder()
+	balanceInsertbuilder := q.NewClaimableBalanceBatchInsertBuilder(q.SessionInterface)
 
-	claimantsInsertBuilder := q.NewClaimableBalanceClaimantBatchInsertBuilder()
+	claimantsInsertBuilder := q.NewClaimableBalanceClaimantBatchInsertBuilder(q.SessionInterface)
 
 	for _, cBalance := range hCBs {
 		tt.Assert.NoError(balanceInsertbuilder.Add(cBalance))
@@ -217,8 +217,8 @@ func TestGetClaimableBalances(t *testing.T) {
 		}
 	}
 
-	tt.Assert.NoError(balanceInsertbuilder.Exec(tt.Ctx, q.SessionInterface))
-	tt.Assert.NoError(claimantsInsertBuilder.Exec(tt.Ctx, q.SessionInterface))
+	tt.Assert.NoError(balanceInsertbuilder.Exec(tt.Ctx))
+	tt.Assert.NoError(claimantsInsertBuilder.Exec(tt.Ctx))
 
 	handler := GetClaimableBalancesHandler{}
 	response, err := handler.GetResourcePage(httptest.NewRecorder(), makeRequest(
@@ -298,8 +298,8 @@ func TestGetClaimableBalances(t *testing.T) {
 	tt.Assert.Len(response, 0)
 
 	// new claimable balances are ingested, they should appear in the next pages
-	balanceInsertbuilder = q.NewClaimableBalanceBatchInsertBuilder()
-	claimantsInsertBuilder = q.NewClaimableBalanceClaimantBatchInsertBuilder()
+	balanceInsertbuilder = q.NewClaimableBalanceBatchInsertBuilder(q.SessionInterface)
+	claimantsInsertBuilder = q.NewClaimableBalanceClaimantBatchInsertBuilder(q.SessionInterface)
 
 	entriesMeta = []struct {
 		id        xdr.Hash
@@ -339,8 +339,8 @@ func TestGetClaimableBalances(t *testing.T) {
 		}
 	}
 
-	tt.Assert.NoError(balanceInsertbuilder.Exec(tt.Ctx, q.SessionInterface))
-	tt.Assert.NoError(claimantsInsertBuilder.Exec(tt.Ctx, q.SessionInterface))
+	tt.Assert.NoError(balanceInsertbuilder.Exec(tt.Ctx))
+	tt.Assert.NoError(claimantsInsertBuilder.Exec(tt.Ctx))
 
 	response, err = handler.GetResourcePage(httptest.NewRecorder(), makeRequest(
 		t,

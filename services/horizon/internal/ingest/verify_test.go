@@ -272,9 +272,6 @@ func TestStateVerifierLockBusy(t *testing.T) {
 	q := &history.Q{&db.Session{DB: tt.HorizonDB}}
 
 	tt.Assert.NoError(q.SessionInterface.BeginTx(tt.Ctx, &sql.TxOptions{}))
-	defer func() {
-		_ = q.SessionInterface.Rollback()
-	}()
 
 	checkpointLedger := uint32(63)
 	changeProcessor := buildChangeProcessor(q, q.SessionInterface, &ingest.StatsChangeProcessor{}, ledgerSource, checkpointLedger, "")
@@ -332,9 +329,6 @@ func TestStateVerifier(t *testing.T) {
 	q := &history.Q{&db.Session{DB: tt.HorizonDB}}
 
 	tt.Assert.NoError(q.SessionInterface.BeginTx(tt.Ctx, &sql.TxOptions{}))
-	defer func() {
-		_ = q.SessionInterface.Rollback()
-	}()
 
 	checkpointLedger := uint32(63)
 	changeProcessor := buildChangeProcessor(q, q.SessionInterface, &ingest.StatsChangeProcessor{}, ledgerSource, checkpointLedger, "")
