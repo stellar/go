@@ -38,10 +38,14 @@ func (s *ClaimableBalancesChangeProcessorTestSuiteState) SetupTest() {
 	s.session = &db.MockSession{}
 	s.mockQ.
 		On("NewClaimableBalanceClaimantBatchInsertBuilder", s.session).
-		Return(s.mockClaimantsBatchInsertBuilder).Once()
+		Return(s.mockClaimantsBatchInsertBuilder)
 	s.mockQ.
 		On("NewClaimableBalanceBatchInsertBuilder", s.session).
-		Return(s.mockClaimableBalanceBatchInsertBuilder).Once()
+		Return(s.mockClaimableBalanceBatchInsertBuilder)
+
+	s.mockClaimantsBatchInsertBuilder.On("Exec", s.ctx).Return(nil)
+	s.mockClaimableBalanceBatchInsertBuilder.On("Exec", s.ctx).Return(nil)
+
 	s.processor = NewClaimableBalancesChangeProcessor(s.mockQ, s.session)
 }
 
@@ -133,13 +137,13 @@ func (s *ClaimableBalancesChangeProcessorTestSuiteLedger) SetupTest() {
 	s.session = &db.MockSession{}
 	s.mockQ.
 		On("NewClaimableBalanceClaimantBatchInsertBuilder", &db.MockSession{}).
-		Return(s.mockClaimantsBatchInsertBuilder).Twice()
+		Return(s.mockClaimantsBatchInsertBuilder)
 	s.mockQ.
 		On("NewClaimableBalanceBatchInsertBuilder", &db.MockSession{}).
-		Return(s.mockClaimableBalanceBatchInsertBuilder).Twice()
+		Return(s.mockClaimableBalanceBatchInsertBuilder)
 
-	s.mockClaimantsBatchInsertBuilder.On("Exec", s.ctx).Return(nil).Once()
-	s.mockClaimableBalanceBatchInsertBuilder.On("Exec", s.ctx).Return(nil).Once()
+	s.mockClaimantsBatchInsertBuilder.On("Exec", s.ctx).Return(nil)
+	s.mockClaimableBalanceBatchInsertBuilder.On("Exec", s.ctx).Return(nil)
 
 	s.processor = NewClaimableBalancesChangeProcessor(s.mockQ, s.session)
 }
