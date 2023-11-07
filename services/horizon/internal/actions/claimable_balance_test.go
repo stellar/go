@@ -158,7 +158,7 @@ func TestGetClaimableBalances(t *testing.T) {
 
 	tt.Assert.NoError(q.BeginTx(tt.Ctx, &sql.TxOptions{}))
 	defer func() {
-		_ = q.SessionInterface.Rollback()
+		_ = q.Rollback()
 	}()
 
 	entriesMeta := []struct {

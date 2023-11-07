@@ -271,10 +271,10 @@ func TestStateVerifierLockBusy(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &history.Q{&db.Session{DB: tt.HorizonDB}}
 
-	tt.Assert.NoError(q.SessionInterface.BeginTx(tt.Ctx, &sql.TxOptions{}))
+	tt.Assert.NoError(q.BeginTx(tt.Ctx, &sql.TxOptions{}))
 
 	checkpointLedger := uint32(63)
-	changeProcessor := buildChangeProcessor(q, q.SessionInterface, &ingest.StatsChangeProcessor{}, ledgerSource, checkpointLedger, "")
+	changeProcessor := buildChangeProcessor(q, q, &ingest.StatsChangeProcessor{}, ledgerSource, checkpointLedger, "")
 
 	gen := randxdr.NewGenerator()
 	var changes []xdr.LedgerEntryChange
@@ -293,7 +293,7 @@ func TestStateVerifierLockBusy(t *testing.T) {
 	}
 	tt.Assert.NoError(changeProcessor.Commit(tt.Ctx))
 
-	tt.Assert.NoError(q.SessionInterface.Commit())
+	tt.Assert.NoError(q.Commit())
 
 	q.UpdateLastLedgerIngest(tt.Ctx, checkpointLedger)
 
@@ -328,10 +328,10 @@ func TestStateVerifier(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &history.Q{&db.Session{DB: tt.HorizonDB}}
 
-	tt.Assert.NoError(q.SessionInterface.BeginTx(tt.Ctx, &sql.TxOptions{}))
+	tt.Assert.NoError(q.BeginTx(tt.Ctx, &sql.TxOptions{}))
 
 	checkpointLedger := uint32(63)
-	changeProcessor := buildChangeProcessor(q, q.SessionInterface, &ingest.StatsChangeProcessor{}, ledgerSource, checkpointLedger, "")
+	changeProcessor := buildChangeProcessor(q, q, &ingest.StatsChangeProcessor{}, ledgerSource, checkpointLedger, "")
 	mockChangeReader := &ingest.MockChangeReader{}
 
 	gen := randxdr.NewGenerator()
@@ -360,7 +360,7 @@ func TestStateVerifier(t *testing.T) {
 	tt.Assert.NoError(changeProcessor.Commit(tt.Ctx))
 	tt.Assert.Equal(len(xdr.LedgerEntryTypeMap), len(coverage))
 
-	tt.Assert.NoError(q.SessionInterface.Commit())
+	tt.Assert.NoError(q.Commit())
 
 	q.UpdateLastLedgerIngest(tt.Ctx, checkpointLedger)
 

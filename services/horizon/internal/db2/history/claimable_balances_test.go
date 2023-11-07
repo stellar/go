@@ -16,9 +16,9 @@ func TestRemoveClaimableBalance(t *testing.T) {
 	defer tt.Finish()
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
-	tt.Assert.NoError(q.SessionInterface.BeginTx(tt.Ctx, &sql.TxOptions{}))
+	tt.Assert.NoError(q.BeginTx(tt.Ctx, &sql.TxOptions{}))
 	defer func() {
-		_ = q.SessionInterface.Rollback()
+		_ = q.Rollback()
 	}()
 
 	accountID := "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"
@@ -69,9 +69,9 @@ func TestRemoveClaimableBalanceClaimants(t *testing.T) {
 	defer tt.Finish()
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
-	tt.Assert.NoError(q.SessionInterface.BeginTx(tt.Ctx, &sql.TxOptions{}))
+	tt.Assert.NoError(q.BeginTx(tt.Ctx, &sql.TxOptions{}))
 	defer func() {
-		_ = q.SessionInterface.Rollback()
+		_ = q.Rollback()
 	}()
 
 	accountID := "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"
@@ -264,9 +264,9 @@ func TestFindClaimableBalancesByDestinationWithLimit(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	tt.Assert.NoError(q.SessionInterface.BeginTx(tt.Ctx, &sql.TxOptions{}))
+	tt.Assert.NoError(q.BeginTx(tt.Ctx, &sql.TxOptions{}))
 	defer func() {
-		_ = q.SessionInterface.Rollback()
+		_ = q.Rollback()
 	}()
 
 	assetIssuer := "GA25GQLHJU3LPEJXEIAXK23AWEA5GWDUGRSHTQHDFT6HXHVMRULSQJUJ"
@@ -411,9 +411,9 @@ func TestFindClaimableBalance(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	tt.Assert.NoError(q.SessionInterface.BeginTx(tt.Ctx, &sql.TxOptions{}))
+	tt.Assert.NoError(q.BeginTx(tt.Ctx, &sql.TxOptions{}))
 	defer func() {
-		_ = q.SessionInterface.Rollback()
+		_ = q.Rollback()
 	}()
 
 	accountID := "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"
@@ -460,9 +460,9 @@ func TestGetClaimableBalancesByID(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	tt.Assert.NoError(q.SessionInterface.BeginTx(tt.Ctx, &sql.TxOptions{}))
+	tt.Assert.NoError(q.BeginTx(tt.Ctx, &sql.TxOptions{}))
 	defer func() {
-		_ = q.SessionInterface.Rollback()
+		_ = q.Rollback()
 	}()
 
 	accountID := "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"
