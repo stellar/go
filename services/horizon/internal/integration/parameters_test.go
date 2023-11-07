@@ -28,21 +28,19 @@ import (
 var defaultCaptiveCoreParameters = map[string]string{
 	horizon.StellarCoreBinaryPathName: os.Getenv("CAPTIVE_CORE_BIN"),
 	horizon.StellarCoreURLFlagName:    "",
-	horizon.StellarCoreDBURLFlagName:  "",
 }
 
 var networkParamArgs = map[string]string{
-	horizon.EnableCaptiveCoreIngestionFlagName: "",
-	horizon.CaptiveCoreConfigPathName:          "",
-	horizon.CaptiveCoreHTTPPortFlagName:        "",
-	horizon.StellarCoreBinaryPathName:          "",
-	horizon.StellarCoreURLFlagName:             "",
-	horizon.HistoryArchiveURLsFlagName:         "",
-	horizon.NetworkPassphraseFlagName:          "",
+	horizon.CaptiveCoreConfigPathName:   "",
+	horizon.CaptiveCoreHTTPPortFlagName: "",
+	horizon.StellarCoreBinaryPathName:   "",
+	horizon.StellarCoreURLFlagName:      "",
+	horizon.HistoryArchiveURLsFlagName:  "",
+	horizon.NetworkPassphraseFlagName:   "",
 }
 
 const (
-	SIMPLE_CAPTIVE_CORE_TOML = `
+	SimpleCaptiveCoreToml = `
 		PEER_PORT=11725
 		ARTIFICIALLY_ACCELERATE_TIME_FOR_TESTING=true
 
@@ -55,6 +53,8 @@ const (
 		PUBLIC_KEY="GD5KD2KEZJIGTC63IGW6UMUSMVUVG5IHG64HUTFWCHVZH2N2IBOQN7PS"
 		ADDRESS="localhost"
 		QUALITY="MEDIUM"`
+
+	StellarCoreURL = "http://localhost:11626"
 )
 
 var (
@@ -73,7 +73,7 @@ func TestBucketDirDisallowed(t *testing.T) {
 	}
 
 	config := `BUCKET_DIR_PATH="/tmp"
-		` + SIMPLE_CAPTIVE_CORE_TOML
+		` + SimpleCaptiveCoreToml
 
 	confName, _, cleanup := createCaptiveCoreConfig(config)
 	defer cleanup()
@@ -99,34 +99,34 @@ func TestEnvironmentPreserved(t *testing.T) {
 	// running an integration test.
 
 	// Note that we ALSO need to make sure we don't modify parent env state.
-	value, isSet := os.LookupEnv("CAPTIVE_CORE_CONFIG_PATH")
+	value, isSet := os.LookupEnv("STELLAR_CORE_URL")
 	defer func() {
 		if isSet {
-			_ = os.Setenv("CAPTIVE_CORE_CONFIG_PATH", value)
+			_ = os.Setenv("STELLAR_CORE_URL", value)
 		} else {
-			_ = os.Unsetenv("CAPTIVE_CORE_CONFIG_PATH")
+			_ = os.Unsetenv("STELLAR_CORE_URL")
 		}
 	}()
 
-	err := os.Setenv("CAPTIVE_CORE_CONFIG_PATH", "original value")
+	err := os.Setenv("STELLAR_CORE_URL", "original value")
 	assert.NoError(t, err)
 
-	confName, _, cleanup := createCaptiveCoreConfig(SIMPLE_CAPTIVE_CORE_TOML)
-	defer cleanup()
 	testConfig := integration.GetTestConfig()
-	testConfig.HorizonEnvironment = map[string]string{"CAPTIVE_CORE_CONFIG_PATH": confName}
+	testConfig.HorizonEnvironment = map[string]string{
+		"STELLAR_CORE_URL": StellarCoreURL,
+	}
 	test := integration.NewTest(t, *testConfig)
 
 	err = test.StartHorizon()
 	assert.NoError(t, err)
 	test.WaitForHorizon()
 
-	envValue := os.Getenv("CAPTIVE_CORE_CONFIG_PATH")
-	assert.Equal(t, confName, envValue)
+	envValue := os.Getenv("STELLAR_CORE_URL")
+	assert.Equal(t, StellarCoreURL, envValue)
 
 	test.Shutdown()
 
-	envValue = os.Getenv("CAPTIVE_CORE_CONFIG_PATH")
+	envValue = os.Getenv("STELLAR_CORE_URL")
 	assert.Equal(t, "original value", envValue)
 }
 
@@ -165,9 +165,8 @@ func TestInvalidNetworkParameters(t *testing.T) {
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
 			localParams := integration.MergeMaps(networkParamArgs, map[string]string{
-				horizon.NetworkFlagName:                    testCase.networkValue,
-				horizon.EnableCaptiveCoreIngestionFlagName: "true",
-				testCase.param:                             testCase.param, // set any value
+				horizon.NetworkFlagName: testCase.networkValue,
+				testCase.param:          testCase.param, // set any value
 			})
 			testConfig := integration.GetTestConfig()
 			testConfig.SkipCoreContainerCreation = true
@@ -282,7 +281,7 @@ func TestCaptiveCoreConfigFilesystemState(t *testing.T) {
 		t.Skip() // explained above
 	}
 
-	confName, storagePath, cleanup := createCaptiveCoreConfig(SIMPLE_CAPTIVE_CORE_TOML)
+	confName, storagePath, cleanup := createCaptiveCoreConfig(SimpleCaptiveCoreToml)
 	defer cleanup()
 
 	localParams := integration.MergeMaps(defaultCaptiveCoreParameters, map[string]string{
@@ -400,10 +399,9 @@ func TestIngestionFilteringAlwaysDefaultingToTrue(t *testing.T) {
 func TestDisableTxSub(t *testing.T) {
 	t.Run("require stellar-core-url when both DISABLE_TX_SUB=false and INGEST=false", func(t *testing.T) {
 		localParams := integration.MergeMaps(networkParamArgs, map[string]string{
-			horizon.NetworkFlagName:          "testnet",
-			horizon.IngestFlagName:           "false",
-			horizon.DisableTxSubFlagName:     "false",
-			horizon.StellarCoreDBURLFlagName: "",
+			horizon.NetworkFlagName:      "testnet",
+			horizon.IngestFlagName:       "false",
+			horizon.DisableTxSubFlagName: "false",
 		})
 		testConfig := integration.GetTestConfig()
 		testConfig.HorizonIngestParameters = localParams
@@ -414,13 +412,11 @@ func TestDisableTxSub(t *testing.T) {
 		test.Shutdown()
 	})
 	t.Run("horizon starts successfully when DISABLE_TX_SUB=false, INGEST=false and stellar-core-url is provided", func(t *testing.T) {
-		// TODO: Remove explicit mention of stellar-core-db-url once this issue is done: https://github.com/stellar/go/issues/4855
 		localParams := integration.MergeMaps(networkParamArgs, map[string]string{
-			horizon.NetworkFlagName:          "testnet",
-			horizon.IngestFlagName:           "false",
-			horizon.DisableTxSubFlagName:     "false",
-			horizon.StellarCoreDBURLFlagName: "",
-			horizon.StellarCoreURLFlagName:   "http://localhost:11626",
+			horizon.NetworkFlagName:        "testnet",
+			horizon.IngestFlagName:         "false",
+			horizon.DisableTxSubFlagName:   "false",
+			horizon.StellarCoreURLFlagName: "http://localhost:11626",
 		})
 		testConfig := integration.GetTestConfig()
 		testConfig.HorizonIngestParameters = localParams
@@ -530,6 +526,84 @@ func TestDeprecatedOutputs(t *testing.T) {
 			"[--disable-tx-sub], has been deprecated in favor of environment variables. Please consult our "+
 			"Configuring section in the developer documentation on how to use them - "+
 			"https://developers.stellar.org/docs/run-api-server/configuring")
+	})
+	t.Run("deprecated output for --stellar-core-db-url and --enable-captive-core-ingestion", func(t *testing.T) {
+		originalStderr := os.Stderr
+		r, w, _ := os.Pipe()
+		os.Stderr = w
+		stdLog.SetOutput(os.Stderr)
+
+		testConfig := integration.GetTestConfig()
+		testConfig.HorizonIngestParameters = map[string]string{
+			"stellar-core-db-url":           "temp-url",
+			"enable-captive-core-ingestion": "true",
+		}
+		test := integration.NewTest(t, *testConfig)
+		err := test.StartHorizon()
+		assert.NoError(t, err)
+		test.WaitForHorizon()
+
+		// Use a wait group to wait for the goroutine to finish before proceeding
+		var wg sync.WaitGroup
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if err := w.Close(); err != nil {
+				t.Errorf("Failed to close Stdout")
+				return
+			}
+		}()
+
+		outputBytes, _ := io.ReadAll(r)
+		wg.Wait() // Wait for the goroutine to finish before proceeding
+		_ = r.Close()
+		os.Stderr = originalStderr
+
+		assert.Contains(t, string(outputBytes), "DEPRECATED - The usage of the flag --stellar-core-db-url has been deprecated. "+
+			"Horizon now uses Captive-Core ingestion by default and this flag will soon be removed in "+
+			"the future.")
+		assert.Contains(t, string(outputBytes), "DEPRECATED - The usage of the flag --enable-captive-core-ingestion has been deprecated. "+
+			"Horizon now uses Captive-Core ingestion by default and this flag will soon be removed in "+
+			"the future.")
+	})
+	t.Run("deprecated output for env vars STELLAR_CORE_DATABASE_URL and ENABLE_CAPTIVE_CORE_INGESTION", func(t *testing.T) {
+		originalStderr := os.Stderr
+		r, w, _ := os.Pipe()
+		os.Stderr = w
+		stdLog.SetOutput(os.Stderr)
+
+		testConfig := integration.GetTestConfig()
+		testConfig.HorizonEnvironment = map[string]string{
+			"STELLAR_CORE_DATABASE_URL":     "temp-url",
+			"ENABLE_CAPTIVE_CORE_INGESTION": "true",
+		}
+		test := integration.NewTest(t, *testConfig)
+		err := test.StartHorizon()
+		assert.NoError(t, err)
+		test.WaitForHorizon()
+
+		// Use a wait group to wait for the goroutine to finish before proceeding
+		var wg sync.WaitGroup
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if err := w.Close(); err != nil {
+				t.Errorf("Failed to close Stdout")
+				return
+			}
+		}()
+
+		outputBytes, _ := io.ReadAll(r)
+		wg.Wait() // Wait for the goroutine to finish before proceeding
+		_ = r.Close()
+		os.Stderr = originalStderr
+
+		assert.Contains(t, string(outputBytes), "DEPRECATED - The usage of the flag --stellar-core-db-url has been deprecated. "+
+			"Horizon now uses Captive-Core ingestion by default and this flag will soon be removed in "+
+			"the future.")
+		assert.Contains(t, string(outputBytes), "DEPRECATED - The usage of the flag --enable-captive-core-ingestion has been deprecated. "+
+			"Horizon now uses Captive-Core ingestion by default and this flag will soon be removed in "+
+			"the future.")
 	})
 }
 

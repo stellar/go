@@ -58,7 +58,6 @@ const (
 	// DisableTxSubFlagName is the command line flag for disabling transaction submission feature of Horizon
 	DisableTxSubFlagName = "disable-tx-sub"
 
-	captiveCoreMigrationHint = "If you are migrating from Horizon 1.x.y, start with the Migration Guide here: https://developers.stellar.org/docs/run-api-server/migrating/"
 	// StellarPubnet is a constant representing the Stellar public network
 	StellarPubnet = "pubnet"
 	// StellarTestnet is a constant representing the Stellar test network
@@ -251,12 +250,21 @@ func Flags() (*Config, support.ConfigOptions) {
 			UsedInCommands: IngestionCommands,
 		},
 		&support.ConfigOption{
-			Name:           "enable-captive-core-ingestion",
-			OptType:        types.Bool,
-			FlagDefault:    true,
-			Required:       false,
-			Usage:          "causes Horizon to ingest from a Captive Stellar Core process instead of a persistent Stellar Core database",
-			ConfigKey:      &config.EnableCaptiveCoreIngestion,
+			Name:        EnableCaptiveCoreIngestionFlagName,
+			OptType:     types.String,
+			FlagDefault: "",
+			Required:    false,
+			Hidden:      true,
+			CustomSetValue: func(opt *support.ConfigOption) error {
+				if val := viper.GetString(opt.Name); val != "" {
+					stdLog.Printf(
+						"DEPRECATED - The usage of the flag --enable-captive-core-ingestion has been deprecated. " +
+							"Horizon now uses Captive-Core ingestion by default and this flag will soon be removed in " +
+							"the future.",
+					)
+				}
+				return nil
+			},
 			UsedInCommands: IngestionCommands,
 		},
 		&support.ConfigOption{
@@ -323,12 +331,21 @@ func Flags() (*Config, support.ConfigOptions) {
 			UsedInCommands: IngestionCommands,
 		},
 		&support.ConfigOption{
-			Name:           StellarCoreDBURLFlagName,
-			EnvVar:         "STELLAR_CORE_DATABASE_URL",
-			ConfigKey:      &config.StellarCoreDatabaseURL,
-			OptType:        types.String,
-			Required:       false,
-			Usage:          "stellar-core postgres database to connect with",
+			Name:     StellarCoreDBURLFlagName,
+			EnvVar:   "STELLAR_CORE_DATABASE_URL",
+			OptType:  types.String,
+			Required: false,
+			Hidden:   true,
+			CustomSetValue: func(opt *support.ConfigOption) error {
+				if val := viper.GetString(opt.Name); val != "" {
+					stdLog.Printf(
+						"DEPRECATED - The usage of the flag --stellar-core-db-url has been deprecated. " +
+							"Horizon now uses Captive-Core ingestion by default and this flag will soon be removed in " +
+							"the future.",
+					)
+				}
+				return nil
+			},
 			UsedInCommands: IngestionCommands,
 		},
 		&support.ConfigOption{
@@ -724,9 +741,6 @@ func NewAppFromFlags(config *Config, flags support.ConfigOptions) (*App, error) 
 	if config.StellarCoreURL == "" {
 		return nil, fmt.Errorf("flag --%s cannot be empty", StellarCoreURLFlagName)
 	}
-	if config.Ingest && !config.EnableCaptiveCoreIngestion && config.StellarCoreDatabaseURL == "" {
-		return nil, fmt.Errorf("flag --%s cannot be empty", StellarCoreDBURLFlagName)
-	}
 
 	log.Infof("Initializing horizon...")
 	app, err := NewApp(*config)
@@ -916,24 +930,9 @@ func ApplyFlags(config *Config, flags support.ConfigOptions, options ApplyOption
 			return err
 		}
 
-		if config.EnableCaptiveCoreIngestion {
-			err := setCaptiveCoreConfiguration(config, options)
-			if err != nil {
-				return errors.Wrap(err, "error generating captive core configuration")
-			}
-		}
-	} else {
-		if config.EnableCaptiveCoreIngestion && (config.CaptiveCoreBinaryPath != "" || config.CaptiveCoreConfigPath != "") {
-			captiveCoreConfigFlag := captiveCoreConfigAppendPathName
-			if viper.GetString(CaptiveCoreConfigPathName) != "" {
-				captiveCoreConfigFlag = CaptiveCoreConfigPathName
-			}
-			return fmt.Errorf("invalid config: one or more captive core params passed (--%s or --%s) but --ingest not set"+captiveCoreMigrationHint,
-				StellarCoreBinaryPathName, captiveCoreConfigFlag)
-		}
-		if config.StellarCoreDatabaseURL != "" {
-			return fmt.Errorf("invalid config: --%s passed but --ingest not set"+
-				"", StellarCoreDBURLFlagName)
+		err := setCaptiveCoreConfiguration(config, options)
+		if err != nil {
+			return errors.Wrap(err, "error generating captive core configuration")
 		}
 	}
 

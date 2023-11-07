@@ -12,11 +12,12 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 - Added new command-line flag `--network` to specify the Stellar network (pubnet or testnet), aiming at simplifying the configuration process by automatically configuring the following parameters based on the chosen network: `--history-archive-urls`, `--network-passphrase`, and `--captive-core-config-path` ([4949](https://github.com/stellar/go/pull/4949)).
+- Add a deprecation warning for using command-line flags when running Horizon ([5051](https://github.com/stellar/go/pull/5051))
+- Deprecate configuration flags related to legacy non-captive core ingestion ([5100](https://github.com/stellar/go/pull/5100))
 
 ### Fixed
 - The same slippage calculation from the [`v2.26.1`](#2261) hotfix now properly excludes spikes for smoother trade aggregation plots ([4999](https://github.com/stellar/go/pull/4999)).
 - Limit the display of global flags on command line help `-h` output ([5077](https://github.com/stellar/go/pull/5077)).
-- Add a deprecation warning for using command-line flags when running Horizon ([5051](https://github.com/stellar/go/pull/5051))
 
 ### DB Schema Migration
 - Drop unused indices from the Horizon database. For the database with full history, the migration is anticipated to take up to an hour and is expected to free up approximately 1.3TB of storage ([5081](https://github.com/stellar/go/pull/5081)).

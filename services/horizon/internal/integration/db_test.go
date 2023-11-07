@@ -558,15 +558,12 @@ func command(t *testing.T, horizonConfig horizon.Config, args ...string) []strin
 		horizonConfig.HistoryArchiveURLs[0],
 		"--db-url",
 		horizonConfig.DatabaseURL,
-		"--stellar-core-db-url",
-		horizonConfig.StellarCoreDatabaseURL,
 		"--stellar-core-binary-path",
 		horizonConfig.CaptiveCoreBinaryPath,
 		"--captive-core-config-path",
 		horizonConfig.CaptiveCoreConfigPath,
 		"--captive-core-use-db=" +
 			strconv.FormatBool(horizonConfig.CaptiveCoreConfigUseDB),
-		"--enable-captive-core-ingestion=" + strconv.FormatBool(horizonConfig.EnableCaptiveCoreIngestion),
 		"--network-passphrase",
 		horizonConfig.NetworkPassphrase,
 		// due to ARTIFICIALLY_ACCELERATE_TIME_FOR_TESTING

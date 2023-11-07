@@ -76,7 +76,6 @@ type Config struct {
 	CoreSession            db.SessionInterface
 	StellarCoreURL         string
 	StellarCoreCursor      string
-	EnableCaptiveCore      bool
 	CaptiveCoreBinaryPath  string
 	CaptiveCoreStoragePath string
 	CaptiveCoreToml        *ledgerbackend.CaptiveCoreToml
@@ -108,16 +107,14 @@ type Config struct {
 // LocalCaptiveCoreEnabled returns true if configured to run
 // a local captive core instance for ingestion.
 func (c Config) LocalCaptiveCoreEnabled() bool {
-	// c.EnableCaptiveCore is true for both local and remote captive core
-	// and c.RemoteCaptiveCoreURL is always empty when running
-	// local captive core.
-	return c.EnableCaptiveCore && c.RemoteCaptiveCoreURL == ""
+	// c.RemoteCaptiveCoreURL is always empty when running local captive core.
+	return c.RemoteCaptiveCoreURL == ""
 }
 
 // RemoteCaptiveCoreEnabled returns true if configured to run
 // a remote captive core instance for ingestion.
 func (c Config) RemoteCaptiveCoreEnabled() bool {
-	return c.EnableCaptiveCore && c.RemoteCaptiveCoreURL != ""
+	return c.RemoteCaptiveCoreURL != ""
 }
 
 const (
@@ -742,7 +739,7 @@ func (s *system) resetStateVerificationErrors() {
 }
 
 func (s *system) updateCursor(ledgerSequence uint32) error {
-	if s.stellarCoreClient == nil || s.config.EnableCaptiveCore {
+	if s.stellarCoreClient == nil {
 		return nil
 	}
 
