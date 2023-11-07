@@ -19,11 +19,11 @@ func TestGetClaimableBalanceByID(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
 	test.ResetHorizonDB(t, tt.HorizonDB)
-	q := &history.Q{tt.HorizonSession()}
+	q := &history.Q{SessionInterface: tt.HorizonSession()}
 
-	tt.Assert.NoError(q.SessionInterface.BeginTx(tt.Ctx, &sql.TxOptions{}))
+	tt.Assert.NoError(q.BeginTx(tt.Ctx, &sql.TxOptions{}))
 	defer func() {
-		_ = q.SessionInterface.Rollback()
+		_ = q.Rollback()
 	}()
 
 	accountID := "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"
@@ -49,10 +49,10 @@ func TestGetClaimableBalanceByID(t *testing.T) {
 		LastModifiedLedger: 123,
 	}
 
-	balanceInsertBuilder := q.NewClaimableBalanceBatchInsertBuilder(q.SessionInterface)
+	balanceInsertBuilder := q.NewClaimableBalanceBatchInsertBuilder()
 	tt.Assert.NoError(balanceInsertBuilder.Add(cBalance))
 
-	claimantsInsertBuilder := q.NewClaimableBalanceClaimantBatchInsertBuilder(q.SessionInterface)
+	claimantsInsertBuilder := q.NewClaimableBalanceClaimantBatchInsertBuilder()
 	for _, claimant := range cBalance.Claimants {
 		claimant := history.ClaimableBalanceClaimant{
 			BalanceID:          cBalance.BalanceID,
@@ -156,7 +156,7 @@ func TestGetClaimableBalances(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &history.Q{tt.HorizonSession()}
 
-	tt.Assert.NoError(q.SessionInterface.BeginTx(tt.Ctx, &sql.TxOptions{}))
+	tt.Assert.NoError(q.BeginTx(tt.Ctx, &sql.TxOptions{}))
 	defer func() {
 		_ = q.SessionInterface.Rollback()
 	}()
@@ -200,9 +200,9 @@ func TestGetClaimableBalances(t *testing.T) {
 		hCBs = append(hCBs, cb)
 	}
 
-	balanceInsertbuilder := q.NewClaimableBalanceBatchInsertBuilder(q.SessionInterface)
+	balanceInsertbuilder := q.NewClaimableBalanceBatchInsertBuilder()
 
-	claimantsInsertBuilder := q.NewClaimableBalanceClaimantBatchInsertBuilder(q.SessionInterface)
+	claimantsInsertBuilder := q.NewClaimableBalanceClaimantBatchInsertBuilder()
 
 	for _, cBalance := range hCBs {
 		tt.Assert.NoError(balanceInsertbuilder.Add(cBalance))
@@ -298,8 +298,8 @@ func TestGetClaimableBalances(t *testing.T) {
 	tt.Assert.Len(response, 0)
 
 	// new claimable balances are ingested, they should appear in the next pages
-	balanceInsertbuilder = q.NewClaimableBalanceBatchInsertBuilder(q.SessionInterface)
-	claimantsInsertBuilder = q.NewClaimableBalanceClaimantBatchInsertBuilder(q.SessionInterface)
+	balanceInsertbuilder = q.NewClaimableBalanceBatchInsertBuilder()
+	claimantsInsertBuilder = q.NewClaimableBalanceClaimantBatchInsertBuilder()
 
 	entriesMeta = []struct {
 		id        xdr.Hash

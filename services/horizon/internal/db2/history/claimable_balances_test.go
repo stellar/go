@@ -44,7 +44,7 @@ func TestRemoveClaimableBalance(t *testing.T) {
 		Amount:             10,
 	}
 
-	balanceBatchInsertBuilder := q.NewClaimableBalanceBatchInsertBuilder(q.SessionInterface)
+	balanceBatchInsertBuilder := q.NewClaimableBalanceBatchInsertBuilder()
 	tt.Assert.NoError(balanceBatchInsertBuilder.Add(cBalance))
 	tt.Assert.NoError(balanceBatchInsertBuilder.Exec(tt.Ctx))
 
@@ -97,7 +97,7 @@ func TestRemoveClaimableBalanceClaimants(t *testing.T) {
 		Amount:             10,
 	}
 
-	claimantsInsertBuilder := q.NewClaimableBalanceClaimantBatchInsertBuilder(q.SessionInterface)
+	claimantsInsertBuilder := q.NewClaimableBalanceClaimantBatchInsertBuilder()
 	tt.Assert.NoError(insertClaimants(claimantsInsertBuilder, cBalance))
 	tt.Assert.NoError(claimantsInsertBuilder.Exec(tt.Ctx))
 
@@ -112,9 +112,9 @@ func TestFindClaimableBalancesByDestination(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	tt.Assert.NoError(q.SessionInterface.BeginTx(tt.Ctx, &sql.TxOptions{}))
+	tt.Assert.NoError(q.BeginTx(tt.Ctx, &sql.TxOptions{}))
 	defer func() {
-		_ = q.SessionInterface.Rollback()
+		_ = q.Rollback()
 	}()
 
 	dest1 := "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"
@@ -142,8 +142,8 @@ func TestFindClaimableBalancesByDestination(t *testing.T) {
 		Amount:             10,
 	}
 
-	balanceInsertBuilder := q.NewClaimableBalanceBatchInsertBuilder(q.SessionInterface)
-	claimantsInsertBuilder := q.NewClaimableBalanceClaimantBatchInsertBuilder(q.SessionInterface)
+	balanceInsertBuilder := q.NewClaimableBalanceBatchInsertBuilder()
+	claimantsInsertBuilder := q.NewClaimableBalanceClaimantBatchInsertBuilder()
 
 	tt.Assert.NoError(balanceInsertBuilder.Add(cBalance))
 	tt.Assert.NoError(insertClaimants(claimantsInsertBuilder, cBalance))
@@ -308,8 +308,8 @@ func TestFindClaimableBalancesByDestinationWithLimit(t *testing.T) {
 		LastModifiedLedger: 123,
 		Amount:             10,
 	}
-	balanceInsertBuilder := q.NewClaimableBalanceBatchInsertBuilder(q.SessionInterface)
-	claimantsInsertBuilder := q.NewClaimableBalanceClaimantBatchInsertBuilder(q.SessionInterface)
+	balanceInsertBuilder := q.NewClaimableBalanceBatchInsertBuilder()
+	claimantsInsertBuilder := q.NewClaimableBalanceClaimantBatchInsertBuilder()
 
 	tt.Assert.NoError(balanceInsertBuilder.Add(cBalance1))
 	tt.Assert.NoError(insertClaimants(claimantsInsertBuilder, cBalance1))
@@ -439,7 +439,7 @@ func TestFindClaimableBalance(t *testing.T) {
 		Amount:             10,
 	}
 
-	balanceInsertBuilder := q.NewClaimableBalanceBatchInsertBuilder(q.SessionInterface)
+	balanceInsertBuilder := q.NewClaimableBalanceBatchInsertBuilder()
 	tt.Assert.NoError(balanceInsertBuilder.Add(cBalance))
 	tt.Assert.NoError(balanceInsertBuilder.Exec(tt.Ctx))
 
@@ -488,7 +488,7 @@ func TestGetClaimableBalancesByID(t *testing.T) {
 		Amount:             10,
 	}
 
-	balanceInsertBuilder := q.NewClaimableBalanceBatchInsertBuilder(q.SessionInterface)
+	balanceInsertBuilder := q.NewClaimableBalanceBatchInsertBuilder()
 	tt.Assert.NoError(balanceInsertBuilder.Add(cBalance))
 	tt.Assert.NoError(balanceInsertBuilder.Exec(tt.Ctx))
 

@@ -21,9 +21,9 @@ type claimableBalanceClaimantBatchInsertBuilder struct {
 }
 
 // NewClaimableBalanceClaimantBatchInsertBuilder constructs a new ClaimableBalanceClaimantBatchInsertBuilder instance
-func (q *Q) NewClaimableBalanceClaimantBatchInsertBuilder(session db.SessionInterface) ClaimableBalanceClaimantBatchInsertBuilder {
+func (q *Q) NewClaimableBalanceClaimantBatchInsertBuilder() ClaimableBalanceClaimantBatchInsertBuilder {
 	return &claimableBalanceClaimantBatchInsertBuilder{
-		session: session,
+		session: q,
 		builder: db.FastBatchInsertBuilder{},
 		table:   "claimable_balance_claimants",
 	}
