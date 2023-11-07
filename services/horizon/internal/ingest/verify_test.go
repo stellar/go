@@ -274,7 +274,7 @@ func TestStateVerifierLockBusy(t *testing.T) {
 	tt.Assert.NoError(q.BeginTx(tt.Ctx, &sql.TxOptions{}))
 
 	checkpointLedger := uint32(63)
-	changeProcessor := buildChangeProcessor(q, q, &ingest.StatsChangeProcessor{}, ledgerSource, checkpointLedger, "")
+	changeProcessor := buildChangeProcessor(q, &ingest.StatsChangeProcessor{}, ledgerSource, checkpointLedger, "")
 
 	gen := randxdr.NewGenerator()
 	var changes []xdr.LedgerEntryChange
@@ -331,7 +331,7 @@ func TestStateVerifier(t *testing.T) {
 	tt.Assert.NoError(q.BeginTx(tt.Ctx, &sql.TxOptions{}))
 
 	checkpointLedger := uint32(63)
-	changeProcessor := buildChangeProcessor(q, q, &ingest.StatsChangeProcessor{}, ledgerSource, checkpointLedger, "")
+	changeProcessor := buildChangeProcessor(q, &ingest.StatsChangeProcessor{}, ledgerSource, checkpointLedger, "")
 	mockChangeReader := &ingest.MockChangeReader{}
 
 	gen := randxdr.NewGenerator()

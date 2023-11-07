@@ -109,7 +109,6 @@ func (s *ProcessorRunner) DisableMemoryStatsLogging() {
 
 func buildChangeProcessor(
 	historyQ history.IngestionQ,
-	session db.SessionInterface,
 	changeStats *ingest.StatsChangeProcessor,
 	source ingestionSource,
 	ledgerSequence uint32,
@@ -240,7 +239,6 @@ func (s *ProcessorRunner) RunHistoryArchiveIngestion(
 	changeStats := ingest.StatsChangeProcessor{}
 	changeProcessor := buildChangeProcessor(
 		s.historyQ,
-		s.session,
 		&changeStats,
 		historyArchiveSource,
 		checkpointLedger,
@@ -406,7 +404,6 @@ func (s *ProcessorRunner) RunAllProcessorsOnLedger(ledger xdr.LedgerCloseMeta) (
 
 	groupChangeProcessors := buildChangeProcessor(
 		s.historyQ,
-		s.session,
 		&changeStatsProcessor,
 		ledgerSource,
 		ledger.LedgerSequence(),
