@@ -2,7 +2,6 @@ package history
 
 import (
 	"context"
-
 	"github.com/stretchr/testify/mock"
 )
 
@@ -10,8 +9,8 @@ type MockClaimableBalanceClaimantBatchInsertBuilder struct {
 	mock.Mock
 }
 
-func (m *MockClaimableBalanceClaimantBatchInsertBuilder) Add(ctx context.Context, claimableBalanceClaimant ClaimableBalanceClaimant) error {
-	a := m.Called(ctx, claimableBalanceClaimant)
+func (m *MockClaimableBalanceClaimantBatchInsertBuilder) Add(claimableBalanceClaimant ClaimableBalanceClaimant) error {
+	a := m.Called(claimableBalanceClaimant)
 	return a.Error(0)
 }
 

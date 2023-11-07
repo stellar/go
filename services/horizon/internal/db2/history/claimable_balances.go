@@ -107,7 +107,11 @@ type ClaimableBalance struct {
 type Claimants []Claimant
 
 func (c Claimants) Value() (driver.Value, error) {
-	return json.Marshal(c)
+	// Convert the byte array into a string as a workaround to bypass buggy encoding in the pq driver
+	// (More info about this bug here https://github.com/stellar/go/issues/5086#issuecomment-1773215436).
+	// By doing so, the data will be written as a string rather than hex encoded bytes.
+	val, err := json.Marshal(c)
+	return string(val), err
 }
 
 func (c *Claimants) Scan(value interface{}) error {
@@ -126,12 +130,12 @@ type Claimant struct {
 
 // QClaimableBalances defines claimable-balance-related related queries.
 type QClaimableBalances interface {
-	UpsertClaimableBalances(ctx context.Context, cb []ClaimableBalance) error
 	RemoveClaimableBalances(ctx context.Context, ids []string) (int64, error)
 	RemoveClaimableBalanceClaimants(ctx context.Context, ids []string) (int64, error)
 	GetClaimableBalancesByID(ctx context.Context, ids []string) ([]ClaimableBalance, error)
 	CountClaimableBalances(ctx context.Context) (int, error)
-	NewClaimableBalanceClaimantBatchInsertBuilder(maxBatchSize int) ClaimableBalanceClaimantBatchInsertBuilder
+	NewClaimableBalanceClaimantBatchInsertBuilder() ClaimableBalanceClaimantBatchInsertBuilder
+	NewClaimableBalanceBatchInsertBuilder() ClaimableBalanceBatchInsertBuilder
 	GetClaimantsByClaimableBalances(ctx context.Context, ids []string) (map[string][]ClaimableBalanceClaimant, error)
 }
 
@@ -169,36 +173,6 @@ func (q *Q) GetClaimantsByClaimableBalances(ctx context.Context, ids []string) (
 		claimantsMap[claimant.BalanceID] = append(claimantsMap[claimant.BalanceID], claimant)
 	}
 	return claimantsMap, err
-}
-
-// UpsertClaimableBalances upserts a batch of claimable balances in the claimable_balances table.
-// There's currently no limit of the number of offers this method can
-// accept other than 2GB limit of the query string length what should be enough
-// for each ledger with the current limits.
-func (q *Q) UpsertClaimableBalances(ctx context.Context, cbs []ClaimableBalance) error {
-	var id, claimants, asset, amount, sponsor, lastModifiedLedger, flags []interface{}
-
-	for _, cb := range cbs {
-		id = append(id, cb.BalanceID)
-		claimants = append(claimants, cb.Claimants)
-		asset = append(asset, cb.Asset)
-		amount = append(amount, cb.Amount)
-		sponsor = append(sponsor, cb.Sponsor)
-		lastModifiedLedger = append(lastModifiedLedger, cb.LastModifiedLedger)
-		flags = append(flags, cb.Flags)
-	}
-
-	upsertFields := []upsertField{
-		{"id", "text", id},
-		{"claimants", "jsonb", claimants},
-		{"asset", "text", asset},
-		{"amount", "bigint", amount},
-		{"sponsor", "text", sponsor},
-		{"last_modified_ledger", "integer", lastModifiedLedger},
-		{"flags", "int", flags},
-	}
-
-	return q.upsertRows(ctx, "claimable_balances", "id", upsertFields)
 }
 
 // RemoveClaimableBalances deletes claimable balances table.
