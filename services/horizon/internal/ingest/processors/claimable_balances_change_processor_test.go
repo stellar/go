@@ -45,7 +45,7 @@ func (s *ClaimableBalancesChangeProcessorTestSuiteState) SetupTest() {
 	s.mockClaimantsBatchInsertBuilder.On("Exec", s.ctx).Return(nil)
 	s.mockClaimableBalanceBatchInsertBuilder.On("Exec", s.ctx).Return(nil)
 
-	s.processor = NewClaimableBalancesChangeProcessor(s.mockQ, s.session)
+	s.processor = NewClaimableBalancesChangeProcessor(s.mockQ)
 }
 
 func (s *ClaimableBalancesChangeProcessorTestSuiteState) TearDownTest() {
@@ -143,7 +143,7 @@ func (s *ClaimableBalancesChangeProcessorTestSuiteLedger) SetupTest() {
 	s.mockClaimantsBatchInsertBuilder.On("Exec", s.ctx).Return(nil)
 	s.mockClaimableBalanceBatchInsertBuilder.On("Exec", s.ctx).Return(nil)
 
-	s.processor = NewClaimableBalancesChangeProcessor(s.mockQ, s.session)
+	s.processor = NewClaimableBalancesChangeProcessor(s.mockQ)
 }
 
 func (s *ClaimableBalancesChangeProcessorTestSuiteLedger) TearDownTest() {

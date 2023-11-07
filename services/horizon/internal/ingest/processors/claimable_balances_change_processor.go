@@ -6,7 +6,6 @@ import (
 
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
@@ -17,14 +16,12 @@ type ClaimableBalancesChangeProcessor struct {
 	cache                         *ingest.ChangeCompactor
 	claimantsInsertBuilder        history.ClaimableBalanceClaimantBatchInsertBuilder
 	claimableBalanceInsertBuilder history.ClaimableBalanceBatchInsertBuilder
-	session                       db.SessionInterface
 }
 
-func NewClaimableBalancesChangeProcessor(Q history.QClaimableBalances, session db.SessionInterface) *ClaimableBalancesChangeProcessor {
+func NewClaimableBalancesChangeProcessor(Q history.QClaimableBalances) *ClaimableBalancesChangeProcessor {
 	p := &ClaimableBalancesChangeProcessor{
 		encodingBuffer:     xdr.NewEncodingBuffer(),
 		qClaimableBalances: Q,
-		session:            session,
 	}
 	p.reset()
 	return p
