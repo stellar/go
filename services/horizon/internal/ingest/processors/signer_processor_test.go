@@ -33,8 +33,8 @@ func (s *AccountsSignerProcessorTestSuiteState) SetupTest() {
 	s.mockBatchInsertBuilder = &history.MockAccountSignersBatchInsertBuilder{}
 
 	s.mockQ.
-		On("NewAccountSignersBatchInsertBuilder", maxBatchSize).
-		Return(s.mockBatchInsertBuilder).Once()
+		On("NewAccountSignersBatchInsertBuilder").
+		Return(s.mockBatchInsertBuilder).Twice()
 
 	s.processor = NewSignersProcessor(s.mockQ, false)
 }
@@ -53,7 +53,7 @@ func (s *AccountsSignerProcessorTestSuiteState) TestNoEntries() {
 
 func (s *AccountsSignerProcessorTestSuiteState) TestCreatesSigners() {
 	s.mockBatchInsertBuilder.
-		On("Add", s.ctx, history.AccountSigner{
+		On("Add", history.AccountSigner{
 			Account: "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
 			Signer:  "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
 			Weight:  int32(1),
@@ -75,7 +75,7 @@ func (s *AccountsSignerProcessorTestSuiteState) TestCreatesSigners() {
 	s.Assert().NoError(err)
 
 	s.mockBatchInsertBuilder.
-		On("Add", s.ctx, history.AccountSigner{
+		On("Add", history.AccountSigner{
 			Account: "GCCCU34WDY2RATQTOOQKY6SZWU6J5DONY42SWGW2CIXGW4LICAGNRZKX",
 			Signer:  "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
 			Weight:  int32(10),
@@ -105,7 +105,7 @@ func (s *AccountsSignerProcessorTestSuiteState) TestCreatesSigners() {
 
 func (s *AccountsSignerProcessorTestSuiteState) TestCreatesSignerWithSponsor() {
 	s.mockBatchInsertBuilder.
-		On("Add", s.ctx, history.AccountSigner{
+		On("Add", history.AccountSigner{
 			Account: "GCCCU34WDY2RATQTOOQKY6SZWU6J5DONY42SWGW2CIXGW4LICAGNRZKX",
 			Signer:  "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
 			Weight:  int32(10),
@@ -156,17 +156,20 @@ func TestAccountsSignerProcessorTestSuiteLedger(t *testing.T) {
 
 type AccountsSignerProcessorTestSuiteLedger struct {
 	suite.Suite
-	ctx       context.Context
-	processor *SignersProcessor
-	mockQ     *history.MockQSigners
+	ctx                                  context.Context
+	processor                            *SignersProcessor
+	mockQ                                *history.MockQSigners
+	mockAccountSignersBatchInsertBuilder *history.MockAccountSignersBatchInsertBuilder
 }
 
 func (s *AccountsSignerProcessorTestSuiteLedger) SetupTest() {
 	s.ctx = context.Background()
 	s.mockQ = &history.MockQSigners{}
+	s.mockAccountSignersBatchInsertBuilder = &history.MockAccountSignersBatchInsertBuilder{}
 	s.mockQ.
-		On("NewAccountSignersBatchInsertBuilder", maxBatchSize).
-		Return(&history.MockAccountSignersBatchInsertBuilder{}).Once()
+		On("NewAccountSignersBatchInsertBuilder").
+		Return(s.mockAccountSignersBatchInsertBuilder).Twice()
+	s.mockAccountSignersBatchInsertBuilder.On("Exec", s.ctx).Return(nil)
 
 	s.processor = NewSignersProcessor(s.mockQ, true)
 }

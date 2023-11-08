@@ -14,8 +14,8 @@ import (
 type SignersProcessor struct {
 	signersQ history.QSigners
 
-	cache *ingest.ChangeCompactor
-	batch history.AccountSignersBatchInsertBuilder
+	cache              *ingest.ChangeCompactor
+	batchInsertBuilder history.AccountSignersBatchInsertBuilder
 	// insertOnlyMode is a mode in which we don't use ledger cache and we just
 	// add signers to a batch, then we Exec all signers in one insert query.
 	// This is done to make history buckets processing faster (batch inserting).
@@ -31,7 +31,7 @@ func NewSignersProcessor(
 }
 
 func (p *SignersProcessor) reset() {
-	p.batch = p.signersQ.NewAccountSignersBatchInsertBuilder(maxBatchSize)
+	p.batchInsertBuilder = p.signersQ.NewAccountSignersBatchInsertBuilder()
 	p.cache = ingest.NewChangeCompactor()
 }
 
@@ -51,7 +51,6 @@ func (p *SignersProcessor) ProcessChange(ctx context.Context, change ingest.Chan
 			if err != nil {
 				return errors.Wrap(err, "error in Commit")
 			}
-			p.reset()
 		}
 
 		return nil
@@ -71,7 +70,7 @@ func (p *SignersProcessor) ProcessChange(ctx context.Context, change ingest.Chan
 			sponsor = null.StringFrom(sponsorDesc.Address())
 		}
 
-		err := p.batch.Add(ctx, history.AccountSigner{
+		err := p.batchInsertBuilder.Add(history.AccountSigner{
 			Account: account,
 			Signer:  signer,
 			Weight:  weight,
@@ -86,8 +85,10 @@ func (p *SignersProcessor) ProcessChange(ctx context.Context, change ingest.Chan
 }
 
 func (p *SignersProcessor) Commit(ctx context.Context) error {
+	defer p.reset()
+
 	if !p.useLedgerEntryCache {
-		return p.batch.Exec(ctx)
+		return p.batchInsertBuilder.Exec(ctx)
 	}
 
 	changes := p.cache.GetChanges()
@@ -153,5 +154,9 @@ func (p *SignersProcessor) Commit(ctx context.Context) error {
 		}
 	}
 
+	err := p.batchInsertBuilder.Exec(ctx)
+	if err != nil {
+		return errors.Wrap(err, "error executing AccountSignersBatchInsertBuilder")
+	}
 	return nil
 }
