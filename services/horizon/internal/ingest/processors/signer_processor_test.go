@@ -4,6 +4,7 @@ package processors
 
 import (
 	"context"
+	"github.com/stellar/go/support/errors"
 	"testing"
 
 	"github.com/guregu/null"
@@ -483,6 +484,43 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestRemoveAccount() {
 	})
 	s.Assert().NoError(err)
 	s.Assert().NoError(s.processor.Commit(s.ctx))
+}
+
+func (s *AccountsSignerProcessorTestSuiteLedger) TestRemoveAccountNoRowsAffected() {
+	s.mockQ.
+		On(
+			"RemoveAccountSigner",
+			s.ctx,
+			"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
+			"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
+		).
+		Return(int64(0), nil).Once()
+
+	err := s.processor.ProcessChange(s.ctx, ingest.Change{
+		Type: xdr.LedgerEntryTypeAccount,
+		Pre: &xdr.LedgerEntry{
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeAccount,
+				Account: &xdr.AccountEntry{
+					AccountId:  xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+					Thresholds: [4]byte{1, 1, 1, 1},
+				},
+			},
+		},
+		Post: nil,
+	})
+	s.Assert().NoError(err)
+
+	err = s.processor.Commit(s.ctx)
+	s.Assert().Error(err)
+	s.Assert().IsType(ingest.StateError{}, errors.Cause(err))
+	s.Assert().EqualError(
+		err,
+		"Expected "+
+			"account=GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML "+
+			"signer=GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML in database but not found when removing "+
+			"(rows affected = 0)",
+	)
 }
 
 func (s *AccountsSignerProcessorTestSuiteLedger) TestProcessUpgradeChange() {
