@@ -88,7 +88,11 @@ func (p *SignersProcessor) Commit(ctx context.Context) error {
 	defer p.reset()
 
 	if !p.useLedgerEntryCache {
-		return p.batchInsertBuilder.Exec(ctx)
+		err := p.batchInsertBuilder.Exec(ctx)
+		if err != nil {
+			return errors.Wrap(err, "error executing AccountSignersBatchInsertBuilder")
+		}
+		return nil
 	}
 
 	changes := p.cache.GetChanges()
@@ -132,23 +136,15 @@ func (p *SignersProcessor) Commit(ctx context.Context) error {
 					}
 				}
 
-				rowsAffected, err := p.signersQ.CreateAccountSigner(ctx,
-					postAccountEntry.AccountId.Address(),
-					signer,
-					weight,
-					sponsor,
-				)
+				err := p.batchInsertBuilder.Add(history.AccountSigner{
+					Account: postAccountEntry.AccountId.Address(),
+					Signer:  signer,
+					Weight:  weight,
+					Sponsor: null.StringFromPtr(sponsor),
+				})
 				if err != nil {
-					return errors.Wrapf(err, "Error inserting a signer (%s)", signer)
-				}
-
-				if rowsAffected != 1 {
-					return ingest.NewStateError(errors.Errorf(
-						"%d rows affected when inserting account=%s signer=%s to database",
-						rowsAffected,
-						postAccountEntry.AccountId.Address(),
-						signer,
-					))
+					return errors.Wrapf(err, "Error adding signer (%s) to AccountSignersBatchInsertBuilder",
+						signer)
 				}
 			}
 		}

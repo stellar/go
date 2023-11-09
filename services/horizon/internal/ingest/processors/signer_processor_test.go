@@ -10,7 +10,6 @@ import (
 
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/suite"
 )
@@ -35,12 +34,12 @@ func (s *AccountsSignerProcessorTestSuiteState) SetupTest() {
 	s.mockQ.
 		On("NewAccountSignersBatchInsertBuilder").
 		Return(s.mockBatchInsertBuilder).Twice()
+	s.mockBatchInsertBuilder.On("Exec", s.ctx).Return(nil)
 
 	s.processor = NewSignersProcessor(s.mockQ, false)
 }
 
 func (s *AccountsSignerProcessorTestSuiteState) TearDownTest() {
-	s.mockBatchInsertBuilder.On("Exec", s.ctx).Return(nil).Once()
 	s.Assert().NoError(s.processor.Commit(s.ctx))
 
 	s.mockQ.AssertExpectations(s.T())
@@ -184,16 +183,17 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestNoTransactions() {
 }
 
 func (s *AccountsSignerProcessorTestSuiteLedger) TestNewAccount() {
-	s.mockQ.
+	s.mockAccountSignersBatchInsertBuilder.
 		On(
-			"CreateAccountSigner",
-			s.ctx,
-			"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
-			"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
-			int32(1),
-			(*string)(nil),
+			"Add",
+			history.AccountSigner{
+				"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
+				"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
+				int32(1),
+				null.String{},
+			},
 		).
-		Return(int64(1), nil).Once()
+		Return(nil).Once()
 
 	err := s.processor.ProcessChange(s.ctx, ingest.Change{
 		Type: xdr.LedgerEntryTypeAccount,
@@ -250,27 +250,28 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestNewSigner() {
 		Return(int64(1), nil).Once()
 
 	// Create new and old signer
-	s.mockQ.
+	s.mockAccountSignersBatchInsertBuilder.
 		On(
-			"CreateAccountSigner",
-			s.ctx,
-			"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
-			"GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV",
-			int32(10),
-			(*string)(nil),
+			"Add",
+			history.AccountSigner{
+				"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
+				"GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV",
+				int32(10),
+				null.String{},
+			},
 		).
-		Return(int64(1), nil).Once()
+		Return(nil).Once()
 
-	s.mockQ.
+	s.mockAccountSignersBatchInsertBuilder.
 		On(
-			"CreateAccountSigner",
-			s.ctx,
-			"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
-			"GCAHY6JSXQFKWKP6R7U5JPXDVNV4DJWOWRFLY3Y6YPBF64QRL4BPFDNS",
-			int32(15),
-			(*string)(nil),
+			"Add",
+			history.AccountSigner{
+				"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
+				"GCAHY6JSXQFKWKP6R7U5JPXDVNV4DJWOWRFLY3Y6YPBF64QRL4BPFDNS",
+				int32(15),
+				null.StringFromPtr(nil)},
 		).
-		Return(int64(1), nil).Once()
+		Return(nil).Once()
 
 	err := s.processor.ProcessChange(s.ctx, ingest.Change{
 		Type: xdr.LedgerEntryTypeAccount,
@@ -332,16 +333,17 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestSignerRemoved() {
 		Return(int64(1), nil).Once()
 
 	// Create new signer
-	s.mockQ.
+	s.mockAccountSignersBatchInsertBuilder.
 		On(
-			"CreateAccountSigner",
-			s.ctx,
-			"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
-			"GCAHY6JSXQFKWKP6R7U5JPXDVNV4DJWOWRFLY3Y6YPBF64QRL4BPFDNS",
-			int32(15),
-			(*string)(nil),
+			"Add",
+			history.AccountSigner{
+				"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
+				"GCAHY6JSXQFKWKP6R7U5JPXDVNV4DJWOWRFLY3Y6YPBF64QRL4BPFDNS",
+				int32(15),
+				null.String{},
+			},
 		).
-		Return(int64(1), nil).Once()
+		Return(nil).Once()
 
 	err := s.processor.ProcessChange(s.ctx, ingest.Change{
 		Type: xdr.LedgerEntryTypeAccount,
@@ -405,16 +407,17 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestSignerPreAuthTxRemovedTxFai
 		Return(int64(1), nil).Once()
 
 	// Create new signer
-	s.mockQ.
+	s.mockAccountSignersBatchInsertBuilder.
 		On(
-			"CreateAccountSigner",
-			s.ctx,
-			"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
-			"GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV",
-			int32(10),
-			(*string)(nil),
+			"Add",
+			history.AccountSigner{
+				"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
+				"GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV",
+				int32(10),
+				null.String{},
+			},
 		).
-		Return(int64(1), nil).Once()
+		Return(nil).Once()
 
 	err := s.processor.ProcessChange(s.ctx, ingest.Change{
 		Type: xdr.LedgerEntryTypeAccount,
@@ -482,81 +485,6 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestRemoveAccount() {
 	s.Assert().NoError(s.processor.Commit(s.ctx))
 }
 
-func (s *AccountsSignerProcessorTestSuiteLedger) TestNewAccountNoRowsAffected() {
-	s.mockQ.
-		On(
-			"CreateAccountSigner",
-			s.ctx,
-			"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
-			"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
-			int32(1),
-			(*string)(nil),
-		).
-		Return(int64(0), nil).Once()
-
-	err := s.processor.ProcessChange(s.ctx, ingest.Change{
-		Type: xdr.LedgerEntryTypeAccount,
-		Pre:  nil,
-		Post: &xdr.LedgerEntry{
-			Data: xdr.LedgerEntryData{
-				Type: xdr.LedgerEntryTypeAccount,
-				Account: &xdr.AccountEntry{
-					AccountId:  xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
-					Thresholds: [4]byte{1, 1, 1, 1},
-				},
-			},
-		},
-	})
-	s.Assert().NoError(err)
-
-	err = s.processor.Commit(s.ctx)
-	s.Assert().Error(err)
-	s.Assert().IsType(ingest.StateError{}, errors.Cause(err))
-	s.Assert().EqualError(
-		err,
-		"0 rows affected when inserting "+
-			"account=GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML "+
-			"signer=GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML to database",
-	)
-}
-
-func (s *AccountsSignerProcessorTestSuiteLedger) TestRemoveAccountNoRowsAffected() {
-	s.mockQ.
-		On(
-			"RemoveAccountSigner",
-			s.ctx,
-			"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
-			"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
-		).
-		Return(int64(0), nil).Once()
-
-	err := s.processor.ProcessChange(s.ctx, ingest.Change{
-		Type: xdr.LedgerEntryTypeAccount,
-		Pre: &xdr.LedgerEntry{
-			Data: xdr.LedgerEntryData{
-				Type: xdr.LedgerEntryTypeAccount,
-				Account: &xdr.AccountEntry{
-					AccountId:  xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
-					Thresholds: [4]byte{1, 1, 1, 1},
-				},
-			},
-		},
-		Post: nil,
-	})
-	s.Assert().NoError(err)
-
-	err = s.processor.Commit(s.ctx)
-	s.Assert().Error(err)
-	s.Assert().IsType(ingest.StateError{}, errors.Cause(err))
-	s.Assert().EqualError(
-		err,
-		"Expected "+
-			"account=GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML "+
-			"signer=GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML in database but not found when removing "+
-			"(rows affected = 0)",
-	)
-}
-
 func (s *AccountsSignerProcessorTestSuiteLedger) TestProcessUpgradeChange() {
 	// Remove old signer
 	s.mockQ.
@@ -569,27 +497,28 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestProcessUpgradeChange() {
 		Return(int64(1), nil).Once()
 
 	// Create new and old (updated) signer
-	s.mockQ.
+	s.mockAccountSignersBatchInsertBuilder.
 		On(
-			"CreateAccountSigner",
-			s.ctx,
-			"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
-			"GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV",
-			int32(12),
-			(*string)(nil),
+			"Add",
+			history.AccountSigner{
+				"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
+				"GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV",
+				int32(12),
+				null.String{},
+			},
 		).
-		Return(int64(1), nil).Once()
+		Return(nil).Once()
 
-	s.mockQ.
+	s.mockAccountSignersBatchInsertBuilder.
 		On(
-			"CreateAccountSigner",
-			s.ctx,
-			"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
-			"GCAHY6JSXQFKWKP6R7U5JPXDVNV4DJWOWRFLY3Y6YPBF64QRL4BPFDNS",
-			int32(15),
-			(*string)(nil),
-		).
-		Return(int64(1), nil).Once()
+			"Add",
+			history.AccountSigner{
+				"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
+				"GCAHY6JSXQFKWKP6R7U5JPXDVNV4DJWOWRFLY3Y6YPBF64QRL4BPFDNS",
+				int32(15),
+				null.String{},
+			},
+		).Return(nil).Once()
 
 	err := s.processor.ProcessChange(s.ctx, ingest.Change{
 		Type: xdr.LedgerEntryTypeAccount,
