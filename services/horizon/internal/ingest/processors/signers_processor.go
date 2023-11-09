@@ -58,11 +58,11 @@ func (p *SignersProcessor) ProcessChange(ctx context.Context, change ingest.Chan
 
 	if change.Pre == nil && change.Post != nil {
 		postAccountEntry := change.Post.Data.MustAccount()
-		if err := p.addSigners(postAccountEntry); err != nil {
+		if err := p.addAccountSigners(postAccountEntry); err != nil {
 			return err
 		}
 	} else {
-		return errors.New("AssetStatsProSignersProcessor is in insert only mode")
+		return errors.New("SignersProcessor is in insert only mode")
 	}
 
 	return nil
@@ -81,15 +81,13 @@ func (p *SignersProcessor) Commit(ctx context.Context) error {
 			// The code below removes all Pre signers adds Post signers but
 			// can be improved by finding a diff (check performance first).
 			if change.Pre != nil {
-				preAccountEntry := change.Pre.Data.MustAccount()
-				if err := p.removeSigners(ctx, preAccountEntry); err != nil {
+				if err := p.removeAccountSigners(ctx, change.Pre.Data.MustAccount()); err != nil {
 					return err
 				}
 			}
 
 			if change.Post != nil {
-				postAccountEntry := change.Post.Data.MustAccount()
-				if err := p.addSigners(postAccountEntry); err != nil {
+				if err := p.addAccountSigners(change.Post.Data.MustAccount()); err != nil {
 					return err
 				}
 			}
@@ -104,9 +102,9 @@ func (p *SignersProcessor) Commit(ctx context.Context) error {
 	return nil
 }
 
-func (p *SignersProcessor) removeSigners(ctx context.Context, preAccountEntry xdr.AccountEntry) error {
-	for signer := range preAccountEntry.SignerSummary() {
-		rowsAffected, err := p.signersQ.RemoveAccountSigner(ctx, preAccountEntry.AccountId.Address(), signer)
+func (p *SignersProcessor) removeAccountSigners(ctx context.Context, accountEntry xdr.AccountEntry) error {
+	for signer := range accountEntry.SignerSummary() {
+		rowsAffected, err := p.signersQ.RemoveAccountSigner(ctx, accountEntry.AccountId.Address(), signer)
 		if err != nil {
 			return errors.Wrap(err, "Error removing a signer")
 		}
@@ -114,7 +112,7 @@ func (p *SignersProcessor) removeSigners(ctx context.Context, preAccountEntry xd
 		if rowsAffected != 1 {
 			return ingest.NewStateError(errors.Errorf(
 				"Expected account=%s signer=%s in database but not found when removing (rows affected = %d)",
-				preAccountEntry.AccountId.Address(),
+				accountEntry.AccountId.Address(),
 				signer,
 				rowsAffected,
 			))
@@ -123,7 +121,7 @@ func (p *SignersProcessor) removeSigners(ctx context.Context, preAccountEntry xd
 	return nil
 }
 
-func (p *SignersProcessor) addSigners(accountEntry xdr.AccountEntry) error {
+func (p *SignersProcessor) addAccountSigners(accountEntry xdr.AccountEntry) error {
 	sponsorsPerSigner := accountEntry.SponsorPerSigner()
 	for signer, weight := range accountEntry.SignerSummary() {
 		// Ignore master key
@@ -134,15 +132,13 @@ func (p *SignersProcessor) addSigners(accountEntry xdr.AccountEntry) error {
 			}
 		}
 
-		err := p.batchInsertBuilder.Add(history.AccountSigner{
+		if err := p.batchInsertBuilder.Add(history.AccountSigner{
 			Account: accountEntry.AccountId.Address(),
 			Signer:  signer,
 			Weight:  weight,
 			Sponsor: sponsor,
-		})
-		if err != nil {
-			return errors.Wrapf(err, "Error adding signer (%s) to AccountSignersBatchInsertBuilder",
-				signer)
+		}); err != nil {
+			return errors.Wrapf(err, "Error adding signer (%s) to AccountSignersBatchInsertBuilder", signer)
 		}
 	}
 	return nil
