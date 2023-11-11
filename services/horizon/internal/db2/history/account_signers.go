@@ -53,6 +53,9 @@ func (q *Q) AccountsForSigner(ctx context.Context, signer string, page db2.PageQ
 // CreateAccountSigner creates a row in the accounts_signers table.
 // Returns number of rows affected and error.
 func (q *Q) CreateAccountSigner(ctx context.Context, account, signer string, weight int32, sponsor *string) (int64, error) {
+	// This function is not used in the ingestion code path. SignersProcessor now uses bulk insertion with
+	// FastBatchInsertBuilder, but this function is used in unit tests when only a single row needs to be inserted.
+
 	sql := sq.Insert("accounts_signers").
 		Columns("account_id", "signer", "weight", "sponsor").
 		Values(account, signer, weight, sponsor)

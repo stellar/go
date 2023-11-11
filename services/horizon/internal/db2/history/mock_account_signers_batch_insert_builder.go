@@ -9,8 +9,8 @@ type MockAccountSignersBatchInsertBuilder struct {
 	mock.Mock
 }
 
-func (m *MockAccountSignersBatchInsertBuilder) Add(ctx context.Context, signer AccountSigner) error {
-	a := m.Called(ctx, signer)
+func (m *MockAccountSignersBatchInsertBuilder) Add(signer AccountSigner) error {
+	a := m.Called(signer)
 	return a.Error(0)
 }
 
