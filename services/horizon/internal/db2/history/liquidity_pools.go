@@ -37,7 +37,8 @@ type LiquidityPool struct {
 type LiquidityPoolAssetReserves []LiquidityPoolAssetReserve
 
 func (c LiquidityPoolAssetReserves) Value() (driver.Value, error) {
-	return json.Marshal(c)
+	val, err := json.Marshal(c)
+	return string(val), err
 }
 
 func (c *LiquidityPoolAssetReserves) Scan(value interface{}) error {
@@ -91,6 +92,7 @@ type QLiquidityPools interface {
 	FindLiquidityPoolByID(ctx context.Context, liquidityPoolID string) (LiquidityPool, error)
 	GetUpdatedLiquidityPools(ctx context.Context, newerThanSequence uint32) ([]LiquidityPool, error)
 	CompactLiquidityPools(ctx context.Context, cutOffSequence uint32) (int64, error)
+	NewLiquidityPoolBatchInsertBuilder() LiquidityPoolBatchInsertBuilder
 }
 
 // UpsertLiquidityPools upserts a batch of liquidity pools  in the liquidity_pools table.
