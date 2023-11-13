@@ -400,6 +400,14 @@ func (a *App) UpdateStellarCoreInfo(ctx context.Context) error {
 		return nil
 	}
 
+	// #4446 If the ingestion state machine is in the build state, the query can time out
+	// because the captive-core buffer may be full. In this case, skip the check.
+	if a.config.CaptiveCoreToml != nil &&
+		isLocalAddress(a.config.StellarCoreURL, a.config.CaptiveCoreToml.HTTPPort) &&
+		a.ingester != nil && a.ingester.GetCurrentState() == ingest.Build {
+		return nil
+	}
+
 	core := &stellarcore.Client{
 		URL: a.config.StellarCoreURL,
 	}
