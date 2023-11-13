@@ -37,6 +37,8 @@ type LiquidityPool struct {
 type LiquidityPoolAssetReserves []LiquidityPoolAssetReserve
 
 func (c LiquidityPoolAssetReserves) Value() (driver.Value, error) {
+	// Convert the byte array into a string as a workaround to bypass buggy encoding in the pq driver
+	// (More info about this bug here https://github.com/stellar/go/issues/5086#issuecomment-1773215436).
 	val, err := json.Marshal(c)
 	return string(val), err
 }
