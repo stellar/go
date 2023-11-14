@@ -17,7 +17,8 @@ type OffersProcessor struct {
 	offersQ  history.QOffers
 	sequence uint32
 
-	cache *ingest.ChangeCompactor
+	cache              *ingest.ChangeCompactor
+	insertBatchBuilder history.OffersBatchInsertBuilder
 }
 
 func NewOffersProcessor(offersQ history.QOffers, sequence uint32) *OffersProcessor {
@@ -28,6 +29,7 @@ func NewOffersProcessor(offersQ history.QOffers, sequence uint32) *OffersProcess
 
 func (p *OffersProcessor) reset() {
 	p.cache = ingest.NewChangeCompactor()
+	p.insertBatchBuilder = p.offersQ.NewOffersBatchInsertBuilder()
 }
 
 func (p *OffersProcessor) ProcessChange(ctx context.Context, change ingest.Change) error {
@@ -43,7 +45,6 @@ func (p *OffersProcessor) ProcessChange(ctx context.Context, change ingest.Chang
 		if err := p.flushCache(ctx); err != nil {
 			return errors.Wrap(err, "error in Commit")
 		}
-		p.reset()
 	}
 
 	return nil
@@ -67,12 +68,20 @@ func (p *OffersProcessor) ledgerEntryToRow(entry *xdr.LedgerEntry) history.Offer
 }
 
 func (p *OffersProcessor) flushCache(ctx context.Context) error {
+	defer p.reset()
+
 	var batchUpsertOffers []history.Offer
 	changes := p.cache.GetChanges()
 	for _, change := range changes {
 		switch {
-		case change.Post != nil:
-			// Created and updated
+		case change.Pre == nil && change.Post != nil:
+			// Created
+			err := p.insertBatchBuilder.Add(p.ledgerEntryToRow(change.Post))
+			if err != nil {
+				return errors.New("Error adding to OffersBatchInsertBuilder")
+			}
+		case change.Pre != nil && change.Post != nil:
+			// Updated
 			row := p.ledgerEntryToRow(change.Post)
 			batchUpsertOffers = append(batchUpsertOffers, row)
 		case change.Pre != nil && change.Post == nil:
@@ -84,6 +93,11 @@ func (p *OffersProcessor) flushCache(ctx context.Context) error {
 		default:
 			return errors.New("Invalid io.Change: change.Pre == nil && change.Post == nil")
 		}
+	}
+
+	err := p.insertBatchBuilder.Exec(ctx)
+	if err != nil {
+		return errors.New("Error executing OffersBatchInsertBuilder")
 	}
 
 	if len(batchUpsertOffers) > 0 {

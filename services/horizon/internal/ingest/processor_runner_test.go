@@ -67,6 +67,10 @@ func TestProcessorRunnerRunHistoryArchiveIngestionGenesis(t *testing.T) {
 
 	mockLiquidityPoolBatchInsertBuilder.On("Exec", ctx).Return(nil).Once()
 
+	mockOffersBatchInsertBuilder := &history.MockOffersBatchInsertBuilder{}
+	mockOffersBatchInsertBuilder.On("Exec", ctx).Return(nil).Once()
+	q.MockQOffers.On("NewOffersBatchInsertBuilder").Return(mockOffersBatchInsertBuilder).Twice()
+
 	q.MockQAssetStats.On("InsertAssetStats", ctx, []history.ExpAssetStat{}, 100000).
 		Return(nil)
 
@@ -150,6 +154,10 @@ func TestProcessorRunnerRunHistoryArchiveIngestionHistoryArchive(t *testing.T) {
 
 	mockLiquidityPoolBatchInsertBuilder.On("Exec", ctx).Return(nil).Once()
 
+	mockOffersBatchInsertBuilder := &history.MockOffersBatchInsertBuilder{}
+	mockOffersBatchInsertBuilder.On("Exec", ctx).Return(nil).Once()
+	q.MockQOffers.On("NewOffersBatchInsertBuilder").Return(mockOffersBatchInsertBuilder).Twice()
+
 	q.MockQAssetStats.On("InsertAssetStats", ctx, []history.ExpAssetStat{}, 100000).
 		Return(nil)
 
@@ -203,6 +211,10 @@ func TestProcessorRunnerRunHistoryArchiveIngestionProtocolVersionNotSupported(t 
 
 	mockLiquidityPoolBatchInsertBuilder.On("Exec", ctx).Return(nil).Once()
 
+	mockOffersBatchInsertBuilder := &history.MockOffersBatchInsertBuilder{}
+	mockOffersBatchInsertBuilder.On("Exec", ctx).Return(nil).Once()
+	q.MockQOffers.On("NewOffersBatchInsertBuilder").Return(mockOffersBatchInsertBuilder).Once()
+
 	q.MockQAssetStats.On("InsertAssetStats", ctx, []history.ExpAssetStat{}, 100000).
 		Return(nil)
 
@@ -247,6 +259,9 @@ func TestProcessorRunnerBuildChangeProcessor(t *testing.T) {
 		Return(mockLiquidityPoolBatchInsertBuilder).Twice()
 
 	mockLiquidityPoolBatchInsertBuilder.On("Exec", ctx).Return(nil).Once()
+
+	mockOfferBatchInsertBuilder := &history.MockOffersBatchInsertBuilder{}
+	q.MockQOffers.On("NewOffersBatchInsertBuilder").Return(mockOfferBatchInsertBuilder).Twice()
 
 	runner := ProcessorRunner{
 		ctx:      ctx,
@@ -586,6 +601,10 @@ func mockBatchBuilders(q *mockDBQ, mockSession *db.MockSession, ctx context.Cont
 		Return(mockLiquidityPoolBatchInsertBuilder).Twice()
 
 	mockLiquidityPoolBatchInsertBuilder.On("Exec", ctx).Return(nil).Once()
+
+	mockOfferBatchInsertBuilder := &history.MockOffersBatchInsertBuilder{}
+	mockOfferBatchInsertBuilder.On("Exec", ctx).Return(nil)
+	q.MockQOffers.On("NewOffersBatchInsertBuilder").Return(mockOfferBatchInsertBuilder)
 
 	q.On("NewTradeBatchInsertBuilder").Return(&history.MockTradeBatchInsertBuilder{})
 

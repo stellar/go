@@ -20,6 +20,7 @@ type QOffers interface {
 	GetUpdatedOffers(ctx context.Context, newerThanSequence uint32) ([]Offer, error)
 	UpsertOffers(ctx context.Context, offers []Offer) error
 	CompactOffers(ctx context.Context, cutOffSequence uint32) (int64, error)
+	NewOffersBatchInsertBuilder() OffersBatchInsertBuilder
 }
 
 func (q *Q) CountOffers(ctx context.Context) (int, error) {
