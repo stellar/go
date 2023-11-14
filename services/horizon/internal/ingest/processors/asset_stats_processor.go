@@ -60,8 +60,8 @@ func (p *AssetStatsProcessor) ProcessChange(ctx context.Context, change ingest.C
 			ledgerEntry = change.Pre
 		}
 		asset := AssetFromContractData(*ledgerEntry, p.networkPassphrase)
-		_, _, ok := ContractBalanceFromContractData(*ledgerEntry, p.networkPassphrase)
-		if asset == nil && !ok {
+		_, _, balanceFound := ContractBalanceFromContractData(*ledgerEntry, p.networkPassphrase)
+		if asset == nil && !balanceFound {
 			return nil
 		}
 	}
@@ -154,6 +154,10 @@ func (p *AssetStatsProcessor) updateDB(
 	contractAssetStatSet *ContractAssetStatSet,
 ) error {
 	if p.ingestFromHistoryArchive {
+		// When ingesting from the history archives we can take advantage of the fact
+		// that there are only created ledger entries. We don't need to execute any
+		// updates or removals on the asset stats tables. And we can also skip
+		// ingesting restored contract balances and expired contract balances.
 		assetStatsDeltas := assetStatSet.All()
 		if len(assetStatsDeltas) > 0 {
 			var err error
@@ -171,7 +175,7 @@ func (p *AssetStatsProcessor) updateDB(
 		}
 
 		if rows := contractAssetStatSet.GetContractStats(); len(rows) > 0 {
-			if err := p.assetStatsQ.InsertAssetContractStats(ctx, rows); err != nil {
+			if err := p.assetStatsQ.InsertContractAssetStats(ctx, rows); err != nil {
 				return errors.Wrap(err, "Error inserting asset contract stats")
 			}
 		}
@@ -581,7 +585,7 @@ func (p *AssetStatsProcessor) updateContractID(
 	return nil
 }
 
-func (p *AssetStatsProcessor) addContractAssetStat(contractAssetStat assetContractStatValue, row *history.ContractStatRow) error {
+func (p *AssetStatsProcessor) addContractAssetStat(contractAssetStat assetContractStatValue, row *history.ContractAssetStatRow) error {
 	row.Stat.ActiveHolders += contractAssetStat.activeHolders
 	row.Stat.ArchivedHolders += contractAssetStat.archivedHolders
 	activeBalance, ok := new(big.Int).SetString(row.Stat.ActiveBalance, 10)
@@ -617,9 +621,9 @@ func (p *AssetStatsProcessor) updateAssetContractStats(
 	assetContractStat assetContractStatValue,
 ) error {
 	var rowsAffected int64
-	row, err := p.assetStatsQ.GetAssetContractStat(ctx, contractID[:])
+	row, err := p.assetStatsQ.GetContractAssetStat(ctx, contractID[:])
 	if err == sql.ErrNoRows {
-		rowsAffected, err = p.assetStatsQ.InsertAssetContractStat(ctx, assetContractStat.ConvertToHistoryObject())
+		rowsAffected, err = p.assetStatsQ.InsertContractAssetStat(ctx, assetContractStat.ConvertToHistoryObject())
 		if err != nil {
 			return errors.Wrap(err, "error inserting asset contract stat")
 		}
@@ -638,7 +642,7 @@ func (p *AssetStatsProcessor) updateAssetContractStats(
 		}) {
 			rowsAffected, err = p.assetStatsQ.RemoveAssetContractStat(ctx, contractID[:])
 		} else {
-			rowsAffected, err = p.assetStatsQ.UpdateAssetContractStat(ctx, row)
+			rowsAffected, err = p.assetStatsQ.UpdateContractAssetStat(ctx, row)
 		}
 
 		if err != nil {

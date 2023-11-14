@@ -44,24 +44,24 @@ func (m *MockQAssetStats) GetContractAssetBalancesExpiringAt(ctx context.Context
 	return a.Get(0).([]ContractAssetBalance), a.Error(1)
 }
 
-func (m *MockQAssetStats) InsertAssetContractStats(ctx context.Context, rows []ContractStatRow) error {
+func (m *MockQAssetStats) InsertContractAssetStats(ctx context.Context, rows []ContractAssetStatRow) error {
 	a := m.Called(ctx, rows)
 	return a.Error(0)
 }
 
-func (m *MockQAssetStats) InsertAssetContractStat(ctx context.Context, row ContractStatRow) (int64, error) {
+func (m *MockQAssetStats) InsertContractAssetStat(ctx context.Context, row ContractAssetStatRow) (int64, error) {
 	a := m.Called(ctx, row)
 	return a.Get(0).(int64), a.Error(1)
 }
 
-func (m *MockQAssetStats) UpdateAssetContractStat(ctx context.Context, row ContractStatRow) (int64, error) {
+func (m *MockQAssetStats) UpdateContractAssetStat(ctx context.Context, row ContractAssetStatRow) (int64, error) {
 	a := m.Called(ctx, row)
 	return a.Get(0).(int64), a.Error(1)
 }
 
-func (m *MockQAssetStats) GetAssetContractStat(ctx context.Context, contractID []byte) (ContractStatRow, error) {
+func (m *MockQAssetStats) GetContractAssetStat(ctx context.Context, contractID []byte) (ContractAssetStatRow, error) {
 	a := m.Called(ctx, contractID)
-	return a.Get(0).(ContractStatRow), a.Error(1)
+	return a.Get(0).(ContractAssetStatRow), a.Error(1)
 }
 
 func (m *MockQAssetStats) RemoveAssetContractStat(ctx context.Context, contractID []byte) (int64, error) {

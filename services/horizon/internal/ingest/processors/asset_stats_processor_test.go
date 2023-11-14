@@ -675,10 +675,10 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestInsertContractBalance() {
 		},
 	}))
 
-	s.mockQ.On("GetAssetContractStat", s.ctx, usdID[:]).
-		Return(history.ContractStatRow{}, sql.ErrNoRows).Once()
+	s.mockQ.On("GetContractAssetStat", s.ctx, usdID[:]).
+		Return(history.ContractAssetStatRow{}, sql.ErrNoRows).Once()
 
-	usdAssetContractStat := history.ContractStatRow{
+	usdAssetContractStat := history.ContractAssetStatRow{
 		ContractID: usdID[:],
 		Stat: history.ContractStat{
 			ActiveBalance:   "200",
@@ -687,7 +687,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestInsertContractBalance() {
 			ArchivedHolders: 0,
 		},
 	}
-	s.mockQ.On("InsertAssetContractStat", s.ctx, mock.MatchedBy(func(row history.ContractStatRow) bool {
+	s.mockQ.On("InsertContractAssetStat", s.ctx, mock.MatchedBy(func(row history.ContractAssetStatRow) bool {
 		return bytes.Equal(usdID[:], row.ContractID) &&
 			usdAssetContractStat.Stat == row.Stat
 	})).Return(int64(1), nil).Once()
@@ -730,7 +730,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateContractBalance() {
 		},
 	}))
 
-	usdAssetContractStat := history.ContractStatRow{
+	usdAssetContractStat := history.ContractAssetStatRow{
 		ContractID: usdID[:],
 		Stat: history.ContractStat{
 			ActiveBalance:   "150",
@@ -739,7 +739,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateContractBalance() {
 			ArchivedHolders: 2,
 		},
 	}
-	s.mockQ.On("GetAssetContractStat", s.ctx, usdID[:]).
+	s.mockQ.On("GetContractAssetStat", s.ctx, usdID[:]).
 		Return(usdAssetContractStat, nil).Once()
 
 	s.mockQ.On("GetContractAssetBalances", s.ctx, []xdr.Hash{keyHash}).
@@ -753,7 +753,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateContractBalance() {
 		}, nil).Once()
 
 	usdAssetContractStat.Stat.ActiveBalance = "350"
-	s.mockQ.On("UpdateAssetContractStat", s.ctx, mock.MatchedBy(func(row history.ContractStatRow) bool {
+	s.mockQ.On("UpdateContractAssetStat", s.ctx, mock.MatchedBy(func(row history.ContractAssetStatRow) bool {
 		return bytes.Equal(usdID[:], row.ContractID) &&
 			usdAssetContractStat.Stat == row.Stat
 	})).Return(int64(1), nil).Once()
@@ -800,7 +800,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveContractBalance() {
 		},
 	}))
 
-	usdAssetContractStat := history.ContractStatRow{
+	usdAssetContractStat := history.ContractAssetStatRow{
 		ContractID: usdID[:],
 		Stat: history.ContractStat{
 			ActiveBalance:   "200",
@@ -809,7 +809,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveContractBalance() {
 			ArchivedBalance: "0",
 		},
 	}
-	s.mockQ.On("GetAssetContractStat", s.ctx, usdID[:]).
+	s.mockQ.On("GetContractAssetStat", s.ctx, usdID[:]).
 		Return(usdAssetContractStat, nil).Once()
 
 	usdAssetContractStat.Stat.ActiveHolders = 0
@@ -946,9 +946,9 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestInsertContractIDWithBalance() {
 		trustLineIssuer.Address(),
 	).Return(history.ExpAssetStat{}, sql.ErrNoRows).Once()
 
-	s.mockQ.On("GetAssetContractStat", s.ctx, btcID[:]).
-		Return(history.ContractStatRow{}, sql.ErrNoRows).Once()
-	btcAssetContractStat := history.ContractStatRow{
+	s.mockQ.On("GetContractAssetStat", s.ctx, btcID[:]).
+		Return(history.ContractAssetStatRow{}, sql.ErrNoRows).Once()
+	btcAssetContractStat := history.ContractAssetStatRow{
 		ContractID: btcID[:],
 		Stat: history.ContractStat{
 			ActiveBalance:   "20",
@@ -957,7 +957,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestInsertContractIDWithBalance() {
 			ArchivedHolders: 0,
 		},
 	}
-	s.mockQ.On("InsertAssetContractStat", s.ctx, mock.MatchedBy(func(row history.ContractStatRow) bool {
+	s.mockQ.On("InsertContractAssetStat", s.ctx, mock.MatchedBy(func(row history.ContractAssetStatRow) bool {
 		return bytes.Equal(btcID[:], row.ContractID) &&
 			btcAssetContractStat.Stat == row.Stat
 	})).Return(int64(1), nil).Once()
@@ -1267,7 +1267,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateContractIDWithBalance() {
 		return eurAssetStat.Equals(assetStat)
 	})).Return(int64(1), nil).Once()
 
-	eurAssetContractStat := history.ContractStatRow{
+	eurAssetContractStat := history.ContractAssetStatRow{
 		ContractID: eurID[:],
 		Stat: history.ContractStat{
 			ActiveBalance:   "10",
@@ -1276,12 +1276,12 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateContractIDWithBalance() {
 			ArchivedHolders: 0,
 		},
 	}
-	s.mockQ.On("GetAssetContractStat", s.ctx, eurID[:]).
+	s.mockQ.On("GetContractAssetStat", s.ctx, eurID[:]).
 		Return(eurAssetContractStat, nil).Once()
 
 	eurAssetContractStat.Stat.ActiveHolders++
 	eurAssetContractStat.Stat.ActiveBalance = "160"
-	s.mockQ.On("UpdateAssetContractStat", s.ctx, mock.MatchedBy(func(row history.ContractStatRow) bool {
+	s.mockQ.On("UpdateContractAssetStat", s.ctx, mock.MatchedBy(func(row history.ContractAssetStatRow) bool {
 		return bytes.Equal(eurID[:], row.ContractID) &&
 			eurAssetContractStat.Stat == row.Stat
 	})).Return(int64(1), nil).Once()
@@ -2377,7 +2377,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveContractIDAndBalanceZeroR
 		trustLineIssuer.Address(),
 	).Return(int64(1), nil).Once()
 
-	eurAssetContractStat := history.ContractStatRow{
+	eurAssetContractStat := history.ContractAssetStatRow{
 		ContractID: eurID[:],
 		Stat: history.ContractStat{
 			ActiveBalance:   "10",
@@ -2386,7 +2386,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveContractIDAndBalanceZeroR
 			ArchivedHolders: 0,
 		},
 	}
-	s.mockQ.On("GetAssetContractStat", s.ctx, eurID[:]).
+	s.mockQ.On("GetContractAssetStat", s.ctx, eurID[:]).
 		Return(eurAssetContractStat, nil).Once()
 	s.mockQ.On("RemoveAssetContractStat", s.ctx, eurID[:]).
 		Return(int64(1), nil).Once()

@@ -564,14 +564,14 @@ type QAssetStats interface {
 	GetContractAssetBalances(ctx context.Context, keys []xdr.Hash) ([]ContractAssetBalance, error)
 	GetContractAssetBalancesExpiringAt(ctx context.Context, ledger uint32) ([]ContractAssetBalance, error)
 	InsertAssetStats(ctx context.Context, stats []ExpAssetStat) error
-	InsertAssetContractStats(ctx context.Context, rows []ContractStatRow) error
+	InsertContractAssetStats(ctx context.Context, rows []ContractAssetStatRow) error
 	InsertAssetStat(ctx context.Context, stat ExpAssetStat) (int64, error)
-	InsertAssetContractStat(ctx context.Context, row ContractStatRow) (int64, error)
+	InsertContractAssetStat(ctx context.Context, row ContractAssetStatRow) (int64, error)
 	UpdateAssetStat(ctx context.Context, stat ExpAssetStat) (int64, error)
-	UpdateAssetContractStat(ctx context.Context, row ContractStatRow) (int64, error)
+	UpdateContractAssetStat(ctx context.Context, row ContractAssetStatRow) (int64, error)
 	GetAssetStat(ctx context.Context, assetType xdr.AssetType, assetCode, assetIssuer string) (ExpAssetStat, error)
 	GetAssetStatByContract(ctx context.Context, contractID xdr.Hash) (ExpAssetStat, error)
-	GetAssetContractStat(ctx context.Context, contractID []byte) (ContractStatRow, error)
+	GetContractAssetStat(ctx context.Context, contractID []byte) (ContractAssetStatRow, error)
 	RemoveAssetStat(ctx context.Context, assetType xdr.AssetType, assetCode, assetIssuer string) (int64, error)
 	RemoveAssetContractStat(ctx context.Context, contractID []byte) (int64, error)
 	GetAssetStats(ctx context.Context, assetCode, assetIssuer string, page db2.PageQuery) ([]AssetAndContractStat, error)

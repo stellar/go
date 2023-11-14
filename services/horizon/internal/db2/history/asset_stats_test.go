@@ -123,7 +123,7 @@ func TestAssetContractStats(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	c1 := ContractStatRow{
+	c1 := ContractAssetStatRow{
 		ContractID: []byte{1},
 		Stat: ContractStat{
 			ActiveBalance:   "100",
@@ -132,7 +132,7 @@ func TestAssetContractStats(t *testing.T) {
 			ArchivedHolders: 0,
 		},
 	}
-	c2 := ContractStatRow{
+	c2 := ContractAssetStatRow{
 		ContractID: []byte{2},
 		Stat: ContractStat{
 			ActiveBalance:   "40",
@@ -141,7 +141,7 @@ func TestAssetContractStats(t *testing.T) {
 			ArchivedHolders: 0,
 		},
 	}
-	c3 := ContractStatRow{
+	c3 := ContractAssetStatRow{
 		ContractID: []byte{3},
 		Stat: ContractStat{
 			ActiveBalance:   "900",
@@ -151,11 +151,11 @@ func TestAssetContractStats(t *testing.T) {
 		},
 	}
 
-	rows := []ContractStatRow{c1, c2, c3}
-	tt.Assert.NoError(q.InsertAssetContractStats(tt.Ctx, rows))
+	rows := []ContractAssetStatRow{c1, c2, c3}
+	tt.Assert.NoError(q.InsertContractAssetStats(tt.Ctx, rows))
 
 	for _, row := range rows {
-		result, err := q.GetAssetContractStat(tt.Ctx, row.ContractID)
+		result, err := q.GetContractAssetStat(tt.Ctx, row.ContractID)
 		tt.Assert.NoError(err)
 		tt.Assert.Equal(result, row)
 	}
@@ -164,10 +164,10 @@ func TestAssetContractStats(t *testing.T) {
 	c2.Stat.ActiveBalance = "20"
 	c3.Stat.ArchivedBalance = "900"
 	c2.Stat.ActiveHolders = 5
-	numRows, err := q.UpdateAssetContractStat(tt.Ctx, c2)
+	numRows, err := q.UpdateContractAssetStat(tt.Ctx, c2)
 	tt.Assert.NoError(err)
 	tt.Assert.Equal(int64(1), numRows)
-	row, err := q.GetAssetContractStat(tt.Ctx, c2.ContractID)
+	row, err := q.GetContractAssetStat(tt.Ctx, c2.ContractID)
 	tt.Assert.NoError(err)
 	tt.Assert.Equal(c2, row)
 
@@ -175,11 +175,11 @@ func TestAssetContractStats(t *testing.T) {
 	tt.Assert.NoError(err)
 	tt.Assert.Equal(int64(1), numRows)
 
-	_, err = q.GetAssetContractStat(tt.Ctx, c3.ContractID)
+	_, err = q.GetContractAssetStat(tt.Ctx, c3.ContractID)
 	tt.Assert.Equal(sql.ErrNoRows, err)
 
-	for _, row := range []ContractStatRow{c1, c2} {
-		result, err := q.GetAssetContractStat(tt.Ctx, row.ContractID)
+	for _, row := range []ContractAssetStatRow{c1, c2} {
+		result, err := q.GetContractAssetStat(tt.Ctx, row.ContractID)
 		tt.Assert.NoError(err)
 		tt.Assert.Equal(result, row)
 	}
@@ -704,7 +704,7 @@ func TestGetAssetStatsFiltersAndCursor(t *testing.T) {
 		tt.Assert.NoError(err)
 		tt.Assert.Equal(numChanged, int64(1))
 		if assetStat.Contracts != zero {
-			numChanged, err = q.InsertAssetContractStat(tt.Ctx, ContractStatRow{
+			numChanged, err = q.InsertContractAssetStat(tt.Ctx, ContractAssetStatRow{
 				ContractID: *assetStat.ContractID,
 				Stat:       assetStat.Contracts,
 			})
@@ -715,7 +715,7 @@ func TestGetAssetStatsFiltersAndCursor(t *testing.T) {
 
 	// insert contract stat which has no corresponding asset stat row
 	// to test that it isn't included in the results
-	numChanged, err := q.InsertAssetContractStat(tt.Ctx, ContractStatRow{
+	numChanged, err := q.InsertContractAssetStat(tt.Ctx, ContractAssetStatRow{
 		ContractID: []byte{1},
 		Stat: ContractStat{
 			ActiveBalance:   "400",

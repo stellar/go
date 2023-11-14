@@ -383,7 +383,7 @@ func checkAssetStats(
 		all[assetStat.AssetCode+":"+assetStat.AssetIssuer] = assetStat
 	}
 
-	contractToStats := map[xdr.Hash]history.ContractStatRow{}
+	contractToStats := map[xdr.Hash]history.ContractAssetStatRow{}
 	for _, row := range contractAssetStatSet.GetContractStats() {
 		var contractID xdr.Hash
 		copy(contractID[:], row.ContractID)
@@ -391,6 +391,7 @@ func checkAssetStats(
 	}
 
 	// only check contract asset balances which belong to stellar asset contracts
+	// because other balances may be forged.
 	var filteredBalances []history.ContractAssetBalance
 	for _, balance := range contractAssetStatSet.GetCreatedBalances() {
 		var contractID xdr.Hash
@@ -469,7 +470,7 @@ func checkAssetStats(
 
 				entry, ok := contractToStats[contractID]
 				if !ok {
-					entry = history.ContractStatRow{
+					entry = history.ContractAssetStatRow{
 						ContractID: contractID[:],
 						Stat: history.ContractStat{
 							ActiveBalance:   "0",

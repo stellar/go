@@ -20,8 +20,8 @@ type assetContractStatValue struct {
 	archivedHolders int32
 }
 
-func (v assetContractStatValue) ConvertToHistoryObject() history.ContractStatRow {
-	return history.ContractStatRow{
+func (v assetContractStatValue) ConvertToHistoryObject() history.ContractAssetStatRow {
+	return history.ContractAssetStatRow{
 		ContractID: v.contractID[:],
 		Stat: history.ContractStat{
 			ActiveBalance:   v.activeBalance.String(),
@@ -78,14 +78,19 @@ func NewContractAssetStatSet(
 // AddContractData updates the set to account for how a given contract data entry has changed.
 // change must be a xdr.LedgerEntryTypeContractData type.
 func (s *ContractAssetStatSet) AddContractData(ctx context.Context, change ingest.Change) error {
-	if err := s.ingestAssetContractMetadata(change); err != nil {
+	// skip ingestion of contract asset balances if we find an asset contract metadata entry
+	// because a ledger entry cannot be both an asset contract metadata entry and a
+	// contract asset balance.
+	if found, err := s.ingestAssetContractMetadata(change); err != nil {
 		return err
+	} else if found {
+		return nil
 	}
-	return s.ingestAssetContractBalance(ctx, change)
+	return s.ingestContractAssetBalance(ctx, change)
 }
 
-func (s *ContractAssetStatSet) GetContractStats() []history.ContractStatRow {
-	var contractStats []history.ContractStatRow
+func (s *ContractAssetStatSet) GetContractStats() []history.ContractAssetStatRow {
+	var contractStats []history.ContractAssetStatRow
 	for _, contractStat := range s.contractAssetStats {
 		contractStats = append(contractStats, contractStat.ConvertToHistoryObject())
 	}
@@ -100,38 +105,40 @@ func (s *ContractAssetStatSet) GetAssetToContractMap() map[xdr.Hash]*xdr.Asset {
 	return s.contractToAsset
 }
 
-func (s *ContractAssetStatSet) ingestAssetContractMetadata(change ingest.Change) error {
+func (s *ContractAssetStatSet) ingestAssetContractMetadata(change ingest.Change) (bool, error) {
 	if change.Pre != nil {
 		asset := AssetFromContractData(*change.Pre, s.networkPassphrase)
 		if asset == nil {
-			return nil
+			return false, nil
 		}
 		pContractID := change.Pre.Data.MustContractData().Contract.ContractId
 		if pContractID == nil {
-			return nil
+			return false, nil
 		}
 		contractID := *pContractID
 		if change.Post == nil {
 			s.contractToAsset[contractID] = nil
-			return nil
+			return true, nil
 		}
-		// The contract id for a stellar asset should never change and
+		// The contract id for any soroban contract should never change and
 		// therefore we return a fatal ingestion error if we encounter
 		// a stellar asset changing contract ids.
 		postAsset := AssetFromContractData(*change.Post, s.networkPassphrase)
 		if postAsset == nil || !(*postAsset).Equals(*asset) {
-			return ingest.NewStateError(fmt.Errorf("asset contract changed asset"))
+			return false, ingest.NewStateError(fmt.Errorf("asset contract changed asset"))
 		}
+		return true, nil
 	} else if change.Post != nil {
 		asset := AssetFromContractData(*change.Post, s.networkPassphrase)
 		if asset == nil {
-			return nil
+			return false, nil
 		}
 		if pContactID := change.Post.Data.MustContractData().Contract.ContractId; pContactID != nil {
 			s.contractToAsset[*pContactID] = asset
+			return true, nil
 		}
 	}
-	return nil
+	return false, nil
 }
 
 func getKeyHash(ledgerEntry xdr.LedgerEntry) (xdr.Hash, error) {
@@ -146,7 +153,7 @@ func getKeyHash(ledgerEntry xdr.LedgerEntry) (xdr.Hash, error) {
 	return sha256.Sum256(bin), nil
 }
 
-func (s *ContractAssetStatSet) ingestAssetContractBalance(ctx context.Context, change ingest.Change) error {
+func (s *ContractAssetStatSet) ingestContractAssetBalance(ctx context.Context, change ingest.Change) error {
 	switch {
 	case change.Pre == nil && change.Post != nil: // created
 		pContractID := change.Post.Data.MustContractData().Contract.ContractId
@@ -155,6 +162,8 @@ func (s *ContractAssetStatSet) ingestAssetContractBalance(ctx context.Context, c
 		}
 
 		_, postAmt, postOk := ContractBalanceFromContractData(*change.Post, s.networkPassphrase)
+		// we only ingest created ledger entries if we determine that they resemble the shape of
+		// a Stellar Asset Contract balance ledger entry
 		if !postOk {
 			return nil
 		}
@@ -189,20 +198,28 @@ func (s *ContractAssetStatSet) ingestAssetContractBalance(ctx context.Context, c
 			return nil
 		}
 
+		keyHash, err := getKeyHash(*change.Pre)
+		if err != nil {
+			return err
+		}
+		// We always include the key hash in s.removedBalances even
+		// if the ledger entry is not a valid balance ledger entry.
+		// It's possible that a contract is able to forge a created
+		// balance ledger entry which matches the Stellar Asset Contract
+		// and later on the ledger entry is updated to an invalid state.
+		// In such a scenario we still want to remove the balance ledger
+		// entry from our db when the entry is removed from the ledger.
+		s.removedBalances = append(s.removedBalances, keyHash)
+
 		_, preAmt, ok := ContractBalanceFromContractData(*change.Pre, s.networkPassphrase)
 		if !ok {
 			return nil
 		}
 
-		keyHash, err := getKeyHash(*change.Pre)
-		if err != nil {
-			return err
-		}
 		expirationLedger, ok := s.removedExpirationEntries[keyHash]
 		if !ok {
 			return nil
 		}
-		s.removedBalances = append(s.removedBalances, keyHash)
 
 		stat := s.getContractAssetStat(*pContractID)
 		if expirationLedger >= s.currentLedger {
@@ -295,7 +312,7 @@ func (s *ContractAssetStatSet) ingestRestoredBalances(ctx context.Context) error
 		// prevExpirationLedger+1 >= s.currentLedger indicates that this contract balance is still
 		// active in our DB and therefore don't need to restore it.
 		// s.updatedBalances[keyHash] != nil indicates that this contract balance was already ingested
-		// in ingestAssetContractBalance() so we don't need to ingest it again here.
+		// in ingestContractAssetBalance() so we don't need to ingest it again here.
 		if prevExpirationLedger+1 >= s.currentLedger || s.updatedBalances[keyHash] != nil {
 			continue
 		}

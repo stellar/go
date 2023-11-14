@@ -163,7 +163,7 @@ func TestAddContractData(t *testing.T) {
 			ExpirationLedger: 150,
 		},
 	}, set.createdBalances)
-	assert.ElementsMatch(t, set.GetContractStats(), []history.ContractStatRow{
+	assert.ElementsMatch(t, set.GetContractStats(), []history.ContractAssetStatRow{
 		{
 			ContractID: uniID[:],
 			Stat: history.ContractStat{
@@ -379,7 +379,7 @@ func TestUpdateContractBalance(t *testing.T) {
 	}
 	assert.Empty(t, expectedBalances)
 
-	assert.ElementsMatch(t, set.GetContractStats(), []history.ContractStatRow{
+	assert.ElementsMatch(t, set.GetContractStats(), []history.ContractAssetStatRow{
 		{
 			ContractID: usdcID[:],
 			Stat: history.ContractStat{
@@ -457,6 +457,7 @@ func TestRemoveContractData(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
+	keyHash2 := getKeyHashForBalance(t, usdcID, [32]byte{2})
 	err = set.AddContractData(context.Background(), ingest.Change{
 		Type: xdr.LedgerEntryTypeContractData,
 		Pre: &xdr.LedgerEntry{
@@ -465,13 +466,13 @@ func TestRemoveContractData(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	assert.Equal(t, []xdr.Hash{keyHash, keyHash1}, set.removedBalances)
+	assert.Equal(t, []xdr.Hash{keyHash, keyHash1, keyHash2}, set.removedBalances)
 	assert.Len(t, set.contractToAsset, 1)
 	asset, ok := set.contractToAsset[usdcID]
 	assert.Nil(t, asset)
 	assert.True(t, ok)
 
-	assert.ElementsMatch(t, set.GetContractStats(), []history.ContractStatRow{
+	assert.ElementsMatch(t, set.GetContractStats(), []history.ContractAssetStatRow{
 		{
 			ContractID: usdcID[:],
 			Stat: history.ContractStat{
@@ -540,7 +541,7 @@ func TestIngestRestoredBalances(t *testing.T) {
 		}, nil).Once()
 
 	assert.NoError(t, set.ingestRestoredBalances(ctx))
-	assert.ElementsMatch(t, set.GetContractStats(), []history.ContractStatRow{
+	assert.ElementsMatch(t, set.GetContractStats(), []history.ContractAssetStatRow{
 		{
 			ContractID: usdcID[:],
 			Stat: history.ContractStat{
@@ -611,7 +612,7 @@ func TestIngestExpiredBalances(t *testing.T) {
 		}, nil).Once()
 
 	assert.NoError(t, set.ingestExpiredBalances(ctx))
-	assert.ElementsMatch(t, set.GetContractStats(), []history.ContractStatRow{
+	assert.ElementsMatch(t, set.GetContractStats(), []history.ContractAssetStatRow{
 		{
 			ContractID: usdcID[:],
 			Stat: history.ContractStat{

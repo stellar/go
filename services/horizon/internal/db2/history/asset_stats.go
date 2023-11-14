@@ -34,8 +34,8 @@ func assetStatToPrimaryKeyMap(assetStat ExpAssetStat) map[string]interface{} {
 	}
 }
 
-// ContractStatRow represents a row in the contract_asset_stats table
-type ContractStatRow struct {
+// ContractAssetStatRow represents a row in the contract_asset_stats table
+type ContractAssetStatRow struct {
 	// ContractID is the contract id of the stellar asset contract
 	ContractID []byte `db:"contract_id"`
 	// Stat is a json blob containing statistics on the contract holders
@@ -45,9 +45,12 @@ type ContractStatRow struct {
 
 // InsertAssetStats a set of asset stats into the exp_asset_stats
 func (q *Q) InsertAssetStats(ctx context.Context, assetStats []ExpAssetStat) error {
+	if len(assetStats) == 0 {
+		return nil
+	}
+
 	builder := &db.BatchInsertBuilder{
-		Table:        q.GetTable("exp_asset_stats"),
-		MaxBatchSize: maxUpdateBatchSize,
+		Table: q.GetTable("exp_asset_stats"),
 	}
 
 	for _, assetStat := range assetStats {
@@ -63,11 +66,13 @@ func (q *Q) InsertAssetStats(ctx context.Context, assetStats []ExpAssetStat) err
 	return nil
 }
 
-// InsertAssetContractStats inserts the given list of rows into the contract_asset_stats table
-func (q *Q) InsertAssetContractStats(ctx context.Context, rows []ContractStatRow) error {
+// InsertContractAssetStats inserts the given list of rows into the contract_asset_stats table
+func (q *Q) InsertContractAssetStats(ctx context.Context, rows []ContractAssetStatRow) error {
+	if len(rows) == 0 {
+		return nil
+	}
 	builder := &db.BatchInsertBuilder{
-		Table:        q.GetTable("contract_asset_stats"),
-		MaxBatchSize: maxUpdateBatchSize,
+		Table: q.GetTable("contract_asset_stats"),
 	}
 
 	for _, row := range rows {
@@ -102,8 +107,7 @@ func (q *Q) InsertContractAssetBalances(ctx context.Context, rows []ContractAsse
 		return nil
 	}
 	builder := &db.BatchInsertBuilder{
-		Table:        q.GetTable("contract_asset_balances"),
-		MaxBatchSize: maxUpdateBatchSize,
+		Table: q.GetTable("contract_asset_balances"),
 	}
 
 	for _, row := range rows {
@@ -119,19 +123,16 @@ func (q *Q) InsertContractAssetBalances(ctx context.Context, rows []ContractAsse
 	return nil
 }
 
-const maxUpdateBatchSize = 100000
+const maxUpdateBatchSize = 30000
 
 // UpdateContractAssetBalanceAmounts will update the expiration ledgers for the given list of keys
 // (if they exist in the db).
 func (q *Q) UpdateContractAssetBalanceAmounts(ctx context.Context, keys []xdr.Hash, amounts []string) error {
-	if len(keys) == 0 {
-		return nil
-	}
 	for len(keys) > 0 {
 		var args []interface{}
 		var values []string
 
-		for i := 0; len(keys) > 0 && (i+1)*2 < maxUpdateBatchSize; i++ {
+		for i := 0; len(keys) > 0 && i < maxUpdateBatchSize; i++ {
 			args = append(args, keys[0][:], amounts[0])
 			values = append(values, "(cast(? as bytea), cast(? as numeric))")
 			keys = keys[1:]
@@ -161,15 +162,11 @@ func (q *Q) UpdateContractAssetBalanceAmounts(ctx context.Context, keys []xdr.Ha
 // UpdateContractAssetBalanceExpirations will update the expiration ledgers for the given list of keys
 // (if they exist in the db).
 func (q *Q) UpdateContractAssetBalanceExpirations(ctx context.Context, keys []xdr.Hash, expirationLedgers []uint32) error {
-	if len(keys) == 0 {
-		return nil
-	}
-
 	for len(keys) > 0 {
 		var args []interface{}
 		var values []string
 
-		for i := 0; len(keys) > 0 && (i+1)*2 < maxUpdateBatchSize; i++ {
+		for i := 0; len(keys) > 0 && i < maxUpdateBatchSize; i++ {
 			args = append(args, keys[0][:], expirationLedgers[0])
 			values = append(values, "(cast(? as bytea), cast(? as integer))")
 			keys = keys[1:]
@@ -250,8 +247,8 @@ func (q *Q) InsertAssetStat(ctx context.Context, assetStat ExpAssetStat) (int64,
 	return result.RowsAffected()
 }
 
-// InsertAssetContractStat inserts a row into the contract_asset_stats table
-func (q *Q) InsertAssetContractStat(ctx context.Context, row ContractStatRow) (int64, error) {
+// InsertContractAssetStat inserts a row into the contract_asset_stats table
+func (q *Q) InsertContractAssetStat(ctx context.Context, row ContractAssetStatRow) (int64, error) {
 	sql := sq.Insert("contract_asset_stats").SetMap(map[string]interface{}{
 		"contract_id": row.ContractID,
 		"stat":        row.Stat,
@@ -278,9 +275,9 @@ func (q *Q) UpdateAssetStat(ctx context.Context, assetStat ExpAssetStat) (int64,
 	return result.RowsAffected()
 }
 
-// UpdateAssetContractStat updates a row in the contract_asset_stats table.
+// UpdateContractAssetStat updates a row in the contract_asset_stats table.
 // Returns number of rows afected and error.
-func (q *Q) UpdateAssetContractStat(ctx context.Context, row ContractStatRow) (int64, error) {
+func (q *Q) UpdateContractAssetStat(ctx context.Context, row ContractAssetStatRow) (int64, error) {
 	sql := sq.Update("contract_asset_stats").Set("stat", row.Stat).
 		Where("contract_id = ?", row.ContractID)
 	result, err := q.Exec(ctx, sql)
@@ -331,10 +328,10 @@ func (q *Q) GetAssetStat(ctx context.Context, assetType xdr.AssetType, assetCode
 	return assetStat, err
 }
 
-// GetAssetContractStat returns a row in the contract_asset_stats table.
-func (q *Q) GetAssetContractStat(ctx context.Context, contractID []byte) (ContractStatRow, error) {
+// GetContractAssetStat returns a row in the contract_asset_stats table.
+func (q *Q) GetContractAssetStat(ctx context.Context, contractID []byte) (ContractAssetStatRow, error) {
 	sql := sq.Select("*").From("contract_asset_stats").Where("contract_id = ?", contractID)
-	var assetStat ContractStatRow
+	var assetStat ContractAssetStatRow
 	err := q.Get(ctx, &assetStat, sql)
 	return assetStat, err
 }
