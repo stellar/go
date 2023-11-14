@@ -229,6 +229,12 @@ func (s *OffersProcessorTestSuiteLedger) TestUpsertManyOffers() {
 		Price:    xdr.Price{2, 3},
 	}
 
+	yetAnotherOffer := xdr.OfferEntry{
+		SellerId: xdr.MustAddress("GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H"),
+		OfferId:  xdr.Int64(4),
+		Price:    xdr.Price{2, 6},
+	}
+
 	updatedEntry := xdr.LedgerEntry{
 		LastModifiedLedgerSeq: lastModifiedLedgerSeq,
 		Data: xdr.LedgerEntryData{
@@ -263,12 +269,34 @@ func (s *OffersProcessorTestSuiteLedger) TestUpsertManyOffers() {
 	})
 	s.Assert().NoError(err)
 
+	err = s.processor.ProcessChange(s.ctx, ingest.Change{
+		Type: xdr.LedgerEntryTypeOffer,
+		Pre:  nil,
+		Post: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+			Data: xdr.LedgerEntryData{
+				Type:  xdr.LedgerEntryTypeOffer,
+				Offer: &yetAnotherOffer,
+			},
+		},
+	})
+	s.Assert().NoError(err)
+
 	s.mockOffersBatchInsertBuilder.On("Add", history.Offer{
 		SellerID:           "GDMUVYVYPYZYBDXNJWKFT3X2GCZCICTL3GSVP6AWBGB4ZZG7ZRDA746P",
 		OfferID:            3,
 		Pricen:             int32(2),
 		Priced:             int32(3),
 		Price:              float64(2) / float64(3),
+		LastModifiedLedger: uint32(lastModifiedLedgerSeq),
+	}).Return(nil).Once()
+
+	s.mockOffersBatchInsertBuilder.On("Add", history.Offer{
+		SellerID:           "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+		OfferID:            4,
+		Pricen:             int32(2),
+		Priced:             int32(6),
+		Price:              float64(2) / float64(6),
 		LastModifiedLedger: uint32(lastModifiedLedgerSeq),
 	}).Return(nil).Once()
 
