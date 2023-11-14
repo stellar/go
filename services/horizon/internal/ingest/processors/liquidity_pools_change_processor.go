@@ -10,9 +10,10 @@ import (
 )
 
 type LiquidityPoolsChangeProcessor struct {
-	qLiquidityPools history.QLiquidityPools
-	cache           *ingest.ChangeCompactor
-	sequence        uint32
+	qLiquidityPools    history.QLiquidityPools
+	cache              *ingest.ChangeCompactor
+	sequence           uint32
+	batchInsertBuilder history.LiquidityPoolBatchInsertBuilder
 }
 
 func NewLiquidityPoolsChangeProcessor(Q history.QLiquidityPools, sequence uint32) *LiquidityPoolsChangeProcessor {
@@ -26,6 +27,7 @@ func NewLiquidityPoolsChangeProcessor(Q history.QLiquidityPools, sequence uint32
 
 func (p *LiquidityPoolsChangeProcessor) reset() {
 	p.cache = ingest.NewChangeCompactor()
+	p.batchInsertBuilder = p.qLiquidityPools.NewLiquidityPoolBatchInsertBuilder()
 }
 
 func (p *LiquidityPoolsChangeProcessor) ProcessChange(ctx context.Context, change ingest.Change) error {
@@ -43,13 +45,13 @@ func (p *LiquidityPoolsChangeProcessor) ProcessChange(ctx context.Context, chang
 		if err != nil {
 			return errors.Wrap(err, "error in Commit")
 		}
-		p.reset()
 	}
 
 	return nil
 }
 
 func (p *LiquidityPoolsChangeProcessor) Commit(ctx context.Context) error {
+	defer p.reset()
 
 	changes := p.cache.GetChanges()
 	var lps []history.LiquidityPool
@@ -57,7 +59,10 @@ func (p *LiquidityPoolsChangeProcessor) Commit(ctx context.Context) error {
 		switch {
 		case change.Pre == nil && change.Post != nil:
 			// Created
-			lps = append(lps, p.ledgerEntryToRow(change.Post))
+			err := p.batchInsertBuilder.Add(p.ledgerEntryToRow(change.Post))
+			if err != nil {
+				return errors.Wrap(err, "error adding to LiquidityPoolsBatchInsertBuilder")
+			}
 		case change.Pre != nil && change.Post == nil:
 			// Removed
 			lp := p.ledgerEntryToRow(change.Pre)
@@ -68,6 +73,11 @@ func (p *LiquidityPoolsChangeProcessor) Commit(ctx context.Context) error {
 			// Updated
 			lps = append(lps, p.ledgerEntryToRow(change.Post))
 		}
+	}
+
+	err := p.batchInsertBuilder.Exec(ctx)
+	if err != nil {
+		return errors.Wrap(err, "error executing LiquidityPoolsBatchInsertBuilder")
 	}
 
 	if len(lps) > 0 {

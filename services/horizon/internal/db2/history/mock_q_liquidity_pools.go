@@ -45,3 +45,8 @@ func (m *MockQLiquidityPools) CompactLiquidityPools(ctx context.Context, cutOffS
 	a := m.Called(ctx, cutOffSequence)
 	return a.Get(0).(int64), a.Error(1)
 }
+
+func (m *MockQLiquidityPools) NewLiquidityPoolBatchInsertBuilder() LiquidityPoolBatchInsertBuilder {
+	a := m.Called()
+	return a.Get(0).(LiquidityPoolBatchInsertBuilder)
+}

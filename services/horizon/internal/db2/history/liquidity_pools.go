@@ -37,7 +37,10 @@ type LiquidityPool struct {
 type LiquidityPoolAssetReserves []LiquidityPoolAssetReserve
 
 func (c LiquidityPoolAssetReserves) Value() (driver.Value, error) {
-	return json.Marshal(c)
+	// Convert the byte array into a string as a workaround to bypass buggy encoding in the pq driver
+	// (More info about this bug here https://github.com/stellar/go/issues/5086#issuecomment-1773215436).
+	val, err := json.Marshal(c)
+	return string(val), err
 }
 
 func (c *LiquidityPoolAssetReserves) Scan(value interface{}) error {
@@ -91,6 +94,7 @@ type QLiquidityPools interface {
 	FindLiquidityPoolByID(ctx context.Context, liquidityPoolID string) (LiquidityPool, error)
 	GetUpdatedLiquidityPools(ctx context.Context, newerThanSequence uint32) ([]LiquidityPool, error)
 	CompactLiquidityPools(ctx context.Context, cutOffSequence uint32) (int64, error)
+	NewLiquidityPoolBatchInsertBuilder() LiquidityPoolBatchInsertBuilder
 }
 
 // UpsertLiquidityPools upserts a batch of liquidity pools  in the liquidity_pools table.
