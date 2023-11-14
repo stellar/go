@@ -229,7 +229,7 @@ func (s ScVal) String() string {
 	case ScValTypeScvI64:
 		return fmt.Sprintf("%d", *s.I64)
 	case ScValTypeScvTimepoint:
-		return fmt.Sprintf("%s", time.Unix(int64(*s.Timepoint), 0))
+		return time.Unix(int64(*s.Timepoint), 0).String()
 	case ScValTypeScvDuration:
 		return fmt.Sprintf("%d", *s.Duration)
 	case ScValTypeScvU128:
