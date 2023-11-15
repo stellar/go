@@ -324,10 +324,11 @@ func (r *Router) addRoutes(config *RouterConfig, rateLimiter *throttled.HTTPRate
 
 	// Transaction submission API
 	r.Method(http.MethodPost, "/transactions", ObjectActionHandler{actions.SubmitTransactionHandler{
-		Submitter:         config.TxSubmitter,
-		NetworkPassphrase: config.NetworkPassphrase,
-		DisableTxSub:      config.DisableTxSub,
-		CoreStateGetter:   config.CoreGetter,
+		MaxHTTPRequestSize: config.MaxHTTPRequestSize,
+		Submitter:          config.TxSubmitter,
+		NetworkPassphrase:  config.NetworkPassphrase,
+		DisableTxSub:       config.DisableTxSub,
+		CoreStateGetter:    config.CoreGetter,
 	}})
 
 	// Network state related endpoints

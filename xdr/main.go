@@ -36,11 +36,11 @@ var OperationTypeToStringMap = operationTypeMap
 
 var LedgerEntryTypeMap = ledgerEntryTypeMap
 
-func safeUnmarshalString(decoder func(reader io.Reader) io.Reader, data string, dest interface{}) error {
+func safeUnmarshalString(decoder func(reader io.Reader) io.Reader, maxAllocSize int, data string, dest interface{}) error {
 	count := &countWriter{}
 	l := len(data)
 
-	_, err := Unmarshal(decoder(io.TeeReader(strings.NewReader(data), count)), dest)
+	_, err := UnmarshalWithMaxAllocSize(decoder(io.TeeReader(strings.NewReader(data), count)), dest, maxAllocSize)
 	if err != nil {
 		return err
 	}
@@ -56,10 +56,17 @@ func safeUnmarshalString(decoder func(reader io.Reader) io.Reader, data string, 
 // decoding the xdr into the provided destination. Also ensures that the reader
 // is fully consumed.
 func SafeUnmarshalBase64(data string, dest interface{}) error {
+	return SafeUnmarshalBase64WithMaxAllocSize(data, 0, dest)
+}
+
+// SafeUnmarshalBase64WithMaxAllocSize works just like SafeUnmarshalBase64, except a maximum
+// allocation size is provided.
+func SafeUnmarshalBase64WithMaxAllocSize(data string, maxAllocSize int, dest interface{}) error {
 	return safeUnmarshalString(
 		func(r io.Reader) io.Reader {
 			return base64.NewDecoder(base64.StdEncoding, r)
 		},
+		maxAllocSize,
 		data,
 		dest,
 	)
@@ -69,7 +76,7 @@ func SafeUnmarshalBase64(data string, dest interface{}) error {
 // decoding the xdr into the provided destination. Also ensures that the reader
 // is fully consumed.
 func SafeUnmarshalHex(data string, dest interface{}) error {
-	return safeUnmarshalString(hex.NewDecoder, data, dest)
+	return safeUnmarshalString(hex.NewDecoder, 0, data, dest)
 }
 
 // SafeUnmarshal decodes the provided reader into the destination and verifies
@@ -112,7 +119,7 @@ func NewBytesDecoder() *BytesDecoder {
 
 func (d *BytesDecoder) DecodeBytes(v DecoderFrom, b []byte) (int, error) {
 	d.reader.Reset(b)
-	return v.DecodeFrom(d.decoder, xdr.DecodeDefaultMaxDepth)
+	return v.DecodeFrom(d.decoder, xdr.DecodeDefaultMaxDepth, 0)
 }
 
 func marshalString(encoder func([]byte) string, v interface{}) (string, error) {
