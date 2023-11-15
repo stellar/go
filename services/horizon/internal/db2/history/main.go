@@ -312,6 +312,7 @@ type QAccounts interface {
 	GetAccountsByIDs(ctx context.Context, ids []string) ([]AccountEntry, error)
 	UpsertAccounts(ctx context.Context, accounts []AccountEntry) error
 	RemoveAccounts(ctx context.Context, accountIDs []string) (int64, error)
+	NewAccountsBatchInsertBuilder() AccountsBatchInsertBuilder
 }
 
 // AccountSigner is a row of data from the `accounts_signers` table
