@@ -48,7 +48,6 @@ func TestProcessorRunnerRunHistoryArchiveIngestionGenesis(t *testing.T) {
 		Weight:  1,
 		Sponsor: null.String{},
 	}).Return(nil).Once()
-	mockAccountSignersBatchInsertBuilder.On("Exec", ctx).Return(nil).Once()
 
 	q.MockQAssetStats.On("InsertAssetStats", ctx, []history.ExpAssetStat{}, 100000).
 		Return(nil)
