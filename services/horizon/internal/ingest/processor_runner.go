@@ -123,7 +123,7 @@ func buildChangeProcessor(
 		processors.NewAccountDataProcessor(historyQ),
 		processors.NewAccountsProcessor(historyQ),
 		processors.NewOffersProcessor(historyQ, ledgerSequence),
-		processors.NewAssetStatsProcessor(historyQ, networkPassphrase, useLedgerCache),
+		processors.NewAssetStatsProcessor(historyQ, networkPassphrase, source == historyArchiveSource, ledgerSequence),
 		processors.NewSignersProcessor(historyQ, useLedgerCache),
 		processors.NewTrustLinesProcessor(historyQ),
 		processors.NewClaimableBalancesChangeProcessor(historyQ),
