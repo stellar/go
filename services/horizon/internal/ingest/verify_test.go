@@ -1,6 +1,7 @@
 package ingest
 
 import (
+	"crypto/sha256"
 	"database/sql"
 	"io"
 	"math/rand"
@@ -167,7 +168,6 @@ func genContractCode(tt *test.T, gen randxdr.Generator) xdr.LedgerEntryChange {
 		[]randxdr.Preset{
 			{randxdr.FieldEquals("type"), randxdr.SetU32(gxdr.LEDGER_ENTRY_CREATED.GetU32())},
 			{randxdr.FieldEquals("created.data.type"), randxdr.SetU32(gxdr.CONTRACT_CODE.GetU32())},
-			//{randxdr.FieldEquals("created.data.contractcode.body.bodytype"), randxdr.SetU32(xdr.Body)},
 		},
 	)
 	tt.Assert.NoError(gxdr.Convert(shape, &change))
@@ -182,6 +182,8 @@ func genTTL(tt *test.T, gen randxdr.Generator) xdr.LedgerEntryChange {
 		[]randxdr.Preset{
 			{randxdr.FieldEquals("type"), randxdr.SetU32(gxdr.LEDGER_ENTRY_CREATED.GetU32())},
 			{randxdr.FieldEquals("created.data.type"), randxdr.SetU32(gxdr.TTL.GetU32())},
+			{randxdr.FieldEquals("created.lastModifiedLedgerSeq"), randxdr.SetPositiveNum32},
+			{randxdr.FieldEquals("created.data.ttl.liveUntilLedgerSeq"), randxdr.SetPositiveNum32},
 		},
 	)
 	tt.Assert.NoError(gxdr.Convert(shape, &change))
@@ -216,12 +218,16 @@ func genAssetContractMetadata(tt *test.T, gen randxdr.Generator) []xdr.LedgerEnt
 	otherTrustline := genTrustLine(tt, gen, assetPreset)
 	otherAssetContractMetadata := assetContractMetadataFromTrustline(tt, otherTrustline)
 
+	balance := balanceContractDataFromTrustline(tt, trustline)
+	otherBalance := balanceContractDataFromTrustline(tt, otherTrustline)
 	return []xdr.LedgerEntryChange{
 		assetContractMetadata,
 		trustline,
-		balanceContractDataFromTrustline(tt, trustline),
+		balance,
+		ttlForContractData(tt, gen, balance),
 		otherAssetContractMetadata,
-		balanceContractDataFromTrustline(tt, otherTrustline),
+		otherBalance,
+		ttlForContractData(tt, gen, otherBalance),
 		balanceContractDataFromTrustline(tt, genTrustLine(tt, gen, assetPreset)),
 	}
 }
@@ -263,6 +269,18 @@ func balanceContractDataFromTrustline(tt *test.T, trustline xdr.LedgerEntryChang
 		},
 	}
 	return assetContractMetadata
+}
+
+func ttlForContractData(tt *test.T, gen randxdr.Generator, contractData xdr.LedgerEntryChange) xdr.LedgerEntryChange {
+	ledgerEntry := contractData.MustCreated()
+	lk, err := ledgerEntry.LedgerKey()
+	tt.Assert.NoError(err)
+	bin, err := lk.MarshalBinary()
+	tt.Assert.NoError(err)
+	keyHash := sha256.Sum256(bin)
+	ttl := genTTL(tt, gen)
+	ttl.Created.Data.Ttl.KeyHash = keyHash
+	return ttl
 }
 
 func TestStateVerifierLockBusy(t *testing.T) {
@@ -330,7 +348,8 @@ func TestStateVerifier(t *testing.T) {
 
 	tt.Assert.NoError(q.BeginTx(tt.Ctx, &sql.TxOptions{}))
 
-	checkpointLedger := uint32(63)
+	ledger := rand.Int31()
+	checkpointLedger := uint32(ledger - (ledger % 64) - 1)
 	changeProcessor := buildChangeProcessor(q, &ingest.StatsChangeProcessor{}, ledgerSource, checkpointLedger, "")
 	mockChangeReader := &ingest.MockChangeReader{}
 
