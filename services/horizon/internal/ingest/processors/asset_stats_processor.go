@@ -95,6 +95,17 @@ func (p *AssetStatsProcessor) addExpirationChange(change ingest.Change) error {
 				post.LiveUntilLedgerSeq,
 			)
 		}
+		// also the new expiration ledger must always be greater than or equal
+		// to the current ledger
+		if uint32(post.LiveUntilLedgerSeq) < p.currentLedger {
+			return errors.Errorf(
+				"post expiration ledger is less than current ledger."+
+					" Pre: %v Post: %v current ledger: %v",
+				pre.LiveUntilLedgerSeq,
+				post.LiveUntilLedgerSeq,
+				p.currentLedger,
+			)
+		}
 		p.updatedExpirationEntries[pre.KeyHash] = [2]uint32{
 			uint32(pre.LiveUntilLedgerSeq),
 			uint32(post.LiveUntilLedgerSeq),

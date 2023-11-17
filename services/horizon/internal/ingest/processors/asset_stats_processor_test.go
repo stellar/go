@@ -1186,6 +1186,80 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateContractID() {
 	s.Assert().NoError(s.processor.Commit(s.ctx))
 }
 
+func (s *AssetStatsProcessorTestSuiteLedger) TestExpirationLedgerCannotDecrease() {
+	lastModifiedLedgerSeq := xdr.Uint32(1234)
+
+	eurID, err := xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()).ContractID("")
+	s.Assert().NoError(err)
+
+	keyHash := getKeyHashForBalance(s.T(), eurID, [32]byte{1})
+	s.Assert().NoError(s.processor.ProcessChange(s.ctx, ingest.Change{
+		Type: xdr.LedgerEntryTypeTtl,
+		Pre: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeTtl,
+				Ttl: &xdr.TtlEntry{
+					KeyHash:            keyHash,
+					LiveUntilLedgerSeq: 2235,
+				},
+			},
+		},
+		Post: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeTtl,
+				Ttl: &xdr.TtlEntry{
+					KeyHash:            keyHash,
+					LiveUntilLedgerSeq: 2234,
+				},
+			},
+		},
+	}))
+
+	s.Assert().EqualError(
+		s.processor.Commit(s.ctx),
+		"Error adjusting asset stat: unexpected change in expiration ledger Pre: 2235 Post: 2234",
+	)
+}
+
+func (s *AssetStatsProcessorTestSuiteLedger) TestExpirationLedgerCannotBeLessThanCurrentLedger() {
+	lastModifiedLedgerSeq := xdr.Uint32(1234)
+
+	eurID, err := xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()).ContractID("")
+	s.Assert().NoError(err)
+
+	keyHash := getKeyHashForBalance(s.T(), eurID, [32]byte{1})
+	s.Assert().NoError(s.processor.ProcessChange(s.ctx, ingest.Change{
+		Type: xdr.LedgerEntryTypeTtl,
+		Pre: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeTtl,
+				Ttl: &xdr.TtlEntry{
+					KeyHash:            keyHash,
+					LiveUntilLedgerSeq: 1230,
+				},
+			},
+		},
+		Post: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeTtl,
+				Ttl: &xdr.TtlEntry{
+					KeyHash:            keyHash,
+					LiveUntilLedgerSeq: 1234,
+				},
+			},
+		},
+	}))
+
+	s.Assert().EqualError(
+		s.processor.Commit(s.ctx),
+		"Error adjusting asset stat: post expiration ledger is less than current ledger. Pre: 1230 Post: 1234 current ledger: 1235",
+	)
+}
+
 func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateContractIDWithBalance() {
 	lastModifiedLedgerSeq := xdr.Uint32(1234)
 
