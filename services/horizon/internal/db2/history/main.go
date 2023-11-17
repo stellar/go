@@ -846,6 +846,7 @@ type QTrustLines interface {
 	GetTrustLinesByKeys(ctx context.Context, ledgerKeys []string) ([]TrustLine, error)
 	UpsertTrustLines(ctx context.Context, trustlines []TrustLine) error
 	RemoveTrustLines(ctx context.Context, ledgerKeys []string) (int64, error)
+	NewTrustLinesBatchInsertBuilder() TrustLinesBatchInsertBuilder
 }
 
 func (q *Q) NewAccountSignersBatchInsertBuilder() AccountSignersBatchInsertBuilder {
