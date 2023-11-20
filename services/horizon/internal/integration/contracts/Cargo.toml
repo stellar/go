@@ -5,6 +5,7 @@ members = [
     "sac_test",
     "increment",
     "add_u64",
+    "store",
 ]
 
 [profile.release-with-logs]
