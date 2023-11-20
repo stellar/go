@@ -357,6 +357,7 @@ type QData interface {
 	GetAccountDataByKeys(ctx context.Context, keys []AccountDataKey) ([]Data, error)
 	UpsertAccountData(ctx context.Context, data []Data) error
 	RemoveAccountData(ctx context.Context, keys []AccountDataKey) (int64, error)
+	NewAccountDataBatchInsertBuilder() AccountDataBatchInsertBuilder
 }
 
 // Asset is a row of data from the `history_assets` table

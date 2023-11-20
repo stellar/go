@@ -12,7 +12,8 @@ import (
 type AccountDataProcessor struct {
 	dataQ history.QData
 
-	cache *ingest.ChangeCompactor
+	cache              *ingest.ChangeCompactor
+	batchInsertBuilder history.AccountDataBatchInsertBuilder
 }
 
 func NewAccountDataProcessor(dataQ history.QData) *AccountDataProcessor {
@@ -23,6 +24,7 @@ func NewAccountDataProcessor(dataQ history.QData) *AccountDataProcessor {
 
 func (p *AccountDataProcessor) reset() {
 	p.cache = ingest.NewChangeCompactor()
+	p.batchInsertBuilder = p.dataQ.NewAccountDataBatchInsertBuilder()
 }
 
 func (p *AccountDataProcessor) ProcessChange(ctx context.Context, change ingest.Change) error {
@@ -41,13 +43,13 @@ func (p *AccountDataProcessor) ProcessChange(ctx context.Context, change ingest.
 		if err != nil {
 			return errors.Wrap(err, "error in Commit")
 		}
-		p.reset()
 	}
 
 	return nil
 }
 
 func (p *AccountDataProcessor) Commit(ctx context.Context) error {
+	defer p.reset()
 	var (
 		datasToUpsert []history.Data
 		datasToDelete []history.AccountDataKey
@@ -57,7 +59,10 @@ func (p *AccountDataProcessor) Commit(ctx context.Context) error {
 		switch {
 		case change.Pre == nil && change.Post != nil:
 			// Created
-			datasToUpsert = append(datasToUpsert, p.ledgerEntryToRow(change.Post))
+			err := p.batchInsertBuilder.Add(p.ledgerEntryToRow(change.Post))
+			if err != nil {
+				return errors.Wrap(err, "Error adding to AccountDataBatchInsertBuilder")
+			}
 		case change.Pre != nil && change.Post == nil:
 			// Removed
 			data := change.Pre.Data.MustData()
@@ -70,6 +75,11 @@ func (p *AccountDataProcessor) Commit(ctx context.Context) error {
 			// Updated
 			datasToUpsert = append(datasToUpsert, p.ledgerEntryToRow(change.Post))
 		}
+	}
+
+	err := p.batchInsertBuilder.Exec(ctx)
+	if err != nil {
+		return errors.Wrap(err, "Error executing AccountDataBatchInsertBuilder")
 	}
 
 	if len(datasToUpsert) > 0 {
