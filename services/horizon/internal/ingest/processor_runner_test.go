@@ -27,17 +27,6 @@ func TestProcessorRunnerRunHistoryArchiveIngestionGenesis(t *testing.T) {
 
 	q := &mockDBQ{}
 
-	q.MockQAccounts.On("UpsertAccounts", ctx, []history.AccountEntry{
-		{
-			LastModifiedLedger: 1,
-			AccountID:          "GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7",
-			Balance:            int64(1000000000000000000),
-			SequenceNumber:     0,
-			SequenceTime:       zero.IntFrom(0),
-			MasterWeight:       1,
-		},
-	}).Return(nil).Once()
-
 	batchBuilders := mockChangeProcessorBatchBuilders(q, ctx, true)
 	defer mock.AssertExpectationsForObjects(t, batchBuilders...)
 
@@ -47,6 +36,16 @@ func TestProcessorRunnerRunHistoryArchiveIngestionGenesis(t *testing.T) {
 		Signer:  "GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7",
 		Weight:  1,
 		Sponsor: null.String{},
+	}).Return(nil).Once()
+
+	assert.IsType(t, &history.MockAccountsBatchInsertBuilder{}, batchBuilders[1])
+	batchBuilders[1].(*history.MockAccountsBatchInsertBuilder).On("Add", history.AccountEntry{
+		LastModifiedLedger: 1,
+		AccountID:          "GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7",
+		Balance:            int64(1000000000000000000),
+		SequenceNumber:     0,
+		SequenceTime:       zero.IntFrom(0),
+		MasterWeight:       1,
 	}).Return(nil).Once()
 
 	q.MockQAssetStats.On("InsertAssetStats", ctx, []history.ExpAssetStat{}, 100000).
@@ -94,16 +93,6 @@ func TestProcessorRunnerRunHistoryArchiveIngestionHistoryArchive(t *testing.T) {
 			nil,
 		).Once()
 
-	q.MockQAccounts.On("UpsertAccounts", ctx, []history.AccountEntry{
-		{
-			LastModifiedLedger: 1,
-			AccountID:          "GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7",
-			Balance:            int64(1000000000000000000),
-			SequenceNumber:     0,
-			MasterWeight:       1,
-		},
-	}).Return(nil).Once()
-
 	batchBuilders := mockChangeProcessorBatchBuilders(q, ctx, true)
 	defer mock.AssertExpectationsForObjects(t, batchBuilders...)
 
@@ -112,6 +101,15 @@ func TestProcessorRunnerRunHistoryArchiveIngestionHistoryArchive(t *testing.T) {
 		Account: "GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7",
 		Signer:  "GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7",
 		Weight:  1,
+	}).Return(nil).Once()
+
+	assert.IsType(t, &history.MockAccountsBatchInsertBuilder{}, batchBuilders[1])
+	batchBuilders[1].(*history.MockAccountsBatchInsertBuilder).On("Add", history.AccountEntry{
+		LastModifiedLedger: 1,
+		AccountID:          "GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7",
+		Balance:            int64(1000000000000000000),
+		SequenceNumber:     0,
+		MasterWeight:       1,
 	}).Return(nil).Once()
 
 	q.MockQAssetStats.On("InsertAssetStats", ctx, []history.ExpAssetStat{}, 100000).
@@ -494,6 +492,13 @@ func mockChangeProcessorBatchBuilders(q *mockDBQ, ctx context.Context, mockExec 
 	q.MockQSigners.On("NewAccountSignersBatchInsertBuilder").
 		Return(mockAccountSignersBatchInsertBuilder).Twice()
 
+	mockAccountsBatchInsertBuilder := &history.MockAccountsBatchInsertBuilder{}
+	if mockExec {
+		mockAccountsBatchInsertBuilder.On("Exec", ctx).Return(nil).Once()
+	}
+	q.MockQAccounts.On("NewAccountsBatchInsertBuilder").
+		Return(mockAccountsBatchInsertBuilder).Twice()
+
 	mockClaimableBalanceClaimantBatchInsertBuilder := &history.MockClaimableBalanceClaimantBatchInsertBuilder{}
 	if mockExec {
 		mockClaimableBalanceClaimantBatchInsertBuilder.On("Exec", ctx).
@@ -531,6 +536,7 @@ func mockChangeProcessorBatchBuilders(q *mockDBQ, ctx context.Context, mockExec 
 		Return(mockTrustLinesBatchInsertBuilder)
 
 	return []interface{}{mockAccountSignersBatchInsertBuilder,
+		mockAccountsBatchInsertBuilder,
 		mockClaimableBalanceBatchInsertBuilder,
 		mockClaimableBalanceClaimantBatchInsertBuilder,
 		mockLiquidityPoolBatchInsertBuilder,

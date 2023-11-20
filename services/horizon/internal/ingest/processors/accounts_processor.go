@@ -13,7 +13,8 @@ import (
 type AccountsProcessor struct {
 	accountsQ history.QAccounts
 
-	cache *ingest.ChangeCompactor
+	cache              *ingest.ChangeCompactor
+	batchInsertBuilder history.AccountsBatchInsertBuilder
 }
 
 func NewAccountsProcessor(accountsQ history.QAccounts) *AccountsProcessor {
@@ -24,6 +25,7 @@ func NewAccountsProcessor(accountsQ history.QAccounts) *AccountsProcessor {
 
 func (p *AccountsProcessor) reset() {
 	p.cache = ingest.NewChangeCompactor()
+	p.batchInsertBuilder = p.accountsQ.NewAccountsBatchInsertBuilder()
 }
 
 func (p *AccountsProcessor) ProcessChange(ctx context.Context, change ingest.Change) error {
@@ -41,13 +43,14 @@ func (p *AccountsProcessor) ProcessChange(ctx context.Context, change ingest.Cha
 		if err != nil {
 			return errors.Wrap(err, "error in Commit")
 		}
-		p.reset()
 	}
 
 	return nil
 }
 
 func (p *AccountsProcessor) Commit(ctx context.Context) error {
+	defer p.reset()
+
 	batchUpsertAccounts := []history.AccountEntry{}
 	removeBatch := []string{}
 
@@ -63,8 +66,15 @@ func (p *AccountsProcessor) Commit(ctx context.Context) error {
 		}
 
 		switch {
-		case change.Post != nil:
-			// Created and updated
+		case change.Pre == nil && change.Post != nil:
+			// Created
+			row := p.ledgerEntryToRow(*change.Post)
+			err := p.batchInsertBuilder.Add(row)
+			if err != nil {
+				return errors.Wrap(err, "Error adding to AccountsBatchInsertBuilder")
+			}
+		case change.Pre != nil && change.Post != nil:
+			// Updated
 			row := p.ledgerEntryToRow(*change.Post)
 			batchUpsertAccounts = append(batchUpsertAccounts, row)
 		case change.Pre != nil && change.Post == nil:
@@ -75,6 +85,11 @@ func (p *AccountsProcessor) Commit(ctx context.Context) error {
 		default:
 			return errors.New("Invalid io.Change: change.Pre == nil && change.Post == nil")
 		}
+	}
+
+	err := p.batchInsertBuilder.Exec(ctx)
+	if err != nil {
+		return errors.Wrap(err, "Error executing AccountsBatchInsertBuilder")
 	}
 
 	// Upsert accounts

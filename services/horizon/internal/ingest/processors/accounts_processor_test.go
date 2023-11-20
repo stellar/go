@@ -19,14 +19,19 @@ func TestAccountsProcessorTestSuiteState(t *testing.T) {
 
 type AccountsProcessorTestSuiteState struct {
 	suite.Suite
-	ctx       context.Context
-	processor *AccountsProcessor
-	mockQ     *history.MockQAccounts
+	ctx                            context.Context
+	processor                      *AccountsProcessor
+	mockQ                          *history.MockQAccounts
+	mockAccountsBatchInsertBuilder *history.MockAccountsBatchInsertBuilder
 }
 
 func (s *AccountsProcessorTestSuiteState) SetupTest() {
 	s.ctx = context.Background()
 	s.mockQ = &history.MockQAccounts{}
+
+	s.mockAccountsBatchInsertBuilder = &history.MockAccountsBatchInsertBuilder{}
+	s.mockQ.On("NewAccountsBatchInsertBuilder").Return(s.mockAccountsBatchInsertBuilder).Twice()
+	s.mockAccountsBatchInsertBuilder.On("Exec", s.ctx).Return(nil).Once()
 
 	s.processor = NewAccountsProcessor(s.mockQ)
 }
@@ -42,19 +47,14 @@ func (s *AccountsProcessorTestSuiteState) TestNoEntries() {
 
 func (s *AccountsProcessorTestSuiteState) TestCreatesAccounts() {
 	// We use LedgerEntryChangesCache so all changes are squashed
-	s.mockQ.On(
-		"UpsertAccounts", s.ctx,
-		[]history.AccountEntry{
-			{
-				LastModifiedLedger: 123,
-				AccountID:          "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
-				MasterWeight:       1,
-				ThresholdLow:       1,
-				ThresholdMedium:    1,
-				ThresholdHigh:      1,
-			},
-		},
-	).Return(nil).Once()
+	s.mockAccountsBatchInsertBuilder.On("Add", history.AccountEntry{
+		LastModifiedLedger: 123,
+		AccountID:          "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
+		MasterWeight:       1,
+		ThresholdLow:       1,
+		ThresholdMedium:    1,
+		ThresholdHigh:      1,
+	}).Return(nil).Once()
 
 	err := s.processor.ProcessChange(s.ctx, ingest.Change{
 		Type: xdr.LedgerEntryTypeAccount,
@@ -79,14 +79,19 @@ func TestAccountsProcessorTestSuiteLedger(t *testing.T) {
 
 type AccountsProcessorTestSuiteLedger struct {
 	suite.Suite
-	ctx       context.Context
-	processor *AccountsProcessor
-	mockQ     *history.MockQAccounts
+	ctx                            context.Context
+	processor                      *AccountsProcessor
+	mockQ                          *history.MockQAccounts
+	mockAccountsBatchInsertBuilder *history.MockAccountsBatchInsertBuilder
 }
 
 func (s *AccountsProcessorTestSuiteLedger) SetupTest() {
 	s.ctx = context.Background()
 	s.mockQ = &history.MockQAccounts{}
+
+	s.mockAccountsBatchInsertBuilder = &history.MockAccountsBatchInsertBuilder{}
+	s.mockQ.On("NewAccountsBatchInsertBuilder").Return(s.mockAccountsBatchInsertBuilder).Twice()
+	s.mockAccountsBatchInsertBuilder.On("Exec", s.ctx).Return(nil).Once()
 
 	s.processor = NewAccountsProcessor(s.mockQ)
 }
@@ -146,21 +151,15 @@ func (s *AccountsProcessorTestSuiteLedger) TestNewAccount() {
 	s.Assert().NoError(err)
 
 	// We use LedgerEntryChangesCache so all changes are squashed
-	s.mockQ.On(
-		"UpsertAccounts",
-		s.ctx,
-		[]history.AccountEntry{
-			{
-				AccountID:          "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
-				MasterWeight:       0,
-				ThresholdLow:       1,
-				ThresholdMedium:    2,
-				ThresholdHigh:      3,
-				HomeDomain:         "stellar.org",
-				LastModifiedLedger: uint32(123),
-			},
-		},
-	).Return(nil).Once()
+	s.mockAccountsBatchInsertBuilder.On("Add", history.AccountEntry{
+		AccountID:          "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
+		MasterWeight:       0,
+		ThresholdLow:       1,
+		ThresholdMedium:    2,
+		ThresholdHigh:      3,
+		HomeDomain:         "stellar.org",
+		LastModifiedLedger: uint32(123),
+	}).Return(nil).Once()
 }
 
 func (s *AccountsProcessorTestSuiteLedger) TestNewAccountUpgrade() {
@@ -235,23 +234,17 @@ func (s *AccountsProcessorTestSuiteLedger) TestNewAccountUpgrade() {
 	s.Assert().NoError(err)
 
 	// We use LedgerEntryChangesCache so all changes are squashed
-	s.mockQ.On(
-		"UpsertAccounts",
-		s.ctx,
-		[]history.AccountEntry{
-			{
-				AccountID:          "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
-				SequenceLedger:     zero.IntFrom(2346),
-				SequenceTime:       zero.IntFrom(1647265534),
-				MasterWeight:       0,
-				ThresholdLow:       1,
-				ThresholdMedium:    2,
-				ThresholdHigh:      3,
-				HomeDomain:         "stellar.org",
-				LastModifiedLedger: uint32(123),
-			},
-		},
-	).Return(nil).Once()
+	s.mockAccountsBatchInsertBuilder.On("Add", history.AccountEntry{
+		AccountID:          "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
+		SequenceLedger:     zero.IntFrom(2346),
+		SequenceTime:       zero.IntFrom(1647265534),
+		MasterWeight:       0,
+		ThresholdLow:       1,
+		ThresholdMedium:    2,
+		ThresholdHigh:      3,
+		HomeDomain:         "stellar.org",
+		LastModifiedLedger: uint32(123),
+	}).Return(nil).Once()
 }
 
 func (s *AccountsProcessorTestSuiteLedger) TestRemoveAccount() {
@@ -322,23 +315,17 @@ func (s *AccountsProcessorTestSuiteLedger) TestProcessUpgradeChange() {
 	})
 	s.Assert().NoError(err)
 
-	s.mockQ.On(
-		"UpsertAccounts",
-		s.ctx,
-		[]history.AccountEntry{
-			{
-				LastModifiedLedger: uint32(lastModifiedLedgerSeq) + 1,
-				AccountID:          "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
-				SequenceTime:       zero.IntFrom(0),
-				SequenceLedger:     zero.IntFrom(0),
-				MasterWeight:       0,
-				ThresholdLow:       1,
-				ThresholdMedium:    2,
-				ThresholdHigh:      3,
-				HomeDomain:         "stellar.org",
-			},
-		},
-	).Return(nil).Once()
+	s.mockAccountsBatchInsertBuilder.On("Add", history.AccountEntry{
+		LastModifiedLedger: uint32(lastModifiedLedgerSeq) + 1,
+		AccountID:          "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
+		SequenceTime:       zero.IntFrom(0),
+		SequenceLedger:     zero.IntFrom(0),
+		MasterWeight:       0,
+		ThresholdLow:       1,
+		ThresholdMedium:    2,
+		ThresholdHigh:      3,
+		HomeDomain:         "stellar.org",
+	}).Return(nil).Once()
 }
 
 func (s *AccountsProcessorTestSuiteLedger) TestFeeProcessedBeforeEverythingElse() {
