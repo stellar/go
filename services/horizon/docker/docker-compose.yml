@@ -2,7 +2,7 @@ version: '3'
 services:
   horizon-postgres:
     platform: linux/amd64
-    image: postgres:postgres:12-bullseye
+    image: postgres:12-bullseye
     restart: on-failure
     environment:
       - POSTGRES_HOST_AUTH_METHOD=trust
