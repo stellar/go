@@ -38,7 +38,7 @@ type envelopeInfo struct {
 
 func (handler SubmitTransactionHandler) extractEnvelopeInfo(raw string, passphrase string) (envelopeInfo, error) {
 	result := envelopeInfo{raw: raw}
-	err := xdr.SafeUnmarshalBase64WithMaxAllocSize(raw, int(handler.MaxHTTPRequestSize), &result.parsed)
+	err := xdr.SafeUnmarshalBase64(raw, &result.parsed)
 	if err != nil {
 		return result, err
 	}

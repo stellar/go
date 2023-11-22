@@ -97,7 +97,7 @@ func (b *bufferedLedgerMetaReader) readLedgerMetaFromPipe() (*xdr.LedgerCloseMet
 	}
 
 	var xlcm xdr.LedgerCloseMeta
-	_, err = xlcm.DecodeFrom(b.decoder, xdr3.DecodeDefaultMaxDepth, 0)
+	_, err = xlcm.DecodeFrom(b.decoder, xdr3.DecodeDefaultMaxDepth)
 	if err != nil {
 		return nil, errors.Wrap(err, "unmarshaling framed LedgerCloseMeta")
 	}
