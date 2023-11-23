@@ -25,9 +25,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"unsafe"
 
 	"github.com/stellar/go-xdr/xdr3"
 )
+
+// Needed since unsafe is not used in all cases
+var _ = unsafe.Sizeof(0)
 
 // XdrFilesSHA256 is the SHA256 hashes of source files.
 var XdrFilesSHA256 = map[string]string{
@@ -57,12 +61,17 @@ type decoderFrom interface {
 
 // Unmarshal reads an xdr element from `r` into `v`.
 func Unmarshal(r io.Reader, v interface{}) (int, error) {
+	return UnmarshalWithOptions(r, v, xdr.DefaultDecodeOptions)
+}
+
+// UnmarshalWithOptions works like Unmarshal but uses decoding options.
+func UnmarshalWithOptions(r io.Reader, v interface{}, options xdr.DecodeOptions) (int, error) {
 	if decodable, ok := v.(decoderFrom); ok {
-		d := xdr.NewDecoder(r)
-		return decodable.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+		d := xdr.NewDecoderWithOptions(r, options)
+		return decodable.DecodeFrom(d, options.MaxDepth)
 	}
 	// delegate to xdr package's Unmarshal
-	return xdr.Unmarshal(r, v)
+	return xdr.UnmarshalWithOptions(r, v, options)
 }
 
 // Marshal writes an xdr element `v` into `w`.
@@ -123,8 +132,10 @@ func (s Value) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *Value) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -133,8 +144,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*Value)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s Value) xdrType() {}
 
 var _ xdrType = (*Value)(nil)
@@ -197,8 +207,10 @@ func (s ScpBallot) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ScpBallot) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -207,8 +219,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ScpBallot)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ScpBallot) xdrType() {}
 
 var _ xdrType = (*ScpBallot)(nil)
@@ -290,8 +301,10 @@ func (s ScpStatementType) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ScpStatementType) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -300,8 +313,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ScpStatementType)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ScpStatementType) xdrType() {}
 
 var _ xdrType = (*ScpStatementType)(nil)
@@ -368,8 +380,11 @@ func (s *ScpNomination) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
 	}
 	s.Votes = nil
 	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding Value: length (%d) exceeds remaining input length (%d)", l, il)
+		}
 		s.Votes = make([]Value, l)
-		for i := uint32(0); i < l; i++ {
+		for i := uint32(0); uint(i) < uint(l); i++ {
 			nTmp, err = s.Votes[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -384,8 +399,11 @@ func (s *ScpNomination) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
 	}
 	s.Accepted = nil
 	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding Value: length (%d) exceeds remaining input length (%d)", l, il)
+		}
 		s.Accepted = make([]Value, l)
-		for i := uint32(0); i < l; i++ {
+		for i := uint32(0); uint(i) < uint(l); i++ {
 			nTmp, err = s.Accepted[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -407,8 +425,10 @@ func (s ScpNomination) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ScpNomination) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -417,8 +437,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ScpNomination)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ScpNomination) xdrType() {}
 
 var _ xdrType = (*ScpNomination)(nil)
@@ -550,8 +569,10 @@ func (s ScpStatementPrepare) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ScpStatementPrepare) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -560,8 +581,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ScpStatementPrepare)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ScpStatementPrepare) xdrType() {}
 
 var _ xdrType = (*ScpStatementPrepare)(nil)
@@ -654,8 +674,10 @@ func (s ScpStatementConfirm) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ScpStatementConfirm) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -664,8 +686,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ScpStatementConfirm)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ScpStatementConfirm) xdrType() {}
 
 var _ xdrType = (*ScpStatementConfirm)(nil)
@@ -738,8 +759,10 @@ func (s ScpStatementExternalize) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ScpStatementExternalize) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -748,8 +771,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ScpStatementExternalize)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ScpStatementExternalize) xdrType() {}
 
 var _ xdrType = (*ScpStatementExternalize)(nil)
@@ -1047,8 +1069,10 @@ func (s ScpStatementPledges) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ScpStatementPledges) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -1057,8 +1081,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ScpStatementPledges)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ScpStatementPledges) xdrType() {}
 
 var _ xdrType = (*ScpStatementPledges)(nil)
@@ -1163,8 +1186,10 @@ func (s ScpStatement) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ScpStatement) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -1173,8 +1198,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ScpStatement)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ScpStatement) xdrType() {}
 
 var _ xdrType = (*ScpStatement)(nil)
@@ -1237,8 +1261,10 @@ func (s ScpEnvelope) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ScpEnvelope) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -1247,8 +1273,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ScpEnvelope)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ScpEnvelope) xdrType() {}
 
 var _ xdrType = (*ScpEnvelope)(nil)
@@ -1315,8 +1340,11 @@ func (s *ScpQuorumSet) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
 	}
 	s.Validators = nil
 	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding NodeId: length (%d) exceeds remaining input length (%d)", l, il)
+		}
 		s.Validators = make([]NodeId, l)
-		for i := uint32(0); i < l; i++ {
+		for i := uint32(0); uint(i) < uint(l); i++ {
 			nTmp, err = s.Validators[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -1331,8 +1359,11 @@ func (s *ScpQuorumSet) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
 	}
 	s.InnerSets = nil
 	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding ScpQuorumSet: length (%d) exceeds remaining input length (%d)", l, il)
+		}
 		s.InnerSets = make([]ScpQuorumSet, l)
-		for i := uint32(0); i < l; i++ {
+		for i := uint32(0); uint(i) < uint(l); i++ {
 			nTmp, err = s.InnerSets[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -1354,8 +1385,10 @@ func (s ScpQuorumSet) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ScpQuorumSet) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -1364,8 +1397,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ScpQuorumSet)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ScpQuorumSet) xdrType() {}
 
 var _ xdrType = (*ScpQuorumSet)(nil)
@@ -1418,8 +1450,10 @@ func (s Thresholds) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *Thresholds) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -1428,8 +1462,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*Thresholds)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s Thresholds) xdrType() {}
 
 var _ xdrType = (*Thresholds)(nil)
@@ -1484,8 +1517,10 @@ func (s String32) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *String32) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -1494,8 +1529,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*String32)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s String32) xdrType() {}
 
 var _ xdrType = (*String32)(nil)
@@ -1550,8 +1584,10 @@ func (s String64) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *String64) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -1560,8 +1596,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*String64)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s String64) xdrType() {}
 
 var _ xdrType = (*String64)(nil)
@@ -1609,8 +1644,10 @@ func (s SequenceNumber) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *SequenceNumber) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -1619,8 +1656,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*SequenceNumber)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s SequenceNumber) xdrType() {}
 
 var _ xdrType = (*SequenceNumber)(nil)
@@ -1673,8 +1709,10 @@ func (s DataValue) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *DataValue) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -1683,8 +1721,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*DataValue)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s DataValue) xdrType() {}
 
 var _ xdrType = (*DataValue)(nil)
@@ -1732,8 +1769,10 @@ func (s PoolId) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *PoolId) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -1742,8 +1781,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*PoolId)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s PoolId) xdrType() {}
 
 var _ xdrType = (*PoolId)(nil)
@@ -1796,8 +1834,10 @@ func (s AssetCode4) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *AssetCode4) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -1806,8 +1846,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*AssetCode4)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s AssetCode4) xdrType() {}
 
 var _ xdrType = (*AssetCode4)(nil)
@@ -1860,8 +1899,10 @@ func (s AssetCode12) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *AssetCode12) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -1870,8 +1911,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*AssetCode12)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s AssetCode12) xdrType() {}
 
 var _ xdrType = (*AssetCode12)(nil)
@@ -1953,8 +1993,10 @@ func (s AssetType) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *AssetType) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -1963,8 +2005,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*AssetType)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s AssetType) xdrType() {}
 
 var _ xdrType = (*AssetType)(nil)
@@ -2145,8 +2186,10 @@ func (s AssetCode) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *AssetCode) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -2155,8 +2198,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*AssetCode)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s AssetCode) xdrType() {}
 
 var _ xdrType = (*AssetCode)(nil)
@@ -2219,8 +2261,10 @@ func (s AlphaNum4) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *AlphaNum4) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -2229,8 +2273,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*AlphaNum4)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s AlphaNum4) xdrType() {}
 
 var _ xdrType = (*AlphaNum4)(nil)
@@ -2293,8 +2336,10 @@ func (s AlphaNum12) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *AlphaNum12) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -2303,8 +2348,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*AlphaNum12)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s AlphaNum12) xdrType() {}
 
 var _ xdrType = (*AlphaNum12)(nil)
@@ -2498,8 +2542,10 @@ func (s Asset) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *Asset) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -2508,8 +2554,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*Asset)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s Asset) xdrType() {}
 
 var _ xdrType = (*Asset)(nil)
@@ -2572,8 +2617,10 @@ func (s Price) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *Price) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -2582,8 +2629,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*Price)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s Price) xdrType() {}
 
 var _ xdrType = (*Price)(nil)
@@ -2646,8 +2692,10 @@ func (s Liabilities) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *Liabilities) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -2656,8 +2704,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*Liabilities)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s Liabilities) xdrType() {}
 
 var _ xdrType = (*Liabilities)(nil)
@@ -2739,8 +2786,10 @@ func (s ThresholdIndexes) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ThresholdIndexes) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -2749,8 +2798,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ThresholdIndexes)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ThresholdIndexes) xdrType() {}
 
 var _ xdrType = (*ThresholdIndexes)(nil)
@@ -2850,8 +2898,10 @@ func (s LedgerEntryType) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *LedgerEntryType) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -2860,8 +2910,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*LedgerEntryType)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s LedgerEntryType) xdrType() {}
 
 var _ xdrType = (*LedgerEntryType)(nil)
@@ -2924,8 +2973,10 @@ func (s Signer) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *Signer) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -2934,8 +2985,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*Signer)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s Signer) xdrType() {}
 
 var _ xdrType = (*Signer)(nil)
@@ -3027,8 +3077,10 @@ func (s AccountFlags) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *AccountFlags) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -3037,8 +3089,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*AccountFlags)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s AccountFlags) xdrType() {}
 
 var _ xdrType = (*AccountFlags)(nil)
@@ -3137,8 +3188,10 @@ func (s AccountEntryExtensionV3) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *AccountEntryExtensionV3) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -3147,8 +3200,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*AccountEntryExtensionV3)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s AccountEntryExtensionV3) xdrType() {}
 
 var _ xdrType = (*AccountEntryExtensionV3)(nil)
@@ -3288,8 +3340,10 @@ func (s AccountEntryExtensionV2Ext) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *AccountEntryExtensionV2Ext) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -3298,8 +3352,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*AccountEntryExtensionV2Ext)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s AccountEntryExtensionV2Ext) xdrType() {}
 
 var _ xdrType = (*AccountEntryExtensionV2Ext)(nil)
@@ -3387,8 +3440,11 @@ func (s *AccountEntryExtensionV2) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int
 	}
 	s.SignerSponsoringIDs = nil
 	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding SponsorshipDescriptor: length (%d) exceeds remaining input length (%d)", l, il)
+		}
 		s.SignerSponsoringIDs = make([]SponsorshipDescriptor, l)
-		for i := uint32(0); i < l; i++ {
+		for i := uint32(0); uint(i) < uint(l); i++ {
 			var eb bool
 			eb, nTmp, err = d.DecodeBool()
 			n += nTmp
@@ -3425,8 +3481,10 @@ func (s AccountEntryExtensionV2) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *AccountEntryExtensionV2) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -3435,8 +3493,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*AccountEntryExtensionV2)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s AccountEntryExtensionV2) xdrType() {}
 
 var _ xdrType = (*AccountEntryExtensionV2)(nil)
@@ -3576,8 +3633,10 @@ func (s AccountEntryExtensionV1Ext) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *AccountEntryExtensionV1Ext) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -3586,8 +3645,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*AccountEntryExtensionV1Ext)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s AccountEntryExtensionV1Ext) xdrType() {}
 
 var _ xdrType = (*AccountEntryExtensionV1Ext)(nil)
@@ -3658,8 +3716,10 @@ func (s AccountEntryExtensionV1) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *AccountEntryExtensionV1) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -3668,8 +3728,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*AccountEntryExtensionV1)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s AccountEntryExtensionV1) xdrType() {}
 
 var _ xdrType = (*AccountEntryExtensionV1)(nil)
@@ -3809,8 +3868,10 @@ func (s AccountEntryExt) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *AccountEntryExt) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -3819,8 +3880,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*AccountEntryExt)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s AccountEntryExt) xdrType() {}
 
 var _ xdrType = (*AccountEntryExt)(nil)
@@ -3985,8 +4045,11 @@ func (s *AccountEntry) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
 	}
 	s.Signers = nil
 	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding Signer: length (%d) exceeds remaining input length (%d)", l, il)
+		}
 		s.Signers = make([]Signer, l)
-		for i := uint32(0); i < l; i++ {
+		for i := uint32(0); uint(i) < uint(l); i++ {
 			nTmp, err = s.Signers[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -4013,8 +4076,10 @@ func (s AccountEntry) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *AccountEntry) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -4023,8 +4088,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*AccountEntry)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s AccountEntry) xdrType() {}
 
 var _ xdrType = (*AccountEntry)(nil)
@@ -4108,8 +4172,10 @@ func (s TrustLineFlags) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *TrustLineFlags) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -4118,8 +4184,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*TrustLineFlags)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s TrustLineFlags) xdrType() {}
 
 var _ xdrType = (*TrustLineFlags)(nil)
@@ -4207,8 +4272,10 @@ func (s LiquidityPoolType) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *LiquidityPoolType) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -4217,8 +4284,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*LiquidityPoolType)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s LiquidityPoolType) xdrType() {}
 
 var _ xdrType = (*LiquidityPoolType)(nil)
@@ -4463,8 +4529,10 @@ func (s TrustLineAsset) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *TrustLineAsset) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -4473,8 +4541,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*TrustLineAsset)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s TrustLineAsset) xdrType() {}
 
 var _ xdrType = (*TrustLineAsset)(nil)
@@ -4564,8 +4631,10 @@ func (s TrustLineEntryExtensionV2Ext) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *TrustLineEntryExtensionV2Ext) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -4574,8 +4643,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*TrustLineEntryExtensionV2Ext)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s TrustLineEntryExtensionV2Ext) xdrType() {}
 
 var _ xdrType = (*TrustLineEntryExtensionV2Ext)(nil)
@@ -4644,8 +4712,10 @@ func (s TrustLineEntryExtensionV2) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *TrustLineEntryExtensionV2) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -4654,8 +4724,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*TrustLineEntryExtensionV2)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s TrustLineEntryExtensionV2) xdrType() {}
 
 var _ xdrType = (*TrustLineEntryExtensionV2)(nil)
@@ -4795,8 +4864,10 @@ func (s TrustLineEntryV1Ext) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *TrustLineEntryV1Ext) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -4805,8 +4876,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*TrustLineEntryV1Ext)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s TrustLineEntryV1Ext) xdrType() {}
 
 var _ xdrType = (*TrustLineEntryV1Ext)(nil)
@@ -4877,8 +4947,10 @@ func (s TrustLineEntryV1) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *TrustLineEntryV1) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -4887,8 +4959,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*TrustLineEntryV1)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s TrustLineEntryV1) xdrType() {}
 
 var _ xdrType = (*TrustLineEntryV1)(nil)
@@ -5040,8 +5111,10 @@ func (s TrustLineEntryExt) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *TrustLineEntryExt) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -5050,8 +5123,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*TrustLineEntryExt)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s TrustLineEntryExt) xdrType() {}
 
 var _ xdrType = (*TrustLineEntryExt)(nil)
@@ -5177,8 +5249,10 @@ func (s TrustLineEntry) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *TrustLineEntry) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -5187,8 +5261,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*TrustLineEntry)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s TrustLineEntry) xdrType() {}
 
 var _ xdrType = (*TrustLineEntry)(nil)
@@ -5263,8 +5336,10 @@ func (s OfferEntryFlags) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *OfferEntryFlags) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -5273,8 +5348,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*OfferEntryFlags)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s OfferEntryFlags) xdrType() {}
 
 var _ xdrType = (*OfferEntryFlags)(nil)
@@ -5369,8 +5443,10 @@ func (s OfferEntryExt) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *OfferEntryExt) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -5379,8 +5455,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*OfferEntryExt)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s OfferEntryExt) xdrType() {}
 
 var _ xdrType = (*OfferEntryExt)(nil)
@@ -5516,8 +5591,10 @@ func (s OfferEntry) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *OfferEntry) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -5526,8 +5603,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*OfferEntry)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s OfferEntry) xdrType() {}
 
 var _ xdrType = (*OfferEntry)(nil)
@@ -5617,8 +5693,10 @@ func (s DataEntryExt) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *DataEntryExt) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -5627,8 +5705,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*DataEntryExt)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s DataEntryExt) xdrType() {}
 
 var _ xdrType = (*DataEntryExt)(nil)
@@ -5718,8 +5795,10 @@ func (s DataEntry) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *DataEntry) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -5728,8 +5807,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*DataEntry)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s DataEntry) xdrType() {}
 
 var _ xdrType = (*DataEntry)(nil)
@@ -5817,8 +5895,10 @@ func (s ClaimPredicateType) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ClaimPredicateType) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -5827,8 +5907,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ClaimPredicateType)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ClaimPredicateType) xdrType() {}
 
 var _ xdrType = (*ClaimPredicateType)(nil)
@@ -6142,8 +6221,11 @@ func (u *ClaimPredicate) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) 
 		}
 		(*u.AndPredicates) = nil
 		if l > 0 {
+			if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+				return n, fmt.Errorf("decoding ClaimPredicate: length (%d) exceeds remaining input length (%d)", l, il)
+			}
 			(*u.AndPredicates) = make([]ClaimPredicate, l)
-			for i := uint32(0); i < l; i++ {
+			for i := uint32(0); uint(i) < uint(l); i++ {
 				nTmp, err = (*u.AndPredicates)[i].DecodeFrom(d, maxDepth)
 				n += nTmp
 				if err != nil {
@@ -6165,8 +6247,11 @@ func (u *ClaimPredicate) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) 
 		}
 		(*u.OrPredicates) = nil
 		if l > 0 {
+			if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+				return n, fmt.Errorf("decoding ClaimPredicate: length (%d) exceeds remaining input length (%d)", l, il)
+			}
 			(*u.OrPredicates) = make([]ClaimPredicate, l)
-			for i := uint32(0); i < l; i++ {
+			for i := uint32(0); uint(i) < uint(l); i++ {
 				nTmp, err = (*u.OrPredicates)[i].DecodeFrom(d, maxDepth)
 				n += nTmp
 				if err != nil {
@@ -6224,8 +6309,10 @@ func (s ClaimPredicate) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ClaimPredicate) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -6234,8 +6321,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ClaimPredicate)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ClaimPredicate) xdrType() {}
 
 var _ xdrType = (*ClaimPredicate)(nil)
@@ -6308,8 +6394,10 @@ func (s ClaimantType) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ClaimantType) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -6318,8 +6406,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ClaimantType)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ClaimantType) xdrType() {}
 
 var _ xdrType = (*ClaimantType)(nil)
@@ -6382,8 +6469,10 @@ func (s ClaimantV0) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ClaimantV0) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -6392,8 +6481,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ClaimantV0)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ClaimantV0) xdrType() {}
 
 var _ xdrType = (*ClaimantV0)(nil)
@@ -6525,8 +6613,10 @@ func (s Claimant) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *Claimant) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -6535,8 +6625,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*Claimant)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s Claimant) xdrType() {}
 
 var _ xdrType = (*Claimant)(nil)
@@ -6609,8 +6698,10 @@ func (s ClaimableBalanceIdType) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ClaimableBalanceIdType) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -6619,8 +6710,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ClaimableBalanceIdType)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ClaimableBalanceIdType) xdrType() {}
 
 var _ xdrType = (*ClaimableBalanceIdType)(nil)
@@ -6748,8 +6838,10 @@ func (s ClaimableBalanceId) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ClaimableBalanceId) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -6758,8 +6850,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ClaimableBalanceId)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ClaimableBalanceId) xdrType() {}
 
 var _ xdrType = (*ClaimableBalanceId)(nil)
@@ -6834,8 +6925,10 @@ func (s ClaimableBalanceFlags) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ClaimableBalanceFlags) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -6844,8 +6937,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ClaimableBalanceFlags)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ClaimableBalanceFlags) xdrType() {}
 
 var _ xdrType = (*ClaimableBalanceFlags)(nil)
@@ -6940,8 +7032,10 @@ func (s ClaimableBalanceEntryExtensionV1Ext) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ClaimableBalanceEntryExtensionV1Ext) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -6950,8 +7044,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ClaimableBalanceEntryExtensionV1Ext)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ClaimableBalanceEntryExtensionV1Ext) xdrType() {}
 
 var _ xdrType = (*ClaimableBalanceEntryExtensionV1Ext)(nil)
@@ -7020,8 +7113,10 @@ func (s ClaimableBalanceEntryExtensionV1) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ClaimableBalanceEntryExtensionV1) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -7030,8 +7125,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ClaimableBalanceEntryExtensionV1)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ClaimableBalanceEntryExtensionV1) xdrType() {}
 
 var _ xdrType = (*ClaimableBalanceEntryExtensionV1)(nil)
@@ -7171,8 +7265,10 @@ func (s ClaimableBalanceEntryExt) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ClaimableBalanceEntryExt) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -7181,8 +7277,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ClaimableBalanceEntryExt)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ClaimableBalanceEntryExt) xdrType() {}
 
 var _ xdrType = (*ClaimableBalanceEntryExt)(nil)
@@ -7273,8 +7368,11 @@ func (s *ClaimableBalanceEntry) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, 
 	}
 	s.Claimants = nil
 	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding Claimant: length (%d) exceeds remaining input length (%d)", l, il)
+		}
 		s.Claimants = make([]Claimant, l)
-		for i := uint32(0); i < l; i++ {
+		for i := uint32(0); uint(i) < uint(l); i++ {
 			nTmp, err = s.Claimants[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -7311,8 +7409,10 @@ func (s ClaimableBalanceEntry) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ClaimableBalanceEntry) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -7321,8 +7421,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ClaimableBalanceEntry)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ClaimableBalanceEntry) xdrType() {}
 
 var _ xdrType = (*ClaimableBalanceEntry)(nil)
@@ -7395,8 +7494,10 @@ func (s LiquidityPoolConstantProductParameters) MarshalBinary() ([]byte, error) 
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *LiquidityPoolConstantProductParameters) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -7405,8 +7506,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*LiquidityPoolConstantProductParameters)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s LiquidityPoolConstantProductParameters) xdrType() {}
 
 var _ xdrType = (*LiquidityPoolConstantProductParameters)(nil)
@@ -7501,8 +7601,10 @@ func (s LiquidityPoolEntryConstantProduct) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *LiquidityPoolEntryConstantProduct) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -7511,8 +7613,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*LiquidityPoolEntryConstantProduct)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s LiquidityPoolEntryConstantProduct) xdrType() {}
 
 var _ xdrType = (*LiquidityPoolEntryConstantProduct)(nil)
@@ -7649,8 +7750,10 @@ func (s LiquidityPoolEntryBody) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *LiquidityPoolEntryBody) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -7659,8 +7762,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*LiquidityPoolEntryBody)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s LiquidityPoolEntryBody) xdrType() {}
 
 var _ xdrType = (*LiquidityPoolEntryBody)(nil)
@@ -7738,8 +7840,10 @@ func (s LiquidityPoolEntry) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *LiquidityPoolEntry) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -7748,8 +7852,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*LiquidityPoolEntry)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s LiquidityPoolEntry) xdrType() {}
 
 var _ xdrType = (*LiquidityPoolEntry)(nil)
@@ -7824,8 +7927,10 @@ func (s ContractDataDurability) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ContractDataDurability) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -7834,8 +7939,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ContractDataDurability)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ContractDataDurability) xdrType() {}
 
 var _ xdrType = (*ContractDataDurability)(nil)
@@ -7928,8 +8032,10 @@ func (s ContractDataEntry) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ContractDataEntry) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -7938,8 +8044,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ContractDataEntry)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ContractDataEntry) xdrType() {}
 
 var _ xdrType = (*ContractDataEntry)(nil)
@@ -8012,8 +8117,10 @@ func (s ContractCodeEntry) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ContractCodeEntry) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -8022,8 +8129,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ContractCodeEntry)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ContractCodeEntry) xdrType() {}
 
 var _ xdrType = (*ContractCodeEntry)(nil)
@@ -8086,8 +8192,10 @@ func (s TtlEntry) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *TtlEntry) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -8096,8 +8204,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*TtlEntry)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s TtlEntry) xdrType() {}
 
 var _ xdrType = (*TtlEntry)(nil)
@@ -8187,8 +8294,10 @@ func (s LedgerEntryExtensionV1Ext) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *LedgerEntryExtensionV1Ext) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -8197,8 +8306,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*LedgerEntryExtensionV1Ext)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s LedgerEntryExtensionV1Ext) xdrType() {}
 
 var _ xdrType = (*LedgerEntryExtensionV1Ext)(nil)
@@ -8282,8 +8390,10 @@ func (s LedgerEntryExtensionV1) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *LedgerEntryExtensionV1) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -8292,8 +8402,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*LedgerEntryExtensionV1)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s LedgerEntryExtensionV1) xdrType() {}
 
 var _ xdrType = (*LedgerEntryExtensionV1)(nil)
@@ -8871,8 +8980,10 @@ func (s LedgerEntryData) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *LedgerEntryData) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -8881,8 +8992,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*LedgerEntryData)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s LedgerEntryData) xdrType() {}
 
 var _ xdrType = (*LedgerEntryData)(nil)
@@ -9022,8 +9132,10 @@ func (s LedgerEntryExt) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *LedgerEntryExt) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -9032,8 +9144,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*LedgerEntryExt)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s LedgerEntryExt) xdrType() {}
 
 var _ xdrType = (*LedgerEntryExt)(nil)
@@ -9139,8 +9250,10 @@ func (s LedgerEntry) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *LedgerEntry) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -9149,8 +9262,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*LedgerEntry)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s LedgerEntry) xdrType() {}
 
 var _ xdrType = (*LedgerEntry)(nil)
@@ -9203,8 +9315,10 @@ func (s LedgerKeyAccount) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *LedgerKeyAccount) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -9213,8 +9327,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*LedgerKeyAccount)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s LedgerKeyAccount) xdrType() {}
 
 var _ xdrType = (*LedgerKeyAccount)(nil)
@@ -9277,8 +9390,10 @@ func (s LedgerKeyTrustLine) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *LedgerKeyTrustLine) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -9287,8 +9402,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*LedgerKeyTrustLine)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s LedgerKeyTrustLine) xdrType() {}
 
 var _ xdrType = (*LedgerKeyTrustLine)(nil)
@@ -9351,8 +9465,10 @@ func (s LedgerKeyOffer) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *LedgerKeyOffer) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -9361,8 +9477,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*LedgerKeyOffer)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s LedgerKeyOffer) xdrType() {}
 
 var _ xdrType = (*LedgerKeyOffer)(nil)
@@ -9425,8 +9540,10 @@ func (s LedgerKeyData) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *LedgerKeyData) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -9435,8 +9552,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*LedgerKeyData)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s LedgerKeyData) xdrType() {}
 
 var _ xdrType = (*LedgerKeyData)(nil)
@@ -9489,8 +9605,10 @@ func (s LedgerKeyClaimableBalance) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *LedgerKeyClaimableBalance) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -9499,8 +9617,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*LedgerKeyClaimableBalance)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s LedgerKeyClaimableBalance) xdrType() {}
 
 var _ xdrType = (*LedgerKeyClaimableBalance)(nil)
@@ -9553,8 +9670,10 @@ func (s LedgerKeyLiquidityPool) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *LedgerKeyLiquidityPool) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -9563,8 +9682,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*LedgerKeyLiquidityPool)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s LedgerKeyLiquidityPool) xdrType() {}
 
 var _ xdrType = (*LedgerKeyLiquidityPool)(nil)
@@ -9637,8 +9755,10 @@ func (s LedgerKeyContractData) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *LedgerKeyContractData) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -9647,8 +9767,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*LedgerKeyContractData)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s LedgerKeyContractData) xdrType() {}
 
 var _ xdrType = (*LedgerKeyContractData)(nil)
@@ -9701,8 +9820,10 @@ func (s LedgerKeyContractCode) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *LedgerKeyContractCode) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -9711,8 +9832,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*LedgerKeyContractCode)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s LedgerKeyContractCode) xdrType() {}
 
 var _ xdrType = (*LedgerKeyContractCode)(nil)
@@ -9765,8 +9885,10 @@ func (s LedgerKeyConfigSetting) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *LedgerKeyConfigSetting) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -9775,8 +9897,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*LedgerKeyConfigSetting)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s LedgerKeyConfigSetting) xdrType() {}
 
 var _ xdrType = (*LedgerKeyConfigSetting)(nil)
@@ -9830,8 +9951,10 @@ func (s LedgerKeyTtl) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *LedgerKeyTtl) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -9840,8 +9963,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*LedgerKeyTtl)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s LedgerKeyTtl) xdrType() {}
 
 var _ xdrType = (*LedgerKeyTtl)(nil)
@@ -10460,8 +10582,10 @@ func (s LedgerKey) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *LedgerKey) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -10470,8 +10594,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*LedgerKey)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s LedgerKey) xdrType() {}
 
 var _ xdrType = (*LedgerKey)(nil)
@@ -10571,8 +10694,10 @@ func (s EnvelopeType) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *EnvelopeType) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -10581,8 +10706,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*EnvelopeType)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s EnvelopeType) xdrType() {}
 
 var _ xdrType = (*EnvelopeType)(nil)
@@ -10635,8 +10759,10 @@ func (s UpgradeType) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *UpgradeType) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -10645,8 +10771,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*UpgradeType)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s UpgradeType) xdrType() {}
 
 var _ xdrType = (*UpgradeType)(nil)
@@ -10722,8 +10847,10 @@ func (s StellarValueType) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *StellarValueType) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -10732,8 +10859,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*StellarValueType)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s StellarValueType) xdrType() {}
 
 var _ xdrType = (*StellarValueType)(nil)
@@ -10796,8 +10922,10 @@ func (s LedgerCloseValueSignature) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *LedgerCloseValueSignature) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -10806,8 +10934,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*LedgerCloseValueSignature)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s LedgerCloseValueSignature) xdrType() {}
 
 var _ xdrType = (*LedgerCloseValueSignature)(nil)
@@ -10947,8 +11074,10 @@ func (s StellarValueExt) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *StellarValueExt) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -10957,8 +11086,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*StellarValueExt)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s StellarValueExt) xdrType() {}
 
 var _ xdrType = (*StellarValueExt)(nil)
@@ -11048,8 +11176,11 @@ func (s *StellarValue) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
 	}
 	s.Upgrades = nil
 	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding UpgradeType: length (%d) exceeds remaining input length (%d)", l, il)
+		}
 		s.Upgrades = make([]UpgradeType, l)
-		for i := uint32(0); i < l; i++ {
+		for i := uint32(0); uint(i) < uint(l); i++ {
 			nTmp, err = s.Upgrades[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -11076,8 +11207,10 @@ func (s StellarValue) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *StellarValue) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -11086,8 +11219,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*StellarValue)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s StellarValue) xdrType() {}
 
 var _ xdrType = (*StellarValue)(nil)
@@ -11171,8 +11303,10 @@ func (s LedgerHeaderFlags) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *LedgerHeaderFlags) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -11181,8 +11315,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*LedgerHeaderFlags)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s LedgerHeaderFlags) xdrType() {}
 
 var _ xdrType = (*LedgerHeaderFlags)(nil)
@@ -11272,8 +11405,10 @@ func (s LedgerHeaderExtensionV1Ext) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *LedgerHeaderExtensionV1Ext) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -11282,8 +11417,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*LedgerHeaderExtensionV1Ext)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s LedgerHeaderExtensionV1Ext) xdrType() {}
 
 var _ xdrType = (*LedgerHeaderExtensionV1Ext)(nil)
@@ -11352,8 +11486,10 @@ func (s LedgerHeaderExtensionV1) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *LedgerHeaderExtensionV1) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -11362,8 +11498,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*LedgerHeaderExtensionV1)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s LedgerHeaderExtensionV1) xdrType() {}
 
 var _ xdrType = (*LedgerHeaderExtensionV1)(nil)
@@ -11503,8 +11638,10 @@ func (s LedgerHeaderExt) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *LedgerHeaderExt) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -11513,8 +11650,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*LedgerHeaderExt)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s LedgerHeaderExt) xdrType() {}
 
 var _ xdrType = (*LedgerHeaderExt)(nil)
@@ -11732,8 +11868,10 @@ func (s LedgerHeader) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *LedgerHeader) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -11742,8 +11880,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*LedgerHeader)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s LedgerHeader) xdrType() {}
 
 var _ xdrType = (*LedgerHeader)(nil)
@@ -11834,8 +11971,10 @@ func (s LedgerUpgradeType) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *LedgerUpgradeType) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -11844,8 +11983,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*LedgerUpgradeType)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s LedgerUpgradeType) xdrType() {}
 
 var _ xdrType = (*LedgerUpgradeType)(nil)
@@ -11907,8 +12045,10 @@ func (s ConfigUpgradeSetKey) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ConfigUpgradeSetKey) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -11917,8 +12057,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ConfigUpgradeSetKey)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ConfigUpgradeSetKey) xdrType() {}
 
 var _ xdrType = (*ConfigUpgradeSetKey)(nil)
@@ -12349,8 +12488,10 @@ func (s LedgerUpgrade) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *LedgerUpgrade) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -12359,8 +12500,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*LedgerUpgrade)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s LedgerUpgrade) xdrType() {}
 
 var _ xdrType = (*LedgerUpgrade)(nil)
@@ -12406,8 +12546,11 @@ func (s *ConfigUpgradeSet) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error
 	}
 	s.UpdatedEntry = nil
 	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding ConfigSettingEntry: length (%d) exceeds remaining input length (%d)", l, il)
+		}
 		s.UpdatedEntry = make([]ConfigSettingEntry, l)
-		for i := uint32(0); i < l; i++ {
+		for i := uint32(0); uint(i) < uint(l); i++ {
 			nTmp, err = s.UpdatedEntry[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -12429,8 +12572,10 @@ func (s ConfigUpgradeSet) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ConfigUpgradeSet) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -12439,8 +12584,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ConfigUpgradeSet)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ConfigUpgradeSet) xdrType() {}
 
 var _ xdrType = (*ConfigUpgradeSet)(nil)
@@ -12524,8 +12668,10 @@ func (s BucketEntryType) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *BucketEntryType) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -12534,8 +12680,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*BucketEntryType)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s BucketEntryType) xdrType() {}
 
 var _ xdrType = (*BucketEntryType)(nil)
@@ -12625,8 +12770,10 @@ func (s BucketMetadataExt) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *BucketMetadataExt) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -12635,8 +12782,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*BucketMetadataExt)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s BucketMetadataExt) xdrType() {}
 
 var _ xdrType = (*BucketMetadataExt)(nil)
@@ -12707,8 +12853,10 @@ func (s BucketMetadata) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *BucketMetadata) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -12717,8 +12865,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*BucketMetadata)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s BucketMetadata) xdrType() {}
 
 var _ xdrType = (*BucketMetadata)(nil)
@@ -12970,8 +13117,10 @@ func (s BucketEntry) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *BucketEntry) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -12980,8 +13129,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*BucketEntry)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s BucketEntry) xdrType() {}
 
 var _ xdrType = (*BucketEntry)(nil)
@@ -13056,8 +13204,10 @@ func (s TxSetComponentType) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *TxSetComponentType) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -13066,8 +13216,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*TxSetComponentType)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s TxSetComponentType) xdrType() {}
 
 var _ xdrType = (*TxSetComponentType)(nil)
@@ -13139,8 +13288,11 @@ func (s *TxSetComponentTxsMaybeDiscountedFee) DecodeFrom(d *xdr.Decoder, maxDept
 	}
 	s.Txs = nil
 	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding TransactionEnvelope: length (%d) exceeds remaining input length (%d)", l, il)
+		}
 		s.Txs = make([]TransactionEnvelope, l)
-		for i := uint32(0); i < l; i++ {
+		for i := uint32(0); uint(i) < uint(l); i++ {
 			nTmp, err = s.Txs[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -13162,8 +13314,10 @@ func (s TxSetComponentTxsMaybeDiscountedFee) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *TxSetComponentTxsMaybeDiscountedFee) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -13172,8 +13326,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*TxSetComponentTxsMaybeDiscountedFee)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s TxSetComponentTxsMaybeDiscountedFee) xdrType() {}
 
 var _ xdrType = (*TxSetComponentTxsMaybeDiscountedFee)(nil)
@@ -13305,8 +13458,10 @@ func (s TxSetComponent) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *TxSetComponent) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -13315,8 +13470,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*TxSetComponent)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s TxSetComponent) xdrType() {}
 
 var _ xdrType = (*TxSetComponent)(nil)
@@ -13436,8 +13590,11 @@ func (u *TransactionPhase) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error
 		}
 		(*u.V0Components) = nil
 		if l > 0 {
+			if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+				return n, fmt.Errorf("decoding TxSetComponent: length (%d) exceeds remaining input length (%d)", l, il)
+			}
 			(*u.V0Components) = make([]TxSetComponent, l)
-			for i := uint32(0); i < l; i++ {
+			for i := uint32(0); uint(i) < uint(l); i++ {
 				nTmp, err = (*u.V0Components)[i].DecodeFrom(d, maxDepth)
 				n += nTmp
 				if err != nil {
@@ -13461,8 +13618,10 @@ func (s TransactionPhase) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *TransactionPhase) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -13471,8 +13630,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*TransactionPhase)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s TransactionPhase) xdrType() {}
 
 var _ xdrType = (*TransactionPhase)(nil)
@@ -13529,8 +13687,11 @@ func (s *TransactionSet) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) 
 	}
 	s.Txs = nil
 	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding TransactionEnvelope: length (%d) exceeds remaining input length (%d)", l, il)
+		}
 		s.Txs = make([]TransactionEnvelope, l)
-		for i := uint32(0); i < l; i++ {
+		for i := uint32(0); uint(i) < uint(l); i++ {
 			nTmp, err = s.Txs[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -13552,8 +13713,10 @@ func (s TransactionSet) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *TransactionSet) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -13562,8 +13725,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*TransactionSet)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s TransactionSet) xdrType() {}
 
 var _ xdrType = (*TransactionSet)(nil)
@@ -13620,8 +13782,11 @@ func (s *TransactionSetV1) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error
 	}
 	s.Phases = nil
 	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding TransactionPhase: length (%d) exceeds remaining input length (%d)", l, il)
+		}
 		s.Phases = make([]TransactionPhase, l)
-		for i := uint32(0); i < l; i++ {
+		for i := uint32(0); uint(i) < uint(l); i++ {
 			nTmp, err = s.Phases[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -13643,8 +13808,10 @@ func (s TransactionSetV1) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *TransactionSetV1) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -13653,8 +13820,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*TransactionSetV1)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s TransactionSetV1) xdrType() {}
 
 var _ xdrType = (*TransactionSetV1)(nil)
@@ -13783,8 +13949,10 @@ func (s GeneralizedTransactionSet) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *GeneralizedTransactionSet) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -13793,8 +13961,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*GeneralizedTransactionSet)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s GeneralizedTransactionSet) xdrType() {}
 
 var _ xdrType = (*GeneralizedTransactionSet)(nil)
@@ -13857,8 +14024,10 @@ func (s TransactionResultPair) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *TransactionResultPair) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -13867,8 +14036,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*TransactionResultPair)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s TransactionResultPair) xdrType() {}
 
 var _ xdrType = (*TransactionResultPair)(nil)
@@ -13915,8 +14083,11 @@ func (s *TransactionResultSet) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, e
 	}
 	s.Results = nil
 	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding TransactionResultPair: length (%d) exceeds remaining input length (%d)", l, il)
+		}
 		s.Results = make([]TransactionResultPair, l)
-		for i := uint32(0); i < l; i++ {
+		for i := uint32(0); uint(i) < uint(l); i++ {
 			nTmp, err = s.Results[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -13938,8 +14109,10 @@ func (s TransactionResultSet) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *TransactionResultSet) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -13948,8 +14121,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*TransactionResultSet)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s TransactionResultSet) xdrType() {}
 
 var _ xdrType = (*TransactionResultSet)(nil)
@@ -14089,8 +14261,10 @@ func (s TransactionHistoryEntryExt) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *TransactionHistoryEntryExt) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -14099,8 +14273,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*TransactionHistoryEntryExt)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s TransactionHistoryEntryExt) xdrType() {}
 
 var _ xdrType = (*TransactionHistoryEntryExt)(nil)
@@ -14182,8 +14355,10 @@ func (s TransactionHistoryEntry) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *TransactionHistoryEntry) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -14192,8 +14367,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*TransactionHistoryEntry)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s TransactionHistoryEntry) xdrType() {}
 
 var _ xdrType = (*TransactionHistoryEntry)(nil)
@@ -14283,8 +14457,10 @@ func (s TransactionHistoryResultEntryExt) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *TransactionHistoryResultEntryExt) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -14293,8 +14469,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*TransactionHistoryResultEntryExt)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s TransactionHistoryResultEntryExt) xdrType() {}
 
 var _ xdrType = (*TransactionHistoryResultEntryExt)(nil)
@@ -14374,8 +14549,10 @@ func (s TransactionHistoryResultEntry) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *TransactionHistoryResultEntry) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -14384,8 +14561,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*TransactionHistoryResultEntry)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s TransactionHistoryResultEntry) xdrType() {}
 
 var _ xdrType = (*TransactionHistoryResultEntry)(nil)
@@ -14475,8 +14651,10 @@ func (s LedgerHeaderHistoryEntryExt) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *LedgerHeaderHistoryEntryExt) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -14485,8 +14663,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*LedgerHeaderHistoryEntryExt)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s LedgerHeaderHistoryEntryExt) xdrType() {}
 
 var _ xdrType = (*LedgerHeaderHistoryEntryExt)(nil)
@@ -14566,8 +14743,10 @@ func (s LedgerHeaderHistoryEntry) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *LedgerHeaderHistoryEntry) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -14576,8 +14755,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*LedgerHeaderHistoryEntry)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s LedgerHeaderHistoryEntry) xdrType() {}
 
 var _ xdrType = (*LedgerHeaderHistoryEntry)(nil)
@@ -14634,8 +14812,11 @@ func (s *LedgerScpMessages) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, erro
 	}
 	s.Messages = nil
 	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding ScpEnvelope: length (%d) exceeds remaining input length (%d)", l, il)
+		}
 		s.Messages = make([]ScpEnvelope, l)
-		for i := uint32(0); i < l; i++ {
+		for i := uint32(0); uint(i) < uint(l); i++ {
 			nTmp, err = s.Messages[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -14657,8 +14838,10 @@ func (s LedgerScpMessages) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *LedgerScpMessages) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -14667,8 +14850,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*LedgerScpMessages)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s LedgerScpMessages) xdrType() {}
 
 var _ xdrType = (*LedgerScpMessages)(nil)
@@ -14720,8 +14902,11 @@ func (s *ScpHistoryEntryV0) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, erro
 	}
 	s.QuorumSets = nil
 	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding ScpQuorumSet: length (%d) exceeds remaining input length (%d)", l, il)
+		}
 		s.QuorumSets = make([]ScpQuorumSet, l)
-		for i := uint32(0); i < l; i++ {
+		for i := uint32(0); uint(i) < uint(l); i++ {
 			nTmp, err = s.QuorumSets[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -14748,8 +14933,10 @@ func (s ScpHistoryEntryV0) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ScpHistoryEntryV0) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -14758,8 +14945,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ScpHistoryEntryV0)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ScpHistoryEntryV0) xdrType() {}
 
 var _ xdrType = (*ScpHistoryEntryV0)(nil)
@@ -14887,8 +15073,10 @@ func (s ScpHistoryEntry) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ScpHistoryEntry) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -14897,8 +15085,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ScpHistoryEntry)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ScpHistoryEntry) xdrType() {}
 
 var _ xdrType = (*ScpHistoryEntry)(nil)
@@ -14980,8 +15167,10 @@ func (s LedgerEntryChangeType) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *LedgerEntryChangeType) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -14990,8 +15179,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*LedgerEntryChangeType)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s LedgerEntryChangeType) xdrType() {}
 
 var _ xdrType = (*LedgerEntryChangeType)(nil)
@@ -15269,8 +15457,10 @@ func (s LedgerEntryChange) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *LedgerEntryChange) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -15279,8 +15469,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*LedgerEntryChange)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s LedgerEntryChange) xdrType() {}
 
 var _ xdrType = (*LedgerEntryChange)(nil)
@@ -15322,8 +15511,11 @@ func (s *LedgerEntryChanges) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, err
 	}
 	(*s) = nil
 	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding LedgerEntryChange: length (%d) exceeds remaining input length (%d)", l, il)
+		}
 		(*s) = make([]LedgerEntryChange, l)
-		for i := uint32(0); i < l; i++ {
+		for i := uint32(0); uint(i) < uint(l); i++ {
 			nTmp, err = (*s)[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -15345,8 +15537,10 @@ func (s LedgerEntryChanges) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *LedgerEntryChanges) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -15355,8 +15549,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*LedgerEntryChanges)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s LedgerEntryChanges) xdrType() {}
 
 var _ xdrType = (*LedgerEntryChanges)(nil)
@@ -15409,8 +15602,10 @@ func (s OperationMeta) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *OperationMeta) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -15419,8 +15614,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*OperationMeta)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s OperationMeta) xdrType() {}
 
 var _ xdrType = (*OperationMeta)(nil)
@@ -15477,8 +15671,11 @@ func (s *TransactionMetaV1) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, erro
 	}
 	s.Operations = nil
 	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding OperationMeta: length (%d) exceeds remaining input length (%d)", l, il)
+		}
 		s.Operations = make([]OperationMeta, l)
-		for i := uint32(0); i < l; i++ {
+		for i := uint32(0); uint(i) < uint(l); i++ {
 			nTmp, err = s.Operations[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -15500,8 +15697,10 @@ func (s TransactionMetaV1) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *TransactionMetaV1) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -15510,8 +15709,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*TransactionMetaV1)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s TransactionMetaV1) xdrType() {}
 
 var _ xdrType = (*TransactionMetaV1)(nil)
@@ -15575,8 +15773,11 @@ func (s *TransactionMetaV2) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, erro
 	}
 	s.Operations = nil
 	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding OperationMeta: length (%d) exceeds remaining input length (%d)", l, il)
+		}
 		s.Operations = make([]OperationMeta, l)
-		for i := uint32(0); i < l; i++ {
+		for i := uint32(0); uint(i) < uint(l); i++ {
 			nTmp, err = s.Operations[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -15603,8 +15804,10 @@ func (s TransactionMetaV2) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *TransactionMetaV2) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -15613,8 +15816,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*TransactionMetaV2)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s TransactionMetaV2) xdrType() {}
 
 var _ xdrType = (*TransactionMetaV2)(nil)
@@ -15693,8 +15895,10 @@ func (s ContractEventType) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ContractEventType) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -15703,8 +15907,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ContractEventType)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ContractEventType) xdrType() {}
 
 var _ xdrType = (*ContractEventType)(nil)
@@ -15756,8 +15959,11 @@ func (s *ContractEventV0) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error)
 	}
 	s.Topics = nil
 	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding ScVal: length (%d) exceeds remaining input length (%d)", l, il)
+		}
 		s.Topics = make([]ScVal, l)
-		for i := uint32(0); i < l; i++ {
+		for i := uint32(0); uint(i) < uint(l); i++ {
 			nTmp, err = s.Topics[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -15784,8 +15990,10 @@ func (s ContractEventV0) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ContractEventV0) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -15794,8 +16002,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ContractEventV0)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ContractEventV0) xdrType() {}
 
 var _ xdrType = (*ContractEventV0)(nil)
@@ -15927,8 +16134,10 @@ func (s ContractEventBody) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ContractEventBody) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -15937,8 +16146,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ContractEventBody)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ContractEventBody) xdrType() {}
 
 var _ xdrType = (*ContractEventBody)(nil)
@@ -16049,8 +16257,10 @@ func (s ContractEvent) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ContractEvent) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -16059,8 +16269,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ContractEvent)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ContractEvent) xdrType() {}
 
 var _ xdrType = (*ContractEvent)(nil)
@@ -16123,8 +16332,10 @@ func (s DiagnosticEvent) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *DiagnosticEvent) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -16133,8 +16344,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*DiagnosticEvent)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s DiagnosticEvent) xdrType() {}
 
 var _ xdrType = (*DiagnosticEvent)(nil)
@@ -16212,8 +16422,11 @@ func (s *SorobanTransactionMeta) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int,
 	}
 	s.Events = nil
 	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding ContractEvent: length (%d) exceeds remaining input length (%d)", l, il)
+		}
 		s.Events = make([]ContractEvent, l)
-		for i := uint32(0); i < l; i++ {
+		for i := uint32(0); uint(i) < uint(l); i++ {
 			nTmp, err = s.Events[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -16233,8 +16446,11 @@ func (s *SorobanTransactionMeta) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int,
 	}
 	s.DiagnosticEvents = nil
 	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding DiagnosticEvent: length (%d) exceeds remaining input length (%d)", l, il)
+		}
 		s.DiagnosticEvents = make([]DiagnosticEvent, l)
-		for i := uint32(0); i < l; i++ {
+		for i := uint32(0); uint(i) < uint(l); i++ {
 			nTmp, err = s.DiagnosticEvents[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -16256,8 +16472,10 @@ func (s SorobanTransactionMeta) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *SorobanTransactionMeta) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -16266,8 +16484,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*SorobanTransactionMeta)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s SorobanTransactionMeta) xdrType() {}
 
 var _ xdrType = (*SorobanTransactionMeta)(nil)
@@ -16353,8 +16570,11 @@ func (s *TransactionMetaV3) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, erro
 	}
 	s.Operations = nil
 	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding OperationMeta: length (%d) exceeds remaining input length (%d)", l, il)
+		}
 		s.Operations = make([]OperationMeta, l)
-		for i := uint32(0); i < l; i++ {
+		for i := uint32(0); uint(i) < uint(l); i++ {
 			nTmp, err = s.Operations[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -16396,8 +16616,10 @@ func (s TransactionMetaV3) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *TransactionMetaV3) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -16406,8 +16628,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*TransactionMetaV3)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s TransactionMetaV3) xdrType() {}
 
 var _ xdrType = (*TransactionMetaV3)(nil)
@@ -16464,8 +16685,11 @@ func (s *InvokeHostFunctionSuccessPreImage) DecodeFrom(d *xdr.Decoder, maxDepth 
 	}
 	s.Events = nil
 	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding ContractEvent: length (%d) exceeds remaining input length (%d)", l, il)
+		}
 		s.Events = make([]ContractEvent, l)
-		for i := uint32(0); i < l; i++ {
+		for i := uint32(0); uint(i) < uint(l); i++ {
 			nTmp, err = s.Events[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -16487,8 +16711,10 @@ func (s InvokeHostFunctionSuccessPreImage) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *InvokeHostFunctionSuccessPreImage) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -16497,8 +16723,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*InvokeHostFunctionSuccessPreImage)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s InvokeHostFunctionSuccessPreImage) xdrType() {}
 
 var _ xdrType = (*InvokeHostFunctionSuccessPreImage)(nil)
@@ -16744,8 +16969,11 @@ func (u *TransactionMeta) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error)
 		}
 		(*u.Operations) = nil
 		if l > 0 {
+			if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+				return n, fmt.Errorf("decoding OperationMeta: length (%d) exceeds remaining input length (%d)", l, il)
+			}
 			(*u.Operations) = make([]OperationMeta, l)
-			for i := uint32(0); i < l; i++ {
+			for i := uint32(0); uint(i) < uint(l); i++ {
 				nTmp, err = (*u.Operations)[i].DecodeFrom(d, maxDepth)
 				n += nTmp
 				if err != nil {
@@ -16793,8 +17021,10 @@ func (s TransactionMeta) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *TransactionMeta) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -16803,8 +17033,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*TransactionMeta)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s TransactionMeta) xdrType() {}
 
 var _ xdrType = (*TransactionMeta)(nil)
@@ -16877,8 +17106,10 @@ func (s TransactionResultMeta) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *TransactionResultMeta) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -16887,8 +17118,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*TransactionResultMeta)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s TransactionResultMeta) xdrType() {}
 
 var _ xdrType = (*TransactionResultMeta)(nil)
@@ -16951,8 +17181,10 @@ func (s UpgradeEntryMeta) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *UpgradeEntryMeta) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -16961,8 +17193,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*UpgradeEntryMeta)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s UpgradeEntryMeta) xdrType() {}
 
 var _ xdrType = (*UpgradeEntryMeta)(nil)
@@ -17058,8 +17289,11 @@ func (s *LedgerCloseMetaV0) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, erro
 	}
 	s.TxProcessing = nil
 	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding TransactionResultMeta: length (%d) exceeds remaining input length (%d)", l, il)
+		}
 		s.TxProcessing = make([]TransactionResultMeta, l)
-		for i := uint32(0); i < l; i++ {
+		for i := uint32(0); uint(i) < uint(l); i++ {
 			nTmp, err = s.TxProcessing[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -17074,8 +17308,11 @@ func (s *LedgerCloseMetaV0) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, erro
 	}
 	s.UpgradesProcessing = nil
 	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding UpgradeEntryMeta: length (%d) exceeds remaining input length (%d)", l, il)
+		}
 		s.UpgradesProcessing = make([]UpgradeEntryMeta, l)
-		for i := uint32(0); i < l; i++ {
+		for i := uint32(0); uint(i) < uint(l); i++ {
 			nTmp, err = s.UpgradesProcessing[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -17090,8 +17327,11 @@ func (s *LedgerCloseMetaV0) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, erro
 	}
 	s.ScpInfo = nil
 	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding ScpHistoryEntry: length (%d) exceeds remaining input length (%d)", l, il)
+		}
 		s.ScpInfo = make([]ScpHistoryEntry, l)
-		for i := uint32(0); i < l; i++ {
+		for i := uint32(0); uint(i) < uint(l); i++ {
 			nTmp, err = s.ScpInfo[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -17113,8 +17353,10 @@ func (s LedgerCloseMetaV0) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *LedgerCloseMetaV0) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -17123,8 +17365,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*LedgerCloseMetaV0)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s LedgerCloseMetaV0) xdrType() {}
 
 var _ xdrType = (*LedgerCloseMetaV0)(nil)
@@ -17266,8 +17507,11 @@ func (s *LedgerCloseMetaV1) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, erro
 	}
 	s.TxProcessing = nil
 	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding TransactionResultMeta: length (%d) exceeds remaining input length (%d)", l, il)
+		}
 		s.TxProcessing = make([]TransactionResultMeta, l)
-		for i := uint32(0); i < l; i++ {
+		for i := uint32(0); uint(i) < uint(l); i++ {
 			nTmp, err = s.TxProcessing[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -17282,8 +17526,11 @@ func (s *LedgerCloseMetaV1) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, erro
 	}
 	s.UpgradesProcessing = nil
 	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding UpgradeEntryMeta: length (%d) exceeds remaining input length (%d)", l, il)
+		}
 		s.UpgradesProcessing = make([]UpgradeEntryMeta, l)
-		for i := uint32(0); i < l; i++ {
+		for i := uint32(0); uint(i) < uint(l); i++ {
 			nTmp, err = s.UpgradesProcessing[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -17298,8 +17545,11 @@ func (s *LedgerCloseMetaV1) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, erro
 	}
 	s.ScpInfo = nil
 	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding ScpHistoryEntry: length (%d) exceeds remaining input length (%d)", l, il)
+		}
 		s.ScpInfo = make([]ScpHistoryEntry, l)
-		for i := uint32(0); i < l; i++ {
+		for i := uint32(0); uint(i) < uint(l); i++ {
 			nTmp, err = s.ScpInfo[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -17319,8 +17569,11 @@ func (s *LedgerCloseMetaV1) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, erro
 	}
 	s.EvictedTemporaryLedgerKeys = nil
 	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding LedgerKey: length (%d) exceeds remaining input length (%d)", l, il)
+		}
 		s.EvictedTemporaryLedgerKeys = make([]LedgerKey, l)
-		for i := uint32(0); i < l; i++ {
+		for i := uint32(0); uint(i) < uint(l); i++ {
 			nTmp, err = s.EvictedTemporaryLedgerKeys[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -17335,8 +17588,11 @@ func (s *LedgerCloseMetaV1) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, erro
 	}
 	s.EvictedPersistentLedgerEntries = nil
 	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding LedgerEntry: length (%d) exceeds remaining input length (%d)", l, il)
+		}
 		s.EvictedPersistentLedgerEntries = make([]LedgerEntry, l)
-		for i := uint32(0); i < l; i++ {
+		for i := uint32(0); uint(i) < uint(l); i++ {
 			nTmp, err = s.EvictedPersistentLedgerEntries[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -17358,8 +17614,10 @@ func (s LedgerCloseMetaV1) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *LedgerCloseMetaV1) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -17368,8 +17626,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*LedgerCloseMetaV1)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s LedgerCloseMetaV1) xdrType() {}
 
 var _ xdrType = (*LedgerCloseMetaV1)(nil)
@@ -17547,8 +17804,10 @@ func (s LedgerCloseMeta) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *LedgerCloseMeta) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -17557,8 +17816,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*LedgerCloseMeta)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s LedgerCloseMeta) xdrType() {}
 
 var _ xdrType = (*LedgerCloseMeta)(nil)
@@ -17643,8 +17901,10 @@ func (s ErrorCode) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ErrorCode) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -17653,8 +17913,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ErrorCode)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ErrorCode) xdrType() {}
 
 var _ xdrType = (*ErrorCode)(nil)
@@ -17717,8 +17976,10 @@ func (s Error) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *Error) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -17727,8 +17988,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*Error)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s Error) xdrType() {}
 
 var _ xdrType = (*Error)(nil)
@@ -17781,8 +18041,10 @@ func (s SendMore) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *SendMore) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -17791,8 +18053,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*SendMore)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s SendMore) xdrType() {}
 
 var _ xdrType = (*SendMore)(nil)
@@ -17855,8 +18116,10 @@ func (s SendMoreExtended) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *SendMoreExtended) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -17865,8 +18128,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*SendMoreExtended)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s SendMoreExtended) xdrType() {}
 
 var _ xdrType = (*SendMoreExtended)(nil)
@@ -17939,8 +18201,10 @@ func (s AuthCert) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *AuthCert) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -17949,8 +18213,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*AuthCert)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s AuthCert) xdrType() {}
 
 var _ xdrType = (*AuthCert)(nil)
@@ -18083,8 +18346,10 @@ func (s Hello) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *Hello) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -18093,8 +18358,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*Hello)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s Hello) xdrType() {}
 
 var _ xdrType = (*Hello)(nil)
@@ -18152,8 +18416,10 @@ func (s Auth) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *Auth) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -18162,8 +18428,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*Auth)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s Auth) xdrType() {}
 
 var _ xdrType = (*Auth)(nil)
@@ -18239,8 +18504,10 @@ func (s IpAddrType) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *IpAddrType) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -18249,8 +18516,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*IpAddrType)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s IpAddrType) xdrType() {}
 
 var _ xdrType = (*IpAddrType)(nil)
@@ -18428,8 +18694,10 @@ func (s PeerAddressIp) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *PeerAddressIp) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -18438,8 +18706,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*PeerAddressIp)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s PeerAddressIp) xdrType() {}
 
 var _ xdrType = (*PeerAddressIp)(nil)
@@ -18519,8 +18786,10 @@ func (s PeerAddress) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *PeerAddress) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -18529,8 +18798,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*PeerAddress)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s PeerAddress) xdrType() {}
 
 var _ xdrType = (*PeerAddress)(nil)
@@ -18670,8 +18938,10 @@ func (s MessageType) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *MessageType) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -18680,8 +18950,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*MessageType)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s MessageType) xdrType() {}
 
 var _ xdrType = (*MessageType)(nil)
@@ -18744,8 +19013,10 @@ func (s DontHave) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *DontHave) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -18754,8 +19025,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*DontHave)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s DontHave) xdrType() {}
 
 var _ xdrType = (*DontHave)(nil)
@@ -18828,8 +19098,10 @@ func (s SurveyMessageCommandType) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *SurveyMessageCommandType) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -18838,8 +19110,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*SurveyMessageCommandType)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s SurveyMessageCommandType) xdrType() {}
 
 var _ xdrType = (*SurveyMessageCommandType)(nil)
@@ -18915,8 +19186,10 @@ func (s SurveyMessageResponseType) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *SurveyMessageResponseType) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -18925,8 +19198,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*SurveyMessageResponseType)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s SurveyMessageResponseType) xdrType() {}
 
 var _ xdrType = (*SurveyMessageResponseType)(nil)
@@ -19019,8 +19291,10 @@ func (s SurveyRequestMessage) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *SurveyRequestMessage) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -19029,8 +19303,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*SurveyRequestMessage)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s SurveyRequestMessage) xdrType() {}
 
 var _ xdrType = (*SurveyRequestMessage)(nil)
@@ -19093,8 +19366,10 @@ func (s SignedSurveyRequestMessage) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *SignedSurveyRequestMessage) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -19103,8 +19378,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*SignedSurveyRequestMessage)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s SignedSurveyRequestMessage) xdrType() {}
 
 var _ xdrType = (*SignedSurveyRequestMessage)(nil)
@@ -19157,8 +19431,10 @@ func (s EncryptedBody) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *EncryptedBody) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -19167,8 +19443,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*EncryptedBody)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s EncryptedBody) xdrType() {}
 
 var _ xdrType = (*EncryptedBody)(nil)
@@ -19261,8 +19536,10 @@ func (s SurveyResponseMessage) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *SurveyResponseMessage) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -19271,8 +19548,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*SurveyResponseMessage)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s SurveyResponseMessage) xdrType() {}
 
 var _ xdrType = (*SurveyResponseMessage)(nil)
@@ -19335,8 +19611,10 @@ func (s SignedSurveyResponseMessage) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *SignedSurveyResponseMessage) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -19345,8 +19623,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*SignedSurveyResponseMessage)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s SignedSurveyResponseMessage) xdrType() {}
 
 var _ xdrType = (*SignedSurveyResponseMessage)(nil)
@@ -19541,8 +19818,10 @@ func (s PeerStats) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *PeerStats) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -19551,8 +19830,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*PeerStats)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s PeerStats) xdrType() {}
 
 var _ xdrType = (*PeerStats)(nil)
@@ -19602,8 +19880,11 @@ func (s *PeerStatList) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
 	}
 	(*s) = nil
 	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding PeerStats: length (%d) exceeds remaining input length (%d)", l, il)
+		}
 		(*s) = make([]PeerStats, l)
-		for i := uint32(0); i < l; i++ {
+		for i := uint32(0); uint(i) < uint(l); i++ {
 			nTmp, err = (*s)[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -19625,8 +19906,10 @@ func (s PeerStatList) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *PeerStatList) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -19635,8 +19918,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*PeerStatList)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s PeerStatList) xdrType() {}
 
 var _ xdrType = (*PeerStatList)(nil)
@@ -19720,8 +20002,10 @@ func (s TopologyResponseBodyV0) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *TopologyResponseBodyV0) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -19730,8 +20014,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*TopologyResponseBodyV0)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s TopologyResponseBodyV0) xdrType() {}
 
 var _ xdrType = (*TopologyResponseBodyV0)(nil)
@@ -19836,8 +20119,10 @@ func (s TopologyResponseBodyV1) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *TopologyResponseBodyV1) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -19846,8 +20131,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*TopologyResponseBodyV1)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s TopologyResponseBodyV1) xdrType() {}
 
 var _ xdrType = (*TopologyResponseBodyV1)(nil)
@@ -20025,8 +20309,10 @@ func (s SurveyResponseBody) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *SurveyResponseBody) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -20035,8 +20321,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*SurveyResponseBody)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s SurveyResponseBody) xdrType() {}
 
 var _ xdrType = (*SurveyResponseBody)(nil)
@@ -20091,8 +20376,11 @@ func (s *TxAdvertVector) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) 
 	}
 	(*s) = nil
 	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding Hash: length (%d) exceeds remaining input length (%d)", l, il)
+		}
 		(*s) = make([]Hash, l)
-		for i := uint32(0); i < l; i++ {
+		for i := uint32(0); uint(i) < uint(l); i++ {
 			nTmp, err = (*s)[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -20114,8 +20402,10 @@ func (s TxAdvertVector) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *TxAdvertVector) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -20124,8 +20414,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*TxAdvertVector)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s TxAdvertVector) xdrType() {}
 
 var _ xdrType = (*TxAdvertVector)(nil)
@@ -20178,8 +20467,10 @@ func (s FloodAdvert) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *FloodAdvert) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -20188,8 +20479,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*FloodAdvert)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s FloodAdvert) xdrType() {}
 
 var _ xdrType = (*FloodAdvert)(nil)
@@ -20244,8 +20534,11 @@ func (s *TxDemandVector) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) 
 	}
 	(*s) = nil
 	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding Hash: length (%d) exceeds remaining input length (%d)", l, il)
+		}
 		(*s) = make([]Hash, l)
-		for i := uint32(0); i < l; i++ {
+		for i := uint32(0); uint(i) < uint(l); i++ {
 			nTmp, err = (*s)[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -20267,8 +20560,10 @@ func (s TxDemandVector) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *TxDemandVector) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -20277,8 +20572,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*TxDemandVector)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s TxDemandVector) xdrType() {}
 
 var _ xdrType = (*TxDemandVector)(nil)
@@ -20331,8 +20625,10 @@ func (s FloodDemand) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *FloodDemand) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -20341,8 +20637,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*FloodDemand)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s FloodDemand) xdrType() {}
 
 var _ xdrType = (*FloodDemand)(nil)
@@ -21272,8 +21567,11 @@ func (u *StellarMessage) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) 
 		}
 		(*u.Peers) = nil
 		if l > 0 {
+			if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+				return n, fmt.Errorf("decoding PeerAddress: length (%d) exceeds remaining input length (%d)", l, il)
+			}
 			(*u.Peers) = make([]PeerAddress, l)
-			for i := uint32(0); i < l; i++ {
+			for i := uint32(0); uint(i) < uint(l); i++ {
 				nTmp, err = (*u.Peers)[i].DecodeFrom(d, maxDepth)
 				n += nTmp
 				if err != nil {
@@ -21409,8 +21707,10 @@ func (s StellarMessage) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *StellarMessage) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -21419,8 +21719,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*StellarMessage)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s StellarMessage) xdrType() {}
 
 var _ xdrType = (*StellarMessage)(nil)
@@ -21493,8 +21792,10 @@ func (s AuthenticatedMessageV0) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *AuthenticatedMessageV0) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -21503,8 +21804,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*AuthenticatedMessageV0)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s AuthenticatedMessageV0) xdrType() {}
 
 var _ xdrType = (*AuthenticatedMessageV0)(nil)
@@ -21637,8 +21937,10 @@ func (s AuthenticatedMessage) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *AuthenticatedMessage) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -21647,8 +21949,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*AuthenticatedMessage)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s AuthenticatedMessage) xdrType() {}
 
 var _ xdrType = (*AuthenticatedMessage)(nil)
@@ -21781,8 +22082,10 @@ func (s LiquidityPoolParameters) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *LiquidityPoolParameters) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -21791,8 +22094,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*LiquidityPoolParameters)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s LiquidityPoolParameters) xdrType() {}
 
 var _ xdrType = (*LiquidityPoolParameters)(nil)
@@ -21855,8 +22157,10 @@ func (s MuxedAccountMed25519) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *MuxedAccountMed25519) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -21865,8 +22169,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*MuxedAccountMed25519)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s MuxedAccountMed25519) xdrType() {}
 
 var _ xdrType = (*MuxedAccountMed25519)(nil)
@@ -22048,8 +22351,10 @@ func (s MuxedAccount) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *MuxedAccount) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -22058,8 +22363,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*MuxedAccount)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s MuxedAccount) xdrType() {}
 
 var _ xdrType = (*MuxedAccount)(nil)
@@ -22122,8 +22426,10 @@ func (s DecoratedSignature) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *DecoratedSignature) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -22132,8 +22438,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*DecoratedSignature)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s DecoratedSignature) xdrType() {}
 
 var _ xdrType = (*DecoratedSignature)(nil)
@@ -22284,8 +22589,10 @@ func (s OperationType) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *OperationType) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -22294,8 +22601,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*OperationType)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s OperationType) xdrType() {}
 
 var _ xdrType = (*OperationType)(nil)
@@ -22358,8 +22664,10 @@ func (s CreateAccountOp) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *CreateAccountOp) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -22368,8 +22676,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*CreateAccountOp)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s CreateAccountOp) xdrType() {}
 
 var _ xdrType = (*CreateAccountOp)(nil)
@@ -22442,8 +22749,10 @@ func (s PaymentOp) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *PaymentOp) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -22452,8 +22761,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*PaymentOp)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s PaymentOp) xdrType() {}
 
 var _ xdrType = (*PaymentOp)(nil)
@@ -22557,8 +22865,11 @@ func (s *PathPaymentStrictReceiveOp) DecodeFrom(d *xdr.Decoder, maxDepth uint) (
 	}
 	s.Path = nil
 	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding Asset: length (%d) exceeds remaining input length (%d)", l, il)
+		}
 		s.Path = make([]Asset, l)
-		for i := uint32(0); i < l; i++ {
+		for i := uint32(0); uint(i) < uint(l); i++ {
 			nTmp, err = s.Path[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -22580,8 +22891,10 @@ func (s PathPaymentStrictReceiveOp) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *PathPaymentStrictReceiveOp) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -22590,8 +22903,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*PathPaymentStrictReceiveOp)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s PathPaymentStrictReceiveOp) xdrType() {}
 
 var _ xdrType = (*PathPaymentStrictReceiveOp)(nil)
@@ -22695,8 +23007,11 @@ func (s *PathPaymentStrictSendOp) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int
 	}
 	s.Path = nil
 	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding Asset: length (%d) exceeds remaining input length (%d)", l, il)
+		}
 		s.Path = make([]Asset, l)
-		for i := uint32(0); i < l; i++ {
+		for i := uint32(0); uint(i) < uint(l); i++ {
 			nTmp, err = s.Path[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -22718,8 +23033,10 @@ func (s PathPaymentStrictSendOp) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *PathPaymentStrictSendOp) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -22728,8 +23045,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*PathPaymentStrictSendOp)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s PathPaymentStrictSendOp) xdrType() {}
 
 var _ xdrType = (*PathPaymentStrictSendOp)(nil)
@@ -22824,8 +23140,10 @@ func (s ManageSellOfferOp) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ManageSellOfferOp) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -22834,8 +23152,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ManageSellOfferOp)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ManageSellOfferOp) xdrType() {}
 
 var _ xdrType = (*ManageSellOfferOp)(nil)
@@ -22931,8 +23248,10 @@ func (s ManageBuyOfferOp) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ManageBuyOfferOp) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -22941,8 +23260,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ManageBuyOfferOp)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ManageBuyOfferOp) xdrType() {}
 
 var _ xdrType = (*ManageBuyOfferOp)(nil)
@@ -23025,8 +23343,10 @@ func (s CreatePassiveSellOfferOp) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *CreatePassiveSellOfferOp) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -23035,8 +23355,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*CreatePassiveSellOfferOp)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s CreatePassiveSellOfferOp) xdrType() {}
 
 var _ xdrType = (*CreatePassiveSellOfferOp)(nil)
@@ -23303,8 +23622,10 @@ func (s SetOptionsOp) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *SetOptionsOp) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -23313,8 +23634,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*SetOptionsOp)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s SetOptionsOp) xdrType() {}
 
 var _ xdrType = (*SetOptionsOp)(nil)
@@ -23559,8 +23879,10 @@ func (s ChangeTrustAsset) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ChangeTrustAsset) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -23569,8 +23891,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ChangeTrustAsset)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ChangeTrustAsset) xdrType() {}
 
 var _ xdrType = (*ChangeTrustAsset)(nil)
@@ -23635,8 +23956,10 @@ func (s ChangeTrustOp) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ChangeTrustOp) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -23645,8 +23968,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ChangeTrustOp)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ChangeTrustOp) xdrType() {}
 
 var _ xdrType = (*ChangeTrustOp)(nil)
@@ -23721,8 +24043,10 @@ func (s AllowTrustOp) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *AllowTrustOp) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -23731,8 +24055,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*AllowTrustOp)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s AllowTrustOp) xdrType() {}
 
 var _ xdrType = (*AllowTrustOp)(nil)
@@ -23810,8 +24133,10 @@ func (s ManageDataOp) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ManageDataOp) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -23820,8 +24145,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ManageDataOp)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ManageDataOp) xdrType() {}
 
 var _ xdrType = (*ManageDataOp)(nil)
@@ -23874,8 +24198,10 @@ func (s BumpSequenceOp) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *BumpSequenceOp) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -23884,8 +24210,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*BumpSequenceOp)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s BumpSequenceOp) xdrType() {}
 
 var _ xdrType = (*BumpSequenceOp)(nil)
@@ -23955,8 +24280,11 @@ func (s *CreateClaimableBalanceOp) DecodeFrom(d *xdr.Decoder, maxDepth uint) (in
 	}
 	s.Claimants = nil
 	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding Claimant: length (%d) exceeds remaining input length (%d)", l, il)
+		}
 		s.Claimants = make([]Claimant, l)
-		for i := uint32(0); i < l; i++ {
+		for i := uint32(0); uint(i) < uint(l); i++ {
 			nTmp, err = s.Claimants[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -23978,8 +24306,10 @@ func (s CreateClaimableBalanceOp) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *CreateClaimableBalanceOp) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -23988,8 +24318,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*CreateClaimableBalanceOp)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s CreateClaimableBalanceOp) xdrType() {}
 
 var _ xdrType = (*CreateClaimableBalanceOp)(nil)
@@ -24042,8 +24371,10 @@ func (s ClaimClaimableBalanceOp) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ClaimClaimableBalanceOp) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -24052,8 +24383,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ClaimClaimableBalanceOp)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ClaimClaimableBalanceOp) xdrType() {}
 
 var _ xdrType = (*ClaimClaimableBalanceOp)(nil)
@@ -24106,8 +24436,10 @@ func (s BeginSponsoringFutureReservesOp) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *BeginSponsoringFutureReservesOp) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -24116,8 +24448,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*BeginSponsoringFutureReservesOp)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s BeginSponsoringFutureReservesOp) xdrType() {}
 
 var _ xdrType = (*BeginSponsoringFutureReservesOp)(nil)
@@ -24193,8 +24524,10 @@ func (s RevokeSponsorshipType) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *RevokeSponsorshipType) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -24203,8 +24536,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*RevokeSponsorshipType)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s RevokeSponsorshipType) xdrType() {}
 
 var _ xdrType = (*RevokeSponsorshipType)(nil)
@@ -24267,8 +24599,10 @@ func (s RevokeSponsorshipOpSigner) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *RevokeSponsorshipOpSigner) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -24277,8 +24611,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*RevokeSponsorshipOpSigner)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s RevokeSponsorshipOpSigner) xdrType() {}
 
 var _ xdrType = (*RevokeSponsorshipOpSigner)(nil)
@@ -24460,8 +24793,10 @@ func (s RevokeSponsorshipOp) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *RevokeSponsorshipOp) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -24470,8 +24805,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*RevokeSponsorshipOp)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s RevokeSponsorshipOp) xdrType() {}
 
 var _ xdrType = (*RevokeSponsorshipOp)(nil)
@@ -24544,8 +24878,10 @@ func (s ClawbackOp) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ClawbackOp) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -24554,8 +24890,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ClawbackOp)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ClawbackOp) xdrType() {}
 
 var _ xdrType = (*ClawbackOp)(nil)
@@ -24608,8 +24943,10 @@ func (s ClawbackClaimableBalanceOp) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ClawbackClaimableBalanceOp) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -24618,8 +24955,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ClawbackClaimableBalanceOp)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ClawbackClaimableBalanceOp) xdrType() {}
 
 var _ xdrType = (*ClawbackClaimableBalanceOp)(nil)
@@ -24703,8 +25039,10 @@ func (s SetTrustLineFlagsOp) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *SetTrustLineFlagsOp) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -24713,8 +25051,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*SetTrustLineFlagsOp)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s SetTrustLineFlagsOp) xdrType() {}
 
 var _ xdrType = (*SetTrustLineFlagsOp)(nil)
@@ -24812,8 +25149,10 @@ func (s LiquidityPoolDepositOp) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *LiquidityPoolDepositOp) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -24822,8 +25161,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*LiquidityPoolDepositOp)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s LiquidityPoolDepositOp) xdrType() {}
 
 var _ xdrType = (*LiquidityPoolDepositOp)(nil)
@@ -24906,8 +25244,10 @@ func (s LiquidityPoolWithdrawOp) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *LiquidityPoolWithdrawOp) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -24916,8 +25256,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*LiquidityPoolWithdrawOp)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s LiquidityPoolWithdrawOp) xdrType() {}
 
 var _ xdrType = (*LiquidityPoolWithdrawOp)(nil)
@@ -24996,8 +25335,10 @@ func (s HostFunctionType) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *HostFunctionType) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -25006,8 +25347,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*HostFunctionType)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s HostFunctionType) xdrType() {}
 
 var _ xdrType = (*HostFunctionType)(nil)
@@ -25083,8 +25423,10 @@ func (s ContractIdPreimageType) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ContractIdPreimageType) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -25093,8 +25435,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ContractIdPreimageType)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ContractIdPreimageType) xdrType() {}
 
 var _ xdrType = (*ContractIdPreimageType)(nil)
@@ -25157,8 +25498,10 @@ func (s ContractIdPreimageFromAddress) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ContractIdPreimageFromAddress) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -25167,8 +25510,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ContractIdPreimageFromAddress)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ContractIdPreimageFromAddress) xdrType() {}
 
 var _ xdrType = (*ContractIdPreimageFromAddress)(nil)
@@ -25350,8 +25692,10 @@ func (s ContractIdPreimage) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ContractIdPreimage) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -25360,8 +25704,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ContractIdPreimage)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ContractIdPreimage) xdrType() {}
 
 var _ xdrType = (*ContractIdPreimage)(nil)
@@ -25424,8 +25767,10 @@ func (s CreateContractArgs) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *CreateContractArgs) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -25434,8 +25779,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*CreateContractArgs)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s CreateContractArgs) xdrType() {}
 
 var _ xdrType = (*CreateContractArgs)(nil)
@@ -25501,8 +25845,11 @@ func (s *InvokeContractArgs) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, err
 	}
 	s.Args = nil
 	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding ScVal: length (%d) exceeds remaining input length (%d)", l, il)
+		}
 		s.Args = make([]ScVal, l)
-		for i := uint32(0); i < l; i++ {
+		for i := uint32(0); uint(i) < uint(l); i++ {
 			nTmp, err = s.Args[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -25524,8 +25871,10 @@ func (s InvokeContractArgs) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *InvokeContractArgs) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -25534,8 +25883,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*InvokeContractArgs)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s InvokeContractArgs) xdrType() {}
 
 var _ xdrType = (*InvokeContractArgs)(nil)
@@ -25763,8 +26111,10 @@ func (s HostFunction) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *HostFunction) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -25773,8 +26123,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*HostFunction)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s HostFunction) xdrType() {}
 
 var _ xdrType = (*HostFunction)(nil)
@@ -25850,8 +26199,10 @@ func (s SorobanAuthorizedFunctionType) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *SorobanAuthorizedFunctionType) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -25860,8 +26211,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*SorobanAuthorizedFunctionType)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s SorobanAuthorizedFunctionType) xdrType() {}
 
 var _ xdrType = (*SorobanAuthorizedFunctionType)(nil)
@@ -26039,8 +26389,10 @@ func (s SorobanAuthorizedFunction) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *SorobanAuthorizedFunction) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -26049,8 +26401,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*SorobanAuthorizedFunction)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s SorobanAuthorizedFunction) xdrType() {}
 
 var _ xdrType = (*SorobanAuthorizedFunction)(nil)
@@ -26107,8 +26458,11 @@ func (s *SorobanAuthorizedInvocation) DecodeFrom(d *xdr.Decoder, maxDepth uint) 
 	}
 	s.SubInvocations = nil
 	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding SorobanAuthorizedInvocation: length (%d) exceeds remaining input length (%d)", l, il)
+		}
 		s.SubInvocations = make([]SorobanAuthorizedInvocation, l)
-		for i := uint32(0); i < l; i++ {
+		for i := uint32(0); uint(i) < uint(l); i++ {
 			nTmp, err = s.SubInvocations[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -26130,8 +26484,10 @@ func (s SorobanAuthorizedInvocation) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *SorobanAuthorizedInvocation) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -26140,8 +26496,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*SorobanAuthorizedInvocation)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s SorobanAuthorizedInvocation) xdrType() {}
 
 var _ xdrType = (*SorobanAuthorizedInvocation)(nil)
@@ -26224,8 +26579,10 @@ func (s SorobanAddressCredentials) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *SorobanAddressCredentials) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -26234,8 +26591,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*SorobanAddressCredentials)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s SorobanAddressCredentials) xdrType() {}
 
 var _ xdrType = (*SorobanAddressCredentials)(nil)
@@ -26311,8 +26667,10 @@ func (s SorobanCredentialsType) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *SorobanCredentialsType) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -26321,8 +26679,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*SorobanCredentialsType)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s SorobanCredentialsType) xdrType() {}
 
 var _ xdrType = (*SorobanCredentialsType)(nil)
@@ -26462,8 +26819,10 @@ func (s SorobanCredentials) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *SorobanCredentials) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -26472,8 +26831,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*SorobanCredentials)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s SorobanCredentials) xdrType() {}
 
 var _ xdrType = (*SorobanCredentials)(nil)
@@ -26536,8 +26894,10 @@ func (s SorobanAuthorizationEntry) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *SorobanAuthorizationEntry) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -26546,8 +26906,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*SorobanAuthorizationEntry)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s SorobanAuthorizationEntry) xdrType() {}
 
 var _ xdrType = (*SorobanAuthorizationEntry)(nil)
@@ -26606,8 +26965,11 @@ func (s *InvokeHostFunctionOp) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, e
 	}
 	s.Auth = nil
 	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding SorobanAuthorizationEntry: length (%d) exceeds remaining input length (%d)", l, il)
+		}
 		s.Auth = make([]SorobanAuthorizationEntry, l)
-		for i := uint32(0); i < l; i++ {
+		for i := uint32(0); uint(i) < uint(l); i++ {
 			nTmp, err = s.Auth[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -26629,8 +26991,10 @@ func (s InvokeHostFunctionOp) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *InvokeHostFunctionOp) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -26639,8 +27003,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*InvokeHostFunctionOp)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s InvokeHostFunctionOp) xdrType() {}
 
 var _ xdrType = (*InvokeHostFunctionOp)(nil)
@@ -26703,8 +27066,10 @@ func (s ExtendFootprintTtlOp) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ExtendFootprintTtlOp) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -26713,8 +27078,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ExtendFootprintTtlOp)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ExtendFootprintTtlOp) xdrType() {}
 
 var _ xdrType = (*ExtendFootprintTtlOp)(nil)
@@ -26767,8 +27131,10 @@ func (s RestoreFootprintOp) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *RestoreFootprintOp) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -26777,8 +27143,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*RestoreFootprintOp)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s RestoreFootprintOp) xdrType() {}
 
 var _ xdrType = (*RestoreFootprintOp)(nil)
@@ -28130,8 +28495,10 @@ func (s OperationBody) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *OperationBody) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -28140,8 +28507,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*OperationBody)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s OperationBody) xdrType() {}
 
 var _ xdrType = (*OperationBody)(nil)
@@ -28280,8 +28646,10 @@ func (s Operation) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *Operation) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -28290,8 +28658,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*Operation)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s Operation) xdrType() {}
 
 var _ xdrType = (*Operation)(nil)
@@ -28364,8 +28731,10 @@ func (s HashIdPreimageOperationId) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *HashIdPreimageOperationId) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -28374,8 +28743,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*HashIdPreimageOperationId)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s HashIdPreimageOperationId) xdrType() {}
 
 var _ xdrType = (*HashIdPreimageOperationId)(nil)
@@ -28468,8 +28836,10 @@ func (s HashIdPreimageRevokeId) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *HashIdPreimageRevokeId) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -28478,8 +28848,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*HashIdPreimageRevokeId)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s HashIdPreimageRevokeId) xdrType() {}
 
 var _ xdrType = (*HashIdPreimageRevokeId)(nil)
@@ -28542,8 +28911,10 @@ func (s HashIdPreimageContractId) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *HashIdPreimageContractId) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -28552,8 +28923,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*HashIdPreimageContractId)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s HashIdPreimageContractId) xdrType() {}
 
 var _ xdrType = (*HashIdPreimageContractId)(nil)
@@ -28636,8 +29006,10 @@ func (s HashIdPreimageSorobanAuthorization) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *HashIdPreimageSorobanAuthorization) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -28646,8 +29018,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*HashIdPreimageSorobanAuthorization)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s HashIdPreimageSorobanAuthorization) xdrType() {}
 
 var _ xdrType = (*HashIdPreimageSorobanAuthorization)(nil)
@@ -28947,8 +29318,10 @@ func (s HashIdPreimage) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *HashIdPreimage) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -28957,8 +29330,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*HashIdPreimage)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s HashIdPreimage) xdrType() {}
 
 var _ xdrType = (*HashIdPreimage)(nil)
@@ -29043,8 +29415,10 @@ func (s MemoType) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *MemoType) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -29053,8 +29427,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*MemoType)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s MemoType) xdrType() {}
 
 var _ xdrType = (*MemoType)(nil)
@@ -29344,8 +29717,10 @@ func (s Memo) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *Memo) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -29354,8 +29729,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*Memo)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s Memo) xdrType() {}
 
 var _ xdrType = (*Memo)(nil)
@@ -29418,8 +29792,10 @@ func (s TimeBounds) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *TimeBounds) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -29428,8 +29804,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*TimeBounds)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s TimeBounds) xdrType() {}
 
 var _ xdrType = (*TimeBounds)(nil)
@@ -29492,8 +29867,10 @@ func (s LedgerBounds) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *LedgerBounds) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -29502,8 +29879,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*LedgerBounds)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s LedgerBounds) xdrType() {}
 
 var _ xdrType = (*LedgerBounds)(nil)
@@ -29669,8 +30045,11 @@ func (s *PreconditionsV2) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error)
 	}
 	s.ExtraSigners = nil
 	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding SignerKey: length (%d) exceeds remaining input length (%d)", l, il)
+		}
 		s.ExtraSigners = make([]SignerKey, l)
-		for i := uint32(0); i < l; i++ {
+		for i := uint32(0); uint(i) < uint(l); i++ {
 			nTmp, err = s.ExtraSigners[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -29692,8 +30071,10 @@ func (s PreconditionsV2) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *PreconditionsV2) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -29702,8 +30083,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*PreconditionsV2)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s PreconditionsV2) xdrType() {}
 
 var _ xdrType = (*PreconditionsV2)(nil)
@@ -29782,8 +30162,10 @@ func (s PreconditionType) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *PreconditionType) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -29792,8 +30174,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*PreconditionType)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s PreconditionType) xdrType() {}
 
 var _ xdrType = (*PreconditionType)(nil)
@@ -29983,8 +30364,10 @@ func (s Preconditions) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *Preconditions) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -29993,8 +30376,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*Preconditions)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s Preconditions) xdrType() {}
 
 var _ xdrType = (*Preconditions)(nil)
@@ -30051,8 +30433,11 @@ func (s *LedgerFootprint) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error)
 	}
 	s.ReadOnly = nil
 	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding LedgerKey: length (%d) exceeds remaining input length (%d)", l, il)
+		}
 		s.ReadOnly = make([]LedgerKey, l)
-		for i := uint32(0); i < l; i++ {
+		for i := uint32(0); uint(i) < uint(l); i++ {
 			nTmp, err = s.ReadOnly[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -30067,8 +30452,11 @@ func (s *LedgerFootprint) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error)
 	}
 	s.ReadWrite = nil
 	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding LedgerKey: length (%d) exceeds remaining input length (%d)", l, il)
+		}
 		s.ReadWrite = make([]LedgerKey, l)
-		for i := uint32(0); i < l; i++ {
+		for i := uint32(0); uint(i) < uint(l); i++ {
 			nTmp, err = s.ReadWrite[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -30090,8 +30478,10 @@ func (s LedgerFootprint) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *LedgerFootprint) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -30100,8 +30490,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*LedgerFootprint)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s LedgerFootprint) xdrType() {}
 
 var _ xdrType = (*LedgerFootprint)(nil)
@@ -30189,8 +30578,10 @@ func (s SorobanResources) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *SorobanResources) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -30199,8 +30590,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*SorobanResources)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s SorobanResources) xdrType() {}
 
 var _ xdrType = (*SorobanResources)(nil)
@@ -30282,8 +30672,10 @@ func (s SorobanTransactionData) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *SorobanTransactionData) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -30292,8 +30684,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*SorobanTransactionData)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s SorobanTransactionData) xdrType() {}
 
 var _ xdrType = (*SorobanTransactionData)(nil)
@@ -30383,8 +30774,10 @@ func (s TransactionV0Ext) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *TransactionV0Ext) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -30393,8 +30786,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*TransactionV0Ext)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s TransactionV0Ext) xdrType() {}
 
 var _ xdrType = (*TransactionV0Ext)(nil)
@@ -30519,8 +30911,11 @@ func (s *TransactionV0) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
 	}
 	s.Operations = nil
 	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding Operation: length (%d) exceeds remaining input length (%d)", l, il)
+		}
 		s.Operations = make([]Operation, l)
-		for i := uint32(0); i < l; i++ {
+		for i := uint32(0); uint(i) < uint(l); i++ {
 			nTmp, err = s.Operations[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -30547,8 +30942,10 @@ func (s TransactionV0) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *TransactionV0) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -30557,8 +30954,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*TransactionV0)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s TransactionV0) xdrType() {}
 
 var _ xdrType = (*TransactionV0)(nil)
@@ -30620,8 +31016,11 @@ func (s *TransactionV0Envelope) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, 
 	}
 	s.Signatures = nil
 	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding DecoratedSignature: length (%d) exceeds remaining input length (%d)", l, il)
+		}
 		s.Signatures = make([]DecoratedSignature, l)
-		for i := uint32(0); i < l; i++ {
+		for i := uint32(0); uint(i) < uint(l); i++ {
 			nTmp, err = s.Signatures[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -30643,8 +31042,10 @@ func (s TransactionV0Envelope) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *TransactionV0Envelope) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -30653,8 +31054,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*TransactionV0Envelope)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s TransactionV0Envelope) xdrType() {}
 
 var _ xdrType = (*TransactionV0Envelope)(nil)
@@ -30794,8 +31194,10 @@ func (s TransactionExt) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *TransactionExt) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -30804,8 +31206,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*TransactionExt)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s TransactionExt) xdrType() {}
 
 var _ xdrType = (*TransactionExt)(nil)
@@ -30928,8 +31329,11 @@ func (s *Transaction) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
 	}
 	s.Operations = nil
 	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding Operation: length (%d) exceeds remaining input length (%d)", l, il)
+		}
 		s.Operations = make([]Operation, l)
-		for i := uint32(0); i < l; i++ {
+		for i := uint32(0); uint(i) < uint(l); i++ {
 			nTmp, err = s.Operations[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -30956,8 +31360,10 @@ func (s Transaction) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *Transaction) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -30966,8 +31372,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*Transaction)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s Transaction) xdrType() {}
 
 var _ xdrType = (*Transaction)(nil)
@@ -31029,8 +31434,11 @@ func (s *TransactionV1Envelope) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, 
 	}
 	s.Signatures = nil
 	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding DecoratedSignature: length (%d) exceeds remaining input length (%d)", l, il)
+		}
 		s.Signatures = make([]DecoratedSignature, l)
-		for i := uint32(0); i < l; i++ {
+		for i := uint32(0); uint(i) < uint(l); i++ {
 			nTmp, err = s.Signatures[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -31052,8 +31460,10 @@ func (s TransactionV1Envelope) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *TransactionV1Envelope) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -31062,8 +31472,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*TransactionV1Envelope)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s TransactionV1Envelope) xdrType() {}
 
 var _ xdrType = (*TransactionV1Envelope)(nil)
@@ -31191,8 +31600,10 @@ func (s FeeBumpTransactionInnerTx) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *FeeBumpTransactionInnerTx) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -31201,8 +31612,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*FeeBumpTransactionInnerTx)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s FeeBumpTransactionInnerTx) xdrType() {}
 
 var _ xdrType = (*FeeBumpTransactionInnerTx)(nil)
@@ -31292,8 +31702,10 @@ func (s FeeBumpTransactionExt) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *FeeBumpTransactionExt) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -31302,8 +31714,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*FeeBumpTransactionExt)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s FeeBumpTransactionExt) xdrType() {}
 
 var _ xdrType = (*FeeBumpTransactionExt)(nil)
@@ -31396,8 +31807,10 @@ func (s FeeBumpTransaction) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *FeeBumpTransaction) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -31406,8 +31819,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*FeeBumpTransaction)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s FeeBumpTransaction) xdrType() {}
 
 var _ xdrType = (*FeeBumpTransaction)(nil)
@@ -31469,8 +31881,11 @@ func (s *FeeBumpTransactionEnvelope) DecodeFrom(d *xdr.Decoder, maxDepth uint) (
 	}
 	s.Signatures = nil
 	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding DecoratedSignature: length (%d) exceeds remaining input length (%d)", l, il)
+		}
 		s.Signatures = make([]DecoratedSignature, l)
-		for i := uint32(0); i < l; i++ {
+		for i := uint32(0); uint(i) < uint(l); i++ {
 			nTmp, err = s.Signatures[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -31492,8 +31907,10 @@ func (s FeeBumpTransactionEnvelope) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *FeeBumpTransactionEnvelope) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -31502,8 +31919,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*FeeBumpTransactionEnvelope)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s FeeBumpTransactionEnvelope) xdrType() {}
 
 var _ xdrType = (*FeeBumpTransactionEnvelope)(nil)
@@ -31731,8 +32147,10 @@ func (s TransactionEnvelope) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *TransactionEnvelope) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -31741,8 +32159,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*TransactionEnvelope)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s TransactionEnvelope) xdrType() {}
 
 var _ xdrType = (*TransactionEnvelope)(nil)
@@ -31921,8 +32338,10 @@ func (s TransactionSignaturePayloadTaggedTransaction) MarshalBinary() ([]byte, e
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *TransactionSignaturePayloadTaggedTransaction) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -31931,8 +32350,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*TransactionSignaturePayloadTaggedTransaction)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s TransactionSignaturePayloadTaggedTransaction) xdrType() {}
 
 var _ xdrType = (*TransactionSignaturePayloadTaggedTransaction)(nil)
@@ -32003,8 +32421,10 @@ func (s TransactionSignaturePayload) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *TransactionSignaturePayload) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -32013,8 +32433,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*TransactionSignaturePayload)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s TransactionSignaturePayload) xdrType() {}
 
 var _ xdrType = (*TransactionSignaturePayload)(nil)
@@ -32093,8 +32512,10 @@ func (s ClaimAtomType) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ClaimAtomType) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -32103,8 +32524,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ClaimAtomType)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ClaimAtomType) xdrType() {}
 
 var _ xdrType = (*ClaimAtomType)(nil)
@@ -32212,8 +32632,10 @@ func (s ClaimOfferAtomV0) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ClaimOfferAtomV0) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -32222,8 +32644,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ClaimOfferAtomV0)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ClaimOfferAtomV0) xdrType() {}
 
 var _ xdrType = (*ClaimOfferAtomV0)(nil)
@@ -32331,8 +32752,10 @@ func (s ClaimOfferAtom) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ClaimOfferAtom) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -32341,8 +32764,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ClaimOfferAtom)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ClaimOfferAtom) xdrType() {}
 
 var _ xdrType = (*ClaimOfferAtom)(nil)
@@ -32439,8 +32861,10 @@ func (s ClaimLiquidityAtom) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ClaimLiquidityAtom) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -32449,8 +32873,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ClaimLiquidityAtom)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ClaimLiquidityAtom) xdrType() {}
 
 var _ xdrType = (*ClaimLiquidityAtom)(nil)
@@ -32678,8 +33101,10 @@ func (s ClaimAtom) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ClaimAtom) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -32688,8 +33113,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ClaimAtom)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ClaimAtom) xdrType() {}
 
 var _ xdrType = (*ClaimAtom)(nil)
@@ -32778,8 +33202,10 @@ func (s CreateAccountResultCode) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *CreateAccountResultCode) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -32788,8 +33214,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*CreateAccountResultCode)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s CreateAccountResultCode) xdrType() {}
 
 var _ xdrType = (*CreateAccountResultCode)(nil)
@@ -32924,8 +33349,10 @@ func (s CreateAccountResult) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *CreateAccountResult) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -32934,8 +33361,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*CreateAccountResult)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s CreateAccountResult) xdrType() {}
 
 var _ xdrType = (*CreateAccountResult)(nil)
@@ -33038,8 +33464,10 @@ func (s PaymentResultCode) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *PaymentResultCode) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -33048,8 +33476,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*PaymentResultCode)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s PaymentResultCode) xdrType() {}
 
 var _ xdrType = (*PaymentResultCode)(nil)
@@ -33239,8 +33666,10 @@ func (s PaymentResult) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *PaymentResult) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -33249,8 +33678,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*PaymentResult)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s PaymentResult) xdrType() {}
 
 var _ xdrType = (*PaymentResult)(nil)
@@ -33371,8 +33799,10 @@ func (s PathPaymentStrictReceiveResultCode) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *PathPaymentStrictReceiveResultCode) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -33381,8 +33811,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*PathPaymentStrictReceiveResultCode)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s PathPaymentStrictReceiveResultCode) xdrType() {}
 
 var _ xdrType = (*PathPaymentStrictReceiveResultCode)(nil)
@@ -33455,8 +33884,10 @@ func (s SimplePaymentResult) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *SimplePaymentResult) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -33465,8 +33896,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*SimplePaymentResult)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s SimplePaymentResult) xdrType() {}
 
 var _ xdrType = (*SimplePaymentResult)(nil)
@@ -33518,8 +33948,11 @@ func (s *PathPaymentStrictReceiveResultSuccess) DecodeFrom(d *xdr.Decoder, maxDe
 	}
 	s.Offers = nil
 	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding ClaimAtom: length (%d) exceeds remaining input length (%d)", l, il)
+		}
 		s.Offers = make([]ClaimAtom, l)
-		for i := uint32(0); i < l; i++ {
+		for i := uint32(0); uint(i) < uint(l); i++ {
 			nTmp, err = s.Offers[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -33546,8 +33979,10 @@ func (s PathPaymentStrictReceiveResultSuccess) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *PathPaymentStrictReceiveResultSuccess) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -33556,8 +33991,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*PathPaymentStrictReceiveResultSuccess)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s PathPaymentStrictReceiveResultSuccess) xdrType() {}
 
 var _ xdrType = (*PathPaymentStrictReceiveResultSuccess)(nil)
@@ -33863,8 +34297,10 @@ func (s PathPaymentStrictReceiveResult) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *PathPaymentStrictReceiveResult) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -33873,8 +34309,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*PathPaymentStrictReceiveResult)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s PathPaymentStrictReceiveResult) xdrType() {}
 
 var _ xdrType = (*PathPaymentStrictReceiveResult)(nil)
@@ -33994,8 +34429,10 @@ func (s PathPaymentStrictSendResultCode) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *PathPaymentStrictSendResultCode) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -34004,8 +34441,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*PathPaymentStrictSendResultCode)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s PathPaymentStrictSendResultCode) xdrType() {}
 
 var _ xdrType = (*PathPaymentStrictSendResultCode)(nil)
@@ -34057,8 +34493,11 @@ func (s *PathPaymentStrictSendResultSuccess) DecodeFrom(d *xdr.Decoder, maxDepth
 	}
 	s.Offers = nil
 	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding ClaimAtom: length (%d) exceeds remaining input length (%d)", l, il)
+		}
 		s.Offers = make([]ClaimAtom, l)
-		for i := uint32(0); i < l; i++ {
+		for i := uint32(0); uint(i) < uint(l); i++ {
 			nTmp, err = s.Offers[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -34085,8 +34524,10 @@ func (s PathPaymentStrictSendResultSuccess) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *PathPaymentStrictSendResultSuccess) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -34095,8 +34536,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*PathPaymentStrictSendResultSuccess)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s PathPaymentStrictSendResultSuccess) xdrType() {}
 
 var _ xdrType = (*PathPaymentStrictSendResultSuccess)(nil)
@@ -34401,8 +34841,10 @@ func (s PathPaymentStrictSendResult) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *PathPaymentStrictSendResult) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -34411,8 +34853,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*PathPaymentStrictSendResult)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s PathPaymentStrictSendResult) xdrType() {}
 
 var _ xdrType = (*PathPaymentStrictSendResult)(nil)
@@ -34531,8 +34972,10 @@ func (s ManageSellOfferResultCode) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ManageSellOfferResultCode) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -34541,8 +34984,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ManageSellOfferResultCode)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ManageSellOfferResultCode) xdrType() {}
 
 var _ xdrType = (*ManageSellOfferResultCode)(nil)
@@ -34621,8 +35063,10 @@ func (s ManageOfferEffect) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ManageOfferEffect) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -34631,8 +35075,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ManageOfferEffect)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ManageOfferEffect) xdrType() {}
 
 var _ xdrType = (*ManageOfferEffect)(nil)
@@ -34795,8 +35238,10 @@ func (s ManageOfferSuccessResultOffer) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ManageOfferSuccessResultOffer) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -34805,8 +35250,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ManageOfferSuccessResultOffer)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ManageOfferSuccessResultOffer) xdrType() {}
 
 var _ xdrType = (*ManageOfferSuccessResultOffer)(nil)
@@ -34868,8 +35312,11 @@ func (s *ManageOfferSuccessResult) DecodeFrom(d *xdr.Decoder, maxDepth uint) (in
 	}
 	s.OffersClaimed = nil
 	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding ClaimAtom: length (%d) exceeds remaining input length (%d)", l, il)
+		}
 		s.OffersClaimed = make([]ClaimAtom, l)
-		for i := uint32(0); i < l; i++ {
+		for i := uint32(0); uint(i) < uint(l); i++ {
 			nTmp, err = s.OffersClaimed[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -34896,8 +35343,10 @@ func (s ManageOfferSuccessResult) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ManageOfferSuccessResult) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -34906,8 +35355,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ManageOfferSuccessResult)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ManageOfferSuccessResult) xdrType() {}
 
 var _ xdrType = (*ManageOfferSuccessResult)(nil)
@@ -35168,8 +35616,10 @@ func (s ManageSellOfferResult) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ManageSellOfferResult) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -35178,8 +35628,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ManageSellOfferResult)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ManageSellOfferResult) xdrType() {}
 
 var _ xdrType = (*ManageSellOfferResult)(nil)
@@ -35295,8 +35744,10 @@ func (s ManageBuyOfferResultCode) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ManageBuyOfferResultCode) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -35305,8 +35756,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ManageBuyOfferResultCode)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ManageBuyOfferResultCode) xdrType() {}
 
 var _ xdrType = (*ManageBuyOfferResultCode)(nil)
@@ -35567,8 +36017,10 @@ func (s ManageBuyOfferResult) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ManageBuyOfferResult) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -35577,8 +36029,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ManageBuyOfferResult)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ManageBuyOfferResult) xdrType() {}
 
 var _ xdrType = (*ManageBuyOfferResult)(nil)
@@ -35684,8 +36135,10 @@ func (s SetOptionsResultCode) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *SetOptionsResultCode) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -35694,8 +36147,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*SetOptionsResultCode)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s SetOptionsResultCode) xdrType() {}
 
 var _ xdrType = (*SetOptionsResultCode)(nil)
@@ -35896,8 +36348,10 @@ func (s SetOptionsResult) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *SetOptionsResult) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -35906,8 +36360,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*SetOptionsResult)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s SetOptionsResult) xdrType() {}
 
 var _ xdrType = (*SetOptionsResult)(nil)
@@ -36010,8 +36463,10 @@ func (s ChangeTrustResultCode) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ChangeTrustResultCode) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -36020,8 +36475,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ChangeTrustResultCode)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ChangeTrustResultCode) xdrType() {}
 
 var _ xdrType = (*ChangeTrustResultCode)(nil)
@@ -36200,8 +36654,10 @@ func (s ChangeTrustResult) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ChangeTrustResult) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -36210,8 +36666,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ChangeTrustResult)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ChangeTrustResult) xdrType() {}
 
 var _ xdrType = (*ChangeTrustResult)(nil)
@@ -36306,8 +36761,10 @@ func (s AllowTrustResultCode) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *AllowTrustResultCode) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -36316,8 +36773,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*AllowTrustResultCode)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s AllowTrustResultCode) xdrType() {}
 
 var _ xdrType = (*AllowTrustResultCode)(nil)
@@ -36474,8 +36930,10 @@ func (s AllowTrustResult) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *AllowTrustResult) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -36484,8 +36942,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*AllowTrustResult)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s AllowTrustResult) xdrType() {}
 
 var _ xdrType = (*AllowTrustResult)(nil)
@@ -36582,8 +37039,10 @@ func (s AccountMergeResultCode) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *AccountMergeResultCode) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -36592,8 +37051,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*AccountMergeResultCode)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s AccountMergeResultCode) xdrType() {}
 
 var _ xdrType = (*AccountMergeResultCode)(nil)
@@ -36799,8 +37257,10 @@ func (s AccountMergeResult) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *AccountMergeResult) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -36809,8 +37269,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*AccountMergeResult)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s AccountMergeResult) xdrType() {}
 
 var _ xdrType = (*AccountMergeResult)(nil)
@@ -36888,8 +37347,10 @@ func (s InflationResultCode) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *InflationResultCode) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -36898,8 +37359,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*InflationResultCode)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s InflationResultCode) xdrType() {}
 
 var _ xdrType = (*InflationResultCode)(nil)
@@ -36962,8 +37422,10 @@ func (s InflationPayout) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *InflationPayout) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -36972,8 +37434,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*InflationPayout)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s InflationPayout) xdrType() {}
 
 var _ xdrType = (*InflationPayout)(nil)
@@ -37102,8 +37563,11 @@ func (u *InflationResult) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error)
 		}
 		(*u.Payouts) = nil
 		if l > 0 {
+			if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+				return n, fmt.Errorf("decoding InflationPayout: length (%d) exceeds remaining input length (%d)", l, il)
+			}
 			(*u.Payouts) = make([]InflationPayout, l)
-			for i := uint32(0); i < l; i++ {
+			for i := uint32(0); uint(i) < uint(l); i++ {
 				nTmp, err = (*u.Payouts)[i].DecodeFrom(d, maxDepth)
 				n += nTmp
 				if err != nil {
@@ -37130,8 +37594,10 @@ func (s InflationResult) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *InflationResult) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -37140,8 +37606,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*InflationResult)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s InflationResult) xdrType() {}
 
 var _ xdrType = (*InflationResult)(nil)
@@ -37230,8 +37695,10 @@ func (s ManageDataResultCode) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ManageDataResultCode) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -37240,8 +37707,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ManageDataResultCode)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ManageDataResultCode) xdrType() {}
 
 var _ xdrType = (*ManageDataResultCode)(nil)
@@ -37376,8 +37842,10 @@ func (s ManageDataResult) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ManageDataResult) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -37386,8 +37854,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ManageDataResult)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ManageDataResult) xdrType() {}
 
 var _ xdrType = (*ManageDataResult)(nil)
@@ -37465,8 +37932,10 @@ func (s BumpSequenceResultCode) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *BumpSequenceResultCode) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -37475,8 +37944,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*BumpSequenceResultCode)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s BumpSequenceResultCode) xdrType() {}
 
 var _ xdrType = (*BumpSequenceResultCode)(nil)
@@ -37578,8 +38046,10 @@ func (s BumpSequenceResult) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *BumpSequenceResult) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -37588,8 +38058,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*BumpSequenceResult)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s BumpSequenceResult) xdrType() {}
 
 var _ xdrType = (*BumpSequenceResult)(nil)
@@ -37677,8 +38146,10 @@ func (s CreateClaimableBalanceResultCode) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *CreateClaimableBalanceResultCode) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -37687,8 +38158,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*CreateClaimableBalanceResultCode)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s CreateClaimableBalanceResultCode) xdrType() {}
 
 var _ xdrType = (*CreateClaimableBalanceResultCode)(nil)
@@ -37873,8 +38343,10 @@ func (s CreateClaimableBalanceResult) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *CreateClaimableBalanceResult) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -37883,8 +38355,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*CreateClaimableBalanceResult)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s CreateClaimableBalanceResult) xdrType() {}
 
 var _ xdrType = (*CreateClaimableBalanceResult)(nil)
@@ -37972,8 +38443,10 @@ func (s ClaimClaimableBalanceResultCode) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ClaimClaimableBalanceResultCode) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -37982,8 +38455,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ClaimClaimableBalanceResultCode)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ClaimClaimableBalanceResultCode) xdrType() {}
 
 var _ xdrType = (*ClaimClaimableBalanceResultCode)(nil)
@@ -38129,8 +38601,10 @@ func (s ClaimClaimableBalanceResult) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ClaimClaimableBalanceResult) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -38139,8 +38613,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ClaimClaimableBalanceResult)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ClaimClaimableBalanceResult) xdrType() {}
 
 var _ xdrType = (*ClaimClaimableBalanceResult)(nil)
@@ -38225,8 +38698,10 @@ func (s BeginSponsoringFutureReservesResultCode) MarshalBinary() ([]byte, error)
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *BeginSponsoringFutureReservesResultCode) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -38235,8 +38710,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*BeginSponsoringFutureReservesResultCode)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s BeginSponsoringFutureReservesResultCode) xdrType() {}
 
 var _ xdrType = (*BeginSponsoringFutureReservesResultCode)(nil)
@@ -38361,8 +38835,10 @@ func (s BeginSponsoringFutureReservesResult) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *BeginSponsoringFutureReservesResult) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -38371,8 +38847,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*BeginSponsoringFutureReservesResult)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s BeginSponsoringFutureReservesResult) xdrType() {}
 
 var _ xdrType = (*BeginSponsoringFutureReservesResult)(nil)
@@ -38451,8 +38926,10 @@ func (s EndSponsoringFutureReservesResultCode) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *EndSponsoringFutureReservesResultCode) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -38461,8 +38938,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*EndSponsoringFutureReservesResultCode)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s EndSponsoringFutureReservesResultCode) xdrType() {}
 
 var _ xdrType = (*EndSponsoringFutureReservesResultCode)(nil)
@@ -38565,8 +39041,10 @@ func (s EndSponsoringFutureReservesResult) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *EndSponsoringFutureReservesResult) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -38575,8 +39053,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*EndSponsoringFutureReservesResult)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s EndSponsoringFutureReservesResult) xdrType() {}
 
 var _ xdrType = (*EndSponsoringFutureReservesResult)(nil)
@@ -38667,8 +39144,10 @@ func (s RevokeSponsorshipResultCode) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *RevokeSponsorshipResultCode) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -38677,8 +39156,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*RevokeSponsorshipResultCode)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s RevokeSponsorshipResultCode) xdrType() {}
 
 var _ xdrType = (*RevokeSponsorshipResultCode)(nil)
@@ -38824,8 +39302,10 @@ func (s RevokeSponsorshipResult) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *RevokeSponsorshipResult) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -38834,8 +39314,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*RevokeSponsorshipResult)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s RevokeSponsorshipResult) xdrType() {}
 
 var _ xdrType = (*RevokeSponsorshipResult)(nil)
@@ -38923,8 +39402,10 @@ func (s ClawbackResultCode) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ClawbackResultCode) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -38933,8 +39414,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ClawbackResultCode)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ClawbackResultCode) xdrType() {}
 
 var _ xdrType = (*ClawbackResultCode)(nil)
@@ -39069,8 +39549,10 @@ func (s ClawbackResult) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ClawbackResult) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -39079,8 +39561,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ClawbackResult)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ClawbackResult) xdrType() {}
 
 var _ xdrType = (*ClawbackResult)(nil)
@@ -39165,8 +39646,10 @@ func (s ClawbackClaimableBalanceResultCode) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ClawbackClaimableBalanceResultCode) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -39175,8 +39658,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ClawbackClaimableBalanceResultCode)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ClawbackClaimableBalanceResultCode) xdrType() {}
 
 var _ xdrType = (*ClawbackClaimableBalanceResultCode)(nil)
@@ -39301,8 +39783,10 @@ func (s ClawbackClaimableBalanceResult) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ClawbackClaimableBalanceResult) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -39311,8 +39795,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ClawbackClaimableBalanceResult)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ClawbackClaimableBalanceResult) xdrType() {}
 
 var _ xdrType = (*ClawbackClaimableBalanceResult)(nil)
@@ -39404,8 +39887,10 @@ func (s SetTrustLineFlagsResultCode) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *SetTrustLineFlagsResultCode) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -39414,8 +39899,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*SetTrustLineFlagsResultCode)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s SetTrustLineFlagsResultCode) xdrType() {}
 
 var _ xdrType = (*SetTrustLineFlagsResultCode)(nil)
@@ -39561,8 +40045,10 @@ func (s SetTrustLineFlagsResult) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *SetTrustLineFlagsResult) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -39571,8 +40057,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*SetTrustLineFlagsResult)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s SetTrustLineFlagsResult) xdrType() {}
 
 var _ xdrType = (*SetTrustLineFlagsResult)(nil)
@@ -39673,8 +40158,10 @@ func (s LiquidityPoolDepositResultCode) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *LiquidityPoolDepositResultCode) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -39683,8 +40170,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*LiquidityPoolDepositResultCode)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s LiquidityPoolDepositResultCode) xdrType() {}
 
 var _ xdrType = (*LiquidityPoolDepositResultCode)(nil)
@@ -39852,8 +40338,10 @@ func (s LiquidityPoolDepositResult) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *LiquidityPoolDepositResult) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -39862,8 +40350,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*LiquidityPoolDepositResult)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s LiquidityPoolDepositResult) xdrType() {}
 
 var _ xdrType = (*LiquidityPoolDepositResult)(nil)
@@ -39957,8 +40444,10 @@ func (s LiquidityPoolWithdrawResultCode) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *LiquidityPoolWithdrawResultCode) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -39967,8 +40456,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*LiquidityPoolWithdrawResultCode)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s LiquidityPoolWithdrawResultCode) xdrType() {}
 
 var _ xdrType = (*LiquidityPoolWithdrawResultCode)(nil)
@@ -40114,8 +40602,10 @@ func (s LiquidityPoolWithdrawResult) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *LiquidityPoolWithdrawResult) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -40124,8 +40614,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*LiquidityPoolWithdrawResult)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s LiquidityPoolWithdrawResult) xdrType() {}
 
 var _ xdrType = (*LiquidityPoolWithdrawResult)(nil)
@@ -40216,8 +40705,10 @@ func (s InvokeHostFunctionResultCode) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *InvokeHostFunctionResultCode) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -40226,8 +40717,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*InvokeHostFunctionResultCode)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s InvokeHostFunctionResultCode) xdrType() {}
 
 var _ xdrType = (*InvokeHostFunctionResultCode)(nil)
@@ -40411,8 +40901,10 @@ func (s InvokeHostFunctionResult) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *InvokeHostFunctionResult) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -40421,8 +40913,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*InvokeHostFunctionResult)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s InvokeHostFunctionResult) xdrType() {}
 
 var _ xdrType = (*InvokeHostFunctionResult)(nil)
@@ -40507,8 +40998,10 @@ func (s ExtendFootprintTtlResultCode) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ExtendFootprintTtlResultCode) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -40517,8 +41010,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ExtendFootprintTtlResultCode)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ExtendFootprintTtlResultCode) xdrType() {}
 
 var _ xdrType = (*ExtendFootprintTtlResultCode)(nil)
@@ -40642,8 +41134,10 @@ func (s ExtendFootprintTtlResult) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ExtendFootprintTtlResult) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -40652,8 +41146,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ExtendFootprintTtlResult)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ExtendFootprintTtlResult) xdrType() {}
 
 var _ xdrType = (*ExtendFootprintTtlResult)(nil)
@@ -40738,8 +41231,10 @@ func (s RestoreFootprintResultCode) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *RestoreFootprintResultCode) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -40748,8 +41243,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*RestoreFootprintResultCode)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s RestoreFootprintResultCode) xdrType() {}
 
 var _ xdrType = (*RestoreFootprintResultCode)(nil)
@@ -40873,8 +41367,10 @@ func (s RestoreFootprintResult) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *RestoreFootprintResult) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -40883,8 +41379,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*RestoreFootprintResult)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s RestoreFootprintResult) xdrType() {}
 
 var _ xdrType = (*RestoreFootprintResult)(nil)
@@ -40976,8 +41471,10 @@ func (s OperationResultCode) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *OperationResultCode) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -40986,8 +41483,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*OperationResultCode)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s OperationResultCode) xdrType() {}
 
 var _ xdrType = (*OperationResultCode)(nil)
@@ -42415,8 +42911,10 @@ func (s OperationResultTr) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *OperationResultTr) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -42425,8 +42923,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*OperationResultTr)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s OperationResultTr) xdrType() {}
 
 var _ xdrType = (*OperationResultTr)(nil)
@@ -42678,8 +43175,10 @@ func (s OperationResult) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *OperationResult) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -42688,8 +43187,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*OperationResult)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s OperationResult) xdrType() {}
 
 var _ xdrType = (*OperationResult)(nil)
@@ -42820,8 +43318,10 @@ func (s TransactionResultCode) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *TransactionResultCode) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -42830,8 +43330,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*TransactionResultCode)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s TransactionResultCode) xdrType() {}
 
 var _ xdrType = (*TransactionResultCode)(nil)
@@ -43094,8 +43593,11 @@ func (u *InnerTransactionResultResult) DecodeFrom(d *xdr.Decoder, maxDepth uint)
 		}
 		(*u.Results) = nil
 		if l > 0 {
+			if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+				return n, fmt.Errorf("decoding OperationResult: length (%d) exceeds remaining input length (%d)", l, il)
+			}
 			(*u.Results) = make([]OperationResult, l)
-			for i := uint32(0); i < l; i++ {
+			for i := uint32(0); uint(i) < uint(l); i++ {
 				nTmp, err = (*u.Results)[i].DecodeFrom(d, maxDepth)
 				n += nTmp
 				if err != nil {
@@ -43114,8 +43616,11 @@ func (u *InnerTransactionResultResult) DecodeFrom(d *xdr.Decoder, maxDepth uint)
 		}
 		(*u.Results) = nil
 		if l > 0 {
+			if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+				return n, fmt.Errorf("decoding OperationResult: length (%d) exceeds remaining input length (%d)", l, il)
+			}
 			(*u.Results) = make([]OperationResult, l)
-			for i := uint32(0); i < l; i++ {
+			for i := uint32(0); uint(i) < uint(l); i++ {
 				nTmp, err = (*u.Results)[i].DecodeFrom(d, maxDepth)
 				n += nTmp
 				if err != nil {
@@ -43184,8 +43689,10 @@ func (s InnerTransactionResultResult) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *InnerTransactionResultResult) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -43194,8 +43701,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*InnerTransactionResultResult)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s InnerTransactionResultResult) xdrType() {}
 
 var _ xdrType = (*InnerTransactionResultResult)(nil)
@@ -43285,8 +43791,10 @@ func (s InnerTransactionResultExt) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *InnerTransactionResultExt) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -43295,8 +43803,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*InnerTransactionResultExt)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s InnerTransactionResultExt) xdrType() {}
 
 var _ xdrType = (*InnerTransactionResultExt)(nil)
@@ -43402,8 +43909,10 @@ func (s InnerTransactionResult) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *InnerTransactionResult) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -43412,8 +43921,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*InnerTransactionResult)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s InnerTransactionResult) xdrType() {}
 
 var _ xdrType = (*InnerTransactionResult)(nil)
@@ -43476,8 +43984,10 @@ func (s InnerTransactionResultPair) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *InnerTransactionResultPair) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -43486,8 +43996,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*InnerTransactionResultPair)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s InnerTransactionResultPair) xdrType() {}
 
 var _ xdrType = (*InnerTransactionResultPair)(nil)
@@ -43822,8 +44331,11 @@ func (u *TransactionResultResult) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int
 		}
 		(*u.Results) = nil
 		if l > 0 {
+			if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+				return n, fmt.Errorf("decoding OperationResult: length (%d) exceeds remaining input length (%d)", l, il)
+			}
 			(*u.Results) = make([]OperationResult, l)
-			for i := uint32(0); i < l; i++ {
+			for i := uint32(0); uint(i) < uint(l); i++ {
 				nTmp, err = (*u.Results)[i].DecodeFrom(d, maxDepth)
 				n += nTmp
 				if err != nil {
@@ -43842,8 +44354,11 @@ func (u *TransactionResultResult) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int
 		}
 		(*u.Results) = nil
 		if l > 0 {
+			if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+				return n, fmt.Errorf("decoding OperationResult: length (%d) exceeds remaining input length (%d)", l, il)
+			}
 			(*u.Results) = make([]OperationResult, l)
-			for i := uint32(0); i < l; i++ {
+			for i := uint32(0); uint(i) < uint(l); i++ {
 				nTmp, err = (*u.Results)[i].DecodeFrom(d, maxDepth)
 				n += nTmp
 				if err != nil {
@@ -43912,8 +44427,10 @@ func (s TransactionResultResult) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *TransactionResultResult) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -43922,8 +44439,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*TransactionResultResult)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s TransactionResultResult) xdrType() {}
 
 var _ xdrType = (*TransactionResultResult)(nil)
@@ -44013,8 +44529,10 @@ func (s TransactionResultExt) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *TransactionResultExt) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -44023,8 +44541,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*TransactionResultExt)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s TransactionResultExt) xdrType() {}
 
 var _ xdrType = (*TransactionResultExt)(nil)
@@ -44131,8 +44648,10 @@ func (s TransactionResult) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *TransactionResult) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -44141,8 +44660,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*TransactionResult)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s TransactionResult) xdrType() {}
 
 var _ xdrType = (*TransactionResult)(nil)
@@ -44195,8 +44713,10 @@ func (s Hash) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *Hash) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -44205,8 +44725,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*Hash)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s Hash) xdrType() {}
 
 var _ xdrType = (*Hash)(nil)
@@ -44259,8 +44778,10 @@ func (s Uint256) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *Uint256) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -44269,8 +44790,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*Uint256)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s Uint256) xdrType() {}
 
 var _ xdrType = (*Uint256)(nil)
@@ -44320,8 +44840,10 @@ func (s Uint32) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *Uint32) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -44330,8 +44852,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*Uint32)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s Uint32) xdrType() {}
 
 var _ xdrType = (*Uint32)(nil)
@@ -44381,8 +44902,10 @@ func (s Int32) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *Int32) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -44391,8 +44914,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*Int32)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s Int32) xdrType() {}
 
 var _ xdrType = (*Int32)(nil)
@@ -44442,8 +44964,10 @@ func (s Uint64) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *Uint64) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -44452,8 +44976,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*Uint64)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s Uint64) xdrType() {}
 
 var _ xdrType = (*Uint64)(nil)
@@ -44503,8 +45026,10 @@ func (s Int64) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *Int64) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -44513,8 +45038,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*Int64)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s Int64) xdrType() {}
 
 var _ xdrType = (*Int64)(nil)
@@ -44562,8 +45086,10 @@ func (s TimePoint) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *TimePoint) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -44572,8 +45098,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*TimePoint)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s TimePoint) xdrType() {}
 
 var _ xdrType = (*TimePoint)(nil)
@@ -44621,8 +45146,10 @@ func (s Duration) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *Duration) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -44631,8 +45158,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*Duration)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s Duration) xdrType() {}
 
 var _ xdrType = (*Duration)(nil)
@@ -44722,8 +45248,10 @@ func (s ExtensionPoint) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ExtensionPoint) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -44732,8 +45260,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ExtensionPoint)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ExtensionPoint) xdrType() {}
 
 var _ xdrType = (*ExtensionPoint)(nil)
@@ -44820,8 +45347,10 @@ func (s CryptoKeyType) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *CryptoKeyType) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -44830,8 +45359,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*CryptoKeyType)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s CryptoKeyType) xdrType() {}
 
 var _ xdrType = (*CryptoKeyType)(nil)
@@ -44904,8 +45432,10 @@ func (s PublicKeyType) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *PublicKeyType) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -44914,8 +45444,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*PublicKeyType)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s PublicKeyType) xdrType() {}
 
 var _ xdrType = (*PublicKeyType)(nil)
@@ -44997,8 +45526,10 @@ func (s SignerKeyType) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *SignerKeyType) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -45007,8 +45538,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*SignerKeyType)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s SignerKeyType) xdrType() {}
 
 var _ xdrType = (*SignerKeyType)(nil)
@@ -45136,8 +45666,10 @@ func (s PublicKey) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *PublicKey) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -45146,8 +45678,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*PublicKey)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s PublicKey) xdrType() {}
 
 var _ xdrType = (*PublicKey)(nil)
@@ -45212,8 +45743,10 @@ func (s SignerKeyEd25519SignedPayload) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *SignerKeyEd25519SignedPayload) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -45222,8 +45755,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*SignerKeyEd25519SignedPayload)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s SignerKeyEd25519SignedPayload) xdrType() {}
 
 var _ xdrType = (*SignerKeyEd25519SignedPayload)(nil)
@@ -45509,8 +46041,10 @@ func (s SignerKey) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *SignerKey) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -45519,8 +46053,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*SignerKey)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s SignerKey) xdrType() {}
 
 var _ xdrType = (*SignerKey)(nil)
@@ -45573,8 +46106,10 @@ func (s Signature) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *Signature) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -45583,8 +46118,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*Signature)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s Signature) xdrType() {}
 
 var _ xdrType = (*Signature)(nil)
@@ -45637,8 +46171,10 @@ func (s SignatureHint) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *SignatureHint) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -45647,8 +46183,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*SignatureHint)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s SignatureHint) xdrType() {}
 
 var _ xdrType = (*SignatureHint)(nil)
@@ -45727,8 +46262,10 @@ func (s NodeId) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *NodeId) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -45737,8 +46274,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*NodeId)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s NodeId) xdrType() {}
 
 var _ xdrType = (*NodeId)(nil)
@@ -45817,8 +46353,10 @@ func (s AccountId) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *AccountId) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -45827,8 +46365,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*AccountId)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s AccountId) xdrType() {}
 
 var _ xdrType = (*AccountId)(nil)
@@ -45881,8 +46418,10 @@ func (s Curve25519Secret) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *Curve25519Secret) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -45891,8 +46430,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*Curve25519Secret)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s Curve25519Secret) xdrType() {}
 
 var _ xdrType = (*Curve25519Secret)(nil)
@@ -45945,8 +46483,10 @@ func (s Curve25519Public) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *Curve25519Public) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -45955,8 +46495,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*Curve25519Public)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s Curve25519Public) xdrType() {}
 
 var _ xdrType = (*Curve25519Public)(nil)
@@ -46009,8 +46548,10 @@ func (s HmacSha256Key) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *HmacSha256Key) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -46019,8 +46560,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*HmacSha256Key)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s HmacSha256Key) xdrType() {}
 
 var _ xdrType = (*HmacSha256Key)(nil)
@@ -46073,8 +46613,10 @@ func (s HmacSha256Mac) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *HmacSha256Mac) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -46083,8 +46625,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*HmacSha256Mac)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s HmacSha256Mac) xdrType() {}
 
 var _ xdrType = (*HmacSha256Mac)(nil)
@@ -46157,8 +46698,10 @@ func (s ScEnvMetaKind) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ScEnvMetaKind) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -46167,8 +46710,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ScEnvMetaKind)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ScEnvMetaKind) xdrType() {}
 
 var _ xdrType = (*ScEnvMetaKind)(nil)
@@ -46296,8 +46838,10 @@ func (s ScEnvMetaEntry) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ScEnvMetaEntry) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -46306,8 +46850,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ScEnvMetaEntry)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ScEnvMetaEntry) xdrType() {}
 
 var _ xdrType = (*ScEnvMetaEntry)(nil)
@@ -46370,8 +46913,10 @@ func (s ScMetaV0) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ScMetaV0) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -46380,8 +46925,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ScMetaV0)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ScMetaV0) xdrType() {}
 
 var _ xdrType = (*ScMetaV0)(nil)
@@ -46454,8 +46998,10 @@ func (s ScMetaKind) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ScMetaKind) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -46464,8 +47010,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ScMetaKind)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ScMetaKind) xdrType() {}
 
 var _ xdrType = (*ScMetaKind)(nil)
@@ -46593,8 +47138,10 @@ func (s ScMetaEntry) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ScMetaEntry) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -46603,8 +47150,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ScMetaEntry)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ScMetaEntry) xdrType() {}
 
 var _ xdrType = (*ScMetaEntry)(nil)
@@ -46760,8 +47306,10 @@ func (s ScSpecType) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ScSpecType) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -46770,8 +47318,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ScSpecType)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ScSpecType) xdrType() {}
 
 var _ xdrType = (*ScSpecType)(nil)
@@ -46824,8 +47371,10 @@ func (s ScSpecTypeOption) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ScSpecTypeOption) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -46834,8 +47383,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ScSpecTypeOption)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ScSpecTypeOption) xdrType() {}
 
 var _ xdrType = (*ScSpecTypeOption)(nil)
@@ -46898,8 +47446,10 @@ func (s ScSpecTypeResult) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ScSpecTypeResult) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -46908,8 +47458,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ScSpecTypeResult)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ScSpecTypeResult) xdrType() {}
 
 var _ xdrType = (*ScSpecTypeResult)(nil)
@@ -46962,8 +47511,10 @@ func (s ScSpecTypeVec) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ScSpecTypeVec) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -46972,8 +47523,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ScSpecTypeVec)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ScSpecTypeVec) xdrType() {}
 
 var _ xdrType = (*ScSpecTypeVec)(nil)
@@ -47036,8 +47586,10 @@ func (s ScSpecTypeMap) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ScSpecTypeMap) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -47046,8 +47598,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ScSpecTypeMap)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ScSpecTypeMap) xdrType() {}
 
 var _ xdrType = (*ScSpecTypeMap)(nil)
@@ -47097,8 +47648,11 @@ func (s *ScSpecTypeTuple) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error)
 	}
 	s.ValueTypes = nil
 	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding ScSpecTypeDef: length (%d) exceeds remaining input length (%d)", l, il)
+		}
 		s.ValueTypes = make([]ScSpecTypeDef, l)
-		for i := uint32(0); i < l; i++ {
+		for i := uint32(0); uint(i) < uint(l); i++ {
 			nTmp, err = s.ValueTypes[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -47120,8 +47674,10 @@ func (s ScSpecTypeTuple) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ScSpecTypeTuple) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -47130,8 +47686,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ScSpecTypeTuple)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ScSpecTypeTuple) xdrType() {}
 
 var _ xdrType = (*ScSpecTypeTuple)(nil)
@@ -47184,8 +47739,10 @@ func (s ScSpecTypeBytesN) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ScSpecTypeBytesN) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -47194,8 +47751,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ScSpecTypeBytesN)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ScSpecTypeBytesN) xdrType() {}
 
 var _ xdrType = (*ScSpecTypeBytesN)(nil)
@@ -47248,8 +47804,10 @@ func (s ScSpecTypeUdt) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ScSpecTypeUdt) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -47258,8 +47816,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ScSpecTypeUdt)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ScSpecTypeUdt) xdrType() {}
 
 var _ xdrType = (*ScSpecTypeUdt)(nil)
@@ -47886,8 +48443,10 @@ func (s ScSpecTypeDef) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ScSpecTypeDef) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -47896,8 +48455,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ScSpecTypeDef)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ScSpecTypeDef) xdrType() {}
 
 var _ xdrType = (*ScSpecTypeDef)(nil)
@@ -47970,8 +48528,10 @@ func (s ScSpecUdtStructFieldV0) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ScSpecUdtStructFieldV0) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -47980,8 +48540,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ScSpecUdtStructFieldV0)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ScSpecUdtStructFieldV0) xdrType() {}
 
 var _ xdrType = (*ScSpecUdtStructFieldV0)(nil)
@@ -48061,8 +48620,11 @@ func (s *ScSpecUdtStructV0) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, erro
 	}
 	s.Fields = nil
 	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding ScSpecUdtStructFieldV0: length (%d) exceeds remaining input length (%d)", l, il)
+		}
 		s.Fields = make([]ScSpecUdtStructFieldV0, l)
-		for i := uint32(0); i < l; i++ {
+		for i := uint32(0); uint(i) < uint(l); i++ {
 			nTmp, err = s.Fields[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -48084,8 +48646,10 @@ func (s ScSpecUdtStructV0) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ScSpecUdtStructV0) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -48094,8 +48658,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ScSpecUdtStructV0)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ScSpecUdtStructV0) xdrType() {}
 
 var _ xdrType = (*ScSpecUdtStructV0)(nil)
@@ -48158,8 +48721,10 @@ func (s ScSpecUdtUnionCaseVoidV0) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ScSpecUdtUnionCaseVoidV0) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -48168,8 +48733,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ScSpecUdtUnionCaseVoidV0)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ScSpecUdtUnionCaseVoidV0) xdrType() {}
 
 var _ xdrType = (*ScSpecUdtUnionCaseVoidV0)(nil)
@@ -48239,8 +48803,11 @@ func (s *ScSpecUdtUnionCaseTupleV0) DecodeFrom(d *xdr.Decoder, maxDepth uint) (i
 	}
 	s.Type = nil
 	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding ScSpecTypeDef: length (%d) exceeds remaining input length (%d)", l, il)
+		}
 		s.Type = make([]ScSpecTypeDef, l)
-		for i := uint32(0); i < l; i++ {
+		for i := uint32(0); uint(i) < uint(l); i++ {
 			nTmp, err = s.Type[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -48262,8 +48829,10 @@ func (s ScSpecUdtUnionCaseTupleV0) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ScSpecUdtUnionCaseTupleV0) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -48272,8 +48841,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ScSpecUdtUnionCaseTupleV0)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ScSpecUdtUnionCaseTupleV0) xdrType() {}
 
 var _ xdrType = (*ScSpecUdtUnionCaseTupleV0)(nil)
@@ -48349,8 +48917,10 @@ func (s ScSpecUdtUnionCaseV0Kind) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ScSpecUdtUnionCaseV0Kind) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -48359,8 +48929,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ScSpecUdtUnionCaseV0Kind)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ScSpecUdtUnionCaseV0Kind) xdrType() {}
 
 var _ xdrType = (*ScSpecUdtUnionCaseV0Kind)(nil)
@@ -48538,8 +49107,10 @@ func (s ScSpecUdtUnionCaseV0) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ScSpecUdtUnionCaseV0) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -48548,8 +49119,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ScSpecUdtUnionCaseV0)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ScSpecUdtUnionCaseV0) xdrType() {}
 
 var _ xdrType = (*ScSpecUdtUnionCaseV0)(nil)
@@ -48629,8 +49199,11 @@ func (s *ScSpecUdtUnionV0) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error
 	}
 	s.Cases = nil
 	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding ScSpecUdtUnionCaseV0: length (%d) exceeds remaining input length (%d)", l, il)
+		}
 		s.Cases = make([]ScSpecUdtUnionCaseV0, l)
-		for i := uint32(0); i < l; i++ {
+		for i := uint32(0); uint(i) < uint(l); i++ {
 			nTmp, err = s.Cases[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -48652,8 +49225,10 @@ func (s ScSpecUdtUnionV0) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ScSpecUdtUnionV0) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -48662,8 +49237,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ScSpecUdtUnionV0)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ScSpecUdtUnionV0) xdrType() {}
 
 var _ xdrType = (*ScSpecUdtUnionV0)(nil)
@@ -48736,8 +49310,10 @@ func (s ScSpecUdtEnumCaseV0) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ScSpecUdtEnumCaseV0) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -48746,8 +49322,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ScSpecUdtEnumCaseV0)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ScSpecUdtEnumCaseV0) xdrType() {}
 
 var _ xdrType = (*ScSpecUdtEnumCaseV0)(nil)
@@ -48827,8 +49402,11 @@ func (s *ScSpecUdtEnumV0) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error)
 	}
 	s.Cases = nil
 	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding ScSpecUdtEnumCaseV0: length (%d) exceeds remaining input length (%d)", l, il)
+		}
 		s.Cases = make([]ScSpecUdtEnumCaseV0, l)
-		for i := uint32(0); i < l; i++ {
+		for i := uint32(0); uint(i) < uint(l); i++ {
 			nTmp, err = s.Cases[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -48850,8 +49428,10 @@ func (s ScSpecUdtEnumV0) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ScSpecUdtEnumV0) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -48860,8 +49440,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ScSpecUdtEnumV0)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ScSpecUdtEnumV0) xdrType() {}
 
 var _ xdrType = (*ScSpecUdtEnumV0)(nil)
@@ -48934,8 +49513,10 @@ func (s ScSpecUdtErrorEnumCaseV0) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ScSpecUdtErrorEnumCaseV0) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -48944,8 +49525,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ScSpecUdtErrorEnumCaseV0)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ScSpecUdtErrorEnumCaseV0) xdrType() {}
 
 var _ xdrType = (*ScSpecUdtErrorEnumCaseV0)(nil)
@@ -49025,8 +49605,11 @@ func (s *ScSpecUdtErrorEnumV0) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, e
 	}
 	s.Cases = nil
 	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding ScSpecUdtErrorEnumCaseV0: length (%d) exceeds remaining input length (%d)", l, il)
+		}
 		s.Cases = make([]ScSpecUdtErrorEnumCaseV0, l)
-		for i := uint32(0); i < l; i++ {
+		for i := uint32(0); uint(i) < uint(l); i++ {
 			nTmp, err = s.Cases[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -49048,8 +49631,10 @@ func (s ScSpecUdtErrorEnumV0) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ScSpecUdtErrorEnumV0) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -49058,8 +49643,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ScSpecUdtErrorEnumV0)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ScSpecUdtErrorEnumV0) xdrType() {}
 
 var _ xdrType = (*ScSpecUdtErrorEnumV0)(nil)
@@ -49132,8 +49716,10 @@ func (s ScSpecFunctionInputV0) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ScSpecFunctionInputV0) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -49142,8 +49728,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ScSpecFunctionInputV0)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ScSpecFunctionInputV0) xdrType() {}
 
 var _ xdrType = (*ScSpecFunctionInputV0)(nil)
@@ -49223,8 +49808,11 @@ func (s *ScSpecFunctionV0) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error
 	}
 	s.Inputs = nil
 	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding ScSpecFunctionInputV0: length (%d) exceeds remaining input length (%d)", l, il)
+		}
 		s.Inputs = make([]ScSpecFunctionInputV0, l)
-		for i := uint32(0); i < l; i++ {
+		for i := uint32(0); uint(i) < uint(l); i++ {
 			nTmp, err = s.Inputs[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -49242,8 +49830,11 @@ func (s *ScSpecFunctionV0) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error
 	}
 	s.Outputs = nil
 	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding ScSpecTypeDef: length (%d) exceeds remaining input length (%d)", l, il)
+		}
 		s.Outputs = make([]ScSpecTypeDef, l)
-		for i := uint32(0); i < l; i++ {
+		for i := uint32(0); uint(i) < uint(l); i++ {
 			nTmp, err = s.Outputs[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -49265,8 +49856,10 @@ func (s ScSpecFunctionV0) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ScSpecFunctionV0) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -49275,8 +49868,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ScSpecFunctionV0)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ScSpecFunctionV0) xdrType() {}
 
 var _ xdrType = (*ScSpecFunctionV0)(nil)
@@ -49361,8 +49953,10 @@ func (s ScSpecEntryKind) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ScSpecEntryKind) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -49371,8 +49965,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ScSpecEntryKind)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ScSpecEntryKind) xdrType() {}
 
 var _ xdrType = (*ScSpecEntryKind)(nil)
@@ -49700,8 +50293,10 @@ func (s ScSpecEntry) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ScSpecEntry) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -49710,8 +50305,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ScSpecEntry)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ScSpecEntry) xdrType() {}
 
 var _ xdrType = (*ScSpecEntry)(nil)
@@ -49876,8 +50470,10 @@ func (s ScValType) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ScValType) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -49886,8 +50482,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ScValType)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ScValType) xdrType() {}
 
 var _ xdrType = (*ScValType)(nil)
@@ -49987,8 +50582,10 @@ func (s ScErrorType) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ScErrorType) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -49997,8 +50594,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ScErrorType)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ScErrorType) xdrType() {}
 
 var _ xdrType = (*ScErrorType)(nil)
@@ -50098,8 +50694,10 @@ func (s ScErrorCode) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ScErrorCode) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -50108,8 +50706,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ScErrorCode)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ScErrorCode) xdrType() {}
 
 var _ xdrType = (*ScErrorCode)(nil)
@@ -50471,8 +51068,10 @@ func (s ScError) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ScError) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -50481,8 +51080,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ScError)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ScError) xdrType() {}
 
 var _ xdrType = (*ScError)(nil)
@@ -50544,8 +51142,10 @@ func (s UInt128Parts) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *UInt128Parts) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -50554,8 +51154,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*UInt128Parts)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s UInt128Parts) xdrType() {}
 
 var _ xdrType = (*UInt128Parts)(nil)
@@ -50617,8 +51216,10 @@ func (s Int128Parts) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *Int128Parts) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -50627,8 +51228,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*Int128Parts)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s Int128Parts) xdrType() {}
 
 var _ xdrType = (*Int128Parts)(nil)
@@ -50710,8 +51310,10 @@ func (s UInt256Parts) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *UInt256Parts) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -50720,8 +51322,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*UInt256Parts)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s UInt256Parts) xdrType() {}
 
 var _ xdrType = (*UInt256Parts)(nil)
@@ -50803,8 +51404,10 @@ func (s Int256Parts) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *Int256Parts) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -50813,8 +51416,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*Int256Parts)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s Int256Parts) xdrType() {}
 
 var _ xdrType = (*Int256Parts)(nil)
@@ -50890,8 +51492,10 @@ func (s ContractExecutableType) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ContractExecutableType) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -50900,8 +51504,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ContractExecutableType)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ContractExecutableType) xdrType() {}
 
 var _ xdrType = (*ContractExecutableType)(nil)
@@ -51041,8 +51644,10 @@ func (s ContractExecutable) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ContractExecutable) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -51051,8 +51656,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ContractExecutable)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ContractExecutable) xdrType() {}
 
 var _ xdrType = (*ContractExecutable)(nil)
@@ -51128,8 +51732,10 @@ func (s ScAddressType) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ScAddressType) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -51138,8 +51744,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ScAddressType)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ScAddressType) xdrType() {}
 
 var _ xdrType = (*ScAddressType)(nil)
@@ -51317,8 +51922,10 @@ func (s ScAddress) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ScAddress) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -51327,8 +51934,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ScAddress)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ScAddress) xdrType() {}
 
 var _ xdrType = (*ScAddress)(nil)
@@ -51375,8 +51981,11 @@ func (s *ScVec) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
 	}
 	(*s) = nil
 	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding ScVal: length (%d) exceeds remaining input length (%d)", l, il)
+		}
 		(*s) = make([]ScVal, l)
-		for i := uint32(0); i < l; i++ {
+		for i := uint32(0); uint(i) < uint(l); i++ {
 			nTmp, err = (*s)[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -51398,8 +52007,10 @@ func (s ScVec) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ScVec) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -51408,8 +52019,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ScVec)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ScVec) xdrType() {}
 
 var _ xdrType = (*ScVec)(nil)
@@ -51451,8 +52061,11 @@ func (s *ScMap) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
 	}
 	(*s) = nil
 	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding ScMapEntry: length (%d) exceeds remaining input length (%d)", l, il)
+		}
 		(*s) = make([]ScMapEntry, l)
-		for i := uint32(0); i < l; i++ {
+		for i := uint32(0); uint(i) < uint(l); i++ {
 			nTmp, err = (*s)[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -51474,8 +52087,10 @@ func (s ScMap) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ScMap) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -51484,8 +52099,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ScMap)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ScMap) xdrType() {}
 
 var _ xdrType = (*ScMap)(nil)
@@ -51533,8 +52147,10 @@ func (s ScBytes) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ScBytes) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -51543,8 +52159,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ScBytes)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ScBytes) xdrType() {}
 
 var _ xdrType = (*ScBytes)(nil)
@@ -51594,8 +52209,10 @@ func (s ScString) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ScString) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -51604,8 +52221,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ScString)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ScString) xdrType() {}
 
 var _ xdrType = (*ScString)(nil)
@@ -51660,8 +52276,10 @@ func (s ScSymbol) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ScSymbol) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -51670,8 +52288,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ScSymbol)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ScSymbol) xdrType() {}
 
 var _ xdrType = (*ScSymbol)(nil)
@@ -51723,8 +52340,10 @@ func (s ScNonceKey) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ScNonceKey) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -51733,8 +52352,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ScNonceKey)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ScNonceKey) xdrType() {}
 
 var _ xdrType = (*ScNonceKey)(nil)
@@ -51811,8 +52429,10 @@ func (s ScContractInstance) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ScContractInstance) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -51821,8 +52441,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ScContractInstance)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ScContractInstance) xdrType() {}
 
 var _ xdrType = (*ScContractInstance)(nil)
@@ -52968,8 +53587,10 @@ func (s ScVal) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ScVal) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -52978,8 +53599,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ScVal)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ScVal) xdrType() {}
 
 var _ xdrType = (*ScVal)(nil)
@@ -53042,8 +53662,10 @@ func (s ScMapEntry) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ScMapEntry) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -53052,8 +53674,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ScMapEntry)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ScMapEntry) xdrType() {}
 
 var _ xdrType = (*ScMapEntry)(nil)
@@ -53231,8 +53852,10 @@ func (s StoredTransactionSet) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *StoredTransactionSet) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -53241,8 +53864,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*StoredTransactionSet)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s StoredTransactionSet) xdrType() {}
 
 var _ xdrType = (*StoredTransactionSet)(nil)
@@ -53315,8 +53937,10 @@ func (s StoredDebugTransactionSet) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *StoredDebugTransactionSet) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -53325,8 +53949,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*StoredDebugTransactionSet)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s StoredDebugTransactionSet) xdrType() {}
 
 var _ xdrType = (*StoredDebugTransactionSet)(nil)
@@ -53393,8 +54016,11 @@ func (s *PersistedScpStateV0) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, er
 	}
 	s.ScpEnvelopes = nil
 	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding ScpEnvelope: length (%d) exceeds remaining input length (%d)", l, il)
+		}
 		s.ScpEnvelopes = make([]ScpEnvelope, l)
-		for i := uint32(0); i < l; i++ {
+		for i := uint32(0); uint(i) < uint(l); i++ {
 			nTmp, err = s.ScpEnvelopes[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -53409,8 +54035,11 @@ func (s *PersistedScpStateV0) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, er
 	}
 	s.QuorumSets = nil
 	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding ScpQuorumSet: length (%d) exceeds remaining input length (%d)", l, il)
+		}
 		s.QuorumSets = make([]ScpQuorumSet, l)
-		for i := uint32(0); i < l; i++ {
+		for i := uint32(0); uint(i) < uint(l); i++ {
 			nTmp, err = s.QuorumSets[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -53425,8 +54054,11 @@ func (s *PersistedScpStateV0) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, er
 	}
 	s.TxSets = nil
 	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding StoredTransactionSet: length (%d) exceeds remaining input length (%d)", l, il)
+		}
 		s.TxSets = make([]StoredTransactionSet, l)
-		for i := uint32(0); i < l; i++ {
+		for i := uint32(0); uint(i) < uint(l); i++ {
 			nTmp, err = s.TxSets[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -53448,8 +54080,10 @@ func (s PersistedScpStateV0) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *PersistedScpStateV0) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -53458,8 +54092,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*PersistedScpStateV0)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s PersistedScpStateV0) xdrType() {}
 
 var _ xdrType = (*PersistedScpStateV0)(nil)
@@ -53517,8 +54150,11 @@ func (s *PersistedScpStateV1) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, er
 	}
 	s.ScpEnvelopes = nil
 	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding ScpEnvelope: length (%d) exceeds remaining input length (%d)", l, il)
+		}
 		s.ScpEnvelopes = make([]ScpEnvelope, l)
-		for i := uint32(0); i < l; i++ {
+		for i := uint32(0); uint(i) < uint(l); i++ {
 			nTmp, err = s.ScpEnvelopes[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -53533,8 +54169,11 @@ func (s *PersistedScpStateV1) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, er
 	}
 	s.QuorumSets = nil
 	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding ScpQuorumSet: length (%d) exceeds remaining input length (%d)", l, il)
+		}
 		s.QuorumSets = make([]ScpQuorumSet, l)
-		for i := uint32(0); i < l; i++ {
+		for i := uint32(0); uint(i) < uint(l); i++ {
 			nTmp, err = s.QuorumSets[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -53556,8 +54195,10 @@ func (s PersistedScpStateV1) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *PersistedScpStateV1) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -53566,8 +54207,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*PersistedScpStateV1)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s PersistedScpStateV1) xdrType() {}
 
 var _ xdrType = (*PersistedScpStateV1)(nil)
@@ -53745,8 +54385,10 @@ func (s PersistedScpState) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *PersistedScpState) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -53755,8 +54397,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*PersistedScpState)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s PersistedScpState) xdrType() {}
 
 var _ xdrType = (*PersistedScpState)(nil)
@@ -53810,8 +54451,10 @@ func (s ConfigSettingContractExecutionLanesV0) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ConfigSettingContractExecutionLanesV0) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -53820,8 +54463,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ConfigSettingContractExecutionLanesV0)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ConfigSettingContractExecutionLanesV0) xdrType() {}
 
 var _ xdrType = (*ConfigSettingContractExecutionLanesV0)(nil)
@@ -53910,8 +54552,10 @@ func (s ConfigSettingContractComputeV0) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ConfigSettingContractComputeV0) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -53920,8 +54564,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ConfigSettingContractComputeV0)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ConfigSettingContractComputeV0) xdrType() {}
 
 var _ xdrType = (*ConfigSettingContractComputeV0)(nil)
@@ -54131,8 +54774,10 @@ func (s ConfigSettingContractLedgerCostV0) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ConfigSettingContractLedgerCostV0) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -54141,8 +54786,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ConfigSettingContractLedgerCostV0)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ConfigSettingContractLedgerCostV0) xdrType() {}
 
 var _ xdrType = (*ConfigSettingContractLedgerCostV0)(nil)
@@ -54195,8 +54839,10 @@ func (s ConfigSettingContractHistoricalDataV0) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ConfigSettingContractHistoricalDataV0) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -54205,8 +54851,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ConfigSettingContractHistoricalDataV0)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ConfigSettingContractHistoricalDataV0) xdrType() {}
 
 var _ xdrType = (*ConfigSettingContractHistoricalDataV0)(nil)
@@ -54271,8 +54916,10 @@ func (s ConfigSettingContractEventsV0) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ConfigSettingContractEventsV0) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -54281,8 +54928,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ConfigSettingContractEventsV0)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ConfigSettingContractEventsV0) xdrType() {}
 
 var _ xdrType = (*ConfigSettingContractEventsV0)(nil)
@@ -54359,8 +55005,10 @@ func (s ConfigSettingContractBandwidthV0) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ConfigSettingContractBandwidthV0) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -54369,8 +55017,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ConfigSettingContractBandwidthV0)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ConfigSettingContractBandwidthV0) xdrType() {}
 
 var _ xdrType = (*ConfigSettingContractBandwidthV0)(nil)
@@ -54535,8 +55182,10 @@ func (s ContractCostType) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ContractCostType) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -54545,8 +55194,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ContractCostType)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ContractCostType) xdrType() {}
 
 var _ xdrType = (*ContractCostType)(nil)
@@ -54620,8 +55268,10 @@ func (s ContractCostParamEntry) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ContractCostParamEntry) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -54630,8 +55280,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ContractCostParamEntry)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ContractCostParamEntry) xdrType() {}
 
 var _ xdrType = (*ContractCostParamEntry)(nil)
@@ -54773,8 +55422,10 @@ func (s StateArchivalSettings) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *StateArchivalSettings) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -54783,8 +55434,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*StateArchivalSettings)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s StateArchivalSettings) xdrType() {}
 
 var _ xdrType = (*StateArchivalSettings)(nil)
@@ -54856,8 +55506,10 @@ func (s EvictionIterator) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *EvictionIterator) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -54866,8 +55518,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*EvictionIterator)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s EvictionIterator) xdrType() {}
 
 var _ xdrType = (*EvictionIterator)(nil)
@@ -54922,8 +55573,11 @@ func (s *ContractCostParams) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, err
 	}
 	(*s) = nil
 	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding ContractCostParamEntry: length (%d) exceeds remaining input length (%d)", l, il)
+		}
 		(*s) = make([]ContractCostParamEntry, l)
-		for i := uint32(0); i < l; i++ {
+		for i := uint32(0); uint(i) < uint(l); i++ {
 			nTmp, err = (*s)[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -54945,8 +55599,10 @@ func (s ContractCostParams) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ContractCostParams) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -54955,8 +55611,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ContractCostParams)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ContractCostParams) xdrType() {}
 
 var _ xdrType = (*ContractCostParams)(nil)
@@ -55068,8 +55723,10 @@ func (s ConfigSettingId) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ConfigSettingId) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -55078,8 +55735,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ConfigSettingId)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ConfigSettingId) xdrType() {}
 
 var _ xdrType = (*ConfigSettingId)(nil)
@@ -55841,8 +56497,11 @@ func (u *ConfigSettingEntry) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, err
 		}
 		(*u.BucketListSizeWindow) = nil
 		if l > 0 {
+			if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+				return n, fmt.Errorf("decoding Uint64: length (%d) exceeds remaining input length (%d)", l, il)
+			}
 			(*u.BucketListSizeWindow) = make([]Uint64, l)
-			for i := uint32(0); i < l; i++ {
+			for i := uint32(0); uint(i) < uint(l); i++ {
 				nTmp, err = (*u.BucketListSizeWindow)[i].DecodeFrom(d, maxDepth)
 				n += nTmp
 				if err != nil {
@@ -55874,8 +56533,10 @@ func (s ConfigSettingEntry) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
 func (s *ConfigSettingEntry) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d, xdr.DecodeDefaultMaxDepth)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
 	return err
 }
 
@@ -55884,8 +56545,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ConfigSettingEntry)(nil)
 )
 
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
+// xdrType signals that this type represents XDR values defined by this package.
 func (s ConfigSettingEntry) xdrType() {}
 
 var _ xdrType = (*ConfigSettingEntry)(nil)

@@ -6,7 +6,6 @@ import (
 	"mime"
 	"net/http"
 
-	"github.com/stellar/go/gxdr"
 	"github.com/stellar/go/network"
 	"github.com/stellar/go/protocols/horizon"
 	hProblem "github.com/stellar/go/services/horizon/internal/render/problem"
@@ -36,11 +35,8 @@ type envelopeInfo struct {
 	parsed    xdr.TransactionEnvelope
 }
 
-func extractEnvelopeInfo(raw string, passphrase string) (envelopeInfo, error) {
+func (handler SubmitTransactionHandler) extractEnvelopeInfo(raw string, passphrase string) (envelopeInfo, error) {
 	result := envelopeInfo{raw: raw}
-	if err := gxdr.ValidateTransactionEnvelope(raw, gxdr.DefaultMaxDepth); err != nil {
-		return result, err
-	}
 	err := xdr.SafeUnmarshalBase64(raw, &result.parsed)
 	if err != nil {
 		return result, err
@@ -149,7 +145,7 @@ func (handler SubmitTransactionHandler) GetResource(w HeaderWriter, r *http.Requ
 		return nil, err
 	}
 
-	info, err := extractEnvelopeInfo(raw, handler.NetworkPassphrase)
+	info, err := handler.extractEnvelopeInfo(raw, handler.NetworkPassphrase)
 	if err != nil {
 		return nil, &problem.P{
 			Type:   "transaction_malformed",
