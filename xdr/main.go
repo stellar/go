@@ -36,11 +36,11 @@ var OperationTypeToStringMap = operationTypeMap
 
 var LedgerEntryTypeMap = ledgerEntryTypeMap
 
-func safeUnmarshalString(decoder func(reader io.Reader) io.Reader, data string, dest interface{}) error {
+func safeUnmarshalString(decoder func(reader io.Reader) io.Reader, options xdr.DecodeOptions, data string, dest interface{}) error {
 	count := &countWriter{}
 	l := len(data)
 
-	_, err := Unmarshal(decoder(io.TeeReader(strings.NewReader(data), count)), dest)
+	_, err := UnmarshalWithOptions(decoder(io.TeeReader(strings.NewReader(data), count)), dest, options)
 	if err != nil {
 		return err
 	}
@@ -52,14 +52,23 @@ func safeUnmarshalString(decoder func(reader io.Reader) io.Reader, data string, 
 	return nil
 }
 
+func decodeOptionsWithMaxInputLen(maxInputLen int) xdr.DecodeOptions {
+	options := xdr.DefaultDecodeOptions
+	options.MaxInputLen = maxInputLen
+	return options
+}
+
 // SafeUnmarshalBase64 first decodes the provided reader from base64 before
 // decoding the xdr into the provided destination. Also ensures that the reader
 // is fully consumed.
 func SafeUnmarshalBase64(data string, dest interface{}) error {
+	decodedLen := base64.StdEncoding.DecodedLen(len(data))
+	options := decodeOptionsWithMaxInputLen(decodedLen)
 	return safeUnmarshalString(
 		func(r io.Reader) io.Reader {
 			return base64.NewDecoder(base64.StdEncoding, r)
 		},
+		options,
 		data,
 		dest,
 	)
@@ -69,7 +78,9 @@ func SafeUnmarshalBase64(data string, dest interface{}) error {
 // decoding the xdr into the provided destination. Also ensures that the reader
 // is fully consumed.
 func SafeUnmarshalHex(data string, dest interface{}) error {
-	return safeUnmarshalString(hex.NewDecoder, data, dest)
+	decodedLen := hex.DecodedLen(len(data))
+	options := decodeOptionsWithMaxInputLen(decodedLen)
+	return safeUnmarshalString(hex.NewDecoder, options, data, dest)
 }
 
 // SafeUnmarshal decodes the provided reader into the destination and verifies
