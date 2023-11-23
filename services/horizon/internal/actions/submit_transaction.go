@@ -22,10 +22,9 @@ type NetworkSubmitter interface {
 }
 
 type SubmitTransactionHandler struct {
-	Submitter          NetworkSubmitter
-	NetworkPassphrase  string
-	DisableTxSub       bool
-	MaxHTTPRequestSize uint
+	Submitter         NetworkSubmitter
+	NetworkPassphrase string
+	DisableTxSub      bool
 	CoreStateGetter
 }
 
