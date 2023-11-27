@@ -25,6 +25,11 @@ import (
 
 const sac_contract = "soroban_sac_test.wasm"
 
+// LongTermTTL is used to extend the lifetime of ledger entries by 10000 ledgers.
+// This will ensure that the ledger entries never expire during the execution
+// of the integration tests.
+const LongTermTTL = 10000
+
 // Tests use precompiled wasm bin files that are added to the testdata directory.
 // Refer to ./services/horizon/internal/integration/contracts/README.md on how to recompile
 // contract code if needed to new wasm.
@@ -129,7 +134,7 @@ func createSAC(itest *integration.Test, asset xdr.Asset) {
 	sourceAccount, extendTTLOp, minFee := itest.PreflightExtendExpiration(
 		itest.Master().Address(),
 		preFlightOp.Ext.SorobanData.Resources.Footprint.ReadWrite,
-		10000,
+		LongTermTTL,
 	)
 	itest.MustSubmitOperationsWithFee(&sourceAccount, itest.Master(), minFee+txnbuild.MinBaseFee, &extendTTLOp)
 }
@@ -273,7 +278,7 @@ func TestExpirationAndRestoration(t *testing.T) {
 	_, _, setOp := assertInvokeHostFnSucceeds(
 		itest,
 		itest.Master(),
-		invokeSet(
+		invokeStoreSet(
 			itest,
 			storeContractID,
 			processors.BalanceToContractData(
@@ -286,7 +291,7 @@ func TestExpirationAndRestoration(t *testing.T) {
 	sourceAccount, extendTTLOp, minFee := itest.PreflightExtendExpiration(
 		itest.Master().Address(),
 		setOp.Ext.SorobanData.Resources.Footprint.ReadWrite,
-		10000,
+		LongTermTTL,
 	)
 	itest.MustSubmitOperationsWithFee(&sourceAccount, itest.Master(), minFee+txnbuild.MinBaseFee, &extendTTLOp)
 	assertAssetStats(itest, assetStats{
@@ -310,7 +315,7 @@ func TestExpirationAndRestoration(t *testing.T) {
 	assertInvokeHostFnSucceeds(
 		itest,
 		itest.Master(),
-		invokeSet(
+		invokeStoreSet(
 			itest,
 			storeContractID,
 			balanceToExpire,
@@ -336,6 +341,10 @@ func TestExpirationAndRestoration(t *testing.T) {
 			Durability: balanceToExpire.ContractData.Durability,
 		},
 	}
+	// The TESTING_MINIMUM_PERSISTENT_ENTRY_LIFETIME=10 configuration in stellar-core
+	// will ensure that the ledger entry expires after 10 ledgers.
+	// Because ARTIFICIALLY_ACCELERATE_TIME_FOR_TESTING is set to true, 10 ledgers
+	// should elapse in 10 seconds
 	itest.WaitUntilLedgerEntryTTL(balanceToExpireLedgerKey)
 	assertAssetStats(itest, assetStats{
 		code:                     code,
@@ -353,7 +362,7 @@ func TestExpirationAndRestoration(t *testing.T) {
 	assertInvokeHostFnSucceeds(
 		itest,
 		itest.Master(),
-		invokeSet(
+		invokeStoreSet(
 			itest,
 			storeContractID,
 			processors.BalanceToContractData(
@@ -400,7 +409,7 @@ func TestExpirationAndRestoration(t *testing.T) {
 	assertInvokeHostFnSucceeds(
 		itest,
 		itest.Master(),
-		invokeSet(
+		invokeStoreSet(
 			itest,
 			storeContractID,
 			processors.BalanceToContractData(
@@ -426,7 +435,7 @@ func TestExpirationAndRestoration(t *testing.T) {
 	assertInvokeHostFnSucceeds(
 		itest,
 		itest.Master(),
-		invokeRemove(
+		invokeStoreRemove(
 			itest,
 			storeContractID,
 			processors.ContractBalanceLedgerKey(
@@ -448,7 +457,7 @@ func TestExpirationAndRestoration(t *testing.T) {
 	})
 }
 
-func invokeSet(
+func invokeStoreSet(
 	itest *integration.Test,
 	storeContractID xdr.Hash,
 	ledgerEntryData xdr.LedgerEntryData,
@@ -471,7 +480,7 @@ func invokeSet(
 	}
 }
 
-func invokeRemove(
+func invokeStoreRemove(
 	itest *integration.Test,
 	storeContractID xdr.Hash,
 	ledgerKey xdr.LedgerKey,
@@ -1443,7 +1452,7 @@ func mustCreateAndInstallContract(itest *integration.Test, signer *keypair.Full,
 	sourceAccount, extendTTLOp, minFee := itest.PreflightExtendExpiration(
 		itest.Master().Address(),
 		keys,
-		10000,
+		LongTermTTL,
 	)
 	itest.MustSubmitOperationsWithFee(&sourceAccount, itest.Master(), minFee+txnbuild.MinBaseFee, &extendTTLOp)
 

@@ -725,17 +725,20 @@ func (i *Test) WaitUntilLedgerEntryTTL(ledgerKey xdr.LedgerKey) {
 		}
 		err := client.CallResult(context.Background(), "getLedgerEntries", request, &result)
 		assert.NoError(i.t, err)
-		assert.NotEmpty(i.t, result.Entries)
-		liveUntilLedgerSeq := *result.Entries[0].LiveUntilLedgerSeq
+		if len(result.Entries) > 0 {
+			liveUntilLedgerSeq := *result.Entries[0].LiveUntilLedgerSeq
 
-		root, err := i.horizonClient.Root()
-		assert.NoError(i.t, err)
-		if uint32(root.HorizonSequence) > liveUntilLedgerSeq {
-			ttled = true
-			i.t.Logf("ledger entry ttl'ed")
-			break
+			root, err := i.horizonClient.Root()
+			assert.NoError(i.t, err)
+			if uint32(root.HorizonSequence) > liveUntilLedgerSeq {
+				ttled = true
+				i.t.Logf("ledger entry ttl'ed")
+				break
+			}
+			i.t.Log("waiting for ledger entry to ttl at ledger", liveUntilLedgerSeq)
+		} else {
+			i.t.Log("waiting for soroban-rpc to ingest the ledger entries")
 		}
-		i.t.Log("waiting for ledger entry to ttl at ledger", liveUntilLedgerSeq)
 		time.Sleep(time.Second)
 	}
 	assert.True(i.t, ttled)
