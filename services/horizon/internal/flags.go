@@ -549,7 +549,7 @@ func Flags() (*Config, support.ConfigOptions) {
 			ConfigKey:   &config.IngestDisableStateVerification,
 			OptType:     types.Bool,
 			FlagDefault: false,
-			Usage:       "ingestion system runs a verification routing to compare state in local database with history buckets, this can be disabled however it's not recommended",
+			Usage:       "disable periodic verification of ledger state in horizon db (not recommended)",
 		},
 		&support.ConfigOption{
 			Name:        "ingest-state-verification-checkpoint-frequency",

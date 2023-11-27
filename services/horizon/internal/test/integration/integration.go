@@ -21,9 +21,6 @@ import (
 	"github.com/creachadair/jrpc2/jhttp"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-
-	"github.com/stellar/go/support/config"
 
 	sdk "github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/clients/stellarcore"
@@ -32,6 +29,7 @@ import (
 	proto "github.com/stellar/go/protocols/horizon"
 	horizon "github.com/stellar/go/services/horizon/internal"
 	"github.com/stellar/go/services/horizon/internal/ingest"
+	"github.com/stellar/go/support/config"
 	"github.com/stellar/go/support/db/dbtest"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/txnbuild"
@@ -664,7 +662,7 @@ func (i *Test) simulateTransaction(
 ) (RPCSimulateTxResponse, xdr.SorobanTransactionData) {
 	// Before preflighting, make sure soroban-rpc is in sync with Horizon
 	root, err := i.horizonClient.Root()
-	require.NoError(i.t, err)
+	assert.NoError(i.t, err)
 	i.syncWithSorobanRPC(uint32(root.HorizonSequence))
 
 	// TODO: soroban-tools should be exporting a proper Go client
@@ -689,6 +687,7 @@ func (i *Test) simulateTransaction(
 	fmt.Printf("Transaction Data:\n\n%# +v\n\n", pretty.Formatter(transactionData))
 	return result, transactionData
 }
+
 func (i *Test) syncWithSorobanRPC(ledgerToWaitFor uint32) {
 	for j := 0; j < 20; j++ {
 		result := struct {
@@ -706,16 +705,109 @@ func (i *Test) syncWithSorobanRPC(ledgerToWaitFor uint32) {
 	i.t.Fatal("Time out waiting for soroban-rpc to sync")
 }
 
-func (i *Test) PreflightBumpFootprintExpiration(
-	sourceAccount txnbuild.Account, bumpFootprint txnbuild.ExtendFootprintTtl,
-) (txnbuild.ExtendFootprintTtl, int64) {
-	result, transactionData := i.simulateTransaction(sourceAccount, &bumpFootprint)
+func (i *Test) WaitUntilLedgerEntryTTL(ledgerKey xdr.LedgerKey) {
+	ch := jhttp.NewChannel("http://localhost:"+strconv.Itoa(sorobanRPCPort), nil)
+	client := jrpc2.NewClient(ch, nil)
+
+	keyB64, err := xdr.MarshalBase64(ledgerKey)
+	assert.NoError(i.t, err)
+	request := struct {
+		Keys []string `json:"keys"`
+	}{
+		Keys: []string{keyB64},
+	}
+	ttled := false
+	for attempt := 0; attempt < 50; attempt++ {
+		var result struct {
+			Entries []struct {
+				LiveUntilLedgerSeq *uint32 `json:"liveUntilLedgerSeqLedgerSeq,string,omitempty"`
+			} `json:"entries"`
+		}
+		err := client.CallResult(context.Background(), "getLedgerEntries", request, &result)
+		assert.NoError(i.t, err)
+		if len(result.Entries) > 0 {
+			liveUntilLedgerSeq := *result.Entries[0].LiveUntilLedgerSeq
+
+			root, err := i.horizonClient.Root()
+			assert.NoError(i.t, err)
+			if uint32(root.HorizonSequence) > liveUntilLedgerSeq {
+				ttled = true
+				i.t.Logf("ledger entry ttl'ed")
+				break
+			}
+			i.t.Log("waiting for ledger entry to ttl at ledger", liveUntilLedgerSeq)
+		} else {
+			i.t.Log("waiting for soroban-rpc to ingest the ledger entries")
+		}
+		time.Sleep(time.Second)
+	}
+	assert.True(i.t, ttled)
+}
+
+func (i *Test) PreflightExtendExpiration(
+	account string, ledgerKeys []xdr.LedgerKey, extendAmt uint32,
+) (proto.Account, txnbuild.ExtendFootprintTtl, int64) {
+	sourceAccount, err := i.Client().AccountDetail(sdk.AccountRequest{
+		AccountID: account,
+	})
+	assert.NoError(i.t, err)
+
+	bumpFootprint := txnbuild.ExtendFootprintTtl{
+		ExtendTo:      extendAmt,
+		SourceAccount: "",
+		Ext: xdr.TransactionExt{
+			V: 1,
+			SorobanData: &xdr.SorobanTransactionData{
+				Ext: xdr.ExtensionPoint{},
+				Resources: xdr.SorobanResources{
+					Footprint: xdr.LedgerFootprint{
+						ReadOnly:  ledgerKeys,
+						ReadWrite: nil,
+					},
+				},
+				ResourceFee: 0,
+			},
+		},
+	}
+	result, transactionData := i.simulateTransaction(&sourceAccount, &bumpFootprint)
 	bumpFootprint.Ext = xdr.TransactionExt{
 		V:           1,
 		SorobanData: &transactionData,
 	}
 
-	return bumpFootprint, result.MinResourceFee
+	return sourceAccount, bumpFootprint, result.MinResourceFee
+}
+
+func (i *Test) RestoreFootprint(
+	account string, ledgerKey xdr.LedgerKey,
+) (proto.Account, txnbuild.RestoreFootprint, int64) {
+	sourceAccount, err := i.Client().AccountDetail(sdk.AccountRequest{
+		AccountID: account,
+	})
+	assert.NoError(i.t, err)
+
+	restoreFootprint := txnbuild.RestoreFootprint{
+		SourceAccount: "",
+		Ext: xdr.TransactionExt{
+			V: 1,
+			SorobanData: &xdr.SorobanTransactionData{
+				Ext: xdr.ExtensionPoint{},
+				Resources: xdr.SorobanResources{
+					Footprint: xdr.LedgerFootprint{
+						ReadWrite: []xdr.LedgerKey{ledgerKey},
+					},
+				},
+				ResourceFee: 0,
+			},
+		},
+	}
+	result, transactionData := i.simulateTransaction(&sourceAccount, &restoreFootprint)
+	restoreFootprint.Ext = xdr.TransactionExt{
+		V:           1,
+		SorobanData: &transactionData,
+	}
+
+	return sourceAccount, restoreFootprint, result.MinResourceFee
 }
 
 // UpgradeProtocol arms Core with upgrade and blocks until protocol is upgraded.
