@@ -738,7 +738,7 @@ func NewAppFromFlags(config *Config, flags support.ConfigOptions) (*App, error) 
 		return nil, err
 	}
 	// Validate app-specific arguments
-	if config.StellarCoreURL == "" {
+	if (!config.DisableTxSub || config.Ingest) && config.StellarCoreURL == "" {
 		return nil, fmt.Errorf("flag --%s cannot be empty", StellarCoreURLFlagName)
 	}
 
