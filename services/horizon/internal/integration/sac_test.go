@@ -1,6 +1,7 @@
 package integration
 
 import (
+	"context"
 	"math"
 	"math/big"
 	"strings"
@@ -14,6 +15,8 @@ import (
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/protocols/horizon/effects"
 	"github.com/stellar/go/protocols/horizon/operations"
+	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/services/horizon/internal/ingest/processors"
 	"github.com/stellar/go/services/horizon/internal/test/integration"
 	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/txnbuild"
@@ -21,6 +24,11 @@ import (
 )
 
 const sac_contract = "soroban_sac_test.wasm"
+
+// LongTermTTL is used to extend the lifetime of ledger entries by 10000 ledgers.
+// This will ensure that the ledger entries never expire during the execution
+// of the integration tests.
+const LongTermTTL = 10000
 
 // Tests use precompiled wasm bin files that are added to the testdata directory.
 // Refer to ./services/horizon/internal/integration/contracts/README.md on how to recompile
@@ -41,7 +49,7 @@ func TestContractMintToAccount(t *testing.T) {
 	code := "USD"
 	asset := xdr.MustNewCreditAsset(code, issuer)
 
-	assertInvokeHostFnSucceeds(itest, itest.Master(), createSAC(issuer, asset))
+	createSAC(itest, asset)
 
 	recipientKp, recipient := itest.CreateAccount("100")
 	itest.MustEstablishTrustline(recipientKp, recipient, txnbuild.MustAssetFromXDR(asset))
@@ -105,6 +113,32 @@ func TestContractMintToAccount(t *testing.T) {
 	})
 }
 
+func createSAC(itest *integration.Test, asset xdr.Asset) {
+	invokeHostFunction := &txnbuild.InvokeHostFunction{
+		HostFunction: xdr.HostFunction{
+			Type: xdr.HostFunctionTypeHostFunctionTypeCreateContract,
+			CreateContract: &xdr.CreateContractArgs{
+				ContractIdPreimage: xdr.ContractIdPreimage{
+					Type:      xdr.ContractIdPreimageTypeContractIdPreimageFromAsset,
+					FromAsset: &asset,
+				},
+				Executable: xdr.ContractExecutable{
+					Type:     xdr.ContractExecutableTypeContractExecutableStellarAsset,
+					WasmHash: nil,
+				},
+			},
+		},
+		SourceAccount: itest.Master().Address(),
+	}
+	_, _, preFlightOp := assertInvokeHostFnSucceeds(itest, itest.Master(), invokeHostFunction)
+	sourceAccount, extendTTLOp, minFee := itest.PreflightExtendExpiration(
+		itest.Master().Address(),
+		preFlightOp.Ext.SorobanData.Resources.Footprint.ReadWrite,
+		LongTermTTL,
+	)
+	itest.MustSubmitOperationsWithFee(&sourceAccount, itest.Master(), minFee+txnbuild.MinBaseFee, &extendTTLOp)
+}
+
 func TestContractMintToContract(t *testing.T) {
 	if integration.GetCoreMaxSupportedProtocol() < 20 {
 		t.Skip("This test run does not support less than Protocol 20")
@@ -119,7 +153,7 @@ func TestContractMintToContract(t *testing.T) {
 	code := "USD"
 	asset := xdr.MustNewCreditAsset(code, issuer)
 
-	assertInvokeHostFnSucceeds(itest, itest.Master(), createSAC(issuer, asset))
+	createSAC(itest, asset)
 
 	// Create recipient contract
 	recipientContractID, _ := mustCreateAndInstallContract(itest, itest.Master(), "a1", add_u64_contract)
@@ -185,6 +219,287 @@ func TestContractMintToContract(t *testing.T) {
 	})
 }
 
+func TestExpirationAndRestoration(t *testing.T) {
+	if integration.GetCoreMaxSupportedProtocol() < 20 {
+		t.Skip("This test run does not support less than Protocol 20")
+	}
+
+	itest := integration.NewTest(t, integration.Config{
+		ProtocolVersion:  20,
+		EnableSorobanRPC: true,
+		HorizonIngestParameters: map[string]string{
+			// disable state verification because we will insert
+			// a fake asset contract in the horizon db and we don't
+			// want state verification to detect this
+			"ingest-disable-state-verification": "true",
+		},
+	})
+
+	issuer := itest.Master().Address()
+	code := "USD"
+
+	// Create contract to store synthetic asset balances
+	storeContractID, _ := mustCreateAndInstallContract(
+		itest,
+		itest.Master(),
+		"a1",
+		"soroban_store.wasm",
+	)
+	syntheticAssetStat := history.ExpAssetStat{
+		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
+		AssetCode:   code,
+		AssetIssuer: issuer,
+		Accounts: history.ExpAssetStatAccounts{
+			Authorized:                      0,
+			AuthorizedToMaintainLiabilities: 0,
+			ClaimableBalances:               0,
+			LiquidityPools:                  0,
+			Unauthorized:                    0,
+		},
+		Balances: history.ExpAssetStatBalances{
+			Authorized:                      "0",
+			AuthorizedToMaintainLiabilities: "0",
+			ClaimableBalances:               "0",
+			LiquidityPools:                  "0",
+			Unauthorized:                    "0",
+		},
+		Amount:      "0",
+		NumAccounts: 0,
+		ContractID:  nil,
+	}
+	syntheticAssetStat.SetContractID(storeContractID)
+	_, err := itest.HorizonIngest().HistoryQ().InsertAssetStat(
+		context.Background(),
+		syntheticAssetStat,
+	)
+	assert.NoError(t, err)
+
+	// create active balance
+	_, _, setOp := assertInvokeHostFnSucceeds(
+		itest,
+		itest.Master(),
+		invokeStoreSet(
+			itest,
+			storeContractID,
+			processors.BalanceToContractData(
+				storeContractID,
+				[32]byte{1},
+				23,
+			),
+		),
+	)
+	sourceAccount, extendTTLOp, minFee := itest.PreflightExtendExpiration(
+		itest.Master().Address(),
+		setOp.Ext.SorobanData.Resources.Footprint.ReadWrite,
+		LongTermTTL,
+	)
+	itest.MustSubmitOperationsWithFee(&sourceAccount, itest.Master(), minFee+txnbuild.MinBaseFee, &extendTTLOp)
+	assertAssetStats(itest, assetStats{
+		code:                     code,
+		issuer:                   issuer,
+		numAccounts:              0,
+		balanceAccounts:          0,
+		balanceArchivedContracts: big.NewInt(0),
+		numArchivedContracts:     0,
+		numContracts:             1,
+		balanceContracts:         big.NewInt(23),
+		contractID:               storeContractID,
+	})
+
+	// create balance which we will expire
+	balanceToExpire := processors.BalanceToContractData(
+		storeContractID,
+		[32]byte{2},
+		37,
+	)
+	assertInvokeHostFnSucceeds(
+		itest,
+		itest.Master(),
+		invokeStoreSet(
+			itest,
+			storeContractID,
+			balanceToExpire,
+		),
+	)
+	assertAssetStats(itest, assetStats{
+		code:                     code,
+		issuer:                   issuer,
+		numAccounts:              0,
+		balanceAccounts:          0,
+		balanceArchivedContracts: big.NewInt(0),
+		numArchivedContracts:     0,
+		numContracts:             2,
+		balanceContracts:         big.NewInt(60),
+		contractID:               storeContractID,
+	})
+
+	balanceToExpireLedgerKey := xdr.LedgerKey{
+		Type: xdr.LedgerEntryTypeContractData,
+		ContractData: &xdr.LedgerKeyContractData{
+			Contract:   balanceToExpire.ContractData.Contract,
+			Key:        balanceToExpire.ContractData.Key,
+			Durability: balanceToExpire.ContractData.Durability,
+		},
+	}
+	// The TESTING_MINIMUM_PERSISTENT_ENTRY_LIFETIME=10 configuration in stellar-core
+	// will ensure that the ledger entry expires after 10 ledgers.
+	// Because ARTIFICIALLY_ACCELERATE_TIME_FOR_TESTING is set to true, 10 ledgers
+	// should elapse in 10 seconds
+	itest.WaitUntilLedgerEntryTTL(balanceToExpireLedgerKey)
+	assertAssetStats(itest, assetStats{
+		code:                     code,
+		issuer:                   issuer,
+		numAccounts:              0,
+		balanceAccounts:          0,
+		balanceArchivedContracts: big.NewInt(37),
+		numArchivedContracts:     1,
+		numContracts:             1,
+		balanceContracts:         big.NewInt(23),
+		contractID:               storeContractID,
+	})
+
+	// increase active balance from 23 to 50
+	assertInvokeHostFnSucceeds(
+		itest,
+		itest.Master(),
+		invokeStoreSet(
+			itest,
+			storeContractID,
+			processors.BalanceToContractData(
+				storeContractID,
+				[32]byte{1},
+				50,
+			),
+		),
+	)
+	assertAssetStats(itest, assetStats{
+		code:                     code,
+		issuer:                   issuer,
+		numAccounts:              0,
+		balanceAccounts:          0,
+		balanceArchivedContracts: big.NewInt(37),
+		numArchivedContracts:     1,
+		numContracts:             1,
+		balanceContracts:         big.NewInt(50),
+		contractID:               storeContractID,
+	})
+
+	// restore expired balance
+	sourceAccount, restoreFootprint, minFee := itest.RestoreFootprint(
+		itest.Master().Address(),
+		balanceToExpireLedgerKey,
+	)
+	itest.MustSubmitOperationsWithFee(&sourceAccount, itest.Master(), minFee+txnbuild.MinBaseFee, &restoreFootprint)
+	assertAssetStats(itest, assetStats{
+		code:                     code,
+		issuer:                   issuer,
+		numAccounts:              0,
+		balanceAccounts:          0,
+		balanceArchivedContracts: big.NewInt(0),
+		numArchivedContracts:     0,
+		numContracts:             2,
+		balanceContracts:         big.NewInt(87),
+		contractID:               storeContractID,
+	})
+
+	// expire the balance again
+	itest.WaitUntilLedgerEntryTTL(balanceToExpireLedgerKey)
+
+	// decrease active balance from 50 to 3
+	assertInvokeHostFnSucceeds(
+		itest,
+		itest.Master(),
+		invokeStoreSet(
+			itest,
+			storeContractID,
+			processors.BalanceToContractData(
+				storeContractID,
+				[32]byte{1},
+				3,
+			),
+		),
+	)
+	assertAssetStats(itest, assetStats{
+		code:                     code,
+		issuer:                   issuer,
+		numAccounts:              0,
+		balanceAccounts:          0,
+		balanceArchivedContracts: big.NewInt(37),
+		numArchivedContracts:     1,
+		numContracts:             1,
+		balanceContracts:         big.NewInt(3),
+		contractID:               storeContractID,
+	})
+
+	// remove active balance
+	assertInvokeHostFnSucceeds(
+		itest,
+		itest.Master(),
+		invokeStoreRemove(
+			itest,
+			storeContractID,
+			processors.ContractBalanceLedgerKey(
+				storeContractID,
+				[32]byte{1},
+			),
+		),
+	)
+	assertAssetStats(itest, assetStats{
+		code:                     code,
+		issuer:                   issuer,
+		numAccounts:              0,
+		balanceAccounts:          0,
+		balanceArchivedContracts: big.NewInt(37),
+		numArchivedContracts:     1,
+		numContracts:             0,
+		balanceContracts:         big.NewInt(0),
+		contractID:               storeContractID,
+	})
+}
+
+func invokeStoreSet(
+	itest *integration.Test,
+	storeContractID xdr.Hash,
+	ledgerEntryData xdr.LedgerEntryData,
+) *txnbuild.InvokeHostFunction {
+	key := ledgerEntryData.MustContractData().Key
+	val := ledgerEntryData.MustContractData().Val
+	return &txnbuild.InvokeHostFunction{
+		HostFunction: xdr.HostFunction{
+			Type: xdr.HostFunctionTypeHostFunctionTypeInvokeContract,
+			InvokeContract: &xdr.InvokeContractArgs{
+				ContractAddress: contractIDParam(storeContractID),
+				FunctionName:    "set",
+				Args: xdr.ScVec{
+					key,
+					val,
+				},
+			},
+		},
+		SourceAccount: itest.Master().Address(),
+	}
+}
+
+func invokeStoreRemove(
+	itest *integration.Test,
+	storeContractID xdr.Hash,
+	ledgerKey xdr.LedgerKey,
+) *txnbuild.InvokeHostFunction {
+	return &txnbuild.InvokeHostFunction{
+		HostFunction: xdr.HostFunction{
+			Type: xdr.HostFunctionTypeHostFunctionTypeInvokeContract,
+			InvokeContract: &xdr.InvokeContractArgs{
+				ContractAddress: contractIDParam(storeContractID),
+				FunctionName:    "remove",
+				Args: xdr.ScVec{
+					ledgerKey.MustContractData().Key,
+				},
+			},
+		},
+		SourceAccount: itest.Master().Address(),
+	}
+}
+
 func TestContractTransferBetweenAccounts(t *testing.T) {
 	if integration.GetCoreMaxSupportedProtocol() < 20 {
 		t.Skip("This test run does not support less than Protocol 20")
@@ -199,7 +514,7 @@ func TestContractTransferBetweenAccounts(t *testing.T) {
 	code := "USD"
 	asset := xdr.MustNewCreditAsset(code, issuer)
 
-	assertInvokeHostFnSucceeds(itest, itest.Master(), createSAC(issuer, asset))
+	createSAC(itest, asset)
 
 	recipientKp, recipient := itest.CreateAccount("100")
 	itest.MustEstablishTrustline(recipientKp, recipient, txnbuild.MustAssetFromXDR(asset))
@@ -274,7 +589,7 @@ func TestContractTransferBetweenAccountAndContract(t *testing.T) {
 	code := "USDLONG"
 	asset := xdr.MustNewCreditAsset(code, issuer)
 
-	assertInvokeHostFnSucceeds(itest, itest.Master(), createSAC(issuer, asset))
+	createSAC(itest, asset)
 
 	recipientKp, recipient := itest.CreateAccount("100")
 	itest.MustEstablishTrustline(recipientKp, recipient, txnbuild.MustAssetFromXDR(asset))
@@ -395,7 +710,7 @@ func TestContractTransferBetweenContracts(t *testing.T) {
 	code := "USD"
 	asset := xdr.MustNewCreditAsset(code, issuer)
 
-	assertInvokeHostFnSucceeds(itest, itest.Master(), createSAC(issuer, asset))
+	createSAC(itest, asset)
 
 	// Create recipient contract
 	recipientContractID, _ := mustCreateAndInstallContract(itest, itest.Master(), "a1", sac_contract)
@@ -477,7 +792,7 @@ func TestContractBurnFromAccount(t *testing.T) {
 	code := "USD"
 	asset := xdr.MustNewCreditAsset(code, issuer)
 
-	assertInvokeHostFnSucceeds(itest, itest.Master(), createSAC(issuer, asset))
+	createSAC(itest, asset)
 
 	recipientKp, recipient := itest.CreateAccount("100")
 	itest.MustEstablishTrustline(recipientKp, recipient, txnbuild.MustAssetFromXDR(asset))
@@ -553,7 +868,7 @@ func TestContractBurnFromContract(t *testing.T) {
 	code := "USD"
 	asset := xdr.MustNewCreditAsset(code, issuer)
 
-	assertInvokeHostFnSucceeds(itest, itest.Master(), createSAC(issuer, asset))
+	createSAC(itest, asset)
 
 	// Create recipient contract
 	recipientContractID, recipientContractHash := mustCreateAndInstallContract(itest, itest.Master(), "a1", sac_contract)
@@ -631,7 +946,7 @@ func TestContractClawbackFromAccount(t *testing.T) {
 	code := "USD"
 	asset := xdr.MustNewCreditAsset(code, issuer)
 
-	assertInvokeHostFnSucceeds(itest, itest.Master(), createSAC(issuer, asset))
+	createSAC(itest, asset)
 
 	recipientKp, recipient := itest.CreateAccount("100")
 	itest.MustEstablishTrustline(recipientKp, recipient, txnbuild.MustAssetFromXDR(asset))
@@ -709,7 +1024,7 @@ func TestContractClawbackFromContract(t *testing.T) {
 	code := "USD"
 	asset := xdr.MustNewCreditAsset(code, issuer)
 
-	assertInvokeHostFnSucceeds(itest, itest.Master(), createSAC(issuer, asset))
+	createSAC(itest, asset)
 
 	// Create recipient contract
 	recipientContractID, _ := mustCreateAndInstallContract(itest, itest.Master(), "a2", sac_contract)
@@ -788,7 +1103,8 @@ func assertAssetStats(itest *integration.Test, expected assetStats) {
 	})
 	assert.NoError(itest.CurrentTest(), err)
 
-	if expected.numContracts == 0 && expected.numAccounts == 0 &&
+	if expected.numContracts == 0 && expected.numAccounts == 0 && expected.numArchivedContracts == 0 &&
+		expected.balanceArchivedContracts.Cmp(big.NewInt(0)) == 0 &&
 		expected.balanceContracts.Cmp(big.NewInt(0)) == 0 && expected.balanceAccounts == 0 {
 		assert.Empty(itest.CurrentTest(), assets)
 		return
@@ -911,27 +1227,6 @@ func i128Param(hi int64, lo uint64) xdr.ScVal {
 		Type: xdr.ScValTypeScvI128,
 		I128: i128,
 	}
-}
-
-func createSAC(sourceAccount string, asset xdr.Asset) *txnbuild.InvokeHostFunction {
-	invokeHostFunction := &txnbuild.InvokeHostFunction{
-		HostFunction: xdr.HostFunction{
-			Type: xdr.HostFunctionTypeHostFunctionTypeCreateContract,
-			CreateContract: &xdr.CreateContractArgs{
-				ContractIdPreimage: xdr.ContractIdPreimage{
-					Type:      xdr.ContractIdPreimageTypeContractIdPreimageFromAsset,
-					FromAsset: &asset,
-				},
-				Executable: xdr.ContractExecutable{
-					Type:     xdr.ContractExecutableTypeContractExecutableStellarAsset,
-					WasmHash: nil,
-				},
-			},
-		},
-		SourceAccount: sourceAccount,
-	}
-
-	return invokeHostFunction
 }
 
 func mint(itest *integration.Test, sourceAccount string, asset xdr.Asset, assetAmount string, recipient xdr.ScVal) *txnbuild.InvokeHostFunction {
@@ -1098,13 +1393,9 @@ func burn(itest *integration.Test, sourceAccount string, asset xdr.Asset, assetA
 func assertInvokeHostFnSucceeds(itest *integration.Test, signer *keypair.Full, op *txnbuild.InvokeHostFunction) (*xdr.ScVal, string, *txnbuild.InvokeHostFunction) {
 	acc := itest.MustGetAccount(signer)
 	preFlightOp, minFee := itest.PreflightHostFunctions(&acc, *op)
-	tx, err := itest.SubmitOperationsWithFee(&acc, signer, minFee+txnbuild.MinBaseFee, &preFlightOp)
+	clientTx, err := itest.SubmitOperationsWithFee(&acc, signer, minFee+txnbuild.MinBaseFee, &preFlightOp)
 	require.NoError(itest.CurrentTest(), err)
 
-	clientTx, err := itest.Client().TransactionDetail(tx.Hash)
-	require.NoError(itest.CurrentTest(), err)
-
-	assert.Equal(itest.CurrentTest(), tx.Hash, clientTx.Hash)
 	var txResult xdr.TransactionResult
 	err = xdr.SafeUnmarshalBase64(clientTx.ResultXdr, &txResult)
 	require.NoError(itest.CurrentTest(), err)
@@ -1122,7 +1413,7 @@ func assertInvokeHostFnSucceeds(itest *integration.Test, signer *keypair.Full, o
 
 	returnValue := txMetaResult.MustV3().SorobanMeta.ReturnValue
 
-	return &returnValue, tx.Hash, &preFlightOp
+	return &returnValue, clientTx.Hash, &preFlightOp
 }
 
 func stellarAssetContractID(itest *integration.Test, asset xdr.Asset) xdr.Hash {
@@ -1132,11 +1423,40 @@ func stellarAssetContractID(itest *integration.Test, asset xdr.Asset) xdr.Hash {
 }
 
 func mustCreateAndInstallContract(itest *integration.Test, signer *keypair.Full, contractSalt string, wasmFileName string) (xdr.Hash, xdr.Hash) {
-	installContractOp := assembleInstallContractCodeOp(itest.CurrentTest(), itest.Master().Address(), wasmFileName)
-	assertInvokeHostFnSucceeds(itest, signer, installContractOp)
-	createContractOp := assembleCreateContractOp(itest.CurrentTest(), itest.Master().Address(), wasmFileName, contractSalt, itest.GetPassPhrase())
-	_, _, preflightOp := assertInvokeHostFnSucceeds(itest, signer, createContractOp)
-	contractHash := preflightOp.Ext.SorobanData.Resources.Footprint.ReadOnly[0].MustContractCode().Hash
-	contractID := preflightOp.Ext.SorobanData.Resources.Footprint.ReadWrite[0].MustContractData().Contract.ContractId
+	_, _, installContractOp := assertInvokeHostFnSucceeds(
+		itest,
+		signer,
+		assembleInstallContractCodeOp(
+			itest.CurrentTest(),
+			itest.Master().Address(),
+			wasmFileName,
+		),
+	)
+	_, _, createContractOp := assertInvokeHostFnSucceeds(
+		itest,
+		signer,
+		assembleCreateContractOp(
+			itest.CurrentTest(),
+			itest.Master().Address(),
+			wasmFileName,
+			contractSalt,
+			itest.GetPassPhrase(),
+		),
+	)
+
+	keys := append(
+		installContractOp.Ext.SorobanData.Resources.Footprint.ReadWrite,
+		createContractOp.Ext.SorobanData.Resources.Footprint.ReadWrite...,
+	)
+
+	sourceAccount, extendTTLOp, minFee := itest.PreflightExtendExpiration(
+		itest.Master().Address(),
+		keys,
+		LongTermTTL,
+	)
+	itest.MustSubmitOperationsWithFee(&sourceAccount, itest.Master(), minFee+txnbuild.MinBaseFee, &extendTTLOp)
+
+	contractHash := createContractOp.Ext.SorobanData.Resources.Footprint.ReadOnly[0].MustContractCode().Hash
+	contractID := createContractOp.Ext.SorobanData.Resources.Footprint.ReadWrite[0].MustContractData().Contract.ContractId
 	return *contractID, contractHash
 }

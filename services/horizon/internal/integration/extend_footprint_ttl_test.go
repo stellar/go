@@ -9,7 +9,6 @@ import (
 	"github.com/stellar/go/protocols/horizon/operations"
 	"github.com/stellar/go/services/horizon/internal/test/integration"
 	"github.com/stellar/go/txnbuild"
-	"github.com/stellar/go/xdr"
 )
 
 func TestExtendFootprintTtl(t *testing.T) {
@@ -35,29 +34,11 @@ func TestExtendFootprintTtl(t *testing.T) {
 	_, err = itest.Client().TransactionDetail(tx.Hash)
 	require.NoError(t, err)
 
-	sourceAccount, err = itest.Client().AccountDetail(horizonclient.AccountRequest{
-		AccountID: itest.Master().Address(),
-	})
-	require.NoError(t, err)
-
-	bumpFootPrint := txnbuild.ExtendFootprintTtl{
-		ExtendTo:      10000,
-		SourceAccount: "",
-		Ext: xdr.TransactionExt{
-			V: 1,
-			SorobanData: &xdr.SorobanTransactionData{
-				Ext: xdr.ExtensionPoint{},
-				Resources: xdr.SorobanResources{
-					Footprint: xdr.LedgerFootprint{
-						ReadOnly:  preFlightOp.Ext.SorobanData.Resources.Footprint.ReadWrite,
-						ReadWrite: nil,
-					},
-				},
-				ResourceFee: 0,
-			},
-		},
-	}
-	bumpFootPrint, minFee = itest.PreflightBumpFootprintExpiration(&sourceAccount, bumpFootPrint)
+	sourceAccount, bumpFootPrint, minFee := itest.PreflightExtendExpiration(
+		itest.Master().Address(),
+		preFlightOp.Ext.SorobanData.Resources.Footprint.ReadWrite,
+		10000,
+	)
 	tx = itest.MustSubmitOperationsWithFee(&sourceAccount, itest.Master(), minFee+txnbuild.MinBaseFee, &bumpFootPrint)
 
 	ops, err := itest.Client().Operations(horizonclient.OperationRequest{ForTransaction: tx.Hash})
