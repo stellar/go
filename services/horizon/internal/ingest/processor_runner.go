@@ -12,6 +12,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/ingest/processors"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
+	logpkg "github.com/stellar/go/support/log"
 	"github.com/stellar/go/xdr"
 )
 
@@ -46,10 +47,6 @@ func (statsChangeProcessor) Commit(ctx context.Context) error {
 	return nil
 }
 
-type statsLedgerTransactionProcessor struct {
-	*processors.StatsLedgerTransactionProcessor
-}
-
 type ledgerStats struct {
 	changeStats          ingest.StatsChangeProcessorResults
 	changeDurations      processorsRunDurations
@@ -75,6 +72,7 @@ type ProcessorRunnerInterface interface {
 		tradeStats processors.TradeStats,
 		err error,
 	)
+	RunTransactionProcessorsOnLedgers(ledgers []xdr.LedgerCloseMeta) error
 	RunAllProcessorsOnLedger(ledger xdr.LedgerCloseMeta) (
 		stats ledgerStats,
 		err error,
@@ -132,22 +130,16 @@ func buildChangeProcessor(
 	})
 }
 
-func (s *ProcessorRunner) buildTransactionProcessor(
-	ledgerTransactionStats *processors.StatsLedgerTransactionProcessor,
-	tradeProcessor *processors.TradeProcessor,
-	ledgersProcessor *processors.LedgersProcessor,
-) *groupTransactionProcessors {
+func (s *ProcessorRunner) buildTransactionProcessor(ledgersProcessor *processors.LedgersProcessor) *groupTransactionProcessors {
 	accountLoader := history.NewAccountLoader()
 	assetLoader := history.NewAssetLoader()
 	lpLoader := history.NewLiquidityPoolLoader()
 	cbLoader := history.NewClaimableBalanceLoader()
 
 	lazyLoaders := []horizonLazyLoader{accountLoader, assetLoader, lpLoader, cbLoader}
+	statsLedgerTransactionProcessor := processors.NewStatsLedgerTransactionProcessor()
 
-	statsLedgerTransactionProcessor := &statsLedgerTransactionProcessor{
-		StatsLedgerTransactionProcessor: ledgerTransactionStats,
-	}
-	*tradeProcessor = *processors.NewTradeProcessor(accountLoader,
+	tradeProcessor := processors.NewTradeProcessor(accountLoader,
 		lpLoader, assetLoader, s.historyQ.NewTradeBatchInsertBuilder())
 
 	processors := []horizonTransactionProcessor{
@@ -164,7 +156,7 @@ func (s *ProcessorRunner) buildTransactionProcessor(
 		processors.NewLiquidityPoolsTransactionProcessor(lpLoader,
 			s.historyQ.NewTransactionLiquidityPoolBatchInsertBuilder(), s.historyQ.NewOperationLiquidityPoolBatchInsertBuilder())}
 
-	return newGroupTransactionProcessors(processors, lazyLoaders)
+	return newGroupTransactionProcessors(processors, lazyLoaders, statsLedgerTransactionProcessor, tradeProcessor)
 }
 
 func (s *ProcessorRunner) buildTransactionFilterer() *groupTransactionFilterers {
@@ -184,7 +176,7 @@ func (s *ProcessorRunner) buildFilteredOutProcessor() *groupTransactionProcessor
 		p = append(p, txSubProc)
 	}
 
-	return newGroupTransactionProcessors(p, nil)
+	return newGroupTransactionProcessors(p, nil, nil, nil)
 }
 
 // checkIfProtocolVersionSupported checks if this Horizon version supports the
@@ -317,49 +309,155 @@ func (s *ProcessorRunner) runChangeProcessorOnLedger(
 	return nil
 }
 
+func (s *ProcessorRunner) streamLedger(ledger xdr.LedgerCloseMeta,
+	groupFilterers *groupTransactionFilterers,
+	groupFilteredOutProcessors *groupTransactionProcessors,
+	groupProcessors *groupTransactionProcessors) error {
+	var (
+		transactionReader *ingest.LedgerTransactionReader
+	)
+
+	if err := s.checkIfProtocolVersionSupported(ledger.ProtocolVersion()); err != nil {
+		err = errors.Wrap(err, "Error while checking for supported protocol version")
+		return err
+	}
+
+	startTime := time.Now()
+	transactionReader, err := ingest.NewLedgerTransactionReaderFromLedgerCloseMeta(s.config.NetworkPassphrase, ledger)
+	if err != nil {
+		err = errors.Wrap(err, "Error creating ledger reader")
+		return err
+	}
+
+	err = processors.StreamLedgerTransactions(s.ctx,
+		groupFilterers,
+		groupFilteredOutProcessors,
+		groupProcessors,
+		transactionReader,
+		ledger,
+	)
+	if err != nil {
+		return errors.Wrap(err, "Error streaming changes from ledger")
+	}
+
+	transactionStats := groupProcessors.transactionStatsProcessor.GetResults()
+	transactionStats.TransactionsFiltered = groupFilterers.droppedTransactions
+
+	tradeStats := groupProcessors.tradeProcessor.GetStats()
+
+	log.WithFields(transactionStats.Map()).
+		WithFields(tradeStats.Map()).
+		WithFields(logpkg.F{
+			"sequence": ledger.LedgerSequence(),
+			"state":    false,
+			"ledger":   true,
+			"commit":   false,
+			"duration": time.Since(startTime).Seconds(),
+		}).Info("Processed ledger")
+
+	return nil
+}
+
 func (s *ProcessorRunner) RunTransactionProcessorsOnLedger(ledger xdr.LedgerCloseMeta) (
 	transactionStats processors.StatsLedgerTransactionProcessorResults,
 	transactionDurations processorsRunDurations,
 	tradeStats processors.TradeStats,
 	err error,
 ) {
-	var (
-		ledgerTransactionStats processors.StatsLedgerTransactionProcessor
-		tradeProcessor         processors.TradeProcessor
-		transactionReader      *ingest.LedgerTransactionReader
-	)
-
-	if err = s.checkIfProtocolVersionSupported(ledger.ProtocolVersion()); err != nil {
-		err = errors.Wrap(err, "Error while checking for supported protocol version")
-		return
-	}
-
 	// ensure capture of the ledger to history regardless of whether it has transactions.
 	ledgersProcessor := processors.NewLedgerProcessor(s.historyQ.NewLedgerBatchInsertBuilder(), CurrentVersion)
 	ledgersProcessor.ProcessLedger(ledger)
 
-	transactionReader, err = ingest.NewLedgerTransactionReaderFromLedgerCloseMeta(s.config.NetworkPassphrase, ledger)
-	if err != nil {
-		err = errors.Wrap(err, "Error creating ledger reader")
-		return
-	}
-
 	groupTransactionFilterers := s.buildTransactionFilterer()
 	groupFilteredOutProcessors := s.buildFilteredOutProcessor()
-	groupTransactionProcessors := s.buildTransactionProcessor(
-		&ledgerTransactionStats, &tradeProcessor, ledgersProcessor)
-	err = processors.StreamLedgerTransactions(s.ctx,
+	groupTransactionProcessors := s.buildTransactionProcessor(ledgersProcessor)
+
+	err = s.streamLedger(ledger,
 		groupTransactionFilterers,
 		groupFilteredOutProcessors,
 		groupTransactionProcessors,
-		transactionReader,
-		ledger,
 	)
 	if err != nil {
 		err = errors.Wrap(err, "Error streaming changes from ledger")
 		return
 	}
 
+	err = s.flushProcessors(groupFilteredOutProcessors, groupTransactionProcessors)
+	if err != nil {
+		return
+	}
+
+	transactionStats = groupTransactionProcessors.transactionStatsProcessor.GetResults()
+	transactionStats.TransactionsFiltered = groupTransactionFilterers.droppedTransactions
+
+	transactionDurations = groupTransactionProcessors.processorsRunDurations
+	for key, duration := range groupFilteredOutProcessors.processorsRunDurations {
+		transactionDurations[key] = duration
+	}
+	for key, duration := range groupTransactionFilterers.processorsRunDurations {
+		transactionDurations[key] = duration
+	}
+
+	tradeStats = groupTransactionProcessors.tradeProcessor.GetStats()
+
+	return
+}
+
+func (s *ProcessorRunner) RunTransactionProcessorsOnLedgers(ledgers []xdr.LedgerCloseMeta) (err error) {
+	ledgersProcessor := processors.NewLedgerProcessor(s.historyQ.NewLedgerBatchInsertBuilder(), CurrentVersion)
+
+	groupTransactionFilterers := s.buildTransactionFilterer()
+	groupFilteredOutProcessors := s.buildFilteredOutProcessor()
+	groupTransactionProcessors := s.buildTransactionProcessor(ledgersProcessor)
+
+	startTime := time.Now()
+	curHeap, sysHeap := getMemStats()
+	log.WithFields(logpkg.F{
+		"currentHeapSizeMB": curHeap,
+		"systemHeapSizeMB":  sysHeap,
+		"ledgerBatchSize":   len(ledgers),
+		"state":             false,
+		"ledger":            true,
+		"commit":            false,
+	}).Infof("Running processors for batch of %v ledgers", len(ledgers))
+
+	for _, ledger := range ledgers {
+		// ensure capture of the ledger to history regardless of whether it has transactions.
+		ledgersProcessor.ProcessLedger(ledger)
+
+		err = s.streamLedger(ledger,
+			groupTransactionFilterers,
+			groupFilteredOutProcessors,
+			groupTransactionProcessors,
+		)
+		if err != nil {
+			err = errors.Wrap(err, "Error streaming changes during ledger batch")
+			return
+		}
+		groupTransactionProcessors.ResetStats()
+		groupFilteredOutProcessors.ResetStats()
+		groupTransactionFilterers.ResetStats()
+	}
+
+	err = s.flushProcessors(groupFilteredOutProcessors, groupTransactionProcessors)
+	if err != nil {
+		return
+	}
+	curHeap, sysHeap = getMemStats()
+	log.WithFields(logpkg.F{
+		"currentHeapSizeMB": curHeap,
+		"systemHeapSizeMB":  sysHeap,
+		"ledgers":           len(ledgers),
+		"state":             false,
+		"ledger":            true,
+		"commit":            false,
+		"duration":          time.Since(startTime).Seconds(),
+	}).Infof("Flushed processors for batch of %v ledgers", len(ledgers))
+
+	return nil
+}
+
+func (s *ProcessorRunner) flushProcessors(groupFilteredOutProcessors *groupTransactionProcessors, groupTransactionProcessors *groupTransactionProcessors) (err error) {
 	if s.config.EnableIngestionFiltering {
 		err = groupFilteredOutProcessors.Flush(s.ctx, s.session)
 		if err != nil {
@@ -374,20 +472,7 @@ func (s *ProcessorRunner) RunTransactionProcessorsOnLedger(ledger xdr.LedgerClos
 	err = groupTransactionProcessors.Flush(s.ctx, s.session)
 	if err != nil {
 		err = errors.Wrap(err, "Error flushing changes from processor")
-		return
 	}
-
-	transactionStats = ledgerTransactionStats.GetResults()
-	transactionStats.TransactionsFiltered = groupTransactionFilterers.droppedTransactions
-	transactionDurations = groupTransactionProcessors.processorsRunDurations
-	for key, duration := range groupFilteredOutProcessors.processorsRunDurations {
-		transactionDurations[key] = duration
-	}
-	for key, duration := range groupTransactionFilterers.processorsRunDurations {
-		transactionDurations[key] = duration
-	}
-
-	tradeStats = tradeProcessor.GetStats()
 	return
 }
 
@@ -414,11 +499,13 @@ func (s *ProcessorRunner) RunAllProcessorsOnLedger(ledger xdr.LedgerCloseMeta) (
 		return
 	}
 
+	transactionStats, transactionDurations, tradeStats, err := s.RunTransactionProcessorsOnLedger(ledger)
+
 	stats.changeStats = changeStatsProcessor.GetResults()
 	stats.changeDurations = groupChangeProcessors.processorsRunDurations
-
-	stats.transactionStats, stats.transactionDurations, stats.tradeStats, err =
-		s.RunTransactionProcessorsOnLedger(ledger)
+	stats.transactionStats = transactionStats
+	stats.transactionDurations = transactionDurations
+	stats.tradeStats = tradeStats
 
 	return
 }

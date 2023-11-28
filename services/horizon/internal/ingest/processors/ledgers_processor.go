@@ -82,7 +82,7 @@ func (p *LedgersProcessor) Flush(ctx context.Context, session db.SessionInterfac
 	}
 
 	if err := p.batch.Exec(ctx, session); err != nil {
-		return errors.Wrapf(err, "error committing ledgers %d - %d", min, max)
+		return errors.Wrapf(err, "error flushing ledgers %d - %d", min, max)
 	}
 
 	return nil

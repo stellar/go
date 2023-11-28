@@ -56,13 +56,31 @@ type groupTransactionProcessors struct {
 	processors  []horizonTransactionProcessor
 	lazyLoaders []horizonLazyLoader
 	processorsRunDurations
+	transactionStatsProcessor *processors.StatsLedgerTransactionProcessor
+	tradeProcessor            *processors.TradeProcessor
 }
 
-func newGroupTransactionProcessors(processors []horizonTransactionProcessor, lazyLoaders []horizonLazyLoader) *groupTransactionProcessors {
+// build the group processor for all tx processors
+// processors - list of processors this should include StatsLedgerTransactionProcessor and TradeProcessor
+// transactionStatsProcessor - provide a direct reference to the stats processor that is in processors or nil,
+//
+//	group processing will reset stats as needed
+//
+// tradeProcessor - provide a direct reference to the trades processor in processors or nil,
+//
+//	so group processing will reset stats as needed
+func newGroupTransactionProcessors(processors []horizonTransactionProcessor,
+	lazyLoaders []horizonLazyLoader,
+	transactionStatsProcessor *processors.StatsLedgerTransactionProcessor,
+	tradeProcessor *processors.TradeProcessor,
+) *groupTransactionProcessors {
+
 	return &groupTransactionProcessors{
-		processors:             processors,
-		processorsRunDurations: make(map[string]time.Duration),
-		lazyLoaders:            lazyLoaders,
+		processors:                processors,
+		processorsRunDurations:    make(map[string]time.Duration),
+		lazyLoaders:               lazyLoaders,
+		transactionStatsProcessor: transactionStatsProcessor,
+		tradeProcessor:            tradeProcessor,
 	}
 }
 
@@ -98,6 +116,16 @@ func (g groupTransactionProcessors) Flush(ctx context.Context, session db.Sessio
 	return nil
 }
 
+func (g *groupTransactionProcessors) ResetStats() {
+	g.processorsRunDurations = make(map[string]time.Duration)
+	if g.tradeProcessor != nil {
+		g.tradeProcessor.ResetStats()
+	}
+	if g.transactionStatsProcessor != nil {
+		g.transactionStatsProcessor.ResetStats()
+	}
+}
+
 type groupTransactionFilterers struct {
 	filterers []processors.LedgerTransactionFilterer
 	processorsRunDurations
@@ -126,4 +154,9 @@ func (g *groupTransactionFilterers) FilterTransaction(ctx context.Context, tx in
 		}
 	}
 	return true, nil
+}
+
+func (g *groupTransactionFilterers) ResetStats() {
+	g.droppedTransactions = 0
+	g.processorsRunDurations = make(map[string]time.Duration)
 }

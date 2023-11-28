@@ -399,6 +399,11 @@ func runDBReingestRange(ledgerRanges []history.LedgerRange, reingestForce bool, 
 		return errors.New("--force is incompatible with --parallel-workers > 1")
 	}
 
+	maxLedgersPerFlush := ingest.MaxLedgersPerFlush
+	if parallelJobSize < maxLedgersPerFlush {
+		maxLedgersPerFlush = parallelJobSize
+	}
+
 	ingestConfig := ingest.Config{
 		NetworkPassphrase:           config.NetworkPassphrase,
 		HistoryArchiveURLs:          config.HistoryArchiveURLs,
@@ -415,6 +420,7 @@ func runDBReingestRange(ledgerRanges []history.LedgerRange, reingestForce bool, 
 		StellarCoreURL:              config.StellarCoreURL,
 		RoundingSlippageFilter:      config.RoundingSlippageFilter,
 		EnableIngestionFiltering:    config.EnableIngestionFiltering,
+		MaxLedgerPerFlush:           maxLedgersPerFlush,
 	}
 
 	if ingestConfig.HistorySession, err = db.Open("postgres", config.DatabaseURL); err != nil {

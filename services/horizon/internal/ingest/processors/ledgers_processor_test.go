@@ -220,6 +220,6 @@ func (s *LedgersProcessorTestSuiteLedger) TestExecFails() {
 
 	s.Assert().EqualError(s.processor.Flush(
 		context.Background(), s.mockSession),
-		"error committing ledgers 20 - 20: transient exec error",
+		"error flushing ledgers 20 - 20: transient exec error",
 	)
 }

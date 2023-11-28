@@ -48,6 +48,7 @@ type TradeStats struct {
 func (p *TradeProcessor) GetStats() TradeStats {
 	return p.stats
 }
+
 func (stats *TradeStats) Map() map[string]interface{} {
 	return map[string]interface{}{
 		"stats_count": stats.count,
@@ -459,4 +460,8 @@ func (p *TradeProcessor) extractTrades(
 	}
 
 	return result, nil
+}
+
+func (p *TradeProcessor) ResetStats() {
+	p.stats = TradeStats{}
 }

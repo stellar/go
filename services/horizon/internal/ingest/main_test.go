@@ -106,6 +106,7 @@ func TestNewSystem(t *testing.T) {
 
 	assert.Equal(t, config, system.runner.(*ProcessorRunner).config)
 	assert.Equal(t, system.ctx, system.runner.(*ProcessorRunner).ctx)
+	assert.Equal(t, system.maxLedgerPerFlush, MaxLedgersPerFlush)
 }
 
 func TestStateMachineRunReturnsUnexpectedTransaction(t *testing.T) {
@@ -540,6 +541,11 @@ func (m *mockProcessorsRunner) RunTransactionProcessorsOnLedger(ledger xdr.Ledge
 		args.Get(1).(processorsRunDurations),
 		args.Get(2).(processors.TradeStats),
 		args.Error(3)
+}
+
+func (m *mockProcessorsRunner) RunTransactionProcessorsOnLedgers(ledgers []xdr.LedgerCloseMeta) error {
+	args := m.Called(ledgers)
+	return args.Error(0)
 }
 
 var _ ProcessorRunnerInterface = (*mockProcessorsRunner)(nil)
