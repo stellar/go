@@ -210,6 +210,9 @@ func isLocalAddress(url string, port uint) bool {
 func (a *App) UpdateCoreLedgerState(ctx context.Context) {
 	var next ledger.CoreStatus
 
+	if a.config.StellarCoreURL == "" {
+		return
+	}
 	// #4446 If the ingestion state machine is in the build state, the query can time out
 	// because the captive-core buffer may be full. In this case, skip the check.
 	if a.config.CaptiveCoreToml != nil &&

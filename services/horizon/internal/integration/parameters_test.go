@@ -438,6 +438,20 @@ func TestDisableTxSub(t *testing.T) {
 		test.WaitForHorizon()
 		test.Shutdown()
 	})
+	t.Run("do not require stellar-core-url when both DISABLE_TX_SUB=true and INGEST=false", func(t *testing.T) {
+		localParams := integration.MergeMaps(networkParamArgs, map[string]string{
+			horizon.NetworkFlagName:      "testnet",
+			horizon.IngestFlagName:       "false",
+			horizon.DisableTxSubFlagName: "true",
+		})
+		testConfig := integration.GetTestConfig()
+		testConfig.HorizonIngestParameters = localParams
+		testConfig.SkipCoreContainerCreation = true
+		test := integration.NewTest(t, *testConfig)
+		err := test.StartHorizon()
+		assert.NoError(t, err)
+		test.Shutdown()
+	})
 }
 
 func TestDeprecatedOutputs(t *testing.T) {
