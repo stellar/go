@@ -68,6 +68,10 @@ const (
 
 	defaultCoreCursorName           = "HORIZON"
 	stateVerificationErrorThreshold = 3
+
+	// 100 ledgers per flush has shown in stress tests
+	// to be best point on performance curve, default to that.
+	MaxLedgersPerFlush uint32 = 100
 )
 
 var log = logpkg.DefaultLogger.WithField("service", "ingest")
@@ -102,6 +106,7 @@ type Config struct {
 	RoundingSlippageFilter int
 
 	EnableIngestionFiltering bool
+	MaxLedgerPerFlush        uint32
 }
 
 // LocalCaptiveCoreEnabled returns true if configured to run
@@ -214,7 +219,8 @@ type system struct {
 
 	runStateVerificationOnLedger func(uint32) bool
 
-	reapOffsets map[string]int64
+	reapOffsets       map[string]int64
+	maxLedgerPerFlush uint32
 
 	currentStateMutex sync.Mutex
 	currentState      State
@@ -278,6 +284,11 @@ func NewSystem(config Config) (System, error) {
 	historyAdapter := newHistoryArchiveAdapter(archive)
 	filters := filters.NewFilters()
 
+	maxLedgersPerFlush := config.MaxLedgerPerFlush
+	if maxLedgersPerFlush < 1 {
+		maxLedgersPerFlush = MaxLedgersPerFlush
+	}
+
 	system := &system{
 		cancel:                      cancel,
 		config:                      config,
@@ -304,6 +315,7 @@ func NewSystem(config Config) (System, error) {
 			config.CheckpointFrequency,
 			config.StateVerificationCheckpointFrequency,
 		),
+		maxLedgerPerFlush: maxLedgersPerFlush,
 	}
 
 	system.initMetrics()

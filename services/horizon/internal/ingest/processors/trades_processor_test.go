@@ -757,6 +757,9 @@ func (s *TradeProcessorTestSuiteLedger) TestIngestTradesSucceeds() {
 
 	err := s.processor.Flush(ctx, s.mockSession)
 	s.Assert().NoError(err)
+	s.Assert().Equal(s.processor.GetStats().count, int64(8))
+	s.processor.ResetStats()
+	s.Assert().Equal(s.processor.GetStats().count, int64(0))
 }
 
 func (s *TradeProcessorTestSuiteLedger) TestBatchAddError() {

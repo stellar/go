@@ -44,8 +44,38 @@ func TestStatsLedgerTransactionProcessoAllOpTypesCovered(t *testing.T) {
 	assert.Panics(t, f)
 }
 
+func TestStatsLedgerTransactionProcessorReset(t *testing.T) {
+	processor := NewStatsLedgerTransactionProcessor()
+	lcm := xdr.LedgerCloseMeta{}
+
+	assert.NoError(t, processor.ProcessTransaction(lcm, ingest.LedgerTransaction{
+		Result: xdr.TransactionResultPair{
+			Result: xdr.TransactionResult{
+				Result: xdr.TransactionResultResult{
+					Code: xdr.TransactionResultCodeTxSuccess,
+				},
+			},
+		},
+		Envelope: xdr.TransactionEnvelope{
+			Type: xdr.EnvelopeTypeEnvelopeTypeTx,
+			V1: &xdr.TransactionV1Envelope{
+				Tx: xdr.Transaction{
+					Operations: []xdr.Operation{
+						{Body: xdr.OperationBody{Type: xdr.OperationTypeCreateAccount}},
+						{Body: xdr.OperationBody{Type: xdr.OperationTypePayment}},
+					},
+				},
+			},
+		},
+	}))
+
+	assert.Equal(t, processor.GetResults().Operations, int64(2))
+	processor.ResetStats()
+	assert.Equal(t, processor.GetResults().Operations, int64(0))
+}
+
 func TestStatsLedgerTransactionProcessor(t *testing.T) {
-	processor := &StatsLedgerTransactionProcessor{}
+	processor := NewStatsLedgerTransactionProcessor()
 	lcm := xdr.LedgerCloseMeta{}
 
 	// Successful

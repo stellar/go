@@ -15,6 +15,10 @@ type StatsLedgerTransactionProcessor struct {
 	results StatsLedgerTransactionProcessorResults
 }
 
+func NewStatsLedgerTransactionProcessor() *StatsLedgerTransactionProcessor {
+	return &StatsLedgerTransactionProcessor{}
+}
+
 // StatsLedgerTransactionProcessorResults contains results after running StatsLedgerTransactionProcessor.
 type StatsLedgerTransactionProcessorResults struct {
 	Transactions           int64
@@ -177,6 +181,10 @@ func (stats *StatsLedgerTransactionProcessorResults) Map() map[string]interface{
 		"stats_operations_liquidity_pool_withdraw":          stats.OperationsLiquidityPoolWithdraw,
 		"stats_operations_invoke_host_function":             stats.OperationsInvokeHostFunction,
 	}
+}
+
+func (p *StatsLedgerTransactionProcessor) ResetStats() {
+	p.results = StatsLedgerTransactionProcessorResults{}
 }
 
 // Ensure the StatsChangeProcessor conforms to the ChangeProcessor interface.
