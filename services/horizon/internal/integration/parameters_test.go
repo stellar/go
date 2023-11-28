@@ -438,7 +438,7 @@ func TestDisableTxSub(t *testing.T) {
 		test.WaitForHorizon()
 		test.Shutdown()
 	})
-	t.Run("require stellar-core-url when both DISABLE_TX_SUB=true and INGEST=false", func(t *testing.T) {
+	t.Run("do not require stellar-core-url when both DISABLE_TX_SUB=true and INGEST=false", func(t *testing.T) {
 		localParams := integration.MergeMaps(networkParamArgs, map[string]string{
 			horizon.NetworkFlagName:      "testnet",
 			horizon.IngestFlagName:       "false",
