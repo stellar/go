@@ -513,7 +513,7 @@ func (r resumeState) run(s *system) (transition, error) {
 	rebuildStart := time.Now()
 	err = s.historyQ.RebuildTradeAggregationBuckets(s.ctx, ingestLedger, ingestLedger, s.config.RoundingSlippageFilter)
 	if err != nil {
-		return stop(), errors.Wrap(err, "error rebuilding trade aggregations")
+		return retryResume(r), errors.Wrap(err, "error rebuilding trade aggregations")
 	}
 	rebuildDuration := time.Since(rebuildStart).Seconds()
 	s.Metrics().LedgerIngestionTradeAggregationDuration.Observe(float64(rebuildDuration))
