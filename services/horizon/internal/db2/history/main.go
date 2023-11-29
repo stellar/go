@@ -275,11 +275,11 @@ type IngestionQ interface {
 	// QParticipants
 	// Copy the small interfaces with shared methods directly, otherwise error:
 	// duplicate method CreateAccounts
-	NewTransactionParticipantsBatchInsertBuilder(maxBatchSize int) TransactionParticipantsBatchInsertBuilder
-	NewOperationParticipantBatchInsertBuilder(maxBatchSize int) OperationParticipantBatchInsertBuilder
+	NewTransactionParticipantsBatchInsertBuilder() TransactionParticipantsBatchInsertBuilder
+	NewOperationParticipantBatchInsertBuilder() OperationParticipantBatchInsertBuilder
 	QSigners
 	//QTrades
-	NewTradeBatchInsertBuilder(maxBatchSize int) TradeBatchInsertBuilder
+	NewTradeBatchInsertBuilder() TradeBatchInsertBuilder
 	RebuildTradeAggregationTimes(ctx context.Context, from, to strtime.Millis, roundingSlippageFilter int) error
 	RebuildTradeAggregationBuckets(ctx context.Context, fromLedger, toLedger uint32, roundingSlippageFilter int) error
 	ReapLookupTables(ctx context.Context, offsets map[string]int64) (map[string]int64, map[string]int64, error)
@@ -312,6 +312,7 @@ type QAccounts interface {
 	GetAccountsByIDs(ctx context.Context, ids []string) ([]AccountEntry, error)
 	UpsertAccounts(ctx context.Context, accounts []AccountEntry) error
 	RemoveAccounts(ctx context.Context, accountIDs []string) (int64, error)
+	NewAccountsBatchInsertBuilder() AccountsBatchInsertBuilder
 }
 
 // AccountSigner is a row of data from the `accounts_signers` table
@@ -323,13 +324,15 @@ type AccountSigner struct {
 }
 
 type AccountSignersBatchInsertBuilder interface {
-	Add(ctx context.Context, signer AccountSigner) error
+	Add(signer AccountSigner) error
 	Exec(ctx context.Context) error
 }
 
 // accountSignersBatchInsertBuilder is a simple wrapper around db.BatchInsertBuilder
 type accountSignersBatchInsertBuilder struct {
-	builder db.BatchInsertBuilder
+	builder db.FastBatchInsertBuilder
+	session db.SessionInterface
+	table   string
 }
 
 // Data is a row of data from the `account_data` table
@@ -354,6 +357,7 @@ type QData interface {
 	GetAccountDataByKeys(ctx context.Context, keys []AccountDataKey) ([]Data, error)
 	UpsertAccountData(ctx context.Context, data []Data) error
 	RemoveAccountData(ctx context.Context, keys []AccountDataKey) (int64, error)
+	NewAccountDataBatchInsertBuilder() AccountDataBatchInsertBuilder
 }
 
 // Asset is a row of data from the `history_assets` table
@@ -742,7 +746,7 @@ type QSigners interface {
 	GetLastLedgerIngest(ctx context.Context) (uint32, error)
 	UpdateLastLedgerIngest(ctx context.Context, ledgerSequence uint32) error
 	AccountsForSigner(ctx context.Context, signer string, page db2.PageQuery) ([]AccountSigner, error)
-	NewAccountSignersBatchInsertBuilder(maxBatchSize int) AccountSignersBatchInsertBuilder
+	NewAccountSignersBatchInsertBuilder() AccountSignersBatchInsertBuilder
 	CreateAccountSigner(ctx context.Context, account, signer string, weight int32, sponsor *string) (int64, error)
 	RemoveAccountSigner(ctx context.Context, account, signer string) (int64, error)
 	SignersForAccounts(ctx context.Context, accounts []string) ([]AccountSigner, error)
@@ -844,14 +848,14 @@ type QTrustLines interface {
 	GetTrustLinesByKeys(ctx context.Context, ledgerKeys []string) ([]TrustLine, error)
 	UpsertTrustLines(ctx context.Context, trustlines []TrustLine) error
 	RemoveTrustLines(ctx context.Context, ledgerKeys []string) (int64, error)
+	NewTrustLinesBatchInsertBuilder() TrustLinesBatchInsertBuilder
 }
 
-func (q *Q) NewAccountSignersBatchInsertBuilder(maxBatchSize int) AccountSignersBatchInsertBuilder {
+func (q *Q) NewAccountSignersBatchInsertBuilder() AccountSignersBatchInsertBuilder {
 	return &accountSignersBatchInsertBuilder{
-		builder: db.BatchInsertBuilder{
-			Table:        q.GetTable("accounts_signers"),
-			MaxBatchSize: maxBatchSize,
-		},
+		session: q,
+		builder: db.FastBatchInsertBuilder{},
+		table:   "accounts_signers",
 	}
 }
 

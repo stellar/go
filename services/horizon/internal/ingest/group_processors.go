@@ -7,7 +7,9 @@ import (
 
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/ingest/processors"
+	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/xdr"
 )
 
 type processorsRunDurations map[string]time.Duration
@@ -51,21 +53,41 @@ func (g groupChangeProcessors) Commit(ctx context.Context) error {
 }
 
 type groupTransactionProcessors struct {
-	processors []horizonTransactionProcessor
+	processors  []horizonTransactionProcessor
+	lazyLoaders []horizonLazyLoader
 	processorsRunDurations
+	transactionStatsProcessor *processors.StatsLedgerTransactionProcessor
+	tradeProcessor            *processors.TradeProcessor
 }
 
-func newGroupTransactionProcessors(processors []horizonTransactionProcessor) *groupTransactionProcessors {
+// build the group processor for all tx processors
+// processors - list of processors this should include StatsLedgerTransactionProcessor and TradeProcessor
+// transactionStatsProcessor - provide a direct reference to the stats processor that is in processors or nil,
+//
+//	group processing will reset stats as needed
+//
+// tradeProcessor - provide a direct reference to the trades processor in processors or nil,
+//
+//	so group processing will reset stats as needed
+func newGroupTransactionProcessors(processors []horizonTransactionProcessor,
+	lazyLoaders []horizonLazyLoader,
+	transactionStatsProcessor *processors.StatsLedgerTransactionProcessor,
+	tradeProcessor *processors.TradeProcessor,
+) *groupTransactionProcessors {
+
 	return &groupTransactionProcessors{
-		processors:             processors,
-		processorsRunDurations: make(map[string]time.Duration),
+		processors:                processors,
+		processorsRunDurations:    make(map[string]time.Duration),
+		lazyLoaders:               lazyLoaders,
+		transactionStatsProcessor: transactionStatsProcessor,
+		tradeProcessor:            tradeProcessor,
 	}
 }
 
-func (g groupTransactionProcessors) ProcessTransaction(ctx context.Context, tx ingest.LedgerTransaction) error {
+func (g groupTransactionProcessors) ProcessTransaction(lcm xdr.LedgerCloseMeta, tx ingest.LedgerTransaction) error {
 	for _, p := range g.processors {
 		startTime := time.Now()
-		if err := p.ProcessTransaction(ctx, tx); err != nil {
+		if err := p.ProcessTransaction(lcm, tx); err != nil {
 			return errors.Wrapf(err, "error in %T.ProcessTransaction", p)
 		}
 		g.AddRunDuration(fmt.Sprintf("%T", p), startTime)
@@ -73,15 +95,35 @@ func (g groupTransactionProcessors) ProcessTransaction(ctx context.Context, tx i
 	return nil
 }
 
-func (g groupTransactionProcessors) Commit(ctx context.Context) error {
+func (g groupTransactionProcessors) Flush(ctx context.Context, session db.SessionInterface) error {
+	// need to trigger all lazy loaders to now resolve their future placeholders
+	// with real db values first
+	for _, loader := range g.lazyLoaders {
+		if err := loader.Exec(ctx, session); err != nil {
+			return errors.Wrapf(err, "error during lazy loader resolution, %T.Exec", loader)
+		}
+	}
+
+	// now flush each processor which may call loader.GetNow(), which
+	// required the prior loader.Exec() to have been called.
 	for _, p := range g.processors {
 		startTime := time.Now()
-		if err := p.Commit(ctx); err != nil {
-			return errors.Wrapf(err, "error in %T.Commit", p)
+		if err := p.Flush(ctx, session); err != nil {
+			return errors.Wrapf(err, "error in %T.Flush", p)
 		}
 		g.AddRunDuration(fmt.Sprintf("%T", p), startTime)
 	}
 	return nil
+}
+
+func (g *groupTransactionProcessors) ResetStats() {
+	g.processorsRunDurations = make(map[string]time.Duration)
+	if g.tradeProcessor != nil {
+		g.tradeProcessor.ResetStats()
+	}
+	if g.transactionStatsProcessor != nil {
+		g.transactionStatsProcessor.ResetStats()
+	}
 }
 
 type groupTransactionFilterers struct {
@@ -112,4 +154,9 @@ func (g *groupTransactionFilterers) FilterTransaction(ctx context.Context, tx in
 		}
 	}
 	return true, nil
+}
+
+func (g *groupTransactionFilterers) ResetStats() {
+	g.droppedTransactions = 0
+	g.processorsRunDurations = make(map[string]time.Duration)
 }

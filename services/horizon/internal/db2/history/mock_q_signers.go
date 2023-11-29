@@ -32,8 +32,8 @@ func (m *MockQSigners) AccountsForSigner(ctx context.Context, signer string, pag
 	return a.Get(0).([]AccountSigner), a.Error(1)
 }
 
-func (m *MockQSigners) NewAccountSignersBatchInsertBuilder(maxBatchSize int) AccountSignersBatchInsertBuilder {
-	a := m.Called(maxBatchSize)
+func (m *MockQSigners) NewAccountSignersBatchInsertBuilder() AccountSignersBatchInsertBuilder {
+	a := m.Called()
 	return a.Get(0).(AccountSignersBatchInsertBuilder)
 }
 

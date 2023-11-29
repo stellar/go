@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/stellar/go/ingest"
+	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/xdr"
 )
 
@@ -12,6 +13,10 @@ import (
 // and entry types.
 type StatsLedgerTransactionProcessor struct {
 	results StatsLedgerTransactionProcessorResults
+}
+
+func NewStatsLedgerTransactionProcessor() *StatsLedgerTransactionProcessor {
+	return &StatsLedgerTransactionProcessor{}
 }
 
 // StatsLedgerTransactionProcessorResults contains results after running StatsLedgerTransactionProcessor.
@@ -54,7 +59,11 @@ type StatsLedgerTransactionProcessorResults struct {
 	OperationsRestoreFootprint              int64
 }
 
-func (p *StatsLedgerTransactionProcessor) ProcessTransaction(ctx context.Context, transaction ingest.LedgerTransaction) error {
+func (p *StatsLedgerTransactionProcessor) Flush(ctx context.Context, session db.SessionInterface) error {
+	return nil
+}
+
+func (p *StatsLedgerTransactionProcessor) ProcessTransaction(lcm xdr.LedgerCloseMeta, transaction ingest.LedgerTransaction) error {
 	p.results.Transactions++
 	ops := int64(len(transaction.Envelope.Operations()))
 	p.results.Operations += ops
@@ -172,6 +181,10 @@ func (stats *StatsLedgerTransactionProcessorResults) Map() map[string]interface{
 		"stats_operations_liquidity_pool_withdraw":          stats.OperationsLiquidityPoolWithdraw,
 		"stats_operations_invoke_host_function":             stats.OperationsInvokeHostFunction,
 	}
+}
+
+func (p *StatsLedgerTransactionProcessor) ResetStats() {
+	p.results = StatsLedgerTransactionProcessorResults{}
 }
 
 // Ensure the StatsChangeProcessor conforms to the ChangeProcessor interface.

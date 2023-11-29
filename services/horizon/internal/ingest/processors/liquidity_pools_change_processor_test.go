@@ -19,16 +19,22 @@ func TestLiquidityPoolsChangeProcessorTestSuiteState(t *testing.T) {
 
 type LiquidityPoolsChangeProcessorTestSuiteState struct {
 	suite.Suite
-	ctx       context.Context
-	processor *LiquidityPoolsChangeProcessor
-	mockQ     *history.MockQLiquidityPools
-	sequence  uint32
+	ctx                                 context.Context
+	processor                           *LiquidityPoolsChangeProcessor
+	mockQ                               *history.MockQLiquidityPools
+	sequence                            uint32
+	mockLiquidityPoolBatchInsertBuilder *history.MockLiquidityPoolBatchInsertBuilder
 }
 
 func (s *LiquidityPoolsChangeProcessorTestSuiteState) SetupTest() {
 	s.ctx = context.Background()
 	s.mockQ = &history.MockQLiquidityPools{}
+	s.mockLiquidityPoolBatchInsertBuilder = &history.MockLiquidityPoolBatchInsertBuilder{}
+	s.mockQ.
+		On("NewLiquidityPoolBatchInsertBuilder").
+		Return(s.mockLiquidityPoolBatchInsertBuilder)
 
+	s.mockLiquidityPoolBatchInsertBuilder.On("Exec", s.ctx).Return(nil)
 	s.sequence = 456
 	s.processor = NewLiquidityPoolsChangeProcessor(s.mockQ, s.sequence)
 }
@@ -85,7 +91,7 @@ func (s *LiquidityPoolsChangeProcessorTestSuiteState) TestCreatesLiquidityPools(
 		},
 		LastModifiedLedger: 123,
 	}
-	s.mockQ.On("UpsertLiquidityPools", s.ctx, []history.LiquidityPool{lp}).Return(nil).Once()
+	s.mockLiquidityPoolBatchInsertBuilder.On("Add", lp).Return(nil).Once()
 
 	s.mockQ.On("CompactLiquidityPools", s.ctx, s.sequence-100).Return(int64(0), nil).Once()
 
@@ -109,15 +115,22 @@ func TestLiquidityPoolsChangeProcessorTestSuiteLedger(t *testing.T) {
 
 type LiquidityPoolsChangeProcessorTestSuiteLedger struct {
 	suite.Suite
-	ctx       context.Context
-	processor *LiquidityPoolsChangeProcessor
-	mockQ     *history.MockQLiquidityPools
-	sequence  uint32
+	ctx                                 context.Context
+	processor                           *LiquidityPoolsChangeProcessor
+	mockQ                               *history.MockQLiquidityPools
+	sequence                            uint32
+	mockLiquidityPoolBatchInsertBuilder *history.MockLiquidityPoolBatchInsertBuilder
 }
 
 func (s *LiquidityPoolsChangeProcessorTestSuiteLedger) SetupTest() {
 	s.ctx = context.Background()
 	s.mockQ = &history.MockQLiquidityPools{}
+
+	s.mockLiquidityPoolBatchInsertBuilder = &history.MockLiquidityPoolBatchInsertBuilder{}
+	s.mockQ.
+		On("NewLiquidityPoolBatchInsertBuilder").
+		Return(s.mockLiquidityPoolBatchInsertBuilder).Twice()
+	s.mockLiquidityPoolBatchInsertBuilder.On("Exec", s.ctx).Return(nil).Once()
 
 	s.sequence = 456
 	s.processor = NewLiquidityPoolsChangeProcessor(s.mockQ, s.sequence)
@@ -170,6 +183,28 @@ func (s *LiquidityPoolsChangeProcessorTestSuiteLedger) TestNewLiquidityPool() {
 			},
 		},
 	}
+
+	liquidityPool := history.LiquidityPool{
+		PoolID:         "cafebabedeadbeef000000000000000000000000000000000000000000000000",
+		Type:           xdr.LiquidityPoolTypeLiquidityPoolConstantProduct,
+		Fee:            34,
+		TrustlineCount: 52115,
+		ShareCount:     412241,
+		AssetReserves: []history.LiquidityPoolAssetReserve{
+			{
+				xdr.MustNewCreditAsset("USD", "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+				450,
+			},
+			{
+				xdr.MustNewNativeAsset(),
+				500,
+			},
+		},
+		LastModifiedLedger: 123,
+	}
+	s.mockLiquidityPoolBatchInsertBuilder.On("Add", liquidityPool).
+		Return(nil).Once()
+
 	err := s.processor.ProcessChange(s.ctx, ingest.Change{
 		Type: xdr.LedgerEntryTypeLiquidityPool,
 		Pre:  nil,
@@ -191,7 +226,7 @@ func (s *LiquidityPoolsChangeProcessorTestSuiteLedger) TestNewLiquidityPool() {
 			},
 		},
 	}
-
+	s.mockLiquidityPoolBatchInsertBuilder.On("Add", liquidityPool).Return(nil).Once()
 	pre.LastModifiedLedgerSeq = pre.LastModifiedLedgerSeq - 1
 	err = s.processor.ProcessChange(s.ctx, ingest.Change{
 		Type: xdr.LedgerEntryTypeLiquidityPool,
@@ -200,25 +235,7 @@ func (s *LiquidityPoolsChangeProcessorTestSuiteLedger) TestNewLiquidityPool() {
 	})
 	s.Assert().NoError(err)
 
-	postLP := history.LiquidityPool{
-		PoolID:         "cafebabedeadbeef000000000000000000000000000000000000000000000000",
-		Type:           xdr.LiquidityPoolTypeLiquidityPoolConstantProduct,
-		Fee:            34,
-		TrustlineCount: 52115,
-		ShareCount:     412241,
-		AssetReserves: []history.LiquidityPoolAssetReserve{
-			{
-				xdr.MustNewCreditAsset("USD", "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
-				450,
-			},
-			{
-				xdr.MustNewNativeAsset(),
-				500,
-			},
-		},
-		LastModifiedLedger: 123,
-	}
-	s.mockQ.On("UpsertLiquidityPools", s.ctx, []history.LiquidityPool{postLP}).Return(nil).Once()
+	s.mockLiquidityPoolBatchInsertBuilder.On("Add", liquidityPool).Return(nil).Once()
 	s.mockQ.On("CompactLiquidityPools", s.ctx, s.sequence-100).Return(int64(0), nil).Once()
 }
 

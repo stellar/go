@@ -106,6 +106,7 @@ func TestNewSystem(t *testing.T) {
 
 	assert.Equal(t, config, system.runner.(*ProcessorRunner).config)
 	assert.Equal(t, system.ctx, system.runner.(*ProcessorRunner).ctx)
+	assert.Equal(t, system.maxLedgerPerFlush, MaxLedgersPerFlush)
 }
 
 func TestStateMachineRunReturnsUnexpectedTransaction(t *testing.T) {
@@ -413,18 +414,18 @@ func (m *mockDBQ) DeleteRangeAll(ctx context.Context, start, end int64) error {
 
 // Methods from interfaces duplicating methods:
 
-func (m *mockDBQ) NewTransactionParticipantsBatchInsertBuilder(maxBatchSize int) history.TransactionParticipantsBatchInsertBuilder {
-	args := m.Called(maxBatchSize)
+func (m *mockDBQ) NewTransactionParticipantsBatchInsertBuilder() history.TransactionParticipantsBatchInsertBuilder {
+	args := m.Called()
 	return args.Get(0).(history.TransactionParticipantsBatchInsertBuilder)
 }
 
-func (m *mockDBQ) NewOperationParticipantBatchInsertBuilder(maxBatchSize int) history.OperationParticipantBatchInsertBuilder {
-	args := m.Called(maxBatchSize)
-	return args.Get(0).(history.TransactionParticipantsBatchInsertBuilder)
+func (m *mockDBQ) NewOperationParticipantBatchInsertBuilder() history.OperationParticipantBatchInsertBuilder {
+	args := m.Called()
+	return args.Get(0).(history.OperationParticipantBatchInsertBuilder)
 }
 
-func (m *mockDBQ) NewTradeBatchInsertBuilder(maxBatchSize int) history.TradeBatchInsertBuilder {
-	args := m.Called(maxBatchSize)
+func (m *mockDBQ) NewTradeBatchInsertBuilder() history.TradeBatchInsertBuilder {
+	args := m.Called()
 	return args.Get(0).(history.TradeBatchInsertBuilder)
 }
 
@@ -540,6 +541,11 @@ func (m *mockProcessorsRunner) RunTransactionProcessorsOnLedger(ledger xdr.Ledge
 		args.Get(1).(processorsRunDurations),
 		args.Get(2).(processors.TradeStats),
 		args.Error(3)
+}
+
+func (m *mockProcessorsRunner) RunTransactionProcessorsOnLedgers(ledgers []xdr.LedgerCloseMeta) error {
+	args := m.Called(ledgers)
+	return args.Error(0)
 }
 
 var _ ProcessorRunnerInterface = (*mockProcessorsRunner)(nil)

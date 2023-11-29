@@ -82,6 +82,7 @@ func RegisterMetrics(base *Session, namespace string, sub Subservice, registry *
 			Namespace: namespace, Subsystem: "db",
 			Name:        "query_duration_seconds",
 			ConstLabels: prometheus.Labels{"subservice": string(sub)},
+			Objectives:  map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
 		},
 		[]string{"query_type", "error", "route"},
 	)
@@ -232,6 +233,7 @@ func RegisterMetrics(base *Session, namespace string, sub Subservice, registry *
 			Name:        "round_trip_time_seconds",
 			Help:        "time required to run `select 1` query in a DB - effectively measures round trip time, if time exceeds 1s it will be recorded as 1",
 			ConstLabels: prometheus.Labels{"subservice": string(sub)},
+			Objectives:  map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
 		},
 	)
 	registry.MustRegister(s.roundTripTimeSummary)

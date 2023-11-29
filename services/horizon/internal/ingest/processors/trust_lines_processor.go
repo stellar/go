@@ -12,7 +12,8 @@ import (
 type TrustLinesProcessor struct {
 	trustLinesQ history.QTrustLines
 
-	cache *ingest.ChangeCompactor
+	cache              *ingest.ChangeCompactor
+	batchInsertBuilder history.TrustLinesBatchInsertBuilder
 }
 
 func NewTrustLinesProcessor(trustLinesQ history.QTrustLines) *TrustLinesProcessor {
@@ -23,6 +24,7 @@ func NewTrustLinesProcessor(trustLinesQ history.QTrustLines) *TrustLinesProcesso
 
 func (p *TrustLinesProcessor) reset() {
 	p.cache = ingest.NewChangeCompactor()
+	p.batchInsertBuilder = p.trustLinesQ.NewTrustLinesBatchInsertBuilder()
 }
 
 func (p *TrustLinesProcessor) ProcessChange(ctx context.Context, change ingest.Change) error {
@@ -40,7 +42,6 @@ func (p *TrustLinesProcessor) ProcessChange(ctx context.Context, change ingest.C
 		if err != nil {
 			return errors.Wrap(err, "error in Commit")
 		}
-		p.reset()
 	}
 
 	return nil
@@ -97,18 +98,31 @@ func xdrToTrustline(ledgerEntry xdr.LedgerEntry) (history.TrustLine, error) {
 }
 
 func (p *TrustLinesProcessor) Commit(ctx context.Context) error {
+	defer p.reset()
+
 	var batchUpsertTrustLines []history.TrustLine
 	var batchRemoveTrustLineKeys []string
 
 	changes := p.cache.GetChanges()
 	for _, change := range changes {
 		switch {
-		case change.Post != nil:
-			tl, err := xdrToTrustline(*change.Post)
+		case change.Pre == nil && change.Post != nil:
+			// Created
+			line, err := xdrToTrustline(*change.Post)
 			if err != nil {
 				return errors.Wrap(err, "Error extracting trustline")
 			}
 
+			err = p.batchInsertBuilder.Add(line)
+			if err != nil {
+				return errors.Wrap(err, "Error adding to TrustLinesBatchInsertBuilder")
+			}
+		case change.Pre != nil && change.Post != nil:
+			// Updated
+			tl, err := xdrToTrustline(*change.Post)
+			if err != nil {
+				return errors.Wrap(err, "Error extracting trustline")
+			}
 			batchUpsertTrustLines = append(batchUpsertTrustLines, tl)
 		case change.Pre != nil && change.Post == nil:
 			// Removed
@@ -122,6 +136,11 @@ func (p *TrustLinesProcessor) Commit(ctx context.Context) error {
 		default:
 			return errors.New("Invalid io.Change: change.Pre == nil && change.Post == nil")
 		}
+	}
+
+	err := p.batchInsertBuilder.Exec(ctx)
+	if err != nil {
+		return errors.Wrap(err, "Error executing TrustLinesBatchInsertBuilder")
 	}
 
 	if len(batchUpsertTrustLines) > 0 {

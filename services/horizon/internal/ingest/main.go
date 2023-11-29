@@ -68,6 +68,10 @@ const (
 
 	defaultCoreCursorName           = "HORIZON"
 	stateVerificationErrorThreshold = 3
+
+	// 100 ledgers per flush has shown in stress tests
+	// to be best point on performance curve, default to that.
+	MaxLedgersPerFlush uint32 = 100
 )
 
 var log = logpkg.DefaultLogger.WithField("service", "ingest")
@@ -76,7 +80,6 @@ type Config struct {
 	CoreSession            db.SessionInterface
 	StellarCoreURL         string
 	StellarCoreCursor      string
-	EnableCaptiveCore      bool
 	CaptiveCoreBinaryPath  string
 	CaptiveCoreStoragePath string
 	CaptiveCoreToml        *ledgerbackend.CaptiveCoreToml
@@ -103,21 +106,20 @@ type Config struct {
 	RoundingSlippageFilter int
 
 	EnableIngestionFiltering bool
+	MaxLedgerPerFlush        uint32
 }
 
 // LocalCaptiveCoreEnabled returns true if configured to run
 // a local captive core instance for ingestion.
 func (c Config) LocalCaptiveCoreEnabled() bool {
-	// c.EnableCaptiveCore is true for both local and remote captive core
-	// and c.RemoteCaptiveCoreURL is always empty when running
-	// local captive core.
-	return c.EnableCaptiveCore && c.RemoteCaptiveCoreURL == ""
+	// c.RemoteCaptiveCoreURL is always empty when running local captive core.
+	return c.RemoteCaptiveCoreURL == ""
 }
 
 // RemoteCaptiveCoreEnabled returns true if configured to run
 // a remote captive core instance for ingestion.
 func (c Config) RemoteCaptiveCoreEnabled() bool {
-	return c.EnableCaptiveCore && c.RemoteCaptiveCoreURL != ""
+	return c.RemoteCaptiveCoreURL != ""
 }
 
 const (
@@ -217,7 +219,8 @@ type system struct {
 
 	runStateVerificationOnLedger func(uint32) bool
 
-	reapOffsets map[string]int64
+	reapOffsets       map[string]int64
+	maxLedgerPerFlush uint32
 
 	currentStateMutex sync.Mutex
 	currentState      State
@@ -281,6 +284,11 @@ func NewSystem(config Config) (System, error) {
 	historyAdapter := newHistoryArchiveAdapter(archive)
 	filters := filters.NewFilters()
 
+	maxLedgersPerFlush := config.MaxLedgerPerFlush
+	if maxLedgersPerFlush < 1 {
+		maxLedgersPerFlush = MaxLedgersPerFlush
+	}
+
 	system := &system{
 		cancel:                      cancel,
 		config:                      config,
@@ -299,6 +307,7 @@ func NewSystem(config Config) (System, error) {
 			ctx:            ctx,
 			config:         config,
 			historyQ:       historyQ,
+			session:        historyQ,
 			historyAdapter: historyAdapter,
 			filters:        filters,
 		},
@@ -306,6 +315,7 @@ func NewSystem(config Config) (System, error) {
 			config.CheckpointFrequency,
 			config.StateVerificationCheckpointFrequency,
 		),
+		maxLedgerPerFlush: maxLedgersPerFlush,
 	}
 
 	system.initMetrics()
@@ -336,22 +346,26 @@ func (s *system) initMetrics() {
 
 	s.metrics.LedgerIngestionDuration = prometheus.NewSummary(prometheus.SummaryOpts{
 		Namespace: "horizon", Subsystem: "ingest", Name: "ledger_ingestion_duration_seconds",
-		Help: "ledger ingestion durations, sliding window = 10m",
+		Help:       "ledger ingestion durations, sliding window = 10m",
+		Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
 	})
 
 	s.metrics.LedgerIngestionTradeAggregationDuration = prometheus.NewSummary(prometheus.SummaryOpts{
 		Namespace: "horizon", Subsystem: "ingest", Name: "ledger_ingestion_trade_aggregation_duration_seconds",
-		Help: "ledger ingestion trade aggregation rebuild durations, sliding window = 10m",
+		Help:       "ledger ingestion trade aggregation rebuild durations, sliding window = 10m",
+		Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
 	})
 
 	s.metrics.LedgerIngestionReapLookupTablesDuration = prometheus.NewSummary(prometheus.SummaryOpts{
 		Namespace: "horizon", Subsystem: "ingest", Name: "ledger_ingestion_reap_lookup_tables_duration_seconds",
-		Help: "ledger ingestion reap lookup tables durations, sliding window = 10m",
+		Help:       "ledger ingestion reap lookup tables durations, sliding window = 10m",
+		Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
 	})
 
 	s.metrics.StateVerifyDuration = prometheus.NewSummary(prometheus.SummaryOpts{
 		Namespace: "horizon", Subsystem: "ingest", Name: "state_verify_duration_seconds",
-		Help: "state verification durations, sliding window = 10m",
+		Help:       "state verification durations, sliding window = 10m",
+		Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
 	})
 
 	s.metrics.StateInvalidGauge = prometheus.NewGaugeFunc(
@@ -400,7 +414,8 @@ func (s *system) initMetrics() {
 	s.metrics.ProcessorsRunDurationSummary = prometheus.NewSummaryVec(
 		prometheus.SummaryOpts{
 			Namespace: "horizon", Subsystem: "ingest", Name: "processor_run_duration_seconds",
-			Help: "run durations of ingestion processors, sliding window = 10m",
+			Help:       "run durations of ingestion processors, sliding window = 10m",
+			Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
 		},
 		[]string{"name"},
 	)
@@ -736,7 +751,7 @@ func (s *system) resetStateVerificationErrors() {
 }
 
 func (s *system) updateCursor(ledgerSequence uint32) error {
-	if s.stellarCoreClient == nil || s.config.EnableCaptiveCore {
+	if s.stellarCoreClient == nil {
 		return nil
 	}
 

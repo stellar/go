@@ -399,6 +399,11 @@ func runDBReingestRange(ledgerRanges []history.LedgerRange, reingestForce bool, 
 		return errors.New("--force is incompatible with --parallel-workers > 1")
 	}
 
+	maxLedgersPerFlush := ingest.MaxLedgersPerFlush
+	if parallelJobSize < maxLedgersPerFlush {
+		maxLedgersPerFlush = parallelJobSize
+	}
+
 	ingestConfig := ingest.Config{
 		NetworkPassphrase:           config.NetworkPassphrase,
 		HistoryArchiveURLs:          config.HistoryArchiveURLs,
@@ -406,7 +411,6 @@ func runDBReingestRange(ledgerRanges []history.LedgerRange, reingestForce bool, 
 		ReingestEnabled:             true,
 		MaxReingestRetries:          int(retries),
 		ReingestRetryBackoffSeconds: int(retryBackoffSeconds),
-		EnableCaptiveCore:           config.EnableCaptiveCoreIngestion,
 		CaptiveCoreBinaryPath:       config.CaptiveCoreBinaryPath,
 		CaptiveCoreConfigUseDB:      config.CaptiveCoreConfigUseDB,
 		RemoteCaptiveCoreURL:        config.RemoteCaptiveCoreURL,
@@ -416,20 +420,11 @@ func runDBReingestRange(ledgerRanges []history.LedgerRange, reingestForce bool, 
 		StellarCoreURL:              config.StellarCoreURL,
 		RoundingSlippageFilter:      config.RoundingSlippageFilter,
 		EnableIngestionFiltering:    config.EnableIngestionFiltering,
+		MaxLedgerPerFlush:           maxLedgersPerFlush,
 	}
 
 	if ingestConfig.HistorySession, err = db.Open("postgres", config.DatabaseURL); err != nil {
 		return fmt.Errorf("cannot open Horizon DB: %v", err)
-	}
-
-	if !config.EnableCaptiveCoreIngestion {
-		if config.StellarCoreDatabaseURL == "" {
-			return fmt.Errorf("flag --%s cannot be empty", horizon.StellarCoreDBURLFlagName)
-		}
-		if ingestConfig.CoreSession, err = db.Open("postgres", config.StellarCoreDatabaseURL); err != nil {
-			ingestConfig.HistorySession.Close()
-			return fmt.Errorf("cannot open Core DB: %v", err)
-		}
 	}
 
 	if parallelWorkers > 1 {

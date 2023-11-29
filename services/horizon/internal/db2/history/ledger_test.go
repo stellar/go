@@ -119,7 +119,8 @@ func TestInsertLedger(t *testing.T) {
 	tt.Assert.NoError(err)
 	expectedLedger.LedgerHeaderXDR = null.NewString(ledgerHeaderBase64, true)
 
-	rowsAffected, err := q.InsertLedger(tt.Ctx,
+	ledgerBatch := q.NewLedgerBatchInsertBuilder()
+	err = ledgerBatch.Add(
 		ledgerEntry,
 		12,
 		3,
@@ -128,7 +129,9 @@ func TestInsertLedger(t *testing.T) {
 		int(expectedLedger.ImporterVersion),
 	)
 	tt.Assert.NoError(err)
-	tt.Assert.Equal(rowsAffected, int64(1))
+	tt.Assert.NoError(q.Begin(tt.Ctx))
+	tt.Assert.NoError(ledgerBatch.Exec(tt.Ctx, q.SessionInterface))
+	tt.Assert.NoError(q.Commit())
 
 	err = q.LedgerBySequence(tt.Ctx, &ledgerFromDB, 69859)
 	tt.Assert.NoError(err)
@@ -204,7 +207,8 @@ func insertLedgerWithSequence(tt *test.T, q *Q, seq uint32) {
 	ledgerHeaderBase64, err := xdr.MarshalBase64(ledgerEntry.Header)
 	tt.Assert.NoError(err)
 	expectedLedger.LedgerHeaderXDR = null.NewString(ledgerHeaderBase64, true)
-	rowsAffected, err := q.InsertLedger(tt.Ctx,
+	ledgerBatch := q.NewLedgerBatchInsertBuilder()
+	err = ledgerBatch.Add(
 		ledgerEntry,
 		12,
 		3,
@@ -213,7 +217,9 @@ func insertLedgerWithSequence(tt *test.T, q *Q, seq uint32) {
 		int(expectedLedger.ImporterVersion),
 	)
 	tt.Assert.NoError(err)
-	tt.Assert.Equal(rowsAffected, int64(1))
+	tt.Assert.NoError(q.Begin(tt.Ctx))
+	tt.Assert.NoError(ledgerBatch.Exec(tt.Ctx, q.SessionInterface))
+	tt.Assert.NoError(q.Commit())
 }
 
 func TestGetLedgerGaps(t *testing.T) {

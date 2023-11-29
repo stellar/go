@@ -12,6 +12,7 @@ import (
 	"github.com/stellar/go/protocols/horizon/base"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/contractevents"
+	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/toid"
 	"github.com/stellar/go/xdr"
@@ -19,30 +20,25 @@ import (
 
 // OperationProcessor operations processor
 type OperationProcessor struct {
-	operationsQ history.QOperations
-
-	sequence uint32
-	batch    history.OperationBatchInsertBuilder
-	network  string
+	batch   history.OperationBatchInsertBuilder
+	network string
 }
 
-func NewOperationProcessor(operationsQ history.QOperations, sequence uint32, network string) *OperationProcessor {
+func NewOperationProcessor(batch history.OperationBatchInsertBuilder, network string) *OperationProcessor {
 	return &OperationProcessor{
-		operationsQ: operationsQ,
-		sequence:    sequence,
-		batch:       operationsQ.NewOperationBatchInsertBuilder(maxBatchSize),
-		network:     network,
+		batch:   batch,
+		network: network,
 	}
 }
 
 // ProcessTransaction process the given transaction
-func (p *OperationProcessor) ProcessTransaction(ctx context.Context, transaction ingest.LedgerTransaction) error {
+func (p *OperationProcessor) ProcessTransaction(lcm xdr.LedgerCloseMeta, transaction ingest.LedgerTransaction) error {
 	for i, op := range transaction.Envelope.Operations() {
 		operation := transactionOperationWrapper{
 			index:          uint32(i),
 			transaction:    transaction,
 			operation:      op,
-			ledgerSequence: p.sequence,
+			ledgerSequence: lcm.LedgerSequence(),
 			network:        p.network,
 		}
 		details, err := operation.Details()
@@ -61,7 +57,7 @@ func (p *OperationProcessor) ProcessTransaction(ctx context.Context, transaction
 		if source.Type == xdr.CryptoKeyTypeKeyTypeMuxedEd25519 {
 			sourceAccountMuxed = null.StringFrom(source.Address())
 		}
-		if err := p.batch.Add(ctx,
+		if err := p.batch.Add(
 			operation.ID(),
 			operation.TransactionID(),
 			operation.Order(),
@@ -78,8 +74,8 @@ func (p *OperationProcessor) ProcessTransaction(ctx context.Context, transaction
 	return nil
 }
 
-func (p *OperationProcessor) Commit(ctx context.Context) error {
-	return p.batch.Exec(ctx)
+func (p *OperationProcessor) Flush(ctx context.Context, session db.SessionInterface) error {
+	return p.batch.Exec(ctx, session)
 }
 
 // transactionOperationWrapper represents the data for a single operation within a transaction
@@ -342,7 +338,9 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 		addAccountAndMuxedAccountDetails(details, *source, "from")
 		addAccountAndMuxedAccountDetails(details, op.Destination, "to")
 		details["amount"] = amount.String(op.Amount)
-		addAssetDetails(details, op.Asset, "")
+		if err := addAssetDetails(details, op.Asset, ""); err != nil {
+			return nil, err
+		}
 	case xdr.OperationTypePathPaymentStrictReceive:
 		op := operation.operation.Body.MustPathPaymentStrictReceiveOp()
 		addAccountAndMuxedAccountDetails(details, *source, "from")
@@ -351,8 +349,12 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 		details["amount"] = amount.String(op.DestAmount)
 		details["source_amount"] = amount.String(0)
 		details["source_max"] = amount.String(op.SendMax)
-		addAssetDetails(details, op.DestAsset, "")
-		addAssetDetails(details, op.SendAsset, "source_")
+		if err := addAssetDetails(details, op.DestAsset, ""); err != nil {
+			return nil, err
+		}
+		if err := addAssetDetails(details, op.SendAsset, "source_"); err != nil {
+			return nil, err
+		}
 
 		if operation.transaction.Result.Successful() {
 			result := operation.OperationResult().MustPathPaymentStrictReceiveResult()
@@ -362,7 +364,9 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 		var path = make([]map[string]interface{}, len(op.Path))
 		for i := range op.Path {
 			path[i] = make(map[string]interface{})
-			addAssetDetails(path[i], op.Path[i], "")
+			if err := addAssetDetails(path[i], op.Path[i], ""); err != nil {
+				return nil, err
+			}
 		}
 		details["path"] = path
 
@@ -374,8 +378,12 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 		details["amount"] = amount.String(0)
 		details["source_amount"] = amount.String(op.SendAmount)
 		details["destination_min"] = amount.String(op.DestMin)
-		addAssetDetails(details, op.DestAsset, "")
-		addAssetDetails(details, op.SendAsset, "source_")
+		if err := addAssetDetails(details, op.DestAsset, ""); err != nil {
+			return nil, err
+		}
+		if err := addAssetDetails(details, op.SendAsset, "source_"); err != nil {
+			return nil, err
+		}
 
 		if operation.transaction.Result.Successful() {
 			result := operation.OperationResult().MustPathPaymentStrictSendResult()
@@ -385,7 +393,9 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 		var path = make([]map[string]interface{}, len(op.Path))
 		for i := range op.Path {
 			path[i] = make(map[string]interface{})
-			addAssetDetails(path[i], op.Path[i], "")
+			if err := addAssetDetails(path[i], op.Path[i], ""); err != nil {
+				return nil, err
+			}
 		}
 		details["path"] = path
 	case xdr.OperationTypeManageBuyOffer:
@@ -397,8 +407,12 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 			"n": op.Price.N,
 			"d": op.Price.D,
 		}
-		addAssetDetails(details, op.Buying, "buying_")
-		addAssetDetails(details, op.Selling, "selling_")
+		if err := addAssetDetails(details, op.Buying, "buying_"); err != nil {
+			return nil, err
+		}
+		if err := addAssetDetails(details, op.Selling, "selling_"); err != nil {
+			return nil, err
+		}
 	case xdr.OperationTypeManageSellOffer:
 		op := operation.operation.Body.MustManageSellOfferOp()
 		details["offer_id"] = op.OfferId
@@ -408,8 +422,12 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 			"n": op.Price.N,
 			"d": op.Price.D,
 		}
-		addAssetDetails(details, op.Buying, "buying_")
-		addAssetDetails(details, op.Selling, "selling_")
+		if err := addAssetDetails(details, op.Buying, "buying_"); err != nil {
+			return nil, err
+		}
+		if err := addAssetDetails(details, op.Selling, "selling_"); err != nil {
+			return nil, err
+		}
 	case xdr.OperationTypeCreatePassiveSellOffer:
 		op := operation.operation.Body.MustCreatePassiveSellOfferOp()
 		details["amount"] = amount.String(op.Amount)
@@ -418,8 +436,12 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 			"n": op.Price.N,
 			"d": op.Price.D,
 		}
-		addAssetDetails(details, op.Buying, "buying_")
-		addAssetDetails(details, op.Selling, "selling_")
+		if err := addAssetDetails(details, op.Buying, "buying_"); err != nil {
+			return nil, err
+		}
+		if err := addAssetDetails(details, op.Selling, "selling_"); err != nil {
+			return nil, err
+		}
 	case xdr.OperationTypeSetOptions:
 		op := operation.operation.Body.MustSetOptionsOp()
 
@@ -466,14 +488,18 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 				return nil, err
 			}
 		} else {
-			addAssetDetails(details, op.Line.ToAsset(), "")
+			if err := addAssetDetails(details, op.Line.ToAsset(), ""); err != nil {
+				return nil, err
+			}
 			details["trustee"] = details["asset_issuer"]
 		}
 		addAccountAndMuxedAccountDetails(details, *source, "trustor")
 		details["limit"] = amount.String(op.Limit)
 	case xdr.OperationTypeAllowTrust:
 		op := operation.operation.Body.MustAllowTrustOp()
-		addAssetDetails(details, op.Asset.ToAsset(source.ToAccountId()), "")
+		if err := addAssetDetails(details, op.Asset.ToAsset(source.ToAccountId()), ""); err != nil {
+			return nil, err
+		}
 		addAccountAndMuxedAccountDetails(details, *source, "trustee")
 		details["trustor"] = op.Trustor.Address()
 		details["authorize"] = xdr.TrustLineFlags(op.Authorize).IsAuthorized()
@@ -544,7 +570,9 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 		}
 	case xdr.OperationTypeClawback:
 		op := operation.operation.Body.MustClawbackOp()
-		addAssetDetails(details, op.Asset, "")
+		if err := addAssetDetails(details, op.Asset, ""); err != nil {
+			return nil, err
+		}
 		addAccountAndMuxedAccountDetails(details, op.From, "from")
 		details["amount"] = amount.String(op.Amount)
 	case xdr.OperationTypeClawbackClaimableBalance:
@@ -557,7 +585,9 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 	case xdr.OperationTypeSetTrustLineFlags:
 		op := operation.operation.Body.MustSetTrustLineFlagsOp()
 		details["trustor"] = op.Trustor.Address()
-		addAssetDetails(details, op.Asset, "")
+		if err := addAssetDetails(details, op.Asset, ""); err != nil {
+			return nil, err
+		}
 		if op.SetFlags > 0 {
 			addTrustLineFlagDetails(details, xdr.TrustLineFlags(op.SetFlags), "set")
 		}

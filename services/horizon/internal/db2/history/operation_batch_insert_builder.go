@@ -12,7 +12,6 @@ import (
 // history_operations table
 type OperationBatchInsertBuilder interface {
 	Add(
-		ctx context.Context,
 		id int64,
 		transactionID int64,
 		applicationOrder uint32,
@@ -22,27 +21,25 @@ type OperationBatchInsertBuilder interface {
 		sourceAcccountMuxed null.String,
 		isPayment bool,
 	) error
-	Exec(ctx context.Context) error
+	Exec(ctx context.Context, session db.SessionInterface) error
 }
 
 // operationBatchInsertBuilder is a simple wrapper around db.BatchInsertBuilder
 type operationBatchInsertBuilder struct {
-	builder db.BatchInsertBuilder
+	builder db.FastBatchInsertBuilder
+	table   string
 }
 
 // NewOperationBatchInsertBuilder constructs a new TransactionBatchInsertBuilder instance
-func (q *Q) NewOperationBatchInsertBuilder(maxBatchSize int) OperationBatchInsertBuilder {
+func (q *Q) NewOperationBatchInsertBuilder() OperationBatchInsertBuilder {
 	return &operationBatchInsertBuilder{
-		builder: db.BatchInsertBuilder{
-			Table:        q.GetTable("history_operations"),
-			MaxBatchSize: maxBatchSize,
-		},
+		table:   "history_operations",
+		builder: db.FastBatchInsertBuilder{},
 	}
 }
 
 // Add adds a transaction's operations to the batch
 func (i *operationBatchInsertBuilder) Add(
-	ctx context.Context,
 	id int64,
 	transactionID int64,
 	applicationOrder uint32,
@@ -52,12 +49,12 @@ func (i *operationBatchInsertBuilder) Add(
 	sourceAccountMuxed null.String,
 	isPayment bool,
 ) error {
-	return i.builder.Row(ctx, map[string]interface{}{
+	return i.builder.Row(map[string]interface{}{
 		"id":                   id,
 		"transaction_id":       transactionID,
 		"application_order":    applicationOrder,
 		"type":                 operationType,
-		"details":              details,
+		"details":              string(details),
 		"source_account":       sourceAccount,
 		"source_account_muxed": sourceAccountMuxed,
 		"is_payment":           isPayment,
@@ -65,6 +62,6 @@ func (i *operationBatchInsertBuilder) Add(
 
 }
 
-func (i *operationBatchInsertBuilder) Exec(ctx context.Context) error {
-	return i.builder.Exec(ctx)
+func (i *operationBatchInsertBuilder) Exec(ctx context.Context, session db.SessionInterface) error {
+	return i.builder.Exec(ctx, session, i.table)
 }

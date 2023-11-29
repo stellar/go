@@ -422,14 +422,13 @@ func (i *Test) getDefaultArgs(postgres *dbtest.DB) map[string]string {
 	// TODO: Ideally, we'd be pulling host/port information from the Docker
 	//       Compose YAML file itself rather than hardcoding it.
 	return map[string]string{
-		"ingest":                        "false",
-		"history-archive-urls":          fmt.Sprintf("http://%s:%d", "localhost", historyArchivePort),
-		"db-url":                        postgres.RO_DSN,
-		"stellar-core-url":              i.coreClient.URL,
-		"network-passphrase":            i.passPhrase,
-		"apply-migrations":              "true",
-		"enable-captive-core-ingestion": "false",
-		"port":                          horizonDefaultPort,
+		"ingest":               "false",
+		"history-archive-urls": fmt.Sprintf("http://%s:%d", "localhost", historyArchivePort),
+		"db-url":               postgres.RO_DSN,
+		"stellar-core-url":     i.coreClient.URL,
+		"network-passphrase":   i.passPhrase,
+		"apply-migrations":     "true",
+		"port":                 horizonDefaultPort,
 		// due to ARTIFICIALLY_ACCELERATE_TIME_FOR_TESTING
 		"checkpoint-frequency": "8",
 		"per-hour-rate-limit":  "0",  // disable rate limiting
@@ -443,16 +442,9 @@ func (i *Test) getDefaultWebArgs(postgres *dbtest.DB) map[string]string {
 
 func (i *Test) getDefaultIngestArgs(postgres *dbtest.DB) map[string]string {
 	return MergeMaps(i.getDefaultArgs(postgres), map[string]string{
-		"admin-port":                    strconv.Itoa(i.AdminPort()),
-		"port":                          "8001",
-		"enable-captive-core-ingestion": strconv.FormatBool(len(i.coreConfig.binaryPath) > 0),
-		"db-url":                        postgres.DSN,
-		"stellar-core-db-url": fmt.Sprintf(
-			"postgres://postgres:%s@%s:%d/stellar?sslmode=disable",
-			stellarCorePostgresPassword,
-			"localhost",
-			stellarCorePostgresPort,
-		),
+		"admin-port":                strconv.Itoa(i.AdminPort()),
+		"port":                      "8001",
+		"db-url":                    postgres.DSN,
 		"stellar-core-binary-path":  i.coreConfig.binaryPath,
 		"captive-core-config-path":  i.coreConfig.configPath,
 		"captive-core-http-port":    "21626",

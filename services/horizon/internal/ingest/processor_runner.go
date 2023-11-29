@@ -10,7 +10,9 @@ import (
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/ingest/filters"
 	"github.com/stellar/go/services/horizon/internal/ingest/processors"
+	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
+	logpkg "github.com/stellar/go/support/log"
 	"github.com/stellar/go/xdr"
 )
 
@@ -31,7 +33,10 @@ type horizonChangeProcessor interface {
 
 type horizonTransactionProcessor interface {
 	processors.LedgerTransactionProcessor
-	Commit(context.Context) error
+}
+
+type horizonLazyLoader interface {
+	Exec(ctx context.Context, session db.SessionInterface) error
 }
 
 type statsChangeProcessor struct {
@@ -39,14 +44,6 @@ type statsChangeProcessor struct {
 }
 
 func (statsChangeProcessor) Commit(ctx context.Context) error {
-	return nil
-}
-
-type statsLedgerTransactionProcessor struct {
-	*processors.StatsLedgerTransactionProcessor
-}
-
-func (statsLedgerTransactionProcessor) Commit(ctx context.Context) error {
 	return nil
 }
 
@@ -75,6 +72,7 @@ type ProcessorRunnerInterface interface {
 		tradeStats processors.TradeStats,
 		err error,
 	)
+	RunTransactionProcessorsOnLedgers(ledgers []xdr.LedgerCloseMeta) error
 	RunAllProcessorsOnLedger(ledger xdr.LedgerCloseMeta) (
 		stats ledgerStats,
 		err error,
@@ -88,6 +86,7 @@ type ProcessorRunner struct {
 
 	ctx                   context.Context
 	historyQ              history.IngestionQ
+	session               db.SessionInterface
 	historyAdapter        historyArchiveAdapterInterface
 	logMemoryStats        bool
 	filters               filters.Filters
@@ -131,27 +130,33 @@ func buildChangeProcessor(
 	})
 }
 
-func (s *ProcessorRunner) buildTransactionProcessor(
-	ledgerTransactionStats *processors.StatsLedgerTransactionProcessor,
-	tradeProcessor *processors.TradeProcessor,
-	ledger xdr.LedgerHeaderHistoryEntry,
-) *groupTransactionProcessors {
-	statsLedgerTransactionProcessor := &statsLedgerTransactionProcessor{
-		StatsLedgerTransactionProcessor: ledgerTransactionStats,
-	}
-	*tradeProcessor = *processors.NewTradeProcessor(s.historyQ, ledger)
-	sequence := uint32(ledger.Header.LedgerSeq)
-	return newGroupTransactionProcessors([]horizonTransactionProcessor{
+func (s *ProcessorRunner) buildTransactionProcessor(ledgersProcessor *processors.LedgersProcessor) *groupTransactionProcessors {
+	accountLoader := history.NewAccountLoader()
+	assetLoader := history.NewAssetLoader()
+	lpLoader := history.NewLiquidityPoolLoader()
+	cbLoader := history.NewClaimableBalanceLoader()
+
+	lazyLoaders := []horizonLazyLoader{accountLoader, assetLoader, lpLoader, cbLoader}
+	statsLedgerTransactionProcessor := processors.NewStatsLedgerTransactionProcessor()
+
+	tradeProcessor := processors.NewTradeProcessor(accountLoader,
+		lpLoader, assetLoader, s.historyQ.NewTradeBatchInsertBuilder())
+
+	processors := []horizonTransactionProcessor{
 		statsLedgerTransactionProcessor,
-		processors.NewEffectProcessor(s.historyQ, sequence, s.config.NetworkPassphrase),
-		processors.NewLedgerProcessor(s.historyQ, ledger, CurrentVersion),
-		processors.NewOperationProcessor(s.historyQ, sequence, s.config.NetworkPassphrase),
+		processors.NewEffectProcessor(accountLoader, s.historyQ.NewEffectBatchInsertBuilder(), s.config.NetworkPassphrase),
+		ledgersProcessor,
+		processors.NewOperationProcessor(s.historyQ.NewOperationBatchInsertBuilder(), s.config.NetworkPassphrase),
 		tradeProcessor,
-		processors.NewParticipantsProcessor(s.historyQ, sequence),
-		processors.NewTransactionProcessor(s.historyQ, sequence),
-		processors.NewClaimableBalancesTransactionProcessor(s.historyQ, sequence),
-		processors.NewLiquidityPoolsTransactionProcessor(s.historyQ, sequence),
-	})
+		processors.NewParticipantsProcessor(accountLoader,
+			s.historyQ.NewTransactionParticipantsBatchInsertBuilder(), s.historyQ.NewOperationParticipantBatchInsertBuilder()),
+		processors.NewTransactionProcessor(s.historyQ.NewTransactionBatchInsertBuilder()),
+		processors.NewClaimableBalancesTransactionProcessor(cbLoader,
+			s.historyQ.NewTransactionClaimableBalanceBatchInsertBuilder(), s.historyQ.NewOperationClaimableBalanceBatchInsertBuilder()),
+		processors.NewLiquidityPoolsTransactionProcessor(lpLoader,
+			s.historyQ.NewTransactionLiquidityPoolBatchInsertBuilder(), s.historyQ.NewOperationLiquidityPoolBatchInsertBuilder())}
+
+	return newGroupTransactionProcessors(processors, lazyLoaders, statsLedgerTransactionProcessor, tradeProcessor)
 }
 
 func (s *ProcessorRunner) buildTransactionFilterer() *groupTransactionFilterers {
@@ -163,15 +168,15 @@ func (s *ProcessorRunner) buildTransactionFilterer() *groupTransactionFilterers 
 	return newGroupTransactionFilterers(f)
 }
 
-func (s *ProcessorRunner) buildFilteredOutProcessor(ledger xdr.LedgerHeaderHistoryEntry) *groupTransactionProcessors {
+func (s *ProcessorRunner) buildFilteredOutProcessor() *groupTransactionProcessors {
 	// when in online mode, the submission result processor must always run (regardless of filtering)
 	var p []horizonTransactionProcessor
 	if s.config.EnableIngestionFiltering {
-		txSubProc := processors.NewTransactionFilteredTmpProcessor(s.historyQ, uint32(ledger.Header.LedgerSeq))
+		txSubProc := processors.NewTransactionFilteredTmpProcessor(s.historyQ.NewTransactionFilteredTmpBatchInsertBuilder())
 		p = append(p, txSubProc)
 	}
 
-	return newGroupTransactionProcessors(p)
+	return newGroupTransactionProcessors(p, nil, nil, nil)
 }
 
 // checkIfProtocolVersionSupported checks if this Horizon version supports the
@@ -304,63 +309,87 @@ func (s *ProcessorRunner) runChangeProcessorOnLedger(
 	return nil
 }
 
+func (s *ProcessorRunner) streamLedger(ledger xdr.LedgerCloseMeta,
+	groupFilterers *groupTransactionFilterers,
+	groupFilteredOutProcessors *groupTransactionProcessors,
+	groupProcessors *groupTransactionProcessors) error {
+	var (
+		transactionReader *ingest.LedgerTransactionReader
+	)
+
+	if err := s.checkIfProtocolVersionSupported(ledger.ProtocolVersion()); err != nil {
+		err = errors.Wrap(err, "Error while checking for supported protocol version")
+		return err
+	}
+
+	startTime := time.Now()
+	transactionReader, err := ingest.NewLedgerTransactionReaderFromLedgerCloseMeta(s.config.NetworkPassphrase, ledger)
+	if err != nil {
+		err = errors.Wrap(err, "Error creating ledger reader")
+		return err
+	}
+
+	err = processors.StreamLedgerTransactions(s.ctx,
+		groupFilterers,
+		groupFilteredOutProcessors,
+		groupProcessors,
+		transactionReader,
+		ledger,
+	)
+	if err != nil {
+		return errors.Wrap(err, "Error streaming changes from ledger")
+	}
+
+	transactionStats := groupProcessors.transactionStatsProcessor.GetResults()
+	transactionStats.TransactionsFiltered = groupFilterers.droppedTransactions
+
+	tradeStats := groupProcessors.tradeProcessor.GetStats()
+
+	log.WithFields(transactionStats.Map()).
+		WithFields(tradeStats.Map()).
+		WithFields(logpkg.F{
+			"sequence": ledger.LedgerSequence(),
+			"state":    false,
+			"ledger":   true,
+			"commit":   false,
+			"duration": time.Since(startTime).Seconds(),
+		}).Info("Processed ledger")
+
+	return nil
+}
+
 func (s *ProcessorRunner) RunTransactionProcessorsOnLedger(ledger xdr.LedgerCloseMeta) (
 	transactionStats processors.StatsLedgerTransactionProcessorResults,
 	transactionDurations processorsRunDurations,
 	tradeStats processors.TradeStats,
 	err error,
 ) {
-	var (
-		ledgerTransactionStats processors.StatsLedgerTransactionProcessor
-		tradeProcessor         processors.TradeProcessor
-		transactionReader      *ingest.LedgerTransactionReader
-	)
+	// ensure capture of the ledger to history regardless of whether it has transactions.
+	ledgersProcessor := processors.NewLedgerProcessor(s.historyQ.NewLedgerBatchInsertBuilder(), CurrentVersion)
+	ledgersProcessor.ProcessLedger(ledger)
 
-	transactionReader, err = ingest.NewLedgerTransactionReaderFromLedgerCloseMeta(s.config.NetworkPassphrase, ledger)
-	if err != nil {
-		err = errors.Wrap(err, "Error creating ledger reader")
-		return
-	}
-
-	if err = s.checkIfProtocolVersionSupported(ledger.ProtocolVersion()); err != nil {
-		err = errors.Wrap(err, "Error while checking for supported protocol version")
-		return
-	}
-	header := transactionReader.GetHeader()
 	groupTransactionFilterers := s.buildTransactionFilterer()
-	groupFilteredOutProcessors := s.buildFilteredOutProcessor(header)
-	groupTransactionProcessors := s.buildTransactionProcessor(
-		&ledgerTransactionStats, &tradeProcessor, header)
-	err = processors.StreamLedgerTransactions(s.ctx,
+	groupFilteredOutProcessors := s.buildFilteredOutProcessor()
+	groupTransactionProcessors := s.buildTransactionProcessor(ledgersProcessor)
+
+	err = s.streamLedger(ledger,
 		groupTransactionFilterers,
 		groupFilteredOutProcessors,
 		groupTransactionProcessors,
-		transactionReader,
 	)
 	if err != nil {
 		err = errors.Wrap(err, "Error streaming changes from ledger")
 		return
 	}
 
-	if s.config.EnableIngestionFiltering {
-		err = groupFilteredOutProcessors.Commit(s.ctx)
-		if err != nil {
-			err = errors.Wrap(err, "Error committing filtered changes from processor")
-			return
-		}
-		if time.Since(s.lastTransactionsTmpGC) > transactionsFilteredTmpGCPeriod {
-			s.historyQ.DeleteTransactionsFilteredTmpOlderThan(s.ctx, uint64(transactionsFilteredTmpGCPeriod.Seconds()))
-		}
-	}
-
-	err = groupTransactionProcessors.Commit(s.ctx)
+	err = s.flushProcessors(groupFilteredOutProcessors, groupTransactionProcessors)
 	if err != nil {
-		err = errors.Wrap(err, "Error committing changes from processor")
 		return
 	}
 
-	transactionStats = ledgerTransactionStats.GetResults()
+	transactionStats = groupTransactionProcessors.transactionStatsProcessor.GetResults()
 	transactionStats.TransactionsFiltered = groupTransactionFilterers.droppedTransactions
+
 	transactionDurations = groupTransactionProcessors.processorsRunDurations
 	for key, duration := range groupFilteredOutProcessors.processorsRunDurations {
 		transactionDurations[key] = duration
@@ -369,7 +398,81 @@ func (s *ProcessorRunner) RunTransactionProcessorsOnLedger(ledger xdr.LedgerClos
 		transactionDurations[key] = duration
 	}
 
-	tradeStats = tradeProcessor.GetStats()
+	tradeStats = groupTransactionProcessors.tradeProcessor.GetStats()
+
+	return
+}
+
+func (s *ProcessorRunner) RunTransactionProcessorsOnLedgers(ledgers []xdr.LedgerCloseMeta) (err error) {
+	ledgersProcessor := processors.NewLedgerProcessor(s.historyQ.NewLedgerBatchInsertBuilder(), CurrentVersion)
+
+	groupTransactionFilterers := s.buildTransactionFilterer()
+	groupFilteredOutProcessors := s.buildFilteredOutProcessor()
+	groupTransactionProcessors := s.buildTransactionProcessor(ledgersProcessor)
+
+	startTime := time.Now()
+	curHeap, sysHeap := getMemStats()
+	log.WithFields(logpkg.F{
+		"currentHeapSizeMB": curHeap,
+		"systemHeapSizeMB":  sysHeap,
+		"ledgerBatchSize":   len(ledgers),
+		"state":             false,
+		"ledger":            true,
+		"commit":            false,
+	}).Infof("Running processors for batch of %v ledgers", len(ledgers))
+
+	for _, ledger := range ledgers {
+		// ensure capture of the ledger to history regardless of whether it has transactions.
+		ledgersProcessor.ProcessLedger(ledger)
+
+		err = s.streamLedger(ledger,
+			groupTransactionFilterers,
+			groupFilteredOutProcessors,
+			groupTransactionProcessors,
+		)
+		if err != nil {
+			err = errors.Wrap(err, "Error streaming changes during ledger batch")
+			return
+		}
+		groupTransactionProcessors.ResetStats()
+		groupFilteredOutProcessors.ResetStats()
+		groupTransactionFilterers.ResetStats()
+	}
+
+	err = s.flushProcessors(groupFilteredOutProcessors, groupTransactionProcessors)
+	if err != nil {
+		return
+	}
+	curHeap, sysHeap = getMemStats()
+	log.WithFields(logpkg.F{
+		"currentHeapSizeMB": curHeap,
+		"systemHeapSizeMB":  sysHeap,
+		"ledgers":           len(ledgers),
+		"state":             false,
+		"ledger":            true,
+		"commit":            false,
+		"duration":          time.Since(startTime).Seconds(),
+	}).Infof("Flushed processors for batch of %v ledgers", len(ledgers))
+
+	return nil
+}
+
+func (s *ProcessorRunner) flushProcessors(groupFilteredOutProcessors *groupTransactionProcessors, groupTransactionProcessors *groupTransactionProcessors) (err error) {
+	if s.config.EnableIngestionFiltering {
+		err = groupFilteredOutProcessors.Flush(s.ctx, s.session)
+		if err != nil {
+			err = errors.Wrap(err, "Error flushing temp filtered tx from processor")
+			return
+		}
+		if time.Since(s.lastTransactionsTmpGC) > transactionsFilteredTmpGCPeriod {
+			s.historyQ.DeleteTransactionsFilteredTmpOlderThan(s.ctx, uint64(transactionsFilteredTmpGCPeriod.Seconds()))
+		}
+	}
+
+	err = groupTransactionProcessors.Flush(s.ctx, s.session)
+	if err != nil {
+		err = errors.Wrap(err, "Error flushing changes from processor")
+	}
 	return
 }
 
@@ -396,14 +499,13 @@ func (s *ProcessorRunner) RunAllProcessorsOnLedger(ledger xdr.LedgerCloseMeta) (
 		return
 	}
 
+	transactionStats, transactionDurations, tradeStats, err := s.RunTransactionProcessorsOnLedger(ledger)
+
 	stats.changeStats = changeStatsProcessor.GetResults()
 	stats.changeDurations = groupChangeProcessors.processorsRunDurations
-
-	stats.transactionStats, stats.transactionDurations, stats.tradeStats, err =
-		s.RunTransactionProcessorsOnLedger(ledger)
-	if err != nil {
-		return
-	}
+	stats.transactionStats = transactionStats
+	stats.transactionDurations = transactionDurations
+	stats.tradeStats = tradeStats
 
 	return
 }

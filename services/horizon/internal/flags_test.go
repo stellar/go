@@ -208,20 +208,19 @@ func Test_createCaptiveCoreConfig(t *testing.T) {
 
 func TestEnvironmentVariables(t *testing.T) {
 	environmentVars := map[string]string{
-		"INGEST":                        "false",
-		"HISTORY_ARCHIVE_URLS":          "http://localhost:1570",
-		"DATABASE_URL":                  "postgres://postgres@localhost/test_332cb65e6b00?sslmode=disable&timezone=UTC",
-		"STELLAR_CORE_URL":              "http://localhost:11626",
-		"NETWORK_PASSPHRASE":            "Standalone Network ; February 2017",
-		"APPLY_MIGRATIONS":              "true",
-		"ENABLE_CAPTIVE_CORE_INGESTION": "false",
-		"CHECKPOINT_FREQUENCY":          "8",
-		"MAX_DB_CONNECTIONS":            "50",
-		"ADMIN_PORT":                    "6060",
-		"PORT":                          "8001",
-		"CAPTIVE_CORE_BINARY_PATH":      os.Getenv("HORIZON_INTEGRATION_TESTS_CAPTIVE_CORE_BIN"),
-		"CAPTIVE_CORE_CONFIG_PATH":      "../docker/captive-core-classic-integration-tests.cfg",
-		"CAPTIVE_CORE_USE_DB":           "true",
+		"INGEST":                   "false",
+		"HISTORY_ARCHIVE_URLS":     "http://localhost:1570",
+		"DATABASE_URL":             "postgres://postgres@localhost/test_332cb65e6b00?sslmode=disable&timezone=UTC",
+		"STELLAR_CORE_URL":         "http://localhost:11626",
+		"NETWORK_PASSPHRASE":       "Standalone Network ; February 2017",
+		"APPLY_MIGRATIONS":         "true",
+		"CHECKPOINT_FREQUENCY":     "8",
+		"MAX_DB_CONNECTIONS":       "50",
+		"ADMIN_PORT":               "6060",
+		"PORT":                     "8001",
+		"CAPTIVE_CORE_BINARY_PATH": os.Getenv("HORIZON_INTEGRATION_TESTS_CAPTIVE_CORE_BIN"),
+		"CAPTIVE_CORE_CONFIG_PATH": "../docker/captive-core-classic-integration-tests.cfg",
+		"CAPTIVE_CORE_USE_DB":      "true",
 	}
 
 	envManager := test.NewEnvironmentManager()
@@ -252,7 +251,6 @@ func TestEnvironmentVariables(t *testing.T) {
 	assert.Equal(t, config.StellarCoreURL, "http://localhost:11626")
 	assert.Equal(t, config.NetworkPassphrase, "Standalone Network ; February 2017")
 	assert.Equal(t, config.ApplyMigrations, true)
-	assert.Equal(t, config.EnableCaptiveCoreIngestion, false)
 	assert.Equal(t, config.CheckpointFrequency, uint32(8))
 	assert.Equal(t, config.MaxDBConnections, 50)
 	assert.Equal(t, config.AdminPort, uint(6060))

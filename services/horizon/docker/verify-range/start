@@ -72,9 +72,8 @@ dump_horizon_db() {
 export NETWORK_PASSPHRASE="Public Global Stellar Network ; September 2015"
 export HISTORY_ARCHIVE_URLS="https://s3-eu-west-1.amazonaws.com/history.stellar.org/prd/core-live/core_live_001"
 export DATABASE_URL="postgres://postgres:postgres@localhost:5432/horizon?sslmode=disable"
-export CAPTIVE_CORE_CONFIG_APPEND_PATH="/captive-core-pubnet.cfg" 
+export CAPTIVE_CORE_CONFIG_APPEND_PATH="/captive-core-pubnet.cfg"
 export STELLAR_CORE_BINARY_PATH="/usr/bin/stellar-core"
-export ENABLE_CAPTIVE_CORE_INGESTION="true"
 
 cd stellar-go
 git pull origin

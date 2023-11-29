@@ -1,6 +1,7 @@
 package history
 
 import (
+	"database/sql"
 	"fmt"
 	"testing"
 
@@ -15,6 +16,10 @@ func TestRemoveClaimableBalance(t *testing.T) {
 	defer tt.Finish()
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
+	tt.Assert.NoError(q.BeginTx(tt.Ctx, &sql.TxOptions{}))
+	defer func() {
+		_ = q.Rollback()
+	}()
 
 	accountID := "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"
 	asset := xdr.MustNewCreditAsset("USD", accountID)
@@ -39,8 +44,9 @@ func TestRemoveClaimableBalance(t *testing.T) {
 		Amount:             10,
 	}
 
-	err = q.UpsertClaimableBalances(tt.Ctx, []ClaimableBalance{cBalance})
-	tt.Assert.NoError(err)
+	balanceBatchInsertBuilder := q.NewClaimableBalanceBatchInsertBuilder()
+	tt.Assert.NoError(balanceBatchInsertBuilder.Add(cBalance))
+	tt.Assert.NoError(balanceBatchInsertBuilder.Exec(tt.Ctx))
 
 	r, err := q.FindClaimableBalanceByID(tt.Ctx, id)
 	tt.Assert.NoError(err)
@@ -63,6 +69,10 @@ func TestRemoveClaimableBalanceClaimants(t *testing.T) {
 	defer tt.Finish()
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
+	tt.Assert.NoError(q.BeginTx(tt.Ctx, &sql.TxOptions{}))
+	defer func() {
+		_ = q.Rollback()
+	}()
 
 	accountID := "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"
 	asset := xdr.MustNewCreditAsset("USD", accountID)
@@ -87,20 +97,9 @@ func TestRemoveClaimableBalanceClaimants(t *testing.T) {
 		Amount:             10,
 	}
 
-	claimantsInsertBuilder := q.NewClaimableBalanceClaimantBatchInsertBuilder(10)
-
-	for _, claimant := range cBalance.Claimants {
-		claimant := ClaimableBalanceClaimant{
-			BalanceID:          cBalance.BalanceID,
-			Destination:        claimant.Destination,
-			LastModifiedLedger: cBalance.LastModifiedLedger,
-		}
-		err = claimantsInsertBuilder.Add(tt.Ctx, claimant)
-		tt.Assert.NoError(err)
-	}
-
-	err = claimantsInsertBuilder.Exec(tt.Ctx)
-	tt.Assert.NoError(err)
+	claimantsInsertBuilder := q.NewClaimableBalanceClaimantBatchInsertBuilder()
+	tt.Assert.NoError(insertClaimants(claimantsInsertBuilder, cBalance))
+	tt.Assert.NoError(claimantsInsertBuilder.Exec(tt.Ctx))
 
 	removed, err := q.RemoveClaimableBalanceClaimants(tt.Ctx, []string{id})
 	tt.Assert.NoError(err)
@@ -112,6 +111,11 @@ func TestFindClaimableBalancesByDestination(t *testing.T) {
 	defer tt.Finish()
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
+
+	tt.Assert.NoError(q.BeginTx(tt.Ctx, &sql.TxOptions{}))
+	defer func() {
+		_ = q.Rollback()
+	}()
 
 	dest1 := "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"
 	dest2 := "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H"
@@ -138,19 +142,11 @@ func TestFindClaimableBalancesByDestination(t *testing.T) {
 		Amount:             10,
 	}
 
-	err = q.UpsertClaimableBalances(tt.Ctx, []ClaimableBalance{cBalance})
-	tt.Assert.NoError(err)
+	balanceInsertBuilder := q.NewClaimableBalanceBatchInsertBuilder()
+	claimantsInsertBuilder := q.NewClaimableBalanceClaimantBatchInsertBuilder()
 
-	claimantsInsertBuilder := q.NewClaimableBalanceClaimantBatchInsertBuilder(10)
-	for _, claimant := range cBalance.Claimants {
-		claimant := ClaimableBalanceClaimant{
-			BalanceID:          cBalance.BalanceID,
-			Destination:        claimant.Destination,
-			LastModifiedLedger: cBalance.LastModifiedLedger,
-		}
-		err = claimantsInsertBuilder.Add(tt.Ctx, claimant)
-		tt.Assert.NoError(err)
-	}
+	tt.Assert.NoError(balanceInsertBuilder.Add(cBalance))
+	tt.Assert.NoError(insertClaimants(claimantsInsertBuilder, cBalance))
 
 	balanceID = xdr.ClaimableBalanceId{
 		Type: xdr.ClaimableBalanceIdTypeClaimableBalanceIdTypeV0,
@@ -179,21 +175,11 @@ func TestFindClaimableBalancesByDestination(t *testing.T) {
 		Amount:             10,
 	}
 
-	err = q.UpsertClaimableBalances(tt.Ctx, []ClaimableBalance{cBalance})
-	tt.Assert.NoError(err)
+	tt.Assert.NoError(balanceInsertBuilder.Add(cBalance))
+	tt.Assert.NoError(insertClaimants(claimantsInsertBuilder, cBalance))
 
-	for _, claimant := range cBalance.Claimants {
-		claimant := ClaimableBalanceClaimant{
-			BalanceID:          cBalance.BalanceID,
-			Destination:        claimant.Destination,
-			LastModifiedLedger: cBalance.LastModifiedLedger,
-		}
-		err = claimantsInsertBuilder.Add(tt.Ctx, claimant)
-		tt.Assert.NoError(err)
-	}
-
-	err = claimantsInsertBuilder.Exec(tt.Ctx)
-	tt.Assert.NoError(err)
+	tt.Assert.NoError(claimantsInsertBuilder.Exec(tt.Ctx))
+	tt.Assert.NoError(balanceInsertBuilder.Exec(tt.Ctx))
 
 	query := ClaimableBalancesQuery{
 		PageQuery: db2.MustPageQuery("", false, "", 10),
@@ -233,20 +219,19 @@ func TestFindClaimableBalancesByDestination(t *testing.T) {
 	tt.Assert.Len(cbs, 1)
 }
 
-func insertClaimants(q *Q, tt *test.T, cBalance ClaimableBalance) error {
-	claimantsInsertBuilder := q.NewClaimableBalanceClaimantBatchInsertBuilder(10)
+func insertClaimants(claimantsInsertBuilder ClaimableBalanceClaimantBatchInsertBuilder, cBalance ClaimableBalance) error {
 	for _, claimant := range cBalance.Claimants {
 		claimant := ClaimableBalanceClaimant{
 			BalanceID:          cBalance.BalanceID,
 			Destination:        claimant.Destination,
 			LastModifiedLedger: cBalance.LastModifiedLedger,
 		}
-		err := claimantsInsertBuilder.Add(tt.Ctx, claimant)
+		err := claimantsInsertBuilder.Add(claimant)
 		if err != nil {
 			return err
 		}
 	}
-	return claimantsInsertBuilder.Exec(tt.Ctx)
+	return nil
 }
 
 type claimableBalanceQueryResult struct {
@@ -278,6 +263,11 @@ func TestFindClaimableBalancesByDestinationWithLimit(t *testing.T) {
 
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
+
+	tt.Assert.NoError(q.BeginTx(tt.Ctx, &sql.TxOptions{}))
+	defer func() {
+		_ = q.Rollback()
+	}()
 
 	assetIssuer := "GA25GQLHJU3LPEJXEIAXK23AWEA5GWDUGRSHTQHDFT6HXHVMRULSQJUJ"
 	asset1 := xdr.MustNewCreditAsset("ASSET1", assetIssuer)
@@ -318,8 +308,11 @@ func TestFindClaimableBalancesByDestinationWithLimit(t *testing.T) {
 		LastModifiedLedger: 123,
 		Amount:             10,
 	}
-	err = q.UpsertClaimableBalances(tt.Ctx, []ClaimableBalance{cBalance1})
-	tt.Assert.NoError(err)
+	balanceInsertBuilder := q.NewClaimableBalanceBatchInsertBuilder()
+	claimantsInsertBuilder := q.NewClaimableBalanceClaimantBatchInsertBuilder()
+
+	tt.Assert.NoError(balanceInsertBuilder.Add(cBalance1))
+	tt.Assert.NoError(insertClaimants(claimantsInsertBuilder, cBalance1))
 
 	claimants2 := []Claimant{
 		{
@@ -345,14 +338,12 @@ func TestFindClaimableBalancesByDestinationWithLimit(t *testing.T) {
 		LastModifiedLedger: 456,
 		Amount:             10,
 	}
-	err = q.UpsertClaimableBalances(tt.Ctx, []ClaimableBalance{cBalance2})
-	tt.Assert.NoError(err)
 
-	err = insertClaimants(q, tt, cBalance1)
-	tt.Assert.NoError(err)
+	tt.Assert.NoError(balanceInsertBuilder.Add(cBalance2))
+	tt.Assert.NoError(insertClaimants(claimantsInsertBuilder, cBalance2))
 
-	err = insertClaimants(q, tt, cBalance2)
-	tt.Assert.NoError(err)
+	tt.Assert.NoError(claimantsInsertBuilder.Exec(tt.Ctx))
+	tt.Assert.NoError(balanceInsertBuilder.Exec(tt.Ctx))
 
 	pageQuery := db2.MustPageQuery("", false, "", 1)
 
@@ -414,73 +405,17 @@ func TestFindClaimableBalancesByDestinationWithLimit(t *testing.T) {
 	})
 }
 
-func TestUpdateClaimableBalance(t *testing.T) {
-	tt := test.Start(t)
-	defer tt.Finish()
-	test.ResetHorizonDB(t, tt.HorizonDB)
-	q := &Q{tt.HorizonSession()}
-
-	accountID := "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"
-	lastModifiedLedgerSeq := xdr.Uint32(123)
-	asset := xdr.MustNewCreditAsset("USD", accountID)
-	balanceID := xdr.ClaimableBalanceId{
-		Type: xdr.ClaimableBalanceIdTypeClaimableBalanceIdTypeV0,
-		V0:   &xdr.Hash{1, 2, 3},
-	}
-	id, err := xdr.MarshalHex(balanceID)
-	tt.Assert.NoError(err)
-	cBalance := ClaimableBalance{
-		BalanceID: id,
-		Claimants: []Claimant{
-			{
-				Destination: accountID,
-				Predicate: xdr.ClaimPredicate{
-					Type: xdr.ClaimPredicateTypeClaimPredicateUnconditional,
-				},
-			},
-		},
-		Asset:              asset,
-		LastModifiedLedger: 123,
-		Amount:             10,
-	}
-
-	err = q.UpsertClaimableBalances(tt.Ctx, []ClaimableBalance{cBalance})
-	tt.Assert.NoError(err)
-
-	// add sponsor
-	cBalance2 := ClaimableBalance{
-		BalanceID: id,
-		Claimants: []Claimant{
-			{
-				Destination: accountID,
-				Predicate: xdr.ClaimPredicate{
-					Type: xdr.ClaimPredicateTypeClaimPredicateUnconditional,
-				},
-			},
-		},
-		Asset:              asset,
-		LastModifiedLedger: 123 + 1,
-		Amount:             10,
-		Sponsor:            null.StringFrom("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
-	}
-
-	err = q.UpsertClaimableBalances(tt.Ctx, []ClaimableBalance{cBalance2})
-	tt.Assert.NoError(err)
-
-	cbs := []ClaimableBalance{}
-	err = q.Select(tt.Ctx, &cbs, selectClaimableBalances)
-	tt.Assert.NoError(err)
-	tt.Assert.Len(cbs, 1)
-	tt.Assert.Equal("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML", cbs[0].Sponsor.String)
-	tt.Assert.Equal(uint32(lastModifiedLedgerSeq+1), cbs[0].LastModifiedLedger)
-}
-
 func TestFindClaimableBalance(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
+	tt.Assert.NoError(q.BeginTx(tt.Ctx, &sql.TxOptions{}))
+	defer func() {
+		_ = q.Rollback()
+	}()
+
 	accountID := "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"
 	asset := xdr.MustNewCreditAsset("USD", accountID)
 	balanceID := xdr.ClaimableBalanceId{
@@ -504,11 +439,11 @@ func TestFindClaimableBalance(t *testing.T) {
 		Amount:             10,
 	}
 
-	err = q.UpsertClaimableBalances(tt.Ctx, []ClaimableBalance{cBalance})
-	tt.Assert.NoError(err)
+	balanceInsertBuilder := q.NewClaimableBalanceBatchInsertBuilder()
+	tt.Assert.NoError(balanceInsertBuilder.Add(cBalance))
+	tt.Assert.NoError(balanceInsertBuilder.Exec(tt.Ctx))
 
 	cb, err := q.FindClaimableBalanceByID(tt.Ctx, id)
-	tt.Assert.NoError(err)
 
 	tt.Assert.Equal(cBalance.BalanceID, cb.BalanceID)
 	tt.Assert.Equal(cBalance.Asset, cb.Asset)
@@ -525,6 +460,11 @@ func TestGetClaimableBalancesByID(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
+	tt.Assert.NoError(q.BeginTx(tt.Ctx, &sql.TxOptions{}))
+	defer func() {
+		_ = q.Rollback()
+	}()
+
 	accountID := "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"
 	asset := xdr.MustNewCreditAsset("USD", accountID)
 	balanceID := xdr.ClaimableBalanceId{
@@ -548,8 +488,9 @@ func TestGetClaimableBalancesByID(t *testing.T) {
 		Amount:             10,
 	}
 
-	err = q.UpsertClaimableBalances(tt.Ctx, []ClaimableBalance{cBalance})
-	tt.Assert.NoError(err)
+	balanceInsertBuilder := q.NewClaimableBalanceBatchInsertBuilder()
+	tt.Assert.NoError(balanceInsertBuilder.Add(cBalance))
+	tt.Assert.NoError(balanceInsertBuilder.Exec(tt.Ctx))
 
 	r, err := q.GetClaimableBalancesByID(tt.Ctx, []string{id})
 	tt.Assert.NoError(err)
