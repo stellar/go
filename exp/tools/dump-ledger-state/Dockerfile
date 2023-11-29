@@ -1,4 +1,4 @@
-FROM ubuntu:20.04
+FROM ubuntu:22.04
 
 ENV STELLAR_CORE_VERSION=19.14.0-1500.5664eff4e.focal
 ENV DEBIAN_FRONTEND=noninteractive
