@@ -720,7 +720,7 @@ func (i *Test) WaitUntilLedgerEntryTTL(ledgerKey xdr.LedgerKey) {
 	for attempt := 0; attempt < 50; attempt++ {
 		var result struct {
 			Entries []struct {
-				LiveUntilLedgerSeq *uint32 `json:"liveUntilLedgerSeqLedgerSeq,string,omitempty"`
+				LiveUntilLedgerSeq *uint32 `json:"liveUntilLedgerSeq,omitempty"`
 			} `json:"entries"`
 		}
 		err := client.CallResult(context.Background(), "getLedgerEntries", request, &result)
