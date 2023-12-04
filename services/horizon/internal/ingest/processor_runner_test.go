@@ -598,13 +598,6 @@ func mockChangeProcessorBatchBuilders(q *mockDBQ, ctx context.Context, mockExec 
 	q.MockQClaimableBalances.On("NewClaimableBalanceBatchInsertBuilder").
 		Return(mockClaimableBalanceBatchInsertBuilder).Twice()
 
-	mockLiquidityPoolBatchInsertBuilder := &history.MockLiquidityPoolBatchInsertBuilder{}
-	if mockExec {
-		mockLiquidityPoolBatchInsertBuilder.On("Exec", ctx).Return(nil).Once()
-	}
-	q.MockQLiquidityPools.On("NewLiquidityPoolBatchInsertBuilder").
-		Return(mockLiquidityPoolBatchInsertBuilder).Twice()
-
 	mockOfferBatchInsertBuilder := &history.MockOffersBatchInsertBuilder{}
 	if mockExec {
 		mockOfferBatchInsertBuilder.On("Exec", ctx).Return(nil).Once()
@@ -630,7 +623,6 @@ func mockChangeProcessorBatchBuilders(q *mockDBQ, ctx context.Context, mockExec 
 		mockAccountsBatchInsertBuilder,
 		mockClaimableBalanceBatchInsertBuilder,
 		mockClaimableBalanceClaimantBatchInsertBuilder,
-		mockLiquidityPoolBatchInsertBuilder,
 		mockOfferBatchInsertBuilder,
 		mockAccountDataBatchInsertBuilder,
 		mockTrustLinesBatchInsertBuilder,
