@@ -25,13 +25,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"unsafe"
 
 	"github.com/stellar/go-xdr/xdr3"
 )
-
-// Needed since unsafe is not used in all cases
-var _ = unsafe.Sizeof(0)
 
 // XdrFilesSHA256 is the SHA256 hashes of source files.
 var XdrFilesSHA256 = map[string]string{
@@ -45,7 +41,7 @@ var XdrFilesSHA256 = map[string]string{
 	"xdr/Stellar-ledger-entries.x":          "4f8f2324f567a40065f54f696ea1428740f043ea4154f5986d9f499ad00ac333",
 	"xdr/Stellar-ledger.x":                  "2c842f3fe6e269498af5467f849cf6818554e90babc845f34c87cda471298d0f",
 	"xdr/Stellar-overlay.x":                 "de3957c58b96ae07968b3d3aebea84f83603e95322d1fa336360e13e3aba737a",
-	"xdr/Stellar-transaction.x":             "c5dd8507bc84e10b67bf3bc74c8f716a660b425814b015025c6f6b6f20cb70e7",
+	"xdr/Stellar-transaction.x":             "0d2b35a331a540b48643925d0869857236eb2487c02d340ea32e365e784ea2b8",
 	"xdr/Stellar-types.x":                   "6e3b13f0d3e360b09fa5e2b0e55d43f4d974a769df66afb34e8aecbb329d3f15",
 }
 
@@ -384,7 +380,7 @@ func (s *ScpNomination) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
 			return n, fmt.Errorf("decoding Value: length (%d) exceeds remaining input length (%d)", l, il)
 		}
 		s.Votes = make([]Value, l)
-		for i := uint32(0); uint(i) < uint(l); i++ {
+		for i := uint32(0); i < l; i++ {
 			nTmp, err = s.Votes[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -403,7 +399,7 @@ func (s *ScpNomination) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
 			return n, fmt.Errorf("decoding Value: length (%d) exceeds remaining input length (%d)", l, il)
 		}
 		s.Accepted = make([]Value, l)
-		for i := uint32(0); uint(i) < uint(l); i++ {
+		for i := uint32(0); i < l; i++ {
 			nTmp, err = s.Accepted[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -1344,7 +1340,7 @@ func (s *ScpQuorumSet) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
 			return n, fmt.Errorf("decoding NodeId: length (%d) exceeds remaining input length (%d)", l, il)
 		}
 		s.Validators = make([]NodeId, l)
-		for i := uint32(0); uint(i) < uint(l); i++ {
+		for i := uint32(0); i < l; i++ {
 			nTmp, err = s.Validators[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -1363,7 +1359,7 @@ func (s *ScpQuorumSet) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
 			return n, fmt.Errorf("decoding ScpQuorumSet: length (%d) exceeds remaining input length (%d)", l, il)
 		}
 		s.InnerSets = make([]ScpQuorumSet, l)
-		for i := uint32(0); uint(i) < uint(l); i++ {
+		for i := uint32(0); i < l; i++ {
 			nTmp, err = s.InnerSets[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -3444,7 +3440,7 @@ func (s *AccountEntryExtensionV2) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int
 			return n, fmt.Errorf("decoding SponsorshipDescriptor: length (%d) exceeds remaining input length (%d)", l, il)
 		}
 		s.SignerSponsoringIDs = make([]SponsorshipDescriptor, l)
-		for i := uint32(0); uint(i) < uint(l); i++ {
+		for i := uint32(0); i < l; i++ {
 			var eb bool
 			eb, nTmp, err = d.DecodeBool()
 			n += nTmp
@@ -4049,7 +4045,7 @@ func (s *AccountEntry) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
 			return n, fmt.Errorf("decoding Signer: length (%d) exceeds remaining input length (%d)", l, il)
 		}
 		s.Signers = make([]Signer, l)
-		for i := uint32(0); uint(i) < uint(l); i++ {
+		for i := uint32(0); i < l; i++ {
 			nTmp, err = s.Signers[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -6225,7 +6221,7 @@ func (u *ClaimPredicate) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) 
 				return n, fmt.Errorf("decoding ClaimPredicate: length (%d) exceeds remaining input length (%d)", l, il)
 			}
 			(*u.AndPredicates) = make([]ClaimPredicate, l)
-			for i := uint32(0); uint(i) < uint(l); i++ {
+			for i := uint32(0); i < l; i++ {
 				nTmp, err = (*u.AndPredicates)[i].DecodeFrom(d, maxDepth)
 				n += nTmp
 				if err != nil {
@@ -6251,7 +6247,7 @@ func (u *ClaimPredicate) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) 
 				return n, fmt.Errorf("decoding ClaimPredicate: length (%d) exceeds remaining input length (%d)", l, il)
 			}
 			(*u.OrPredicates) = make([]ClaimPredicate, l)
-			for i := uint32(0); uint(i) < uint(l); i++ {
+			for i := uint32(0); i < l; i++ {
 				nTmp, err = (*u.OrPredicates)[i].DecodeFrom(d, maxDepth)
 				n += nTmp
 				if err != nil {
@@ -7372,7 +7368,7 @@ func (s *ClaimableBalanceEntry) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, 
 			return n, fmt.Errorf("decoding Claimant: length (%d) exceeds remaining input length (%d)", l, il)
 		}
 		s.Claimants = make([]Claimant, l)
-		for i := uint32(0); uint(i) < uint(l); i++ {
+		for i := uint32(0); i < l; i++ {
 			nTmp, err = s.Claimants[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -11180,7 +11176,7 @@ func (s *StellarValue) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
 			return n, fmt.Errorf("decoding UpgradeType: length (%d) exceeds remaining input length (%d)", l, il)
 		}
 		s.Upgrades = make([]UpgradeType, l)
-		for i := uint32(0); uint(i) < uint(l); i++ {
+		for i := uint32(0); i < l; i++ {
 			nTmp, err = s.Upgrades[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -12550,7 +12546,7 @@ func (s *ConfigUpgradeSet) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error
 			return n, fmt.Errorf("decoding ConfigSettingEntry: length (%d) exceeds remaining input length (%d)", l, il)
 		}
 		s.UpdatedEntry = make([]ConfigSettingEntry, l)
-		for i := uint32(0); uint(i) < uint(l); i++ {
+		for i := uint32(0); i < l; i++ {
 			nTmp, err = s.UpdatedEntry[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -13292,7 +13288,7 @@ func (s *TxSetComponentTxsMaybeDiscountedFee) DecodeFrom(d *xdr.Decoder, maxDept
 			return n, fmt.Errorf("decoding TransactionEnvelope: length (%d) exceeds remaining input length (%d)", l, il)
 		}
 		s.Txs = make([]TransactionEnvelope, l)
-		for i := uint32(0); uint(i) < uint(l); i++ {
+		for i := uint32(0); i < l; i++ {
 			nTmp, err = s.Txs[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -13594,7 +13590,7 @@ func (u *TransactionPhase) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error
 				return n, fmt.Errorf("decoding TxSetComponent: length (%d) exceeds remaining input length (%d)", l, il)
 			}
 			(*u.V0Components) = make([]TxSetComponent, l)
-			for i := uint32(0); uint(i) < uint(l); i++ {
+			for i := uint32(0); i < l; i++ {
 				nTmp, err = (*u.V0Components)[i].DecodeFrom(d, maxDepth)
 				n += nTmp
 				if err != nil {
@@ -13691,7 +13687,7 @@ func (s *TransactionSet) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) 
 			return n, fmt.Errorf("decoding TransactionEnvelope: length (%d) exceeds remaining input length (%d)", l, il)
 		}
 		s.Txs = make([]TransactionEnvelope, l)
-		for i := uint32(0); uint(i) < uint(l); i++ {
+		for i := uint32(0); i < l; i++ {
 			nTmp, err = s.Txs[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -13786,7 +13782,7 @@ func (s *TransactionSetV1) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error
 			return n, fmt.Errorf("decoding TransactionPhase: length (%d) exceeds remaining input length (%d)", l, il)
 		}
 		s.Phases = make([]TransactionPhase, l)
-		for i := uint32(0); uint(i) < uint(l); i++ {
+		for i := uint32(0); i < l; i++ {
 			nTmp, err = s.Phases[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -14087,7 +14083,7 @@ func (s *TransactionResultSet) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, e
 			return n, fmt.Errorf("decoding TransactionResultPair: length (%d) exceeds remaining input length (%d)", l, il)
 		}
 		s.Results = make([]TransactionResultPair, l)
-		for i := uint32(0); uint(i) < uint(l); i++ {
+		for i := uint32(0); i < l; i++ {
 			nTmp, err = s.Results[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -14816,7 +14812,7 @@ func (s *LedgerScpMessages) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, erro
 			return n, fmt.Errorf("decoding ScpEnvelope: length (%d) exceeds remaining input length (%d)", l, il)
 		}
 		s.Messages = make([]ScpEnvelope, l)
-		for i := uint32(0); uint(i) < uint(l); i++ {
+		for i := uint32(0); i < l; i++ {
 			nTmp, err = s.Messages[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -14906,7 +14902,7 @@ func (s *ScpHistoryEntryV0) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, erro
 			return n, fmt.Errorf("decoding ScpQuorumSet: length (%d) exceeds remaining input length (%d)", l, il)
 		}
 		s.QuorumSets = make([]ScpQuorumSet, l)
-		for i := uint32(0); uint(i) < uint(l); i++ {
+		for i := uint32(0); i < l; i++ {
 			nTmp, err = s.QuorumSets[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -15515,7 +15511,7 @@ func (s *LedgerEntryChanges) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, err
 			return n, fmt.Errorf("decoding LedgerEntryChange: length (%d) exceeds remaining input length (%d)", l, il)
 		}
 		(*s) = make([]LedgerEntryChange, l)
-		for i := uint32(0); uint(i) < uint(l); i++ {
+		for i := uint32(0); i < l; i++ {
 			nTmp, err = (*s)[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -15675,7 +15671,7 @@ func (s *TransactionMetaV1) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, erro
 			return n, fmt.Errorf("decoding OperationMeta: length (%d) exceeds remaining input length (%d)", l, il)
 		}
 		s.Operations = make([]OperationMeta, l)
-		for i := uint32(0); uint(i) < uint(l); i++ {
+		for i := uint32(0); i < l; i++ {
 			nTmp, err = s.Operations[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -15777,7 +15773,7 @@ func (s *TransactionMetaV2) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, erro
 			return n, fmt.Errorf("decoding OperationMeta: length (%d) exceeds remaining input length (%d)", l, il)
 		}
 		s.Operations = make([]OperationMeta, l)
-		for i := uint32(0); uint(i) < uint(l); i++ {
+		for i := uint32(0); i < l; i++ {
 			nTmp, err = s.Operations[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -15963,7 +15959,7 @@ func (s *ContractEventV0) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error)
 			return n, fmt.Errorf("decoding ScVal: length (%d) exceeds remaining input length (%d)", l, il)
 		}
 		s.Topics = make([]ScVal, l)
-		for i := uint32(0); uint(i) < uint(l); i++ {
+		for i := uint32(0); i < l; i++ {
 			nTmp, err = s.Topics[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -16426,7 +16422,7 @@ func (s *SorobanTransactionMeta) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int,
 			return n, fmt.Errorf("decoding ContractEvent: length (%d) exceeds remaining input length (%d)", l, il)
 		}
 		s.Events = make([]ContractEvent, l)
-		for i := uint32(0); uint(i) < uint(l); i++ {
+		for i := uint32(0); i < l; i++ {
 			nTmp, err = s.Events[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -16450,7 +16446,7 @@ func (s *SorobanTransactionMeta) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int,
 			return n, fmt.Errorf("decoding DiagnosticEvent: length (%d) exceeds remaining input length (%d)", l, il)
 		}
 		s.DiagnosticEvents = make([]DiagnosticEvent, l)
-		for i := uint32(0); uint(i) < uint(l); i++ {
+		for i := uint32(0); i < l; i++ {
 			nTmp, err = s.DiagnosticEvents[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -16574,7 +16570,7 @@ func (s *TransactionMetaV3) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, erro
 			return n, fmt.Errorf("decoding OperationMeta: length (%d) exceeds remaining input length (%d)", l, il)
 		}
 		s.Operations = make([]OperationMeta, l)
-		for i := uint32(0); uint(i) < uint(l); i++ {
+		for i := uint32(0); i < l; i++ {
 			nTmp, err = s.Operations[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -16689,7 +16685,7 @@ func (s *InvokeHostFunctionSuccessPreImage) DecodeFrom(d *xdr.Decoder, maxDepth 
 			return n, fmt.Errorf("decoding ContractEvent: length (%d) exceeds remaining input length (%d)", l, il)
 		}
 		s.Events = make([]ContractEvent, l)
-		for i := uint32(0); uint(i) < uint(l); i++ {
+		for i := uint32(0); i < l; i++ {
 			nTmp, err = s.Events[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -16973,7 +16969,7 @@ func (u *TransactionMeta) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error)
 				return n, fmt.Errorf("decoding OperationMeta: length (%d) exceeds remaining input length (%d)", l, il)
 			}
 			(*u.Operations) = make([]OperationMeta, l)
-			for i := uint32(0); uint(i) < uint(l); i++ {
+			for i := uint32(0); i < l; i++ {
 				nTmp, err = (*u.Operations)[i].DecodeFrom(d, maxDepth)
 				n += nTmp
 				if err != nil {
@@ -17293,7 +17289,7 @@ func (s *LedgerCloseMetaV0) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, erro
 			return n, fmt.Errorf("decoding TransactionResultMeta: length (%d) exceeds remaining input length (%d)", l, il)
 		}
 		s.TxProcessing = make([]TransactionResultMeta, l)
-		for i := uint32(0); uint(i) < uint(l); i++ {
+		for i := uint32(0); i < l; i++ {
 			nTmp, err = s.TxProcessing[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -17312,7 +17308,7 @@ func (s *LedgerCloseMetaV0) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, erro
 			return n, fmt.Errorf("decoding UpgradeEntryMeta: length (%d) exceeds remaining input length (%d)", l, il)
 		}
 		s.UpgradesProcessing = make([]UpgradeEntryMeta, l)
-		for i := uint32(0); uint(i) < uint(l); i++ {
+		for i := uint32(0); i < l; i++ {
 			nTmp, err = s.UpgradesProcessing[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -17331,7 +17327,7 @@ func (s *LedgerCloseMetaV0) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, erro
 			return n, fmt.Errorf("decoding ScpHistoryEntry: length (%d) exceeds remaining input length (%d)", l, il)
 		}
 		s.ScpInfo = make([]ScpHistoryEntry, l)
-		for i := uint32(0); uint(i) < uint(l); i++ {
+		for i := uint32(0); i < l; i++ {
 			nTmp, err = s.ScpInfo[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -17511,7 +17507,7 @@ func (s *LedgerCloseMetaV1) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, erro
 			return n, fmt.Errorf("decoding TransactionResultMeta: length (%d) exceeds remaining input length (%d)", l, il)
 		}
 		s.TxProcessing = make([]TransactionResultMeta, l)
-		for i := uint32(0); uint(i) < uint(l); i++ {
+		for i := uint32(0); i < l; i++ {
 			nTmp, err = s.TxProcessing[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -17530,7 +17526,7 @@ func (s *LedgerCloseMetaV1) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, erro
 			return n, fmt.Errorf("decoding UpgradeEntryMeta: length (%d) exceeds remaining input length (%d)", l, il)
 		}
 		s.UpgradesProcessing = make([]UpgradeEntryMeta, l)
-		for i := uint32(0); uint(i) < uint(l); i++ {
+		for i := uint32(0); i < l; i++ {
 			nTmp, err = s.UpgradesProcessing[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -17549,7 +17545,7 @@ func (s *LedgerCloseMetaV1) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, erro
 			return n, fmt.Errorf("decoding ScpHistoryEntry: length (%d) exceeds remaining input length (%d)", l, il)
 		}
 		s.ScpInfo = make([]ScpHistoryEntry, l)
-		for i := uint32(0); uint(i) < uint(l); i++ {
+		for i := uint32(0); i < l; i++ {
 			nTmp, err = s.ScpInfo[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -17573,7 +17569,7 @@ func (s *LedgerCloseMetaV1) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, erro
 			return n, fmt.Errorf("decoding LedgerKey: length (%d) exceeds remaining input length (%d)", l, il)
 		}
 		s.EvictedTemporaryLedgerKeys = make([]LedgerKey, l)
-		for i := uint32(0); uint(i) < uint(l); i++ {
+		for i := uint32(0); i < l; i++ {
 			nTmp, err = s.EvictedTemporaryLedgerKeys[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -17592,7 +17588,7 @@ func (s *LedgerCloseMetaV1) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, erro
 			return n, fmt.Errorf("decoding LedgerEntry: length (%d) exceeds remaining input length (%d)", l, il)
 		}
 		s.EvictedPersistentLedgerEntries = make([]LedgerEntry, l)
-		for i := uint32(0); uint(i) < uint(l); i++ {
+		for i := uint32(0); i < l; i++ {
 			nTmp, err = s.EvictedPersistentLedgerEntries[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -19884,7 +19880,7 @@ func (s *PeerStatList) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
 			return n, fmt.Errorf("decoding PeerStats: length (%d) exceeds remaining input length (%d)", l, il)
 		}
 		(*s) = make([]PeerStats, l)
-		for i := uint32(0); uint(i) < uint(l); i++ {
+		for i := uint32(0); i < l; i++ {
 			nTmp, err = (*s)[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -20380,7 +20376,7 @@ func (s *TxAdvertVector) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) 
 			return n, fmt.Errorf("decoding Hash: length (%d) exceeds remaining input length (%d)", l, il)
 		}
 		(*s) = make([]Hash, l)
-		for i := uint32(0); uint(i) < uint(l); i++ {
+		for i := uint32(0); i < l; i++ {
 			nTmp, err = (*s)[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -20538,7 +20534,7 @@ func (s *TxDemandVector) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) 
 			return n, fmt.Errorf("decoding Hash: length (%d) exceeds remaining input length (%d)", l, il)
 		}
 		(*s) = make([]Hash, l)
-		for i := uint32(0); uint(i) < uint(l); i++ {
+		for i := uint32(0); i < l; i++ {
 			nTmp, err = (*s)[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -21571,7 +21567,7 @@ func (u *StellarMessage) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) 
 				return n, fmt.Errorf("decoding PeerAddress: length (%d) exceeds remaining input length (%d)", l, il)
 			}
 			(*u.Peers) = make([]PeerAddress, l)
-			for i := uint32(0); uint(i) < uint(l); i++ {
+			for i := uint32(0); i < l; i++ {
 				nTmp, err = (*u.Peers)[i].DecodeFrom(d, maxDepth)
 				n += nTmp
 				if err != nil {
@@ -22869,7 +22865,7 @@ func (s *PathPaymentStrictReceiveOp) DecodeFrom(d *xdr.Decoder, maxDepth uint) (
 			return n, fmt.Errorf("decoding Asset: length (%d) exceeds remaining input length (%d)", l, il)
 		}
 		s.Path = make([]Asset, l)
-		for i := uint32(0); uint(i) < uint(l); i++ {
+		for i := uint32(0); i < l; i++ {
 			nTmp, err = s.Path[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -23011,7 +23007,7 @@ func (s *PathPaymentStrictSendOp) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int
 			return n, fmt.Errorf("decoding Asset: length (%d) exceeds remaining input length (%d)", l, il)
 		}
 		s.Path = make([]Asset, l)
-		for i := uint32(0); uint(i) < uint(l); i++ {
+		for i := uint32(0); i < l; i++ {
 			nTmp, err = s.Path[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -24284,7 +24280,7 @@ func (s *CreateClaimableBalanceOp) DecodeFrom(d *xdr.Decoder, maxDepth uint) (in
 			return n, fmt.Errorf("decoding Claimant: length (%d) exceeds remaining input length (%d)", l, il)
 		}
 		s.Claimants = make([]Claimant, l)
-		for i := uint32(0); uint(i) < uint(l); i++ {
+		for i := uint32(0); i < l; i++ {
 			nTmp, err = s.Claimants[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -25849,7 +25845,7 @@ func (s *InvokeContractArgs) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, err
 			return n, fmt.Errorf("decoding ScVal: length (%d) exceeds remaining input length (%d)", l, il)
 		}
 		s.Args = make([]ScVal, l)
-		for i := uint32(0); uint(i) < uint(l); i++ {
+		for i := uint32(0); i < l; i++ {
 			nTmp, err = s.Args[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -26462,7 +26458,7 @@ func (s *SorobanAuthorizedInvocation) DecodeFrom(d *xdr.Decoder, maxDepth uint) 
 			return n, fmt.Errorf("decoding SorobanAuthorizedInvocation: length (%d) exceeds remaining input length (%d)", l, il)
 		}
 		s.SubInvocations = make([]SorobanAuthorizedInvocation, l)
-		for i := uint32(0); uint(i) < uint(l); i++ {
+		for i := uint32(0); i < l; i++ {
 			nTmp, err = s.SubInvocations[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -26969,7 +26965,7 @@ func (s *InvokeHostFunctionOp) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, e
 			return n, fmt.Errorf("decoding SorobanAuthorizationEntry: length (%d) exceeds remaining input length (%d)", l, il)
 		}
 		s.Auth = make([]SorobanAuthorizationEntry, l)
-		for i := uint32(0); uint(i) < uint(l); i++ {
+		for i := uint32(0); i < l; i++ {
 			nTmp, err = s.Auth[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -30049,7 +30045,7 @@ func (s *PreconditionsV2) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error)
 			return n, fmt.Errorf("decoding SignerKey: length (%d) exceeds remaining input length (%d)", l, il)
 		}
 		s.ExtraSigners = make([]SignerKey, l)
-		for i := uint32(0); uint(i) < uint(l); i++ {
+		for i := uint32(0); i < l; i++ {
 			nTmp, err = s.ExtraSigners[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -30437,7 +30433,7 @@ func (s *LedgerFootprint) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error)
 			return n, fmt.Errorf("decoding LedgerKey: length (%d) exceeds remaining input length (%d)", l, il)
 		}
 		s.ReadOnly = make([]LedgerKey, l)
-		for i := uint32(0); uint(i) < uint(l); i++ {
+		for i := uint32(0); i < l; i++ {
 			nTmp, err = s.ReadOnly[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -30456,7 +30452,7 @@ func (s *LedgerFootprint) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error)
 			return n, fmt.Errorf("decoding LedgerKey: length (%d) exceeds remaining input length (%d)", l, il)
 		}
 		s.ReadWrite = make([]LedgerKey, l)
-		for i := uint32(0); uint(i) < uint(l); i++ {
+		for i := uint32(0); i < l; i++ {
 			nTmp, err = s.ReadWrite[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -30915,7 +30911,7 @@ func (s *TransactionV0) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
 			return n, fmt.Errorf("decoding Operation: length (%d) exceeds remaining input length (%d)", l, il)
 		}
 		s.Operations = make([]Operation, l)
-		for i := uint32(0); uint(i) < uint(l); i++ {
+		for i := uint32(0); i < l; i++ {
 			nTmp, err = s.Operations[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -31020,7 +31016,7 @@ func (s *TransactionV0Envelope) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, 
 			return n, fmt.Errorf("decoding DecoratedSignature: length (%d) exceeds remaining input length (%d)", l, il)
 		}
 		s.Signatures = make([]DecoratedSignature, l)
-		for i := uint32(0); uint(i) < uint(l); i++ {
+		for i := uint32(0); i < l; i++ {
 			nTmp, err = s.Signatures[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -31333,7 +31329,7 @@ func (s *Transaction) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
 			return n, fmt.Errorf("decoding Operation: length (%d) exceeds remaining input length (%d)", l, il)
 		}
 		s.Operations = make([]Operation, l)
-		for i := uint32(0); uint(i) < uint(l); i++ {
+		for i := uint32(0); i < l; i++ {
 			nTmp, err = s.Operations[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -31438,7 +31434,7 @@ func (s *TransactionV1Envelope) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, 
 			return n, fmt.Errorf("decoding DecoratedSignature: length (%d) exceeds remaining input length (%d)", l, il)
 		}
 		s.Signatures = make([]DecoratedSignature, l)
-		for i := uint32(0); uint(i) < uint(l); i++ {
+		for i := uint32(0); i < l; i++ {
 			nTmp, err = s.Signatures[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -31885,7 +31881,7 @@ func (s *FeeBumpTransactionEnvelope) DecodeFrom(d *xdr.Decoder, maxDepth uint) (
 			return n, fmt.Errorf("decoding DecoratedSignature: length (%d) exceeds remaining input length (%d)", l, il)
 		}
 		s.Signatures = make([]DecoratedSignature, l)
-		for i := uint32(0); uint(i) < uint(l); i++ {
+		for i := uint32(0); i < l; i++ {
 			nTmp, err = s.Signatures[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -33952,7 +33948,7 @@ func (s *PathPaymentStrictReceiveResultSuccess) DecodeFrom(d *xdr.Decoder, maxDe
 			return n, fmt.Errorf("decoding ClaimAtom: length (%d) exceeds remaining input length (%d)", l, il)
 		}
 		s.Offers = make([]ClaimAtom, l)
-		for i := uint32(0); uint(i) < uint(l); i++ {
+		for i := uint32(0); i < l; i++ {
 			nTmp, err = s.Offers[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -34497,7 +34493,7 @@ func (s *PathPaymentStrictSendResultSuccess) DecodeFrom(d *xdr.Decoder, maxDepth
 			return n, fmt.Errorf("decoding ClaimAtom: length (%d) exceeds remaining input length (%d)", l, il)
 		}
 		s.Offers = make([]ClaimAtom, l)
-		for i := uint32(0); uint(i) < uint(l); i++ {
+		for i := uint32(0); i < l; i++ {
 			nTmp, err = s.Offers[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -35316,7 +35312,7 @@ func (s *ManageOfferSuccessResult) DecodeFrom(d *xdr.Decoder, maxDepth uint) (in
 			return n, fmt.Errorf("decoding ClaimAtom: length (%d) exceeds remaining input length (%d)", l, il)
 		}
 		s.OffersClaimed = make([]ClaimAtom, l)
-		for i := uint32(0); uint(i) < uint(l); i++ {
+		for i := uint32(0); i < l; i++ {
 			nTmp, err = s.OffersClaimed[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -37567,7 +37563,7 @@ func (u *InflationResult) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error)
 				return n, fmt.Errorf("decoding InflationPayout: length (%d) exceeds remaining input length (%d)", l, il)
 			}
 			(*u.Payouts) = make([]InflationPayout, l)
-			for i := uint32(0); uint(i) < uint(l); i++ {
+			for i := uint32(0); i < l; i++ {
 				nTmp, err = (*u.Payouts)[i].DecodeFrom(d, maxDepth)
 				n += nTmp
 				if err != nil {
@@ -43597,7 +43593,7 @@ func (u *InnerTransactionResultResult) DecodeFrom(d *xdr.Decoder, maxDepth uint)
 				return n, fmt.Errorf("decoding OperationResult: length (%d) exceeds remaining input length (%d)", l, il)
 			}
 			(*u.Results) = make([]OperationResult, l)
-			for i := uint32(0); uint(i) < uint(l); i++ {
+			for i := uint32(0); i < l; i++ {
 				nTmp, err = (*u.Results)[i].DecodeFrom(d, maxDepth)
 				n += nTmp
 				if err != nil {
@@ -43620,7 +43616,7 @@ func (u *InnerTransactionResultResult) DecodeFrom(d *xdr.Decoder, maxDepth uint)
 				return n, fmt.Errorf("decoding OperationResult: length (%d) exceeds remaining input length (%d)", l, il)
 			}
 			(*u.Results) = make([]OperationResult, l)
-			for i := uint32(0); uint(i) < uint(l); i++ {
+			for i := uint32(0); i < l; i++ {
 				nTmp, err = (*u.Results)[i].DecodeFrom(d, maxDepth)
 				n += nTmp
 				if err != nil {
@@ -44335,7 +44331,7 @@ func (u *TransactionResultResult) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int
 				return n, fmt.Errorf("decoding OperationResult: length (%d) exceeds remaining input length (%d)", l, il)
 			}
 			(*u.Results) = make([]OperationResult, l)
-			for i := uint32(0); uint(i) < uint(l); i++ {
+			for i := uint32(0); i < l; i++ {
 				nTmp, err = (*u.Results)[i].DecodeFrom(d, maxDepth)
 				n += nTmp
 				if err != nil {
@@ -44358,7 +44354,7 @@ func (u *TransactionResultResult) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int
 				return n, fmt.Errorf("decoding OperationResult: length (%d) exceeds remaining input length (%d)", l, il)
 			}
 			(*u.Results) = make([]OperationResult, l)
-			for i := uint32(0); uint(i) < uint(l); i++ {
+			for i := uint32(0); i < l; i++ {
 				nTmp, err = (*u.Results)[i].DecodeFrom(d, maxDepth)
 				n += nTmp
 				if err != nil {
@@ -47652,7 +47648,7 @@ func (s *ScSpecTypeTuple) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error)
 			return n, fmt.Errorf("decoding ScSpecTypeDef: length (%d) exceeds remaining input length (%d)", l, il)
 		}
 		s.ValueTypes = make([]ScSpecTypeDef, l)
-		for i := uint32(0); uint(i) < uint(l); i++ {
+		for i := uint32(0); i < l; i++ {
 			nTmp, err = s.ValueTypes[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -48624,7 +48620,7 @@ func (s *ScSpecUdtStructV0) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, erro
 			return n, fmt.Errorf("decoding ScSpecUdtStructFieldV0: length (%d) exceeds remaining input length (%d)", l, il)
 		}
 		s.Fields = make([]ScSpecUdtStructFieldV0, l)
-		for i := uint32(0); uint(i) < uint(l); i++ {
+		for i := uint32(0); i < l; i++ {
 			nTmp, err = s.Fields[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -48807,7 +48803,7 @@ func (s *ScSpecUdtUnionCaseTupleV0) DecodeFrom(d *xdr.Decoder, maxDepth uint) (i
 			return n, fmt.Errorf("decoding ScSpecTypeDef: length (%d) exceeds remaining input length (%d)", l, il)
 		}
 		s.Type = make([]ScSpecTypeDef, l)
-		for i := uint32(0); uint(i) < uint(l); i++ {
+		for i := uint32(0); i < l; i++ {
 			nTmp, err = s.Type[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -49203,7 +49199,7 @@ func (s *ScSpecUdtUnionV0) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error
 			return n, fmt.Errorf("decoding ScSpecUdtUnionCaseV0: length (%d) exceeds remaining input length (%d)", l, il)
 		}
 		s.Cases = make([]ScSpecUdtUnionCaseV0, l)
-		for i := uint32(0); uint(i) < uint(l); i++ {
+		for i := uint32(0); i < l; i++ {
 			nTmp, err = s.Cases[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -49406,7 +49402,7 @@ func (s *ScSpecUdtEnumV0) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error)
 			return n, fmt.Errorf("decoding ScSpecUdtEnumCaseV0: length (%d) exceeds remaining input length (%d)", l, il)
 		}
 		s.Cases = make([]ScSpecUdtEnumCaseV0, l)
-		for i := uint32(0); uint(i) < uint(l); i++ {
+		for i := uint32(0); i < l; i++ {
 			nTmp, err = s.Cases[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -49609,7 +49605,7 @@ func (s *ScSpecUdtErrorEnumV0) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, e
 			return n, fmt.Errorf("decoding ScSpecUdtErrorEnumCaseV0: length (%d) exceeds remaining input length (%d)", l, il)
 		}
 		s.Cases = make([]ScSpecUdtErrorEnumCaseV0, l)
-		for i := uint32(0); uint(i) < uint(l); i++ {
+		for i := uint32(0); i < l; i++ {
 			nTmp, err = s.Cases[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -49812,7 +49808,7 @@ func (s *ScSpecFunctionV0) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error
 			return n, fmt.Errorf("decoding ScSpecFunctionInputV0: length (%d) exceeds remaining input length (%d)", l, il)
 		}
 		s.Inputs = make([]ScSpecFunctionInputV0, l)
-		for i := uint32(0); uint(i) < uint(l); i++ {
+		for i := uint32(0); i < l; i++ {
 			nTmp, err = s.Inputs[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -49834,7 +49830,7 @@ func (s *ScSpecFunctionV0) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error
 			return n, fmt.Errorf("decoding ScSpecTypeDef: length (%d) exceeds remaining input length (%d)", l, il)
 		}
 		s.Outputs = make([]ScSpecTypeDef, l)
-		for i := uint32(0); uint(i) < uint(l); i++ {
+		for i := uint32(0); i < l; i++ {
 			nTmp, err = s.Outputs[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -51985,7 +51981,7 @@ func (s *ScVec) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
 			return n, fmt.Errorf("decoding ScVal: length (%d) exceeds remaining input length (%d)", l, il)
 		}
 		(*s) = make([]ScVal, l)
-		for i := uint32(0); uint(i) < uint(l); i++ {
+		for i := uint32(0); i < l; i++ {
 			nTmp, err = (*s)[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -52065,7 +52061,7 @@ func (s *ScMap) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
 			return n, fmt.Errorf("decoding ScMapEntry: length (%d) exceeds remaining input length (%d)", l, il)
 		}
 		(*s) = make([]ScMapEntry, l)
-		for i := uint32(0); uint(i) < uint(l); i++ {
+		for i := uint32(0); i < l; i++ {
 			nTmp, err = (*s)[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -54020,7 +54016,7 @@ func (s *PersistedScpStateV0) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, er
 			return n, fmt.Errorf("decoding ScpEnvelope: length (%d) exceeds remaining input length (%d)", l, il)
 		}
 		s.ScpEnvelopes = make([]ScpEnvelope, l)
-		for i := uint32(0); uint(i) < uint(l); i++ {
+		for i := uint32(0); i < l; i++ {
 			nTmp, err = s.ScpEnvelopes[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -54039,7 +54035,7 @@ func (s *PersistedScpStateV0) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, er
 			return n, fmt.Errorf("decoding ScpQuorumSet: length (%d) exceeds remaining input length (%d)", l, il)
 		}
 		s.QuorumSets = make([]ScpQuorumSet, l)
-		for i := uint32(0); uint(i) < uint(l); i++ {
+		for i := uint32(0); i < l; i++ {
 			nTmp, err = s.QuorumSets[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -54058,7 +54054,7 @@ func (s *PersistedScpStateV0) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, er
 			return n, fmt.Errorf("decoding StoredTransactionSet: length (%d) exceeds remaining input length (%d)", l, il)
 		}
 		s.TxSets = make([]StoredTransactionSet, l)
-		for i := uint32(0); uint(i) < uint(l); i++ {
+		for i := uint32(0); i < l; i++ {
 			nTmp, err = s.TxSets[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -54154,7 +54150,7 @@ func (s *PersistedScpStateV1) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, er
 			return n, fmt.Errorf("decoding ScpEnvelope: length (%d) exceeds remaining input length (%d)", l, il)
 		}
 		s.ScpEnvelopes = make([]ScpEnvelope, l)
-		for i := uint32(0); uint(i) < uint(l); i++ {
+		for i := uint32(0); i < l; i++ {
 			nTmp, err = s.ScpEnvelopes[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -54173,7 +54169,7 @@ func (s *PersistedScpStateV1) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, er
 			return n, fmt.Errorf("decoding ScpQuorumSet: length (%d) exceeds remaining input length (%d)", l, il)
 		}
 		s.QuorumSets = make([]ScpQuorumSet, l)
-		for i := uint32(0); uint(i) < uint(l); i++ {
+		for i := uint32(0); i < l; i++ {
 			nTmp, err = s.QuorumSets[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -55577,7 +55573,7 @@ func (s *ContractCostParams) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, err
 			return n, fmt.Errorf("decoding ContractCostParamEntry: length (%d) exceeds remaining input length (%d)", l, il)
 		}
 		(*s) = make([]ContractCostParamEntry, l)
-		for i := uint32(0); uint(i) < uint(l); i++ {
+		for i := uint32(0); i < l; i++ {
 			nTmp, err = (*s)[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
@@ -56501,7 +56497,7 @@ func (u *ConfigSettingEntry) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, err
 				return n, fmt.Errorf("decoding Uint64: length (%d) exceeds remaining input length (%d)", l, il)
 			}
 			(*u.BucketListSizeWindow) = make([]Uint64, l)
-			for i := uint32(0); uint(i) < uint(l); i++ {
+			for i := uint32(0); i < l; i++ {
 				nTmp, err = (*u.BucketListSizeWindow)[i].DecodeFrom(d, maxDepth)
 				n += nTmp
 				if err != nil {
