@@ -116,7 +116,7 @@ func archive(testnet bool) (*historyarchive.Archive, error) {
 	}
 
 	return historyarchive.Connect(
-		fmt.Sprintf("https://history.stellar.org/prd/core-live/core_live_001/"),
+		"https://history.stellar.org/prd/core-live/core_live_001/",
 		historyarchive.ConnectOptions{
 			UserAgent: "dump-orderbook",
 		},
