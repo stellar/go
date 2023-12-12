@@ -49,17 +49,15 @@ func (q *Q) InsertAssetStats(ctx context.Context, assetStats []ExpAssetStat) err
 		return nil
 	}
 
-	builder := &db.BatchInsertBuilder{
-		Table: q.GetTable("exp_asset_stats"),
-	}
+	builder := &db.FastBatchInsertBuilder{}
 
 	for _, assetStat := range assetStats {
-		if err := builder.Row(ctx, assetStatToMap(assetStat)); err != nil {
+		if err := builder.Row(assetStatToMap(assetStat)); err != nil {
 			return errors.Wrap(err, "could not insert asset assetStat row")
 		}
 	}
 
-	if err := builder.Exec(ctx); err != nil {
+	if err := builder.Exec(ctx, q, "exp_asset_stats"); err != nil {
 		return errors.Wrap(err, "could not exec asset assetStats insert builder")
 	}
 
@@ -71,17 +69,15 @@ func (q *Q) InsertContractAssetStats(ctx context.Context, rows []ContractAssetSt
 	if len(rows) == 0 {
 		return nil
 	}
-	builder := &db.BatchInsertBuilder{
-		Table: q.GetTable("contract_asset_stats"),
-	}
+	builder := &db.FastBatchInsertBuilder{}
 
 	for _, row := range rows {
-		if err := builder.RowStruct(ctx, row); err != nil {
+		if err := builder.RowStruct(row); err != nil {
 			return errors.Wrap(err, "could not insert asset assetStat row")
 		}
 	}
 
-	if err := builder.Exec(ctx); err != nil {
+	if err := builder.Exec(ctx, q, "contract_asset_stats"); err != nil {
 		return errors.Wrap(err, "could not exec asset assetStats insert builder")
 	}
 
@@ -106,17 +102,15 @@ func (q *Q) InsertContractAssetBalances(ctx context.Context, rows []ContractAsse
 	if len(rows) == 0 {
 		return nil
 	}
-	builder := &db.BatchInsertBuilder{
-		Table: q.GetTable("contract_asset_balances"),
-	}
+	builder := &db.FastBatchInsertBuilder{}
 
 	for _, row := range rows {
-		if err := builder.RowStruct(ctx, row); err != nil {
+		if err := builder.RowStruct(row); err != nil {
 			return errors.Wrap(err, "could not insert asset assetStat row")
 		}
 	}
 
-	if err := builder.Exec(ctx); err != nil {
+	if err := builder.Exec(ctx, q, "contract_asset_balances"); err != nil {
 		return errors.Wrap(err, "could not exec asset assetStats insert builder")
 	}
 
