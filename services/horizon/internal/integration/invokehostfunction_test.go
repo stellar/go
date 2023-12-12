@@ -42,7 +42,7 @@ func TestContractInvokeHostFunctionInstallContract(t *testing.T) {
 
 	installContractOp := assembleInstallContractCodeOp(t, itest.Master().Address(), add_u64_contract)
 	preFlightOp, minFee := itest.PreflightHostFunctions(&sourceAccount, *installContractOp)
-	tx := itest.MustSubmitOperationsWithFee(&sourceAccount, itest.Master(), minFee, &preFlightOp)
+	tx := itest.MustSubmitOperationsWithFee(&sourceAccount, itest.Master(), minFee+txnbuild.MinBaseFee, &preFlightOp)
 
 	clientTx, err := itest.Client().TransactionDetail(tx.Hash)
 	require.NoError(t, err)
@@ -93,12 +93,12 @@ func TestContractInvokeHostFunctionCreateContractByAddress(t *testing.T) {
 	// Install the contract
 	installContractOp := assembleInstallContractCodeOp(t, itest.Master().Address(), add_u64_contract)
 	preFlightOp, minFee := itest.PreflightHostFunctions(&sourceAccount, *installContractOp)
-	itest.MustSubmitOperationsWithFee(&sourceAccount, itest.Master(), minFee, &preFlightOp)
+	itest.MustSubmitOperationsWithFee(&sourceAccount, itest.Master(), minFee+txnbuild.MinBaseFee, &preFlightOp)
 
 	// Create the contract
 	createContractOp := assembleCreateContractOp(t, itest.Master().Address(), add_u64_contract, "a1", itest.GetPassPhrase())
 	preFlightOp, minFee = itest.PreflightHostFunctions(&sourceAccount, *createContractOp)
-	tx, err := itest.SubmitOperationsWithFee(&sourceAccount, itest.Master(), minFee, &preFlightOp)
+	tx, err := itest.SubmitOperationsWithFee(&sourceAccount, itest.Master(), minFee+txnbuild.MinBaseFee, &preFlightOp)
 	require.NoError(t, err)
 
 	clientTx, err := itest.Client().TransactionDetail(tx.Hash)
@@ -147,12 +147,12 @@ func TestContractInvokeHostFunctionInvokeStatelessContractFn(t *testing.T) {
 	// Install the contract
 	installContractOp := assembleInstallContractCodeOp(t, itest.Master().Address(), add_u64_contract)
 	preFlightOp, minFee := itest.PreflightHostFunctions(&sourceAccount, *installContractOp)
-	itest.MustSubmitOperationsWithFee(&sourceAccount, itest.Master(), minFee, &preFlightOp)
+	itest.MustSubmitOperationsWithFee(&sourceAccount, itest.Master(), minFee+txnbuild.MinBaseFee, &preFlightOp)
 
 	// Create the contract
 	createContractOp := assembleCreateContractOp(t, itest.Master().Address(), add_u64_contract, "a1", itest.GetPassPhrase())
 	preFlightOp, minFee = itest.PreflightHostFunctions(&sourceAccount, *createContractOp)
-	tx, err := itest.SubmitOperationsWithFee(&sourceAccount, itest.Master(), minFee, &preFlightOp)
+	tx, err := itest.SubmitOperationsWithFee(&sourceAccount, itest.Master(), minFee+txnbuild.MinBaseFee, &preFlightOp)
 	require.NoError(t, err)
 
 	// contract has been deployed, now invoke a simple 'add' fn on the contract
@@ -191,7 +191,7 @@ func TestContractInvokeHostFunctionInvokeStatelessContractFn(t *testing.T) {
 	}
 
 	preFlightOp, minFee = itest.PreflightHostFunctions(&sourceAccount, *invokeHostFunctionOp)
-	tx, err = itest.SubmitOperationsWithFee(&sourceAccount, itest.Master(), minFee, &preFlightOp)
+	tx, err = itest.SubmitOperationsWithFee(&sourceAccount, itest.Master(), minFee+txnbuild.MinBaseFee, &preFlightOp)
 	require.NoError(t, err)
 
 	clientTx, err := itest.Client().TransactionDetail(tx.Hash)
@@ -257,13 +257,13 @@ func TestContractInvokeHostFunctionInvokeStatefulContractFn(t *testing.T) {
 
 	installContractOp := assembleInstallContractCodeOp(t, itest.Master().Address(), increment_contract)
 	preFlightOp, minFee := itest.PreflightHostFunctions(&sourceAccount, *installContractOp)
-	itest.MustSubmitOperationsWithFee(&sourceAccount, itest.Master(), minFee, &preFlightOp)
+	itest.MustSubmitOperationsWithFee(&sourceAccount, itest.Master(), minFee+txnbuild.MinBaseFee, &preFlightOp)
 
 	// Create the contract
 
 	createContractOp := assembleCreateContractOp(t, itest.Master().Address(), increment_contract, "a1", itest.GetPassPhrase())
 	preFlightOp, minFee = itest.PreflightHostFunctions(&sourceAccount, *createContractOp)
-	tx, err := itest.SubmitOperationsWithFee(&sourceAccount, itest.Master(), minFee, &preFlightOp)
+	tx, err := itest.SubmitOperationsWithFee(&sourceAccount, itest.Master(), minFee+txnbuild.MinBaseFee, &preFlightOp)
 	require.NoError(t, err)
 
 	// contract has been deployed, now invoke a simple 'add' fn on the contract
@@ -287,7 +287,7 @@ func TestContractInvokeHostFunctionInvokeStatefulContractFn(t *testing.T) {
 	}
 
 	preFlightOp, minFee = itest.PreflightHostFunctions(&sourceAccount, *invokeHostFunctionOp)
-	tx, err = itest.SubmitOperationsWithFee(&sourceAccount, itest.Master(), minFee, &preFlightOp)
+	tx, err = itest.SubmitOperationsWithFee(&sourceAccount, itest.Master(), minFee+txnbuild.MinBaseFee, &preFlightOp)
 	require.NoError(t, err)
 
 	clientTx, err := itest.Client().TransactionDetail(tx.Hash)

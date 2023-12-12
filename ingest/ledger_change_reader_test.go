@@ -394,8 +394,8 @@ func TestLedgerChangeLedgerCloseMetaV2(t *testing.T) {
 		ContractId: &contractID,
 	}
 	ledger := xdr.LedgerCloseMeta{
-		V: 2,
-		V2: &xdr.LedgerCloseMetaV2{
+		V: 1,
+		V1: &xdr.LedgerCloseMetaV1{
 			LedgerHeader: xdr.LedgerHeaderHistoryEntry{Header: xdr.LedgerHeader{LedgerVersion: 10}},
 			TxSet: xdr.GeneralizedTransactionSet{
 				V: 1,
@@ -605,8 +605,8 @@ func TestLedgerChangeLedgerCloseMetaV2Empty(t *testing.T) {
 
 	baseFee := xdr.Int64(100)
 	ledger := xdr.LedgerCloseMeta{
-		V: 2,
-		V2: &xdr.LedgerCloseMetaV2{
+		V: 1,
+		V1: &xdr.LedgerCloseMetaV1{
 			LedgerHeader: xdr.LedgerHeaderHistoryEntry{Header: xdr.LedgerHeader{LedgerVersion: 10}},
 			TxSet: xdr.GeneralizedTransactionSet{
 				V: 1,

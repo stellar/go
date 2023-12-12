@@ -205,7 +205,7 @@ const (
 	CONTRACT_DATA     LedgerEntryType = 6
 	CONTRACT_CODE     LedgerEntryType = 7
 	CONFIG_SETTING    LedgerEntryType = 8
-	EXPIRATION        LedgerEntryType = 9
+	TTL               LedgerEntryType = 9
 )
 
 type Signer struct {
@@ -645,10 +645,10 @@ type ContractCodeEntry struct {
 	Code []byte
 }
 
-type ExpirationEntry struct {
-	// Hash of the LedgerKey that is associated with this ExpirationEntry
-	KeyHash             Hash
-	ExpirationLedgerSeq Uint32
+type TTLEntry struct {
+	// Hash of the LedgerKey that is associated with this TTLEntry
+	KeyHash            Hash
+	LiveUntilLedgerSeq Uint32
 }
 
 type LedgerEntryExtensionV1 struct {
@@ -689,8 +689,8 @@ type XdrAnon_LedgerEntry_Data struct {
 	//      ContractCode() *ContractCodeEntry
 	//   CONFIG_SETTING:
 	//      ConfigSetting() *ConfigSettingEntry
-	//   EXPIRATION:
-	//      Expiration() *ExpirationEntry
+	//   TTL:
+	//      Ttl() *TTLEntry
 	Type LedgerEntryType
 	_u   interface{}
 }
@@ -726,8 +726,8 @@ type LedgerKey struct {
 	//      ContractCode() *XdrAnon_LedgerKey_ContractCode
 	//   CONFIG_SETTING:
 	//      ConfigSetting() *XdrAnon_LedgerKey_ConfigSetting
-	//   EXPIRATION:
-	//      Expiration() *XdrAnon_LedgerKey_Expiration
+	//   TTL:
+	//      Ttl() *XdrAnon_LedgerKey_Ttl
 	Type LedgerEntryType
 	_u   interface{}
 }
@@ -763,8 +763,8 @@ type XdrAnon_LedgerKey_ContractCode struct {
 type XdrAnon_LedgerKey_ConfigSetting struct {
 	ConfigSettingID ConfigSettingID
 }
-type XdrAnon_LedgerKey_Expiration struct {
-	// Hash of the LedgerKey that is associated with this ExpirationEntry
+type XdrAnon_LedgerKey_Ttl struct {
+	// Hash of the LedgerKey that is associated with this TTLEntry
 	KeyHash Hash
 }
 
@@ -1274,21 +1274,8 @@ type LedgerCloseMetaV0 struct {
 }
 
 type LedgerCloseMetaV1 struct {
-	LedgerHeader LedgerHeaderHistoryEntry
-	TxSet        GeneralizedTransactionSet
-	// NB: transactions are sorted in apply order here
-	// fees for all transactions are processed first
-	// followed by applying transactions
-	TxProcessing []TransactionResultMeta
-	// upgrades are applied last
-	UpgradesProcessing []UpgradeEntryMeta
-	// other misc information attached to the ledger close
-	ScpInfo []SCPHistoryEntry
-}
-
-type LedgerCloseMetaV2 struct {
-	// We forgot to add an ExtensionPoint in v1 but at least
-	// we can add one now in v2.
+	// We forgot to add an ExtensionPoint in v0 but at least
+	// we can add one now in v1.
 	Ext          ExtensionPoint
 	LedgerHeader LedgerHeaderHistoryEntry
 	TxSet        GeneralizedTransactionSet
@@ -1303,9 +1290,9 @@ type LedgerCloseMetaV2 struct {
 	// Size in bytes of BucketList, to support downstream
 	// systems calculating storage fees correctly.
 	TotalByteSizeOfBucketList Uint64
-	// Expired temp keys that are being evicted at this ledger.
+	// Temp keys that are being evicted at this ledger.
 	EvictedTemporaryLedgerKeys []LedgerKey
-	// Expired restorable ledger entries that are being
+	// Archived restorable ledger entries that are being
 	// evicted at this ledger.
 	EvictedPersistentLedgerEntries []LedgerEntry
 }
@@ -1316,8 +1303,6 @@ type LedgerCloseMeta struct {
 	//      V0() *LedgerCloseMetaV0
 	//   1:
 	//      V1() *LedgerCloseMetaV1
-	//   2:
-	//      V2() *LedgerCloseMetaV2
 	V  int32
 	_u interface{}
 }
@@ -1663,7 +1648,7 @@ const (
 	LIQUIDITY_POOL_DEPOSIT           OperationType = 22
 	LIQUIDITY_POOL_WITHDRAW          OperationType = 23
 	INVOKE_HOST_FUNCTION             OperationType = 24
-	BUMP_FOOTPRINT_EXPIRATION        OperationType = 25
+	EXTEND_FOOTPRINT_TTL             OperationType = 25
 	RESTORE_FOOTPRINT                OperationType = 26
 )
 
@@ -2174,7 +2159,7 @@ type SorobanAuthorizationEntry struct {
 }
 
 /*
-Upload WASM, create, and invoke contracts in Soroban.
+Upload Wasm, create, and invoke contracts in Soroban.
 
 	Threshold: med
 	Result: InvokeHostFunctionResult
@@ -2187,22 +2172,22 @@ type InvokeHostFunctionOp struct {
 }
 
 /*
-Bump the expiration ledger of the entries specified in the readOnly footprint
+Extend the TTL of the entries specified in the readOnly footprint
 
-	so they'll expire at least ledgersToExpire ledgers from lcl.
+	so they will live at least extendTo ledgers from lcl.
 
-	 Threshold: med
-	 Result: BumpFootprintExpirationResult
+	 Threshold: low
+	 Result: ExtendFootprintTTLResult
 */
-type BumpFootprintExpirationOp struct {
-	Ext             ExtensionPoint
-	LedgersToExpire Uint32
+type ExtendFootprintTTLOp struct {
+	Ext      ExtensionPoint
+	ExtendTo Uint32
 }
 
 /*
-Restore the expired or evicted entries specified in the readWrite footprint.
+Restore the archived entries specified in the readWrite footprint.
 
-	Threshold: med
+	Threshold: low
 	Result: RestoreFootprintOp
 */
 type RestoreFootprintOp struct {
@@ -2269,8 +2254,8 @@ type XdrAnon_Operation_Body struct {
 	//      LiquidityPoolWithdrawOp() *LiquidityPoolWithdrawOp
 	//   INVOKE_HOST_FUNCTION:
 	//      InvokeHostFunctionOp() *InvokeHostFunctionOp
-	//   BUMP_FOOTPRINT_EXPIRATION:
-	//      BumpFootprintExpirationOp() *BumpFootprintExpirationOp
+	//   EXTEND_FOOTPRINT_TTL:
+	//      ExtendFootprintTTLOp() *ExtendFootprintTTLOp
 	//   RESTORE_FOOTPRINT:
 	//      RestoreFootprintOp() *RestoreFootprintOp
 	Type OperationType
@@ -2421,8 +2406,16 @@ type SorobanResources struct {
 type SorobanTransactionData struct {
 	Ext       ExtensionPoint
 	Resources SorobanResources
-	// Portion of transaction `fee` allocated to refundable fees.
-	RefundableFee Int64
+	// Amount of the transaction `fee` allocated to the Soroban resource fees.
+	// The fraction of `resourceFee` corresponding to `resources` specified
+	// above is *not* refundable (i.e. fees for instructions, ledger I/O), as
+	// well as fees for the transaction size.
+	// The remaining part of the fee is refundable and the charged value is
+	// based on the actual consumption of refundable resources (events, ledger
+	// rent bumps).
+	// The `inclusionFee` used for prioritization of the transaction is defined
+	// as `tx.fee - resourceFee`.
+	ResourceFee Int64
 }
 
 // TransactionV0 is a transaction with the AccountID discriminant stripped off,
@@ -3320,7 +3313,7 @@ const (
 	INVOKE_HOST_FUNCTION_MALFORMED                   InvokeHostFunctionResultCode = -1
 	INVOKE_HOST_FUNCTION_TRAPPED                     InvokeHostFunctionResultCode = -2
 	INVOKE_HOST_FUNCTION_RESOURCE_LIMIT_EXCEEDED     InvokeHostFunctionResultCode = -3
-	INVOKE_HOST_FUNCTION_ENTRY_EXPIRED               InvokeHostFunctionResultCode = -4
+	INVOKE_HOST_FUNCTION_ENTRY_ARCHIVED              InvokeHostFunctionResultCode = -4
 	INVOKE_HOST_FUNCTION_INSUFFICIENT_REFUNDABLE_FEE InvokeHostFunctionResultCode = -5
 )
 
@@ -3328,30 +3321,30 @@ type InvokeHostFunctionResult struct {
 	// The union discriminant Code selects among the following arms:
 	//   INVOKE_HOST_FUNCTION_SUCCESS:
 	//      Success() *Hash
-	//   INVOKE_HOST_FUNCTION_MALFORMED, INVOKE_HOST_FUNCTION_TRAPPED, INVOKE_HOST_FUNCTION_RESOURCE_LIMIT_EXCEEDED, INVOKE_HOST_FUNCTION_ENTRY_EXPIRED, INVOKE_HOST_FUNCTION_INSUFFICIENT_REFUNDABLE_FEE:
+	//   INVOKE_HOST_FUNCTION_MALFORMED, INVOKE_HOST_FUNCTION_TRAPPED, INVOKE_HOST_FUNCTION_RESOURCE_LIMIT_EXCEEDED, INVOKE_HOST_FUNCTION_ENTRY_ARCHIVED, INVOKE_HOST_FUNCTION_INSUFFICIENT_REFUNDABLE_FEE:
 	//      void
 	Code InvokeHostFunctionResultCode
 	_u   interface{}
 }
 
-type BumpFootprintExpirationResultCode int32
+type ExtendFootprintTTLResultCode int32
 
 const (
 	// codes considered as "success" for the operation
-	BUMP_FOOTPRINT_EXPIRATION_SUCCESS BumpFootprintExpirationResultCode = 0
+	EXTEND_FOOTPRINT_TTL_SUCCESS ExtendFootprintTTLResultCode = 0
 	// codes considered as "failure" for the operation
-	BUMP_FOOTPRINT_EXPIRATION_MALFORMED                   BumpFootprintExpirationResultCode = -1
-	BUMP_FOOTPRINT_EXPIRATION_RESOURCE_LIMIT_EXCEEDED     BumpFootprintExpirationResultCode = -2
-	BUMP_FOOTPRINT_EXPIRATION_INSUFFICIENT_REFUNDABLE_FEE BumpFootprintExpirationResultCode = -3
+	EXTEND_FOOTPRINT_TTL_MALFORMED                   ExtendFootprintTTLResultCode = -1
+	EXTEND_FOOTPRINT_TTL_RESOURCE_LIMIT_EXCEEDED     ExtendFootprintTTLResultCode = -2
+	EXTEND_FOOTPRINT_TTL_INSUFFICIENT_REFUNDABLE_FEE ExtendFootprintTTLResultCode = -3
 )
 
-type BumpFootprintExpirationResult struct {
+type ExtendFootprintTTLResult struct {
 	// The union discriminant Code selects among the following arms:
-	//   BUMP_FOOTPRINT_EXPIRATION_SUCCESS:
+	//   EXTEND_FOOTPRINT_TTL_SUCCESS:
 	//      void
-	//   BUMP_FOOTPRINT_EXPIRATION_MALFORMED, BUMP_FOOTPRINT_EXPIRATION_RESOURCE_LIMIT_EXCEEDED, BUMP_FOOTPRINT_EXPIRATION_INSUFFICIENT_REFUNDABLE_FEE:
+	//   EXTEND_FOOTPRINT_TTL_MALFORMED, EXTEND_FOOTPRINT_TTL_RESOURCE_LIMIT_EXCEEDED, EXTEND_FOOTPRINT_TTL_INSUFFICIENT_REFUNDABLE_FEE:
 	//      void
-	Code BumpFootprintExpirationResultCode
+	Code ExtendFootprintTTLResultCode
 	_u   interface{}
 }
 
@@ -3457,8 +3450,8 @@ type XdrAnon_OperationResult_Tr struct {
 	//      LiquidityPoolWithdrawResult() *LiquidityPoolWithdrawResult
 	//   INVOKE_HOST_FUNCTION:
 	//      InvokeHostFunctionResult() *InvokeHostFunctionResult
-	//   BUMP_FOOTPRINT_EXPIRATION:
-	//      BumpFootprintExpirationResult() *BumpFootprintExpirationResult
+	//   EXTEND_FOOTPRINT_TTL:
+	//      ExtendFootprintTTLResult() *ExtendFootprintTTLResult
 	//   RESTORE_FOOTPRINT:
 	//      RestoreFootprintResult() *RestoreFootprintResult
 	Type OperationType
@@ -4050,15 +4043,15 @@ type Int256Parts struct {
 type ContractExecutableType int32
 
 const (
-	CONTRACT_EXECUTABLE_WASM  ContractExecutableType = 0
-	CONTRACT_EXECUTABLE_TOKEN ContractExecutableType = 1
+	CONTRACT_EXECUTABLE_WASM          ContractExecutableType = 0
+	CONTRACT_EXECUTABLE_STELLAR_ASSET ContractExecutableType = 1
 )
 
 type ContractExecutable struct {
 	// The union discriminant Type selects among the following arms:
 	//   CONTRACT_EXECUTABLE_WASM:
 	//      Wasm_hash() *Hash
-	//   CONTRACT_EXECUTABLE_TOKEN:
+	//   CONTRACT_EXECUTABLE_STELLAR_ASSET:
 	//      void
 	Type ContractExecutableType
 	_u   interface{}
@@ -4165,6 +4158,12 @@ type StoredTransactionSet struct {
 	//      GeneralizedTxSet() *GeneralizedTransactionSet
 	V  int32
 	_u interface{}
+}
+
+type StoredDebugTransactionSet struct {
+	TxSet     StoredTransactionSet
+	LedgerSeq Uint32
+	ScpValue  StellarValue
 }
 
 type PersistedSCPStateV0 struct {
@@ -4274,64 +4273,54 @@ type ContractCostType int32
 const (
 	// Cost of running 1 wasm instruction
 	WasmInsnExec ContractCostType = 0
-	// Cost of growing wasm linear memory by 1 page
-	WasmMemAlloc ContractCostType = 1
-	// Cost of allocating a chuck of host memory (in bytes)
-	HostMemAlloc ContractCostType = 2
-	// Cost of copying a chuck of bytes into a pre-allocated host memory
-	HostMemCpy ContractCostType = 3
-	// Cost of comparing two slices of host memory
-	HostMemCmp ContractCostType = 4
+	// Cost of allocating a slice of memory (in bytes)
+	MemAlloc ContractCostType = 1
+	// Cost of copying a slice of bytes into a pre-allocated memory
+	MemCpy ContractCostType = 2
+	// Cost of comparing two slices of memory
+	MemCmp ContractCostType = 3
 	// Cost of a host function dispatch, not including the actual work done by
 	// the function nor the cost of VM invocation machinary
-	DispatchHostFunction ContractCostType = 5
+	DispatchHostFunction ContractCostType = 4
 	// Cost of visiting a host object from the host object storage. Exists to
 	// make sure some baseline cost coverage, i.e. repeatly visiting objects
 	// by the guest will always incur some charges.
-	VisitObject ContractCostType = 6
+	VisitObject ContractCostType = 5
 	// Cost of serializing an xdr object to bytes
-	ValSer ContractCostType = 7
+	ValSer ContractCostType = 6
 	// Cost of deserializing an xdr object from bytes
-	ValDeser ContractCostType = 8
+	ValDeser ContractCostType = 7
 	// Cost of computing the sha256 hash from bytes
-	ComputeSha256Hash ContractCostType = 9
+	ComputeSha256Hash ContractCostType = 8
 	// Cost of computing the ed25519 pubkey from bytes
-	ComputeEd25519PubKey ContractCostType = 10
-	// Cost of accessing an entry in a Map.
-	MapEntry ContractCostType = 11
-	// Cost of accessing an entry in a Vec
-	VecEntry ContractCostType = 12
+	ComputeEd25519PubKey ContractCostType = 9
 	// Cost of verifying ed25519 signature of a payload.
-	VerifyEd25519Sig ContractCostType = 13
-	// Cost of reading a slice of vm linear memory
-	VmMemRead ContractCostType = 14
-	// Cost of writing to a slice of vm linear memory
-	VmMemWrite ContractCostType = 15
+	VerifyEd25519Sig ContractCostType = 10
 	// Cost of instantiation a VM from wasm bytes code.
-	VmInstantiation ContractCostType = 16
+	VmInstantiation ContractCostType = 11
 	// Cost of instantiation a VM from a cached state.
-	VmCachedInstantiation ContractCostType = 17
+	VmCachedInstantiation ContractCostType = 12
 	// Cost of invoking a function on the VM. If the function is a host function,
 	// additional cost will be covered by `DispatchHostFunction`.
-	InvokeVmFunction ContractCostType = 18
+	InvokeVmFunction ContractCostType = 13
 	// Cost of computing a keccak256 hash from bytes.
-	ComputeKeccak256Hash ContractCostType = 19
-	// Cost of computing an ECDSA secp256k1 pubkey from bytes.
-	ComputeEcdsaSecp256k1Key ContractCostType = 20
+	ComputeKeccak256Hash ContractCostType = 14
 	// Cost of computing an ECDSA secp256k1 signature from bytes.
-	ComputeEcdsaSecp256k1Sig ContractCostType = 21
+	ComputeEcdsaSecp256k1Sig ContractCostType = 15
 	// Cost of recovering an ECDSA secp256k1 key from a signature.
-	RecoverEcdsaSecp256k1Key ContractCostType = 22
+	RecoverEcdsaSecp256k1Key ContractCostType = 16
 	// Cost of int256 addition (`+`) and subtraction (`-`) operations
-	Int256AddSub ContractCostType = 23
+	Int256AddSub ContractCostType = 17
 	// Cost of int256 multiplication (`*`) operation
-	Int256Mul ContractCostType = 24
+	Int256Mul ContractCostType = 18
 	// Cost of int256 division (`/`) operation
-	Int256Div ContractCostType = 25
+	Int256Div ContractCostType = 19
 	// Cost of int256 power (`exp`) operation
-	Int256Pow ContractCostType = 26
+	Int256Pow ContractCostType = 20
 	// Cost of int256 shift (`shl`, `shr`) operation
-	Int256Shift ContractCostType = 27
+	Int256Shift ContractCostType = 21
+	// Cost of drawing random bytes using a ChaCha20 PRNG
+	ChaCha20DrawBytes ContractCostType = 22
 )
 
 type ContractCostParamEntry struct {
@@ -4341,15 +4330,15 @@ type ContractCostParamEntry struct {
 	LinearTerm Int64
 }
 
-type StateExpirationSettings struct {
-	MaxEntryExpiration           Uint32
-	MinTempEntryExpiration       Uint32
-	MinPersistentEntryExpiration Uint32
+type StateArchivalSettings struct {
+	MaxEntryTTL      Uint32
+	MinTemporaryTTL  Uint32
+	MinPersistentTTL Uint32
 	// rent_fee = wfee_rate_average / rent_rate_denominator_for_type
 	PersistentRentRateDenominator Int64
 	TempRentRateDenominator       Int64
-	// max number of entries that emit expiration meta in a single ledger
-	MaxEntriesToExpire Uint32
+	// max number of entries that emit archival meta in a single ledger
+	MaxEntriesToArchive Uint32
 	// Number of snapshots to use when calculating average BucketList size
 	BucketListSizeWindowSampleSize Uint32
 	// Maximum number of bytes that we scan for eviction per ledger
@@ -4383,7 +4372,7 @@ const (
 	CONFIG_SETTING_CONTRACT_COST_PARAMS_MEMORY_BYTES     ConfigSettingID = 7
 	CONFIG_SETTING_CONTRACT_DATA_KEY_SIZE_BYTES          ConfigSettingID = 8
 	CONFIG_SETTING_CONTRACT_DATA_ENTRY_SIZE_BYTES        ConfigSettingID = 9
-	CONFIG_SETTING_STATE_EXPIRATION                      ConfigSettingID = 10
+	CONFIG_SETTING_STATE_ARCHIVAL                        ConfigSettingID = 10
 	CONFIG_SETTING_CONTRACT_EXECUTION_LANES              ConfigSettingID = 11
 	CONFIG_SETTING_BUCKETLIST_SIZE_WINDOW                ConfigSettingID = 12
 	CONFIG_SETTING_EVICTION_ITERATOR                     ConfigSettingID = 13
@@ -4411,8 +4400,8 @@ type ConfigSettingEntry struct {
 	//      ContractDataKeySizeBytes() *Uint32
 	//   CONFIG_SETTING_CONTRACT_DATA_ENTRY_SIZE_BYTES:
 	//      ContractDataEntrySizeBytes() *Uint32
-	//   CONFIG_SETTING_STATE_EXPIRATION:
-	//      StateExpirationSettings() *StateExpirationSettings
+	//   CONFIG_SETTING_STATE_ARCHIVAL:
+	//      StateArchivalSettings() *StateArchivalSettings
 	//   CONFIG_SETTING_CONTRACT_EXECUTION_LANES:
 	//      ContractExecutionLanes() *ConfigSettingContractExecutionLanesV0
 	//   CONFIG_SETTING_BUCKETLIST_SIZE_WINDOW:
@@ -5497,7 +5486,7 @@ var _XdrNames_LedgerEntryType = map[int32]string{
 	int32(CONTRACT_DATA):     "CONTRACT_DATA",
 	int32(CONTRACT_CODE):     "CONTRACT_CODE",
 	int32(CONFIG_SETTING):    "CONFIG_SETTING",
-	int32(EXPIRATION):        "EXPIRATION",
+	int32(TTL):               "TTL",
 }
 var _XdrValues_LedgerEntryType = map[string]int32{
 	"ACCOUNT":           int32(ACCOUNT),
@@ -5509,7 +5498,7 @@ var _XdrValues_LedgerEntryType = map[string]int32{
 	"CONTRACT_DATA":     int32(CONTRACT_DATA),
 	"CONTRACT_CODE":     int32(CONTRACT_CODE),
 	"CONFIG_SETTING":    int32(CONFIG_SETTING),
-	"EXPIRATION":        int32(EXPIRATION),
+	"TTL":               int32(TTL),
 }
 
 func (LedgerEntryType) XdrEnumNames() map[int32]string {
@@ -7950,20 +7939,20 @@ func (v *ContractCodeEntry) XdrRecurse(x XDR, name string) {
 }
 func XDR_ContractCodeEntry(v *ContractCodeEntry) *ContractCodeEntry { return v }
 
-type XdrType_ExpirationEntry = *ExpirationEntry
+type XdrType_TTLEntry = *TTLEntry
 
-func (v *ExpirationEntry) XdrPointer() interface{}       { return v }
-func (ExpirationEntry) XdrTypeName() string              { return "ExpirationEntry" }
-func (v ExpirationEntry) XdrValue() interface{}          { return v }
-func (v *ExpirationEntry) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
-func (v *ExpirationEntry) XdrRecurse(x XDR, name string) {
+func (v *TTLEntry) XdrPointer() interface{}       { return v }
+func (TTLEntry) XdrTypeName() string              { return "TTLEntry" }
+func (v TTLEntry) XdrValue() interface{}          { return v }
+func (v *TTLEntry) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *TTLEntry) XdrRecurse(x XDR, name string) {
 	if name != "" {
 		name = x.Sprintf("%s.", name)
 	}
 	x.Marshal(x.Sprintf("%skeyHash", name), XDR_Hash(&v.KeyHash))
-	x.Marshal(x.Sprintf("%sexpirationLedgerSeq", name), XDR_Uint32(&v.ExpirationLedgerSeq))
+	x.Marshal(x.Sprintf("%sliveUntilLedgerSeq", name), XDR_Uint32(&v.LiveUntilLedgerSeq))
 }
-func XDR_ExpirationEntry(v *ExpirationEntry) *ExpirationEntry { return v }
+func XDR_TTLEntry(v *TTLEntry) *TTLEntry { return v }
 
 var _XdrTags_XdrAnon_LedgerEntryExtensionV1_Ext = map[int32]bool{
 	XdrToI32(0): true,
@@ -8048,7 +8037,7 @@ var _XdrTags_XdrAnon_LedgerEntry_Data = map[int32]bool{
 	XdrToI32(CONTRACT_DATA):     true,
 	XdrToI32(CONTRACT_CODE):     true,
 	XdrToI32(CONFIG_SETTING):    true,
-	XdrToI32(EXPIRATION):        true,
+	XdrToI32(TTL):               true,
 }
 
 func (_ XdrAnon_LedgerEntry_Data) XdrValidTags() map[int32]bool {
@@ -8189,24 +8178,24 @@ func (u *XdrAnon_LedgerEntry_Data) ConfigSetting() *ConfigSettingEntry {
 		return nil
 	}
 }
-func (u *XdrAnon_LedgerEntry_Data) Expiration() *ExpirationEntry {
+func (u *XdrAnon_LedgerEntry_Data) Ttl() *TTLEntry {
 	switch u.Type {
-	case EXPIRATION:
-		if v, ok := u._u.(*ExpirationEntry); ok {
+	case TTL:
+		if v, ok := u._u.(*TTLEntry); ok {
 			return v
 		} else {
-			var zero ExpirationEntry
+			var zero TTLEntry
 			u._u = &zero
 			return &zero
 		}
 	default:
-		XdrPanic("XdrAnon_LedgerEntry_Data.Expiration accessed when Type == %v", u.Type)
+		XdrPanic("XdrAnon_LedgerEntry_Data.Ttl accessed when Type == %v", u.Type)
 		return nil
 	}
 }
 func (u XdrAnon_LedgerEntry_Data) XdrValid() bool {
 	switch u.Type {
-	case ACCOUNT, TRUSTLINE, OFFER, DATA, CLAIMABLE_BALANCE, LIQUIDITY_POOL, CONTRACT_DATA, CONTRACT_CODE, CONFIG_SETTING, EXPIRATION:
+	case ACCOUNT, TRUSTLINE, OFFER, DATA, CLAIMABLE_BALANCE, LIQUIDITY_POOL, CONTRACT_DATA, CONTRACT_CODE, CONFIG_SETTING, TTL:
 		return true
 	}
 	return false
@@ -8237,8 +8226,8 @@ func (u *XdrAnon_LedgerEntry_Data) XdrUnionBody() XdrType {
 		return XDR_ContractCodeEntry(u.ContractCode())
 	case CONFIG_SETTING:
 		return XDR_ConfigSettingEntry(u.ConfigSetting())
-	case EXPIRATION:
-		return XDR_ExpirationEntry(u.Expiration())
+	case TTL:
+		return XDR_TTLEntry(u.Ttl())
 	}
 	return nil
 }
@@ -8262,8 +8251,8 @@ func (u *XdrAnon_LedgerEntry_Data) XdrUnionBodyName() string {
 		return "ContractCode"
 	case CONFIG_SETTING:
 		return "ConfigSetting"
-	case EXPIRATION:
-		return "Expiration"
+	case TTL:
+		return "Ttl"
 	}
 	return ""
 }
@@ -8307,8 +8296,8 @@ func (u *XdrAnon_LedgerEntry_Data) XdrRecurse(x XDR, name string) {
 	case CONFIG_SETTING:
 		x.Marshal(x.Sprintf("%sconfigSetting", name), XDR_ConfigSettingEntry(u.ConfigSetting()))
 		return
-	case EXPIRATION:
-		x.Marshal(x.Sprintf("%sexpiration", name), XDR_ExpirationEntry(u.Expiration()))
+	case TTL:
+		x.Marshal(x.Sprintf("%sttl", name), XDR_TTLEntry(u.Ttl()))
 		return
 	}
 	XdrPanic("invalid Type (%v) in XdrAnon_LedgerEntry_Data", u.Type)
@@ -8553,21 +8542,19 @@ func XDR_XdrAnon_LedgerKey_ConfigSetting(v *XdrAnon_LedgerKey_ConfigSetting) *Xd
 	return v
 }
 
-type XdrType_XdrAnon_LedgerKey_Expiration = *XdrAnon_LedgerKey_Expiration
+type XdrType_XdrAnon_LedgerKey_Ttl = *XdrAnon_LedgerKey_Ttl
 
-func (v *XdrAnon_LedgerKey_Expiration) XdrPointer() interface{}       { return v }
-func (XdrAnon_LedgerKey_Expiration) XdrTypeName() string              { return "XdrAnon_LedgerKey_Expiration" }
-func (v XdrAnon_LedgerKey_Expiration) XdrValue() interface{}          { return v }
-func (v *XdrAnon_LedgerKey_Expiration) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
-func (v *XdrAnon_LedgerKey_Expiration) XdrRecurse(x XDR, name string) {
+func (v *XdrAnon_LedgerKey_Ttl) XdrPointer() interface{}       { return v }
+func (XdrAnon_LedgerKey_Ttl) XdrTypeName() string              { return "XdrAnon_LedgerKey_Ttl" }
+func (v XdrAnon_LedgerKey_Ttl) XdrValue() interface{}          { return v }
+func (v *XdrAnon_LedgerKey_Ttl) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *XdrAnon_LedgerKey_Ttl) XdrRecurse(x XDR, name string) {
 	if name != "" {
 		name = x.Sprintf("%s.", name)
 	}
 	x.Marshal(x.Sprintf("%skeyHash", name), XDR_Hash(&v.KeyHash))
 }
-func XDR_XdrAnon_LedgerKey_Expiration(v *XdrAnon_LedgerKey_Expiration) *XdrAnon_LedgerKey_Expiration {
-	return v
-}
+func XDR_XdrAnon_LedgerKey_Ttl(v *XdrAnon_LedgerKey_Ttl) *XdrAnon_LedgerKey_Ttl { return v }
 
 var _XdrTags_LedgerKey = map[int32]bool{
 	XdrToI32(ACCOUNT):           true,
@@ -8579,7 +8566,7 @@ var _XdrTags_LedgerKey = map[int32]bool{
 	XdrToI32(CONTRACT_DATA):     true,
 	XdrToI32(CONTRACT_CODE):     true,
 	XdrToI32(CONFIG_SETTING):    true,
-	XdrToI32(EXPIRATION):        true,
+	XdrToI32(TTL):               true,
 }
 
 func (_ LedgerKey) XdrValidTags() map[int32]bool {
@@ -8720,24 +8707,24 @@ func (u *LedgerKey) ConfigSetting() *XdrAnon_LedgerKey_ConfigSetting {
 		return nil
 	}
 }
-func (u *LedgerKey) Expiration() *XdrAnon_LedgerKey_Expiration {
+func (u *LedgerKey) Ttl() *XdrAnon_LedgerKey_Ttl {
 	switch u.Type {
-	case EXPIRATION:
-		if v, ok := u._u.(*XdrAnon_LedgerKey_Expiration); ok {
+	case TTL:
+		if v, ok := u._u.(*XdrAnon_LedgerKey_Ttl); ok {
 			return v
 		} else {
-			var zero XdrAnon_LedgerKey_Expiration
+			var zero XdrAnon_LedgerKey_Ttl
 			u._u = &zero
 			return &zero
 		}
 	default:
-		XdrPanic("LedgerKey.Expiration accessed when Type == %v", u.Type)
+		XdrPanic("LedgerKey.Ttl accessed when Type == %v", u.Type)
 		return nil
 	}
 }
 func (u LedgerKey) XdrValid() bool {
 	switch u.Type {
-	case ACCOUNT, TRUSTLINE, OFFER, DATA, CLAIMABLE_BALANCE, LIQUIDITY_POOL, CONTRACT_DATA, CONTRACT_CODE, CONFIG_SETTING, EXPIRATION:
+	case ACCOUNT, TRUSTLINE, OFFER, DATA, CLAIMABLE_BALANCE, LIQUIDITY_POOL, CONTRACT_DATA, CONTRACT_CODE, CONFIG_SETTING, TTL:
 		return true
 	}
 	return false
@@ -8768,8 +8755,8 @@ func (u *LedgerKey) XdrUnionBody() XdrType {
 		return XDR_XdrAnon_LedgerKey_ContractCode(u.ContractCode())
 	case CONFIG_SETTING:
 		return XDR_XdrAnon_LedgerKey_ConfigSetting(u.ConfigSetting())
-	case EXPIRATION:
-		return XDR_XdrAnon_LedgerKey_Expiration(u.Expiration())
+	case TTL:
+		return XDR_XdrAnon_LedgerKey_Ttl(u.Ttl())
 	}
 	return nil
 }
@@ -8793,8 +8780,8 @@ func (u *LedgerKey) XdrUnionBodyName() string {
 		return "ContractCode"
 	case CONFIG_SETTING:
 		return "ConfigSetting"
-	case EXPIRATION:
-		return "Expiration"
+	case TTL:
+		return "Ttl"
 	}
 	return ""
 }
@@ -8838,8 +8825,8 @@ func (u *LedgerKey) XdrRecurse(x XDR, name string) {
 	case CONFIG_SETTING:
 		x.Marshal(x.Sprintf("%sconfigSetting", name), XDR_XdrAnon_LedgerKey_ConfigSetting(u.ConfigSetting()))
 		return
-	case EXPIRATION:
-		x.Marshal(x.Sprintf("%sexpiration", name), XDR_XdrAnon_LedgerKey_Expiration(u.Expiration()))
+	case TTL:
+		x.Marshal(x.Sprintf("%sttl", name), XDR_XdrAnon_LedgerKey_Ttl(u.Ttl()))
 		return
 	}
 	XdrPanic("invalid Type (%v) in LedgerKey", u.Type)
@@ -12355,24 +12342,6 @@ func (v *LedgerCloseMetaV0) XdrRecurse(x XDR, name string) {
 }
 func XDR_LedgerCloseMetaV0(v *LedgerCloseMetaV0) *LedgerCloseMetaV0 { return v }
 
-type XdrType_LedgerCloseMetaV1 = *LedgerCloseMetaV1
-
-func (v *LedgerCloseMetaV1) XdrPointer() interface{}       { return v }
-func (LedgerCloseMetaV1) XdrTypeName() string              { return "LedgerCloseMetaV1" }
-func (v LedgerCloseMetaV1) XdrValue() interface{}          { return v }
-func (v *LedgerCloseMetaV1) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
-func (v *LedgerCloseMetaV1) XdrRecurse(x XDR, name string) {
-	if name != "" {
-		name = x.Sprintf("%s.", name)
-	}
-	x.Marshal(x.Sprintf("%sledgerHeader", name), XDR_LedgerHeaderHistoryEntry(&v.LedgerHeader))
-	x.Marshal(x.Sprintf("%stxSet", name), XDR_GeneralizedTransactionSet(&v.TxSet))
-	x.Marshal(x.Sprintf("%stxProcessing", name), (*_XdrVec_unbounded_TransactionResultMeta)(&v.TxProcessing))
-	x.Marshal(x.Sprintf("%supgradesProcessing", name), (*_XdrVec_unbounded_UpgradeEntryMeta)(&v.UpgradesProcessing))
-	x.Marshal(x.Sprintf("%sscpInfo", name), (*_XdrVec_unbounded_SCPHistoryEntry)(&v.ScpInfo))
-}
-func XDR_LedgerCloseMetaV1(v *LedgerCloseMetaV1) *LedgerCloseMetaV1 { return v }
-
 type _XdrVec_unbounded_LedgerKey []LedgerKey
 
 func (_XdrVec_unbounded_LedgerKey) XdrBound() uint32 {
@@ -12487,13 +12456,13 @@ func (v *_XdrVec_unbounded_LedgerEntry) XdrPointer() interface{}       { return 
 func (v _XdrVec_unbounded_LedgerEntry) XdrValue() interface{}          { return ([]LedgerEntry)(v) }
 func (v *_XdrVec_unbounded_LedgerEntry) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
 
-type XdrType_LedgerCloseMetaV2 = *LedgerCloseMetaV2
+type XdrType_LedgerCloseMetaV1 = *LedgerCloseMetaV1
 
-func (v *LedgerCloseMetaV2) XdrPointer() interface{}       { return v }
-func (LedgerCloseMetaV2) XdrTypeName() string              { return "LedgerCloseMetaV2" }
-func (v LedgerCloseMetaV2) XdrValue() interface{}          { return v }
-func (v *LedgerCloseMetaV2) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
-func (v *LedgerCloseMetaV2) XdrRecurse(x XDR, name string) {
+func (v *LedgerCloseMetaV1) XdrPointer() interface{}       { return v }
+func (LedgerCloseMetaV1) XdrTypeName() string              { return "LedgerCloseMetaV1" }
+func (v LedgerCloseMetaV1) XdrValue() interface{}          { return v }
+func (v *LedgerCloseMetaV1) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *LedgerCloseMetaV1) XdrRecurse(x XDR, name string) {
 	if name != "" {
 		name = x.Sprintf("%s.", name)
 	}
@@ -12507,12 +12476,11 @@ func (v *LedgerCloseMetaV2) XdrRecurse(x XDR, name string) {
 	x.Marshal(x.Sprintf("%sevictedTemporaryLedgerKeys", name), (*_XdrVec_unbounded_LedgerKey)(&v.EvictedTemporaryLedgerKeys))
 	x.Marshal(x.Sprintf("%sevictedPersistentLedgerEntries", name), (*_XdrVec_unbounded_LedgerEntry)(&v.EvictedPersistentLedgerEntries))
 }
-func XDR_LedgerCloseMetaV2(v *LedgerCloseMetaV2) *LedgerCloseMetaV2 { return v }
+func XDR_LedgerCloseMetaV1(v *LedgerCloseMetaV1) *LedgerCloseMetaV1 { return v }
 
 var _XdrTags_LedgerCloseMeta = map[int32]bool{
 	XdrToI32(0): true,
 	XdrToI32(1): true,
-	XdrToI32(2): true,
 }
 
 func (_ LedgerCloseMeta) XdrValidTags() map[int32]bool {
@@ -12548,24 +12516,9 @@ func (u *LedgerCloseMeta) V1() *LedgerCloseMetaV1 {
 		return nil
 	}
 }
-func (u *LedgerCloseMeta) V2() *LedgerCloseMetaV2 {
-	switch u.V {
-	case 2:
-		if v, ok := u._u.(*LedgerCloseMetaV2); ok {
-			return v
-		} else {
-			var zero LedgerCloseMetaV2
-			u._u = &zero
-			return &zero
-		}
-	default:
-		XdrPanic("LedgerCloseMeta.V2 accessed when V == %v", u.V)
-		return nil
-	}
-}
 func (u LedgerCloseMeta) XdrValid() bool {
 	switch u.V {
-	case 0, 1, 2:
+	case 0, 1:
 		return true
 	}
 	return false
@@ -12582,8 +12535,6 @@ func (u *LedgerCloseMeta) XdrUnionBody() XdrType {
 		return XDR_LedgerCloseMetaV0(u.V0())
 	case 1:
 		return XDR_LedgerCloseMetaV1(u.V1())
-	case 2:
-		return XDR_LedgerCloseMetaV2(u.V2())
 	}
 	return nil
 }
@@ -12593,8 +12544,6 @@ func (u *LedgerCloseMeta) XdrUnionBodyName() string {
 		return "V0"
 	case 1:
 		return "V1"
-	case 2:
-		return "V2"
 	}
 	return ""
 }
@@ -12616,9 +12565,6 @@ func (u *LedgerCloseMeta) XdrRecurse(x XDR, name string) {
 		return
 	case 1:
 		x.Marshal(x.Sprintf("%sv1", name), XDR_LedgerCloseMetaV1(u.V1()))
-		return
-	case 2:
-		x.Marshal(x.Sprintf("%sv2", name), XDR_LedgerCloseMetaV2(u.V2()))
 		return
 	}
 	XdrPanic("invalid V (%v) in LedgerCloseMeta", u.V)
@@ -14418,7 +14364,7 @@ var _XdrNames_OperationType = map[int32]string{
 	int32(LIQUIDITY_POOL_DEPOSIT):           "LIQUIDITY_POOL_DEPOSIT",
 	int32(LIQUIDITY_POOL_WITHDRAW):          "LIQUIDITY_POOL_WITHDRAW",
 	int32(INVOKE_HOST_FUNCTION):             "INVOKE_HOST_FUNCTION",
-	int32(BUMP_FOOTPRINT_EXPIRATION):        "BUMP_FOOTPRINT_EXPIRATION",
+	int32(EXTEND_FOOTPRINT_TTL):             "EXTEND_FOOTPRINT_TTL",
 	int32(RESTORE_FOOTPRINT):                "RESTORE_FOOTPRINT",
 }
 var _XdrValues_OperationType = map[string]int32{
@@ -14447,7 +14393,7 @@ var _XdrValues_OperationType = map[string]int32{
 	"LIQUIDITY_POOL_DEPOSIT":           int32(LIQUIDITY_POOL_DEPOSIT),
 	"LIQUIDITY_POOL_WITHDRAW":          int32(LIQUIDITY_POOL_WITHDRAW),
 	"INVOKE_HOST_FUNCTION":             int32(INVOKE_HOST_FUNCTION),
-	"BUMP_FOOTPRINT_EXPIRATION":        int32(BUMP_FOOTPRINT_EXPIRATION),
+	"EXTEND_FOOTPRINT_TTL":             int32(EXTEND_FOOTPRINT_TTL),
 	"RESTORE_FOOTPRINT":                int32(RESTORE_FOOTPRINT),
 }
 
@@ -16259,20 +16205,20 @@ func (v *InvokeHostFunctionOp) XdrRecurse(x XDR, name string) {
 }
 func XDR_InvokeHostFunctionOp(v *InvokeHostFunctionOp) *InvokeHostFunctionOp { return v }
 
-type XdrType_BumpFootprintExpirationOp = *BumpFootprintExpirationOp
+type XdrType_ExtendFootprintTTLOp = *ExtendFootprintTTLOp
 
-func (v *BumpFootprintExpirationOp) XdrPointer() interface{}       { return v }
-func (BumpFootprintExpirationOp) XdrTypeName() string              { return "BumpFootprintExpirationOp" }
-func (v BumpFootprintExpirationOp) XdrValue() interface{}          { return v }
-func (v *BumpFootprintExpirationOp) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
-func (v *BumpFootprintExpirationOp) XdrRecurse(x XDR, name string) {
+func (v *ExtendFootprintTTLOp) XdrPointer() interface{}       { return v }
+func (ExtendFootprintTTLOp) XdrTypeName() string              { return "ExtendFootprintTTLOp" }
+func (v ExtendFootprintTTLOp) XdrValue() interface{}          { return v }
+func (v *ExtendFootprintTTLOp) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *ExtendFootprintTTLOp) XdrRecurse(x XDR, name string) {
 	if name != "" {
 		name = x.Sprintf("%s.", name)
 	}
 	x.Marshal(x.Sprintf("%sext", name), XDR_ExtensionPoint(&v.Ext))
-	x.Marshal(x.Sprintf("%sledgersToExpire", name), XDR_Uint32(&v.LedgersToExpire))
+	x.Marshal(x.Sprintf("%sextendTo", name), XDR_Uint32(&v.ExtendTo))
 }
-func XDR_BumpFootprintExpirationOp(v *BumpFootprintExpirationOp) *BumpFootprintExpirationOp { return v }
+func XDR_ExtendFootprintTTLOp(v *ExtendFootprintTTLOp) *ExtendFootprintTTLOp { return v }
 
 type XdrType_RestoreFootprintOp = *RestoreFootprintOp
 
@@ -16314,7 +16260,7 @@ var _XdrTags_XdrAnon_Operation_Body = map[int32]bool{
 	XdrToI32(LIQUIDITY_POOL_DEPOSIT):           true,
 	XdrToI32(LIQUIDITY_POOL_WITHDRAW):          true,
 	XdrToI32(INVOKE_HOST_FUNCTION):             true,
-	XdrToI32(BUMP_FOOTPRINT_EXPIRATION):        true,
+	XdrToI32(EXTEND_FOOTPRINT_TTL):             true,
 	XdrToI32(RESTORE_FOOTPRINT):                true,
 }
 
@@ -16666,18 +16612,18 @@ func (u *XdrAnon_Operation_Body) InvokeHostFunctionOp() *InvokeHostFunctionOp {
 		return nil
 	}
 }
-func (u *XdrAnon_Operation_Body) BumpFootprintExpirationOp() *BumpFootprintExpirationOp {
+func (u *XdrAnon_Operation_Body) ExtendFootprintTTLOp() *ExtendFootprintTTLOp {
 	switch u.Type {
-	case BUMP_FOOTPRINT_EXPIRATION:
-		if v, ok := u._u.(*BumpFootprintExpirationOp); ok {
+	case EXTEND_FOOTPRINT_TTL:
+		if v, ok := u._u.(*ExtendFootprintTTLOp); ok {
 			return v
 		} else {
-			var zero BumpFootprintExpirationOp
+			var zero ExtendFootprintTTLOp
 			u._u = &zero
 			return &zero
 		}
 	default:
-		XdrPanic("XdrAnon_Operation_Body.BumpFootprintExpirationOp accessed when Type == %v", u.Type)
+		XdrPanic("XdrAnon_Operation_Body.ExtendFootprintTTLOp accessed when Type == %v", u.Type)
 		return nil
 	}
 }
@@ -16698,7 +16644,7 @@ func (u *XdrAnon_Operation_Body) RestoreFootprintOp() *RestoreFootprintOp {
 }
 func (u XdrAnon_Operation_Body) XdrValid() bool {
 	switch u.Type {
-	case CREATE_ACCOUNT, PAYMENT, PATH_PAYMENT_STRICT_RECEIVE, MANAGE_SELL_OFFER, CREATE_PASSIVE_SELL_OFFER, SET_OPTIONS, CHANGE_TRUST, ALLOW_TRUST, ACCOUNT_MERGE, INFLATION, MANAGE_DATA, BUMP_SEQUENCE, MANAGE_BUY_OFFER, PATH_PAYMENT_STRICT_SEND, CREATE_CLAIMABLE_BALANCE, CLAIM_CLAIMABLE_BALANCE, BEGIN_SPONSORING_FUTURE_RESERVES, END_SPONSORING_FUTURE_RESERVES, REVOKE_SPONSORSHIP, CLAWBACK, CLAWBACK_CLAIMABLE_BALANCE, SET_TRUST_LINE_FLAGS, LIQUIDITY_POOL_DEPOSIT, LIQUIDITY_POOL_WITHDRAW, INVOKE_HOST_FUNCTION, BUMP_FOOTPRINT_EXPIRATION, RESTORE_FOOTPRINT:
+	case CREATE_ACCOUNT, PAYMENT, PATH_PAYMENT_STRICT_RECEIVE, MANAGE_SELL_OFFER, CREATE_PASSIVE_SELL_OFFER, SET_OPTIONS, CHANGE_TRUST, ALLOW_TRUST, ACCOUNT_MERGE, INFLATION, MANAGE_DATA, BUMP_SEQUENCE, MANAGE_BUY_OFFER, PATH_PAYMENT_STRICT_SEND, CREATE_CLAIMABLE_BALANCE, CLAIM_CLAIMABLE_BALANCE, BEGIN_SPONSORING_FUTURE_RESERVES, END_SPONSORING_FUTURE_RESERVES, REVOKE_SPONSORSHIP, CLAWBACK, CLAWBACK_CLAIMABLE_BALANCE, SET_TRUST_LINE_FLAGS, LIQUIDITY_POOL_DEPOSIT, LIQUIDITY_POOL_WITHDRAW, INVOKE_HOST_FUNCTION, EXTEND_FOOTPRINT_TTL, RESTORE_FOOTPRINT:
 		return true
 	}
 	return false
@@ -16761,8 +16707,8 @@ func (u *XdrAnon_Operation_Body) XdrUnionBody() XdrType {
 		return XDR_LiquidityPoolWithdrawOp(u.LiquidityPoolWithdrawOp())
 	case INVOKE_HOST_FUNCTION:
 		return XDR_InvokeHostFunctionOp(u.InvokeHostFunctionOp())
-	case BUMP_FOOTPRINT_EXPIRATION:
-		return XDR_BumpFootprintExpirationOp(u.BumpFootprintExpirationOp())
+	case EXTEND_FOOTPRINT_TTL:
+		return XDR_ExtendFootprintTTLOp(u.ExtendFootprintTTLOp())
 	case RESTORE_FOOTPRINT:
 		return XDR_RestoreFootprintOp(u.RestoreFootprintOp())
 	}
@@ -16820,8 +16766,8 @@ func (u *XdrAnon_Operation_Body) XdrUnionBodyName() string {
 		return "LiquidityPoolWithdrawOp"
 	case INVOKE_HOST_FUNCTION:
 		return "InvokeHostFunctionOp"
-	case BUMP_FOOTPRINT_EXPIRATION:
-		return "BumpFootprintExpirationOp"
+	case EXTEND_FOOTPRINT_TTL:
+		return "ExtendFootprintTTLOp"
 	case RESTORE_FOOTPRINT:
 		return "RestoreFootprintOp"
 	}
@@ -16913,8 +16859,8 @@ func (u *XdrAnon_Operation_Body) XdrRecurse(x XDR, name string) {
 	case INVOKE_HOST_FUNCTION:
 		x.Marshal(x.Sprintf("%sinvokeHostFunctionOp", name), XDR_InvokeHostFunctionOp(u.InvokeHostFunctionOp()))
 		return
-	case BUMP_FOOTPRINT_EXPIRATION:
-		x.Marshal(x.Sprintf("%sbumpFootprintExpirationOp", name), XDR_BumpFootprintExpirationOp(u.BumpFootprintExpirationOp()))
+	case EXTEND_FOOTPRINT_TTL:
+		x.Marshal(x.Sprintf("%sextendFootprintTTLOp", name), XDR_ExtendFootprintTTLOp(u.ExtendFootprintTTLOp()))
 		return
 	case RESTORE_FOOTPRINT:
 		x.Marshal(x.Sprintf("%srestoreFootprintOp", name), XDR_RestoreFootprintOp(u.RestoreFootprintOp()))
@@ -17960,7 +17906,7 @@ func (v *SorobanTransactionData) XdrRecurse(x XDR, name string) {
 	}
 	x.Marshal(x.Sprintf("%sext", name), XDR_ExtensionPoint(&v.Ext))
 	x.Marshal(x.Sprintf("%sresources", name), XDR_SorobanResources(&v.Resources))
-	x.Marshal(x.Sprintf("%srefundableFee", name), XDR_Int64(&v.RefundableFee))
+	x.Marshal(x.Sprintf("%sresourceFee", name), XDR_Int64(&v.ResourceFee))
 }
 func XDR_SorobanTransactionData(v *SorobanTransactionData) *SorobanTransactionData { return v }
 
@@ -22563,7 +22509,7 @@ var _XdrNames_InvokeHostFunctionResultCode = map[int32]string{
 	int32(INVOKE_HOST_FUNCTION_MALFORMED):                   "INVOKE_HOST_FUNCTION_MALFORMED",
 	int32(INVOKE_HOST_FUNCTION_TRAPPED):                     "INVOKE_HOST_FUNCTION_TRAPPED",
 	int32(INVOKE_HOST_FUNCTION_RESOURCE_LIMIT_EXCEEDED):     "INVOKE_HOST_FUNCTION_RESOURCE_LIMIT_EXCEEDED",
-	int32(INVOKE_HOST_FUNCTION_ENTRY_EXPIRED):               "INVOKE_HOST_FUNCTION_ENTRY_EXPIRED",
+	int32(INVOKE_HOST_FUNCTION_ENTRY_ARCHIVED):              "INVOKE_HOST_FUNCTION_ENTRY_ARCHIVED",
 	int32(INVOKE_HOST_FUNCTION_INSUFFICIENT_REFUNDABLE_FEE): "INVOKE_HOST_FUNCTION_INSUFFICIENT_REFUNDABLE_FEE",
 }
 var _XdrValues_InvokeHostFunctionResultCode = map[string]int32{
@@ -22571,7 +22517,7 @@ var _XdrValues_InvokeHostFunctionResultCode = map[string]int32{
 	"INVOKE_HOST_FUNCTION_MALFORMED":                   int32(INVOKE_HOST_FUNCTION_MALFORMED),
 	"INVOKE_HOST_FUNCTION_TRAPPED":                     int32(INVOKE_HOST_FUNCTION_TRAPPED),
 	"INVOKE_HOST_FUNCTION_RESOURCE_LIMIT_EXCEEDED":     int32(INVOKE_HOST_FUNCTION_RESOURCE_LIMIT_EXCEEDED),
-	"INVOKE_HOST_FUNCTION_ENTRY_EXPIRED":               int32(INVOKE_HOST_FUNCTION_ENTRY_EXPIRED),
+	"INVOKE_HOST_FUNCTION_ENTRY_ARCHIVED":              int32(INVOKE_HOST_FUNCTION_ENTRY_ARCHIVED),
 	"INVOKE_HOST_FUNCTION_INSUFFICIENT_REFUNDABLE_FEE": int32(INVOKE_HOST_FUNCTION_INSUFFICIENT_REFUNDABLE_FEE),
 }
 
@@ -22627,7 +22573,7 @@ var _XdrTags_InvokeHostFunctionResult = map[int32]bool{
 	XdrToI32(INVOKE_HOST_FUNCTION_MALFORMED):                   true,
 	XdrToI32(INVOKE_HOST_FUNCTION_TRAPPED):                     true,
 	XdrToI32(INVOKE_HOST_FUNCTION_RESOURCE_LIMIT_EXCEEDED):     true,
-	XdrToI32(INVOKE_HOST_FUNCTION_ENTRY_EXPIRED):               true,
+	XdrToI32(INVOKE_HOST_FUNCTION_ENTRY_ARCHIVED):              true,
 	XdrToI32(INVOKE_HOST_FUNCTION_INSUFFICIENT_REFUNDABLE_FEE): true,
 }
 
@@ -22653,7 +22599,7 @@ func (u *InvokeHostFunctionResult) Success() *Hash {
 }
 func (u InvokeHostFunctionResult) XdrValid() bool {
 	switch u.Code {
-	case INVOKE_HOST_FUNCTION_SUCCESS, INVOKE_HOST_FUNCTION_MALFORMED, INVOKE_HOST_FUNCTION_TRAPPED, INVOKE_HOST_FUNCTION_RESOURCE_LIMIT_EXCEEDED, INVOKE_HOST_FUNCTION_ENTRY_EXPIRED, INVOKE_HOST_FUNCTION_INSUFFICIENT_REFUNDABLE_FEE:
+	case INVOKE_HOST_FUNCTION_SUCCESS, INVOKE_HOST_FUNCTION_MALFORMED, INVOKE_HOST_FUNCTION_TRAPPED, INVOKE_HOST_FUNCTION_RESOURCE_LIMIT_EXCEEDED, INVOKE_HOST_FUNCTION_ENTRY_ARCHIVED, INVOKE_HOST_FUNCTION_INSUFFICIENT_REFUNDABLE_FEE:
 		return true
 	}
 	return false
@@ -22668,7 +22614,7 @@ func (u *InvokeHostFunctionResult) XdrUnionBody() XdrType {
 	switch u.Code {
 	case INVOKE_HOST_FUNCTION_SUCCESS:
 		return XDR_Hash(u.Success())
-	case INVOKE_HOST_FUNCTION_MALFORMED, INVOKE_HOST_FUNCTION_TRAPPED, INVOKE_HOST_FUNCTION_RESOURCE_LIMIT_EXCEEDED, INVOKE_HOST_FUNCTION_ENTRY_EXPIRED, INVOKE_HOST_FUNCTION_INSUFFICIENT_REFUNDABLE_FEE:
+	case INVOKE_HOST_FUNCTION_MALFORMED, INVOKE_HOST_FUNCTION_TRAPPED, INVOKE_HOST_FUNCTION_RESOURCE_LIMIT_EXCEEDED, INVOKE_HOST_FUNCTION_ENTRY_ARCHIVED, INVOKE_HOST_FUNCTION_INSUFFICIENT_REFUNDABLE_FEE:
 		return nil
 	}
 	return nil
@@ -22677,7 +22623,7 @@ func (u *InvokeHostFunctionResult) XdrUnionBodyName() string {
 	switch u.Code {
 	case INVOKE_HOST_FUNCTION_SUCCESS:
 		return "Success"
-	case INVOKE_HOST_FUNCTION_MALFORMED, INVOKE_HOST_FUNCTION_TRAPPED, INVOKE_HOST_FUNCTION_RESOURCE_LIMIT_EXCEEDED, INVOKE_HOST_FUNCTION_ENTRY_EXPIRED, INVOKE_HOST_FUNCTION_INSUFFICIENT_REFUNDABLE_FEE:
+	case INVOKE_HOST_FUNCTION_MALFORMED, INVOKE_HOST_FUNCTION_TRAPPED, INVOKE_HOST_FUNCTION_RESOURCE_LIMIT_EXCEEDED, INVOKE_HOST_FUNCTION_ENTRY_ARCHIVED, INVOKE_HOST_FUNCTION_INSUFFICIENT_REFUNDABLE_FEE:
 		return ""
 	}
 	return ""
@@ -22698,141 +22644,135 @@ func (u *InvokeHostFunctionResult) XdrRecurse(x XDR, name string) {
 	case INVOKE_HOST_FUNCTION_SUCCESS:
 		x.Marshal(x.Sprintf("%ssuccess", name), XDR_Hash(u.Success()))
 		return
-	case INVOKE_HOST_FUNCTION_MALFORMED, INVOKE_HOST_FUNCTION_TRAPPED, INVOKE_HOST_FUNCTION_RESOURCE_LIMIT_EXCEEDED, INVOKE_HOST_FUNCTION_ENTRY_EXPIRED, INVOKE_HOST_FUNCTION_INSUFFICIENT_REFUNDABLE_FEE:
+	case INVOKE_HOST_FUNCTION_MALFORMED, INVOKE_HOST_FUNCTION_TRAPPED, INVOKE_HOST_FUNCTION_RESOURCE_LIMIT_EXCEEDED, INVOKE_HOST_FUNCTION_ENTRY_ARCHIVED, INVOKE_HOST_FUNCTION_INSUFFICIENT_REFUNDABLE_FEE:
 		return
 	}
 	XdrPanic("invalid Code (%v) in InvokeHostFunctionResult", u.Code)
 }
 func XDR_InvokeHostFunctionResult(v *InvokeHostFunctionResult) *InvokeHostFunctionResult { return v }
 
-var _XdrNames_BumpFootprintExpirationResultCode = map[int32]string{
-	int32(BUMP_FOOTPRINT_EXPIRATION_SUCCESS):                     "BUMP_FOOTPRINT_EXPIRATION_SUCCESS",
-	int32(BUMP_FOOTPRINT_EXPIRATION_MALFORMED):                   "BUMP_FOOTPRINT_EXPIRATION_MALFORMED",
-	int32(BUMP_FOOTPRINT_EXPIRATION_RESOURCE_LIMIT_EXCEEDED):     "BUMP_FOOTPRINT_EXPIRATION_RESOURCE_LIMIT_EXCEEDED",
-	int32(BUMP_FOOTPRINT_EXPIRATION_INSUFFICIENT_REFUNDABLE_FEE): "BUMP_FOOTPRINT_EXPIRATION_INSUFFICIENT_REFUNDABLE_FEE",
+var _XdrNames_ExtendFootprintTTLResultCode = map[int32]string{
+	int32(EXTEND_FOOTPRINT_TTL_SUCCESS):                     "EXTEND_FOOTPRINT_TTL_SUCCESS",
+	int32(EXTEND_FOOTPRINT_TTL_MALFORMED):                   "EXTEND_FOOTPRINT_TTL_MALFORMED",
+	int32(EXTEND_FOOTPRINT_TTL_RESOURCE_LIMIT_EXCEEDED):     "EXTEND_FOOTPRINT_TTL_RESOURCE_LIMIT_EXCEEDED",
+	int32(EXTEND_FOOTPRINT_TTL_INSUFFICIENT_REFUNDABLE_FEE): "EXTEND_FOOTPRINT_TTL_INSUFFICIENT_REFUNDABLE_FEE",
 }
-var _XdrValues_BumpFootprintExpirationResultCode = map[string]int32{
-	"BUMP_FOOTPRINT_EXPIRATION_SUCCESS":                     int32(BUMP_FOOTPRINT_EXPIRATION_SUCCESS),
-	"BUMP_FOOTPRINT_EXPIRATION_MALFORMED":                   int32(BUMP_FOOTPRINT_EXPIRATION_MALFORMED),
-	"BUMP_FOOTPRINT_EXPIRATION_RESOURCE_LIMIT_EXCEEDED":     int32(BUMP_FOOTPRINT_EXPIRATION_RESOURCE_LIMIT_EXCEEDED),
-	"BUMP_FOOTPRINT_EXPIRATION_INSUFFICIENT_REFUNDABLE_FEE": int32(BUMP_FOOTPRINT_EXPIRATION_INSUFFICIENT_REFUNDABLE_FEE),
+var _XdrValues_ExtendFootprintTTLResultCode = map[string]int32{
+	"EXTEND_FOOTPRINT_TTL_SUCCESS":                     int32(EXTEND_FOOTPRINT_TTL_SUCCESS),
+	"EXTEND_FOOTPRINT_TTL_MALFORMED":                   int32(EXTEND_FOOTPRINT_TTL_MALFORMED),
+	"EXTEND_FOOTPRINT_TTL_RESOURCE_LIMIT_EXCEEDED":     int32(EXTEND_FOOTPRINT_TTL_RESOURCE_LIMIT_EXCEEDED),
+	"EXTEND_FOOTPRINT_TTL_INSUFFICIENT_REFUNDABLE_FEE": int32(EXTEND_FOOTPRINT_TTL_INSUFFICIENT_REFUNDABLE_FEE),
 }
 
-func (BumpFootprintExpirationResultCode) XdrEnumNames() map[int32]string {
-	return _XdrNames_BumpFootprintExpirationResultCode
+func (ExtendFootprintTTLResultCode) XdrEnumNames() map[int32]string {
+	return _XdrNames_ExtendFootprintTTLResultCode
 }
-func (v BumpFootprintExpirationResultCode) String() string {
-	if s, ok := _XdrNames_BumpFootprintExpirationResultCode[int32(v)]; ok {
+func (v ExtendFootprintTTLResultCode) String() string {
+	if s, ok := _XdrNames_ExtendFootprintTTLResultCode[int32(v)]; ok {
 		return s
 	}
-	return fmt.Sprintf("BumpFootprintExpirationResultCode#%d", v)
+	return fmt.Sprintf("ExtendFootprintTTLResultCode#%d", v)
 }
-func (v *BumpFootprintExpirationResultCode) Scan(ss fmt.ScanState, _ rune) error {
+func (v *ExtendFootprintTTLResultCode) Scan(ss fmt.ScanState, _ rune) error {
 	if tok, err := ss.Token(true, XdrSymChar); err != nil {
 		return err
 	} else {
 		stok := string(tok)
-		if val, ok := _XdrValues_BumpFootprintExpirationResultCode[stok]; ok {
-			*v = BumpFootprintExpirationResultCode(val)
+		if val, ok := _XdrValues_ExtendFootprintTTLResultCode[stok]; ok {
+			*v = ExtendFootprintTTLResultCode(val)
 			return nil
-		} else if stok == "BumpFootprintExpirationResultCode" {
+		} else if stok == "ExtendFootprintTTLResultCode" {
 			if n, err := fmt.Fscanf(ss, "#%d", (*int32)(v)); n == 1 && err == nil {
 				return nil
 			}
 		}
-		return XdrError(fmt.Sprintf("%s is not a valid BumpFootprintExpirationResultCode.", stok))
+		return XdrError(fmt.Sprintf("%s is not a valid ExtendFootprintTTLResultCode.", stok))
 	}
 }
-func (v BumpFootprintExpirationResultCode) GetU32() uint32 { return uint32(v) }
-func (v *BumpFootprintExpirationResultCode) SetU32(n uint32) {
-	*v = BumpFootprintExpirationResultCode(n)
-}
-func (v *BumpFootprintExpirationResultCode) XdrPointer() interface{} { return v }
-func (BumpFootprintExpirationResultCode) XdrTypeName() string {
-	return "BumpFootprintExpirationResultCode"
-}
-func (v BumpFootprintExpirationResultCode) XdrValue() interface{}          { return v }
-func (v *BumpFootprintExpirationResultCode) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v ExtendFootprintTTLResultCode) GetU32() uint32                 { return uint32(v) }
+func (v *ExtendFootprintTTLResultCode) SetU32(n uint32)               { *v = ExtendFootprintTTLResultCode(n) }
+func (v *ExtendFootprintTTLResultCode) XdrPointer() interface{}       { return v }
+func (ExtendFootprintTTLResultCode) XdrTypeName() string              { return "ExtendFootprintTTLResultCode" }
+func (v ExtendFootprintTTLResultCode) XdrValue() interface{}          { return v }
+func (v *ExtendFootprintTTLResultCode) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
 
-type XdrType_BumpFootprintExpirationResultCode = *BumpFootprintExpirationResultCode
+type XdrType_ExtendFootprintTTLResultCode = *ExtendFootprintTTLResultCode
 
-func XDR_BumpFootprintExpirationResultCode(v *BumpFootprintExpirationResultCode) *BumpFootprintExpirationResultCode {
+func XDR_ExtendFootprintTTLResultCode(v *ExtendFootprintTTLResultCode) *ExtendFootprintTTLResultCode {
 	return v
 }
 
-var _XdrComments_BumpFootprintExpirationResultCode = map[int32]string{
-	int32(BUMP_FOOTPRINT_EXPIRATION_SUCCESS):   "codes considered as \"success\" for the operation",
-	int32(BUMP_FOOTPRINT_EXPIRATION_MALFORMED): "codes considered as \"failure\" for the operation",
+var _XdrComments_ExtendFootprintTTLResultCode = map[int32]string{
+	int32(EXTEND_FOOTPRINT_TTL_SUCCESS):   "codes considered as \"success\" for the operation",
+	int32(EXTEND_FOOTPRINT_TTL_MALFORMED): "codes considered as \"failure\" for the operation",
 }
 
-func (e BumpFootprintExpirationResultCode) XdrEnumComments() map[int32]string {
-	return _XdrComments_BumpFootprintExpirationResultCode
+func (e ExtendFootprintTTLResultCode) XdrEnumComments() map[int32]string {
+	return _XdrComments_ExtendFootprintTTLResultCode
 }
 
-var _XdrTags_BumpFootprintExpirationResult = map[int32]bool{
-	XdrToI32(BUMP_FOOTPRINT_EXPIRATION_SUCCESS):                     true,
-	XdrToI32(BUMP_FOOTPRINT_EXPIRATION_MALFORMED):                   true,
-	XdrToI32(BUMP_FOOTPRINT_EXPIRATION_RESOURCE_LIMIT_EXCEEDED):     true,
-	XdrToI32(BUMP_FOOTPRINT_EXPIRATION_INSUFFICIENT_REFUNDABLE_FEE): true,
+var _XdrTags_ExtendFootprintTTLResult = map[int32]bool{
+	XdrToI32(EXTEND_FOOTPRINT_TTL_SUCCESS):                     true,
+	XdrToI32(EXTEND_FOOTPRINT_TTL_MALFORMED):                   true,
+	XdrToI32(EXTEND_FOOTPRINT_TTL_RESOURCE_LIMIT_EXCEEDED):     true,
+	XdrToI32(EXTEND_FOOTPRINT_TTL_INSUFFICIENT_REFUNDABLE_FEE): true,
 }
 
-func (_ BumpFootprintExpirationResult) XdrValidTags() map[int32]bool {
-	return _XdrTags_BumpFootprintExpirationResult
+func (_ ExtendFootprintTTLResult) XdrValidTags() map[int32]bool {
+	return _XdrTags_ExtendFootprintTTLResult
 }
-func (u BumpFootprintExpirationResult) XdrValid() bool {
+func (u ExtendFootprintTTLResult) XdrValid() bool {
 	switch u.Code {
-	case BUMP_FOOTPRINT_EXPIRATION_SUCCESS, BUMP_FOOTPRINT_EXPIRATION_MALFORMED, BUMP_FOOTPRINT_EXPIRATION_RESOURCE_LIMIT_EXCEEDED, BUMP_FOOTPRINT_EXPIRATION_INSUFFICIENT_REFUNDABLE_FEE:
+	case EXTEND_FOOTPRINT_TTL_SUCCESS, EXTEND_FOOTPRINT_TTL_MALFORMED, EXTEND_FOOTPRINT_TTL_RESOURCE_LIMIT_EXCEEDED, EXTEND_FOOTPRINT_TTL_INSUFFICIENT_REFUNDABLE_FEE:
 		return true
 	}
 	return false
 }
-func (u *BumpFootprintExpirationResult) XdrUnionTag() XdrNum32 {
-	return XDR_BumpFootprintExpirationResultCode(&u.Code)
+func (u *ExtendFootprintTTLResult) XdrUnionTag() XdrNum32 {
+	return XDR_ExtendFootprintTTLResultCode(&u.Code)
 }
-func (u *BumpFootprintExpirationResult) XdrUnionTagName() string {
+func (u *ExtendFootprintTTLResult) XdrUnionTagName() string {
 	return "Code"
 }
-func (u *BumpFootprintExpirationResult) XdrUnionBody() XdrType {
+func (u *ExtendFootprintTTLResult) XdrUnionBody() XdrType {
 	switch u.Code {
-	case BUMP_FOOTPRINT_EXPIRATION_SUCCESS:
+	case EXTEND_FOOTPRINT_TTL_SUCCESS:
 		return nil
-	case BUMP_FOOTPRINT_EXPIRATION_MALFORMED, BUMP_FOOTPRINT_EXPIRATION_RESOURCE_LIMIT_EXCEEDED, BUMP_FOOTPRINT_EXPIRATION_INSUFFICIENT_REFUNDABLE_FEE:
+	case EXTEND_FOOTPRINT_TTL_MALFORMED, EXTEND_FOOTPRINT_TTL_RESOURCE_LIMIT_EXCEEDED, EXTEND_FOOTPRINT_TTL_INSUFFICIENT_REFUNDABLE_FEE:
 		return nil
 	}
 	return nil
 }
-func (u *BumpFootprintExpirationResult) XdrUnionBodyName() string {
+func (u *ExtendFootprintTTLResult) XdrUnionBodyName() string {
 	switch u.Code {
-	case BUMP_FOOTPRINT_EXPIRATION_SUCCESS:
+	case EXTEND_FOOTPRINT_TTL_SUCCESS:
 		return ""
-	case BUMP_FOOTPRINT_EXPIRATION_MALFORMED, BUMP_FOOTPRINT_EXPIRATION_RESOURCE_LIMIT_EXCEEDED, BUMP_FOOTPRINT_EXPIRATION_INSUFFICIENT_REFUNDABLE_FEE:
+	case EXTEND_FOOTPRINT_TTL_MALFORMED, EXTEND_FOOTPRINT_TTL_RESOURCE_LIMIT_EXCEEDED, EXTEND_FOOTPRINT_TTL_INSUFFICIENT_REFUNDABLE_FEE:
 		return ""
 	}
 	return ""
 }
 
-type XdrType_BumpFootprintExpirationResult = *BumpFootprintExpirationResult
+type XdrType_ExtendFootprintTTLResult = *ExtendFootprintTTLResult
 
-func (v *BumpFootprintExpirationResult) XdrPointer() interface{}       { return v }
-func (BumpFootprintExpirationResult) XdrTypeName() string              { return "BumpFootprintExpirationResult" }
-func (v BumpFootprintExpirationResult) XdrValue() interface{}          { return v }
-func (v *BumpFootprintExpirationResult) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
-func (u *BumpFootprintExpirationResult) XdrRecurse(x XDR, name string) {
+func (v *ExtendFootprintTTLResult) XdrPointer() interface{}       { return v }
+func (ExtendFootprintTTLResult) XdrTypeName() string              { return "ExtendFootprintTTLResult" }
+func (v ExtendFootprintTTLResult) XdrValue() interface{}          { return v }
+func (v *ExtendFootprintTTLResult) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (u *ExtendFootprintTTLResult) XdrRecurse(x XDR, name string) {
 	if name != "" {
 		name = x.Sprintf("%s.", name)
 	}
-	XDR_BumpFootprintExpirationResultCode(&u.Code).XdrMarshal(x, x.Sprintf("%scode", name))
+	XDR_ExtendFootprintTTLResultCode(&u.Code).XdrMarshal(x, x.Sprintf("%scode", name))
 	switch u.Code {
-	case BUMP_FOOTPRINT_EXPIRATION_SUCCESS:
+	case EXTEND_FOOTPRINT_TTL_SUCCESS:
 		return
-	case BUMP_FOOTPRINT_EXPIRATION_MALFORMED, BUMP_FOOTPRINT_EXPIRATION_RESOURCE_LIMIT_EXCEEDED, BUMP_FOOTPRINT_EXPIRATION_INSUFFICIENT_REFUNDABLE_FEE:
+	case EXTEND_FOOTPRINT_TTL_MALFORMED, EXTEND_FOOTPRINT_TTL_RESOURCE_LIMIT_EXCEEDED, EXTEND_FOOTPRINT_TTL_INSUFFICIENT_REFUNDABLE_FEE:
 		return
 	}
-	XdrPanic("invalid Code (%v) in BumpFootprintExpirationResult", u.Code)
+	XdrPanic("invalid Code (%v) in ExtendFootprintTTLResult", u.Code)
 }
-func XDR_BumpFootprintExpirationResult(v *BumpFootprintExpirationResult) *BumpFootprintExpirationResult {
-	return v
-}
+func XDR_ExtendFootprintTTLResult(v *ExtendFootprintTTLResult) *ExtendFootprintTTLResult { return v }
 
 var _XdrNames_RestoreFootprintResultCode = map[int32]string{
 	int32(RESTORE_FOOTPRINT_SUCCESS):                     "RESTORE_FOOTPRINT_SUCCESS",
@@ -23052,7 +22992,7 @@ var _XdrTags_XdrAnon_OperationResult_Tr = map[int32]bool{
 	XdrToI32(LIQUIDITY_POOL_DEPOSIT):           true,
 	XdrToI32(LIQUIDITY_POOL_WITHDRAW):          true,
 	XdrToI32(INVOKE_HOST_FUNCTION):             true,
-	XdrToI32(BUMP_FOOTPRINT_EXPIRATION):        true,
+	XdrToI32(EXTEND_FOOTPRINT_TTL):             true,
 	XdrToI32(RESTORE_FOOTPRINT):                true,
 }
 
@@ -23434,18 +23374,18 @@ func (u *XdrAnon_OperationResult_Tr) InvokeHostFunctionResult() *InvokeHostFunct
 		return nil
 	}
 }
-func (u *XdrAnon_OperationResult_Tr) BumpFootprintExpirationResult() *BumpFootprintExpirationResult {
+func (u *XdrAnon_OperationResult_Tr) ExtendFootprintTTLResult() *ExtendFootprintTTLResult {
 	switch u.Type {
-	case BUMP_FOOTPRINT_EXPIRATION:
-		if v, ok := u._u.(*BumpFootprintExpirationResult); ok {
+	case EXTEND_FOOTPRINT_TTL:
+		if v, ok := u._u.(*ExtendFootprintTTLResult); ok {
 			return v
 		} else {
-			var zero BumpFootprintExpirationResult
+			var zero ExtendFootprintTTLResult
 			u._u = &zero
 			return &zero
 		}
 	default:
-		XdrPanic("XdrAnon_OperationResult_Tr.BumpFootprintExpirationResult accessed when Type == %v", u.Type)
+		XdrPanic("XdrAnon_OperationResult_Tr.ExtendFootprintTTLResult accessed when Type == %v", u.Type)
 		return nil
 	}
 }
@@ -23466,7 +23406,7 @@ func (u *XdrAnon_OperationResult_Tr) RestoreFootprintResult() *RestoreFootprintR
 }
 func (u XdrAnon_OperationResult_Tr) XdrValid() bool {
 	switch u.Type {
-	case CREATE_ACCOUNT, PAYMENT, PATH_PAYMENT_STRICT_RECEIVE, MANAGE_SELL_OFFER, CREATE_PASSIVE_SELL_OFFER, SET_OPTIONS, CHANGE_TRUST, ALLOW_TRUST, ACCOUNT_MERGE, INFLATION, MANAGE_DATA, BUMP_SEQUENCE, MANAGE_BUY_OFFER, PATH_PAYMENT_STRICT_SEND, CREATE_CLAIMABLE_BALANCE, CLAIM_CLAIMABLE_BALANCE, BEGIN_SPONSORING_FUTURE_RESERVES, END_SPONSORING_FUTURE_RESERVES, REVOKE_SPONSORSHIP, CLAWBACK, CLAWBACK_CLAIMABLE_BALANCE, SET_TRUST_LINE_FLAGS, LIQUIDITY_POOL_DEPOSIT, LIQUIDITY_POOL_WITHDRAW, INVOKE_HOST_FUNCTION, BUMP_FOOTPRINT_EXPIRATION, RESTORE_FOOTPRINT:
+	case CREATE_ACCOUNT, PAYMENT, PATH_PAYMENT_STRICT_RECEIVE, MANAGE_SELL_OFFER, CREATE_PASSIVE_SELL_OFFER, SET_OPTIONS, CHANGE_TRUST, ALLOW_TRUST, ACCOUNT_MERGE, INFLATION, MANAGE_DATA, BUMP_SEQUENCE, MANAGE_BUY_OFFER, PATH_PAYMENT_STRICT_SEND, CREATE_CLAIMABLE_BALANCE, CLAIM_CLAIMABLE_BALANCE, BEGIN_SPONSORING_FUTURE_RESERVES, END_SPONSORING_FUTURE_RESERVES, REVOKE_SPONSORSHIP, CLAWBACK, CLAWBACK_CLAIMABLE_BALANCE, SET_TRUST_LINE_FLAGS, LIQUIDITY_POOL_DEPOSIT, LIQUIDITY_POOL_WITHDRAW, INVOKE_HOST_FUNCTION, EXTEND_FOOTPRINT_TTL, RESTORE_FOOTPRINT:
 		return true
 	}
 	return false
@@ -23529,8 +23469,8 @@ func (u *XdrAnon_OperationResult_Tr) XdrUnionBody() XdrType {
 		return XDR_LiquidityPoolWithdrawResult(u.LiquidityPoolWithdrawResult())
 	case INVOKE_HOST_FUNCTION:
 		return XDR_InvokeHostFunctionResult(u.InvokeHostFunctionResult())
-	case BUMP_FOOTPRINT_EXPIRATION:
-		return XDR_BumpFootprintExpirationResult(u.BumpFootprintExpirationResult())
+	case EXTEND_FOOTPRINT_TTL:
+		return XDR_ExtendFootprintTTLResult(u.ExtendFootprintTTLResult())
 	case RESTORE_FOOTPRINT:
 		return XDR_RestoreFootprintResult(u.RestoreFootprintResult())
 	}
@@ -23588,8 +23528,8 @@ func (u *XdrAnon_OperationResult_Tr) XdrUnionBodyName() string {
 		return "LiquidityPoolWithdrawResult"
 	case INVOKE_HOST_FUNCTION:
 		return "InvokeHostFunctionResult"
-	case BUMP_FOOTPRINT_EXPIRATION:
-		return "BumpFootprintExpirationResult"
+	case EXTEND_FOOTPRINT_TTL:
+		return "ExtendFootprintTTLResult"
 	case RESTORE_FOOTPRINT:
 		return "RestoreFootprintResult"
 	}
@@ -23683,8 +23623,8 @@ func (u *XdrAnon_OperationResult_Tr) XdrRecurse(x XDR, name string) {
 	case INVOKE_HOST_FUNCTION:
 		x.Marshal(x.Sprintf("%sinvokeHostFunctionResult", name), XDR_InvokeHostFunctionResult(u.InvokeHostFunctionResult()))
 		return
-	case BUMP_FOOTPRINT_EXPIRATION:
-		x.Marshal(x.Sprintf("%sbumpFootprintExpirationResult", name), XDR_BumpFootprintExpirationResult(u.BumpFootprintExpirationResult()))
+	case EXTEND_FOOTPRINT_TTL:
+		x.Marshal(x.Sprintf("%sextendFootprintTTLResult", name), XDR_ExtendFootprintTTLResult(u.ExtendFootprintTTLResult()))
 		return
 	case RESTORE_FOOTPRINT:
 		x.Marshal(x.Sprintf("%srestoreFootprintResult", name), XDR_RestoreFootprintResult(u.RestoreFootprintResult()))
@@ -26988,12 +26928,12 @@ func (v *Int256Parts) XdrRecurse(x XDR, name string) {
 func XDR_Int256Parts(v *Int256Parts) *Int256Parts { return v }
 
 var _XdrNames_ContractExecutableType = map[int32]string{
-	int32(CONTRACT_EXECUTABLE_WASM):  "CONTRACT_EXECUTABLE_WASM",
-	int32(CONTRACT_EXECUTABLE_TOKEN): "CONTRACT_EXECUTABLE_TOKEN",
+	int32(CONTRACT_EXECUTABLE_WASM):          "CONTRACT_EXECUTABLE_WASM",
+	int32(CONTRACT_EXECUTABLE_STELLAR_ASSET): "CONTRACT_EXECUTABLE_STELLAR_ASSET",
 }
 var _XdrValues_ContractExecutableType = map[string]int32{
-	"CONTRACT_EXECUTABLE_WASM":  int32(CONTRACT_EXECUTABLE_WASM),
-	"CONTRACT_EXECUTABLE_TOKEN": int32(CONTRACT_EXECUTABLE_TOKEN),
+	"CONTRACT_EXECUTABLE_WASM":          int32(CONTRACT_EXECUTABLE_WASM),
+	"CONTRACT_EXECUTABLE_STELLAR_ASSET": int32(CONTRACT_EXECUTABLE_STELLAR_ASSET),
 }
 
 func (ContractExecutableType) XdrEnumNames() map[int32]string {
@@ -27033,8 +26973,8 @@ type XdrType_ContractExecutableType = *ContractExecutableType
 func XDR_ContractExecutableType(v *ContractExecutableType) *ContractExecutableType { return v }
 
 var _XdrTags_ContractExecutable = map[int32]bool{
-	XdrToI32(CONTRACT_EXECUTABLE_WASM):  true,
-	XdrToI32(CONTRACT_EXECUTABLE_TOKEN): true,
+	XdrToI32(CONTRACT_EXECUTABLE_WASM):          true,
+	XdrToI32(CONTRACT_EXECUTABLE_STELLAR_ASSET): true,
 }
 
 func (_ ContractExecutable) XdrValidTags() map[int32]bool {
@@ -27057,7 +26997,7 @@ func (u *ContractExecutable) Wasm_hash() *Hash {
 }
 func (u ContractExecutable) XdrValid() bool {
 	switch u.Type {
-	case CONTRACT_EXECUTABLE_WASM, CONTRACT_EXECUTABLE_TOKEN:
+	case CONTRACT_EXECUTABLE_WASM, CONTRACT_EXECUTABLE_STELLAR_ASSET:
 		return true
 	}
 	return false
@@ -27072,7 +27012,7 @@ func (u *ContractExecutable) XdrUnionBody() XdrType {
 	switch u.Type {
 	case CONTRACT_EXECUTABLE_WASM:
 		return XDR_Hash(u.Wasm_hash())
-	case CONTRACT_EXECUTABLE_TOKEN:
+	case CONTRACT_EXECUTABLE_STELLAR_ASSET:
 		return nil
 	}
 	return nil
@@ -27081,7 +27021,7 @@ func (u *ContractExecutable) XdrUnionBodyName() string {
 	switch u.Type {
 	case CONTRACT_EXECUTABLE_WASM:
 		return "Wasm_hash"
-	case CONTRACT_EXECUTABLE_TOKEN:
+	case CONTRACT_EXECUTABLE_STELLAR_ASSET:
 		return ""
 	}
 	return ""
@@ -27102,7 +27042,7 @@ func (u *ContractExecutable) XdrRecurse(x XDR, name string) {
 	case CONTRACT_EXECUTABLE_WASM:
 		x.Marshal(x.Sprintf("%swasm_hash", name), XDR_Hash(u.Wasm_hash()))
 		return
-	case CONTRACT_EXECUTABLE_TOKEN:
+	case CONTRACT_EXECUTABLE_STELLAR_ASSET:
 		return
 	}
 	XdrPanic("invalid Type (%v) in ContractExecutable", u.Type)
@@ -28158,6 +28098,22 @@ func (u *StoredTransactionSet) XdrRecurse(x XDR, name string) {
 }
 func XDR_StoredTransactionSet(v *StoredTransactionSet) *StoredTransactionSet { return v }
 
+type XdrType_StoredDebugTransactionSet = *StoredDebugTransactionSet
+
+func (v *StoredDebugTransactionSet) XdrPointer() interface{}       { return v }
+func (StoredDebugTransactionSet) XdrTypeName() string              { return "StoredDebugTransactionSet" }
+func (v StoredDebugTransactionSet) XdrValue() interface{}          { return v }
+func (v *StoredDebugTransactionSet) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *StoredDebugTransactionSet) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	x.Marshal(x.Sprintf("%stxSet", name), XDR_StoredTransactionSet(&v.TxSet))
+	x.Marshal(x.Sprintf("%sledgerSeq", name), XDR_Uint32(&v.LedgerSeq))
+	x.Marshal(x.Sprintf("%sscpValue", name), XDR_StellarValue(&v.ScpValue))
+}
+func XDR_StoredDebugTransactionSet(v *StoredDebugTransactionSet) *StoredDebugTransactionSet { return v }
+
 type _XdrVec_unbounded_StoredTransactionSet []StoredTransactionSet
 
 func (_XdrVec_unbounded_StoredTransactionSet) XdrBound() uint32 {
@@ -28469,26 +28425,20 @@ func XDR_ConfigSettingContractBandwidthV0(v *ConfigSettingContractBandwidthV0) *
 
 var _XdrNames_ContractCostType = map[int32]string{
 	int32(WasmInsnExec):             "WasmInsnExec",
-	int32(WasmMemAlloc):             "WasmMemAlloc",
-	int32(HostMemAlloc):             "HostMemAlloc",
-	int32(HostMemCpy):               "HostMemCpy",
-	int32(HostMemCmp):               "HostMemCmp",
+	int32(MemAlloc):                 "MemAlloc",
+	int32(MemCpy):                   "MemCpy",
+	int32(MemCmp):                   "MemCmp",
 	int32(DispatchHostFunction):     "DispatchHostFunction",
 	int32(VisitObject):              "VisitObject",
 	int32(ValSer):                   "ValSer",
 	int32(ValDeser):                 "ValDeser",
 	int32(ComputeSha256Hash):        "ComputeSha256Hash",
 	int32(ComputeEd25519PubKey):     "ComputeEd25519PubKey",
-	int32(MapEntry):                 "MapEntry",
-	int32(VecEntry):                 "VecEntry",
 	int32(VerifyEd25519Sig):         "VerifyEd25519Sig",
-	int32(VmMemRead):                "VmMemRead",
-	int32(VmMemWrite):               "VmMemWrite",
 	int32(VmInstantiation):          "VmInstantiation",
 	int32(VmCachedInstantiation):    "VmCachedInstantiation",
 	int32(InvokeVmFunction):         "InvokeVmFunction",
 	int32(ComputeKeccak256Hash):     "ComputeKeccak256Hash",
-	int32(ComputeEcdsaSecp256k1Key): "ComputeEcdsaSecp256k1Key",
 	int32(ComputeEcdsaSecp256k1Sig): "ComputeEcdsaSecp256k1Sig",
 	int32(RecoverEcdsaSecp256k1Key): "RecoverEcdsaSecp256k1Key",
 	int32(Int256AddSub):             "Int256AddSub",
@@ -28496,29 +28446,24 @@ var _XdrNames_ContractCostType = map[int32]string{
 	int32(Int256Div):                "Int256Div",
 	int32(Int256Pow):                "Int256Pow",
 	int32(Int256Shift):              "Int256Shift",
+	int32(ChaCha20DrawBytes):        "ChaCha20DrawBytes",
 }
 var _XdrValues_ContractCostType = map[string]int32{
 	"WasmInsnExec":             int32(WasmInsnExec),
-	"WasmMemAlloc":             int32(WasmMemAlloc),
-	"HostMemAlloc":             int32(HostMemAlloc),
-	"HostMemCpy":               int32(HostMemCpy),
-	"HostMemCmp":               int32(HostMemCmp),
+	"MemAlloc":                 int32(MemAlloc),
+	"MemCpy":                   int32(MemCpy),
+	"MemCmp":                   int32(MemCmp),
 	"DispatchHostFunction":     int32(DispatchHostFunction),
 	"VisitObject":              int32(VisitObject),
 	"ValSer":                   int32(ValSer),
 	"ValDeser":                 int32(ValDeser),
 	"ComputeSha256Hash":        int32(ComputeSha256Hash),
 	"ComputeEd25519PubKey":     int32(ComputeEd25519PubKey),
-	"MapEntry":                 int32(MapEntry),
-	"VecEntry":                 int32(VecEntry),
 	"VerifyEd25519Sig":         int32(VerifyEd25519Sig),
-	"VmMemRead":                int32(VmMemRead),
-	"VmMemWrite":               int32(VmMemWrite),
 	"VmInstantiation":          int32(VmInstantiation),
 	"VmCachedInstantiation":    int32(VmCachedInstantiation),
 	"InvokeVmFunction":         int32(InvokeVmFunction),
 	"ComputeKeccak256Hash":     int32(ComputeKeccak256Hash),
-	"ComputeEcdsaSecp256k1Key": int32(ComputeEcdsaSecp256k1Key),
 	"ComputeEcdsaSecp256k1Sig": int32(ComputeEcdsaSecp256k1Sig),
 	"RecoverEcdsaSecp256k1Key": int32(RecoverEcdsaSecp256k1Key),
 	"Int256AddSub":             int32(Int256AddSub),
@@ -28526,6 +28471,7 @@ var _XdrValues_ContractCostType = map[string]int32{
 	"Int256Div":                int32(Int256Div),
 	"Int256Pow":                int32(Int256Pow),
 	"Int256Shift":              int32(Int256Shift),
+	"ChaCha20DrawBytes":        int32(ChaCha20DrawBytes),
 }
 
 func (ContractCostType) XdrEnumNames() map[int32]string {
@@ -28566,26 +28512,20 @@ func XDR_ContractCostType(v *ContractCostType) *ContractCostType { return v }
 
 var _XdrComments_ContractCostType = map[int32]string{
 	int32(WasmInsnExec):             "Cost of running 1 wasm instruction",
-	int32(WasmMemAlloc):             "Cost of growing wasm linear memory by 1 page",
-	int32(HostMemAlloc):             "Cost of allocating a chuck of host memory (in bytes)",
-	int32(HostMemCpy):               "Cost of copying a chuck of bytes into a pre-allocated host memory",
-	int32(HostMemCmp):               "Cost of comparing two slices of host memory",
+	int32(MemAlloc):                 "Cost of allocating a slice of memory (in bytes)",
+	int32(MemCpy):                   "Cost of copying a slice of bytes into a pre-allocated memory",
+	int32(MemCmp):                   "Cost of comparing two slices of memory",
 	int32(DispatchHostFunction):     "Cost of a host function dispatch, not including the actual work done by the function nor the cost of VM invocation machinary",
 	int32(VisitObject):              "Cost of visiting a host object from the host object storage. Exists to make sure some baseline cost coverage, i.e. repeatly visiting objects by the guest will always incur some charges.",
 	int32(ValSer):                   "Cost of serializing an xdr object to bytes",
 	int32(ValDeser):                 "Cost of deserializing an xdr object from bytes",
 	int32(ComputeSha256Hash):        "Cost of computing the sha256 hash from bytes",
 	int32(ComputeEd25519PubKey):     "Cost of computing the ed25519 pubkey from bytes",
-	int32(MapEntry):                 "Cost of accessing an entry in a Map.",
-	int32(VecEntry):                 "Cost of accessing an entry in a Vec",
 	int32(VerifyEd25519Sig):         "Cost of verifying ed25519 signature of a payload.",
-	int32(VmMemRead):                "Cost of reading a slice of vm linear memory",
-	int32(VmMemWrite):               "Cost of writing to a slice of vm linear memory",
 	int32(VmInstantiation):          "Cost of instantiation a VM from wasm bytes code.",
 	int32(VmCachedInstantiation):    "Cost of instantiation a VM from a cached state.",
 	int32(InvokeVmFunction):         "Cost of invoking a function on the VM. If the function is a host function, additional cost will be covered by `DispatchHostFunction`.",
 	int32(ComputeKeccak256Hash):     "Cost of computing a keccak256 hash from bytes.",
-	int32(ComputeEcdsaSecp256k1Key): "Cost of computing an ECDSA secp256k1 pubkey from bytes.",
 	int32(ComputeEcdsaSecp256k1Sig): "Cost of computing an ECDSA secp256k1 signature from bytes.",
 	int32(RecoverEcdsaSecp256k1Key): "Cost of recovering an ECDSA secp256k1 key from a signature.",
 	int32(Int256AddSub):             "Cost of int256 addition (`+`) and subtraction (`-`) operations",
@@ -28593,6 +28533,7 @@ var _XdrComments_ContractCostType = map[int32]string{
 	int32(Int256Div):                "Cost of int256 division (`/`) operation",
 	int32(Int256Pow):                "Cost of int256 power (`exp`) operation",
 	int32(Int256Shift):              "Cost of int256 shift (`shl`, `shr`) operation",
+	int32(ChaCha20DrawBytes):        "Cost of drawing random bytes using a ChaCha20 PRNG",
 }
 
 func (e ContractCostType) XdrEnumComments() map[int32]string {
@@ -28615,27 +28556,27 @@ func (v *ContractCostParamEntry) XdrRecurse(x XDR, name string) {
 }
 func XDR_ContractCostParamEntry(v *ContractCostParamEntry) *ContractCostParamEntry { return v }
 
-type XdrType_StateExpirationSettings = *StateExpirationSettings
+type XdrType_StateArchivalSettings = *StateArchivalSettings
 
-func (v *StateExpirationSettings) XdrPointer() interface{}       { return v }
-func (StateExpirationSettings) XdrTypeName() string              { return "StateExpirationSettings" }
-func (v StateExpirationSettings) XdrValue() interface{}          { return v }
-func (v *StateExpirationSettings) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
-func (v *StateExpirationSettings) XdrRecurse(x XDR, name string) {
+func (v *StateArchivalSettings) XdrPointer() interface{}       { return v }
+func (StateArchivalSettings) XdrTypeName() string              { return "StateArchivalSettings" }
+func (v StateArchivalSettings) XdrValue() interface{}          { return v }
+func (v *StateArchivalSettings) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *StateArchivalSettings) XdrRecurse(x XDR, name string) {
 	if name != "" {
 		name = x.Sprintf("%s.", name)
 	}
-	x.Marshal(x.Sprintf("%smaxEntryExpiration", name), XDR_Uint32(&v.MaxEntryExpiration))
-	x.Marshal(x.Sprintf("%sminTempEntryExpiration", name), XDR_Uint32(&v.MinTempEntryExpiration))
-	x.Marshal(x.Sprintf("%sminPersistentEntryExpiration", name), XDR_Uint32(&v.MinPersistentEntryExpiration))
+	x.Marshal(x.Sprintf("%smaxEntryTTL", name), XDR_Uint32(&v.MaxEntryTTL))
+	x.Marshal(x.Sprintf("%sminTemporaryTTL", name), XDR_Uint32(&v.MinTemporaryTTL))
+	x.Marshal(x.Sprintf("%sminPersistentTTL", name), XDR_Uint32(&v.MinPersistentTTL))
 	x.Marshal(x.Sprintf("%spersistentRentRateDenominator", name), XDR_Int64(&v.PersistentRentRateDenominator))
 	x.Marshal(x.Sprintf("%stempRentRateDenominator", name), XDR_Int64(&v.TempRentRateDenominator))
-	x.Marshal(x.Sprintf("%smaxEntriesToExpire", name), XDR_Uint32(&v.MaxEntriesToExpire))
+	x.Marshal(x.Sprintf("%smaxEntriesToArchive", name), XDR_Uint32(&v.MaxEntriesToArchive))
 	x.Marshal(x.Sprintf("%sbucketListSizeWindowSampleSize", name), XDR_Uint32(&v.BucketListSizeWindowSampleSize))
 	x.Marshal(x.Sprintf("%sevictionScanSize", name), XDR_Uint64(&v.EvictionScanSize))
 	x.Marshal(x.Sprintf("%sstartingEvictionScanLevel", name), XDR_Uint32(&v.StartingEvictionScanLevel))
 }
-func XDR_StateExpirationSettings(v *StateExpirationSettings) *StateExpirationSettings { return v }
+func XDR_StateArchivalSettings(v *StateArchivalSettings) *StateArchivalSettings { return v }
 
 type XdrType_EvictionIterator = *EvictionIterator
 
@@ -28735,7 +28676,7 @@ var _XdrNames_ConfigSettingID = map[int32]string{
 	int32(CONFIG_SETTING_CONTRACT_COST_PARAMS_MEMORY_BYTES):     "CONFIG_SETTING_CONTRACT_COST_PARAMS_MEMORY_BYTES",
 	int32(CONFIG_SETTING_CONTRACT_DATA_KEY_SIZE_BYTES):          "CONFIG_SETTING_CONTRACT_DATA_KEY_SIZE_BYTES",
 	int32(CONFIG_SETTING_CONTRACT_DATA_ENTRY_SIZE_BYTES):        "CONFIG_SETTING_CONTRACT_DATA_ENTRY_SIZE_BYTES",
-	int32(CONFIG_SETTING_STATE_EXPIRATION):                      "CONFIG_SETTING_STATE_EXPIRATION",
+	int32(CONFIG_SETTING_STATE_ARCHIVAL):                        "CONFIG_SETTING_STATE_ARCHIVAL",
 	int32(CONFIG_SETTING_CONTRACT_EXECUTION_LANES):              "CONFIG_SETTING_CONTRACT_EXECUTION_LANES",
 	int32(CONFIG_SETTING_BUCKETLIST_SIZE_WINDOW):                "CONFIG_SETTING_BUCKETLIST_SIZE_WINDOW",
 	int32(CONFIG_SETTING_EVICTION_ITERATOR):                     "CONFIG_SETTING_EVICTION_ITERATOR",
@@ -28751,7 +28692,7 @@ var _XdrValues_ConfigSettingID = map[string]int32{
 	"CONFIG_SETTING_CONTRACT_COST_PARAMS_MEMORY_BYTES":     int32(CONFIG_SETTING_CONTRACT_COST_PARAMS_MEMORY_BYTES),
 	"CONFIG_SETTING_CONTRACT_DATA_KEY_SIZE_BYTES":          int32(CONFIG_SETTING_CONTRACT_DATA_KEY_SIZE_BYTES),
 	"CONFIG_SETTING_CONTRACT_DATA_ENTRY_SIZE_BYTES":        int32(CONFIG_SETTING_CONTRACT_DATA_ENTRY_SIZE_BYTES),
-	"CONFIG_SETTING_STATE_EXPIRATION":                      int32(CONFIG_SETTING_STATE_EXPIRATION),
+	"CONFIG_SETTING_STATE_ARCHIVAL":                        int32(CONFIG_SETTING_STATE_ARCHIVAL),
 	"CONFIG_SETTING_CONTRACT_EXECUTION_LANES":              int32(CONFIG_SETTING_CONTRACT_EXECUTION_LANES),
 	"CONFIG_SETTING_BUCKETLIST_SIZE_WINDOW":                int32(CONFIG_SETTING_BUCKETLIST_SIZE_WINDOW),
 	"CONFIG_SETTING_EVICTION_ITERATOR":                     int32(CONFIG_SETTING_EVICTION_ITERATOR),
@@ -28861,7 +28802,7 @@ var _XdrTags_ConfigSettingEntry = map[int32]bool{
 	XdrToI32(CONFIG_SETTING_CONTRACT_COST_PARAMS_MEMORY_BYTES):     true,
 	XdrToI32(CONFIG_SETTING_CONTRACT_DATA_KEY_SIZE_BYTES):          true,
 	XdrToI32(CONFIG_SETTING_CONTRACT_DATA_ENTRY_SIZE_BYTES):        true,
-	XdrToI32(CONFIG_SETTING_STATE_EXPIRATION):                      true,
+	XdrToI32(CONFIG_SETTING_STATE_ARCHIVAL):                        true,
 	XdrToI32(CONFIG_SETTING_CONTRACT_EXECUTION_LANES):              true,
 	XdrToI32(CONFIG_SETTING_BUCKETLIST_SIZE_WINDOW):                true,
 	XdrToI32(CONFIG_SETTING_EVICTION_ITERATOR):                     true,
@@ -29020,18 +28961,18 @@ func (u *ConfigSettingEntry) ContractDataEntrySizeBytes() *Uint32 {
 		return nil
 	}
 }
-func (u *ConfigSettingEntry) StateExpirationSettings() *StateExpirationSettings {
+func (u *ConfigSettingEntry) StateArchivalSettings() *StateArchivalSettings {
 	switch u.ConfigSettingID {
-	case CONFIG_SETTING_STATE_EXPIRATION:
-		if v, ok := u._u.(*StateExpirationSettings); ok {
+	case CONFIG_SETTING_STATE_ARCHIVAL:
+		if v, ok := u._u.(*StateArchivalSettings); ok {
 			return v
 		} else {
-			var zero StateExpirationSettings
+			var zero StateArchivalSettings
 			u._u = &zero
 			return &zero
 		}
 	default:
-		XdrPanic("ConfigSettingEntry.StateExpirationSettings accessed when ConfigSettingID == %v", u.ConfigSettingID)
+		XdrPanic("ConfigSettingEntry.StateArchivalSettings accessed when ConfigSettingID == %v", u.ConfigSettingID)
 		return nil
 	}
 }
@@ -29082,7 +29023,7 @@ func (u *ConfigSettingEntry) EvictionIterator() *EvictionIterator {
 }
 func (u ConfigSettingEntry) XdrValid() bool {
 	switch u.ConfigSettingID {
-	case CONFIG_SETTING_CONTRACT_MAX_SIZE_BYTES, CONFIG_SETTING_CONTRACT_COMPUTE_V0, CONFIG_SETTING_CONTRACT_LEDGER_COST_V0, CONFIG_SETTING_CONTRACT_HISTORICAL_DATA_V0, CONFIG_SETTING_CONTRACT_EVENTS_V0, CONFIG_SETTING_CONTRACT_BANDWIDTH_V0, CONFIG_SETTING_CONTRACT_COST_PARAMS_CPU_INSTRUCTIONS, CONFIG_SETTING_CONTRACT_COST_PARAMS_MEMORY_BYTES, CONFIG_SETTING_CONTRACT_DATA_KEY_SIZE_BYTES, CONFIG_SETTING_CONTRACT_DATA_ENTRY_SIZE_BYTES, CONFIG_SETTING_STATE_EXPIRATION, CONFIG_SETTING_CONTRACT_EXECUTION_LANES, CONFIG_SETTING_BUCKETLIST_SIZE_WINDOW, CONFIG_SETTING_EVICTION_ITERATOR:
+	case CONFIG_SETTING_CONTRACT_MAX_SIZE_BYTES, CONFIG_SETTING_CONTRACT_COMPUTE_V0, CONFIG_SETTING_CONTRACT_LEDGER_COST_V0, CONFIG_SETTING_CONTRACT_HISTORICAL_DATA_V0, CONFIG_SETTING_CONTRACT_EVENTS_V0, CONFIG_SETTING_CONTRACT_BANDWIDTH_V0, CONFIG_SETTING_CONTRACT_COST_PARAMS_CPU_INSTRUCTIONS, CONFIG_SETTING_CONTRACT_COST_PARAMS_MEMORY_BYTES, CONFIG_SETTING_CONTRACT_DATA_KEY_SIZE_BYTES, CONFIG_SETTING_CONTRACT_DATA_ENTRY_SIZE_BYTES, CONFIG_SETTING_STATE_ARCHIVAL, CONFIG_SETTING_CONTRACT_EXECUTION_LANES, CONFIG_SETTING_BUCKETLIST_SIZE_WINDOW, CONFIG_SETTING_EVICTION_ITERATOR:
 		return true
 	}
 	return false
@@ -29115,8 +29056,8 @@ func (u *ConfigSettingEntry) XdrUnionBody() XdrType {
 		return XDR_Uint32(u.ContractDataKeySizeBytes())
 	case CONFIG_SETTING_CONTRACT_DATA_ENTRY_SIZE_BYTES:
 		return XDR_Uint32(u.ContractDataEntrySizeBytes())
-	case CONFIG_SETTING_STATE_EXPIRATION:
-		return XDR_StateExpirationSettings(u.StateExpirationSettings())
+	case CONFIG_SETTING_STATE_ARCHIVAL:
+		return XDR_StateArchivalSettings(u.StateArchivalSettings())
 	case CONFIG_SETTING_CONTRACT_EXECUTION_LANES:
 		return XDR_ConfigSettingContractExecutionLanesV0(u.ContractExecutionLanes())
 	case CONFIG_SETTING_BUCKETLIST_SIZE_WINDOW:
@@ -29148,8 +29089,8 @@ func (u *ConfigSettingEntry) XdrUnionBodyName() string {
 		return "ContractDataKeySizeBytes"
 	case CONFIG_SETTING_CONTRACT_DATA_ENTRY_SIZE_BYTES:
 		return "ContractDataEntrySizeBytes"
-	case CONFIG_SETTING_STATE_EXPIRATION:
-		return "StateExpirationSettings"
+	case CONFIG_SETTING_STATE_ARCHIVAL:
+		return "StateArchivalSettings"
 	case CONFIG_SETTING_CONTRACT_EXECUTION_LANES:
 		return "ContractExecutionLanes"
 	case CONFIG_SETTING_BUCKETLIST_SIZE_WINDOW:
@@ -29202,8 +29143,8 @@ func (u *ConfigSettingEntry) XdrRecurse(x XDR, name string) {
 	case CONFIG_SETTING_CONTRACT_DATA_ENTRY_SIZE_BYTES:
 		x.Marshal(x.Sprintf("%scontractDataEntrySizeBytes", name), XDR_Uint32(u.ContractDataEntrySizeBytes()))
 		return
-	case CONFIG_SETTING_STATE_EXPIRATION:
-		x.Marshal(x.Sprintf("%sstateExpirationSettings", name), XDR_StateExpirationSettings(u.StateExpirationSettings()))
+	case CONFIG_SETTING_STATE_ARCHIVAL:
+		x.Marshal(x.Sprintf("%sstateArchivalSettings", name), XDR_StateArchivalSettings(u.StateArchivalSettings()))
 		return
 	case CONFIG_SETTING_CONTRACT_EXECUTION_LANES:
 		x.Marshal(x.Sprintf("%scontractExecutionLanes", name), XDR_ConfigSettingContractExecutionLanesV0(u.ContractExecutionLanes()))

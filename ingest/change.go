@@ -2,6 +2,7 @@ package ingest
 
 import (
 	"bytes"
+	"sort"
 
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
@@ -18,6 +19,13 @@ type Change struct {
 	Type xdr.LedgerEntryType
 	Pre  *xdr.LedgerEntry
 	Post *xdr.LedgerEntry
+}
+
+func (c *Change) ledgerKey() (xdr.LedgerKey, error) {
+	if c.Pre != nil {
+		return c.Pre.LedgerKey()
+	}
+	return c.Post.LedgerKey()
 }
 
 // GetChangesFromLedgerEntryChanges transforms LedgerEntryChanges to []Change.
@@ -64,7 +72,55 @@ func GetChangesFromLedgerEntryChanges(ledgerEntryChanges xdr.LedgerEntryChanges)
 		}
 	}
 
+	sortChanges(changes)
 	return changes
+}
+
+type sortableChanges struct {
+	changes    []Change
+	ledgerKeys [][]byte
+}
+
+func newSortableChanges(changes []Change) sortableChanges {
+	ledgerKeys := make([][]byte, len(changes))
+	for i, c := range changes {
+		lk, err := c.ledgerKey()
+		if err != nil {
+			panic(err)
+		}
+		lkBytes, err := lk.MarshalBinary()
+		if err != nil {
+			panic(err)
+		}
+		ledgerKeys[i] = lkBytes
+	}
+	return sortableChanges{
+		changes:    changes,
+		ledgerKeys: ledgerKeys,
+	}
+}
+
+func (s sortableChanges) Len() int {
+	return len(s.changes)
+}
+
+func (s sortableChanges) Less(i, j int) bool {
+	return bytes.Compare(s.ledgerKeys[i], s.ledgerKeys[j]) < 0
+}
+
+func (s sortableChanges) Swap(i, j int) {
+	s.changes[i], s.changes[j] = s.changes[j], s.changes[i]
+	s.ledgerKeys[i], s.ledgerKeys[j] = s.ledgerKeys[j], s.ledgerKeys[i]
+}
+
+// sortChanges is applied on a list of changes to ensure that LedgerEntryChanges
+// from Tx Meta are ingested in a deterministic order.
+// The changes are sorted by ledger key. It is unexpected for there to be
+// multiple changes with the same ledger key in a LedgerEntryChanges group,
+// but if that is the case, we fall back to the original ordering of the changes
+// by using a stable sorting algorithm.
+func sortChanges(changes []Change) {
+	sort.Stable(newSortableChanges(changes))
 }
 
 // LedgerEntryChangeType returns type in terms of LedgerEntryChangeType.

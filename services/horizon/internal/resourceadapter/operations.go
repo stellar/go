@@ -150,8 +150,8 @@ func NewOperation(
 		e := operations.InvokeHostFunction{Base: base}
 		err = operationRow.UnmarshalDetails(&e)
 		result = e
-	case xdr.OperationTypeBumpFootprintExpiration:
-		e := operations.BumpFootprintExpiration{Base: base}
+	case xdr.OperationTypeExtendFootprintTtl:
+		e := operations.ExtendFootprintTtl{Base: base}
 		err = operationRow.UnmarshalDetails(&e)
 		result = e
 	case xdr.OperationTypeRestoreFootprint:

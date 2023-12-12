@@ -413,7 +413,7 @@ func metadataObjFromAsset(isNative bool, code, issuer string) (*xdr.ScMap, error
 // ledger entry containing the asset info entry written to contract storage by the
 // Stellar Asset Contract.
 //
-// Warning: Only for use in tests. This does not set a realistic expirationLedgerSeq
+// Warning: Only for use in tests. This does not create the accompanied TTLEntry which would typically be created by core.
 func AssetToContractData(isNative bool, code, issuer string, contractID [32]byte) (xdr.LedgerEntryData, error) {
 	storageMap, err := metadataObjFromAsset(isNative, code, issuer)
 	if err != nil {
@@ -437,7 +437,7 @@ func AssetToContractData(isNative bool, code, issuer string, contractID [32]byte
 				Type: xdr.ScValTypeScvContractInstance,
 				Instance: &xdr.ScContractInstance{
 					Executable: xdr.ContractExecutable{
-						Type: xdr.ContractExecutableTypeContractExecutableToken,
+						Type: xdr.ContractExecutableTypeContractExecutableStellarAsset,
 					},
 					Storage: storageMap,
 				},
@@ -450,7 +450,7 @@ func AssetToContractData(isNative bool, code, issuer string, contractID [32]byte
 // creates a ledger entry containing the asset balance of a contract holder
 // written to contract storage by the Stellar Asset Contract.
 //
-// Warning: Only for use in tests. This does not set a realistic expirationLedgerSeq
+// Warning: Only for use in tests. This does not create the accompanied TTLEntry which would typically be created by core.
 func BalanceToContractData(assetContractId, holderID [32]byte, amt uint64) xdr.LedgerEntryData {
 	return balanceToContractData(assetContractId, holderID, xdr.Int128Parts{
 		Lo: xdr.Uint64(amt),
@@ -458,7 +458,10 @@ func BalanceToContractData(assetContractId, holderID [32]byte, amt uint64) xdr.L
 	})
 }
 
-func balanceToContractData(assetContractId, holderID [32]byte, amt xdr.Int128Parts) xdr.LedgerEntryData {
+// ContractBalanceLedgerKey constructs the ledger key corresponding to the
+// asset balance of a contract holder written to contract storage by the
+// Stellar Asset Contract.
+func ContractBalanceLedgerKey(assetContractId, holderID [32]byte) xdr.LedgerKey {
 	holder := xdr.Hash(holderID)
 	scAddress := &xdr.ScAddress{
 		Type:       xdr.ScAddressTypeScAddressTypeContract,
@@ -468,6 +471,25 @@ func balanceToContractData(assetContractId, holderID [32]byte, amt xdr.Int128Par
 		xdr.ScVal{Type: xdr.ScValTypeScvSymbol, Sym: &balanceMetadataSym},
 		xdr.ScVal{Type: xdr.ScValTypeScvAddress, Address: scAddress},
 	}
+	var contractIDHash xdr.Hash = assetContractId
+	return xdr.LedgerKey{
+		Type: xdr.LedgerEntryTypeContractData,
+		ContractData: &xdr.LedgerKeyContractData{
+			Contract: xdr.ScAddress{
+				Type:       xdr.ScAddressTypeScAddressTypeContract,
+				ContractId: &contractIDHash,
+			},
+			Key: xdr.ScVal{
+				Type: xdr.ScValTypeScvVec,
+				Vec:  &keyVec,
+			},
+			Durability: xdr.ContractDataDurabilityPersistent,
+		},
+	}
+}
+
+func balanceToContractData(assetContractId, holderID [32]byte, amt xdr.Int128Parts) xdr.LedgerEntryData {
+	ledgerKey := ContractBalanceLedgerKey(assetContractId, holderID)
 
 	amountSym := xdr.ScSymbol("amount")
 	authorizedSym := xdr.ScSymbol("authorized")
@@ -506,19 +528,13 @@ func balanceToContractData(assetContractId, holderID [32]byte, amt xdr.Int128Par
 		},
 	}
 
-	var contractIDHash xdr.Hash = assetContractId
+	contractData := ledgerKey.MustContractData()
 	return xdr.LedgerEntryData{
 		Type: xdr.LedgerEntryTypeContractData,
 		ContractData: &xdr.ContractDataEntry{
-			Contract: xdr.ScAddress{
-				Type:       xdr.ScAddressTypeScAddressTypeContract,
-				ContractId: &contractIDHash,
-			},
-			Key: xdr.ScVal{
-				Type: xdr.ScValTypeScvVec,
-				Vec:  &keyVec,
-			},
-			Durability: xdr.ContractDataDurabilityPersistent,
+			Contract:   contractData.Contract,
+			Key:        contractData.Key,
+			Durability: contractData.Durability,
 			Val: xdr.ScVal{
 				Type: xdr.ScValTypeScvMap,
 				Map:  &dataMap,

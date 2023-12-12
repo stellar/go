@@ -12,6 +12,9 @@ import (
 
 	"github.com/guregu/null"
 	"github.com/guregu/null/zero"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/suite"
+
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/keypair"
@@ -20,8 +23,6 @@ import (
 	"github.com/stellar/go/services/horizon/internal/ingest/processors"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
-	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/suite"
 )
 
 func TestVerifyRangeStateTestSuite(t *testing.T) {
@@ -544,30 +545,32 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 	clonedQ.MockQAssetStats.On("GetAssetStats", s.ctx, "", "", db2.PageQuery{
 		Order: "asc",
 		Limit: assetStatsBatchSize,
-	}).Return([]history.ExpAssetStat{
+	}).Return([]history.AssetAndContractStat{
 		// Created by liquidity pool:
 		{
-			AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
-			AssetCode:   "USD",
-			AssetIssuer: "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
-			Accounts: history.ExpAssetStatAccounts{
-				LiquidityPools: 1,
+			ExpAssetStat: history.ExpAssetStat{
+				AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
+				AssetCode:   "USD",
+				AssetIssuer: "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
+				Accounts: history.ExpAssetStatAccounts{
+					LiquidityPools: 1,
+				},
+				Balances: history.ExpAssetStatBalances{
+					Authorized:                      "0",
+					AuthorizedToMaintainLiabilities: "0",
+					ClaimableBalances:               "0",
+					LiquidityPools:                  "450",
+					Unauthorized:                    "0",
+				},
+				Amount: "0",
 			},
-			Balances: history.ExpAssetStatBalances{
-				Authorized:                      "0",
-				AuthorizedToMaintainLiabilities: "0",
-				ClaimableBalances:               "0",
-				LiquidityPools:                  "450",
-				Unauthorized:                    "0",
-				Contracts:                       "0",
-			},
-			Amount: "0",
-		}}, nil).Once()
+		},
+	}, nil).Once()
 	clonedQ.MockQAssetStats.On("GetAssetStats", s.ctx, "", "", db2.PageQuery{
 		Cursor: "USD_GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML_credit_alphanum4",
 		Order:  "asc",
 		Limit:  assetStatsBatchSize,
-	}).Return([]history.ExpAssetStat{}, nil).Once()
+	}).Return([]history.AssetAndContractStat{}, nil).Once()
 
 	clonedQ.MockQClaimableBalances.On("CountClaimableBalances", s.ctx).Return(1, nil).Once()
 	clonedQ.MockQClaimableBalances.
@@ -603,7 +606,15 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 }
 
 func (s *VerifyRangeStateTestSuite) TestVerifyFailsWhenAssetStatsMismatch() {
-	set := processors.NewAssetStatSet(s.system.config.NetworkPassphrase)
+	set := processors.NewAssetStatSet()
+	contractAssetStatsSet := processors.NewContractAssetStatSet(
+		s.historyQ,
+		s.system.config.NetworkPassphrase,
+		map[xdr.Hash]uint32{},
+		map[xdr.Hash]uint32{},
+		map[xdr.Hash][2]uint32{},
+		100,
+	)
 
 	trustLineIssuer := xdr.MustAddress("GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
 	set.AddTrustline(
@@ -621,33 +632,35 @@ func (s *VerifyRangeStateTestSuite) TestVerifyFailsWhenAssetStatsMismatch() {
 		},
 	)
 
-	stat := history.ExpAssetStat{
-		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
-		AssetCode:   "EUR",
-		AssetIssuer: trustLineIssuer.Address(),
-		Accounts: history.ExpAssetStatAccounts{
-			Unauthorized: 1,
+	stat := history.AssetAndContractStat{
+		ExpAssetStat: history.ExpAssetStat{
+			AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
+			AssetCode:   "EUR",
+			AssetIssuer: trustLineIssuer.Address(),
+			Accounts: history.ExpAssetStatAccounts{
+				Unauthorized: 1,
+			},
+			Balances: history.ExpAssetStatBalances{
+				Authorized:                      "0",
+				AuthorizedToMaintainLiabilities: "0",
+				Unauthorized:                    "123",
+			},
+			Amount:      "0",
+			NumAccounts: 0,
 		},
-		Balances: history.ExpAssetStatBalances{
-			Authorized:                      "0",
-			AuthorizedToMaintainLiabilities: "0",
-			Unauthorized:                    "123",
-		},
-		Amount:      "0",
-		NumAccounts: 0,
 	}
 
 	s.historyQ.MockQAssetStats.On("GetAssetStats", s.ctx, "", "", db2.PageQuery{
 		Order: "asc",
 		Limit: assetStatsBatchSize,
-	}).Return([]history.ExpAssetStat{stat}, nil).Once()
+	}).Return([]history.AssetAndContractStat{stat}, nil).Once()
 	s.historyQ.MockQAssetStats.On("GetAssetStats", s.ctx, "", "", db2.PageQuery{
 		Cursor: stat.PagingToken(),
 		Order:  "asc",
 		Limit:  assetStatsBatchSize,
-	}).Return([]history.ExpAssetStat{}, nil).Once()
+	}).Return([]history.AssetAndContractStat{}, nil).Once()
 
-	err := checkAssetStats(s.ctx, set, s.historyQ)
+	err := checkAssetStats(s.ctx, set, contractAssetStatsSet, s.historyQ, s.system.config.NetworkPassphrase)
 	s.Assert().Contains(err.Error(), fmt.Sprintf("db asset stat with code EUR issuer %s does not match asset stat from HAS", trustLineIssuer.Address()))
 
 	// Satisfy the mock

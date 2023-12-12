@@ -368,6 +368,50 @@ type Asset struct {
 	Issuer string `db:"asset_issuer"`
 }
 
+type ContractStat struct {
+	ActiveBalance   string `json:"balance"`
+	ActiveHolders   int32  `json:"holders"`
+	ArchivedBalance string `json:"archived_balance"`
+	ArchivedHolders int32  `json:"archived_holders"`
+}
+
+func (c ContractStat) Value() (driver.Value, error) {
+	return json.Marshal(c)
+}
+
+func (c *ContractStat) Scan(src interface{}) error {
+	if src == nil {
+		c.ActiveBalance = "0"
+		c.ArchivedBalance = "0"
+		return nil
+	}
+
+	source, ok := src.([]byte)
+	if !ok {
+		return errors.New("Type assertion .([]byte) failed.")
+	}
+
+	err := json.Unmarshal(source, &c)
+	if err != nil {
+		return err
+	}
+
+	// Sets zero values for empty balances
+	if c.ActiveBalance == "" {
+		c.ActiveBalance = "0"
+	}
+	if c.ArchivedBalance == "" {
+		c.ArchivedBalance = "0"
+	}
+
+	return nil
+}
+
+type AssetAndContractStat struct {
+	ExpAssetStat
+	Contracts ContractStat `db:"contracts"`
+}
+
 // ExpAssetStat is a row in the exp_asset_stats table representing the stats per Asset
 type ExpAssetStat struct {
 	AssetType   xdr.AssetType        `db:"asset_type"`
@@ -397,7 +441,6 @@ type ExpAssetStatAccounts struct {
 	AuthorizedToMaintainLiabilities int32 `json:"authorized_to_maintain_liabilities"`
 	ClaimableBalances               int32 `json:"claimable_balances"`
 	LiquidityPools                  int32 `json:"liquidity_pools"`
-	Contracts                       int32 `json:"contracts"`
 	Unauthorized                    int32 `json:"unauthorized"`
 }
 
@@ -454,7 +497,6 @@ func (a ExpAssetStatAccounts) Add(b ExpAssetStatAccounts) ExpAssetStatAccounts {
 		ClaimableBalances:               a.ClaimableBalances + b.ClaimableBalances,
 		LiquidityPools:                  a.LiquidityPools + b.LiquidityPools,
 		Unauthorized:                    a.Unauthorized + b.Unauthorized,
-		Contracts:                       a.Contracts + b.Contracts,
 	}
 }
 
@@ -469,7 +511,6 @@ type ExpAssetStatBalances struct {
 	AuthorizedToMaintainLiabilities string `json:"authorized_to_maintain_liabilities"`
 	ClaimableBalances               string `json:"claimable_balances"`
 	LiquidityPools                  string `json:"liquidity_pools"`
-	Contracts                       string `json:"contracts"`
 	Unauthorized                    string `json:"unauthorized"`
 }
 
@@ -479,7 +520,6 @@ func (e ExpAssetStatBalances) IsZero() bool {
 		AuthorizedToMaintainLiabilities: "0",
 		ClaimableBalances:               "0",
 		LiquidityPools:                  "0",
-		Contracts:                       "0",
 		Unauthorized:                    "0",
 	}
 }
@@ -515,23 +555,30 @@ func (e *ExpAssetStatBalances) Scan(src interface{}) error {
 	if e.Unauthorized == "" {
 		e.Unauthorized = "0"
 	}
-	if e.Contracts == "" {
-		e.Contracts = "0"
-	}
 
 	return nil
 }
 
 // QAssetStats defines exp_asset_stats related queries.
 type QAssetStats interface {
-	InsertAssetStats(ctx context.Context, stats []ExpAssetStat, batchSize int) error
+	InsertContractAssetBalances(ctx context.Context, rows []ContractAssetBalance) error
+	RemoveContractAssetBalances(ctx context.Context, keys []xdr.Hash) error
+	UpdateContractAssetBalanceAmounts(ctx context.Context, keys []xdr.Hash, amounts []string) error
+	UpdateContractAssetBalanceExpirations(ctx context.Context, keys []xdr.Hash, expirationLedgers []uint32) error
+	GetContractAssetBalances(ctx context.Context, keys []xdr.Hash) ([]ContractAssetBalance, error)
+	GetContractAssetBalancesExpiringAt(ctx context.Context, ledger uint32) ([]ContractAssetBalance, error)
+	InsertAssetStats(ctx context.Context, stats []ExpAssetStat) error
+	InsertContractAssetStats(ctx context.Context, rows []ContractAssetStatRow) error
 	InsertAssetStat(ctx context.Context, stat ExpAssetStat) (int64, error)
+	InsertContractAssetStat(ctx context.Context, row ContractAssetStatRow) (int64, error)
 	UpdateAssetStat(ctx context.Context, stat ExpAssetStat) (int64, error)
+	UpdateContractAssetStat(ctx context.Context, row ContractAssetStatRow) (int64, error)
 	GetAssetStat(ctx context.Context, assetType xdr.AssetType, assetCode, assetIssuer string) (ExpAssetStat, error)
-	GetAssetStatByContract(ctx context.Context, contractID [32]byte) (ExpAssetStat, error)
-	GetAssetStatByContracts(ctx context.Context, contractIDs [][32]byte) ([]ExpAssetStat, error)
+	GetAssetStatByContract(ctx context.Context, contractID xdr.Hash) (ExpAssetStat, error)
+	GetContractAssetStat(ctx context.Context, contractID []byte) (ContractAssetStatRow, error)
 	RemoveAssetStat(ctx context.Context, assetType xdr.AssetType, assetCode, assetIssuer string) (int64, error)
-	GetAssetStats(ctx context.Context, assetCode, assetIssuer string, page db2.PageQuery) ([]ExpAssetStat, error)
+	RemoveAssetContractStat(ctx context.Context, contractID []byte) (int64, error)
+	GetAssetStats(ctx context.Context, assetCode, assetIssuer string, page db2.PageQuery) ([]AssetAndContractStat, error)
 	CountTrustLines(ctx context.Context) (int, error)
 }
 

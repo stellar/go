@@ -2,7 +2,10 @@ package xdr
 
 import (
 	"bytes"
+	"encoding/hex"
 	"fmt"
+	"math/big"
+	"time"
 
 	"github.com/stellar/go/strkey"
 )
@@ -34,7 +37,7 @@ func (s ContractExecutable) Equals(o ContractExecutable) bool {
 		return false
 	}
 	switch s.Type {
-	case ContractExecutableTypeContractExecutableToken:
+	case ContractExecutableTypeContractExecutableStellarAsset:
 		return true
 	case ContractExecutableTypeContractExecutableWasm:
 		return s.MustWasmHash().Equals(o.MustWasmHash())
@@ -181,4 +184,101 @@ func (s ScMapEntry) Equals(o ScMapEntry) bool {
 
 func (s ScNonceKey) Equals(o ScNonceKey) bool {
 	return s.Nonce == o.Nonce
+}
+
+func bigIntFromParts(hi Int64, lowerParts ...Uint64) *big.Int {
+	result := new(big.Int).SetInt64(int64(hi))
+	secondary := new(big.Int)
+	for _, part := range lowerParts {
+		result.Lsh(result, 64)
+		result.Or(result, secondary.SetUint64(uint64(part)))
+	}
+	return result
+}
+
+func bigUIntFromParts(hi Uint64, lowerParts ...Uint64) *big.Int {
+	result := new(big.Int).SetUint64(uint64(hi))
+	secondary := new(big.Int)
+	for _, part := range lowerParts {
+		result.Lsh(result, 64)
+		result.Or(result, secondary.SetUint64(uint64(part)))
+	}
+	return result
+}
+
+func (s ScVal) String() string {
+	switch s.Type {
+	case ScValTypeScvBool:
+		return fmt.Sprintf("%t", *s.B)
+	case ScValTypeScvVoid:
+		return "(void)"
+	case ScValTypeScvError:
+		switch s.Error.Type {
+		case ScErrorTypeSceContract:
+			return fmt.Sprintf("%s(%d)", s.Error.Type, *s.Error.ContractCode)
+		case ScErrorTypeSceWasmVm, ScErrorTypeSceContext, ScErrorTypeSceStorage, ScErrorTypeSceObject,
+			ScErrorTypeSceCrypto, ScErrorTypeSceEvents, ScErrorTypeSceBudget, ScErrorTypeSceValue, ScErrorTypeSceAuth:
+			return fmt.Sprintf("%s(%s)", s.Error.Type, *s.Error.Code)
+		}
+	case ScValTypeScvU32:
+		return fmt.Sprintf("%d", *s.U32)
+	case ScValTypeScvI32:
+		return fmt.Sprintf("%d", *s.I32)
+	case ScValTypeScvU64:
+		return fmt.Sprintf("%d", *s.U64)
+	case ScValTypeScvI64:
+		return fmt.Sprintf("%d", *s.I64)
+	case ScValTypeScvTimepoint:
+		return time.Unix(int64(*s.Timepoint), 0).String()
+	case ScValTypeScvDuration:
+		return fmt.Sprintf("%d", *s.Duration)
+	case ScValTypeScvU128:
+		return bigUIntFromParts(s.U128.Hi, s.U128.Lo).String()
+	case ScValTypeScvI128:
+		return bigIntFromParts(s.I128.Hi, s.I128.Lo).String()
+	case ScValTypeScvU256:
+		return bigUIntFromParts(s.U256.HiHi, s.U256.HiLo, s.U256.LoHi, s.U256.LoLo).String()
+	case ScValTypeScvI256:
+		return bigIntFromParts(s.I256.HiHi, s.I256.HiLo, s.I256.LoHi, s.I256.LoLo).String()
+	case ScValTypeScvBytes:
+		return hex.EncodeToString(*s.Bytes)
+	case ScValTypeScvString:
+		return string(*s.Str)
+	case ScValTypeScvSymbol:
+		return string(*s.Sym)
+	case ScValTypeScvVec:
+		if *s.Vec == nil {
+			return "nil"
+		}
+		return fmt.Sprintf("%s", **s.Vec)
+	case ScValTypeScvMap:
+		if *s.Map == nil {
+			return "nil"
+		}
+		return fmt.Sprintf("%v", **s.Map)
+	case ScValTypeScvAddress:
+		str, err := s.Address.String()
+		if err != nil {
+			return err.Error()
+		}
+		return str
+	case ScValTypeScvContractInstance:
+		result := ""
+		switch s.Instance.Executable.Type {
+		case ContractExecutableTypeContractExecutableStellarAsset:
+			result = "(StellarAssetContract)"
+		case ContractExecutableTypeContractExecutableWasm:
+			result = hex.EncodeToString(s.Instance.Executable.WasmHash[:])
+		}
+		if s.Instance.Storage != nil && len(*s.Instance.Storage) > 0 {
+			result += fmt.Sprintf(": %v", *s.Instance.Storage)
+		}
+		return result
+	case ScValTypeScvLedgerKeyContractInstance:
+		return "(LedgerKeyContractInstance)"
+	case ScValTypeScvLedgerKeyNonce:
+		return fmt.Sprintf("%X", *s.NonceKey)
+	}
+
+	return "unknown"
 }
