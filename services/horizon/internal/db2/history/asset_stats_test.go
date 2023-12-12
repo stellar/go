@@ -21,6 +21,8 @@ func TestAssetStatContracts(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
+	tt.Assert.NoError(q.Begin(context.Background()))
+
 	assetStats := []ExpAssetStat{
 		{
 			AssetType: xdr.AssetTypeAssetTypeNative,
@@ -86,6 +88,7 @@ func TestAssetStatContracts(t *testing.T) {
 		contractID[0]++
 	}
 	tt.Assert.NoError(q.InsertAssetStats(tt.Ctx, assetStats))
+	tt.Assert.NoError(q.Commit())
 
 	contractID[0] = 0
 	for i := 0; i < 2; i++ {
@@ -122,6 +125,8 @@ func TestAssetContractStats(t *testing.T) {
 	defer tt.Finish()
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
+
+	tt.Assert.NoError(q.Begin(context.Background()))
 
 	c1 := ContractAssetStatRow{
 		ContractID: []byte{1},
@@ -183,6 +188,8 @@ func TestAssetContractStats(t *testing.T) {
 		tt.Assert.NoError(err)
 		tt.Assert.Equal(result, row)
 	}
+
+	tt.Assert.NoError(q.Rollback())
 }
 
 func TestInsertAssetStats(t *testing.T) {
@@ -190,6 +197,9 @@ func TestInsertAssetStats(t *testing.T) {
 	defer tt.Finish()
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
+
+	tt.Assert.NoError(q.Begin(context.Background()))
+
 	tt.Assert.NoError(q.InsertAssetStats(tt.Ctx, []ExpAssetStat{}))
 
 	assetStats := []ExpAssetStat{
@@ -239,6 +249,8 @@ func TestInsertAssetStats(t *testing.T) {
 		tt.Assert.NoError(err)
 		tt.Assert.Equal(got, assetStat)
 	}
+
+	tt.Assert.NoError(q.Rollback())
 }
 
 func TestInsertAssetStat(t *testing.T) {
@@ -1011,6 +1023,8 @@ func TestInsertContractAssetBalances(t *testing.T) {
 
 	q := &Q{tt.HorizonSession()}
 
+	tt.Assert.NoError(q.Begin(context.Background()))
+
 	keyHash := [32]byte{}
 	contractID := [32]byte{1}
 	balance := ContractAssetBalance{
@@ -1038,6 +1052,8 @@ func TestInsertContractAssetBalances(t *testing.T) {
 	tt.Assert.NoError(err)
 
 	assertContractAssetBalancesEqual(t, balances, []ContractAssetBalance{balance, otherBalance})
+
+	tt.Assert.NoError(q.Rollback())
 }
 
 func TestRemoveContractAssetBalances(t *testing.T) {
@@ -1046,6 +1062,7 @@ func TestRemoveContractAssetBalances(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 
 	q := &Q{tt.HorizonSession()}
+	tt.Assert.NoError(q.Begin(context.Background()))
 
 	keyHash := [32]byte{}
 	contractID := [32]byte{1}
@@ -1086,6 +1103,8 @@ func TestRemoveContractAssetBalances(t *testing.T) {
 	tt.Assert.NoError(err)
 
 	assertContractAssetBalancesEqual(t, balances, []ContractAssetBalance{balance})
+
+	tt.Assert.NoError(q.Rollback())
 }
 
 func TestUpdateContractAssetBalanceAmounts(t *testing.T) {
@@ -1094,6 +1113,7 @@ func TestUpdateContractAssetBalanceAmounts(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 
 	q := &Q{tt.HorizonSession()}
+	tt.Assert.NoError(q.Begin(context.Background()))
 
 	keyHash := [32]byte{}
 	contractID := [32]byte{1}
@@ -1133,6 +1153,8 @@ func TestUpdateContractAssetBalanceAmounts(t *testing.T) {
 	balance.Amount = "2"
 	otherBalance.Amount = "1"
 	assertContractAssetBalancesEqual(t, balances, []ContractAssetBalance{balance, otherBalance})
+
+	tt.Assert.NoError(q.Rollback())
 }
 
 func TestUpdateContractAssetBalanceExpirations(t *testing.T) {
@@ -1141,6 +1163,7 @@ func TestUpdateContractAssetBalanceExpirations(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 
 	q := &Q{tt.HorizonSession()}
+	tt.Assert.NoError(q.Begin(context.Background()))
 
 	keyHash := [32]byte{}
 	contractID := [32]byte{1}
@@ -1195,4 +1218,6 @@ func TestUpdateContractAssetBalanceExpirations(t *testing.T) {
 	balances, err = q.GetContractAssetBalancesExpiringAt(context.Background(), 200)
 	tt.Assert.NoError(err)
 	assertContractAssetBalancesEqual(t, balances, []ContractAssetBalance{balance, otherBalance})
+
+	tt.Assert.NoError(q.Rollback())
 }

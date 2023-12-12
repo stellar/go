@@ -376,7 +376,11 @@ type ContractStat struct {
 }
 
 func (c ContractStat) Value() (driver.Value, error) {
-	return json.Marshal(c)
+	// Convert the byte array into a string as a workaround to bypass buggy encoding in the pq driver
+	// (More info about this bug here https://github.com/stellar/go/issues/5086#issuecomment-1773215436).
+	// By doing so, the data will be written as a string rather than hex encoded bytes.
+	val, err := json.Marshal(c)
+	return string(val), err
 }
 
 func (c *ContractStat) Scan(src interface{}) error {
@@ -445,7 +449,11 @@ type ExpAssetStatAccounts struct {
 }
 
 func (e ExpAssetStatAccounts) Value() (driver.Value, error) {
-	return json.Marshal(e)
+	// Convert the byte array into a string as a workaround to bypass buggy encoding in the pq driver
+	// (More info about this bug here https://github.com/stellar/go/issues/5086#issuecomment-1773215436).
+	// By doing so, the data will be written as a string rather than hex encoded bytes.
+	val, err := json.Marshal(e)
+	return string(val), err
 }
 
 func (e *ExpAssetStatAccounts) Scan(src interface{}) error {
@@ -525,7 +533,11 @@ func (e ExpAssetStatBalances) IsZero() bool {
 }
 
 func (e ExpAssetStatBalances) Value() (driver.Value, error) {
-	return json.Marshal(e)
+	// Convert the byte array into a string as a workaround to bypass buggy encoding in the pq driver
+	// (More info about this bug here https://github.com/stellar/go/issues/5086#issuecomment-1773215436).
+	// By doing so, the data will be written as a string rather than hex encoded bytes.
+	val, err := json.Marshal(e)
+	return string(val), err
 }
 
 func (e *ExpAssetStatBalances) Scan(src interface{}) error {
