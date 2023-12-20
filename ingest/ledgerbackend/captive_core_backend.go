@@ -218,7 +218,6 @@ func (c *CaptiveStellarCore) coreSyncedMetric() float64 {
 
 	info, err := c.stellarCoreClient.Info(c.config.Context)
 	if err != nil {
-		c.config.Log.WithError(err).Warn("Cannot connect to Captive Stellar-Core HTTP server")
 		return -1
 	}
 
@@ -236,7 +235,6 @@ func (c *CaptiveStellarCore) coreVersionMetric() float64 {
 
 	info, err := c.stellarCoreClient.Info(c.config.Context)
 	if err != nil {
-		c.config.Log.WithError(err).Warn("Cannot connect to Captive Stellar-Core HTTP server")
 		return -1
 	}
 
