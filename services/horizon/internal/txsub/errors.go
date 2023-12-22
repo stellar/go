@@ -16,14 +16,15 @@ var (
 
 	// ErrBadSequence is a canned error response for transactions whose sequence
 	// number is wrong.
-	ErrBadSequence = &FailedTransactionError{"AAAAAAAAAAD////7AAAAAA=="}
+	ErrBadSequence = &FailedTransactionError{"AAAAAAAAAAD////7AAAAAA==", ""}
 )
 
 // FailedTransactionError represent an error that occurred because
 // stellar-core rejected the transaction.  ResultXDR is a base64
 // encoded TransactionResult struct
 type FailedTransactionError struct {
-	ResultXDR string
+	ResultXDR        string
+	DiagnosticEvents string
 }
 
 func (err *FailedTransactionError) Error() string {
