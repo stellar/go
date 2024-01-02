@@ -23,8 +23,9 @@ var (
 // stellar-core rejected the transaction.  ResultXDR is a base64
 // encoded TransactionResult struct
 type FailedTransactionError struct {
-	ResultXDR        string
-	DiagnosticEvents string
+	ResultXDR string
+	// DiagnosticEventsXDR is a base64-encoded []xdr.DiagnosticEvent
+	DiagnosticEventsXDR string
 }
 
 func (err *FailedTransactionError) Error() string {

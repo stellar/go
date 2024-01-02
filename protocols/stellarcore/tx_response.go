@@ -64,7 +64,7 @@ func DiagnosticEventsToSlice(events string) ([]string, error) {
 		if err != nil {
 			return nil, err
 		}
-		result[0] = encoded
+		result[i] = encoded
 	}
 	return result, nil
 }

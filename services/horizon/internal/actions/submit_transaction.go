@@ -113,8 +113,8 @@ func (handler SubmitTransactionHandler) response(r *http.Request, info envelopeI
 			"result_xdr":   failedErr.ResultXDR,
 			"result_codes": rcr,
 		}
-		if failedErr.DiagnosticEvents != "" {
-			events, err := stellarcore.DiagnosticEventsToSlice(failedErr.DiagnosticEvents)
+		if failedErr.DiagnosticEventsXDR != "" {
+			events, err := stellarcore.DiagnosticEventsToSlice(failedErr.DiagnosticEventsXDR)
 			if err != nil {
 				return nil, err
 			}
