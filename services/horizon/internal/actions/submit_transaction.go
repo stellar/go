@@ -8,6 +8,7 @@ import (
 
 	"github.com/stellar/go/network"
 	"github.com/stellar/go/protocols/horizon"
+	"github.com/stellar/go/protocols/stellarcore"
 	hProblem "github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"
 	"github.com/stellar/go/services/horizon/internal/txsub"
@@ -95,15 +96,30 @@ func (handler SubmitTransactionHandler) response(r *http.Request, info envelopeI
 		return nil, &hProblem.ClientDisconnected
 	}
 
-	switch err := result.Err.(type) {
-	case *txsub.FailedTransactionError:
+	if failedErr, ok := result.Err.(*txsub.FailedTransactionError); ok {
 		rcr := horizon.TransactionResultCodes{}
-		resourceadapter.PopulateTransactionResultCodes(
+		err := resourceadapter.PopulateTransactionResultCodes(
 			r.Context(),
 			info.hash,
 			&rcr,
-			err,
+			failedErr,
 		)
+		if err != nil {
+			return nil, failedErr
+		}
+
+		extras := map[string]interface{}{
+			"envelope_xdr": info.raw,
+			"result_xdr":   failedErr.ResultXDR,
+			"result_codes": rcr,
+		}
+		if failedErr.DiagnosticEventsXDR != "" {
+			events, err := stellarcore.DiagnosticEventsToSlice(failedErr.DiagnosticEventsXDR)
+			if err != nil {
+				return nil, err
+			}
+			extras["diagnostic_events"] = events
+		}
 
 		return nil, &problem.P{
 			Type:   "transaction_failed",
@@ -113,11 +129,7 @@ func (handler SubmitTransactionHandler) response(r *http.Request, info envelopeI
 				"The `extras.result_codes` field on this response contains further " +
 				"details.  Descriptions of each code can be found at: " +
 				"https://developers.stellar.org/api/errors/http-status-codes/horizon-specific/transaction-failed/",
-			Extras: map[string]interface{}{
-				"envelope_xdr": info.raw,
-				"result_xdr":   err.ResultXDR,
-				"result_codes": rcr,
-			},
+			Extras: extras,
 		}
 	}
 

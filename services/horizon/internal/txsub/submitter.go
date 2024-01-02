@@ -58,7 +58,7 @@ func (sub *submitter) Submit(ctx context.Context, env string) (result Submission
 
 	switch cresp.Status {
 	case proto.TXStatusError:
-		result.Err = &FailedTransactionError{cresp.Error}
+		result.Err = &FailedTransactionError{cresp.Error, cresp.DiagnosticEvents}
 	case proto.TXStatusPending, proto.TXStatusDuplicate, proto.TXStatusTryAgainLater:
 		//noop.  A nil Err indicates success
 	default:
