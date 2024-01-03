@@ -1036,6 +1036,9 @@ func (operation *transactionOperationWrapper) Participants() ([]xdr.AccountId, e
 
 // dedupeParticipants remove any duplicate ids from `in`
 func dedupeParticipants(in []xdr.AccountId) []xdr.AccountId {
+	if len(in) <= 1 {
+		return in
+	}
 	sort.Slice(in, func(i, j int) bool {
 		return in[i].Address() < in[j].Address()
 	})

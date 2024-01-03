@@ -73,6 +73,9 @@ func liquidityPoolsForTransaction(transaction ingest.LedgerTransaction) ([]strin
 }
 
 func dedupeStrings(in []string) []string {
+	if len(in) <= 1 {
+		return in
+	}
 	sort.Strings(in)
 	insert := 1
 	for cur := 1; cur < len(in); cur++ {
