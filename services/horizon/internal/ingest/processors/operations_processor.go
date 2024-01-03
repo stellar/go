@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"sort"
 
 	"github.com/guregu/null"
 
@@ -1034,16 +1035,25 @@ func (operation *transactionOperationWrapper) Participants() ([]xdr.AccountId, e
 }
 
 // dedupeParticipants remove any duplicate ids from `in`
-func dedupeParticipants(in []xdr.AccountId) (out []xdr.AccountId) {
-	set := map[string]xdr.AccountId{}
-	for _, id := range in {
-		set[id.Address()] = id
+func dedupeParticipants(in []xdr.AccountId) []xdr.AccountId {
+	if len(in) <= 1 {
+		return in
 	}
+	sort.Slice(in, func(i, j int) bool {
+		return in[i].Address() < in[j].Address()
+	})
+	insert := 1
+	for cur := 1; cur < len(in); cur++ {
+		if in[cur].Equals(in[cur-1]) {
+			continue
+		}
+		if insert != cur {
+			in[insert] = in[cur]
+		}
+		insert++
+	}
+	return in[:insert]
 
-	for _, id := range set {
-		out = append(out, id)
-	}
-	return
 }
 
 // OperationsParticipants returns a map with all participants per operation

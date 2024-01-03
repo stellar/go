@@ -2,10 +2,10 @@ package processors
 
 import (
 	"context"
+	"sort"
 
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/support/collections/set"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/toid"
@@ -73,16 +73,21 @@ func liquidityPoolsForTransaction(transaction ingest.LedgerTransaction) ([]strin
 }
 
 func dedupeStrings(in []string) []string {
-	set := set.Set[string]{}
-	for _, id := range in {
-		set.Add(id)
+	if len(in) <= 1 {
+		return in
 	}
-
-	out := make([]string, 0, len(in))
-	for id := range set {
-		out = append(out, id)
+	sort.Strings(in)
+	insert := 1
+	for cur := 1; cur < len(in); cur++ {
+		if in[cur] == in[cur-1] {
+			continue
+		}
+		if insert != cur {
+			in[insert] = in[cur]
+		}
+		insert++
 	}
-	return out
+	return in[:insert]
 }
 
 func liquidityPoolsForChanges(
