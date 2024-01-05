@@ -146,7 +146,7 @@ func (b *S3Storage) Exists(pth string) (bool, error) {
 	} else if resp.StatusCode == http.StatusNotFound {
 		return false, nil
 	} else {
-		return false, errors.Errorf("Unkown status code=%d", resp.StatusCode)
+		return false, errors.Errorf("Unknown status code=%d", resp.StatusCode)
 	}
 }
 
@@ -160,7 +160,7 @@ func (b *S3Storage) Size(pth string) (int64, error) {
 	} else if resp.StatusCode == http.StatusNotFound {
 		return 0, nil
 	} else {
-		return 0, errors.Errorf("Unkown status code=%d", resp.StatusCode)
+		return 0, errors.Errorf("Unknown status code=%d", resp.StatusCode)
 	}
 }
 

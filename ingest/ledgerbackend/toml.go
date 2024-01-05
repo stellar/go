@@ -3,8 +3,10 @@ package ledgerbackend
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
+	"os"
+	"os/exec"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/stellar/go/support/errors"
@@ -75,14 +77,23 @@ type captiveCoreTomlValues struct {
 	PeerPort          uint     `toml:"PEER_PORT,omitempty"`
 	// we cannot omitempty because 0 is a valid configuration for FAILURE_SAFETY
 	// and the default is -1
-	FailureSafety                        int                  `toml:"FAILURE_SAFETY"`
-	UnsafeQuorum                         bool                 `toml:"UNSAFE_QUORUM,omitempty"`
-	RunStandalone                        bool                 `toml:"RUN_STANDALONE,omitempty"`
-	ArtificiallyAccelerateTimeForTesting bool                 `toml:"ARTIFICIALLY_ACCELERATE_TIME_FOR_TESTING,omitempty"`
-	HomeDomains                          []HomeDomain         `toml:"HOME_DOMAINS,omitempty"`
-	Validators                           []Validator          `toml:"VALIDATORS,omitempty"`
-	HistoryEntries                       map[string]History   `toml:"-"`
-	QuorumSetEntries                     map[string]QuorumSet `toml:"-"`
+	FailureSafety                         int                  `toml:"FAILURE_SAFETY"`
+	UnsafeQuorum                          bool                 `toml:"UNSAFE_QUORUM,omitempty"`
+	RunStandalone                         bool                 `toml:"RUN_STANDALONE,omitempty"`
+	ArtificiallyAccelerateTimeForTesting  bool                 `toml:"ARTIFICIALLY_ACCELERATE_TIME_FOR_TESTING,omitempty"`
+	PreferredPeers                        []string             `toml:"PREFERRED_PEERS,omitempty"`
+	PreferredPeerKeys                     []string             `toml:"PREFERRED_PEER_KEYS,omitempty"`
+	PreferredPeersOnly                    bool                 `toml:"PREFERRED_PEERS_ONLY,omitempty"`
+	HomeDomains                           []HomeDomain         `toml:"HOME_DOMAINS,omitempty"`
+	Validators                            []Validator          `toml:"VALIDATORS,omitempty"`
+	HistoryEntries                        map[string]History   `toml:"-"`
+	QuorumSetEntries                      map[string]QuorumSet `toml:"-"`
+	UseBucketListDB                       bool                 `toml:"EXPERIMENTAL_BUCKETLIST_DB,omitempty"`
+	BucketListDBPageSizeExp               *uint                `toml:"EXPERIMENTAL_BUCKETLIST_DB_INDEX_PAGE_SIZE_EXPONENT,omitempty"`
+	BucketListDBCutoff                    *uint                `toml:"EXPERIMENTAL_BUCKETLIST_DB_INDEX_CUTOFF,omitempty"`
+	EnableSorobanDiagnosticEvents         *bool                `toml:"ENABLE_SOROBAN_DIAGNOSTIC_EVENTS,omitempty"`
+	TestingMinimumPersistentEntryLifetime *uint                `toml:"TESTING_MINIMUM_PERSISTENT_ENTRY_LIFETIME,omitempty"`
+	TestingSorobanHighLimitOverride       *bool                `toml:"TESTING_SOROBAN_HIGH_LIMIT_OVERRIDE,omitempty"`
 }
 
 // QuorumSetIsConfigured returns true if there is a quorum set defined in the configuration.
@@ -317,34 +328,43 @@ type CaptiveCoreTomlParams struct {
 	Strict bool
 	// If true, specifies that captive core should be invoked with on-disk rather than in-memory option for ledger state
 	UseDB bool
+	// the path to the core binary, used to introspect core at runtime, determine some toml capabilities
+	CoreBinaryPath string
+	// Enforce EnableSorobanDiagnosticEvents when not disabled explicitly
+	EnforceSorobanDiagnosticEvents bool
 }
 
 // NewCaptiveCoreTomlFromFile constructs a new CaptiveCoreToml instance by merging configuration
 // from the toml file located at `configPath` and the configuration provided by `params`.
 func NewCaptiveCoreTomlFromFile(configPath string, params CaptiveCoreTomlParams) (*CaptiveCoreToml, error) {
-	var captiveCoreToml CaptiveCoreToml
-	data, err := ioutil.ReadFile(configPath)
+	data, err := os.ReadFile(configPath)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not load toml path")
 	}
+	return NewCaptiveCoreTomlFromData(data, params)
+}
 
-	if err = captiveCoreToml.unmarshal(data, params.Strict); err != nil {
+// NewCaptiveCoreTomlFromData constructs a new CaptiveCoreToml instance by merging configuration
+// from the toml data  and the configuration provided by `params`.
+func NewCaptiveCoreTomlFromData(data []byte, params CaptiveCoreTomlParams) (*CaptiveCoreToml, error) {
+	var captiveCoreToml CaptiveCoreToml
+
+	if err := captiveCoreToml.unmarshal(data, params.Strict); err != nil {
 		return nil, errors.Wrap(err, "could not unmarshal captive core toml")
 	}
 	// disallow setting BUCKET_DIR_PATH through a file since it can cause multiple
 	// running captive-core instances to clash
 	if params.Strict && captiveCoreToml.BucketDirPath != "" {
-		return nil, errors.New("could not unmarshal captive core toml: setting BUCKET_DIR_PATH is disallowed, it can cause clashes between instances")
+		return nil, errors.New("could not unmarshal captive core toml: setting BUCKET_DIR_PATH is disallowed for Captive Core, use CAPTIVE_CORE_STORAGE_PATH instead")
 	}
 
-	if err = captiveCoreToml.validate(params); err != nil {
+	if err := captiveCoreToml.validate(params); err != nil {
 		return nil, errors.Wrap(err, "invalid captive core toml")
 	}
 
 	if len(captiveCoreToml.HistoryEntries) > 0 {
 		log.Warnf(
-			"Configuring captive core with history archive from %s instead of %v",
-			configPath,
+			"Configuring captive core with history archive from %s",
 			params.HistoryArchiveURLs,
 		)
 	}
@@ -409,10 +429,105 @@ func (c *CaptiveCoreToml) CatchupToml() (*CaptiveCoreToml, error) {
 	return offline, nil
 }
 
-func (c *CaptiveCoreToml) setDefaults(params CaptiveCoreTomlParams) {
+// coreVersion helper struct identify a core version and provides the
+// utilities to compare the version ( i.e. minor + major pair ) to a predefined
+// version.
+type coreVersion struct {
+	major                 int
+	minor                 int
+	ledgerProtocolVersion int
+}
 
+// IsEqualOrAbove compares the core version to a version specific. If unable
+// to make the decision, the result is always "false", leaning toward the
+// common denominator.
+func (c *coreVersion) IsEqualOrAbove(major, minor int) bool {
+	if c.major == 0 && c.minor == 0 {
+		return false
+	}
+	return (c.major == major && c.minor >= minor) || (c.major > major)
+}
+
+// IsEqualOrAbove compares the core version to a version specific. If unable
+// to make the decision, the result is always "false", leaning toward the
+// common denominator.
+func (c *coreVersion) IsProtocolVersionEqualOrAbove(protocolVer int) bool {
+	if c.ledgerProtocolVersion == 0 {
+		return false
+	}
+	return c.ledgerProtocolVersion >= protocolVer
+}
+
+func (c *CaptiveCoreToml) checkCoreVersion(coreBinaryPath string) coreVersion {
+	if coreBinaryPath == "" {
+		return coreVersion{}
+	}
+
+	versionBytes, err := exec.Command(coreBinaryPath, "version").Output()
+	if err != nil {
+		return coreVersion{}
+	}
+
+	// starting soroban, we want to use only the first row for the version.
+	versionRows := strings.Split(string(versionBytes), "\n")
+	versionRaw := versionRows[0]
+
+	var version [2]int
+
+	re := regexp.MustCompile(`\D*(\d*)\.(\d*).*`)
+	versionStr := re.FindStringSubmatch(versionRaw)
+	if err == nil && len(versionStr) == 3 {
+		for i := 1; i < len(versionStr); i++ {
+			val, err := strconv.Atoi((versionStr[i]))
+			if err != nil {
+				break
+			}
+			version[i-1] = val
+		}
+	}
+
+	re = regexp.MustCompile(`^\s*ledger protocol version: (\d*)`)
+	var ledgerProtocol int
+	var ledgerProtocolStrings []string
+	for _, line := range versionRows {
+		ledgerProtocolStrings = re.FindStringSubmatch(line)
+		if len(ledgerProtocolStrings) > 0 {
+			break
+		}
+	}
+	if len(ledgerProtocolStrings) == 2 {
+		if val, err := strconv.Atoi(ledgerProtocolStrings[1]); err == nil {
+			ledgerProtocol = val
+		}
+	}
+
+	return coreVersion{
+		major:                 version[0],
+		minor:                 version[1],
+		ledgerProtocolVersion: ledgerProtocol,
+	}
+}
+
+const MinimalBucketListDBCoreSupportVersionMajor = 19
+const MinimalBucketListDBCoreSupportVersionMinor = 6
+const MinimalSorobanProtocolSupport = 20
+
+func (c *CaptiveCoreToml) setDefaults(params CaptiveCoreTomlParams) {
 	if params.UseDB && !c.tree.Has("DATABASE") {
 		c.Database = "sqlite3://stellar.db"
+	}
+
+	coreVersion := c.checkCoreVersion(params.CoreBinaryPath)
+	if def := c.tree.Has("EXPERIMENTAL_BUCKETLIST_DB"); !def && params.UseDB {
+		// Supports version 19.6 and above
+		if coreVersion.IsEqualOrAbove(MinimalBucketListDBCoreSupportVersionMajor, MinimalBucketListDBCoreSupportVersionMinor) {
+			c.UseBucketListDB = true
+		}
+	}
+
+	if c.UseBucketListDB && !c.tree.Has("EXPERIMENTAL_BUCKETLIST_DB_INDEX_PAGE_SIZE_EXPONENT") {
+		n := uint(12)
+		c.BucketListDBPageSizeExp = &n // Set default page size to 4KB
 	}
 
 	if !c.tree.Has("NETWORK_PASSPHRASE") {
@@ -447,6 +562,20 @@ func (c *CaptiveCoreToml) setDefaults(params CaptiveCoreTomlParams) {
 			}
 		}
 	}
+
+	// starting version 20, we have dignostics events.
+	if params.EnforceSorobanDiagnosticEvents && coreVersion.IsProtocolVersionEqualOrAbove(MinimalSorobanProtocolSupport) {
+		if c.EnableSorobanDiagnosticEvents == nil {
+			// We are generating the file from scratch or the user didn't explicitly oppose to diagnostic events in the config file.
+			// Enforce it.
+			t := true
+			c.EnableSorobanDiagnosticEvents = &t
+		}
+		if !*c.EnableSorobanDiagnosticEvents {
+			// The user opposed to diagnostic events in the config file, but there is no need to pass on the option
+			c.EnableSorobanDiagnosticEvents = nil
+		}
+	}
 }
 
 func (c *CaptiveCoreToml) validate(params CaptiveCoreTomlParams) error {
@@ -479,6 +608,12 @@ func (c *CaptiveCoreToml) validate(params CaptiveCoreTomlParams) error {
 			"LOG_FILE_PATH in captive core config file: %s does not match Horizon captive-core-log-path flag: %s",
 			c.LogFilePath,
 			*params.LogPath,
+		)
+	}
+
+	if def := c.tree.Has("EXPERIMENTAL_BUCKETLIST_DB"); def && !params.UseDB {
+		return fmt.Errorf(
+			"BucketListDB enabled in captive core config file, requires Horizon flag --captive-core-use-db",
 		)
 	}
 

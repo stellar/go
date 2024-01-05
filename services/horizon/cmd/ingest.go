@@ -23,8 +23,29 @@ var ingestCmd = &cobra.Command{
 	Short: "ingestion related commands",
 }
 
+var ingestBuildStateSequence uint32
+var ingestBuildStateSkipChecks bool
 var ingestVerifyFrom, ingestVerifyTo, ingestVerifyDebugServerPort uint32
 var ingestVerifyState bool
+
+var ingestBuildStateCmdOpts = []*support.ConfigOption{
+	{
+		Name:        "sequence",
+		ConfigKey:   &ingestBuildStateSequence,
+		OptType:     types.Uint32,
+		Required:    true,
+		FlagDefault: uint32(0),
+		Usage:       "checkpoint ledger sequence",
+	},
+	{
+		Name:        "skip-checks",
+		ConfigKey:   &ingestBuildStateSkipChecks,
+		OptType:     types.Bool,
+		Required:    false,
+		FlagDefault: false,
+		Usage:       "[optional] set to skip protocol version and bucket list hash verification, can speed up the process because does not require a running Stellar-Core",
+	},
+}
 
 var ingestVerifyRangeCmdOpts = []*support.ConfigOption{
 	{
@@ -73,7 +94,7 @@ var ingestVerifyRangeCmd = &cobra.Command{
 			co.SetValue()
 		}
 
-		if err := horizon.ApplyFlags(config, flags, horizon.ApplyOptions{RequireCaptiveCoreConfig: false, AlwaysIngest: true}); err != nil {
+		if err := horizon.ApplyFlags(globalConfig, globalFlags, horizon.ApplyOptions{RequireCaptiveCoreFullConfig: false, AlwaysIngest: true}); err != nil {
 			return err
 		}
 
@@ -90,44 +111,31 @@ var ingestVerifyRangeCmd = &cobra.Command{
 			}()
 		}
 
-		horizonSession, err := db.Open("postgres", config.DatabaseURL)
+		horizonSession, err := db.Open("postgres", globalConfig.DatabaseURL)
 		if err != nil {
 			return fmt.Errorf("cannot open Horizon DB: %v", err)
 		}
-		mngr := historyarchive.NewCheckpointManager(config.CheckpointFrequency)
+		mngr := historyarchive.NewCheckpointManager(globalConfig.CheckpointFrequency)
 		if !mngr.IsCheckpoint(ingestVerifyFrom) && ingestVerifyFrom != 1 {
 			return fmt.Errorf("`--from` must be a checkpoint ledger")
 		}
 
 		if ingestVerifyState && !mngr.IsCheckpoint(ingestVerifyTo) {
-			return fmt.Errorf("`--to` must be a checkpoint ledger when `--verify-state` is set.")
+			return fmt.Errorf("`--to` must be a checkpoint ledger when `--verify-state` is set")
 		}
 
 		ingestConfig := ingest.Config{
-			NetworkPassphrase:        config.NetworkPassphrase,
+			NetworkPassphrase:        globalConfig.NetworkPassphrase,
 			HistorySession:           horizonSession,
-			HistoryArchiveURL:        config.HistoryArchiveURLs[0],
-			EnableCaptiveCore:        config.EnableCaptiveCoreIngestion,
-			CaptiveCoreBinaryPath:    config.CaptiveCoreBinaryPath,
-			CaptiveCoreConfigUseDB:   config.CaptiveCoreConfigUseDB,
-			RemoteCaptiveCoreURL:     config.RemoteCaptiveCoreURL,
-			CheckpointFrequency:      config.CheckpointFrequency,
-			CaptiveCoreToml:          config.CaptiveCoreToml,
-			CaptiveCoreStoragePath:   config.CaptiveCoreStoragePath,
-			RoundingSlippageFilter:   config.RoundingSlippageFilter,
-			EnableIngestionFiltering: config.EnableIngestionFiltering,
-		}
-
-		if !ingestConfig.EnableCaptiveCore {
-			if config.StellarCoreDatabaseURL == "" {
-				return fmt.Errorf("flag --%s cannot be empty", horizon.StellarCoreDBURLFlagName)
-			}
-
-			coreSession, dbErr := db.Open("postgres", config.StellarCoreDatabaseURL)
-			if dbErr != nil {
-				return fmt.Errorf("cannot open Core DB: %v", dbErr)
-			}
-			ingestConfig.CoreSession = coreSession
+			HistoryArchiveURLs:       globalConfig.HistoryArchiveURLs,
+			CaptiveCoreBinaryPath:    globalConfig.CaptiveCoreBinaryPath,
+			CaptiveCoreConfigUseDB:   globalConfig.CaptiveCoreConfigUseDB,
+			RemoteCaptiveCoreURL:     globalConfig.RemoteCaptiveCoreURL,
+			CheckpointFrequency:      globalConfig.CheckpointFrequency,
+			CaptiveCoreToml:          globalConfig.CaptiveCoreToml,
+			CaptiveCoreStoragePath:   globalConfig.CaptiveCoreStoragePath,
+			RoundingSlippageFilter:   globalConfig.RoundingSlippageFilter,
+			EnableIngestionFiltering: globalConfig.EnableIngestionFiltering,
 		}
 
 		system, err := ingest.NewSystem(ingestConfig)
@@ -182,11 +190,11 @@ var ingestStressTestCmd = &cobra.Command{
 			co.SetValue()
 		}
 
-		if err := horizon.ApplyFlags(config, flags, horizon.ApplyOptions{RequireCaptiveCoreConfig: false, AlwaysIngest: true}); err != nil {
+		if err := horizon.ApplyFlags(globalConfig, globalFlags, horizon.ApplyOptions{RequireCaptiveCoreFullConfig: false, AlwaysIngest: true}); err != nil {
 			return err
 		}
 
-		horizonSession, err := db.Open("postgres", config.DatabaseURL)
+		horizonSession, err := db.Open("postgres", globalConfig.DatabaseURL)
 		if err != nil {
 			return fmt.Errorf("cannot open Horizon DB: %v", err)
 		}
@@ -200,27 +208,13 @@ var ingestStressTestCmd = &cobra.Command{
 		}
 
 		ingestConfig := ingest.Config{
-			NetworkPassphrase:      config.NetworkPassphrase,
+			NetworkPassphrase:      globalConfig.NetworkPassphrase,
 			HistorySession:         horizonSession,
-			HistoryArchiveURL:      config.HistoryArchiveURLs[0],
-			EnableCaptiveCore:      config.EnableCaptiveCoreIngestion,
-			RoundingSlippageFilter: config.RoundingSlippageFilter,
-		}
-
-		if config.EnableCaptiveCoreIngestion {
-			ingestConfig.CaptiveCoreBinaryPath = config.CaptiveCoreBinaryPath
-			ingestConfig.RemoteCaptiveCoreURL = config.RemoteCaptiveCoreURL
-			ingestConfig.CaptiveCoreConfigUseDB = config.CaptiveCoreConfigUseDB
-		} else {
-			if config.StellarCoreDatabaseURL == "" {
-				return fmt.Errorf("flag --%s cannot be empty", horizon.StellarCoreDBURLFlagName)
-			}
-
-			coreSession, dbErr := db.Open("postgres", config.StellarCoreDatabaseURL)
-			if dbErr != nil {
-				return fmt.Errorf("cannot open Core DB: %v", dbErr)
-			}
-			ingestConfig.CoreSession = coreSession
+			HistoryArchiveURLs:     globalConfig.HistoryArchiveURLs,
+			RoundingSlippageFilter: globalConfig.RoundingSlippageFilter,
+			CaptiveCoreBinaryPath:  globalConfig.CaptiveCoreBinaryPath,
+			RemoteCaptiveCoreURL:   globalConfig.RemoteCaptiveCoreURL,
+			CaptiveCoreConfigUseDB: globalConfig.CaptiveCoreConfigUseDB,
 		}
 
 		system, err := ingest.NewSystem(ingestConfig)
@@ -246,16 +240,16 @@ var ingestTriggerStateRebuildCmd = &cobra.Command{
 	Short: "updates a database to trigger state rebuild, state will be rebuilt by a running Horizon instance, DO NOT RUN production DB, some endpoints will be unavailable until state is rebuilt",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := context.Background()
-		if err := horizon.ApplyFlags(config, flags, horizon.ApplyOptions{RequireCaptiveCoreConfig: false, AlwaysIngest: true}); err != nil {
+		if err := horizon.ApplyFlags(globalConfig, globalFlags, horizon.ApplyOptions{RequireCaptiveCoreFullConfig: false, AlwaysIngest: true}); err != nil {
 			return err
 		}
 
-		horizonSession, err := db.Open("postgres", config.DatabaseURL)
+		horizonSession, err := db.Open("postgres", globalConfig.DatabaseURL)
 		if err != nil {
 			return fmt.Errorf("cannot open Horizon DB: %v", err)
 		}
 
-		historyQ := &history.Q{horizonSession}
+		historyQ := &history.Q{SessionInterface: horizonSession}
 		if err := historyQ.UpdateIngestVersion(ctx, 0); err != nil {
 			return fmt.Errorf("cannot trigger state rebuild: %v", err)
 		}
@@ -270,16 +264,16 @@ var ingestInitGenesisStateCmd = &cobra.Command{
 	Short: "ingests genesis state (ledger 1)",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := context.Background()
-		if err := horizon.ApplyFlags(config, flags, horizon.ApplyOptions{RequireCaptiveCoreConfig: false, AlwaysIngest: true}); err != nil {
+		if err := horizon.ApplyFlags(globalConfig, globalFlags, horizon.ApplyOptions{RequireCaptiveCoreFullConfig: false, AlwaysIngest: true}); err != nil {
 			return err
 		}
 
-		horizonSession, err := db.Open("postgres", config.DatabaseURL)
+		horizonSession, err := db.Open("postgres", globalConfig.DatabaseURL)
 		if err != nil {
 			return fmt.Errorf("cannot open Horizon DB: %v", err)
 		}
 
-		historyQ := &history.Q{horizonSession}
+		historyQ := &history.Q{SessionInterface: horizonSession}
 
 		lastIngestedLedger, err := historyQ.GetLastLedgerIngestNonBlocking(ctx)
 		if err != nil {
@@ -291,28 +285,14 @@ var ingestInitGenesisStateCmd = &cobra.Command{
 		}
 
 		ingestConfig := ingest.Config{
-			NetworkPassphrase:        config.NetworkPassphrase,
+			NetworkPassphrase:        globalConfig.NetworkPassphrase,
 			HistorySession:           horizonSession,
-			HistoryArchiveURL:        config.HistoryArchiveURLs[0],
-			EnableCaptiveCore:        config.EnableCaptiveCoreIngestion,
-			CheckpointFrequency:      config.CheckpointFrequency,
-			RoundingSlippageFilter:   config.RoundingSlippageFilter,
-			EnableIngestionFiltering: config.EnableIngestionFiltering,
-		}
-
-		if config.EnableCaptiveCoreIngestion {
-			ingestConfig.CaptiveCoreBinaryPath = config.CaptiveCoreBinaryPath
-			ingestConfig.CaptiveCoreConfigUseDB = config.CaptiveCoreConfigUseDB
-		} else {
-			if config.StellarCoreDatabaseURL == "" {
-				return fmt.Errorf("flag --%s cannot be empty", horizon.StellarCoreDBURLFlagName)
-			}
-
-			coreSession, dbErr := db.Open("postgres", config.StellarCoreDatabaseURL)
-			if dbErr != nil {
-				return fmt.Errorf("cannot open Core DB: %v", dbErr)
-			}
-			ingestConfig.CoreSession = coreSession
+			HistoryArchiveURLs:       globalConfig.HistoryArchiveURLs,
+			CheckpointFrequency:      globalConfig.CheckpointFrequency,
+			RoundingSlippageFilter:   globalConfig.RoundingSlippageFilter,
+			EnableIngestionFiltering: globalConfig.EnableIngestionFiltering,
+			CaptiveCoreBinaryPath:    globalConfig.CaptiveCoreBinaryPath,
+			CaptiveCoreConfigUseDB:   globalConfig.CaptiveCoreConfigUseDB,
 		}
 
 		system, err := ingest.NewSystem(ingestConfig)
@@ -326,6 +306,75 @@ var ingestInitGenesisStateCmd = &cobra.Command{
 		}
 
 		log.Info("Genesis ledger stat successfully ingested!")
+		return nil
+	},
+}
+
+var ingestBuildStateCmd = &cobra.Command{
+	Use:   "build-state",
+	Short: "builds state at a given checkpoint. warning! requires clean DB.",
+	Long:  "useful for debugging or starting Horizon at specific checkpoint.",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		for _, co := range ingestBuildStateCmdOpts {
+			if err := co.RequireE(); err != nil {
+				return err
+			}
+			co.SetValue()
+		}
+
+		if err := horizon.ApplyFlags(globalConfig, globalFlags, horizon.ApplyOptions{RequireCaptiveCoreFullConfig: false, AlwaysIngest: true}); err != nil {
+			return err
+		}
+
+		horizonSession, err := db.Open("postgres", globalConfig.DatabaseURL)
+		if err != nil {
+			return fmt.Errorf("cannot open Horizon DB: %v", err)
+		}
+
+		historyQ := &history.Q{SessionInterface: horizonSession}
+
+		lastIngestedLedger, err := historyQ.GetLastLedgerIngestNonBlocking(context.Background())
+		if err != nil {
+			return fmt.Errorf("cannot get last ledger value: %v", err)
+		}
+
+		if lastIngestedLedger != 0 {
+			return fmt.Errorf("cannot run on non-empty DB")
+		}
+
+		mngr := historyarchive.NewCheckpointManager(globalConfig.CheckpointFrequency)
+		if !mngr.IsCheckpoint(ingestBuildStateSequence) && ingestBuildStateSequence != 1 {
+			return fmt.Errorf("`--sequence` must be a checkpoint ledger")
+		}
+
+		ingestConfig := ingest.Config{
+			NetworkPassphrase:        globalConfig.NetworkPassphrase,
+			HistorySession:           horizonSession,
+			HistoryArchiveURLs:       globalConfig.HistoryArchiveURLs,
+			CaptiveCoreBinaryPath:    globalConfig.CaptiveCoreBinaryPath,
+			CaptiveCoreConfigUseDB:   globalConfig.CaptiveCoreConfigUseDB,
+			RemoteCaptiveCoreURL:     globalConfig.RemoteCaptiveCoreURL,
+			CheckpointFrequency:      globalConfig.CheckpointFrequency,
+			CaptiveCoreToml:          globalConfig.CaptiveCoreToml,
+			CaptiveCoreStoragePath:   globalConfig.CaptiveCoreStoragePath,
+			RoundingSlippageFilter:   globalConfig.RoundingSlippageFilter,
+			EnableIngestionFiltering: globalConfig.EnableIngestionFiltering,
+		}
+
+		system, err := ingest.NewSystem(ingestConfig)
+		if err != nil {
+			return err
+		}
+
+		err = system.BuildState(
+			ingestBuildStateSequence,
+			ingestBuildStateSkipChecks,
+		)
+		if err != nil {
+			return err
+		}
+
+		log.Info("State built successfully!")
 		return nil
 	},
 }
@@ -345,6 +394,13 @@ func init() {
 		}
 	}
 
+	for _, co := range ingestBuildStateCmdOpts {
+		err := co.Init(ingestBuildStateCmd)
+		if err != nil {
+			log.Fatal(err.Error())
+		}
+	}
+
 	viper.BindPFlags(ingestVerifyRangeCmd.PersistentFlags())
 
 	RootCmd.AddCommand(ingestCmd)
@@ -353,5 +409,6 @@ func init() {
 		ingestStressTestCmd,
 		ingestTriggerStateRebuildCmd,
 		ingestInitGenesisStateCmd,
+		ingestBuildStateCmd,
 	)
 }

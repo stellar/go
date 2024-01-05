@@ -15,7 +15,6 @@ import (
 	"github.com/stellar/go/services/horizon/internal/ledger"
 	hProblem "github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/render/sse"
-	"github.com/stellar/go/services/horizon/internal/txsub/sequence"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/support/render/problem"
@@ -49,7 +48,6 @@ func init() {
 	// register problems
 	problem.SetLogFilter(problem.LogUnknownErrors)
 	problem.RegisterError(sql.ErrNoRows, problem.NotFound)
-	problem.RegisterError(sequence.ErrNoMoreRoom, hProblem.ServerOverCapacity)
 	problem.RegisterError(db2.ErrInvalidCursor, problem.BadRequest)
 	problem.RegisterError(db2.ErrInvalidLimit, problem.BadRequest)
 	problem.RegisterError(db2.ErrInvalidOrder, problem.BadRequest)
@@ -68,7 +66,8 @@ func NewServer(serverConfig ServerConfig, routerConfig RouterConfig, ledgerState
 		RequestDurationSummary: prometheus.NewSummaryVec(
 			prometheus.SummaryOpts{
 				Namespace: "horizon", Subsystem: "http", Name: "requests_duration_seconds",
-				Help: "HTTP requests durations, sliding window = 10m",
+				Help:       "HTTP requests durations, sliding window = 10m",
+				Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
 			},
 			[]string{"status", "route", "streaming", "method"},
 		),

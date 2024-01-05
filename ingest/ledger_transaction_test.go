@@ -5,6 +5,7 @@ import (
 
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestChangeAccountChangedExceptSignersInvalidType(t *testing.T) {
@@ -12,13 +13,249 @@ func TestChangeAccountChangedExceptSignersInvalidType(t *testing.T) {
 		Type: xdr.LedgerEntryTypeOffer,
 	}
 
+	var err error
 	assert.Panics(t, func() {
-		change.AccountChangedExceptSigners()
+		_, err = change.AccountChangedExceptSigners()
 	})
+	// the following is here only to avoid false-positive warning by the linter.
+	require.NoError(t, err)
+}
+
+func TestGetContractEventsEmpty(t *testing.T) {
+	tx := LedgerTransaction{
+		FeeChanges: xdr.LedgerEntryChanges{},
+		UnsafeMeta: xdr.TransactionMeta{
+			V: 3,
+			V3: &xdr.TransactionMetaV3{
+				SorobanMeta: &xdr.SorobanTransactionMeta{
+					Events: []xdr.ContractEvent{},
+				},
+			},
+		},
+	}
+
+	events, err := tx.GetDiagnosticEvents()
+	assert.NoError(t, err)
+	assert.Empty(t, events)
+}
+
+func TestGetContractEventsSingle(t *testing.T) {
+	value := xdr.Uint32(1)
+	tx := LedgerTransaction{
+		FeeChanges: xdr.LedgerEntryChanges{},
+		UnsafeMeta: xdr.TransactionMeta{
+			V: 3,
+			V3: &xdr.TransactionMetaV3{
+				SorobanMeta: &xdr.SorobanTransactionMeta{
+					Events: []xdr.ContractEvent{
+						{
+							Type: xdr.ContractEventTypeSystem,
+							Body: xdr.ContractEventBody{
+								V: 0,
+								V0: &xdr.ContractEventV0{
+									Data: xdr.ScVal{Type: xdr.ScValTypeScvU32, U32: &value},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	events, err := tx.GetDiagnosticEvents()
+	assert.Len(t, events, 1)
+	assert.True(t, events[0].InSuccessfulContractCall)
+	assert.Equal(t, *events[0].Event.Body.V0.Data.U32, value)
+
+	tx.UnsafeMeta.V = 0
+	_, err = tx.GetDiagnosticEvents()
+	assert.EqualError(t, err, "unsupported TransactionMeta version: 0")
+
+	tx.UnsafeMeta.V = 4
+	_, err = tx.GetDiagnosticEvents()
+	assert.EqualError(t, err, "unsupported TransactionMeta version: 4")
+
+	tx.UnsafeMeta.V = 1
+	events, err = tx.GetDiagnosticEvents()
+	assert.NoError(t, err)
+	assert.Empty(t, events)
+
+	tx.UnsafeMeta.V = 2
+	events, err = tx.GetDiagnosticEvents()
+	assert.NoError(t, err)
+	assert.Empty(t, events)
+}
+
+func TestGetContractEventsMultiple(t *testing.T) {
+	values := make([]xdr.Uint32, 2)
+	for i := range values {
+		values[i] = xdr.Uint32(i)
+	}
+	tx := LedgerTransaction{
+		FeeChanges: xdr.LedgerEntryChanges{},
+		UnsafeMeta: xdr.TransactionMeta{
+			V: 3,
+			V3: &xdr.TransactionMetaV3{
+				SorobanMeta: &xdr.SorobanTransactionMeta{
+					Events: []xdr.ContractEvent{
+						{
+							Type: xdr.ContractEventTypeSystem,
+							Body: xdr.ContractEventBody{
+								V: 0,
+								V0: &xdr.ContractEventV0{
+									Data: xdr.ScVal{Type: xdr.ScValTypeScvU32, U32: &values[0]},
+								},
+							},
+						},
+						{
+							Type: xdr.ContractEventTypeSystem,
+							Body: xdr.ContractEventBody{
+								V: 0,
+								V0: &xdr.ContractEventV0{
+									Data: xdr.ScVal{Type: xdr.ScValTypeScvU32, U32: &values[1]},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	events, err := tx.GetDiagnosticEvents()
+	assert.NoError(t, err)
+	assert.Len(t, events, 2)
+	assert.True(t, events[0].InSuccessfulContractCall)
+	assert.Equal(t, *events[0].Event.Body.V0.Data.U32, values[0])
+	assert.True(t, events[1].InSuccessfulContractCall)
+	assert.Equal(t, *events[1].Event.Body.V0.Data.U32, values[1])
+}
+
+func TestGetDiagnosticEventsEmpty(t *testing.T) {
+	tx := LedgerTransaction{
+		FeeChanges: xdr.LedgerEntryChanges{},
+		UnsafeMeta: xdr.TransactionMeta{
+			V: 3,
+			V3: &xdr.TransactionMetaV3{
+				SorobanMeta: &xdr.SorobanTransactionMeta{
+					DiagnosticEvents: []xdr.DiagnosticEvent{},
+				},
+			},
+		},
+	}
+
+	events, err := tx.GetDiagnosticEvents()
+	assert.NoError(t, err)
+	assert.Empty(t, events)
+}
+
+func TestGetDiagnosticEventsSingle(t *testing.T) {
+	value := xdr.Uint32(1)
+	tx := LedgerTransaction{
+		FeeChanges: xdr.LedgerEntryChanges{},
+		UnsafeMeta: xdr.TransactionMeta{
+			V: 3,
+			V3: &xdr.TransactionMetaV3{
+				SorobanMeta: &xdr.SorobanTransactionMeta{
+					DiagnosticEvents: []xdr.DiagnosticEvent{
+						{
+							InSuccessfulContractCall: false,
+							Event: xdr.ContractEvent{
+								Type: xdr.ContractEventTypeSystem,
+								Body: xdr.ContractEventBody{
+									V: 0,
+									V0: &xdr.ContractEventV0{
+										Data: xdr.ScVal{Type: xdr.ScValTypeScvU32, U32: &value},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	events, err := tx.GetDiagnosticEvents()
+	assert.NoError(t, err)
+	assert.Len(t, events, 1)
+	assert.False(t, events[0].InSuccessfulContractCall)
+	assert.Equal(t, *events[0].Event.Body.V0.Data.U32, value)
+
+	tx.UnsafeMeta.V = 0
+	_, err = tx.GetDiagnosticEvents()
+	assert.EqualError(t, err, "unsupported TransactionMeta version: 0")
+
+	tx.UnsafeMeta.V = 4
+	_, err = tx.GetDiagnosticEvents()
+	assert.EqualError(t, err, "unsupported TransactionMeta version: 4")
+
+	tx.UnsafeMeta.V = 1
+	events, err = tx.GetDiagnosticEvents()
+	assert.NoError(t, err)
+	assert.Empty(t, events)
+
+	tx.UnsafeMeta.V = 2
+	events, err = tx.GetDiagnosticEvents()
+	assert.NoError(t, err)
+	assert.Empty(t, events)
+}
+
+func TestGetDiagnosticEventsMultiple(t *testing.T) {
+	values := make([]xdr.Uint32, 2)
+	for i := range values {
+		values[i] = xdr.Uint32(i)
+	}
+	tx := LedgerTransaction{
+		FeeChanges: xdr.LedgerEntryChanges{},
+		UnsafeMeta: xdr.TransactionMeta{
+			V: 3,
+			V3: &xdr.TransactionMetaV3{
+				SorobanMeta: &xdr.SorobanTransactionMeta{
+					DiagnosticEvents: []xdr.DiagnosticEvent{
+						{
+							InSuccessfulContractCall: true,
+
+							Event: xdr.ContractEvent{
+								Type: xdr.ContractEventTypeSystem,
+								Body: xdr.ContractEventBody{
+									V: 0,
+									V0: &xdr.ContractEventV0{
+										Data: xdr.ScVal{Type: xdr.ScValTypeScvU32, U32: &values[0]},
+									},
+								},
+							},
+						},
+						{
+							InSuccessfulContractCall: true,
+							Event: xdr.ContractEvent{
+								Type: xdr.ContractEventTypeSystem,
+								Body: xdr.ContractEventBody{
+									V: 0,
+									V0: &xdr.ContractEventV0{
+										Data: xdr.ScVal{Type: xdr.ScValTypeScvU32, U32: &values[1]},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	events, err := tx.GetDiagnosticEvents()
+	assert.NoError(t, err)
+	assert.Len(t, events, 2)
+	assert.True(t, events[0].InSuccessfulContractCall)
+	assert.Equal(t, *events[0].Event.Body.V0.Data.U32, values[0])
+	assert.True(t, events[1].InSuccessfulContractCall)
+	assert.Equal(t, *events[1].Event.Body.V0.Data.U32, values[1])
 }
 
 func TestFeeMetaAndOperationsChangesSeparate(t *testing.T) {
 	tx := LedgerTransaction{
+		LedgerVersion: 12,
 		FeeChanges: xdr.LedgerEntryChanges{
 			xdr.LedgerEntryChange{
 				Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
@@ -108,6 +345,21 @@ func TestFeeMetaAndOperationsChangesSeparate(t *testing.T) {
 	operationChanges, err = tx.GetOperationChanges(0)
 	assert.NoError(t, err)
 	assert.Len(t, operationChanges, 0)
+
+	// Starting from protocol 13, we no longer need to ignore txInternalError
+	tx.LedgerVersion = 13
+
+	metaChanges, err = tx.GetChanges()
+	assert.NoError(t, err)
+	assert.Len(t, metaChanges, 1)
+	assert.Equal(t, metaChanges[0].Pre.Data.MustAccount().Balance, xdr.Int64(300))
+	assert.Equal(t, metaChanges[0].Post.Data.MustAccount().Balance, xdr.Int64(400))
+
+	operationChanges, err = tx.GetOperationChanges(0)
+	assert.NoError(t, err)
+	assert.Len(t, operationChanges, 1)
+	assert.Equal(t, operationChanges[0].Pre.Data.MustAccount().Balance, xdr.Int64(300))
+	assert.Equal(t, operationChanges[0].Post.Data.MustAccount().Balance, xdr.Int64(400))
 }
 
 func TestFailedTransactionOperationChangesMeta(t *testing.T) {

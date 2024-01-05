@@ -23,10 +23,10 @@ type ConfigOptions []*ConfigOption
 // Init calls Init on each ConfigOption passing on the cobra.Command.
 func (cos ConfigOptions) Init(cmd *cobra.Command) error {
 	for _, co := range cos {
-		err := co.Init(cmd)
-		if err != nil {
+		if err := co.Init(cmd); err != nil {
 			return err
 		}
+		co.SetDeprecated(cmd)
 	}
 	return nil
 }
@@ -58,6 +58,17 @@ func (cos ConfigOptions) SetValues() error {
 	return nil
 }
 
+// GetCommandLineFlagsPassedByUser returns a list of command-line flags that were passed by the user when running Horizon.
+func (cos ConfigOptions) GetCommandLineFlagsPassedByUser() []string {
+	var flagsPassedByUser []string
+	for _, co := range cos {
+		if co.flag.Changed {
+			flagsPassedByUser = append(flagsPassedByUser, co.flag.Name)
+		}
+	}
+	return flagsPassedByUser
+}
+
 // ConfigOption is a complete description of the configuration of a command line option
 type ConfigOption struct {
 	Name           string                    // e.g. "db-url"
@@ -69,6 +80,8 @@ type ConfigOption struct {
 	CustomSetValue func(*ConfigOption) error // Optional function for custom validation/transformation
 	ConfigKey      interface{}               // Pointer to the final key in the linked Config struct
 	flag           *pflag.Flag               // The persistent flag that the config option is attached to
+	Hidden         bool                      // Indicates whether to hide the flag from --help output
+	UsedInCommands []string                  // the list of sub-comands this flag is relevant in
 }
 
 // Init handles initialisation steps, including configuring and binding the env variable name.
@@ -80,6 +93,19 @@ func (co *ConfigOption) Init(cmd *cobra.Command) error {
 	}
 	// Initialise and bind the persistent flags
 	return co.setFlag(cmd)
+}
+
+// SetDeprecated Hides the deprecated flag from --help output
+func (co *ConfigOption) SetDeprecated(cmd *cobra.Command) {
+	if co.Hidden {
+		co.ToggleHidden(true)
+	}
+}
+
+// ToggleHidden sets the hidden attibute on the persistent flag associated to
+// this config option
+func (co *ConfigOption) ToggleHidden(hidden bool) {
+	co.flag.Hidden = hidden
 }
 
 // Bind binds the config option to viper.
@@ -178,6 +204,12 @@ func (co *ConfigOption) setFlag(cmd *cobra.Command) error {
 // SetDuration converts a command line int to a duration, and stores it in the final config.
 func SetDuration(co *ConfigOption) error {
 	*(co.ConfigKey.(*time.Duration)) = time.Duration(viper.GetInt(co.Name)) * time.Second
+	return nil
+}
+
+// SetDurationMinutes converts a command line minutes value to a duration, and stores it in the final config.
+func SetDurationMinutes(co *ConfigOption) error {
+	*(co.ConfigKey.(*time.Duration)) = time.Duration(viper.GetInt(co.Name)) * time.Minute
 	return nil
 }
 

@@ -50,7 +50,7 @@ func (s *BuildStateTestSuite) SetupTest() {
 	}
 	s.system.initMetrics()
 
-	s.historyQ.On("Begin").Return(nil).Once()
+	s.historyQ.On("Begin", s.ctx).Return(nil).Once()
 	s.historyQ.On("Rollback").Return(nil).Once()
 
 	s.ledgerBackend.On("IsPrepared", s.ctx, ledgerbackend.UnboundedRange(63)).Return(false, nil).Once()
@@ -136,7 +136,7 @@ func (s *BuildStateTestSuite) TestRangeNotPreparedSuccessPrepareGetLedgerFail() 
 func (s *BuildStateTestSuite) TestBeginReturnsError() {
 	// Recreate mock in this single test to remove assertions.
 	*s.historyQ = mockDBQ{}
-	s.historyQ.On("Begin").Return(errors.New("my error")).Once()
+	s.historyQ.On("Begin", s.ctx).Return(errors.New("my error")).Once()
 
 	next, err := buildState{checkpointLedger: s.checkpointLedger}.run(s.system)
 	s.Assert().Error(err)
@@ -232,7 +232,7 @@ func (s *BuildStateTestSuite) TestTruncateIngestStateTablesReturnsError() {
 func (s *BuildStateTestSuite) TestRunHistoryArchiveIngestionReturnsError() {
 	s.mockCommonHistoryQ()
 	s.runner.
-		On("RunHistoryArchiveIngestion", s.checkpointLedger, MaxSupportedProtocolVersion, xdr.Hash{1, 2, 3}).
+		On("RunHistoryArchiveIngestion", s.checkpointLedger, false, MaxSupportedProtocolVersion, xdr.Hash{1, 2, 3}).
 		Return(ingest.StatsChangeProcessorResults{}, errors.New("my error")).
 		Once()
 	next, err := buildState{checkpointLedger: s.checkpointLedger}.run(s.system)
@@ -272,7 +272,7 @@ func (s *BuildStateTestSuite) TestRunHistoryArchiveIngestionGenesisReturnsError(
 func (s *BuildStateTestSuite) TestUpdateLastLedgerIngestAfterIngestReturnsError() {
 	s.mockCommonHistoryQ()
 	s.runner.
-		On("RunHistoryArchiveIngestion", s.checkpointLedger, MaxSupportedProtocolVersion, xdr.Hash{1, 2, 3}).
+		On("RunHistoryArchiveIngestion", s.checkpointLedger, false, MaxSupportedProtocolVersion, xdr.Hash{1, 2, 3}).
 		Return(ingest.StatsChangeProcessorResults{}, nil).
 		Once()
 	s.historyQ.On("UpdateIngestVersion", s.ctx, CurrentVersion).
@@ -291,7 +291,7 @@ func (s *BuildStateTestSuite) TestUpdateLastLedgerIngestAfterIngestReturnsError(
 func (s *BuildStateTestSuite) TestUpdateIngestVersionIngestReturnsError() {
 	s.mockCommonHistoryQ()
 	s.runner.
-		On("RunHistoryArchiveIngestion", s.checkpointLedger, MaxSupportedProtocolVersion, xdr.Hash{1, 2, 3}).
+		On("RunHistoryArchiveIngestion", s.checkpointLedger, false, MaxSupportedProtocolVersion, xdr.Hash{1, 2, 3}).
 		Return(ingest.StatsChangeProcessorResults{}, nil).
 		Once()
 	s.historyQ.On("UpdateIngestVersion", s.ctx, CurrentVersion).
@@ -307,7 +307,7 @@ func (s *BuildStateTestSuite) TestUpdateIngestVersionIngestReturnsError() {
 func (s *BuildStateTestSuite) TestUpdateCommitReturnsError() {
 	s.mockCommonHistoryQ()
 	s.runner.
-		On("RunHistoryArchiveIngestion", s.checkpointLedger, MaxSupportedProtocolVersion, xdr.Hash{1, 2, 3}).
+		On("RunHistoryArchiveIngestion", s.checkpointLedger, false, MaxSupportedProtocolVersion, xdr.Hash{1, 2, 3}).
 		Return(ingest.StatsChangeProcessorResults{}, nil).
 		Once()
 	s.historyQ.On("UpdateLastLedgerIngest", s.ctx, s.checkpointLedger).
@@ -329,7 +329,7 @@ func (s *BuildStateTestSuite) TestUpdateCommitReturnsError() {
 func (s *BuildStateTestSuite) TestBuildStateSucceeds() {
 	s.mockCommonHistoryQ()
 	s.runner.
-		On("RunHistoryArchiveIngestion", s.checkpointLedger, MaxSupportedProtocolVersion, xdr.Hash{1, 2, 3}).
+		On("RunHistoryArchiveIngestion", s.checkpointLedger, false, MaxSupportedProtocolVersion, xdr.Hash{1, 2, 3}).
 		Return(ingest.StatsChangeProcessorResults{}, nil).
 		Once()
 	s.historyQ.On("UpdateLastLedgerIngest", s.ctx, s.checkpointLedger).
@@ -357,7 +357,7 @@ func (s *BuildStateTestSuite) TestBuildStateSucceeds() {
 func (s *BuildStateTestSuite) TestUpdateCommitReturnsErrorStop() {
 	s.mockCommonHistoryQ()
 	s.runner.
-		On("RunHistoryArchiveIngestion", s.checkpointLedger, MaxSupportedProtocolVersion, xdr.Hash{1, 2, 3}).
+		On("RunHistoryArchiveIngestion", s.checkpointLedger, false, MaxSupportedProtocolVersion, xdr.Hash{1, 2, 3}).
 		Return(ingest.StatsChangeProcessorResults{}, nil).
 		Once()
 	s.historyQ.On("UpdateLastLedgerIngest", s.ctx, s.checkpointLedger).
@@ -379,7 +379,7 @@ func (s *BuildStateTestSuite) TestUpdateCommitReturnsErrorStop() {
 func (s *BuildStateTestSuite) TestBuildStateSucceedStop() {
 	s.mockCommonHistoryQ()
 	s.runner.
-		On("RunHistoryArchiveIngestion", s.checkpointLedger, MaxSupportedProtocolVersion, xdr.Hash{1, 2, 3}).
+		On("RunHistoryArchiveIngestion", s.checkpointLedger, false, MaxSupportedProtocolVersion, xdr.Hash{1, 2, 3}).
 		Return(ingest.StatsChangeProcessorResults{}, nil).
 		Once()
 	s.historyQ.On("UpdateLastLedgerIngest", s.ctx, s.checkpointLedger).

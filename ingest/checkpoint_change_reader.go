@@ -325,6 +325,8 @@ func (r *CheckpointChangeReader) streamBucketContents(hash historyarchive.Hash, 
 	var batch []xdr.BucketEntry
 	lastBatch := false
 
+	preloadKeys := make([]string, 0, preloadedEntries)
+
 LoopBucketEntry:
 	for {
 		// Preload entries for faster retrieve from temp store.
@@ -332,8 +334,10 @@ LoopBucketEntry:
 			if lastBatch {
 				return true
 			}
+			batch = make([]xdr.BucketEntry, 0, preloadedEntries)
 
-			preloadKeys := []string{}
+			// reset the content of the preloadKeys
+			preloadKeys = preloadKeys[:0]
 
 			for i := 0; i < preloadedEntries; i++ {
 				var entry xdr.BucketEntry
@@ -357,11 +361,18 @@ LoopBucketEntry:
 
 				// Generate a key
 				var key xdr.LedgerKey
+				var err error
 
 				switch entry.Type {
 				case xdr.BucketEntryTypeLiveentry, xdr.BucketEntryTypeInitentry:
 					liveEntry := entry.MustLiveEntry()
-					key = liveEntry.LedgerKey()
+					key, err = liveEntry.LedgerKey()
+					if err != nil {
+						r.readChan <- r.error(
+							errors.Wrapf(err, "Error generating ledger key for XDR record %d of hash '%s'", n, hash.String()),
+						)
+						return false
+					}
 				case xdr.BucketEntryTypeDeadentry:
 					key = entry.MustDeadEntry()
 				default:
@@ -396,6 +407,7 @@ LoopBucketEntry:
 		n++
 
 		var key xdr.LedgerKey
+		var err error
 
 		switch entry.Type {
 		case xdr.BucketEntryTypeMetaentry:
@@ -414,7 +426,13 @@ LoopBucketEntry:
 			continue LoopBucketEntry
 		case xdr.BucketEntryTypeLiveentry, xdr.BucketEntryTypeInitentry:
 			liveEntry := entry.MustLiveEntry()
-			key = liveEntry.LedgerKey()
+			key, err = liveEntry.LedgerKey()
+			if err != nil {
+				r.readChan <- r.error(
+					errors.Wrapf(err, "Error generating ledger key for XDR record %d of hash '%s'", n, hash.String()),
+				)
+				return false
+			}
 		case xdr.BucketEntryTypeDeadentry:
 			key = entry.MustDeadEntry()
 		default:
@@ -523,8 +541,12 @@ func (r *CheckpointChangeReader) Read() (Change, error) {
 	if result.e != nil {
 		return Change{}, errors.Wrap(result.e, "Error while reading from buckets")
 	}
+	entryType, err := result.entryChange.EntryType()
+	if err != nil {
+		return Change{}, errors.Wrap(err, "Error getting entry type")
+	}
 	return Change{
-		Type: result.entryChange.EntryType(),
+		Type: entryType,
 		Post: result.entryChange.State,
 	}, nil
 }

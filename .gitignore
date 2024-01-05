@@ -2,8 +2,10 @@
 /vendor
 /dist
 /local-archive
-/.vscode/*.sql
-/.vscode/settings.json
+/services/horizon/captive-core
+/services/horizon/horizon
+/services/horizon/stellar-horizon
+.vscode
 .idea
 debug
 .bundle
@@ -13,3 +15,8 @@ debug
 *.key
 *.prof
 *.test
+*.index
+*.xdr
+*.db
+*.conf
+*.lock

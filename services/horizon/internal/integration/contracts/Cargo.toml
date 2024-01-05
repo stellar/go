@@ -1,0 +1,28 @@
+[workspace]
+resolver = "2"
+
+members = [
+    "sac_test",
+    "increment",
+    "add_u64",
+    "store",
+]
+
+[profile.release-with-logs]
+inherits = "release"
+debug-assertions = true
+
+[profile.release]
+opt-level = "z"
+overflow-checks = true
+debug = 0
+strip = "symbols"
+debug-assertions = false
+panic = "abort"
+codegen-units = 1
+lto = true
+
+[workspace.dependencies.soroban-sdk]
+version = "20.0.0-rc2"
+git = "https://github.com/stellar/rs-soroban-sdk"
+rev = "e35bace9de5addae7c32f405cdc11bb459cb1d61"

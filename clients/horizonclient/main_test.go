@@ -58,7 +58,7 @@ func TestCheckMemoRequired(t *testing.T) {
 		Asset:       txnbuild.NativeAsset{},
 	}
 
-	asset := txnbuild.CreditAsset{"ABCD", kp.Address()}
+	asset := txnbuild.CreditAsset{Code: "ABCD", Issuer: kp.Address()}
 	pathPaymentStrictSend := txnbuild.PathPaymentStrictSend{
 		SendAsset:   asset,
 		SendAmount:  "10",
@@ -1455,7 +1455,9 @@ func TestFetchTimebounds(t *testing.T) {
 	// When no saved server time, return local time
 	st, err := client.FetchTimebounds(100)
 	if assert.NoError(t, err) {
+		serverTimeMapMutex.Lock()
 		assert.IsType(t, ServerTimeMap["localhost"], ServerTimeRecord{})
+		serverTimeMapMutex.Unlock()
 		assert.Equal(t, st.MinTime, int64(0))
 	}
 
@@ -1472,7 +1474,9 @@ func TestFetchTimebounds(t *testing.T) {
 	// get saved server time
 	st, err = client.FetchTimebounds(100)
 	if assert.NoError(t, err) {
+		serverTimeMapMutex.Lock()
 		assert.IsType(t, ServerTimeMap["localhost"], ServerTimeRecord{})
+		serverTimeMapMutex.Unlock()
 		assert.Equal(t, st.MinTime, int64(0))
 		// serverTime + 100seconds
 		assert.Equal(t, st.MaxTime, int64(1560947196))
@@ -1480,7 +1484,9 @@ func TestFetchTimebounds(t *testing.T) {
 
 	// mock server time
 	newRecord := ServerTimeRecord{ServerTime: 100, LocalTimeRecorded: 1560947096}
+	serverTimeMapMutex.Lock()
 	ServerTimeMap["localhost"] = newRecord
+	serverTimeMapMutex.Unlock()
 	st, err = client.FetchTimebounds(100)
 	assert.NoError(t, err)
 	assert.IsType(t, st, txnbuild.TimeBounds{})

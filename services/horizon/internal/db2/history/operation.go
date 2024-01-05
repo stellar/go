@@ -8,6 +8,7 @@ import (
 	"text/template"
 
 	sq "github.com/Masterminds/squirrel"
+
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/toid"
@@ -49,7 +50,7 @@ func preprocessDetails(details string) ([]byte, error) {
 	for k, v := range dest {
 		if strings.HasSuffix(k, "_muxed_id") {
 			if vNumber, ok := v.(json.Number); ok {
-				// transform it into a string so that _muxed_id unmarshalling works with `,string` tags
+				// transform it into a string so that _muxed_id unmarshaling works with `,string` tags
 				// see https://github.com/stellar/go/pull/3716#issuecomment-867057436
 				dest[k] = vNumber.String()
 			}
@@ -235,16 +236,20 @@ func (q *OperationsQ) ForTransaction(ctx context.Context, hash string) *Operatio
 }
 
 // OnlyPayments filters the query being built to only include operations that
-// are in the "payment" class of operations:  CreateAccountOps, Payments, and
-// PathPayments.
+// are in the "payment" class of classic operations:  CreateAccountOps, Payments, and
+// PathPayments. OR also includes contract asset balance changes as expressed in 'is_payment' flag
+// on the history operations table.
 func (q *OperationsQ) OnlyPayments() *OperationsQ {
-	q.sql = q.sql.Where(sq.Eq{"hop.type": []xdr.OperationType{
-		xdr.OperationTypeCreateAccount,
-		xdr.OperationTypePayment,
-		xdr.OperationTypePathPaymentStrictReceive,
-		xdr.OperationTypePathPaymentStrictSend,
-		xdr.OperationTypeAccountMerge,
-	}})
+	q.sql = q.sql.Where(sq.Or{
+		sq.Eq{"hop.type": []xdr.OperationType{
+			xdr.OperationTypeCreateAccount,
+			xdr.OperationTypePayment,
+			xdr.OperationTypePathPaymentStrictReceive,
+			xdr.OperationTypePathPaymentStrictSend,
+			xdr.OperationTypeAccountMerge,
+		}},
+		sq.Eq{"hop.is_payment": true}})
+
 	return q
 }
 
@@ -379,7 +384,7 @@ func validateTransactionForOperation(transaction Transaction, operation Operatio
 
 // QOperations defines history_operation related queries.
 type QOperations interface {
-	NewOperationBatchInsertBuilder(maxBatchSize int) OperationBatchInsertBuilder
+	NewOperationBatchInsertBuilder() OperationBatchInsertBuilder
 }
 
 var selectOperation = sq.Select(
@@ -390,6 +395,7 @@ var selectOperation = sq.Select(
 		"hop.details, " +
 		"hop.source_account, " +
 		"hop.source_account_muxed, " +
+		"COALESCE(hop.is_payment, false) as is_payment, " +
 		"ht.transaction_hash, " +
 		"ht.tx_result, " +
 		"COALESCE(ht.successful, true) as transaction_successful").

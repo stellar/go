@@ -25,9 +25,11 @@ type ledgerChangeReaderState int
 const (
 	// feeChangesState is active when LedgerChangeReader is reading fee changes.
 	feeChangesState ledgerChangeReaderState = iota
-	// feeChangesState is active when LedgerChangeReader is reading transaction meta changes.
+	// metaChangesState is active when LedgerChangeReader is reading transaction meta changes.
 	metaChangesState
-	// feeChangesState is active when LedgerChangeReader is reading upgrade changes.
+	// evictionChangesState is active when LedgerChangeReader is reading ledger entry evictions.
+	evictionChangesState
+	// upgradeChanges is active when LedgerChangeReader is reading upgrade changes.
 	upgradeChangesState
 )
 
@@ -122,11 +124,30 @@ func (r *LedgerChangeReader) Read() (Change, error) {
 			r.pending = append(r.pending, metaChanges...)
 		}
 		return r.Read()
+	case evictionChangesState:
+		entries, err := r.ledgerCloseMeta.EvictedPersistentLedgerEntries()
+		if err != nil {
+			return Change{}, err
+		}
+		changes := make([]Change, len(entries))
+		for i := range entries {
+			entry := entries[i]
+			// when a ledger entry is evicted it is removed from the ledger
+			changes[i] = Change{
+				Type: entry.Data.Type,
+				Pre:  &entry,
+				Post: nil,
+			}
+		}
+		sortChanges(changes)
+		r.pending = append(r.pending, changes...)
+		r.state++
+		return r.Read()
 	case upgradeChangesState:
 		// Get upgrade changes
-		if r.upgradeIndex < len(r.LedgerTransactionReader.ledgerCloseMeta.V0.UpgradesProcessing) {
+		if r.upgradeIndex < len(r.LedgerTransactionReader.ledgerCloseMeta.UpgradesProcessing()) {
 			changes := GetChangesFromLedgerEntryChanges(
-				r.LedgerTransactionReader.ledgerCloseMeta.V0.UpgradesProcessing[r.upgradeIndex].Changes,
+				r.LedgerTransactionReader.ledgerCloseMeta.UpgradesProcessing()[r.upgradeIndex].Changes,
 			)
 			r.pending = append(r.pending, changes...)
 			r.upgradeIndex++

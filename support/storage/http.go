@@ -26,15 +26,6 @@ func NewHttpStorage(ctx context.Context, base *url.URL, userAgent string) Storag
 	}
 }
 
-func checkResp(r *http.Response) error {
-	if r.StatusCode >= 200 && r.StatusCode < 400 {
-		return nil
-	} else {
-		return fmt.Errorf("bad HTTP response '%s' for %s '%s'",
-			r.Status, r.Request.Method, r.Request.URL.String())
-	}
-}
-
 func (b *HttpStorage) GetFile(pth string) (io.ReadCloser, error) {
 	derived := b.base
 	derived.Path = path.Join(derived.Path, pth)
@@ -70,7 +61,7 @@ func (b *HttpStorage) Head(pth string) (*http.Response, error) {
 	return resp, nil
 }
 
-func (b *HttpStorage) Exists(pth string) (bool, error) {
+func (b *HttpArchiveBackend) Exists(pth string) (bool, error) {
 	resp, err := b.Head(pth)
 	if err != nil {
 		return false, err
@@ -80,11 +71,11 @@ func (b *HttpStorage) Exists(pth string) (bool, error) {
 	} else if resp.StatusCode == http.StatusNotFound {
 		return false, nil
 	} else {
-		return false, errors.Errorf("Unkown status code=%d", resp.StatusCode)
+		return false, errors.Errorf("Unknown status code=%d", resp.StatusCode)
 	}
 }
 
-func (b *HttpStorage) Size(pth string) (int64, error) {
+func (b *HttpArchiveBackend) Size(pth string) (int64, error) {
 	resp, err := b.Head(pth)
 	if err != nil {
 		return 0, err
@@ -94,16 +85,16 @@ func (b *HttpStorage) Size(pth string) (int64, error) {
 	} else if resp.StatusCode == http.StatusNotFound {
 		return 0, nil
 	} else {
-		return 0, errors.Errorf("Unkown status code=%d", resp.StatusCode)
+		return 0, errors.Errorf("Unknown status code=%d", resp.StatusCode)
 	}
 }
 
-func (b *HttpStorage) PutFile(pth string, in io.ReadCloser) error {
+func (b *HttpArchiveBackend) PutFile(pth string, in io.ReadCloser) error {
 	in.Close()
 	return errors.New("PutFile not available over HTTP")
 }
 
-func (b *HttpStorage) ListFiles(pth string) (chan string, chan error) {
+func (b *HttpArchiveBackend) ListFiles(pth string) (chan string, chan error) {
 	ch := make(chan string)
 	er := make(chan error)
 	close(ch)
@@ -112,8 +103,12 @@ func (b *HttpStorage) ListFiles(pth string) (chan string, chan error) {
 	return ch, er
 }
 
-func (b *HttpStorage) CanListFiles() bool {
+func (b *HttpArchiveBackend) CanListFiles() bool {
 	return false
+}
+
+func (b *HttpStorage) Close() error {
+	return nil
 }
 
 func (b *HttpStorage) makeSendRequest(method, url string) (*http.Response, error) {
@@ -131,6 +126,19 @@ func (b *HttpStorage) makeSendRequest(method, url string) (*http.Response, error
 	return resp, err
 }
 
-func (b *HttpStorage) Close() error {
-	return nil
+func makeHttpBackend(base *url.URL, opts ConnectOptions) ArchiveBackend {
+	return &HttpArchiveBackend{
+		ctx:       opts.Context,
+		userAgent: opts.UserAgent,
+		base:      *base,
+	}
+}
+
+func checkResp(r *http.Response) error {
+	if r.StatusCode >= 200 && r.StatusCode < 400 {
+		return nil
+	} else {
+		return fmt.Errorf("bad HTTP response '%s' for %s '%s'",
+			r.Status, r.Request.Method, r.Request.URL.String())
+	}
 }

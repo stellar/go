@@ -232,8 +232,8 @@ func (q *TransactionsQ) Select(ctx context.Context, dest interface{}) error {
 
 // QTransactions defines transaction related queries.
 type QTransactions interface {
-	NewTransactionBatchInsertBuilder(maxBatchSize int) TransactionBatchInsertBuilder
-	NewTransactionFilteredTmpBatchInsertBuilder(maxBatchSize int) TransactionBatchInsertBuilder
+	NewTransactionBatchInsertBuilder() TransactionBatchInsertBuilder
+	NewTransactionFilteredTmpBatchInsertBuilder() TransactionBatchInsertBuilder
 }
 
 func selectTransaction(table string) sq.SelectBuilder {

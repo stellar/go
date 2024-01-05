@@ -1,16 +1,21 @@
 package ingest
 
 import (
+	"crypto/sha256"
+	"database/sql"
 	"io"
 	"math/rand"
 	"regexp"
 	"testing"
+	"time"
+
+	"github.com/stretchr/testify/mock"
 
 	"github.com/stellar/go/gxdr"
-	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/randxdr"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/services/horizon/internal/ingest/processors"
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/xdr"
@@ -108,24 +113,23 @@ func genLiquidityPool(tt *test.T, gen randxdr.Generator) xdr.LedgerEntryChange {
 	return change
 }
 
-func genTrustLine(tt *test.T, gen randxdr.Generator) xdr.LedgerEntryChange {
+func genTrustLine(tt *test.T, gen randxdr.Generator, extra ...randxdr.Preset) xdr.LedgerEntryChange {
 	change := xdr.LedgerEntryChange{}
 	shape := &gxdr.LedgerEntryChange{}
-	gen.Next(
-		shape,
-		[]randxdr.Preset{
-			{randxdr.FieldEquals("type"), randxdr.SetU32(gxdr.LEDGER_ENTRY_CREATED.GetU32())},
-			{randxdr.FieldEquals("created.lastModifiedLedgerSeq"), randxdr.SetPositiveNum32},
-			{randxdr.FieldEquals("created.data.type"), randxdr.SetU32(gxdr.TRUSTLINE.GetU32())},
-			{randxdr.FieldEquals("created.data.trustLine.flags"), randxdr.SetPositiveNum32},
-			{randxdr.FieldEquals("created.data.trustLine.asset.alphaNum4.assetCode"), randxdr.SetAssetCode},
-			{randxdr.FieldEquals("created.data.trustLine.asset.alphaNum12.assetCode"), randxdr.SetAssetCode},
-			{randxdr.FieldEquals("created.data.trustLine.balance"), randxdr.SetPositiveNum64},
-			{randxdr.FieldEquals("created.data.trustLine.limit"), randxdr.SetPositiveNum64},
-			{randxdr.FieldEquals("created.data.trustLine.ext.v1.liabilities.selling"), randxdr.SetPositiveNum64},
-			{randxdr.FieldEquals("created.data.trustLine.ext.v1.liabilities.buying"), randxdr.SetPositiveNum64},
-		},
-	)
+	presets := []randxdr.Preset{
+		{randxdr.FieldEquals("type"), randxdr.SetU32(gxdr.LEDGER_ENTRY_CREATED.GetU32())},
+		{randxdr.FieldEquals("created.lastModifiedLedgerSeq"), randxdr.SetPositiveNum32},
+		{randxdr.FieldEquals("created.data.type"), randxdr.SetU32(gxdr.TRUSTLINE.GetU32())},
+		{randxdr.FieldEquals("created.data.trustLine.flags"), randxdr.SetPositiveNum32},
+		{randxdr.FieldEquals("created.data.trustLine.asset.alphaNum4.assetCode"), randxdr.SetAssetCode},
+		{randxdr.FieldEquals("created.data.trustLine.asset.alphaNum12.assetCode"), randxdr.SetAssetCode},
+		{randxdr.FieldEquals("created.data.trustLine.balance"), randxdr.SetPositiveNum64},
+		{randxdr.FieldEquals("created.data.trustLine.limit"), randxdr.SetPositiveNum64},
+		{randxdr.FieldEquals("created.data.trustLine.ext.v1.liabilities.selling"), randxdr.SetPositiveNum64},
+		{randxdr.FieldEquals("created.data.trustLine.ext.v1.liabilities.buying"), randxdr.SetPositiveNum64},
+	}
+	presets = append(presets, extra...)
+	gen.Next(shape, presets)
 	tt.Assert.NoError(gxdr.Convert(shape, &change))
 	return change
 }
@@ -156,14 +160,197 @@ func genClaimableBalance(tt *test.T, gen randxdr.Generator) xdr.LedgerEntryChang
 	return change
 }
 
+func genContractCode(tt *test.T, gen randxdr.Generator) xdr.LedgerEntryChange {
+	change := xdr.LedgerEntryChange{}
+	shape := &gxdr.LedgerEntryChange{}
+	gen.Next(
+		shape,
+		[]randxdr.Preset{
+			{randxdr.FieldEquals("type"), randxdr.SetU32(gxdr.LEDGER_ENTRY_CREATED.GetU32())},
+			{randxdr.FieldEquals("created.data.type"), randxdr.SetU32(gxdr.CONTRACT_CODE.GetU32())},
+		},
+	)
+	tt.Assert.NoError(gxdr.Convert(shape, &change))
+	return change
+}
+
+func genTTL(tt *test.T, gen randxdr.Generator) xdr.LedgerEntryChange {
+	change := xdr.LedgerEntryChange{}
+	shape := &gxdr.LedgerEntryChange{}
+	gen.Next(
+		shape,
+		[]randxdr.Preset{
+			{randxdr.FieldEquals("type"), randxdr.SetU32(gxdr.LEDGER_ENTRY_CREATED.GetU32())},
+			{randxdr.FieldEquals("created.data.type"), randxdr.SetU32(gxdr.TTL.GetU32())},
+			{randxdr.FieldEquals("created.lastModifiedLedgerSeq"), randxdr.SetPositiveNum32},
+			{randxdr.FieldEquals("created.data.ttl.liveUntilLedgerSeq"), randxdr.SetPositiveNum32},
+		},
+	)
+	tt.Assert.NoError(gxdr.Convert(shape, &change))
+	return change
+}
+
+func genConfigSetting(tt *test.T, gen randxdr.Generator) xdr.LedgerEntryChange {
+	change := xdr.LedgerEntryChange{}
+	shape := &gxdr.LedgerEntryChange{}
+	gen.Next(
+		shape,
+		[]randxdr.Preset{
+			{randxdr.FieldEquals("type"), randxdr.SetU32(gxdr.LEDGER_ENTRY_CREATED.GetU32())},
+			{randxdr.FieldEquals("created.data.type"), randxdr.SetU32(gxdr.CONFIG_SETTING.GetU32())},
+		},
+	)
+	tt.Assert.NoError(gxdr.Convert(shape, &change))
+	return change
+}
+
+func genAssetContractMetadata(tt *test.T, gen randxdr.Generator) []xdr.LedgerEntryChange {
+	assetPreset := randxdr.Preset{
+		randxdr.FieldEquals("created.data.trustLine.asset.type"),
+		randxdr.SetU32(
+			gxdr.ASSET_TYPE_CREDIT_ALPHANUM4.GetU32(),
+			gxdr.ASSET_TYPE_CREDIT_ALPHANUM12.GetU32(),
+		),
+	}
+	trustline := genTrustLine(tt, gen, assetPreset)
+	assetContractMetadata := assetContractMetadataFromTrustline(tt, trustline)
+
+	otherTrustline := genTrustLine(tt, gen, assetPreset)
+	otherAssetContractMetadata := assetContractMetadataFromTrustline(tt, otherTrustline)
+
+	balance := balanceContractDataFromTrustline(tt, trustline)
+	otherBalance := balanceContractDataFromTrustline(tt, otherTrustline)
+	return []xdr.LedgerEntryChange{
+		assetContractMetadata,
+		trustline,
+		balance,
+		ttlForContractData(tt, gen, balance),
+		otherAssetContractMetadata,
+		otherBalance,
+		ttlForContractData(tt, gen, otherBalance),
+		balanceContractDataFromTrustline(tt, genTrustLine(tt, gen, assetPreset)),
+	}
+}
+
+func assetContractMetadataFromTrustline(tt *test.T, trustline xdr.LedgerEntryChange) xdr.LedgerEntryChange {
+	contractID, err := trustline.Created.Data.MustTrustLine().Asset.ToAsset().ContractID("")
+	tt.Assert.NoError(err)
+	var assetType xdr.AssetType
+	var code, issuer string
+	tt.Assert.NoError(
+		trustline.Created.Data.MustTrustLine().Asset.Extract(&assetType, &code, &issuer),
+	)
+	ledgerData, err := processors.AssetToContractData(assetType == xdr.AssetTypeAssetTypeNative, code, issuer, contractID)
+	tt.Assert.NoError(err)
+	assetContractMetadata := xdr.LedgerEntryChange{
+		Type: xdr.LedgerEntryChangeTypeLedgerEntryCreated,
+		Created: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: trustline.Created.LastModifiedLedgerSeq,
+			Data:                  ledgerData,
+		},
+	}
+	return assetContractMetadata
+}
+
+func balanceContractDataFromTrustline(tt *test.T, trustline xdr.LedgerEntryChange) xdr.LedgerEntryChange {
+	contractID, err := trustline.Created.Data.MustTrustLine().Asset.ToAsset().ContractID("")
+	tt.Assert.NoError(err)
+	var assetType xdr.AssetType
+	var code, issuer string
+	trustlineData := trustline.Created.Data.MustTrustLine()
+	tt.Assert.NoError(
+		trustlineData.Asset.Extract(&assetType, &code, &issuer),
+	)
+	assetContractMetadata := xdr.LedgerEntryChange{
+		Type: xdr.LedgerEntryChangeTypeLedgerEntryCreated,
+		Created: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: trustline.Created.LastModifiedLedgerSeq,
+			Data:                  processors.BalanceToContractData(contractID, *trustlineData.AccountId.Ed25519, uint64(trustlineData.Balance)),
+		},
+	}
+	return assetContractMetadata
+}
+
+func ttlForContractData(tt *test.T, gen randxdr.Generator, contractData xdr.LedgerEntryChange) xdr.LedgerEntryChange {
+	ledgerEntry := contractData.MustCreated()
+	lk, err := ledgerEntry.LedgerKey()
+	tt.Assert.NoError(err)
+	bin, err := lk.MarshalBinary()
+	tt.Assert.NoError(err)
+	keyHash := sha256.Sum256(bin)
+	ttl := genTTL(tt, gen)
+	ttl.Created.Data.Ttl.KeyHash = keyHash
+	return ttl
+}
+
+func TestStateVerifierLockBusy(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	test.ResetHorizonDB(t, tt.HorizonDB)
+	q := &history.Q{&db.Session{DB: tt.HorizonDB}}
+
+	tt.Assert.NoError(q.BeginTx(tt.Ctx, &sql.TxOptions{}))
+
+	checkpointLedger := uint32(63)
+	changeProcessor := buildChangeProcessor(q, &ingest.StatsChangeProcessor{}, ledgerSource, checkpointLedger, "")
+
+	gen := randxdr.NewGenerator()
+	var changes []xdr.LedgerEntryChange
+	for i := 0; i < 10; i++ {
+		changes = append(changes,
+			genLiquidityPool(tt, gen),
+			genClaimableBalance(tt, gen),
+			genOffer(tt, gen),
+			genTrustLine(tt, gen),
+			genAccount(tt, gen),
+			genAccountData(tt, gen),
+		)
+	}
+	for _, change := range ingest.GetChangesFromLedgerEntryChanges(changes) {
+		tt.Assert.NoError(changeProcessor.ProcessChange(tt.Ctx, change))
+	}
+	tt.Assert.NoError(changeProcessor.Commit(tt.Ctx))
+
+	tt.Assert.NoError(q.Commit())
+
+	q.UpdateLastLedgerIngest(tt.Ctx, checkpointLedger)
+
+	mockHistoryAdapter := &mockHistoryArchiveAdapter{}
+	sys := &system{
+		ctx:                          tt.Ctx,
+		historyQ:                     q,
+		historyAdapter:               mockHistoryAdapter,
+		runStateVerificationOnLedger: ledgerEligibleForStateVerification(64, 1),
+		config:                       Config{StateVerificationTimeout: time.Hour},
+	}
+	sys.initMetrics()
+
+	otherQ := &history.Q{q.Clone()}
+	tt.Assert.NoError(otherQ.BeginTx(tt.Ctx, &sql.TxOptions{
+		Isolation: sql.LevelRepeatableRead,
+		ReadOnly:  true,
+	}))
+	ok, err := otherQ.TryStateVerificationLock(tt.Ctx)
+	tt.Assert.NoError(err)
+	tt.Assert.True(ok)
+
+	tt.Assert.NoError(sys.verifyState(false))
+	mockHistoryAdapter.AssertExpectations(t)
+
+	tt.Assert.NoError(otherQ.Rollback())
+}
+
 func TestStateVerifier(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &history.Q{&db.Session{DB: tt.HorizonDB}}
 
-	checkpointLedger := uint32(63)
-	changeProcessor := buildChangeProcessor(q, &ingest.StatsChangeProcessor{}, ledgerSource, checkpointLedger)
+	tt.Assert.NoError(q.BeginTx(tt.Ctx, &sql.TxOptions{}))
+
+	ledger := rand.Int31()
+	checkpointLedger := uint32(ledger - (ledger % 64) - 1)
+	changeProcessor := buildChangeProcessor(q, &ingest.StatsChangeProcessor{}, ledgerSource, checkpointLedger, "")
 	mockChangeReader := &ingest.MockChangeReader{}
 
 	gen := randxdr.NewGenerator()
@@ -176,13 +363,23 @@ func TestStateVerifier(t *testing.T) {
 			genTrustLine(tt, gen),
 			genAccount(tt, gen),
 			genAccountData(tt, gen),
+			genContractCode(tt, gen),
+			genConfigSetting(tt, gen),
+			genTTL(tt, gen),
 		)
+		changes = append(changes, genAssetContractMetadata(tt, gen)...)
 	}
+
+	coverage := map[xdr.LedgerEntryType]int{}
 	for _, change := range ingest.GetChangesFromLedgerEntryChanges(changes) {
 		mockChangeReader.On("Read").Return(change, nil).Once()
 		tt.Assert.NoError(changeProcessor.ProcessChange(tt.Ctx, change))
+		coverage[change.Type]++
 	}
 	tt.Assert.NoError(changeProcessor.Commit(tt.Ctx))
+	tt.Assert.Equal(len(xdr.LedgerEntryTypeMap), len(coverage))
+
+	tt.Assert.NoError(q.Commit())
 
 	q.UpdateLastLedgerIngest(tt.Ctx, checkpointLedger)
 
@@ -190,13 +387,14 @@ func TestStateVerifier(t *testing.T) {
 	mockChangeReader.On("Close").Return(nil).Once()
 
 	mockHistoryAdapter := &mockHistoryArchiveAdapter{}
-	mockHistoryAdapter.On("GetState", tt.Ctx, uint32(checkpointLedger)).Return(mockChangeReader, nil).Once()
+	mockHistoryAdapter.On("GetState", mock.AnythingOfType("*context.timerCtx"), uint32(checkpointLedger)).Return(mockChangeReader, nil).Once()
 
 	sys := &system{
-		ctx:               tt.Ctx,
-		historyQ:          q,
-		historyAdapter:    mockHistoryAdapter,
-		checkpointManager: historyarchive.NewCheckpointManager(64),
+		ctx:                          tt.Ctx,
+		historyQ:                     q,
+		historyAdapter:               mockHistoryAdapter,
+		runStateVerificationOnLedger: ledgerEligibleForStateVerification(64, 1),
+		config:                       Config{StateVerificationTimeout: time.Hour},
 	}
 	sys.initMetrics()
 

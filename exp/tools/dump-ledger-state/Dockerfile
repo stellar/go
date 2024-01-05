@@ -1,6 +1,6 @@
-FROM ubuntu:20.04
+FROM ubuntu:22.04
 
-ENV STELLAR_CORE_VERSION=19.2.0-966.d18d54aa3.focal
+ENV STELLAR_CORE_VERSION=19.14.0-1500.5664eff4e.focal
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl wget gnupg apt-utils
@@ -26,7 +26,7 @@ RUN echo "host all all all trust" > /etc/postgresql/9.6/main/pg_hba.conf
 # And add `listen_addresses` to `/etc/postgresql/9.6/main/postgresql.conf`
 RUN echo "listen_addresses='*'" >> /etc/postgresql/9.6/main/postgresql.conf
 
-RUN curl -sL https://storage.googleapis.com/golang/go1.16.5.linux-amd64.tar.gz | tar -C /usr/local -xz
+RUN curl -sL https://storage.googleapis.com/golang/go1.19.linux-amd64.tar.gz | tar -C /usr/local -xz
 RUN ln -s  /usr/local/go/bin/go /usr/local/bin/go
 WORKDIR /go/src/github.com/stellar/go
 COPY go.mod go.sum ./

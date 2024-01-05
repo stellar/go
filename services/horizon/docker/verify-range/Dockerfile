@@ -1,6 +1,4 @@
-FROM ubuntu:20.04
-
-MAINTAINER Bartek Nowotarski <bartek@stellar.org>
+FROM ubuntu:22.04
 
 ARG STELLAR_CORE_VERSION 
 ENV STELLAR_CORE_VERSION=${STELLAR_CORE_VERSION:-*}
@@ -8,7 +6,7 @@ ENV STELLAR_CORE_VERSION=${STELLAR_CORE_VERSION:-*}
 ENV DEBIAN_FRONTEND=noninteractive
 
 ADD dependencies /
-RUN ["chmod", "+x", "dependencies"]
+RUN ["chmod", "+x", "/dependencies"]
 RUN /dependencies
 
 ADD stellar-core.cfg /

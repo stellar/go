@@ -3,6 +3,7 @@
 package history
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"database/sql/driver"
@@ -35,11 +36,20 @@ const (
 	// EffectAccountRemoved effects occur when one account is merged into another
 	EffectAccountRemoved EffectType = 1 // from merge_account
 
-	// EffectAccountCredited effects occur when an account receives some currency
-	EffectAccountCredited EffectType = 2 // from create_account, payment, path_payment, merge_account
+	// EffectAccountCredited effects occur when an account receives some
+	// currency
+	//
+	// from create_account, payment, path_payment, merge_account, and SAC events
+	// involving transfers, mints, and burns.
+	EffectAccountCredited EffectType = 2
 
 	// EffectAccountDebited effects occur when an account sends some currency
-	EffectAccountDebited EffectType = 3 // from create_account, payment, path_payment, create_account
+	//
+	// from create_account, payment, path_payment, create_account, and SAC
+	// involving transfers, mints, and burns.
+	//
+	// https://github.com/stellar/rs-soroban-env/blob/5695440da452837555d8f7f259cc33341fdf07b0/soroban-env-host/src/native_contract/token/contract.rs#L51-L63
+	EffectAccountDebited EffectType = 3
 
 	// EffectAccountThresholdsUpdated effects occur when an account changes its
 	// multisig thresholds.
@@ -208,6 +218,16 @@ const (
 
 	// EffectLiquidityPoolRevoked occurs when a liquidity pool is revoked
 	EffectLiquidityPoolRevoked EffectType = 95 // from change_trust_line_flags and allow_trust
+
+	// EffectContractCredited effects occur when a contract receives some
+	// currency from SAC events involving transfers, mints, and burns.
+	// https://github.com/stellar/rs-soroban-env/blob/5695440da452837555d8f7f259cc33341fdf07b0/soroban-env-host/src/native_contract/token/contract.rs#L51-L63
+	EffectContractCredited EffectType = 96
+
+	// EffectContractDebited effects occur when a contract sends some currency
+	// from SAC events involving transfers, mints, and burns.
+	// https://github.com/stellar/rs-soroban-env/blob/5695440da452837555d8f7f259cc33341fdf07b0/soroban-env-host/src/native_contract/token/contract.rs#L51-L63
+	EffectContractDebited EffectType = 97
 )
 
 // Account is a row of data from the `history_accounts` table
@@ -255,11 +275,11 @@ type IngestionQ interface {
 	// QParticipants
 	// Copy the small interfaces with shared methods directly, otherwise error:
 	// duplicate method CreateAccounts
-	NewTransactionParticipantsBatchInsertBuilder(maxBatchSize int) TransactionParticipantsBatchInsertBuilder
-	NewOperationParticipantBatchInsertBuilder(maxBatchSize int) OperationParticipantBatchInsertBuilder
+	NewTransactionParticipantsBatchInsertBuilder() TransactionParticipantsBatchInsertBuilder
+	NewOperationParticipantBatchInsertBuilder() OperationParticipantBatchInsertBuilder
 	QSigners
 	//QTrades
-	NewTradeBatchInsertBuilder(maxBatchSize int) TradeBatchInsertBuilder
+	NewTradeBatchInsertBuilder() TradeBatchInsertBuilder
 	RebuildTradeAggregationTimes(ctx context.Context, from, to strtime.Millis, roundingSlippageFilter int) error
 	RebuildTradeAggregationBuckets(ctx context.Context, fromLedger, toLedger uint32, roundingSlippageFilter int) error
 	ReapLookupTables(ctx context.Context, offsets map[string]int64) (map[string]int64, map[string]int64, error)
@@ -267,8 +287,8 @@ type IngestionQ interface {
 	QTransactions
 	QTrustLines
 
-	Begin() error
-	BeginTx(*sql.TxOptions) error
+	Begin(context.Context) error
+	BeginTx(context.Context, *sql.TxOptions) error
 	Commit() error
 	CloneIngestionQ() IngestionQ
 	Close() error
@@ -284,6 +304,7 @@ type IngestionQ interface {
 	TruncateIngestStateTables(context.Context) error
 	DeleteRangeAll(ctx context.Context, start, end int64) error
 	DeleteTransactionsFilteredTmpOlderThan(ctx context.Context, howOldInSeconds uint64) (int64, error)
+	TryStateVerificationLock(ctx context.Context) (bool, error)
 }
 
 // QAccounts defines account related queries.
@@ -291,6 +312,7 @@ type QAccounts interface {
 	GetAccountsByIDs(ctx context.Context, ids []string) ([]AccountEntry, error)
 	UpsertAccounts(ctx context.Context, accounts []AccountEntry) error
 	RemoveAccounts(ctx context.Context, accountIDs []string) (int64, error)
+	NewAccountsBatchInsertBuilder() AccountsBatchInsertBuilder
 }
 
 // AccountSigner is a row of data from the `accounts_signers` table
@@ -302,13 +324,15 @@ type AccountSigner struct {
 }
 
 type AccountSignersBatchInsertBuilder interface {
-	Add(ctx context.Context, signer AccountSigner) error
+	Add(signer AccountSigner) error
 	Exec(ctx context.Context) error
 }
 
 // accountSignersBatchInsertBuilder is a simple wrapper around db.BatchInsertBuilder
 type accountSignersBatchInsertBuilder struct {
-	builder db.BatchInsertBuilder
+	builder db.FastBatchInsertBuilder
+	session db.SessionInterface
+	table   string
 }
 
 // Data is a row of data from the `account_data` table
@@ -333,6 +357,7 @@ type QData interface {
 	GetAccountDataByKeys(ctx context.Context, keys []AccountDataKey) ([]Data, error)
 	UpsertAccountData(ctx context.Context, data []Data) error
 	RemoveAccountData(ctx context.Context, keys []AccountDataKey) (int64, error)
+	NewAccountDataBatchInsertBuilder() AccountDataBatchInsertBuilder
 }
 
 // Asset is a row of data from the `history_assets` table
@@ -341,6 +366,54 @@ type Asset struct {
 	Type   string `db:"asset_type"`
 	Code   string `db:"asset_code"`
 	Issuer string `db:"asset_issuer"`
+}
+
+type ContractStat struct {
+	ActiveBalance   string `json:"balance"`
+	ActiveHolders   int32  `json:"holders"`
+	ArchivedBalance string `json:"archived_balance"`
+	ArchivedHolders int32  `json:"archived_holders"`
+}
+
+func (c ContractStat) Value() (driver.Value, error) {
+	// Convert the byte array into a string as a workaround to bypass buggy encoding in the pq driver
+	// (More info about this bug here https://github.com/stellar/go/issues/5086#issuecomment-1773215436).
+	// By doing so, the data will be written as a string rather than hex encoded bytes.
+	val, err := json.Marshal(c)
+	return string(val), err
+}
+
+func (c *ContractStat) Scan(src interface{}) error {
+	if src == nil {
+		c.ActiveBalance = "0"
+		c.ArchivedBalance = "0"
+		return nil
+	}
+
+	source, ok := src.([]byte)
+	if !ok {
+		return errors.New("Type assertion .([]byte) failed.")
+	}
+
+	err := json.Unmarshal(source, &c)
+	if err != nil {
+		return err
+	}
+
+	// Sets zero values for empty balances
+	if c.ActiveBalance == "" {
+		c.ActiveBalance = "0"
+	}
+	if c.ArchivedBalance == "" {
+		c.ArchivedBalance = "0"
+	}
+
+	return nil
+}
+
+type AssetAndContractStat struct {
+	ExpAssetStat
+	Contracts ContractStat `db:"contracts"`
 }
 
 // ExpAssetStat is a row in the exp_asset_stats table representing the stats per Asset
@@ -352,6 +425,8 @@ type ExpAssetStat struct {
 	Balances    ExpAssetStatBalances `db:"balances"`
 	Amount      string               `db:"amount"`
 	NumAccounts int32                `db:"num_accounts"`
+	ContractID  *[]byte              `db:"contract_id"`
+	// make sure to update Equals() when adding new fields to ExpAssetStat
 }
 
 // PagingToken returns a cursor for this asset stat
@@ -374,7 +449,11 @@ type ExpAssetStatAccounts struct {
 }
 
 func (e ExpAssetStatAccounts) Value() (driver.Value, error) {
-	return json.Marshal(e)
+	// Convert the byte array into a string as a workaround to bypass buggy encoding in the pq driver
+	// (More info about this bug here https://github.com/stellar/go/issues/5086#issuecomment-1773215436).
+	// By doing so, the data will be written as a string rather than hex encoded bytes.
+	val, err := json.Marshal(e)
+	return string(val), err
 }
 
 func (e *ExpAssetStatAccounts) Scan(src interface{}) error {
@@ -384,6 +463,39 @@ func (e *ExpAssetStatAccounts) Scan(src interface{}) error {
 	}
 
 	return json.Unmarshal(source, &e)
+}
+
+func (e *ExpAssetStat) Equals(o ExpAssetStat) bool {
+	if (e.ContractID == nil) != (o.ContractID == nil) {
+		return false
+	}
+	if e.ContractID != nil && !bytes.Equal(*e.ContractID, *o.ContractID) {
+		return false
+	}
+
+	return e.AssetType == o.AssetType &&
+		e.AssetCode == o.AssetCode &&
+		e.AssetIssuer == o.AssetIssuer &&
+		e.Accounts == o.Accounts &&
+		e.Balances == o.Balances &&
+		e.Amount == o.Amount &&
+		e.NumAccounts == o.NumAccounts
+}
+
+func (e *ExpAssetStat) GetContractID() ([32]byte, bool) {
+	var val [32]byte
+	if e.ContractID == nil {
+		return val, false
+	}
+	if size := copy(val[:], (*e.ContractID)[:]); size != 32 {
+		panic("contract id is not 32 bytes")
+	}
+	return val, true
+}
+
+func (e *ExpAssetStat) SetContractID(contractID [32]byte) {
+	contractIDBytes := contractID[:]
+	e.ContractID = &contractIDBytes
 }
 
 func (a ExpAssetStatAccounts) Add(b ExpAssetStatAccounts) ExpAssetStatAccounts {
@@ -410,8 +522,22 @@ type ExpAssetStatBalances struct {
 	Unauthorized                    string `json:"unauthorized"`
 }
 
+func (e ExpAssetStatBalances) IsZero() bool {
+	return e == ExpAssetStatBalances{
+		Authorized:                      "0",
+		AuthorizedToMaintainLiabilities: "0",
+		ClaimableBalances:               "0",
+		LiquidityPools:                  "0",
+		Unauthorized:                    "0",
+	}
+}
+
 func (e ExpAssetStatBalances) Value() (driver.Value, error) {
-	return json.Marshal(e)
+	// Convert the byte array into a string as a workaround to bypass buggy encoding in the pq driver
+	// (More info about this bug here https://github.com/stellar/go/issues/5086#issuecomment-1773215436).
+	// By doing so, the data will be written as a string rather than hex encoded bytes.
+	val, err := json.Marshal(e)
+	return string(val), err
 }
 
 func (e *ExpAssetStatBalances) Scan(src interface{}) error {
@@ -447,12 +573,24 @@ func (e *ExpAssetStatBalances) Scan(src interface{}) error {
 
 // QAssetStats defines exp_asset_stats related queries.
 type QAssetStats interface {
-	InsertAssetStats(ctx context.Context, stats []ExpAssetStat, batchSize int) error
+	InsertContractAssetBalances(ctx context.Context, rows []ContractAssetBalance) error
+	RemoveContractAssetBalances(ctx context.Context, keys []xdr.Hash) error
+	UpdateContractAssetBalanceAmounts(ctx context.Context, keys []xdr.Hash, amounts []string) error
+	UpdateContractAssetBalanceExpirations(ctx context.Context, keys []xdr.Hash, expirationLedgers []uint32) error
+	GetContractAssetBalances(ctx context.Context, keys []xdr.Hash) ([]ContractAssetBalance, error)
+	GetContractAssetBalancesExpiringAt(ctx context.Context, ledger uint32) ([]ContractAssetBalance, error)
+	InsertAssetStats(ctx context.Context, stats []ExpAssetStat) error
+	InsertContractAssetStats(ctx context.Context, rows []ContractAssetStatRow) error
 	InsertAssetStat(ctx context.Context, stat ExpAssetStat) (int64, error)
+	InsertContractAssetStat(ctx context.Context, row ContractAssetStatRow) (int64, error)
 	UpdateAssetStat(ctx context.Context, stat ExpAssetStat) (int64, error)
+	UpdateContractAssetStat(ctx context.Context, row ContractAssetStatRow) (int64, error)
 	GetAssetStat(ctx context.Context, assetType xdr.AssetType, assetCode, assetIssuer string) (ExpAssetStat, error)
+	GetAssetStatByContract(ctx context.Context, contractID xdr.Hash) (ExpAssetStat, error)
+	GetContractAssetStat(ctx context.Context, contractID []byte) (ContractAssetStatRow, error)
 	RemoveAssetStat(ctx context.Context, assetType xdr.AssetType, assetCode, assetIssuer string) (int64, error)
-	GetAssetStats(ctx context.Context, assetCode, assetIssuer string, page db2.PageQuery) ([]ExpAssetStat, error)
+	RemoveAssetContractStat(ctx context.Context, contractID []byte) (int64, error)
+	GetAssetStats(ctx context.Context, assetCode, assetIssuer string, page db2.PageQuery) ([]AssetAndContractStat, error)
 	CountTrustLines(ctx context.Context) (int, error)
 }
 
@@ -609,6 +747,7 @@ type Operation struct {
 	SourceAccount         string            `db:"source_account"`
 	SourceAccountMuxed    null.String       `db:"source_account_muxed"`
 	TransactionSuccessful bool              `db:"transaction_successful"`
+	IsPayment             bool              `db:"is_payment"`
 }
 
 // ManageOffer is a struct of data from `operations.DetailsString`
@@ -666,7 +805,7 @@ type QSigners interface {
 	GetLastLedgerIngest(ctx context.Context) (uint32, error)
 	UpdateLastLedgerIngest(ctx context.Context, ledgerSequence uint32) error
 	AccountsForSigner(ctx context.Context, signer string, page db2.PageQuery) ([]AccountSigner, error)
-	NewAccountSignersBatchInsertBuilder(maxBatchSize int) AccountSignersBatchInsertBuilder
+	NewAccountSignersBatchInsertBuilder() AccountSignersBatchInsertBuilder
 	CreateAccountSigner(ctx context.Context, account, signer string, weight int32, sponsor *string) (int64, error)
 	RemoveAccountSigner(ctx context.Context, account, signer string) (int64, error)
 	SignersForAccounts(ctx context.Context, accounts []string) ([]AccountSigner, error)
@@ -768,14 +907,14 @@ type QTrustLines interface {
 	GetTrustLinesByKeys(ctx context.Context, ledgerKeys []string) ([]TrustLine, error)
 	UpsertTrustLines(ctx context.Context, trustlines []TrustLine) error
 	RemoveTrustLines(ctx context.Context, ledgerKeys []string) (int64, error)
+	NewTrustLinesBatchInsertBuilder() TrustLinesBatchInsertBuilder
 }
 
-func (q *Q) NewAccountSignersBatchInsertBuilder(maxBatchSize int) AccountSignersBatchInsertBuilder {
+func (q *Q) NewAccountSignersBatchInsertBuilder() AccountSignersBatchInsertBuilder {
 	return &accountSignersBatchInsertBuilder{
-		builder: db.BatchInsertBuilder{
-			Table:        q.GetTable("accounts_signers"),
-			MaxBatchSize: maxBatchSize,
-		},
+		session: q,
+		builder: db.FastBatchInsertBuilder{},
+		table:   "accounts_signers",
 	}
 }
 
@@ -879,6 +1018,24 @@ func (q Q) ReapLookupTables(ctx context.Context, offsets map[string]int64) (
 				objectField: "history_account_id",
 			},
 		},
+		"history_assets": {
+			{
+				name:        "history_trades",
+				objectField: "base_asset_id",
+			},
+			{
+				name:        "history_trades",
+				objectField: "counter_asset_id",
+			},
+			{
+				name:        "history_trades_60000",
+				objectField: "base_asset_id",
+			},
+			{
+				name:        "history_trades_60000",
+				objectField: "counter_asset_id",
+			},
+		},
 		"history_claimable_balances": {
 			{
 				name:        "history_operation_claimable_balances",
@@ -950,8 +1107,8 @@ func (q Q) ReapLookupTables(ctx context.Context, offsets map[string]int64) (
 //	     from history_claimable_balances hcb where id > 1000 order by id limit 100)
 //	 as sub where c1 IS NULL and c2 IS NULL and 1=1);
 //
-// In short it checks the 100 rows omiting 1000 row of history_claimable_balances
-// and counts occurences of each row in corresponding history tables.
+// In short it checks the 100 rows omitting 1000 row of history_claimable_balances
+// and counts occurrences of each row in corresponding history tables.
 // If there are no history rows for a given id, the row in
 // history_claimable_balances is removed.
 //

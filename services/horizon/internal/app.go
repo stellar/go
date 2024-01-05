@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -19,7 +20,6 @@ import (
 	"github.com/stellar/go/services/horizon/internal/httpx"
 	"github.com/stellar/go/services/horizon/internal/ingest"
 	"github.com/stellar/go/services/horizon/internal/ledger"
-	"github.com/stellar/go/services/horizon/internal/logmetrics"
 	"github.com/stellar/go/services/horizon/internal/operationfeestats"
 	"github.com/stellar/go/services/horizon/internal/paths"
 	"github.com/stellar/go/services/horizon/internal/reap"
@@ -28,6 +28,7 @@ import (
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
+	"github.com/stellar/go/support/logmetrics"
 )
 
 // App represents the root of the state of a horizon instance.
@@ -118,22 +119,6 @@ func (a *App) Serve() error {
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
-	if a.config.UsingDefaultPubnetConfig {
-		const warnMsg = "Horizon started using the default pubnet configuration. " +
-			"This is not safe! Please provide a custom --captive-core-config-path."
-		log.Warn(warnMsg)
-		go func() {
-			for {
-				select {
-				case <-time.After(time.Hour):
-					log.Warn(warnMsg)
-				case <-a.done:
-					return
-				}
-			}
-		}()
-	}
-
 	go func() {
 		select {
 		case <-signalChan:
@@ -212,11 +197,29 @@ func (a *App) Paths() paths.Finder {
 	return a.paths
 }
 
+func isLocalAddress(url string, port uint) bool {
+	localHostURL := fmt.Sprintf("http://localhost:%d", port)
+	localIPURL := fmt.Sprintf("http://127.0.0.1:%d", port)
+
+	return strings.HasPrefix(url, localHostURL) || strings.HasPrefix(url, localIPURL)
+}
+
 // UpdateCoreLedgerState triggers a refresh of Stellar-Core ledger state.
 // This is done separately from Horizon ledger state update to prevent issues
 // in case Stellar-Core query timeout.
 func (a *App) UpdateCoreLedgerState(ctx context.Context) {
 	var next ledger.CoreStatus
+
+	if a.config.StellarCoreURL == "" {
+		return
+	}
+	// #4446 If the ingestion state machine is in the build state, the query can time out
+	// because the captive-core buffer may be full. In this case, skip the check.
+	if a.config.CaptiveCoreToml != nil &&
+		isLocalAddress(a.config.StellarCoreURL, a.config.CaptiveCoreToml.HTTPPort) &&
+		a.ingester != nil && a.ingester.GetCurrentState() == ingest.Build {
+		return
+	}
 
 	logErr := func(err error, msg string) {
 		log.WithStack(err).WithField("err", err.Error()).Error(msg)
@@ -400,6 +403,14 @@ func (a *App) UpdateStellarCoreInfo(ctx context.Context) error {
 		return nil
 	}
 
+	// #4446 If the ingestion state machine is in the build state, the query can time out
+	// because the captive-core buffer may be full. In this case, skip the check.
+	if a.config.CaptiveCoreToml != nil &&
+		isLocalAddress(a.config.StellarCoreURL, a.config.CaptiveCoreToml.HTTPPort) &&
+		a.ingester != nil && a.ingester.GetCurrentState() == ingest.Build {
+		return nil
+	}
+
 	core := &stellarcore.Client{
 		URL: a.config.StellarCoreURL,
 	}
@@ -464,7 +475,8 @@ func (a *App) init() error {
 
 	// log
 	log.DefaultLogger.SetLevel(a.config.LogLevel)
-	log.DefaultLogger.AddHook(logmetrics.DefaultMetrics)
+	logMetrics := logmetrics.New("horizon")
+	log.DefaultLogger.AddHook(logMetrics)
 
 	// sentry
 	initSentry(a)
@@ -474,8 +486,8 @@ func (a *App) init() error {
 
 	// metrics and log.metrics
 	a.prometheusRegistry = prometheus.NewRegistry()
-	for _, meter := range *logmetrics.DefaultMetrics {
-		a.prometheusRegistry.MustRegister(meter)
+	for _, counter := range logMetrics {
+		a.prometheusRegistry.MustRegister(counter)
 	}
 
 	// stellarCoreInfo
@@ -512,22 +524,25 @@ func (a *App) init() error {
 	initTxSubMetrics(a)
 
 	routerConfig := httpx.RouterConfig{
-		DBSession:               a.historyQ.SessionInterface,
-		TxSubmitter:             a.submitter,
-		RateQuota:               a.config.RateQuota,
-		BehindCloudflare:        a.config.BehindCloudflare,
-		BehindAWSLoadBalancer:   a.config.BehindAWSLoadBalancer,
-		SSEUpdateFrequency:      a.config.SSEUpdateFrequency,
-		StaleThreshold:          a.config.StaleThreshold,
-		ConnectionTimeout:       a.config.ConnectionTimeout,
-		NetworkPassphrase:       a.config.NetworkPassphrase,
-		MaxPathLength:           a.config.MaxPathLength,
-		MaxAssetsPerPathRequest: a.config.MaxAssetsPerPathRequest,
-		PathFinder:              a.paths,
-		PrometheusRegistry:      a.prometheusRegistry,
-		CoreGetter:              a,
-		HorizonVersion:          a.horizonVersion,
-		FriendbotURL:            a.config.FriendbotURL,
+		DBSession:                a.historyQ.SessionInterface,
+		TxSubmitter:              a.submitter,
+		RateQuota:                a.config.RateQuota,
+		BehindCloudflare:         a.config.BehindCloudflare,
+		BehindAWSLoadBalancer:    a.config.BehindAWSLoadBalancer,
+		SSEUpdateFrequency:       a.config.SSEUpdateFrequency,
+		StaleThreshold:           a.config.StaleThreshold,
+		ConnectionTimeout:        a.config.ConnectionTimeout,
+		MaxHTTPRequestSize:       a.config.MaxHTTPRequestSize,
+		NetworkPassphrase:        a.config.NetworkPassphrase,
+		MaxPathLength:            a.config.MaxPathLength,
+		MaxAssetsPerPathRequest:  a.config.MaxAssetsPerPathRequest,
+		PathFinder:               a.paths,
+		PrometheusRegistry:       a.prometheusRegistry,
+		CoreGetter:               a,
+		HorizonVersion:           a.horizonVersion,
+		FriendbotURL:             a.config.FriendbotURL,
+		EnableIngestionFiltering: a.config.EnableIngestionFiltering,
+		DisableTxSub:             a.config.DisableTxSub,
 		HealthCheck: healthCheck{
 			session: a.historyQ.SessionInterface,
 			ctx:     a.ctx,
@@ -537,7 +552,6 @@ func (a *App) init() error {
 			},
 			cache: newHealthCache(healthCacheTTL),
 		},
-		EnableIngestionFiltering: a.config.EnableIngestionFiltering,
 	}
 
 	if a.primaryHistoryQ != nil {

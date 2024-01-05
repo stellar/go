@@ -15,7 +15,6 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/keypair"
@@ -47,12 +46,12 @@ func (s *VerifyRangeStateTestSuite) SetupTest() {
 	s.historyAdapter = &mockHistoryArchiveAdapter{}
 	s.runner = &mockProcessorsRunner{}
 	s.system = &system{
-		ctx:               s.ctx,
-		historyQ:          s.historyQ,
-		historyAdapter:    s.historyAdapter,
-		ledgerBackend:     s.ledgerBackend,
-		runner:            s.runner,
-		checkpointManager: historyarchive.NewCheckpointManager(64),
+		ctx:                          s.ctx,
+		historyQ:                     s.historyQ,
+		historyAdapter:               s.historyAdapter,
+		ledgerBackend:                s.ledgerBackend,
+		runner:                       s.runner,
+		runStateVerificationOnLedger: ledgerEligibleForStateVerification(64, 1),
 	}
 	s.system.initMetrics()
 
@@ -106,7 +105,7 @@ func (s *VerifyRangeStateTestSuite) TestInvalidRange() {
 func (s *VerifyRangeStateTestSuite) TestBeginReturnsError() {
 	// Recreate mock in this single test to remove Rollback assertion.
 	*s.historyQ = mockDBQ{}
-	s.historyQ.On("Begin").Return(errors.New("my error")).Once()
+	s.historyQ.On("Begin", s.ctx).Return(errors.New("my error")).Once()
 
 	next, err := verifyRangeState{fromLedger: 100, toLedger: 200}.run(s.system)
 	s.Assert().Error(err)
@@ -118,7 +117,7 @@ func (s *VerifyRangeStateTestSuite) TestBeginReturnsError() {
 }
 
 func (s *VerifyRangeStateTestSuite) TestGetLastLedgerIngestReturnsError() {
-	s.historyQ.On("Begin").Return(nil).Once()
+	s.historyQ.On("Begin", s.ctx).Return(nil).Once()
 	s.historyQ.On("GetLastLedgerIngest", s.ctx).Return(uint32(0), errors.New("my error")).Once()
 
 	next, err := verifyRangeState{fromLedger: 100, toLedger: 200}.run(s.system)
@@ -131,7 +130,7 @@ func (s *VerifyRangeStateTestSuite) TestGetLastLedgerIngestReturnsError() {
 }
 
 func (s *VerifyRangeStateTestSuite) TestGetLastLedgerIngestNonEmpty() {
-	s.historyQ.On("Begin").Return(nil).Once()
+	s.historyQ.On("Begin", s.ctx).Return(nil).Once()
 	s.historyQ.On("GetLastLedgerIngest", s.ctx).Return(uint32(100), nil).Once()
 
 	next, err := verifyRangeState{fromLedger: 100, toLedger: 200}.run(s.system)
@@ -144,7 +143,7 @@ func (s *VerifyRangeStateTestSuite) TestGetLastLedgerIngestNonEmpty() {
 }
 
 func (s *VerifyRangeStateTestSuite) TestRunHistoryArchiveIngestionReturnsError() {
-	s.historyQ.On("Begin").Return(nil).Once()
+	s.historyQ.On("Begin", s.ctx).Return(nil).Once()
 	s.historyQ.On("GetLastLedgerIngest", s.ctx).Return(uint32(0), nil).Once()
 	s.ledgerBackend.On("PrepareRange", s.ctx, ledgerbackend.BoundedRange(100, 200)).Return(nil).Once()
 
@@ -160,7 +159,7 @@ func (s *VerifyRangeStateTestSuite) TestRunHistoryArchiveIngestionReturnsError()
 		},
 	}
 	s.ledgerBackend.On("GetLedger", s.ctx, uint32(100)).Return(meta, nil).Once()
-	s.runner.On("RunHistoryArchiveIngestion", uint32(100), MaxSupportedProtocolVersion, xdr.Hash{1, 2, 3}).Return(ingest.StatsChangeProcessorResults{}, errors.New("my error")).Once()
+	s.runner.On("RunHistoryArchiveIngestion", uint32(100), false, MaxSupportedProtocolVersion, xdr.Hash{1, 2, 3}).Return(ingest.StatsChangeProcessorResults{}, errors.New("my error")).Once()
 
 	next, err := verifyRangeState{fromLedger: 100, toLedger: 200}.run(s.system)
 	s.Assert().Error(err)
@@ -172,7 +171,7 @@ func (s *VerifyRangeStateTestSuite) TestRunHistoryArchiveIngestionReturnsError()
 }
 
 func (s *VerifyRangeStateTestSuite) TestSuccess() {
-	s.historyQ.On("Begin").Return(nil).Once()
+	s.historyQ.On("Begin", s.ctx).Return(nil).Once()
 	s.historyQ.On("GetLastLedgerIngest", s.ctx).Return(uint32(0), nil).Once()
 	s.ledgerBackend.On("PrepareRange", s.ctx, ledgerbackend.BoundedRange(100, 200)).Return(nil).Once()
 
@@ -188,13 +187,13 @@ func (s *VerifyRangeStateTestSuite) TestSuccess() {
 		},
 	}
 	s.ledgerBackend.On("GetLedger", s.ctx, uint32(100)).Return(meta, nil).Once()
-	s.runner.On("RunHistoryArchiveIngestion", uint32(100), MaxSupportedProtocolVersion, xdr.Hash{1, 2, 3}).Return(ingest.StatsChangeProcessorResults{}, nil).Once()
+	s.runner.On("RunHistoryArchiveIngestion", uint32(100), false, MaxSupportedProtocolVersion, xdr.Hash{1, 2, 3}).Return(ingest.StatsChangeProcessorResults{}, nil).Once()
 
 	s.historyQ.On("UpdateLastLedgerIngest", s.ctx, uint32(100)).Return(nil).Once()
 	s.historyQ.On("Commit").Return(nil).Once()
 
 	for i := uint32(101); i <= 200; i++ {
-		s.historyQ.On("Begin").Return(nil).Once()
+		s.historyQ.On("Begin", s.ctx).Return(nil).Once()
 
 		meta := xdr.LedgerCloseMeta{
 			V0: &xdr.LedgerCloseMetaV0{
@@ -228,7 +227,7 @@ func (s *VerifyRangeStateTestSuite) TestSuccess() {
 // Bartek: looks like this test really tests the state verifier. Instead, I think we should just ensure
 // data is passed so a single account would be enough to test if the FSM state works correctly.
 func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
-	s.historyQ.On("Begin").Return(nil).Once()
+	s.historyQ.On("Begin", s.ctx).Return(nil).Once()
 	s.historyQ.On("GetLastLedgerIngest", s.ctx).Return(uint32(0), nil).Once()
 	s.ledgerBackend.On("PrepareRange", s.ctx, ledgerbackend.BoundedRange(100, 110)).Return(nil).Once()
 
@@ -244,13 +243,13 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 		},
 	}
 	s.ledgerBackend.On("GetLedger", s.ctx, uint32(100)).Return(meta, nil).Once()
-	s.runner.On("RunHistoryArchiveIngestion", uint32(100), MaxSupportedProtocolVersion, xdr.Hash{1, 2, 3}).Return(ingest.StatsChangeProcessorResults{}, nil).Once()
+	s.runner.On("RunHistoryArchiveIngestion", uint32(100), false, MaxSupportedProtocolVersion, xdr.Hash{1, 2, 3}).Return(ingest.StatsChangeProcessorResults{}, nil).Once()
 
 	s.historyQ.On("UpdateLastLedgerIngest", s.ctx, uint32(100)).Return(nil).Once()
 	s.historyQ.On("Commit").Return(nil).Once()
 
 	for i := uint32(101); i <= 110; i++ {
-		s.historyQ.On("Begin").Return(nil).Once()
+		s.historyQ.On("Begin", s.ctx).Return(nil).Once()
 
 		meta := xdr.LedgerCloseMeta{
 			V0: &xdr.LedgerCloseMetaV0{
@@ -276,13 +275,14 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 	clonedQ := &mockDBQ{}
 	s.historyQ.On("CloneIngestionQ").Return(clonedQ).Once()
 
-	clonedQ.On("BeginTx", mock.AnythingOfType("*sql.TxOptions")).Run(func(args mock.Arguments) {
-		arg := args.Get(0).(*sql.TxOptions)
+	clonedQ.On("BeginTx", s.ctx, mock.AnythingOfType("*sql.TxOptions")).Run(func(args mock.Arguments) {
+		arg := args.Get(1).(*sql.TxOptions)
 		s.Assert().Equal(sql.LevelRepeatableRead, arg.Isolation)
 		s.Assert().True(arg.ReadOnly)
 	}).Return(nil).Once()
 	clonedQ.On("Rollback").Return(nil).Once()
 	clonedQ.On("GetLastLedgerIngestNonBlocking", s.ctx).Return(uint32(63), nil).Once()
+	clonedQ.On("TryStateVerificationLock", s.ctx).Return(true, nil).Once()
 	mockChangeReader := &ingest.MockChangeReader{}
 	mockChangeReader.On("Close").Return(nil).Once()
 	mockAccountID := "GACMZD5VJXTRLKVET72CETCYKELPNCOTTBDC6DHFEUPLG5DHEK534JQX"
@@ -541,37 +541,53 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 	// TODO: add accounts data, trustlines and asset stats
 	clonedQ.MockQData.On("CountAccountsData", s.ctx).Return(0, nil).Once()
 	clonedQ.MockQAssetStats.On("CountTrustLines", s.ctx).Return(0, nil).Once()
+	clonedQ.MockQAssetStats.On("CountContractIDs", s.ctx).Return(0, nil).Once()
 	clonedQ.MockQAssetStats.On("GetAssetStats", s.ctx, "", "", db2.PageQuery{
 		Order: "asc",
 		Limit: assetStatsBatchSize,
-	}).Return([]history.ExpAssetStat{
+	}).Return([]history.AssetAndContractStat{
 		// Created by liquidity pool:
 		{
-			AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
-			AssetCode:   "USD",
-			AssetIssuer: "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
-			Accounts: history.ExpAssetStatAccounts{
-				LiquidityPools: 1,
+			ExpAssetStat: history.ExpAssetStat{
+				AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
+				AssetCode:   "USD",
+				AssetIssuer: "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
+				Accounts: history.ExpAssetStatAccounts{
+					LiquidityPools: 1,
+				},
+				Balances: history.ExpAssetStatBalances{
+					Authorized:                      "0",
+					AuthorizedToMaintainLiabilities: "0",
+					ClaimableBalances:               "0",
+					LiquidityPools:                  "450",
+					Unauthorized:                    "0",
+				},
+				Amount: "0",
 			},
-			Balances: history.ExpAssetStatBalances{
-				Authorized:                      "0",
-				AuthorizedToMaintainLiabilities: "0",
-				ClaimableBalances:               "0",
-				LiquidityPools:                  "450",
-				Unauthorized:                    "0",
-			},
-			Amount: "0",
-		}}, nil).Once()
+		},
+	}, nil).Once()
 	clonedQ.MockQAssetStats.On("GetAssetStats", s.ctx, "", "", db2.PageQuery{
 		Cursor: "USD_GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML_credit_alphanum4",
 		Order:  "asc",
 		Limit:  assetStatsBatchSize,
-	}).Return([]history.ExpAssetStat{}, nil).Once()
+	}).Return([]history.AssetAndContractStat{}, nil).Once()
 
 	clonedQ.MockQClaimableBalances.On("CountClaimableBalances", s.ctx).Return(1, nil).Once()
 	clonedQ.MockQClaimableBalances.
 		On("GetClaimableBalancesByID", s.ctx, []string{balanceIDStr}).
 		Return([]history.ClaimableBalance{claimableBalance}, nil).Once()
+
+	clonedQ.MockQClaimableBalances.
+		On("GetClaimantsByClaimableBalances", s.ctx, []string{balanceIDStr}).
+		Return(map[string][]history.ClaimableBalanceClaimant{
+			claimableBalance.BalanceID: {
+				{
+					BalanceID:          claimableBalance.BalanceID,
+					Destination:        claimableBalance.Claimants[0].Destination,
+					LastModifiedLedger: claimableBalance.LastModifiedLedger,
+				},
+			},
+		}, nil).Once()
 
 	clonedQ.MockQLiquidityPools.On("CountLiquidityPools", s.ctx).Return(1, nil).Once()
 	clonedQ.MockQLiquidityPools.
@@ -590,7 +606,15 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 }
 
 func (s *VerifyRangeStateTestSuite) TestVerifyFailsWhenAssetStatsMismatch() {
-	set := processors.AssetStatSet{}
+	set := processors.NewAssetStatSet()
+	contractAssetStatsSet := processors.NewContractAssetStatSet(
+		s.historyQ,
+		s.system.config.NetworkPassphrase,
+		map[xdr.Hash]uint32{},
+		map[xdr.Hash]uint32{},
+		map[xdr.Hash][2]uint32{},
+		100,
+	)
 
 	trustLineIssuer := xdr.MustAddress("GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
 	set.AddTrustline(
@@ -608,33 +632,35 @@ func (s *VerifyRangeStateTestSuite) TestVerifyFailsWhenAssetStatsMismatch() {
 		},
 	)
 
-	stat := history.ExpAssetStat{
-		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
-		AssetCode:   "EUR",
-		AssetIssuer: trustLineIssuer.Address(),
-		Accounts: history.ExpAssetStatAccounts{
-			Unauthorized: 1,
+	stat := history.AssetAndContractStat{
+		ExpAssetStat: history.ExpAssetStat{
+			AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
+			AssetCode:   "EUR",
+			AssetIssuer: trustLineIssuer.Address(),
+			Accounts: history.ExpAssetStatAccounts{
+				Unauthorized: 1,
+			},
+			Balances: history.ExpAssetStatBalances{
+				Authorized:                      "0",
+				AuthorizedToMaintainLiabilities: "0",
+				Unauthorized:                    "123",
+			},
+			Amount:      "0",
+			NumAccounts: 0,
 		},
-		Balances: history.ExpAssetStatBalances{
-			Authorized:                      "0",
-			AuthorizedToMaintainLiabilities: "0",
-			Unauthorized:                    "123",
-		},
-		Amount:      "0",
-		NumAccounts: 0,
 	}
 
 	s.historyQ.MockQAssetStats.On("GetAssetStats", s.ctx, "", "", db2.PageQuery{
 		Order: "asc",
 		Limit: assetStatsBatchSize,
-	}).Return([]history.ExpAssetStat{stat}, nil).Once()
+	}).Return([]history.AssetAndContractStat{stat}, nil).Once()
 	s.historyQ.MockQAssetStats.On("GetAssetStats", s.ctx, "", "", db2.PageQuery{
 		Cursor: stat.PagingToken(),
 		Order:  "asc",
 		Limit:  assetStatsBatchSize,
-	}).Return([]history.ExpAssetStat{}, nil).Once()
+	}).Return([]history.AssetAndContractStat{}, nil).Once()
 
-	err := checkAssetStats(s.ctx, set, s.historyQ)
+	err := checkAssetStats(s.ctx, set, contractAssetStatsSet, s.historyQ, s.system.config.NetworkPassphrase)
 	s.Assert().Contains(err.Error(), fmt.Sprintf("db asset stat with code EUR issuer %s does not match asset stat from HAS", trustLineIssuer.Address()))
 
 	// Satisfy the mock

@@ -5,9 +5,10 @@ package processors
 import (
 	"testing"
 
-	"github.com/stellar/go/protocols/horizon/base"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/stellar/go/protocols/horizon/base"
 
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
@@ -1521,6 +1522,13 @@ func getSponsoredSandwichWrappers() []*transactionOperationWrapper {
 		{
 			Type: xdr.LedgerEntryChangeTypeLedgerEntryCreated,
 			Created: &xdr.LedgerEntry{
+				Data: xdr.LedgerEntryData{
+					Type: xdr.LedgerEntryTypeAccount,
+					Account: &xdr.AccountEntry{
+						AccountId: xdr.MustAddress("GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY"),
+						Balance:   100,
+					},
+				},
 				LastModifiedLedgerSeq: xdr.Uint32(ledgerSeq),
 				Ext: xdr.LedgerEntryExt{
 					V: 1,
@@ -1850,7 +1858,7 @@ func TestLiquidityPoolDepositDetails(t *testing.T) {
 			UnsafeMeta: xdr.TransactionMeta{
 				V: 2,
 				V2: &xdr.TransactionMetaV2{
-					Operations: []xdr.OperationMeta{{entryChanges}},
+					Operations: []xdr.OperationMeta{{Changes: entryChanges}},
 				},
 			}},
 		operation: xdr.Operation{
@@ -1874,22 +1882,22 @@ func TestLiquidityPoolDepositDetails(t *testing.T) {
 		},
 		"reserves_deposited": []base.AssetAmount{
 			{
-				"USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
-				"0.0000060",
+				Asset:  "USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+				Amount: "0.0000060",
 			},
 			{
-				"native",
-				"0.0000050",
+				Asset:  "native",
+				Amount: "0.0000050",
 			},
 		},
 		"reserves_max": []base.AssetAmount{
 			{
-				"USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
-				"0.0000100",
+				Asset:  "USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+				Amount: "0.0000100",
 			},
 			{
-				"native",
-				"0.0000200",
+				Asset:  "native",
+				Amount: "0.0000200",
 			},
 		},
 		"shares_received": "0.0000010",
@@ -1957,22 +1965,22 @@ func TestFailedLiquidityPoolDepositDetails(t *testing.T) {
 		},
 		"reserves_deposited": []base.AssetAmount{
 			{
-				"",
-				"0.0000000",
+				Asset:  "",
+				Amount: "0.0000000",
 			},
 			{
-				"",
-				"0.0000000",
+				Asset:  "",
+				Amount: "0.0000000",
 			},
 		},
 		"reserves_max": []base.AssetAmount{
 			{
-				"",
-				"0.0000100",
+				Asset:  "",
+				Amount: "0.0000100",
 			},
 			{
-				"",
-				"0.0000200",
+				Asset:  "",
+				Amount: "0.0000200",
 			},
 		},
 		"shares_received": "0.0000000",
@@ -2055,7 +2063,7 @@ func TestLiquidityPoolWithdrawDetails(t *testing.T) {
 			UnsafeMeta: xdr.TransactionMeta{
 				V: 2,
 				V2: &xdr.TransactionMetaV2{
-					Operations: []xdr.OperationMeta{{entryChanges}},
+					Operations: []xdr.OperationMeta{{Changes: entryChanges}},
 				},
 			}},
 		operation: xdr.Operation{
@@ -2069,22 +2077,22 @@ func TestLiquidityPoolWithdrawDetails(t *testing.T) {
 		"liquidity_pool_id": "cafebabe00000000000000000000000000000000000000000000000000000000",
 		"reserves_received": []base.AssetAmount{
 			{
-				"USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
-				"0.0000060",
+				Asset:  "USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+				Amount: "0.0000060",
 			},
 			{
-				"native",
-				"0.0000050",
+				Asset:  "native",
+				Amount: "0.0000050",
 			},
 		},
 		"reserves_min": []base.AssetAmount{
 			{
-				"USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
-				"0.0000005",
+				Asset:  "USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+				Amount: "0.0000005",
 			},
 			{
-				"native",
-				"0.0000010",
+				Asset:  "native",
+				Amount: "0.0000010",
 			},
 		},
 		"shares": "0.0000010",
@@ -2135,22 +2143,22 @@ func TestFailedLiquidityPoolWithdrawDetails(t *testing.T) {
 		"liquidity_pool_id": "cafebabe00000000000000000000000000000000000000000000000000000000",
 		"reserves_received": []base.AssetAmount{
 			{
-				"",
-				"0.0000000",
+				Asset:  "",
+				Amount: "0.0000000",
 			},
 			{
-				"",
-				"0.0000000",
+				Asset:  "",
+				Amount: "0.0000000",
 			},
 		},
 		"reserves_min": []base.AssetAmount{
 			{
-				"",
-				"0.0000005",
+				Asset:  "",
+				Amount: "0.0000005",
 			},
 			{
-				"",
-				"0.0000010",
+				Asset:  "",
+				Amount: "0.0000010",
 			},
 		},
 		"shares": "0.0000010",
@@ -2216,7 +2224,7 @@ func TestParticipantsCoversAllOperationTypes(t *testing.T) {
 	}
 	// calling Participants should error due to the unknown operation
 	_, err := operation.Participants()
-	assert.Contains(t, err.Error(), "Unknown operation type")
+	assert.Contains(t, err.Error(), "unknown operation type")
 }
 
 func TestDetailsCoversAllOperationTypes(t *testing.T) {
@@ -2278,5 +2286,5 @@ func TestDetailsCoversAllOperationTypes(t *testing.T) {
 	f := func() {
 		operation.Details()
 	}
-	assert.PanicsWithError(t, "Unknown operation type: ", f)
+	assert.PanicsWithError(t, "unknown operation type: ", f)
 }

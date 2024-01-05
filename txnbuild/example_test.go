@@ -760,7 +760,7 @@ func ExampleBuildChallengeTx() {
 	webAuthDomain := "webauthdomain.example.org"
 	timebound := time.Duration(5 * time.Minute)
 
-	tx, err := BuildChallengeTx(serverSignerSeed, clientAccountID, webAuthDomain, anchorName, network.TestNetworkPassphrase, timebound)
+	tx, err := BuildChallengeTx(serverSignerSeed, clientAccountID, webAuthDomain, anchorName, network.TestNetworkPassphrase, timebound, nil)
 	check(err)
 
 	txeBase64, err := tx.Base64()

@@ -276,7 +276,7 @@ func (m *StateMiddleware) WrapFunc(h http.HandlerFunc) http.HandlerFunc {
 		// Otherwise, because the ingestion system is running concurrently with this request,
 		// it is possible to have one read fetch data from ledger N and another read
 		// fetch data from ledger N+1 .
-		err := session.BeginTx(&sql.TxOptions{
+		err := session.BeginTx(ctx, &sql.TxOptions{
 			Isolation: sql.LevelRepeatableRead,
 			ReadOnly:  true,
 		})

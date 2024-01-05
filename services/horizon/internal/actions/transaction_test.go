@@ -149,6 +149,7 @@ func checkOuterHashResponse(
 }
 
 func TestFeeBumpTransactionPage(t *testing.T) {
+
 	tt := test.Start(t)
 	defer tt.Finish()
 	test.ResetHorizonDB(t, tt.HorizonDB)
