@@ -61,7 +61,7 @@ func (b *HttpStorage) Head(pth string) (*http.Response, error) {
 	return resp, nil
 }
 
-func (b *HttpArchiveBackend) Exists(pth string) (bool, error) {
+func (b *HttpStorage) Exists(pth string) (bool, error) {
 	resp, err := b.Head(pth)
 	if err != nil {
 		return false, err
@@ -75,7 +75,7 @@ func (b *HttpArchiveBackend) Exists(pth string) (bool, error) {
 	}
 }
 
-func (b *HttpArchiveBackend) Size(pth string) (int64, error) {
+func (b *HttpStorage) Size(pth string) (int64, error) {
 	resp, err := b.Head(pth)
 	if err != nil {
 		return 0, err
@@ -89,12 +89,12 @@ func (b *HttpArchiveBackend) Size(pth string) (int64, error) {
 	}
 }
 
-func (b *HttpArchiveBackend) PutFile(pth string, in io.ReadCloser) error {
+func (b *HttpStorage) PutFile(pth string, in io.ReadCloser) error {
 	in.Close()
 	return errors.New("PutFile not available over HTTP")
 }
 
-func (b *HttpArchiveBackend) ListFiles(pth string) (chan string, chan error) {
+func (b *HttpStorage) ListFiles(pth string) (chan string, chan error) {
 	ch := make(chan string)
 	er := make(chan error)
 	close(ch)
@@ -103,7 +103,7 @@ func (b *HttpArchiveBackend) ListFiles(pth string) (chan string, chan error) {
 	return ch, er
 }
 
-func (b *HttpArchiveBackend) CanListFiles() bool {
+func (b *HttpStorage) CanListFiles() bool {
 	return false
 }
 
@@ -126,8 +126,8 @@ func (b *HttpStorage) makeSendRequest(method, url string) (*http.Response, error
 	return resp, err
 }
 
-func makeHttpBackend(base *url.URL, opts ConnectOptions) ArchiveBackend {
-	return &HttpArchiveBackend{
+func makeHttpStorage(base *url.URL, opts ConnectOptions) Storage {
+	return &HttpStorage{
 		ctx:       opts.Context,
 		userAgent: opts.UserAgent,
 		base:      *base,

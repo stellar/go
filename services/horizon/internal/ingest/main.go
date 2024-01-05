@@ -235,10 +235,10 @@ func NewSystem(config Config) (System, error) {
 	archive, err := historyarchive.NewArchivePool(
 		config.HistoryArchiveURLs,
 		historyarchive.ArchiveOptions{
-			Context:             ctx,
 			NetworkPassphrase:   config.NetworkPassphrase,
 			CheckpointFrequency: config.CheckpointFrequency,
 			ConnectOptions: storage.ConnectOptions{
+				Context:   ctx,
 				UserAgent: fmt.Sprintf("horizon/%s golang/%s", apkg.Version(), runtime.Version()),
 			},
 		},
