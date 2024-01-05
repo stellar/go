@@ -558,7 +558,7 @@ func (c *CaptiveCoreToml) setDefaults(params CaptiveCoreTomlParams) {
 		for i, val := range params.HistoryArchiveURLs {
 			name := fmt.Sprintf("HISTORY.h%d", i)
 			c.HistoryEntries[c.tablePlaceholders.newPlaceholder(name)] = History{
-				Get: fmt.Sprintf("curl -sf %s/{0} -o {1}", val),
+				Get: fmt.Sprintf("curl -sf %s/{0} -o {1}", strings.TrimSuffix(val, "/")),
 			}
 		}
 	}
