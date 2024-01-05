@@ -160,7 +160,7 @@ jobs:
         run: docker push stellar/horizon-verify-range:latest
 
   horizon-light:
-    name: Test and Push the horizon light images
+    name: Test and push the Horizon Light (Zenith) images
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
