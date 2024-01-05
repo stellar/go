@@ -126,14 +126,6 @@ func (b *HttpStorage) makeSendRequest(method, url string) (*http.Response, error
 	return resp, err
 }
 
-func makeHttpStorage(base *url.URL, opts ConnectOptions) Storage {
-	return &HttpStorage{
-		ctx:       opts.Context,
-		userAgent: opts.UserAgent,
-		base:      *base,
-	}
-}
-
 func checkResp(r *http.Response) error {
 	if r.StatusCode >= 200 && r.StatusCode < 400 {
 		return nil
