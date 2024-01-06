@@ -2,7 +2,7 @@ name: Horizon
 
 on:
   push:
-    branches: [master, lighthorizon]
+    branches: [master]
   pull_request:
 
 jobs:
@@ -159,22 +159,22 @@ jobs:
         name: Push to DockerHub
         run: docker push stellar/horizon-verify-range:latest
 
-  horizon-light:
-    name: Test and push the Horizon Light (Zenith) images
+  ledger-exporter:
+    name: Test and push the Ledger Exporter images
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
         with:
           # For pull requests, build and test the PR head not a merge of the PR with the destination.
           ref:  ${{ github.event.pull_request.head.sha || github.ref }}
-      - name: Build and test Horizon Light images
+      - name: Build and test Ledger Exporter images
         # Any range should do for basic testing, this range was chosen pretty early in history so that it only takes a few mins to run
         run: |
           chmod 755 ./exp/lighthorizon/build/build.sh
           mkdir $PWD/ledgerexport
-          mkdir $PWD/index
+          # mkdir $PWD/index
 
-          ./exp/lighthorizon/build/build.sh all stellar latest false
+          ./exp/lighthorizon/build/build.sh ledgerexporter stellar latest false
           docker run -e ARCHIVE_TARGET=file:///ledgerexport\
                      -e START=5\
                      -e END=150\
@@ -184,13 +184,13 @@ jobs:
                      -v $PWD/ledgerexport:/ledgerexport\
                      stellar/lighthorizon-ledgerexporter
 
-          # run map job
-          docker run -e NETWORK_PASSPHRASE='pubnet' -e JOB_INDEX_ENV=AWS_BATCH_JOB_ARRAY_INDEX -e AWS_BATCH_JOB_ARRAY_INDEX=0 -e BATCH_SIZE=64 -e FIRST_CHECKPOINT=64 \
-                     -e WORKER_COUNT=1 -e RUN_MODE=map -v $PWD/ledgerexport:/ledgermeta -e TXMETA_SOURCE=file:///ledgermeta -v $PWD/index:/index -e INDEX_TARGET=file:///index stellar/lighthorizon-index-batch
+          # # run map job
+          # docker run -e NETWORK_PASSPHRASE='pubnet' -e JOB_INDEX_ENV=AWS_BATCH_JOB_ARRAY_INDEX -e AWS_BATCH_JOB_ARRAY_INDEX=0 -e BATCH_SIZE=64 -e FIRST_CHECKPOINT=64 \
+          #            -e WORKER_COUNT=1 -e RUN_MODE=map -v $PWD/ledgerexport:/ledgermeta -e TXMETA_SOURCE=file:///ledgermeta -v $PWD/index:/index -e INDEX_TARGET=file:///index stellar/lighthorizon-index-batch
 
-          # run reduce job
-          docker run -e NETWORK_PASSPHRASE='pubnet' -e JOB_INDEX_ENV=AWS_BATCH_JOB_ARRAY_INDEX -e AWS_BATCH_JOB_ARRAY_INDEX=0 -e MAP_JOB_COUNT=1 -e REDUCE_JOB_COUNT=1 \
-                     -e WORKER_COUNT=1 -e RUN_MODE=reduce -v $PWD/index:/index -e INDEX_SOURCE_ROOT=file:///index -e INDEX_TARGET=file:///index stellar/lighthorizon-index-batch
+          # # run reduce job
+          # docker run -e NETWORK_PASSPHRASE='pubnet' -e JOB_INDEX_ENV=AWS_BATCH_JOB_ARRAY_INDEX -e AWS_BATCH_JOB_ARRAY_INDEX=0 -e MAP_JOB_COUNT=1 -e REDUCE_JOB_COUNT=1 \
+          #            -e WORKER_COUNT=1 -e RUN_MODE=reduce -v $PWD/index:/index -e INDEX_SOURCE_ROOT=file:///index -e INDEX_TARGET=file:///index stellar/lighthorizon-index-batch
 
       # Push images
       - if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/lighthorizon'
@@ -204,4 +204,4 @@ jobs:
         name: Push to DockerHub
         run: |
           chmod 755 ./exp/lighthorizon/build/build.sh
-          ./exp/lighthorizon/build/build.sh all stellar latest true
+          ./exp/lighthorizon/build/build.sh ledgerexporter stellar latest true

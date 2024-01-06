@@ -1,11 +1,11 @@
-FROM golang:1.18 AS builder
+FROM golang:1.20 AS builder
 
 WORKDIR /go/src/github.com/stellar/go
 COPY . ./
 RUN go mod download
 RUN go install github.com/stellar/go/exp/services/ledgerexporter
 
-FROM ubuntu:20.04
+FROM ubuntu:21.04
 ARG STELLAR_CORE_VERSION
 ENV STELLAR_CORE_VERSION=${STELLAR_CORE_VERSION:-*}
 ENV STELLAR_CORE_BINARY_PATH /usr/bin/stellar-core

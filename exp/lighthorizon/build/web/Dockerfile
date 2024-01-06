@@ -1,11 +1,11 @@
-FROM golang:1.18 AS builder
+FROM golang:1.20 AS builder
 
 WORKDIR /go/src/github.com/stellar/go
 COPY . ./
 RUN go mod download
 RUN go install github.com/stellar/go/exp/lighthorizon
 
-FROM ubuntu:20.04
+FROM ubuntu:21.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 # ca-certificates are required to make tls connections
