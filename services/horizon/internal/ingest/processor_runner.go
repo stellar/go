@@ -353,7 +353,7 @@ func (s *ProcessorRunner) streamLedger(ledger xdr.LedgerCloseMeta,
 			"ledger":   true,
 			"commit":   false,
 			"duration": time.Since(startTime).Seconds(),
-		}).Info("Processed ledger")
+		}).Info("Transaction processors finished for ledger")
 
 	return nil
 }
