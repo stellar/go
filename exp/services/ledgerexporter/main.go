@@ -60,7 +60,12 @@ func main() {
 
 	initDestinationStorage(config)
 
-	initExporter(config)
+	// Initialize exporter
+	exporter = NewExporter(
+		config.ExporterConfig,
+		destinationStorage,
+		backend,
+	)
 
 	var wg sync.WaitGroup
 	wg.Add(1) // for the exporter
@@ -70,17 +75,13 @@ func main() {
 		wg.Done() // signal completion when Run finishes
 	}()
 
+	// TODO:
+	//close ledgerbackend. Gracefully shutdown captive core.
+	//close destinationstorage
+
 	wg.Wait() // wait for the exporter to finish
 	logger.Info("Shutting down service.")
 
-}
-
-func initExporter(config Config) {
-	exporter = NewExporter(
-		config.ExporterConfig,
-		&destinationStorage,
-		&backend,
-	)
 }
 
 func initDestinationStorage(config Config) {
@@ -98,11 +99,11 @@ func loadConfig() {
 
 	// Load config TOML file
 	cfg, err := toml.LoadFile(*configFilePath)
-	logFatalIf(err, "Error loading %s TOML file: %v", configFilePath)
+	logFatalIf(err, "Error loading %s TOML file:", *configFilePath)
 
 	// Unmarshal TOML data into the Config struct
 	err = cfg.Unmarshal(&config)
-	logFatalIf(err, "Error unmarshalling TOML config: %v", configFilePath)
+	logFatalIf(err, "Error unmarshalling TOML config.")
 
 	config.StartLedger = uint32(*startLedger)
 	config.EndLedger = uint32(*endLedger)
@@ -110,6 +111,9 @@ func loadConfig() {
 	// Validate and build the appropriate range
 	logger.Infof("processing requested range of -start-ledger=%v, -end-ledger=%v", config.StartLedger, config.EndLedger)
 
+	// TODO: validate end ledger is greater than the latest ledger on the network
+	// TODO: validate if either start of end ledger does not fall on "ledgersPerFile" boundary and
+	//  adjust the start and end ledger accordingly
 	if config.StartLedger < 2 {
 		logger.Fatalf("-start-ledger must be >= 2")
 	}

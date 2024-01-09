@@ -10,7 +10,6 @@ import (
 	"strconv"
 	"time"
 
-	//"fmt"
 	"github.com/stellar/go/xdr"
 )
 
@@ -54,14 +53,14 @@ type ExporterConfig struct {
 // Exporter manages the creation and handling of export objects.
 type Exporter struct {
 	config      ExporterConfig
-	destination *storage.Storage
-	backend     *ledgerbackend.LedgerBackend
+	destination storage.Storage
+	backend     ledgerbackend.LedgerBackend
 	//	mutex       sync.Mutex
 	fileMap map[string]*ExportObject
 }
 
 // NewExporter creates a new Exporter with the provided configuration.
-func NewExporter(config ExporterConfig, store *storage.Storage, backend *ledgerbackend.LedgerBackend) *Exporter {
+func NewExporter(config ExporterConfig, store storage.Storage, backend ledgerbackend.LedgerBackend) *Exporter {
 	return &Exporter{
 		config:      config,
 		destination: store,
@@ -101,7 +100,7 @@ func (e *Exporter) Upload(object *ExportObject) error {
 	if err != nil {
 		return err
 	}
-	return (*e.destination).PutFile(
+	return e.destination.PutFile(
 		object.fullPath,
 		io.NopCloser(bytes.NewReader(blob)),
 	)
@@ -135,7 +134,7 @@ func (e *Exporter) Run(ctx context.Context, startLedger, endLedger uint32) {
 			logger.Info("Exporter stopped due to context cancellation.")
 			return
 		default:
-			ledger, err := (*e.backend).GetLedger(ctx, nextLedger)
+			ledger, err := e.backend.GetLedger(ctx, nextLedger)
 			if err != nil {
 				//Handle error
 			}
