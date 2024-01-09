@@ -9,6 +9,7 @@
 //	xdr/Stellar-contract-meta.x
 //	xdr/Stellar-contract-spec.x
 //	xdr/Stellar-contract.x
+//	xdr/Stellar-exporter.x
 //	xdr/Stellar-internal.x
 //	xdr/Stellar-ledger-entries.x
 //	xdr/Stellar-ledger.x
@@ -38,6 +39,7 @@ var XdrFilesSHA256 = map[string]string{
 	"xdr/Stellar-contract-meta.x":           "f01532c11ca044e19d9f9f16fe373e9af64835da473be556b9a807ee3319ae0d",
 	"xdr/Stellar-contract-spec.x":           "c7ffa21d2e91afb8e666b33524d307955426ff553a486d670c29217ed9888d49",
 	"xdr/Stellar-contract.x":                "7f665e4103e146a88fcdabce879aaaacd3bf9283feb194cc47ff986264c1e315",
+	"xdr/Stellar-exporter.x":                "086f41f8ed1637594f678babff411551faed57c75b0fc3bd7b280e82bd6b63b9",
 	"xdr/Stellar-internal.x":                "227835866c1b2122d1eaf28839ba85ea7289d1cb681dda4ca619c2da3d71fe00",
 	"xdr/Stellar-ledger-entries.x":          "4f8f2324f567a40065f54f696ea1428740f043ea4154f5986d9f499ad00ac333",
 	"xdr/Stellar-ledger.x":                  "2c842f3fe6e269498af5467f849cf6818554e90babc845f34c87cda471298d0f",
@@ -56559,6 +56561,116 @@ var (
 func (s ConfigSettingEntry) xdrType() {}
 
 var _ xdrType = (*ConfigSettingEntry)(nil)
+
+// TxMetaLedgerBatch is an XDR Struct defines as:
+//
+//	struct TxMetaLedgerBatch
+//	 {
+//	     // starting ledger sequence number in the batch
+//	     uint32 startSequence;
+//
+//	     // ending ledger sequence number in the batch
+//	     uint32 endSequence;
+//
+//	     // Tx meta for each ledger within the batch
+//	     LedgerCloseMeta txMetas<>;
+//	 };
+type TxMetaLedgerBatch struct {
+	StartSequence Uint32
+	EndSequence   Uint32
+	TxMetas       []LedgerCloseMeta
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s *TxMetaLedgerBatch) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = s.StartSequence.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.EndSequence.EncodeTo(e); err != nil {
+		return err
+	}
+	if _, err = e.EncodeUint(uint32(len(s.TxMetas))); err != nil {
+		return err
+	}
+	for i := 0; i < len(s.TxMetas); i++ {
+		if err = s.TxMetas[i].EncodeTo(e); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+var _ decoderFrom = (*TxMetaLedgerBatch)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *TxMetaLedgerBatch) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, fmt.Errorf("decoding TxMetaLedgerBatch: %w", ErrMaxDecodingDepthReached)
+	}
+	maxDepth -= 1
+	var err error
+	var n, nTmp int
+	nTmp, err = s.StartSequence.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %w", err)
+	}
+	nTmp, err = s.EndSequence.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %w", err)
+	}
+	var l uint32
+	l, nTmp, err = d.DecodeUint()
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding LedgerCloseMeta: %w", err)
+	}
+	s.TxMetas = nil
+	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding LedgerCloseMeta: length (%d) exceeds remaining input length (%d)", l, il)
+		}
+		s.TxMetas = make([]LedgerCloseMeta, l)
+		for i := uint32(0); i < l; i++ {
+			nTmp, err = s.TxMetas[i].DecodeFrom(d, maxDepth)
+			n += nTmp
+			if err != nil {
+				return n, fmt.Errorf("decoding LedgerCloseMeta: %w", err)
+			}
+		}
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s TxMetaLedgerBatch) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *TxMetaLedgerBatch) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*TxMetaLedgerBatch)(nil)
+	_ encoding.BinaryUnmarshaler = (*TxMetaLedgerBatch)(nil)
+)
+
+// xdrType signals that this type represents XDR values defined by this package.
+func (s TxMetaLedgerBatch) xdrType() {}
+
+var _ xdrType = (*TxMetaLedgerBatch)(nil)
 
 // BitmapIndex is an XDR Struct defines as:
 //
