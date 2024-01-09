@@ -1,0 +1,55 @@
+#! /usr/bin/env bash
+set -e
+
+START="${START:=2}"
+END="${END:=0}"
+CONTINUE="${CONTINUE:=false}"
+# Writing to /latest is disabled by default to avoid race conditions between parallel container runs
+WRITE_LATEST_PATH="${WRITE_LATEST_PATH:=false}"
+
+# config defaults to pubnet core, any other network requires setting all 3 of these in container env
+NETWORK_PASSPHRASE="${NETWORK_PASSPHRASE:=Public Global Stellar Network ; September 2015}"
+HISTORY_ARCHIVE_URLS="${HISTORY_ARCHIVE_URLS:=https://s3-eu-west-1.amazonaws.com/history.stellar.org/prd/core-live/core_live_001}"
+CAPTIVE_CORE_CONFIG="${CAPTIVE_CORE_CONFIG:=/captive-core-pubnet.cfg}"
+
+CAPTIVE_CORE_USE_DB="${CAPTIVE_CORE_USE_DB:=true}"
+
+if [ -z "$ARCHIVE_TARGET" ]; then
+  echo "error: undefined ARCHIVE_TARGET env variable"
+  exit 1
+fi
+
+# Calculate params for AWS Batch
+if [ ! -z "$AWS_BATCH_JOB_ARRAY_INDEX" ]; then
+	# The batch should have three env variables:
+	# * BATCH_START_LEDGER - start ledger of the job, must be equal 1 or a
+	#   checkpoint ledger (i + 1) % 64 == 0.
+	# * BATCH_SIZE - size of the batch in ledgers, must be multiple of 64!
+	# * BRANCH - git branch to build
+	#
+	# Ex: BATCH_START_LEDGER=63, BATCH_SIZE=64 will create the following ranges:
+	# AWS_BATCH_JOB_ARRAY_INDEX=0: [63, 127]
+	# AWS_BATCH_JOB_ARRAY_INDEX=1: [127, 191]
+	# AWS_BATCH_JOB_ARRAY_INDEX=2: [191, 255]
+	# AWS_BATCH_JOB_ARRAY_INDEX=3: [255, 319]
+	# ...
+	START=`expr "$BATCH_SIZE" \* "$AWS_BATCH_JOB_ARRAY_INDEX" + "$BATCH_START_LEDGER"`
+	END=`expr "$BATCH_SIZE" \* "$AWS_BATCH_JOB_ARRAY_INDEX" + "$BATCH_START_LEDGER" + "$BATCH_SIZE"`
+
+	if [ "$START" -lt 2 ]; then
+	  # The minimum ledger expected by the ledger exporter is 2
+	  START=2
+	fi
+
+fi
+
+echo "START: $START END: $END"
+
+export TRACY_NO_INVARIANT_CHECK=1
+/ledgerexporter --target "$ARCHIVE_TARGET" \
+                --captive-core-toml-path "$CAPTIVE_CORE_CONFIG" \
+                --history-archive-urls "$HISTORY_ARCHIVE_URLS" --network-passphrase "$NETWORK_PASSPHRASE" \
+                --continue="$CONTINUE" --write-latest-path="$WRITE_LATEST_PATH" \
+				--start-ledger "$START" --end-ledger "$END" --captive-core-use-db="$CAPTIVE_CORE_USE_DB"
+
+echo "OK"

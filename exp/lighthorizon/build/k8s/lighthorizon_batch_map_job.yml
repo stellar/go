@@ -1,0 +1,43 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: 'batch-map-job'
+spec:
+  completions: 52
+  parallelism: 10
+  completionMode: Indexed
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: 'worker'
+        image: 'stellar/lighthorizon-index-batch'
+        imagePullPolicy: Always
+        envFrom:
+        - secretRef:
+            name: <reference to secret name here if needed for source/target>
+        env:
+        - name: RUN_MODE
+          value: "map" 
+        - name: BATCH_SIZE
+          value: "10048"   
+        - name: FIRST_CHECKPOINT
+          value: "41426080"
+        - name: WORKER_COUNT
+          value: "8"   
+        - name: TXMETA_SOURCE
+          value: "<url of txmeta source>"
+        - name: JOB_INDEX_ENV
+          value: "JOB_COMPLETION_INDEX"   
+        - name: NETWORK_PASSPHRASE
+          value: "pubnet"
+        - name: INDEX_TARGET
+          value: "url of target index"
+        resources:
+          limits:
+            cpu:     4
+            memory:  5Gi
+          requests:
+            cpu:     500m
+            memory:  500Mi
+        

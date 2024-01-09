@@ -1,0 +1,125 @@
+# this file contains the ledgerexporter deployment and it's config artifacts.
+#
+# when applying the manifest on a cluster, make sure to include namespace destination, 
+# as the manifest does not specify namespace, otherwise it'll go in your current kubectl context.
+#
+# make sure to set the secrets values, substitue <base64 encoded value here> placeholders.
+#
+# $ kubectl apply -f ledgerexporter.yml -n horizon-dev
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  annotations:
+    fluxcd.io/ignore: "true"
+  labels:
+    app: ledgerexporter
+  name: ledgerexporter-pubnet-env
+data:
+  # when using core 'on disk', the earliest ledger to get streamed out after catchup to 2, is 3
+  # whereas on in-memory it streas out 2, adjusted here, otherwise horizon ingest will abort
+  # and stop process with error that ledger 3 is not <= expected ledger of 2.    
+  START: "0"
+  END: "0"
+
+  # can only have CONTINUE or START set, not both.
+  CONTINUE: "true"
+  WRITE_LATEST_PATH: "true"
+  CAPTIVE_CORE_USE_DB: "true"
+
+  # configure the network to export
+  HISTORY_ARCHIVE_URLS: "https://history.stellar.org/prd/core-live/core_live_001,https://history.stellar.org/prd/core-live/core_live_002,https://history.stellar.org/prd/core-live/core_live_003"
+  NETWORK_PASSPHRASE: "Public Global Stellar Network ; September 2015"
+  # can refer to canned cfg's for pubnet and testnet which are included on the image 
+  # `/captive-core-pubnet.cfg` or `/captive-core-testnet.cfg`. 
+  # If exporting a standalone network, then mount a volume to the pod container with your standalone core's .cfg,
+  # and set full path to that volume here
+  CAPTIVE_CORE_CONFIG: "/captive-core-pubnet.cfg"
+  
+  # example of testnet network config. 
+  # HISTORY_ARCHIVE_URLS: "https://history.stellar.org/prd/core-testnet/core_testnet_001,https://history.stellar.org/prd/core-testnet/core_testnet_002"
+  # NETWORK_PASSPHRASE: "Test SDF Network ; September 2015"
+  # CAPTIVE_CORE_CONFIG: "/captive-core-testnet.cfg"
+
+  # provide the url for the external s3 bucket to be populated
+  # update the ledgerexporter-pubnet-secret to have correct aws key/secret for access to the bucket
+  ARCHIVE_TARGET: "s3://horizon-ledgermeta-prodnet-test"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  labels:
+    app: ledgerexporter
+  name: ledgerexporter-pubnet-secret
+type: Opaque
+data:
+  AWS_REGION: <base64 encoded value here>
+  AWS_ACCESS_KEY_ID: <base64 encoded value here>
+  AWS_SECRET_ACCESS_KEY: <base64 encoded value here> 
+---
+# running captive core with on-disk mode limits RAM to around 2G usage, but 
+# requires some dedicated disk storage space that has at least 3k IOPS for read/write.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ledgerexporter-pubnet-core-storage
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 500Gi
+  storageClassName: default
+  volumeMode: Filesystem
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    fluxcd.io/ignore: "true"
+    deployment.kubernetes.io/revision: "3"
+  labels:
+    app: ledgerexporter-pubnet
+  name: ledgerexporter-pubnet-deployment
+spec:
+  selector:
+    matchLabels:
+      app: ledgerexporter-pubnet
+  replicas: 1
+  template:
+    metadata:
+      annotations:
+        fluxcd.io/ignore: "true"
+        # if we expect to add metrics at some point to ledgerexporter
+        # this just needs to be set to true
+        prometheus.io/port: "6060"
+        prometheus.io/scrape: "false"
+      labels:
+        app: ledgerexporter-pubnet
+    spec:
+      containers:
+      - envFrom:
+        - secretRef:
+            name: ledgerexporter-pubnet-secret
+        - configMapRef:
+            name: ledgerexporter-pubnet-env
+        image: stellar/lighthorizon-ledgerexporter:latest
+        imagePullPolicy: Always
+        name: ledgerexporter-pubnet
+        resources:  
+          limits:
+            cpu:     3
+            memory:  8Gi
+          requests:
+            cpu:      500m
+            memory:   2Gi
+        volumeMounts:
+        - mountPath: /cc
+          name: core-storage
+      dnsPolicy: ClusterFirst
+      volumes:
+      - name: core-storage
+        persistentVolumeClaim:
+          claimName: ledgerexporter-pubnet-core-storage 
+
+
+ 

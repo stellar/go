@@ -16,6 +16,13 @@ file.  This project adheres to [Semantic Versioning](http://semver.org/).
 * The library is updated to align with breaking changes to `txnbuild`.
 
 
+## [v10.0.0](https://github.com/stellar/go/releases/tag/horizonclient-v10.0.0) - 2022-04-18
+
+**This release adds support for Protocol 19:**
+
+* The library is updated to align with breaking changes to `txnbuild`.
+
+
 ## [v9.0.0](https://github.com/stellar/go/releases/tag/horizonclient-v9.0.0) - 2022-01-10
 
 None

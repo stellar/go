@@ -22,6 +22,7 @@ import (
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 	logpkg "github.com/stellar/go/support/log"
+	"github.com/stellar/go/support/storage"
 )
 
 const (
@@ -233,11 +234,13 @@ func NewSystem(config Config) (System, error) {
 
 	archive, err := historyarchive.NewArchivePool(
 		config.HistoryArchiveURLs,
-		historyarchive.ConnectOptions{
-			Context:             ctx,
+		historyarchive.ArchiveOptions{
 			NetworkPassphrase:   config.NetworkPassphrase,
 			CheckpointFrequency: config.CheckpointFrequency,
-			UserAgent:           fmt.Sprintf("horizon/%s golang/%s", apkg.Version(), runtime.Version()),
+			ConnectOptions: storage.ConnectOptions{
+				Context:   ctx,
+				UserAgent: fmt.Sprintf("horizon/%s golang/%s", apkg.Version(), runtime.Version()),
+			},
 		},
 	)
 	if err != nil {

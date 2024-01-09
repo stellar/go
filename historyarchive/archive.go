@@ -21,6 +21,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/support/storage"
 	"github.com/stellar/go/xdr"
 )
 
@@ -37,35 +38,22 @@ type CommandOptions struct {
 	SkipOptional bool
 }
 
-type ConnectOptions struct {
-	Context context.Context
+type ArchiveOptions struct {
 	// NetworkPassphrase defines the expected network of history archive. It is
 	// checked when getting HAS. If network passphrase does not match, error is
 	// returned.
 	NetworkPassphrase string
-	S3Region          string
-	S3Endpoint        string
-	UnsignedRequests  bool
 	// CheckpointFrequency is the number of ledgers between checkpoints
 	// if unset, DefaultCheckpointFrequency will be used
 	CheckpointFrequency uint32
-	// UserAgent is the value of `User-Agent` header. Applicable only for HTTP client.
-	UserAgent string
+
+	storage.ConnectOptions
 }
 
 type Ledger struct {
 	Header            xdr.LedgerHeaderHistoryEntry
 	Transaction       xdr.TransactionHistoryEntry
 	TransactionResult xdr.TransactionHistoryResultEntry
-}
-
-type ArchiveBackend interface {
-	Exists(path string) (bool, error)
-	Size(path string) (int64, error)
-	GetFile(path string) (io.ReadCloser, error)
-	PutFile(path string, in io.ReadCloser) error
-	ListFiles(path string) (chan string, chan error)
-	CanListFiles() bool
 }
 
 type ArchiveInterface interface {
@@ -114,7 +102,7 @@ type Archive struct {
 
 	checkpointManager CheckpointManager
 
-	backend ArchiveBackend
+	backend storage.Storage
 }
 
 func (arch *Archive) GetCheckpointManager() CheckpointManager {
@@ -378,7 +366,7 @@ func (a *Archive) GetXdrStream(pth string) (*XdrStream, error) {
 	return NewXdrGzStream(rdr)
 }
 
-func Connect(u string, opts ConnectOptions) (*Archive, error) {
+func Connect(u string, opts ArchiveOptions) (*Archive, error) {
 	arch := Archive{
 		networkPassphrase:       opts.NetworkPassphrase,
 		checkpointFiles:         make(map[string](map[uint32]bool)),
@@ -396,40 +384,36 @@ func Connect(u string, opts ConnectOptions) (*Archive, error) {
 		arch.checkpointFiles[cat] = make(map[uint32]bool)
 	}
 
+	if opts.ConnectOptions.Context == nil {
+		opts.ConnectOptions.Context = context.Background()
+	}
+
+	var err error
+	arch.backend, err = ConnectBackend(u, opts.ConnectOptions)
+	return &arch, err
+}
+
+func ConnectBackend(u string, opts storage.ConnectOptions) (storage.Storage, error) {
 	if u == "" {
-		return &arch, errors.New("URL is empty")
+		return nil, errors.New("URL is empty")
 	}
 
 	parsed, err := url.Parse(u)
 	if err != nil {
-		return &arch, err
+		return nil, err
 	}
 
-	if opts.Context == nil {
-		opts.Context = context.Background()
-	}
-
-	pth := parsed.Path
-	if parsed.Scheme == "s3" {
-		// Inside s3, all paths start _without_ the leading /
-		if len(pth) > 0 && pth[0] == '/' {
-			pth = pth[1:]
-		}
-		arch.backend, err = makeS3Backend(parsed.Host, pth, opts)
-	} else if parsed.Scheme == "file" {
-		pth = path.Join(parsed.Host, pth)
-		arch.backend = makeFsBackend(pth, opts)
-	} else if parsed.Scheme == "http" || parsed.Scheme == "https" {
-		arch.backend = makeHttpBackend(parsed, opts)
-	} else if parsed.Scheme == "mock" {
-		arch.backend = makeMockBackend(opts)
+	var backend storage.Storage
+	if parsed.Scheme == "mock" {
+		backend = makeMockBackend()
 	} else {
-		err = errors.New("unknown URL scheme: '" + parsed.Scheme + "'")
+		backend, err = storage.ConnectBackend(u, opts)
 	}
-	return &arch, err
+
+	return backend, err
 }
 
-func MustConnect(u string, opts ConnectOptions) *Archive {
+func MustConnect(u string, opts ArchiveOptions) *Archive {
 	arch, err := Connect(u, opts)
 	if err != nil {
 		log.Fatal(err)
