@@ -5,7 +5,7 @@ COPY . ./
 RUN go mod download
 RUN go install github.com/stellar/go/exp/lighthorizon/index/cmd/single
 
-FROM ubuntu:21.04
+FROM ubuntu:22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 # ca-certificates are required to make tls connections
@@ -23,4 +23,3 @@ ENTRYPOINT ./single \
   -modules "$MODULES" \
   -watch="$WATCH" \
   -workers "$WORKERS"
-    

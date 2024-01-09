@@ -6,7 +6,7 @@ RUN go mod download
 RUN go install github.com/stellar/go/exp/lighthorizon/index/cmd/batch/map
 RUN go install github.com/stellar/go/exp/lighthorizon/index/cmd/batch/reduce
 
-FROM ubuntu:21.04
+FROM ubuntu:22.04
 ENV DEBIAN_FRONTEND=noninteractive
 # ca-certificates are required to make tls connections
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl wget gnupg apt-utils
