@@ -1,10 +1,8 @@
 package storage
 
 import (
-	"io"
-	"sync"
-
 	"github.com/stretchr/testify/mock"
+	"io"
 )
 
 // MockStorage is a mock implementation for the Storage interface.

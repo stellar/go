@@ -45,15 +45,6 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	go func() {
-		// Handle OS signals to gracefully terminate the service
-		ch := make(chan os.Signal, 1)
-		signal.Notify(ch, os.Interrupt, syscall.SIGTERM)
-		<-ch
-		logger.Info("Received termination signal, shutting down...")
-		cancel()
-	}()
-
 	loadConfig()
 
 	initLedgerBackend(config)
@@ -73,6 +64,15 @@ func main() {
 	go func() {
 		exporter.Run(ctx, config.StartLedger, config.EndLedger)
 		wg.Done() // signal completion when Run finishes
+	}()
+
+	go func() {
+		// Handle OS signals to gracefully terminate the service
+		ch := make(chan os.Signal, 1)
+		signal.Notify(ch, os.Interrupt, syscall.SIGTERM)
+		<-ch
+		logger.Info("Received termination signal, shutting down...")
+		cancel()
 	}()
 
 	// TODO:

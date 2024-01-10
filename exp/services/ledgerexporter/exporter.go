@@ -115,7 +115,7 @@ func (e *Exporter) getPartitionName(ledgerSeq uint32) string {
 	return strconv.Itoa(int(start)) + "-" + strconv.Itoa(int(end))
 }
 
-// getFileName generates the file name based on the ledger sequence.
+// getObjectName generates the file name based on the ledger sequence.
 func (e *Exporter) getObjectName(ledgerSeq uint32) string {
 	start := (ledgerSeq / e.config.LedgersPerFile) * e.config.LedgersPerFile
 	end := start + e.config.LedgersPerFile - 1
