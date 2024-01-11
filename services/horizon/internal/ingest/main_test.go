@@ -90,7 +90,6 @@ func TestLedgerEligibleForStateVerification(t *testing.T) {
 
 func TestNewSystem(t *testing.T) {
 	config := Config{
-		CoreSession:              &db.Session{DB: &sqlx.DB{}},
 		HistorySession:           &db.Session{DB: &sqlx.DB{}},
 		DisableStateVerification: true,
 		HistoryArchiveURLs:       []string{"https://history.stellar.org/prd/core-live/core_live_001"},

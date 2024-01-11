@@ -338,11 +338,7 @@ func Flags() (*Config, support.ConfigOptions) {
 			Hidden:   true,
 			CustomSetValue: func(opt *support.ConfigOption) error {
 				if val := viper.GetString(opt.Name); val != "" {
-					stdLog.Printf(
-						"DEPRECATED - The usage of the flag --stellar-core-db-url has been deprecated. " +
-							"Horizon now uses Captive-Core ingestion by default and this flag will soon be removed in " +
-							"the future.",
-					)
+					return fmt.Errorf("flag --stellar-core-db-url and environment variable STELLAR_CORE_DATABASE_URL have been removed and no longer valid, must use captive core configuration for ingestion")
 				}
 				return nil
 			},
@@ -595,11 +591,15 @@ func Flags() (*Config, support.ConfigOptions) {
 		&support.ConfigOption{
 			Name:           "cursor-name",
 			EnvVar:         "CURSOR_NAME",
-			ConfigKey:      &config.CursorName,
 			OptType:        types.String,
-			FlagDefault:    "HORIZON",
-			Usage:          "ingestor cursor used by horizon to ingest from stellar core. must be uppercase and unique for each horizon instance ingesting from that core instance.",
+			Hidden:         true,
 			UsedInCommands: IngestionCommands,
+			CustomSetValue: func(opt *support.ConfigOption) error {
+				if val := viper.GetString(opt.Name); val != "" {
+					return fmt.Errorf("flag --cursor-name has been removed and no longer valid, must use captive core configuration for ingestion")
+				}
+				return nil
+			},
 		},
 		&support.ConfigOption{
 			Name:           "history-retention-count",
@@ -619,11 +619,15 @@ func Flags() (*Config, support.ConfigOptions) {
 		},
 		&support.ConfigOption{
 			Name:           "skip-cursor-update",
-			ConfigKey:      &config.SkipCursorUpdate,
-			OptType:        types.Bool,
-			FlagDefault:    false,
-			Usage:          "causes the ingester to skip reporting the last imported ledger state to stellar-core",
+			OptType:        types.String,
+			Hidden:         true,
 			UsedInCommands: IngestionCommands,
+			CustomSetValue: func(opt *support.ConfigOption) error {
+				if val := viper.GetString(opt.Name); val != "" {
+					return fmt.Errorf("flag --skip-cursor-update has been removed and no longer valid, must use captive core configuration for ingestion")
+				}
+				return nil
+			},
 		},
 		&support.ConfigOption{
 			Name:           "ingest-disable-state-verification",
