@@ -81,7 +81,6 @@ func (s *DBTestSuite) SetupTest() {
 	s.historyAdapter = &mockHistoryArchiveAdapter{}
 	var err error
 	sIface, err := NewSystem(Config{
-		CoreSession:              s.tt.CoreSession(),
 		HistorySession:           s.tt.HorizonSession(),
 		HistoryArchiveURLs:       []string{"http://ignore.test"},
 		DisableStateVerification: false,

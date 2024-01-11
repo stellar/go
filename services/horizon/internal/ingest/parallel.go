@@ -52,9 +52,6 @@ func (ps *ParallelSystems) Shutdown() {
 	if ps.config.HistorySession != nil {
 		ps.config.HistorySession.Close()
 	}
-	if ps.config.CoreSession != nil {
-		ps.config.CoreSession.Close()
-	}
 }
 
 func (ps *ParallelSystems) runReingestWorker(s System, stop <-chan struct{}, reingestJobQueue <-chan history.LedgerRange) rangeError {

@@ -80,14 +80,11 @@ const (
 var log = logpkg.DefaultLogger.WithField("service", "ingest")
 
 type Config struct {
-	CoreSession            db.SessionInterface
 	StellarCoreURL         string
-	StellarCoreCursor      string
 	CaptiveCoreBinaryPath  string
 	CaptiveCoreStoragePath string
 	CaptiveCoreToml        *ledgerbackend.CaptiveCoreToml
 	CaptiveCoreConfigUseDB bool
-	RemoteCaptiveCoreURL   string
 	NetworkPassphrase      string
 
 	HistorySession     db.SessionInterface
@@ -110,19 +107,6 @@ type Config struct {
 
 	EnableIngestionFiltering bool
 	MaxLedgerPerFlush        uint32
-}
-
-// LocalCaptiveCoreEnabled returns true if configured to run
-// a local captive core instance for ingestion.
-func (c Config) LocalCaptiveCoreEnabled() bool {
-	// c.RemoteCaptiveCoreURL is always empty when running local captive core.
-	return c.RemoteCaptiveCoreURL == ""
-}
-
-// RemoteCaptiveCoreEnabled returns true if configured to run
-// a remote captive core instance for ingestion.
-func (c Config) RemoteCaptiveCoreEnabled() bool {
-	return c.RemoteCaptiveCoreURL != ""
 }
 
 const (
@@ -248,41 +232,26 @@ func NewSystem(config Config) (System, error) {
 		return nil, errors.Wrap(err, "error creating history archive")
 	}
 
-	var ledgerBackend ledgerbackend.LedgerBackend
-	if config.RemoteCaptiveCoreEnabled() {
-		ledgerBackend, err = ledgerbackend.NewRemoteCaptive(config.RemoteCaptiveCoreURL)
-		if err != nil {
-			cancel()
-			return nil, errors.Wrap(err, "error creating captive core backend")
-		}
-	} else if config.LocalCaptiveCoreEnabled() {
-		logger := log.WithField("subservice", "stellar-core")
-		ledgerBackend, err = ledgerbackend.NewCaptive(
-			ledgerbackend.CaptiveCoreConfig{
-				BinaryPath:          config.CaptiveCoreBinaryPath,
-				StoragePath:         config.CaptiveCoreStoragePath,
-				UseDB:               config.CaptiveCoreConfigUseDB,
-				Toml:                config.CaptiveCoreToml,
-				NetworkPassphrase:   config.NetworkPassphrase,
-				HistoryArchiveURLs:  config.HistoryArchiveURLs,
-				CheckpointFrequency: config.CheckpointFrequency,
-				LedgerHashStore:     ledgerbackend.NewHorizonDBLedgerHashStore(config.HistorySession),
-				Log:                 logger,
-				Context:             ctx,
-				UserAgent:           fmt.Sprintf("captivecore horizon/%s golang/%s", apkg.Version(), runtime.Version()),
-			},
-		)
-		if err != nil {
-			cancel()
-			return nil, errors.Wrap(err, "error creating captive core backend")
-		}
-	} else {
-		coreSession := config.CoreSession.Clone()
-		ledgerBackend, err = ledgerbackend.NewDatabaseBackendFromSession(coreSession, config.NetworkPassphrase)
-		if err != nil {
-			cancel()
-			return nil, errors.Wrap(err, "error creating ledger backend")
-		}
+	// the only ingest option is local captive core config
+	logger := log.WithField("subservice", "stellar-core")
+	ledgerBackend, err := ledgerbackend.NewCaptive(
+		ledgerbackend.CaptiveCoreConfig{
+			BinaryPath:          config.CaptiveCoreBinaryPath,
+			StoragePath:         config.CaptiveCoreStoragePath,
+			UseDB:               config.CaptiveCoreConfigUseDB,
+			Toml:                config.CaptiveCoreToml,
+			NetworkPassphrase:   config.NetworkPassphrase,
+			HistoryArchiveURLs:  config.HistoryArchiveURLs,
+			CheckpointFrequency: config.CheckpointFrequency,
+			LedgerHashStore:     ledgerbackend.NewHorizonDBLedgerHashStore(config.HistorySession),
+			Log:                 logger,
+			Context:             ctx,
+			UserAgent:           fmt.Sprintf("captivecore horizon/%s golang/%s", apkg.Version(), runtime.Version()),
+		},
+	)
+	if err != nil {
+		cancel()
+		return nil, errors.Wrap(err, "error creating captive core backend")
 	}
 
 	historyQ := &history.Q{config.HistorySession.Clone()}
@@ -753,26 +722,6 @@ func (s *system) resetStateVerificationErrors() {
 	s.stateVerificationMutex.Lock()
 	defer s.stateVerificationMutex.Unlock()
 	s.stateVerificationErrors = 0
-}
-
-func (s *system) updateCursor(ledgerSequence uint32) error {
-	if s.stellarCoreClient == nil {
-		return nil
-	}
-
-	cursor := defaultCoreCursorName
-	if s.config.StellarCoreCursor != "" {
-		cursor = s.config.StellarCoreCursor
-	}
-
-	ctx, cancel := context.WithTimeout(s.ctx, time.Second)
-	defer cancel()
-	err := s.stellarCoreClient.SetCursor(ctx, cursor, int32(ledgerSequence))
-	if err != nil {
-		return errors.Wrap(err, "Setting stellar-core cursor failed")
-	}
-
-	return nil
 }
 
 func (s *system) Shutdown() {

@@ -8,7 +8,10 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 
 - Add a deprecation warning for using command-line flags when running Horizon ([5051](https://github.com/stellar/go/pull/5051))
-- Deprecate configuration flags related to legacy non-captive core ingestion ([5100](https://github.com/stellar/go/pull/5100))
+
+### Breaking Changes
+- Removed configuration flags `--stellar-core-url-db`, `--cursor-name` `--skip-cursor-update` , they were related to legacy non-captive core ingestion and are no longer usable. 
+
 ## 2.27.0
 
 ### Fixed

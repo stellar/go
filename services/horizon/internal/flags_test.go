@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/spf13/cobra"
+
 	"github.com/stellar/go/services/horizon/internal/test"
 
 	"github.com/stretchr/testify/assert"
@@ -258,4 +259,73 @@ func TestEnvironmentVariables(t *testing.T) {
 	assert.Equal(t, config.CaptiveCoreBinaryPath, os.Getenv("HORIZON_INTEGRATION_TESTS_CAPTIVE_CORE_BIN"))
 	assert.Equal(t, config.CaptiveCoreConfigPath, "../docker/captive-core-classic-integration-tests.cfg")
 	assert.Equal(t, config.CaptiveCoreConfigUseDB, true)
+}
+
+func TestRemovedFlags(t *testing.T) {
+	tests := []struct {
+		name            string
+		environmentVars map[string]string
+		errStr          string
+		cmdArgs         []string
+	}{
+		{
+			name: "STELLAR_CORE_DATABASE_URL removed",
+			environmentVars: map[string]string{
+				"INGEST":                    "false",
+				"STELLAR_CORE_DATABASE_URL": "coredb",
+				"DATABASE_URL":              "dburl",
+			},
+			errStr: "flag --stellar-core-db-url and environment variable STELLAR_CORE_DATABASE_URL have been removed and no longer valid, must use captive core configuration for ingestion",
+		},
+		{
+			name: "--stellar-core-db-url  removed",
+			environmentVars: map[string]string{
+				"INGEST":       "false",
+				"DATABASE_URL": "dburl",
+			},
+			errStr:  "flag --stellar-core-db-url and environment variable STELLAR_CORE_DATABASE_URL have been removed and no longer valid, must use captive core configuration for ingestion",
+			cmdArgs: []string{"--stellar-core-db-url=coredb"},
+		},
+		{
+			name: "CURSOR_NAME removed",
+			environmentVars: map[string]string{
+				"INGEST":       "false",
+				"CURSOR_NAME":  "cursor",
+				"DATABASE_URL": "dburl",
+			},
+			errStr: "flag --cursor-name has been removed and no longer valid, must use captive core configuration for ingestion",
+		},
+		{
+			name: "SKIP_CURSOR_UPDATE removed",
+			environmentVars: map[string]string{
+				"INGEST":             "false",
+				"SKIP_CURSOR_UPDATE": "true",
+				"DATABASE_URL":       "dburl",
+			},
+			errStr: "flag --skip-cursor-update has been removed and no longer valid, must use captive core configuration for ingestion",
+		},
+	}
+
+	envManager := test.NewEnvironmentManager()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			defer func() {
+				envManager.Restore()
+			}()
+			err := envManager.InitializeEnvironmentVariables(tt.environmentVars)
+			require.NoError(t, err)
+
+			config, flags := Flags()
+			testCmd := &cobra.Command{
+				Use: "test",
+			}
+
+			require.NoError(t, flags.Init(testCmd))
+			require.NoError(t, testCmd.ParseFlags(tt.cmdArgs))
+
+			err = ApplyFlags(config, flags, ApplyOptions{})
+			require.Error(t, err)
+			assert.Equal(t, tt.errStr, err.Error())
+		})
+	}
 }
