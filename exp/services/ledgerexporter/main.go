@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/network"
 	supportlog "github.com/stellar/go/support/log"
@@ -60,7 +59,7 @@ func main() {
 	core, err := ledgerbackend.NewCaptive(captiveConfig)
 	logFatalIf(err, "Could not create captive core instance")
 
-	target, err := historyarchive.ConnectBackend(
+	target, err := storage.ConnectBackend(
 		*targetUrl,
 		storage.ConnectOptions{
 			Context:    context.Background(),
