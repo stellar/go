@@ -8,7 +8,7 @@ namespace stellar
 {
 
 // Batch of ledgers along with their transaction metadata
-struct TxMetaLedgerBatch
+struct LedgerCloseMetaBatch
 {
     // starting ledger sequence number in the batch
     uint32 startSequence;
@@ -16,8 +16,8 @@ struct TxMetaLedgerBatch
     // ending ledger sequence number in the batch
     uint32 endSequence;
 
-    // Tx meta for each ledger within the batch
-    LedgerCloseMeta txMetas<>;
+    // Ledger close meta for each ledger within the batch
+    LedgerCloseMeta ledgerCloseMetas<>;
 };
 
 }

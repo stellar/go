@@ -3,23 +3,20 @@ package main
 import (
 	"context"
 	"flag"
+	"os"
+	"os/signal"
+	"sync"
+	"syscall"
+
 	"github.com/pelletier/go-toml"
 	"github.com/stellar/go/ingest/ledgerbackend"
 	_ "github.com/stellar/go/network"
 	supportlog "github.com/stellar/go/support/log"
 	"github.com/stellar/go/support/storage"
-	"os"
-	"os/signal"
-	"sync"
-	"syscall"
 )
 
 var (
-	logger             = supportlog.New()
-	config             Config
-	backend            ledgerbackend.LedgerBackend
-	destinationStorage storage.Storage
-	exporter           *Exporter
+	logger = supportlog.New()
 )
 
 type StellarCoreConfig struct {
@@ -32,6 +29,7 @@ type StellarCoreConfig struct {
 
 type Config struct {
 	Network           string            `toml:"network"`
+	DestinationUrl    string            `toml:"destination_url"`
 	ExporterConfig    ExporterConfig    `toml:"exporter_config"`
 	StellarCoreConfig StellarCoreConfig `toml:"stellar_core_config"`
 
@@ -40,30 +38,59 @@ type Config struct {
 	EndLedger   uint32 `toml:"end_ledger"`
 }
 
+type App struct {
+	config             Config
+	backend            ledgerbackend.LedgerBackend
+	destinationStorage storage.Storage
+	exportManager      *ExportManager
+	uploader           *Uploader
+}
+
+func NewApp() *App {
+	app := App{}
+	app.config = loadConfig()
+	app.destinationStorage = NewDestinationStorage(app.config)
+	app.backend = NewLedgerBackend(app.config)
+
+	// Create a channel to send LedgerCloseMetaObject from ExportManager to Uploader
+	ledgerCloseMetaObjectCh := make(chan *LedgerCloseMetaObject)
+
+	app.exportManager = NewExportManager(
+		app.config.ExporterConfig,
+		app.backend,
+		ledgerCloseMetaObjectCh,
+	)
+
+	app.uploader = NewUploader(app.destinationStorage, ledgerCloseMetaObjectCh)
+	return &app
+}
+
+func (a *App) Shutdown() {
+
+	// TODO:
+	//close ledgerbackend. Gracefully shutdown captive core.
+	//close destinationstorage
+
+}
+
 func main() {
 	logger.SetLevel(supportlog.InfoLevel)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	loadConfig()
-
-	initLedgerBackend(config)
-
-	initDestinationStorage(config)
-
-	// Initialize exporter
-	exporter = NewExporter(
-		config.ExporterConfig,
-		destinationStorage,
-		backend,
-	)
+	app := NewApp()
 
 	var wg sync.WaitGroup
-	wg.Add(1) // for the exporter
+	wg.Add(2) // for the uploader and export manager
 
 	go func() {
-		exporter.Run(ctx, config.StartLedger, config.EndLedger)
-		wg.Done() // signal completion when Run finishes
+		defer wg.Done()
+		app.uploader.Run(ctx)
+	}()
+
+	go func() {
+		defer wg.Done()
+		app.exportManager.Run(ctx, app.config.StartLedger, app.config.EndLedger)
 	}()
 
 	go func() {
@@ -75,22 +102,18 @@ func main() {
 		cancel()
 	}()
 
-	// TODO:
-	//close ledgerbackend. Gracefully shutdown captive core.
-	//close destinationstorage
-
 	wg.Wait() // wait for the exporter to finish
 	logger.Info("Shutting down service.")
-
+	app.Shutdown()
 }
 
-func initDestinationStorage(config Config) {
-	var err error
-	destinationStorage, err = storage.ConnectBackend(config.ExporterConfig.DestinationUrl, storage.ConnectOptions{})
+func NewDestinationStorage(config Config) storage.Storage {
+	destinationStorage, err := storage.ConnectBackend(config.DestinationUrl, storage.ConnectOptions{})
 	logFatalIf(err, "Could not connect to destination storage")
+	return destinationStorage
 }
 
-func loadConfig() {
+func loadConfig() Config {
 	// Parse command-line options
 	startLedger := flag.Uint("start-ledger", 0, "Starting ledger")
 	endLedger := flag.Uint("end-ledger", 0, "Ending ledger")
@@ -101,6 +124,7 @@ func loadConfig() {
 	cfg, err := toml.LoadFile(*configFilePath)
 	logFatalIf(err, "Error loading %s TOML file:", *configFilePath)
 
+	var config Config
 	// Unmarshal TOML data into the Config struct
 	err = cfg.Unmarshal(&config)
 	logFatalIf(err, "Error unmarshalling TOML config.")
@@ -120,10 +144,12 @@ func loadConfig() {
 	if config.EndLedger != 0 && config.EndLedger < config.StartLedger {
 		logger.Fatalf("-end-ledger must be >= -start-ledger")
 	}
+	return config
 }
 
 // Creates and initializes captive core ledger backend
-func initLedgerBackend(config Config) {
+// Only supports captive core for now
+func NewLedgerBackend(config Config) ledgerbackend.LedgerBackend {
 	coreConfig := config.StellarCoreConfig
 	params := ledgerbackend.CaptiveCoreTomlParams{
 		NetworkPassphrase:  coreConfig.NetworkPassphrase,
@@ -147,7 +173,7 @@ func initLedgerBackend(config Config) {
 	}
 
 	// Create a new captive core backend
-	backend, err = ledgerbackend.NewCaptive(captiveConfig)
+	backend, err := ledgerbackend.NewCaptive(captiveConfig)
 	logFatalIf(err, "Could not create captive core instance")
 
 	var ledgerRange ledgerbackend.Range
@@ -159,6 +185,7 @@ func initLedgerBackend(config Config) {
 
 	err = backend.PrepareRange(context.Background(), ledgerRange)
 	logFatalIf(err, "Could not prepare captive core ledger backend")
+	return backend
 }
 
 func logFatalIf(err error, message string, args ...interface{}) {

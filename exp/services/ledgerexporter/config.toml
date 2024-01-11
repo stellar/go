@@ -1,9 +1,9 @@
 network = "testnet"
+destination_url = "gcs://exporter-test/ledgers"
 
 [exporter_config]
   ledgers_per_file = 64
   files_per_partition = 10
-  destination_url = "gcs://exporter-test/ledgers"
 
 [stellar_core_config]
   captive_core_toml_path = "../../../services/horizon/internal/configs/captive-core-testnet.cfg"

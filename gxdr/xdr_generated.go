@@ -4415,13 +4415,13 @@ type ConfigSettingEntry struct {
 }
 
 // Batch of ledgers along with their transaction metadata
-type TxMetaLedgerBatch struct {
+type LedgerCloseMetaBatch struct {
 	// starting ledger sequence number in the batch
 	StartSequence Uint32
 	// ending ledger sequence number in the batch
 	EndSequence Uint32
-	// Tx meta for each ledger within the batch
-	TxMetas []LedgerCloseMeta
+	// Ledger close meta for each ledger within the batch
+	LedgerCloseMetas []LedgerCloseMeta
 }
 
 type BitmapIndex struct {
@@ -29261,21 +29261,21 @@ func (v *_XdrVec_unbounded_LedgerCloseMeta) XdrPointer() interface{}       { ret
 func (v _XdrVec_unbounded_LedgerCloseMeta) XdrValue() interface{}          { return ([]LedgerCloseMeta)(v) }
 func (v *_XdrVec_unbounded_LedgerCloseMeta) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
 
-type XdrType_TxMetaLedgerBatch = *TxMetaLedgerBatch
+type XdrType_LedgerCloseMetaBatch = *LedgerCloseMetaBatch
 
-func (v *TxMetaLedgerBatch) XdrPointer() interface{}       { return v }
-func (TxMetaLedgerBatch) XdrTypeName() string              { return "TxMetaLedgerBatch" }
-func (v TxMetaLedgerBatch) XdrValue() interface{}          { return v }
-func (v *TxMetaLedgerBatch) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
-func (v *TxMetaLedgerBatch) XdrRecurse(x XDR, name string) {
+func (v *LedgerCloseMetaBatch) XdrPointer() interface{}       { return v }
+func (LedgerCloseMetaBatch) XdrTypeName() string              { return "LedgerCloseMetaBatch" }
+func (v LedgerCloseMetaBatch) XdrValue() interface{}          { return v }
+func (v *LedgerCloseMetaBatch) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *LedgerCloseMetaBatch) XdrRecurse(x XDR, name string) {
 	if name != "" {
 		name = x.Sprintf("%s.", name)
 	}
 	x.Marshal(x.Sprintf("%sstartSequence", name), XDR_Uint32(&v.StartSequence))
 	x.Marshal(x.Sprintf("%sendSequence", name), XDR_Uint32(&v.EndSequence))
-	x.Marshal(x.Sprintf("%stxMetas", name), (*_XdrVec_unbounded_LedgerCloseMeta)(&v.TxMetas))
+	x.Marshal(x.Sprintf("%sledgerCloseMetas", name), (*_XdrVec_unbounded_LedgerCloseMeta)(&v.LedgerCloseMetas))
 }
-func XDR_TxMetaLedgerBatch(v *TxMetaLedgerBatch) *TxMetaLedgerBatch { return v }
+func XDR_LedgerCloseMetaBatch(v *LedgerCloseMetaBatch) *LedgerCloseMetaBatch { return v }
 
 type XdrType_BitmapIndex = *BitmapIndex
 
