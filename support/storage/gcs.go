@@ -91,7 +91,14 @@ func (b *GCSStorage) GetFile(pth string) (io.ReadCloser, error) {
 func (b *GCSStorage) PutFile(pth string, in io.ReadCloser) error {
 	pth = path.Join(b.prefix, pth)
 	log.WithField("path", pth).Trace("gcs: get file")
-	w := b.bucket.Object(pth).NewWriter(context.Background())
+	obj := b.bucket.Object(pth)
+
+	// Ensure that the object does not already exist in GCS before writing.
+	// Returns a 412 Precondition Failed error if the file already exists
+	// TODO: Make overwrite existing objects option configurable.
+	obj = obj.If(storage.Conditions{DoesNotExist: true})
+	w := obj.NewWriter(context.Background())
+
 	if _, err := io.Copy(w, in); err != nil {
 		return err
 	}
