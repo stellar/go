@@ -47,22 +47,24 @@ type App struct {
 }
 
 func NewApp() *App {
-	app := App{}
-	app.config = loadConfig()
-	app.destinationStorage = NewDestinationStorage(app.config)
-	app.backend = NewLedgerBackend(app.config)
+	config := loadConfig()
+	destinationStorage := NewDestinationStorage(config)
+	backend := NewLedgerBackend(config)
 
 	// Create a channel to send LedgerCloseMetaObject from ExportManager to Uploader
 	ledgerCloseMetaObjectCh := make(chan *LedgerCloseMetaObject)
 
-	app.exportManager = NewExportManager(
-		app.config.ExporterConfig,
-		app.backend,
-		ledgerCloseMetaObjectCh,
-	)
+	exportManager := NewExportManager(config.ExporterConfig, backend, ledgerCloseMetaObjectCh)
 
-	app.uploader = NewUploader(app.destinationStorage, ledgerCloseMetaObjectCh)
-	return &app
+	uploader := NewUploader(destinationStorage, ledgerCloseMetaObjectCh)
+
+	return &App{
+		config:             config,
+		backend:            backend,
+		destinationStorage: destinationStorage,
+		exportManager:      exportManager,
+		uploader:           uploader,
+	}
 }
 
 func (a *App) Shutdown() {
@@ -129,25 +131,36 @@ func loadConfig() Config {
 	err = cfg.Unmarshal(&config)
 	logFatalIf(err, "Error unmarshalling TOML config.")
 
-	config.StartLedger = uint32(*startLedger)
-	config.EndLedger = uint32(*endLedger)
-
 	// Validate and build the appropriate range
 	logger.Infof("processing requested range of -start-ledger=%v, -end-ledger=%v", config.StartLedger, config.EndLedger)
 
 	// TODO: validate end ledger is greater than the latest ledger on the network
-	// TODO: validate if either start of end ledger does not fall on "ledgersPerFile" boundary and
-	//  adjust the start and end ledger accordingly
-	if config.StartLedger < 2 {
+	if *startLedger < 2 {
 		logger.Fatalf("-start-ledger must be >= 2")
 	}
-	if config.EndLedger != 0 && config.EndLedger < config.StartLedger {
+	if *endLedger != 0 && *endLedger < *startLedger {
 		logger.Fatalf("-end-ledger must be >= -start-ledger")
+	}
+
+	// Validate if either the start or end ledger does not fall on the "LedgersPerFile" boundary
+	// and adjust the start and end ledger accordingly.
+	// Align start ledger to the nearest "LedgersPerFile" boundary.
+	config.StartLedger = uint32(*startLedger) / config.ExporterConfig.LedgersPerFile * config.ExporterConfig.LedgersPerFile
+
+	// Ensure that the adjusted start ledger is at least 2.
+	if config.StartLedger < 2 {
+		config.StartLedger = 2
+	}
+	// Align end ledger to the nearest "LedgersPerFile" boundary and add an extra batch for bounded range
+	if *endLedger != 0 {
+		config.EndLedger = ((uint32(*endLedger) / config.ExporterConfig.LedgersPerFile) + 1) * config.ExporterConfig.LedgersPerFile
+	} else {
+		config.EndLedger = uint32(*endLedger)
 	}
 	return config
 }
 
-// Creates and initializes captive core ledger backend
+// NewLedgerBackend Creates and initializes captive core ledger backend
 // Only supports captive core for now
 func NewLedgerBackend(config Config) ledgerbackend.LedgerBackend {
 	coreConfig := config.StellarCoreConfig
