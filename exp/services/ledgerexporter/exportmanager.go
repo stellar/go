@@ -48,7 +48,7 @@ func (e *ExporterConfig) getObjectKey(ledgerSeq uint32) string {
 		objectKey = strconv.Itoa(int(partitionStart)) + "-" + strconv.Itoa(int(partitionEnd)) + "/"
 	}
 
-	// 0 ledgersPerFile is invalid, throw an error
+	// TODO: 0 ledgersPerFile is invalid, throw an error and move this check to config validation.
 	if e.LedgersPerFile != 0 {
 		fileStart := (ledgerSeq / e.LedgersPerFile) * e.LedgersPerFile
 		fileEnd := fileStart + e.LedgersPerFile - 1
