@@ -16,7 +16,7 @@ import (
 )
 
 var (
-	logger = supportlog.New()
+	logger = supportlog.New().WithField("service", "ledger-exporter")
 )
 
 type StellarCoreConfig struct {
@@ -39,11 +39,13 @@ type Config struct {
 }
 
 type App struct {
+	ctx                context.Context
+	cancel             func()
 	config             Config
 	backend            ledgerbackend.LedgerBackend
 	destinationStorage storage.Storage
-	exportManager      *ExportManager
-	uploader           *Uploader
+	exportManager      ExportManager
+	uploader           Uploader
 }
 
 func NewApp() *App {
@@ -51,12 +53,9 @@ func NewApp() *App {
 	destinationStorage := NewDestinationStorage(config)
 	backend := NewLedgerBackend(config)
 
-	// Create a channel to send LedgerCloseMetaObject from ExportManager to Uploader
-	ledgerCloseMetaObjectCh := make(chan *LedgerCloseMetaObject)
+	exportManager := NewExportManager(config.ExporterConfig, backend)
 
-	exportManager := NewExportManager(config.ExporterConfig, backend, ledgerCloseMetaObjectCh)
-
-	uploader := NewUploader(destinationStorage, ledgerCloseMetaObjectCh)
+	uploader := NewUploader(destinationStorage, exportManager.GetExportObjectsChannel())
 
 	return &App{
 		config:             config,
@@ -67,46 +66,77 @@ func NewApp() *App {
 	}
 }
 
-func (a *App) Shutdown() {
+func (a *App) Close() {
+	//TODO: error handling
+	a.destinationStorage.Close()
+	a.backend.Close()
+}
 
-	// TODO:
-	//close ledgerbackend. Gracefully shutdown captive core.
-	//close destinationstorage
+func (a *App) run() {
+	a.ctx, a.cancel = context.WithCancel(context.Background())
+	defer a.cancel()
 
+	var wg sync.WaitGroup
+	wg.Add(3)
+
+	go func() {
+		defer wg.Done()
+		err := a.uploader.Run(a.ctx)
+		if err != nil {
+			logger.Errorf("Error executing uploader: %v", err)
+			return
+		}
+
+		logger.Info("Uploader Run Complete")
+	}()
+
+	doneCh := make(chan struct{})
+	go func() {
+		defer wg.Done()
+		defer close(doneCh)
+
+		err := a.exportManager.Run(a.ctx, a.config.StartLedger, a.config.EndLedger)
+		if err != nil {
+			logger.Errorf("Error executing ExportManager: %v", err)
+			return
+		}
+
+		logger.Info("ExportManager Run Complete")
+	}()
+
+	go func() {
+		wg.Done()
+
+		// Handle OS signals to gracefully terminate the service
+		sigCh := make(chan os.Signal, 1)
+		signal.Notify(sigCh, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+
+		for {
+			select {
+			case <-doneCh:
+				a.cancel()
+				return
+			case <-a.ctx.Done():
+				return
+			case sig := <-sigCh:
+				logger.Errorf("Received signal: %v", sig)
+				a.cancel()
+				return
+			}
+		}
+	}()
+
+	wg.Wait()
+
+	a.Close()
+
+	logger.Info("Shutting down ledgerexporter..")
 }
 
 func main() {
 	logger.SetLevel(supportlog.InfoLevel)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	app := NewApp()
-
-	var wg sync.WaitGroup
-	wg.Add(2) // for the uploader and export manager
-
-	go func() {
-		defer wg.Done()
-		app.uploader.Run(ctx)
-	}()
-
-	go func() {
-		defer wg.Done()
-		app.exportManager.Run(ctx, app.config.StartLedger, app.config.EndLedger)
-	}()
-
-	go func() {
-		// Handle OS signals to gracefully terminate the service
-		ch := make(chan os.Signal, 1)
-		signal.Notify(ch, os.Interrupt, syscall.SIGTERM)
-		<-ch
-		logger.Info("Received termination signal, shutting down...")
-		cancel()
-	}()
-
-	wg.Wait() // wait for the exporter to finish
-	logger.Info("Shutting down service.")
-	app.Shutdown()
+	app.run()
 }
 
 func NewDestinationStorage(config Config) storage.Storage {

@@ -2,9 +2,10 @@ package main
 
 import (
 	"context"
-	"strconv"
+	"fmt"
 
 	"github.com/stellar/go/ingest/ledgerbackend"
+	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
 
@@ -45,45 +46,53 @@ func (e *ExporterConfig) getObjectKey(ledgerSeq uint32) string {
 		partitionSize := e.LedgersPerFile * e.FilesPerPartition
 		partitionStart := (ledgerSeq / partitionSize) * partitionSize
 		partitionEnd := partitionStart + partitionSize - 1
-		objectKey = strconv.Itoa(int(partitionStart)) + "-" + strconv.Itoa(int(partitionEnd)) + "/"
+		objectKey = fmt.Sprintf("%v-%v/", partitionStart, partitionEnd)
 	}
 
 	// TODO: 0 ledgersPerFile is invalid, throw an error and move this check to config validation.
 	if e.LedgersPerFile != 0 {
 		fileStart := (ledgerSeq / e.LedgersPerFile) * e.LedgersPerFile
 		fileEnd := fileStart + e.LedgersPerFile - 1
+		objectKey += fmt.Sprintf("%v", fileStart)
 
-		// Single ledger per file
-		if fileStart == fileEnd {
-			objectKey += strconv.Itoa(int(fileStart))
-		} else {
-			objectKey += strconv.Itoa(int(fileStart)) + "-" + strconv.Itoa(int(fileEnd))
+		// Multiple ledgers per file
+		if fileStart != fileEnd {
+			objectKey += fmt.Sprintf("-%v", fileEnd)
 		}
 	}
 	return objectKey
 }
 
 // ExportManager manages the creation and handling of export objects.
-type ExportManager struct {
-	config                  ExporterConfig
-	backend                 ledgerbackend.LedgerBackend
-	objectMap               map[string]*LedgerCloseMetaObject
-	LedgerCloseMetaObjectCh chan *LedgerCloseMetaObject
+type ExportManager interface {
+	GetExportObjectsChannel() chan *LedgerCloseMetaObject
+	Run(ctx context.Context, startLedger uint32, endLedger uint32) error
+	AddLedgerCloseMeta(ledgerCloseMeta xdr.LedgerCloseMeta)
+}
+
+type exportManager struct {
+	config         ExporterConfig
+	backend        ledgerbackend.LedgerBackend
+	objectMap      map[string]*LedgerCloseMetaObject
+	exportObjectCh chan *LedgerCloseMetaObject
 }
 
 // NewExportManager creates a new ExportManager with the provided configuration.
-func NewExportManager(config ExporterConfig, backend ledgerbackend.LedgerBackend,
-	LedgerCloseMetaObjectCh chan *LedgerCloseMetaObject) *ExportManager {
-	return &ExportManager{
-		config:                  config,
-		backend:                 backend,
-		objectMap:               make(map[string]*LedgerCloseMetaObject),
-		LedgerCloseMetaObjectCh: LedgerCloseMetaObjectCh,
+func NewExportManager(config ExporterConfig, backend ledgerbackend.LedgerBackend) ExportManager {
+	return &exportManager{
+		config:         config,
+		backend:        backend,
+		objectMap:      make(map[string]*LedgerCloseMetaObject),
+		exportObjectCh: make(chan *LedgerCloseMetaObject, 1),
 	}
 }
 
+func (e *exportManager) GetExportObjectsChannel() chan *LedgerCloseMetaObject {
+	return e.exportObjectCh
+}
+
 // AddLedgerCloseMeta adds ledger metadata to the current export object
-func (e *ExportManager) AddLedgerCloseMeta(ledgerCloseMeta xdr.LedgerCloseMeta) error {
+func (e *exportManager) AddLedgerCloseMeta(ledgerCloseMeta xdr.LedgerCloseMeta) {
 	ledgerSeq := ledgerCloseMeta.LedgerSequence()
 
 	// Determine the object key for the given ledger sequence
@@ -117,35 +126,36 @@ func (e *ExportManager) AddLedgerCloseMeta(ledgerCloseMeta xdr.LedgerCloseMeta) 
 	if ledgerSeq >= ledgerCloseMetaObject.endSequence {
 		// Current export object is full, send it for upload
 		// This is a blocking call!
-		e.LedgerCloseMetaObjectCh <- ledgerCloseMetaObject
+		e.exportObjectCh <- ledgerCloseMetaObject
 		// Remove it from the map
 		delete(e.objectMap, objectKey)
 	}
-	return nil
 }
 
 // Run iterates over the specified range of ledgers, retrieves ledger data
 // from the backend, and processes the corresponding ledger close metadata.
 // The process continues until the ending ledger number is reached or a cancellation
 // signal is received.
-func (e *ExportManager) Run(ctx context.Context, startLedger, endLedger uint32) {
+func (e *exportManager) Run(ctx context.Context, startLedger, endLedger uint32) error {
 
-	// Close the object channel to signal uploader that no more objects will be sent
-	defer close(e.LedgerCloseMetaObjectCh)
+	// Close the object channel
+	defer close(e.exportObjectCh)
 
 	for nextLedger := startLedger; endLedger < 1 || nextLedger <= endLedger; {
 		select {
 		case <-ctx.Done():
 			logger.Info("ExportManager stopped due to context cancellation.")
-			return
+			return nil
 		default:
 			ledgerCloseMeta, err := e.backend.GetLedger(ctx, nextLedger)
 			if err != nil {
-				//Handle error
+				return errors.Wrap(err, "ExportManager encountered an error while fetching ledger from the backend")
 			}
 			//time.Sleep(time.Duration(1) * time.Second)
 			e.AddLedgerCloseMeta(ledgerCloseMeta)
 			nextLedger++
 		}
 	}
+
+	return nil
 }

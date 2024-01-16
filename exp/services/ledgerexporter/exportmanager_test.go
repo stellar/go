@@ -4,7 +4,6 @@ import (
 	"context"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/xdr"
@@ -33,10 +32,8 @@ func (s *ExportManagerSuite) TearDownTest() {
 }
 
 func (s *ExportManagerSuite) TestRun() {
-
-	testChan := make(chan *LedgerCloseMetaObject)
 	config := ExporterConfig{LedgersPerFile: 64, FilesPerPartition: 10}
-	exporter := NewExportManager(config, &s.mockBackend, testChan)
+	exporter := NewExportManager(config, &s.mockBackend)
 	expectedObjectkeys := map[string]bool{}
 
 	start := 2
@@ -62,7 +59,7 @@ func (s *ExportManagerSuite) TestRun() {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		for v := range testChan {
+		for v := range exporter.GetExportObjectsChannel() {
 			actualObjectKeys[v.objectKey] = true
 		}
 	}()
@@ -75,43 +72,39 @@ func (s *ExportManagerSuite) TestRun() {
 }
 
 func (s *ExportManagerSuite) TestAddLedgerCloseMeta() {
-	testCh := make(chan *LedgerCloseMetaObject)
-
 	config := ExporterConfig{LedgersPerFile: 1, FilesPerPartition: 10}
-	exporter := NewExportManager(config, &s.mockBackend, testCh)
+	exporter := NewExportManager(config, &s.mockBackend)
+	objectCh := exporter.GetExportObjectsChannel()
 	expectedObjectkeys := map[string]bool{}
 	actualObjectKeys := map[string]bool{}
 
 	wg := sync.WaitGroup{}
-	wg.Add(2)
+	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		for v := range testCh {
+		for v := range objectCh {
 			actualObjectKeys[v.objectKey] = true
 		}
 	}()
 
-	go func() {
-		defer wg.Done()
-		start := 0
-		end := 255
-		for i := start; i <= end; i++ {
-			exporter.AddLedgerCloseMeta(xdr.LedgerCloseMeta{
-				V0: &xdr.LedgerCloseMetaV0{
-					LedgerHeader: xdr.LedgerHeaderHistoryEntry{
-						Header: xdr.LedgerHeader{
-							LedgerSeq:      xdr.Uint32(i),
-							LedgerVersion:  xdr.Uint32(20),
-							BucketListHash: xdr.Hash{1, 2, 3},
-						},
+	start := 0
+	end := 255
+	for i := start; i <= end; i++ {
+		exporter.AddLedgerCloseMeta(xdr.LedgerCloseMeta{
+			V0: &xdr.LedgerCloseMetaV0{
+				LedgerHeader: xdr.LedgerHeaderHistoryEntry{
+					Header: xdr.LedgerHeader{
+						LedgerSeq:      xdr.Uint32(i),
+						LedgerVersion:  xdr.Uint32(20),
+						BucketListHash: xdr.Hash{1, 2, 3},
 					},
 				},
-			})
-			expectedObjectkeys[config.getObjectKey(uint32(i))] = true
-		}
-	}()
-	time.Sleep(10 * time.Second)
-	close(testCh)
+			},
+		})
+		expectedObjectkeys[config.getObjectKey(uint32(i))] = true
+	}
+
+	close(objectCh)
 	wg.Wait()
 	assert.Equal(s.T(), expectedObjectkeys, actualObjectKeys)
 }

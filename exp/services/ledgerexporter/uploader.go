@@ -3,24 +3,36 @@ package main
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
+
+	"github.com/pkg/errors"
 
 	"github.com/stellar/go/support/storage"
 )
 
 // Uploader is responsible for uploading data to a storage destination.
-type Uploader struct {
-	destination             storage.Storage
-	ledgerCloseMetaObjectCh chan *LedgerCloseMetaObject
+type Uploader interface {
+	Run(ctx context.Context) error
+	Upload(metaObject *LedgerCloseMetaObject) error
 }
 
-func NewUploader(destination storage.Storage, ledgerCloseMetaObjectCh chan *LedgerCloseMetaObject) *Uploader {
-	return &Uploader{destination: destination, ledgerCloseMetaObjectCh: ledgerCloseMetaObjectCh}
+type uploader struct {
+	destination    storage.Storage
+	exportObjectCh chan *LedgerCloseMetaObject
+}
+
+func NewUploader(destination storage.Storage, exportObjectCh chan *LedgerCloseMetaObject) Uploader {
+	return &uploader{
+		destination:    destination,
+		exportObjectCh: exportObjectCh,
+	}
 }
 
 // Upload uploads the serialized binary data of ledger TxMeta
 // to the specified destination
-func (u *Uploader) Upload(metaObject *LedgerCloseMetaObject) error {
+// TODO: Add retry logic.
+func (u *uploader) Upload(metaObject *LedgerCloseMetaObject) error {
 	logger.Infof("Uploading: %s", metaObject.objectKey)
 
 	blob, err := metaObject.data.MarshalBinary()
@@ -36,21 +48,29 @@ func (u *Uploader) Upload(metaObject *LedgerCloseMetaObject) error {
 }
 
 // Run starts the uploader goroutine
-func (u *Uploader) Run(ctx context.Context) {
+func (u *uploader) Run(ctx context.Context) error {
+
 	for {
 		select {
 		case <-ctx.Done():
-			logger.Info("Uploader stopped due to context cancellation.")
-			return
-		case metaObject, ok := <-u.ledgerCloseMetaObjectCh:
-			if !ok {
-				// The channel is closed, indicating no more LedgerCloseMetaObjects will be sent.
-				return
+			// Drain the channel
+			for exportObj := range u.exportObjectCh {
+				err := u.Upload(exportObj)
+				if err != nil {
+					logger.Errorf("Error uploading %s. %v", err, exportObj.objectKey)
+				}
 			}
-			// Upload the received LedgerCloseMetaObject.
+			logger.Info("Uploader stopped due to context cancellation.")
+			return nil
+		case metaObject, ok := <-u.exportObjectCh:
+			if !ok {
+				//The channel is closed
+				return fmt.Errorf("export object channel closed. Uploader exiting")
+			}
+			//Upload the received LedgerCloseMetaObject.
 			err := u.Upload(metaObject)
 			if err != nil {
-				// Handle error
+				return errors.Wrapf(err, "error uploading %s", metaObject.objectKey)
 			}
 		}
 	}
