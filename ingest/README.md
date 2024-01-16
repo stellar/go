@@ -23,13 +23,9 @@ From a high level, the ingestion library is broken down into a few modular compo
 
                 [ Ledger Backend ]
                         |
-                     one of...
                         |
-          --------|-----+------|----------|
-         |        |            |          |
-      Captive  Database      Remote      etc.
-       Core                 Captive
-                             Core 
+                     Captive  
+                      Core 
 ```
 
 This is described in a little more detail in [`doc.go`](./doc.go), its accompanying examples, the documentation within this package, and the rest of this tutorial.
@@ -37,13 +33,7 @@ This is described in a little more detail in [`doc.go`](./doc.go), its accompany
 
 
 # Hello, World!
-As is tradition, we'll start with a simplistic example that ingests a single ledger from the network. We're immediately faced with a decision, though: _What's the backend?_ We'll use a **Captive Stellar-Core backend** in this example because it requires (little-to-)no setup, but there are couple of alternatives available. You could also use:
-
-  - a **database** (via `NewDatabaseBackend()`), which would ingest ledgers stored in a Stellar-Core database, or
-
-  - a **remote Captive Core** instance (via `NewRemoteCaptive()`), which works much like Captive Core, but points to an instance that isn't (necessarily) running locally.
-
-With that in mind, here's a minimalist example of the ingestion library:
+As is tradition, we'll start with a simplistic example that ingests a single ledger from the network. We'll use the **Captive Stellar-Core backend** to ingest the ledger:
 
 ```go
 package main
