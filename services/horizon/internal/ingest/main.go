@@ -112,19 +112,6 @@ type Config struct {
 	MaxLedgerPerFlush        uint32
 }
 
-// LocalCaptiveCoreEnabled returns true if configured to run
-// a local captive core instance for ingestion.
-func (c Config) LocalCaptiveCoreEnabled() bool {
-	// c.RemoteCaptiveCoreURL is always empty when running local captive core.
-	return c.RemoteCaptiveCoreURL == ""
-}
-
-// RemoteCaptiveCoreEnabled returns true if configured to run
-// a remote captive core instance for ingestion.
-func (c Config) RemoteCaptiveCoreEnabled() bool {
-	return c.RemoteCaptiveCoreURL != ""
-}
-
 const (
 	getLastIngestedErrMsg        string = "Error getting last ingested ledger"
 	getIngestVersionErrMsg       string = "Error getting ingestion version"
