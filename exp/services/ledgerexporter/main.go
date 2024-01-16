@@ -161,8 +161,10 @@ func loadConfig() Config {
 	err = cfg.Unmarshal(&config)
 	logFatalIf(err, "Error unmarshalling TOML config.")
 
+	//TODO: Validate config params
+
 	// Validate and build the appropriate range
-	logger.Infof("processing requested range of -start-ledger=%v, -end-ledger=%v", config.StartLedger, config.EndLedger)
+	logger.Infof("Requested ledger range -start-ledger=%v, -end-ledger=%v", config.StartLedger, config.EndLedger)
 
 	// TODO: validate end ledger is greater than the latest ledger on the network
 	if *startLedger < 2 {
@@ -175,7 +177,8 @@ func loadConfig() Config {
 	// Validate if either the start or end ledger does not fall on the "LedgersPerFile" boundary
 	// and adjust the start and end ledger accordingly.
 	// Align start ledger to the nearest "LedgersPerFile" boundary.
-	config.StartLedger = uint32(*startLedger) / config.ExporterConfig.LedgersPerFile * config.ExporterConfig.LedgersPerFile
+	config.StartLedger = uint32(*startLedger) / config.ExporterConfig.LedgersPerFile *
+		config.ExporterConfig.LedgersPerFile
 
 	// Ensure that the adjusted start ledger is at least 2.
 	if config.StartLedger < 2 {
@@ -183,10 +186,14 @@ func loadConfig() Config {
 	}
 	// Align end ledger to the nearest "LedgersPerFile" boundary and add an extra batch for bounded range
 	if *endLedger != 0 {
-		config.EndLedger = ((uint32(*endLedger) / config.ExporterConfig.LedgersPerFile) + 1) * config.ExporterConfig.LedgersPerFile
+		config.EndLedger = ((uint32(*endLedger) / config.ExporterConfig.LedgersPerFile) + 1) *
+			config.ExporterConfig.LedgersPerFile
 	} else {
 		config.EndLedger = uint32(*endLedger)
 	}
+	logger.Infof("Adjusted ledger range: -start-ledger=%v, -end-ledger=%v", config.StartLedger,
+		config.EndLedger)
+
 	return config
 }
 

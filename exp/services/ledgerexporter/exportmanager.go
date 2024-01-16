@@ -110,7 +110,7 @@ func (e *exportManager) AddLedgerCloseMeta(ledgerCloseMeta xdr.LedgerCloseMeta) 
 		// Special case: Adjust the end ledger sequence for the first batch.
 		// Since the start ledger is 2 instead of 0, we want to ensure that the end ledger sequence
 		// does not exceed LedgersPerFile.
-		// For example, if LedgersPerFile is 64, the first batch should be 0-63, not 2-66.
+		// For example, if LedgersPerFile is 64, the file name for the first batch should be 0-63, not 2-66.
 		if ledgerSeq < e.config.LedgersPerFile {
 			ledgerCloseMetaObject.endSequence = e.config.LedgersPerFile - 1
 		}
