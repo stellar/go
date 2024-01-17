@@ -42,7 +42,7 @@ func (u *uploader) Upload(metaObject *LedgerCloseMetaObject) error {
 
 	err = u.destination.PutFile(metaObject.objectKey, io.NopCloser(bytes.NewReader(blob)))
 	if err != nil {
-		logger.Errorf("Error uploading %v. %s", err, metaObject.objectKey)
+		logger.Errorf("Error uploading %s: %v", metaObject.objectKey, err)
 	}
 	return nil
 }
