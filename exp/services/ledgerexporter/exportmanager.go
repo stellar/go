@@ -19,7 +19,7 @@ type LedgerCloseMetaObject struct {
 	data xdr.LedgerCloseMetaBatch
 }
 
-// AddLedgerCloseMeta adds a ledger
+// AddLedgerCloseMeta adds a ledger to the batch
 func (f *LedgerCloseMetaObject) AddLedgerCloseMeta(ledgerCloseMeta xdr.LedgerCloseMeta) {
 	if f.startSequence == 0 {
 		f.data.StartSequence = xdr.Uint32(ledgerCloseMeta.LedgerSequence())
