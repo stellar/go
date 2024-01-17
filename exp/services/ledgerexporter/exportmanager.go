@@ -149,7 +149,7 @@ func (e *exportManager) Run(ctx context.Context, startLedger, endLedger uint32) 
 		default:
 			ledgerCloseMeta, err := e.backend.GetLedger(ctx, nextLedger)
 			if err != nil {
-				return errors.Wrap(err, "ExportManager encountered an error while fetching ledger from the backend")
+				return errors.Wrap(err, "ExportManager failed to fetch ledger from backend")
 			}
 			//time.Sleep(time.Duration(1) * time.Second)
 			e.AddLedgerCloseMeta(ledgerCloseMeta)
