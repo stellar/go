@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"math"
 	"os"
 	"os/signal"
 	"sync"
@@ -101,7 +102,7 @@ func (a *App) run() {
 			return
 		}
 
-		logger.Info("ExportManager Run Complete")
+		logger.Info("Exportmanager Run Complete")
 	}()
 
 	go func() {
@@ -130,7 +131,7 @@ func (a *App) run() {
 
 	a.Close()
 
-	logger.Info("Shutting down ledgerexporter..")
+	logger.Info("Shutting down Ledgerexporter..")
 }
 
 func main() {
@@ -181,9 +182,8 @@ func loadConfig() Config {
 		config.ExporterConfig.LedgersPerFile
 
 	// Ensure that the adjusted start ledger is at least 2.
-	if config.StartLedger < 2 {
-		config.StartLedger = 2
-	}
+	config.StartLedger = uint32(math.Max(2, float64(config.StartLedger)))
+
 	// Align end ledger to the nearest "LedgersPerFile" boundary and add an extra batch for bounded range
 	if *endLedger != 0 {
 		config.EndLedger = ((uint32(*endLedger) / config.ExporterConfig.LedgersPerFile) + 1) *

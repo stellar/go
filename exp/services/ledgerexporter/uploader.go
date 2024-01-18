@@ -57,15 +57,15 @@ func (u *uploader) Run(ctx context.Context) error {
 			for exportObj := range u.exportObjectCh {
 				err := u.Upload(exportObj)
 				if err != nil {
-					logger.Errorf("Error uploading %s. %v", err, exportObj.objectKey)
+					logger.WithError(err).Infof("Error uploading %s", exportObj.objectKey)
 				}
 			}
-			logger.Info("Uploader stopped due to context cancellation.")
-			return nil
+			logger.WithError(ctx.Err()).Info("Stopping Uploader")
+			return ctx.Err()
 		case metaObject, ok := <-u.exportObjectCh:
 			if !ok {
 				//The channel is closed
-				return fmt.Errorf("export object channel closed. Uploader exiting")
+				return fmt.Errorf("export object channel closed. Stopping Uploader")
 			}
 			//Upload the received LedgerCloseMetaObject.
 			err := u.Upload(metaObject)

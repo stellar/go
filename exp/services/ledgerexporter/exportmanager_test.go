@@ -5,6 +5,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/stellar/go/support/collections/set"
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/xdr"
 	_ "github.com/stellar/go/xdr"
@@ -34,8 +35,7 @@ func (s *ExportManagerSuite) TearDownTest() {
 func (s *ExportManagerSuite) TestRun() {
 	config := ExporterConfig{LedgersPerFile: 64, FilesPerPartition: 10}
 	exporter := NewExportManager(config, &s.mockBackend)
-	expectedObjectkeys := map[string]bool{}
-
+	expectedObjectkeys := set.NewSet[string](10)
 	start := 2
 	end := 255
 	for i := start; i <= end; i++ {
@@ -51,16 +51,16 @@ func (s *ExportManagerSuite) TestRun() {
 					},
 				},
 			}, nil)
-		expectedObjectkeys[config.getObjectKey(uint32(i))] = true
+		expectedObjectkeys.Add(config.getObjectKey(uint32(i)))
 	}
 
-	actualObjectKeys := map[string]bool{}
+	actualObjectKeys := set.NewSet[string](10)
 	wg := sync.WaitGroup{}
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		for v := range exporter.GetExportObjectsChannel() {
-			actualObjectKeys[v.objectKey] = true
+			actualObjectKeys.Add(v.objectKey)
 		}
 	}()
 

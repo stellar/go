@@ -144,8 +144,8 @@ func (e *exportManager) Run(ctx context.Context, startLedger, endLedger uint32) 
 	for nextLedger := startLedger; endLedger < 1 || nextLedger <= endLedger; {
 		select {
 		case <-ctx.Done():
-			logger.Info("ExportManager stopped due to context cancellation.")
-			return nil
+			logger.WithError(ctx.Err()).Info("Stopping Exportmanager")
+			return ctx.Err()
 		default:
 			ledgerCloseMeta, err := e.backend.GetLedger(ctx, nextLedger)
 			if err != nil {
