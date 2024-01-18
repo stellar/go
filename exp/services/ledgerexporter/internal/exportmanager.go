@@ -1,4 +1,4 @@
-package main
+package exporter
 
 import (
 	"context"
@@ -19,7 +19,7 @@ type LedgerCloseMetaObject struct {
 	data xdr.LedgerCloseMetaBatch
 }
 
-// AddLedgerCloseMeta adds a ledger to the batch
+// AddLedgerCloseMeta adds a ledger
 func (f *LedgerCloseMetaObject) AddLedgerCloseMeta(ledgerCloseMeta xdr.LedgerCloseMeta) {
 	if f.startSequence == 0 {
 		f.data.StartSequence = xdr.Uint32(ledgerCloseMeta.LedgerSequence())
@@ -144,7 +144,7 @@ func (e *exportManager) Run(ctx context.Context, startLedger, endLedger uint32) 
 	for nextLedger := startLedger; endLedger < 1 || nextLedger <= endLedger; {
 		select {
 		case <-ctx.Done():
-			logger.WithError(ctx.Err()).Info("Stopping Exportmanager")
+			logger.Info("Stopping ExportManager")
 			return ctx.Err()
 		default:
 			ledgerCloseMeta, err := e.backend.GetLedger(ctx, nextLedger)

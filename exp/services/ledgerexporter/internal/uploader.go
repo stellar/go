@@ -1,4 +1,4 @@
-package main
+package exporter
 
 import (
 	"bytes"
@@ -42,7 +42,7 @@ func (u *uploader) Upload(metaObject *LedgerCloseMetaObject) error {
 
 	err = u.destination.PutFile(metaObject.objectKey, io.NopCloser(bytes.NewReader(blob)))
 	if err != nil {
-		logger.Errorf("Error uploading %s: %v", metaObject.objectKey, err)
+		logger.WithError(err).Errorf("Error uploading %s", metaObject.objectKey)
 	}
 	return nil
 }

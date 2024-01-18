@@ -1,12 +1,12 @@
-package main
+package exporter
 
 import (
 	"context"
 	"sync"
 	"testing"
 
-	"github.com/stellar/go/support/collections/set"
 	"github.com/stellar/go/ingest/ledgerbackend"
+	"github.com/stellar/go/support/collections/set"
 	"github.com/stellar/go/xdr"
 	_ "github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
