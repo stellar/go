@@ -173,10 +173,11 @@ type System interface {
 	StressTest(numTransactions, changesPerTransaction int) error
 	VerifyRange(fromLedger, toLedger uint32, verifyState bool) error
 	BuildState(sequence uint32, skipChecks bool) error
-	ReingestRange(ledgerRanges []history.LedgerRange, force bool) error
+	ReingestRange(ledgerRanges []history.LedgerRange, force bool, rebuildTradeAgg bool) error
 	BuildGenesisState() error
 	Shutdown()
 	GetCurrentState() State
+	RebuildTradeAggregationBuckets(fromLedger, toLedger uint32) error
 }
 
 type system struct {
@@ -521,7 +522,7 @@ func validateRanges(ledgerRanges []history.LedgerRange) error {
 
 // ReingestRange runs the ingestion pipeline on the range of ledgers ingesting
 // history data only.
-func (s *system) ReingestRange(ledgerRanges []history.LedgerRange, force bool) error {
+func (s *system) ReingestRange(ledgerRanges []history.LedgerRange, force bool, rebuildTradeAgg bool) error {
 	if err := validateRanges(ledgerRanges); err != nil {
 		return err
 	}
@@ -542,8 +543,18 @@ func (s *system) ReingestRange(ledgerRanges []history.LedgerRange, force bool) e
 		if err != nil {
 			return err
 		}
+		if rebuildTradeAgg {
+			err = s.RebuildTradeAggregationBuckets(cur.StartSequence, cur.EndSequence)
+			if err != nil {
+				return errors.Wrap(err, "Error rebuilding trade aggregations")
+			}
+		}
 	}
 	return nil
+}
+
+func (s *system) RebuildTradeAggregationBuckets(fromLedger, toLedger uint32) error {
+	return s.historyQ.RebuildTradeAggregationBuckets(s.ctx, fromLedger, toLedger, s.config.RoundingSlippageFilter)
 }
 
 // BuildGenesisState runs the ingestion pipeline on genesis ledger. Transitions

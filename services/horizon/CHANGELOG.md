@@ -6,9 +6,11 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 ## Unreleased
 
 ### Fixed
-- http archive requests include user agent and metrics ([5166](https://github.com/stellar/go/pull/5166))
+- Trade agg rebuild errors reported on `db reingest range` with parellel workers ([5168](https://github.com/stellar/go/pull/5168))
+- http archive requests include user agent ([5166](https://github.com/stellar/go/pull/5166))
 
 ### Added
+- http archive requests include metrics ([5166](https://github.com/stellar/go/pull/5166))
 - Add a deprecation warning for using command-line flags when running Horizon ([5051](https://github.com/stellar/go/pull/5051))
 
 ### Breaking Changes
