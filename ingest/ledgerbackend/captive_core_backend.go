@@ -179,7 +179,8 @@ func NewCaptive(config CaptiveCoreConfig) (*CaptiveStellarCore, error) {
 			NetworkPassphrase:   config.NetworkPassphrase,
 			CheckpointFrequency: config.CheckpointFrequency,
 			ConnectOptions: storage.ConnectOptions{
-				Context: config.Context,
+				Context:   config.Context,
+				UserAgent: config.UserAgent,
 			},
 		},
 	)
