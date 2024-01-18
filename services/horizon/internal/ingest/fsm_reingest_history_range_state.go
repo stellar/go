@@ -183,11 +183,6 @@ func (h reingestHistoryRangeState) run(s *system) (transition, error) {
 		}
 	}
 
-	err := s.historyQ.RebuildTradeAggregationBuckets(s.ctx, h.fromLedger, h.toLedger, s.config.RoundingSlippageFilter)
-	if err != nil {
-		return stop(), errors.Wrap(err, "Error rebuilding trade aggregations")
-	}
-
 	log.WithFields(logpkg.F{
 		"from":     h.fromLedger,
 		"to":       h.toLedger,

@@ -443,7 +443,7 @@ func runDBReingestRange(ledgerRanges []history.LedgerRange, reingestForce bool, 
 	}
 	defer system.Shutdown()
 
-	err = system.ReingestRange(ledgerRanges, reingestForce)
+	err = system.ReingestRange(ledgerRanges, reingestForce, true)
 	if err != nil {
 		if _, ok := errors.Cause(err).(ingest.ErrReingestRangeConflict); ok {
 			return fmt.Errorf(`The range you have provided overlaps with Horizon's most recently ingested ledger.

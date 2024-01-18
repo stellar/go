@@ -2,6 +2,7 @@ package ingest
 
 import (
 	"fmt"
+	"math"
 	"sync"
 
 	"github.com/stellar/go/services/horizon/internal/db2/history"
@@ -61,7 +62,7 @@ func (ps *ParallelSystems) runReingestWorker(s System, stop <-chan struct{}, rei
 		case <-stop:
 			return rangeError{}
 		case reingestRange := <-reingestJobQueue:
-			err := s.ReingestRange([]history.LedgerRange{reingestRange}, false)
+			err := s.ReingestRange([]history.LedgerRange{reingestRange}, false, false)
 			if err != nil {
 				return rangeError{
 					err:         err,
@@ -73,7 +74,24 @@ func (ps *ParallelSystems) runReingestWorker(s System, stop <-chan struct{}, rei
 	}
 }
 
-func enqueueReingestTasks(ledgerRanges []history.LedgerRange, batchSize uint32, stop <-chan struct{}, reingestJobQueue chan<- history.LedgerRange) {
+func (ps *ParallelSystems) rebuildTradeAggRanges(ledgerRanges []history.LedgerRange) error {
+	s, err := ps.systemFactory(ps.config)
+	if err != nil {
+		return err
+	}
+
+	for _, cur := range ledgerRanges {
+		err := s.RebuildTradeAggregationBuckets(cur.StartSequence, cur.EndSequence)
+		if err != nil {
+			return errors.Wrapf(err, "Error rebuilding trade aggregations for range start=%v, stop=%v", cur.StartSequence, cur.EndSequence)
+		}
+	}
+	return nil
+}
+
+// returns the lowest ledger to start from of all ledgerRanges
+func enqueueReingestTasks(ledgerRanges []history.LedgerRange, batchSize uint32, stop <-chan struct{}, reingestJobQueue chan<- history.LedgerRange) uint32 {
+	lowestLedger := uint32(math.MaxUint32)
 	for _, cur := range ledgerRanges {
 		for subRangeFrom := cur.StartSequence; subRangeFrom < cur.EndSequence; {
 			// job queuing
@@ -83,12 +101,16 @@ func enqueueReingestTasks(ledgerRanges []history.LedgerRange, batchSize uint32, 
 			}
 			select {
 			case <-stop:
-				return
+				return lowestLedger
 			case reingestJobQueue <- history.LedgerRange{StartSequence: subRangeFrom, EndSequence: subRangeTo}:
+			}
+			if subRangeFrom < lowestLedger {
+				lowestLedger = subRangeFrom
 			}
 			subRangeFrom = subRangeTo + 1
 		}
 	}
+	return lowestLedger
 }
 
 func calculateParallelLedgerBatchSize(rangeSize uint32, batchSizeSuggestion uint32, workerCount uint) uint32 {
@@ -166,7 +188,7 @@ func (ps *ParallelSystems) ReingestRange(ledgerRanges []history.LedgerRange, bat
 		}()
 	}
 
-	enqueueReingestTasks(ledgerRanges, batchSize, stop, reingestJobQueue)
+	lowestLedger := enqueueReingestTasks(ledgerRanges, batchSize, stop, reingestJobQueue)
 
 	stopOnce.Do(func() {
 		close(stop)
@@ -176,7 +198,13 @@ func (ps *ParallelSystems) ReingestRange(ledgerRanges []history.LedgerRange, bat
 
 	if lowestRangeErr != nil {
 		lastLedger := ledgerRanges[len(ledgerRanges)-1].EndSequence
+		if err := ps.rebuildTradeAggRanges([]history.LedgerRange{{StartSequence: lowestLedger, EndSequence: lowestRangeErr.ledgerRange.StartSequence}}); err != nil {
+			log.WithError(err).Errorf("error when trying to rebuild trade agg for partially completed portion of overall parallel reingestion range, start=%v, stop=%v", lowestLedger, lowestRangeErr.ledgerRange.StartSequence)
+		}
 		return errors.Wrapf(lowestRangeErr, "job failed, recommended restart range: [%d, %d]", lowestRangeErr.ledgerRange.StartSequence, lastLedger)
+	}
+	if err := ps.rebuildTradeAggRanges(ledgerRanges); err != nil {
+		return err
 	}
 	return nil
 }
