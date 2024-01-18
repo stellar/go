@@ -8,6 +8,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 
+	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/support/errors"
@@ -523,6 +524,13 @@ func (r resumeState) run(s *system) (transition, error) {
 	r.addLedgerStatsMetricFromMap(s, "trades", tradeStatsMap)
 	r.addProcessorDurationsMetricFromMap(s, stats.transactionDurations)
 
+	// since a single system instance is shared throughout all states,
+	// this will sweep up increments to history archive counters
+	// done elsewhere such as verifyState invocations since the same system
+	// instance is passed there and the additional usages of archives will just
+	// roll up and be reported here as part of resumeState transition
+	addHistoryArchiveStatsMetrics(s, s.historyAdapter.GetStats())
+
 	localLog := log.WithFields(logpkg.F{
 		"sequence": ingestLedger,
 		"duration": duration,
@@ -562,6 +570,26 @@ func (r resumeState) addProcessorDurationsMetricFromMap(s *system, m map[string]
 			With(prometheus.Labels{"name": processorName}).Add(value.Seconds())
 		s.Metrics().ProcessorsRunDurationSummary.
 			With(prometheus.Labels{"name": processorName}).Observe(value.Seconds())
+	}
+}
+
+func addHistoryArchiveStatsMetrics(s *system, stats []historyarchive.ArchiveStats) {
+	for _, historyServerStat := range stats {
+		s.Metrics().HistoryArchiveStatsCounter.
+			With(prometheus.Labels{
+				"source": historyServerStat.GetBackendName(),
+				"type":   "file_downloads"}).
+			Add(float64(historyServerStat.GetDownloads()))
+		s.Metrics().HistoryArchiveStatsCounter.
+			With(prometheus.Labels{
+				"source": historyServerStat.GetBackendName(),
+				"type":   "file_uploads"}).
+			Add(float64(historyServerStat.GetUploads()))
+		s.Metrics().HistoryArchiveStatsCounter.
+			With(prometheus.Labels{
+				"source": historyServerStat.GetBackendName(),
+				"type":   "requests"}).
+			Add(float64(historyServerStat.GetRequests()))
 	}
 }
 

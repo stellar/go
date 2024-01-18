@@ -103,3 +103,32 @@ func (m *MockArchive) GetXdrStream(pth string) (*XdrStream, error) {
 	a := m.Called(pth)
 	return a.Get(0).(*XdrStream), a.Error(1)
 }
+
+func (m *MockArchive) GetStats() []ArchiveStats {
+	a := m.Called()
+	return a.Get(0).([]ArchiveStats)
+}
+
+type MockArchiveStats struct {
+	mock.Mock
+}
+
+func (m *MockArchiveStats) GetRequests() uint32 {
+	a := m.Called()
+	return a.Get(0).(uint32)
+}
+
+func (m *MockArchiveStats) GetDownloads() uint32 {
+	a := m.Called()
+	return a.Get(0).(uint32)
+}
+
+func (m *MockArchiveStats) GetUploads() uint32 {
+	a := m.Called()
+	return a.Get(0).(uint32)
+}
+
+func (m *MockArchiveStats) GetBackendName() string {
+	a := m.Called()
+	return a.Get(0).(string)
+}

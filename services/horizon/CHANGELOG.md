@@ -5,8 +5,10 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
-### Added
+### Fixed
+- http archive requests include user agent and metrics ([5166](https://github.com/stellar/go/pull/5166))
 
+### Added
 - Add a deprecation warning for using command-line flags when running Horizon ([5051](https://github.com/stellar/go/pull/5051))
 
 ### Breaking Changes

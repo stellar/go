@@ -162,6 +162,9 @@ type Metrics struct {
 
 	// ProcessorsRunDurationSummary exposes processors run durations.
 	ProcessorsRunDurationSummary *prometheus.SummaryVec
+
+	// ArchiveRequestCounter counts how many http requests are sent to history server
+	HistoryArchiveStatsCounter *prometheus.CounterVec
 }
 
 type System interface {
@@ -393,6 +396,14 @@ func (s *system) initMetrics() {
 		},
 		[]string{"name"},
 	)
+
+	s.metrics.HistoryArchiveStatsCounter = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: "horizon", Subsystem: "ingest", Name: "history_archive_stats_total",
+			Help: "counters of different history archive stats",
+		},
+		[]string{"source", "type"},
+	)
 }
 
 func (s *system) GetCurrentState() State {
@@ -418,6 +429,7 @@ func (s *system) RegisterMetrics(registry *prometheus.Registry) {
 	registry.MustRegister(s.metrics.ProcessorsRunDuration)
 	registry.MustRegister(s.metrics.ProcessorsRunDurationSummary)
 	registry.MustRegister(s.metrics.StateVerifyLedgerEntriesCount)
+	registry.MustRegister(s.metrics.HistoryArchiveStatsCounter)
 	s.ledgerBackend = ledgerbackend.WithMetrics(s.ledgerBackend, registry, "horizon")
 }
 
