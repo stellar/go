@@ -3,12 +3,12 @@ destination_url = "gcs://exporter-test/ledgers"
 
 [exporter_config]
   ledgers_per_file = 64
-  files_per_partition = 10
+  files_per_partition = 1000
 
 [stellar_core_config]
   captive_core_toml_path = "../../../services/horizon/internal/configs/captive-core-testnet.cfg"
   network_passphrase = "Test SDF Network ; September 2015"
   history_archive_urls = ["https://history.stellar.org/prd/core-testnet/core_testnet_001"]
   stellar_core_binary_path = "/Users/urvisavla/stellar-core"
-  captive_core_use_db = false
+  captive_core_use_db = true
 

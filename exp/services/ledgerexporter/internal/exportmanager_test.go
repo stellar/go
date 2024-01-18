@@ -51,7 +51,9 @@ func (s *ExportManagerSuite) TestRun() {
 					},
 				},
 			}, nil)
-		expectedObjectkeys.Add(config.getObjectKey(uint32(i)))
+
+		key, _ := config.getObjectKey(uint32(i))
+		expectedObjectkeys.Add(key)
 	}
 
 	actualObjectKeys := set.NewSet[string](10)
@@ -75,15 +77,15 @@ func (s *ExportManagerSuite) TestAddLedgerCloseMeta() {
 	config := ExporterConfig{LedgersPerFile: 1, FilesPerPartition: 10}
 	exporter := NewExportManager(config, &s.mockBackend)
 	objectCh := exporter.GetExportObjectsChannel()
-	expectedObjectkeys := map[string]bool{}
-	actualObjectKeys := map[string]bool{}
+	expectedObjectkeys := set.NewSet[string](10)
+	actualObjectKeys := set.NewSet[string](10)
 
 	wg := sync.WaitGroup{}
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		for v := range objectCh {
-			actualObjectKeys[v.objectKey] = true
+			actualObjectKeys.Add(v.objectKey)
 		}
 	}()
 
@@ -101,7 +103,8 @@ func (s *ExportManagerSuite) TestAddLedgerCloseMeta() {
 				},
 			},
 		})
-		expectedObjectkeys[config.getObjectKey(uint32(i))] = true
+		key, _ := config.getObjectKey(uint32(i))
+		expectedObjectkeys.Add(key)
 	}
 
 	close(objectCh)

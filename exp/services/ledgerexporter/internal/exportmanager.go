@@ -39,35 +39,37 @@ type ExporterConfig struct {
 }
 
 // getObjectKey generates the file name based on the ledger sequence.
-func (e *ExporterConfig) getObjectKey(ledgerSeq uint32) string {
+func (e *ExporterConfig) getObjectKey(ledgerSeq uint32) (string, error) {
 	var objectKey string
 
-	if e.FilesPerPartition != 0 {
+	if e.FilesPerPartition > 1 {
 		partitionSize := e.LedgersPerFile * e.FilesPerPartition
 		partitionStart := (ledgerSeq / partitionSize) * partitionSize
 		partitionEnd := partitionStart + partitionSize - 1
 		objectKey = fmt.Sprintf("%v-%v/", partitionStart, partitionEnd)
 	}
 
-	// TODO: 0 ledgersPerFile is invalid, throw an error and move this check to config validation.
-	if e.LedgersPerFile != 0 {
-		fileStart := (ledgerSeq / e.LedgersPerFile) * e.LedgersPerFile
-		fileEnd := fileStart + e.LedgersPerFile - 1
-		objectKey += fmt.Sprintf("%v", fileStart)
-
-		// Multiple ledgers per file
-		if fileStart != fileEnd {
-			objectKey += fmt.Sprintf("-%v", fileEnd)
-		}
+	if e.LedgersPerFile < 1 {
+		return "", errors.New("Ledgers per file must be at least 1")
 	}
-	return objectKey
+
+	fileStart := (ledgerSeq / e.LedgersPerFile) * e.LedgersPerFile
+	fileEnd := fileStart + e.LedgersPerFile - 1
+	objectKey += fmt.Sprintf("%v", fileStart)
+
+	// Multiple ledgers per file
+	if fileStart != fileEnd {
+		objectKey += fmt.Sprintf("-%v", fileEnd)
+	}
+
+	return objectKey, nil
 }
 
 // ExportManager manages the creation and handling of export objects.
 type ExportManager interface {
 	GetExportObjectsChannel() chan *LedgerCloseMetaObject
 	Run(ctx context.Context, startLedger uint32, endLedger uint32) error
-	AddLedgerCloseMeta(ledgerCloseMeta xdr.LedgerCloseMeta)
+	AddLedgerCloseMeta(ledgerCloseMeta xdr.LedgerCloseMeta) error
 }
 
 type exportManager struct {
@@ -92,11 +94,14 @@ func (e *exportManager) GetExportObjectsChannel() chan *LedgerCloseMetaObject {
 }
 
 // AddLedgerCloseMeta adds ledger metadata to the current export object
-func (e *exportManager) AddLedgerCloseMeta(ledgerCloseMeta xdr.LedgerCloseMeta) {
+func (e *exportManager) AddLedgerCloseMeta(ledgerCloseMeta xdr.LedgerCloseMeta) error {
 	ledgerSeq := ledgerCloseMeta.LedgerSequence()
 
 	// Determine the object key for the given ledger sequence
-	objectKey := e.config.getObjectKey(ledgerSeq)
+	objectKey, err := e.config.getObjectKey(ledgerSeq)
+	if err != nil {
+		return errors.Wrapf(err, "failed to get object key for ledger %d", ledgerSeq)
+	}
 	ledgerCloseMetaObject, exists := e.objectMap[objectKey]
 
 	if !exists {
@@ -130,6 +135,7 @@ func (e *exportManager) AddLedgerCloseMeta(ledgerCloseMeta xdr.LedgerCloseMeta) 
 		// Remove it from the map
 		delete(e.objectMap, objectKey)
 	}
+	return nil
 }
 
 // Run iterates over the specified range of ledgers, retrieves ledger data
@@ -144,7 +150,7 @@ func (e *exportManager) Run(ctx context.Context, startLedger, endLedger uint32) 
 	for nextLedger := startLedger; endLedger < 1 || nextLedger <= endLedger; {
 		select {
 		case <-ctx.Done():
-			logger.Info("Stopping ExportManager")
+			logger.Info("ExportManager stopping..")
 			return ctx.Err()
 		default:
 			ledgerCloseMeta, err := e.backend.GetLedger(ctx, nextLedger)
@@ -152,7 +158,10 @@ func (e *exportManager) Run(ctx context.Context, startLedger, endLedger uint32) 
 				return errors.Wrap(err, "ExportManager failed to fetch ledger from backend")
 			}
 			//time.Sleep(time.Duration(1) * time.Second)
-			e.AddLedgerCloseMeta(ledgerCloseMeta)
+			err = e.AddLedgerCloseMeta(ledgerCloseMeta)
+			if err != nil {
+				return errors.Wrapf(err, "failed to fetch ledger %d", nextLedger)
+			}
 			nextLedger++
 		}
 	}
