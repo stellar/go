@@ -8,18 +8,18 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 ## 2.28.0
 
 ### Fixed
-- Trade agg rebuild errors reported on `db reingest range` with parellel workers ([5168](https://github.com/stellar/go/pull/5168))
-- http archive requests include user agent ([5166](https://github.com/stellar/go/pull/5166))
+- Ingestion performance timing is improved ([4909](https://github.com/stellar/go/issues/4909))
+- Trade aggregation rebuild errors reported on `db reingest range` with parallel workers ([5168](https://github.com/stellar/go/pull/5168))
+- Limited global flags displayed on cli help output ([5077](https://github.com/stellar/go/pull/5077))
 - Network usage has been significantly reduced with caching. **Warning:** To support the cache, disk requirements may increase by up to 15GB ([5171](https://github.com/stellar/go/pull/5171)).
 
 ### Added
-- improve ingestion performance timing ([4909](https://github.com/stellar/go/issues/4909))
-- http archive requests include metrics ([5166](https://github.com/stellar/go/pull/5166))
-- Add a deprecation warning for using command-line flags when running Horizon ([5051](https://github.com/stellar/go/pull/5051))
-- limit global flags displayed on cli help output ([5077](https://github.com/stellar/go/pull/5077))
+- We now include metrics for history archive requests ([5166](https://github.com/stellar/go/pull/5166))
+- Http history archive requests now include a unique user agent ([5166](https://github.com/stellar/go/pull/5166))
+- Added a deprecation warning for using command-line flags when running Horizon ([5051](https://github.com/stellar/go/pull/5051))
 
 ### Breaking Changes
-- Removed configuration flags `--stellar-core-url-db`, `--cursor-name` `--skip-cursor-update` , they were related to legacy non-captive core ingestion and are no longer usable. 
+- Removed configuration flags `--stellar-core-url-db`, `--cursor-name` `--skip-cursor-update` , they were related to legacy non-captive core ingestion and are no longer usable.
 
 ## 2.27.0
 

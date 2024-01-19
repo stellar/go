@@ -10,14 +10,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/url"
 	"path"
 	"regexp"
 	"strconv"
 	"strings"
 	"sync"
-	"sync/atomic"
 
 	log "github.com/sirupsen/logrus"
 
@@ -47,9 +45,7 @@ type ArchiveOptions struct {
 	// CheckpointFrequency is the number of ledgers between checkpoints
 	// if unset, DefaultCheckpointFrequency will be used
 	CheckpointFrequency uint32
-
 	storage.ConnectOptions
-
 	// CacheConfig controls how/if bucket files are cached on the disk.
 	CacheConfig CacheOptions
 }
@@ -58,51 +54,6 @@ type Ledger struct {
 	Header            xdr.LedgerHeaderHistoryEntry
 	Transaction       xdr.TransactionHistoryEntry
 	TransactionResult xdr.TransactionHistoryResultEntry
-}
-
-// golang will auto wrap them back to 0 if they overflow after addition.
-type archiveStats struct {
-	requests      atomic.Uint32
-	fileDownloads atomic.Uint32
-	fileUploads   atomic.Uint32
-	backendName   string
-}
-
-type ArchiveStats interface {
-	GetRequests() uint32
-	GetDownloads() uint32
-	GetUploads() uint32
-	GetBackendName() string
-}
-
-func (as *archiveStats) incrementDownloads() {
-	as.fileDownloads.Add(1)
-	as.incrementRequests()
-}
-
-func (as *archiveStats) incrementUploads() {
-	as.fileUploads.Add(1)
-	as.incrementRequests()
-}
-
-func (as *archiveStats) incrementRequests() {
-	as.requests.Add(1)
-}
-
-func (as *archiveStats) GetRequests() uint32 {
-	return as.requests.Load()
-}
-
-func (as *archiveStats) GetDownloads() uint32 {
-	return as.fileDownloads.Load()
-}
-
-func (as *archiveStats) GetUploads() uint32 {
-	return as.fileUploads.Load()
-}
-
-func (as *archiveStats) GetBackendName() string {
-	return as.backendName
 }
 
 type ArchiveBackend interface {
@@ -217,13 +168,11 @@ func (a *Archive) PutPathHAS(path string, has HistoryArchiveState, opts *Command
 		return err
 	}
 	a.stats.incrementUploads()
-	return a.backend.PutFile(path,
-		ioutil.NopCloser(bytes.NewReader(buf)))
+	return a.backend.PutFile(path, io.NopCloser(bytes.NewReader(buf)))
 }
 
 func (a *Archive) BucketExists(bucket Hash) (bool, error) {
-	a.stats.incrementRequests()
-	return a.backend.Exists(BucketPath(bucket))
+	return a.cachedExists(BucketPath(bucket))
 }
 
 func (a *Archive) BucketSize(bucket Hash) (int64, error) {
@@ -396,8 +345,8 @@ func (a *Archive) ListCategoryCheckpoints(cat string, pth string) (chan uint32, 
 	ext := categoryExt(cat)
 	rx := regexp.MustCompile(cat + hexPrefixPat + cat +
 		"-([0-9a-f]{8})\\." + regexp.QuoteMeta(ext) + "$")
-	sch, errs := a.backend.ListFiles(path.Join(cat, pth))
 	a.stats.incrementRequests()
+	sch, errs := a.backend.ListFiles(path.Join(cat, pth))
 	ch := make(chan uint32)
 	errs = makeErrorPump(errs)
 
@@ -434,12 +383,40 @@ func (a *Archive) GetXdrStream(pth string) (*XdrStream, error) {
 	if !strings.HasSuffix(pth, ".xdr.gz") {
 		return nil, errors.New("File has non-.xdr.gz suffix: " + pth)
 	}
-	rdr, err := a.backend.GetFile(pth)
-	a.stats.incrementDownloads()
+	rdr, err := a.cachedGet(pth)
 	if err != nil {
 		return nil, err
 	}
 	return NewXdrGzStream(rdr)
+}
+
+func (a *Archive) cachedGet(pth string) (io.ReadCloser, error) {
+	if a.cache != nil {
+		rdr, foundInCache, err := a.cache.GetFile(pth, a.backend)
+		if !foundInCache {
+			a.stats.incrementDownloads()
+		} else {
+			a.stats.incrementCacheHits()
+		}
+		if err == nil {
+			return rdr, nil
+		}
+
+		// If there's an error, retry with the uncached backend.
+		a.cache.Evict(pth)
+	}
+
+	a.stats.incrementDownloads()
+	return a.backend.GetFile(pth)
+}
+
+func (a *Archive) cachedExists(pth string) (bool, error) {
+	if a.cache != nil && a.cache.Exists(pth) {
+		return true, nil
+	}
+
+	a.stats.incrementRequests()
+	return a.backend.Exists(pth)
 }
 
 func Connect(u string, opts ArchiveOptions) (*Archive, error) {
@@ -501,7 +478,7 @@ func ConnectBackend(u string, opts storage.ConnectOptions) (storage.Storage, err
 		backend, err = storage.ConnectBackend(u, opts)
 	}
 
-	return backend, err
+	return backend, nil
 }
 
 func MustConnect(u string, opts ArchiveOptions) *Archive {

@@ -16,6 +16,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -48,7 +49,13 @@ func GetTestS3Archive() *Archive {
 }
 
 func GetTestMockArchive() *Archive {
-	return MustConnect("mock://test", ArchiveOptions{CheckpointFrequency: DefaultCheckpointFrequency})
+	return MustConnect("mock://test", 
+	ArchiveOptions{CheckpointFrequency: 64,
+		CacheConfig: CacheOptions{
+			Cache:    true,
+			Path:     filepath.Join(os.TempDir(), "history-archive-test-cache"),
+			MaxFiles: 5,
+		}})
 }
 
 var tmpdirs []string
@@ -637,11 +644,32 @@ func TestGetLedgers(t *testing.T) {
 		[]xdrEntry{results[0], results[1], results[2]},
 	)
 
+	stats := archive.GetStats()[0]
 	ledgers, err := archive.GetLedgers(1000, 1002)
+
 	assert.NoError(t, err)
 	assert.Len(t, ledgers, 3)
-	assert.Equal(t, uint32(7), archive.GetStats()[0].GetRequests())  // it started at 1, incurred 6 requests total, 3 queries, 3 downloads
-	assert.Equal(t, uint32(3), archive.GetStats()[0].GetDownloads()) // started 0, incurred 3 file downloads
+	// it started at 1, incurred 6 requests total, 3 queries, 3 downloads
+	assert.EqualValues(t, 7, stats.GetRequests())
+	// started 0, incurred 3 file downloads
+	assert.EqualValues(t, 3, stats.GetDownloads())
+	for i, seq := range []uint32{1000, 1001, 1002} {
+		ledger := ledgers[seq]
+		assertXdrEquals(t, ledgerHeaders[i], ledger.Header)
+		assertXdrEquals(t, transactions[i], ledger.Transaction)
+		assertXdrEquals(t, results[i], ledger.TransactionResult)
+	}
+
+	// Repeat the same check but ensure the cache was used
+	ledgers, err = archive.GetLedgers(1000, 1002) // all cached
+	assert.NoError(t, err)
+	assert.Len(t, ledgers, 3)
+
+	// downloads should not change because of the cache
+	assert.EqualValues(t, 3, stats.GetDownloads())
+	// but requests increase because of 3 fetches to categories
+	assert.EqualValues(t, 10, stats.GetRequests())
+	assert.EqualValues(t, 3, stats.GetCacheHits())
 	for i, seq := range []uint32{1000, 1001, 1002} {
 		ledger := ledgers[seq]
 		assertXdrEquals(t, ledgerHeaders[i], ledger.Header)

@@ -132,3 +132,8 @@ func (m *MockArchiveStats) GetBackendName() string {
 	a := m.Called()
 	return a.Get(0).(string)
 }
+
+func (m *MockArchiveStats) GetCacheHits() uint32 {
+	a := m.Called()
+	return a.Get(0).(uint32)
+}
