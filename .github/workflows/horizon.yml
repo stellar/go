@@ -163,7 +163,6 @@ jobs:
     name: Test and push the Ledger Exporter images
     runs-on: ubuntu-latest
     steps:
-      - if: false # Disable the job
       - uses: actions/checkout@v3
         with:
           # For pull requests, build and test the PR head not a merge of the PR with the destination.
