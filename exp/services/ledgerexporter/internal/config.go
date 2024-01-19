@@ -14,12 +14,12 @@ type StellarCoreConfig struct {
 	HistoryArchiveUrls    []string `toml:"history_archive_urls"`
 	StellarCoreBinaryPath string   `toml:"stellar_core_binary_path"`
 	CaptiveCoreTomlPath   string   `toml:"captive_core_toml_path"`
-	CaptiveCoreUseDb      bool     `toml:"captive_core_use_db"`
+	CaptiveCoreUseDB      bool     `toml:"captive_core_use_db"`
 }
 
 type Config struct {
 	Network           string            `toml:"network"`
-	DestinationUrl    string            `toml:"destination_url"`
+	DestinationURL    string            `toml:"destination_url"`
 	ExporterConfig    ExporterConfig    `toml:"exporter_config"`
 	StellarCoreConfig StellarCoreConfig `toml:"stellar_core_config"`
 

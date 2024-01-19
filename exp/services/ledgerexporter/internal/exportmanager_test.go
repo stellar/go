@@ -9,7 +9,6 @@ import (
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/support/collections/set"
 	"github.com/stellar/go/xdr"
-	_ "github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
@@ -65,7 +64,9 @@ func (s *ExportManagerSuite) TestRun() {
 		}
 	}()
 
-	exporter.Run(s.ctx, uint32(start), uint32(end))
+	err := exporter.Run(s.ctx, uint32(start), uint32(end))
+	assert.NoError(s.T(), err)
+
 	wg.Wait()
 
 	assert.Equal(s.T(), expectedObjectkeys, actualObjectKeys)
@@ -91,7 +92,7 @@ func (s *ExportManagerSuite) TestAddLedgerCloseMeta() {
 	start := 0
 	end := 255
 	for i := start; i <= end; i++ {
-		exporter.AddLedgerCloseMeta(xdr.LedgerCloseMeta{
+		err := exporter.AddLedgerCloseMeta(xdr.LedgerCloseMeta{
 			V0: &xdr.LedgerCloseMetaV0{
 				LedgerHeader: xdr.LedgerHeaderHistoryEntry{
 					Header: xdr.LedgerHeader{
@@ -100,6 +101,7 @@ func (s *ExportManagerSuite) TestAddLedgerCloseMeta() {
 				},
 			},
 		})
+		assert.NoError(s.T(), err)
 		key, _ := config.getObjectKey(uint32(i))
 		expectedObjectkeys.Add(key)
 	}

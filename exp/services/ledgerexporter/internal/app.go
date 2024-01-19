@@ -119,7 +119,7 @@ func (a *App) Run() {
 }
 
 func NewDestinationStorage(config *Config) storage.Storage {
-	destinationStorage, err := storage.ConnectBackend(config.DestinationUrl, storage.ConnectOptions{})
+	destinationStorage, err := storage.ConnectBackend(config.DestinationURL, storage.ConnectOptions{})
 	logFatalIf(err, "Could not connect to destination storage")
 	return destinationStorage
 }
@@ -131,7 +131,7 @@ func NewLedgerBackend(config Config) ledgerbackend.LedgerBackend {
 	params := ledgerbackend.CaptiveCoreTomlParams{
 		NetworkPassphrase:  coreConfig.NetworkPassphrase,
 		HistoryArchiveURLs: coreConfig.HistoryArchiveUrls,
-		UseDB:              coreConfig.CaptiveCoreUseDb,
+		UseDB:              coreConfig.CaptiveCoreUseDB,
 	}
 	if coreConfig.CaptiveCoreTomlPath == "" {
 		logger.Fatal("Missing captive_core_toml_path in the config")
@@ -147,7 +147,7 @@ func NewLedgerBackend(config Config) ledgerbackend.LedgerBackend {
 		CheckpointFrequency: 64,
 		Log:                 logger.WithField("subservice", "stellar-core"),
 		Toml:                captiveCoreToml,
-		UseDB:               coreConfig.CaptiveCoreUseDb,
+		UseDB:               coreConfig.CaptiveCoreUseDB,
 	}
 
 	// Create a new captive core backend
