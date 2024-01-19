@@ -138,6 +138,7 @@ func NewLedgerBackend(config Config) ledgerbackend.LedgerBackend {
 	}
 
 	captiveCoreToml, err := ledgerbackend.NewCaptiveCoreTomlFromFile(coreConfig.CaptiveCoreTomlPath, params)
+	logFatalIf(err, "Could not create captive core toml")
 
 	captiveConfig := ledgerbackend.CaptiveCoreConfig{
 		BinaryPath:          coreConfig.StellarCoreBinaryPath,
