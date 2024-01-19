@@ -31,11 +31,7 @@ func NewArchivePool(archiveURLs []string, config ConnectOptions) (ArchivePool, e
 	// Try connecting to all of the listed archives, but only store valid ones.
 	var validArchives ArchivePool
 	for _, url := range archiveURLs {
-		archive, err := Connect(
-			url,
-			config,
-		)
-
+		archive, err := Connect(url, config)
 		if err != nil {
 			lastErr = errors.Wrapf(err, "Error connecting to history archive (%s)", url)
 			continue

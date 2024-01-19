@@ -6,6 +6,7 @@ package ingest
 import (
 	"context"
 	"fmt"
+	"path"
 	"runtime"
 	"sync"
 	"time"
@@ -226,6 +227,11 @@ func NewSystem(config Config) (System, error) {
 			NetworkPassphrase:   config.NetworkPassphrase,
 			CheckpointFrequency: config.CheckpointFrequency,
 			UserAgent:           fmt.Sprintf("horizon/%s golang/%s", apkg.Version(), runtime.Version()),
+			CacheConfig: historyarchive.CacheOptions{
+				Cache:    true,
+				Path:     path.Join(config.CaptiveCoreStoragePath, "bucket-cache"),
+				MaxFiles: 50,
+			},
 		},
 	)
 	if err != nil {
