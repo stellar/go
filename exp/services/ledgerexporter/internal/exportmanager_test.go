@@ -2,6 +2,7 @@ package exporter
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"testing"
 
@@ -44,9 +45,7 @@ func (s *ExportManagerSuite) TestRun() {
 				V0: &xdr.LedgerCloseMetaV0{
 					LedgerHeader: xdr.LedgerHeaderHistoryEntry{
 						Header: xdr.LedgerHeader{
-							LedgerSeq:      xdr.Uint32(i),
-							LedgerVersion:  xdr.Uint32(20),
-							BucketListHash: xdr.Hash{1, 2, 3},
+							LedgerSeq: xdr.Uint32(i),
 						},
 					},
 				},
@@ -96,9 +95,7 @@ func (s *ExportManagerSuite) TestAddLedgerCloseMeta() {
 			V0: &xdr.LedgerCloseMetaV0{
 				LedgerHeader: xdr.LedgerHeaderHistoryEntry{
 					Header: xdr.LedgerHeader{
-						LedgerSeq:      xdr.Uint32(i),
-						LedgerVersion:  xdr.Uint32(20),
-						BucketListHash: xdr.Hash{1, 2, 3},
+						LedgerSeq: xdr.Uint32(i),
 					},
 				},
 			},
@@ -110,4 +107,39 @@ func (s *ExportManagerSuite) TestAddLedgerCloseMeta() {
 	close(objectCh)
 	wg.Wait()
 	assert.Equal(s.T(), expectedObjectkeys, actualObjectKeys)
+}
+
+func (s *ExportManagerSuite) TestAddLedgerCloseMetaSequential() {
+	config := ExporterConfig{LedgersPerFile: 10, FilesPerPartition: 1}
+	exporter := NewExportManager(config, &s.mockBackend)
+
+	// Add ledgers sequentially
+	for i := 1; i <= 5; i++ {
+		assert.NoError(s.T(),
+			exporter.AddLedgerCloseMeta(xdr.LedgerCloseMeta{
+				V0: &xdr.LedgerCloseMetaV0{
+					LedgerHeader: xdr.LedgerHeaderHistoryEntry{
+						Header: xdr.LedgerHeader{
+							LedgerSeq: xdr.Uint32(i),
+						},
+					},
+				},
+			}))
+	}
+
+	// Add a ledger out of sequence
+	err := exporter.AddLedgerCloseMeta(xdr.LedgerCloseMeta{
+		V0: &xdr.LedgerCloseMetaV0{
+			LedgerHeader: xdr.LedgerHeaderHistoryEntry{
+				Header: xdr.LedgerHeader{
+					LedgerSeq: xdr.Uint32(7),
+				},
+			},
+		},
+	})
+
+	expectedErrMsg := fmt.Sprintf("failed to add ledger to LedgerCloseMetaObject: ledgers must be added sequentially."+
+		" Sequence number: %d, expected sequence number: %d", 7, 6)
+	assert.EqualError(s.T(), err, expectedErrMsg)
+
 }

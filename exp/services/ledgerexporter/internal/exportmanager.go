@@ -12,20 +12,41 @@ import (
 // LedgerCloseMetaObject represents a file with metadata and binary data.
 type LedgerCloseMetaObject struct {
 	// file name
-	objectKey     string
-	startSequence uint32
-	endSequence   uint32
+	objectKey string
 	// Actual binary data
 	data xdr.LedgerCloseMetaBatch
 }
 
-// AddLedgerCloseMeta adds a ledger
-func (f *LedgerCloseMetaObject) AddLedgerCloseMeta(ledgerCloseMeta xdr.LedgerCloseMeta) {
-	if f.startSequence == 0 {
-		f.data.StartSequence = xdr.Uint32(ledgerCloseMeta.LedgerSequence())
+func NewLedgerCloseMetaObject(key string, startSeq uint32, endSeq uint32) *LedgerCloseMetaObject {
+	return &LedgerCloseMetaObject{
+		objectKey: key,
+		data: xdr.LedgerCloseMetaBatch{
+			StartSequence: xdr.Uint32(startSeq),
+			EndSequence:   xdr.Uint32(endSeq),
+		},
 	}
+}
+
+func (f *LedgerCloseMetaObject) GetLastLedgerCloseMetaSequence() (uint32, error) {
+	if len(f.data.LedgerCloseMetas) == 0 {
+		return 0, errors.New("LedgerCloseMetas is empty")
+	}
+
+	return f.data.LedgerCloseMetas[len(f.data.LedgerCloseMetas)-1].LedgerSequence(), nil
+}
+
+// AddLedgerCloseMeta adds a ledger
+func (f *LedgerCloseMetaObject) AddLedgerCloseMeta(ledgerCloseMeta xdr.LedgerCloseMeta) error {
+	lastSequence, err := f.GetLastLedgerCloseMetaSequence()
+	if err == nil {
+		if ledgerCloseMeta.LedgerSequence() != lastSequence+1 {
+			return fmt.Errorf("ledgers must be added sequentially. Sequence number: %d, "+
+				"expected sequence number: %d", ledgerCloseMeta.LedgerSequence(), lastSequence+1)
+		}
+	}
+
 	f.data.LedgerCloseMetas = append(f.data.LedgerCloseMetas, ledgerCloseMeta)
-	f.data.EndSequence = xdr.Uint32(ledgerCloseMeta.LedgerSequence())
+	return nil
 }
 
 // LedgerCount returns the number of ledgers added so far
@@ -106,29 +127,28 @@ func (e *exportManager) AddLedgerCloseMeta(ledgerCloseMeta xdr.LedgerCloseMeta) 
 
 	if !exists {
 		// Create a new LedgerCloseMetaObject and add it to the map.
-		ledgerCloseMetaObject = &LedgerCloseMetaObject{
-			objectKey:     objectKey,
-			startSequence: ledgerSeq,
-			endSequence:   ledgerSeq + e.config.LedgersPerFile - 1,
-		}
+		ledgerCloseMetaObject = NewLedgerCloseMetaObject(objectKey, ledgerSeq,
+			ledgerSeq+e.config.LedgersPerFile-1)
 
 		// Special case: Adjust the end ledger sequence for the first batch.
 		// Since the start ledger is 2 instead of 0, we want to ensure that the end ledger sequence
 		// does not exceed LedgersPerFile.
 		// For example, if LedgersPerFile is 64, the file name for the first batch should be 0-63, not 2-66.
 		if ledgerSeq < e.config.LedgersPerFile {
-			ledgerCloseMetaObject.endSequence = e.config.LedgersPerFile - 1
+			ledgerCloseMetaObject.data.EndSequence = xdr.Uint32(e.config.LedgersPerFile - 1)
 		}
 
 		e.objectMap[objectKey] = ledgerCloseMetaObject
 	}
 
 	// Add ledger to the LedgerCloseMetaObject
-	ledgerCloseMetaObject.AddLedgerCloseMeta(ledgerCloseMeta)
+	if err := ledgerCloseMetaObject.AddLedgerCloseMeta(ledgerCloseMeta); err != nil {
+		return errors.Wrapf(err, "failed to add ledger to LedgerCloseMetaObject")
+	}
 
 	//logger.Logf("ledger Seq: %d object: %s ledgercount: %d ledgersperfile: %d", ledgerSeq,
 
-	if ledgerSeq >= ledgerCloseMetaObject.endSequence {
+	if ledgerSeq >= uint32(ledgerCloseMetaObject.data.EndSequence) {
 		// Current export object is full, send it for upload
 		// This is a blocking call!
 		e.exportObjectCh <- ledgerCloseMetaObject
@@ -160,7 +180,7 @@ func (e *exportManager) Run(ctx context.Context, startLedger, endLedger uint32) 
 			//time.Sleep(time.Duration(1) * time.Second)
 			err = e.AddLedgerCloseMeta(ledgerCloseMeta)
 			if err != nil {
-				return errors.Wrapf(err, "failed to fetch ledger %d", nextLedger)
+				return errors.Wrapf(err, "failed to add ledger %d", nextLedger)
 			}
 			nextLedger++
 		}
