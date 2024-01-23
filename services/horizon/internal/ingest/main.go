@@ -226,17 +226,13 @@ func NewSystem(config Config) (System, error) {
 		historyarchive.ArchiveOptions{
 			NetworkPassphrase:   config.NetworkPassphrase,
 			CheckpointFrequency: config.CheckpointFrequency,
-<<<<<<< HEAD
 			ConnectOptions: storage.ConnectOptions{
 				Context:   ctx,
-				UserAgent: fmt.Sprintf("horizon/%s golang/%s", apkg.Version(), runtime.Version()),
-=======
-			UserAgent:           fmt.Sprintf("horizon/%s golang/%s", apkg.Version(), runtime.Version()),
+				UserAgent: fmt.Sprintf("horizon/%s golang/%s", apkg.Version(), runtime.Version()),},
 			CacheConfig: historyarchive.CacheOptions{
 				Cache:    true,
 				Path:     path.Join(config.CaptiveCoreStoragePath, "bucket-cache"),
-				MaxFiles: 50,
->>>>>>> 7e6d25fe (historyarchive: Cache bucket files from history archives on disk. (#5171))
+				MaxFiles: 150,
 			},
 		},
 	)
