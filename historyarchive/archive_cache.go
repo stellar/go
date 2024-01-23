@@ -6,7 +6,7 @@ import (
 	"path"
 
 	lru "github.com/hashicorp/golang-lru"
-	log "github.com/sirupsen/logrus"
+	log "github.com/stellar/go/support/log"
 )
 
 type CacheOptions struct {
@@ -14,6 +14,7 @@ type CacheOptions struct {
 
 	Path     string
 	MaxFiles uint
+	Log      *log.Entry
 }
 
 type ArchiveBucketCache struct {
@@ -25,8 +26,11 @@ type ArchiveBucketCache struct {
 // MakeArchiveBucketCache creates a cache on the disk at the given path that
 // acts as an LRU cache, mimicking a particular upstream.
 func MakeArchiveBucketCache(opts CacheOptions) (*ArchiveBucketCache, error) {
-	log_ := log.
-		WithField("subservice", "fs-cache").
+	log_ := opts.Log
+	if opts.Log == nil {
+		log_ = log.WithField("subservice", "fs-cache")
+	}
+	log_ = log_.
 		WithField("path", opts.Path).
 		WithField("cap", opts.MaxFiles)
 
