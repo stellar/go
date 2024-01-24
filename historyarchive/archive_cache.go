@@ -113,7 +113,26 @@ func (abc *ArchiveBucketCache) GetFile(
 }
 
 func (abc *ArchiveBucketCache) Exists(filepath string) bool {
-	return abc.lru.Contains(path.Join(abc.path, filepath))
+	localPath := path.Join(abc.path, filepath)
+
+	// First, check if the file exists in the cache.
+	if abc.lru.Contains(localPath) {
+		return true
+	}
+
+	// If it doesn't, it may still exist on the disk which is still a cheaper
+	// check than going upstream.
+	//
+	// Note that this means the cache and disk are out of sync (perhaps due to
+	// other archives using the same cache location) so we can update it. This
+	// situation is well-handled by `GetFile`.
+	_, statErr := os.Stat(localPath)
+	if statErr == nil || os.IsExist(statErr) {
+		abc.lru.Add(localPath, struct{}{})
+		return true
+	}
+
+	return false
 }
 
 // Close purges the cache and cleans up the filesystem.
