@@ -67,12 +67,10 @@ func (a *App) Run() {
 	go func() {
 		defer wg.Done()
 		err := a.uploader.Run(a.ctx)
-		if err != nil {
+		if err != nil && err != context.Canceled {
 			logger.Errorf("Error executing uploader: %v", err)
 			return
 		}
-
-		logger.Info("Uploader Run Complete")
 	}()
 
 	doneCh := make(chan struct{})
@@ -85,8 +83,6 @@ func (a *App) Run() {
 			logger.Errorf("Error executing ExportManager: %v", err)
 			return
 		}
-
-		logger.Info("ExportManager Run Complete")
 	}()
 
 	go func() {
@@ -102,9 +98,10 @@ func (a *App) Run() {
 				a.cancel()
 				return
 			case <-a.ctx.Done():
+				logger.Infof("Received context done signal")
 				return
 			case sig := <-sigCh:
-				logger.Errorf("Received signal: %v", sig)
+				logger.Infof("Received signal: %v", sig)
 				a.cancel()
 				return
 			}
