@@ -110,6 +110,7 @@ func initIngester(app *App) {
 		EnableExtendedLogLedgerStats:         app.config.IngestEnableExtendedLogLedgerStats,
 		RoundingSlippageFilter:               app.config.RoundingSlippageFilter,
 		EnableIngestionFiltering:             app.config.EnableIngestionFiltering,
+		SkipSorobanIngestion:                 app.config.SkipSorobanIngestion,
 	})
 
 	if err != nil {

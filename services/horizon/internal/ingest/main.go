@@ -107,6 +107,8 @@ type Config struct {
 
 	EnableIngestionFiltering bool
 	MaxLedgerPerFlush        uint32
+
+	SkipSorobanIngestion bool
 }
 
 const (

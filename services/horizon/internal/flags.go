@@ -57,6 +57,8 @@ const (
 	EnableIngestionFilteringFlagName = "exp-enable-ingestion-filtering"
 	// DisableTxSubFlagName is the command line flag for disabling transaction submission feature of Horizon
 	DisableTxSubFlagName = "disable-tx-sub"
+	// SkipSorobanIngestionFlagName is the command line flag for disabling Soroban related ingestion processing
+	SkipSorobanIngestionFlagName = "disable-soroban-ingest"
 
 	// StellarPubnet is a constant representing the Stellar public network
 	StellarPubnet = "pubnet"
@@ -728,6 +730,15 @@ func Flags() (*Config, support.ConfigOptions) {
 				" It automatically configures network settings, including %s, %s, and %s.",
 				StellarPubnet, StellarTestnet, NetworkPassphraseFlagName,
 				HistoryArchiveURLsFlagName, CaptiveCoreConfigPathName),
+			UsedInCommands: IngestionCommands,
+		},
+		&support.ConfigOption{
+			Name:           SkipSorobanIngestionFlagName,
+			ConfigKey:      &config.SkipSorobanIngestion,
+			OptType:        types.Bool,
+			FlagDefault:    false,
+			Required:       false,
+			Usage:          "excludes Soroban data during ingestion processing",
 			UsedInCommands: IngestionCommands,
 		},
 	}
