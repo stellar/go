@@ -2,8 +2,6 @@ package exporter
 
 import (
 	"flag"
-	"fmt"
-
 	"github.com/pelletier/go-toml"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/ordered"
@@ -32,6 +30,8 @@ func LoadConfig(config *Config) error {
 	// Parse command-line options
 	startLedger := flag.Uint("start-ledger", 0, "Starting ledger")
 	endLedger := flag.Uint("end-ledger", 0, "Ending ledger")
+	startFromLastNLedger := flag.Uint("start-from-last-n-ledgers", 0, "Start streaming from last N ledgers")
+
 	configFilePath := flag.String("config-file", "config.toml", "Path to the TOML config file")
 	flag.Parse()
 
@@ -47,13 +47,31 @@ func LoadConfig(config *Config) error {
 
 	//TODO: Validate config params
 
+	// Retrieve the latest ledger sequence from history archives
+	latestNetworkLedger, err := GetLatestLedgerSequenceFromHistoryArchives(config.StellarCoreConfig.HistoryArchiveUrls)
+	if err != nil {
+		return errors.Wrap(err, "could not retrieve the latest ledger sequence from history archives")
+	}
+
 	// Validate and build the appropriate range
 	config.StartLedger = uint32(*startLedger)
 	config.EndLedger = uint32(*endLedger)
 
+	if *startFromLastNLedger != 0 {
+		config.StartLedger = ordered.Max(2, latestNetworkLedger-uint32(*startFromLastNLedger))
+		logger.Infof("Setting start ledger to %d, latest ledger minus startFromLastNLedger %d - %d",
+			config.StartLedger, latestNetworkLedger, *startFromLastNLedger)
+	}
+
+	if config.EndLedger > latestNetworkLedger {
+		config.EndLedger = latestNetworkLedger
+		logger.Warnf("End ledger %d exceeds latest network ledger %d, setting end ledger to %d",
+			*endLedger, latestNetworkLedger, config.EndLedger)
+	}
+
 	err = validateAndAdjustLedgerRange(config)
 	if err != nil {
-		return errors.Wrap(err, "Error validating ledger range")
+		return errors.Wrap(err, "error validating ledger range")
 	}
 	return nil
 }
@@ -62,7 +80,7 @@ func validateAndAdjustLedgerRange(config *Config) error {
 	logger.Infof("Requested ledger range -start-ledger=%v, -end-ledger=%v", config.StartLedger, config.EndLedger)
 
 	if config.EndLedger != 0 && config.EndLedger < config.StartLedger {
-		return fmt.Errorf("invalid end ledger value, must be >= start ledger")
+		return errors.New("invalid end ledger value, must be >= start ledger")
 	}
 
 	// Check if either the start or end ledger does not fall on the "LedgersPerFile" boundary
@@ -80,8 +98,6 @@ func validateAndAdjustLedgerRange(config *Config) error {
 			config.EndLedger = (config.EndLedger/config.ExporterConfig.LedgersPerFile + 1) * config.ExporterConfig.LedgersPerFile
 		}
 	}
-
-	// TODO: Validate that the end ledger is not greater than the latest ledger on the network
 
 	logger.Infof("Adjusted ledger range: -start-ledger=%v, -end-ledger=%v", config.StartLedger, config.EndLedger)
 	return nil
