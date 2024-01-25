@@ -55,3 +55,11 @@ func (f *LedgerCloseMetaObject) LedgerCount() uint32 {
 func (f *LedgerCloseMetaObject) GetData() ([]byte, error) {
 	return f.data.MarshalBinary()
 }
+
+func (f *LedgerCloseMetaObject) GetCompressedData() ([]byte, error) {
+	blob, err := f.GetData()
+	if err != nil {
+		return nil, err
+	}
+	return Compress(blob)
+}

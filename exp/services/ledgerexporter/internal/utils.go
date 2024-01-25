@@ -1,13 +1,15 @@
 package exporter
 
 import (
+	"bytes"
+	"compress/gzip"
 	"fmt"
 
 	"github.com/stellar/go/support/errors"
 )
 
 const (
-	fileSuffix = ".xdr"
+	fileSuffix = ".xdr.gzip"
 )
 
 // GetObjectKeyFromSequenceNumber generates the file name based on the ledger sequence.
@@ -36,4 +38,16 @@ func GetObjectKeyFromSequenceNumber(config ExporterConfig, ledgerSeq uint32) (st
 	objectKey += fileSuffix
 
 	return objectKey, nil
+}
+
+func Compress(data []byte) ([]byte, error) {
+	var buf bytes.Buffer
+	w := gzip.NewWriter(&buf)
+	if _, err := w.Write(data); err != nil {
+		return nil, errors.Wrapf(err, "failed to write compressed data")
+	}
+	if err := w.Close(); err != nil {
+		return nil, errors.Wrapf(err, "failed to close writer")
+	}
+	return buf.Bytes(), nil
 }

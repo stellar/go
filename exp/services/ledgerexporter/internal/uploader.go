@@ -35,7 +35,7 @@ func NewUploader(destination storage.Storage, exportObjectCh chan *LedgerCloseMe
 func (u *uploader) Upload(metaObject *LedgerCloseMetaObject) error {
 	logger.Infof("Uploading: %s", metaObject.objectKey)
 
-	blob, err := metaObject.data.MarshalBinary()
+	blob, err := metaObject.GetCompressedData()
 	if err != nil {
 		return err
 	}

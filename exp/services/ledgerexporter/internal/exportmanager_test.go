@@ -50,7 +50,7 @@ func (s *ExportManagerSuite) TestRun() {
 				},
 			}, nil)
 
-		key, _ := config.getObjectKey(uint32(i))
+		key, _ := GetObjectKeyFromSequenceNumber(config, uint32(i))
 		expectedObjectkeys.Add(key)
 	}
 
@@ -102,7 +102,7 @@ func (s *ExportManagerSuite) TestAddLedgerCloseMeta() {
 			},
 		})
 		assert.NoError(s.T(), err)
-		key, _ := config.getObjectKey(uint32(i))
+		key, _ := GetObjectKeyFromSequenceNumber(config, uint32(i))
 		expectedObjectkeys.Add(key)
 	}
 
