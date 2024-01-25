@@ -17,6 +17,11 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 - We now include metrics for history archive requests ([5166](https://github.com/stellar/go/pull/5166))
 - Http history archive requests now include a unique user agent ([5166](https://github.com/stellar/go/pull/5166))
 - Added a deprecation warning for using command-line flags when running Horizon ([5051](https://github.com/stellar/go/pull/5051))
+- New optional config `DISABLE_SOROBAN_INGEST` ([5175](https://github.com/stellar/go/issues/5175)). Defaults to `FALSE`, when `TRUE` and a soroban transaction is ingested, the following will occur:
+  * no effects will be generated for contract invocations.
+  * history_transactions.tx_meta column will have serialized xdr that equates to an empty `xdr.TransactionMeta.V3`, `Operations`, `TxChangesAfter`, `TxChangesBefore` will empty arrays and `SorobanMeta` will be nil.
+  * API transaction model for `result_meta_xdr` will have same empty serialized xdr for `xdr.TransactionMeta.V3`, `Operations`, `TxChangesAfter`, `TxChangesBefore` will empty arrays and `SorobanMeta` will be nil.
+  * API `Operation` model for `InvokeHostFunctionOp` type, will have empty `asset_balance_changes`
 
 ### Breaking Changes
 - Removed configuration flags `--stellar-core-url-db`, `--cursor-name` `--skip-cursor-update` , they were related to legacy non-captive core ingestion and are no longer usable.

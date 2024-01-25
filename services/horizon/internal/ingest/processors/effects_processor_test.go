@@ -143,6 +143,7 @@ func (s *EffectsProcessorTestSuiteLedger) SetupTest() {
 		s.accountLoader,
 		s.mockBatchInsertBuilder,
 		networkPassphrase,
+		false,
 	)
 
 	s.txs = []ingest.LedgerTransaction{
