@@ -66,7 +66,7 @@ func (v *StateVerifier) GetLedgerEntries(count int) ([]xdr.LedgerEntry, error) {
 	}
 
 	entries := make([]xdr.LedgerEntry, 0, count)
-	v.currentEntries = make(map[string]xdr.LedgerEntry)
+	v.currentEntries = make(map[string]xdr.LedgerEntry, count)
 
 	for count > 0 {
 		entryChange, err := v.stateReader.Read()
