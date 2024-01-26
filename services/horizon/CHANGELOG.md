@@ -8,7 +8,7 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 ## 2.28.0
 
 ### Fixed
-- Ingestion performance timing is improved ([4909](https://github.com/stellar/go/issues/4909))
+- Ingestion performance improvements ([4909](https://github.com/stellar/go/issues/4909))
 - Trade aggregation rebuild errors reported on `db reingest range` with parallel workers ([5168](https://github.com/stellar/go/pull/5168))
 - Limited global flags displayed on cli help output ([5077](https://github.com/stellar/go/pull/5077))
 - Network usage has been significantly reduced with caching. **Warning:** To support the cache, disk requirements may increase by up to 15GB ([5171](https://github.com/stellar/go/pull/5171)).
@@ -24,7 +24,19 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
   * API `Operation` model for `InvokeHostFunctionOp` type, will have empty `asset_balance_changes`
 
 ### Breaking Changes
-- Removed configuration flags `--stellar-core-url-db`, `--cursor-name` `--skip-cursor-update` , they were related to legacy non-captive core ingestion and are no longer usable.
+- Deprecation of legacy, non-captive core ingestion([5158](https://github.com/stellar/go/pull/5158)): 
+  * removed configuration flags `--stellar-core-url-db`, `--cursor-name` `--skip-cursor-update`, they are no longer usable.
+  * removed automatic updating of core cursor from ingestion background processing. 
+    * Note for upgrading on existing horizon deployments - Since horizon will no longer maintain advancement of this cursor on core, it may require manual removal of the cursor from the core process that your horizon was using for captive core, otherwise that core process may un-necessarily retain older data in buckets on disk up to the last cursor ledger sequence set by prior horizon release. 
+    
+    The captive core process to check and verify presence of cursor usage is determined by the horizon deployment, if `NETWORK` is present, or `STELLAR_CORE_URL` is present or  `CAPTIVE-CORE-HTTP-PORT` is present and set to non-zero value, or `CAPTIVE-CORE_CONFIG_PATH` is used and the toml has `HTTP_PORT` set to non-zero and `PUBLIC_HTTP_PORT` is not set to false, then it is recommended to perform the following preventative measure on the machine hosting horizon after upgraded to 2.28.0 and process restarted:
+    ```
+    $ curl http://<captive_core_process_url:captive_core_process_port>/getcursor
+    2. # If there are no cursors reported, done, no need for any action
+    3. # If any horizon cursors exist they need to be dropped by id. By default horizon sets cursor id to "HORIZON" but if it was customised using the --cursor-name flag the id might be different
+    $ curl http://<captive_core_process_url:captive_core_process_port>/dropcursor?id=<reported_id_from_getcursor>
+    ```     
+   
 
 ## 2.27.0
 
