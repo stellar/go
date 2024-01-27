@@ -49,13 +49,13 @@ func GetTestS3Archive() *Archive {
 }
 
 func GetTestMockArchive() *Archive {
-	return MustConnect("mock://test", 
-	ArchiveOptions{CheckpointFrequency: 64,
-		CacheConfig: CacheOptions{
-			Cache:    true,
-			Path:     filepath.Join(os.TempDir(), "history-archive-test-cache"),
-			MaxFiles: 5,
-		}})
+	return MustConnect("mock://test",
+		ArchiveOptions{CheckpointFrequency: 64,
+			CacheConfig: CacheOptions{
+				Cache:    true,
+				Path:     filepath.Join(os.TempDir(), "history-archive-test-cache"),
+				MaxFiles: 5,
+			}})
 }
 
 var tmpdirs []string
@@ -200,8 +200,10 @@ func TestConfiguresHttpUserAgent(t *testing.T) {
 	}))
 	defer server.Close()
 
-	archive, err := Connect(server.URL, ConnectOptions{
-		UserAgent: "uatest",
+	archive, err := Connect(server.URL, ArchiveOptions{
+		ConnectOptions: storage.ConnectOptions{
+			UserAgent: "uatest",
+		},
 	})
 	assert.NoError(t, err)
 

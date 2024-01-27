@@ -7,6 +7,7 @@ import (
 
 	lru "github.com/hashicorp/golang-lru"
 	log "github.com/stellar/go/support/log"
+	"github.com/stellar/go/support/storage"
 )
 
 type CacheOptions struct {
@@ -61,7 +62,7 @@ func MakeArchiveBucketCache(opts CacheOptions) (*ArchiveBucketCache, error) {
 // cache, and any error.
 func (abc *ArchiveBucketCache) GetFile(
 	filepath string,
-	upstream ArchiveBackend,
+	upstream storage.Storage,
 ) (io.ReadCloser, bool, error) {
 	L := abc.log.WithField("key", filepath)
 	localPath := path.Join(abc.path, filepath)

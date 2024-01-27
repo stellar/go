@@ -56,15 +56,6 @@ type Ledger struct {
 	TransactionResult xdr.TransactionHistoryResultEntry
 }
 
-type ArchiveBackend interface {
-	Exists(path string) (bool, error)
-	Size(path string) (int64, error)
-	GetFile(path string) (io.ReadCloser, error)
-	PutFile(path string, in io.ReadCloser) error
-	ListFiles(path string) (chan string, chan error)
-	CanListFiles() bool
-}
-
 type ArchiveInterface interface {
 	GetPathHAS(path string) (HistoryArchiveState, error)
 	PutPathHAS(path string, has HistoryArchiveState, opts *CommandOptions) error
@@ -112,8 +103,8 @@ type Archive struct {
 
 	checkpointManager CheckpointManager
 
-	backend ArchiveBackend
-	cache *ArchiveBucketCache
+	backend storage.Storage
+	cache   *ArchiveBucketCache
 	stats   archiveStats
 }
 
@@ -443,11 +434,11 @@ func Connect(u string, opts ArchiveOptions) (*Archive, error) {
 
 	var err error
 	arch.backend, err = ConnectBackend(u, opts.ConnectOptions)
-	if (err != nil) {
+	if err != nil {
 		return &arch, err
 	}
 
-    if opts.CacheConfig.Cache {
+	if opts.CacheConfig.Cache {
 		cache, innerErr := MakeArchiveBucketCache(opts.CacheConfig)
 		if innerErr != nil {
 			return &arch, innerErr
@@ -456,8 +447,7 @@ func Connect(u string, opts ArchiveOptions) (*Archive, error) {
 		arch.cache = cache
 	}
 
-	parsed, err := url.Parse(u)
-	arch.stats = archiveStats{backendName: parsed.String()}
+	arch.stats = archiveStats{backendName: u}
 	return &arch, nil
 }
 
@@ -466,19 +456,21 @@ func ConnectBackend(u string, opts storage.ConnectOptions) (storage.Storage, err
 		return nil, errors.New("URL is empty")
 	}
 
+	var err error
 	parsed, err := url.Parse(u)
 	if err != nil {
 		return nil, err
 	}
 
 	var backend storage.Storage
+
 	if parsed.Scheme == "mock" {
 		backend = makeMockBackend()
 	} else {
 		backend, err = storage.ConnectBackend(u, opts)
 	}
 
-	return backend, nil
+	return backend, err
 }
 
 func MustConnect(u string, opts ArchiveOptions) *Archive {
