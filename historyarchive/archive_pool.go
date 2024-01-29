@@ -54,9 +54,7 @@ func NewArchivePool(archiveURLs []string, opts ArchiveOptions) (ArchivePool, err
 func (pa ArchivePool) GetStats() []ArchiveStats {
 	stats := []ArchiveStats{}
 	for _, archive := range pa {
-		if len(archive.GetStats()) == 1 {
-			stats = append(stats, archive.GetStats()[0])
-		}
+		stats = append(stats, archive.GetStats()...)
 	}
 	return stats
 }
