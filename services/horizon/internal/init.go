@@ -91,9 +91,7 @@ func mustInitHorizonDB(app *App) {
 
 func initIngester(app *App) {
 	var err error
-	var coreSession db.SessionInterface
 	app.ingester, err = ingest.NewSystem(ingest.Config{
-		CoreSession: coreSession,
 		HistorySession: mustNewDBSession(
 			db.IngestSubservice, app.config.DatabaseURL, ingest.MaxDBConnections, ingest.MaxDBConnections, app.prometheusRegistry,
 		),
@@ -101,12 +99,10 @@ func initIngester(app *App) {
 		HistoryArchiveURLs:                   app.config.HistoryArchiveURLs,
 		CheckpointFrequency:                  app.config.CheckpointFrequency,
 		StellarCoreURL:                       app.config.StellarCoreURL,
-		StellarCoreCursor:                    app.config.CursorName,
 		CaptiveCoreBinaryPath:                app.config.CaptiveCoreBinaryPath,
 		CaptiveCoreStoragePath:               app.config.CaptiveCoreStoragePath,
 		CaptiveCoreConfigUseDB:               app.config.CaptiveCoreConfigUseDB,
 		CaptiveCoreToml:                      app.config.CaptiveCoreToml,
-		RemoteCaptiveCoreURL:                 app.config.RemoteCaptiveCoreURL,
 		DisableStateVerification:             app.config.IngestDisableStateVerification,
 		StateVerificationCheckpointFrequency: uint32(app.config.IngestStateVerificationCheckpointFrequency),
 		StateVerificationTimeout:             app.config.IngestStateVerificationTimeout,
@@ -114,6 +110,7 @@ func initIngester(app *App) {
 		EnableExtendedLogLedgerStats:         app.config.IngestEnableExtendedLogLedgerStats,
 		RoundingSlippageFilter:               app.config.RoundingSlippageFilter,
 		EnableIngestionFiltering:             app.config.EnableIngestionFiltering,
+		SkipSorobanIngestion:                 app.config.SkipSorobanIngestion,
 	})
 
 	if err != nil {

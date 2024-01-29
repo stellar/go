@@ -6,6 +6,7 @@ package ingest
 import (
 	"context"
 	"fmt"
+	"path"
 	"runtime"
 	"sync"
 	"time"
@@ -80,14 +81,11 @@ const (
 var log = logpkg.DefaultLogger.WithField("service", "ingest")
 
 type Config struct {
-	CoreSession            db.SessionInterface
 	StellarCoreURL         string
-	StellarCoreCursor      string
 	CaptiveCoreBinaryPath  string
 	CaptiveCoreStoragePath string
 	CaptiveCoreToml        *ledgerbackend.CaptiveCoreToml
 	CaptiveCoreConfigUseDB bool
-	RemoteCaptiveCoreURL   string
 	NetworkPassphrase      string
 
 	HistorySession     db.SessionInterface
@@ -110,19 +108,8 @@ type Config struct {
 
 	EnableIngestionFiltering bool
 	MaxLedgerPerFlush        uint32
-}
 
-// LocalCaptiveCoreEnabled returns true if configured to run
-// a local captive core instance for ingestion.
-func (c Config) LocalCaptiveCoreEnabled() bool {
-	// c.RemoteCaptiveCoreURL is always empty when running local captive core.
-	return c.RemoteCaptiveCoreURL == ""
-}
-
-// RemoteCaptiveCoreEnabled returns true if configured to run
-// a remote captive core instance for ingestion.
-func (c Config) RemoteCaptiveCoreEnabled() bool {
-	return c.RemoteCaptiveCoreURL != ""
+	SkipSorobanIngestion bool
 }
 
 const (
@@ -178,6 +165,9 @@ type Metrics struct {
 
 	// ProcessorsRunDurationSummary exposes processors run durations.
 	ProcessorsRunDurationSummary *prometheus.SummaryVec
+
+	// ArchiveRequestCounter counts how many http requests are sent to history server
+	HistoryArchiveStatsCounter *prometheus.CounterVec
 }
 
 type System interface {
@@ -187,10 +177,11 @@ type System interface {
 	StressTest(numTransactions, changesPerTransaction int) error
 	VerifyRange(fromLedger, toLedger uint32, verifyState bool) error
 	BuildState(sequence uint32, skipChecks bool) error
-	ReingestRange(ledgerRanges []history.LedgerRange, force bool) error
+	ReingestRange(ledgerRanges []history.LedgerRange, force bool, rebuildTradeAgg bool) error
 	BuildGenesisState() error
 	Shutdown()
 	GetCurrentState() State
+	RebuildTradeAggregationBuckets(fromLedger, toLedger uint32) error
 }
 
 type system struct {
@@ -239,7 +230,12 @@ func NewSystem(config Config) (System, error) {
 			CheckpointFrequency: config.CheckpointFrequency,
 			ConnectOptions: storage.ConnectOptions{
 				Context:   ctx,
-				UserAgent: fmt.Sprintf("horizon/%s golang/%s", apkg.Version(), runtime.Version()),
+				UserAgent: fmt.Sprintf("horizon/%s golang/%s", apkg.Version(), runtime.Version())},
+			CacheConfig: historyarchive.CacheOptions{
+				Cache:    true,
+				Path:     path.Join(config.CaptiveCoreStoragePath, "bucket-cache"),
+				Log:      log.WithField("subservice", "ha-cache"),
+				MaxFiles: 150,
 			},
 		},
 	)
@@ -248,41 +244,26 @@ func NewSystem(config Config) (System, error) {
 		return nil, errors.Wrap(err, "error creating history archive")
 	}
 
-	var ledgerBackend ledgerbackend.LedgerBackend
-	if config.RemoteCaptiveCoreEnabled() {
-		ledgerBackend, err = ledgerbackend.NewRemoteCaptive(config.RemoteCaptiveCoreURL)
-		if err != nil {
-			cancel()
-			return nil, errors.Wrap(err, "error creating captive core backend")
-		}
-	} else if config.LocalCaptiveCoreEnabled() {
-		logger := log.WithField("subservice", "stellar-core")
-		ledgerBackend, err = ledgerbackend.NewCaptive(
-			ledgerbackend.CaptiveCoreConfig{
-				BinaryPath:          config.CaptiveCoreBinaryPath,
-				StoragePath:         config.CaptiveCoreStoragePath,
-				UseDB:               config.CaptiveCoreConfigUseDB,
-				Toml:                config.CaptiveCoreToml,
-				NetworkPassphrase:   config.NetworkPassphrase,
-				HistoryArchiveURLs:  config.HistoryArchiveURLs,
-				CheckpointFrequency: config.CheckpointFrequency,
-				LedgerHashStore:     ledgerbackend.NewHorizonDBLedgerHashStore(config.HistorySession),
-				Log:                 logger,
-				Context:             ctx,
-				UserAgent:           fmt.Sprintf("captivecore horizon/%s golang/%s", apkg.Version(), runtime.Version()),
-			},
-		)
-		if err != nil {
-			cancel()
-			return nil, errors.Wrap(err, "error creating captive core backend")
-		}
-	} else {
-		coreSession := config.CoreSession.Clone()
-		ledgerBackend, err = ledgerbackend.NewDatabaseBackendFromSession(coreSession, config.NetworkPassphrase)
-		if err != nil {
-			cancel()
-			return nil, errors.Wrap(err, "error creating ledger backend")
-		}
+	// the only ingest option is local captive core config
+	logger := log.WithField("subservice", "stellar-core")
+	ledgerBackend, err := ledgerbackend.NewCaptive(
+		ledgerbackend.CaptiveCoreConfig{
+			BinaryPath:          config.CaptiveCoreBinaryPath,
+			StoragePath:         config.CaptiveCoreStoragePath,
+			UseDB:               config.CaptiveCoreConfigUseDB,
+			Toml:                config.CaptiveCoreToml,
+			NetworkPassphrase:   config.NetworkPassphrase,
+			HistoryArchiveURLs:  config.HistoryArchiveURLs,
+			CheckpointFrequency: config.CheckpointFrequency,
+			LedgerHashStore:     ledgerbackend.NewHorizonDBLedgerHashStore(config.HistorySession),
+			Log:                 logger,
+			Context:             ctx,
+			UserAgent:           fmt.Sprintf("captivecore horizon/%s golang/%s", apkg.Version(), runtime.Version()),
+		},
+	)
+	if err != nil {
+		cancel()
+		return nil, errors.Wrap(err, "error creating captive core backend")
 	}
 
 	historyQ := &history.Q{config.HistorySession.Clone()}
@@ -424,6 +405,14 @@ func (s *system) initMetrics() {
 		},
 		[]string{"name"},
 	)
+
+	s.metrics.HistoryArchiveStatsCounter = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: "horizon", Subsystem: "ingest", Name: "history_archive_stats_total",
+			Help: "counters of different history archive stats",
+		},
+		[]string{"source", "type"},
+	)
 }
 
 func (s *system) GetCurrentState() State {
@@ -449,6 +438,7 @@ func (s *system) RegisterMetrics(registry *prometheus.Registry) {
 	registry.MustRegister(s.metrics.ProcessorsRunDuration)
 	registry.MustRegister(s.metrics.ProcessorsRunDurationSummary)
 	registry.MustRegister(s.metrics.StateVerifyLedgerEntriesCount)
+	registry.MustRegister(s.metrics.HistoryArchiveStatsCounter)
 	s.ledgerBackend = ledgerbackend.WithMetrics(s.ledgerBackend, registry, "horizon")
 }
 
@@ -543,7 +533,7 @@ func validateRanges(ledgerRanges []history.LedgerRange) error {
 
 // ReingestRange runs the ingestion pipeline on the range of ledgers ingesting
 // history data only.
-func (s *system) ReingestRange(ledgerRanges []history.LedgerRange, force bool) error {
+func (s *system) ReingestRange(ledgerRanges []history.LedgerRange, force bool, rebuildTradeAgg bool) error {
 	if err := validateRanges(ledgerRanges); err != nil {
 		return err
 	}
@@ -564,8 +554,18 @@ func (s *system) ReingestRange(ledgerRanges []history.LedgerRange, force bool) e
 		if err != nil {
 			return err
 		}
+		if rebuildTradeAgg {
+			err = s.RebuildTradeAggregationBuckets(cur.StartSequence, cur.EndSequence)
+			if err != nil {
+				return errors.Wrap(err, "Error rebuilding trade aggregations")
+			}
+		}
 	}
 	return nil
+}
+
+func (s *system) RebuildTradeAggregationBuckets(fromLedger, toLedger uint32) error {
+	return s.historyQ.RebuildTradeAggregationBuckets(s.ctx, fromLedger, toLedger, s.config.RoundingSlippageFilter)
 }
 
 // BuildGenesisState runs the ingestion pipeline on genesis ledger. Transitions
@@ -753,26 +753,6 @@ func (s *system) resetStateVerificationErrors() {
 	s.stateVerificationMutex.Lock()
 	defer s.stateVerificationMutex.Unlock()
 	s.stateVerificationErrors = 0
-}
-
-func (s *system) updateCursor(ledgerSequence uint32) error {
-	if s.stellarCoreClient == nil {
-		return nil
-	}
-
-	cursor := defaultCoreCursorName
-	if s.config.StellarCoreCursor != "" {
-		cursor = s.config.StellarCoreCursor
-	}
-
-	ctx, cancel := context.WithTimeout(s.ctx, time.Second)
-	defer cancel()
-	err := s.stellarCoreClient.SetCursor(ctx, cursor, int32(ledgerSequence))
-	if err != nil {
-		return errors.Wrap(err, "Setting stellar-core cursor failed")
-	}
-
-	return nil
 }
 
 func (s *system) Shutdown() {

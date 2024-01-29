@@ -10,7 +10,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/url"
 	"path"
 	"regexp"
@@ -46,8 +45,9 @@ type ArchiveOptions struct {
 	// CheckpointFrequency is the number of ledgers between checkpoints
 	// if unset, DefaultCheckpointFrequency will be used
 	CheckpointFrequency uint32
-
 	storage.ConnectOptions
+	// CacheConfig controls how/if bucket files are cached on the disk.
+	CacheConfig CacheOptions
 }
 
 type Ledger struct {
@@ -75,6 +75,7 @@ type ArchiveInterface interface {
 	GetXdrStreamForHash(hash Hash) (*XdrStream, error)
 	GetXdrStream(pth string) (*XdrStream, error)
 	GetCheckpointManager() CheckpointManager
+	GetStats() []ArchiveStats
 }
 
 var _ ArchiveInterface = &Archive{}
@@ -103,6 +104,12 @@ type Archive struct {
 	checkpointManager CheckpointManager
 
 	backend storage.Storage
+	cache   *ArchiveBucketCache
+	stats   archiveStats
+}
+
+func (arch *Archive) GetStats() []ArchiveStats {
+	return []ArchiveStats{&arch.stats}
 }
 
 func (arch *Archive) GetCheckpointManager() CheckpointManager {
@@ -112,6 +119,7 @@ func (arch *Archive) GetCheckpointManager() CheckpointManager {
 func (a *Archive) GetPathHAS(path string) (HistoryArchiveState, error) {
 	var has HistoryArchiveState
 	rdr, err := a.backend.GetFile(path)
+	a.stats.incrementDownloads()
 	if err != nil {
 		return has, err
 	}
@@ -138,6 +146,7 @@ func (a *Archive) GetPathHAS(path string) (HistoryArchiveState, error) {
 
 func (a *Archive) PutPathHAS(path string, has HistoryArchiveState, opts *CommandOptions) error {
 	exists, err := a.backend.Exists(path)
+	a.stats.incrementRequests()
 	if err != nil {
 		return err
 	}
@@ -149,19 +158,21 @@ func (a *Archive) PutPathHAS(path string, has HistoryArchiveState, opts *Command
 	if err != nil {
 		return err
 	}
-	return a.backend.PutFile(path,
-		ioutil.NopCloser(bytes.NewReader(buf)))
+	a.stats.incrementUploads()
+	return a.backend.PutFile(path, io.NopCloser(bytes.NewReader(buf)))
 }
 
 func (a *Archive) BucketExists(bucket Hash) (bool, error) {
-	return a.backend.Exists(BucketPath(bucket))
+	return a.cachedExists(BucketPath(bucket))
 }
 
 func (a *Archive) BucketSize(bucket Hash) (int64, error) {
+	a.stats.incrementRequests()
 	return a.backend.Size(BucketPath(bucket))
 }
 
 func (a *Archive) CategoryCheckpointExists(cat string, chk uint32) (bool, error) {
+	a.stats.incrementRequests()
 	return a.backend.Exists(CategoryCheckpointPath(cat, chk))
 }
 
@@ -294,14 +305,17 @@ func (a *Archive) PutRootHAS(has HistoryArchiveState, opts *CommandOptions) erro
 }
 
 func (a *Archive) ListBucket(dp DirPrefix) (chan string, chan error) {
+	a.stats.incrementRequests()
 	return a.backend.ListFiles(path.Join("bucket", dp.Path()))
 }
 
 func (a *Archive) ListAllBuckets() (chan string, chan error) {
+	a.stats.incrementRequests()
 	return a.backend.ListFiles("bucket")
 }
 
 func (a *Archive) ListAllBucketHashes() (chan Hash, chan error) {
+	a.stats.incrementRequests()
 	sch, errs := a.backend.ListFiles("bucket")
 	ch := make(chan Hash)
 	rx := regexp.MustCompile("bucket" + hexPrefixPat + "bucket-([0-9a-f]{64})\\.xdr\\.gz$")
@@ -322,6 +336,7 @@ func (a *Archive) ListCategoryCheckpoints(cat string, pth string) (chan uint32, 
 	ext := categoryExt(cat)
 	rx := regexp.MustCompile(cat + hexPrefixPat + cat +
 		"-([0-9a-f]{8})\\." + regexp.QuoteMeta(ext) + "$")
+	a.stats.incrementRequests()
 	sch, errs := a.backend.ListFiles(path.Join(cat, pth))
 	ch := make(chan uint32)
 	errs = makeErrorPump(errs)
@@ -359,11 +374,40 @@ func (a *Archive) GetXdrStream(pth string) (*XdrStream, error) {
 	if !strings.HasSuffix(pth, ".xdr.gz") {
 		return nil, errors.New("File has non-.xdr.gz suffix: " + pth)
 	}
-	rdr, err := a.backend.GetFile(pth)
+	rdr, err := a.cachedGet(pth)
 	if err != nil {
 		return nil, err
 	}
 	return NewXdrGzStream(rdr)
+}
+
+func (a *Archive) cachedGet(pth string) (io.ReadCloser, error) {
+	if a.cache != nil {
+		rdr, foundInCache, err := a.cache.GetFile(pth, a.backend)
+		if !foundInCache {
+			a.stats.incrementDownloads()
+		} else {
+			a.stats.incrementCacheHits()
+		}
+		if err == nil {
+			return rdr, nil
+		}
+
+		// If there's an error, retry with the uncached backend.
+		a.cache.Evict(pth)
+	}
+
+	a.stats.incrementDownloads()
+	return a.backend.GetFile(pth)
+}
+
+func (a *Archive) cachedExists(pth string) (bool, error) {
+	if a.cache != nil && a.cache.Exists(pth) {
+		return true, nil
+	}
+
+	a.stats.incrementRequests()
+	return a.backend.Exists(pth)
 }
 
 func Connect(u string, opts ArchiveOptions) (*Archive, error) {
@@ -390,7 +434,21 @@ func Connect(u string, opts ArchiveOptions) (*Archive, error) {
 
 	var err error
 	arch.backend, err = ConnectBackend(u, opts.ConnectOptions)
-	return &arch, err
+	if err != nil {
+		return &arch, err
+	}
+
+	if opts.CacheConfig.Cache {
+		cache, innerErr := MakeArchiveBucketCache(opts.CacheConfig)
+		if innerErr != nil {
+			return &arch, innerErr
+		}
+
+		arch.cache = cache
+	}
+
+	arch.stats = archiveStats{backendName: u}
+	return &arch, nil
 }
 
 func ConnectBackend(u string, opts storage.ConnectOptions) (storage.Storage, error) {
@@ -398,12 +456,14 @@ func ConnectBackend(u string, opts storage.ConnectOptions) (storage.Storage, err
 		return nil, errors.New("URL is empty")
 	}
 
+	var err error
 	parsed, err := url.Parse(u)
 	if err != nil {
 		return nil, err
 	}
 
 	var backend storage.Storage
+
 	if parsed.Scheme == "mock" {
 		backend = makeMockBackend()
 	} else {

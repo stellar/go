@@ -51,8 +51,16 @@ func NewArchivePool(archiveURLs []string, opts ArchiveOptions) (ArchivePool, err
 	return validArchives, nil
 }
 
+func (pa ArchivePool) GetStats() []ArchiveStats {
+	stats := []ArchiveStats{}
+	for _, archive := range pa {
+		stats = append(stats, archive.GetStats()...)
+	}
+	return stats
+}
+
 // Ensure the pool conforms to the ArchiveInterface
-var _ ArchiveInterface = ArchivePool{}
+var _ ArchiveInterface = &ArchivePool{}
 
 // Below are the ArchiveInterface method implementations.
 

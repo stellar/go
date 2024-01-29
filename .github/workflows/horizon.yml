@@ -33,9 +33,9 @@ jobs:
     env:
       HORIZON_INTEGRATION_TESTS_ENABLED: true
       HORIZON_INTEGRATION_TESTS_CORE_MAX_SUPPORTED_PROTOCOL: ${{ matrix.protocol-version }}
-      PROTOCOL_20_CORE_DEBIAN_PKG_VERSION: 20.0.2-1633.669916b56.focal
-      PROTOCOL_20_CORE_DOCKER_IMG: stellar/unsafe-stellar-core:20.0.2-1633.669916b56.focal
-      PROTOCOL_20_SOROBAN_RPC_DOCKER_IMG: stellar/soroban-rpc:20.0.2-47
+      PROTOCOL_20_CORE_DEBIAN_PKG_VERSION: 20.1.0-1656.114b833e7.focal
+      PROTOCOL_20_CORE_DOCKER_IMG: stellar/unsafe-stellar-core:20.1.0-1656.114b833e7.focal
+      PROTOCOL_20_SOROBAN_RPC_DOCKER_IMG: stellar/soroban-rpc:20.2.0
       PROTOCOL_19_CORE_DEBIAN_PKG_VERSION: 19.14.0-1500.5664eff4e.focal
       PROTOCOL_19_CORE_DOCKER_IMG: stellar/stellar-core:19.14.0-1500.5664eff4e.focal
       PGHOST: localhost
@@ -120,7 +120,7 @@ jobs:
           key: ${{ env.COMBINED_SOURCE_HASH }}
 
       - if: ${{ steps.horizon_binary_tests_hash.outputs.cache-hit != 'true' }}
-        run: go test -race -timeout 45m -v ./services/horizon/internal/integration/...
+        run: go test -race -timeout 65m -v ./services/horizon/internal/integration/...
 
       - name: Save Horizon binary and integration tests source hash to cache
         if: ${{ success() && steps.horizon_binary_tests_hash.outputs.cache-hit != 'true' }}

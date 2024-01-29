@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"sync"
 	"testing"
@@ -138,9 +140,16 @@ func TestCaptiveNew(t *testing.T) {
 	require.NoError(t, err)
 	defer os.RemoveAll(storagePath)
 
+	var userAgent string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		userAgent = r.Header["User-Agent"][0]
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
 	executablePath := "/etc/stellar-core"
 	networkPassphrase := network.PublicNetworkPassphrase
-	historyURLs := []string{"http://history.stellar.org/prd/core-live/core_live_001"}
+	historyURLs := []string{server.URL}
 
 	captiveStellarCore, err := NewCaptive(
 		CaptiveCoreConfig{
@@ -148,12 +157,16 @@ func TestCaptiveNew(t *testing.T) {
 			NetworkPassphrase:  networkPassphrase,
 			HistoryArchiveURLs: historyURLs,
 			StoragePath:        storagePath,
+			UserAgent:          "uatest",
 		},
 	)
 
 	assert.NoError(t, err)
 	assert.Equal(t, uint32(0), captiveStellarCore.nextLedger)
 	assert.NotNil(t, captiveStellarCore.archive)
+	_, err = captiveStellarCore.archive.BucketExists(historyarchive.EmptyXdrArrayHash())
+	assert.NoError(t, err)
+	assert.Equal(t, "uatest", userAgent)
 }
 
 func TestCaptivePrepareRange(t *testing.T) {

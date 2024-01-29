@@ -21,7 +21,6 @@ type Config struct {
 
 	EnableIngestionFiltering    bool
 	CaptiveCoreBinaryPath       string
-	RemoteCaptiveCoreURL        string
 	CaptiveCoreConfigPath       string
 	CaptiveCoreTomlParams       ledgerbackend.CaptiveCoreTomlParams
 	CaptiveCoreToml             *ledgerbackend.CaptiveCoreToml
@@ -68,11 +67,6 @@ type Config struct {
 	TLSKey string
 	// Ingest toggles whether this horizon instance should run the data ingestion subsystem.
 	Ingest bool
-	// CursorName is the cursor used for ingesting from stellar-core.
-	// Setting multiple cursors in different Horizon instances allows multiple
-	// Horizons to ingest from the same stellar-core instance without cursor
-	// collisions.
-	CursorName string
 	// HistoryRetentionCount represents the minimum number of ledgers worth of
 	// history data to retain in the horizon database. For the purposes of
 	// determining a "retention duration", each ledger roughly corresponds to 10
@@ -82,9 +76,6 @@ type Config struct {
 	// out-of-date by before horizon begins to respond with an error to history
 	// requests.
 	StaleThreshold uint
-	// SkipCursorUpdate causes the ingestor to skip reporting the "last imported
-	// ledger" state to stellar-core.
-	SkipCursorUpdate bool
 	// IngestDisableStateVerification disables state verification
 	// `System.verifyState()` when set to `true`.
 	IngestDisableStateVerification bool
@@ -117,4 +108,6 @@ type Config struct {
 	Network string
 	// DisableTxSub disables transaction submission functionality for Horizon.
 	DisableTxSub bool
+	// SkipSorobanIngestion skips Soroban related ingestion processing.
+	SkipSorobanIngestion bool
 }

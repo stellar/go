@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
+	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
@@ -260,6 +261,13 @@ func (s *ResumeTestTestSuite) mockSuccessfulIngestion() {
 	s.historyQ.On("GetLastLedgerIngest", s.ctx).Return(uint32(100), nil).Once()
 	s.historyQ.On("GetIngestVersion", s.ctx).Return(CurrentVersion, nil).Once()
 	s.historyQ.On("GetLatestHistoryLedger", s.ctx).Return(uint32(100), nil)
+	mockStats := &historyarchive.MockArchiveStats{}
+	mockStats.On("GetBackendName").Return("name")
+	mockStats.On("GetDownloads").Return(uint32(0))
+	mockStats.On("GetRequests").Return(uint32(0))
+	mockStats.On("GetUploads").Return(uint32(0))
+	mockStats.On("GetCacheHits").Return(uint32(0))
+	s.historyAdapter.On("GetStats").Return([]historyarchive.ArchiveStats{mockStats}).Once()
 
 	s.runner.On("RunAllProcessorsOnLedger", mock.AnythingOfType("xdr.LedgerCloseMeta")).
 		Run(func(args mock.Arguments) {
@@ -273,14 +281,6 @@ func (s *ResumeTestTestSuite) mockSuccessfulIngestion() {
 	s.historyQ.On("UpdateLastLedgerIngest", s.ctx, uint32(101)).Return(nil).Once()
 	s.historyQ.On("Commit").Return(nil).Once()
 	s.historyQ.On("RebuildTradeAggregationBuckets", s.ctx, uint32(101), uint32(101), 0).Return(nil).Once()
-
-	s.stellarCoreClient.On(
-		"SetCursor",
-		mock.AnythingOfType("*context.timerCtx"),
-		defaultCoreCursorName,
-		int32(101),
-	).Return(nil).Once()
-
 	s.historyQ.On("GetExpStateInvalid", s.ctx).Return(false, nil).Once()
 }
 func (s *ResumeTestTestSuite) TestBumpIngestLedger() {
@@ -303,13 +303,6 @@ func (s *ResumeTestTestSuite) TestBumpIngestLedger() {
 	s.historyQ.On("Begin", s.ctx).Return(nil).Once()
 	s.historyQ.On("GetLastLedgerIngest", s.ctx).Return(uint32(101), nil).Once()
 
-	s.stellarCoreClient.On(
-		"SetCursor",
-		mock.AnythingOfType("*context.timerCtx"),
-		defaultCoreCursorName,
-		int32(101),
-	).Return(errors.New("my error")).Once()
-
 	next, err := resumeState{latestSuccessfullyProcessedLedger: 99}.run(s.system)
 	s.Assert().NoError(err)
 	s.Assert().Equal(
@@ -323,45 +316,6 @@ func (s *ResumeTestTestSuite) TestBumpIngestLedger() {
 
 func (s *ResumeTestTestSuite) TestIngestAllMasterNode() {
 	s.mockSuccessfulIngestion()
-
-	next, err := resumeState{latestSuccessfullyProcessedLedger: 100}.run(s.system)
-	s.Assert().NoError(err)
-	s.Assert().Equal(
-		transition{
-			node:          resumeState{latestSuccessfullyProcessedLedger: 101},
-			sleepDuration: 0,
-		},
-		next,
-	)
-}
-
-func (s *ResumeTestTestSuite) TestErrorSettingCursorIgnored() {
-	s.historyQ.On("Begin", s.ctx).Return(nil).Once()
-	s.historyQ.On("GetLastLedgerIngest", s.ctx).Return(uint32(100), nil).Once()
-	s.historyQ.On("GetIngestVersion", s.ctx).Return(CurrentVersion, nil).Once()
-	s.historyQ.On("GetLatestHistoryLedger", s.ctx).Return(uint32(100), nil)
-
-	s.runner.On("RunAllProcessorsOnLedger", mock.AnythingOfType("xdr.LedgerCloseMeta")).
-		Run(func(args mock.Arguments) {
-			meta := args.Get(0).(xdr.LedgerCloseMeta)
-			s.Assert().Equal(uint32(101), meta.LedgerSequence())
-		}).
-		Return(
-			ledgerStats{},
-			nil,
-		).Once()
-	s.historyQ.On("UpdateLastLedgerIngest", s.ctx, uint32(101)).Return(nil).Once()
-	s.historyQ.On("Commit").Return(nil).Once()
-
-	s.stellarCoreClient.On(
-		"SetCursor",
-		mock.AnythingOfType("*context.timerCtx"),
-		defaultCoreCursorName,
-		int32(101),
-	).Return(errors.New("my error")).Once()
-
-	s.historyQ.On("GetExpStateInvalid", s.ctx).Return(false, nil).Once()
-	s.historyQ.On("RebuildTradeAggregationBuckets", s.ctx, uint32(101), uint32(101), 0).Return(nil).Once()
 
 	next, err := resumeState{latestSuccessfullyProcessedLedger: 100}.run(s.system)
 	s.Assert().NoError(err)
@@ -422,15 +376,15 @@ func (s *ResumeTestTestSuite) TestReapingObjectsDisabled() {
 	s.historyQ.On("UpdateLastLedgerIngest", s.ctx, uint32(101)).Return(nil).Once()
 	s.historyQ.On("Commit").Return(nil).Once()
 
-	s.stellarCoreClient.On(
-		"SetCursor",
-		mock.AnythingOfType("*context.timerCtx"),
-		defaultCoreCursorName,
-		int32(101),
-	).Return(nil).Once()
-
 	s.historyQ.On("GetExpStateInvalid", s.ctx).Return(false, nil).Once()
 	s.historyQ.On("RebuildTradeAggregationBuckets", s.ctx, uint32(101), uint32(101), 0).Return(nil).Once()
+	mockStats := &historyarchive.MockArchiveStats{}
+	mockStats.On("GetBackendName").Return("name")
+	mockStats.On("GetDownloads").Return(uint32(0))
+	mockStats.On("GetRequests").Return(uint32(0))
+	mockStats.On("GetUploads").Return(uint32(0))
+	mockStats.On("GetCacheHits").Return(uint32(0))
+	s.historyAdapter.On("GetStats").Return([]historyarchive.ArchiveStats{mockStats}).Once()
 	// Reap lookup tables not executed
 
 	next, err := resumeState{latestSuccessfullyProcessedLedger: 100}.run(s.system)
@@ -466,13 +420,6 @@ func (s *ResumeTestTestSuite) TestErrorReapingObjectsIgnored() {
 	s.historyQ.On("UpdateLastLedgerIngest", s.ctx, uint32(101)).Return(nil).Once()
 	s.historyQ.On("Commit").Return(nil).Once()
 
-	s.stellarCoreClient.On(
-		"SetCursor",
-		mock.AnythingOfType("*context.timerCtx"),
-		defaultCoreCursorName,
-		int32(101),
-	).Return(nil).Once()
-
 	s.historyQ.On("GetExpStateInvalid", s.ctx).Return(false, nil).Once()
 	s.historyQ.On("RebuildTradeAggregationBuckets", s.ctx, uint32(101), uint32(101), 0).Return(nil).Once()
 	// Reap lookup tables:
@@ -481,6 +428,13 @@ func (s *ResumeTestTestSuite) TestErrorReapingObjectsIgnored() {
 	s.historyQ.On("GetLastLedgerIngest", s.ctx).Return(uint32(100), nil).Once()
 	s.historyQ.On("ReapLookupTables", mock.AnythingOfType("*context.timerCtx"), mock.Anything).Return(nil, nil, errors.New("error reaping objects")).Once()
 	s.historyQ.On("Rollback").Return(nil).Once()
+	mockStats := &historyarchive.MockArchiveStats{}
+	mockStats.On("GetBackendName").Return("name")
+	mockStats.On("GetDownloads").Return(uint32(0))
+	mockStats.On("GetRequests").Return(uint32(0))
+	mockStats.On("GetUploads").Return(uint32(0))
+	mockStats.On("GetCacheHits").Return(uint32(0))
+	s.historyAdapter.On("GetStats").Return([]historyarchive.ArchiveStats{mockStats}).Once()
 
 	next, err := resumeState{latestSuccessfullyProcessedLedger: 100}.run(s.system)
 	s.Assert().NoError(err)

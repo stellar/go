@@ -31,7 +31,7 @@ func TestParallelReingestRange(t *testing.T) {
 		m            sync.Mutex
 	)
 	result := &mockSystem{}
-	result.On("ReingestRange", mock.AnythingOfType("[]history.LedgerRange"), mock.AnythingOfType("bool")).Run(
+	result.On("ReingestRange", mock.AnythingOfType("[]history.LedgerRange"), false, false).Run(
 		func(args mock.Arguments) {
 			m.Lock()
 			defer m.Unlock()
@@ -39,6 +39,7 @@ func TestParallelReingestRange(t *testing.T) {
 			// simulate call
 			time.Sleep(time.Millisecond * time.Duration(10+rand.Int31n(50)))
 		}).Return(error(nil))
+	result.On("RebuildTradeAggregationBuckets", uint32(1), uint32(2050)).Return(nil).Once()
 	factory := func(c Config) (System, error) {
 		return result, nil
 	}
@@ -59,6 +60,7 @@ func TestParallelReingestRange(t *testing.T) {
 	rangesCalled = nil
 	system, err = newParallelSystems(config, 1, factory)
 	assert.NoError(t, err)
+	result.On("RebuildTradeAggregationBuckets", uint32(1), uint32(1024)).Return(nil).Once()
 	err = system.ReingestRange([]history.LedgerRange{{1, 1024}}, 64)
 	result.AssertExpectations(t)
 	expected = []history.LedgerRange{
@@ -75,8 +77,10 @@ func TestParallelReingestRangeError(t *testing.T) {
 	config := Config{}
 	result := &mockSystem{}
 	// Fail on the second range
-	result.On("ReingestRange", []history.LedgerRange{{1537, 1792}}, mock.AnythingOfType("bool")).Return(errors.New("failed because of foo"))
-	result.On("ReingestRange", mock.AnythingOfType("[]history.LedgerRange"), mock.AnythingOfType("bool")).Return(error(nil))
+	result.On("ReingestRange", []history.LedgerRange{{1537, 1792}}, false, false).Return(errors.New("failed because of foo")).Once()
+	result.On("ReingestRange", mock.AnythingOfType("[]history.LedgerRange"), false, false).Return(nil)
+	result.On("RebuildTradeAggregationBuckets", uint32(1), uint32(1537)).Return(nil).Once()
+
 	factory := func(c Config) (System, error) {
 		return result, nil
 	}
@@ -94,17 +98,18 @@ func TestParallelReingestRangeErrorInEarlierJob(t *testing.T) {
 	wg.Add(1)
 	result := &mockSystem{}
 	// Fail on an lower subrange after the first error
-	result.On("ReingestRange", []history.LedgerRange{{1025, 1280}}, mock.AnythingOfType("bool")).Run(func(mock.Arguments) {
+	result.On("ReingestRange", []history.LedgerRange{{1025, 1280}}, false, false).Run(func(mock.Arguments) {
 		// Wait for a more recent range to error
 		wg.Wait()
 		// This sleep should help making sure the result of this range is processed later than the one below
 		// (there are no guarantees without instrumenting ReingestRange(), but that's too complicated)
 		time.Sleep(50 * time.Millisecond)
-	}).Return(errors.New("failed because of foo"))
-	result.On("ReingestRange", []history.LedgerRange{{1537, 1792}}, mock.AnythingOfType("bool")).Run(func(mock.Arguments) {
+	}).Return(errors.New("failed because of foo")).Once()
+	result.On("ReingestRange", []history.LedgerRange{{1537, 1792}}, false, false).Run(func(mock.Arguments) {
 		wg.Done()
-	}).Return(errors.New("failed because of bar"))
-	result.On("ReingestRange", mock.AnythingOfType("[]history.LedgerRange"), mock.AnythingOfType("bool")).Return(error(nil))
+	}).Return(errors.New("failed because of bar")).Once()
+	result.On("ReingestRange", mock.AnythingOfType("[]history.LedgerRange"), false, false).Return(error(nil))
+	result.On("RebuildTradeAggregationBuckets", uint32(1), uint32(1025)).Return(nil).Once()
 
 	factory := func(c Config) (System, error) {
 		return result, nil

@@ -304,16 +304,16 @@ func (s *ReingestHistoryRangeStateTestSuite) TearDownTest() {
 func (s *ReingestHistoryRangeStateTestSuite) TestReingestHistoryRangeStateInvalidRange() {
 	// Recreate mock in this single test to remove Rollback assertion.
 	s.historyQ = &mockDBQ{}
-	err := s.system.ReingestRange([]history.LedgerRange{{0, 0}}, false)
+	err := s.system.ReingestRange([]history.LedgerRange{{0, 0}}, false, true)
 	s.Assert().EqualError(err, "Invalid range: {0 0} genesis ledger starts at 1")
 
-	err = s.system.ReingestRange([]history.LedgerRange{{0, 100}}, false)
+	err = s.system.ReingestRange([]history.LedgerRange{{0, 100}}, false, true)
 	s.Assert().EqualError(err, "Invalid range: {0 100} genesis ledger starts at 1")
 
-	err = s.system.ReingestRange([]history.LedgerRange{{100, 0}}, false)
+	err = s.system.ReingestRange([]history.LedgerRange{{100, 0}}, false, true)
 	s.Assert().EqualError(err, "Invalid range: {100 0} from > to")
 
-	err = s.system.ReingestRange([]history.LedgerRange{{100, 99}}, false)
+	err = s.system.ReingestRange([]history.LedgerRange{{100, 99}}, false, true)
 	s.Assert().EqualError(err, "Invalid range: {100 99} from > to")
 }
 
@@ -323,7 +323,7 @@ func (s *ReingestHistoryRangeStateTestSuite) TestReingestHistoryRangeStateInvali
 	s.historyQ.On("Rollback").Return(nil).Once()
 	s.historyQ.On("GetTx").Return(&sqlx.Tx{}).Once()
 	s.system.maxLedgerPerFlush = 0
-	err := s.system.ReingestRange([]history.LedgerRange{{100, 200}}, false)
+	err := s.system.ReingestRange([]history.LedgerRange{{100, 200}}, false, true)
 	s.Assert().EqualError(err, "invalid maxLedgerPerFlush, must be greater than 0")
 }
 
@@ -332,28 +332,28 @@ func (s *ReingestHistoryRangeStateTestSuite) TestReingestHistoryRangeStateBeginR
 	s.historyQ.On("GetLastLedgerIngestNonBlocking", s.ctx).Return(uint32(0), nil).Once()
 	s.historyQ.On("Begin", s.ctx).Return(errors.New("my error")).Once()
 
-	err := s.system.ReingestRange([]history.LedgerRange{{100, 200}}, false)
+	err := s.system.ReingestRange([]history.LedgerRange{{100, 200}}, false, true)
 	s.Assert().EqualError(err, "Error starting a transaction: my error")
 }
 
 func (s *ReingestHistoryRangeStateTestSuite) TestReingestHistoryRangeStateGetLastLedgerIngestNonBlockingError() {
 	s.historyQ.On("GetLastLedgerIngestNonBlocking", s.ctx).Return(uint32(0), errors.New("my error")).Once()
 
-	err := s.system.ReingestRange([]history.LedgerRange{{100, 200}}, false)
+	err := s.system.ReingestRange([]history.LedgerRange{{100, 200}}, false, true)
 	s.Assert().EqualError(err, "Error getting last ingested ledger: my error")
 }
 
 func (s *ReingestHistoryRangeStateTestSuite) TestReingestHistoryRangeStateRangeOverlaps() {
 	s.historyQ.On("GetLastLedgerIngestNonBlocking", s.ctx).Return(uint32(190), nil).Once()
 
-	err := s.system.ReingestRange([]history.LedgerRange{{100, 200}}, false)
+	err := s.system.ReingestRange([]history.LedgerRange{{100, 200}}, false, true)
 	s.Assert().Equal(ErrReingestRangeConflict{190}, err)
 }
 
 func (s *ReingestHistoryRangeStateTestSuite) TestReingestHistoryRangeStatRangeOverlapsAtEnd() {
 	s.historyQ.On("GetLastLedgerIngestNonBlocking", s.ctx).Return(uint32(200), nil).Once()
 
-	err := s.system.ReingestRange([]history.LedgerRange{{100, 200}}, false)
+	err := s.system.ReingestRange([]history.LedgerRange{{100, 200}}, false, true)
 	s.Assert().Equal(ErrReingestRangeConflict{200}, err)
 }
 
@@ -369,7 +369,7 @@ func (s *ReingestHistoryRangeStateTestSuite) TestReingestHistoryRangeStateClearH
 		"DeleteRangeAll", s.ctx, toidFrom.ToInt64(), toidTo.ToInt64(),
 	).Return(errors.New("my error")).Once()
 
-	err := s.system.ReingestRange([]history.LedgerRange{{100, 200}}, false)
+	err := s.system.ReingestRange([]history.LedgerRange{{100, 200}}, false, true)
 	s.Assert().EqualError(err, "error in DeleteRangeAll: my error")
 }
 
@@ -397,7 +397,7 @@ func (s *ReingestHistoryRangeStateTestSuite) TestReingestHistoryRangeStateRunTra
 	s.ledgerBackend.On("GetLedger", s.ctx, uint32(100)).Return(meta, nil).Once()
 	s.runner.On("RunTransactionProcessorsOnLedgers", []xdr.LedgerCloseMeta{meta}).Return(errors.New("my error")).Once()
 
-	err := s.system.ReingestRange([]history.LedgerRange{{100, 200}}, false)
+	err := s.system.ReingestRange([]history.LedgerRange{{100, 200}}, false, true)
 	s.Assert().EqualError(err, "error processing ledger range 100 - 100: my error")
 }
 
@@ -428,7 +428,7 @@ func (s *ReingestHistoryRangeStateTestSuite) TestReingestHistoryRangeStateCommit
 		s.runner.On("RunTransactionProcessorsOnLedgers", []xdr.LedgerCloseMeta{meta}).Return(nil).Once()
 	}
 
-	err := s.system.ReingestRange([]history.LedgerRange{{100, 200}}, false)
+	err := s.system.ReingestRange([]history.LedgerRange{{100, 200}}, false, true)
 	s.Assert().EqualError(err, "Error committing db transaction: my error")
 }
 
@@ -460,7 +460,7 @@ func (s *ReingestHistoryRangeStateTestSuite) TestReingestHistoryRangeStateSucces
 	}
 
 	// system.maxLedgerPerFlush has been set by default to 1 in test suite setup
-	err := s.system.ReingestRange([]history.LedgerRange{{100, 200}}, false)
+	err := s.system.ReingestRange([]history.LedgerRange{{100, 200}}, false, true)
 	s.Assert().NoError(err)
 }
 
@@ -500,7 +500,7 @@ func (s *ReingestHistoryRangeStateTestSuite) TestReingestHistoryRangeStateSucces
 	s.runner.On("RunTransactionProcessorsOnLedgers", firstLedgersBatch).Return(nil).Once()
 	s.runner.On("RunTransactionProcessorsOnLedgers", secondLedgersBatch).Return(nil).Once()
 	s.system.maxLedgerPerFlush = 60
-	err := s.system.ReingestRange([]history.LedgerRange{{100, 200}}, false)
+	err := s.system.ReingestRange([]history.LedgerRange{{100, 200}}, false, true)
 	s.Assert().NoError(err)
 }
 
@@ -534,7 +534,7 @@ func (s *ReingestHistoryRangeStateTestSuite) TestReingestHistoryRangeStateSucces
 	s.ledgerBackend.On("GetLedger", s.ctx, uint32(100)).Return(meta, nil).Once()
 	s.runner.On("RunTransactionProcessorsOnLedgers", []xdr.LedgerCloseMeta{meta}).Return(nil).Once()
 
-	err := s.system.ReingestRange([]history.LedgerRange{{100, 100}}, false)
+	err := s.system.ReingestRange([]history.LedgerRange{{100, 100}}, false, true)
 	s.Assert().NoError(err)
 }
 
@@ -543,7 +543,7 @@ func (s *ReingestHistoryRangeStateTestSuite) TestReingestHistoryRangeStateForceG
 	s.historyQ.On("Rollback").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerIngest", s.ctx).Return(uint32(0), errors.New("my error")).Once()
 
-	err := s.system.ReingestRange([]history.LedgerRange{{100, 200}}, true)
+	err := s.system.ReingestRange([]history.LedgerRange{{100, 200}}, true, true)
 	s.Assert().EqualError(err, "Error getting last ingested ledger: my error")
 }
 
@@ -576,7 +576,7 @@ func (s *ReingestHistoryRangeStateTestSuite) TestReingestHistoryRangeStateForce(
 	}
 
 	// system.maxLedgerPerFlush has been set by default to 1 in test suite setup
-	err := s.system.ReingestRange([]history.LedgerRange{{100, 200}}, true)
+	err := s.system.ReingestRange([]history.LedgerRange{{100, 200}}, true, true)
 	s.Assert().NoError(err)
 }
 
@@ -610,7 +610,7 @@ func (s *ReingestHistoryRangeStateTestSuite) TestReingestHistoryRangeStateForceL
 	s.ledgerBackend.On("GetLedger", s.ctx, uint32(106)).Return(xdr.LedgerCloseMeta{}, errors.New("my error")).Once()
 
 	// system.maxLedgerPerFlush has been set by default to 1 in test suite setup
-	err := s.system.ReingestRange([]history.LedgerRange{{100, 200}}, true)
+	err := s.system.ReingestRange([]history.LedgerRange{{100, 200}}, true, true)
 	s.Assert().EqualError(err, "error getting ledger: my error")
 }
 
@@ -644,7 +644,7 @@ func (s *ReingestHistoryRangeStateTestSuite) TestReingestHistoryRangeStateForceL
 	s.ledgerBackend.On("GetLedger", s.ctx, uint32(106)).Return(xdr.LedgerCloseMeta{}, errors.New("my error")).Once()
 
 	// system.maxLedgerPerFlush has been set by default to 1 in test suite setup
-	err := s.system.ReingestRange([]history.LedgerRange{{100, 200}}, true)
+	err := s.system.ReingestRange([]history.LedgerRange{{100, 200}}, true, true)
 	s.Assert().EqualError(err, "Error committing db transaction: error getting ledger: my error")
 }
 
@@ -686,6 +686,6 @@ func (s *ReingestHistoryRangeStateTestSuite) TestReingestHistoryRangeStateForceW
 	s.runner.On("RunTransactionProcessorsOnLedgers", secondLedgersBatch).Return(nil).Once()
 
 	s.system.maxLedgerPerFlush = 60
-	err := s.system.ReingestRange([]history.LedgerRange{{100, 200}}, true)
+	err := s.system.ReingestRange([]history.LedgerRange{{100, 200}}, true, true)
 	s.Assert().NoError(err)
 }

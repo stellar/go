@@ -33,6 +33,11 @@ func (m *mockHistoryArchiveAdapter) GetState(ctx context.Context, sequence uint3
 	return args.Get(0).(ingest.ChangeReader), args.Error(1)
 }
 
+func (m *mockHistoryArchiveAdapter) GetStats() []historyarchive.ArchiveStats {
+	a := m.Called()
+	return a.Get(0).([]historyarchive.ArchiveStats)
+}
+
 func TestGetState_Read(t *testing.T) {
 	archive, e := getTestArchive()
 	if !assert.NoError(t, e) {
