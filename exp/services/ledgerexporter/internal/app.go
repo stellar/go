@@ -31,9 +31,7 @@ func NewApp() *App {
 
 	config := Config{}
 	err := LoadConfig(&config)
-	if err != nil {
-		logFatalIf(err, "Could not load configuration")
-	}
+	logFatalIf(err, "Could not load configuration")
 	destinationStorage := NewDestinationStorage(&config)
 	backend := NewLedgerBackend(config)
 
