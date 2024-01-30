@@ -65,7 +65,7 @@ func NewDataStore(destinationURL string) (DataStore, error) {
 	// Check the bucket exists
 	bucket := client.Bucket(bucketName)
 	if _, err := bucket.Attrs(context.Background()); err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to retrieve bucket attributes")
 	}
 
 	return &GCSDataStore{client: client, bucket: bucket, prefix: prefix}, nil
