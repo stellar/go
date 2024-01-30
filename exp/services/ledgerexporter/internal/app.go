@@ -10,7 +10,6 @@ import (
 	"github.com/stellar/go/ingest/ledgerbackend"
 	_ "github.com/stellar/go/network"
 	supportlog "github.com/stellar/go/support/log"
-	"github.com/stellar/go/support/storage"
 )
 
 var (
@@ -22,7 +21,7 @@ type App struct {
 	cancel             func()
 	config             Config
 	backend            ledgerbackend.LedgerBackend
-	destinationStorage storage.Storage
+	destinationStorage DataStore
 	exportManager      ExportManager
 	uploader           Uploader
 }
@@ -116,8 +115,8 @@ func (a *App) Run() {
 	logger.Info("Shutting down ledgerexporter..")
 }
 
-func NewDestinationStorage(config *Config) storage.Storage {
-	destinationStorage, err := storage.ConnectBackend(config.DestinationURL, storage.ConnectOptions{})
+func NewDestinationStorage(config *Config) DataStore {
+	destinationStorage, err := NewDataStore(config.DestinationURL)
 	logFatalIf(err, "Could not connect to destination storage")
 	return destinationStorage
 }

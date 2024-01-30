@@ -7,7 +7,6 @@ import (
 	"io"
 
 	"github.com/pkg/errors"
-	"github.com/stellar/go/support/storage"
 )
 
 // Uploader is responsible for uploading data to a storage destination.
@@ -17,12 +16,12 @@ type Uploader interface {
 }
 
 type uploader struct {
-	destination   storage.Storage
+	destination   DataStore
 	metaArchiveCh chan *LedgerMetaArchive
 }
 
 // NewUploader creates a new Uploader
-func NewUploader(destination storage.Storage, metaArchiveCh chan *LedgerMetaArchive) Uploader {
+func NewUploader(destination DataStore, metaArchiveCh chan *LedgerMetaArchive) Uploader {
 	return &uploader{
 		destination:   destination,
 		metaArchiveCh: metaArchiveCh,
@@ -44,7 +43,7 @@ func (u *uploader) Upload(metaArchive *LedgerMetaArchive) error {
 		return errors.Wrap(err, "failed to compress data")
 	}
 
-	err = u.destination.PutFile(metaArchive.GetObjectKey(),
+	err = u.destination.PutFileIfNotExists(metaArchive.GetObjectKey(),
 		io.NopCloser(bytes.NewReader(compressedBlob)))
 	if err != nil {
 		return errors.Wrapf(err, "error uploading %s", metaArchive.GetObjectKey())
