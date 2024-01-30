@@ -2,11 +2,12 @@ package exporter
 
 import (
 	"context"
-	"google.golang.org/api/googleapi"
 	"io"
 	"os"
 	"path"
 	"strings"
+
+	"google.golang.org/api/googleapi"
 
 	"cloud.google.com/go/storage"
 	log "github.com/sirupsen/logrus"

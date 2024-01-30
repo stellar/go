@@ -37,6 +37,7 @@ func NewExportManager(config ExporterConfig, backend ledgerbackend.LedgerBackend
 	}
 }
 
+// GetMetaArchiveChannel returns a channel that receives LedgerMetaArchive objects.
 func (e *exportManager) GetMetaArchiveChannel() chan *LedgerMetaArchive {
 	return e.metaArchiveCh
 }

@@ -2,9 +2,10 @@ package exporter
 
 import (
 	"fmt"
+	"testing"
+
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func createLedgerCloseMeta(ledgerSeq uint32) xdr.LedgerCloseMeta {
@@ -18,6 +19,7 @@ func createLedgerCloseMeta(ledgerSeq uint32) xdr.LedgerCloseMeta {
 		},
 	}
 }
+
 func TestLedgerMetaArchive_AddLedgerValidRange(t *testing.T) {
 
 	tests := []struct {

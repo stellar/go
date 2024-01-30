@@ -71,6 +71,7 @@ func GetLatestLedgerSequenceFromHistoryArchives(historyArchivesURLs []string) (u
 	return 0, errors.New("failed to retrieve the latest ledger sequence from any history archive")
 }
 
+// Compress compresses the given data using gzip compression.
 func Compress(data []byte) ([]byte, error) {
 	var buf bytes.Buffer
 	w := gzip.NewWriter(&buf)

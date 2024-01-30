@@ -20,7 +20,6 @@ type uploader struct {
 	metaArchiveCh chan *LedgerMetaArchive
 }
 
-// NewUploader creates a new Uploader
 func NewUploader(destination DataStore, metaArchiveCh chan *LedgerMetaArchive) Uploader {
 	return &uploader{
 		destination:   destination,
@@ -29,7 +28,7 @@ func NewUploader(destination DataStore, metaArchiveCh chan *LedgerMetaArchive) U
 }
 
 // Upload uploads the serialized binary data of ledger TxMeta to the specified destination.
-// It includes retry logic with linear backoff to handle transient errors.
+// TODO: Add retry logic.
 func (u *uploader) Upload(metaArchive *LedgerMetaArchive) error {
 	logger.Infof("Uploading: %s", metaArchive.GetObjectKey())
 
@@ -51,8 +50,9 @@ func (u *uploader) Upload(metaArchive *LedgerMetaArchive) error {
 	return nil
 }
 
-// Run starts the uploader, continuously listening for ledger meta archive objects to upload.
+// Run starts the uploader, continuously listening for LedgerMetaArchive objects to upload.
 func (u *uploader) Run(ctx context.Context) error {
+
 	for {
 		select {
 		case <-ctx.Done():

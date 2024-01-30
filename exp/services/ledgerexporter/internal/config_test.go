@@ -1,20 +1,83 @@
 package exporter
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
-func TestInvalidEndLedgerBoundedMode(t *testing.T) {
+func TestValidateStartAndEndLedger(t *testing.T) {
+	const latestNetworkLedger = 20000
+
 	config := &Config{
-		StartLedger: 512,
-		EndLedger:   2,
 		ExporterConfig: ExporterConfig{
 			LedgersPerFile: 1,
 		},
 	}
-	assert.Error(t, validateAndAdjustLedgerRange(config), "invalid end ledger value, must be >= start ledger")
+	tests := []struct {
+		name        string
+		startLedger uint32
+		endLedger   uint32
+		errMsg      string
+	}{
+		{
+			name:        "End ledger same as latest ledger",
+			startLedger: 512,
+			endLedger:   512,
+			errMsg:      "",
+		},
+		{
+			name:        "End ledger greater than start ledger",
+			startLedger: 512,
+			endLedger:   600,
+			errMsg:      "",
+		},
+		{
+			name:        "No end ledger provided, unbounded mode",
+			startLedger: 512,
+			endLedger:   0,
+			errMsg:      "",
+		},
+		{
+			name:        "End ledger before start ledger",
+			startLedger: 512,
+			endLedger:   2,
+			errMsg:      "invalid --end value, must be >= --start",
+		},
+		{
+			name:        "End ledger exceeds latest ledger",
+			startLedger: 512,
+			endLedger:   latestNetworkLedger + 1,
+			errMsg: fmt.Sprintf("--end %d exceeds latest network ledger %d",
+				latestNetworkLedger+1, latestNetworkLedger),
+		},
+		{
+			name:        "Start ledger 0",
+			startLedger: 0,
+			endLedger:   2,
+			errMsg:      "",
+		},
+		{
+			name:        "Start ledger exceeds latest ledger",
+			startLedger: latestNetworkLedger + 1,
+			endLedger:   0,
+			errMsg: fmt.Sprintf("--start %d exceeds latest network ledger %d",
+				latestNetworkLedger+1, latestNetworkLedger),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			config.StartLedger = tt.startLedger
+			config.EndLedger = tt.endLedger
+			if tt.errMsg != "" {
+				assert.Equal(t, tt.errMsg, ValidateAndSetLedgerRange(config, latestNetworkLedger).Error())
+			} else {
+				assert.NoError(t, ValidateAndSetLedgerRange(config, latestNetworkLedger))
+			}
+		})
+	}
 }
 
 func TestAdjustLedgerRangeBoundedMode(t *testing.T) {
@@ -57,7 +120,7 @@ func TestAdjustLedgerRangeBoundedMode(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.NoError(t, validateAndAdjustLedgerRange(tt.config))
+			assert.NoError(t, AdjustLedgerRange(tt.config))
 			assert.EqualValues(t, tt.expected.StartLedger, tt.config.StartLedger)
 			assert.EqualValues(t, tt.expected.EndLedger, tt.config.EndLedger)
 		})
@@ -72,36 +135,36 @@ func TestAdjustLedgerRangeUnBoundedMode(t *testing.T) {
 	}{
 		{
 			name:     "Min start ledger 2",
-			config:   &Config{StartLedger: 0, EndLedger: 0, ExporterConfig: ExporterConfig{LedgersPerFile: 1}},
-			expected: &Config{StartLedger: 2, EndLedger: 0, ExporterConfig: ExporterConfig{LedgersPerFile: 1}},
+			config:   &Config{StartLedger: 0, ExporterConfig: ExporterConfig{LedgersPerFile: 1}},
+			expected: &Config{StartLedger: 2, ExporterConfig: ExporterConfig{LedgersPerFile: 1}},
 		},
 		{
 			name:     "No change, 1 ledger per file",
-			config:   &Config{StartLedger: 2, EndLedger: 0, ExporterConfig: ExporterConfig{LedgersPerFile: 1}},
-			expected: &Config{StartLedger: 2, EndLedger: 0, ExporterConfig: ExporterConfig{LedgersPerFile: 1}},
+			config:   &Config{StartLedger: 2, ExporterConfig: ExporterConfig{LedgersPerFile: 1}},
+			expected: &Config{StartLedger: 2, ExporterConfig: ExporterConfig{LedgersPerFile: 1}},
 		},
 		{
 			name:     "Round down start ledger, 15 ledgers per file ",
-			config:   &Config{StartLedger: 4, EndLedger: 0, ExporterConfig: ExporterConfig{LedgersPerFile: 15}},
-			expected: &Config{StartLedger: 2, EndLedger: 0, ExporterConfig: ExporterConfig{LedgersPerFile: 15}},
+			config:   &Config{StartLedger: 4, ExporterConfig: ExporterConfig{LedgersPerFile: 15}},
+			expected: &Config{StartLedger: 2, ExporterConfig: ExporterConfig{LedgersPerFile: 15}},
 		},
 		{
 			name:     "Round down start ledger, 64 ledgers per file ",
-			config:   &Config{StartLedger: 400, EndLedger: 0, ExporterConfig: ExporterConfig{LedgersPerFile: 64}},
-			expected: &Config{StartLedger: 384, EndLedger: 0, ExporterConfig: ExporterConfig{LedgersPerFile: 64}},
+			config:   &Config{StartLedger: 400, ExporterConfig: ExporterConfig{LedgersPerFile: 64}},
+			expected: &Config{StartLedger: 384, ExporterConfig: ExporterConfig{LedgersPerFile: 64}},
 		},
 		{
 			name:     "No change, 64 ledger per file",
-			config:   &Config{StartLedger: 64, EndLedger: 0, ExporterConfig: ExporterConfig{LedgersPerFile: 64}},
-			expected: &Config{StartLedger: 64, EndLedger: 0, ExporterConfig: ExporterConfig{LedgersPerFile: 64}},
+			config:   &Config{StartLedger: 64, ExporterConfig: ExporterConfig{LedgersPerFile: 64}},
+			expected: &Config{StartLedger: 64, ExporterConfig: ExporterConfig{LedgersPerFile: 64}},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.NoError(t, validateAndAdjustLedgerRange(tt.config))
-			assert.EqualValues(t, tt.expected.StartLedger, tt.config.StartLedger)
-			assert.EqualValues(t, tt.expected.EndLedger, tt.config.EndLedger)
+			assert.NoError(t, AdjustLedgerRange(tt.config))
+			assert.EqualValues(t, int(tt.expected.StartLedger), int(tt.config.StartLedger))
+			assert.EqualValues(t, int(tt.expected.EndLedger), int(tt.config.EndLedger))
 		})
 	}
 }
