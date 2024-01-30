@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	fileSuffix = ".xdr.gzip"
+	fileSuffix = ".xdr.gz"
 )
 
 // GetObjectKeyFromSequenceNumber generates the file name based on the ledger sequence.
