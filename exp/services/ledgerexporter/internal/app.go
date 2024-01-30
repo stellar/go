@@ -40,7 +40,7 @@ func NewApp() *App {
 
 	exportManager := NewExportManager(config.ExporterConfig, backend)
 
-	uploader := NewUploader(destinationStorage, exportManager.GetExportObjectsChannel())
+	uploader := NewUploader(destinationStorage, exportManager.GetMetaArchiveChannel())
 
 	return &App{
 		config:             config,
@@ -69,6 +69,7 @@ func (a *App) Run() {
 		err := a.uploader.Run(a.ctx)
 		if err != nil && err != context.Canceled {
 			logger.Errorf("Error executing uploader: %v", err)
+			a.cancel()
 			return
 		}
 	}()

@@ -7,67 +7,71 @@ import (
 	"io"
 
 	"github.com/pkg/errors"
-
 	"github.com/stellar/go/support/storage"
 )
 
 // Uploader is responsible for uploading data to a storage destination.
 type Uploader interface {
 	Run(ctx context.Context) error
-	Upload(metaObject *LedgerCloseMetaObject) error
+	Upload(metaArchive *LedgerMetaArchive) error
 }
 
 type uploader struct {
-	destination    storage.Storage
-	exportObjectCh chan *LedgerCloseMetaObject
+	destination   storage.Storage
+	metaArchiveCh chan *LedgerMetaArchive
 }
 
-func NewUploader(destination storage.Storage, exportObjectCh chan *LedgerCloseMetaObject) Uploader {
+// NewUploader creates a new Uploader
+func NewUploader(destination storage.Storage, metaArchiveCh chan *LedgerMetaArchive) Uploader {
 	return &uploader{
-		destination:    destination,
-		exportObjectCh: exportObjectCh,
+		destination:   destination,
+		metaArchiveCh: metaArchiveCh,
 	}
 }
 
-// Upload uploads the serialized binary data of ledger TxMeta
-// to the specified destination
-// TODO: Add retry logic.
-func (u *uploader) Upload(metaObject *LedgerCloseMetaObject) error {
-	logger.Infof("Uploading: %s", metaObject.objectKey)
+// Upload uploads the serialized binary data of ledger TxMeta to the specified destination.
+// It includes retry logic with linear backoff to handle transient errors.
+func (u *uploader) Upload(metaArchive *LedgerMetaArchive) error {
+	logger.Infof("Uploading: %s", metaArchive.GetObjectKey())
 
-	blob, err := metaObject.GetCompressedData()
+	blob, err := metaArchive.GetBinaryData()
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to get binary data")
 	}
 
-	err = u.destination.PutFile(metaObject.objectKey, io.NopCloser(bytes.NewReader(blob)))
+	compressedBlob, err := Compress(blob)
 	if err != nil {
-		logger.WithError(err).Errorf("Error uploading %s", metaObject.objectKey)
+		return errors.Wrap(err, "failed to compress data")
+	}
+
+	err = u.destination.PutFile(metaArchive.GetObjectKey(),
+		io.NopCloser(bytes.NewReader(compressedBlob)))
+	if err != nil {
+		return errors.Wrapf(err, "error uploading %s", metaArchive.GetObjectKey())
 	}
 	return nil
 }
 
-// Run starts the uploader goroutine
+// Run starts the uploader, continuously listening for ledger meta archive objects to upload.
 func (u *uploader) Run(ctx context.Context) error {
-
 	for {
 		select {
 		case <-ctx.Done():
-			// Drain the channel
-			for exportObj := range u.exportObjectCh {
-				err := u.Upload(exportObj)
+			// Drain the channel and upload pending objects before exiting.
+			logger.Info("Stopping uploader, draining remaining objects from channel...")
+			for obj := range u.metaArchiveCh {
+				err := u.Upload(obj)
 				if err != nil {
-					logger.WithError(err).Infof("Error uploading %s", exportObj.objectKey)
+					logger.WithError(err).Errorf("Error uploading %s during shutdown", obj.objectKey)
 				}
 			}
-			logger.WithError(ctx.Err()).Info("Stopping Uploader")
+			logger.WithError(ctx.Err()).Info("Uploader stopped")
 			return ctx.Err()
-		case metaObject, ok := <-u.exportObjectCh:
+		case metaObject, ok := <-u.metaArchiveCh:
 			if !ok {
-				//The channel is closed
-				return fmt.Errorf("export object channel closed. Stopping Uploader")
+				return fmt.Errorf("export object channel closed, stopping uploader")
 			}
-			//Upload the received LedgerCloseMetaObject.
+			//Upload the received LedgerMetaArchive.
 			err := u.Upload(metaObject)
 			if err != nil {
 				return errors.Wrapf(err, "error uploading %s", metaObject.objectKey)

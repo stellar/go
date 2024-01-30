@@ -4,10 +4,10 @@ import (
 	"bytes"
 	"compress/gzip"
 	"fmt"
-	"github.com/stellar/go/historyarchive"
-	"github.com/stellar/go/support/storage"
 
+	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/support/storage"
 )
 
 const (
@@ -18,24 +18,24 @@ const (
 func GetObjectKeyFromSequenceNumber(config ExporterConfig, ledgerSeq uint32) (string, error) {
 	var objectKey string
 
+	if config.LedgersPerFile < 1 {
+		return "", errors.Errorf("Invalid ledgers per file (%d): must be at least 1", config.LedgersPerFile)
+	}
+
 	if config.FilesPerPartition > 1 {
 		partitionSize := config.LedgersPerFile * config.FilesPerPartition
 		partitionStart := (ledgerSeq / partitionSize) * partitionSize
 		partitionEnd := partitionStart + partitionSize - 1
-		objectKey = fmt.Sprintf("%v-%v/", partitionStart, partitionEnd)
-	}
-
-	if config.LedgersPerFile < 1 {
-		return "", errors.New("Ledgers per file must be at least 1")
+		objectKey = fmt.Sprintf("%d-%d/", partitionStart, partitionEnd)
 	}
 
 	fileStart := (ledgerSeq / config.LedgersPerFile) * config.LedgersPerFile
 	fileEnd := fileStart + config.LedgersPerFile - 1
-	objectKey += fmt.Sprintf("%v", fileStart)
+	objectKey += fmt.Sprintf("%d", fileStart)
 
 	// Multiple ledgers per file
 	if fileStart != fileEnd {
-		objectKey += fmt.Sprintf("-%v", fileEnd)
+		objectKey += fmt.Sprintf("-%d", fileEnd)
 	}
 	objectKey += fileSuffix
 
