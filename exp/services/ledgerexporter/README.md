@@ -42,7 +42,7 @@ ledgerexporter --from-last <number_of_ledgers> --config-file <config_file_path>
 
 ## Configuration File (config.toml)
 
-````
+```toml
 network = "testnet"
 destination_url = "gcs://your-bucket-name"
 
@@ -56,41 +56,32 @@ files_per_partition = 10
   history_archive_urls = <history-archive-urls>
   stellar_core_binary_path = <stellar-core-binary-path>
   captive_core_use_db = true
-
-````
-
-
-1. **Ledgers Per File:**
-  - Determines the range of ledgers included in each file.
-
-2. **Files Per Partition:**
-  - Specifies the number of files to be stored within each partition.
-
-
-The `files_per_partition` configuration parameter works in conjunction with `ledgers_per_file` to also determine the naming of exported files.
-
-### Exported Filenames
-
-For instance, if `ledgers_per_file` is set to 64 and `files_per_partition` is set to 10, the generated filenames will look like this:
-
-```
-/0-639/0-63.xdr.gz (File 1)
-/0-639/64-127.xdr  (File 2)
-...
-/0-639/576-639.xdr.gz (File 10)
-/640-1279/0-63.xdr.gz (File 11, and so on)
-...
 ```
 
-In this example, each directory (`0-639`, `640-1279`, and so on) represents a partition, and within each partition, files are named based on the ledger ranges (`0-63`, `64-127`, and so on), as determined by the `ledgers_per_file` configuration.
+## Exported Files
 
-**Special Cases:**
+### File Organization:
+- Ledgers are grouped into files, with the number of ledgers per file set by `ledgers_per_file`.
+- Files are further organized into partitions, with the number of files per partition set by `files_per_partition`.
+
+### Filename Structure:
+- Filenames indicate the ledger range they contain, e.g., `0-63.xdr.gz` holds ledgers 0 to 63.
+- Partition directories group files, e.g., `/0-639/` holds files for ledgers 0 to 639.
+
+#### Example:
+with `ledgers_per_file = 64` and `files_per_partition = 10`:
+- Partition names: `/0-639`, `/640-1279`, ...
+- Filenames: `/0-639/0-63.xdr.gz`, `/0-639/64-127.xdr.gz`, ...
+
+#### Special Cases:
 
 - If `ledgers_per_file` is set to 1, filenames will only contain the ledger number.
 - If `files_per_partition` is set to 1, filenames will not contain the partition.
 
+#### Note:
+- Avoid changing `ledgers_per_file` and `files_per_partition` after configuration for consistency.
 
-**Deterministic File Naming:**
+#### Retrieving Data:
+- To locate a specific ledger sequence, calculate the partition name and ledger file name using `files_per_partition` and `ledgers_per_file`.
+- The `GetObjectKeyFromSequenceNumber` function automates this calculation.
 
-  - Once configured for a particular destination, it is advisable not to change the values of `ledgers_per_file` and `files_per_partition`.
-  - The configuration parameters are intended to create deterministic file names. Given a ledger number, users should be able to compute the expected file name based on the configured parameters.

@@ -7,6 +7,7 @@ import (
 	"sync"
 	"syscall"
 
+	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/ingest/ledgerbackend"
 	_ "github.com/stellar/go/network"
 	supportlog "github.com/stellar/go/support/log"
@@ -139,7 +140,7 @@ func NewLedgerBackend(config Config) ledgerbackend.LedgerBackend {
 		BinaryPath:          coreConfig.StellarCoreBinaryPath,
 		NetworkPassphrase:   params.NetworkPassphrase,
 		HistoryArchiveURLs:  params.HistoryArchiveURLs,
-		CheckpointFrequency: 64,
+		CheckpointFrequency: historyarchive.DefaultCheckpointFrequency,
 		Log:                 logger.WithField("subservice", "stellar-core"),
 		Toml:                captiveCoreToml,
 		UseDB:               coreConfig.CaptiveCoreUseDB,

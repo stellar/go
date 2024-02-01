@@ -14,7 +14,7 @@ const (
 	fileSuffix = ".xdr.gz"
 )
 
-// GetObjectKeyFromSequenceNumber generates the file name based on the ledger sequence.
+// GetObjectKeyFromSequenceNumber generates the file name from the ledger sequence number based on configuration.
 func GetObjectKeyFromSequenceNumber(config ExporterConfig, ledgerSeq uint32) (string, error) {
 	var objectKey string
 
