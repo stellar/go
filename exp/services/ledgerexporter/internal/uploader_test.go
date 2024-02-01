@@ -32,7 +32,7 @@ func (s *UploaderSuite) TestUpload() {
 	key, start, end := "test-1-100", uint32(1), uint32(100)
 	archive := NewLedgerMetaArchive(key, start, end)
 	for i := start; i <= end; i++ {
-		archive.AddLedger(createLedgerCloseMeta(i))
+		_ = archive.AddLedger(createLedgerCloseMeta(i))
 	}
 
 	buffer, err := archive.GetBinaryData()
@@ -50,8 +50,8 @@ func (s *UploaderSuite) TestUpload() {
 			capturedData = args.Get(1).(io.Reader)
 		}).Return(nil).Once()
 
-	uploader := uploader{destination: &s.mockDataStore}
-	assert.NoError(s.T(), uploader.Upload(archive))
+	dataUploader := uploader{destination: &s.mockDataStore}
+	assert.NoError(s.T(), dataUploader.Upload(archive))
 
 	var buf bytes.Buffer
 	_, err = io.Copy(&buf, capturedData)
@@ -60,8 +60,7 @@ func (s *UploaderSuite) TestUpload() {
 	decompressedData, err := Decompress(buf.Bytes())
 	assert.NoError(s.T(), err)
 
-	actualArchive.SetBinaryData(decompressedData)
-	assert.NoError(s.T(), err)
+	assert.NoError(s.T(), actualArchive.SetBinaryData(decompressedData))
 
 	// Assert that the decoded data matches the original data
 	assert.Equal(s.T(), key, capturedKey)
@@ -81,7 +80,7 @@ func (s *UploaderSuite) TestUploadPutError() {
 	s.mockDataStore.On("PutFileIfNotExists", key,
 		io.NopCloser(bytes.NewReader(compressedBuf))).Return(errors.New("error in PutFileIfNotExists"))
 
-	uploader := uploader{destination: &s.mockDataStore}
-	err = uploader.Upload(archive)
+	dataUploader := uploader{destination: &s.mockDataStore}
+	err = dataUploader.Upload(archive)
 	assert.Equal(s.T(), fmt.Sprintf("error uploading %s: error in PutFileIfNotExists", key), err.Error())
 }
