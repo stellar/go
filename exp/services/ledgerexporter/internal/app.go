@@ -2,12 +2,13 @@ package exporter
 
 import (
 	"context"
+	_ "embed"
+	"fmt"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
 
-	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/ingest/ledgerbackend"
 	_ "github.com/stellar/go/network"
 	supportlog "github.com/stellar/go/support/log"
@@ -98,6 +99,7 @@ func (a *App) Run() {
 				return
 			case <-a.ctx.Done():
 				logger.Infof("Received context done signal")
+				a.cancel()
 				return
 			case sig := <-sigCh:
 				logger.Infof("Received signal: %v", sig)
@@ -115,40 +117,19 @@ func (a *App) Run() {
 }
 
 func NewDestinationStorage(config *Config) DataStore {
-	destinationStorage, err := NewDataStore(config.DestinationURL)
+	destinationStorage, err := NewDataStore(fmt.Sprintf("%s/%s", config.DestinationURL, config.Network))
 	logFatalIf(err, "Could not connect to destination storage")
 	return destinationStorage
 }
 
 // NewLedgerBackend Creates and initializes captive core ledger backend
-// Only supports captive core for now
+// Currently, only supports captive-core as ledger backend
 func NewLedgerBackend(config Config) ledgerbackend.LedgerBackend {
-	coreConfig := config.StellarCoreConfig
-	params := ledgerbackend.CaptiveCoreTomlParams{
-		NetworkPassphrase:  coreConfig.NetworkPassphrase,
-		HistoryArchiveURLs: coreConfig.HistoryArchiveUrls,
-		UseDB:              coreConfig.CaptiveCoreUseDB,
-	}
-	if coreConfig.CaptiveCoreTomlPath == "" {
-		logger.Fatal("Missing captive_core_toml_path in the config")
-	}
-
-	captiveCoreToml, err := ledgerbackend.NewCaptiveCoreTomlFromFile(coreConfig.CaptiveCoreTomlPath, params)
-	logFatalIf(err, "Could not create captive core toml")
-
-	captiveConfig := ledgerbackend.CaptiveCoreConfig{
-		BinaryPath:          coreConfig.StellarCoreBinaryPath,
-		NetworkPassphrase:   params.NetworkPassphrase,
-		HistoryArchiveURLs:  params.HistoryArchiveURLs,
-		CheckpointFrequency: historyarchive.DefaultCheckpointFrequency,
-		Log:                 logger.WithField("subservice", "stellar-core"),
-		Toml:                captiveCoreToml,
-		UseDB:               coreConfig.CaptiveCoreUseDB,
-	}
+	captiveConfig := GenerateCaptiveCoreConfig(&config)
 
 	// Create a new captive core backend
 	backend, err := ledgerbackend.NewCaptive(captiveConfig)
-	logFatalIf(err, "Could not create captive core instance")
+	logFatalIf(err, "Failed to create captive-core instance")
 
 	var ledgerRange ledgerbackend.Range
 	if config.EndLedger == 0 {

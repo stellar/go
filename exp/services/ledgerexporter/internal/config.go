@@ -1,11 +1,27 @@
 package exporter
 
 import (
+	_ "embed"
 	"flag"
+	"github.com/stellar/go/historyarchive"
+	"github.com/stellar/go/ingest/ledgerbackend"
+	"github.com/stellar/go/network"
+	"os/exec"
 
 	"github.com/pelletier/go-toml"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/ordered"
+)
+
+const Pubnet = "pubnet"
+const Testnet = "testnet"
+
+var (
+	//go:embed configs/captive-core-pubnet.cfg
+	PubnetDefaultConfig []byte
+
+	//go:embed configs/captive-core-testnet.cfg
+	TestnetDefaultConfig []byte
 )
 
 type StellarCoreConfig struct {
@@ -52,17 +68,27 @@ func LoadConfig(config *Config) error {
 	logFatalIf(err, "Error unmarshalling TOML config.")
 	logger.Infof("Config: %v", *config)
 
+	var historyArchiveUrls []string
+	switch config.Network {
+	case Pubnet:
+		historyArchiveUrls = network.PublicNetworkhistoryArchiveURLs
+	case Testnet:
+		historyArchiveUrls = network.TestNetworkhistoryArchiveURLs
+	default:
+		logger.Fatalf("Invalid network %s", config.Network)
+	}
+
 	// Retrieve the latest ledger sequence from history archives
-	latestNetworkLedger, err := GetLatestLedgerSequenceFromHistoryArchives(config.StellarCoreConfig.HistoryArchiveUrls)
-	logFatalIf(err, "could not retrieve the latest ledger sequence from history archives")
+	latestNetworkLedger, err := GetLatestLedgerSequenceFromHistoryArchives(historyArchiveUrls)
+	logFatalIf(err, "Failed to retrieve the latest ledger sequence from history archives.")
 
 	// Validate config params
-	err = ValidateAndSetLedgerRange(config, latestNetworkLedger)
+	err = validateAndSetLedgerRange(config, latestNetworkLedger)
 	logFatalIf(err, "Error validating config params.")
 
 	// Validate and build the appropriate range
 	// TODO: Make it configurable
-	err = AdjustLedgerRange(config)
+	err = adjustLedgerRange(config)
 	if err != nil {
 		return errors.Wrap(err, "error validating ledger range")
 	}
@@ -70,7 +96,7 @@ func LoadConfig(config *Config) error {
 	return nil
 }
 
-func ValidateAndSetLedgerRange(config *Config, latestNetworkLedger uint32) error {
+func validateAndSetLedgerRange(config *Config, latestNetworkLedger uint32) error {
 	if config.StartFromLastLedgers > 0 && (config.StartLedger > 0 || config.EndLedger > 0) {
 		return errors.New("--from-last cannot be used with --start or --end")
 	}
@@ -106,7 +132,7 @@ func ValidateAndSetLedgerRange(config *Config, latestNetworkLedger uint32) error
 	return nil
 }
 
-func AdjustLedgerRange(config *Config) error {
+func adjustLedgerRange(config *Config) error {
 	logger.Infof("Requested ledger range start=%d, end=%d", config.StartLedger, config.EndLedger)
 
 	// Check if either the start or end ledger does not fall on the "LedgersPerFile" boundary
@@ -127,4 +153,51 @@ func AdjustLedgerRange(config *Config) error {
 
 	logger.Infof("Adjusted ledger range: start=%d, end=%d", config.StartLedger, config.EndLedger)
 	return nil
+}
+
+func GenerateCaptiveCoreConfig(config *Config) ledgerbackend.CaptiveCoreConfig {
+	coreConfig := &config.StellarCoreConfig
+
+	// Look for stellar-core binary in $PATH, if not supplied
+	if coreConfig.StellarCoreBinaryPath == "" {
+		var err error
+		coreConfig.StellarCoreBinaryPath, err = exec.LookPath("stellar-core")
+		logFatalIf(err, "Failed to find stellar-core binary")
+	}
+
+	var captiveCoreConfig []byte
+	// Default network config
+	switch config.Network {
+	case Pubnet:
+		coreConfig.NetworkPassphrase = network.PublicNetworkPassphrase
+		coreConfig.HistoryArchiveUrls = network.PublicNetworkhistoryArchiveURLs
+		captiveCoreConfig = PubnetDefaultConfig
+
+	case Testnet:
+		coreConfig.NetworkPassphrase = network.TestNetworkPassphrase
+		coreConfig.HistoryArchiveUrls = network.TestNetworkhistoryArchiveURLs
+		captiveCoreConfig = TestnetDefaultConfig
+
+	default:
+		logger.Fatalf("Invalid network %s", config.Network)
+	}
+
+	params := ledgerbackend.CaptiveCoreTomlParams{
+		NetworkPassphrase:  coreConfig.NetworkPassphrase,
+		HistoryArchiveURLs: coreConfig.HistoryArchiveUrls,
+		UseDB:              coreConfig.CaptiveCoreUseDB,
+	}
+
+	captiveCoreToml, err := ledgerbackend.NewCaptiveCoreTomlFromData(captiveCoreConfig, params)
+	logFatalIf(err, "Failed to create captive-core toml")
+
+	return ledgerbackend.CaptiveCoreConfig{
+		BinaryPath:          coreConfig.StellarCoreBinaryPath,
+		NetworkPassphrase:   params.NetworkPassphrase,
+		HistoryArchiveURLs:  params.HistoryArchiveURLs,
+		CheckpointFrequency: historyarchive.DefaultCheckpointFrequency,
+		Log:                 logger.WithField("subservice", "stellar-core"),
+		Toml:                captiveCoreToml,
+		UseDB:               coreConfig.CaptiveCoreUseDB,
+	}
 }
