@@ -119,7 +119,8 @@ func (arch *Archive) GetCheckpointManager() CheckpointManager {
 func (a *Archive) GetPathHAS(path string) (HistoryArchiveState, error) {
 	var has HistoryArchiveState
 	rdr, err := a.backend.GetFile(path)
-	a.stats.incrementDownloads()
+	// this is a query on the HA server state, not a data/bucket file download
+	a.stats.incrementRequests()
 	if err != nil {
 		return has, err
 	}
