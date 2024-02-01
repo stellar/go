@@ -21,19 +21,19 @@ type ExportManager interface {
 }
 
 type exportManager struct {
-	config        ExporterConfig
-	backend       ledgerbackend.LedgerBackend
-	objectMap     map[string]*LedgerMetaArchive
-	metaArchiveCh chan *LedgerMetaArchive
+	config         ExporterConfig
+	backend        ledgerbackend.LedgerBackend
+	metaArchiveMap map[string]*LedgerMetaArchive
+	metaArchiveCh  chan *LedgerMetaArchive
 }
 
 // NewExportManager creates a new ExportManager with the provided configuration.
 func NewExportManager(config ExporterConfig, backend ledgerbackend.LedgerBackend) ExportManager {
 	return &exportManager{
-		config:        config,
-		backend:       backend,
-		objectMap:     make(map[string]*LedgerMetaArchive),
-		metaArchiveCh: make(chan *LedgerMetaArchive, 1),
+		config:         config,
+		backend:        backend,
+		metaArchiveMap: make(map[string]*LedgerMetaArchive),
+		metaArchiveCh:  make(chan *LedgerMetaArchive, 1),
 	}
 }
 
@@ -51,35 +51,34 @@ func (e *exportManager) AddLedgerCloseMeta(ledgerCloseMeta xdr.LedgerCloseMeta) 
 	if err != nil {
 		return errors.Wrapf(err, "failed to get object key for ledger %d", ledgerSeq)
 	}
-	ledgerCloseMetaObject, exists := e.objectMap[objectKey]
+	metaArchive, exists := e.metaArchiveMap[objectKey]
 
 	if !exists {
-		// Create a new LedgerMetaArchive and add it to the map.
-		ledgerCloseMetaObject = NewLedgerMetaArchive(objectKey, ledgerSeq,
-			ledgerSeq+e.config.LedgersPerFile-1)
-
-		// Special case: Adjust the end ledger sequence for the first batch.
-		// Since the start ledger is 2 instead of 0, we want to ensure that the end ledger sequence
-		// does not exceed LedgersPerFile.
-		// For example, if LedgersPerFile is 64, the file name for the first batch should be 0-63, not 2-66.
+		endSeq := ledgerSeq + e.config.LedgersPerFile - 1
 		if ledgerSeq < e.config.LedgersPerFile {
-			ledgerCloseMetaObject.data.EndSequence = xdr.Uint32(e.config.LedgersPerFile - 1)
+			// Special case: Adjust the end ledger sequence for the first batch.
+			// Since the start ledger is 2 instead of 0, we want to ensure that the end ledger sequence
+			// does not exceed LedgersPerFile.
+			// For example, if LedgersPerFile is 64, the file name for the first batch should be 0-63, not 2-66.
+			endSeq = e.config.LedgersPerFile - 1
 		}
 
-		e.objectMap[objectKey] = ledgerCloseMetaObject
+		// Create a new LedgerMetaArchive and add it to the map.
+		metaArchive = NewLedgerMetaArchive(objectKey, ledgerSeq, endSeq)
+		e.metaArchiveMap[objectKey] = metaArchive
 	}
 
-	err = ledgerCloseMetaObject.AddLedger(ledgerCloseMeta)
+	err = metaArchive.AddLedger(ledgerCloseMeta)
 	if err != nil {
 		return errors.Wrapf(err, "failed to add ledger %d", ledgerSeq)
 	}
 
-	if ledgerSeq >= ledgerCloseMetaObject.GetEndLedgerSequence() {
+	if ledgerSeq >= metaArchive.GetEndLedgerSequence() {
 		// Current archive is full, send it for upload
 		// This is a blocking call!
-		e.metaArchiveCh <- ledgerCloseMetaObject
+		e.metaArchiveCh <- metaArchive
 		// Remove it from the map
-		delete(e.objectMap, objectKey)
+		delete(e.metaArchiveMap, objectKey)
 	}
 	return nil
 }

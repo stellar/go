@@ -73,6 +73,11 @@ func (f *LedgerMetaArchive) GetBinaryData() ([]byte, error) {
 	return f.data.MarshalBinary()
 }
 
+// SetBinaryData sets archive's data from the binary buffer.
+func (f *LedgerMetaArchive) SetBinaryData(buffer []byte) error {
+	return f.data.UnmarshalBinary(buffer)
+}
+
 // GetObjectKey returns the object key of the archive.
 func (f *LedgerMetaArchive) GetObjectKey() string {
 	return f.objectKey

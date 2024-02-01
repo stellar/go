@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"fmt"
+	"io"
 
 	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/support/errors"
@@ -71,15 +72,31 @@ func GetLatestLedgerSequenceFromHistoryArchives(historyArchivesURLs []string) (u
 	return 0, errors.New("failed to retrieve the latest ledger sequence from any history archive")
 }
 
-// Compress compresses the given data using gzip compression.
+// Compress takes a byte buffer and returns gzip compressed data.
 func Compress(data []byte) ([]byte, error) {
-	var buf bytes.Buffer
-	w := gzip.NewWriter(&buf)
+	var compressed bytes.Buffer
+	w := gzip.NewWriter(&compressed)
 	if _, err := w.Write(data); err != nil {
 		return nil, errors.Wrap(err, "failed to write compressed data")
 	}
 	if err := w.Close(); err != nil {
 		return nil, errors.Wrap(err, "failed to close writer")
 	}
-	return buf.Bytes(), nil
+	return compressed.Bytes(), nil
+}
+
+// Decompress takes a gzip compressed byte buffer and returns the decompressed data.
+func Decompress(data []byte) ([]byte, error) {
+	buf := bytes.NewBuffer(data)
+	r, err := gzip.NewReader(buf)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create gzip reader")
+	}
+	defer r.Close()
+
+	decompressed, err := io.ReadAll(r)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to read decompressed data")
+	}
+	return decompressed, nil
 }
