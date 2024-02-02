@@ -1,15 +1,9 @@
-// Package ledger provides useful utilities concerning ledgers within stellar,
-// specifically as a central location to store a cached snapshot of the state of
-// both horizon's and stellar-core's views of the ledger.  This package is
-// intended to be at the lowest levels of horizon's dependency tree, please keep
-// it free of dependencies to other horizon packages.
 package ledger
 
 import (
+	"github.com/prometheus/client_golang/prometheus"
 	"sync"
 	"time"
-
-	"github.com/prometheus/client_golang/prometheus"
 )
 
 // Status represents a snapshot of both horizon's and stellar-core's view of the
@@ -31,7 +25,7 @@ type HorizonStatus struct {
 }
 
 // State is an in-memory data structure which holds a snapshot of both
-// horizon's and stellar-core's view of the the network
+// horizon's and stellar-core's view of the network
 type State struct {
 	sync.RWMutex
 	current Status
@@ -42,6 +36,14 @@ type State struct {
 		HistoryElderLedgerCounter         prometheus.CounterFunc
 		CoreLatestLedgerCounter           prometheus.CounterFunc
 	}
+}
+
+type StateInterface interface {
+	CurrentStatus() Status
+	SetStatus(next Status)
+	SetCoreStatus(next CoreStatus)
+	SetHorizonStatus(next HorizonStatus)
+	RegisterMetrics(registry *prometheus.Registry)
 }
 
 // CurrentStatus returns the cached snapshot of ledger state
