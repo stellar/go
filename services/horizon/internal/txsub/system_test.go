@@ -353,7 +353,7 @@ func (suite *SystemTestSuite) TestSubmit_BadSeqNotFoundWhenInSync() {
 	suite.db.On("GetSequenceNumbers", suite.ctx, []string{suite.unmuxedSource.Address()}).
 		Return(map[string]uint64{suite.unmuxedSource.Address(): 0}, nil).
 		Twice()
-	
+
 	mockLedgerState := &MockLedgerState{}
 	mockLedgerState.On("CurrentStatus").Return(ledger.Status{
 		CoreStatus: ledger.CoreStatus{
