@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"github.com/stellar/go/services/horizon/internal/ledger"
 	"sync"
 	"time"
 
@@ -40,6 +41,7 @@ type System struct {
 	Submitter         Submitter
 	SubmissionTimeout time.Duration
 	Log               *log.Entry
+	LedgerState       *ledger.State
 
 	Metrics struct {
 		// SubmissionDuration exposes timing metrics about the rate and latency of
@@ -138,6 +140,14 @@ func (sys *System) Submit(
 			return
 		}
 		if !isBad {
+			sys.finish(ctx, hash, resultCh, Result{Err: sr.Err})
+			return
+		}
+
+		// Check if Horizon and Core have synced up: If yes, then no need to wait for account sequence
+		// and send txBAD_SEQ right away.
+		currentStatus := sys.LedgerState.CurrentStatus()
+		if currentStatus.CoreLatest == currentStatus.HistoryLatest {
 			sys.finish(ctx, hash, resultCh, Result{Err: sr.Err})
 			return
 		}
