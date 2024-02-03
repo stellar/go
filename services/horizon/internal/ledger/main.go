@@ -1,3 +1,8 @@
+// Package ledger provides useful utilities concerning ledgers within stellar,
+// specifically as a central location to store a cached snapshot of the state of
+// both horizon's and stellar-core's views of the ledger.  This package is
+// intended to be at the lowest levels of horizon's dependency tree, please keep
+// it free of dependencies to other horizon packages.
 package ledger
 
 import (
