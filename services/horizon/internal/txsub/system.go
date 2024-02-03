@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"github.com/stellar/go/services/horizon/internal/ledger"
 	"sync"
 	"time"
 
@@ -40,6 +41,7 @@ type System struct {
 	Submitter         Submitter
 	SubmissionTimeout time.Duration
 	Log               *log.Entry
+	LedgerState       ledger.StateInterface
 
 	Metrics struct {
 		// SubmissionDuration exposes timing metrics about the rate and latency of
@@ -190,7 +192,7 @@ func (sys *System) waitUntilAccountSequence(ctx context.Context, db HorizonDB, s
 					WithField("sourceAddress", sourceAddress).
 					Warn("missing sequence number for account")
 			}
-			if num >= seq {
+			if num >= seq || sys.isSyncedUp() {
 				return nil
 			}
 		}
@@ -202,6 +204,13 @@ func (sys *System) waitUntilAccountSequence(ctx context.Context, db HorizonDB, s
 			timer.Reset(sys.accountSeqPollInterval)
 		}
 	}
+}
+
+// isSyncedUp Check if Horizon and Core have synced up: If yes, then no need to wait for account sequence
+// and send txBAD_SEQ right away.
+func (sys *System) isSyncedUp() bool {
+	currentStatus := sys.LedgerState.CurrentStatus()
+	return int(currentStatus.CoreLatest) <= int(currentStatus.HistoryLatest)
 }
 
 func (sys *System) deriveTxSubError(ctx context.Context) error {
