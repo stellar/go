@@ -342,7 +342,7 @@ func (suite *SystemTestSuite) TestSubmit_BadSeqNotFound() {
 }
 
 // If error is bad_seq and horizon and core are in sync, then return error
-func (suite *SystemTestSuite) TestSubmit_BadSeqNotFoundWhenInSync() {
+func (suite *SystemTestSuite) TestSubmit_BadSeqErrorWhenInSync() {
 	suite.submitter.R = suite.badSeq
 	suite.db.On("PreFilteredTransactionByHash", suite.ctx, mock.Anything, suite.successTx.Transaction.TransactionHash).
 		Return(sql.ErrNoRows).Twice()
@@ -385,6 +385,7 @@ func (suite *SystemTestSuite) TestSubmit_BadSeqNotFoundWhenInSync() {
 	)
 
 	assert.NotNil(suite.T(), r.Err)
+	assert.Equal(suite.T(), r.Err.Error(), "tx failed: AAAAAAAAAAD////7AAAAAA==") // decodes to txBadSeq
 	assert.True(suite.T(), suite.submitter.WasSubmittedTo)
 }
 

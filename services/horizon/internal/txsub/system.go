@@ -210,7 +210,7 @@ func (sys *System) waitUntilAccountSequence(ctx context.Context, db HorizonDB, s
 // and send txBAD_SEQ right away.
 func (sys *System) isSyncedUp() bool {
 	currentStatus := sys.LedgerState.CurrentStatus()
-	return int(currentStatus.CoreLatest) == int(currentStatus.HistoryLatest)
+	return int(currentStatus.CoreLatest) <= int(currentStatus.HistoryLatest)
 }
 
 func (sys *System) deriveTxSubError(ctx context.Context) error {
