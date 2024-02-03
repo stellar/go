@@ -71,3 +71,45 @@ func TestNegativeSequenceTxSubmission(t *testing.T) {
 	tt.Equal("tx_bad_seq", codes.TransactionCode)
 
 }
+
+func TestBadSeqTxSubmission(t *testing.T) {
+	tt := assert.New(t)
+	itest := integration.NewTest(t, integration.Config{})
+	master := itest.Master()
+
+	account := itest.MasterAccount()
+	seqnum, err := account.GetSequenceNumber()
+	tt.NoError(err)
+
+	op2 := txnbuild.Payment{
+		Destination: master.Address(),
+		Amount:      "10",
+		Asset:       txnbuild.NativeAsset{},
+	}
+
+	// Submit a simple payment tx, but with a gapped sequence
+	// that is intentionally set more than one ahead of current account seq
+	// this should trigger a tx_bad_seq from core
+	account = &txnbuild.SimpleAccount{
+		AccountID: account.GetAccountID(),
+		Sequence:  seqnum + 10,
+	}
+	txParams := txnbuild.TransactionParams{
+		SourceAccount:        account,
+		Operations:           []txnbuild.Operation{&op2},
+		BaseFee:              txnbuild.MinBaseFee,
+		Preconditions:        txnbuild.Preconditions{TimeBounds: txnbuild.NewInfiniteTimeout()},
+		IncrementSequenceNum: false,
+	}
+	tx, err := txnbuild.NewTransaction(txParams)
+	tt.NoError(err)
+	tx, err = tx.Sign(integration.StandaloneNetworkPassphrase, master)
+	tt.NoError(err)
+	_, err = itest.Client().SubmitTransaction(tx)
+	tt.Error(err)
+	clientErr, ok := err.(*horizonclient.Error)
+	tt.True(ok)
+	codes, err := clientErr.ResultCodes()
+	tt.NoError(err)
+	tt.Equal("tx_bad_seq", codes.TransactionCode)
+}
