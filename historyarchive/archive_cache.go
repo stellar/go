@@ -71,7 +71,6 @@ func (abc *ArchiveBucketCache) GetFile(
 	// update the cache, as it means there's an in-progress sync of the same
 	// file.
 	_, statErr := os.Stat(NameLockfile(localPath))
-	L.Debug("stat %s: %v", NameLockfile(localPath), statErr)
 	if statErr == nil {
 		L.Info("Incomplete file in on-disk cache: deferring")
 		reader, err := upstream.GetFile(filepath)
@@ -111,6 +110,7 @@ func (abc *ArchiveBucketCache) GetFile(
 			stat, statErr := os.Stat(localPath)
 			if statErr != nil {
 				L.WithError(statErr).Warnf("Couldn't stat cached file")
+				os.Remove(localPath) // just in case
 				removeLock()
 				return statErr
 			}
@@ -118,11 +118,14 @@ func (abc *ArchiveBucketCache) GetFile(
 			upSize, sizeErr := upstream.Size(filepath)
 			if sizeErr != nil {
 				L.WithError(sizeErr).
-					Warnf("Couldn't fetch size from upstream, unable to confirm integrity")
+					Warn("Couldn't confirm cached file integrity")
+				os.Remove(localPath)
 				removeLock()
 				return sizeErr
 			} else if stat.Size() != upSize {
 				sizeErr = fmt.Errorf("upstream size (%d) doesn't match cache (%d)", upSize, stat.Size())
+				L.WithError(sizeErr).Warn("Caching failed")
+				os.Remove(localPath)
 				removeLock()
 				return sizeErr
 			}
