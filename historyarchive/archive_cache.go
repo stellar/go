@@ -1,6 +1,7 @@
 package historyarchive
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"path"
@@ -70,7 +71,8 @@ func (abc *ArchiveBucketCache) GetFile(
 	// update the cache, as it means there's an in-progress sync of the same
 	// file.
 	_, statErr := os.Stat(NameLockfile(localPath))
-	if statErr == nil || os.IsExist(statErr) {
+	L.Debug("stat %s: %v", NameLockfile(localPath), statErr)
+	if statErr == nil {
 		L.Info("Incomplete file in on-disk cache: deferring")
 		reader, err := upstream.GetFile(filepath)
 		return reader, false, err
@@ -93,9 +95,41 @@ func (abc *ArchiveBucketCache) GetFile(
 			return remote, false, nil
 		}
 
+		// We only add it to the cache after the final close call.
 		return teeReadCloser(remote, local, func() error {
-			L.Debug("Download complete: removing lockfile")
-			return os.Remove(NameLockfile(localPath))
+			// We use a closure for removal because we want to do it in all
+			// cases but only actually return the error in the successful case.
+			removeLock := func() error {
+				removeErr := os.Remove(NameLockfile(localPath))
+				L.WithError(removeErr).Debug("Removing lockfile")
+				return removeErr
+			}
+
+			// Basic sanity check: does the upstream size match the on-disk
+			// size? If not, something messed up during the fetch and we can't
+			// use this.
+			stat, statErr := os.Stat(localPath)
+			if statErr != nil {
+				L.WithError(statErr).Warnf("Couldn't stat cached file")
+				removeLock()
+				return statErr
+			}
+
+			upSize, sizeErr := upstream.Size(filepath)
+			if sizeErr != nil {
+				L.WithError(sizeErr).
+					Warnf("Couldn't fetch size from upstream, unable to confirm integrity")
+				removeLock()
+				return sizeErr
+			} else if stat.Size() != upSize {
+				sizeErr = fmt.Errorf("upstream size (%d) doesn't match cache (%d)", upSize, stat.Size())
+				removeLock()
+				return sizeErr
+			}
+
+			L.Infof("Successfully cached %d-byte file", upSize)
+			abc.lru.Add(localPath, struct{}{}) // just use the cache as an array
+			return removeLock()
 		}), false, nil
 	}
 
@@ -180,7 +214,6 @@ func (abc *ArchiveBucketCache) createLocal(filepath string) (*os.File, error) {
 		return nil, err
 	}
 
-	abc.lru.Add(localPath, struct{}{}) // just use the cache as an array
 	return local, nil
 }
 
@@ -216,10 +249,9 @@ func teeReadCloser(r io.ReadCloser, w *os.File, onClose func() error) io.ReadClo
 		}
 
 		// Always run all closers but return the first possible error.
-		err1 := r.Close()
 
-		// Why the fuck does Close not Sync??
-		// See: https://github.com/golang/go/issues/20599
+		err1 := r.Close()
+		// Ensure that we flush to disk before closing
 		err2 := w.Sync()
 		if err2 == nil {
 			err2 = w.Close()
