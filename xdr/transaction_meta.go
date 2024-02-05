@@ -34,7 +34,7 @@ func (t *TransactionMeta) GetDiagnosticEvents() ([]DiagnosticEvent, error) {
 		if sorobanMeta := t.MustV3().SorobanMeta; sorobanMeta != nil {
 			diagnosticEvents = sorobanMeta.DiagnosticEvents
 			if len(diagnosticEvents) > 0 {
-				// all contract events and diag events for a single operation(by it's index in the tx) were available
+				// all contract events and diag events for a single operation(by its index in the tx) were available
 				// in tx meta's DiagnosticEvents, no need to look anywhere else for events
 				return diagnosticEvents, nil
 			}
