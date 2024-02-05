@@ -205,7 +205,7 @@ func (t trc) Close() error {
 	return t.close()
 }
 
-func teeReadCloser(r io.ReadCloser, w io.WriteCloser, onClose func() error) io.ReadCloser {
+func teeReadCloser(r io.ReadCloser, w *os.File, onClose func() error) io.ReadCloser {
 	closer := trc{
 		Reader: io.TeeReader(r, w),
 		closed: false,
@@ -215,9 +215,15 @@ func teeReadCloser(r io.ReadCloser, w io.WriteCloser, onClose func() error) io.R
 			return nil
 		}
 
-		// Always run all closers, but return the first error
+		// Always run all closers but return the first possible error.
 		err1 := r.Close()
-		err2 := w.Close()
+
+		// Why the fuck does Close not Sync??
+		// See: https://github.com/golang/go/issues/20599
+		err2 := w.Sync()
+		if err2 == nil {
+			err2 = w.Close()
+		}
 		err3 := onClose()
 
 		closer.closed = true
