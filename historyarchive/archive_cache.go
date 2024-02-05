@@ -96,43 +96,33 @@ func (abc *ArchiveBucketCache) GetFile(
 
 		// We only add it to the cache after the final close call.
 		return teeReadCloser(remote, local, func() error {
-			// We use a closure for removal because we want to do it in all
-			// cases but only actually return the error in the successful case.
-			removeLock := func() error {
-				removeErr := os.Remove(NameLockfile(localPath))
-				L.WithError(removeErr).Debug("Removing lockfile")
-				return removeErr
-			}
-
 			// Basic sanity check: does the upstream size match the on-disk
 			// size? If not, something messed up during the fetch and we can't
 			// use this.
 			stat, statErr := os.Stat(localPath)
 			if statErr != nil {
 				L.WithError(statErr).Warnf("Couldn't stat cached file")
-				os.Remove(localPath) // just in case
-				removeLock()
+				abc.onEviction(localPath, nil)
 				return statErr
 			}
 
 			upSize, sizeErr := upstream.Size(filepath)
 			if sizeErr != nil {
 				L.WithError(sizeErr).
-					Warn("Couldn't confirm cached file integrity")
-				os.Remove(localPath)
-				removeLock()
+					Warn("Couldn't fetch size from upstream")
+				abc.onEviction(localPath, nil)
 				return sizeErr
 			} else if stat.Size() != upSize {
 				sizeErr = fmt.Errorf("upstream size (%d) doesn't match cache (%d)", upSize, stat.Size())
-				L.WithError(sizeErr).Warn("Caching failed")
-				os.Remove(localPath)
-				removeLock()
+				L.WithError(sizeErr).Warn("Couldn't confirm cached file integrity")
+				abc.onEviction(localPath, nil)
 				return sizeErr
 			}
 
-			L.Infof("Successfully cached %d-byte file", upSize)
+			L.Infof("Successfully cached %.2fKiB file", float32(upSize)/1024)
 			abc.lru.Add(localPath, struct{}{}) // just use the cache as an array
-			return removeLock()
+			L.Debug("Removing lockfile")
+			return os.Remove(NameLockfile(localPath))
 		}), false, nil
 	}
 
@@ -187,7 +177,7 @@ func (abc *ArchiveBucketCache) Evict(filepath string) {
 	abc.lru.Remove(path.Join(abc.path, filepath))
 }
 
-func (abc *ArchiveBucketCache) onEviction(key, value interface{}) {
+func (abc *ArchiveBucketCache) onEviction(key, _ interface{}) {
 	path := key.(string)
 	os.Remove(NameLockfile(path))           // just in case
 	if err := os.Remove(path); err != nil { // best effort removal
