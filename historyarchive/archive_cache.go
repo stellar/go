@@ -81,6 +81,7 @@ func (abc *ArchiveBucketCache) GetFile(
 		// into the cache, and write it to disk.
 		remote, err := upstream.GetFile(filepath)
 		if err != nil {
+			L.WithError(err).Warn("Upstream download failed")
 			return remote, false, err
 		}
 
@@ -113,6 +114,7 @@ func (abc *ArchiveBucketCache) GetFile(
 }
 
 func (abc *ArchiveBucketCache) Exists(filepath string) bool {
+	L := abc.log.WithField("key", filepath)
 	localPath := path.Join(abc.path, filepath)
 
 	// First, check if the file exists in the cache.
@@ -128,6 +130,7 @@ func (abc *ArchiveBucketCache) Exists(filepath string) bool {
 	// situation is well-handled by `GetFile`.
 	_, statErr := os.Stat(localPath)
 	if statErr == nil || os.IsExist(statErr) {
+		L.Info("File found cached on disk")
 		abc.lru.Add(localPath, struct{}{})
 		return true
 	}
@@ -163,12 +166,17 @@ func (abc *ArchiveBucketCache) createLocal(filepath string) (*os.File, error) {
 		return nil, err
 	}
 
-	local, err := os.Create(localPath) /* mode -rw-rw-rw- */
+	// First, create the lockfile to avoid contention.
+	lockfile, err := os.Create(NameLockfile(localPath))
 	if err != nil {
 		return nil, err
 	}
-	_, err = os.Create(NameLockfile(localPath))
+
+	local, err := os.Create(localPath) /* mode -rw-rw-rw- */
 	if err != nil {
+		// Be sure to clean up the lockfile, ignoring errors.
+		lockfile.Close()
+		os.Remove(NameLockfile(localPath))
 		return nil, err
 	}
 

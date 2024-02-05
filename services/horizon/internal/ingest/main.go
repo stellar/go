@@ -87,8 +87,9 @@ type Config struct {
 	CaptiveCoreConfigUseDB bool
 	NetworkPassphrase      string
 
-	HistorySession     db.SessionInterface
-	HistoryArchiveURLs []string
+	HistorySession        db.SessionInterface
+	HistoryArchiveURLs    []string
+	HistoryArchiveCaching bool
 
 	DisableStateVerification     bool
 	EnableReapLookupTables       bool
@@ -230,7 +231,7 @@ func NewSystem(config Config) (System, error) {
 			CheckpointFrequency: config.CheckpointFrequency,
 			UserAgent:           fmt.Sprintf("horizon/%s golang/%s", apkg.Version(), runtime.Version()),
 			CacheConfig: historyarchive.CacheOptions{
-				Cache:    true,
+				Cache:    config.HistoryArchiveCaching,
 				Path:     path.Join(config.CaptiveCoreStoragePath, "bucket-cache"),
 				Log:      log.WithField("subservice", "ha-cache"),
 				MaxFiles: 150,
