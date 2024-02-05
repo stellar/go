@@ -33,7 +33,7 @@ import (
 // XdrFilesSHA256 is the SHA256 hashes of source files.
 var XdrFilesSHA256 = map[string]string{
 	"xdr/Stellar-SCP.x":                     "8f32b04d008f8bc33b8843d075e69837231a673691ee41d8b821ca229a6e802a",
-	"xdr/Stellar-contract-config-setting.x": "e466c4dfae1d5d181afbd990b91f26c5d8ed84a7fa987875f8d643cf97e34a77",
+	"xdr/Stellar-contract-config-setting.x": "fc42980e8710514679477f767ecad6f9348c38d24b1e4476fdd7e73e8e672ea8",
 	"xdr/Stellar-contract-env-meta.x":       "928a30de814ee589bc1d2aadd8dd81c39f71b7e6f430f56974505ccb1f49654b",
 	"xdr/Stellar-contract-meta.x":           "f01532c11ca044e19d9f9f16fe373e9af64835da473be556b9a807ee3319ae0d",
 	"xdr/Stellar-contract-spec.x":           "c7ffa21d2e91afb8e666b33524d307955426ff553a486d670c29217ed9888d49",
@@ -55300,8 +55300,11 @@ var _ xdrType = (*ContractCostParamEntry)(nil)
 //	     // Number of snapshots to use when calculating average BucketList size
 //	     uint32 bucketListSizeWindowSampleSize;
 //
+//	     // How often to sample the BucketList size for the average, in ledgers
+//	     uint32 bucketListWindowSamplePeriod;
+//
 //	     // Maximum number of bytes that we scan for eviction per ledger
-//	     uint64 evictionScanSize;
+//	     uint32 evictionScanSize;
 //
 //	     // Lowest BucketList level to be scanned to evict entries
 //	     uint32 startingEvictionScanLevel;
@@ -55314,7 +55317,8 @@ type StateArchivalSettings struct {
 	TempRentRateDenominator        Int64
 	MaxEntriesToArchive            Uint32
 	BucketListSizeWindowSampleSize Uint32
-	EvictionScanSize               Uint64
+	BucketListWindowSamplePeriod   Uint32
+	EvictionScanSize               Uint32
 	StartingEvictionScanLevel      Uint32
 }
 
@@ -55340,6 +55344,9 @@ func (s *StateArchivalSettings) EncodeTo(e *xdr.Encoder) error {
 		return err
 	}
 	if err = s.BucketListSizeWindowSampleSize.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.BucketListWindowSamplePeriod.EncodeTo(e); err != nil {
 		return err
 	}
 	if err = s.EvictionScanSize.EncodeTo(e); err != nil {
@@ -55396,10 +55403,15 @@ func (s *StateArchivalSettings) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, 
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %w", err)
 	}
+	nTmp, err = s.BucketListWindowSamplePeriod.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %w", err)
+	}
 	nTmp, err = s.EvictionScanSize.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
-		return n, fmt.Errorf("decoding Uint64: %w", err)
+		return n, fmt.Errorf("decoding Uint32: %w", err)
 	}
 	nTmp, err = s.StartingEvictionScanLevel.DecodeFrom(d, maxDepth)
 	n += nTmp
