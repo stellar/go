@@ -96,6 +96,34 @@ func (abc *ArchiveBucketCache) GetFile(
 
 		// We only add it to the cache after the final close call.
 		return teeReadCloser(remote, local, func() error {
+			// Integrity check: stream in the file from the disk and check that
+			// the hash matches the filename for integrity purposes.
+			// f, err := os.Open(localPath)
+			// if err != nil {
+			// 	gReader, gErr := gzip.NewReader(f)
+			// 	if gErr != nil {
+
+			// 	}
+
+			// 	h := sha256.New()
+			// 	buf := [1024]byte{}
+			// 	for {
+			// 		nRead, err := gReader.Read(buf[:])
+			// 		if err != io.EOF {
+			// 			break
+			// 		}
+			// 		h.Write(buf[:nRead])
+			// 	}
+
+			// 	// checksum :=
+			// 	// h.Sum()
+
+			// } else {
+
+			// }
+
+			// gzip.NewReader()
+
 			// Basic sanity check: does the upstream size match the on-disk
 			// size? If not, something messed up during the fetch and we can't
 			// use this.
@@ -214,6 +242,42 @@ func NameLockfile(file string) string {
 	return file + ".lock"
 }
 
+type cacheReader struct {
+	file   *os.File
+	reader io.Reader
+
+	closed bool
+}
+
+var _ io.ReadCloser = &cacheReader{}
+var _ io.WriteCloser = &cacheReader{}
+
+func newCacheReader(upstream io.Reader, path string) (*cacheReader, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+
+	return &cacheReader{
+		reader: upstream,
+		file:   file,
+		closed: false,
+	}, nil
+}
+
+func (cr *cacheReader) Read([]byte) (int, error) {
+
+	return 0, nil
+}
+
+func (cr *cacheReader) Write([]byte) (int, error) {
+	return 0, nil
+}
+
+func (cr *cacheReader) Close() error {
+	return nil
+}
+
 // The below is a helper interface so that we can use io.TeeReader to write
 // data locally immediately as we read it remotely.
 
@@ -231,7 +295,7 @@ func (t trc) Close() error {
 	return t.close()
 }
 
-func teeReadCloser(r io.ReadCloser, w *os.File, onClose func() error) io.ReadCloser {
+func teeReadCloser(r io.ReadCloser, w io.WriteCloser, onClose func() error) io.ReadCloser {
 	closer := trc{
 		Reader: io.TeeReader(r, w),
 		closed: false,
@@ -245,10 +309,10 @@ func teeReadCloser(r io.ReadCloser, w *os.File, onClose func() error) io.ReadClo
 
 		err1 := r.Close()
 		// Ensure that we flush to disk before closing
-		err2 := w.Sync()
-		if err2 == nil {
-			err2 = w.Close()
-		}
+		// err2 := w.Sync()
+		// if err2 == nil {
+		err2 := w.Close()
+		// }
 		err3 := onClose()
 
 		closer.closed = true

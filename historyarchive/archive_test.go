@@ -44,11 +44,8 @@ func GetTestS3Archive() *Archive {
 func GetTestMockArchive() *Archive {
 	return MustConnect("mock://test", ConnectOptions{
 		CheckpointFrequency: 64,
-		CacheConfig: CacheOptions{
-			Cache:    true,
-			Path:     filepath.Join(os.TempDir(), "history-archive-test-cache"),
-			MaxFiles: 5,
-		}})
+		CachePath:           filepath.Join(os.TempDir(), "history-archive-test-cache"),
+	})
 }
 
 var tmpdirs []string

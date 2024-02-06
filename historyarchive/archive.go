@@ -16,7 +16,9 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
+	fscache "github.com/djherbis/fscache"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/stellar/go/support/errors"
@@ -50,8 +52,8 @@ type ConnectOptions struct {
 	CheckpointFrequency uint32
 	// UserAgent is the value of `User-Agent` header. Applicable only for HTTP client.
 	UserAgent string
-	// CacheConfig controls how/if bucket files are cached on the disk.
-	CacheConfig CacheOptions
+	// CachePath controls where/if bucket files are cached on the disk.
+	CachePath string
 }
 
 type Ledger struct {
@@ -117,7 +119,7 @@ type Archive struct {
 	checkpointManager CheckpointManager
 
 	backend ArchiveBackend
-	cache   *ArchiveBucketCache
+	cache   fscache.Cache
 	stats   archiveStats
 }
 
@@ -396,18 +398,45 @@ func (a *Archive) GetXdrStream(pth string) (*XdrStream, error) {
 
 func (a *Archive) cachedGet(pth string) (io.ReadCloser, error) {
 	if a.cache != nil {
-		rdr, foundInCache, err := a.cache.GetFile(pth, a.backend)
-		if !foundInCache {
-			a.stats.incrementDownloads()
+		rdr, wrtr, err := a.cache.Get(pth)
+		if err != nil {
+			a.cache.Remove(pth) // just in case
+			log.WithError(err).Warnf("On-disk cache retrieval failed")
 		} else {
+			// If a NEW key is being retrieved, it returns a writer to which
+			// you're expected to write your upstream as well as a reader that
+			// will read directly from it.
+			if wrtr != nil {
+				rdr.Close() // we make our own
+				a.stats.incrementDownloads()
+
+				upstreamReader, err := a.backend.GetFile(pth)
+				if err != nil {
+					wrtr.Close()
+					a.cache.Remove(pth)
+					return nil, err
+				}
+
+				// In our case, we want to tee up the backend reader to write
+				// directly to this new writer (which will write to the disk) as
+				// it gets downloaded.
+				return teeReadCloser(
+					upstreamReader,
+					wrtr,
+					func() error { return nil }, // no add'l work to do
+				), nil
+			}
+
+			// To track metrics, we make a best-effort to see how much bandwidth
+			// we've saved by caching.
+			size, err := a.backend.Size(pth)
+			if err == nil {
+				a.stats.incrementCacheBandwidth(size)
+			}
+
 			a.stats.incrementCacheHits()
-		}
-		if err == nil {
 			return rdr, nil
 		}
-
-		// If there's an error, retry with the uncached backend.
-		a.cache.Evict(pth)
 	}
 
 	a.stats.incrementDownloads()
@@ -476,13 +505,23 @@ func Connect(u string, opts ConnectOptions) (*Archive, error) {
 		return &arch, err
 	}
 
-	if opts.CacheConfig.Cache {
-		cache, innerErr := MakeArchiveBucketCache(opts.CacheConfig)
-		if innerErr != nil {
-			return &arch, innerErr
+	if opts.CachePath != "" {
+		haunter := fscache.NewLRUHaunterStrategy(
+			fscache.NewLRUHaunter(0, 10<<30 /* ~10GiB */, time.Minute),
+		)
+		fs, err := fscache.NewFs(opts.CachePath, 0755 /* drwxr-xr-x */)
+		if err != nil {
+			return &arch, errors.Wrapf(err,
+				"creating cache at '%s' with mode 0755 failed",
+				opts.CachePath)
 		}
 
-		arch.cache = cache
+		arch.cache, err = fscache.NewCacheWithHaunter(fs, haunter)
+		if err != nil {
+			return &arch, errors.Wrapf(err,
+				"creating cache at '%s' failed",
+				opts.CachePath)
+		}
 	}
 
 	arch.stats = archiveStats{backendName: parsed.String()}

@@ -223,6 +223,11 @@ type system struct {
 func NewSystem(config Config) (System, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
+	cachingPath := ""
+	if config.HistoryArchiveCaching {
+		cachingPath = path.Join(config.CaptiveCoreStoragePath, "bucket-cache")
+	}
+
 	archive, err := historyarchive.NewArchivePool(
 		config.HistoryArchiveURLs,
 		historyarchive.ConnectOptions{
@@ -230,12 +235,7 @@ func NewSystem(config Config) (System, error) {
 			NetworkPassphrase:   config.NetworkPassphrase,
 			CheckpointFrequency: config.CheckpointFrequency,
 			UserAgent:           fmt.Sprintf("horizon/%s golang/%s", apkg.Version(), runtime.Version()),
-			CacheConfig: historyarchive.CacheOptions{
-				Cache:    config.HistoryArchiveCaching,
-				Path:     path.Join(config.CaptiveCoreStoragePath, "bucket-cache"),
-				Log:      log.WithField("subservice", "ha-cache"),
-				MaxFiles: 150,
-			},
+			CachePath:           cachingPath,
 		},
 	)
 	if err != nil {
