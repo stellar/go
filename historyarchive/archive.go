@@ -510,6 +510,8 @@ func Connect(u string, opts ConnectOptions) (*Archive, error) {
 			fscache.NewLRUHaunter(0, 10<<30 /* ~10GiB */, time.Minute),
 		)
 		fs, err := fscache.NewFs(opts.CachePath, 0755 /* drwxr-xr-x */)
+
+		// TODO: Should this just be a warning?
 		if err != nil {
 			return &arch, errors.Wrapf(err,
 				"creating cache at '%s' with mode 0755 failed",
@@ -534,4 +536,52 @@ func MustConnect(u string, opts ConnectOptions) *Archive {
 		log.Fatal(err)
 	}
 	return arch
+}
+
+//
+// The following is a helper interface so that we can use io.TeeReader to write
+// data locally immediately as we read it remotely and have a Close() method as
+// certain APIs expect.
+//
+
+type trc struct {
+	io.Reader
+	close  func() error
+	closed bool // prevents a double-close
+}
+
+func (t trc) Close() error {
+	if t.closed {
+		return nil
+	}
+
+	return t.close()
+}
+
+func teeReadCloser(r io.ReadCloser, w io.WriteCloser, onClose func() error) io.ReadCloser {
+	closer := trc{
+		Reader: io.TeeReader(r, w),
+		closed: false,
+	}
+	closer.close = func() error {
+		if closer.closed {
+			return nil
+		}
+
+		// Always run all closers but return the first possible error.
+
+		err1 := r.Close()
+		err2 := w.Close()
+		err3 := onClose()
+
+		closer.closed = true
+		if err1 != nil {
+			return err1
+		} else if err2 != nil {
+			return err2
+		}
+		return err3
+	}
+
+	return closer
 }
