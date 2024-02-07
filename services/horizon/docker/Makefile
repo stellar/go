@@ -4,9 +4,6 @@ SUDO := $(shell docker version >/dev/null 2>&1 || echo "sudo")
 BUILD_DATE := $(shell date -u +%FT%TZ)
 
 TAG ?= stellar/stellar-horizon:$(VERSION)
-ifeq ($(ALLOW_CORE_UNSTABLE),yes)
-	TAG := $(TAG)-UNSTABLE
-endif
 
 docker-build:
 ifndef VERSION
