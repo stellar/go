@@ -122,12 +122,13 @@ type Archive struct {
 	backend ArchiveBackend
 	stats   archiveStats
 
-	cache cacheState
+	cache *archiveBucketCache
 }
 
-type cacheState struct {
+type archiveBucketCache struct {
+	fscache.Cache
+
 	path  string
-	cache fscache.Cache
 	sizes sync.Map
 }
 
@@ -405,15 +406,14 @@ func (a *Archive) GetXdrStream(pth string) (*XdrStream, error) {
 }
 
 func (a *Archive) cachedGet(pth string) (io.ReadCloser, error) {
-	cache := a.cache.cache
-	if cache == nil {
+	if a.cache == nil {
 		a.stats.incrementDownloads()
 		return a.backend.GetFile(pth)
 	}
 
 	L := log.WithField("path", pth).WithField("cache", a.cache.path)
 
-	rdr, wrtr, err := cache.Get(pth)
+	rdr, wrtr, err := a.cache.Get(pth)
 	if err != nil {
 		L.WithError(err).Warn("On-disk cache retrieval failed")
 		a.stats.incrementDownloads()
@@ -430,7 +430,7 @@ func (a *Archive) cachedGet(pth string) (io.ReadCloser, error) {
 		if err != nil {
 			L.WithError(err).Warn("Download failed, purging from cache")
 			wrtr.Close()
-			go func() { cache.Remove(pth) }() // don't block
+			a.cache.Remove(pth)
 			return nil, err
 		}
 
@@ -443,7 +443,9 @@ func (a *Archive) cachedGet(pth string) (io.ReadCloser, error) {
 
 			if err != nil {
 				L.WithError(err).Warn("Failed to download and cache file")
-				cache.Remove(pth)
+				if removalErr := a.cache.Remove(pth); removalErr != nil {
+					L.WithError(removalErr).Warn("Removing cached file failed")
+				}
 			} else {
 				L.Infof("Cached %dKiB file", written/1024)
 
@@ -463,7 +465,7 @@ func (a *Archive) cachedGet(pth string) (io.ReadCloser, error) {
 }
 
 func (a *Archive) cachedExists(pth string) (bool, error) {
-	if a.cache.cache != nil && a.cache.cache.Exists(pth) {
+	if a.cache != nil && a.cache.Exists(pth) {
 		return true, nil
 	}
 
@@ -547,10 +549,7 @@ func Connect(u string, opts ConnectOptions) (*Archive, error) {
 				opts.CachePath)
 		}
 
-		arch.cache = cacheState{
-			cache: cache,
-			path:  opts.CachePath,
-		}
+		arch.cache = &archiveBucketCache{cache, opts.CachePath, sync.Map{}}
 	}
 
 	arch.stats = archiveStats{backendName: parsed.String()}
