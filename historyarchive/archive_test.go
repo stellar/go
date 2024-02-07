@@ -639,10 +639,11 @@ func TestGetLedgers(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Len(t, ledgers, 3)
-	// it started at 1, incurred 6 requests total, 3 queries, 3 downloads
+	// it started at 1, incurred 6 requests total: 3 queries + 3 downloads
 	assert.EqualValues(t, 7, stats.GetRequests())
 	// started 0, incurred 3 file downloads
 	assert.EqualValues(t, 3, stats.GetDownloads())
+	assert.EqualValues(t, 0, stats.GetCacheHits())
 	for i, seq := range []uint32{1000, 1001, 1002} {
 		ledger := ledgers[seq]
 		assertXdrEquals(t, ledgerHeaders[i], ledger.Header)

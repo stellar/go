@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"net/url"
+	"os"
 	"path"
 	"regexp"
 	"strconv"
@@ -119,8 +120,15 @@ type Archive struct {
 	checkpointManager CheckpointManager
 
 	backend ArchiveBackend
-	cache   fscache.Cache
 	stats   archiveStats
+
+	cache cacheState
+}
+
+type cacheState struct {
+	path  string
+	cache fscache.Cache
+	sizes sync.Map
 }
 
 func (arch *Archive) GetStats() []ArchiveStats {
@@ -397,54 +405,65 @@ func (a *Archive) GetXdrStream(pth string) (*XdrStream, error) {
 }
 
 func (a *Archive) cachedGet(pth string) (io.ReadCloser, error) {
-	if a.cache != nil {
-		rdr, wrtr, err := a.cache.Get(pth)
-		if err != nil {
-			a.cache.Remove(pth) // just in case
-			log.WithError(err).Warnf("On-disk cache retrieval failed")
-		} else {
-			// If a NEW key is being retrieved, it returns a writer to which
-			// you're expected to write your upstream as well as a reader that
-			// will read directly from it.
-			if wrtr != nil {
-				rdr.Close() // we make our own
-				a.stats.incrementDownloads()
-
-				upstreamReader, err := a.backend.GetFile(pth)
-				if err != nil {
-					wrtr.Close()
-					a.cache.Remove(pth)
-					return nil, err
-				}
-
-				// In our case, we want to tee up the backend reader to write
-				// directly to this new writer (which will write to the disk) as
-				// it gets downloaded.
-				return teeReadCloser(
-					upstreamReader,
-					wrtr,
-					func() error { return nil }, // no add'l work to do
-				), nil
-			}
-
-			// To track metrics, we make a best-effort to see how much bandwidth
-			// we've saved by caching.
-			size, err := a.backend.Size(pth)
-			if err == nil {
-				a.stats.incrementCacheBandwidth(size)
-			}
-
-			a.stats.incrementCacheHits()
-			return rdr, nil
-		}
+	cache := a.cache.cache
+	if cache == nil {
+		a.stats.incrementDownloads()
+		return a.backend.GetFile(pth)
 	}
 
-	a.stats.incrementDownloads()
-	return a.backend.GetFile(pth)
+	L := log.WithField("path", pth).WithField("cache", a.cache.path)
+
+	rdr, wrtr, err := cache.Get(pth)
+	if err != nil {
+		L.WithError(err).Warn("On-disk cache retrieval failed")
+		a.stats.incrementDownloads()
+		return a.backend.GetFile(pth)
+	}
+
+	// If a NEW key is being retrieved, it returns a writer to which
+	// you're expected to write your upstream as well as a reader that
+	// will read directly from it.
+	if wrtr != nil {
+		log.WithField("path", pth).Info("Caching file...")
+		a.stats.incrementDownloads()
+		upstreamReader, err := a.backend.GetFile(pth)
+		if err != nil {
+			L.WithError(err).Warn("Download failed, purging from cache")
+			wrtr.Close()
+			go func() { cache.Remove(pth) }() // don't block
+			return nil, err
+		}
+
+		// Start a goroutine to slurp up the upstream and feed
+		// it directly to the cache.
+		go func() {
+			defer upstreamReader.Close()
+			defer wrtr.Close()
+			written, err := io.Copy(wrtr, upstreamReader)
+
+			if err != nil {
+				L.WithError(err).Warn("Failed to download and cache file")
+				cache.Remove(pth)
+			} else {
+				L.Infof("Cached %dKiB file", written/1024)
+
+				// Track how much bandwidth we've saved from caching.
+				a.cache.sizes.Store(pth, written)
+			}
+		}()
+	} else {
+		// Best-effort check to track bandwidth metrics
+		if written, found := a.cache.sizes.Load(pth); found {
+			a.stats.incrementCacheBandwidth(written.(int64))
+		}
+		a.stats.incrementCacheHits()
+	}
+
+	return rdr, nil
 }
 
 func (a *Archive) cachedExists(pth string) (bool, error) {
-	if a.cache != nil && a.cache.Exists(pth) {
+	if a.cache.cache != nil && a.cache.cache.Exists(pth) {
 		return true, nil
 	}
 
@@ -506,23 +525,31 @@ func Connect(u string, opts ConnectOptions) (*Archive, error) {
 	}
 
 	if opts.CachePath != "" {
+		// Set up a <= ~10GiB LRU cache for history archives files
 		haunter := fscache.NewLRUHaunterStrategy(
-			fscache.NewLRUHaunter(0, 10<<30 /* ~10GiB */, time.Minute),
+			fscache.NewLRUHaunter(0, 10<<30, time.Minute /* frequency check */),
 		)
+
+		// Wipe any existing cache on startup
+		os.RemoveAll(opts.CachePath)
 		fs, err := fscache.NewFs(opts.CachePath, 0755 /* drwxr-xr-x */)
 
-		// TODO: Should this just be a warning?
 		if err != nil {
 			return &arch, errors.Wrapf(err,
 				"creating cache at '%s' with mode 0755 failed",
 				opts.CachePath)
 		}
 
-		arch.cache, err = fscache.NewCacheWithHaunter(fs, haunter)
+		cache, err := fscache.NewCacheWithHaunter(fs, haunter)
 		if err != nil {
 			return &arch, errors.Wrapf(err,
 				"creating cache at '%s' failed",
 				opts.CachePath)
+		}
+
+		arch.cache = cacheState{
+			cache: cache,
+			path:  opts.CachePath,
 		}
 	}
 
@@ -536,52 +563,4 @@ func MustConnect(u string, opts ConnectOptions) *Archive {
 		log.Fatal(err)
 	}
 	return arch
-}
-
-//
-// The following is a helper interface so that we can use io.TeeReader to write
-// data locally immediately as we read it remotely and have a Close() method as
-// certain APIs expect.
-//
-
-type trc struct {
-	io.Reader
-	close  func() error
-	closed bool // prevents a double-close
-}
-
-func (t trc) Close() error {
-	if t.closed {
-		return nil
-	}
-
-	return t.close()
-}
-
-func teeReadCloser(r io.ReadCloser, w io.WriteCloser, onClose func() error) io.ReadCloser {
-	closer := trc{
-		Reader: io.TeeReader(r, w),
-		closed: false,
-	}
-	closer.close = func() error {
-		if closer.closed {
-			return nil
-		}
-
-		// Always run all closers but return the first possible error.
-
-		err1 := r.Close()
-		err2 := w.Close()
-		err3 := onClose()
-
-		closer.closed = true
-		if err1 != nil {
-			return err1
-		} else if err2 != nil {
-			return err2
-		}
-		return err3
-	}
-
-	return closer
 }

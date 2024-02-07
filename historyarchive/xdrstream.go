@@ -141,7 +141,6 @@ func (x *XdrStream) closeReaders() error {
 		}
 	}
 
-	x.rdr2.Close()
 	return err
 }
 
