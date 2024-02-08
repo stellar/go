@@ -7,7 +7,7 @@ Ledger Exporter currently uses captive-core as the ledger backend and GCS as the
 # Exported Data Format
 The tool allows for the export of multiple ledgers in a single exported file. The exported data is in XDR format and is compressed (gzip) before being uploaded.
 
-```bash
+```go
 type LedgerCloseMetaBatch struct {
     StartSequence uint32
     EndSequence uint32
