@@ -3,7 +3,11 @@
 All notable changes to this project will be documented in this
 file. This project adheres to [Semantic Versioning](http://semver.org/).
 
-## Unreleased
+## 2.28.2
+
+### Fixed
+- History archive caching would cause file corruption in certain environments [5197](https://github.com/stellar/go/pull/5197)
+- Server error in claimable balance API when claimant, asset and cursor query params are supplied [5200](https://github.com/stellar/go/pull/5200)
 
 ## 2.28.1
 
