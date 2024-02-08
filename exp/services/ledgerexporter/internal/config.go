@@ -196,5 +196,6 @@ func (config *Config) GenerateCaptiveCoreConfig() ledgerbackend.CaptiveCoreConfi
 		CheckpointFrequency: historyarchive.DefaultCheckpointFrequency,
 		Log:                 logger.WithField("subservice", "stellar-core"),
 		Toml:                captiveCoreToml,
+		UserAgent:           "ledger-exporter",
 	}
 }
