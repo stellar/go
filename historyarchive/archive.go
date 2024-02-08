@@ -429,8 +429,11 @@ func (a *Archive) cachedGet(pth string) (io.ReadCloser, error) {
 		upstreamReader, err := a.backend.GetFile(pth)
 		if err != nil {
 			L.WithError(err).Warn("Download failed, purging from cache")
-			wrtr.Close()
-			a.cache.Remove(pth)
+			L.Debugf("Writer: %v, reader: %v; cache removal: %v",
+				wrtr.Close(),
+				rdr.Close(),
+				a.cache.Remove(pth),
+			)
 			return nil, err
 		}
 
@@ -449,7 +452,8 @@ func (a *Archive) cachedGet(pth string) (io.ReadCloser, error) {
 			} else {
 				L.Infof("Cached %dKiB file", written/1024)
 
-				// Track how much bandwidth we've saved from caching.
+				// Track how much bandwidth we've saved from caching by saving
+				// the size of the file we just downloaded.
 				a.cache.sizes.Store(pth, written)
 			}
 		}()
