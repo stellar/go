@@ -407,6 +407,7 @@ func runDBReingestRange(ledgerRanges []history.LedgerRange, reingestForce bool, 
 	ingestConfig := ingest.Config{
 		NetworkPassphrase:           config.NetworkPassphrase,
 		HistoryArchiveURLs:          config.HistoryArchiveURLs,
+		HistoryArchiveCaching:       config.HistoryArchiveCaching,
 		CheckpointFrequency:         config.CheckpointFrequency,
 		ReingestEnabled:             true,
 		MaxReingestRetries:          int(retries),
