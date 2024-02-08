@@ -184,6 +184,7 @@ func (config *Config) GenerateCaptiveCoreConfig() ledgerbackend.CaptiveCoreConfi
 	params := ledgerbackend.CaptiveCoreTomlParams{
 		NetworkPassphrase:  coreConfig.NetworkPassphrase,
 		HistoryArchiveURLs: coreConfig.HistoryArchiveUrls,
+		UseDB:              true,
 	}
 
 	captiveCoreToml, err := ledgerbackend.NewCaptiveCoreTomlFromData(captiveCoreConfig, params)
@@ -197,5 +198,6 @@ func (config *Config) GenerateCaptiveCoreConfig() ledgerbackend.CaptiveCoreConfi
 		Log:                 logger.WithField("subservice", "stellar-core"),
 		Toml:                captiveCoreToml,
 		UserAgent:           "ledger-exporter",
+		UseDB:               true,
 	}
 }
