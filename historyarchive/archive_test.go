@@ -27,6 +27,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var cachePath = filepath.Join(os.TempDir(), "history-archive-test-cache")
+
 func GetTestS3Archive() *Archive {
 	mx := big.NewInt(0xffffffff)
 	r, e := rand.Int(rand.Reader, mx)
@@ -47,7 +49,7 @@ func GetTestS3Archive() *Archive {
 func GetTestMockArchive() *Archive {
 	return MustConnect("mock://test", ConnectOptions{
 		CheckpointFrequency: 64,
-		CachePath:           filepath.Join(os.TempDir(), "history-archive-test-cache"),
+		CachePath:           cachePath,
 	})
 }
 
@@ -554,88 +556,7 @@ func TestGetLedgers(t *testing.T) {
 	assert.Equal(t, uint32(1), archive.GetStats()[0].GetRequests())
 	assert.Equal(t, uint32(0), archive.GetStats()[0].GetDownloads())
 	assert.EqualError(t, err, "checkpoint 1023 is not published")
-
-	ledgerHeaders := []xdr.LedgerHeaderHistoryEntry{
-		{
-			Hash: xdr.Hash{1},
-			Header: xdr.LedgerHeader{
-				LedgerSeq: 1000,
-			},
-		},
-		{
-			Hash: xdr.Hash{2},
-			Header: xdr.LedgerHeader{
-				LedgerSeq: 1001,
-			},
-		},
-		{
-			Hash: xdr.Hash{3},
-			Header: xdr.LedgerHeader{
-				LedgerSeq: 1002,
-			},
-		},
-	}
-	writeCategoryFile(
-		t, archive.backend, "ledger/00/00/03/ledger-000003ff.xdr.gz",
-		[]xdrEntry{ledgerHeaders[0], ledgerHeaders[1], ledgerHeaders[2]},
-	)
-
-	transactions := []xdr.TransactionHistoryEntry{
-		{
-			LedgerSeq: 1000,
-			TxSet: xdr.TransactionSet{
-				PreviousLedgerHash: xdr.Hash{10},
-			},
-		},
-		{
-			LedgerSeq: 1001,
-			TxSet: xdr.TransactionSet{
-				PreviousLedgerHash: xdr.Hash{11},
-			},
-		},
-		{
-			LedgerSeq: 1002,
-			TxSet: xdr.TransactionSet{
-				PreviousLedgerHash: xdr.Hash{12},
-			},
-		},
-	}
-	writeCategoryFile(
-		t, archive.backend, "transactions/00/00/03/transactions-000003ff.xdr.gz",
-		[]xdrEntry{transactions[0], transactions[1], transactions[2]},
-	)
-
-	result := xdr.TransactionResult{Result: xdr.TransactionResultResult{Code: xdr.TransactionResultCodeTxBadSeq}}
-	results := []xdr.TransactionHistoryResultEntry{
-		{
-			LedgerSeq: 1000,
-			TxResultSet: xdr.TransactionResultSet{
-				Results: []xdr.TransactionResultPair{
-					{TransactionHash: xdr.Hash{213}, Result: result},
-				},
-			},
-		},
-		{
-			LedgerSeq: 1001,
-			TxResultSet: xdr.TransactionResultSet{
-				Results: []xdr.TransactionResultPair{
-					{TransactionHash: xdr.Hash{198}, Result: result},
-				},
-			},
-		},
-		{
-			LedgerSeq: 1002,
-			TxResultSet: xdr.TransactionResultSet{
-				Results: []xdr.TransactionResultPair{
-					{TransactionHash: xdr.Hash{131}, Result: result},
-				},
-			},
-		},
-	}
-	writeCategoryFile(
-		t, archive.backend, "results/00/00/03/results-000003ff.xdr.gz",
-		[]xdrEntry{results[0], results[1], results[2]},
-	)
+	ledgerHeaders, transactions, results := makeFakeArchive(t, archive)
 
 	stats := archive.GetStats()[0]
 	ledgers, err := archive.GetLedgers(1000, 1002)
@@ -670,15 +591,60 @@ func TestGetLedgers(t *testing.T) {
 		assertXdrEquals(t, transactions[i], ledger.Transaction)
 		assertXdrEquals(t, results[i], ledger.TransactionResult)
 	}
+
+	// remove the cached files without informing it and ensure it fills up again
+	require.NoError(t, os.RemoveAll(cachePath))
+	ledgers, err = archive.GetLedgers(1000, 1002) // uncached, refetch
+	assert.NoError(t, err)
+	assert.Len(t, ledgers, 3)
+
+	// downloads should increase again
+	assert.EqualValues(t, 6, stats.GetDownloads())
+	assert.EqualValues(t, 3, stats.GetCacheHits())
 }
 
 func TestStressfulGetLedgers(t *testing.T) {
 	archive := GetTestMockArchive()
-	_, err := archive.GetLedgers(1000, 1002)
-	assert.Equal(t, uint32(1), archive.GetStats()[0].GetRequests())
-	assert.Equal(t, uint32(0), archive.GetStats()[0].GetDownloads())
-	assert.EqualError(t, err, "checkpoint 1023 is not published")
+	ledgerHeaders, transactions, results := makeFakeArchive(t, archive)
 
+	var wg sync.WaitGroup
+	for i := 0; i < 10; i++ {
+		wg.Add(1)
+
+		go func() {
+			time.Sleep(time.Millisecond) // encourage interleaved execution
+			ledgers, err := archive.GetLedgers(1000, 1002)
+			assert.NoError(t, err)
+			assert.Len(t, ledgers, 3)
+			for i, seq := range []uint32{1000, 1001, 1002} {
+				ledger := ledgers[seq]
+				assertXdrEquals(t, ledgerHeaders[i], ledger.Header)
+				assertXdrEquals(t, transactions[i], ledger.Transaction)
+				assertXdrEquals(t, results[i], ledger.TransactionResult)
+			}
+
+			wg.Done()
+		}()
+	}
+
+	require.Eventually(t, func() bool { wg.Wait(); return true }, time.Minute, time.Second)
+}
+
+func TestCacheDeadlocks(t *testing.T) {
+	archive := MustConnect("fmock://test", ConnectOptions{
+		CheckpointFrequency: 64,
+		CachePath:           cachePath,
+	})
+	makeFakeArchive(t, archive)
+	_, err := archive.GetLedgers(1000, 1002)
+	require.Error(t, err)
+}
+
+func makeFakeArchive(t *testing.T, archive *Archive) (
+	[]xdr.LedgerHeaderHistoryEntry,
+	[]xdr.TransactionHistoryEntry,
+	[]xdr.TransactionHistoryResultEntry,
+) {
 	ledgerHeaders := []xdr.LedgerHeaderHistoryEntry{
 		{
 			Hash: xdr.Hash{1},
@@ -761,25 +727,5 @@ func TestStressfulGetLedgers(t *testing.T) {
 		[]xdrEntry{results[0], results[1], results[2]},
 	)
 
-	var wg sync.WaitGroup
-	for i := 0; i < 10; i++ {
-		wg.Add(1)
-
-		go func() {
-			time.Sleep(time.Millisecond) // encourage interleaved execution
-			ledgers, err := archive.GetLedgers(1000, 1002)
-			assert.NoError(t, err)
-			assert.Len(t, ledgers, 3)
-			for i, seq := range []uint32{1000, 1001, 1002} {
-				ledger := ledgers[seq]
-				assertXdrEquals(t, ledgerHeaders[i], ledger.Header)
-				assertXdrEquals(t, transactions[i], ledger.Transaction)
-				assertXdrEquals(t, results[i], ledger.TransactionResult)
-			}
-
-			wg.Done()
-		}()
-	}
-
-	require.Eventually(t, func() bool { wg.Wait(); return true }, time.Minute, time.Second)
+	return ledgerHeaders, transactions, results
 }

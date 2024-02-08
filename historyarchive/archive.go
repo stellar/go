@@ -415,7 +415,9 @@ func (a *Archive) cachedGet(pth string) (io.ReadCloser, error) {
 
 	rdr, wrtr, err := a.cache.Get(pth)
 	if err != nil {
-		L.WithError(err).Warn("On-disk cache retrieval failed")
+		L.WithError(err).
+			WithField("remove", a.cache.Remove(pth)).
+			Warn("On-disk cache retrieval failed")
 		a.stats.incrementDownloads()
 		return a.backend.GetFile(pth)
 	}
@@ -439,22 +441,21 @@ func (a *Archive) cachedGet(pth string) (io.ReadCloser, error) {
 		// Start a goroutine to slurp up the upstream and feed
 		// it directly to the cache.
 		go func() {
-			defer upstreamReader.Close()
-			defer wrtr.Close()
 			written, err := io.Copy(wrtr, upstreamReader)
+			fields := log.Fields{
+				"wr-close": wrtr.Close(),
+				"rd-close": upstreamReader.Close(),
+			}
 
 			if err != nil {
-				L.WithError(err).Warn("Failed to download and cache file")
+				L.WithFields(fields).WithError(err).Warn("Failed to download and cache file")
 
-				// We want to ensure that removal happens *after* handles close so
-				// we defer it to be in the correct order.
-				defer func() {
-					if removalErr := a.cache.Remove(pth); removalErr != nil {
-						L.WithError(removalErr).Warn("Removing cached file failed")
-					}
-				}()
+				// Removal must happen *after* handles close.
+				if removalErr := a.cache.Remove(pth); removalErr != nil {
+					L.WithError(removalErr).Warn("Removing cached file failed")
+				}
 			} else {
-				L.Infof("Cached %dKiB file", written/1024)
+				L.WithFields(fields).Infof("Cached %dKiB file", written/1024)
 
 				// Track how much bandwidth we've saved from caching by saving
 				// the size of the file we just downloaded.
@@ -526,6 +527,8 @@ func Connect(u string, opts ConnectOptions) (*Archive, error) {
 		arch.backend = makeHttpBackend(parsed, opts)
 	} else if parsed.Scheme == "mock" {
 		arch.backend = makeMockBackend(opts)
+	} else if parsed.Scheme == "fmock" {
+		arch.backend = makeFailingMockBackend(opts)
 	} else {
 		err = errors.New("unknown URL scheme: '" + parsed.Scheme + "'")
 	}
