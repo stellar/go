@@ -8,6 +8,7 @@ type archiveStats struct {
 	fileDownloads atomic.Uint32
 	fileUploads   atomic.Uint32
 	cacheHits     atomic.Uint32
+	cacheBw       atomic.Uint64
 	backendName   string
 }
 
@@ -16,6 +17,7 @@ type ArchiveStats interface {
 	GetDownloads() uint32
 	GetUploads() uint32
 	GetCacheHits() uint32
+	GetCacheBandwidth() uint64
 	GetBackendName() string
 }
 
@@ -37,6 +39,10 @@ func (as *archiveStats) incrementCacheHits() {
 	as.cacheHits.Add(1)
 }
 
+func (as *archiveStats) incrementCacheBandwidth(bytes int64) {
+	as.cacheBw.Add(uint64(bytes))
+}
+
 func (as *archiveStats) GetRequests() uint32 {
 	return as.requests.Load()
 }
@@ -54,4 +60,7 @@ func (as *archiveStats) GetBackendName() string {
 }
 func (as *archiveStats) GetCacheHits() uint32 {
 	return as.cacheHits.Load()
+}
+func (as *archiveStats) GetCacheBandwidth() uint64 {
+	return as.cacheBw.Load()
 }

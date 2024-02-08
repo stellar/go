@@ -267,6 +267,7 @@ func (s *ResumeTestTestSuite) mockSuccessfulIngestion() {
 	mockStats.On("GetRequests").Return(uint32(0))
 	mockStats.On("GetUploads").Return(uint32(0))
 	mockStats.On("GetCacheHits").Return(uint32(0))
+	mockStats.On("GetCacheBandwidth").Return(uint64(0))
 	s.historyAdapter.On("GetStats").Return([]historyarchive.ArchiveStats{mockStats}).Once()
 
 	s.runner.On("RunAllProcessorsOnLedger", mock.AnythingOfType("xdr.LedgerCloseMeta")).
@@ -384,6 +385,7 @@ func (s *ResumeTestTestSuite) TestReapingObjectsDisabled() {
 	mockStats.On("GetRequests").Return(uint32(0))
 	mockStats.On("GetUploads").Return(uint32(0))
 	mockStats.On("GetCacheHits").Return(uint32(0))
+	mockStats.On("GetCacheBandwidth").Return(uint64(0))
 	s.historyAdapter.On("GetStats").Return([]historyarchive.ArchiveStats{mockStats}).Once()
 	// Reap lookup tables not executed
 
@@ -434,6 +436,7 @@ func (s *ResumeTestTestSuite) TestErrorReapingObjectsIgnored() {
 	mockStats.On("GetRequests").Return(uint32(0))
 	mockStats.On("GetUploads").Return(uint32(0))
 	mockStats.On("GetCacheHits").Return(uint32(0))
+	mockStats.On("GetCacheBandwidth").Return(uint64(0))
 	s.historyAdapter.On("GetStats").Return([]historyarchive.ArchiveStats{mockStats}).Once()
 
 	next, err := resumeState{latestSuccessfullyProcessedLedger: 100}.run(s.system)
