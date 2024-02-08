@@ -44,7 +44,7 @@ type Config struct {
 	StartFromLastLedgers uint32 `toml:"from-last"`
 }
 
-func LoadConfig(config *Config) error {
+func (config *Config) LoadConfig() error {
 	// Parse command-line options
 	startLedger := flag.Uint("start", 0, "Starting ledger")
 	endLedger := flag.Uint("end", 0, "Ending ledger")
@@ -83,12 +83,12 @@ func LoadConfig(config *Config) error {
 	logFatalIf(err, "Failed to retrieve the latest ledger sequence from history archives.")
 
 	// Validate config params
-	err = validateAndSetLedgerRange(config, latestNetworkLedger)
+	err = config.validateAndSetLedgerRange(latestNetworkLedger)
 	logFatalIf(err, "Error validating config params.")
 
 	// Validate and build the appropriate range
 	// TODO: Make it configurable
-	err = adjustLedgerRange(config)
+	err = config.adjustLedgerRange()
 	if err != nil {
 		return errors.Wrap(err, "error validating ledger range")
 	}
@@ -96,7 +96,7 @@ func LoadConfig(config *Config) error {
 	return nil
 }
 
-func validateAndSetLedgerRange(config *Config, latestNetworkLedger uint32) error {
+func (config *Config) validateAndSetLedgerRange(latestNetworkLedger uint32) error {
 	if config.StartFromLastLedgers > 0 && (config.StartLedger > 0 || config.EndLedger > 0) {
 		return errors.New("--from-last cannot be used with --start or --end")
 	}
@@ -132,7 +132,7 @@ func validateAndSetLedgerRange(config *Config, latestNetworkLedger uint32) error
 	return nil
 }
 
-func adjustLedgerRange(config *Config) error {
+func (config *Config) adjustLedgerRange() error {
 	logger.Infof("Requested ledger range start=%d, end=%d", config.StartLedger, config.EndLedger)
 
 	// Check if either the start or end ledger does not fall on the "LedgersPerFile" boundary
@@ -155,7 +155,7 @@ func adjustLedgerRange(config *Config) error {
 	return nil
 }
 
-func GenerateCaptiveCoreConfig(config *Config) ledgerbackend.CaptiveCoreConfig {
+func (config *Config) GenerateCaptiveCoreConfig() ledgerbackend.CaptiveCoreConfig {
 	coreConfig := &config.StellarCoreConfig
 
 	// Look for stellar-core binary in $PATH, if not supplied

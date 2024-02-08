@@ -32,7 +32,7 @@ func NewApp() *App {
 	logger.SetLevel(supportlog.InfoLevel)
 
 	config := Config{}
-	err := LoadConfig(&config)
+	err := config.LoadConfig()
 	logFatalIf(err, "Could not load configuration")
 	destinationStorage := NewDestinationStorage(&config)
 	backend := NewLedgerBackend(config)
@@ -125,7 +125,7 @@ func NewDestinationStorage(config *Config) DataStore {
 // NewLedgerBackend Creates and initializes captive core ledger backend
 // Currently, only supports captive-core as ledger backend
 func NewLedgerBackend(config Config) ledgerbackend.LedgerBackend {
-	captiveConfig := GenerateCaptiveCoreConfig(&config)
+	captiveConfig := config.GenerateCaptiveCoreConfig()
 
 	// Create a new captive core backend
 	backend, err := ledgerbackend.NewCaptive(captiveConfig)
