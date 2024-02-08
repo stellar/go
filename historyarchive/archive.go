@@ -428,12 +428,11 @@ func (a *Archive) cachedGet(pth string) (io.ReadCloser, error) {
 		a.stats.incrementDownloads()
 		upstreamReader, err := a.backend.GetFile(pth)
 		if err != nil {
-			L.WithError(err).Warn("Download failed, purging from cache")
-			L.Debugf("Writer: %v, reader: %v; cache removal: %v",
-				wrtr.Close(),
-				rdr.Close(),
-				a.cache.Remove(pth),
-			)
+			L.WithError(err).WithFields(log.Fields{
+				"write-close": wrtr.Close(),
+				"read-close":  rdr.Close(),
+				"cache-rm":    a.cache.Remove(pth),
+			}).Warn("Download failed, purging from cache")
 			return nil, err
 		}
 
@@ -446,9 +445,14 @@ func (a *Archive) cachedGet(pth string) (io.ReadCloser, error) {
 
 			if err != nil {
 				L.WithError(err).Warn("Failed to download and cache file")
-				if removalErr := a.cache.Remove(pth); removalErr != nil {
-					L.WithError(removalErr).Warn("Removing cached file failed")
-				}
+
+				// We want to ensure that removal happens *after* handles close so
+				// we defer it to be in the correct order.
+				defer func() {
+					if removalErr := a.cache.Remove(pth); removalErr != nil {
+						L.WithError(removalErr).Warn("Removing cached file failed")
+					}
+				}()
 			} else {
 				L.Infof("Cached %dKiB file", written/1024)
 
