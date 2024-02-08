@@ -430,10 +430,15 @@ func (a *Archive) cachedGet(pth string) (io.ReadCloser, error) {
 		a.stats.incrementDownloads()
 		upstreamReader, err := a.backend.GetFile(pth)
 		if err != nil {
+			writeErr := wrtr.Close()
+			readErr := rdr.Close()
+			removeErr := a.cache.Remove(pth)
+			// Execution order isn't guaranteed w/in a function call expression
+			// so we close them with explicit order first.
 			L.WithError(err).WithFields(log.Fields{
-				"write-close": wrtr.Close(),
-				"read-close":  rdr.Close(),
-				"cache-rm":    a.cache.Remove(pth),
+				"write-close": writeErr,
+				"read-close":  readErr,
+				"cache-rm":    removeErr,
 			}).Warn("Download failed, purging from cache")
 			return nil, err
 		}
@@ -442,13 +447,16 @@ func (a *Archive) cachedGet(pth string) (io.ReadCloser, error) {
 		// it directly to the cache.
 		go func() {
 			written, err := io.Copy(wrtr, upstreamReader)
+			writeErr := wrtr.Close()
+			readErr := upstreamReader.Close()
 			fields := log.Fields{
-				"wr-close": wrtr.Close(),
-				"rd-close": upstreamReader.Close(),
+				"wr-close": writeErr,
+				"rd-close": readErr,
 			}
 
 			if err != nil {
-				L.WithFields(fields).WithError(err).Warn("Failed to download and cache file")
+				L.WithFields(fields).WithError(err).
+					Warn("Failed to download and cache file")
 
 				// Removal must happen *after* handles close.
 				if removalErr := a.cache.Remove(pth); removalErr != nil {
