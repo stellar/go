@@ -5,6 +5,3 @@ destination_url = "gcs://exporter-test/ledgers"
   ledgers_per_file = 1
   files_per_partition = 64000
 
-[stellar_core_config]
-  captive_core_use_db = true
-

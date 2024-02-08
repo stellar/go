@@ -29,7 +29,6 @@ type StellarCoreConfig struct {
 	HistoryArchiveUrls    []string `toml:"history_archive_urls"`
 	StellarCoreBinaryPath string   `toml:"stellar_core_binary_path"`
 	CaptiveCoreTomlPath   string   `toml:"captive_core_toml_path"`
-	CaptiveCoreUseDB      bool     `toml:"captive_core_use_db"`
 }
 
 type Config struct {
@@ -185,7 +184,6 @@ func (config *Config) GenerateCaptiveCoreConfig() ledgerbackend.CaptiveCoreConfi
 	params := ledgerbackend.CaptiveCoreTomlParams{
 		NetworkPassphrase:  coreConfig.NetworkPassphrase,
 		HistoryArchiveURLs: coreConfig.HistoryArchiveUrls,
-		UseDB:              coreConfig.CaptiveCoreUseDB,
 	}
 
 	captiveCoreToml, err := ledgerbackend.NewCaptiveCoreTomlFromData(captiveCoreConfig, params)
@@ -198,6 +196,5 @@ func (config *Config) GenerateCaptiveCoreConfig() ledgerbackend.CaptiveCoreConfi
 		CheckpointFrequency: historyarchive.DefaultCheckpointFrequency,
 		Log:                 logger.WithField("subservice", "stellar-core"),
 		Toml:                captiveCoreToml,
-		UseDB:               coreConfig.CaptiveCoreUseDB,
 	}
 }
