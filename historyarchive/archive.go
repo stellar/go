@@ -11,12 +11,15 @@ import (
 	"fmt"
 	"io"
 	"net/url"
+	"os"
 	"path"
 	"regexp"
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
+	fscache "github.com/djherbis/fscache"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/stellar/go/support/errors"
@@ -45,9 +48,10 @@ type ArchiveOptions struct {
 	// CheckpointFrequency is the number of ledgers between checkpoints
 	// if unset, DefaultCheckpointFrequency will be used
 	CheckpointFrequency uint32
-	storage.ConnectOptions
-	// CacheConfig controls how/if bucket files are cached on the disk.
-	CacheConfig CacheOptions
+	// UserAgent is the value of `User-Agent` header. Applicable only for HTTP client.
+	UserAgent string
+	// CachePath controls where/if bucket files are cached on the disk.
+	CachePath string
 }
 
 type Ledger struct {
@@ -103,9 +107,17 @@ type Archive struct {
 
 	checkpointManager CheckpointManager
 
-	backend storage.Storage
-	cache   *ArchiveBucketCache
+	backend ArchiveBackend
 	stats   archiveStats
+
+	cache *archiveBucketCache
+}
+
+type archiveBucketCache struct {
+	fscache.Cache
+
+	path  string
+	sizes sync.Map
 }
 
 func (arch *Archive) GetStats() []ArchiveStats {
@@ -383,23 +395,79 @@ func (a *Archive) GetXdrStream(pth string) (*XdrStream, error) {
 }
 
 func (a *Archive) cachedGet(pth string) (io.ReadCloser, error) {
-	if a.cache != nil {
-		rdr, foundInCache, err := a.cache.GetFile(pth, a.backend)
-		if !foundInCache {
-			a.stats.incrementDownloads()
-		} else {
-			a.stats.incrementCacheHits()
-		}
-		if err == nil {
-			return rdr, nil
-		}
-
-		// If there's an error, retry with the uncached backend.
-		a.cache.Evict(pth)
+	if a.cache == nil {
+		a.stats.incrementDownloads()
+		return a.backend.GetFile(pth)
 	}
 
-	a.stats.incrementDownloads()
-	return a.backend.GetFile(pth)
+	L := log.WithField("path", pth).WithField("cache", a.cache.path)
+
+	rdr, wrtr, err := a.cache.Get(pth)
+	if err != nil {
+		L.WithError(err).
+			WithField("remove", a.cache.Remove(pth)).
+			Warn("On-disk cache retrieval failed")
+		a.stats.incrementDownloads()
+		return a.backend.GetFile(pth)
+	}
+
+	// If a NEW key is being retrieved, it returns a writer to which
+	// you're expected to write your upstream as well as a reader that
+	// will read directly from it.
+	if wrtr != nil {
+		log.WithField("path", pth).Info("Caching file...")
+		a.stats.incrementDownloads()
+		upstreamReader, err := a.backend.GetFile(pth)
+		if err != nil {
+			writeErr := wrtr.Close()
+			readErr := rdr.Close()
+			removeErr := a.cache.Remove(pth)
+			// Execution order isn't guaranteed w/in a function call expression
+			// so we close them with explicit order first.
+			L.WithError(err).WithFields(log.Fields{
+				"write-close": writeErr,
+				"read-close":  readErr,
+				"cache-rm":    removeErr,
+			}).Warn("Download failed, purging from cache")
+			return nil, err
+		}
+
+		// Start a goroutine to slurp up the upstream and feed
+		// it directly to the cache.
+		go func() {
+			written, err := io.Copy(wrtr, upstreamReader)
+			writeErr := wrtr.Close()
+			readErr := upstreamReader.Close()
+			fields := log.Fields{
+				"wr-close": writeErr,
+				"rd-close": readErr,
+			}
+
+			if err != nil {
+				L.WithFields(fields).WithError(err).
+					Warn("Failed to download and cache file")
+
+				// Removal must happen *after* handles close.
+				if removalErr := a.cache.Remove(pth); removalErr != nil {
+					L.WithError(removalErr).Warn("Removing cached file failed")
+				}
+			} else {
+				L.WithFields(fields).Infof("Cached %dKiB file", written/1024)
+
+				// Track how much bandwidth we've saved from caching by saving
+				// the size of the file we just downloaded.
+				a.cache.sizes.Store(pth, written)
+			}
+		}()
+	} else {
+		// Best-effort check to track bandwidth metrics
+		if written, found := a.cache.sizes.Load(pth); found {
+			a.stats.incrementCacheBandwidth(written.(int64))
+		}
+		a.stats.incrementCacheHits()
+	}
+
+	return rdr, nil
 }
 
 func (a *Archive) cachedExists(pth string) (bool, error) {
@@ -429,8 +497,37 @@ func Connect(u string, opts ArchiveOptions) (*Archive, error) {
 		arch.checkpointFiles[cat] = make(map[uint32]bool)
 	}
 
-	if opts.ConnectOptions.Context == nil {
-		opts.ConnectOptions.Context = context.Background()
+	if u == "" {
+		return &arch, errors.New("URL is empty")
+	}
+
+	parsed, err := url.Parse(u)
+	if err != nil {
+		return &arch, err
+	}
+
+	if opts.Context == nil {
+		opts.Context = context.Background()
+	}
+
+	pth := parsed.Path
+	if parsed.Scheme == "s3" {
+		// Inside s3, all paths start _without_ the leading /
+		if len(pth) > 0 && pth[0] == '/' {
+			pth = pth[1:]
+		}
+		arch.backend, err = makeS3Backend(parsed.Host, pth, opts)
+	} else if parsed.Scheme == "file" {
+		pth = path.Join(parsed.Host, pth)
+		arch.backend = makeFsBackend(pth, opts)
+	} else if parsed.Scheme == "http" || parsed.Scheme == "https" {
+		arch.backend = makeHttpBackend(parsed, opts)
+	} else if parsed.Scheme == "mock" {
+		arch.backend = makeMockBackend(opts)
+	} else if parsed.Scheme == "fmock" {
+		arch.backend = makeFailingMockBackend(opts)
+	} else {
+		err = errors.New("unknown URL scheme: '" + parsed.Scheme + "'")
 	}
 
 	var err error
@@ -439,13 +536,30 @@ func Connect(u string, opts ArchiveOptions) (*Archive, error) {
 		return &arch, err
 	}
 
-	if opts.CacheConfig.Cache {
-		cache, innerErr := MakeArchiveBucketCache(opts.CacheConfig)
-		if innerErr != nil {
-			return &arch, innerErr
+	if opts.CachePath != "" {
+		// Set up a <= ~10GiB LRU cache for history archives files
+		haunter := fscache.NewLRUHaunterStrategy(
+			fscache.NewLRUHaunter(0, 10<<30, time.Minute /* frequency check */),
+		)
+
+		// Wipe any existing cache on startup
+		os.RemoveAll(opts.CachePath)
+		fs, err := fscache.NewFs(opts.CachePath, 0755 /* drwxr-xr-x */)
+
+		if err != nil {
+			return &arch, errors.Wrapf(err,
+				"creating cache at '%s' with mode 0755 failed",
+				opts.CachePath)
 		}
 
-		arch.cache = cache
+		cache, err := fscache.NewCacheWithHaunter(fs, haunter)
+		if err != nil {
+			return &arch, errors.Wrapf(err,
+				"creating cache at '%s' failed",
+				opts.CachePath)
+		}
+
+		arch.cache = &archiveBucketCache{cache, opts.CachePath, sync.Map{}}
 	}
 
 	arch.stats = archiveStats{backendName: u}
