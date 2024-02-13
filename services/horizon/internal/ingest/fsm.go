@@ -595,6 +595,11 @@ func addHistoryArchiveStatsMetrics(s *system, stats []historyarchive.ArchiveStat
 				"source": historyServerStat.GetBackendName(),
 				"type":   "cache_hits"}).
 			Add(float64(historyServerStat.GetCacheHits()))
+		s.Metrics().HistoryArchiveStatsCounter.
+			With(prometheus.Labels{
+				"source": historyServerStat.GetBackendName(),
+				"type":   "cache_bandwidth"}).
+			Add(float64(historyServerStat.GetCacheBandwidth()))
 	}
 }
 

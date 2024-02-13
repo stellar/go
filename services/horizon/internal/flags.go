@@ -51,6 +51,9 @@ const (
 	NetworkPassphraseFlagName = "network-passphrase"
 	// HistoryArchiveURLsFlagName is the command line flag for specifying the history archive URLs
 	HistoryArchiveURLsFlagName = "history-archive-urls"
+	// HistoryArchiveCaching is the flag for controlling whether or not there's
+	// an on-disk cache for history archive downloads
+	HistoryArchiveCachingFlagName = "history-archive-caching"
 	// NetworkFlagName is the command line flag for specifying the "network"
 	NetworkFlagName = "network"
 	// EnableIngestionFilteringFlagName is the command line flag for enabling the experimental ingestion filtering feature (now enabled by default)
@@ -236,11 +239,7 @@ func Flags() (*Config, support.ConfigOptions) {
 			OptType:     types.Bool,
 			FlagDefault: true,
 			Required:    false,
-			Usage: `when enabled, Horizon ingestion will instruct the captive
-			              core invocation to use an external db url for ledger states rather than in memory(RAM).\n 
-						  Will result in several GB of space shifting out of RAM and to the external db persistence.\n
-						  The external db url is determined by the presence of DATABASE parameter in the captive-core-config-path or\n
-						  or if absent, the db will default to sqlite and the db file will be stored at location derived from captive-core-storage-path parameter.`,
+			Usage:       `when enabled, Horizon ingestion will instruct the captive core invocation to use an external db url for ledger states rather than in memory(RAM). Will result in several GB of space shifting out of RAM and to the external db persistence. The external db url is determined by the presence of DATABASE parameter in the captive-core-config-path or if absent, the db will default to sqlite and the db file will be stored at location derived from captive-core-storage-path parameter.`,
 			CustomSetValue: func(opt *support.ConfigOption) error {
 				if val := viper.GetBool(opt.Name); val {
 					config.CaptiveCoreConfigUseDB = val
@@ -370,6 +369,14 @@ func Flags() (*Config, support.ConfigOptions) {
 				return nil
 			},
 			Usage:          "comma-separated list of stellar history archives to connect with",
+			UsedInCommands: IngestionCommands,
+		},
+		&support.ConfigOption{
+			Name:           HistoryArchiveCachingFlagName,
+			ConfigKey:      &config.HistoryArchiveCaching,
+			OptType:        types.Bool,
+			FlagDefault:    true,
+			Usage:          "adds caching for history archive downloads (requires an add'l 10GB of disk space on mainnet)",
 			UsedInCommands: IngestionCommands,
 		},
 		&support.ConfigOption{

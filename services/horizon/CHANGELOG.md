@@ -3,7 +3,16 @@
 All notable changes to this project will be documented in this
 file. This project adheres to [Semantic Versioning](http://semver.org/).
 
-## Unreleased
+## 2.28.2
+
+### Fixed
+- History archive caching would cause file corruption in certain environments [5197](https://github.com/stellar/go/pull/5197)
+- Server error in claimable balance API when claimant, asset and cursor query params are supplied [5200](https://github.com/stellar/go/pull/5200)
+
+## 2.28.1
+
+### Fixed
+- Submitting transaction with a future gapped sequence number greater than 1 past current source account sequence, may result in delayed 60s timeout response, rather than expected HTTP 400 error response with `result_codes: {transaction: "tx_bad_seq"}` ([5191](https://github.com/stellar/go/pull/5191))
 
 ## 2.28.0
 

@@ -97,6 +97,7 @@ func initIngester(app *App) {
 		),
 		NetworkPassphrase:                    app.config.NetworkPassphrase,
 		HistoryArchiveURLs:                   app.config.HistoryArchiveURLs,
+		HistoryArchiveCaching:                app.config.HistoryArchiveCaching,
 		CheckpointFrequency:                  app.config.CheckpointFrequency,
 		StellarCoreURL:                       app.config.StellarCoreURL,
 		CaptiveCoreBinaryPath:                app.config.CaptiveCoreBinaryPath,
@@ -235,5 +236,6 @@ func initSubmissionSystem(app *App) {
 		DB: func(ctx context.Context) txsub.HorizonDB {
 			return &history.Q{SessionInterface: app.HorizonSession()}
 		},
+		LedgerState: app.ledgerState,
 	}
 }

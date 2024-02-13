@@ -27,6 +27,7 @@ type Config struct {
 	CaptiveCoreStoragePath      string
 	CaptiveCoreReuseStoragePath bool
 	CaptiveCoreConfigUseDB      bool
+	HistoryArchiveCaching       bool
 
 	StellarCoreURL string
 
