@@ -1,7 +1,6 @@
 package exporter
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/stellar/go/xdr"
@@ -35,7 +34,7 @@ func (f *LedgerMetaArchive) AddLedger(ledgerCloseMeta xdr.LedgerCloseMeta) error
 	}
 
 	if len(f.data.LedgerCloseMetas) > 0 {
-		lastSequence, _ := f.GetPreviousLedgerSequence()
+		lastSequence := f.data.LedgerCloseMetas[len(f.data.LedgerCloseMetas)-1].LedgerSequence()
 		if ledgerCloseMeta.LedgerSequence() != lastSequence+1 {
 			return fmt.Errorf("ledgers must be added sequentially: expected sequence %d, got %d",
 				lastSequence+1, ledgerCloseMeta.LedgerSequence())
@@ -58,14 +57,6 @@ func (f *LedgerMetaArchive) GetStartLedgerSequence() uint32 {
 // GetEndLedgerSequence returns the ending ledger sequence of the archive.
 func (f *LedgerMetaArchive) GetEndLedgerSequence() uint32 {
 	return uint32(f.data.EndSequence)
-}
-
-// GetPreviousLedgerSequence returns the sequence of the last ledger in the archive.
-func (f *LedgerMetaArchive) GetPreviousLedgerSequence() (uint32, error) {
-	if len(f.data.LedgerCloseMetas) == 0 {
-		return 0, errors.New("cannot retrieve previous ledger sequence: no ledgers have been added to the archive")
-	}
-	return f.data.LedgerCloseMetas[len(f.data.LedgerCloseMetas)-1].LedgerSequence(), nil
 }
 
 // GetBinaryData returns the marshaled binary representation of the archive's data.
