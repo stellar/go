@@ -49,13 +49,6 @@ destination_url = "gcs://your-bucket-name"
 [exporter_config]
 ledgers_per_file = 64
 files_per_partition = 10
-
-[stellar_core_config]
-  captive_core_toml_path = <path-to-captive-core-config-toml>
-  network_passphrase = "Test SDF Network ; September 2015"
-  history_archive_urls = <history-archive-urls>
-  stellar_core_binary_path = <stellar-core-binary-path>
-  captive_core_use_db = true
 ```
 
 ## Exported Files
