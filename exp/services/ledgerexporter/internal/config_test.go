@@ -120,7 +120,7 @@ func TestAdjustLedgerRangeBoundedMode(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.NoError(t, tt.config.adjustLedgerRange())
+			tt.config.adjustLedgerRange()
 			assert.EqualValues(t, tt.expected.StartLedger, tt.config.StartLedger)
 			assert.EqualValues(t, tt.expected.EndLedger, tt.config.EndLedger)
 		})
@@ -162,7 +162,7 @@ func TestAdjustLedgerRangeUnBoundedMode(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.NoError(t, tt.config.adjustLedgerRange())
+			tt.config.adjustLedgerRange()
 			assert.EqualValues(t, int(tt.expected.StartLedger), int(tt.config.StartLedger))
 			assert.EqualValues(t, int(tt.expected.EndLedger), int(tt.config.EndLedger))
 		})

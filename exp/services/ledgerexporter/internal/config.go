@@ -87,10 +87,7 @@ func (config *Config) LoadConfig() error {
 
 	// Validate and build the appropriate range
 	// TODO: Make it configurable
-	err = config.adjustLedgerRange()
-	if err != nil {
-		return errors.Wrap(err, "error validating ledger range")
-	}
+	config.adjustLedgerRange()
 
 	return nil
 }
@@ -131,7 +128,7 @@ func (config *Config) validateAndSetLedgerRange(latestNetworkLedger uint32) erro
 	return nil
 }
 
-func (config *Config) adjustLedgerRange() error {
+func (config *Config) adjustLedgerRange() {
 	logger.Infof("Requested ledger range start=%d, end=%d", config.StartLedger, config.EndLedger)
 
 	// Check if either the start or end ledger does not fall on the "LedgersPerFile" boundary
@@ -151,7 +148,6 @@ func (config *Config) adjustLedgerRange() error {
 	}
 
 	logger.Infof("Adjusted ledger range: start=%d, end=%d", config.StartLedger, config.EndLedger)
-	return nil
 }
 
 func (config *Config) GenerateCaptiveCoreConfig() ledgerbackend.CaptiveCoreConfig {
