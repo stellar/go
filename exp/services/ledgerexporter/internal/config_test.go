@@ -72,9 +72,9 @@ func TestValidateStartAndEndLedger(t *testing.T) {
 			config.StartLedger = tt.startLedger
 			config.EndLedger = tt.endLedger
 			if tt.errMsg != "" {
-				assert.Equal(t, tt.errMsg, validateAndSetLedgerRange(config, latestNetworkLedger).Error())
+				assert.Equal(t, tt.errMsg, config.validateAndSetLedgerRange(latestNetworkLedger).Error())
 			} else {
-				assert.NoError(t, validateAndSetLedgerRange(config, latestNetworkLedger))
+				assert.NoError(t, config.validateAndSetLedgerRange(latestNetworkLedger))
 			}
 		})
 	}
@@ -120,7 +120,7 @@ func TestAdjustLedgerRangeBoundedMode(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.NoError(t, adjustLedgerRange(tt.config))
+			assert.NoError(t, tt.config.adjustLedgerRange())
 			assert.EqualValues(t, tt.expected.StartLedger, tt.config.StartLedger)
 			assert.EqualValues(t, tt.expected.EndLedger, tt.config.EndLedger)
 		})
@@ -162,7 +162,7 @@ func TestAdjustLedgerRangeUnBoundedMode(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.NoError(t, adjustLedgerRange(tt.config))
+			assert.NoError(t, tt.config.adjustLedgerRange())
 			assert.EqualValues(t, int(tt.expected.StartLedger), int(tt.config.StartLedger))
 			assert.EqualValues(t, int(tt.expected.EndLedger), int(tt.config.EndLedger))
 		})
