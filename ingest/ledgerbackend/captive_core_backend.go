@@ -179,7 +179,8 @@ func NewCaptive(config CaptiveCoreConfig) (*CaptiveStellarCore, error) {
 			NetworkPassphrase:   config.NetworkPassphrase,
 			CheckpointFrequency: config.CheckpointFrequency,
 			ConnectOptions: storage.ConnectOptions{
-				Context: config.Context,
+				Context:   config.Context,
+				UserAgent: config.UserAgent,
 			},
 		},
 	)
@@ -221,7 +222,6 @@ func (c *CaptiveStellarCore) coreSyncedMetric() float64 {
 
 	info, err := c.stellarCoreClient.Info(c.config.Context)
 	if err != nil {
-		c.config.Log.WithError(err).Warn("Cannot connect to Captive Stellar-Core HTTP server")
 		return -1
 	}
 
@@ -239,7 +239,6 @@ func (c *CaptiveStellarCore) coreVersionMetric() float64 {
 
 	info, err := c.stellarCoreClient.Info(c.config.Context)
 	if err != nil {
-		c.config.Log.WithError(err).Warn("Cannot connect to Captive Stellar-Core HTTP server")
 		return -1
 	}
 

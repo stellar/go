@@ -4341,8 +4341,10 @@ type StateArchivalSettings struct {
 	MaxEntriesToArchive Uint32
 	// Number of snapshots to use when calculating average BucketList size
 	BucketListSizeWindowSampleSize Uint32
+	// How often to sample the BucketList size for the average, in ledgers
+	BucketListWindowSamplePeriod Uint32
 	// Maximum number of bytes that we scan for eviction per ledger
-	EvictionScanSize Uint64
+	EvictionScanSize Uint32
 	// Lowest BucketList level to be scanned to evict entries
 	StartingEvictionScanLevel Uint32
 }
@@ -28604,7 +28606,8 @@ func (v *StateArchivalSettings) XdrRecurse(x XDR, name string) {
 	x.Marshal(x.Sprintf("%stempRentRateDenominator", name), XDR_Int64(&v.TempRentRateDenominator))
 	x.Marshal(x.Sprintf("%smaxEntriesToArchive", name), XDR_Uint32(&v.MaxEntriesToArchive))
 	x.Marshal(x.Sprintf("%sbucketListSizeWindowSampleSize", name), XDR_Uint32(&v.BucketListSizeWindowSampleSize))
-	x.Marshal(x.Sprintf("%sevictionScanSize", name), XDR_Uint64(&v.EvictionScanSize))
+	x.Marshal(x.Sprintf("%sbucketListWindowSamplePeriod", name), XDR_Uint32(&v.BucketListWindowSamplePeriod))
+	x.Marshal(x.Sprintf("%sevictionScanSize", name), XDR_Uint32(&v.EvictionScanSize))
 	x.Marshal(x.Sprintf("%sstartingEvictionScanLevel", name), XDR_Uint32(&v.StartingEvictionScanLevel))
 }
 func XDR_StateArchivalSettings(v *StateArchivalSettings) *StateArchivalSettings { return v }

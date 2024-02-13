@@ -29,7 +29,7 @@ func TestTransactionsProcessorTestSuiteLedger(t *testing.T) {
 func (s *TransactionsProcessorTestSuiteLedger) SetupTest() {
 	s.ctx = context.Background()
 	s.mockBatchInsertBuilder = &history.MockTransactionsBatchInsertBuilder{}
-	s.processor = NewTransactionProcessor(s.mockBatchInsertBuilder)
+	s.processor = NewTransactionProcessor(s.mockBatchInsertBuilder, false)
 }
 
 func (s *TransactionsProcessorTestSuiteLedger) TearDownTest() {

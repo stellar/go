@@ -18,6 +18,7 @@ type historyArchiveAdapterInterface interface {
 	GetLatestLedgerSequence() (uint32, error)
 	BucketListHash(sequence uint32) (xdr.Hash, error)
 	GetState(ctx context.Context, sequence uint32) (ingest.ChangeReader, error)
+	GetStats() []historyarchive.ArchiveStats
 }
 
 // newHistoryArchiveAdapter is a constructor to make a historyArchiveAdapter
@@ -70,4 +71,8 @@ func (haa *historyArchiveAdapter) GetState(ctx context.Context, sequence uint32)
 	}
 
 	return sr, nil
+}
+
+func (haa *historyArchiveAdapter) GetStats() []historyarchive.ArchiveStats {
+	return haa.archive.GetStats()
 }

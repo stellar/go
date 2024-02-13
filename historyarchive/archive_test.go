@@ -13,7 +13,10 @@ import (
 	"io"
 	"io/ioutil"
 	"math/big"
+	"net/http"
+	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -46,7 +49,13 @@ func GetTestS3Archive() *Archive {
 }
 
 func GetTestMockArchive() *Archive {
-	return MustConnect("mock://test", ArchiveOptions{CheckpointFrequency: DefaultCheckpointFrequency})
+	return MustConnect("mock://test",
+		ArchiveOptions{CheckpointFrequency: 64,
+			CacheConfig: CacheOptions{
+				Cache:    true,
+				Path:     filepath.Join(os.TempDir(), "history-archive-test-cache"),
+				MaxFiles: 5,
+			}})
 }
 
 var tmpdirs []string
@@ -181,6 +190,27 @@ func TestScan(t *testing.T) {
 	defer cleanup()
 	opts := testOptions()
 	GetRandomPopulatedArchive().Scan(opts)
+}
+
+func TestConfiguresHttpUserAgent(t *testing.T) {
+	var userAgent string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		userAgent = r.Header["User-Agent"][0]
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	archive, err := Connect(server.URL, ArchiveOptions{
+		ConnectOptions: storage.ConnectOptions{
+			UserAgent: "uatest",
+		},
+	})
+	assert.NoError(t, err)
+
+	ok, err := archive.BucketExists(EmptyXdrArrayHash())
+	assert.True(t, ok)
+	assert.NoError(t, err)
+	assert.Equal(t, userAgent, "uatest")
 }
 
 func TestScanSize(t *testing.T) {
@@ -530,6 +560,8 @@ func assertXdrEquals(t *testing.T, a, b xdrEntry) {
 func TestGetLedgers(t *testing.T) {
 	archive := GetTestMockArchive()
 	_, err := archive.GetLedgers(1000, 1002)
+	assert.Equal(t, uint32(1), archive.GetStats()[0].GetRequests())
+	assert.Equal(t, uint32(0), archive.GetStats()[0].GetDownloads())
 	assert.EqualError(t, err, "checkpoint 1023 is not published")
 
 	ledgerHeaders := []xdr.LedgerHeaderHistoryEntry{
@@ -614,9 +646,32 @@ func TestGetLedgers(t *testing.T) {
 		[]xdrEntry{results[0], results[1], results[2]},
 	)
 
+	stats := archive.GetStats()[0]
 	ledgers, err := archive.GetLedgers(1000, 1002)
+
 	assert.NoError(t, err)
 	assert.Len(t, ledgers, 3)
+	// it started at 1, incurred 6 requests total, 3 queries, 3 downloads
+	assert.EqualValues(t, 7, stats.GetRequests())
+	// started 0, incurred 3 file downloads
+	assert.EqualValues(t, 3, stats.GetDownloads())
+	for i, seq := range []uint32{1000, 1001, 1002} {
+		ledger := ledgers[seq]
+		assertXdrEquals(t, ledgerHeaders[i], ledger.Header)
+		assertXdrEquals(t, transactions[i], ledger.Transaction)
+		assertXdrEquals(t, results[i], ledger.TransactionResult)
+	}
+
+	// Repeat the same check but ensure the cache was used
+	ledgers, err = archive.GetLedgers(1000, 1002) // all cached
+	assert.NoError(t, err)
+	assert.Len(t, ledgers, 3)
+
+	// downloads should not change because of the cache
+	assert.EqualValues(t, 3, stats.GetDownloads())
+	// but requests increase because of 3 fetches to categories
+	assert.EqualValues(t, 10, stats.GetRequests())
+	assert.EqualValues(t, 3, stats.GetCacheHits())
 	for i, seq := range []uint32{1000, 1001, 1002} {
 		ledger := ledgers[seq]
 		assertXdrEquals(t, ledgerHeaders[i], ledger.Header)

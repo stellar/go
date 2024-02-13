@@ -124,13 +124,14 @@ func (h reingestHistoryRangeState) run(s *system) (transition, error) {
 		h.fromLedger = 2
 	}
 
-	startTime := time.Now()
+	var startTime time.Time
 
 	if h.force {
 		if t, err := h.prepareRange(s); err != nil {
 			return t, err
 		}
 
+		startTime = time.Now()
 		if err := s.historyQ.Begin(s.ctx); err != nil {
 			return stop(), errors.Wrap(err, "Error starting a transaction")
 		}
@@ -167,6 +168,7 @@ func (h reingestHistoryRangeState) run(s *system) (transition, error) {
 			return t, err
 		}
 
+		startTime = time.Now()
 		if err := s.historyQ.Begin(s.ctx); err != nil {
 			return stop(), errors.Wrap(err, "Error starting a transaction")
 		}
@@ -179,11 +181,6 @@ func (h reingestHistoryRangeState) run(s *system) (transition, error) {
 		if e := s.historyQ.Commit(); e != nil {
 			return stop(), errors.Wrap(e, commitErrMsg)
 		}
-	}
-
-	err := s.historyQ.RebuildTradeAggregationBuckets(s.ctx, h.fromLedger, h.toLedger, s.config.RoundingSlippageFilter)
-	if err != nil {
-		return stop(), errors.Wrap(err, "Error rebuilding trade aggregations")
 	}
 
 	log.WithFields(logpkg.F{

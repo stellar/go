@@ -130,7 +130,6 @@ var ingestVerifyRangeCmd = &cobra.Command{
 			HistoryArchiveURLs:       globalConfig.HistoryArchiveURLs,
 			CaptiveCoreBinaryPath:    globalConfig.CaptiveCoreBinaryPath,
 			CaptiveCoreConfigUseDB:   globalConfig.CaptiveCoreConfigUseDB,
-			RemoteCaptiveCoreURL:     globalConfig.RemoteCaptiveCoreURL,
 			CheckpointFrequency:      globalConfig.CheckpointFrequency,
 			CaptiveCoreToml:          globalConfig.CaptiveCoreToml,
 			CaptiveCoreStoragePath:   globalConfig.CaptiveCoreStoragePath,
@@ -213,7 +212,6 @@ var ingestStressTestCmd = &cobra.Command{
 			HistoryArchiveURLs:     globalConfig.HistoryArchiveURLs,
 			RoundingSlippageFilter: globalConfig.RoundingSlippageFilter,
 			CaptiveCoreBinaryPath:  globalConfig.CaptiveCoreBinaryPath,
-			RemoteCaptiveCoreURL:   globalConfig.RemoteCaptiveCoreURL,
 			CaptiveCoreConfigUseDB: globalConfig.CaptiveCoreConfigUseDB,
 		}
 
@@ -353,7 +351,6 @@ var ingestBuildStateCmd = &cobra.Command{
 			HistoryArchiveURLs:       globalConfig.HistoryArchiveURLs,
 			CaptiveCoreBinaryPath:    globalConfig.CaptiveCoreBinaryPath,
 			CaptiveCoreConfigUseDB:   globalConfig.CaptiveCoreConfigUseDB,
-			RemoteCaptiveCoreURL:     globalConfig.RemoteCaptiveCoreURL,
 			CheckpointFrequency:      globalConfig.CheckpointFrequency,
 			CaptiveCoreToml:          globalConfig.CaptiveCoreToml,
 			CaptiveCoreStoragePath:   globalConfig.CaptiveCoreStoragePath,

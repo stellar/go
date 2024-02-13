@@ -90,7 +90,6 @@ func TestLedgerEligibleForStateVerification(t *testing.T) {
 
 func TestNewSystem(t *testing.T) {
 	config := Config{
-		CoreSession:              &db.Session{DB: &sqlx.DB{}},
 		HistorySession:           &db.Session{DB: &sqlx.DB{}},
 		DisableStateVerification: true,
 		HistoryArchiveURLs:       []string{"https://history.stellar.org/prd/core-live/core_live_001"},
@@ -593,8 +592,8 @@ func (m *mockSystem) BuildState(sequence uint32, skipChecks bool) error {
 	return args.Error(0)
 }
 
-func (m *mockSystem) ReingestRange(ledgerRanges []history.LedgerRange, force bool) error {
-	args := m.Called(ledgerRanges, force)
+func (m *mockSystem) ReingestRange(ledgerRanges []history.LedgerRange, force bool, rebuildTradeAgg bool) error {
+	args := m.Called(ledgerRanges, force, rebuildTradeAgg)
 	return args.Error(0)
 }
 
@@ -606,6 +605,11 @@ func (m *mockSystem) BuildGenesisState() error {
 func (m *mockSystem) GetCurrentState() State {
 	args := m.Called()
 	return args.Get(0).(State)
+}
+
+func (m *mockSystem) RebuildTradeAggregationBuckets(fromLedger, toLedger uint32) error {
+	args := m.Called(fromLedger, toLedger)
+	return args.Error(0)
 }
 
 func (m *mockSystem) Shutdown() {

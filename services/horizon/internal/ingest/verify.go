@@ -157,8 +157,8 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool) error {
 				}
 			}
 		}
-		log.WithField("duration", duration).Info("State verification finished")
 
+		localLog.WithField("duration", duration).Info("State verification finished")
 	}()
 
 	localLog.Info("Creating state reader...")

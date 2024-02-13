@@ -413,14 +413,13 @@ func runDBReingestRange(ledgerRanges []history.LedgerRange, reingestForce bool, 
 		ReingestRetryBackoffSeconds: int(retryBackoffSeconds),
 		CaptiveCoreBinaryPath:       config.CaptiveCoreBinaryPath,
 		CaptiveCoreConfigUseDB:      config.CaptiveCoreConfigUseDB,
-		RemoteCaptiveCoreURL:        config.RemoteCaptiveCoreURL,
 		CaptiveCoreToml:             config.CaptiveCoreToml,
 		CaptiveCoreStoragePath:      config.CaptiveCoreStoragePath,
-		StellarCoreCursor:           config.CursorName,
 		StellarCoreURL:              config.StellarCoreURL,
 		RoundingSlippageFilter:      config.RoundingSlippageFilter,
 		EnableIngestionFiltering:    config.EnableIngestionFiltering,
 		MaxLedgerPerFlush:           maxLedgersPerFlush,
+		SkipSorobanIngestion:        config.SkipSorobanIngestion,
 	}
 
 	if ingestConfig.HistorySession, err = db.Open("postgres", config.DatabaseURL); err != nil {
@@ -445,7 +444,7 @@ func runDBReingestRange(ledgerRanges []history.LedgerRange, reingestForce bool, 
 	}
 	defer system.Shutdown()
 
-	err = system.ReingestRange(ledgerRanges, reingestForce)
+	err = system.ReingestRange(ledgerRanges, reingestForce, true)
 	if err != nil {
 		if _, ok := errors.Cause(err).(ingest.ErrReingestRangeConflict); ok {
 			return fmt.Errorf(`The range you have provided overlaps with Horizon's most recently ingested ledger.

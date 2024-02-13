@@ -395,6 +395,28 @@ func TestGenerateConfig(t *testing.T) {
 	}
 }
 
+func TestHistoryArchiveURLTrailingSlash(t *testing.T) {
+	httpPort := uint(8000)
+	peerPort := uint(8000)
+	logPath := "logPath"
+
+	params := CaptiveCoreTomlParams{
+		NetworkPassphrase:  "Public Global Stellar Network ; September 2015",
+		HistoryArchiveURLs: []string{"http://localhost:1170/"},
+		HTTPPort:           &httpPort,
+		PeerPort:           &peerPort,
+		LogPath:            &logPath,
+		Strict:             false,
+	}
+
+	captiveCoreToml, err := NewCaptiveCoreToml(params)
+	assert.NoError(t, err)
+	assert.Len(t, captiveCoreToml.HistoryEntries, 1)
+	for _, entry := range captiveCoreToml.HistoryEntries {
+		assert.Equal(t, "curl -sf http://localhost:1170/{0} -o {1}", entry.Get)
+	}
+}
+
 func TestExternalStorageConfigUsesDatabaseToml(t *testing.T) {
 	var err error
 	var captiveCoreToml *CaptiveCoreToml

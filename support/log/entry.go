@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 
 	gerr "github.com/go-errors/errors"
 	"github.com/sirupsen/logrus"
@@ -198,7 +197,7 @@ func (e *Entry) StartTest(level logrus.Level) func() []logrus.Entry {
 	e.entry.Logger.AddHook(hook)
 
 	old := e.entry.Logger.Out
-	e.entry.Logger.Out = ioutil.Discard
+	e.entry.Logger.Out = io.Discard
 
 	oldLevel := e.entry.Logger.GetLevel()
 	e.entry.Logger.SetLevel(level)
