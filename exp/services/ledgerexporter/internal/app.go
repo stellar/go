@@ -29,7 +29,7 @@ type App struct {
 }
 
 func NewApp() *App {
-	logger.SetLevel(supportlog.InfoLevel)
+	logger.SetLevel(supportlog.DebugLevel)
 
 	config := Config{}
 	err := config.LoadConfig()
