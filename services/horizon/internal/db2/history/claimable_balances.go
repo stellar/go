@@ -10,6 +10,7 @@ import (
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/guregu/null"
+
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
@@ -57,7 +58,7 @@ func (cbq ClaimableBalancesQuery) Cursor() (int64, string, error) {
 // ApplyCursor applies cursor to the given sql. For performance reason the limit
 // is not applied here. This allows us to hint the planner later to use the right
 // indexes.
-func applyClaimableBalancesQueriesCursor(sql sq.SelectBuilder, lCursor int64, rCursor string, order string) (sq.SelectBuilder, error) {
+func applyClaimableBalancesQueriesCursor(sql sq.SelectBuilder, tableName string, lCursor int64, rCursor string, order string) (sq.SelectBuilder, error) {
 	hasPagedLimit := false
 	if lCursor > 0 && rCursor != "" {
 		hasPagedLimit = true
@@ -67,17 +68,26 @@ func applyClaimableBalancesQueriesCursor(sql sq.SelectBuilder, lCursor int64, rC
 	case db2.OrderAscending:
 		if hasPagedLimit {
 			sql = sql.
-				Where(sq.Expr("(cb.last_modified_ledger, cb.id) > (?, ?)", lCursor, rCursor))
-
+				Where(
+					sq.Expr(
+						fmt.Sprintf("(%s.last_modified_ledger, %s.id) > (?, ?)", tableName, tableName),
+						lCursor, rCursor,
+					),
+				)
 		}
-		sql = sql.OrderBy("cb.last_modified_ledger asc, cb.id asc")
+		sql = sql.OrderBy(fmt.Sprintf("%s.last_modified_ledger asc, %s.id asc", tableName, tableName))
 	case db2.OrderDescending:
 		if hasPagedLimit {
 			sql = sql.
-				Where(sq.Expr("(cb.last_modified_ledger, cb.id) < (?, ?)", lCursor, rCursor))
+				Where(
+					sq.Expr(
+						fmt.Sprintf("(%s.last_modified_ledger, %s.id) < (?, ?)", tableName, tableName),
+						lCursor,
+						rCursor,
+					),
+				)
 		}
-
-		sql = sql.OrderBy("cb.last_modified_ledger desc, cb.id desc")
+		sql = sql.OrderBy(fmt.Sprintf("%s.last_modified_ledger desc, %s.id desc", tableName, tableName))
 	default:
 		return sql, errors.Errorf("invalid order: %s", order)
 	}
@@ -216,7 +226,7 @@ func (q *Q) GetClaimableBalances(ctx context.Context, query ClaimableBalancesQue
 		return nil, errors.Wrap(err, "error getting cursor")
 	}
 
-	sql, err := applyClaimableBalancesQueriesCursor(selectClaimableBalances, l, r, query.PageQuery.Order)
+	sql, err := applyClaimableBalancesQueriesCursor(selectClaimableBalances, "cb", l, r, query.PageQuery.Order)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not apply query to page")
 	}
@@ -242,10 +252,10 @@ func (q *Q) GetClaimableBalances(ctx context.Context, query ClaimableBalancesQue
 		// does not perform efficiently. Instead, use a subquery (with LIMIT) to retrieve claimable balances based on
 		// the claimant's address.
 
-		var selectClaimableBalanceClaimants = sq.Select("id").From("claimable_balance_claimants").
-			Where("destination = ?", query.Claimant.Address()).Limit(query.PageQuery.Limit)
+		var selectClaimableBalanceClaimants = sq.Select("claimable_balance_claimants.id").From("claimable_balance_claimants").
+			Where("claimable_balance_claimants.destination = ?", query.Claimant.Address()).Limit(query.PageQuery.Limit)
 
-		subSql, err := applyClaimableBalancesQueriesCursor(selectClaimableBalanceClaimants, l, r, query.PageQuery.Order)
+		subSql, err := applyClaimableBalancesQueriesCursor(selectClaimableBalanceClaimants, "claimable_balance_claimants", l, r, query.PageQuery.Order)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not apply subquery to page")
 		}
