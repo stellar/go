@@ -33,7 +33,7 @@ func TestLedgersProcessorTestSuiteLedger(t *testing.T) {
 	suite.Run(t, new(LedgersProcessorTestSuiteLedger))
 }
 
-func createTransaction(successful bool, numOps int) ingest.LedgerTransaction {
+func createTransaction(successful bool, numOps int, metaVer int32) ingest.LedgerTransaction {
 	code := xdr.TransactionResultCodeTxSuccess
 	if !successful {
 		code = xdr.TransactionResultCodeTxFailed
@@ -50,6 +50,32 @@ func createTransaction(successful bool, numOps int) ingest.LedgerTransaction {
 		})
 	}
 	sourceAID := xdr.MustAddress("GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY")
+
+	var txMeta xdr.TransactionMeta
+	switch metaVer {
+	case 3:
+		txMeta = xdr.TransactionMeta{
+			V: 3,
+			V3: &xdr.TransactionMetaV3{
+				Operations: make([]xdr.OperationMeta, numOps, numOps),
+			},
+		}
+	case 2:
+		txMeta = xdr.TransactionMeta{
+			V: 2,
+			V2: &xdr.TransactionMetaV2{
+				Operations: make([]xdr.OperationMeta, numOps, numOps),
+			},
+		}
+	case 1:
+		txMeta = xdr.TransactionMeta{
+			V: 1,
+			V1: &xdr.TransactionMetaV1{
+				Operations: make([]xdr.OperationMeta, numOps, numOps),
+			},
+		}
+	}
+
 	return ingest.LedgerTransaction{
 		Result: xdr.TransactionResultPair{
 			TransactionHash: xdr.Hash{},
@@ -70,12 +96,7 @@ func createTransaction(successful bool, numOps int) ingest.LedgerTransaction {
 				},
 			},
 		},
-		UnsafeMeta: xdr.TransactionMeta{
-			V: 2,
-			V2: &xdr.TransactionMetaV2{
-				Operations: make([]xdr.OperationMeta, numOps, numOps),
-			},
-		},
+		UnsafeMeta: txMeta,
 	}
 }
 
@@ -94,9 +115,9 @@ func (s *LedgersProcessorTestSuiteLedger) SetupTest() {
 	)
 
 	s.txs = []ingest.LedgerTransaction{
-		createTransaction(true, 1),
-		createTransaction(false, 3),
-		createTransaction(true, 4),
+		createTransaction(true, 1, 1),
+		createTransaction(false, 3, 2),
+		createTransaction(true, 4, 3),
 	}
 
 	s.successCount = 2
@@ -127,8 +148,8 @@ func (s *LedgersProcessorTestSuiteLedger) TestInsertLedgerSucceeds() {
 		},
 	}
 	nextTransactions := []ingest.LedgerTransaction{
-		createTransaction(true, 1),
-		createTransaction(false, 2),
+		createTransaction(true, 1, 2),
+		createTransaction(false, 2, 2),
 	}
 	for _, tx := range nextTransactions {
 		err := s.processor.ProcessTransaction(xdr.LedgerCloseMeta{

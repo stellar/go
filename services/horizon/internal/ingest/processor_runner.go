@@ -111,7 +111,6 @@ func buildChangeProcessor(
 	source ingestionSource,
 	ledgerSequence uint32,
 	networkPassphrase string,
-	skipSorobanIngestion bool,
 ) *groupChangeProcessors {
 	statsChangeProcessor := &statsChangeProcessor{
 		StatsChangeProcessor: changeStats,
@@ -145,13 +144,13 @@ func (s *ProcessorRunner) buildTransactionProcessor(ledgersProcessor *processors
 
 	processors := []horizonTransactionProcessor{
 		statsLedgerTransactionProcessor,
-		processors.NewEffectProcessor(accountLoader, s.historyQ.NewEffectBatchInsertBuilder(), s.config.NetworkPassphrase, s.config.SkipSorobanIngestion),
+		processors.NewEffectProcessor(accountLoader, s.historyQ.NewEffectBatchInsertBuilder(), s.config.NetworkPassphrase),
 		ledgersProcessor,
-		processors.NewOperationProcessor(s.historyQ.NewOperationBatchInsertBuilder(), s.config.NetworkPassphrase, s.config.SkipSorobanIngestion),
+		processors.NewOperationProcessor(s.historyQ.NewOperationBatchInsertBuilder(), s.config.NetworkPassphrase),
 		tradeProcessor,
 		processors.NewParticipantsProcessor(accountLoader,
 			s.historyQ.NewTransactionParticipantsBatchInsertBuilder(), s.historyQ.NewOperationParticipantBatchInsertBuilder()),
-		processors.NewTransactionProcessor(s.historyQ.NewTransactionBatchInsertBuilder(), s.config.SkipSorobanIngestion),
+		processors.NewTransactionProcessor(s.historyQ.NewTransactionBatchInsertBuilder(), s.config.SkipTxmeta),
 		processors.NewClaimableBalancesTransactionProcessor(cbLoader,
 			s.historyQ.NewTransactionClaimableBalanceBatchInsertBuilder(), s.historyQ.NewOperationClaimableBalanceBatchInsertBuilder()),
 		processors.NewLiquidityPoolsTransactionProcessor(lpLoader,
@@ -173,10 +172,7 @@ func (s *ProcessorRunner) buildFilteredOutProcessor() *groupTransactionProcessor
 	// when in online mode, the submission result processor must always run (regardless of filtering)
 	var p []horizonTransactionProcessor
 	if s.config.EnableIngestionFiltering {
-		txSubProc := processors.NewTransactionFilteredTmpProcessor(
-			s.historyQ.NewTransactionFilteredTmpBatchInsertBuilder(),
-			s.config.SkipSorobanIngestion,
-		)
+		txSubProc := processors.NewTransactionFilteredTmpProcessor(s.historyQ.NewTransactionFilteredTmpBatchInsertBuilder(), s.config.SkipTxmeta)
 		p = append(p, txSubProc)
 	}
 
@@ -239,7 +235,6 @@ func (s *ProcessorRunner) RunHistoryArchiveIngestion(
 		historyArchiveSource,
 		checkpointLedger,
 		s.config.NetworkPassphrase,
-		s.config.SkipSorobanIngestion,
 	)
 
 	if checkpointLedger == 1 {
@@ -498,7 +493,6 @@ func (s *ProcessorRunner) RunAllProcessorsOnLedger(ledger xdr.LedgerCloseMeta) (
 		ledgerSource,
 		ledger.LedgerSequence(),
 		s.config.NetworkPassphrase,
-		s.config.SkipSorobanIngestion,
 	)
 	err = s.runChangeProcessorOnLedger(groupChangeProcessors, ledger)
 	if err != nil {

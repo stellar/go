@@ -21,16 +21,14 @@ import (
 
 // OperationProcessor operations processor
 type OperationProcessor struct {
-	batch       history.OperationBatchInsertBuilder
-	network     string
-	skipSoroban bool
+	batch   history.OperationBatchInsertBuilder
+	network string
 }
 
-func NewOperationProcessor(batch history.OperationBatchInsertBuilder, network string, skipSoroban bool) *OperationProcessor {
+func NewOperationProcessor(batch history.OperationBatchInsertBuilder, network string) *OperationProcessor {
 	return &OperationProcessor{
-		batch:       batch,
-		network:     network,
-		skipSoroban: skipSoroban,
+		batch:   batch,
+		network: network,
 	}
 }
 
@@ -38,12 +36,11 @@ func NewOperationProcessor(batch history.OperationBatchInsertBuilder, network st
 func (p *OperationProcessor) ProcessTransaction(lcm xdr.LedgerCloseMeta, transaction ingest.LedgerTransaction) error {
 	for i, op := range transaction.Envelope.Operations() {
 		operation := transactionOperationWrapper{
-			index:              uint32(i),
-			transaction:        transaction,
-			operation:          op,
-			ledgerSequence:     lcm.LedgerSequence(),
-			network:            p.network,
-			skipSorobanDetails: p.skipSoroban,
+			index:          uint32(i),
+			transaction:    transaction,
+			operation:      op,
+			ledgerSequence: lcm.LedgerSequence(),
+			network:        p.network,
 		}
 		details, err := operation.Details()
 		if err != nil {
@@ -84,12 +81,11 @@ func (p *OperationProcessor) Flush(ctx context.Context, session db.SessionInterf
 
 // transactionOperationWrapper represents the data for a single operation within a transaction
 type transactionOperationWrapper struct {
-	index              uint32
-	transaction        ingest.LedgerTransaction
-	operation          xdr.Operation
-	ledgerSequence     uint32
-	network            string
-	skipSorobanDetails bool
+	index          uint32
+	transaction    ingest.LedgerTransaction
+	operation      xdr.Operation
+	ledgerSequence uint32
+	network        string
 }
 
 // ID returns the ID for the operation.
@@ -269,11 +265,6 @@ func (operation *transactionOperationWrapper) IsPayment() bool {
 	case xdr.OperationTypeAccountMerge:
 		return true
 	case xdr.OperationTypeInvokeHostFunction:
-		// #5175, may want to consider skipping this parsing of payment from contracts
-		// as part of eliding soroban ingestion aspects when DISABLE_SOROBAN_INGEST.
-		// but, may cause inconsistencies that aren't worth the gain,
-		// as payments won't be thoroughly accurate, i.e. a payment could have
-		// happened within a contract invoke.
 		diagnosticEvents, err := operation.transaction.GetDiagnosticEvents()
 		if err != nil {
 			return false
@@ -697,18 +688,11 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 			}
 			details["parameters"] = params
 
-			var balanceChanges []map[string]interface{}
-			var parseErr error
-			if operation.skipSorobanDetails {
-				// https://github.com/stellar/go/issues/5175
-				// intentionally toggle off parsing soroban meta into "asset_balance_changes"
-				balanceChanges = make([]map[string]interface{}, 0)
+			if balanceChanges, err := operation.parseAssetBalanceChangesFromContractEvents(); err != nil {
+				return nil, err
 			} else {
-				if balanceChanges, parseErr = operation.parseAssetBalanceChangesFromContractEvents(); parseErr != nil {
-					return nil, parseErr
-				}
+				details["asset_balance_changes"] = balanceChanges
 			}
-			details["asset_balance_changes"] = balanceChanges
 
 		case xdr.HostFunctionTypeHostFunctionTypeCreateContract:
 			args := op.HostFunction.MustCreateContract()

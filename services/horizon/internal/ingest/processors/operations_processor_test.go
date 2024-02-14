@@ -42,7 +42,6 @@ func (s *OperationsProcessorTestSuiteLedger) SetupTest() {
 	s.processor = NewOperationProcessor(
 		s.mockBatchInsertBuilder,
 		"test network",
-		false,
 	)
 }
 
@@ -376,65 +375,6 @@ func (s *OperationsProcessorTestSuiteLedger) TestOperationTypeInvokeHostFunction
 		}
 		s.Assert().Equal(found, 4, "should have one balance changed record for each of mint, burn, clawback, transfer")
 	})
-
-	s.T().Run("InvokeContractAssetBalancesElidedFromDetails", func(t *testing.T) {
-		randomIssuer := keypair.MustRandom()
-		randomAsset := xdr.MustNewCreditAsset("TESTING", randomIssuer.Address())
-		passphrase := "passphrase"
-		randomAccount := keypair.MustRandom().Address()
-		contractId := [32]byte{}
-		zeroContractStrKey, err := strkey.Encode(strkey.VersionByteContract, contractId[:])
-		s.Assert().NoError(err)
-
-		transferContractEvent := contractevents.GenerateEvent(contractevents.EventTypeTransfer, randomAccount, zeroContractStrKey, "", randomAsset, big.NewInt(10000000), passphrase)
-		burnContractEvent := contractevents.GenerateEvent(contractevents.EventTypeBurn, zeroContractStrKey, "", "", randomAsset, big.NewInt(10000000), passphrase)
-		mintContractEvent := contractevents.GenerateEvent(contractevents.EventTypeMint, "", zeroContractStrKey, randomAccount, randomAsset, big.NewInt(10000000), passphrase)
-		clawbackContractEvent := contractevents.GenerateEvent(contractevents.EventTypeClawback, zeroContractStrKey, "", randomAccount, randomAsset, big.NewInt(10000000), passphrase)
-
-		tx = ingest.LedgerTransaction{
-			UnsafeMeta: xdr.TransactionMeta{
-				V: 3,
-				V3: &xdr.TransactionMetaV3{
-					SorobanMeta: &xdr.SorobanTransactionMeta{
-						Events: []xdr.ContractEvent{
-							transferContractEvent,
-							burnContractEvent,
-							mintContractEvent,
-							clawbackContractEvent,
-						},
-					},
-				},
-			},
-		}
-		wrapper := transactionOperationWrapper{
-			skipSorobanDetails: true,
-			transaction:        tx,
-			operation: xdr.Operation{
-				SourceAccount: &source,
-				Body: xdr.OperationBody{
-					Type: xdr.OperationTypeInvokeHostFunction,
-					InvokeHostFunctionOp: &xdr.InvokeHostFunctionOp{
-						HostFunction: xdr.HostFunction{
-							Type: xdr.HostFunctionTypeHostFunctionTypeInvokeContract,
-							InvokeContract: &xdr.InvokeContractArgs{
-								ContractAddress: xdr.ScAddress{
-									Type:       xdr.ScAddressTypeScAddressTypeContract,
-									ContractId: &xdr.Hash{0x1, 0x2},
-								},
-								FunctionName: "foo",
-								Args:         xdr.ScVec{},
-							},
-						},
-					},
-				},
-			},
-			network: passphrase,
-		}
-
-		details, err := wrapper.Details()
-		s.Assert().NoError(err)
-		s.Assert().Len(details["asset_balance_changes"], 0, "for invokehostfn op, no asset balances should be in details when skip soroban is enabled")
-	})
 }
 
 func (s *OperationsProcessorTestSuiteLedger) assertInvokeHostFunctionParameter(parameters []map[string]string, paramPosition int, expectedType string, expectedVal xdr.ScVal) {
@@ -467,7 +407,7 @@ func (s *OperationsProcessorTestSuiteLedger) TestAddOperationSucceeds() {
 			Ed25519: *unmuxed.Ed25519,
 		},
 	}
-	firstTx := createTransaction(true, 1)
+	firstTx := createTransaction(true, 1, 2)
 	firstTx.Index = 1
 	firstTx.Envelope.Operations()[0].Body = xdr.OperationBody{
 		Type: xdr.OperationTypePayment,
@@ -478,8 +418,8 @@ func (s *OperationsProcessorTestSuiteLedger) TestAddOperationSucceeds() {
 		},
 	}
 	firstTx.Envelope.V1.Tx.SourceAccount = muxed
-	secondTx := createTransaction(false, 3)
-	thirdTx := createTransaction(true, 4)
+	secondTx := createTransaction(false, 3, 2)
+	thirdTx := createTransaction(true, 4, 2)
 
 	txs := []ingest.LedgerTransaction{
 		firstTx,
@@ -511,7 +451,7 @@ func (s *OperationsProcessorTestSuiteLedger) TestAddOperationFails() {
 			},
 		},
 	}
-	tx := createTransaction(true, 1)
+	tx := createTransaction(true, 1, 2)
 
 	s.mockBatchInsertBuilder.
 		On(
@@ -542,7 +482,7 @@ func (s *OperationsProcessorTestSuiteLedger) TestExecFails() {
 			},
 		},
 	}
-	tx := createTransaction(true, 1)
+	tx := createTransaction(true, 1, 2)
 
 	s.mockBatchInsertBuilder.
 		On(

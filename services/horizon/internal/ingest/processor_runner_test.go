@@ -180,7 +180,7 @@ func TestProcessorRunnerBuildChangeProcessor(t *testing.T) {
 	}
 
 	stats := &ingest.StatsChangeProcessor{}
-	processor := buildChangeProcessor(runner.historyQ, stats, ledgerSource, 123, "", false)
+	processor := buildChangeProcessor(runner.historyQ, stats, ledgerSource, 123, "")
 	assert.IsType(t, &groupChangeProcessors{}, processor)
 
 	assert.IsType(t, &statsChangeProcessor{}, processor.processors[0])
@@ -201,7 +201,7 @@ func TestProcessorRunnerBuildChangeProcessor(t *testing.T) {
 		filters:  &MockFilters{},
 	}
 
-	processor = buildChangeProcessor(runner.historyQ, stats, historyArchiveSource, 456, "", false)
+	processor = buildChangeProcessor(runner.historyQ, stats, historyArchiveSource, 456, "")
 	assert.IsType(t, &groupChangeProcessors{}, processor)
 
 	assert.IsType(t, &statsChangeProcessor{}, processor.processors[0])
@@ -271,7 +271,6 @@ func TestProcessorRunnerWithFilterEnabled(t *testing.T) {
 	config := Config{
 		NetworkPassphrase:        network.PublicNetworkPassphrase,
 		EnableIngestionFiltering: true,
-		SkipSorobanIngestion:     false,
 	}
 
 	q := &mockDBQ{}
