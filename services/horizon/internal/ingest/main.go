@@ -236,7 +236,7 @@ func NewSystem(config Config) (System, error) {
 			CheckpointFrequency: config.CheckpointFrequency,
 			ConnectOptions: storage.ConnectOptions{
 				Context:   ctx,
-				UserAgent: fmt.Sprintf("horizon/%s golang/%s", apkg.Version(), runtime.Version())
+				UserAgent: fmt.Sprintf("horizon/%s golang/%s", apkg.Version(), runtime.Version()),
 			},
 			CachePath: cachingPath,
 		},

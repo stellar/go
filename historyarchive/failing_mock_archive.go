@@ -4,6 +4,7 @@ import (
 	"io"
 
 	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/support/storage"
 )
 
 // FailingMockArchiveBackend is a mocking backend that will fail only when you
@@ -55,9 +56,14 @@ func (b *FailingMockArchiveBackend) CanListFiles() bool {
 	return false
 }
 
-func makeFailingMockBackend(opts ConnectOptions) ArchiveBackend {
-	b := new(FailingMockArchiveBackend)
+func (b *FailingMockArchiveBackend) Close() error {
 	b.files = make(map[string][]byte)
+	return nil
+}
+
+func makeFailingMockBackend() storage.Storage {
+	b := new(FailingMockArchiveBackend)
+	b.Close()
 	return b
 }
 

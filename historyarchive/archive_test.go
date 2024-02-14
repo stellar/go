@@ -54,7 +54,7 @@ func GetTestS3Archive() *Archive {
 }
 
 func GetTestMockArchive() *Archive {
-	return MustConnect("mock://test", ConnectOptions{
+	return MustConnect("mock://test", ArchiveOptions{
 		CheckpointFrequency: 64,
 		CachePath:           cachePath,
 	})
@@ -640,7 +640,7 @@ func TestStressfulGetLedgers(t *testing.T) {
 }
 
 func TestCacheDeadlocks(t *testing.T) {
-	archive := MustConnect("fmock://test", ConnectOptions{
+	archive := MustConnect("fmock://test", ArchiveOptions{
 		CheckpointFrequency: 64,
 		CachePath:           cachePath,
 	})

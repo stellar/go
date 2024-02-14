@@ -551,6 +551,8 @@ func ConnectBackend(u string, opts storage.ConnectOptions) (storage.Storage, err
 
 	if parsed.Scheme == "mock" {
 		backend = makeMockBackend()
+	} else if parsed.Scheme == "fmock" {
+		backend = makeFailingMockBackend()
 	} else {
 		backend, err = storage.ConnectBackend(u, opts)
 	}
