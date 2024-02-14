@@ -34,20 +34,18 @@ func NewApp() *App {
 	config := Config{}
 	err := config.LoadConfig()
 	logFatalIf(err, "Could not load configuration")
-	destinationStorage := NewDestinationStorage(&config)
-	backend := NewLedgerBackend(config)
 
-	exportManager := NewExportManager(config.ExporterConfig, backend)
+	app := &App{config: config}
+	app.init()
+	return app
+}
 
-	uploader := NewUploader(destinationStorage, exportManager.GetMetaArchiveChannel())
-
-	return &App{
-		config:             config,
-		backend:            backend,
-		destinationStorage: destinationStorage,
-		exportManager:      exportManager,
-		uploader:           uploader,
-	}
+func (a *App) init() {
+	a.ctx, a.cancel = context.WithCancel(context.Background())
+	a.destinationStorage = NewDestinationStorage(a.ctx, &a.config)
+	a.backend = NewLedgerBackend(a.ctx, a.config)
+	a.exportManager = NewExportManager(a.config.ExporterConfig, a.backend)
+	a.uploader = NewUploader(a.destinationStorage, a.exportManager.GetMetaArchiveChannel())
 }
 
 func (a *App) Close() {
@@ -57,7 +55,6 @@ func (a *App) Close() {
 }
 
 func (a *App) Run() {
-	a.ctx, a.cancel = context.WithCancel(context.Background())
 	defer a.cancel()
 
 	var wg sync.WaitGroup
@@ -68,7 +65,7 @@ func (a *App) Run() {
 
 		err := a.uploader.Run(a.ctx)
 		if err != nil && err != context.Canceled {
-			logger.Errorf("Error executing uploader: %v", err)
+			logger.Errorf("Error executing Uploader: %v", err)
 			a.cancel()
 			return
 		}
@@ -110,15 +107,15 @@ func (a *App) Run() {
 	logger.Info("Shutting down ledger-exporter.")
 }
 
-func NewDestinationStorage(config *Config) DataStore {
-	destinationStorage, err := NewDataStore(fmt.Sprintf("%s/%s", config.DestinationURL, config.Network))
+func NewDestinationStorage(ctx context.Context, config *Config) DataStore {
+	destinationStorage, err := NewDataStore(ctx, fmt.Sprintf("%s/%s", config.DestinationURL, config.Network))
 	logFatalIf(err, "Could not connect to destination storage")
 	return destinationStorage
 }
 
 // NewLedgerBackend Creates and initializes captive core ledger backend
 // Currently, only supports captive-core as ledger backend
-func NewLedgerBackend(config Config) ledgerbackend.LedgerBackend {
+func NewLedgerBackend(ctx context.Context, config Config) ledgerbackend.LedgerBackend {
 	captiveConfig := config.GenerateCaptiveCoreConfig()
 
 	// Create a new captive core backend
@@ -132,7 +129,7 @@ func NewLedgerBackend(config Config) ledgerbackend.LedgerBackend {
 		ledgerRange = ledgerbackend.BoundedRange(config.StartLedger, config.EndLedger)
 	}
 
-	err = backend.PrepareRange(context.Background(), ledgerRange)
+	err = backend.PrepareRange(ctx, ledgerRange)
 	logFatalIf(err, "Could not prepare captive core ledger backend")
 	return backend
 }

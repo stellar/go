@@ -15,6 +15,7 @@ import (
 
 // GCSDataStore implements DataStore for GCS
 type GCSDataStore struct {
+	ctx    context.Context
 	client *storage.Client
 	bucket *storage.BucketHandle
 	prefix string
@@ -23,7 +24,7 @@ type GCSDataStore struct {
 // GetFile retrieves a file from the GCS bucket.
 func (b *GCSDataStore) GetFile(filePath string) (io.ReadCloser, error) {
 	filePath = path.Join(b.prefix, filePath)
-	r, err := b.bucket.Object(filePath).NewReader(context.Background())
+	r, err := b.bucket.Object(filePath).NewReader(b.ctx)
 	if err != nil {
 		if gcsError, ok := err.(*googleapi.Error); ok {
 			logger.Errorf("GCS error: %s %s", gcsError.Message, gcsError.Body)
@@ -70,7 +71,7 @@ func (b *GCSDataStore) PutFile(filePath string, in io.ReadCloser) error {
 // Size retrieves the size of a file in the GCS bucket.
 func (b *GCSDataStore) Size(pth string) (int64, error) {
 	pth = path.Join(b.prefix, pth)
-	attrs, err := b.bucket.Object(pth).Attrs(context.Background())
+	attrs, err := b.bucket.Object(pth).Attrs(b.ctx)
 	if err == storage.ErrObjectNotExist {
 		err = os.ErrNotExist
 	}
@@ -97,7 +98,7 @@ func (b *GCSDataStore) putFile(filePath string, in io.ReadCloser, conditions *st
 	if conditions != nil {
 		o = o.If(*conditions)
 	}
-	w := o.NewWriter(context.Background())
+	w := o.NewWriter(b.ctx)
 	if _, err := io.Copy(w, in); err != nil {
 		_ = in.Close()
 		return errors.Wrapf(err, "failed to put file: %s", filePath)

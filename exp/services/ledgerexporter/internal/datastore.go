@@ -23,7 +23,7 @@ type DataStore interface {
 
 // NewDataStore creates a new DataStore based on the destination URL.
 // Currently, only accepts GCS URLs.
-func NewDataStore(destinationURL string) (DataStore, error) {
+func NewDataStore(ctx context.Context, destinationURL string) (DataStore, error) {
 	parsed, err := url.Parse(destinationURL)
 	if err != nil {
 		return nil, err
@@ -53,5 +53,5 @@ func NewDataStore(destinationURL string) (DataStore, error) {
 		return nil, errors.Wrap(err, "failed to retrieve bucket attributes")
 	}
 
-	return &GCSDataStore{client: client, bucket: bucket, prefix: prefix}, nil
+	return &GCSDataStore{ctx: ctx, client: client, bucket: bucket, prefix: prefix}, nil
 }
