@@ -43,7 +43,8 @@ func TestAccountLoader(t *testing.T) {
 
 	q := &Q{session}
 	for _, address := range addresses {
-		internalId, err := loader.GetNow(address)
+		var internalId int64
+		internalId, err = loader.GetNow(address)
 		assert.NoError(t, err)
 		var account Account
 		assert.NoError(t, q.AccountByAddress(context.Background(), &account, address))

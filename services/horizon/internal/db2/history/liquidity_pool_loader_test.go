@@ -46,7 +46,8 @@ func TestLiquidityPoolLoader(t *testing.T) {
 
 	q := &Q{session}
 	for _, id := range ids {
-		internalID, err := loader.GetNow(id)
+		var internalID int64
+		internalID, err = loader.GetNow(id)
 		assert.NoError(t, err)
 		lp, err := q.LiquidityPoolByID(context.Background(), id)
 		assert.NoError(t, err)

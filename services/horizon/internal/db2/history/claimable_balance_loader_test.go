@@ -2,6 +2,7 @@ package history
 
 import (
 	"context"
+	"database/sql/driver"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -52,7 +53,8 @@ func TestClaimableBalanceLoader(t *testing.T) {
 	q := &Q{session}
 	for i, id := range ids {
 		future := futures[i]
-		internalID, err := future.Value()
+		var internalID driver.Value
+		internalID, err = future.Value()
 		assert.NoError(t, err)
 		cb, err := q.ClaimableBalanceByID(context.Background(), id)
 		assert.NoError(t, err)

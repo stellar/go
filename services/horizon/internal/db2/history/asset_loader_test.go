@@ -88,7 +88,8 @@ func TestAssetLoader(t *testing.T) {
 
 	q := &Q{session}
 	for _, key := range keys {
-		internalID, err := loader.GetNow(key)
+		var internalID int64
+		internalID, err = loader.GetNow(key)
 		assert.NoError(t, err)
 		var assetXDR xdr.Asset
 		if key.Type == "native" {
