@@ -3,6 +3,15 @@
 All notable changes to this project will be documented in this
 file. This project adheres to [Semantic Versioning](http://semver.org/).
 
+## 2.28.3
+
+### Added
+- New optional config `SKIP_TXMETA` ([5189](https://github.com/stellar/go/issues/5189)). Defaults to `FALSE`, when `TRUE` the following will occur:
+  * history_transactions.tx_meta column will have serialized xdr that equates to empty for any protocol version, such as for `xdr.TransactionMeta.V3`, `Operations`, `TxChangesAfter`, `TxChangesBefore` will be empty arrays and `SorobanMeta` will be nil. 
+
+### Breaking Changes
+- Removed `DISABLE_SOROBAN_INGEST` configuration parameter, use the new `SKIP_TXMETA` parameter instead.
+
 ## 2.28.2
 
 ### Fixed
