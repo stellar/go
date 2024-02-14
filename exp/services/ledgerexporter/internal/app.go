@@ -61,10 +61,11 @@ func (a *App) Run() {
 	defer a.cancel()
 
 	var wg sync.WaitGroup
-	wg.Add(3)
+	wg.Add(2)
 
 	go func() {
 		defer wg.Done()
+
 		err := a.uploader.Run(a.ctx)
 		if err != nil && err != context.Canceled {
 			logger.Errorf("Error executing uploader: %v", err)
@@ -73,33 +74,26 @@ func (a *App) Run() {
 		}
 	}()
 
-	doneCh := make(chan struct{})
 	go func() {
 		defer wg.Done()
-		defer close(doneCh)
 
 		err := a.exportManager.Run(a.ctx, a.config.StartLedger, a.config.EndLedger)
 		if err != nil {
 			logger.Errorf("Error executing ExportManager: %v", err)
+			a.cancel()
 			return
 		}
 	}()
 
 	go func() {
-		wg.Done()
-
 		// Handle OS signals to gracefully terminate the service
 		sigCh := make(chan os.Signal, 1)
 		signal.Notify(sigCh, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
 		for {
 			select {
-			case <-doneCh:
-				a.cancel()
-				return
 			case <-a.ctx.Done():
 				logger.Infof("Received context done signal")
-				a.cancel()
 				return
 			case sig := <-sigCh:
 				logger.Infof("Received signal: %v", sig)
@@ -113,7 +107,7 @@ func (a *App) Run() {
 
 	a.Close()
 
-	logger.Info("Shutting down ledgerexporter..")
+	logger.Info("Shutting down ledger-exporter.")
 }
 
 func NewDestinationStorage(config *Config) DataStore {

@@ -95,7 +95,7 @@ func (e *exportManager) Run(ctx context.Context, startLedger, endLedger uint32) 
 	for nextLedger := startLedger; endLedger < 1 || nextLedger <= endLedger; {
 		select {
 		case <-ctx.Done():
-			logger.Info("ExportManager stopping..")
+			logger.Info("ExportManager stopped")
 			return ctx.Err()
 		default:
 			ledgerCloseMeta, err := e.backend.GetLedger(ctx, nextLedger)
@@ -110,6 +110,6 @@ func (e *exportManager) Run(ctx context.Context, startLedger, endLedger uint32) 
 			nextLedger++
 		}
 	}
-
+	logger.Infof("ExportManager has completed exporting the ledger range [%d - %d]", startLedger, endLedger)
 	return nil
 }

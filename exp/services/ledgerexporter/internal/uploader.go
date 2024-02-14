@@ -3,7 +3,6 @@ package exporter
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"io"
 
 	"github.com/pkg/errors"
@@ -68,7 +67,8 @@ func (u *uploader) Run(ctx context.Context) error {
 			return ctx.Err()
 		case metaObject, ok := <-u.metaArchiveCh:
 			if !ok {
-				return fmt.Errorf("export object channel closed, stopping uploader")
+				logger.Info("Export object channel closed, stopping uploader")
+				return nil
 			}
 			//Upload the received LedgerMetaArchive.
 			err := u.Upload(metaObject)
