@@ -97,7 +97,8 @@ func TestAssetLoader(t *testing.T) {
 		} else {
 			assetXDR = xdr.MustNewCreditAsset(key.Code, key.Issuer)
 		}
-		assetID, err := q.GetAssetID(context.Background(), assetXDR)
+		var assetID int64
+		assetID, err = q.GetAssetID(context.Background(), assetXDR)
 		assert.NoError(t, err)
 		assert.Equal(t, assetID, internalID)
 	}

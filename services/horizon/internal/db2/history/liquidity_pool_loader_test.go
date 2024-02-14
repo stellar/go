@@ -49,7 +49,8 @@ func TestLiquidityPoolLoader(t *testing.T) {
 		var internalID int64
 		internalID, err = loader.GetNow(id)
 		assert.NoError(t, err)
-		lp, err := q.LiquidityPoolByID(context.Background(), id)
+		var lp HistoryLiquidityPool
+		lp, err = q.LiquidityPoolByID(context.Background(), id)
 		assert.NoError(t, err)
 		assert.Equal(t, lp.PoolID, id)
 		assert.Equal(t, lp.InternalID, internalID)

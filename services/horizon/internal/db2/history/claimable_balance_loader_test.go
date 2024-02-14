@@ -56,7 +56,8 @@ func TestClaimableBalanceLoader(t *testing.T) {
 		var internalID driver.Value
 		internalID, err = future.Value()
 		assert.NoError(t, err)
-		cb, err := q.ClaimableBalanceByID(context.Background(), id)
+		var cb HistoryClaimableBalance
+		cb, err = q.ClaimableBalanceByID(context.Background(), id)
 		assert.NoError(t, err)
 		assert.Equal(t, cb.BalanceID, id)
 		assert.Equal(t, cb.InternalID, internalID)
