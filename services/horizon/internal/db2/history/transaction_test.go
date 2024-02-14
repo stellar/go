@@ -81,7 +81,8 @@ func TestTransactionByLiquidityPool(t *testing.T) {
 	lpLoader := NewLiquidityPoolLoader()
 	lpTransactionBuilder := q.NewTransactionLiquidityPoolBatchInsertBuilder()
 	tt.Assert.NoError(lpTransactionBuilder.Add(txID, lpLoader.GetFuture(liquidityPoolID)))
-	tt.Assert.NoError(lpLoader.Exec(tt.Ctx, q))
+	_, err = lpLoader.Exec(tt.Ctx, q)
+	tt.Assert.NoError(err)
 	tt.Assert.NoError(lpTransactionBuilder.Exec(tt.Ctx, q))
 	tt.Assert.NoError(q.Commit())
 

@@ -34,7 +34,12 @@ func TestLiquidityPoolLoader(t *testing.T) {
 		assert.Equal(t, future, duplicateFuture)
 	}
 
-	assert.NoError(t, loader.Exec(context.Background(), session))
+	result, err := loader.Exec(context.Background(), session)
+	assert.NoError(t, err)
+	assert.Equal(t, LoaderResult{
+		Total:    100,
+		Inserted: 100,
+	}, result)
 	assert.Panics(t, func() {
 		loader.GetFuture("not-present")
 	})
@@ -49,7 +54,7 @@ func TestLiquidityPoolLoader(t *testing.T) {
 		assert.Equal(t, lp.InternalID, internalID)
 	}
 
-	_, err := loader.GetNow("not present")
+	_, err = loader.GetNow("not present")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), `was not found`)
 }

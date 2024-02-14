@@ -95,10 +95,15 @@ func (a *LiquidityPoolLoader) lookupKeys(ctx context.Context, q *Q, ids []string
 // Exec will look up all the internal history ids for the liquidity pools registered in the loader.
 // If there are no internal history ids for a given set of liquidity pools, Exec will insert rows
 // into the history_liquidity_pools table.
-func (a *LiquidityPoolLoader) Exec(ctx context.Context, session db.SessionInterface) error {
+// Exec returns the number of liquidity pools registered in the loader and the number of liquidity pools
+// inserted into the history_liquidity_pools table.
+func (a *LiquidityPoolLoader) Exec(ctx context.Context, session db.SessionInterface) (LoaderResult, error) {
 	a.sealed = true
 	if len(a.set) == 0 {
-		return nil
+		return LoaderResult{
+			Total:    0,
+			Inserted: 0,
+		}, nil
 	}
 	q := &Q{session}
 	ids := make([]string, 0, len(a.set))
@@ -107,7 +112,7 @@ func (a *LiquidityPoolLoader) Exec(ctx context.Context, session db.SessionInterf
 	}
 
 	if err := a.lookupKeys(ctx, q, ids); err != nil {
-		return err
+		return LoaderResult{}, err
 	}
 
 	insert := 0
@@ -119,7 +124,10 @@ func (a *LiquidityPoolLoader) Exec(ctx context.Context, session db.SessionInterf
 		insert++
 	}
 	if insert == 0 {
-		return nil
+		return LoaderResult{
+			Total:    len(a.set),
+			Inserted: 0,
+		}, nil
 	}
 	ids = ids[:insert]
 	// sort entries before inserting rows to prevent deadlocks on acquiring a ShareLock
@@ -140,10 +148,14 @@ func (a *LiquidityPoolLoader) Exec(ctx context.Context, session db.SessionInterf
 		},
 	)
 	if err != nil {
-		return err
+		return LoaderResult{}, err
 	}
 
-	return a.lookupKeys(ctx, q, ids)
+	err = a.lookupKeys(ctx, q, ids)
+	return LoaderResult{
+		Total:    len(a.set),
+		Inserted: insert,
+	}, err
 }
 
 // LiquidityPoolLoaderStub is a stub wrapper around LiquidityPoolLoader which allows

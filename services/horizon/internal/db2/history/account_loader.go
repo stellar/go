@@ -99,13 +99,26 @@ func (a *AccountLoader) lookupKeys(ctx context.Context, q *Q, addresses []string
 	return nil
 }
 
+// LoaderResult describes the result of executing a history lookup id loader
+type LoaderResult struct {
+	// Total is the number of elements registered to the loader
+	Total int
+	// Inserted is the number of elements inserted into the lookup table
+	Inserted int
+}
+
 // Exec will look up all the history account ids for the addresses registered in the loader.
 // If there are no history account ids for a given set of addresses, Exec will insert rows
 // into the history_accounts table to establish a mapping between address and history account id.
-func (a *AccountLoader) Exec(ctx context.Context, session db.SessionInterface) error {
+// Exec returns the number of addresses registered in the loader and the number of addresses
+// inserted into the history_accounts table.
+func (a *AccountLoader) Exec(ctx context.Context, session db.SessionInterface) (LoaderResult, error) {
 	a.sealed = true
 	if len(a.set) == 0 {
-		return nil
+		return LoaderResult{
+			Total:    0,
+			Inserted: 0,
+		}, nil
 	}
 	q := &Q{session}
 	addresses := make([]string, 0, len(a.set))
@@ -114,7 +127,7 @@ func (a *AccountLoader) Exec(ctx context.Context, session db.SessionInterface) e
 	}
 
 	if err := a.lookupKeys(ctx, q, addresses); err != nil {
-		return err
+		return LoaderResult{}, err
 	}
 
 	insert := 0
@@ -126,7 +139,10 @@ func (a *AccountLoader) Exec(ctx context.Context, session db.SessionInterface) e
 		insert++
 	}
 	if insert == 0 {
-		return nil
+		return LoaderResult{
+			Total:    len(a.set),
+			Inserted: 0,
+		}, nil
 	}
 	addresses = addresses[:insert]
 	// sort entries before inserting rows to prevent deadlocks on acquiring a ShareLock
@@ -147,10 +163,14 @@ func (a *AccountLoader) Exec(ctx context.Context, session db.SessionInterface) e
 		},
 	)
 	if err != nil {
-		return err
+		return LoaderResult{}, err
 	}
 
-	return a.lookupKeys(ctx, q, addresses)
+	err = a.lookupKeys(ctx, q, addresses)
+	return LoaderResult{
+		Total:    len(a.set),
+		Inserted: insert,
+	}, err
 }
 
 type bulkInsertField struct {

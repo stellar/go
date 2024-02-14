@@ -76,7 +76,12 @@ func TestAssetLoader(t *testing.T) {
 		assert.Equal(t, future, duplicateFuture)
 	}
 
-	assert.NoError(t, loader.Exec(context.Background(), session))
+	result, err := loader.Exec(context.Background(), session)
+	assert.NoError(t, err)
+	assert.Equal(t, LoaderResult{
+		Total:    100,
+		Inserted: 100,
+	}, result)
 	assert.Panics(t, func() {
 		loader.GetFuture(AssetKey{Type: "invalid"})
 	})
@@ -96,7 +101,7 @@ func TestAssetLoader(t *testing.T) {
 		assert.Equal(t, assetID, internalID)
 	}
 
-	_, err := loader.GetNow(AssetKey{})
+	_, err = loader.GetNow(AssetKey{})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), `was not found`)
 }

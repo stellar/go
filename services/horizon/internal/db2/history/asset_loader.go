@@ -131,10 +131,15 @@ func (a *AssetLoader) lookupKeys(ctx context.Context, q *Q, keys []AssetKey) err
 // Exec will look up all the history asset ids for the assets registered in the loader.
 // If there are no history asset ids for a given set of assets, Exec will insert rows
 // into the history_assets table.
-func (a *AssetLoader) Exec(ctx context.Context, session db.SessionInterface) error {
+// Exec returns the number of assets registered in the loader and the number of assets
+// inserted into the history_assets table.
+func (a *AssetLoader) Exec(ctx context.Context, session db.SessionInterface) (LoaderResult, error) {
 	a.sealed = true
 	if len(a.set) == 0 {
-		return nil
+		return LoaderResult{
+			Total:    0,
+			Inserted: 0,
+		}, nil
 	}
 	q := &Q{session}
 	keys := make([]AssetKey, 0, len(a.set))
@@ -143,7 +148,7 @@ func (a *AssetLoader) Exec(ctx context.Context, session db.SessionInterface) err
 	}
 
 	if err := a.lookupKeys(ctx, q, keys); err != nil {
-		return err
+		return LoaderResult{}, err
 	}
 
 	assetTypes := make([]string, 0, len(a.set)-len(a.ids))
@@ -166,7 +171,10 @@ func (a *AssetLoader) Exec(ctx context.Context, session db.SessionInterface) err
 		insert++
 	}
 	if insert == 0 {
-		return nil
+		return LoaderResult{
+			Total:    len(a.set),
+			Inserted: 0,
+		}, nil
 	}
 	keys = keys[:insert]
 
@@ -194,10 +202,14 @@ func (a *AssetLoader) Exec(ctx context.Context, session db.SessionInterface) err
 		},
 	)
 	if err != nil {
-		return err
+		return LoaderResult{}, err
 	}
 
-	return a.lookupKeys(ctx, q, keys)
+	err = a.lookupKeys(ctx, q, keys)
+	return LoaderResult{
+		Total:    len(a.set),
+		Inserted: insert,
+	}, err
 }
 
 // AssetLoaderStub is a stub wrapper around AssetLoader which allows

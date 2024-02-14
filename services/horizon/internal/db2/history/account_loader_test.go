@@ -31,7 +31,12 @@ func TestAccountLoader(t *testing.T) {
 		assert.Equal(t, future, duplicateFuture)
 	}
 
-	assert.NoError(t, loader.Exec(context.Background(), session))
+	result, err := loader.Exec(context.Background(), session)
+	assert.NoError(t, err)
+	assert.Equal(t, LoaderResult{
+		Total:    100,
+		Inserted: 100,
+	}, result)
 	assert.Panics(t, func() {
 		loader.GetFuture(keypair.MustRandom().Address())
 	})
@@ -46,7 +51,7 @@ func TestAccountLoader(t *testing.T) {
 		assert.Equal(t, account.Address, address)
 	}
 
-	_, err := loader.GetNow("not present")
+	_, err = loader.GetNow("not present")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), `was not found`)
 }

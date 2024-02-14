@@ -42,7 +42,8 @@ func TestEffectsForLiquidityPool(t *testing.T) {
 		details,
 	))
 
-	tt.Assert.NoError(accountLoader.Exec(tt.Ctx, q))
+	_, err = accountLoader.Exec(tt.Ctx, q)
+	tt.Assert.NoError(err)
 	tt.Assert.NoError(builder.Exec(tt.Ctx, q))
 
 	// Insert Liquidity Pool history
@@ -51,7 +52,8 @@ func TestEffectsForLiquidityPool(t *testing.T) {
 
 	operationBuilder := q.NewOperationLiquidityPoolBatchInsertBuilder()
 	tt.Assert.NoError(operationBuilder.Add(opID, lpLoader.GetFuture(liquidityPoolID)))
-	tt.Assert.NoError(lpLoader.Exec(tt.Ctx, q))
+	_, err = lpLoader.Exec(tt.Ctx, q)
+	tt.Assert.NoError(err)
 	tt.Assert.NoError(operationBuilder.Exec(tt.Ctx, q))
 
 	tt.Assert.NoError(q.Commit())
@@ -152,7 +154,8 @@ func TestEffectsForTrustlinesSponsorshipEmptyAssetType(t *testing.T) {
 			bytes,
 		))
 	}
-	tt.Require.NoError(accountLoader.Exec(tt.Ctx, q))
+	_, err := accountLoader.Exec(tt.Ctx, q)
+	tt.Require.NoError(err)
 	tt.Require.NoError(builder.Exec(tt.Ctx, q))
 	tt.Assert.NoError(q.Commit())
 

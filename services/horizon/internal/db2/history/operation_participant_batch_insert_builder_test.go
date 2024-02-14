@@ -22,7 +22,8 @@ func TestAddOperationParticipants(t *testing.T) {
 	err := builder.Add(240518172673, accountLoader.GetFuture(address))
 	tt.Assert.NoError(err)
 
-	tt.Assert.NoError(accountLoader.Exec(tt.Ctx, q))
+	_, err = accountLoader.Exec(tt.Ctx, q)
+	tt.Assert.NoError(err)
 	tt.Assert.NoError(builder.Exec(tt.Ctx, q))
 	tt.Assert.NoError(q.Commit())
 
