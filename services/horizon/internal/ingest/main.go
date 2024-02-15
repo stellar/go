@@ -88,8 +88,9 @@ type Config struct {
 	CaptiveCoreConfigUseDB bool
 	NetworkPassphrase      string
 
-	HistorySession     db.SessionInterface
-	HistoryArchiveURLs []string
+	HistorySession        db.SessionInterface
+	HistoryArchiveURLs    []string
+	HistoryArchiveCaching bool
 
 	DisableStateVerification     bool
 	EnableReapLookupTables       bool
@@ -223,6 +224,11 @@ type system struct {
 func NewSystem(config Config) (System, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
+	cachingPath := ""
+	if config.HistoryArchiveCaching {
+		cachingPath = path.Join(config.CaptiveCoreStoragePath, "bucket-cache")
+	}
+
 	archive, err := historyarchive.NewArchivePool(
 		config.HistoryArchiveURLs,
 		historyarchive.ArchiveOptions{
@@ -230,13 +236,9 @@ func NewSystem(config Config) (System, error) {
 			CheckpointFrequency: config.CheckpointFrequency,
 			ConnectOptions: storage.ConnectOptions{
 				Context:   ctx,
-				UserAgent: fmt.Sprintf("horizon/%s golang/%s", apkg.Version(), runtime.Version())},
-			CacheConfig: historyarchive.CacheOptions{
-				Cache:    true,
-				Path:     path.Join(config.CaptiveCoreStoragePath, "bucket-cache"),
-				Log:      log.WithField("subservice", "ha-cache"),
-				MaxFiles: 150,
+				UserAgent: fmt.Sprintf("horizon/%s golang/%s", apkg.Version(), runtime.Version()),
 			},
+			CachePath: cachingPath,
 		},
 	)
 	if err != nil {

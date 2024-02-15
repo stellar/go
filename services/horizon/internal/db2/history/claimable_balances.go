@@ -67,17 +67,17 @@ func applyClaimableBalancesQueriesCursor(sql sq.SelectBuilder, lCursor int64, rC
 	case db2.OrderAscending:
 		if hasPagedLimit {
 			sql = sql.
-				Where(sq.Expr("(last_modified_ledger, id) > (?, ?)", lCursor, rCursor))
+				Where(sq.Expr("(cb.last_modified_ledger, cb.id) > (?, ?)", lCursor, rCursor))
 
 		}
-		sql = sql.OrderBy("last_modified_ledger asc, id asc")
+		sql = sql.OrderBy("cb.last_modified_ledger asc, cb.id asc")
 	case db2.OrderDescending:
 		if hasPagedLimit {
 			sql = sql.
-				Where(sq.Expr("(last_modified_ledger, id) < (?, ?)", lCursor, rCursor))
+				Where(sq.Expr("(cb.last_modified_ledger, cb.id) < (?, ?)", lCursor, rCursor))
 		}
 
-		sql = sql.OrderBy("last_modified_ledger desc, id desc")
+		sql = sql.OrderBy("cb.last_modified_ledger desc, cb.id desc")
 	default:
 		return sql, errors.Errorf("invalid order: %s", order)
 	}
