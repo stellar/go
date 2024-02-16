@@ -18,12 +18,17 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/stellar/go/support/storage"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
+
+var cachePath = filepath.Join(os.TempDir(), "history-archive-test-cache")
 
 func GetTestS3Archive() *Archive {
 	mx := big.NewInt(0xffffffff)
@@ -49,13 +54,10 @@ func GetTestS3Archive() *Archive {
 }
 
 func GetTestMockArchive() *Archive {
-	return MustConnect("mock://test",
-		ArchiveOptions{CheckpointFrequency: 64,
-			CacheConfig: CacheOptions{
-				Cache:    true,
-				Path:     filepath.Join(os.TempDir(), "history-archive-test-cache"),
-				MaxFiles: 5,
-			}})
+	return MustConnect("mock://test", ArchiveOptions{
+		CheckpointFrequency: 64,
+		CachePath:           cachePath,
+	})
 }
 
 var tmpdirs []string
@@ -563,7 +565,95 @@ func TestGetLedgers(t *testing.T) {
 	assert.Equal(t, uint32(1), archive.GetStats()[0].GetRequests())
 	assert.Equal(t, uint32(0), archive.GetStats()[0].GetDownloads())
 	assert.EqualError(t, err, "checkpoint 1023 is not published")
+	ledgerHeaders, transactions, results := makeFakeArchive(t, archive)
 
+	stats := archive.GetStats()[0]
+	ledgers, err := archive.GetLedgers(1000, 1002)
+
+	assert.NoError(t, err)
+	assert.Len(t, ledgers, 3)
+	// it started at 1, incurred 6 requests total: 3 queries + 3 downloads
+	assert.EqualValues(t, 7, stats.GetRequests())
+	// started 0, incurred 3 file downloads
+	assert.EqualValues(t, 3, stats.GetDownloads())
+	assert.EqualValues(t, 0, stats.GetCacheHits())
+	for i, seq := range []uint32{1000, 1001, 1002} {
+		ledger := ledgers[seq]
+		assertXdrEquals(t, ledgerHeaders[i], ledger.Header)
+		assertXdrEquals(t, transactions[i], ledger.Transaction)
+		assertXdrEquals(t, results[i], ledger.TransactionResult)
+	}
+
+	// Repeat the same check but ensure the cache was used
+	ledgers, err = archive.GetLedgers(1000, 1002) // all cached
+	assert.NoError(t, err)
+	assert.Len(t, ledgers, 3)
+
+	// downloads should not change because of the cache
+	assert.EqualValues(t, 3, stats.GetDownloads())
+	// but requests increase because of 3 fetches to categories
+	assert.EqualValues(t, 10, stats.GetRequests())
+	assert.EqualValues(t, 3, stats.GetCacheHits())
+	for i, seq := range []uint32{1000, 1001, 1002} {
+		ledger := ledgers[seq]
+		assertXdrEquals(t, ledgerHeaders[i], ledger.Header)
+		assertXdrEquals(t, transactions[i], ledger.Transaction)
+		assertXdrEquals(t, results[i], ledger.TransactionResult)
+	}
+
+	// remove the cached files without informing it and ensure it fills up again
+	require.NoError(t, os.RemoveAll(cachePath))
+	ledgers, err = archive.GetLedgers(1000, 1002) // uncached, refetch
+	assert.NoError(t, err)
+	assert.Len(t, ledgers, 3)
+
+	// downloads should increase again
+	assert.EqualValues(t, 6, stats.GetDownloads())
+	assert.EqualValues(t, 3, stats.GetCacheHits())
+}
+
+func TestStressfulGetLedgers(t *testing.T) {
+	archive := GetTestMockArchive()
+	ledgerHeaders, transactions, results := makeFakeArchive(t, archive)
+
+	var wg sync.WaitGroup
+	for i := 0; i < 10; i++ {
+		wg.Add(1)
+
+		go func() {
+			time.Sleep(time.Millisecond) // encourage interleaved execution
+			ledgers, err := archive.GetLedgers(1000, 1002)
+			assert.NoError(t, err)
+			assert.Len(t, ledgers, 3)
+			for i, seq := range []uint32{1000, 1001, 1002} {
+				ledger := ledgers[seq]
+				assertXdrEquals(t, ledgerHeaders[i], ledger.Header)
+				assertXdrEquals(t, transactions[i], ledger.Transaction)
+				assertXdrEquals(t, results[i], ledger.TransactionResult)
+			}
+
+			wg.Done()
+		}()
+	}
+
+	require.Eventually(t, func() bool { wg.Wait(); return true }, time.Minute, time.Second)
+}
+
+func TestCacheDeadlocks(t *testing.T) {
+	archive := MustConnect("fmock://test", ArchiveOptions{
+		CheckpointFrequency: 64,
+		CachePath:           cachePath,
+	})
+	makeFakeArchive(t, archive)
+	_, err := archive.GetLedgers(1000, 1002)
+	require.Error(t, err)
+}
+
+func makeFakeArchive(t *testing.T, archive *Archive) (
+	[]xdr.LedgerHeaderHistoryEntry,
+	[]xdr.TransactionHistoryEntry,
+	[]xdr.TransactionHistoryResultEntry,
+) {
 	ledgerHeaders := []xdr.LedgerHeaderHistoryEntry{
 		{
 			Hash: xdr.Hash{1},
@@ -646,36 +736,5 @@ func TestGetLedgers(t *testing.T) {
 		[]xdrEntry{results[0], results[1], results[2]},
 	)
 
-	stats := archive.GetStats()[0]
-	ledgers, err := archive.GetLedgers(1000, 1002)
-
-	assert.NoError(t, err)
-	assert.Len(t, ledgers, 3)
-	// it started at 1, incurred 6 requests total, 3 queries, 3 downloads
-	assert.EqualValues(t, 7, stats.GetRequests())
-	// started 0, incurred 3 file downloads
-	assert.EqualValues(t, 3, stats.GetDownloads())
-	for i, seq := range []uint32{1000, 1001, 1002} {
-		ledger := ledgers[seq]
-		assertXdrEquals(t, ledgerHeaders[i], ledger.Header)
-		assertXdrEquals(t, transactions[i], ledger.Transaction)
-		assertXdrEquals(t, results[i], ledger.TransactionResult)
-	}
-
-	// Repeat the same check but ensure the cache was used
-	ledgers, err = archive.GetLedgers(1000, 1002) // all cached
-	assert.NoError(t, err)
-	assert.Len(t, ledgers, 3)
-
-	// downloads should not change because of the cache
-	assert.EqualValues(t, 3, stats.GetDownloads())
-	// but requests increase because of 3 fetches to categories
-	assert.EqualValues(t, 10, stats.GetRequests())
-	assert.EqualValues(t, 3, stats.GetCacheHits())
-	for i, seq := range []uint32{1000, 1001, 1002} {
-		ledger := ledgers[seq]
-		assertXdrEquals(t, ledgerHeaders[i], ledger.Header)
-		assertXdrEquals(t, transactions[i], ledger.Transaction)
-		assertXdrEquals(t, results[i], ledger.TransactionResult)
-	}
+	return ledgerHeaders, transactions, results
 }

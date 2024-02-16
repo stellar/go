@@ -137,3 +137,8 @@ func (m *MockArchiveStats) GetCacheHits() uint32 {
 	a := m.Called()
 	return a.Get(0).(uint32)
 }
+
+func (m *MockArchiveStats) GetCacheBandwidth() uint64 {
+	a := m.Called()
+	return a.Get(0).(uint64)
+}
