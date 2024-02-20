@@ -1,11 +1,11 @@
 package exporter
 
 import (
-	"bytes"
 	"compress/gzip"
 	"fmt"
 	"io"
 
+	xdr3 "github.com/stellar/go-xdr/xdr3"
 	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/storage"
@@ -72,31 +72,31 @@ func GetLatestLedgerSequenceFromHistoryArchives(historyArchivesURLs []string) (u
 	return 0, errors.New("failed to retrieve the latest ledger sequence from any history archive")
 }
 
-// Compress takes a byte buffer and returns gzip compressed data.
-func Compress(data []byte) ([]byte, error) {
-	var compressed bytes.Buffer
-	w := gzip.NewWriter(&compressed)
-	if _, err := w.Write(data); err != nil {
-		return nil, errors.Wrap(err, "failed to write compressed data")
-	}
-	if err := w.Close(); err != nil {
-		return nil, errors.Wrap(err, "failed to close writer")
-	}
-	return compressed.Bytes(), nil
+type XDRGzipEncoder struct {
+	XdrPayload interface{}
 }
 
-// Decompress takes a gzip compressed byte buffer and returns the decompressed data.
-func Decompress(data []byte) ([]byte, error) {
-	buf := bytes.NewBuffer(data)
-	r, err := gzip.NewReader(buf)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to create gzip reader")
-	}
-	defer r.Close()
+func (g *XDRGzipEncoder) WriteTo(w io.Writer) (int64, error) {
+	gw := gzip.NewWriter(w)
+	defer gw.Close()
+	n, err := xdr3.Marshal(gw, g.XdrPayload)
+	return int64(n), err
+}
 
-	decompressed, err := io.ReadAll(r)
+type XDRGzipDecoder struct {
+	XdrPayload interface{}
+}
+
+func (d *XDRGzipDecoder) ReadFrom(r io.Reader) (int64, error) {
+	gr, err := gzip.NewReader(r)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to read decompressed data")
+		return 0, err
 	}
-	return decompressed, nil
+	defer gr.Close()
+
+	n, err := xdr3.Unmarshal(gr, d.XdrPayload)
+	if err != nil {
+		return int64(n), err
+	}
+	return int64(n), nil
 }

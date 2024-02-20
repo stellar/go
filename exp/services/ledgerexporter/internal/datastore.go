@@ -14,8 +14,8 @@ import (
 // DataStore defines an interface for interacting with data storage
 type DataStore interface {
 	GetFile(path string) (io.ReadCloser, error)
-	PutFile(key string, closer io.ReadCloser) error
-	PutFileIfNotExists(string, io.ReadCloser) error
+	PutFile(key string, closer io.WriterTo) error
+	PutFileIfNotExists(string, io.WriterTo) error
 	Exists(path string) (bool, error)
 	Size(path string) (int64, error)
 	Close() error

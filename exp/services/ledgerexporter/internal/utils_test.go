@@ -1,9 +1,11 @@
 package exporter
 
 import (
+	"bytes"
 	"fmt"
 	"testing"
 
+	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -41,5 +43,45 @@ func TestGetObjectKeyFromSequenceNumber(t *testing.T) {
 				assert.Equal(t, tc.expectedKey, key)
 			}
 		})
+	}
+}
+
+func createTestLedgerCloseMetaBatch(startSeq, endSeq uint32, count int) xdr.LedgerCloseMetaBatch {
+	var ledgerCloseMetas []xdr.LedgerCloseMeta
+	for i := 0; i < count; i++ {
+		ledgerCloseMetas = append(ledgerCloseMetas, createLedgerCloseMeta(startSeq+uint32(i)))
+	}
+	return xdr.LedgerCloseMetaBatch{
+		StartSequence:    xdr.Uint32(startSeq),
+		EndSequence:      xdr.Uint32(endSeq),
+		LedgerCloseMetas: ledgerCloseMetas,
+	}
+}
+
+func TestEncodeDecodeLedgerCloseMetaBatch(t *testing.T) {
+	testData := createTestLedgerCloseMetaBatch(1000, 1005, 6)
+
+	// Encode the test data
+	var encoder XDRGzipEncoder
+	encoder.XdrPayload = testData
+
+	var buf bytes.Buffer
+	_, err := encoder.WriteTo(&buf)
+	assert.NoError(t, err)
+
+	// Decode the encoded data
+	var decoder XDRGzipDecoder
+	decoder.XdrPayload = &xdr.LedgerCloseMetaBatch{}
+
+	_, err = decoder.ReadFrom(&buf)
+	assert.NoError(t, err)
+
+	// Check if the decoded data matches the original test data
+	decodedData := decoder.XdrPayload.(*xdr.LedgerCloseMetaBatch)
+	assert.Equal(t, testData.StartSequence, decodedData.StartSequence)
+	assert.Equal(t, testData.EndSequence, decodedData.EndSequence)
+	assert.Equal(t, len(testData.LedgerCloseMetas), len(decodedData.LedgerCloseMetas))
+	for i := range testData.LedgerCloseMetas {
+		assert.Equal(t, testData.LedgerCloseMetas[i], decodedData.LedgerCloseMetas[i])
 	}
 }

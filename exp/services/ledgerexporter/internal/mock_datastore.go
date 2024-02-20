@@ -26,12 +26,12 @@ func (m *MockDataStore) GetFile(path string) (io.ReadCloser, error) {
 	return args.Get(0).(io.ReadCloser), args.Error(1)
 }
 
-func (m *MockDataStore) PutFile(path string, in io.ReadCloser) error {
+func (m *MockDataStore) PutFile(path string, in io.WriterTo) error {
 	args := m.Called(path, in)
 	return args.Error(0)
 }
 
-func (m *MockDataStore) PutFileIfNotExists(path string, in io.ReadCloser) error {
+func (m *MockDataStore) PutFileIfNotExists(path string, in io.WriterTo) error {
 	args := m.Called(path, in)
 	return args.Error(0)
 }

@@ -36,7 +36,7 @@ func (b *GCSDataStore) GetFile(filePath string) (io.ReadCloser, error) {
 }
 
 // PutFileIfNotExists uploads a file to GCS only if it doesn't already exist.
-func (b *GCSDataStore) PutFileIfNotExists(filePath string, in io.ReadCloser) error {
+func (b *GCSDataStore) PutFileIfNotExists(filePath string, in io.WriterTo) error {
 	err := b.putFile(filePath, in, &storage.Conditions{DoesNotExist: true})
 	if err != nil {
 		if gcsError, ok := err.(*googleapi.Error); ok {
@@ -55,7 +55,7 @@ func (b *GCSDataStore) PutFileIfNotExists(filePath string, in io.ReadCloser) err
 }
 
 // PutFile uploads a file to GCS
-func (b *GCSDataStore) PutFile(filePath string, in io.ReadCloser) error {
+func (b *GCSDataStore) PutFile(filePath string, in io.WriterTo) error {
 	err := b.putFile(filePath, in, nil) // No conditions for regular PutFile
 
 	if err != nil {
@@ -92,15 +92,14 @@ func (b *GCSDataStore) Close() error {
 	return b.client.Close()
 }
 
-func (b *GCSDataStore) putFile(filePath string, in io.ReadCloser, conditions *storage.Conditions) error {
+func (b *GCSDataStore) putFile(filePath string, in io.WriterTo, conditions *storage.Conditions) error {
 	filePath = path.Join(b.prefix, filePath)
 	o := b.bucket.Object(filePath)
 	if conditions != nil {
 		o = o.If(*conditions)
 	}
 	w := o.NewWriter(b.ctx)
-	if _, err := io.Copy(w, in); err != nil {
-		_ = in.Close()
+	if _, err := in.WriteTo(w); err != nil {
 		return errors.Wrapf(err, "failed to put file: %s", filePath)
 	}
 	return w.Close()

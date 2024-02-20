@@ -1,9 +1,7 @@
 package exporter
 
 import (
-	"bytes"
 	"context"
-	"io"
 
 	"github.com/pkg/errors"
 )
@@ -31,18 +29,7 @@ func NewUploader(destination DataStore, metaArchiveCh chan *LedgerMetaArchive) U
 func (u *uploader) Upload(metaArchive *LedgerMetaArchive) error {
 	logger.Infof("Uploading: %s", metaArchive.GetObjectKey())
 
-	blob, err := metaArchive.GetBinaryData()
-	if err != nil {
-		return errors.Wrap(err, "failed to get binary data")
-	}
-
-	compressedBlob, err := Compress(blob)
-	if err != nil {
-		return errors.Wrap(err, "failed to compress data")
-	}
-
-	err = u.destination.PutFileIfNotExists(metaArchive.GetObjectKey(),
-		io.NopCloser(bytes.NewReader(compressedBlob)))
+	err := u.destination.PutFileIfNotExists(metaArchive.GetObjectKey(), &XDRGzipEncoder{XdrPayload: &metaArchive.data})
 	if err != nil {
 		return errors.Wrapf(err, "error uploading %s", metaArchive.GetObjectKey())
 	}
