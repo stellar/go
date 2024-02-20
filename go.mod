@@ -93,10 +93,10 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/mod v0.13.0 // indirect
 	golang.org/x/tools v0.14.0 // indirect
-	gopkg.in/djherbis/atime.v1 v1.0.0 // indirect
-	gopkg.in/djherbis/stream.v1 v1.3.1 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20240122161410-6c6643bf1457 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240116215550-a9fa1716bcac // indirect
+	gopkg.in/djherbis/atime.v1 v1.0.0 // indirect
+	gopkg.in/djherbis/stream.v1 v1.3.1 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 )
 
