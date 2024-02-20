@@ -56562,116 +56562,6 @@ func (s ConfigSettingEntry) xdrType() {}
 
 var _ xdrType = (*ConfigSettingEntry)(nil)
 
-// LedgerCloseMetaBatch is an XDR Struct defines as:
-//
-//	struct LedgerCloseMetaBatch
-//	 {
-//	     // starting ledger sequence number in the batch
-//	     uint32 startSequence;
-//
-//	     // ending ledger sequence number in the batch
-//	     uint32 endSequence;
-//
-//	     // Ledger close meta for each ledger within the batch
-//	     LedgerCloseMeta ledgerCloseMetas<>;
-//	 };
-type LedgerCloseMetaBatch struct {
-	StartSequence    Uint32
-	EndSequence      Uint32
-	LedgerCloseMetas []LedgerCloseMeta
-}
-
-// EncodeTo encodes this value using the Encoder.
-func (s *LedgerCloseMetaBatch) EncodeTo(e *xdr.Encoder) error {
-	var err error
-	if err = s.StartSequence.EncodeTo(e); err != nil {
-		return err
-	}
-	if err = s.EndSequence.EncodeTo(e); err != nil {
-		return err
-	}
-	if _, err = e.EncodeUint(uint32(len(s.LedgerCloseMetas))); err != nil {
-		return err
-	}
-	for i := 0; i < len(s.LedgerCloseMetas); i++ {
-		if err = s.LedgerCloseMetas[i].EncodeTo(e); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-var _ decoderFrom = (*LedgerCloseMetaBatch)(nil)
-
-// DecodeFrom decodes this value using the Decoder.
-func (s *LedgerCloseMetaBatch) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
-	if maxDepth == 0 {
-		return 0, fmt.Errorf("decoding LedgerCloseMetaBatch: %w", ErrMaxDecodingDepthReached)
-	}
-	maxDepth -= 1
-	var err error
-	var n, nTmp int
-	nTmp, err = s.StartSequence.DecodeFrom(d, maxDepth)
-	n += nTmp
-	if err != nil {
-		return n, fmt.Errorf("decoding Uint32: %w", err)
-	}
-	nTmp, err = s.EndSequence.DecodeFrom(d, maxDepth)
-	n += nTmp
-	if err != nil {
-		return n, fmt.Errorf("decoding Uint32: %w", err)
-	}
-	var l uint32
-	l, nTmp, err = d.DecodeUint()
-	n += nTmp
-	if err != nil {
-		return n, fmt.Errorf("decoding LedgerCloseMeta: %w", err)
-	}
-	s.LedgerCloseMetas = nil
-	if l > 0 {
-		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
-			return n, fmt.Errorf("decoding LedgerCloseMeta: length (%d) exceeds remaining input length (%d)", l, il)
-		}
-		s.LedgerCloseMetas = make([]LedgerCloseMeta, l)
-		for i := uint32(0); i < l; i++ {
-			nTmp, err = s.LedgerCloseMetas[i].DecodeFrom(d, maxDepth)
-			n += nTmp
-			if err != nil {
-				return n, fmt.Errorf("decoding LedgerCloseMeta: %w", err)
-			}
-		}
-	}
-	return n, nil
-}
-
-// MarshalBinary implements encoding.BinaryMarshaler.
-func (s LedgerCloseMetaBatch) MarshalBinary() ([]byte, error) {
-	b := bytes.Buffer{}
-	e := xdr.NewEncoder(&b)
-	err := s.EncodeTo(e)
-	return b.Bytes(), err
-}
-
-// UnmarshalBinary implements encoding.BinaryUnmarshaler.
-func (s *LedgerCloseMetaBatch) UnmarshalBinary(inp []byte) error {
-	r := bytes.NewReader(inp)
-	o := xdr.DefaultDecodeOptions
-	o.MaxInputLen = len(inp)
-	d := xdr.NewDecoderWithOptions(r, o)
-	_, err := s.DecodeFrom(d, o.MaxDepth)
-	return err
-}
-
-var (
-	_ encoding.BinaryMarshaler   = (*LedgerCloseMetaBatch)(nil)
-	_ encoding.BinaryUnmarshaler = (*LedgerCloseMetaBatch)(nil)
-)
-
-// xdrType signals that this type represents XDR values defined by this package.
-func (s LedgerCloseMetaBatch) xdrType() {}
-
-var _ xdrType = (*LedgerCloseMetaBatch)(nil)
-
 // BitmapIndex is an XDR Struct defines as:
 //
 //	struct BitmapIndex {
@@ -57147,5 +57037,115 @@ var (
 func (s SerializedLedgerCloseMeta) xdrType() {}
 
 var _ xdrType = (*SerializedLedgerCloseMeta)(nil)
+
+// LedgerCloseMetaBatch is an XDR Struct defines as:
+//
+//	struct LedgerCloseMetaBatch
+//	 {
+//	     // starting ledger sequence number in the batch
+//	     uint32 startSequence;
+//
+//	     // ending ledger sequence number in the batch
+//	     uint32 endSequence;
+//
+//	     // Ledger close meta for each ledger within the batch
+//	     LedgerCloseMeta ledgerCloseMetas<>;
+//	 };
+type LedgerCloseMetaBatch struct {
+	StartSequence    Uint32
+	EndSequence      Uint32
+	LedgerCloseMetas []LedgerCloseMeta
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s *LedgerCloseMetaBatch) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = s.StartSequence.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.EndSequence.EncodeTo(e); err != nil {
+		return err
+	}
+	if _, err = e.EncodeUint(uint32(len(s.LedgerCloseMetas))); err != nil {
+		return err
+	}
+	for i := 0; i < len(s.LedgerCloseMetas); i++ {
+		if err = s.LedgerCloseMetas[i].EncodeTo(e); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+var _ decoderFrom = (*LedgerCloseMetaBatch)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *LedgerCloseMetaBatch) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, fmt.Errorf("decoding LedgerCloseMetaBatch: %w", ErrMaxDecodingDepthReached)
+	}
+	maxDepth -= 1
+	var err error
+	var n, nTmp int
+	nTmp, err = s.StartSequence.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %w", err)
+	}
+	nTmp, err = s.EndSequence.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %w", err)
+	}
+	var l uint32
+	l, nTmp, err = d.DecodeUint()
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding LedgerCloseMeta: %w", err)
+	}
+	s.LedgerCloseMetas = nil
+	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding LedgerCloseMeta: length (%d) exceeds remaining input length (%d)", l, il)
+		}
+		s.LedgerCloseMetas = make([]LedgerCloseMeta, l)
+		for i := uint32(0); i < l; i++ {
+			nTmp, err = s.LedgerCloseMetas[i].DecodeFrom(d, maxDepth)
+			n += nTmp
+			if err != nil {
+				return n, fmt.Errorf("decoding LedgerCloseMeta: %w", err)
+			}
+		}
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s LedgerCloseMetaBatch) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *LedgerCloseMetaBatch) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*LedgerCloseMetaBatch)(nil)
+	_ encoding.BinaryUnmarshaler = (*LedgerCloseMetaBatch)(nil)
+)
+
+// xdrType signals that this type represents XDR values defined by this package.
+func (s LedgerCloseMetaBatch) xdrType() {}
+
+var _ xdrType = (*LedgerCloseMetaBatch)(nil)
 
 var fmtTest = fmt.Sprint("this is a dummy usage of fmt")
