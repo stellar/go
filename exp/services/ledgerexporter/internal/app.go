@@ -9,6 +9,7 @@ import (
 	"sync"
 	"syscall"
 
+	"github.com/pkg/errors"
 	"github.com/stellar/go/ingest/ledgerbackend"
 	_ "github.com/stellar/go/network"
 	supportlog "github.com/stellar/go/support/log"
@@ -64,7 +65,7 @@ func (a *App) Run() {
 		defer wg.Done()
 
 		err := a.uploader.Run(a.ctx)
-		if err != nil && err != context.Canceled {
+		if err != nil && !errors.Is(err, context.Canceled) {
 			logger.Errorf("Error executing Uploader: %v", err)
 			a.cancel()
 			return
@@ -75,7 +76,7 @@ func (a *App) Run() {
 		defer wg.Done()
 
 		err := a.exportManager.Run(a.ctx, a.config.StartLedger, a.config.EndLedger)
-		if err != nil {
+		if err != nil && !errors.Is(err, context.Canceled) {
 			logger.Errorf("Error executing ExportManager: %v", err)
 			a.cancel()
 			return
