@@ -78,9 +78,11 @@ type XDRGzipEncoder struct {
 
 func (g *XDRGzipEncoder) WriteTo(w io.Writer) (int64, error) {
 	gw := gzip.NewWriter(w)
-	defer gw.Close()
 	n, err := xdr3.Marshal(gw, g.XdrPayload)
-	return int64(n), err
+	if err != nil {
+		return n, err
+	}
+	return int64(n), gw.Close()
 }
 
 type XDRGzipDecoder struct {
