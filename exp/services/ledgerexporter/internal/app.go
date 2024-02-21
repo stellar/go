@@ -20,8 +20,6 @@ var (
 )
 
 type App struct {
-	ctx                context.Context
-	cancel             func()
 	config             Config
 	backend            ledgerbackend.LedgerBackend
 	destinationStorage DataStore
@@ -37,14 +35,12 @@ func NewApp() *App {
 	logFatalIf(err, "Could not load configuration")
 
 	app := &App{config: config}
-	app.init()
 	return app
 }
 
-func (a *App) init() {
-	a.ctx, a.cancel = context.WithCancel(context.Background())
-	a.destinationStorage = NewDestinationStorage(a.ctx, &a.config)
-	a.backend = NewLedgerBackend(a.ctx, a.config)
+func (a *App) init(ctx context.Context) {
+	a.destinationStorage = NewDestinationStorage(ctx, &a.config)
+	a.backend = NewLedgerBackend(ctx, a.config)
 	a.exportManager = NewExportManager(a.config.ExporterConfig, a.backend)
 	a.uploader = NewUploader(a.destinationStorage, a.exportManager.GetMetaArchiveChannel())
 }
@@ -56,7 +52,10 @@ func (a *App) Close() {
 }
 
 func (a *App) Run() {
-	defer a.cancel()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	a.init(ctx)
 
 	var wg sync.WaitGroup
 	wg.Add(2)
@@ -64,10 +63,10 @@ func (a *App) Run() {
 	go func() {
 		defer wg.Done()
 
-		err := a.uploader.Run(a.ctx)
+		err := a.uploader.Run(ctx)
 		if err != nil && !errors.Is(err, context.Canceled) {
 			logger.Errorf("Error executing Uploader: %v", err)
-			a.cancel()
+			cancel()
 			return
 		}
 	}()
@@ -75,10 +74,10 @@ func (a *App) Run() {
 	go func() {
 		defer wg.Done()
 
-		err := a.exportManager.Run(a.ctx, a.config.StartLedger, a.config.EndLedger)
+		err := a.exportManager.Run(ctx, a.config.StartLedger, a.config.EndLedger)
 		if err != nil && !errors.Is(err, context.Canceled) {
 			logger.Errorf("Error executing ExportManager: %v", err)
-			a.cancel()
+			cancel()
 			return
 		}
 	}()
@@ -90,12 +89,12 @@ func (a *App) Run() {
 
 		for {
 			select {
-			case <-a.ctx.Done():
+			case <-ctx.Done():
 				logger.Infof("Received context done signal")
 				return
 			case sig := <-sigCh:
 				logger.Infof("Received signal: %v", sig)
-				a.cancel()
+				cancel()
 				return
 			}
 		}
