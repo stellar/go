@@ -75,7 +75,6 @@ func (e *exportManager) AddLedgerCloseMeta(ledgerCloseMeta xdr.LedgerCloseMeta) 
 
 	if ledgerSeq >= metaArchive.GetEndLedgerSequence() {
 		// Current archive is full, send it for upload
-		// This is a blocking call!
 		e.metaArchiveCh <- metaArchive
 		// Remove it from the map
 		delete(e.metaArchiveMap, objectKey)
