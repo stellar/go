@@ -145,6 +145,9 @@ type Client struct {
 	AppVersion     string
 	horizonTimeout time.Duration
 
+	// Headers allows specifying additional HTTP headers for requests made by the client.
+	Headers map[string]string
+
 	// clock is a Clock returning the current time.
 	clock *clock.Clock
 }
