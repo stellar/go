@@ -34,6 +34,7 @@ type ClaimableBalanceLoader struct {
 	sealed bool
 	set    set.Set[string]
 	ids    map[string]int64
+	stats  LoaderStats
 }
 
 // NewClaimableBalanceLoader will construct a new ClaimableBalanceLoader instance.
@@ -42,6 +43,7 @@ func NewClaimableBalanceLoader() *ClaimableBalanceLoader {
 		sealed: false,
 		set:    set.Set[string]{},
 		ids:    map[string]int64{},
+		stats:  LoaderStats{},
 	}
 }
 
@@ -109,6 +111,7 @@ func (a *ClaimableBalanceLoader) Exec(ctx context.Context, session db.SessionInt
 	if err := a.lookupKeys(ctx, q, ids); err != nil {
 		return err
 	}
+	a.stats.Total += len(ids)
 
 	insert := 0
 	for _, id := range ids {
@@ -142,6 +145,17 @@ func (a *ClaimableBalanceLoader) Exec(ctx context.Context, session db.SessionInt
 	if err != nil {
 		return err
 	}
+	a.stats.Inserted += insert
 
 	return a.lookupKeys(ctx, q, ids)
+}
+
+// Stats returns the number of claimable balances registered in the loader and the number of claimable balances
+// inserted into the history_claimable_balances table.
+func (a *ClaimableBalanceLoader) Stats() LoaderStats {
+	return a.stats
+}
+
+func (a *ClaimableBalanceLoader) Name() string {
+	return "ClaimableBalanceLoader"
 }

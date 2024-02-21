@@ -76,14 +76,20 @@ func TestAssetLoader(t *testing.T) {
 		assert.Equal(t, future, duplicateFuture)
 	}
 
-	assert.NoError(t, loader.Exec(context.Background(), session))
+	err := loader.Exec(context.Background(), session)
+	assert.NoError(t, err)
+	assert.Equal(t, LoaderStats{
+		Total:    100,
+		Inserted: 100,
+	}, loader.Stats())
 	assert.Panics(t, func() {
 		loader.GetFuture(AssetKey{Type: "invalid"})
 	})
 
 	q := &Q{session}
 	for _, key := range keys {
-		internalID, err := loader.GetNow(key)
+		var internalID int64
+		internalID, err = loader.GetNow(key)
 		assert.NoError(t, err)
 		var assetXDR xdr.Asset
 		if key.Type == "native" {
@@ -91,12 +97,13 @@ func TestAssetLoader(t *testing.T) {
 		} else {
 			assetXDR = xdr.MustNewCreditAsset(key.Code, key.Issuer)
 		}
-		assetID, err := q.GetAssetID(context.Background(), assetXDR)
+		var assetID int64
+		assetID, err = q.GetAssetID(context.Background(), assetXDR)
 		assert.NoError(t, err)
 		assert.Equal(t, assetID, internalID)
 	}
 
-	_, err := loader.GetNow(AssetKey{})
+	_, err = loader.GetNow(AssetKey{})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), `was not found`)
 }

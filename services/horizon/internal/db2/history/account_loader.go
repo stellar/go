@@ -39,6 +39,7 @@ type AccountLoader struct {
 	sealed bool
 	set    set.Set[string]
 	ids    map[string]int64
+	stats  LoaderStats
 }
 
 var errSealed = errors.New("cannot register more entries to loader after calling Exec()")
@@ -49,6 +50,7 @@ func NewAccountLoader() *AccountLoader {
 		sealed: false,
 		set:    set.Set[string]{},
 		ids:    map[string]int64{},
+		stats:  LoaderStats{},
 	}
 }
 
@@ -99,6 +101,14 @@ func (a *AccountLoader) lookupKeys(ctx context.Context, q *Q, addresses []string
 	return nil
 }
 
+// LoaderStats describes the result of executing a history lookup id loader
+type LoaderStats struct {
+	// Total is the number of elements registered to the loader
+	Total int
+	// Inserted is the number of elements inserted into the lookup table
+	Inserted int
+}
+
 // Exec will look up all the history account ids for the addresses registered in the loader.
 // If there are no history account ids for a given set of addresses, Exec will insert rows
 // into the history_accounts table to establish a mapping between address and history account id.
@@ -116,6 +126,7 @@ func (a *AccountLoader) Exec(ctx context.Context, session db.SessionInterface) e
 	if err := a.lookupKeys(ctx, q, addresses); err != nil {
 		return err
 	}
+	a.stats.Total += len(addresses)
 
 	insert := 0
 	for _, address := range addresses {
@@ -149,8 +160,19 @@ func (a *AccountLoader) Exec(ctx context.Context, session db.SessionInterface) e
 	if err != nil {
 		return err
 	}
+	a.stats.Inserted += insert
 
 	return a.lookupKeys(ctx, q, addresses)
+}
+
+// Stats returns the number of addresses registered in the loader and the number of addresses
+// inserted into the history_accounts table.
+func (a *AccountLoader) Stats() LoaderStats {
+	return a.stats
+}
+
+func (a *AccountLoader) Name() string {
+	return "AccountLoader"
 }
 
 type bulkInsertField struct {

@@ -11,6 +11,7 @@ import (
 	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/ingest/ledgerbackend"
+	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
 	logpkg "github.com/stellar/go/support/log"
 	"github.com/stellar/go/xdr"
@@ -523,6 +524,8 @@ func (r resumeState) run(s *system) (transition, error) {
 	tradeStatsMap := stats.tradeStats.Map()
 	r.addLedgerStatsMetricFromMap(s, "trades", tradeStatsMap)
 	r.addProcessorDurationsMetricFromMap(s, stats.transactionDurations)
+	r.addLoaderDurationsMetricFromMap(s, stats.transactionDurations)
+	r.addLoaderStatsMetric(s, stats.loaderStats)
 
 	// since a single system instance is shared throughout all states,
 	// this will sweep up increments to history archive counters
@@ -570,6 +573,30 @@ func (r resumeState) addProcessorDurationsMetricFromMap(s *system, m map[string]
 			With(prometheus.Labels{"name": processorName}).Add(value.Seconds())
 		s.Metrics().ProcessorsRunDurationSummary.
 			With(prometheus.Labels{"name": processorName}).Observe(value.Seconds())
+	}
+}
+
+func (r resumeState) addLoaderDurationsMetricFromMap(s *system, m map[string]time.Duration) {
+	for loaderName, value := range m {
+		s.Metrics().LoadersRunDurationSummary.
+			With(prometheus.Labels{"name": loaderName}).Observe(value.Seconds())
+	}
+}
+
+func (r resumeState) addLoaderStatsMetric(s *system, loaderSTats map[string]history.LoaderStats) {
+	for loaderName, stats := range loaderSTats {
+		s.Metrics().LoadersStatsSummary.
+			With(prometheus.Labels{
+				"name": loaderName,
+				"stat": "total_queried",
+			}).
+			Observe(float64(stats.Total))
+		s.Metrics().LoadersStatsSummary.
+			With(prometheus.Labels{
+				"name": loaderName,
+				"stat": "total_inserted",
+			}).
+			Observe(float64(stats.Inserted))
 	}
 }
 

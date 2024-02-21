@@ -37,6 +37,8 @@ type horizonTransactionProcessor interface {
 
 type horizonLazyLoader interface {
 	Exec(ctx context.Context, session db.SessionInterface) error
+	Name() string
+	Stats() history.LoaderStats
 }
 
 type statsChangeProcessor struct {
@@ -49,9 +51,11 @@ func (statsChangeProcessor) Commit(ctx context.Context) error {
 
 type ledgerStats struct {
 	changeStats          ingest.StatsChangeProcessorResults
-	changeDurations      processorsRunDurations
+	changeDurations      runDurations
 	transactionStats     processors.StatsLedgerTransactionProcessorResults
-	transactionDurations processorsRunDurations
+	transactionDurations runDurations
+	loaderDurations      runDurations
+	loaderStats          map[string]history.LoaderStats
 	tradeStats           processors.TradeStats
 }
 
@@ -68,8 +72,10 @@ type ProcessorRunnerInterface interface {
 	) (ingest.StatsChangeProcessorResults, error)
 	RunTransactionProcessorsOnLedger(ledger xdr.LedgerCloseMeta) (
 		transactionStats processors.StatsLedgerTransactionProcessorResults,
-		transactionDurations processorsRunDurations,
+		transactionDurations runDurations,
 		tradeStats processors.TradeStats,
+		loaderDurations runDurations,
+		loaderStats map[string]history.LoaderStats,
 		err error,
 	)
 	RunTransactionProcessorsOnLedgers(ledgers []xdr.LedgerCloseMeta) error
@@ -360,8 +366,10 @@ func (s *ProcessorRunner) streamLedger(ledger xdr.LedgerCloseMeta,
 
 func (s *ProcessorRunner) RunTransactionProcessorsOnLedger(ledger xdr.LedgerCloseMeta) (
 	transactionStats processors.StatsLedgerTransactionProcessorResults,
-	transactionDurations processorsRunDurations,
+	transactionDurations runDurations,
 	tradeStats processors.TradeStats,
+	loaderDurations runDurations,
+	loaderStats map[string]history.LoaderStats,
 	err error,
 ) {
 	// ensure capture of the ledger to history regardless of whether it has transactions.
@@ -394,7 +402,9 @@ func (s *ProcessorRunner) RunTransactionProcessorsOnLedger(ledger xdr.LedgerClos
 	for key, duration := range groupFilteredOutProcessors.processorsRunDurations {
 		transactionDurations[key] = duration
 	}
-	for key, duration := range groupTransactionFilterers.processorsRunDurations {
+	loaderStats = groupTransactionProcessors.loaderStats
+	loaderDurations = groupTransactionProcessors.loaderRunDurations
+	for key, duration := range groupTransactionFilterers.runDurations {
 		transactionDurations[key] = duration
 	}
 
@@ -499,13 +509,15 @@ func (s *ProcessorRunner) RunAllProcessorsOnLedger(ledger xdr.LedgerCloseMeta) (
 		return
 	}
 
-	transactionStats, transactionDurations, tradeStats, err := s.RunTransactionProcessorsOnLedger(ledger)
+	transactionStats, transactionDurations, tradeStats, loaderDurations, loaderStats, err := s.RunTransactionProcessorsOnLedger(ledger)
 
 	stats.changeStats = changeStatsProcessor.GetResults()
 	stats.changeDurations = groupChangeProcessors.processorsRunDurations
 	stats.transactionStats = transactionStats
 	stats.transactionDurations = transactionDurations
 	stats.tradeStats = tradeStats
+	stats.loaderDurations = loaderDurations
+	stats.loaderStats = loaderStats
 
 	return
 }

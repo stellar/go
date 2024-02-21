@@ -6,21 +6,22 @@ import (
 	"time"
 
 	"github.com/stellar/go/ingest"
+	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/ingest/processors"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
 
-type processorsRunDurations map[string]time.Duration
+type runDurations map[string]time.Duration
 
-func (d processorsRunDurations) AddRunDuration(name string, startTime time.Time) {
+func (d runDurations) AddRunDuration(name string, startTime time.Time) {
 	d[name] += time.Since(startTime)
 }
 
 type groupChangeProcessors struct {
-	processors []horizonChangeProcessor
-	processorsRunDurations
+	processors             []horizonChangeProcessor
+	processorsRunDurations runDurations
 }
 
 func newGroupChangeProcessors(processors []horizonChangeProcessor) *groupChangeProcessors {
@@ -36,7 +37,7 @@ func (g groupChangeProcessors) ProcessChange(ctx context.Context, change ingest.
 		if err := p.ProcessChange(ctx, change); err != nil {
 			return errors.Wrapf(err, "error in %T.ProcessChange", p)
 		}
-		g.AddRunDuration(fmt.Sprintf("%T", p), startTime)
+		g.processorsRunDurations.AddRunDuration(fmt.Sprintf("%T", p), startTime)
 	}
 	return nil
 }
@@ -47,15 +48,17 @@ func (g groupChangeProcessors) Commit(ctx context.Context) error {
 		if err := p.Commit(ctx); err != nil {
 			return errors.Wrapf(err, "error in %T.Commit", p)
 		}
-		g.AddRunDuration(fmt.Sprintf("%T", p), startTime)
+		g.processorsRunDurations.AddRunDuration(fmt.Sprintf("%T", p), startTime)
 	}
 	return nil
 }
 
 type groupTransactionProcessors struct {
-	processors  []horizonTransactionProcessor
-	lazyLoaders []horizonLazyLoader
-	processorsRunDurations
+	processors                []horizonTransactionProcessor
+	lazyLoaders               []horizonLazyLoader
+	processorsRunDurations    runDurations
+	loaderRunDurations        runDurations
+	loaderStats               map[string]history.LoaderStats
 	transactionStatsProcessor *processors.StatsLedgerTransactionProcessor
 	tradeProcessor            *processors.TradeProcessor
 }
@@ -78,6 +81,8 @@ func newGroupTransactionProcessors(processors []horizonTransactionProcessor,
 	return &groupTransactionProcessors{
 		processors:                processors,
 		processorsRunDurations:    make(map[string]time.Duration),
+		loaderRunDurations:        make(map[string]time.Duration),
+		loaderStats:               make(map[string]history.LoaderStats),
 		lazyLoaders:               lazyLoaders,
 		transactionStatsProcessor: transactionStatsProcessor,
 		tradeProcessor:            tradeProcessor,
@@ -90,7 +95,7 @@ func (g groupTransactionProcessors) ProcessTransaction(lcm xdr.LedgerCloseMeta, 
 		if err := p.ProcessTransaction(lcm, tx); err != nil {
 			return errors.Wrapf(err, "error in %T.ProcessTransaction", p)
 		}
-		g.AddRunDuration(fmt.Sprintf("%T", p), startTime)
+		g.processorsRunDurations.AddRunDuration(fmt.Sprintf("%T", p), startTime)
 	}
 	return nil
 }
@@ -99,9 +104,16 @@ func (g groupTransactionProcessors) Flush(ctx context.Context, session db.Sessio
 	// need to trigger all lazy loaders to now resolve their future placeholders
 	// with real db values first
 	for _, loader := range g.lazyLoaders {
+		startTime := time.Now()
 		if err := loader.Exec(ctx, session); err != nil {
 			return errors.Wrapf(err, "error during lazy loader resolution, %T.Exec", loader)
 		}
+		name := loader.Name()
+		g.loaderRunDurations.AddRunDuration(name, startTime)
+		if _, ok := g.loaderStats[name]; ok {
+			return fmt.Errorf("%s is present multiple times", name)
+		}
+		g.loaderStats[name] = loader.Stats()
 	}
 
 	// now flush each processor which may call loader.GetNow(), which
@@ -111,13 +123,15 @@ func (g groupTransactionProcessors) Flush(ctx context.Context, session db.Sessio
 		if err := p.Flush(ctx, session); err != nil {
 			return errors.Wrapf(err, "error in %T.Flush", p)
 		}
-		g.AddRunDuration(fmt.Sprintf("%T", p), startTime)
+		g.processorsRunDurations.AddRunDuration(fmt.Sprintf("%T", p), startTime)
 	}
 	return nil
 }
 
 func (g *groupTransactionProcessors) ResetStats() {
 	g.processorsRunDurations = make(map[string]time.Duration)
+	g.loaderRunDurations = make(map[string]time.Duration)
+	g.loaderStats = make(map[string]history.LoaderStats)
 	if g.tradeProcessor != nil {
 		g.tradeProcessor.ResetStats()
 	}
@@ -128,14 +142,14 @@ func (g *groupTransactionProcessors) ResetStats() {
 
 type groupTransactionFilterers struct {
 	filterers []processors.LedgerTransactionFilterer
-	processorsRunDurations
+	runDurations
 	droppedTransactions int64
 }
 
 func newGroupTransactionFilterers(filterers []processors.LedgerTransactionFilterer) *groupTransactionFilterers {
 	return &groupTransactionFilterers{
-		filterers:              filterers,
-		processorsRunDurations: make(map[string]time.Duration),
+		filterers:    filterers,
+		runDurations: make(map[string]time.Duration),
 	}
 }
 
@@ -158,5 +172,5 @@ func (g *groupTransactionFilterers) FilterTransaction(ctx context.Context, tx in
 
 func (g *groupTransactionFilterers) ResetStats() {
 	g.droppedTransactions = 0
-	g.processorsRunDurations = make(map[string]time.Duration)
+	g.runDurations = make(map[string]time.Duration)
 }
