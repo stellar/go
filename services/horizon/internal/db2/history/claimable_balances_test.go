@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/guregu/null"
+
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/xdr"
@@ -203,7 +204,7 @@ func TestFindClaimableBalancesByDestination(t *testing.T) {
 	tt.Assert.Equal(dest2, cbs[0].Claimants[1].Destination)
 
 	// this validates the cb query with claimant and cb.id/ledger cursor parameters
-	query.PageQuery = db2.MustPageQuery(fmt.Sprintf("%v-%s", 150, cbs[0].BalanceID), false, "", 10)
+	query.PageQuery = db2.MustPageQuery(fmt.Sprintf("%v-%s", 150, cbs[0].BalanceID), false, "asc", 10)
 	query.Claimant = xdr.MustAddressPtr(dest1)
 	cbs, err = q.GetClaimableBalances(tt.Ctx, query)
 	tt.Assert.NoError(err)
@@ -212,7 +213,7 @@ func TestFindClaimableBalancesByDestination(t *testing.T) {
 
 	// this validates the cb query with no claimant parameter,
 	// should still produce working sql, as it triggers different LIMIT position in sql.
-	query.PageQuery = db2.MustPageQuery("", false, "", 1)
+	query.PageQuery = db2.MustPageQuery("", false, "desc", 1)
 	query.Claimant = nil
 	cbs, err = q.GetClaimableBalances(tt.Ctx, query)
 	tt.Assert.NoError(err)

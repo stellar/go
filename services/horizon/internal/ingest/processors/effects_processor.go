@@ -28,20 +28,17 @@ type EffectProcessor struct {
 	accountLoader *history.AccountLoader
 	batch         history.EffectBatchInsertBuilder
 	network       string
-	skipSoroban   bool
 }
 
 func NewEffectProcessor(
 	accountLoader *history.AccountLoader,
 	batch history.EffectBatchInsertBuilder,
 	network string,
-	skipSoroban bool,
 ) *EffectProcessor {
 	return &EffectProcessor{
 		accountLoader: accountLoader,
 		batch:         batch,
 		network:       network,
-		skipSoroban:   skipSoroban,
 	}
 }
 
@@ -53,29 +50,14 @@ func (p *EffectProcessor) ProcessTransaction(
 		return nil
 	}
 
-	elidedTransaction := transaction
-
-	if p.skipSoroban &&
-		elidedTransaction.UnsafeMeta.V == 3 &&
-		elidedTransaction.UnsafeMeta.V3.SorobanMeta != nil {
-		elidedTransaction.UnsafeMeta.V3 = &xdr.TransactionMetaV3{
-			Ext:             xdr.ExtensionPoint{},
-			TxChangesBefore: xdr.LedgerEntryChanges{},
-			Operations:      []xdr.OperationMeta{},
-			TxChangesAfter:  xdr.LedgerEntryChanges{},
-			SorobanMeta:     nil,
-		}
-	}
-
-	for opi, op := range elidedTransaction.Envelope.Operations() {
+	for opi, op := range transaction.Envelope.Operations() {
 		operation := transactionOperationWrapper{
 			index:          uint32(opi),
-			transaction:    elidedTransaction,
+			transaction:    transaction,
 			operation:      op,
 			ledgerSequence: uint32(lcm.LedgerSequence()),
 			network:        p.network,
 		}
-
 		if err := operation.ingestEffects(p.accountLoader, p.batch); err != nil {
 			return errors.Wrapf(err, "reading operation %v effects", operation.ID())
 		}

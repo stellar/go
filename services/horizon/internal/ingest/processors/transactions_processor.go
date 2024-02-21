@@ -11,36 +11,50 @@ import (
 )
 
 type TransactionProcessor struct {
-	batch       history.TransactionBatchInsertBuilder
-	skipSoroban bool
+	batch      history.TransactionBatchInsertBuilder
+	skipTxmeta bool
 }
 
-func NewTransactionFilteredTmpProcessor(batch history.TransactionBatchInsertBuilder, skipSoroban bool) *TransactionProcessor {
+func NewTransactionFilteredTmpProcessor(batch history.TransactionBatchInsertBuilder, skipTxmeta bool) *TransactionProcessor {
 	return &TransactionProcessor{
-		batch:       batch,
-		skipSoroban: skipSoroban,
+		batch:      batch,
+		skipTxmeta: skipTxmeta,
 	}
 }
 
-func NewTransactionProcessor(batch history.TransactionBatchInsertBuilder, skipSoroban bool) *TransactionProcessor {
+func NewTransactionProcessor(batch history.TransactionBatchInsertBuilder, skipTxmeta bool) *TransactionProcessor {
 	return &TransactionProcessor{
-		batch:       batch,
-		skipSoroban: skipSoroban,
+		batch:      batch,
+		skipTxmeta: skipTxmeta,
 	}
 }
 
 func (p *TransactionProcessor) ProcessTransaction(lcm xdr.LedgerCloseMeta, transaction ingest.LedgerTransaction) error {
 	elidedTransaction := transaction
 
-	if p.skipSoroban &&
-		elidedTransaction.UnsafeMeta.V == 3 &&
-		elidedTransaction.UnsafeMeta.MustV3().SorobanMeta != nil {
-		elidedTransaction.UnsafeMeta.V3 = &xdr.TransactionMetaV3{
-			Ext:             xdr.ExtensionPoint{},
-			TxChangesBefore: xdr.LedgerEntryChanges{},
-			Operations:      []xdr.OperationMeta{},
-			TxChangesAfter:  xdr.LedgerEntryChanges{},
-			SorobanMeta:     nil,
+	if p.skipTxmeta {
+		switch elidedTransaction.UnsafeMeta.V {
+		case 3:
+			elidedTransaction.UnsafeMeta.V3 = &xdr.TransactionMetaV3{
+				Ext:             xdr.ExtensionPoint{},
+				TxChangesBefore: xdr.LedgerEntryChanges{},
+				Operations:      []xdr.OperationMeta{},
+				TxChangesAfter:  xdr.LedgerEntryChanges{},
+				SorobanMeta:     nil,
+			}
+		case 2:
+			elidedTransaction.UnsafeMeta.V2 = &xdr.TransactionMetaV2{
+				TxChangesBefore: xdr.LedgerEntryChanges{},
+				Operations:      []xdr.OperationMeta{},
+				TxChangesAfter:  xdr.LedgerEntryChanges{},
+			}
+		case 1:
+			elidedTransaction.UnsafeMeta.V1 = &xdr.TransactionMetaV1{
+				TxChanges:  xdr.LedgerEntryChanges{},
+				Operations: []xdr.OperationMeta{},
+			}
+		default:
+			return errors.Errorf("SKIP_TXMETA is enabled, but received an un-supported tx-meta version %v, can't proceed with removal", elidedTransaction.UnsafeMeta.V)
 		}
 	}
 

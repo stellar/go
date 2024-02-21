@@ -798,7 +798,7 @@ func TestTransactionOperationDetails(t *testing.T) {
 		})
 	}
 
-	tx := createTransaction(true, 1)
+	tx := createTransaction(true, 1, 2)
 	tx.Index = 1
 
 	tx.Envelope.Operations()[0].Body = xdr.OperationBody{
@@ -1477,7 +1477,7 @@ var (
 
 func getSponsoredSandwichWrappers() []*transactionOperationWrapper {
 	const ledgerSeq = uint32(12345)
-	tx := createTransaction(true, 3)
+	tx := createTransaction(true, 3, 2)
 	tx.Index = 1
 	tx.UnsafeMeta = xdr.TransactionMeta{
 		V: 2,
