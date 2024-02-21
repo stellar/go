@@ -534,7 +534,7 @@ func (m *mockProcessorsRunner) RunTransactionProcessorsOnLedger(ledger xdr.Ledge
 	runDurations,
 	processors.TradeStats,
 	runDurations,
-	map[string]history.LoaderResult,
+	map[string]history.LoaderStats,
 	error,
 ) {
 	args := m.Called(ledger)
@@ -542,7 +542,7 @@ func (m *mockProcessorsRunner) RunTransactionProcessorsOnLedger(ledger xdr.Ledge
 		args.Get(1).(runDurations),
 		args.Get(2).(processors.TradeStats),
 		args.Get(3).(runDurations),
-		args.Get(4).(map[string]history.LoaderResult),
+		args.Get(4).(map[string]history.LoaderStats),
 		args.Error(3)
 }
 

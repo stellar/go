@@ -38,8 +38,7 @@ func TestAddEffect(t *testing.T) {
 	)
 	tt.Assert.NoError(err)
 
-	_, err = accountLoader.Exec(tt.Ctx, q)
-	tt.Assert.NoError(err)
+	tt.Assert.NoError(accountLoader.Exec(tt.Ctx, q))
 	tt.Assert.NoError(builder.Exec(tt.Ctx, q))
 	tt.Assert.NoError(q.Commit())
 

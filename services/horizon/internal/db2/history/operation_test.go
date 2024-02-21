@@ -130,8 +130,7 @@ func TestOperationByLiquidityPool(t *testing.T) {
 	lpOperationBuilder := q.NewOperationLiquidityPoolBatchInsertBuilder()
 	tt.Assert.NoError(lpOperationBuilder.Add(opID1, lpLoader.GetFuture(liquidityPoolID)))
 	tt.Assert.NoError(lpOperationBuilder.Add(opID2, lpLoader.GetFuture(liquidityPoolID)))
-	_, err = lpLoader.Exec(tt.Ctx, q)
-	tt.Assert.NoError(err)
+	tt.Assert.NoError(lpLoader.Exec(tt.Ctx, q))
 	tt.Assert.NoError(lpOperationBuilder.Exec(tt.Ctx, q))
 
 	tt.Assert.NoError(q.Commit())

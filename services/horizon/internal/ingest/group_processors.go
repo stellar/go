@@ -58,7 +58,7 @@ type groupTransactionProcessors struct {
 	lazyLoaders               []horizonLazyLoader
 	processorsRunDurations    runDurations
 	loaderRunDurations        runDurations
-	loaderResults             map[string]history.LoaderResult
+	loaderStats               map[string]history.LoaderStats
 	transactionStatsProcessor *processors.StatsLedgerTransactionProcessor
 	tradeProcessor            *processors.TradeProcessor
 }
@@ -82,7 +82,7 @@ func newGroupTransactionProcessors(processors []horizonTransactionProcessor,
 		processors:                processors,
 		processorsRunDurations:    make(map[string]time.Duration),
 		loaderRunDurations:        make(map[string]time.Duration),
-		loaderResults:             make(map[string]history.LoaderResult),
+		loaderStats:               make(map[string]history.LoaderStats),
 		lazyLoaders:               lazyLoaders,
 		transactionStatsProcessor: transactionStatsProcessor,
 		tradeProcessor:            tradeProcessor,
@@ -105,13 +105,15 @@ func (g groupTransactionProcessors) Flush(ctx context.Context, session db.Sessio
 	// with real db values first
 	for _, loader := range g.lazyLoaders {
 		startTime := time.Now()
-		result, err := loader.Exec(ctx, session)
-		if err != nil {
+		if err := loader.Exec(ctx, session); err != nil {
 			return errors.Wrapf(err, "error during lazy loader resolution, %T.Exec", loader)
 		}
-		name := fmt.Sprintf("%T", loader)
+		name := loader.Name()
 		g.loaderRunDurations.AddRunDuration(name, startTime)
-		g.loaderResults[name] = result
+		if _, ok := g.loaderStats[name]; ok {
+			return fmt.Errorf("%s is present multiple times", name)
+		}
+		g.loaderStats[name] = loader.Stats()
 	}
 
 	// now flush each processor which may call loader.GetNow(), which
@@ -129,6 +131,7 @@ func (g groupTransactionProcessors) Flush(ctx context.Context, session db.Sessio
 func (g *groupTransactionProcessors) ResetStats() {
 	g.processorsRunDurations = make(map[string]time.Duration)
 	g.loaderRunDurations = make(map[string]time.Duration)
+	g.loaderStats = make(map[string]history.LoaderStats)
 	if g.tradeProcessor != nil {
 		g.tradeProcessor.ResetStats()
 	}

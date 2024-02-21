@@ -525,7 +525,7 @@ func (r resumeState) run(s *system) (transition, error) {
 	r.addLedgerStatsMetricFromMap(s, "trades", tradeStatsMap)
 	r.addProcessorDurationsMetricFromMap(s, stats.transactionDurations)
 	r.addLoaderDurationsMetricFromMap(s, stats.transactionDurations)
-	r.addLoaderStatsMetric(s, stats.loaderResults)
+	r.addLoaderStatsMetric(s, stats.loaderStats)
 
 	// since a single system instance is shared throughout all states,
 	// this will sweep up increments to history archive counters
@@ -578,29 +578,25 @@ func (r resumeState) addProcessorDurationsMetricFromMap(s *system, m map[string]
 
 func (r resumeState) addLoaderDurationsMetricFromMap(s *system, m map[string]time.Duration) {
 	for loaderName, value := range m {
-		// * is not accepted in Prometheus labels
-		loaderName = strings.Replace(loaderName, "*", "", -1)
 		s.Metrics().LoadersRunDurationSummary.
 			With(prometheus.Labels{"name": loaderName}).Observe(value.Seconds())
 	}
 }
 
-func (r resumeState) addLoaderStatsMetric(s *system, loaderResults map[string]history.LoaderResult) {
-	for loaderName, results := range loaderResults {
-		// * is not accepted in Prometheus labels
-		loaderName = strings.Replace(loaderName, "*", "", -1)
+func (r resumeState) addLoaderStatsMetric(s *system, loaderSTats map[string]history.LoaderStats) {
+	for loaderName, stats := range loaderSTats {
 		s.Metrics().LoadersStatsSummary.
 			With(prometheus.Labels{
 				"name": loaderName,
 				"stat": "total_queried",
 			}).
-			Observe(float64(results.Total))
+			Observe(float64(stats.Total))
 		s.Metrics().LoadersStatsSummary.
 			With(prometheus.Labels{
 				"name": loaderName,
 				"stat": "total_inserted",
 			}).
-			Observe(float64(results.Inserted))
+			Observe(float64(stats.Inserted))
 	}
 }
 

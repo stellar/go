@@ -300,8 +300,7 @@ func FeeBumpScenario(tt *test.T, q *Q, successful bool) FeeBumpFixture {
 	)
 
 	tt.Assert.NoError(err)
-	_, err = accountLoader.Exec(ctx, q.SessionInterface)
-	tt.Assert.NoError(err)
+	tt.Assert.NoError(accountLoader.Exec(ctx, q.SessionInterface))
 	tt.Assert.NoError(effectBuilder.Exec(ctx, q.SessionInterface))
 
 	tt.Assert.NoError(q.Commit())

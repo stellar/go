@@ -60,6 +60,7 @@ type AssetLoader struct {
 	sealed bool
 	set    set.Set[AssetKey]
 	ids    map[AssetKey]int64
+	stats  LoaderStats
 }
 
 // NewAssetLoader will construct a new AssetLoader instance.
@@ -68,6 +69,7 @@ func NewAssetLoader() *AssetLoader {
 		sealed: false,
 		set:    set.Set[AssetKey]{},
 		ids:    map[AssetKey]int64{},
+		stats:  LoaderStats{},
 	}
 }
 
@@ -131,15 +133,10 @@ func (a *AssetLoader) lookupKeys(ctx context.Context, q *Q, keys []AssetKey) err
 // Exec will look up all the history asset ids for the assets registered in the loader.
 // If there are no history asset ids for a given set of assets, Exec will insert rows
 // into the history_assets table.
-// Exec returns the number of assets registered in the loader and the number of assets
-// inserted into the history_assets table.
-func (a *AssetLoader) Exec(ctx context.Context, session db.SessionInterface) (LoaderResult, error) {
+func (a *AssetLoader) Exec(ctx context.Context, session db.SessionInterface) error {
 	a.sealed = true
 	if len(a.set) == 0 {
-		return LoaderResult{
-			Total:    0,
-			Inserted: 0,
-		}, nil
+		return nil
 	}
 	q := &Q{session}
 	keys := make([]AssetKey, 0, len(a.set))
@@ -148,8 +145,9 @@ func (a *AssetLoader) Exec(ctx context.Context, session db.SessionInterface) (Lo
 	}
 
 	if err := a.lookupKeys(ctx, q, keys); err != nil {
-		return LoaderResult{}, err
+		return err
 	}
+	a.stats.Total += len(keys)
 
 	assetTypes := make([]string, 0, len(a.set)-len(a.ids))
 	assetCodes := make([]string, 0, len(a.set)-len(a.ids))
@@ -171,10 +169,7 @@ func (a *AssetLoader) Exec(ctx context.Context, session db.SessionInterface) (Lo
 		insert++
 	}
 	if insert == 0 {
-		return LoaderResult{
-			Total:    len(a.set),
-			Inserted: 0,
-		}, nil
+		return nil
 	}
 	keys = keys[:insert]
 
@@ -202,14 +197,21 @@ func (a *AssetLoader) Exec(ctx context.Context, session db.SessionInterface) (Lo
 		},
 	)
 	if err != nil {
-		return LoaderResult{}, err
+		return err
 	}
+	a.stats.Inserted += insert
 
-	err = a.lookupKeys(ctx, q, keys)
-	return LoaderResult{
-		Total:    len(a.set),
-		Inserted: insert,
-	}, err
+	return a.lookupKeys(ctx, q, keys)
+}
+
+// Stats returns the number of assets registered in the loader and the number of assets
+// inserted into the history_assets table.
+func (a *AssetLoader) Stats() LoaderStats {
+	return a.stats
+}
+
+func (a *AssetLoader) Name() string {
+	return "AssetLoader"
 }
 
 // AssetLoaderStub is a stub wrapper around AssetLoader which allows

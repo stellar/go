@@ -34,6 +34,7 @@ type LiquidityPoolLoader struct {
 	sealed bool
 	set    set.Set[string]
 	ids    map[string]int64
+	stats  LoaderStats
 }
 
 // NewLiquidityPoolLoader will construct a new LiquidityPoolLoader instance.
@@ -42,6 +43,7 @@ func NewLiquidityPoolLoader() *LiquidityPoolLoader {
 		sealed: false,
 		set:    set.Set[string]{},
 		ids:    map[string]int64{},
+		stats:  LoaderStats{},
 	}
 }
 
@@ -95,15 +97,10 @@ func (a *LiquidityPoolLoader) lookupKeys(ctx context.Context, q *Q, ids []string
 // Exec will look up all the internal history ids for the liquidity pools registered in the loader.
 // If there are no internal history ids for a given set of liquidity pools, Exec will insert rows
 // into the history_liquidity_pools table.
-// Exec returns the number of liquidity pools registered in the loader and the number of liquidity pools
-// inserted into the history_liquidity_pools table.
-func (a *LiquidityPoolLoader) Exec(ctx context.Context, session db.SessionInterface) (LoaderResult, error) {
+func (a *LiquidityPoolLoader) Exec(ctx context.Context, session db.SessionInterface) error {
 	a.sealed = true
 	if len(a.set) == 0 {
-		return LoaderResult{
-			Total:    0,
-			Inserted: 0,
-		}, nil
+		return nil
 	}
 	q := &Q{session}
 	ids := make([]string, 0, len(a.set))
@@ -112,8 +109,9 @@ func (a *LiquidityPoolLoader) Exec(ctx context.Context, session db.SessionInterf
 	}
 
 	if err := a.lookupKeys(ctx, q, ids); err != nil {
-		return LoaderResult{}, err
+		return err
 	}
+	a.stats.Total += len(ids)
 
 	insert := 0
 	for _, id := range ids {
@@ -124,10 +122,7 @@ func (a *LiquidityPoolLoader) Exec(ctx context.Context, session db.SessionInterf
 		insert++
 	}
 	if insert == 0 {
-		return LoaderResult{
-			Total:    len(a.set),
-			Inserted: 0,
-		}, nil
+		return nil
 	}
 	ids = ids[:insert]
 	// sort entries before inserting rows to prevent deadlocks on acquiring a ShareLock
@@ -148,14 +143,21 @@ func (a *LiquidityPoolLoader) Exec(ctx context.Context, session db.SessionInterf
 		},
 	)
 	if err != nil {
-		return LoaderResult{}, err
+		return err
 	}
+	a.stats.Inserted += insert
 
-	err = a.lookupKeys(ctx, q, ids)
-	return LoaderResult{
-		Total:    len(a.set),
-		Inserted: insert,
-	}, err
+	return a.lookupKeys(ctx, q, ids)
+}
+
+// Stats returns the number of liquidity pools registered in the loader and the number of liquidity pools
+// inserted into the history_liquidity_pools table.
+func (a *LiquidityPoolLoader) Stats() LoaderStats {
+	return a.stats
+}
+
+func (a *LiquidityPoolLoader) Name() string {
+	return "LiquidityPoolLoader"
 }
 
 // LiquidityPoolLoaderStub is a stub wrapper around LiquidityPoolLoader which allows

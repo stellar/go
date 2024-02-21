@@ -51,8 +51,7 @@ func TestTransactionParticipantsBatch(t *testing.T) {
 	tt.Assert.NoError(batch.Add(otherTransactionID, accountLoader.GetFuture(address)))
 
 	tt.Assert.NoError(q.Begin(tt.Ctx))
-	_, err := accountLoader.Exec(tt.Ctx, q)
-	tt.Assert.NoError(err)
+	tt.Assert.NoError(accountLoader.Exec(tt.Ctx, q))
 	tt.Assert.NoError(batch.Exec(tt.Ctx, q))
 	tt.Assert.NoError(q.Commit())
 

@@ -39,6 +39,7 @@ type AccountLoader struct {
 	sealed bool
 	set    set.Set[string]
 	ids    map[string]int64
+	stats  LoaderStats
 }
 
 var errSealed = errors.New("cannot register more entries to loader after calling Exec()")
@@ -49,6 +50,7 @@ func NewAccountLoader() *AccountLoader {
 		sealed: false,
 		set:    set.Set[string]{},
 		ids:    map[string]int64{},
+		stats:  LoaderStats{},
 	}
 }
 
@@ -99,8 +101,8 @@ func (a *AccountLoader) lookupKeys(ctx context.Context, q *Q, addresses []string
 	return nil
 }
 
-// LoaderResult describes the result of executing a history lookup id loader
-type LoaderResult struct {
+// LoaderStats describes the result of executing a history lookup id loader
+type LoaderStats struct {
 	// Total is the number of elements registered to the loader
 	Total int
 	// Inserted is the number of elements inserted into the lookup table
@@ -110,15 +112,10 @@ type LoaderResult struct {
 // Exec will look up all the history account ids for the addresses registered in the loader.
 // If there are no history account ids for a given set of addresses, Exec will insert rows
 // into the history_accounts table to establish a mapping between address and history account id.
-// Exec returns the number of addresses registered in the loader and the number of addresses
-// inserted into the history_accounts table.
-func (a *AccountLoader) Exec(ctx context.Context, session db.SessionInterface) (LoaderResult, error) {
+func (a *AccountLoader) Exec(ctx context.Context, session db.SessionInterface) error {
 	a.sealed = true
 	if len(a.set) == 0 {
-		return LoaderResult{
-			Total:    0,
-			Inserted: 0,
-		}, nil
+		return nil
 	}
 	q := &Q{session}
 	addresses := make([]string, 0, len(a.set))
@@ -127,8 +124,9 @@ func (a *AccountLoader) Exec(ctx context.Context, session db.SessionInterface) (
 	}
 
 	if err := a.lookupKeys(ctx, q, addresses); err != nil {
-		return LoaderResult{}, err
+		return err
 	}
+	a.stats.Total += len(addresses)
 
 	insert := 0
 	for _, address := range addresses {
@@ -139,10 +137,7 @@ func (a *AccountLoader) Exec(ctx context.Context, session db.SessionInterface) (
 		insert++
 	}
 	if insert == 0 {
-		return LoaderResult{
-			Total:    len(a.set),
-			Inserted: 0,
-		}, nil
+		return nil
 	}
 	addresses = addresses[:insert]
 	// sort entries before inserting rows to prevent deadlocks on acquiring a ShareLock
@@ -163,14 +158,21 @@ func (a *AccountLoader) Exec(ctx context.Context, session db.SessionInterface) (
 		},
 	)
 	if err != nil {
-		return LoaderResult{}, err
+		return err
 	}
+	a.stats.Inserted += insert
 
-	err = a.lookupKeys(ctx, q, addresses)
-	return LoaderResult{
-		Total:    len(a.set),
-		Inserted: insert,
-	}, err
+	return a.lookupKeys(ctx, q, addresses)
+}
+
+// Stats returns the number of addresses registered in the loader and the number of addresses
+// inserted into the history_accounts table.
+func (a *AccountLoader) Stats() LoaderStats {
+	return a.stats
+}
+
+func (a *AccountLoader) Name() string {
+	return "AccountLoader"
 }
 
 type bulkInsertField struct {

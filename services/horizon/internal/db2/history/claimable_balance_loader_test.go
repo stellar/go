@@ -40,12 +40,12 @@ func TestClaimableBalanceLoader(t *testing.T) {
 		assert.Equal(t, future, duplicateFuture)
 	}
 
-	result, err := loader.Exec(context.Background(), session)
+	err := loader.Exec(context.Background(), session)
 	assert.NoError(t, err)
-	assert.Equal(t, LoaderResult{
+	assert.Equal(t, LoaderStats{
 		Total:    100,
 		Inserted: 100,
-	}, result)
+	}, loader.Stats())
 	assert.Panics(t, func() {
 		loader.GetFuture("not-present")
 	})
