@@ -3,10 +3,11 @@ package exporter
 import (
 	_ "embed"
 	"flag"
+	"os/exec"
+
 	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/network"
-	"os/exec"
 
 	"github.com/pelletier/go-toml"
 	"github.com/stellar/go/support/errors"
@@ -15,14 +16,6 @@ import (
 
 const Pubnet = "pubnet"
 const Testnet = "testnet"
-
-var (
-	//go:embed configs/captive-core-pubnet.cfg
-	PubnetDefaultConfig []byte
-
-	//go:embed configs/captive-core-testnet.cfg
-	TestnetDefaultConfig []byte
-)
 
 type StellarCoreConfig struct {
 	NetworkPassphrase     string   `toml:"network_passphrase"`
@@ -166,12 +159,12 @@ func (config *Config) GenerateCaptiveCoreConfig() ledgerbackend.CaptiveCoreConfi
 	case Pubnet:
 		coreConfig.NetworkPassphrase = network.PublicNetworkPassphrase
 		coreConfig.HistoryArchiveUrls = network.PublicNetworkhistoryArchiveURLs
-		captiveCoreConfig = PubnetDefaultConfig
+		captiveCoreConfig = ledgerbackend.PubnetDefaultConfig
 
 	case Testnet:
 		coreConfig.NetworkPassphrase = network.TestNetworkPassphrase
 		coreConfig.HistoryArchiveUrls = network.TestNetworkhistoryArchiveURLs
-		captiveCoreConfig = TestnetDefaultConfig
+		captiveCoreConfig = ledgerbackend.TestnetDefaultConfig
 
 	default:
 		logger.Fatalf("Invalid network %s", config.Network)
