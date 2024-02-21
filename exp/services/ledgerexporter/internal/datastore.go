@@ -42,14 +42,14 @@ func NewDataStore(ctx context.Context, destinationURL string) (DataStore, error)
 	logger.Infof("creating GCS client for bucket: %s, prefix: %s", bucketName, prefix)
 
 	var options []option.ClientOption
-	client, err := storage.NewClient(context.Background(), options...)
+	client, err := storage.NewClient(ctx, options...)
 	if err != nil {
 		return nil, err
 	}
 
 	// Check the bucket exists
 	bucket := client.Bucket(bucketName)
-	if _, err := bucket.Attrs(context.Background()); err != nil {
+	if _, err := bucket.Attrs(ctx); err != nil {
 		return nil, errors.Wrap(err, "failed to retrieve bucket attributes")
 	}
 
