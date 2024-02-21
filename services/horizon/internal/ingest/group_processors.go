@@ -31,6 +31,10 @@ func newGroupChangeProcessors(processors []horizonChangeProcessor) *groupChangeP
 	}
 }
 
+func (g groupChangeProcessors) Name() string {
+	return "groupChangeProcessors"
+}
+
 func (g groupChangeProcessors) ProcessChange(ctx context.Context, change ingest.Change) error {
 	for _, p := range g.processors {
 		startTime := time.Now()
@@ -151,6 +155,10 @@ func newGroupTransactionFilterers(filterers []processors.LedgerTransactionFilter
 		filterers:    filterers,
 		runDurations: make(map[string]time.Duration),
 	}
+}
+
+func (g *groupTransactionFilterers) Name() string {
+	return "groupTransactionFilterers"
 }
 
 func (g *groupTransactionFilterers) FilterTransaction(ctx context.Context, tx ingest.LedgerTransaction) (bool, error) {

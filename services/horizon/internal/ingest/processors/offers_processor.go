@@ -27,6 +27,10 @@ func NewOffersProcessor(offersQ history.QOffers, sequence uint32) *OffersProcess
 	return p
 }
 
+func (p *OffersProcessor) Name() string {
+	return "processors.OffersProcessor"
+}
+
 func (p *OffersProcessor) reset() {
 	p.cache = ingest.NewChangeCompactor()
 	p.insertBatchBuilder = p.offersQ.NewOffersBatchInsertBuilder()

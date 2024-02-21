@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/guregu/null/zero"
+
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
@@ -26,6 +27,10 @@ func NewAccountsProcessor(accountsQ history.QAccounts) *AccountsProcessor {
 func (p *AccountsProcessor) reset() {
 	p.cache = ingest.NewChangeCompactor()
 	p.batchInsertBuilder = p.accountsQ.NewAccountsBatchInsertBuilder()
+}
+
+func (p *AccountsProcessor) Name() string {
+	return "processors.AccountsProcessor"
 }
 
 func (p *AccountsProcessor) ProcessChange(ctx context.Context, change ingest.Change) error {

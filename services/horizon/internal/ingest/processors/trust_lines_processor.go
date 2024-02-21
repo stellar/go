@@ -22,6 +22,10 @@ func NewTrustLinesProcessor(trustLinesQ history.QTrustLines) *TrustLinesProcesso
 	return p
 }
 
+func (p *TrustLinesProcessor) Name() string {
+	return "processors.TrustLinesProcessor"
+}
+
 func (p *TrustLinesProcessor) reset() {
 	p.cache = ingest.NewChangeCompactor()
 	p.batchInsertBuilder = p.trustLinesQ.NewTrustLinesBatchInsertBuilder()

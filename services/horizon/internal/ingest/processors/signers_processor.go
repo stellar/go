@@ -30,6 +30,10 @@ func NewSignersProcessor(
 	return p
 }
 
+func (p *SignersProcessor) Name() string {
+	return "processors.SignersProcessor"
+}
+
 func (p *SignersProcessor) reset() {
 	p.batchInsertBuilder = p.signersQ.NewAccountSignersBatchInsertBuilder()
 	p.cache = ingest.NewChangeCompactor()

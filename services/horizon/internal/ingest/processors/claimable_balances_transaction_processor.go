@@ -29,6 +29,10 @@ func NewClaimableBalancesTransactionProcessor(
 	}
 }
 
+func (p *ClaimableBalancesTransactionProcessor) Name() string {
+	return "processors.ClaimableBalancesTransactionProcessor"
+}
+
 func (p *ClaimableBalancesTransactionProcessor) ProcessTransaction(
 	lcm xdr.LedgerCloseMeta, transaction ingest.LedgerTransaction,
 ) error {

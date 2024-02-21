@@ -27,6 +27,10 @@ func NewClaimableBalancesChangeProcessor(Q history.QClaimableBalances) *Claimabl
 	return p
 }
 
+func (p *ClaimableBalancesChangeProcessor) Name() string {
+	return "processors.ClaimableBalancesChangeProcessor"
+}
+
 func (p *ClaimableBalancesChangeProcessor) reset() {
 	p.cache = ingest.NewChangeCompactor()
 	p.claimantsInsertBuilder = p.qClaimableBalances.NewClaimableBalanceClaimantBatchInsertBuilder()

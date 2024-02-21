@@ -13,12 +13,14 @@ import (
 type TransactionProcessor struct {
 	batch      history.TransactionBatchInsertBuilder
 	skipTxmeta bool
+	name       string
 }
 
 func NewTransactionFilteredTmpProcessor(batch history.TransactionBatchInsertBuilder, skipTxmeta bool) *TransactionProcessor {
 	return &TransactionProcessor{
 		batch:      batch,
 		skipTxmeta: skipTxmeta,
+		name:       "processors.TransactionFilteredTmpProcessor",
 	}
 }
 
@@ -26,7 +28,12 @@ func NewTransactionProcessor(batch history.TransactionBatchInsertBuilder, skipTx
 	return &TransactionProcessor{
 		batch:      batch,
 		skipTxmeta: skipTxmeta,
+		name:       "processors.TransactionProcessor",
 	}
+}
+
+func (p *TransactionProcessor) Name() string {
+	return p.name
 }
 
 func (p *TransactionProcessor) ProcessTransaction(lcm xdr.LedgerCloseMeta, transaction ingest.LedgerTransaction) error {

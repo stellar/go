@@ -27,6 +27,10 @@ func (p *AccountDataProcessor) reset() {
 	p.batchInsertBuilder = p.dataQ.NewAccountDataBatchInsertBuilder()
 }
 
+func (p *AccountDataProcessor) Name() string {
+	return "processors.AccountDataProcessor"
+}
+
 func (p *AccountDataProcessor) ProcessChange(ctx context.Context, change ingest.Change) error {
 	// We're interested in data only
 	if change.Type != xdr.LedgerEntryTypeData {

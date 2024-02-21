@@ -33,6 +33,10 @@ func NewOperationProcessor(batch history.OperationBatchInsertBuilder, network st
 	}
 }
 
+func (p *OperationProcessor) Name() string {
+	return "processors.OperationProcessor"
+}
+
 // ProcessTransaction process the given transaction
 func (p *OperationProcessor) ProcessTransaction(lcm xdr.LedgerCloseMeta, transaction ingest.LedgerTransaction) error {
 	for i, op := range transaction.Envelope.Operations() {
