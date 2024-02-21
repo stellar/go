@@ -1,6 +1,7 @@
 package exporter
 
 import (
+	"context"
 	"io"
 
 	"github.com/stretchr/testify/mock"
@@ -11,27 +12,27 @@ type MockDataStore struct {
 	mock.Mock
 }
 
-func (m *MockDataStore) Exists(path string) (bool, error) {
+func (m *MockDataStore) Exists(ctx context.Context, path string) (bool, error) {
 	args := m.Called(path)
 	return args.Bool(0), args.Error(1)
 }
 
-func (m *MockDataStore) Size(path string) (int64, error) {
+func (m *MockDataStore) Size(ctx context.Context, path string) (int64, error) {
 	args := m.Called(path)
 	return args.Get(0).(int64), args.Error(1)
 }
 
-func (m *MockDataStore) GetFile(path string) (io.ReadCloser, error) {
+func (m *MockDataStore) GetFile(ctx context.Context, path string) (io.ReadCloser, error) {
 	args := m.Called(path)
 	return args.Get(0).(io.ReadCloser), args.Error(1)
 }
 
-func (m *MockDataStore) PutFile(path string, in io.WriterTo) error {
+func (m *MockDataStore) PutFile(ctx context.Context, path string, in io.WriterTo) error {
 	args := m.Called(path, in)
 	return args.Error(0)
 }
 
-func (m *MockDataStore) PutFileIfNotExists(path string, in io.WriterTo) error {
+func (m *MockDataStore) PutFileIfNotExists(ctx context.Context, path string, in io.WriterTo) error {
 	args := m.Called(path, in)
 	return args.Error(0)
 }

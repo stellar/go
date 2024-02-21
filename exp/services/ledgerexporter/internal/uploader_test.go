@@ -45,7 +45,7 @@ func (s *UploaderSuite) TestUpload() {
 		}).Return(nil).Once()
 
 	dataUploader := uploader{destination: &s.mockDataStore}
-	assert.NoError(s.T(), dataUploader.Upload(archive))
+	assert.NoError(s.T(), dataUploader.Upload(context.Background(), archive))
 
 	var capturedBuf bytes.Buffer
 	_, err := capturedWriterTo.WriteTo(&capturedBuf)
@@ -69,6 +69,6 @@ func (s *UploaderSuite) TestUploadPutError() {
 		mock.Anything).Return(errors.New("error in PutFileIfNotExists"))
 
 	dataUploader := uploader{destination: &s.mockDataStore}
-	err := dataUploader.Upload(archive)
+	err := dataUploader.Upload(context.Background(), archive)
 	assert.Equal(s.T(), fmt.Sprintf("error uploading %s: error in PutFileIfNotExists", key), err.Error())
 }

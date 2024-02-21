@@ -9,7 +9,7 @@ import (
 // Uploader is responsible for uploading data to a storage destination.
 type Uploader interface {
 	Run(ctx context.Context) error
-	Upload(metaArchive *LedgerMetaArchive) error
+	Upload(ctx context.Context, metaArchive *LedgerMetaArchive) error
 }
 
 type uploader struct {
@@ -26,10 +26,11 @@ func NewUploader(destination DataStore, metaArchiveCh chan *LedgerMetaArchive) U
 
 // Upload uploads the serialized binary data of ledger TxMeta to the specified destination.
 // TODO: Add retry logic.
-func (u *uploader) Upload(metaArchive *LedgerMetaArchive) error {
+func (u *uploader) Upload(ctx context.Context, metaArchive *LedgerMetaArchive) error {
 	logger.Infof("Uploading: %s", metaArchive.GetObjectKey())
 
-	err := u.destination.PutFileIfNotExists(metaArchive.GetObjectKey(), &XDRGzipEncoder{XdrPayload: &metaArchive.data})
+	err := u.destination.PutFileIfNotExists(ctx, metaArchive.GetObjectKey(),
+		&XDRGzipEncoder{XdrPayload: &metaArchive.data})
 	if err != nil {
 		return errors.Wrapf(err, "error uploading %s", metaArchive.GetObjectKey())
 	}
@@ -45,7 +46,7 @@ func (u *uploader) Run(ctx context.Context) error {
 			// Drain the channel and upload pending objects before exiting.
 			logger.Info("Stopping uploader, draining remaining objects from channel...")
 			for obj := range u.metaArchiveCh {
-				err := u.Upload(obj)
+				err := u.Upload(ctx, obj)
 				if err != nil {
 					logger.WithError(err).Errorf("Error uploading %s during shutdown", obj.objectKey)
 				}
@@ -58,7 +59,7 @@ func (u *uploader) Run(ctx context.Context) error {
 				return nil
 			}
 			//Upload the received LedgerMetaArchive.
-			err := u.Upload(metaObject)
+			err := u.Upload(ctx, metaObject)
 			if err != nil {
 				return errors.Wrapf(err, "error uploading %s", metaObject.objectKey)
 			}
