@@ -71,7 +71,7 @@ func (config *Config) LoadConfig() error {
 	}
 
 	// Retrieve the latest ledger sequence from history archives
-	latestNetworkLedger, err := GetLatestLedgerSequenceFromHistoryArchives(historyArchiveUrls)
+	latestNetworkLedger, err := getLatestLedgerSequenceFromHistoryArchives(historyArchiveUrls)
 	logFatalIf(err, "Failed to retrieve the latest ledger sequence from history archives.")
 
 	// Validate config params

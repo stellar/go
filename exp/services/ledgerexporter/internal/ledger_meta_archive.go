@@ -59,16 +59,6 @@ func (f *LedgerMetaArchive) GetEndLedgerSequence() uint32 {
 	return uint32(f.data.EndSequence)
 }
 
-// GetBinaryData returns the marshaled binary representation of the archive's data.
-func (f *LedgerMetaArchive) GetBinaryData() ([]byte, error) {
-	return f.data.MarshalBinary()
-}
-
-// SetBinaryData sets archive's data from the binary buffer.
-func (f *LedgerMetaArchive) SetBinaryData(buffer []byte) error {
-	return f.data.UnmarshalBinary(buffer)
-}
-
 // GetObjectKey returns the object key of the archive.
 func (f *LedgerMetaArchive) GetObjectKey() string {
 	return f.objectKey

@@ -43,9 +43,9 @@ func GetObjectKeyFromSequenceNumber(config ExporterConfig, ledgerSeq uint32) (st
 	return objectKey, nil
 }
 
-// GetLatestLedgerSequenceFromHistoryArchives returns the most recent ledger sequence (checkpoint ledger)
+// getLatestLedgerSequenceFromHistoryArchives returns the most recent ledger sequence (checkpoint ledger)
 // number present in the history archives.
-func GetLatestLedgerSequenceFromHistoryArchives(historyArchivesURLs []string) (uint32, error) {
+func getLatestLedgerSequenceFromHistoryArchives(historyArchivesURLs []string) (uint32, error) {
 	for _, historyArchiveURL := range historyArchivesURLs {
 		ha, err := historyarchive.Connect(
 			historyArchiveURL,

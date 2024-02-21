@@ -91,7 +91,7 @@ func (e *exportManager) Run(ctx context.Context, startLedger, endLedger uint32) 
 	// Close the object channel
 	defer close(e.metaArchiveCh)
 
-	for nextLedger := startLedger; endLedger < 1 || nextLedger <= endLedger; {
+	for nextLedger := startLedger; endLedger < 1 || nextLedger <= endLedger; nextLedger++ {
 		select {
 		case <-ctx.Done():
 			logger.Info("ExportManager stopped")
@@ -101,12 +101,10 @@ func (e *exportManager) Run(ctx context.Context, startLedger, endLedger uint32) 
 			if err != nil {
 				return errors.Wrap(err, "ExportManager failed to fetch ledger from backend")
 			}
-			//time.Sleep(time.Duration(1) * time.Second)
 			err = e.AddLedgerCloseMeta(ledgerCloseMeta)
 			if err != nil {
 				return errors.Wrapf(err, "failed to add ledger %d", nextLedger)
 			}
-			nextLedger++
 		}
 	}
 	logger.Infof("ExportManager has completed exporting the ledger range [%d - %d]", startLedger, endLedger)
