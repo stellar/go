@@ -3,8 +3,8 @@ package exporter
 import (
 	"context"
 
+	"github.com/pkg/errors"
 	"github.com/stellar/go/ingest/ledgerbackend"
-	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
 
@@ -17,7 +17,7 @@ type ExporterConfig struct {
 type ExportManager interface {
 	GetMetaArchiveChannel() chan *LedgerMetaArchive
 	Run(ctx context.Context, startLedger uint32, endLedger uint32) error
-	AddLedgerCloseMeta(ledgerCloseMeta xdr.LedgerCloseMeta) error
+	AddLedgerCloseMeta(ctx context.Context, ledgerCloseMeta xdr.LedgerCloseMeta) error
 }
 
 type exportManager struct {
@@ -43,7 +43,7 @@ func (e *exportManager) GetMetaArchiveChannel() chan *LedgerMetaArchive {
 }
 
 // AddLedgerCloseMeta adds ledger metadata to the current export object
-func (e *exportManager) AddLedgerCloseMeta(ledgerCloseMeta xdr.LedgerCloseMeta) error {
+func (e *exportManager) AddLedgerCloseMeta(ctx context.Context, ledgerCloseMeta xdr.LedgerCloseMeta) error {
 	ledgerSeq := ledgerCloseMeta.LedgerSequence()
 
 	// Determine the object key for the given ledger sequence
@@ -75,9 +75,13 @@ func (e *exportManager) AddLedgerCloseMeta(ledgerCloseMeta xdr.LedgerCloseMeta) 
 
 	if ledgerSeq >= metaArchive.GetEndLedgerSequence() {
 		// Current archive is full, send it for upload
-		e.metaArchiveCh <- metaArchive
-		// Remove it from the map
-		delete(e.metaArchiveMap, objectKey)
+		select {
+		case e.metaArchiveCh <- metaArchive:
+			// Remove it from the map
+			delete(e.metaArchiveMap, objectKey)
+		case <-ctx.Done():
+			return ctx.Err()
+		}
 	}
 	return nil
 }
@@ -101,7 +105,7 @@ func (e *exportManager) Run(ctx context.Context, startLedger, endLedger uint32) 
 			if err != nil {
 				return errors.Wrap(err, "ExportManager failed to fetch ledger from backend")
 			}
-			err = e.AddLedgerCloseMeta(ledgerCloseMeta)
+			err = e.AddLedgerCloseMeta(ctx, ledgerCloseMeta)
 			if err != nil {
 				return errors.Wrapf(err, "failed to add ledger %d", nextLedger)
 			}

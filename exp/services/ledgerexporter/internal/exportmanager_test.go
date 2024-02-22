@@ -4,6 +4,9 @@ import (
 	"context"
 	"sync"
 	"testing"
+	"time"
+
+	"github.com/stretchr/testify/mock"
 
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/support/collections/set"
@@ -28,6 +31,7 @@ func (s *ExportManagerSuite) SetupTest() {
 }
 
 func (s *ExportManagerSuite) TearDownTest() {
+	s.mockBackend.AssertExpectations(s.T())
 }
 
 func (s *ExportManagerSuite) TestRun() {
@@ -60,7 +64,40 @@ func (s *ExportManagerSuite) TestRun() {
 	wg.Wait()
 
 	assert.Equal(s.T(), expectedKeys, actualKeys)
-	s.mockBackend.AssertExpectations(s.T())
+}
+
+func (s *ExportManagerSuite) TestRunContextCancel() {
+	config := ExporterConfig{LedgersPerFile: 1, FilesPerPartition: 1}
+	exporter := NewExportManager(config, &s.mockBackend)
+	ctx, cancel := context.WithCancel(context.Background())
+
+	s.mockBackend.On("GetLedger", mock.Anything, mock.Anything).
+		Return(createLedgerCloseMeta(1), nil)
+
+	go func() {
+		<-time.After(time.Second * 1)
+		cancel()
+	}()
+
+	go func() {
+		ch := exporter.GetMetaArchiveChannel()
+		for i := 0; i < 127; i++ {
+			<-ch
+		}
+	}()
+
+	err := exporter.Run(ctx, 0, 255)
+	assert.EqualError(s.T(), err, "failed to add ledger 128: context canceled")
+
+}
+
+func (s *ExportManagerSuite) TestRunWithCanceledContext() {
+	config := ExporterConfig{LedgersPerFile: 1, FilesPerPartition: 10}
+	exporter := NewExportManager(config, &s.mockBackend)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	err := exporter.Run(ctx, 1, 10)
+	assert.EqualError(s.T(), err, "context canceled")
 }
 
 func (s *ExportManagerSuite) TestAddLedgerCloseMeta() {
@@ -82,7 +119,7 @@ func (s *ExportManagerSuite) TestAddLedgerCloseMeta() {
 	start := uint32(0)
 	end := uint32(255)
 	for i := start; i <= end; i++ {
-		assert.NoError(s.T(), exporter.AddLedgerCloseMeta(createLedgerCloseMeta(i)))
+		assert.NoError(s.T(), exporter.AddLedgerCloseMeta(context.Background(), createLedgerCloseMeta(i)))
 
 		key, err := GetObjectKeyFromSequenceNumber(config, i)
 		assert.NoError(s.T(), err)
@@ -92,4 +129,19 @@ func (s *ExportManagerSuite) TestAddLedgerCloseMeta() {
 	close(objectCh)
 	wg.Wait()
 	assert.Equal(s.T(), expectedkeys, actualKeys)
+}
+
+func (s *ExportManagerSuite) TestAddLedgerCloseMetaContextCancel() {
+	config := ExporterConfig{LedgersPerFile: 1, FilesPerPartition: 10}
+	exporter := NewExportManager(config, &s.mockBackend)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		<-time.After(time.Second * 1)
+		cancel()
+	}()
+
+	assert.NoError(s.T(), exporter.AddLedgerCloseMeta(ctx, createLedgerCloseMeta(1)))
+	err := exporter.AddLedgerCloseMeta(ctx, createLedgerCloseMeta(2))
+	assert.EqualError(s.T(), err, "context canceled")
 }
