@@ -68,5 +68,4 @@ func (u *uploader) Run(ctx context.Context) error {
 			logger.Infof("Uploaded %s successfully", metaObject.objectKey)
 		}
 	}
-	return ctx.Err()
 }
