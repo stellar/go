@@ -21,19 +21,18 @@ type ExportManager interface {
 }
 
 type exportManager struct {
-	config         ExporterConfig
-	backend        ledgerbackend.LedgerBackend
-	metaArchiveMap map[string]*LedgerMetaArchive
-	metaArchiveCh  chan *LedgerMetaArchive
+	config             ExporterConfig
+	backend            ledgerbackend.LedgerBackend
+	currentMetaArchive *LedgerMetaArchive
+	metaArchiveCh      chan *LedgerMetaArchive
 }
 
 // NewExportManager creates a new ExportManager with the provided configuration.
 func NewExportManager(config ExporterConfig, backend ledgerbackend.LedgerBackend) ExportManager {
 	return &exportManager{
-		config:         config,
-		backend:        backend,
-		metaArchiveMap: make(map[string]*LedgerMetaArchive),
-		metaArchiveCh:  make(chan *LedgerMetaArchive, 1),
+		config:        config,
+		backend:       backend,
+		metaArchiveCh: make(chan *LedgerMetaArchive, 1),
 	}
 }
 
@@ -51,9 +50,10 @@ func (e *exportManager) AddLedgerCloseMeta(ctx context.Context, ledgerCloseMeta 
 	if err != nil {
 		return errors.Wrapf(err, "failed to get object key for ledger %d", ledgerSeq)
 	}
-	metaArchive, exists := e.metaArchiveMap[objectKey]
-
-	if !exists {
+	if e.currentMetaArchive != nil && e.currentMetaArchive.GetObjectKey() != objectKey {
+		return errors.New("Current meta archive object key mismatch")
+	}
+	if e.currentMetaArchive == nil {
 		endSeq := ledgerSeq + e.config.LedgersPerFile - 1
 		if ledgerSeq < e.config.LedgersPerFile {
 			// Special case: Adjust the end ledger sequence for the first batch.
@@ -64,21 +64,19 @@ func (e *exportManager) AddLedgerCloseMeta(ctx context.Context, ledgerCloseMeta 
 		}
 
 		// Create a new LedgerMetaArchive and add it to the map.
-		metaArchive = NewLedgerMetaArchive(objectKey, ledgerSeq, endSeq)
-		e.metaArchiveMap[objectKey] = metaArchive
+		e.currentMetaArchive = NewLedgerMetaArchive(objectKey, ledgerSeq, endSeq)
 	}
 
-	err = metaArchive.AddLedger(ledgerCloseMeta)
+	err = e.currentMetaArchive.AddLedger(ledgerCloseMeta)
 	if err != nil {
 		return errors.Wrapf(err, "failed to add ledger %d", ledgerSeq)
 	}
 
-	if ledgerSeq >= metaArchive.GetEndLedgerSequence() {
+	if ledgerSeq >= e.currentMetaArchive.GetEndLedgerSequence() {
 		// Current archive is full, send it for upload
 		select {
-		case e.metaArchiveCh <- metaArchive:
-			// Remove it from the map
-			delete(e.metaArchiveMap, objectKey)
+		case e.metaArchiveCh <- e.currentMetaArchive:
+			e.currentMetaArchive = nil
 		case <-ctx.Done():
 			return ctx.Err()
 		}

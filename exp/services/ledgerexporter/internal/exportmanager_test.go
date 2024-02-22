@@ -145,3 +145,12 @@ func (s *ExportManagerSuite) TestAddLedgerCloseMetaContextCancel() {
 	err := exporter.AddLedgerCloseMeta(ctx, createLedgerCloseMeta(2))
 	assert.EqualError(s.T(), err, "context canceled")
 }
+
+func (s *ExportManagerSuite) TestAddLedgerCloseMetaKeyMismatch() {
+	config := ExporterConfig{LedgersPerFile: 10, FilesPerPartition: 1}
+	exporter := NewExportManager(config, &s.mockBackend)
+
+	assert.NoError(s.T(), exporter.AddLedgerCloseMeta(context.Background(), createLedgerCloseMeta(16)))
+	assert.EqualError(s.T(), exporter.AddLedgerCloseMeta(context.Background(), createLedgerCloseMeta(21)),
+		"Current meta archive object key mismatch")
+}
