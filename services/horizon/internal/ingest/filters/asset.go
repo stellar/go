@@ -35,7 +35,7 @@ func NewAssetFilter() AssetFilter {
 }
 
 func (filter *assetFilter) Name() string {
-	return "filters.accountFilter"
+	return "filters.assetFilter"
 }
 
 func (filter *assetFilter) RefreshAssetFilter(filterConfig *history.AssetFilterConfig) error {
