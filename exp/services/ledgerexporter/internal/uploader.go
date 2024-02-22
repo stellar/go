@@ -2,6 +2,7 @@ package exporter
 
 import (
 	"context"
+	"time"
 
 	"github.com/pkg/errors"
 )
@@ -39,30 +40,33 @@ func (u *uploader) Upload(ctx context.Context, metaArchive *LedgerMetaArchive) e
 
 // Run starts the uploader, continuously listening for LedgerMetaArchive objects to upload.
 func (u *uploader) Run(ctx context.Context) error {
+	uploadCtx, cancel := context.WithCancel(context.Background())
+	go func() {
+		<-ctx.Done()
+		logger.Info("Context done, waiting for remaining uploads to complete...")
+		// allow up to 10 seconds to upload remaining objects from metaArchiveCh
+		<-time.After(10 * time.Second)
+		logger.Info("Timeout reached, canceling remaining uploads...")
+		cancel()
+	}()
 
 	for {
 		select {
-		case <-ctx.Done():
-			// Drain the channel and upload pending objects before exiting.
-			logger.Info("Stopping uploader, draining remaining objects from channel...")
-			for obj := range u.metaArchiveCh {
-				err := u.Upload(ctx, obj)
-				if err != nil {
-					logger.WithError(err).Errorf("Error uploading %s during shutdown", obj.objectKey)
-				}
-			}
-			logger.WithError(ctx.Err()).Info("Uploader stopped")
-			return ctx.Err()
+		case <-uploadCtx.Done():
+			return uploadCtx.Err()
+
 		case metaObject, ok := <-u.metaArchiveCh:
 			if !ok {
-				logger.Info("Export object channel closed, stopping uploader")
-				return nil
+				logger.Info("Meta archive channel closed, stopping uploader")
+				return errors.New("Meta archive channel closed")
 			}
 			//Upload the received LedgerMetaArchive.
-			err := u.Upload(ctx, metaObject)
+			err := u.Upload(uploadCtx, metaObject)
 			if err != nil {
-				return errors.Wrapf(err, "error uploading %s", metaObject.objectKey)
+				return err
 			}
+			logger.Infof("Uploaded %s successfully", metaObject.objectKey)
 		}
 	}
+	return ctx.Err()
 }

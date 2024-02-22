@@ -67,7 +67,6 @@ func (a *App) Run() {
 		if err != nil && !errors.Is(err, context.Canceled) {
 			logger.Errorf("Error executing Uploader: %v", err)
 			cancel()
-			return
 		}
 	}()
 
@@ -78,7 +77,6 @@ func (a *App) Run() {
 		if err != nil && !errors.Is(err, context.Canceled) {
 			logger.Errorf("Error executing ExportManager: %v", err)
 			cancel()
-			return
 		}
 	}()
 

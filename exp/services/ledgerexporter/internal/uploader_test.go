@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"testing"
+	"time"
 
 	"github.com/stellar/go/support/errors"
 	"github.com/stretchr/testify/assert"
@@ -71,4 +72,57 @@ func (s *UploaderSuite) TestUploadPutError() {
 	dataUploader := uploader{destination: &s.mockDataStore}
 	err := dataUploader.Upload(context.Background(), archive)
 	assert.Equal(s.T(), fmt.Sprintf("error uploading %s: error in PutFileIfNotExists", key), err.Error())
+}
+
+func (s *UploaderSuite) TestRunChannelClose() {
+	s.mockDataStore.On("PutFileIfNotExists", mock.Anything, mock.Anything).Return(nil)
+
+	objectCh := make(chan *LedgerMetaArchive, 1)
+	go func() {
+		key, start, end := "test", uint32(1), uint32(100)
+		for i := start; i <= end; i++ {
+			objectCh <- NewLedgerMetaArchive(key, i, i)
+		}
+		<-time.After(time.Second * 2)
+		close(objectCh)
+	}()
+
+	dataUploader := uploader{destination: &s.mockDataStore, metaArchiveCh: objectCh}
+	err := dataUploader.Run(context.Background())
+
+	assert.EqualError(s.T(), err, "Meta archive channel closed")
+}
+
+func (s *UploaderSuite) TestRunContextCancel() {
+	objectCh := make(chan *LedgerMetaArchive, 1)
+	s.mockDataStore.On("PutFileIfNotExists", mock.Anything, mock.Anything).Return(nil)
+	ctx, cancel := context.WithCancel(context.Background())
+
+	go func() {
+		for {
+			objectCh <- NewLedgerMetaArchive("test", 1, 1)
+		}
+	}()
+
+	go func() {
+		<-time.After(time.Second * 2)
+		cancel()
+	}()
+
+	dataUploader := uploader{destination: &s.mockDataStore, metaArchiveCh: objectCh}
+	err := dataUploader.Run(ctx)
+
+	assert.EqualError(s.T(), err, "context canceled")
+}
+
+func (s *UploaderSuite) TestRunUploadError() {
+	objectCh := make(chan *LedgerMetaArchive, 10)
+	objectCh <- NewLedgerMetaArchive("test", 1, 1)
+
+	s.mockDataStore.On("PutFileIfNotExists", "test",
+		mock.Anything).Return(errors.New("Put error"))
+
+	dataUploader := uploader{destination: &s.mockDataStore, metaArchiveCh: objectCh}
+	err := dataUploader.Run(context.Background())
+	assert.Equal(s.T(), "error uploading test: Put error", err.Error())
 }
