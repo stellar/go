@@ -58,7 +58,7 @@ func (u *uploader) Run(ctx context.Context) error {
 		case metaObject, ok := <-u.metaArchiveCh:
 			if !ok {
 				logger.Info("Meta archive channel closed, stopping uploader")
-				return errors.New("Meta archive channel closed")
+				return nil
 			}
 			//Upload the received LedgerMetaArchive.
 			err := u.Upload(uploadCtx, metaObject)

@@ -88,9 +88,7 @@ func (s *UploaderSuite) TestRunChannelClose() {
 	}()
 
 	dataUploader := uploader{destination: &s.mockDataStore, metaArchiveCh: objectCh}
-	err := dataUploader.Run(context.Background())
-
-	assert.EqualError(s.T(), err, "Meta archive channel closed")
+	assert.NoError(s.T(), dataUploader.Run(context.Background()))
 }
 
 func (s *UploaderSuite) TestRunContextCancel() {
