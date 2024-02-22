@@ -39,13 +39,13 @@ func NewApp() *App {
 }
 
 func (a *App) init(ctx context.Context) {
-	a.destinationStorage = NewDestinationStorage(ctx, &a.config)
-	a.backend = NewLedgerBackend(ctx, a.config)
+	a.destinationStorage = mustNewDataStore(ctx, &a.config)
+	a.backend = mustNewLedgerBackend(ctx, a.config)
 	a.exportManager = NewExportManager(a.config.ExporterConfig, a.backend)
 	a.uploader = NewUploader(a.destinationStorage, a.exportManager.GetMetaArchiveChannel())
 }
 
-func (a *App) Close() {
+func (a *App) close() {
 	//TODO: error handling
 	a.destinationStorage.Close()
 	a.backend.Close()
@@ -100,20 +100,20 @@ func (a *App) Run() {
 
 	wg.Wait()
 
-	a.Close()
+	a.close()
 
 	logger.Info("Shutting down ledger-exporter.")
 }
 
-func NewDestinationStorage(ctx context.Context, config *Config) DataStore {
+func mustNewDataStore(ctx context.Context, config *Config) DataStore {
 	destinationStorage, err := NewDataStore(ctx, fmt.Sprintf("%s/%s", config.DestinationURL, config.Network))
 	logFatalIf(err, "Could not connect to destination storage")
 	return destinationStorage
 }
 
-// NewLedgerBackend Creates and initializes captive core ledger backend
+// mustNewLedgerBackend Creates and initializes captive core ledger backend
 // Currently, only supports captive-core as ledger backend
-func NewLedgerBackend(ctx context.Context, config Config) ledgerbackend.LedgerBackend {
+func mustNewLedgerBackend(ctx context.Context, config Config) ledgerbackend.LedgerBackend {
 	captiveConfig := config.GenerateCaptiveCoreConfig()
 
 	// Create a new captive core backend
