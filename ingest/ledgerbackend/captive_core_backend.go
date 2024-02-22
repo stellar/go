@@ -191,7 +191,7 @@ func NewCaptive(config CaptiveCoreConfig) (*CaptiveStellarCore, error) {
 	}
 
 	c := &CaptiveStellarCore{
-		archive:           &archivePool,
+		archive:           archivePool,
 		ledgerHashStore:   config.LedgerHashStore,
 		useDB:             config.UseDB,
 		cancel:            cancel,
