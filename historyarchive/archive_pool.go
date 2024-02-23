@@ -13,6 +13,10 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
+const (
+	requestBackoffMs = 250
+)
+
 // An ArchivePool is just a collection of `ArchiveInterface`s so that we can
 // distribute requests fairly throughout the pool, but with additional
 // error-tracking to identify/avoid problematic archives in the pool.
@@ -79,15 +83,16 @@ var _ ArchiveInterface = &ArchivePool{}
 // These are helpers to round-robin calls through archives.
 //
 
+// getNextIndex is a stateless way to iterate through the pool
 func (pa *ArchivePool) getNextIndex(i int) int {
 	return (i + 1) % len(pa.pool)
 }
 
+// getNextArchive statefully round-robins through the pool
 func (pa *ArchivePool) getNextArchive() ArchiveInterface {
 	// Round-robin through the archives
-	ai := pa.pool[pa.curr]
 	pa.curr = pa.getNextIndex(pa.curr)
-	return ai
+	return pa.pool[pa.curr]
 }
 
 // runOnEach is a helper method that will run a particular action on every
@@ -95,11 +100,12 @@ func (pa *ArchivePool) getNextArchive() ArchiveInterface {
 // comes first). It will also track error stats against the pool to identify
 // problematic archives.
 func (pa *ArchivePool) runOnEach(runner func(ai ArchiveInterface) error) error {
-	start := pa.curr // track the first archive we use
+	// track the first archive we'll use
+	start := pa.getNextIndex(pa.curr)
 
-	for {
-		cycle := pa.getNextIndex(pa.curr) == start
+	for { // loops until success or cycle
 		ai := pa.getNextArchive()
+		cycle := pa.getNextIndex(pa.curr) == start
 
 		//
 		// The error-redundancy logic here is admittedly a little
@@ -109,43 +115,41 @@ func (pa *ArchivePool) runOnEach(runner func(ai ArchiveInterface) error) error {
 		// it until the backoff period is reached, so we find an archive that
 		// needs the least amount of back-off.
 		//
-		// This might put more strain on livelier archives in the pool but it
-		// does ensure we eventually retry failing ones. It also means if
-		// everything in the pool is failing, we back off for the smallest
-		// amount of time possible.
-		//
 		// Finally, if we've cycled through the pool and haven't returned still,
 		// then this is just a lost cause and we return the latest error.
 		//
-		// Note that this will distribute load more to healthier archives
-		// (because of the preference for no-backoff), but that's because we're
-		// preferring low latency rather than perfect redundancy.
+		// This might put more strain on livelier archives in the pool but it
+		// does ensure we eventually retry failing ones. This is a fine
+		// trade-off because we're preferring low latency rather than perfect
+		// redundancy. It also means if everything in the pool is failing, we
+		// back off for the smallest amount of time possible.
 		//
 
 		shouldBackoff := pa.errors[ai].getBackoff()
 		if shouldBackoff > 0 {
 			// If we're going to back off, we should sleep for the lowest amount
 			// of time possible.
-			bestPool := ai
-			bestBackoff := shouldBackoff
+			bestBackoff, bestPool := shouldBackoff, ai
 
-			for pool, errors := range pa.errors {
-				if pool == ai || errors.backoffs > 0 { // is it an erroring pool?
-					if backoff := errors.getBackoff(); backoff < bestBackoff {
-						bestPool = pool
-						bestBackoff = backoff
-					}
-				} else {
+			// Start our search from the next interface since we *know* this one
+			// requires a back-off.
+			loopStart := pa.getNextIndex(pa.curr)
+			for i := loopStart; pa.getNextIndex(i) != loopStart; i = pa.getNextIndex(i) {
+				pool := pa.pool[i]
+				errors := pa.errors[pool]
+
+				if backoff := errors.getBackoff(); backoff < bestBackoff {
+					bestBackoff = backoff
 					bestPool = pool
-					bestBackoff = 0
-					break
 				}
 			}
 
-			if bestBackoff > 0 {
-				pa.errors[bestPool].backoffs++
-				time.Sleep(bestBackoff)
-			}
+			// Safe without a check because:
+			//
+			// > A negative or zero duration causes Sleep to return immediately.
+			//
+			// https://pkg.go.dev/time#Sleep
+			time.Sleep(bestBackoff)
 			ai = bestPool
 		}
 
@@ -153,6 +157,8 @@ func (pa *ArchivePool) runOnEach(runner func(ai ArchiveInterface) error) error {
 		// from, so we can actually do execution now.
 		if err := runner(ai); err != nil {
 			if statline, ok := pa.errors[ai]; ok {
+				statline.backoffs++ // increase backoff duration
+
 				// Periodically output accumulated delays
 				if errCount := statline.addError(err); errCount%7 == 0 {
 					log.WithError(err).Warnf(
@@ -166,7 +172,6 @@ func (pa *ArchivePool) runOnEach(runner func(ai ArchiveInterface) error) error {
 			if cycle {
 				return err
 			}
-
 			continue
 		}
 
@@ -276,7 +281,7 @@ type errStats struct {
 	latest  time.Time
 	lastErr error
 
-	backoffs int // tracked by caller
+	backoffs int // tracked by caller: how many errors since last success?
 }
 
 // addError updates all tracking states
@@ -290,13 +295,13 @@ func (statline *errStats) addError(err error) int {
 // getBackoff suggests a linear backoff (+250ms each step) from the time of
 // the last error
 func (statline *errStats) getBackoff() time.Duration {
-	if statline.count == 0 {
+	if statline.backoffs == 0 {
 		return time.Duration(0)
 	}
 
 	// Given the time of the last error, when would it be okay to request again?
 	backoffUntil := statline.latest.Add(
-		time.Duration(statline.backoffs+1) * 250 * time.Millisecond,
+		time.Duration(statline.backoffs) * requestBackoffMs * time.Millisecond,
 	)
 
 	// How long is it until then? If it's in the past, you can fire away.
