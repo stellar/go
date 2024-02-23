@@ -13,46 +13,9 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-type errStats struct {
-	count   int
-	latest  time.Time
-	lastErr error
-
-	backoffs int
-}
-
-func (statline *errStats) addError(err error) int {
-	statline.count++
-	statline.lastErr = err
-	statline.latest = time.Now()
-	statline.backoffs = 0
-
-	return statline.count
-}
-
-// getBackoff will suggest a linear backoff (+250ms each step) from the time of
-// the last error
-func (statline *errStats) getBackoff() time.Duration {
-	if statline.count == 0 {
-		return time.Duration(0)
-	}
-
-	// Given the time of the last error, when would it be okay to request again?
-	backoffUntil := statline.latest.Add(
-		time.Duration(statline.backoffs+1) * 250 * time.Millisecond,
-	)
-
-	// How long is it until then? If it's in the past, you can fire away.
-	backoffFor := time.Since(backoffUntil)
-	if backoffFor > 0 {
-		return backoffFor
-	}
-	return time.Duration(0)
-}
-
 // An ArchivePool is just a collection of `ArchiveInterface`s so that we can
 // distribute requests fairly throughout the pool, but with additional
-// error-tracking to identify/drop problematic archives in the pool.
+// error-tracking to identify/avoid problematic archives in the pool.
 type ArchivePool struct {
 	pool []ArchiveInterface
 
@@ -98,10 +61,10 @@ func NewArchivePool(archiveURLs []string, opts ArchiveOptions) (ArchiveInterface
 		return nil, lastErr
 	}
 
-	return ap, nil
+	return &ap, nil
 }
 
-func (pa ArchivePool) GetStats() []ArchiveStats {
+func (pa *ArchivePool) GetStats() []ArchiveStats {
 	stats := []ArchiveStats{}
 	for _, archive := range pa.pool {
 		stats = append(stats, archive.GetStats()...)
@@ -154,6 +117,10 @@ func (pa *ArchivePool) runOnEach(runner func(ai ArchiveInterface) error) error {
 		// Finally, if we've cycled through the pool and haven't returned still,
 		// then this is just a lost cause and we return the latest error.
 		//
+		// Note that this will distribute load more to healthier archives
+		// (because of the preference for no-backoff), but that's because we're
+		// preferring low latency rather than perfect redundancy.
+		//
 
 		shouldBackoff := pa.errors[ai].getBackoff()
 		if shouldBackoff > 0 {
@@ -163,15 +130,20 @@ func (pa *ArchivePool) runOnEach(runner func(ai ArchiveInterface) error) error {
 			bestBackoff := shouldBackoff
 
 			for pool, errors := range pa.errors {
-				if bestPool == nil {
+				if pool == ai || errors.backoffs > 0 { // is it an erroring pool?
+					if backoff := errors.getBackoff(); backoff < bestBackoff {
+						bestPool = pool
+						bestBackoff = backoff
+					}
+				} else {
 					bestPool = pool
-				} else if backoff := errors.getBackoff(); backoff < bestBackoff {
-					bestPool = pool
-					bestBackoff = backoff
+					bestBackoff = 0
+					break
 				}
 			}
 
 			if bestBackoff > 0 {
+				pa.errors[bestPool].backoffs++
 				time.Sleep(bestBackoff)
 			}
 			ai = bestPool
@@ -181,9 +153,12 @@ func (pa *ArchivePool) runOnEach(runner func(ai ArchiveInterface) error) error {
 		// from, so we can actually do execution now.
 		if err := runner(ai); err != nil {
 			if statline, ok := pa.errors[ai]; ok {
-				log.WithError(err).Warnf(
-					"The archive '%s' has had %d errors so far",
-					ai.GetStats()[0].GetBackendName(), statline.addError(err))
+				// Periodically output accumulated delays
+				if errCount := statline.addError(err); errCount%7 == 0 {
+					log.WithError(err).Warnf(
+						"The archive '%s' has had %d errors so far",
+						ai.GetStats()[0].GetBackendName(), errCount)
+				}
 			}
 
 			// If we're cycling around, we're all out of options and should
@@ -195,6 +170,8 @@ func (pa *ArchivePool) runOnEach(runner func(ai ArchiveInterface) error) error {
 			continue
 		}
 
+		// Always reset backoff counter in non-error case.
+		pa.errors[ai].backoffs = 0
 		return nil
 	}
 }
@@ -203,7 +180,7 @@ func (pa *ArchivePool) runOnEach(runner func(ai ArchiveInterface) error) error {
 // Below are the ArchiveInterface method implementations.
 //
 
-func (pa ArchivePool) GetPathHAS(path string) (HistoryArchiveState, error) {
+func (pa *ArchivePool) GetPathHAS(path string) (HistoryArchiveState, error) {
 	has := HistoryArchiveState{}
 	err := pa.runOnEach(func(ai ArchiveInterface) error {
 		var innerErr error
@@ -213,13 +190,13 @@ func (pa ArchivePool) GetPathHAS(path string) (HistoryArchiveState, error) {
 	return has, err
 }
 
-func (pa ArchivePool) PutPathHAS(path string, has HistoryArchiveState, opts *CommandOptions) error {
+func (pa *ArchivePool) PutPathHAS(path string, has HistoryArchiveState, opts *CommandOptions) error {
 	return pa.runOnEach(func(ai ArchiveInterface) error {
 		return ai.PutPathHAS(path, has, opts)
 	})
 }
 
-func (pa ArchivePool) BucketExists(bucket Hash) (bool, error) {
+func (pa *ArchivePool) BucketExists(bucket Hash) (bool, error) {
 	status := false
 	return status, pa.runOnEach(func(ai ArchiveInterface) error {
 		var err error
@@ -228,7 +205,7 @@ func (pa ArchivePool) BucketExists(bucket Hash) (bool, error) {
 	})
 }
 
-func (pa ArchivePool) BucketSize(bucket Hash) (int64, error) {
+func (pa *ArchivePool) BucketSize(bucket Hash) (int64, error) {
 	var bsize int64
 	return bsize, pa.runOnEach(func(ai ArchiveInterface) error {
 		var err error
@@ -237,58 +214,95 @@ func (pa ArchivePool) BucketSize(bucket Hash) (int64, error) {
 	})
 }
 
-func (pa ArchivePool) CategoryCheckpointExists(cat string, chk uint32) (bool, error) {
+func (pa *ArchivePool) CategoryCheckpointExists(cat string, chk uint32) (bool, error) {
 	return pa.getNextArchive().CategoryCheckpointExists(cat, chk)
 }
 
-func (pa ArchivePool) GetLedgerHeader(chk uint32) (xdr.LedgerHeaderHistoryEntry, error) {
+func (pa *ArchivePool) GetLedgerHeader(chk uint32) (xdr.LedgerHeaderHistoryEntry, error) {
 	return pa.getNextArchive().GetLedgerHeader(chk)
 }
 
-func (pa ArchivePool) GetRootHAS() (HistoryArchiveState, error) {
+func (pa *ArchivePool) GetRootHAS() (HistoryArchiveState, error) {
 	return pa.getNextArchive().GetRootHAS()
 }
 
-func (pa ArchivePool) GetLedgers(start, end uint32) (map[uint32]*Ledger, error) {
+func (pa *ArchivePool) GetLedgers(start, end uint32) (map[uint32]*Ledger, error) {
 	return pa.getNextArchive().GetLedgers(start, end)
 }
 
-func (pa ArchivePool) GetCheckpointHAS(chk uint32) (HistoryArchiveState, error) {
+func (pa *ArchivePool) GetCheckpointHAS(chk uint32) (HistoryArchiveState, error) {
 	return pa.getNextArchive().GetCheckpointHAS(chk)
 }
 
-func (pa ArchivePool) PutCheckpointHAS(chk uint32, has HistoryArchiveState, opts *CommandOptions) error {
+func (pa *ArchivePool) PutCheckpointHAS(chk uint32, has HistoryArchiveState, opts *CommandOptions) error {
 	return pa.getNextArchive().PutCheckpointHAS(chk, has, opts)
 }
 
-func (pa ArchivePool) PutRootHAS(has HistoryArchiveState, opts *CommandOptions) error {
+func (pa *ArchivePool) PutRootHAS(has HistoryArchiveState, opts *CommandOptions) error {
 	return pa.getNextArchive().PutRootHAS(has, opts)
 }
 
-func (pa ArchivePool) ListBucket(dp DirPrefix) (chan string, chan error) {
+func (pa *ArchivePool) ListBucket(dp DirPrefix) (chan string, chan error) {
 	return pa.getNextArchive().ListBucket(dp)
 }
 
-func (pa ArchivePool) ListAllBuckets() (chan string, chan error) {
+func (pa *ArchivePool) ListAllBuckets() (chan string, chan error) {
 	return pa.getNextArchive().ListAllBuckets()
 }
 
-func (pa ArchivePool) ListAllBucketHashes() (chan Hash, chan error) {
+func (pa *ArchivePool) ListAllBucketHashes() (chan Hash, chan error) {
 	return pa.getNextArchive().ListAllBucketHashes()
 }
 
-func (pa ArchivePool) ListCategoryCheckpoints(cat string, pth string) (chan uint32, chan error) {
+func (pa *ArchivePool) ListCategoryCheckpoints(cat string, pth string) (chan uint32, chan error) {
 	return pa.getNextArchive().ListCategoryCheckpoints(cat, pth)
 }
 
-func (pa ArchivePool) GetXdrStreamForHash(hash Hash) (*XdrStream, error) {
+func (pa *ArchivePool) GetXdrStreamForHash(hash Hash) (*XdrStream, error) {
 	return pa.getNextArchive().GetXdrStreamForHash(hash)
 }
 
-func (pa ArchivePool) GetXdrStream(pth string) (*XdrStream, error) {
+func (pa *ArchivePool) GetXdrStream(pth string) (*XdrStream, error) {
 	return pa.getNextArchive().GetXdrStream(pth)
 }
 
-func (pa ArchivePool) GetCheckpointManager() CheckpointManager {
+func (pa *ArchivePool) GetCheckpointManager() CheckpointManager {
 	return pa.getNextArchive().GetCheckpointManager()
+}
+
+// errStats is a way to track when, how many, and the latest error occurred.
+type errStats struct {
+	count   int
+	latest  time.Time
+	lastErr error
+
+	backoffs int // tracked by caller
+}
+
+// addError updates all tracking states
+func (statline *errStats) addError(err error) int {
+	statline.count++
+	statline.lastErr = err
+	statline.latest = time.Now()
+	return statline.count
+}
+
+// getBackoff suggests a linear backoff (+250ms each step) from the time of
+// the last error
+func (statline *errStats) getBackoff() time.Duration {
+	if statline.count == 0 {
+		return time.Duration(0)
+	}
+
+	// Given the time of the last error, when would it be okay to request again?
+	backoffUntil := statline.latest.Add(
+		time.Duration(statline.backoffs+1) * 250 * time.Millisecond,
+	)
+
+	// How long is it until then? If it's in the past, you can fire away.
+	backoffFor := -time.Since(backoffUntil)
+	if backoffFor > 0 {
+		return backoffFor
+	}
+	return time.Duration(0)
 }
