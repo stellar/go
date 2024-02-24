@@ -39,7 +39,7 @@ type Config struct {
 func (config *Config) LoadConfig() error {
 	// Parse command-line options
 	startLedger := flag.Uint("start", 0, "Starting ledger")
-	endLedger := flag.Uint("end", 0, "Ending ledger")
+	endLedger := flag.Uint("end", 0, "Ending ledger (inclusive)")
 	startFromLastNLedger := flag.Uint("from-last", 0, "Start streaming from last N ledgers")
 
 	configFilePath := flag.String("config-file", "config.toml", "Path to the TOML config file")
