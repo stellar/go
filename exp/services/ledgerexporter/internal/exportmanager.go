@@ -1,4 +1,4 @@
-package exporter
+package ledgerexporter
 
 import (
 	"context"
@@ -22,7 +22,7 @@ type ExportManager interface {
 
 type exportManager struct {
 	config             ExporterConfig
-	backend            ledgerbackend.LedgerBackend
+	ledgerBackend      ledgerbackend.LedgerBackend
 	currentMetaArchive *LedgerMetaArchive
 	metaArchiveCh      chan *LedgerMetaArchive
 }
@@ -31,7 +31,7 @@ type exportManager struct {
 func NewExportManager(config ExporterConfig, backend ledgerbackend.LedgerBackend) ExportManager {
 	return &exportManager{
 		config:        config,
-		backend:       backend,
+		ledgerBackend: backend,
 		metaArchiveCh: make(chan *LedgerMetaArchive, 1),
 	}
 }
@@ -96,19 +96,19 @@ func (e *exportManager) Run(ctx context.Context, startLedger, endLedger uint32) 
 	for nextLedger := startLedger; endLedger < 1 || nextLedger <= endLedger; nextLedger++ {
 		select {
 		case <-ctx.Done():
-			logger.Info("ExportManager stopped")
+			logger.Info("Stopping ExportManager due to context cancellation")
 			return ctx.Err()
 		default:
-			ledgerCloseMeta, err := e.backend.GetLedger(ctx, nextLedger)
+			ledgerCloseMeta, err := e.ledgerBackend.GetLedger(ctx, nextLedger)
 			if err != nil {
-				return errors.Wrap(err, "ExportManager failed to fetch ledger from backend")
+				return errors.Wrapf(err, "failed to retrieve ledger %d from the ledger backend", nextLedger)
 			}
 			err = e.AddLedgerCloseMeta(ctx, ledgerCloseMeta)
 			if err != nil {
-				return errors.Wrapf(err, "failed to add ledger %d", nextLedger)
+				return errors.Wrapf(err, "failed to add ledgerCloseMeta for ledger %d", nextLedger)
 			}
 		}
 	}
-	logger.Infof("ExportManager has completed exporting the ledger range [%d - %d]", startLedger, endLedger)
+	logger.Infof("ExportManager successfully exported ledgers from %d to %d", startLedger, endLedger)
 	return nil
 }

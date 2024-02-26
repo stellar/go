@@ -1,4 +1,4 @@
-package exporter
+package ledgerexporter
 
 import (
 	_ "embed"

@@ -1,4 +1,4 @@
-package exporter
+package ledgerexporter
 
 import (
 	"fmt"
@@ -55,7 +55,7 @@ func TestLedgerMetaArchive_AddLedgerSequential(t *testing.T) {
 
 	// Add ledgers sequentially
 	for i := start; i <= end; i++ {
-		assert.NoError(t, f.AddLedger(createLedgerCloseMeta(uint32(i))))
+		assert.NoError(t, f.AddLedger(createLedgerCloseMeta(i)))
 	}
 
 	// Test out of sequence

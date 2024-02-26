@@ -1,4 +1,4 @@
-package exporter
+package ledgerexporter
 
 import (
 	"context"
@@ -12,23 +12,23 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stellar/go/ingest/ledgerbackend"
 	_ "github.com/stellar/go/network"
-	supportlog "github.com/stellar/go/support/log"
+	"github.com/stellar/go/support/log"
 )
 
 var (
-	logger = supportlog.New().WithField("service", "ledger-exporter")
+	logger = log.New().WithField("service", "ledger-exporter")
 )
 
 type App struct {
-	config             Config
-	backend            ledgerbackend.LedgerBackend
-	destinationStorage DataStore
-	exportManager      ExportManager
-	uploader           Uploader
+	config        Config
+	ledgerBackend ledgerbackend.LedgerBackend
+	dataStore     DataStore
+	exportManager ExportManager
+	uploader      Uploader
 }
 
 func NewApp() *App {
-	logger.SetLevel(supportlog.DebugLevel)
+	logger.SetLevel(log.DebugLevel)
 
 	config := Config{}
 	err := config.LoadConfig()
@@ -39,16 +39,19 @@ func NewApp() *App {
 }
 
 func (a *App) init(ctx context.Context) {
-	a.destinationStorage = mustNewDataStore(ctx, &a.config)
-	a.backend = mustNewLedgerBackend(ctx, a.config)
-	a.exportManager = NewExportManager(a.config.ExporterConfig, a.backend)
-	a.uploader = NewUploader(a.destinationStorage, a.exportManager.GetMetaArchiveChannel())
+	a.dataStore = mustNewDataStore(ctx, &a.config)
+	a.ledgerBackend = mustNewLedgerBackend(ctx, a.config)
+	a.exportManager = NewExportManager(a.config.ExporterConfig, a.ledgerBackend)
+	a.uploader = NewUploader(a.dataStore, a.exportManager.GetMetaArchiveChannel())
 }
 
 func (a *App) close() {
-	//TODO: error handling
-	a.destinationStorage.Close()
-	a.backend.Close()
+	if err := a.dataStore.Close(); err != nil {
+		logger.WithError(err).Error("Error closing datastore")
+	}
+	if err := a.ledgerBackend.Close(); err != nil {
+		logger.WithError(err).Error("Error closing ledgerBackend")
+	}
 }
 
 func (a *App) Run() {
@@ -56,6 +59,7 @@ func (a *App) Run() {
 	defer cancel()
 
 	a.init(ctx)
+	defer a.close()
 
 	var wg sync.WaitGroup
 	wg.Add(2)
@@ -65,7 +69,7 @@ func (a *App) Run() {
 
 		err := a.uploader.Run(ctx)
 		if err != nil && !errors.Is(err, context.Canceled) {
-			logger.Errorf("Error executing Uploader: %v", err)
+			logger.WithError(err).Error("Error executing Uploader")
 			cancel()
 		}
 	}()
@@ -75,40 +79,28 @@ func (a *App) Run() {
 
 		err := a.exportManager.Run(ctx, a.config.StartLedger, a.config.EndLedger)
 		if err != nil && !errors.Is(err, context.Canceled) {
-			logger.Errorf("Error executing ExportManager: %v", err)
+			logger.WithError(err).Error("Error executing ExportManager")
 			cancel()
 		}
 	}()
 
+	// Handle OS signals to gracefully terminate the service
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
-		// Handle OS signals to gracefully terminate the service
-		sigCh := make(chan os.Signal, 1)
-		signal.Notify(sigCh, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
-
-		for {
-			select {
-			case <-ctx.Done():
-				logger.Infof("Received context done signal")
-				return
-			case sig := <-sigCh:
-				logger.Infof("Received signal: %v", sig)
-				cancel()
-				return
-			}
-		}
+		sig := <-sigCh
+		logger.Infof("Received termination signal: %v", sig)
+		cancel()
 	}()
 
 	wg.Wait()
-
-	a.close()
-
-	logger.Info("Shutting down ledger-exporter.")
+	logger.Info("Shutting down ledger-exporter")
 }
 
 func mustNewDataStore(ctx context.Context, config *Config) DataStore {
-	destinationStorage, err := NewDataStore(ctx, fmt.Sprintf("%s/%s", config.DestinationURL, config.Network))
-	logFatalIf(err, "Could not connect to destination storage")
-	return destinationStorage
+	dataStore, err := NewDataStore(ctx, fmt.Sprintf("%s/%s", config.DestinationURL, config.Network))
+	logFatalIf(err, "Could not connect to destination data store")
+	return dataStore
 }
 
 // mustNewLedgerBackend Creates and initializes captive core ledger backend

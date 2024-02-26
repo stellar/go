@@ -1,4 +1,4 @@
-package exporter
+package ledgerexporter
 
 import (
 	"bytes"
@@ -39,13 +39,13 @@ func (s *UploaderSuite) TestUpload() {
 
 	var capturedWriterTo io.WriterTo
 	var capturedKey string
-	s.mockDataStore.On("PutFileIfNotExists", key, mock.Anything).
+	s.mockDataStore.On("PutFileIfNotExists", mock.Anything, key, mock.Anything).
 		Run(func(args mock.Arguments) {
-			capturedKey = args.Get(0).(string)
-			capturedWriterTo = args.Get(1).(io.WriterTo)
+			capturedKey = args.Get(1).(string)
+			capturedWriterTo = args.Get(2).(io.WriterTo)
 		}).Return(nil).Once()
 
-	dataUploader := uploader{destination: &s.mockDataStore}
+	dataUploader := uploader{dataStore: &s.mockDataStore}
 	assert.NoError(s.T(), dataUploader.Upload(context.Background(), archive))
 
 	var capturedBuf bytes.Buffer
@@ -66,16 +66,17 @@ func (s *UploaderSuite) TestUploadPutError() {
 	key, start, end := "test-1-100", uint32(1), uint32(100)
 	archive := NewLedgerMetaArchive(key, start, end)
 
-	s.mockDataStore.On("PutFileIfNotExists", key,
+	s.mockDataStore.On("PutFileIfNotExists", context.Background(), key,
 		mock.Anything).Return(errors.New("error in PutFileIfNotExists"))
 
-	dataUploader := uploader{destination: &s.mockDataStore}
+	dataUploader := uploader{dataStore: &s.mockDataStore}
 	err := dataUploader.Upload(context.Background(), archive)
 	assert.Equal(s.T(), fmt.Sprintf("error uploading %s: error in PutFileIfNotExists", key), err.Error())
 }
 
 func (s *UploaderSuite) TestRunChannelClose() {
-	s.mockDataStore.On("PutFileIfNotExists", mock.Anything, mock.Anything).Return(nil)
+	s.mockDataStore.On("PutFileIfNotExists", mock.Anything,
+		mock.Anything, mock.Anything).Return(nil)
 
 	objectCh := make(chan *LedgerMetaArchive, 1)
 	go func() {
@@ -87,13 +88,13 @@ func (s *UploaderSuite) TestRunChannelClose() {
 		close(objectCh)
 	}()
 
-	dataUploader := uploader{destination: &s.mockDataStore, metaArchiveCh: objectCh}
+	dataUploader := uploader{dataStore: &s.mockDataStore, metaArchiveCh: objectCh}
 	assert.NoError(s.T(), dataUploader.Run(context.Background()))
 }
 
 func (s *UploaderSuite) TestRunContextCancel() {
 	objectCh := make(chan *LedgerMetaArchive, 1)
-	s.mockDataStore.On("PutFileIfNotExists", mock.Anything, mock.Anything).Return(nil)
+	s.mockDataStore.On("PutFileIfNotExists", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	ctx, cancel := context.WithCancel(context.Background())
 
 	go func() {
@@ -107,7 +108,7 @@ func (s *UploaderSuite) TestRunContextCancel() {
 		cancel()
 	}()
 
-	dataUploader := uploader{destination: &s.mockDataStore, metaArchiveCh: objectCh}
+	dataUploader := uploader{dataStore: &s.mockDataStore, metaArchiveCh: objectCh}
 	err := dataUploader.Run(ctx)
 
 	assert.EqualError(s.T(), err, "context canceled")
@@ -117,10 +118,10 @@ func (s *UploaderSuite) TestRunUploadError() {
 	objectCh := make(chan *LedgerMetaArchive, 10)
 	objectCh <- NewLedgerMetaArchive("test", 1, 1)
 
-	s.mockDataStore.On("PutFileIfNotExists", "test",
+	s.mockDataStore.On("PutFileIfNotExists", mock.Anything, "test",
 		mock.Anything).Return(errors.New("Put error"))
 
-	dataUploader := uploader{destination: &s.mockDataStore, metaArchiveCh: objectCh}
+	dataUploader := uploader{dataStore: &s.mockDataStore, metaArchiveCh: objectCh}
 	err := dataUploader.Run(context.Background())
 	assert.Equal(s.T(), "error uploading test: Put error", err.Error())
 }

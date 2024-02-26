@@ -1,4 +1,4 @@
-package exporter
+package ledgerexporter
 
 import (
 	"context"
@@ -87,7 +87,7 @@ func (s *ExportManagerSuite) TestRunContextCancel() {
 	}()
 
 	err := exporter.Run(ctx, 0, 255)
-	assert.EqualError(s.T(), err, "failed to add ledger 128: context canceled")
+	assert.EqualError(s.T(), err, "failed to add ledgerCloseMeta for ledger 128: context canceled")
 
 }
 
