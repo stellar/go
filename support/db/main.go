@@ -21,6 +21,7 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/jmoiron/sqlx"
+
 	"github.com/stellar/go/support/errors"
 
 	// Enable postgres
@@ -119,6 +120,7 @@ type Session struct {
 	DB *sqlx.DB
 
 	tx            *sqlx.Tx
+	txCancel      context.CancelFunc
 	txOptions     *sql.TxOptions
 	errorHandlers []ErrorHandlerFunc
 }

@@ -12,28 +12,65 @@ import (
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
+
 	"github.com/stellar/go/support/db/sqlutils"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
 )
+
+var DeadlineCtxKey = CtxKey("deadline")
+
+func noop() {}
+
+// context() checks if there is a override on the context timeout which is configured using DeadlineCtxKey.
+// If the override exists, we return a new context with the desired deadline. Otherwise, we return the
+// original context.
+// Note that the override will not be applied if requestCtx has already been terminated.
+func (s *Session) context(requestCtx context.Context) (context.Context, context.CancelFunc, error) {
+	deadline, ok := requestCtx.Value(&DeadlineCtxKey).(time.Time)
+	if !ok {
+		return requestCtx, noop, nil
+	}
+
+	// if requestCtx is already terminated don't proceed with the db statement
+	switch {
+	case requestCtx.Err() == context.Canceled:
+		return requestCtx, noop, ErrCancelled
+	case requestCtx.Err() == context.DeadlineExceeded:
+		return requestCtx, noop, ErrTimeout
+	case requestCtx.Err() != nil:
+		return requestCtx, noop, requestCtx.Err()
+	}
+
+	ctx, cancel := context.WithDeadline(context.Background(), deadline)
+	return ctx, cancel, nil
+}
 
 // Begin binds this session to a new transaction.
 func (s *Session) Begin(ctx context.Context) error {
 	if s.tx != nil {
 		return errors.New("already in transaction")
 	}
+	ctx, cancel, err := s.context(ctx)
+	if err != nil {
+		cancel()
+		return err
+	}
 
 	tx, err := s.DB.BeginTxx(ctx, nil)
 	if err != nil {
 		if knownErr := s.handleError(err, ctx); knownErr != nil {
+			cancel()
 			return knownErr
 		}
 
+		cancel()
 		return errors.Wrap(err, "beginx failed")
 	}
 	log.Debug("sql: begin")
 	s.tx = tx
 	s.txOptions = nil
+	s.txCancel = cancel
 	return nil
 }
 
@@ -43,19 +80,27 @@ func (s *Session) BeginTx(ctx context.Context, opts *sql.TxOptions) error {
 	if s.tx != nil {
 		return errors.New("already in transaction")
 	}
+	ctx, cancel, err := s.context(ctx)
+	if err != nil {
+		cancel()
+		return err
+	}
 
 	tx, err := s.DB.BeginTxx(ctx, opts)
 	if err != nil {
 		if knownErr := s.handleError(err, ctx); knownErr != nil {
+			cancel()
 			return knownErr
 		}
 
+		cancel()
 		return errors.Wrap(err, "beginTx failed")
 	}
 	log.Debug("sql: begin")
 
 	s.tx = tx
 	s.txOptions = opts
+	s.txCancel = cancel
 	return nil
 }
 
@@ -93,6 +138,8 @@ func (s *Session) Commit() error {
 	log.Debug("sql: commit")
 	s.tx = nil
 	s.txOptions = nil
+	s.txCancel()
+	s.txCancel = nil
 
 	if knownErr := s.handleError(err, context.Background()); knownErr != nil {
 		return knownErr
@@ -135,7 +182,13 @@ func (s *Session) Get(ctx context.Context, dest interface{}, query sq.Sqlizer) e
 // GetRaw runs `query` with `args`, setting the first result found on
 // `dest`, if any.
 func (s *Session) GetRaw(ctx context.Context, dest interface{}, query string, args ...interface{}) error {
-	query, err := s.ReplacePlaceholders(query)
+	ctx, cancel, err := s.context(ctx)
+	defer cancel()
+	if err != nil {
+		return err
+	}
+
+	query, err = s.ReplacePlaceholders(query)
 	if err != nil {
 		return errors.Wrap(err, "replace placeholders failed")
 	}
@@ -204,7 +257,13 @@ func (s *Session) ExecAll(ctx context.Context, script string) error {
 
 // ExecRaw runs `query` with `args`
 func (s *Session) ExecRaw(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
-	query, err := s.ReplacePlaceholders(query)
+	ctx, cancel, err := s.context(ctx)
+	defer cancel()
+	if err != nil {
+		return nil, err
+	}
+
+	query, err = s.ReplacePlaceholders(query)
 	if err != nil {
 		return nil, errors.Wrap(err, "replace placeholders failed")
 	}
@@ -304,7 +363,13 @@ func (s *Session) Query(ctx context.Context, query sq.Sqlizer) (*sqlx.Rows, erro
 
 // QueryRaw runs `query` with `args`
 func (s *Session) QueryRaw(ctx context.Context, query string, args ...interface{}) (*sqlx.Rows, error) {
-	query, err := s.ReplacePlaceholders(query)
+	ctx, cancel, err := s.context(ctx)
+	defer cancel()
+	if err != nil {
+		return nil, err
+	}
+
+	query, err = s.ReplacePlaceholders(query)
 	if err != nil {
 		return nil, errors.Wrap(err, "replace placeholders failed")
 	}
@@ -350,6 +415,8 @@ func (s *Session) Rollback() error {
 	log.Debug("sql: rollback")
 	s.tx = nil
 	s.txOptions = nil
+	s.txCancel()
+	s.txCancel = nil
 
 	if knownErr := s.handleError(err, context.Background()); knownErr != nil {
 		return knownErr
@@ -381,8 +448,14 @@ func (s *Session) SelectRaw(
 	query string,
 	args ...interface{},
 ) error {
+	ctx, cancel, err := s.context(ctx)
+	defer cancel()
+	if err != nil {
+		return err
+	}
+
 	s.clearSliceIfPossible(dest)
-	query, err := s.ReplacePlaceholders(query)
+	query, err = s.ReplacePlaceholders(query)
 	if err != nil {
 		return errors.Wrap(err, "replace placeholders failed")
 	}

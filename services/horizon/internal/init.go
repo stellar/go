@@ -30,8 +30,9 @@ func mustNewDBSession(subservice db.Subservice, databaseURL string, maxIdle, max
 	return db.RegisterMetrics(session, "horizon", subservice, registry)
 }
 
-func mustInitHorizonDB(app *App) {
+func mustInitHorizonDB(app *App) bool {
 	log.Infof("Initializing database...")
+	var dbServerSideTimeout bool
 
 	maxIdle := app.config.HorizonDBMaxIdleConnections
 	maxOpen := app.config.HorizonDBMaxOpenConnections
@@ -55,6 +56,7 @@ func mustInitHorizonDB(app *App) {
 				db.StatementTimeout(app.config.ConnectionTimeout),
 				db.IdleTransactionTimeout(app.config.ConnectionTimeout),
 			)
+			dbServerSideTimeout = true
 		}
 		app.historyQ = &history.Q{mustNewDBSession(
 			db.HistorySubservice,
@@ -70,6 +72,7 @@ func mustInitHorizonDB(app *App) {
 			db.StatementTimeout(app.config.ConnectionTimeout),
 			db.IdleTransactionTimeout(app.config.ConnectionTimeout),
 		}
+		dbServerSideTimeout = true
 		app.historyQ = &history.Q{mustNewDBSession(
 			db.HistorySubservice,
 			app.config.RoDatabaseURL,
@@ -87,6 +90,8 @@ func mustInitHorizonDB(app *App) {
 			app.prometheusRegistry,
 		)}
 	}
+
+	return dbServerSideTimeout
 }
 
 func initIngester(app *App) {
