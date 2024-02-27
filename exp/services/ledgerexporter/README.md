@@ -5,7 +5,7 @@ The Ledger Exporter is a tool designed to export ledger data from a Stellar netw
 Ledger Exporter currently uses captive-core as the ledger backend and GCS as the destination data store.
 
 # Exported Data Format
-The tool allows for the export of multiple ledgers in a single exported file. The exported data is in XDR format and is compressed (gzip) before being uploaded.
+The tool allows for the export of multiple ledgers in a single exported file. The exported data is in XDR format and is compressed using gzip before being uploaded.
 
 ```go
 type LedgerCloseMetaBatch struct {
@@ -39,11 +39,10 @@ Starts exporting from a specified number of ledgers before the latest ledger seq
 ledgerexporter --from-last <number_of_ledgers> --config-file <config_file_path>
 ```
 
-
-## Configuration File (config.toml)
+### Configuration (toml):
 
 ```toml
-network = "testnet"
+network = "testnet"  # Options: `testnet` or `pubnet`
 destination_url = "gcs://your-bucket-name"
 
 [exporter_config]
@@ -51,9 +50,13 @@ ledgers_per_file = 64
 files_per_partition = 10
 ```
 
-## Exported Files
+#### Stellar-core configuration:
+- The exporter automatically configures stellar-core based on the network specified in the config.
+- Ensure you have stellar-core installed and accessible in your system's $PATH.
 
-### File Organization:
+### Exported Files
+
+#### File Organization:
 - Ledgers are grouped into files, with the number of ledgers per file set by `ledgers_per_file`.
 - Files are further organized into partitions, with the number of files per partition set by `files_per_partition`.
 
