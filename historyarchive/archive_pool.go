@@ -137,7 +137,6 @@ func (pa *ArchivePool) runOnEach(runner func(ai ArchiveInterface) error) error {
 			for i := loopStart; pa.getNextIndex(i) != loopStart; i = pa.getNextIndex(i) {
 				pool := pa.pool[i]
 				errors := pa.errors[pool]
-
 				if backoff := errors.getBackoff(); backoff < bestBackoff {
 					bestBackoff = backoff
 					bestPool = pool

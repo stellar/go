@@ -164,7 +164,6 @@ func TestArchivePoolCycles(t *testing.T) {
 	// A single access should try all pools and stop after a cycle is
 	// encountered, so we ensure here that there are 3 distinct accesses.
 	//
-
 	_, err = pool.GetPathHAS("path")
 	require.Error(t, err)
 
@@ -173,15 +172,13 @@ func TestArchivePoolCycles(t *testing.T) {
 	assert.Contains(t, accesses, "2")
 	assert.Contains(t, accesses, "3")
 
-	accesses = []string{}
-
 	//
 	// The next access will also try all pools but it should notice a back-off
 	// for all of them, too, and *still* stop after a cycle. This ensures 3
 	// duped distinct accesses and a *single* backoff (since they all share the
 	// same single back-off).
 	//
-
+	accesses = []string{}
 	_, err = pool.GetPathHAS("path")
 	require.Error(t, err)
 
@@ -191,5 +188,6 @@ func TestArchivePoolCycles(t *testing.T) {
 	assert.Contains(t, accesses, "3")
 
 	require.Len(t, requestTimes, 6)
-	require.GreaterOrEqualf(t, time.Since(requestTimes[0]), 250*time.Millisecond, "")
+	require.GreaterOrEqualf(t, time.Since(requestTimes[0]), 250*time.Millisecond,
+		"expected larger backoff period")
 }
