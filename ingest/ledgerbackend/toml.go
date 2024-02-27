@@ -2,6 +2,7 @@ package ledgerbackend
 
 import (
 	"bytes"
+	_ "embed"
 	"fmt"
 	"os"
 	"os/exec"
@@ -14,6 +15,14 @@ import (
 	"github.com/stellar/go/xdr"
 
 	"github.com/pelletier/go-toml"
+)
+
+var (
+	//go:embed configs/captive-core-pubnet.cfg
+	PubnetDefaultConfig []byte
+
+	//go:embed configs/captive-core-testnet.cfg
+	TestnetDefaultConfig []byte
 )
 
 const (
