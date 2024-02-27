@@ -10,7 +10,6 @@ import (
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/ingest/filters"
 	"github.com/stellar/go/services/horizon/internal/ingest/processors"
-	"github.com/stellar/go/support/collections/set"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 	logpkg "github.com/stellar/go/support/log"
@@ -77,14 +76,6 @@ type ProcessorRunnerInterface interface {
 		ledgerProtocolVersion uint32,
 		bucketListHash xdr.Hash,
 	) (ingest.StatsChangeProcessorResults, error)
-	RunTransactionProcessorsOnLedger(nameSet set.Set[string], ledger xdr.LedgerCloseMeta) (
-		transactionStats processors.StatsLedgerTransactionProcessorResults,
-		transactionDurations runDurations,
-		tradeStats processors.TradeStats,
-		loaderDurations runDurations,
-		loaderStats map[string]history.LoaderStats,
-		err error,
-	)
 	RunTransactionProcessorsOnLedgers(ledgers []xdr.LedgerCloseMeta) error
 	RunAllProcessorsOnLedger(ledger xdr.LedgerCloseMeta) (
 		stats ledgerStats,
@@ -250,8 +241,8 @@ func (s *ProcessorRunner) RunHistoryArchiveIngestion(
 		s.config.NetworkPassphrase,
 	)
 
-	if err := checkUniqueChangeProcessorNames(
-		set.Set[string]{},
+	if err := registerChangeProcessors(
+		nameRegistry{},
 		changeProcessor,
 	); err != nil {
 		return ingest.StatsChangeProcessorResults{}, err
@@ -378,7 +369,7 @@ func (s *ProcessorRunner) streamLedger(ledger xdr.LedgerCloseMeta,
 	return nil
 }
 
-func (s *ProcessorRunner) RunTransactionProcessorsOnLedger(nameSet set.Set[string], ledger xdr.LedgerCloseMeta) (
+func (s *ProcessorRunner) runTransactionProcessorsOnLedger(registry nameRegistry, ledger xdr.LedgerCloseMeta) (
 	transactionStats processors.StatsLedgerTransactionProcessorResults,
 	transactionDurations runDurations,
 	tradeStats processors.TradeStats,
@@ -394,8 +385,8 @@ func (s *ProcessorRunner) RunTransactionProcessorsOnLedger(nameSet set.Set[strin
 	groupFilteredOutProcessors := s.buildFilteredOutProcessor()
 	groupTransactionProcessors := s.buildTransactionProcessor(ledgersProcessor)
 
-	if err = checkUniqueTransactionProcessorNames(
-		nameSet,
+	if err = registerTransactionProcessors(
+		registry,
 		groupTransactionFilterers,
 		groupFilteredOutProcessors,
 		groupTransactionProcessors,
@@ -436,32 +427,60 @@ func (s *ProcessorRunner) RunTransactionProcessorsOnLedger(nameSet set.Set[strin
 	return
 }
 
-func checkUniqueTransactionProcessorNames(
-	s set.Set[string],
+// nameRegistry ensures all ingestion components have a unique name
+// for metrics reporting
+type nameRegistry map[string]struct{}
+
+func (n nameRegistry) add(name string) error {
+	if _, ok := n[name]; ok {
+		return fmt.Errorf("%s is duplicated", name)
+	}
+	n[name] = struct{}{}
+	return nil
+}
+
+func registerChangeProcessors(
+	registry nameRegistry,
+	group *groupChangeProcessors,
+) error {
+	for _, p := range group.processors {
+		if err := registry.add(p.Name()); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func registerTransactionProcessors(
+	registry nameRegistry,
 	groupTransactionFilterers *groupTransactionFilterers,
 	groupFilteredOutProcessors *groupTransactionProcessors,
 	groupTransactionProcessors *groupTransactionProcessors,
 ) error {
 	for _, f := range groupTransactionFilterers.filterers {
-		name := f.Name()
-		if s.Contains(name) {
-			return fmt.Errorf("%s is duplicated", name)
+		if err := registry.add(f.Name()); err != nil {
+			return err
 		}
-		s.Add(name)
 	}
 	for _, p := range groupTransactionProcessors.processors {
-		name := p.Name()
-		if s.Contains(name) {
-			return fmt.Errorf("%s is duplicated", name)
+		if err := registry.add(p.Name()); err != nil {
+			return err
 		}
-		s.Add(name)
+	}
+	for _, l := range groupTransactionProcessors.lazyLoaders {
+		if err := registry.add(l.Name()); err != nil {
+			return err
+		}
 	}
 	for _, p := range groupFilteredOutProcessors.processors {
-		name := p.Name()
-		if s.Contains(name) {
-			return fmt.Errorf("%s is duplicated", name)
+		if err := registry.add(p.Name()); err != nil {
+			return err
 		}
-		s.Add(name)
+	}
+	for _, l := range groupFilteredOutProcessors.lazyLoaders {
+		if err := registry.add(l.Name()); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -472,15 +491,6 @@ func (s *ProcessorRunner) RunTransactionProcessorsOnLedgers(ledgers []xdr.Ledger
 	groupTransactionFilterers := s.buildTransactionFilterer()
 	groupFilteredOutProcessors := s.buildFilteredOutProcessor()
 	groupTransactionProcessors := s.buildTransactionProcessor(ledgersProcessor)
-
-	if err = checkUniqueTransactionProcessorNames(
-		set.Set[string]{},
-		groupTransactionFilterers,
-		groupFilteredOutProcessors,
-		groupTransactionProcessors,
-	); err != nil {
-		return err
-	}
 
 	startTime := time.Now()
 	curHeap, sysHeap := getMemStats()
@@ -548,20 +558,6 @@ func (s *ProcessorRunner) flushProcessors(groupFilteredOutProcessors *groupTrans
 	return
 }
 
-func checkUniqueChangeProcessorNames(
-	s set.Set[string],
-	group *groupChangeProcessors,
-) error {
-	for _, p := range group.processors {
-		name := p.Name()
-		if s.Contains(name) {
-			return fmt.Errorf("%s is duplicated", name)
-		}
-		s.Add(name)
-	}
-	return nil
-}
-
 func (s *ProcessorRunner) RunAllProcessorsOnLedger(ledger xdr.LedgerCloseMeta) (
 	stats ledgerStats,
 	err error,
@@ -581,9 +577,9 @@ func (s *ProcessorRunner) RunAllProcessorsOnLedger(ledger xdr.LedgerCloseMeta) (
 		s.config.NetworkPassphrase,
 	)
 
-	nameSet := set.Set[string]{}
-	if err = checkUniqueChangeProcessorNames(
-		nameSet,
+	registry := nameRegistry{}
+	if err = registerChangeProcessors(
+		registry,
 		groupChangeProcessors,
 	); err != nil {
 		return
@@ -594,7 +590,7 @@ func (s *ProcessorRunner) RunAllProcessorsOnLedger(ledger xdr.LedgerCloseMeta) (
 		return
 	}
 
-	transactionStats, transactionDurations, tradeStats, loaderDurations, loaderStats, err := s.RunTransactionProcessorsOnLedger(nameSet, ledger)
+	transactionStats, transactionDurations, tradeStats, loaderDurations, loaderStats, err := s.runTransactionProcessorsOnLedger(registry, ledger)
 
 	stats.changeStats = changeStatsProcessor.GetResults()
 	stats.changeDurations = groupChangeProcessors.processorsRunDurations
