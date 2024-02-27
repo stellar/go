@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/stellar/go/xdr"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func createLedgerCloseMeta(ledgerSeq uint32) xdr.LedgerCloseMeta {
@@ -42,9 +42,9 @@ func TestLedgerMetaArchive_AddLedgerValidRange(t *testing.T) {
 				f := NewLedgerMetaArchive("", tt.startSeq, tt.endSeq)
 				err := f.AddLedger(createLedgerCloseMeta(tt.seqNum))
 				if tt.errMsg != "" {
-					assert.EqualError(t, err, tt.errMsg)
+					require.EqualError(t, err, tt.errMsg)
 				} else {
-					assert.NoError(t, err)
+					require.NoError(t, err)
 				}
 			})
 	}
@@ -55,7 +55,7 @@ func TestLedgerMetaArchive_AddLedgerSequential(t *testing.T) {
 
 	// Add ledgers sequentially
 	for i := start; i <= end; i++ {
-		assert.NoError(t, f.AddLedger(createLedgerCloseMeta(i)))
+		require.NoError(t, f.AddLedger(createLedgerCloseMeta(i)))
 	}
 
 	// Test out of sequence
@@ -79,6 +79,6 @@ func TestLedgerMetaArchive_AddLedgerSequential(t *testing.T) {
 
 	for _, tc := range testCases {
 		err := f.AddLedger(createLedgerCloseMeta(tc.ledgerSeq))
-		assert.EqualError(t, err, tc.expectedErrMsg)
+		require.EqualError(t, err, tc.expectedErrMsg)
 	}
 }

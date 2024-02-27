@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestValidateStartAndEndLedger(t *testing.T) {
@@ -72,9 +72,9 @@ func TestValidateStartAndEndLedger(t *testing.T) {
 			config.StartLedger = tt.startLedger
 			config.EndLedger = tt.endLedger
 			if tt.errMsg != "" {
-				assert.Equal(t, tt.errMsg, config.validateAndSetLedgerRange(latestNetworkLedger).Error())
+				require.Equal(t, tt.errMsg, config.validateAndSetLedgerRange(latestNetworkLedger).Error())
 			} else {
-				assert.NoError(t, config.validateAndSetLedgerRange(latestNetworkLedger))
+				require.NoError(t, config.validateAndSetLedgerRange(latestNetworkLedger))
 			}
 		})
 	}
@@ -121,8 +121,8 @@ func TestAdjustLedgerRangeBoundedMode(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.config.adjustLedgerRange()
-			assert.EqualValues(t, tt.expected.StartLedger, tt.config.StartLedger)
-			assert.EqualValues(t, tt.expected.EndLedger, tt.config.EndLedger)
+			require.EqualValues(t, tt.expected.StartLedger, tt.config.StartLedger)
+			require.EqualValues(t, tt.expected.EndLedger, tt.config.EndLedger)
 		})
 	}
 }
@@ -163,8 +163,8 @@ func TestAdjustLedgerRangeUnBoundedMode(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.config.adjustLedgerRange()
-			assert.EqualValues(t, int(tt.expected.StartLedger), int(tt.config.StartLedger))
-			assert.EqualValues(t, int(tt.expected.EndLedger), int(tt.config.EndLedger))
+			require.EqualValues(t, int(tt.expected.StartLedger), int(tt.config.StartLedger))
+			require.EqualValues(t, int(tt.expected.EndLedger), int(tt.config.EndLedger))
 		})
 	}
 }

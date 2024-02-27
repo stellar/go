@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/stellar/go/xdr"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestGetObjectKeyFromSequenceNumber(t *testing.T) {
@@ -36,11 +36,11 @@ func TestGetObjectKeyFromSequenceNumber(t *testing.T) {
 			key, err := GetObjectKeyFromSequenceNumber(config, tc.ledgerSeq)
 
 			if tc.expectedError {
-				assert.Error(t, err)
-				assert.Empty(t, key)
+				require.Error(t, err)
+				require.Empty(t, key)
 			} else {
-				assert.NoError(t, err)
-				assert.Equal(t, tc.expectedKey, key)
+				require.NoError(t, err)
+				require.Equal(t, tc.expectedKey, key)
 			}
 		})
 	}
@@ -67,21 +67,21 @@ func TestEncodeDecodeLedgerCloseMetaBatch(t *testing.T) {
 
 	var buf bytes.Buffer
 	_, err := encoder.WriteTo(&buf)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Decode the encoded data
 	var decoder XDRGzipDecoder
 	decoder.XdrPayload = &xdr.LedgerCloseMetaBatch{}
 
 	_, err = decoder.ReadFrom(&buf)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Check if the decoded data matches the original test data
 	decodedData := decoder.XdrPayload.(*xdr.LedgerCloseMetaBatch)
-	assert.Equal(t, testData.StartSequence, decodedData.StartSequence)
-	assert.Equal(t, testData.EndSequence, decodedData.EndSequence)
-	assert.Equal(t, len(testData.LedgerCloseMetas), len(decodedData.LedgerCloseMetas))
+	require.Equal(t, testData.StartSequence, decodedData.StartSequence)
+	require.Equal(t, testData.EndSequence, decodedData.EndSequence)
+	require.Equal(t, len(testData.LedgerCloseMetas), len(decodedData.LedgerCloseMetas))
 	for i := range testData.LedgerCloseMetas {
-		assert.Equal(t, testData.LedgerCloseMetas[i], decodedData.LedgerCloseMetas[i])
+		require.Equal(t, testData.LedgerCloseMetas[i], decodedData.LedgerCloseMetas[i])
 	}
 }

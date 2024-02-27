@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/stellar/go/support/errors"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -46,20 +46,20 @@ func (s *UploaderSuite) TestUpload() {
 		}).Return(nil).Once()
 
 	dataUploader := uploader{dataStore: &s.mockDataStore}
-	assert.NoError(s.T(), dataUploader.Upload(context.Background(), archive))
+	require.NoError(s.T(), dataUploader.Upload(context.Background(), archive))
 
 	var capturedBuf bytes.Buffer
 	_, err := capturedWriterTo.WriteTo(&capturedBuf)
-	assert.NoError(s.T(), err)
+	require.NoError(s.T(), err)
 
 	var decodedArchive LedgerMetaArchive
 	decoder := &XDRGzipDecoder{XdrPayload: &decodedArchive.data}
 	_, err = decoder.ReadFrom(&capturedBuf)
-	assert.NoError(s.T(), err)
+	require.NoError(s.T(), err)
 
-	// Assert that the decoded data matches the original test data
-	assert.Equal(s.T(), key, capturedKey)
-	assert.Equal(s.T(), archive.data, decodedArchive.data)
+	// require that the decoded data matches the original test data
+	require.Equal(s.T(), key, capturedKey)
+	require.Equal(s.T(), archive.data, decodedArchive.data)
 }
 
 func (s *UploaderSuite) TestUploadPutError() {
@@ -71,7 +71,7 @@ func (s *UploaderSuite) TestUploadPutError() {
 
 	dataUploader := uploader{dataStore: &s.mockDataStore}
 	err := dataUploader.Upload(context.Background(), archive)
-	assert.Equal(s.T(), fmt.Sprintf("error uploading %s: error in PutFileIfNotExists", key), err.Error())
+	require.Equal(s.T(), fmt.Sprintf("error uploading %s: error in PutFileIfNotExists", key), err.Error())
 }
 
 func (s *UploaderSuite) TestRunChannelClose() {
@@ -89,7 +89,7 @@ func (s *UploaderSuite) TestRunChannelClose() {
 	}()
 
 	dataUploader := uploader{dataStore: &s.mockDataStore, metaArchiveCh: objectCh}
-	assert.NoError(s.T(), dataUploader.Run(context.Background()))
+	require.NoError(s.T(), dataUploader.Run(context.Background()))
 }
 
 func (s *UploaderSuite) TestRunContextCancel() {
@@ -111,7 +111,7 @@ func (s *UploaderSuite) TestRunContextCancel() {
 	dataUploader := uploader{dataStore: &s.mockDataStore, metaArchiveCh: objectCh}
 	err := dataUploader.Run(ctx)
 
-	assert.EqualError(s.T(), err, "context canceled")
+	require.EqualError(s.T(), err, "context canceled")
 }
 
 func (s *UploaderSuite) TestRunUploadError() {
@@ -123,5 +123,5 @@ func (s *UploaderSuite) TestRunUploadError() {
 
 	dataUploader := uploader{dataStore: &s.mockDataStore, metaArchiveCh: objectCh}
 	err := dataUploader.Run(context.Background())
-	assert.Equal(s.T(), "error uploading test: Put error", err.Error())
+	require.Equal(s.T(), "error uploading test: Put error", err.Error())
 }

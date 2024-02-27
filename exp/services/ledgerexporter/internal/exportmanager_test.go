@@ -10,7 +10,7 @@ import (
 
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/support/collections/set"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -59,11 +59,11 @@ func (s *ExportManagerSuite) TestRun() {
 	}()
 
 	err := exporter.Run(s.ctx, start, end)
-	assert.NoError(s.T(), err)
+	require.NoError(s.T(), err)
 
 	wg.Wait()
 
-	assert.Equal(s.T(), expectedKeys, actualKeys)
+	require.Equal(s.T(), expectedKeys, actualKeys)
 }
 
 func (s *ExportManagerSuite) TestRunContextCancel() {
@@ -87,7 +87,7 @@ func (s *ExportManagerSuite) TestRunContextCancel() {
 	}()
 
 	err := exporter.Run(ctx, 0, 255)
-	assert.EqualError(s.T(), err, "failed to add ledgerCloseMeta for ledger 128: context canceled")
+	require.EqualError(s.T(), err, "failed to add ledgerCloseMeta for ledger 128: context canceled")
 
 }
 
@@ -97,7 +97,7 @@ func (s *ExportManagerSuite) TestRunWithCanceledContext() {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	err := exporter.Run(ctx, 1, 10)
-	assert.EqualError(s.T(), err, "context canceled")
+	require.EqualError(s.T(), err, "context canceled")
 }
 
 func (s *ExportManagerSuite) TestAddLedgerCloseMeta() {
@@ -119,16 +119,16 @@ func (s *ExportManagerSuite) TestAddLedgerCloseMeta() {
 	start := uint32(0)
 	end := uint32(255)
 	for i := start; i <= end; i++ {
-		assert.NoError(s.T(), exporter.AddLedgerCloseMeta(context.Background(), createLedgerCloseMeta(i)))
+		require.NoError(s.T(), exporter.AddLedgerCloseMeta(context.Background(), createLedgerCloseMeta(i)))
 
 		key, err := GetObjectKeyFromSequenceNumber(config, i)
-		assert.NoError(s.T(), err)
+		require.NoError(s.T(), err)
 		expectedkeys.Add(key)
 	}
 
 	close(objectCh)
 	wg.Wait()
-	assert.Equal(s.T(), expectedkeys, actualKeys)
+	require.Equal(s.T(), expectedkeys, actualKeys)
 }
 
 func (s *ExportManagerSuite) TestAddLedgerCloseMetaContextCancel() {
@@ -141,16 +141,16 @@ func (s *ExportManagerSuite) TestAddLedgerCloseMetaContextCancel() {
 		cancel()
 	}()
 
-	assert.NoError(s.T(), exporter.AddLedgerCloseMeta(ctx, createLedgerCloseMeta(1)))
+	require.NoError(s.T(), exporter.AddLedgerCloseMeta(ctx, createLedgerCloseMeta(1)))
 	err := exporter.AddLedgerCloseMeta(ctx, createLedgerCloseMeta(2))
-	assert.EqualError(s.T(), err, "context canceled")
+	require.EqualError(s.T(), err, "context canceled")
 }
 
 func (s *ExportManagerSuite) TestAddLedgerCloseMetaKeyMismatch() {
 	config := ExporterConfig{LedgersPerFile: 10, FilesPerPartition: 1}
 	exporter := NewExportManager(config, &s.mockBackend)
 
-	assert.NoError(s.T(), exporter.AddLedgerCloseMeta(context.Background(), createLedgerCloseMeta(16)))
-	assert.EqualError(s.T(), exporter.AddLedgerCloseMeta(context.Background(), createLedgerCloseMeta(21)),
+	require.NoError(s.T(), exporter.AddLedgerCloseMeta(context.Background(), createLedgerCloseMeta(16)))
+	require.EqualError(s.T(), exporter.AddLedgerCloseMeta(context.Background(), createLedgerCloseMeta(21)),
 		"Current meta archive object key mismatch")
 }
