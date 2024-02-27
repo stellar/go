@@ -6,15 +6,10 @@ package historyarchive
 
 import (
 	"math/rand"
-	"time"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
-)
-
-const (
-	requestBackoffMs = 250
 )
 
 // An ArchivePool is just a collection of `ArchiveInterface`s so that we can
@@ -104,62 +99,17 @@ func (pa *ArchivePool) runOnEach(runner func(ai ArchiveInterface) error) error {
 	// track the first archive we'll use
 	start := pa.getNextIndex(pa.curr)
 
-	for { // loops until success or cycle
+	//
+	// The error resilience here is fairly simple: we round-robin through
+	// the list of archives in the pool until success or exhaustion.
+	//
+	for {
 		ai := pa.getNextArchive()
 		cycle := pa.getNextIndex(pa.curr) == start
 
-		//
-		// The error-redundancy logic here is admittedly a little
-		// over-engineered and I'd appreciate feedback on it:
-		//
-		// If the archive is "problematic" (i.e. needs backoff), we should skip
-		// it until the backoff period is reached, so we find an archive that
-		// needs the least amount of back-off.
-		//
-		// Finally, if we've cycled through the pool and haven't returned still,
-		// then this is just a lost cause and we return the latest error.
-		//
-		// This might put more strain on livelier archives in the pool but it
-		// does ensure we eventually retry failing ones. This is a fine
-		// trade-off because we're preferring low latency rather than perfect
-		// redundancy. It also means if everything in the pool is failing, we
-		// back off for the smallest amount of time possible.
-		//
-
-		shouldBackoff := pa.errors[ai].getBackoff()
-		if shouldBackoff > 0 {
-			// If we're going to back off, we should sleep for the lowest amount
-			// of time possible.
-			bestBackoff, bestPool := shouldBackoff, ai
-
-			// Start our search from the next interface since we *know* this one
-			// requires a back-off.
-			loopStart := pa.getNextIndex(pa.curr)
-			for i := loopStart; pa.getNextIndex(i) != loopStart; i = pa.getNextIndex(i) {
-				pool := pa.pool[i]
-				errors := pa.errors[pool]
-				if backoff := errors.getBackoff(); backoff < bestBackoff {
-					bestBackoff = backoff
-					bestPool = pool
-				}
-			}
-
-			// Safe without a check because:
-			//
-			// > A negative or zero duration causes Sleep to return immediately.
-			//
-			// https://pkg.go.dev/time#Sleep
-			time.Sleep(bestBackoff)
-			ai = bestPool
-		}
-
-		// Reaching this point means either no back-off or `ai` was backed-off
-		// from, so we can actually do execution now.
 		if err := runner(ai); err != nil {
-			if statline, ok := pa.errors[ai]; ok {
-				statline.backoffs++ // increase backoff duration
-
-				// Periodically output accumulated delays
+			if statline, ok := pa.errors[ai]; ok /* shouldn't miss, but safer */ {
+				// Periodically output accumulated issues
 				if errCount := statline.addError(err); errCount%7 == 0 {
 					log.WithError(err).Warnf(
 						"The archive '%s' has had %d errors so far",
@@ -167,16 +117,21 @@ func (pa *ArchivePool) runOnEach(runner func(ai ArchiveInterface) error) error {
 				}
 			}
 
+			// TODO: Should these be handled in a special way? I think no,
+			// because it will bubble up the same error after trying all of
+			// the archives in the pool, anyway.
+			// if err == context.Canceled || err == context.DeadlineExceeded {
+			// }
+
 			// If we're cycling around, we're all out of options and should
 			// bubble up the last error we saw.
 			if cycle {
 				return err
 			}
+
 			continue
 		}
 
-		// Always reset backoff counter in non-error case.
-		pa.errors[ai].backoffs = 0
 		return nil
 	}
 }
@@ -275,39 +230,15 @@ func (pa *ArchivePool) GetCheckpointManager() CheckpointManager {
 	return pa.getNextArchive().GetCheckpointManager()
 }
 
-// errStats is a way to track when, how many, and the latest error occurred.
+// errStats is a way to track how many errors occurred.
 type errStats struct {
 	count   int
-	latest  time.Time
 	lastErr error
-
-	backoffs int // tracked by caller: how many errors since last success?
 }
 
 // addError updates all tracking states
 func (statline *errStats) addError(err error) int {
 	statline.count++
 	statline.lastErr = err
-	statline.latest = time.Now()
 	return statline.count
-}
-
-// getBackoff suggests a linear backoff (+250ms each step) from the time of
-// the last error
-func (statline *errStats) getBackoff() time.Duration {
-	if statline.backoffs == 0 {
-		return time.Duration(0)
-	}
-
-	// Given the time of the last error, when would it be okay to request again?
-	backoffUntil := statline.latest.Add(
-		time.Duration(statline.backoffs) * requestBackoffMs * time.Millisecond,
-	)
-
-	// How long is it until then? If it's in the past, you can fire away.
-	backoffFor := -time.Since(backoffUntil)
-	if backoffFor > 0 {
-		return backoffFor
-	}
-	return time.Duration(0)
 }
