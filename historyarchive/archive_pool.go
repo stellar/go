@@ -117,12 +117,6 @@ func (pa *ArchivePool) runOnEach(runner func(ai ArchiveInterface) error) error {
 				}
 			}
 
-			// TODO: Should these be handled in a special way? I think no,
-			// because it will bubble up the same error after trying all of
-			// the archives in the pool, anyway.
-			// if err == context.Canceled || err == context.DeadlineExceeded {
-			// }
-
 			// If we're cycling around, we're all out of options and should
 			// bubble up the last error we saw.
 			if cycle {

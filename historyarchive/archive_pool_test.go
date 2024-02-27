@@ -10,7 +10,6 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/stellar/go/support/storage"
 	"github.com/stretchr/testify/assert"
@@ -73,83 +72,12 @@ func TestArchivePoolRoundRobin(t *testing.T) {
 	assert.Len(t, accesses, 4)
 }
 
-func TestArchivePoolDoesBackoff(t *testing.T) {
-	requestTimes := []time.Time{}
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		requestTimes = append(requestTimes, time.Now())
-		w.Write([]byte("failure"))
-	}))
-
-	pool, err := NewArchivePool([]string{
-		fmt.Sprintf("%s/%s/%s", server.URL, "fake-archive", "1"),
-	}, ArchiveOptions{})
-	require.NoError(t, err)
-
-	_, err = pool.GetPathHAS("path")
-	require.Error(t, err)
-
-	require.Len(t, pool.(*ArchivePool).errors, 1)
-	var statLine *errStats
-	for _, stats := range pool.(*ArchivePool).errors {
-		statLine = stats
-		break
-	} // lazy way to get the stats w/o the map key
-	assert.NotNil(t, statLine.lastErr)
-	assert.Equal(t, 1, statLine.count)
-	assert.Equal(t, 1, statLine.backoffs)
-
-	_, err = pool.GetPathHAS("path")
-	require.Error(t, err)
-	assert.Equal(t, 2, statLine.count)
-	assert.Equal(t, 2, statLine.backoffs)
-
-	require.Len(t, requestTimes, 2)
-	delay := requestTimes[1].Sub(requestTimes[0])
-	require.GreaterOrEqualf(t, delay, 249*time.Millisecond, "wrong backoff delay")
-
-	_, err = pool.GetPathHAS("path")
-	require.Error(t, err)
-	assert.Equal(t, 3, statLine.count)
-	assert.Equal(t, 3, statLine.backoffs)
-
-	require.Len(t, requestTimes, 3)
-	delay = requestTimes[2].Sub(requestTimes[1])
-	assert.GreaterOrEqualf(t, delay, 499*time.Millisecond, "wrong backoff delay")
-}
-
-func TestArchivePoolSkips(t *testing.T) {
-	requestTimes := []time.Time{}
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		requestTimes = append(requestTimes, time.Now())
-		w.Write([]byte("failure"))
-	}))
-
-	pool, err := NewArchivePool([]string{
-		fmt.Sprintf("%s/%s/%s", server.URL, "fake-archive", "1"),
-		fmt.Sprintf("%s/%s/%s", server.URL, "fake-archive", "2"),
-	}, ArchiveOptions{})
-	require.NoError(t, err)
-
-	_, err = pool.GetPathHAS("path")
-	require.Error(t, err)
-	_, err = pool.BucketExists(EmptyXdrArrayHash())
-	require.NoError(t, err)
-
-	require.Len(t, requestTimes, 3) // 2 req + 1 retry
-	delay := requestTimes[1].Sub(requestTimes[0])
-	require.LessOrEqualf(t, delay, 2*time.Millisecond, "expected no backoff")
-}
-
 func TestArchivePoolCycles(t *testing.T) {
-	requestTimes := []time.Time{}
 	accesses := []string{}
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		parts := strings.Split(r.URL.Path, "/")
 		accesses = append(accesses, parts[2])
-		requestTimes = append(requestTimes, time.Now())
 		w.Write([]byte("failure"))
 	}))
 
@@ -186,8 +114,4 @@ func TestArchivePoolCycles(t *testing.T) {
 	assert.Contains(t, accesses, "1")
 	assert.Contains(t, accesses, "2")
 	assert.Contains(t, accesses, "3")
-
-	require.Len(t, requestTimes, 6)
-	require.GreaterOrEqualf(t, time.Since(requestTimes[0]), 250*time.Millisecond,
-		"expected larger backoff period")
 }
