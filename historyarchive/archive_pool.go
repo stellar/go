@@ -41,7 +41,7 @@ func NewArchivePool(archiveURLs []string, opts ArchiveOptions) (ArchiveInterface
 	ap := ArchivePool{
 		pool:   make([]ArchiveInterface, 0, len(archiveURLs)),
 		errors: make(map[ArchiveInterface]*errStats, len(archiveURLs)),
-		curr:   rand.Intn(len(archiveURLs)), // don't necessarily start at zero
+		curr:   0,
 	}
 	var lastErr error = nil
 
@@ -65,6 +65,7 @@ func NewArchivePool(archiveURLs []string, opts ArchiveOptions) (ArchiveInterface
 		return nil, lastErr
 	}
 
+	ap.curr = rand.Intn(len(ap.pool)) // don't necessarily start at zero
 	return &ap, nil
 }
 
