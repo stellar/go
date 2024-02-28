@@ -42,6 +42,10 @@ func NewEffectProcessor(
 	}
 }
 
+func (p *EffectProcessor) Name() string {
+	return "processors.EffectProcessor"
+}
+
 func (p *EffectProcessor) ProcessTransaction(
 	lcm xdr.LedgerCloseMeta, transaction ingest.LedgerTransaction,
 ) error {

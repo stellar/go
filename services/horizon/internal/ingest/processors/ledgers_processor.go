@@ -32,6 +32,10 @@ func NewLedgerProcessor(batch history.LedgerBatchInsertBuilder, ingestVersion in
 	}
 }
 
+func (p *LedgersProcessor) Name() string {
+	return "processors.LedgersProcessor"
+}
+
 func (p *LedgersProcessor) ProcessLedger(lcm xdr.LedgerCloseMeta) *ledgerInfo {
 	sequence := lcm.LedgerSequence()
 	entry, ok := p.ledgers[sequence]

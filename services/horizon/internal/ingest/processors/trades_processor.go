@@ -55,6 +55,10 @@ func (stats *TradeStats) Map() map[string]interface{} {
 	}
 }
 
+func (p *TradeProcessor) Name() string {
+	return "processors.TradeProcessor"
+}
+
 // ProcessTransaction process the given transaction
 func (p *TradeProcessor) ProcessTransaction(lcm xdr.LedgerCloseMeta, transaction ingest.LedgerTransaction) (err error) {
 	if !transaction.Result.Successful() {

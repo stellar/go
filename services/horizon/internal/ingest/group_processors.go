@@ -2,7 +2,6 @@ package ingest
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/stellar/go/ingest"
@@ -31,13 +30,17 @@ func newGroupChangeProcessors(processors []horizonChangeProcessor) *groupChangeP
 	}
 }
 
+func (g groupChangeProcessors) Name() string {
+	return "groupChangeProcessors"
+}
+
 func (g groupChangeProcessors) ProcessChange(ctx context.Context, change ingest.Change) error {
 	for _, p := range g.processors {
 		startTime := time.Now()
 		if err := p.ProcessChange(ctx, change); err != nil {
 			return errors.Wrapf(err, "error in %T.ProcessChange", p)
 		}
-		g.processorsRunDurations.AddRunDuration(fmt.Sprintf("%T", p), startTime)
+		g.processorsRunDurations.AddRunDuration(p.Name(), startTime)
 	}
 	return nil
 }
@@ -48,7 +51,7 @@ func (g groupChangeProcessors) Commit(ctx context.Context) error {
 		if err := p.Commit(ctx); err != nil {
 			return errors.Wrapf(err, "error in %T.Commit", p)
 		}
-		g.processorsRunDurations.AddRunDuration(fmt.Sprintf("%T", p), startTime)
+		g.processorsRunDurations.AddRunDuration(p.Name(), startTime)
 	}
 	return nil
 }
@@ -95,7 +98,7 @@ func (g groupTransactionProcessors) ProcessTransaction(lcm xdr.LedgerCloseMeta, 
 		if err := p.ProcessTransaction(lcm, tx); err != nil {
 			return errors.Wrapf(err, "error in %T.ProcessTransaction", p)
 		}
-		g.processorsRunDurations.AddRunDuration(fmt.Sprintf("%T", p), startTime)
+		g.processorsRunDurations.AddRunDuration(p.Name(), startTime)
 	}
 	return nil
 }
@@ -110,9 +113,6 @@ func (g groupTransactionProcessors) Flush(ctx context.Context, session db.Sessio
 		}
 		name := loader.Name()
 		g.loaderRunDurations.AddRunDuration(name, startTime)
-		if _, ok := g.loaderStats[name]; ok {
-			return fmt.Errorf("%s is present multiple times", name)
-		}
 		g.loaderStats[name] = loader.Stats()
 	}
 
@@ -123,7 +123,7 @@ func (g groupTransactionProcessors) Flush(ctx context.Context, session db.Sessio
 		if err := p.Flush(ctx, session); err != nil {
 			return errors.Wrapf(err, "error in %T.Flush", p)
 		}
-		g.processorsRunDurations.AddRunDuration(fmt.Sprintf("%T", p), startTime)
+		g.processorsRunDurations.AddRunDuration(p.Name(), startTime)
 	}
 	return nil
 }
@@ -153,6 +153,10 @@ func newGroupTransactionFilterers(filterers []processors.LedgerTransactionFilter
 	}
 }
 
+func (g *groupTransactionFilterers) Name() string {
+	return "groupTransactionFilterers"
+}
+
 func (g *groupTransactionFilterers) FilterTransaction(ctx context.Context, tx ingest.LedgerTransaction) (bool, error) {
 	for _, f := range g.filterers {
 		startTime := time.Now()
@@ -160,7 +164,7 @@ func (g *groupTransactionFilterers) FilterTransaction(ctx context.Context, tx in
 		if err != nil {
 			return false, errors.Wrapf(err, "error in %T.FilterTransaction", f)
 		}
-		g.AddRunDuration(fmt.Sprintf("%T", f), startTime)
+		g.AddRunDuration(f.Name(), startTime)
 		if !include {
 			// filter out, we can return early
 			g.droppedTransactions++

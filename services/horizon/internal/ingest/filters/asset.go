@@ -34,6 +34,10 @@ func NewAssetFilter() AssetFilter {
 	}
 }
 
+func (filter *assetFilter) Name() string {
+	return "filters.assetFilter"
+}
+
 func (filter *assetFilter) RefreshAssetFilter(filterConfig *history.AssetFilterConfig) error {
 	// only need to re-initialize the filter config state(rules) if it's cached version(in  memory)
 	// is older than the incoming config version based on lastModified epoch timestamp
