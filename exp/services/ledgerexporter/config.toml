@@ -1,0 +1,7 @@
+network = "testnet"
+destination_url = "gcs://exporter-test/ledgers"
+
+[exporter_config]
+  ledgers_per_file = 1
+  files_per_partition = 64000
+
