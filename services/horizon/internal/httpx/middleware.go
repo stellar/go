@@ -78,11 +78,20 @@ func loggerMiddleware(serverMetrics *ServerMetrics) func(next http.Handler) http
 			// is reset before sending the first event no Content-Type header is sent in a response.
 			acceptHeader := r.Header.Get("Accept")
 			streaming := strings.Contains(acceptHeader, render.MimeEventStream)
+			route := supportHttp.GetChiRoutePattern(r)
+
+			inFlightLabels := prometheus.Labels{
+				"route":     route,
+				"streaming": strconv.FormatBool(streaming),
+				"method":    r.Method,
+			}
+			serverMetrics.RequestsInFlightGauge.With(inFlightLabels).Inc()
+			defer serverMetrics.RequestsInFlightGauge.With(inFlightLabels).Dec()
 
 			then := time.Now()
 			next.ServeHTTP(mw, r.WithContext(ctx))
 			duration := time.Since(then)
-			logEndOfRequest(ctx, r, serverMetrics.RequestDurationSummary, duration, mw, streaming)
+			logEndOfRequest(ctx, r, route, serverMetrics.RequestDurationSummary, duration, mw, streaming)
 		})
 	}
 }
@@ -129,8 +138,7 @@ func getClientData(r *http.Request, headerName string) string {
 	return value
 }
 
-func logEndOfRequest(ctx context.Context, r *http.Request, requestDurationSummary *prometheus.SummaryVec, duration time.Duration, mw middleware.WrapResponseWriter, streaming bool) {
-	route := supportHttp.GetChiRoutePattern(r)
+func logEndOfRequest(ctx context.Context, r *http.Request, route string, requestDurationSummary *prometheus.SummaryVec, duration time.Duration, mw middleware.WrapResponseWriter, streaming bool) {
 
 	referer := r.Referer()
 	if referer == "" {

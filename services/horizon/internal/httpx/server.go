@@ -23,6 +23,7 @@ import (
 type ServerMetrics struct {
 	RequestDurationSummary  *prometheus.SummaryVec
 	ReplicaLagErrorsCounter prometheus.Counter
+	RequestsInFlightGauge   *prometheus.GaugeVec
 }
 
 type TLSConfig struct {
@@ -71,6 +72,13 @@ func NewServer(serverConfig ServerConfig, routerConfig RouterConfig, ledgerState
 			},
 			[]string{"status", "route", "streaming", "method"},
 		),
+		RequestsInFlightGauge: prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Namespace: "horizon", Subsystem: "http", Name: "requests_in_flight",
+				Help: "HTTP requests in flight",
+			},
+			[]string{"route", "streaming", "method"},
+		),
 		ReplicaLagErrorsCounter: prometheus.NewCounter(
 			prometheus.CounterOpts{
 				Namespace: "horizon", Subsystem: "http", Name: "replica_lag_errors_count",
@@ -109,6 +117,7 @@ func NewServer(serverConfig ServerConfig, routerConfig RouterConfig, ledgerState
 func (s *Server) RegisterMetrics(registry *prometheus.Registry) {
 	registry.MustRegister(s.Metrics.RequestDurationSummary)
 	registry.MustRegister(s.Metrics.ReplicaLagErrorsCounter)
+	registry.MustRegister(s.Metrics.RequestsInFlightGauge)
 }
 
 func (s *Server) Serve() error {
