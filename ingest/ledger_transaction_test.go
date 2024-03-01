@@ -64,6 +64,7 @@ func TestGetContractEventsSingle(t *testing.T) {
 	}
 
 	events, err := tx.GetDiagnosticEvents()
+	assert.NoError(t, err)
 	assert.Len(t, events, 1)
 	assert.True(t, events[0].InSuccessfulContractCall)
 	assert.Equal(t, *events[0].Event.Body.V0.Data.U32, value)

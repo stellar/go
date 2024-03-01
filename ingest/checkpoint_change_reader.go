@@ -521,8 +521,6 @@ LoopBucketEntry:
 			continue
 		}
 	}
-
-	panic("Shouldn't happen")
 }
 
 // Read returns a new ledger entry change on each call, returning io.EOF when the stream ends.
