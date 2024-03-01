@@ -80,13 +80,14 @@ func loggerMiddleware(serverMetrics *ServerMetrics) func(next http.Handler) http
 			streaming := strings.Contains(acceptHeader, render.MimeEventStream)
 			route := supportHttp.GetChiRoutePattern(r)
 
-			inFlightLabels := prometheus.Labels{
+			requestLabels := prometheus.Labels{
 				"route":     route,
 				"streaming": strconv.FormatBool(streaming),
 				"method":    r.Method,
 			}
-			serverMetrics.RequestsInFlightGauge.With(inFlightLabels).Inc()
-			defer serverMetrics.RequestsInFlightGauge.With(inFlightLabels).Dec()
+			serverMetrics.RequestsInFlightGauge.With(requestLabels).Inc()
+			defer serverMetrics.RequestsInFlightGauge.With(requestLabels).Dec()
+			serverMetrics.RequestsReceivedCounter.With(requestLabels).Inc()
 
 			then := time.Now()
 			next.ServeHTTP(mw, r.WithContext(ctx))
