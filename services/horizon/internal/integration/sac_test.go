@@ -2,7 +2,6 @@ package integration
 
 import (
 	"context"
-	"fmt"
 	"math"
 	"math/big"
 	"strings"
@@ -31,127 +30,19 @@ const sac_contract = "soroban_sac_test.wasm"
 // of the integration tests.
 const LongTermTTL = 10000
 
-var (
-	DisabledSoroban bool
-)
-
-func TestSAC(t *testing.T) {
-	// first test contracts when soroban processing is enabled
-	DisabledSoroban = false
-	runAllSACTests(t)
-	// now test same contracts when soroban processing is disabled
-	DisabledSoroban = true
-	runAllSACTests(t)
-}
-
-func runAllSACTests(t *testing.T) {
-	tests := []struct {
-		name string
-		fn   func(*testing.T)
-	}{
-		{"CaseContractMintToAccount", CaseContractMintToAccount},
-		{"CaseContractMintToContract", CaseContractMintToContract},
-		{"CaseExpirationAndRestoration", CaseExpirationAndRestoration},
-		{"CaseContractTransferBetweenAccounts", CaseContractTransferBetweenAccounts},
-		{"CaseContractTransferBetweenAccountAndContract", CaseContractTransferBetweenAccountAndContract},
-		{"CaseContractTransferBetweenContracts", CaseContractTransferBetweenContracts},
-		{"CaseContractBurnFromAccount", CaseContractBurnFromAccount},
-		{"CaseContractBurnFromContract", CaseContractBurnFromContract},
-		{"CaseContractClawbackFromAccount", CaseContractClawbackFromAccount},
-		{"CaseContractClawbackFromContract", CaseContractClawbackFromContract},
-	}
-
-	for _, tt := range tests {
-		t.Run(fmt.Sprintf("Soroban Processing Disabled = %v. ", DisabledSoroban)+tt.name, func(t *testing.T) {
-			tt.fn(t)
-		})
-	}
-}
-
 // Tests use precompiled wasm bin files that are added to the testdata directory.
 // Refer to ./services/horizon/internal/integration/contracts/README.md on how to recompile
 // contract code if needed to new wasm.
 
-func createSAC(itest *integration.Test, asset xdr.Asset) {
-	invokeHostFunction := &txnbuild.InvokeHostFunction{
-		HostFunction: xdr.HostFunction{
-			Type: xdr.HostFunctionTypeHostFunctionTypeCreateContract,
-			CreateContract: &xdr.CreateContractArgs{
-				ContractIdPreimage: xdr.ContractIdPreimage{
-					Type:      xdr.ContractIdPreimageTypeContractIdPreimageFromAsset,
-					FromAsset: &asset,
-				},
-				Executable: xdr.ContractExecutable{
-					Type:     xdr.ContractExecutableTypeContractExecutableStellarAsset,
-					WasmHash: nil,
-				},
-			},
-		},
-		SourceAccount: itest.Master().Address(),
-	}
-	_, _, preFlightOp := assertInvokeHostFnSucceeds(itest, itest.Master(), invokeHostFunction)
-	sourceAccount, extendTTLOp, minFee := itest.PreflightExtendExpiration(
-		itest.Master().Address(),
-		preFlightOp.Ext.SorobanData.Resources.Footprint.ReadWrite,
-		LongTermTTL,
-	)
-	itest.MustSubmitOperationsWithFee(&sourceAccount, itest.Master(), minFee+txnbuild.MinBaseFee, &extendTTLOp)
-}
-
-func invokeStoreSet(
-	itest *integration.Test,
-	storeContractID xdr.Hash,
-	ledgerEntryData xdr.LedgerEntryData,
-) *txnbuild.InvokeHostFunction {
-	key := ledgerEntryData.MustContractData().Key
-	val := ledgerEntryData.MustContractData().Val
-	return &txnbuild.InvokeHostFunction{
-		HostFunction: xdr.HostFunction{
-			Type: xdr.HostFunctionTypeHostFunctionTypeInvokeContract,
-			InvokeContract: &xdr.InvokeContractArgs{
-				ContractAddress: contractIDParam(storeContractID),
-				FunctionName:    "set",
-				Args: xdr.ScVec{
-					key,
-					val,
-				},
-			},
-		},
-		SourceAccount: itest.Master().Address(),
-	}
-}
-
-func invokeStoreRemove(
-	itest *integration.Test,
-	storeContractID xdr.Hash,
-	ledgerKey xdr.LedgerKey,
-) *txnbuild.InvokeHostFunction {
-	return &txnbuild.InvokeHostFunction{
-		HostFunction: xdr.HostFunction{
-			Type: xdr.HostFunctionTypeHostFunctionTypeInvokeContract,
-			InvokeContract: &xdr.InvokeContractArgs{
-				ContractAddress: contractIDParam(storeContractID),
-				FunctionName:    "remove",
-				Args: xdr.ScVec{
-					ledgerKey.MustContractData().Key,
-				},
-			},
-		},
-		SourceAccount: itest.Master().Address(),
-	}
-}
-
-func CaseContractMintToAccount(t *testing.T) {
+func TestContractMintToAccount(t *testing.T) {
 	if integration.GetCoreMaxSupportedProtocol() < 20 {
 		t.Skip("This test run does not support less than Protocol 20")
 	}
 
 	itest := integration.NewTest(t, integration.Config{
-		ProtocolVersion: 20,
-		HorizonEnvironment: map[string]string{
-			"DISABLE_SOROBAN_INGEST": fmt.Sprint(DisabledSoroban),
-		},
-		EnableSorobanRPC: true,
+		ProtocolVersion:    20,
+		HorizonEnvironment: map[string]string{"INGEST_DISABLE_STATE_VERIFICATION": "true", "CONNECTION_TIMEOUT": "360000"},
+		EnableSorobanRPC:   true,
 	})
 
 	issuer := itest.Master().Address()
@@ -181,21 +72,16 @@ func CaseContractMintToAccount(t *testing.T) {
 		balanceContracts:         big.NewInt(0),
 		contractID:               stellarAssetContractID(itest, asset),
 	})
-	assertEventPayments(itest, mintTx, asset, "", recipient.GetAccountID(), "mint", "20.0000000")
 
-	if !DisabledSoroban {
-		fx := getTxEffects(itest, mintTx, asset)
-		require.Len(t, fx, 1)
-		creditEffect := assertContainsEffect(t, fx,
-			effects.EffectAccountCredited)[0].(effects.AccountCredited)
-		assert.Equal(t, recipientKp.Address(), creditEffect.Account)
-		assert.Equal(t, issuer, creditEffect.Asset.Issuer)
-		assert.Equal(t, code, creditEffect.Asset.Code)
-		assert.Equal(t, "20.0000000", creditEffect.Amount)
-	} else {
-		fx := getTxEffects(itest, mintTx, asset)
-		require.Len(t, fx, 0)
-	}
+	fx := getTxEffects(itest, mintTx, asset)
+	require.Len(t, fx, 1)
+	creditEffect := assertContainsEffect(t, fx,
+		effects.EffectAccountCredited)[0].(effects.AccountCredited)
+	assert.Equal(t, recipientKp.Address(), creditEffect.Account)
+	assert.Equal(t, issuer, creditEffect.Asset.Issuer)
+	assert.Equal(t, code, creditEffect.Asset.Code)
+	assert.Equal(t, "20.0000000", creditEffect.Amount)
+	assertEventPayments(itest, mintTx, asset, "", recipient.GetAccountID(), "mint", "20.0000000")
 
 	otherRecipientKp, otherRecipient := itest.CreateAccount("100")
 	itest.MustEstablishTrustline(otherRecipientKp, otherRecipient, txnbuild.MustAssetFromXDR(asset))
@@ -208,6 +94,12 @@ func CaseContractMintToAccount(t *testing.T) {
 	)
 	assertContainsBalance(itest, recipientKp, issuer, code, amount.MustParse("20"))
 	assertContainsBalance(itest, otherRecipientKp, issuer, code, amount.MustParse("30"))
+
+	fx = getTxEffects(itest, transferTx, asset)
+	assert.Len(t, fx, 2)
+	assertContainsEffect(t, fx,
+		effects.EffectAccountCredited,
+		effects.EffectAccountDebited)
 	assertAssetStats(itest, assetStats{
 		code:                     code,
 		issuer:                   issuer,
@@ -219,28 +111,41 @@ func CaseContractMintToAccount(t *testing.T) {
 		balanceContracts:         big.NewInt(0),
 		contractID:               stellarAssetContractID(itest, asset),
 	})
-
-	if !DisabledSoroban {
-		fx := getTxEffects(itest, transferTx, asset)
-		assert.Len(t, fx, 2)
-		assertContainsEffect(t, fx,
-			effects.EffectAccountCredited,
-			effects.EffectAccountDebited)
-	} else {
-		fx := getTxEffects(itest, transferTx, asset)
-		require.Len(t, fx, 0)
-	}
 }
 
-func CaseContractMintToContract(t *testing.T) {
+func createSAC(itest *integration.Test, asset xdr.Asset) {
+	invokeHostFunction := &txnbuild.InvokeHostFunction{
+		HostFunction: xdr.HostFunction{
+			Type: xdr.HostFunctionTypeHostFunctionTypeCreateContract,
+			CreateContract: &xdr.CreateContractArgs{
+				ContractIdPreimage: xdr.ContractIdPreimage{
+					Type:      xdr.ContractIdPreimageTypeContractIdPreimageFromAsset,
+					FromAsset: &asset,
+				},
+				Executable: xdr.ContractExecutable{
+					Type:     xdr.ContractExecutableTypeContractExecutableStellarAsset,
+					WasmHash: nil,
+				},
+			},
+		},
+		SourceAccount: itest.Master().Address(),
+	}
+	_, _, preFlightOp := assertInvokeHostFnSucceeds(itest, itest.Master(), invokeHostFunction)
+	sourceAccount, extendTTLOp, minFee := itest.PreflightExtendExpiration(
+		itest.Master().Address(),
+		preFlightOp.Ext.SorobanData.Resources.Footprint.ReadWrite,
+		LongTermTTL,
+	)
+	itest.MustSubmitOperationsWithFee(&sourceAccount, itest.Master(), minFee+txnbuild.MinBaseFee, &extendTTLOp)
+}
+
+func TestContractMintToContract(t *testing.T) {
 	if integration.GetCoreMaxSupportedProtocol() < 20 {
 		t.Skip("This test run does not support less than Protocol 20")
 	}
 
 	itest := integration.NewTest(t, integration.Config{
-		ProtocolVersion: 20,
-		HorizonEnvironment: map[string]string{
-			"DISABLE_SOROBAN_INGEST": fmt.Sprint(DisabledSoroban)},
+		ProtocolVersion:  20,
 		EnableSorobanRPC: true,
 	})
 
@@ -265,31 +170,38 @@ func CaseContractMintToContract(t *testing.T) {
 			i128Param(int64(mintAmount.Hi), uint64(mintAmount.Lo)),
 			contractAddressParam(recipientContractID)),
 	)
+	assertContainsEffect(t, getTxEffects(itest, mintTx, asset),
+		effects.EffectContractCredited)
 
+	balanceAmount, _, _ := assertInvokeHostFnSucceeds(
+		itest,
+		itest.Master(),
+		contractBalance(itest, issuer, asset, recipientContractID),
+	)
+	assert.Equal(itest.CurrentTest(), xdr.ScValTypeScvI128, balanceAmount.Type)
+	assert.Equal(itest.CurrentTest(), xdr.Uint64(math.MaxUint64-3), (*balanceAmount.I128).Lo)
+	assert.Equal(itest.CurrentTest(), xdr.Int64(math.MaxInt64), (*balanceAmount.I128).Hi)
 	assertEventPayments(itest, mintTx, asset, "", strkeyRecipientContractID, "mint", amount.String128(mintAmount))
 
-	if !DisabledSoroban {
-		assertContainsEffect(t, getTxEffects(itest, mintTx, asset),
-			effects.EffectContractCredited)
-
-		balanceAmount, _, _ := assertInvokeHostFnSucceeds(
-			itest,
-			itest.Master(),
-			contractBalance(itest, issuer, asset, recipientContractID),
-		)
-		assert.Equal(itest.CurrentTest(), xdr.ScValTypeScvI128, balanceAmount.Type)
-		assert.Equal(itest.CurrentTest(), xdr.Uint64(math.MaxUint64-3), (*balanceAmount.I128).Lo)
-		assert.Equal(itest.CurrentTest(), xdr.Int64(math.MaxInt64), (*balanceAmount.I128).Hi)
-	} else {
-		fx := getTxEffects(itest, mintTx, asset)
-		require.Len(t, fx, 0)
-	}
 	// calling transfer from the issuer account will also mint the asset
 	_, transferTx, _ := assertInvokeHostFnSucceeds(
 		itest,
 		itest.Master(),
 		transferWithAmount(itest, issuer, asset, i128Param(0, 3), contractAddressParam(recipientContractID)),
 	)
+
+	assertContainsEffect(t, getTxEffects(itest, transferTx, asset),
+		effects.EffectAccountDebited,
+		effects.EffectContractCredited)
+
+	balanceAmount, _, _ = assertInvokeHostFnSucceeds(
+		itest,
+		itest.Master(),
+		contractBalance(itest, issuer, asset, recipientContractID),
+	)
+	assert.Equal(itest.CurrentTest(), xdr.ScValTypeScvI128, balanceAmount.Type)
+	assert.Equal(itest.CurrentTest(), xdr.Uint64(math.MaxUint64), (*balanceAmount.I128).Lo)
+	assert.Equal(itest.CurrentTest(), xdr.Int64(math.MaxInt64), (*balanceAmount.I128).Hi)
 
 	// 2^127 - 1
 	balanceContracts := new(big.Int).Lsh(big.NewInt(1), 127)
@@ -305,27 +217,9 @@ func CaseContractMintToContract(t *testing.T) {
 		balanceContracts:         balanceContracts,
 		contractID:               stellarAssetContractID(itest, asset),
 	})
-
-	if !DisabledSoroban {
-		assertContainsEffect(t, getTxEffects(itest, transferTx, asset),
-			effects.EffectAccountDebited,
-			effects.EffectContractCredited)
-
-		balanceAmount, _, _ := assertInvokeHostFnSucceeds(
-			itest,
-			itest.Master(),
-			contractBalance(itest, issuer, asset, recipientContractID),
-		)
-		assert.Equal(itest.CurrentTest(), xdr.ScValTypeScvI128, balanceAmount.Type)
-		assert.Equal(itest.CurrentTest(), xdr.Uint64(math.MaxUint64), (*balanceAmount.I128).Lo)
-		assert.Equal(itest.CurrentTest(), xdr.Int64(math.MaxInt64), (*balanceAmount.I128).Hi)
-	} else {
-		fx := getTxEffects(itest, transferTx, asset)
-		require.Len(t, fx, 0)
-	}
 }
 
-func CaseExpirationAndRestoration(t *testing.T) {
+func TestExpirationAndRestoration(t *testing.T) {
 	if integration.GetCoreMaxSupportedProtocol() < 20 {
 		t.Skip("This test run does not support less than Protocol 20")
 	}
@@ -338,7 +232,6 @@ func CaseExpirationAndRestoration(t *testing.T) {
 			// a fake asset contract in the horizon db and we don't
 			// want state verification to detect this
 			"ingest-disable-state-verification": "true",
-			"disable-soroban-ingest":            fmt.Sprint(DisabledSoroban),
 		},
 	})
 
@@ -401,7 +294,6 @@ func CaseExpirationAndRestoration(t *testing.T) {
 		LongTermTTL,
 	)
 	itest.MustSubmitOperationsWithFee(&sourceAccount, itest.Master(), minFee+txnbuild.MinBaseFee, &extendTTLOp)
-
 	assertAssetStats(itest, assetStats{
 		code:                     code,
 		issuer:                   issuer,
@@ -429,16 +321,6 @@ func CaseExpirationAndRestoration(t *testing.T) {
 			balanceToExpire,
 		),
 	)
-
-	balanceToExpireLedgerKey := xdr.LedgerKey{
-		Type: xdr.LedgerEntryTypeContractData,
-		ContractData: &xdr.LedgerKeyContractData{
-			Contract:   balanceToExpire.ContractData.Contract,
-			Key:        balanceToExpire.ContractData.Key,
-			Durability: balanceToExpire.ContractData.Durability,
-		},
-	}
-
 	assertAssetStats(itest, assetStats{
 		code:                     code,
 		issuer:                   issuer,
@@ -451,6 +333,14 @@ func CaseExpirationAndRestoration(t *testing.T) {
 		contractID:               storeContractID,
 	})
 
+	balanceToExpireLedgerKey := xdr.LedgerKey{
+		Type: xdr.LedgerEntryTypeContractData,
+		ContractData: &xdr.LedgerKeyContractData{
+			Contract:   balanceToExpire.ContractData.Contract,
+			Key:        balanceToExpire.ContractData.Key,
+			Durability: balanceToExpire.ContractData.Durability,
+		},
+	}
 	// The TESTING_MINIMUM_PERSISTENT_ENTRY_LIFETIME=10 configuration in stellar-core
 	// will ensure that the ledger entry expires after 10 ledgers.
 	// Because ARTIFICIALLY_ACCELERATE_TIME_FOR_TESTING is set to true, 10 ledgers
@@ -482,7 +372,6 @@ func CaseExpirationAndRestoration(t *testing.T) {
 			),
 		),
 	)
-
 	assertAssetStats(itest, assetStats{
 		code:                     code,
 		issuer:                   issuer,
@@ -501,7 +390,6 @@ func CaseExpirationAndRestoration(t *testing.T) {
 		balanceToExpireLedgerKey,
 	)
 	itest.MustSubmitOperationsWithFee(&sourceAccount, itest.Master(), minFee+txnbuild.MinBaseFee, &restoreFootprint)
-
 	assertAssetStats(itest, assetStats{
 		code:                     code,
 		issuer:                   issuer,
@@ -531,7 +419,6 @@ func CaseExpirationAndRestoration(t *testing.T) {
 			),
 		),
 	)
-
 	assertAssetStats(itest, assetStats{
 		code:                     code,
 		issuer:                   issuer,
@@ -557,7 +444,6 @@ func CaseExpirationAndRestoration(t *testing.T) {
 			),
 		),
 	)
-
 	assertAssetStats(itest, assetStats{
 		code:                     code,
 		issuer:                   issuer,
@@ -571,15 +457,56 @@ func CaseExpirationAndRestoration(t *testing.T) {
 	})
 }
 
-func CaseContractTransferBetweenAccounts(t *testing.T) {
+func invokeStoreSet(
+	itest *integration.Test,
+	storeContractID xdr.Hash,
+	ledgerEntryData xdr.LedgerEntryData,
+) *txnbuild.InvokeHostFunction {
+	key := ledgerEntryData.MustContractData().Key
+	val := ledgerEntryData.MustContractData().Val
+	return &txnbuild.InvokeHostFunction{
+		HostFunction: xdr.HostFunction{
+			Type: xdr.HostFunctionTypeHostFunctionTypeInvokeContract,
+			InvokeContract: &xdr.InvokeContractArgs{
+				ContractAddress: contractIDParam(storeContractID),
+				FunctionName:    "set",
+				Args: xdr.ScVec{
+					key,
+					val,
+				},
+			},
+		},
+		SourceAccount: itest.Master().Address(),
+	}
+}
+
+func invokeStoreRemove(
+	itest *integration.Test,
+	storeContractID xdr.Hash,
+	ledgerKey xdr.LedgerKey,
+) *txnbuild.InvokeHostFunction {
+	return &txnbuild.InvokeHostFunction{
+		HostFunction: xdr.HostFunction{
+			Type: xdr.HostFunctionTypeHostFunctionTypeInvokeContract,
+			InvokeContract: &xdr.InvokeContractArgs{
+				ContractAddress: contractIDParam(storeContractID),
+				FunctionName:    "remove",
+				Args: xdr.ScVec{
+					ledgerKey.MustContractData().Key,
+				},
+			},
+		},
+		SourceAccount: itest.Master().Address(),
+	}
+}
+
+func TestContractTransferBetweenAccounts(t *testing.T) {
 	if integration.GetCoreMaxSupportedProtocol() < 20 {
 		t.Skip("This test run does not support less than Protocol 20")
 	}
 
 	itest := integration.NewTest(t, integration.Config{
-		ProtocolVersion: 20,
-		HorizonEnvironment: map[string]string{
-			"DISABLE_SOROBAN_INGEST": fmt.Sprint(DisabledSoroban)},
+		ProtocolVersion:  20,
 		EnableSorobanRPC: true,
 	})
 
@@ -607,7 +534,6 @@ func CaseContractTransferBetweenAccounts(t *testing.T) {
 	)
 
 	assertContainsBalance(itest, recipientKp, issuer, code, amount.MustParse("1000"))
-
 	assertAssetStats(itest, assetStats{
 		code:                     code,
 		issuer:                   issuer,
@@ -631,6 +557,10 @@ func CaseContractTransferBetweenAccounts(t *testing.T) {
 
 	assertContainsBalance(itest, recipientKp, issuer, code, amount.MustParse("970"))
 	assertContainsBalance(itest, otherRecipientKp, issuer, code, amount.MustParse("30"))
+
+	fx := getTxEffects(itest, transferTx, asset)
+	assert.NotEmpty(t, fx)
+	assertContainsEffect(t, fx, effects.EffectAccountCredited, effects.EffectAccountDebited)
 	assertAssetStats(itest, assetStats{
 		code:                     code,
 		issuer:                   issuer,
@@ -643,26 +573,15 @@ func CaseContractTransferBetweenAccounts(t *testing.T) {
 		contractID:               stellarAssetContractID(itest, asset),
 	})
 	assertEventPayments(itest, transferTx, asset, recipientKp.Address(), otherRecipient.GetAccountID(), "transfer", "30.0000000")
-
-	if !DisabledSoroban {
-		fx := getTxEffects(itest, transferTx, asset)
-		assert.NotEmpty(t, fx)
-		assertContainsEffect(t, fx, effects.EffectAccountCredited, effects.EffectAccountDebited)
-	} else {
-		fx := getTxEffects(itest, transferTx, asset)
-		require.Len(t, fx, 0)
-	}
 }
 
-func CaseContractTransferBetweenAccountAndContract(t *testing.T) {
+func TestContractTransferBetweenAccountAndContract(t *testing.T) {
 	if integration.GetCoreMaxSupportedProtocol() < 20 {
 		t.Skip("This test run does not support less than Protocol 20")
 	}
 
 	itest := integration.NewTest(t, integration.Config{
-		ProtocolVersion: 20,
-		HorizonEnvironment: map[string]string{
-			"DISABLE_SOROBAN_INGEST": fmt.Sprint(DisabledSoroban)},
+		ProtocolVersion:  20,
 		EnableSorobanRPC: true,
 	})
 
@@ -708,6 +627,9 @@ func CaseContractTransferBetweenAccountAndContract(t *testing.T) {
 		mint(itest, issuer, asset, "1000", contractAddressParam(recipientContractID)),
 	)
 	assertContainsBalance(itest, recipientKp, issuer, code, amount.MustParse("1000"))
+	assertContainsEffect(t, getTxEffects(itest, mintTx, asset),
+		effects.EffectContractCredited)
+
 	assertAssetStats(itest, assetStats{
 		code:                     code,
 		issuer:                   issuer,
@@ -720,14 +642,6 @@ func CaseContractTransferBetweenAccountAndContract(t *testing.T) {
 		contractID:               stellarAssetContractID(itest, asset),
 	})
 
-	if !DisabledSoroban {
-		assertContainsEffect(t, getTxEffects(itest, mintTx, asset),
-			effects.EffectContractCredited)
-	} else {
-		fx := getTxEffects(itest, mintTx, asset)
-		require.Len(t, fx, 0)
-	}
-
 	// transfer from account to contract
 	_, transferTx, _ := assertInvokeHostFnSucceeds(
 		itest,
@@ -735,6 +649,8 @@ func CaseContractTransferBetweenAccountAndContract(t *testing.T) {
 		transfer(itest, recipientKp.Address(), asset, "30", contractAddressParam(recipientContractID)),
 	)
 	assertContainsBalance(itest, recipientKp, issuer, code, amount.MustParse("970"))
+	assertContainsEffect(t, getTxEffects(itest, transferTx, asset),
+		effects.EffectAccountDebited, effects.EffectContractCredited)
 	assertAssetStats(itest, assetStats{
 		code:                     code,
 		issuer:                   issuer,
@@ -748,19 +664,14 @@ func CaseContractTransferBetweenAccountAndContract(t *testing.T) {
 	})
 	assertEventPayments(itest, transferTx, asset, recipientKp.Address(), strkeyRecipientContractID, "transfer", "30.0000000")
 
-	if !DisabledSoroban {
-		assertContainsEffect(t, getTxEffects(itest, transferTx, asset),
-			effects.EffectAccountDebited, effects.EffectContractCredited)
-	} else {
-		fx := getTxEffects(itest, transferTx, asset)
-		require.Len(t, fx, 0)
-	}
 	// transfer from contract to account
 	_, transferTx, _ = assertInvokeHostFnSucceeds(
 		itest,
 		recipientKp,
 		transferFromContract(itest, recipientKp.Address(), asset, recipientContractID, recipientContractHash, "500", accountAddressParam(recipient.GetAccountID())),
 	)
+	assertContainsEffect(t, getTxEffects(itest, transferTx, asset),
+		effects.EffectContractDebited, effects.EffectAccountCredited)
 	assertContainsBalance(itest, recipientKp, issuer, code, amount.MustParse("1470"))
 	assertAssetStats(itest, assetStats{
 		code:                     code,
@@ -775,13 +686,6 @@ func CaseContractTransferBetweenAccountAndContract(t *testing.T) {
 	})
 	assertEventPayments(itest, transferTx, asset, strkeyRecipientContractID, recipientKp.Address(), "transfer", "500.0000000")
 
-	if DisabledSoroban {
-		fx := getTxEffects(itest, transferTx, asset)
-		require.Len(t, fx, 0)
-		return
-	}
-	assertContainsEffect(t, getTxEffects(itest, transferTx, asset),
-		effects.EffectContractDebited, effects.EffectAccountCredited)
 	balanceAmount, _, _ := assertInvokeHostFnSucceeds(
 		itest,
 		itest.Master(),
@@ -792,15 +696,13 @@ func CaseContractTransferBetweenAccountAndContract(t *testing.T) {
 	assert.Equal(itest.CurrentTest(), xdr.Int64(0), (*balanceAmount.I128).Hi)
 }
 
-func CaseContractTransferBetweenContracts(t *testing.T) {
+func TestContractTransferBetweenContracts(t *testing.T) {
 	if integration.GetCoreMaxSupportedProtocol() < 20 {
 		t.Skip("This test run does not support less than Protocol 20")
 	}
 
 	itest := integration.NewTest(t, integration.Config{
-		ProtocolVersion: 20,
-		HorizonEnvironment: map[string]string{
-			"DISABLE_SOROBAN_INGEST": fmt.Sprint(DisabledSoroban)},
+		ProtocolVersion:  20,
 		EnableSorobanRPC: true,
 	})
 
@@ -840,28 +742,8 @@ func CaseContractTransferBetweenContracts(t *testing.T) {
 		itest.Master(),
 		transferFromContract(itest, issuer, asset, emitterContractID, emitterContractHash, "10", contractAddressParam(recipientContractID)),
 	)
-
-	assertAssetStats(itest, assetStats{
-		code:                     code,
-		issuer:                   issuer,
-		numAccounts:              0,
-		balanceAccounts:          0,
-		balanceArchivedContracts: big.NewInt(0),
-		numArchivedContracts:     0,
-		numContracts:             2,
-		balanceContracts:         big.NewInt(int64(amount.MustParse("1000"))),
-		contractID:               stellarAssetContractID(itest, asset),
-	})
-	assertEventPayments(itest, transferTx, asset, strkeyEmitterContractID, strkeyRecipientContractID, "transfer", "10.0000000")
-
-	if !DisabledSoroban {
-		assertContainsEffect(t, getTxEffects(itest, transferTx, asset),
-			effects.EffectContractCredited, effects.EffectContractDebited)
-	} else {
-		fx := getTxEffects(itest, transferTx, asset)
-		require.Len(t, fx, 0)
-		return
-	}
+	assertContainsEffect(t, getTxEffects(itest, transferTx, asset),
+		effects.EffectContractCredited, effects.EffectContractDebited)
 
 	// Check balances of emitter and recipient
 	emitterBalanceAmount, _, _ := assertInvokeHostFnSucceeds(
@@ -881,17 +763,28 @@ func CaseContractTransferBetweenContracts(t *testing.T) {
 	assert.Equal(itest.CurrentTest(), xdr.ScValTypeScvI128, recipientBalanceAmount.Type)
 	assert.Equal(itest.CurrentTest(), xdr.Uint64(100000000), (*recipientBalanceAmount.I128).Lo)
 	assert.Equal(itest.CurrentTest(), xdr.Int64(0), (*recipientBalanceAmount.I128).Hi)
+
+	assertAssetStats(itest, assetStats{
+		code:                     code,
+		issuer:                   issuer,
+		numAccounts:              0,
+		balanceAccounts:          0,
+		balanceArchivedContracts: big.NewInt(0),
+		numArchivedContracts:     0,
+		numContracts:             2,
+		balanceContracts:         big.NewInt(int64(amount.MustParse("1000"))),
+		contractID:               stellarAssetContractID(itest, asset),
+	})
+	assertEventPayments(itest, transferTx, asset, strkeyEmitterContractID, strkeyRecipientContractID, "transfer", "10.0000000")
 }
 
-func CaseContractBurnFromAccount(t *testing.T) {
+func TestContractBurnFromAccount(t *testing.T) {
 	if integration.GetCoreMaxSupportedProtocol() < 20 {
 		t.Skip("This test run does not support less than Protocol 20")
 	}
 
 	itest := integration.NewTest(t, integration.Config{
-		ProtocolVersion: 20,
-		HorizonEnvironment: map[string]string{
-			"DISABLE_SOROBAN_INGEST": fmt.Sprint(DisabledSoroban)},
+		ProtocolVersion:  20,
 		EnableSorobanRPC: true,
 	})
 
@@ -937,6 +830,16 @@ func CaseContractBurnFromAccount(t *testing.T) {
 		burn(itest, recipientKp.Address(), asset, "500"),
 	)
 
+	fx := getTxEffects(itest, burnTx, asset)
+	require.Len(t, fx, 1)
+	assetEffects := assertContainsEffect(t, fx, effects.EffectAccountDebited)
+	require.GreaterOrEqual(t, len(assetEffects), 1)
+	burnEffect := assetEffects[0].(effects.AccountDebited)
+
+	assert.Equal(t, issuer, burnEffect.Asset.Issuer)
+	assert.Equal(t, code, burnEffect.Asset.Code)
+	assert.Equal(t, "500.0000000", burnEffect.Amount)
+	assert.Equal(t, recipientKp.Address(), burnEffect.Account)
 	assertAssetStats(itest, assetStats{
 		code:                     code,
 		issuer:                   issuer,
@@ -949,33 +852,15 @@ func CaseContractBurnFromAccount(t *testing.T) {
 		contractID:               stellarAssetContractID(itest, asset),
 	})
 	assertEventPayments(itest, burnTx, asset, recipientKp.Address(), "", "burn", "500.0000000")
-
-	if !DisabledSoroban {
-		fx := getTxEffects(itest, burnTx, asset)
-		require.Len(t, fx, 1)
-		assetEffects := assertContainsEffect(t, fx, effects.EffectAccountDebited)
-		require.GreaterOrEqual(t, len(assetEffects), 1)
-		burnEffect := assetEffects[0].(effects.AccountDebited)
-
-		assert.Equal(t, issuer, burnEffect.Asset.Issuer)
-		assert.Equal(t, code, burnEffect.Asset.Code)
-		assert.Equal(t, "500.0000000", burnEffect.Amount)
-		assert.Equal(t, recipientKp.Address(), burnEffect.Account)
-	} else {
-		fx := getTxEffects(itest, burnTx, asset)
-		require.Len(t, fx, 0)
-	}
 }
 
-func CaseContractBurnFromContract(t *testing.T) {
+func TestContractBurnFromContract(t *testing.T) {
 	if integration.GetCoreMaxSupportedProtocol() < 20 {
 		t.Skip("This test run does not support less than Protocol 20")
 	}
 
 	itest := integration.NewTest(t, integration.Config{
-		ProtocolVersion: 20,
-		HorizonEnvironment: map[string]string{
-			"DISABLE_SOROBAN_INGEST": fmt.Sprint(DisabledSoroban)},
+		ProtocolVersion:  20,
 		EnableSorobanRPC: true,
 	})
 
@@ -1010,6 +895,19 @@ func CaseContractBurnFromContract(t *testing.T) {
 		burnSelf(itest, issuer, asset, recipientContractID, recipientContractHash, "10"),
 	)
 
+	balanceAmount, _, _ := assertInvokeHostFnSucceeds(
+		itest,
+		itest.Master(),
+		contractBalance(itest, issuer, asset, recipientContractID),
+	)
+
+	assert.Equal(itest.CurrentTest(), xdr.ScValTypeScvI128, balanceAmount.Type)
+	assert.Equal(itest.CurrentTest(), xdr.Uint64(9900000000), (*balanceAmount.I128).Lo)
+	assert.Equal(itest.CurrentTest(), xdr.Int64(0), (*balanceAmount.I128).Hi)
+
+	assertContainsEffect(t, getTxEffects(itest, burnTx, asset),
+		effects.EffectContractDebited)
+
 	assertAssetStats(itest, assetStats{
 		code:                     code,
 		issuer:                   issuer,
@@ -1022,35 +920,15 @@ func CaseContractBurnFromContract(t *testing.T) {
 		contractID:               stellarAssetContractID(itest, asset),
 	})
 	assertEventPayments(itest, burnTx, asset, strkeyRecipientContractID, "", "burn", "10.0000000")
-
-	if !DisabledSoroban {
-		balanceAmount, _, _ := assertInvokeHostFnSucceeds(
-			itest,
-			itest.Master(),
-			contractBalance(itest, issuer, asset, recipientContractID),
-		)
-
-		assert.Equal(itest.CurrentTest(), xdr.ScValTypeScvI128, balanceAmount.Type)
-		assert.Equal(itest.CurrentTest(), xdr.Uint64(9900000000), (*balanceAmount.I128).Lo)
-		assert.Equal(itest.CurrentTest(), xdr.Int64(0), (*balanceAmount.I128).Hi)
-
-		assertContainsEffect(t, getTxEffects(itest, burnTx, asset),
-			effects.EffectContractDebited)
-	} else {
-		fx := getTxEffects(itest, burnTx, asset)
-		require.Len(t, fx, 0)
-	}
 }
 
-func CaseContractClawbackFromAccount(t *testing.T) {
+func TestContractClawbackFromAccount(t *testing.T) {
 	if integration.GetCoreMaxSupportedProtocol() < 20 {
 		t.Skip("This test run does not support less than Protocol 20")
 	}
 
 	itest := integration.NewTest(t, integration.Config{
-		ProtocolVersion: 20,
-		HorizonEnvironment: map[string]string{
-			"DISABLE_SOROBAN_INGEST": fmt.Sprint(DisabledSoroban)},
+		ProtocolVersion:  20,
 		EnableSorobanRPC: true,
 	})
 
@@ -1088,7 +966,6 @@ func CaseContractClawbackFromAccount(t *testing.T) {
 	)
 
 	assertContainsBalance(itest, recipientKp, issuer, code, amount.MustParse("1000"))
-
 	assertAssetStats(itest, assetStats{
 		code:                     code,
 		issuer:                   issuer,
@@ -1106,6 +983,8 @@ func CaseContractClawbackFromAccount(t *testing.T) {
 		itest.Master(),
 		clawback(itest, issuer, asset, "1000", accountAddressParam(recipientKp.Address())),
 	)
+
+	assertContainsEffect(t, getTxEffects(itest, clawTx, asset), effects.EffectAccountDebited)
 	assertContainsBalance(itest, recipientKp, issuer, code, 0)
 	assertAssetStats(itest, assetStats{
 		code:                     code,
@@ -1119,24 +998,15 @@ func CaseContractClawbackFromAccount(t *testing.T) {
 		contractID:               stellarAssetContractID(itest, asset),
 	})
 	assertEventPayments(itest, clawTx, asset, recipientKp.Address(), "", "clawback", "1000.0000000")
-
-	if !DisabledSoroban {
-		assertContainsEffect(t, getTxEffects(itest, clawTx, asset), effects.EffectAccountDebited)
-	} else {
-		fx := getTxEffects(itest, clawTx, asset)
-		require.Len(t, fx, 0)
-	}
 }
 
-func CaseContractClawbackFromContract(t *testing.T) {
+func TestContractClawbackFromContract(t *testing.T) {
 	if integration.GetCoreMaxSupportedProtocol() < 20 {
 		t.Skip("This test run does not support less than Protocol 20")
 	}
 
 	itest := integration.NewTest(t, integration.Config{
-		ProtocolVersion: 20,
-		HorizonEnvironment: map[string]string{
-			"DISABLE_SOROBAN_INGEST": fmt.Sprint(DisabledSoroban)},
+		ProtocolVersion:  20,
 		EnableSorobanRPC: true,
 	})
 
@@ -1174,6 +1044,19 @@ func CaseContractClawbackFromContract(t *testing.T) {
 		itest.Master(),
 		clawback(itest, issuer, asset, "10", contractAddressParam(recipientContractID)),
 	)
+
+	balanceAmount, _, _ := assertInvokeHostFnSucceeds(
+		itest,
+		itest.Master(),
+		contractBalance(itest, issuer, asset, recipientContractID),
+	)
+	assert.Equal(itest.CurrentTest(), xdr.ScValTypeScvI128, balanceAmount.Type)
+	assert.Equal(itest.CurrentTest(), xdr.Uint64(9900000000), (*balanceAmount.I128).Lo)
+	assert.Equal(itest.CurrentTest(), xdr.Int64(0), (*balanceAmount.I128).Hi)
+
+	assertContainsEffect(t, getTxEffects(itest, clawTx, asset),
+		effects.EffectContractDebited)
+
 	assertAssetStats(itest, assetStats{
 		code:                     code,
 		issuer:                   issuer,
@@ -1186,23 +1069,6 @@ func CaseContractClawbackFromContract(t *testing.T) {
 		contractID:               stellarAssetContractID(itest, asset),
 	})
 	assertEventPayments(itest, clawTx, asset, strkeyRecipientContractID, "", "clawback", "10.0000000")
-
-	if !DisabledSoroban {
-		balanceAmount, _, _ := assertInvokeHostFnSucceeds(
-			itest,
-			itest.Master(),
-			contractBalance(itest, issuer, asset, recipientContractID),
-		)
-		assert.Equal(itest.CurrentTest(), xdr.ScValTypeScvI128, balanceAmount.Type)
-		assert.Equal(itest.CurrentTest(), xdr.Uint64(9900000000), (*balanceAmount.I128).Lo)
-		assert.Equal(itest.CurrentTest(), xdr.Int64(0), (*balanceAmount.I128).Hi)
-
-		assertContainsEffect(t, getTxEffects(itest, clawTx, asset),
-			effects.EffectContractDebited)
-	} else {
-		fx := getTxEffects(itest, clawTx, asset)
-		require.Len(t, fx, 0)
-	}
 }
 
 func assertContainsBalance(itest *integration.Test, acct *keypair.Full, issuer, code string, amt xdr.Int64) {
@@ -1313,12 +1179,6 @@ func assertEventPayments(itest *integration.Test, txHash string, asset xdr.Asset
 
 	invokeHostFn := ops.Embedded.Records[0].(operations.InvokeHostFunction)
 	assert.Equal(itest.CurrentTest(), invokeHostFn.Function, "HostFunctionTypeHostFunctionTypeInvokeContract")
-
-	if DisabledSoroban {
-		require.Equal(itest.CurrentTest(), 0, len(invokeHostFn.AssetBalanceChanges))
-		return
-	}
-
 	require.Equal(itest.CurrentTest(), 1, len(invokeHostFn.AssetBalanceChanges))
 	assetBalanceChange := invokeHostFn.AssetBalanceChanges[0]
 	assert.Equal(itest.CurrentTest(), assetBalanceChange.Amount, amount)
@@ -1540,6 +1400,10 @@ func assertInvokeHostFnSucceeds(itest *integration.Test, signer *keypair.Full, o
 	err = xdr.SafeUnmarshalBase64(clientTx.ResultXdr, &txResult)
 	require.NoError(itest.CurrentTest(), err)
 
+	var txMetaResult xdr.TransactionMeta
+	err = xdr.SafeUnmarshalBase64(clientTx.ResultMetaXdr, &txMetaResult)
+	require.NoError(itest.CurrentTest(), err)
+
 	opResults, ok := txResult.OperationResults()
 	assert.True(itest.CurrentTest(), ok)
 	assert.Equal(itest.CurrentTest(), len(opResults), 1)
@@ -1547,18 +1411,9 @@ func assertInvokeHostFnSucceeds(itest *integration.Test, signer *keypair.Full, o
 	assert.True(itest.CurrentTest(), ok)
 	assert.Equal(itest.CurrentTest(), invokeHostFunctionResult.Code, xdr.InvokeHostFunctionResultCodeInvokeHostFunctionSuccess)
 
-	var returnValue *xdr.ScVal
+	returnValue := txMetaResult.MustV3().SorobanMeta.ReturnValue
 
-	if !DisabledSoroban {
-		var txMetaResult xdr.TransactionMeta
-		err = xdr.SafeUnmarshalBase64(clientTx.ResultMetaXdr, &txMetaResult)
-		require.NoError(itest.CurrentTest(), err)
-		returnValue = &txMetaResult.MustV3().SorobanMeta.ReturnValue
-	} else {
-		verifySorobanMeta(itest.CurrentTest(), clientTx)
-	}
-
-	return returnValue, clientTx.Hash, &preFlightOp
+	return &returnValue, clientTx.Hash, &preFlightOp
 }
 
 func stellarAssetContractID(itest *integration.Test, asset xdr.Asset) xdr.Hash {

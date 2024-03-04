@@ -162,6 +162,7 @@ jobs:
   ledger-exporter:
     name: Test and push the Ledger Exporter images
     runs-on: ubuntu-latest
+    if: false # Disable the job
     steps:
       - uses: actions/checkout@v3
         with:

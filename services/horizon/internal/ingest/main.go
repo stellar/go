@@ -109,8 +109,7 @@ type Config struct {
 
 	EnableIngestionFiltering bool
 	MaxLedgerPerFlush        uint32
-
-	SkipSorobanIngestion bool
+	SkipTxmeta               bool
 }
 
 const (
@@ -166,6 +165,12 @@ type Metrics struct {
 
 	// ProcessorsRunDurationSummary exposes processors run durations.
 	ProcessorsRunDurationSummary *prometheus.SummaryVec
+
+	// LoadersRunDurationSummary exposes run durations for the ingestion loaders.
+	LoadersRunDurationSummary *prometheus.SummaryVec
+
+	// LoadersRunDurationSummary exposes stats for the ingestion loaders.
+	LoadersStatsSummary *prometheus.SummaryVec
 
 	// ArchiveRequestCounter counts how many http requests are sent to history server
 	HistoryArchiveStatsCounter *prometheus.CounterVec
@@ -408,6 +413,24 @@ func (s *system) initMetrics() {
 		[]string{"name"},
 	)
 
+	s.metrics.LoadersRunDurationSummary = prometheus.NewSummaryVec(
+		prometheus.SummaryOpts{
+			Namespace: "horizon", Subsystem: "ingest", Name: "loader_run_duration_seconds",
+			Help:       "run durations of ingestion loaders, sliding window = 10m",
+			Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
+		},
+		[]string{"name"},
+	)
+
+	s.metrics.LoadersStatsSummary = prometheus.NewSummaryVec(
+		prometheus.SummaryOpts{
+			Namespace: "horizon", Subsystem: "ingest", Name: "loader_stats",
+			Help:       "stats from ingestion loaders, sliding window = 10m",
+			Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
+		},
+		[]string{"name", "stat"},
+	)
+
 	s.metrics.HistoryArchiveStatsCounter = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: "horizon", Subsystem: "ingest", Name: "history_archive_stats_total",
@@ -445,6 +468,8 @@ func (s *system) RegisterMetrics(registry *prometheus.Registry) {
 	registry.MustRegister(s.metrics.LedgerStatsCounter)
 	registry.MustRegister(s.metrics.ProcessorsRunDuration)
 	registry.MustRegister(s.metrics.ProcessorsRunDurationSummary)
+	registry.MustRegister(s.metrics.LoadersRunDurationSummary)
+	registry.MustRegister(s.metrics.LoadersStatsSummary)
 	registry.MustRegister(s.metrics.StateVerifyLedgerEntriesCount)
 	registry.MustRegister(s.metrics.HistoryArchiveStatsCounter)
 	s.ledgerBackend = ledgerbackend.WithMetrics(s.ledgerBackend, registry, "horizon")

@@ -34,6 +34,7 @@ type LiquidityPoolLoader struct {
 	sealed bool
 	set    set.Set[string]
 	ids    map[string]int64
+	stats  LoaderStats
 }
 
 // NewLiquidityPoolLoader will construct a new LiquidityPoolLoader instance.
@@ -42,6 +43,7 @@ func NewLiquidityPoolLoader() *LiquidityPoolLoader {
 		sealed: false,
 		set:    set.Set[string]{},
 		ids:    map[string]int64{},
+		stats:  LoaderStats{},
 	}
 }
 
@@ -109,6 +111,7 @@ func (a *LiquidityPoolLoader) Exec(ctx context.Context, session db.SessionInterf
 	if err := a.lookupKeys(ctx, q, ids); err != nil {
 		return err
 	}
+	a.stats.Total += len(ids)
 
 	insert := 0
 	for _, id := range ids {
@@ -142,8 +145,19 @@ func (a *LiquidityPoolLoader) Exec(ctx context.Context, session db.SessionInterf
 	if err != nil {
 		return err
 	}
+	a.stats.Inserted += insert
 
 	return a.lookupKeys(ctx, q, ids)
+}
+
+// Stats returns the number of liquidity pools registered in the loader and the number of liquidity pools
+// inserted into the history_liquidity_pools table.
+func (a *LiquidityPoolLoader) Stats() LoaderStats {
+	return a.stats
+}
+
+func (a *LiquidityPoolLoader) Name() string {
+	return "LiquidityPoolLoader"
 }
 
 // LiquidityPoolLoaderStub is a stub wrapper around LiquidityPoolLoader which allows

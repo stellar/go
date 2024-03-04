@@ -68,7 +68,7 @@ func (s *LiquidityPoolsTransactionProcessorTestSuiteLedger) TestEmptyLiquidityPo
 
 func (s *LiquidityPoolsTransactionProcessorTestSuiteLedger) testOperationInserts(poolID xdr.PoolId, body xdr.OperationBody, change xdr.LedgerEntryChange) {
 	// Setup the transaction
-	txn := createTransaction(true, 1)
+	txn := createTransaction(true, 1, 2)
 	txn.Envelope.Operations()[0].Body = body
 	txn.UnsafeMeta.V = 2
 	txn.UnsafeMeta.V2.Operations = []xdr.OperationMeta{

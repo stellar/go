@@ -62,13 +62,13 @@ func (s *ParticipantsProcessorTestSuiteLedger) SetupTest() {
 		"GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
 	}
 
-	s.firstTx = createTransaction(true, 1)
+	s.firstTx = createTransaction(true, 1, 2)
 	s.firstTx.Index = 1
 	aid := xdr.MustAddress(s.addresses[0])
 	s.firstTx.Envelope.V1.Tx.SourceAccount = aid.ToMuxedAccount()
 	s.firstTxID = toid.New(int32(sequence), 1, 0).ToInt64()
 
-	s.secondTx = createTransaction(true, 1)
+	s.secondTx = createTransaction(true, 1, 2)
 	s.secondTx.Index = 2
 	s.secondTx.Envelope.Operations()[0].Body = xdr.OperationBody{
 		Type: xdr.OperationTypeCreateAccount,
@@ -80,7 +80,7 @@ func (s *ParticipantsProcessorTestSuiteLedger) SetupTest() {
 	s.secondTx.Envelope.V1.Tx.SourceAccount = aid.ToMuxedAccount()
 	s.secondTxID = toid.New(int32(sequence), 2, 0).ToInt64()
 
-	s.thirdTx = createTransaction(true, 1)
+	s.thirdTx = createTransaction(true, 1, 2)
 	s.thirdTx.Index = 3
 	aid = xdr.MustAddress(s.addresses[0])
 	s.thirdTx.Envelope.V1.Tx.SourceAccount = aid.ToMuxedAccount()
@@ -150,7 +150,7 @@ func (s *ParticipantsProcessorTestSuiteLedger) TestEmptyParticipants() {
 }
 
 func (s *ParticipantsProcessorTestSuiteLedger) TestFeeBumptransaction() {
-	feeBumpTx := createTransaction(true, 0)
+	feeBumpTx := createTransaction(true, 0, 2)
 	feeBumpTx.Index = 1
 	aid := xdr.MustAddress(s.addresses[0])
 	feeBumpTx.Envelope.V1.Tx.SourceAccount = aid.ToMuxedAccount()

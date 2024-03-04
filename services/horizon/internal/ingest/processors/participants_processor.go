@@ -99,6 +99,10 @@ func participantsForMeta(
 	return participants, nil
 }
 
+func (p *ParticipantsProcessor) Name() string {
+	return "processors.ParticipantsProcessor"
+}
+
 func (p *ParticipantsProcessor) addTransactionParticipants(
 	sequence uint32,
 	transaction ingest.LedgerTransaction,

@@ -44,6 +44,10 @@ func NewAssetStatsProcessor(
 	return p
 }
 
+func (p *AssetStatsProcessor) Name() string {
+	return "processors.AssetStatsProcessor"
+}
+
 func (p *AssetStatsProcessor) ProcessChange(ctx context.Context, change ingest.Change) error {
 	if change.Type != xdr.LedgerEntryTypeLiquidityPool &&
 		change.Type != xdr.LedgerEntryTypeClaimableBalance &&

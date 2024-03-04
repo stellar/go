@@ -60,6 +60,7 @@ type AssetLoader struct {
 	sealed bool
 	set    set.Set[AssetKey]
 	ids    map[AssetKey]int64
+	stats  LoaderStats
 }
 
 // NewAssetLoader will construct a new AssetLoader instance.
@@ -68,6 +69,7 @@ func NewAssetLoader() *AssetLoader {
 		sealed: false,
 		set:    set.Set[AssetKey]{},
 		ids:    map[AssetKey]int64{},
+		stats:  LoaderStats{},
 	}
 }
 
@@ -145,6 +147,7 @@ func (a *AssetLoader) Exec(ctx context.Context, session db.SessionInterface) err
 	if err := a.lookupKeys(ctx, q, keys); err != nil {
 		return err
 	}
+	a.stats.Total += len(keys)
 
 	assetTypes := make([]string, 0, len(a.set)-len(a.ids))
 	assetCodes := make([]string, 0, len(a.set)-len(a.ids))
@@ -196,8 +199,19 @@ func (a *AssetLoader) Exec(ctx context.Context, session db.SessionInterface) err
 	if err != nil {
 		return err
 	}
+	a.stats.Inserted += insert
 
 	return a.lookupKeys(ctx, q, keys)
+}
+
+// Stats returns the number of assets registered in the loader and the number of assets
+// inserted into the history_assets table.
+func (a *AssetLoader) Stats() LoaderStats {
+	return a.stats
+}
+
+func (a *AssetLoader) Name() string {
+	return "AssetLoader"
 }
 
 // AssetLoaderStub is a stub wrapper around AssetLoader which allows

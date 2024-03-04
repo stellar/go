@@ -15,7 +15,6 @@ import (
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/services/horizon/internal/ingest/processors"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 	logpkg "github.com/stellar/go/support/log"
@@ -527,19 +526,6 @@ func (m *mockProcessorsRunner) RunAllProcessorsOnLedger(ledger xdr.LedgerCloseMe
 	args := m.Called(ledger)
 	return args.Get(0).(ledgerStats),
 		args.Error(1)
-}
-
-func (m *mockProcessorsRunner) RunTransactionProcessorsOnLedger(ledger xdr.LedgerCloseMeta) (
-	processors.StatsLedgerTransactionProcessorResults,
-	processorsRunDurations,
-	processors.TradeStats,
-	error,
-) {
-	args := m.Called(ledger)
-	return args.Get(0).(processors.StatsLedgerTransactionProcessorResults),
-		args.Get(1).(processorsRunDurations),
-		args.Get(2).(processors.TradeStats),
-		args.Error(3)
 }
 
 func (m *mockProcessorsRunner) RunTransactionProcessorsOnLedgers(ledgers []xdr.LedgerCloseMeta) error {

@@ -5,6 +5,7 @@ import (
 	"io"
 
 	"github.com/guregu/null"
+
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
@@ -26,6 +27,7 @@ type LedgerTransactionProcessor interface {
 }
 
 type LedgerTransactionFilterer interface {
+	Name() string
 	FilterTransaction(ctx context.Context, transaction ingest.LedgerTransaction) (bool, error)
 }
 

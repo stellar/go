@@ -3,13 +3,11 @@ package integration
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/stellar/go/clients/horizonclient"
-	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/protocols/horizon/operations"
 	"github.com/stellar/go/services/horizon/internal/test/integration"
 	"github.com/stellar/go/txnbuild"
@@ -26,42 +24,13 @@ const increment_contract = "soroban_increment_contract.wasm"
 // Refer to ./services/horizon/internal/integration/contracts/README.md on how to recompile
 // contract code if needed to new wasm.
 
-func TestInvokeHostFns(t *testing.T) {
-	// first test contracts when soroban processing is enabled
-	DisabledSoroban = false
-	runAllTests(t)
-	// now test same contracts when soroban processing is disabled
-	DisabledSoroban = true
-	runAllTests(t)
-}
-
-func runAllTests(t *testing.T) {
-	tests := []struct {
-		name string
-		fn   func(*testing.T)
-	}{
-		{"CaseContractInvokeHostFunctionInstallContract", CaseContractInvokeHostFunctionInstallContract},
-		{"CaseContractInvokeHostFunctionCreateContractByAddress", CaseContractInvokeHostFunctionCreateContractByAddress},
-		{"CaseContractInvokeHostFunctionInvokeStatelessContractFn", CaseContractInvokeHostFunctionInvokeStatelessContractFn},
-		{"CaseContractInvokeHostFunctionInvokeStatefulContractFn", CaseContractInvokeHostFunctionInvokeStatefulContractFn},
-	}
-
-	for _, tt := range tests {
-		t.Run(fmt.Sprintf("Soroban Processing Disabled = %v. ", DisabledSoroban)+tt.name, func(t *testing.T) {
-			tt.fn(t)
-		})
-	}
-}
-
-func CaseContractInvokeHostFunctionInstallContract(t *testing.T) {
+func TestContractInvokeHostFunctionInstallContract(t *testing.T) {
 	if integration.GetCoreMaxSupportedProtocol() < 20 {
 		t.Skip("This test run does not support less than Protocol 20")
 	}
 
 	itest := integration.NewTest(t, integration.Config{
-		ProtocolVersion: 20,
-		HorizonEnvironment: map[string]string{
-			"DISABLE_SOROBAN_INGEST": fmt.Sprint(DisabledSoroban)},
+		ProtocolVersion:  20,
 		EnableSorobanRPC: true,
 	})
 
@@ -77,7 +46,6 @@ func CaseContractInvokeHostFunctionInstallContract(t *testing.T) {
 
 	clientTx, err := itest.Client().TransactionDetail(tx.Hash)
 	require.NoError(t, err)
-	verifySorobanMeta(t, clientTx)
 
 	assert.Equal(t, tx.Hash, clientTx.Hash)
 	var txResult xdr.TransactionResult
@@ -103,17 +71,16 @@ func CaseContractInvokeHostFunctionInstallContract(t *testing.T) {
 	invokeHostFunctionOpJson, ok := clientInvokeOp.Embedded.Records[0].(operations.InvokeHostFunction)
 	assert.True(t, ok)
 	assert.Equal(t, invokeHostFunctionOpJson.Function, "HostFunctionTypeHostFunctionTypeUploadContractWasm")
+
 }
 
-func CaseContractInvokeHostFunctionCreateContractByAddress(t *testing.T) {
+func TestContractInvokeHostFunctionCreateContractByAddress(t *testing.T) {
 	if integration.GetCoreMaxSupportedProtocol() < 20 {
 		t.Skip("This test run does not support less than Protocol 20")
 	}
 
 	itest := integration.NewTest(t, integration.Config{
-		ProtocolVersion: 20,
-		HorizonEnvironment: map[string]string{
-			"DISABLE_SOROBAN_INGEST": fmt.Sprint(DisabledSoroban)},
+		ProtocolVersion:  20,
 		EnableSorobanRPC: true,
 	})
 
@@ -136,7 +103,6 @@ func CaseContractInvokeHostFunctionCreateContractByAddress(t *testing.T) {
 
 	clientTx, err := itest.Client().TransactionDetail(tx.Hash)
 	require.NoError(t, err)
-	verifySorobanMeta(t, clientTx)
 
 	assert.Equal(t, tx.Hash, clientTx.Hash)
 	var txResult xdr.TransactionResult
@@ -162,15 +128,13 @@ func CaseContractInvokeHostFunctionCreateContractByAddress(t *testing.T) {
 	assert.Equal(t, invokeHostFunctionOpJson.Salt, "110986164698320180327942133831752629430491002266485370052238869825166557303060")
 }
 
-func CaseContractInvokeHostFunctionInvokeStatelessContractFn(t *testing.T) {
+func TestContractInvokeHostFunctionInvokeStatelessContractFn(t *testing.T) {
 	if integration.GetCoreMaxSupportedProtocol() < 20 {
 		t.Skip("This test run does not support less than Protocol 20")
 	}
 
 	itest := integration.NewTest(t, integration.Config{
-		ProtocolVersion: 20,
-		HorizonEnvironment: map[string]string{
-			"DISABLE_SOROBAN_INGEST": fmt.Sprint(DisabledSoroban)},
+		ProtocolVersion:  20,
 		EnableSorobanRPC: true,
 	})
 
@@ -232,7 +196,6 @@ func CaseContractInvokeHostFunctionInvokeStatelessContractFn(t *testing.T) {
 
 	clientTx, err := itest.Client().TransactionDetail(tx.Hash)
 	require.NoError(t, err)
-	verifySorobanMeta(t, clientTx)
 
 	assert.Equal(t, tx.Hash, clientTx.Hash)
 	var txResult xdr.TransactionResult
@@ -246,14 +209,12 @@ func CaseContractInvokeHostFunctionInvokeStatelessContractFn(t *testing.T) {
 	assert.True(t, ok)
 	assert.Equal(t, invokeHostFunctionResult.Code, xdr.InvokeHostFunctionResultCodeInvokeHostFunctionSuccess)
 
-	if !DisabledSoroban {
-		// check the function response, should have summed the two input numbers
-		invokeResult := xdr.Uint64(9)
-		expectedScVal := xdr.ScVal{Type: xdr.ScValTypeScvU64, U64: &invokeResult}
-		var transactionMeta xdr.TransactionMeta
-		assert.NoError(t, xdr.SafeUnmarshalBase64(tx.ResultMetaXdr, &transactionMeta))
-		assert.True(t, expectedScVal.Equals(transactionMeta.V3.SorobanMeta.ReturnValue))
-	}
+	// check the function response, should have summed the two input numbers
+	invokeResult := xdr.Uint64(9)
+	expectedScVal := xdr.ScVal{Type: xdr.ScValTypeScvU64, U64: &invokeResult}
+	var transactionMeta xdr.TransactionMeta
+	assert.NoError(t, xdr.SafeUnmarshalBase64(tx.ResultMetaXdr, &transactionMeta))
+	assert.True(t, expectedScVal.Equals(transactionMeta.V3.SorobanMeta.ReturnValue))
 
 	clientInvokeOp, err := itest.Client().Operations(horizonclient.OperationRequest{
 		ForTransaction: tx.Hash,
@@ -276,15 +237,13 @@ func CaseContractInvokeHostFunctionInvokeStatelessContractFn(t *testing.T) {
 	assert.Equal(t, invokeHostFunctionOpJson.Parameters[3].Type, "U64")
 }
 
-func CaseContractInvokeHostFunctionInvokeStatefulContractFn(t *testing.T) {
+func TestContractInvokeHostFunctionInvokeStatefulContractFn(t *testing.T) {
 	if integration.GetCoreMaxSupportedProtocol() < 20 {
 		t.Skip("This test run does not support less than Protocol 20")
 	}
 
 	itest := integration.NewTest(t, integration.Config{
-		ProtocolVersion: 20,
-		HorizonEnvironment: map[string]string{
-			"DISABLE_SOROBAN_INGEST": fmt.Sprint(DisabledSoroban)},
+		ProtocolVersion:  20,
 		EnableSorobanRPC: true,
 	})
 
@@ -333,7 +292,6 @@ func CaseContractInvokeHostFunctionInvokeStatefulContractFn(t *testing.T) {
 
 	clientTx, err := itest.Client().TransactionDetail(tx.Hash)
 	require.NoError(t, err)
-	verifySorobanMeta(t, clientTx)
 
 	assert.Equal(t, tx.Hash, clientTx.Hash)
 	var txResult xdr.TransactionResult
@@ -347,14 +305,12 @@ func CaseContractInvokeHostFunctionInvokeStatefulContractFn(t *testing.T) {
 	assert.True(t, ok)
 	assert.Equal(t, invokeHostFunctionResult.Code, xdr.InvokeHostFunctionResultCodeInvokeHostFunctionSuccess)
 
-	if !DisabledSoroban {
-		// check the function response, should have incremented state from 0 to 1
-		invokeResult := xdr.Uint32(1)
-		expectedScVal := xdr.ScVal{Type: xdr.ScValTypeScvU32, U32: &invokeResult}
-		var transactionMeta xdr.TransactionMeta
-		assert.NoError(t, xdr.SafeUnmarshalBase64(clientTx.ResultMetaXdr, &transactionMeta))
-		assert.True(t, expectedScVal.Equals(transactionMeta.V3.SorobanMeta.ReturnValue))
-	}
+	// check the function response, should have incremented state from 0 to 1
+	invokeResult := xdr.Uint32(1)
+	expectedScVal := xdr.ScVal{Type: xdr.ScValTypeScvU32, U32: &invokeResult}
+	var transactionMeta xdr.TransactionMeta
+	assert.NoError(t, xdr.SafeUnmarshalBase64(clientTx.ResultMetaXdr, &transactionMeta))
+	assert.True(t, expectedScVal.Equals(transactionMeta.V3.SorobanMeta.ReturnValue))
 
 	clientInvokeOp, err := itest.Client().Operations(horizonclient.OperationRequest{
 		ForTransaction: tx.Hash,
@@ -427,21 +383,4 @@ func assembleCreateContractOp(t *testing.T, sourceAccount string, wasmFileName s
 		},
 		SourceAccount: sourceAccount,
 	}
-}
-
-func verifySorobanMeta(t *testing.T, clientTx horizon.Transaction) {
-	var txMeta xdr.TransactionMeta
-	err := xdr.SafeUnmarshalBase64(clientTx.ResultMetaXdr, &txMeta)
-	require.NoError(t, err)
-	require.NotNil(t, txMeta.V3)
-
-	if !DisabledSoroban {
-		require.NotNil(t, txMeta.V3.SorobanMeta)
-		return
-	}
-
-	require.Empty(t, txMeta.V3.Operations)
-	require.Empty(t, txMeta.V3.TxChangesAfter)
-	require.Empty(t, txMeta.V3.TxChangesBefore)
-	require.Nil(t, txMeta.V3.SorobanMeta)
 }

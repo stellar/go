@@ -229,7 +229,7 @@ func (s *TradeProcessorTestSuiteLedger) TearDownTest() {
 
 func (s *TradeProcessorTestSuiteLedger) TestIgnoreFailedTransactions() {
 	ctx := context.Background()
-	err := s.processor.ProcessTransaction(s.lcm, createTransaction(false, 1))
+	err := s.processor.ProcessTransaction(s.lcm, createTransaction(false, 1, 2))
 	s.Assert().NoError(err)
 
 	err = s.processor.Flush(ctx, s.mockSession)
@@ -806,7 +806,7 @@ func TestTradeProcessor_ProcessTransaction_MuxedAccount(t *testing.T) {
 			Ed25519: *unmuxed.Ed25519,
 		},
 	}
-	tx := createTransaction(true, 1)
+	tx := createTransaction(true, 1, 2)
 	tx.Index = 1
 	tx.Envelope.Operations()[0].Body = xdr.OperationBody{
 		Type: xdr.OperationTypePayment,

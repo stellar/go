@@ -2,6 +2,7 @@ package history
 
 import (
 	"context"
+	"database/sql/driver"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -39,7 +40,12 @@ func TestClaimableBalanceLoader(t *testing.T) {
 		assert.Equal(t, future, duplicateFuture)
 	}
 
-	assert.NoError(t, loader.Exec(context.Background(), session))
+	err := loader.Exec(context.Background(), session)
+	assert.NoError(t, err)
+	assert.Equal(t, LoaderStats{
+		Total:    100,
+		Inserted: 100,
+	}, loader.Stats())
 	assert.Panics(t, func() {
 		loader.GetFuture("not-present")
 	})
@@ -47,16 +53,18 @@ func TestClaimableBalanceLoader(t *testing.T) {
 	q := &Q{session}
 	for i, id := range ids {
 		future := futures[i]
-		internalID, err := future.Value()
+		var internalID driver.Value
+		internalID, err = future.Value()
 		assert.NoError(t, err)
-		cb, err := q.ClaimableBalanceByID(context.Background(), id)
+		var cb HistoryClaimableBalance
+		cb, err = q.ClaimableBalanceByID(context.Background(), id)
 		assert.NoError(t, err)
 		assert.Equal(t, cb.BalanceID, id)
 		assert.Equal(t, cb.InternalID, internalID)
 	}
 
 	futureCb := &FutureClaimableBalanceID{id: "not-present", loader: loader}
-	_, err := futureCb.Value()
+	_, err = futureCb.Value()
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), `was not found`)
 }
