@@ -1,6 +1,6 @@
 module github.com/stellar/go
 
-go 1.22
+go 1.22.0
 
 require (
 	firebase.google.com/go v3.12.0+incompatible
