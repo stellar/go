@@ -102,9 +102,11 @@ func (pa *ArchivePool) runRoundRobin(runner func(ai ArchiveInterface) error) err
 				return nil
 			}
 
-			log.WithField("error", lastErr).Warnf(
-				"Encountered an error with archive '%s'",
-				ai.GetStats()[0].GetBackendName())
+			if stats := ai.GetStats(); len(stats) > 0 {
+				log.WithField("error", lastErr).Warnf(
+					"Encountered an error with archive '%s'",
+					stats[0].GetBackendName())
+			}
 
 			if errors.Is(lastErr, context.Canceled) ||
 				errors.Is(lastErr, context.DeadlineExceeded) {
