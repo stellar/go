@@ -883,6 +883,7 @@ type TransactionsQ struct {
 	parent        *Q
 	sql           sq.SelectBuilder
 	includeFailed bool
+	txIdCol       string
 }
 
 // TrustLine is row of data from the `trust_lines` table from horizon DB
