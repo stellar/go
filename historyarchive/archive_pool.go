@@ -83,15 +83,10 @@ var _ ArchiveInterface = &ArchivePool{}
 // These are helpers to round-robin calls through archives.
 //
 
-// getNextIndex is a stateless way to iterate through the pool
-func (pa *ArchivePool) getNextIndex(i int) int {
-	return (i + 1) % len(pa.pool)
-}
-
 // getNextArchive statefully round-robins through the pool
 func (pa *ArchivePool) getNextArchive() ArchiveInterface {
 	// Round-robin through the archives
-	pa.curr = pa.getNextIndex(pa.curr)
+	pa.curr = (pa.curr + 1) % len(pa.pool)
 	return pa.pool[pa.curr]
 }
 
@@ -101,7 +96,7 @@ func (pa *ArchivePool) getNextArchive() ArchiveInterface {
 func (pa *ArchivePool) runRoundRobin(runner func(ai ArchiveInterface) error) error {
 	return backoff.Retry(func() error {
 		var lastErr error
-		for i := 0; i < len(pa.pool); i++ {
+		for range pa.pool {
 			ai := pa.getNextArchive()
 			if lastErr = runner(ai); lastErr == nil {
 				return nil
