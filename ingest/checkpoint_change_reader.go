@@ -71,8 +71,6 @@ const (
 	// bucket in a single run. This is done to allow preloading keys from
 	// temp set.
 	preloadedEntries = 20000
-
-	sleepDuration = time.Second
 )
 
 // NewCheckpointChangeReader constructs a new CheckpointChangeReader instance.
