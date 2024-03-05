@@ -24,6 +24,10 @@ func NewLiquidityPoolsChangeProcessor(Q history.QLiquidityPools, sequence uint32
 	return p
 }
 
+func (p *LiquidityPoolsChangeProcessor) Name() string {
+	return "processors.LiquidityPoolsChangeProcessor"
+}
+
 func (p *LiquidityPoolsChangeProcessor) reset() {
 	p.cache = ingest.NewChangeCompactor()
 }

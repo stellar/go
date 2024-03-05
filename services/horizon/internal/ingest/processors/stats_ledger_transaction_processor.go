@@ -141,6 +141,10 @@ func (p *StatsLedgerTransactionProcessor) ProcessTransaction(lcm xdr.LedgerClose
 	return nil
 }
 
+func (p *StatsLedgerTransactionProcessor) Name() string {
+	return "processors.StatsLedgerTransactionProcessor"
+}
+
 func (p *StatsLedgerTransactionProcessor) GetResults() StatsLedgerTransactionProcessorResults {
 	return p.results
 }

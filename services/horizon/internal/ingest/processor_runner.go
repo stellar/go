@@ -28,10 +28,12 @@ const (
 
 type horizonChangeProcessor interface {
 	processors.ChangeProcessor
+	Name() string
 	Commit(context.Context) error
 }
 
 type horizonTransactionProcessor interface {
+	Name() string
 	processors.LedgerTransactionProcessor
 }
 
@@ -43,6 +45,10 @@ type horizonLazyLoader interface {
 
 type statsChangeProcessor struct {
 	*ingest.StatsChangeProcessor
+}
+
+func (statsChangeProcessor) Name() string {
+	return "ingest.statsChangeProcessor"
 }
 
 func (statsChangeProcessor) Commit(ctx context.Context) error {
@@ -70,14 +76,6 @@ type ProcessorRunnerInterface interface {
 		ledgerProtocolVersion uint32,
 		bucketListHash xdr.Hash,
 	) (ingest.StatsChangeProcessorResults, error)
-	RunTransactionProcessorsOnLedger(ledger xdr.LedgerCloseMeta) (
-		transactionStats processors.StatsLedgerTransactionProcessorResults,
-		transactionDurations runDurations,
-		tradeStats processors.TradeStats,
-		loaderDurations runDurations,
-		loaderStats map[string]history.LoaderStats,
-		err error,
-	)
 	RunTransactionProcessorsOnLedgers(ledgers []xdr.LedgerCloseMeta) error
 	RunAllProcessorsOnLedger(ledger xdr.LedgerCloseMeta) (
 		stats ledgerStats,
@@ -243,6 +241,13 @@ func (s *ProcessorRunner) RunHistoryArchiveIngestion(
 		s.config.NetworkPassphrase,
 	)
 
+	if err := registerChangeProcessors(
+		nameRegistry{},
+		changeProcessor,
+	); err != nil {
+		return ingest.StatsChangeProcessorResults{}, err
+	}
+
 	if checkpointLedger == 1 {
 		if err := changeProcessor.ProcessChange(s.ctx, ingest.GenesisChange(s.config.NetworkPassphrase)); err != nil {
 			return changeStats.GetResults(), errors.Wrap(err, "Error ingesting genesis ledger")
@@ -364,7 +369,7 @@ func (s *ProcessorRunner) streamLedger(ledger xdr.LedgerCloseMeta,
 	return nil
 }
 
-func (s *ProcessorRunner) RunTransactionProcessorsOnLedger(ledger xdr.LedgerCloseMeta) (
+func (s *ProcessorRunner) runTransactionProcessorsOnLedger(registry nameRegistry, ledger xdr.LedgerCloseMeta) (
 	transactionStats processors.StatsLedgerTransactionProcessorResults,
 	transactionDurations runDurations,
 	tradeStats processors.TradeStats,
@@ -379,6 +384,15 @@ func (s *ProcessorRunner) RunTransactionProcessorsOnLedger(ledger xdr.LedgerClos
 	groupTransactionFilterers := s.buildTransactionFilterer()
 	groupFilteredOutProcessors := s.buildFilteredOutProcessor()
 	groupTransactionProcessors := s.buildTransactionProcessor(ledgersProcessor)
+
+	if err = registerTransactionProcessors(
+		registry,
+		groupTransactionFilterers,
+		groupFilteredOutProcessors,
+		groupTransactionProcessors,
+	); err != nil {
+		return
+	}
 
 	err = s.streamLedger(ledger,
 		groupTransactionFilterers,
@@ -411,6 +425,64 @@ func (s *ProcessorRunner) RunTransactionProcessorsOnLedger(ledger xdr.LedgerClos
 	tradeStats = groupTransactionProcessors.tradeProcessor.GetStats()
 
 	return
+}
+
+// nameRegistry ensures all ingestion components have a unique name
+// for metrics reporting
+type nameRegistry map[string]struct{}
+
+func (n nameRegistry) add(name string) error {
+	if _, ok := n[name]; ok {
+		return fmt.Errorf("%s is duplicated", name)
+	}
+	n[name] = struct{}{}
+	return nil
+}
+
+func registerChangeProcessors(
+	registry nameRegistry,
+	group *groupChangeProcessors,
+) error {
+	for _, p := range group.processors {
+		if err := registry.add(p.Name()); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func registerTransactionProcessors(
+	registry nameRegistry,
+	groupTransactionFilterers *groupTransactionFilterers,
+	groupFilteredOutProcessors *groupTransactionProcessors,
+	groupTransactionProcessors *groupTransactionProcessors,
+) error {
+	for _, f := range groupTransactionFilterers.filterers {
+		if err := registry.add(f.Name()); err != nil {
+			return err
+		}
+	}
+	for _, p := range groupTransactionProcessors.processors {
+		if err := registry.add(p.Name()); err != nil {
+			return err
+		}
+	}
+	for _, l := range groupTransactionProcessors.lazyLoaders {
+		if err := registry.add(l.Name()); err != nil {
+			return err
+		}
+	}
+	for _, p := range groupFilteredOutProcessors.processors {
+		if err := registry.add(p.Name()); err != nil {
+			return err
+		}
+	}
+	for _, l := range groupFilteredOutProcessors.lazyLoaders {
+		if err := registry.add(l.Name()); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (s *ProcessorRunner) RunTransactionProcessorsOnLedgers(ledgers []xdr.LedgerCloseMeta) (err error) {
@@ -504,12 +576,21 @@ func (s *ProcessorRunner) RunAllProcessorsOnLedger(ledger xdr.LedgerCloseMeta) (
 		ledger.LedgerSequence(),
 		s.config.NetworkPassphrase,
 	)
+
+	registry := nameRegistry{}
+	if err = registerChangeProcessors(
+		registry,
+		groupChangeProcessors,
+	); err != nil {
+		return
+	}
+
 	err = s.runChangeProcessorOnLedger(groupChangeProcessors, ledger)
 	if err != nil {
 		return
 	}
 
-	transactionStats, transactionDurations, tradeStats, loaderDurations, loaderStats, err := s.RunTransactionProcessorsOnLedger(ledger)
+	transactionStats, transactionDurations, tradeStats, loaderDurations, loaderStats, err := s.runTransactionProcessorsOnLedger(registry, ledger)
 
 	stats.changeStats = changeStatsProcessor.GetResults()
 	stats.changeDurations = groupChangeProcessors.processorsRunDurations

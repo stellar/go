@@ -567,8 +567,6 @@ func (r resumeState) addLedgerStatsMetricFromMap(s *system, prefix string, m map
 
 func (r resumeState) addProcessorDurationsMetricFromMap(s *system, m map[string]time.Duration) {
 	for processorName, value := range m {
-		// * is not accepted in Prometheus labels
-		processorName = strings.Replace(processorName, "*", "", -1)
 		s.Metrics().ProcessorsRunDuration.
 			With(prometheus.Labels{"name": processorName}).Add(value.Seconds())
 		s.Metrics().ProcessorsRunDurationSummary.

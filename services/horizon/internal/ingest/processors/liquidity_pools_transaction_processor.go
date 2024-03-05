@@ -30,6 +30,10 @@ func NewLiquidityPoolsTransactionProcessor(
 	}
 }
 
+func (p *LiquidityPoolsTransactionProcessor) Name() string {
+	return "processors.LiquidityPoolsTransactionProcessor"
+}
+
 func (p *LiquidityPoolsTransactionProcessor) ProcessTransaction(lcm xdr.LedgerCloseMeta, transaction ingest.LedgerTransaction) error {
 	err := p.addTransactionLiquidityPools(lcm.LedgerSequence(), transaction)
 	if err != nil {

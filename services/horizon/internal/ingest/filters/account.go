@@ -26,6 +26,10 @@ func NewAccountFilter() AccountFilter {
 	}
 }
 
+func (filter *accountFilter) Name() string {
+	return "filters.accountFilter"
+}
+
 func (filter *accountFilter) RefreshAccountFilter(filterConfig *history.AccountFilterConfig) error {
 	// only need to re-initialize the filter config state(rules) if its cached version(in  memory)
 	// is older than the incoming config version based on lastModified epoch timestamp
