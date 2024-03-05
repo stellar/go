@@ -56,7 +56,10 @@ require (
 	gopkg.in/tylerb/graceful.v1 v1.2.15
 )
 
-require golang.org/x/sync v0.6.0
+require (
+	github.com/cenkalti/backoff/v4 v4.2.1
+	golang.org/x/sync v0.6.0
+)
 
 require (
 	cloud.google.com/go/compute v1.23.3 // indirect
@@ -64,7 +67,6 @@ require (
 	cloud.google.com/go/iam v1.1.5 // indirect
 	cloud.google.com/go/longrunning v0.5.4 // indirect
 	github.com/andybalholm/brotli v1.0.4 // indirect
-	github.com/cenkalti/backoff/v4 v4.2.1 // indirect
 	github.com/certifi/gocertifi v0.0.0-20210507211836-431795d63e8d // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/creachadair/mds v0.0.1 // indirect
