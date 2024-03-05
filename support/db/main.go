@@ -118,10 +118,14 @@ type Session struct {
 	// DB is the database connection that queries should be executed against.
 	DB *sqlx.DB
 
-	tx        *sqlx.Tx
-	txOptions *sql.TxOptions
+	tx            *sqlx.Tx
+	txOptions     *sql.TxOptions
+	errorHandlers []ErrorHandlerFunc
 }
 
+// dbErr - the Postgres error
+// ctx   - the caller's context
+type ErrorHandlerFunc func(dbErr error, ctx context.Context)
 type SessionInterface interface {
 	BeginTx(ctx context.Context, opts *sql.TxOptions) error
 	Begin(ctx context.Context) error
