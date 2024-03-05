@@ -92,20 +92,19 @@ func TestArchivePoolCycles(t *testing.T) {
 	require.NoError(t, err)
 
 	//
-	// A single access should try all pools and stop after a cycle is
-	// encountered, then retry thrice with constant back-off, so we ensure here
-	// that there are 12 distinct accesses and an appropriate delay.
+	// A single access should retry thrice with constant back-off, so we check
+	// the distinct accesses and an appropriate delay.
 	//
 	_, err = pool.GetPathHAS("path")
 	require.Error(t, err)
 
-	require.Len(t, accesses, 12)
+	require.Len(t, accesses, 4)
 	assert.Contains(t, accesses, "1")
 	assert.Contains(t, accesses, "2")
 	assert.Contains(t, accesses, "3")
 
 	assert.GreaterOrEqualf(t,
 		requestTimes[len(requestTimes)-1].Sub(requestTimes[0]),
-		1450*time.Millisecond, // some leeway
+		740*time.Millisecond, // some leeway
 		"")
 }

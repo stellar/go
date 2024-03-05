@@ -34,7 +34,7 @@ func NewArchivePool(archiveURLs []string, opts ArchiveOptions) (ArchiveInterface
 	return NewArchivePoolWithBackoff(
 		archiveURLs,
 		opts,
-		backoff.WithMaxRetries(backoff.NewConstantBackOff(500*time.Millisecond), 3),
+		backoff.WithMaxRetries(backoff.NewConstantBackOff(250*time.Millisecond), 3),
 	)
 }
 
@@ -95,26 +95,24 @@ func (pa *ArchivePool) getNextArchive() ArchiveInterface {
 // comes first), repeating with a constant 500ms backoff.
 func (pa *ArchivePool) runRoundRobin(runner func(ai ArchiveInterface) error) error {
 	return backoff.Retry(func() error {
-		var lastErr error
-		for range pa.pool {
-			ai := pa.getNextArchive()
-			if lastErr = runner(ai); lastErr == nil {
-				return nil
-			}
-
-			if stats := ai.GetStats(); len(stats) > 0 {
-				log.WithField("error", lastErr).Warnf(
-					"Encountered an error with archive '%s'",
-					stats[0].GetBackendName())
-			}
-
-			if errors.Is(lastErr, context.Canceled) ||
-				errors.Is(lastErr, context.DeadlineExceeded) {
-				return backoff.Permanent(lastErr)
-			}
+		var err error
+		ai := pa.getNextArchive()
+		if err = runner(ai); err == nil {
+			return nil
 		}
 
-		return lastErr
+		if stats := ai.GetStats(); len(stats) > 0 {
+			log.WithField("error", err).Warnf(
+				"Encountered an error with archive '%s'",
+				stats[0].GetBackendName())
+		}
+
+		if errors.Is(err, context.Canceled) ||
+			errors.Is(err, context.DeadlineExceeded) {
+			return backoff.Permanent(err)
+		}
+
+		return err
 	}, pa.backoff)
 }
 
