@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stellar/go/support/storage"
 	"github.com/stretchr/testify/assert"
@@ -74,10 +75,12 @@ func TestArchivePoolRoundRobin(t *testing.T) {
 
 func TestArchivePoolCycles(t *testing.T) {
 	accesses := []string{}
+	requestTimes := []time.Time{}
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		parts := strings.Split(r.URL.Path, "/")
 		accesses = append(accesses, parts[2])
+		requestTimes = append(requestTimes, time.Now())
 		w.Write([]byte("failure"))
 	}))
 
@@ -90,28 +93,19 @@ func TestArchivePoolCycles(t *testing.T) {
 
 	//
 	// A single access should try all pools and stop after a cycle is
-	// encountered, so we ensure here that there are 3 distinct accesses.
+	// encountered, then retry thrice with constant back-off, so we ensure here
+	// that there are 12 distinct accesses and an appropriate delay.
 	//
 	_, err = pool.GetPathHAS("path")
 	require.Error(t, err)
 
-	require.Len(t, accesses, 3)
+	require.Len(t, accesses, 12)
 	assert.Contains(t, accesses, "1")
 	assert.Contains(t, accesses, "2")
 	assert.Contains(t, accesses, "3")
 
-	//
-	// The next access will also try all pools but it should notice a back-off
-	// for all of them, too, and *still* stop after a cycle. This ensures 3
-	// duped distinct accesses and a *single* backoff (since they all share the
-	// same single back-off).
-	//
-	accesses = []string{}
-	_, err = pool.GetPathHAS("path")
-	require.Error(t, err)
-
-	require.Len(t, accesses, 3)
-	assert.Contains(t, accesses, "1")
-	assert.Contains(t, accesses, "2")
-	assert.Contains(t, accesses, "3")
+	assert.GreaterOrEqualf(t,
+		requestTimes[len(requestTimes)-1].Sub(requestTimes[0]),
+		1450*time.Millisecond, // some leeway
+		"")
 }

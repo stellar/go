@@ -126,21 +126,7 @@ func NewCheckpointChangeReader(
 }
 
 func (r *CheckpointChangeReader) bucketExists(hash historyarchive.Hash) (bool, error) {
-	duration := sleepDuration
-	var exists bool
-	var err error
-	for attempts := 0; ; attempts++ {
-		exists, err = r.archive.BucketExists(hash)
-		if err == nil {
-			return exists, nil
-		}
-		if attempts >= maxStreamRetries {
-			break
-		}
-		r.sleep(duration)
-		duration *= 2
-	}
-	return exists, err
+	return r.archive.BucketExists(hash)
 }
 
 // streamBuckets is internal method that streams buckets from the given HAS.

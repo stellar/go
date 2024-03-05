@@ -5,21 +5,23 @@
 package historyarchive
 
 import (
+	"context"
 	"math/rand"
+	"time"
 
-	log "github.com/sirupsen/logrus"
-	"github.com/stellar/go/support/errors"
+	"github.com/pkg/errors"
+	log "github.com/stellar/go/support/log"
 	"github.com/stellar/go/xdr"
+
+	backoff "github.com/cenkalti/backoff/v4"
 )
 
 // An ArchivePool is just a collection of `ArchiveInterface`s so that we can
-// distribute requests fairly throughout the pool, but with additional
-// error-tracking to identify/avoid problematic archives in the pool.
+// distribute requests fairly throughout the pool.
 type ArchivePool struct {
-	pool []ArchiveInterface
-
-	errors map[ArchiveInterface]*errStats
-	curr   int
+	backoff backoff.BackOff
+	pool    []ArchiveInterface
+	curr    int
 }
 
 // NewArchivePool tries connecting to each of the provided history archive URLs,
@@ -29,31 +31,33 @@ type ArchivePool struct {
 // failed archive. Note that the errors for each individual archive are hard to
 // track if there's success overall.
 func NewArchivePool(archiveURLs []string, opts ArchiveOptions) (ArchiveInterface, error) {
+	return NewArchivePoolWithBackoff(
+		archiveURLs,
+		opts,
+		backoff.WithMaxRetries(backoff.NewConstantBackOff(500*time.Millisecond), 3),
+	)
+}
+
+func NewArchivePoolWithBackoff(archiveURLs []string, opts ArchiveOptions, strategy backoff.BackOff) (ArchiveInterface, error) {
 	if len(archiveURLs) <= 0 {
 		return nil, errors.New("No history archives provided")
 	}
 
 	ap := ArchivePool{
-		pool:   make([]ArchiveInterface, 0, len(archiveURLs)),
-		errors: make(map[ArchiveInterface]*errStats, len(archiveURLs)),
-		curr:   0,
+		pool:    make([]ArchiveInterface, 0, len(archiveURLs)),
+		backoff: strategy,
 	}
-	var lastErr error = nil
+	var lastErr error
 
 	// Try connecting to all of the listed archives, but only store valid ones.
 	for _, url := range archiveURLs {
-		archive, err := Connect(
-			url,
-			opts,
-		)
-
+		archive, err := Connect(url, opts)
 		if err != nil {
 			lastErr = errors.Wrapf(err, "Error connecting to history archive (%s)", url)
 			continue
 		}
 
 		ap.pool = append(ap.pool, archive)
-		ap.errors[archive] = &errStats{}
 	}
 
 	if len(ap.pool) == 0 {
@@ -91,43 +95,30 @@ func (pa *ArchivePool) getNextArchive() ArchiveInterface {
 	return pa.pool[pa.curr]
 }
 
-// runOnEach is a helper method that will run a particular action on every
+// runRoundRobin is a helper method that will run a particular action on every
 // archive in the pool until it succeeds or the pool is exhausted (whichever
-// comes first). It will also track error stats against the pool to identify
-// problematic archives.
-func (pa *ArchivePool) runOnEach(runner func(ai ArchiveInterface) error) error {
-	// track the first archive we'll use
-	start := pa.getNextIndex(pa.curr)
-
-	//
-	// The error resilience here is fairly simple: we round-robin through
-	// the list of archives in the pool until success or exhaustion.
-	//
-	for {
-		ai := pa.getNextArchive()
-		cycle := pa.getNextIndex(pa.curr) == start
-
-		if err := runner(ai); err != nil {
-			if statline, ok := pa.errors[ai]; ok /* shouldn't miss, but safer */ {
-				// Periodically output accumulated issues
-				if errCount := statline.addError(err); errCount%7 == 0 {
-					log.WithError(err).Warnf(
-						"The archive '%s' has had %d errors so far",
-						ai.GetStats()[0].GetBackendName(), errCount)
-				}
+// comes first), repeating with a constant 500ms backoff.
+func (pa *ArchivePool) runRoundRobin(runner func(ai ArchiveInterface) error) error {
+	return backoff.Retry(func() error {
+		var lastErr error
+		for i := 0; i < len(pa.pool); i++ {
+			ai := pa.getNextArchive()
+			if lastErr = runner(ai); lastErr == nil {
+				return nil
 			}
 
-			// If we're cycling around, we're all out of options and should
-			// bubble up the last error we saw.
-			if cycle {
-				return err
-			}
+			log.WithField("error", lastErr).Warnf(
+				"Encountered an error with archive '%s'",
+				ai.GetStats()[0].GetBackendName())
 
-			continue
+			if errors.Is(lastErr, context.Canceled) ||
+				errors.Is(lastErr, context.DeadlineExceeded) {
+				return lastErr
+			}
 		}
 
-		return nil
-	}
+		return lastErr
+	}, pa.backoff)
 }
 
 //
@@ -136,7 +127,7 @@ func (pa *ArchivePool) runOnEach(runner func(ai ArchiveInterface) error) error {
 
 func (pa *ArchivePool) GetPathHAS(path string) (HistoryArchiveState, error) {
 	has := HistoryArchiveState{}
-	err := pa.runOnEach(func(ai ArchiveInterface) error {
+	err := pa.runRoundRobin(func(ai ArchiveInterface) error {
 		var innerErr error
 		has, innerErr = ai.GetPathHAS(path)
 		return innerErr
@@ -145,14 +136,14 @@ func (pa *ArchivePool) GetPathHAS(path string) (HistoryArchiveState, error) {
 }
 
 func (pa *ArchivePool) PutPathHAS(path string, has HistoryArchiveState, opts *CommandOptions) error {
-	return pa.runOnEach(func(ai ArchiveInterface) error {
+	return pa.runRoundRobin(func(ai ArchiveInterface) error {
 		return ai.PutPathHAS(path, has, opts)
 	})
 }
 
 func (pa *ArchivePool) BucketExists(bucket Hash) (bool, error) {
 	status := false
-	return status, pa.runOnEach(func(ai ArchiveInterface) error {
+	return status, pa.runRoundRobin(func(ai ArchiveInterface) error {
 		var err error
 		status, err = ai.BucketExists(bucket)
 		return err
@@ -161,7 +152,7 @@ func (pa *ArchivePool) BucketExists(bucket Hash) (bool, error) {
 
 func (pa *ArchivePool) BucketSize(bucket Hash) (int64, error) {
 	var bsize int64
-	return bsize, pa.runOnEach(func(ai ArchiveInterface) error {
+	return bsize, pa.runRoundRobin(func(ai ArchiveInterface) error {
 		var err error
 		bsize, err = ai.BucketSize(bucket)
 		return err
@@ -222,17 +213,4 @@ func (pa *ArchivePool) GetXdrStream(pth string) (*XdrStream, error) {
 
 func (pa *ArchivePool) GetCheckpointManager() CheckpointManager {
 	return pa.getNextArchive().GetCheckpointManager()
-}
-
-// errStats is a way to track how many errors occurred.
-type errStats struct {
-	count   int
-	lastErr error
-}
-
-// addError updates all tracking states
-func (statline *errStats) addError(err error) int {
-	statline.count++
-	statline.lastErr = err
-	return statline.count
 }
