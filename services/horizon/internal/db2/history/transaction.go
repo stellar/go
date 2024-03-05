@@ -93,6 +93,7 @@ func (q *Q) Transactions() *TransactionsQ {
 		parent:        q,
 		sql:           selectTransactionHistory,
 		includeFailed: false,
+		txIdCol:       "ht.id",
 	}
 }
 
@@ -107,6 +108,7 @@ func (q *TransactionsQ) ForAccount(ctx context.Context, aid string) *Transaction
 	q.sql = q.sql.
 		Join("history_transaction_participants htp ON htp.history_transaction_id = ht.id").
 		Where("htp.history_account_id = ?", account.ID)
+	q.txIdCol = "htp.history_transaction_id"
 
 	return q
 }
@@ -123,6 +125,7 @@ func (q *TransactionsQ) ForClaimableBalance(ctx context.Context, cbID string) *T
 	q.sql = q.sql.
 		Join("history_transaction_claimable_balances htcb ON htcb.history_transaction_id = ht.id").
 		Where("htcb.history_claimable_balance_id = ?", hCB.InternalID)
+	q.txIdCol = "htcb.history_transaction_id"
 
 	return q
 }
@@ -139,6 +142,7 @@ func (q *TransactionsQ) ForLiquidityPool(ctx context.Context, poolID string) *Tr
 	q.sql = q.sql.
 		Join("history_transaction_liquidity_pools htlp ON htlp.history_transaction_id = ht.id").
 		Where("htlp.history_liquidity_pool_id = ?", hLP.InternalID)
+	q.txIdCol = "htlp.history_transaction_id"
 
 	return q
 }
@@ -175,7 +179,7 @@ func (q *TransactionsQ) Page(page db2.PageQuery) *TransactionsQ {
 		return q
 	}
 
-	q.sql, q.Err = page.ApplyTo(q.sql, "ht.id")
+	q.sql, q.Err = page.ApplyTo(q.sql, q.txIdCol)
 	return q
 }
 
