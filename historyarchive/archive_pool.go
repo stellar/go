@@ -101,15 +101,16 @@ func (pa *ArchivePool) runRoundRobin(runner func(ai ArchiveInterface) error) err
 			return nil
 		}
 
+		if errors.Is(err, context.Canceled) ||
+			errors.Is(err, context.DeadlineExceeded) {
+			return backoff.Permanent(err)
+		}
+
+		// Intentionally avoid logging context errors
 		if stats := ai.GetStats(); len(stats) > 0 {
 			log.WithField("error", err).Warnf(
 				"Encountered an error with archive '%s'",
 				stats[0].GetBackendName())
-		}
-
-		if errors.Is(err, context.Canceled) ||
-			errors.Is(err, context.DeadlineExceeded) {
-			return backoff.Permanent(err)
 		}
 
 		return err
@@ -155,36 +156,81 @@ func (pa *ArchivePool) BucketSize(bucket Hash) (int64, error) {
 }
 
 func (pa *ArchivePool) CategoryCheckpointExists(cat string, chk uint32) (bool, error) {
-	return pa.getNextArchive().CategoryCheckpointExists(cat, chk)
+	var ok bool
+	return ok, pa.runRoundRobin(func(ai ArchiveInterface) error {
+		var err error
+		ok, err = ai.CategoryCheckpointExists(cat, chk)
+		return err
+	})
 }
 
 func (pa *ArchivePool) GetLedgerHeader(chk uint32) (xdr.LedgerHeaderHistoryEntry, error) {
-	return pa.getNextArchive().GetLedgerHeader(chk)
+	var entry xdr.LedgerHeaderHistoryEntry
+	return entry, pa.runRoundRobin(func(ai ArchiveInterface) error {
+		var err error
+		entry, err = ai.GetLedgerHeader(chk)
+		return err
+	})
 }
 
 func (pa *ArchivePool) GetRootHAS() (HistoryArchiveState, error) {
-	return pa.getNextArchive().GetRootHAS()
+	var state HistoryArchiveState
+	return state, pa.runRoundRobin(func(ai ArchiveInterface) error {
+		var err error
+		state, err = ai.GetRootHAS()
+		return err
+	})
 }
 
 func (pa *ArchivePool) GetLedgers(start, end uint32) (map[uint32]*Ledger, error) {
-	return pa.getNextArchive().GetLedgers(start, end)
+	var dict map[uint32]*Ledger
+
+	return dict, pa.runRoundRobin(func(ai ArchiveInterface) error {
+		var err error
+		dict, err = ai.GetLedgers(start, end)
+		return err
+	})
 }
 
 func (pa *ArchivePool) GetCheckpointHAS(chk uint32) (HistoryArchiveState, error) {
-	return pa.getNextArchive().GetCheckpointHAS(chk)
+	var state HistoryArchiveState
+	return state, pa.runRoundRobin(func(ai ArchiveInterface) error {
+		var err error
+		state, err = ai.GetCheckpointHAS(chk)
+		return err
+	})
 }
 
 func (pa *ArchivePool) PutCheckpointHAS(chk uint32, has HistoryArchiveState, opts *CommandOptions) error {
-	return pa.getNextArchive().PutCheckpointHAS(chk, has, opts)
+	return pa.runRoundRobin(func(ai ArchiveInterface) error {
+		return ai.PutCheckpointHAS(chk, has, opts)
+	})
 }
 
 func (pa *ArchivePool) PutRootHAS(has HistoryArchiveState, opts *CommandOptions) error {
-	return pa.getNextArchive().PutRootHAS(has, opts)
+	return pa.runRoundRobin(func(ai ArchiveInterface) error {
+		return ai.PutRootHAS(has, opts)
+	})
 }
 
 func (pa *ArchivePool) ListBucket(dp DirPrefix) (chan string, chan error) {
-	return pa.getNextArchive().ListBucket(dp)
+	var c chan string
+	var err chan error
+	pa.runRoundRobin(func(ai ArchiveInterface) error {
+		c, err = ai.ListBucket(dp)
+		return <-err
+		// TODO: Does the above block in the absence of errors?? Otherwise, can do this:
+		//
+		// if errCount := drainErrors(err); errCount > 0 {
+		// 	return fmt.Errorf("encountered %d errors with ListBucket on %+v", errCount, dp)
+		// }
+		// return nil
+	})
+	return c, err
 }
+
+// TODO: Finish the below once it's clear what the better channel <-> error
+// resolution strategy should be.
 
 func (pa *ArchivePool) ListAllBuckets() (chan string, chan error) {
 	return pa.getNextArchive().ListAllBuckets()
@@ -199,11 +245,21 @@ func (pa *ArchivePool) ListCategoryCheckpoints(cat string, pth string) (chan uin
 }
 
 func (pa *ArchivePool) GetXdrStreamForHash(hash Hash) (*XdrStream, error) {
-	return pa.getNextArchive().GetXdrStreamForHash(hash)
+	var stream *XdrStream
+	return stream, pa.runRoundRobin(func(ai ArchiveInterface) error {
+		var err error
+		stream, err = ai.GetXdrStreamForHash(hash)
+		return err
+	})
 }
 
 func (pa *ArchivePool) GetXdrStream(pth string) (*XdrStream, error) {
-	return pa.getNextArchive().GetXdrStream(pth)
+	var stream *XdrStream
+	return stream, pa.runRoundRobin(func(ai ArchiveInterface) error {
+		var err error
+		stream, err = ai.GetXdrStream(pth)
+		return err
+	})
 }
 
 func (pa *ArchivePool) GetCheckpointManager() CheckpointManager {
