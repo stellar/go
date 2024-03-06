@@ -23,6 +23,7 @@ func PopulateTransaction(
 	transactionHash string,
 	dest *protocol.Transaction,
 	row history.Transaction,
+	skipTxMeta bool,
 ) error {
 	dest.ID = transactionHash
 	dest.PT = row.PagingToken()
@@ -43,7 +44,11 @@ func PopulateTransaction(
 	dest.OperationCount = row.OperationCount
 	dest.EnvelopeXdr = row.TxEnvelope
 	dest.ResultXdr = row.TxResult
-	dest.ResultMetaXdr = row.TxMeta
+	if skipTxMeta {
+		dest.ResultMetaXdr = ""
+	} else {
+		dest.ResultMetaXdr = row.TxMeta
+	}
 	dest.FeeMetaXdr = row.TxFeeMeta
 	dest.MemoType = row.MemoType
 	dest.Memo = row.Memo.String
