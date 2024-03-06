@@ -552,6 +552,7 @@ func (a *App) init() error {
 			},
 			cache: newHealthCache(healthCacheTTL),
 		},
+		SkipTxMeta: a.config.SkipTxmeta,
 	}
 
 	if a.primaryHistoryQ != nil {

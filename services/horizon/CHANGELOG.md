@@ -11,6 +11,8 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 - History archive access is more effective when you pass list of URLs to Horizon: they will now be accessed in a round-robin fashion, use alternative archives on errors, and intelligently back off ([5224](https://github.com/stellar/go/pull/5224))
 
+### Breaking Changes
+- The Horizon API Transaction resource field in json `result_meta_xdr` is now optional and Horizon API will not emit the field when Horizon has been configured with `SKIP_TXMETA=true`, effectively null, otherwise if Horizon is configured with `SKIP_TXMETA=false` which is default, then the API Transaction field `result_meta_xdr` will remain present and populated with base64 encoded xdr [5228](https://github.com/stellar/go/pull/5228).
 
 ## 2.28.3
 

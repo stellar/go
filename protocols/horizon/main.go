@@ -518,7 +518,7 @@ type Transaction struct {
 	OperationCount    int32     `json:"operation_count"`
 	EnvelopeXdr       string    `json:"envelope_xdr"`
 	ResultXdr         string    `json:"result_xdr"`
-	ResultMetaXdr     string    `json:"result_meta_xdr"`
+	ResultMetaXdr     string    `json:"result_meta_xdr,omitempty"`
 	FeeMetaXdr        string    `json:"fee_meta_xdr"`
 	MemoType          string    `json:"memo_type"`
 	MemoBytes         string    `json:"memo_bytes,omitempty"`
