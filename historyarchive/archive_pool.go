@@ -213,37 +213,6 @@ func (pa *ArchivePool) PutRootHAS(has HistoryArchiveState, opts *CommandOptions)
 	})
 }
 
-func (pa *ArchivePool) ListBucket(dp DirPrefix) (chan string, chan error) {
-	var c chan string
-	var err chan error
-	pa.runRoundRobin(func(ai ArchiveInterface) error {
-		c, err = ai.ListBucket(dp)
-		return <-err
-		// TODO: Does the above block in the absence of errors?? Otherwise, can do this:
-		//
-		// if errCount := drainErrors(err); errCount > 0 {
-		// 	return fmt.Errorf("encountered %d errors with ListBucket on %+v", errCount, dp)
-		// }
-		// return nil
-	})
-	return c, err
-}
-
-// TODO: Finish the below once it's clear what the better channel <-> error
-// resolution strategy should be.
-
-func (pa *ArchivePool) ListAllBuckets() (chan string, chan error) {
-	return pa.getNextArchive().ListAllBuckets()
-}
-
-func (pa *ArchivePool) ListAllBucketHashes() (chan Hash, chan error) {
-	return pa.getNextArchive().ListAllBucketHashes()
-}
-
-func (pa *ArchivePool) ListCategoryCheckpoints(cat string, pth string) (chan uint32, chan error) {
-	return pa.getNextArchive().ListCategoryCheckpoints(cat, pth)
-}
-
 func (pa *ArchivePool) GetXdrStreamForHash(hash Hash) (*XdrStream, error) {
 	var stream *XdrStream
 	return stream, pa.runRoundRobin(func(ai ArchiveInterface) error {
@@ -264,4 +233,24 @@ func (pa *ArchivePool) GetXdrStream(pth string) (*XdrStream, error) {
 
 func (pa *ArchivePool) GetCheckpointManager() CheckpointManager {
 	return pa.getNextArchive().GetCheckpointManager()
+}
+
+//
+// The channel-based methods do not have automatic retries.
+//
+
+func (pa *ArchivePool) ListBucket(dp DirPrefix) (chan string, chan error) {
+	return pa.getNextArchive().ListBucket(dp)
+}
+
+func (pa *ArchivePool) ListAllBuckets() (chan string, chan error) {
+	return pa.getNextArchive().ListAllBuckets()
+}
+
+func (pa *ArchivePool) ListAllBucketHashes() (chan Hash, chan error) {
+	return pa.getNextArchive().ListAllBucketHashes()
+}
+
+func (pa *ArchivePool) ListCategoryCheckpoints(cat string, pth string) (chan uint32, chan error) {
+	return pa.getNextArchive().ListCategoryCheckpoints(cat, pth)
 }
