@@ -524,7 +524,7 @@ func (r resumeState) run(s *system) (transition, error) {
 	tradeStatsMap := stats.tradeStats.Map()
 	r.addLedgerStatsMetricFromMap(s, "trades", tradeStatsMap)
 	r.addProcessorDurationsMetricFromMap(s, stats.transactionDurations)
-	r.addLoaderDurationsMetricFromMap(s, stats.transactionDurations)
+	r.addLoaderDurationsMetricFromMap(s, stats.loaderDurations)
 	r.addLoaderStatsMetric(s, stats.loaderStats)
 
 	// since a single system instance is shared throughout all states,
