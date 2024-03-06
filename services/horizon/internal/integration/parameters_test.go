@@ -570,9 +570,9 @@ func TestDeprecatedOutputs(t *testing.T) {
 		_ = r.Close()
 		os.Stderr = originalStderr
 
-		assert.Contains(t, string(outputBytes), "DEPRECATED - The usage of the flag --captive-core-use-db has been deprecated. This in-memory "+
-			"functionality will soon be removed in the future. We recommend keeping the default value of True, "+
-			"to use the external DB rather than in-memory mode. ")
+		assert.Contains(t, string(outputBytes), "The usage of the flag --captive-core-use-db has been deprecated. "+
+			"Setting it to false to achieve in-memory  functionality on captive core will be removed in future releases. "+
+			"We recommend removing usage of this flag now in preparation.")
 	})
 }
 
