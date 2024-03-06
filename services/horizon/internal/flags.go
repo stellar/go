@@ -243,7 +243,7 @@ func Flags() (*Config, support.ConfigOptions) {
 			CustomSetValue: func(opt *support.ConfigOption) error {
 				if val := viper.GetBool(opt.Name); val {
 					stdLog.Printf(
-						"DEPRECATED - The usage of the flag --captive-core-use-db has been deprecated. This in-memory " +
+The usage of the flag --captive-core-use-db has been deprecated. Setting it to false to achieve in-memory  functionality on captive core will be removed in future releases. We recommend removing usage of this flag now in preparation. 						
 							"functionality will soon be removed in the future. We recommend keeping the default value of True, " +
 							"to use the external DB rather than in-memory mode. ",
 					)
