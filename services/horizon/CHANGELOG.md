@@ -7,6 +7,7 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 - New `db_error_total` metrics key with labels `ctx_error`, `db_error`, and `db_error_extra` ([5225](https://github.com/stellar/go/pull/5225)).
+- Bumped go version to the latest (1.22.1)
 
 ### Fixed
 - History archive access is more effective when you pass list of URLs to Horizon: they will now be accessed in a round-robin fashion, use alternative archives on errors, and intelligently back off ([5224](https://github.com/stellar/go/pull/5224))
