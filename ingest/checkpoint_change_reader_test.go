@@ -311,47 +311,15 @@ func (s *BucketExistsTestSuite) TearDownTest() {
 	s.mockArchive.AssertExpectations(s.T())
 }
 
-func (s *BucketExistsTestSuite) testBucketExists(
-	numErrors int, expectedSleeps []time.Duration,
-) {
+func (s *BucketExistsTestSuite) TestBucketExists() {
 	for _, expected := range []bool{true, false} {
 		hash := historyarchive.Hash{1, 2, 3}
-		if numErrors > 0 {
-			s.mockArchive.On("BucketExists", hash).
-				Return(true, errors.New("transient error")).Times(numErrors)
-		}
 		s.mockArchive.On("BucketExists", hash).
 			Return(expected, nil).Once()
-		s.expectedSleeps = expectedSleeps
 		exists, err := s.reader.bucketExists(hash)
 		s.Assert().Equal(expected, exists)
 		s.Assert().NoError(err)
-		s.Assert().Empty(s.expectedSleeps)
 	}
-}
-
-func (s *BucketExistsTestSuite) TestSucceedsFirstTime() {
-	s.testBucketExists(0, []time.Duration{})
-}
-
-func (s *BucketExistsTestSuite) TestSucceedsSecondTime() {
-	s.testBucketExists(1, []time.Duration{time.Second})
-}
-
-func (s *BucketExistsTestSuite) TestSucceedsThirdime() {
-	s.testBucketExists(2, []time.Duration{time.Second, 2 * time.Second})
-}
-
-func (s *BucketExistsTestSuite) TestFailsAfterThirdTime() {
-	hash := historyarchive.Hash{1, 2, 3}
-	s.mockArchive.On("BucketExists", hash).
-		Return(true, errors.New("transient error")).Times(4)
-	s.expectedSleeps = []time.Duration{
-		time.Second, 2 * time.Second, 4 * time.Second,
-	}
-	_, err := s.reader.bucketExists(hash)
-	s.Assert().EqualError(err, "transient error")
-	s.Assert().Empty(s.expectedSleeps)
 }
 
 func TestReadBucketEntryTestSuite(t *testing.T) {
