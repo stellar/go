@@ -5,6 +5,11 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+## 2.28.4
+
+### Added
+- Bumped go version to the latest (1.22.1)
+
 ### Breaking Changes
 - The Horizon API Transaction resource field in json `result_meta_xdr` is now optional and Horizon API will not emit the field when Horizon has been configured with `SKIP_TXMETA=true`, effectively null, otherwise if Horizon is configured with `SKIP_TXMETA=false` which is default, then the API Transaction field `result_meta_xdr` will remain present and populated with base64 encoded xdr [5228](https://github.com/stellar/go/pull/5228).
 
