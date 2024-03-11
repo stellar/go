@@ -1,7 +1,7 @@
 #! /bin/bash
 set -e
 
-version='2023.1.1'
+version='2023.1.7'
 
 staticcheck='go run honnef.co/go/tools/cmd/staticcheck@'"$version"
 
