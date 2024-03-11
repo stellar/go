@@ -442,6 +442,7 @@ func Flags() (*Config, support.ConfigOptions) {
 			Name:           "cancel-db-query-timeout",
 			ConfigKey:      &config.CancelDBQueryTimeout,
 			OptType:        types.Int,
+			FlagDefault:    0,
 			CustomSetValue: support.SetDuration,
 			Usage: "defines the timeout for when horizon will cancel all postgres queries connected to an HTTP request. The timeout is measured in seconds since the start of the HTTP request. Note, this timeout does not apply to POST /transactions. " +
 				"The difference between cancel-db-query-timeout and connection-timeout is that connection-timeout applies a postgres statement timeout whereas cancel-db-query-timeout will send an additional request to postgres to cancel the ongoing query. " +
