@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/exec"
 	"strings"
-	"time"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
@@ -447,7 +446,7 @@ func Flags() (*Config, support.ConfigOptions) {
 			Usage: "defines the timeout for when horizon will cancel all postgres queries connected to an HTTP request. The timeout is measured in seconds since the start of the HTTP request. Note, this timeout does not apply to POST /transactions. " +
 				"The difference between cancel-db-query-timeout and connection-timeout is that connection-timeout applies a postgres statement timeout whereas cancel-db-query-timeout will send an additional request to postgres to cancel the ongoing query. " +
 				"Generally, cancel-db-query-timeout should be configured to be higher than connection-timeout to allow the postgres statement timeout to kill long running queries without having to send the additional cancel request to postgres. " +
-				"By default, cancel-db-query-timeout will be set to 2 seconds more than connection-timeout.",
+				"By default, cancel-db-query-timeout will be set to twice the connection-timeout.",
 			UsedInCommands: ApiServerCommands,
 		},
 		&support.ConfigOption{
@@ -997,8 +996,8 @@ func ApplyFlags(config *Config, flags support.ConfigOptions, options ApplyOption
 	}
 
 	if config.CancelDBQueryTimeout == 0 {
-		// the default value for cancel-db-query-timeout is 2 seconds more than connection-timeout
-		config.CancelDBQueryTimeout = config.ConnectionTimeout + time.Second*2
+		// the default value for cancel-db-query-timeout is twice the connection-timeout
+		config.CancelDBQueryTimeout = config.ConnectionTimeout * 2
 	}
 
 	return nil
