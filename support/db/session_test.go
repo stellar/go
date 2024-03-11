@@ -169,7 +169,7 @@ func TestDeadlineOverride(t *testing.T) {
 
 	cancel()
 	_, _, err = sess.context(requestCtx)
-	assert.EqualError(t, err, "canceling statement due to user request")
+	assert.EqualError(t, err, "context canceled")
 }
 
 func TestSession(t *testing.T) {

@@ -30,9 +30,8 @@ func mustNewDBSession(subservice db.Subservice, databaseURL string, maxIdle, max
 	return db.RegisterMetrics(session, "horizon", subservice, registry)
 }
 
-func mustInitHorizonDB(app *App) bool {
+func mustInitHorizonDB(app *App) {
 	log.Infof("Initializing database...")
-	var dbServerSideTimeout bool
 
 	maxIdle := app.config.HorizonDBMaxIdleConnections
 	maxOpen := app.config.HorizonDBMaxOpenConnections
@@ -46,40 +45,29 @@ func mustInitHorizonDB(app *App) bool {
 			log.Fatalf("max open connections to horizon db must be greater than %d", ingest.MaxDBConnections)
 		}
 	}
+	serverSidePGTimeoutConfigs := []db.ClientConfig{
+		db.StatementTimeout(app.config.ConnectionTimeout),
+		db.IdleTransactionTimeout(app.config.ConnectionTimeout),
+	}
 
 	if app.config.RoDatabaseURL == "" {
-		var clientConfigs []db.ClientConfig
-		if !app.config.Ingest {
-			// if we are not ingesting then we don't expect to have long db queries / transactions
-			clientConfigs = append(
-				clientConfigs,
-				db.StatementTimeout(app.config.ConnectionTimeout),
-				db.IdleTransactionTimeout(app.config.ConnectionTimeout),
-			)
-			dbServerSideTimeout = true
-		}
 		app.historyQ = &history.Q{mustNewDBSession(
 			db.HistorySubservice,
 			app.config.DatabaseURL,
 			maxIdle,
 			maxOpen,
 			app.prometheusRegistry,
-			clientConfigs...,
+			serverSidePGTimeoutConfigs...,
 		)}
 	} else {
 		// If RO set, use it for all DB queries
-		roClientConfigs := []db.ClientConfig{
-			db.StatementTimeout(app.config.ConnectionTimeout),
-			db.IdleTransactionTimeout(app.config.ConnectionTimeout),
-		}
-		dbServerSideTimeout = true
 		app.historyQ = &history.Q{mustNewDBSession(
 			db.HistorySubservice,
 			app.config.RoDatabaseURL,
 			maxIdle,
 			maxOpen,
 			app.prometheusRegistry,
-			roClientConfigs...,
+			serverSidePGTimeoutConfigs...,
 		)}
 
 		app.primaryHistoryQ = &history.Q{mustNewDBSession(
@@ -88,10 +76,9 @@ func mustInitHorizonDB(app *App) bool {
 			maxIdle,
 			maxOpen,
 			app.prometheusRegistry,
+			serverSidePGTimeoutConfigs...,
 		)}
 	}
-
-	return dbServerSideTimeout
 }
 
 func initIngester(app *App) {

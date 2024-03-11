@@ -38,7 +38,7 @@ type RouterConfig struct {
 	SSEUpdateFrequency       time.Duration
 	StaleThreshold           uint
 	ConnectionTimeout        time.Duration
-	DBServerSideTimeout      bool
+	CancelDBQueryTimeout     time.Duration
 	MaxHTTPRequestSize       uint
 	NetworkPassphrase        string
 	MaxPathLength            uint
@@ -139,13 +139,9 @@ func (r *Router) addMiddleware(config *RouterConfig,
 }
 
 func (r *Router) addRoutes(config *RouterConfig, rateLimiter *throttled.HTTPRateLimiter, ledgerState *ledger.State) {
-	var contextDBTimeout time.Duration
-	if config.DBServerSideTimeout {
-		contextDBTimeout = config.ConnectionTimeout * 15
-	}
 	stateMiddleware := StateMiddleware{
-		HorizonSession:   config.DBSession,
-		ContextDBTimeout: contextDBTimeout,
+		HorizonSession:       config.DBSession,
+		CancelDBQueryTimeout: config.CancelDBQueryTimeout,
 	}
 
 	r.Method(http.MethodGet, "/health", config.HealthCheck)
@@ -163,7 +159,7 @@ func (r *Router) addRoutes(config *RouterConfig, rateLimiter *throttled.HTTPRate
 		LedgerSourceFactory: historyLedgerSourceFactory{ledgerState: ledgerState, updateFrequency: config.SSEUpdateFrequency},
 	}
 
-	historyMiddleware := NewHistoryMiddleware(ledgerState, int32(config.StaleThreshold), config.DBSession, contextDBTimeout)
+	historyMiddleware := NewHistoryMiddleware(ledgerState, int32(config.StaleThreshold), config.DBSession, config.CancelDBQueryTimeout)
 	// State endpoints behind stateMiddleware
 	r.Group(func(r chi.Router) {
 		r.Route("/accounts", func(r chi.Router) {

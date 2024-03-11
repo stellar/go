@@ -494,7 +494,7 @@ func (a *App) init() error {
 	a.UpdateStellarCoreInfo(a.ctx)
 
 	// horizon-db and core-db
-	dbServerSideTimeout := mustInitHorizonDB(a)
+	mustInitHorizonDB(a)
 
 	if a.config.Ingest {
 		// ingester
@@ -532,7 +532,7 @@ func (a *App) init() error {
 		SSEUpdateFrequency:       a.config.SSEUpdateFrequency,
 		StaleThreshold:           a.config.StaleThreshold,
 		ConnectionTimeout:        a.config.ConnectionTimeout,
-		DBServerSideTimeout:      dbServerSideTimeout,
+		CancelDBQueryTimeout:     a.config.CancelDBQueryTimeout,
 		MaxHTTPRequestSize:       a.config.MaxHTTPRequestSize,
 		NetworkPassphrase:        a.config.NetworkPassphrase,
 		MaxPathLength:            a.config.MaxPathLength,

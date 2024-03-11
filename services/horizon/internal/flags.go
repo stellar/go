@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
@@ -435,6 +436,17 @@ func Flags() (*Config, support.ConfigOptions) {
 			FlagDefault:    55,
 			CustomSetValue: support.SetDuration,
 			Usage:          "defines the timeout of connection after which 504 response will be sent or stream will be closed, if Horizon is behind a load balancer with idle connection timeout, this should be set to a few seconds less that idle timeout, does not apply to POST /transactions",
+			UsedInCommands: ApiServerCommands,
+		},
+		&support.ConfigOption{
+			Name:           "cancel-db-query-timeout",
+			ConfigKey:      &config.CancelDBQueryTimeout,
+			OptType:        types.Int,
+			CustomSetValue: support.SetDuration,
+			Usage: "defines the timeout for when horizon will cancel all postgres queries connected to an HTTP request. The timeout is measured in seconds since the start of the HTTP request. Note, this timeout does not apply to POST /transactions. " +
+				"The difference between cancel-db-query-timeout and connection-timeout is that connection-timeout applies a postgres statement timeout whereas cancel-db-query-timeout will send an additional request to postgres to cancel the ongoing query. " +
+				"Generally, cancel-db-query-timeout should be configured to be higher than connection-timeout to allow the postgres statement timeout to kill long running queries without having to send the additional cancel request to postgres. " +
+				"By default, cancel-db-query-timeout will be set to 2 seconds more than connection-timeout.",
 			UsedInCommands: ApiServerCommands,
 		},
 		&support.ConfigOption{
@@ -981,6 +993,11 @@ func ApplyFlags(config *Config, flags support.ConfigOptions, options ApplyOption
 	if config.BehindCloudflare && config.BehindAWSLoadBalancer {
 		return fmt.Errorf("invalid config: Only one option of --behind-cloudflare and --behind-aws-load-balancer is allowed." +
 			" If Horizon is behind both, use --behind-cloudflare only")
+	}
+
+	if config.CancelDBQueryTimeout == 0 {
+		// the default value for cancel-db-query-timeout is 2 seconds more than connection-timeout
+		config.CancelDBQueryTimeout = config.ConnectionTimeout + time.Second*2
 	}
 
 	return nil

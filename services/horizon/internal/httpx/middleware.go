@@ -238,9 +238,9 @@ func NewHistoryMiddleware(ledgerState *ledger.State, staleThreshold int32, sessi
 // has been verified and is correct (Otherwise returns `500 Internal Server Error` to prevent
 // returning invalid data to the user)
 type StateMiddleware struct {
-	HorizonSession      db.SessionInterface
-	ContextDBTimeout    time.Duration
-	NoStateVerification bool
+	HorizonSession       db.SessionInterface
+	CancelDBQueryTimeout time.Duration
+	NoStateVerification  bool
 }
 
 func ingestionStatus(ctx context.Context, q *history.Q) (uint32, bool, error) {
@@ -278,7 +278,7 @@ func (m *StateMiddleware) WrapFunc(h http.HandlerFunc) http.HandlerFunc {
 		if routePattern := supportHttp.GetChiRoutePattern(r); routePattern != "" {
 			ctx = context.WithValue(ctx, &db.RouteContextKey, routePattern)
 		}
-		ctx = setContextDBTimeout(m.ContextDBTimeout, ctx)
+		ctx = setContextDBTimeout(m.CancelDBQueryTimeout, ctx)
 		session := m.HorizonSession.Clone()
 		q := &history.Q{session}
 		sseRequest := render.Negotiate(r) == render.MimeEventStream
