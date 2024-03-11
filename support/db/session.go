@@ -33,12 +33,7 @@ func (s *Session) context(requestCtx context.Context) (context.Context, context.
 	}
 
 	// if requestCtx is already terminated don't proceed with the db statement
-	switch {
-	case requestCtx.Err() == context.Canceled:
-		return requestCtx, noop, ErrCancelled
-	case requestCtx.Err() == context.DeadlineExceeded:
-		return requestCtx, noop, ErrTimeout
-	case requestCtx.Err() != nil:
+	if requestCtx.Err() != nil {
 		return requestCtx, noop, requestCtx.Err()
 	}
 
