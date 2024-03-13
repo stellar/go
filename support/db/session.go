@@ -20,6 +20,8 @@ import (
 
 var DeadlineCtxKey = CtxKey("deadline")
 
+func noop() {}
+
 // context() checks if there is a override on the context timeout which is configured using DeadlineCtxKey.
 // If the override exists, we return a new context with the desired deadline. Otherwise, we return the
 // original context.
@@ -31,8 +33,7 @@ func (s *Session) context(requestCtx context.Context) (context.Context, context.
 
 	deadline, ok := requestCtx.Value(&DeadlineCtxKey).(time.Time)
 	if !ok {
-		ctx, cancel = context.WithCancel(requestCtx)
-		return ctx, cancel, nil
+		return requestCtx, noop, nil
 	}
 
 	// if requestCtx is already terminated don't proceed with the db statement
@@ -41,7 +42,7 @@ func (s *Session) context(requestCtx context.Context) (context.Context, context.
 	}
 
 	if deadline.IsZero() {
-		ctx, cancel = context.WithCancel(context.Background())
+		ctx, cancel = context.Background(), noop
 	} else {
 		ctx, cancel = context.WithDeadline(context.Background(), deadline)
 	}
@@ -261,10 +262,10 @@ func (s *Session) ExecRaw(ctx context.Context, query string, args ...interface{}
 	if err != nil {
 		return nil, err
 	}
+	defer cancel()
 
 	query, err = s.ReplacePlaceholders(query)
 	if err != nil {
-		cancel()
 		return nil, errors.Wrap(err, "replace placeholders failed")
 	}
 
@@ -275,7 +276,6 @@ func (s *Session) ExecRaw(ctx context.Context, query string, args ...interface{}
 	if err == nil {
 		return result, nil
 	}
-	defer cancel()
 
 	if knownErr := s.handleError(err, ctx); knownErr != nil {
 		return nil, knownErr
@@ -354,7 +354,7 @@ func (s *Session) handleError(dbErr error, ctx context.Context) error {
 }
 
 // Query runs `query`, returns a *sqlx.Rows instance
-func (s *Session) Query(ctx context.Context, query sq.Sqlizer) (*sqlx.Rows, error) {
+func (s *Session) Query(ctx context.Context, query sq.Sqlizer) (*Rows, error) {
 	sql, args, err := s.build(query)
 	if err != nil {
 		return nil, err
@@ -362,8 +362,18 @@ func (s *Session) Query(ctx context.Context, query sq.Sqlizer) (*sqlx.Rows, erro
 	return s.QueryRaw(ctx, sql, args...)
 }
 
+type Rows struct {
+	sqlx.Rows
+	cancel context.CancelFunc
+}
+
+func (r *Rows) Close() error {
+	defer r.cancel()
+	return r.Rows.Close()
+}
+
 // QueryRaw runs `query` with `args`
-func (s *Session) QueryRaw(ctx context.Context, query string, args ...interface{}) (*sqlx.Rows, error) {
+func (s *Session) QueryRaw(ctx context.Context, query string, args ...interface{}) (*Rows, error) {
 	ctx, cancel, err := s.context(ctx)
 	if err != nil {
 		return nil, err
@@ -380,7 +390,10 @@ func (s *Session) QueryRaw(ctx context.Context, query string, args ...interface{
 	s.log(ctx, "query", start, query, args)
 
 	if err == nil {
-		return result, nil
+		return &Rows{
+			Rows:   *result,
+			cancel: cancel,
+		}, nil
 	}
 	defer cancel()
 
