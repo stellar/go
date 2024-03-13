@@ -453,7 +453,7 @@ func Flags() (*Config, support.ConfigOptions) {
 				if duration < 0 {
 					return fmt.Errorf("%s cannot be negative", co.Name)
 				}
-				*(co.ConfigKey.(*time.Duration)) = time.Duration(viper.GetInt(co.Name)) * time.Second
+				*(co.ConfigKey.(*time.Duration)) = time.Duration(duration) * time.Second
 				return nil
 			},
 			Usage: "defines the timeout for when horizon will cancel all postgres queries connected to an HTTP request. The timeout is measured in seconds since the start of the HTTP request. Note, this timeout does not apply to POST /transactions. " +
