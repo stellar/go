@@ -69,7 +69,7 @@ const (
 	// StellarTestnet is a constant representing the Stellar test network
 	StellarTestnet = "testnet"
 
-	defaultMaxConcurrentRequests = 1000
+	defaultMaxConcurrentRequests = uint(1000)
 	defaultMaxHTTPRequestSize    = uint(200 * 1024)
 	clientQueryTimeoutNotSet     = -1
 )
