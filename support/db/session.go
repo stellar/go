@@ -24,6 +24,7 @@ var DeadlineCtxKey = CtxKey("deadline")
 // If the override exists, we return a new context with the desired deadline. Otherwise, we return the
 // original context.
 // Note that the override will not be applied if requestCtx has already been terminated.
+// The timeout can be disabled by setting the DeadlineCtxKey value to 0.
 func (s *Session) context(requestCtx context.Context) (context.Context, context.CancelFunc, error) {
 	var ctx context.Context
 	var cancel context.CancelFunc
