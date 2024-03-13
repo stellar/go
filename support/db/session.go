@@ -261,10 +261,10 @@ func (s *Session) ExecRaw(ctx context.Context, query string, args ...interface{}
 	if err != nil {
 		return nil, err
 	}
-	defer cancel()
 
 	query, err = s.ReplacePlaceholders(query)
 	if err != nil {
+		cancel()
 		return nil, errors.Wrap(err, "replace placeholders failed")
 	}
 
@@ -275,6 +275,7 @@ func (s *Session) ExecRaw(ctx context.Context, query string, args ...interface{}
 	if err == nil {
 		return result, nil
 	}
+	defer cancel()
 
 	if knownErr := s.handleError(err, ctx); knownErr != nil {
 		return nil, knownErr
@@ -367,10 +368,10 @@ func (s *Session) QueryRaw(ctx context.Context, query string, args ...interface{
 	if err != nil {
 		return nil, err
 	}
-	defer cancel()
 
 	query, err = s.ReplacePlaceholders(query)
 	if err != nil {
+		cancel()
 		return nil, errors.Wrap(err, "replace placeholders failed")
 	}
 
@@ -381,6 +382,7 @@ func (s *Session) QueryRaw(ctx context.Context, query string, args ...interface{
 	if err == nil {
 		return result, nil
 	}
+	defer cancel()
 
 	if knownErr := s.handleError(err, ctx); knownErr != nil {
 		return nil, knownErr
