@@ -113,15 +113,6 @@ func TestConfigOption_optionalFlags_env_set(t *testing.T) {
 	}
 	configOpts.Init(cmd)
 
-	//prev := envVars
-	//envVars = map[string]bool{
-	//	"STRING": true,
-	//	"UINT":   true,
-	//}
-	//defer func() {
-	//	envVars = prev
-	//}()
-
 	defer os.Setenv("STRING", os.Getenv("STRING"))
 	defer os.Setenv("UINT", os.Getenv("UINT"))
 	os.Setenv("STRING", "str")
