@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
+
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/strutils"
 )
@@ -248,13 +249,12 @@ func parseEnvVars(entries []string) map[string]bool {
 	return set
 }
 
-var envVars = parseEnvVars(os.Environ())
-
 // IsExplicitlySet returns true if and only if the given config option was set explicitly either
 // via a command line argument or via an environment variable
 func IsExplicitlySet(co *ConfigOption) bool {
 	// co.flag.Changed is only set to true when the configuration is set via command line parameter.
 	// In the case where a variable is configured via environment variable we need to check envVars.
+	envVars := parseEnvVars(os.Environ())
 	return co.flag.Changed || envVars[co.EnvVar]
 }
 

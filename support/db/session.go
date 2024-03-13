@@ -20,24 +20,30 @@ import (
 
 var DeadlineCtxKey = CtxKey("deadline")
 
-func noop() {}
-
 // context() checks if there is a override on the context timeout which is configured using DeadlineCtxKey.
 // If the override exists, we return a new context with the desired deadline. Otherwise, we return the
 // original context.
 // Note that the override will not be applied if requestCtx has already been terminated.
 func (s *Session) context(requestCtx context.Context) (context.Context, context.CancelFunc, error) {
+	var ctx context.Context
+	var cancel context.CancelFunc
+
 	deadline, ok := requestCtx.Value(&DeadlineCtxKey).(time.Time)
 	if !ok {
-		return requestCtx, noop, nil
+		ctx, cancel = context.WithCancel(requestCtx)
+		return ctx, cancel, nil
 	}
 
 	// if requestCtx is already terminated don't proceed with the db statement
 	if requestCtx.Err() != nil {
-		return requestCtx, noop, requestCtx.Err()
+		return requestCtx, nil, requestCtx.Err()
 	}
 
-	ctx, cancel := context.WithDeadline(context.Background(), deadline)
+	if deadline.IsZero() {
+		ctx, cancel = context.WithCancel(context.Background())
+	} else {
+		ctx, cancel = context.WithDeadline(context.Background(), deadline)
+	}
 	return ctx, cancel, nil
 }
 
@@ -48,7 +54,6 @@ func (s *Session) Begin(ctx context.Context) error {
 	}
 	ctx, cancel, err := s.context(ctx)
 	if err != nil {
-		cancel()
 		return err
 	}
 
@@ -77,7 +82,6 @@ func (s *Session) BeginTx(ctx context.Context, opts *sql.TxOptions) error {
 	}
 	ctx, cancel, err := s.context(ctx)
 	if err != nil {
-		cancel()
 		return err
 	}
 
@@ -178,10 +182,10 @@ func (s *Session) Get(ctx context.Context, dest interface{}, query sq.Sqlizer) e
 // `dest`, if any.
 func (s *Session) GetRaw(ctx context.Context, dest interface{}, query string, args ...interface{}) error {
 	ctx, cancel, err := s.context(ctx)
-	defer cancel()
 	if err != nil {
 		return err
 	}
+	defer cancel()
 
 	query, err = s.ReplacePlaceholders(query)
 	if err != nil {
@@ -253,10 +257,10 @@ func (s *Session) ExecAll(ctx context.Context, script string) error {
 // ExecRaw runs `query` with `args`
 func (s *Session) ExecRaw(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
 	ctx, cancel, err := s.context(ctx)
-	defer cancel()
 	if err != nil {
 		return nil, err
 	}
+	defer cancel()
 
 	query, err = s.ReplacePlaceholders(query)
 	if err != nil {
@@ -359,10 +363,10 @@ func (s *Session) Query(ctx context.Context, query sq.Sqlizer) (*sqlx.Rows, erro
 // QueryRaw runs `query` with `args`
 func (s *Session) QueryRaw(ctx context.Context, query string, args ...interface{}) (*sqlx.Rows, error) {
 	ctx, cancel, err := s.context(ctx)
-	defer cancel()
 	if err != nil {
 		return nil, err
 	}
+	defer cancel()
 
 	query, err = s.ReplacePlaceholders(query)
 	if err != nil {
@@ -444,10 +448,10 @@ func (s *Session) SelectRaw(
 	args ...interface{},
 ) error {
 	ctx, cancel, err := s.context(ctx)
-	defer cancel()
 	if err != nil {
 		return err
 	}
+	defer cancel()
 
 	s.clearSliceIfPossible(dest)
 	query, err = s.ReplacePlaceholders(query)

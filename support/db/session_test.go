@@ -168,8 +168,15 @@ func TestDeadlineOverride(t *testing.T) {
 	assert.Equal(t, deadline, d)
 
 	cancel()
+	assert.NoError(t, resultCtx.Err())
 	_, _, err = sess.context(requestCtx)
 	assert.EqualError(t, err, "context canceled")
+
+	var emptyTime time.Time
+	resultCtx, _, err = sess.context(context.WithValue(context.Background(), &DeadlineCtxKey, emptyTime))
+	assert.NoError(t, err)
+	_, ok = resultCtx.Deadline()
+	assert.False(t, ok)
 }
 
 func TestSession(t *testing.T) {

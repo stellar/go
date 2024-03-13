@@ -238,9 +238,9 @@ func NewHistoryMiddleware(ledgerState *ledger.State, staleThreshold int32, sessi
 // has been verified and is correct (Otherwise returns `500 Internal Server Error` to prevent
 // returning invalid data to the user)
 type StateMiddleware struct {
-	HorizonSession       db.SessionInterface
-	CancelDBQueryTimeout time.Duration
-	NoStateVerification  bool
+	HorizonSession      db.SessionInterface
+	ClientQueryTimeout  time.Duration
+	NoStateVerification bool
 }
 
 func ingestionStatus(ctx context.Context, q *history.Q) (uint32, bool, error) {
@@ -278,7 +278,7 @@ func (m *StateMiddleware) WrapFunc(h http.HandlerFunc) http.HandlerFunc {
 		if routePattern := supportHttp.GetChiRoutePattern(r); routePattern != "" {
 			ctx = context.WithValue(ctx, &db.RouteContextKey, routePattern)
 		}
-		ctx = setContextDBTimeout(m.CancelDBQueryTimeout, ctx)
+		ctx = setContextDBTimeout(m.ClientQueryTimeout, ctx)
 		session := m.HorizonSession.Clone()
 		q := &history.Q{session}
 		sseRequest := render.Negotiate(r) == render.MimeEventStream
@@ -348,10 +348,11 @@ func (m *StateMiddleware) WrapFunc(h http.HandlerFunc) http.HandlerFunc {
 }
 
 func setContextDBTimeout(timeout time.Duration, ctx context.Context) context.Context {
+	var deadline time.Time
 	if timeout > 0 {
-		ctx = context.WithValue(ctx, &db.DeadlineCtxKey, time.Now().Add(timeout))
+		deadline = time.Now().Add(timeout)
 	}
-	return ctx
+	return context.WithValue(ctx, &db.DeadlineCtxKey, deadline)
 }
 
 // WrapFunc executes the middleware on a given HTTP handler function

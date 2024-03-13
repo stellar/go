@@ -36,9 +36,9 @@ type Config struct {
 	HorizonDBMaxOpenConnections int
 	HorizonDBMaxIdleConnections int
 
-	SSEUpdateFrequency   time.Duration
-	ConnectionTimeout    time.Duration
-	CancelDBQueryTimeout time.Duration
+	SSEUpdateFrequency time.Duration
+	ConnectionTimeout  time.Duration
+	ClientQueryTimeout time.Duration
 	// MaxHTTPRequestSize is the maximum allowed request payload size
 	MaxHTTPRequestSize uint
 	RateQuota          *throttled.RateQuota

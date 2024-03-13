@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
@@ -69,6 +70,7 @@ const (
 	StellarTestnet = "testnet"
 
 	defaultMaxHTTPRequestSize = uint(200 * 1024)
+	clientQueryTimeoutNotSet  = -1
 )
 
 var (
@@ -438,15 +440,27 @@ func Flags() (*Config, support.ConfigOptions) {
 			UsedInCommands: ApiServerCommands,
 		},
 		&support.ConfigOption{
-			Name:           "cancel-db-query-timeout",
-			ConfigKey:      &config.CancelDBQueryTimeout,
-			OptType:        types.Int,
-			FlagDefault:    0,
-			CustomSetValue: support.SetDuration,
+			Name:        "client-query-timeout",
+			ConfigKey:   &config.ClientQueryTimeout,
+			OptType:     types.Int,
+			FlagDefault: clientQueryTimeoutNotSet,
+			CustomSetValue: func(co *support.ConfigOption) error {
+				if !support.IsExplicitlySet(co) {
+					*(co.ConfigKey.(*time.Duration)) = time.Duration(co.FlagDefault.(int))
+					return nil
+				}
+				duration := viper.GetInt(co.Name)
+				if duration < 0 {
+					return fmt.Errorf("%s cannot be negative", co.Name)
+				}
+				*(co.ConfigKey.(*time.Duration)) = time.Duration(viper.GetInt(co.Name)) * time.Second
+				return nil
+			},
 			Usage: "defines the timeout for when horizon will cancel all postgres queries connected to an HTTP request. The timeout is measured in seconds since the start of the HTTP request. Note, this timeout does not apply to POST /transactions. " +
-				"The difference between cancel-db-query-timeout and connection-timeout is that connection-timeout applies a postgres statement timeout whereas cancel-db-query-timeout will send an additional request to postgres to cancel the ongoing query. " +
-				"Generally, cancel-db-query-timeout should be configured to be higher than connection-timeout to allow the postgres statement timeout to kill long running queries without having to send the additional cancel request to postgres. " +
-				"By default, cancel-db-query-timeout will be set to twice the connection-timeout.",
+				"The difference between client-query-timeout and connection-timeout is that connection-timeout applies a postgres statement timeout whereas client-query-timeout will send an additional request to postgres to cancel the ongoing query. " +
+				"Generally, client-query-timeout should be configured to be higher than connection-timeout to allow the postgres statement timeout to kill long running queries without having to send the additional cancel request to postgres. " +
+				"By default, client-query-timeout will be set to twice the connection-timeout. Setting client-query-timeout to 0 will disable the timeout which means that Horizon will never kill long running queries using the cancel request, however, " +
+				"long running queries can still be killed through the postgres statement timeout which is configured via the connection-timeout flag.",
 			UsedInCommands: ApiServerCommands,
 		},
 		&support.ConfigOption{
@@ -995,9 +1009,9 @@ func ApplyFlags(config *Config, flags support.ConfigOptions, options ApplyOption
 			" If Horizon is behind both, use --behind-cloudflare only")
 	}
 
-	if config.CancelDBQueryTimeout == 0 {
+	if config.ClientQueryTimeout == clientQueryTimeoutNotSet {
 		// the default value for cancel-db-query-timeout is twice the connection-timeout
-		config.CancelDBQueryTimeout = config.ConnectionTimeout * 2
+		config.ClientQueryTimeout = config.ConnectionTimeout * 2
 	}
 
 	return nil
