@@ -533,6 +533,7 @@ func (a *App) init() error {
 		StaleThreshold:           a.config.StaleThreshold,
 		ConnectionTimeout:        a.config.ConnectionTimeout,
 		ClientQueryTimeout:       a.config.ClientQueryTimeout,
+		MaxConcurrentRequests:    a.config.MaxConcurrentRequests,
 		MaxHTTPRequestSize:       a.config.MaxHTTPRequestSize,
 		NetworkPassphrase:        a.config.NetworkPassphrase,
 		MaxPathLength:            a.config.MaxPathLength,

@@ -28,10 +28,11 @@ import (
 )
 
 type RouterConfig struct {
-	DBSession        db.SessionInterface
-	PrimaryDBSession db.SessionInterface
-	TxSubmitter      *txsub.System
-	RateQuota        *throttled.RateQuota
+	DBSession             db.SessionInterface
+	PrimaryDBSession      db.SessionInterface
+	TxSubmitter           *txsub.System
+	RateQuota             *throttled.RateQuota
+	MaxConcurrentRequests uint
 
 	BehindCloudflare         bool
 	BehindAWSLoadBalancer    bool
@@ -91,6 +92,9 @@ func (r *Router) addMiddleware(config *RouterConfig,
 		BehindAWSLoadBalancer: config.BehindAWSLoadBalancer,
 	}))
 	r.Use(loggerMiddleware(serverMetrics))
+	if config.MaxConcurrentRequests > 0 {
+		r.Use(chimiddleware.Throttle(int(config.MaxConcurrentRequests)))
+	}
 	r.Use(timeoutMiddleware(config.ConnectionTimeout))
 	if config.MaxHTTPRequestSize > 0 {
 		r.Use(func(handler http.Handler) http.Handler {
