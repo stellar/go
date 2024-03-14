@@ -402,7 +402,7 @@ func TestCheckHistoryStaleMiddleware(t *testing.T) {
 			}
 			ledgerState := &ledger.State{}
 			ledgerState.SetStatus(state)
-			historyMiddleware := httpx.NewHistoryMiddleware(ledgerState, testCase.staleThreshold, tt.HorizonSession())
+			historyMiddleware := httpx.NewHistoryMiddleware(ledgerState, testCase.staleThreshold, tt.HorizonSession(), 0)
 			handler := chi.NewRouter()
 			handler.With(historyMiddleware).MethodFunc("GET", "/", endpoint)
 			w := httptest.NewRecorder()

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -207,22 +208,69 @@ func Test_createCaptiveCoreConfig(t *testing.T) {
 	}
 }
 
-func TestEnvironmentVariables(t *testing.T) {
-	environmentVars := map[string]string{
-		"INGEST":                   "false",
-		"HISTORY_ARCHIVE_URLS":     "http://localhost:1570",
-		"DATABASE_URL":             "postgres://postgres@localhost/test_332cb65e6b00?sslmode=disable&timezone=UTC",
-		"STELLAR_CORE_URL":         "http://localhost:11626",
-		"NETWORK_PASSPHRASE":       "Standalone Network ; February 2017",
-		"APPLY_MIGRATIONS":         "true",
-		"CHECKPOINT_FREQUENCY":     "8",
-		"MAX_DB_CONNECTIONS":       "50",
-		"ADMIN_PORT":               "6060",
-		"PORT":                     "8001",
-		"CAPTIVE_CORE_BINARY_PATH": os.Getenv("HORIZON_INTEGRATION_TESTS_CAPTIVE_CORE_BIN"),
-		"CAPTIVE_CORE_CONFIG_PATH": "../docker/captive-core-classic-integration-tests.cfg",
-		"CAPTIVE_CORE_USE_DB":      "true",
+func TestClientQueryTimeoutFlag(t *testing.T) {
+	for _, testCase := range []struct {
+		name   string
+		flag   string
+		parsed time.Duration
+		err    string
+	}{
+		{
+			"negative value",
+			"-1",
+			0,
+			"client-query-timeout cannot be negative",
+		},
+		{
+			"default value",
+			"",
+			time.Second * 110,
+			"",
+		},
+		{
+			"custom value",
+			"20",
+			time.Second * 20,
+			"",
+		},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			environmentVars := horizonEnvVars()
+			if testCase.flag != "" {
+				environmentVars["CLIENT_QUERY_TIMEOUT"] = testCase.flag
+			}
+
+			envManager := test.NewEnvironmentManager()
+			defer func() {
+				envManager.Restore()
+			}()
+			if err := envManager.InitializeEnvironmentVariables(environmentVars); err != nil {
+				require.NoError(t, err)
+			}
+
+			config, flags := Flags()
+			horizonCmd := &cobra.Command{
+				Use:           "horizon",
+				Short:         "Client-facing api server for the Stellar network",
+				SilenceErrors: true,
+				SilenceUsage:  true,
+				Long:          "Client-facing API server for the Stellar network.",
+			}
+			if err := flags.Init(horizonCmd); err != nil {
+				require.NoError(t, err)
+			}
+			if err := ApplyFlags(config, flags, ApplyOptions{RequireCaptiveCoreFullConfig: true, AlwaysIngest: false}); err != nil {
+				require.EqualError(t, err, testCase.err)
+			} else {
+				require.Empty(t, testCase.err)
+			}
+			require.Equal(t, testCase.parsed, config.ClientQueryTimeout)
+		})
 	}
+}
+
+func TestEnvironmentVariables(t *testing.T) {
+	environmentVars := horizonEnvVars()
 
 	envManager := test.NewEnvironmentManager()
 	defer func() {
@@ -259,6 +307,24 @@ func TestEnvironmentVariables(t *testing.T) {
 	assert.Equal(t, config.CaptiveCoreBinaryPath, os.Getenv("HORIZON_INTEGRATION_TESTS_CAPTIVE_CORE_BIN"))
 	assert.Equal(t, config.CaptiveCoreConfigPath, "../docker/captive-core-classic-integration-tests.cfg")
 	assert.Equal(t, config.CaptiveCoreConfigUseDB, true)
+}
+
+func horizonEnvVars() map[string]string {
+	return map[string]string{
+		"INGEST":                   "false",
+		"HISTORY_ARCHIVE_URLS":     "http://localhost:1570",
+		"DATABASE_URL":             "postgres://postgres@localhost/test_332cb65e6b00?sslmode=disable&timezone=UTC",
+		"STELLAR_CORE_URL":         "http://localhost:11626",
+		"NETWORK_PASSPHRASE":       "Standalone Network ; February 2017",
+		"APPLY_MIGRATIONS":         "true",
+		"CHECKPOINT_FREQUENCY":     "8",
+		"MAX_DB_CONNECTIONS":       "50",
+		"ADMIN_PORT":               "6060",
+		"PORT":                     "8001",
+		"CAPTIVE_CORE_BINARY_PATH": os.Getenv("HORIZON_INTEGRATION_TESTS_CAPTIVE_CORE_BIN"),
+		"CAPTIVE_CORE_CONFIG_PATH": "../docker/captive-core-classic-integration-tests.cfg",
+		"CAPTIVE_CORE_USE_DB":      "true",
+	}
 }
 
 func TestRemovedFlags(t *testing.T) {

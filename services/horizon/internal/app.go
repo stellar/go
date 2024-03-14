@@ -532,6 +532,7 @@ func (a *App) init() error {
 		SSEUpdateFrequency:       a.config.SSEUpdateFrequency,
 		StaleThreshold:           a.config.StaleThreshold,
 		ConnectionTimeout:        a.config.ConnectionTimeout,
+		ClientQueryTimeout:       a.config.ClientQueryTimeout,
 		MaxHTTPRequestSize:       a.config.MaxHTTPRequestSize,
 		NetworkPassphrase:        a.config.NetworkPassphrase,
 		MaxPathLength:            a.config.MaxPathLength,
