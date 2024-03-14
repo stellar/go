@@ -69,8 +69,9 @@ const (
 	// StellarTestnet is a constant representing the Stellar test network
 	StellarTestnet = "testnet"
 
-	defaultMaxHTTPRequestSize = uint(200 * 1024)
-	clientQueryTimeoutNotSet  = -1
+	defaultMaxConcurrentRequests = uint(1000)
+	defaultMaxHTTPRequestSize    = uint(200 * 1024)
+	clientQueryTimeoutNotSet     = -1
 )
 
 var (
@@ -469,6 +470,15 @@ func Flags() (*Config, support.ConfigOptions) {
 			OptType:        types.Uint,
 			FlagDefault:    defaultMaxHTTPRequestSize,
 			Usage:          "sets the limit on the maximum allowed http request payload size, default is 200kb, to disable the limit check, set to 0, only do so if you acknowledge the implications of accepting unbounded http request payload sizes.",
+			UsedInCommands: ApiServerCommands,
+		},
+		&support.ConfigOption{
+			Name:        "max-concurrent-requests",
+			ConfigKey:   &config.MaxConcurrentRequests,
+			OptType:     types.Uint,
+			FlagDefault: defaultMaxConcurrentRequests,
+			Usage: "sets the limit on the maximum number of concurrent http requests, default is 1000, to disable the limit set to 0. " +
+				"If Horizon receives a request which would exceed the limit of concurrent http requests, Horizon will respond with a 429 status code.",
 			UsedInCommands: ApiServerCommands,
 		},
 		&support.ConfigOption{
