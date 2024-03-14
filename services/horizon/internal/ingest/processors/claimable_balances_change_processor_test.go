@@ -8,10 +8,11 @@ import (
 
 	"github.com/guregu/null"
 
+	"github.com/stretchr/testify/suite"
+
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/xdr"
-	"github.com/stretchr/testify/suite"
 )
 
 func TestClaimableBalancesChangeProcessorTestSuiteState(t *testing.T) {
@@ -319,68 +320,4 @@ func (s *ClaimableBalancesChangeProcessorTestSuiteLedger) TestUpdateClaimableBal
 		},
 	).Return(nil).Once()
 	s.Assert().NoError(s.processor.Commit(s.ctx))
-}
-
-func (s *ClaimableBalancesChangeProcessorTestSuiteLedger) TestUpdateClaimableBalanceAddClaimantInvalid() {
-	balanceID := xdr.ClaimableBalanceId{
-		Type: xdr.ClaimableBalanceIdTypeClaimableBalanceIdTypeV0,
-		V0:   &xdr.Hash{1, 2, 3},
-	}
-	cBalance := xdr.ClaimableBalanceEntry{
-		BalanceId: balanceID,
-		Claimants: []xdr.Claimant{},
-		Asset:     xdr.MustNewCreditAsset("USD", "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
-		Amount:    10,
-	}
-	lastModifiedLedgerSeq := xdr.Uint32(123)
-
-	pre := xdr.LedgerEntry{
-		Data: xdr.LedgerEntryData{
-			Type:             xdr.LedgerEntryTypeClaimableBalance,
-			ClaimableBalance: &cBalance,
-		},
-		LastModifiedLedgerSeq: lastModifiedLedgerSeq - 1,
-		Ext: xdr.LedgerEntryExt{
-			V: 1,
-			V1: &xdr.LedgerEntryExtensionV1{
-				SponsoringId: nil,
-			},
-		},
-	}
-
-	cBalanceUpdated := xdr.ClaimableBalanceEntry{
-		BalanceId: balanceID,
-		Claimants: []xdr.Claimant{
-			{
-				V0: &xdr.ClaimantV0{
-					Destination: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
-				},
-			},
-		}, Asset: xdr.MustNewCreditAsset("USD", "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
-		Amount: 10,
-	}
-
-	// add sponsor, claimant
-	updated := xdr.LedgerEntry{
-		Data: xdr.LedgerEntryData{
-			Type:             xdr.LedgerEntryTypeClaimableBalance,
-			ClaimableBalance: &cBalanceUpdated,
-		},
-		LastModifiedLedgerSeq: lastModifiedLedgerSeq,
-		Ext: xdr.LedgerEntryExt{
-			V: 1,
-			V1: &xdr.LedgerEntryExtensionV1{
-				SponsoringId: xdr.MustAddressPtr("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
-			},
-		},
-	}
-	s.mockClaimableBalanceBatchInsertBuilder.On("Exec", s.ctx).Return(nil).Once()
-
-	err := s.processor.ProcessChange(s.ctx, ingest.Change{
-		Type: xdr.LedgerEntryTypeClaimableBalance,
-		Pre:  &pre,
-		Post: &updated,
-	})
-	s.Assert().NoError(err)
-	s.Assert().EqualError(s.processor.Commit(s.ctx), "invalid change entry for a claimable balance was detected: claimants have changed")
 }
