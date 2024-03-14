@@ -1,10 +1,7 @@
 package processors
 
 import (
-	"bytes"
 	"context"
-	"fmt"
-	"sort"
 
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
@@ -106,17 +103,6 @@ func (p *ClaimableBalancesChangeProcessor) Commit(ctx context.Context) error {
 			if err != nil {
 				return err
 			}
-			preCB, err := p.ledgerEntryToRow(change.Pre)
-			if err != nil {
-				return err
-			}
-			equal, err := claimantsAreEqual(preCB.Claimants, postCB.Claimants)
-			if err != nil {
-				return errors.Wrap(err, "error comparing claimants")
-			}
-			if !equal {
-				return fmt.Errorf("invalid change entry for a claimable balance was detected: claimants have changed")
-			}
 			updatedBalances = append(updatedBalances, postCB)
 		}
 	}
@@ -158,64 +144,6 @@ func (p *ClaimableBalancesChangeProcessor) Commit(ctx context.Context) error {
 	}
 
 	return nil
-}
-
-type comparableClaimant struct {
-	destination string
-	predicate   []byte
-}
-
-func (c comparableClaimant) equal(o comparableClaimant) bool {
-	return c.destination == o.destination && bytes.Equal(c.predicate, o.predicate)
-}
-
-func sortClaimants(claimants []comparableClaimant) {
-	sort.Slice(claimants, func(i, j int) bool {
-		if claimants[i].destination != claimants[j].destination {
-			return claimants[i].destination < claimants[j].destination
-		}
-		return bytes.Compare(claimants[i].predicate, claimants[j].predicate) < 0
-	})
-}
-
-func makeComparableClaimants(claimants history.Claimants) ([]comparableClaimant, error) {
-	result := make([]comparableClaimant, len(claimants))
-	for i, claimant := range claimants {
-		predicate, err := claimant.Predicate.MarshalBinary()
-		if err != nil {
-			return nil, err
-		}
-		result[i] = comparableClaimant{
-			destination: claimant.Destination,
-			predicate:   predicate,
-		}
-	}
-	return result, nil
-}
-
-func claimantsAreEqual(a, b history.Claimants) (bool, error) {
-	if len(a) != len(b) {
-		return false, nil
-	}
-
-	compA, err := makeComparableClaimants(a)
-	if err != nil {
-		return false, nil
-	}
-	compB, err := makeComparableClaimants(a)
-	if err != nil {
-		return false, nil
-	}
-	sortClaimants(compA)
-	sortClaimants(compB)
-
-	for i := range compA {
-		if !compA[i].equal(compB[i]) {
-			return false, nil
-		}
-	}
-
-	return true, nil
 }
 
 func buildClaimants(claimants []xdr.Claimant) history.Claimants {

@@ -621,6 +621,15 @@ func TestUpdateClaimableBalance(t *testing.T) {
 	err = q.UpsertClaimableBalances(tt.Ctx, []ClaimableBalance{cBalance})
 	tt.Assert.NoError(err)
 
+	cBalancesClaimants, err := q.GetClaimantsByClaimableBalances(tt.Ctx, []string{cBalance.BalanceID})
+	tt.Assert.NoError(err)
+	tt.Assert.Len(cBalancesClaimants[cBalance.BalanceID], 1)
+	tt.Assert.Equal(ClaimableBalanceClaimant{
+		BalanceID:          cBalance.BalanceID,
+		Destination:        accountID,
+		LastModifiedLedger: cBalance.LastModifiedLedger,
+	}, cBalancesClaimants[cBalance.BalanceID][0])
+
 	// add sponsor
 	cBalance2 := ClaimableBalance{
 		BalanceID: id,
@@ -647,6 +656,15 @@ func TestUpdateClaimableBalance(t *testing.T) {
 	tt.Assert.Len(cbs, 1)
 	tt.Assert.Equal("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML", cbs[0].Sponsor.String)
 	tt.Assert.Equal(uint32(lastModifiedLedgerSeq+1), cbs[0].LastModifiedLedger)
+
+	cBalancesClaimants, err = q.GetClaimantsByClaimableBalances(tt.Ctx, []string{cBalance2.BalanceID})
+	tt.Assert.NoError(err)
+	tt.Assert.Len(cBalancesClaimants[cBalance2.BalanceID], 1)
+	tt.Assert.Equal(ClaimableBalanceClaimant{
+		BalanceID:          cBalance2.BalanceID,
+		Destination:        accountID,
+		LastModifiedLedger: cBalance2.LastModifiedLedger,
+	}, cBalancesClaimants[cBalance2.BalanceID][0])
 }
 
 func TestFindClaimableBalance(t *testing.T) {

@@ -187,10 +187,39 @@ func (q *Q) GetClaimantsByClaimableBalances(ctx context.Context, ids []string) (
 }
 
 // UpsertClaimableBalances upserts a batch of claimable balances in the claimable_balances table.
-// There's currently no limit of the number of offers this method can
-// accept other than 2GB limit of the query string length what should be enough
-// for each ledger with the current limits.
 func (q *Q) UpsertClaimableBalances(ctx context.Context, cbs []ClaimableBalance) error {
+	if err := q.upsertCBs(ctx, cbs); err != nil {
+		return errors.Wrap(err, "could not upsert claimable balances")
+	}
+
+	if err := q.upsertCBClaimants(ctx, cbs); err != nil {
+		return errors.Wrap(err, "could not upsert claimable balance claimants")
+	}
+
+	return nil
+}
+
+func (q *Q) upsertCBClaimants(ctx context.Context, cbs []ClaimableBalance) error {
+	var id, lastModifiedLedger, destination []interface{}
+
+	for _, cb := range cbs {
+		for _, claimant := range cb.Claimants {
+			id = append(id, cb.BalanceID)
+			lastModifiedLedger = append(lastModifiedLedger, cb.LastModifiedLedger)
+			destination = append(destination, claimant.Destination)
+		}
+	}
+
+	upsertFields := []upsertField{
+		{"id", "text", id},
+		{"destination", "text", destination},
+		{"last_modified_ledger", "integer", lastModifiedLedger},
+	}
+
+	return q.upsertRows(ctx, "claimable_balance_claimants", "id, destination", upsertFields)
+}
+
+func (q *Q) upsertCBs(ctx context.Context, cbs []ClaimableBalance) error {
 	var id, claimants, asset, amount, sponsor, lastModifiedLedger, flags []interface{}
 
 	for _, cb := range cbs {
