@@ -187,6 +187,7 @@ func (q *Q) GetClaimantsByClaimableBalances(ctx context.Context, ids []string) (
 }
 
 // UpsertClaimableBalances upserts a batch of claimable balances in the claimable_balances table.
+// It also upserts the corresponding claimants in the claimable_balance_claimants table.
 func (q *Q) UpsertClaimableBalances(ctx context.Context, cbs []ClaimableBalance) error {
 	if err := q.upsertCBs(ctx, cbs); err != nil {
 		return errors.Wrap(err, "could not upsert claimable balances")
