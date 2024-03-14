@@ -26,11 +26,15 @@ func noop() {}
 // If the override exists, we return a new context with the desired deadline. Otherwise, we return the
 // original context.
 // Note that the override will not be applied if requestCtx has already been terminated.
-// The timeout can be disabled by setting the DeadlineCtxKey value to 0.
+// The timeout can be disabled by setting the DeadlineCtxKey value to a zero time.Time value,
+// in that case the query will never be canceled.
 func (s *Session) context(requestCtx context.Context) (context.Context, context.CancelFunc, error) {
 	var ctx context.Context
 	var cancel context.CancelFunc
 
+	// if there is no DeadlineCtxKey value in the context we default to using the request context.
+	// this case is expected during ingestion where we don't want any queries to be canceled unless
+	// horizon is shutting down.
 	deadline, ok := requestCtx.Value(&DeadlineCtxKey).(time.Time)
 	if !ok {
 		return requestCtx, noop, nil
