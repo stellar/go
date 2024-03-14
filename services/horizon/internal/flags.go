@@ -478,7 +478,7 @@ func Flags() (*Config, support.ConfigOptions) {
 			OptType:     types.Uint,
 			FlagDefault: defaultMaxConcurrentRequests,
 			Usage: "sets the limit on the maximum number of concurrent http requests, default is 1000, to disable the limit set to 0. " +
-				"If Horizon receives a request which would exceed the limit of concurrent http requests, Horizon will respond with a 429 status code.",
+				"If Horizon receives a request which would exceed the limit of concurrent http requests, Horizon will respond with a 503 status code.",
 			UsedInCommands: ApiServerCommands,
 		},
 		&support.ConfigOption{
