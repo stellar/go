@@ -145,7 +145,7 @@ func (s *ClaimableBalancesChangeProcessorTestSuiteLedger) SetupTest() {
 }
 
 func (s *ClaimableBalancesChangeProcessorTestSuiteLedger) TearDownTest() {
-
+	s.Assert().NoError(s.processor.Commit(s.ctx))
 	s.processor.reset()
 	s.mockQ.AssertExpectations(s.T())
 }
@@ -202,7 +202,6 @@ func (s *ClaimableBalancesChangeProcessorTestSuiteLedger) TestNewClaimableBalanc
 		Post: &entry,
 	})
 	s.Assert().NoError(err)
-	s.Assert().NoError(s.processor.Commit(s.ctx))
 }
 
 func (s *ClaimableBalancesChangeProcessorTestSuiteLedger) TestRemoveClaimableBalance() {
@@ -250,7 +249,6 @@ func (s *ClaimableBalancesChangeProcessorTestSuiteLedger) TestRemoveClaimableBal
 		s.ctx,
 		[]string{id},
 	).Return(int64(1), nil).Once()
-	s.Assert().NoError(s.processor.Commit(s.ctx))
 }
 
 func (s *ClaimableBalancesChangeProcessorTestSuiteLedger) TestUpdateClaimableBalanceAddSponsor() {
@@ -319,5 +317,4 @@ func (s *ClaimableBalancesChangeProcessorTestSuiteLedger) TestUpdateClaimableBal
 			},
 		},
 	).Return(nil).Once()
-	s.Assert().NoError(s.processor.Commit(s.ctx))
 }
