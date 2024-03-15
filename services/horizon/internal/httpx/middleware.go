@@ -197,7 +197,7 @@ func recoverMiddleware(h http.Handler) http.Handler {
 // NewHistoryMiddleware adds session to the request context and ensures Horizon
 // is not in a stale state, which is when the difference between latest core
 // ledger and latest history ledger is higher than the given threshold
-func NewHistoryMiddleware(ledgerState *ledger.State, staleThreshold int32, session db.SessionInterface) func(http.Handler) http.Handler {
+func NewHistoryMiddleware(ledgerState *ledger.State, staleThreshold int32, session db.SessionInterface, contextDBTimeout time.Duration) func(http.Handler) http.Handler {
 	return func(h http.Handler) http.Handler {
 
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -205,6 +205,7 @@ func NewHistoryMiddleware(ledgerState *ledger.State, staleThreshold int32, sessi
 			if routePattern := supportHttp.GetChiRoutePattern(r); routePattern != "" {
 				ctx = context.WithValue(ctx, &db.RouteContextKey, routePattern)
 			}
+			ctx = setContextDBTimeout(contextDBTimeout, ctx)
 			if staleThreshold > 0 {
 				ls := ledgerState.CurrentStatus()
 				isStale := (ls.CoreLatest - ls.HistoryLatest) > int32(staleThreshold)
@@ -238,6 +239,7 @@ func NewHistoryMiddleware(ledgerState *ledger.State, staleThreshold int32, sessi
 // returning invalid data to the user)
 type StateMiddleware struct {
 	HorizonSession      db.SessionInterface
+	ClientQueryTimeout  time.Duration
 	NoStateVerification bool
 }
 
@@ -276,6 +278,7 @@ func (m *StateMiddleware) WrapFunc(h http.HandlerFunc) http.HandlerFunc {
 		if routePattern := supportHttp.GetChiRoutePattern(r); routePattern != "" {
 			ctx = context.WithValue(ctx, &db.RouteContextKey, routePattern)
 		}
+		ctx = setContextDBTimeout(m.ClientQueryTimeout, ctx)
 		session := m.HorizonSession.Clone()
 		q := &history.Q{session}
 		sseRequest := render.Negotiate(r) == render.MimeEventStream
@@ -342,6 +345,14 @@ func (m *StateMiddleware) WrapFunc(h http.HandlerFunc) http.HandlerFunc {
 			context.WithValue(ctx, &horizonContext.SessionContextKey, session),
 		))
 	}
+}
+
+func setContextDBTimeout(timeout time.Duration, ctx context.Context) context.Context {
+	var deadline time.Time
+	if timeout > 0 {
+		deadline = time.Now().Add(timeout)
+	}
+	return context.WithValue(ctx, &db.DeadlineCtxKey, deadline)
 }
 
 // WrapFunc executes the middleware on a given HTTP handler function

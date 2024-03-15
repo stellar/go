@@ -20,10 +20,11 @@ func NewOperation(
 	transactionHash string,
 	transactionRow *history.Transaction,
 	ledger history.Ledger,
+	skipTxMeta bool,
 ) (result hal.Pageable, err error) {
 
 	base := operations.Base{}
-	err = PopulateBaseOperation(ctx, &base, operationRow, transactionHash, transactionRow, ledger)
+	err = PopulateBaseOperation(ctx, &base, operationRow, transactionHash, transactionRow, ledger, skipTxMeta)
 	if err != nil {
 		return
 	}
@@ -166,7 +167,7 @@ func NewOperation(
 }
 
 // Populate fills out this resource using `row` as the source.
-func PopulateBaseOperation(ctx context.Context, dest *operations.Base, operationRow history.Operation, transactionHash string, transactionRow *history.Transaction, ledger history.Ledger) error {
+func PopulateBaseOperation(ctx context.Context, dest *operations.Base, operationRow history.Operation, transactionHash string, transactionRow *history.Transaction, ledger history.Ledger, skipTxMeta bool) error {
 	dest.ID = fmt.Sprintf("%d", operationRow.ID)
 	dest.PT = operationRow.PagingToken()
 	dest.TransactionSuccessful = operationRow.TransactionSuccessful
@@ -190,7 +191,7 @@ func PopulateBaseOperation(ctx context.Context, dest *operations.Base, operation
 
 	if transactionRow != nil {
 		dest.Transaction = new(horizon.Transaction)
-		return PopulateTransaction(ctx, transactionHash, dest.Transaction, *transactionRow)
+		return PopulateTransaction(ctx, transactionHash, dest.Transaction, *transactionRow, skipTxMeta)
 	}
 	return nil
 }

@@ -140,6 +140,7 @@ type Claimant struct {
 
 // QClaimableBalances defines claimable-balance-related related queries.
 type QClaimableBalances interface {
+	UpsertClaimableBalances(ctx context.Context, cb []ClaimableBalance) error
 	RemoveClaimableBalances(ctx context.Context, ids []string) (int64, error)
 	RemoveClaimableBalanceClaimants(ctx context.Context, ids []string) (int64, error)
 	GetClaimableBalancesByID(ctx context.Context, ids []string) ([]ClaimableBalance, error)
@@ -183,6 +184,66 @@ func (q *Q) GetClaimantsByClaimableBalances(ctx context.Context, ids []string) (
 		claimantsMap[claimant.BalanceID] = append(claimantsMap[claimant.BalanceID], claimant)
 	}
 	return claimantsMap, err
+}
+
+// UpsertClaimableBalances upserts a batch of claimable balances in the claimable_balances table.
+// It also upserts the corresponding claimants in the claimable_balance_claimants table.
+func (q *Q) UpsertClaimableBalances(ctx context.Context, cbs []ClaimableBalance) error {
+	if err := q.upsertCBs(ctx, cbs); err != nil {
+		return errors.Wrap(err, "could not upsert claimable balances")
+	}
+
+	if err := q.upsertCBClaimants(ctx, cbs); err != nil {
+		return errors.Wrap(err, "could not upsert claimable balance claimants")
+	}
+
+	return nil
+}
+
+func (q *Q) upsertCBClaimants(ctx context.Context, cbs []ClaimableBalance) error {
+	var id, lastModifiedLedger, destination []interface{}
+
+	for _, cb := range cbs {
+		for _, claimant := range cb.Claimants {
+			id = append(id, cb.BalanceID)
+			lastModifiedLedger = append(lastModifiedLedger, cb.LastModifiedLedger)
+			destination = append(destination, claimant.Destination)
+		}
+	}
+
+	upsertFields := []upsertField{
+		{"id", "text", id},
+		{"destination", "text", destination},
+		{"last_modified_ledger", "integer", lastModifiedLedger},
+	}
+
+	return q.upsertRows(ctx, "claimable_balance_claimants", "id, destination", upsertFields)
+}
+
+func (q *Q) upsertCBs(ctx context.Context, cbs []ClaimableBalance) error {
+	var id, claimants, asset, amount, sponsor, lastModifiedLedger, flags []interface{}
+
+	for _, cb := range cbs {
+		id = append(id, cb.BalanceID)
+		claimants = append(claimants, cb.Claimants)
+		asset = append(asset, cb.Asset)
+		amount = append(amount, cb.Amount)
+		sponsor = append(sponsor, cb.Sponsor)
+		lastModifiedLedger = append(lastModifiedLedger, cb.LastModifiedLedger)
+		flags = append(flags, cb.Flags)
+	}
+
+	upsertFields := []upsertField{
+		{"id", "text", id},
+		{"claimants", "jsonb", claimants},
+		{"asset", "text", asset},
+		{"amount", "bigint", amount},
+		{"sponsor", "text", sponsor},
+		{"last_modified_ledger", "integer", lastModifiedLedger},
+		{"flags", "int", flags},
+	}
+
+	return q.upsertRows(ctx, "claimable_balances", "id", upsertFields)
 }
 
 // RemoveClaimableBalances deletes claimable balances table.

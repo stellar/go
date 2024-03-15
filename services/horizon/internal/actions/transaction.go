@@ -23,6 +23,7 @@ type TransactionQuery struct {
 
 // GetTransactionByHashHandler is the action handler for the end-point returning a transaction.
 type GetTransactionByHashHandler struct {
+	SkipTxMeta bool
 }
 
 // GetResource returns a transaction page.
@@ -49,7 +50,7 @@ func (handler GetTransactionByHashHandler) GetResource(w HeaderWriter, r *http.R
 		return resource, errors.Wrap(err, "loading transaction record")
 	}
 
-	if err = resourceadapter.PopulateTransaction(ctx, qp.TransactionHash, &resource, record); err != nil {
+	if err = resourceadapter.PopulateTransaction(ctx, qp.TransactionHash, &resource, record, handler.SkipTxMeta); err != nil {
 		return resource, errors.Wrap(err, "could not populate transaction")
 	}
 	return resource, nil
@@ -90,6 +91,7 @@ func (qp TransactionsQuery) Validate() error {
 // GetTransactionsHandler is the action handler for all end-points returning a list of transactions.
 type GetTransactionsHandler struct {
 	LedgerState *ledger.State
+	SkipTxMeta  bool
 }
 
 // GetResourcePage returns a page of transactions.
@@ -126,7 +128,7 @@ func (handler GetTransactionsHandler) GetResourcePage(w HeaderWriter, r *http.Re
 
 	for _, record := range records {
 		var res horizon.Transaction
-		err = resourceadapter.PopulateTransaction(ctx, record.TransactionHash, &res, record)
+		err = resourceadapter.PopulateTransaction(ctx, record.TransactionHash, &res, record, handler.SkipTxMeta)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not populate transaction")
 		}

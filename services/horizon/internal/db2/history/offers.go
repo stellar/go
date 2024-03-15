@@ -5,8 +5,8 @@ import (
 	"database/sql"
 
 	sq "github.com/Masterminds/squirrel"
-	"github.com/jmoiron/sqlx"
 
+	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 )
 
@@ -108,7 +108,7 @@ func (q *Q) StreamAllOffers(ctx context.Context, callback func(Offer) error) err
 }
 
 func (q *Q) streamAllOffersBatch(ctx context.Context, lastId int64, limit uint64, callback func(Offer) error) (int64, error) {
-	var rows *sqlx.Rows
+	var rows *db.Rows
 	var err error
 
 	rows, err = q.Query(ctx, selectOffers.

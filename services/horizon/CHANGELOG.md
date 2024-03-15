@@ -5,12 +5,26 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+## 2.29.0
+
 ### Added
 - New `db_error_total` metrics key with labels `ctx_error`, `db_error`, and `db_error_extra` ([5225](https://github.com/stellar/go/pull/5225)).
+- Bumped go version to the latest (1.22.1) ([5232](https://github.com/stellar/go/pull/5232))
+- Add metrics for ingestion loaders ([5209](https://github.com/stellar/go/pull/5209)).
+- Add metrics for http api requests in flight and requests received ([5240](https://github.com/stellar/go/pull/5240)).
+- Add `MAX_CONCURRENT_REQUESTS`, defaults to 1000, limits the number of horizon api requests in flight ([5244](https://github.com/stellar/go/pull/5244))
 
 ### Fixed
 - History archive access is more effective when you pass list of URLs to Horizon: they will now be accessed in a round-robin fashion, use alternative archives on errors, and intelligently back off ([5224](https://github.com/stellar/go/pull/5224))
+- Remove captive core info request error logs ([5145](https://github.com/stellar/go/pull/5145))
+- Removed duplicate "Processed Ledger" log statement during resume state ([5152](https://github.com/stellar/go/pull/5152))
+- Fixed incorrect duration for ingestion processor metric ([5216](https://github.com/stellar/go/pull/5216))
+- Fixed sql performance on account transactions query ([5229](https://github.com/stellar/go/pull/5229))
+- Fix bug in claimable balance change processor ([5246](https://github.com/stellar/go/pull/5246))
+- Delay canceling queries from client side when there's a statement / transaction timeout configured in postgres ([5223](https://github.com/stellar/go/pull/5223))
 
+### Breaking Changes
+- The Horizon API Transaction resource field in json `result_meta_xdr` is now optional and Horizon API will not emit the field when Horizon has been configured with `SKIP_TXMETA=true`, effectively null, otherwise if Horizon is configured with `SKIP_TXMETA=false` which is default, then the API Transaction field `result_meta_xdr` will remain present and populated with base64 encoded xdr [5228](https://github.com/stellar/go/pull/5228).
 
 ## 2.28.3
 

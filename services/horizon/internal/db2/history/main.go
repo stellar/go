@@ -632,14 +632,6 @@ type SequenceBumped struct {
 	NewSeq int64 `json:"new_seq"`
 }
 
-// EffectsQ is a helper struct to aid in configuring queries that loads
-// slices of Ledger structs.
-type EffectsQ struct {
-	Err    error
-	parent *Q
-	sql    sq.SelectBuilder
-}
-
 // EffectType is the numeric type for an effect, used as the `type` field in the
 // `history_effects` table.
 type EffectType int
