@@ -1,6 +1,7 @@
 package ledgerbackend
 
 import (
+	"compress/gzip"
 	"context"
 	"fmt"
 	"io"
@@ -62,7 +63,14 @@ func (csb *CloudStorageBackend) GetLedger(ctx context.Context, sequence uint32) 
 
 	defer reader.Close()
 
-	objectBytes, err := io.ReadAll(reader)
+	gzipReader, err := gzip.NewReader(reader)
+	if err != nil {
+		return xdr.LedgerCloseMeta{}, errors.Wrapf(err, "failed getting file: %s", objectKey)
+	}
+
+	defer gzipReader.Close()
+
+	objectBytes, err := io.ReadAll(gzipReader)
 	if err != nil {
 		return xdr.LedgerCloseMeta{}, errors.Wrapf(err, "failed reading file: %s", objectKey)
 	}
