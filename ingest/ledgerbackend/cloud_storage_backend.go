@@ -55,6 +55,7 @@ func (csb *CloudStorageBackend) GetLedger(ctx context.Context, sequence uint32) 
 	}
 
 	reader, err := csb.lcmDataStore.GetFile(ctx, objectKey)
+
 	if err != nil {
 		return xdr.LedgerCloseMeta{}, errors.Wrapf(err, "failed getting file: %s", objectKey)
 	}
