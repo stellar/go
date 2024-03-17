@@ -1,4 +1,4 @@
-package ledgerexporter
+package datastore
 
 import (
 	"context"
@@ -8,9 +8,11 @@ import (
 	"path"
 
 	"google.golang.org/api/googleapi"
+	"google.golang.org/api/iterator"
 
 	"cloud.google.com/go/storage"
 	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/support/log"
 )
 
 // GCSDataStore implements DataStore for GCS
@@ -26,11 +28,11 @@ func (b *GCSDataStore) GetFile(ctx context.Context, filePath string) (io.ReadClo
 	r, err := b.bucket.Object(filePath).NewReader(ctx)
 	if err != nil {
 		if gcsError, ok := err.(*googleapi.Error); ok {
-			logger.Errorf("GCS error: %s %s", gcsError.Message, gcsError.Body)
+			log.Errorf("GCS error: %s %s", gcsError.Message, gcsError.Body)
 		}
 		return nil, errors.Wrapf(err, "error retrieving file: %s", filePath)
 	}
-	logger.Infof("File retrieved successfully: %s", filePath)
+	log.Infof("File retrieved successfully: %s", filePath)
 	return r, nil
 }
 
@@ -41,15 +43,15 @@ func (b *GCSDataStore) PutFileIfNotExists(ctx context.Context, filePath string, 
 		if gcsError, ok := err.(*googleapi.Error); ok {
 			switch gcsError.Code {
 			case http.StatusPreconditionFailed:
-				logger.Infof("Precondition failed: %s already exists in the bucket", filePath)
+				log.Infof("Precondition failed: %s already exists in the bucket", filePath)
 				return nil // Treat as success
 			default:
-				logger.Errorf("GCS error: %s %s", gcsError.Message, gcsError.Body)
+				log.Errorf("GCS error: %s %s", gcsError.Message, gcsError.Body)
 			}
 		}
 		return errors.Wrapf(err, "error uploading file:  %s", filePath)
 	}
-	logger.Infof("File uploaded successfully: %s", filePath)
+	log.Infof("File uploaded successfully: %s", filePath)
 	return nil
 }
 
@@ -59,11 +61,11 @@ func (b *GCSDataStore) PutFile(ctx context.Context, filePath string, in io.Write
 
 	if err != nil {
 		if gcsError, ok := err.(*googleapi.Error); ok {
-			logger.Errorf("GCS error: %s %s", gcsError.Message, gcsError.Body)
+			log.Errorf("GCS error: %s %s", gcsError.Message, gcsError.Body)
 		}
 		return errors.Wrapf(err, "error uploading file: %v", filePath)
 	}
-	logger.Infof("File uploaded successfully: %s", filePath)
+	log.Infof("File uploaded successfully: %s", filePath)
 	return nil
 }
 
@@ -102,4 +104,22 @@ func (b *GCSDataStore) putFile(ctx context.Context, filePath string, in io.Write
 		return errors.Wrapf(err, "failed to put file: %s", filePath)
 	}
 	return w.Close()
+}
+
+func (b *GCSDataStore) ListObjects(ctx context.Context, path string) ([]string, error) {
+	var objectNames []string
+
+	o := b.bucket.Objects(ctx, nil)
+	for {
+		attrs, err := o.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			log.Fatal(err)
+		}
+		objectNames = append(objectNames, attrs.Name)
+	}
+
+	return nil, nil
 }

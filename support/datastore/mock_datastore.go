@@ -1,4 +1,4 @@
-package ledgerexporter
+package datastore
 
 import (
 	"context"
@@ -40,4 +40,9 @@ func (m *MockDataStore) PutFileIfNotExists(ctx context.Context, path string, in 
 func (m *MockDataStore) Close() error {
 	args := m.Called()
 	return args.Error(0)
+}
+
+func (m *MockDataStore) ListObjects(ctx context.Context, path string) ([]string, error) {
+	args := m.Called(ctx, path)
+	return args.Get(0).([]string), args.Error(0)
 }

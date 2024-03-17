@@ -1,4 +1,4 @@
-package ledgerexporter
+package datastore
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 
 	"cloud.google.com/go/storage"
 	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/support/url"
 	"google.golang.org/api/option"
 )
@@ -19,6 +20,7 @@ type DataStore interface {
 	Exists(ctx context.Context, path string) (bool, error)
 	Size(ctx context.Context, path string) (int64, error)
 	Close() error
+	ListObjects(ctx context.Context, path string) ([]string, error)
 }
 
 // NewDataStore creates a new DataStore based on the destination URL.
@@ -39,7 +41,7 @@ func NewDataStore(ctx context.Context, destinationURL string) (DataStore, error)
 	bucketName := parsed.Host
 	prefix := pth
 
-	logger.Infof("creating GCS client for bucket: %s, prefix: %s", bucketName, prefix)
+	log.Infof("creating GCS client for bucket: %s, prefix: %s", bucketName, prefix)
 
 	var options []option.ClientOption
 	client, err := storage.NewClient(ctx, options...)

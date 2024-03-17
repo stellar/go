@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stellar/go/support/datastore"
 	"github.com/stellar/go/support/errors"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -22,12 +23,12 @@ func TestUploaderSuite(t *testing.T) {
 type UploaderSuite struct {
 	suite.Suite
 	ctx           context.Context
-	mockDataStore MockDataStore
+	mockDataStore datastore.MockDataStore
 }
 
 func (s *UploaderSuite) SetupTest() {
 	s.ctx = context.Background()
-	s.mockDataStore = MockDataStore{}
+	s.mockDataStore = datastore.MockDataStore{}
 }
 
 func (s *UploaderSuite) TestUpload() {

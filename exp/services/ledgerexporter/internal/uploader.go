@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/stellar/go/support/datastore"
 )
 
 // Uploader is responsible for uploading data to a storage destination.
@@ -14,11 +15,11 @@ type Uploader interface {
 }
 
 type uploader struct {
-	dataStore     DataStore
+	dataStore     datastore.DataStore
 	metaArchiveCh chan *LedgerMetaArchive
 }
 
-func NewUploader(destination DataStore, metaArchiveCh chan *LedgerMetaArchive) Uploader {
+func NewUploader(destination datastore.DataStore, metaArchiveCh chan *LedgerMetaArchive) Uploader {
 	return &uploader{
 		dataStore:     destination,
 		metaArchiveCh: metaArchiveCh,
