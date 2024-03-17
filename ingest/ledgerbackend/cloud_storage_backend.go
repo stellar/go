@@ -53,6 +53,8 @@ func (csb *CloudStorageBackend) GetLedger(ctx context.Context, sequence uint32) 
 		return xdr.LedgerCloseMeta{}, errors.Wrapf(err, "failed to get object key for ledger %d", sequence)
 	}
 
+	objectKey = csb.storageURL + objectKey
+
 	reader, err := csb.lcmDataStore.GetFile(ctx, objectKey)
 	if err != nil {
 		return xdr.LedgerCloseMeta{}, errors.Wrapf(err, "failed getting file: %s", objectKey)
