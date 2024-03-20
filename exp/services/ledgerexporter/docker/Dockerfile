@@ -2,12 +2,12 @@ FROM golang:1.22-bullseye AS builder
 
 WORKDIR /go/src/github.com/stellar/go
 
-COPY go.mod .
-COPY go.sum .
+COPY go.mod ./
+COPY go.sum ./
 
 RUN go mod download
 
-COPY . .
+COPY . ./
 
 RUN go install github.com/stellar/go/exp/services/ledgerexporter
 
