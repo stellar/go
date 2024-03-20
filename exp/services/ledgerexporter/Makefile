@@ -6,10 +6,7 @@ VERSION=test
 TAG ?= stellar/ledger-exporter:$(VERSION)
 
 docker-build:
-	cd ../../../ && \
-	docker build \
-	-f exp/services/ledgerexporter/docker/Dockerfile \
-	-t $(TAG) .
+	cd ../../../ docker build -f exp/services/ledgerexporter/docker/Dockerfile -t $(TAG) .
 
 docker-push:
 	cd ../../../ && \
