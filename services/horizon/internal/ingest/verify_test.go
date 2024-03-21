@@ -289,11 +289,12 @@ func TestTruncateIngestStateTables(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &history.Q{&db.Session{DB: tt.HorizonDB}}
 
+	ledgerEntries := generateRandomLedgerEntries(tt)
 	// insert ledger entries of all types into the DB
 	tt.Assert.NoError(q.BeginTx(tt.Ctx, &sql.TxOptions{}))
 	checkpointLedger := uint32(63)
 	changeProcessor := buildChangeProcessor(q, &ingest.StatsChangeProcessor{}, historyArchiveSource, checkpointLedger, "")
-	for _, change := range ingest.GetChangesFromLedgerEntryChanges(generateRandomLedgerEntries(tt)) {
+	for _, change := range ingest.GetChangesFromLedgerEntryChanges(ledgerEntries) {
 		tt.Assert.NoError(changeProcessor.ProcessChange(tt.Ctx, change))
 	}
 	tt.Assert.NoError(changeProcessor.Commit(tt.Ctx))
@@ -305,7 +306,7 @@ func TestTruncateIngestStateTables(t *testing.T) {
 	// reinsert the same ledger entries from before
 	tt.Assert.NoError(q.BeginTx(tt.Ctx, &sql.TxOptions{}))
 	changeProcessor = buildChangeProcessor(q, &ingest.StatsChangeProcessor{}, historyArchiveSource, checkpointLedger, "")
-	for _, change := range ingest.GetChangesFromLedgerEntryChanges(generateRandomLedgerEntries(tt)) {
+	for _, change := range ingest.GetChangesFromLedgerEntryChanges(ledgerEntries) {
 		tt.Assert.NoError(changeProcessor.ProcessChange(tt.Ctx, change))
 	}
 	// this should succeed if we cleared out the state tables properly
