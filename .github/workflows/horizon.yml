@@ -161,8 +161,11 @@ jobs:
         with:
           # For pull requests, build and test the PR head not a merge of the PR with the destination.
           ref:  ${{ github.event.pull_request.head.sha || github.ref }}
-      - name: Build and test Ledger Exporter images
+      - name: Build Ledger Exporter docker
         run: make -C exp/services/ledgerexporter docker-build
+
+      - name: Run Ledger Exporter test
+        run: make -C exp/services/ledgerexporter docker-test
 
       # Push images
       - if: github.ref == 'refs/heads/master'
