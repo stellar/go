@@ -34,7 +34,6 @@ docker-test:
 		 -e STORAGE_EMULATOR_HOST=http://fake-gcs-server:4443 \
 		 $(DOCKER_IMAGE):$(VERSION)
 
-	# Cleanup
 	$(SUDO) docker stop fake-gcs-server
 	$(SUDO) docker rm fake-gcs-server
 	$(SUDO) rm -rf ${PWD}/storage

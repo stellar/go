@@ -12,11 +12,6 @@ if [ -z "$NETWORK" ]; then
   exit 1
 fi
 
-if [[ -n "$FROM_LAST" && (-n "$START" || -n "$END") ]]; then
-    echo "Error: Cannot provide both FROM_LAST and START/END options simultaneously."
-    exit 1
-fi
-
 ledgers_per_file="${LEDGERS_PER_FILE:-1}"
 files_per_partition="${FILES_PER_PARTITION:-64000}"
 
