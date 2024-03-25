@@ -12,6 +12,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stellar/go/ingest/ledgerbackend"
 	_ "github.com/stellar/go/network"
+	"github.com/stellar/go/support/datastore"
 	"github.com/stellar/go/support/log"
 )
 
@@ -22,7 +23,7 @@ var (
 type App struct {
 	config        Config
 	ledgerBackend ledgerbackend.LedgerBackend
-	dataStore     DataStore
+	dataStore     datastore.DataStore
 	exportManager ExportManager
 	uploader      Uploader
 }
@@ -97,8 +98,8 @@ func (a *App) Run() {
 	logger.Info("Shutting down ledger-exporter")
 }
 
-func mustNewDataStore(ctx context.Context, config *Config) DataStore {
-	dataStore, err := NewDataStore(ctx, fmt.Sprintf("%s/%s", config.DestinationURL, config.Network))
+func mustNewDataStore(ctx context.Context, config *Config) datastore.DataStore {
+	dataStore, err := datastore.NewDataStore(ctx, fmt.Sprintf("%s/%s", config.DestinationURL, config.Network))
 	logFatalIf(err, "Could not connect to destination data store")
 	return dataStore
 }
