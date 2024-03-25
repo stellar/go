@@ -191,8 +191,6 @@ func TestProcessorRunnerBuildChangeProcessor(t *testing.T) {
 	assert.False(t, reflect.ValueOf(processor.processors[4]).
 		Elem().FieldByName("ingestFromHistoryArchive").Bool())
 	assert.IsType(t, &processors.SignersProcessor{}, processor.processors[5])
-	assert.True(t, reflect.ValueOf(processor.processors[5]).
-		Elem().FieldByName("useLedgerEntryCache").Bool())
 	assert.IsType(t, &processors.TrustLinesProcessor{}, processor.processors[6])
 
 	runner = ProcessorRunner{
@@ -212,8 +210,6 @@ func TestProcessorRunnerBuildChangeProcessor(t *testing.T) {
 	assert.True(t, reflect.ValueOf(processor.processors[4]).
 		Elem().FieldByName("ingestFromHistoryArchive").Bool())
 	assert.IsType(t, &processors.SignersProcessor{}, processor.processors[5])
-	assert.False(t, reflect.ValueOf(processor.processors[5]).
-		Elem().FieldByName("useLedgerEntryCache").Bool())
 	assert.IsType(t, &processors.TrustLinesProcessor{}, processor.processors[6])
 }
 
@@ -605,6 +601,7 @@ func mockTxProcessorBatchBuilders(q *mockDBQ, mockSession *db.MockSession, ctx c
 
 func mockChangeProcessorBatchBuilders(q *mockDBQ, ctx context.Context, mockExec bool) []interface{} {
 	mockAccountSignersBatchInsertBuilder := &history.MockAccountSignersBatchInsertBuilder{}
+	mockAccountSignersBatchInsertBuilder.On("Len").Return(1).Maybe()
 	if mockExec {
 		mockAccountSignersBatchInsertBuilder.On("Exec", ctx).Return(nil).Once()
 	}
@@ -612,6 +609,7 @@ func mockChangeProcessorBatchBuilders(q *mockDBQ, ctx context.Context, mockExec 
 		Return(mockAccountSignersBatchInsertBuilder).Twice()
 
 	mockAccountsBatchInsertBuilder := &history.MockAccountsBatchInsertBuilder{}
+	mockAccountsBatchInsertBuilder.On("Len").Return(1).Maybe()
 	if mockExec {
 		mockAccountsBatchInsertBuilder.On("Exec", ctx).Return(nil).Once()
 	}

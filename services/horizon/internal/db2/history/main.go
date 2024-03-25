@@ -326,6 +326,7 @@ type AccountSigner struct {
 type AccountSignersBatchInsertBuilder interface {
 	Add(signer AccountSigner) error
 	Exec(ctx context.Context) error
+	Len() int
 }
 
 // accountSignersBatchInsertBuilder is a simple wrapper around db.BatchInsertBuilder
@@ -799,7 +800,7 @@ type QSigners interface {
 	AccountsForSigner(ctx context.Context, signer string, page db2.PageQuery) ([]AccountSigner, error)
 	NewAccountSignersBatchInsertBuilder() AccountSignersBatchInsertBuilder
 	CreateAccountSigner(ctx context.Context, account, signer string, weight int32, sponsor *string) (int64, error)
-	RemoveAccountSigner(ctx context.Context, account, signer string) (int64, error)
+	RemoveAccountSigners(ctx context.Context, account string, signers []string) (int64, error)
 	SignersForAccounts(ctx context.Context, accounts []string) ([]AccountSigner, error)
 	CountAccounts(ctx context.Context) (int, error)
 }

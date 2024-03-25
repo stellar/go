@@ -14,6 +14,13 @@ import (
 // previously removed returns an error. In such case verify.StateError is
 // returned.
 //
+// The ChangeCompactor should not be used when ingesting from history archives
+// because the history archive snapshots only contain CREATED changes.
+// The ChangeCompactor is suited for compacting ledger entry changes derived
+// from LedgerCloseMeta payloads because they typically contain a mix of
+// CREATED, UPDATED, and REMOVED ledger entry changes and therefore may benefit
+// from compaction.
+//
 // It applies changes to the cache using the following algorithm:
 //
 //  1. If the change is CREATED it checks if any change connected to given entry

@@ -120,14 +120,13 @@ func buildChangeProcessor(
 		StatsChangeProcessor: changeStats,
 	}
 
-	useLedgerCache := source == ledgerSource
 	return newGroupChangeProcessors([]horizonChangeProcessor{
 		statsChangeProcessor,
 		processors.NewAccountDataProcessor(historyQ),
 		processors.NewAccountsProcessor(historyQ),
 		processors.NewOffersProcessor(historyQ, ledgerSequence),
 		processors.NewAssetStatsProcessor(historyQ, networkPassphrase, source == historyArchiveSource, ledgerSequence),
-		processors.NewSignersProcessor(historyQ, useLedgerCache),
+		processors.NewSignersProcessor(historyQ),
 		processors.NewTrustLinesProcessor(historyQ),
 		processors.NewClaimableBalancesChangeProcessor(historyQ),
 		processors.NewLiquidityPoolsChangeProcessor(historyQ, ledgerSequence),
@@ -301,15 +300,10 @@ func (s *ProcessorRunner) runChangeProcessorOnLedger(
 	if err != nil {
 		return errors.Wrap(err, "Error creating ledger change reader")
 	}
-	changeReader = newloggingChangeReader(
-		changeReader,
-		"ledger",
-		ledger.LedgerSequence(),
-		logFrequency,
-		s.logMemoryStats,
-	)
+	changeReader = ingest.NewCompactingChangeReader(changeReader)
 	if err = processors.StreamChanges(s.ctx, changeProcessor, changeReader); err != nil {
 		return errors.Wrap(err, "Error streaming changes from ledger")
+
 	}
 
 	err = changeProcessor.Commit(s.ctx)

@@ -76,6 +76,57 @@ func NewLedgerChangeReaderFromLedgerCloseMeta(networkPassphrase string, ledger x
 	}, nil
 }
 
+type compactingChangeReader struct {
+	input     ChangeReader
+	changes   []Change
+	compacted bool
+}
+
+func (c *compactingChangeReader) compact() error {
+	compactor := NewChangeCompactor()
+	for {
+		change, err := c.input.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+		if err = compactor.AddChange(change); err != nil {
+			return err
+		}
+	}
+	c.changes = compactor.GetChanges()
+	c.compacted = true
+	return nil
+}
+
+func (c *compactingChangeReader) Read() (Change, error) {
+	if !c.compacted {
+		if err := c.compact(); err != nil {
+			return Change{}, err
+		}
+	}
+	if len(c.changes) == 0 {
+		return Change{}, io.EOF
+	}
+	change := c.changes[0]
+	c.changes = c.changes[1:]
+	return change, nil
+}
+
+func (c *compactingChangeReader) Close() error {
+	return c.input.Close()
+}
+
+// NewCompactingChangeReader wraps a given ChangeReader and returns a ChangeReader
+// which compacts all the the Changes extracted from the input.
+func NewCompactingChangeReader(input ChangeReader) ChangeReader {
+	return &compactingChangeReader{
+		input: input,
+	}
+}
+
 // Read returns the next change in the stream.
 // If there are no changes remaining io.EOF is returned as an error.
 func (r *LedgerChangeReader) Read() (Change, error) {
