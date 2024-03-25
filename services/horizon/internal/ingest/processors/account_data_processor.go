@@ -13,7 +13,7 @@ type AccountDataProcessor struct {
 	dataQ history.QData
 
 	batchInsertBuilder history.AccountDataBatchInsertBuilder
-	dataToUpsert       []history.Data
+	dataToUpdate       []history.Data
 	dataToDelete       []history.AccountDataKey
 }
 
@@ -25,7 +25,7 @@ func NewAccountDataProcessor(dataQ history.QData) *AccountDataProcessor {
 
 func (p *AccountDataProcessor) reset() {
 	p.batchInsertBuilder = p.dataQ.NewAccountDataBatchInsertBuilder()
-	p.dataToUpsert = []history.Data{}
+	p.dataToUpdate = []history.Data{}
 	p.dataToDelete = []history.AccountDataKey{}
 }
 
@@ -56,10 +56,10 @@ func (p *AccountDataProcessor) ProcessChange(ctx context.Context, change ingest.
 		p.dataToDelete = append(p.dataToDelete, key)
 	default:
 		// Updated
-		p.dataToUpsert = append(p.dataToUpsert, p.ledgerEntryToRow(change.Post))
+		p.dataToUpdate = append(p.dataToUpdate, p.ledgerEntryToRow(change.Post))
 	}
 
-	if p.batchInsertBuilder.Len()+len(p.dataToUpsert)+len(p.dataToDelete) > maxBatchSize {
+	if p.batchInsertBuilder.Len()+len(p.dataToUpdate)+len(p.dataToDelete) > maxBatchSize {
 
 		if err := p.Commit(ctx); err != nil {
 			return errors.Wrap(err, "error in Commit")
@@ -77,8 +77,8 @@ func (p *AccountDataProcessor) Commit(ctx context.Context) error {
 		return errors.Wrap(err, "Error executing AccountDataBatchInsertBuilder")
 	}
 
-	if len(p.dataToUpsert) > 0 {
-		if err := p.dataQ.UpsertAccountData(ctx, p.dataToUpsert); err != nil {
+	if len(p.dataToUpdate) > 0 {
+		if err := p.dataQ.UpsertAccountData(ctx, p.dataToUpdate); err != nil {
 			return errors.Wrap(err, "error executing upsert")
 		}
 	}

@@ -12,7 +12,7 @@ import (
 type TrustLinesProcessor struct {
 	trustLinesQ history.QTrustLines
 
-	batchUpsertTrustLines    []history.TrustLine
+	batchUpdateTrustlines    []history.TrustLine
 	batchRemoveTrustLineKeys []string
 	batchInsertBuilder       history.TrustLinesBatchInsertBuilder
 }
@@ -28,7 +28,7 @@ func (p *TrustLinesProcessor) Name() string {
 }
 
 func (p *TrustLinesProcessor) reset() {
-	p.batchUpsertTrustLines = []history.TrustLine{}
+	p.batchUpdateTrustlines = []history.TrustLine{}
 	p.batchRemoveTrustLineKeys = []string{}
 	p.batchInsertBuilder = p.trustLinesQ.NewTrustLinesBatchInsertBuilder()
 }
@@ -56,7 +56,7 @@ func (p *TrustLinesProcessor) ProcessChange(ctx context.Context, change ingest.C
 		if err != nil {
 			return errors.Wrap(err, "Error extracting trustline")
 		}
-		p.batchUpsertTrustLines = append(p.batchUpsertTrustLines, tl)
+		p.batchUpdateTrustlines = append(p.batchUpdateTrustlines, tl)
 	case change.Pre != nil && change.Post == nil:
 		// Removed
 		trustLineEntry := change.Pre.Data.MustTrustLine()
@@ -70,7 +70,7 @@ func (p *TrustLinesProcessor) ProcessChange(ctx context.Context, change ingest.C
 		return errors.New("Invalid io.Change: change.Pre == nil && change.Post == nil")
 	}
 
-	if p.batchInsertBuilder.Len()+len(p.batchUpsertTrustLines)+len(p.batchRemoveTrustLineKeys) > maxBatchSize {
+	if p.batchInsertBuilder.Len()+len(p.batchUpdateTrustlines)+len(p.batchRemoveTrustLineKeys) > maxBatchSize {
 
 		if err := p.Commit(ctx); err != nil {
 			return errors.Wrap(err, "error in Commit")
@@ -138,8 +138,8 @@ func (p *TrustLinesProcessor) Commit(ctx context.Context) error {
 		return errors.Wrap(err, "Error executing TrustLinesBatchInsertBuilder")
 	}
 
-	if len(p.batchUpsertTrustLines) > 0 {
-		err := p.trustLinesQ.UpsertTrustLines(ctx, p.batchUpsertTrustLines)
+	if len(p.batchUpdateTrustlines) > 0 {
+		err := p.trustLinesQ.UpsertTrustLines(ctx, p.batchUpdateTrustlines)
 		if err != nil {
 			return errors.Wrap(err, "errors in UpsertTrustLines")
 		}

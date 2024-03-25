@@ -14,7 +14,7 @@ import (
 type AccountsProcessor struct {
 	accountsQ history.QAccounts
 
-	batchUpsertAccounts []history.AccountEntry
+	batchUpdateAccounts []history.AccountEntry
 	removeBatch         []string
 	batchInsertBuilder  history.AccountsBatchInsertBuilder
 }
@@ -27,7 +27,7 @@ func NewAccountsProcessor(accountsQ history.QAccounts) *AccountsProcessor {
 
 func (p *AccountsProcessor) reset() {
 	p.batchInsertBuilder = p.accountsQ.NewAccountsBatchInsertBuilder()
-	p.batchUpsertAccounts = []history.AccountEntry{}
+	p.batchUpdateAccounts = []history.AccountEntry{}
 	p.removeBatch = []string{}
 }
 
@@ -60,7 +60,7 @@ func (p *AccountsProcessor) ProcessChange(ctx context.Context, change ingest.Cha
 	case change.Pre != nil && change.Post != nil:
 		// Updated
 		row := p.ledgerEntryToRow(*change.Post)
-		p.batchUpsertAccounts = append(p.batchUpsertAccounts, row)
+		p.batchUpdateAccounts = append(p.batchUpdateAccounts, row)
 	case change.Pre != nil && change.Post == nil:
 		// Removed
 		account := change.Pre.Data.MustAccount()
@@ -70,7 +70,7 @@ func (p *AccountsProcessor) ProcessChange(ctx context.Context, change ingest.Cha
 		return errors.New("Invalid io.Change: change.Pre == nil && change.Post == nil")
 	}
 
-	if p.batchInsertBuilder.Len()+len(p.batchUpsertAccounts)+len(p.removeBatch) > maxBatchSize {
+	if p.batchInsertBuilder.Len()+len(p.batchUpdateAccounts)+len(p.removeBatch) > maxBatchSize {
 		err = p.Commit(ctx)
 		if err != nil {
 			return errors.Wrap(err, "error in Commit")
@@ -89,8 +89,8 @@ func (p *AccountsProcessor) Commit(ctx context.Context) error {
 	}
 
 	// Upsert accounts
-	if len(p.batchUpsertAccounts) > 0 {
-		err := p.accountsQ.UpsertAccounts(ctx, p.batchUpsertAccounts)
+	if len(p.batchUpdateAccounts) > 0 {
+		err := p.accountsQ.UpsertAccounts(ctx, p.batchUpdateAccounts)
 		if err != nil {
 			return errors.Wrap(err, "errors in UpsertAccounts")
 		}

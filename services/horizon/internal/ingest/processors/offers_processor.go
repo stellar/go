@@ -17,7 +17,7 @@ type OffersProcessor struct {
 	offersQ  history.QOffers
 	sequence uint32
 
-	batchUpsertOffers  []history.Offer
+	batchUpdateOffers  []history.Offer
 	insertBatchBuilder history.OffersBatchInsertBuilder
 }
 
@@ -32,7 +32,7 @@ func (p *OffersProcessor) Name() string {
 }
 
 func (p *OffersProcessor) reset() {
-	p.batchUpsertOffers = []history.Offer{}
+	p.batchUpdateOffers = []history.Offer{}
 	p.insertBatchBuilder = p.offersQ.NewOffersBatchInsertBuilder()
 }
 
@@ -51,18 +51,18 @@ func (p *OffersProcessor) ProcessChange(ctx context.Context, change ingest.Chang
 	case change.Pre != nil && change.Post != nil:
 		// Updated
 		row := p.ledgerEntryToRow(change.Post)
-		p.batchUpsertOffers = append(p.batchUpsertOffers, row)
+		p.batchUpdateOffers = append(p.batchUpdateOffers, row)
 	case change.Pre != nil && change.Post == nil:
 		// Removed
 		row := p.ledgerEntryToRow(change.Pre)
 		row.Deleted = true
 		row.LastModifiedLedger = p.sequence
-		p.batchUpsertOffers = append(p.batchUpsertOffers, row)
+		p.batchUpdateOffers = append(p.batchUpdateOffers, row)
 	default:
 		return errors.New("Invalid io.Change: change.Pre == nil && change.Post == nil")
 	}
 
-	if p.insertBatchBuilder.Len()+len(p.batchUpsertOffers) > maxBatchSize {
+	if p.insertBatchBuilder.Len()+len(p.batchUpdateOffers) > maxBatchSize {
 		if err := p.flushCache(ctx); err != nil {
 			return errors.Wrap(err, "error in Commit")
 		}
@@ -96,8 +96,8 @@ func (p *OffersProcessor) flushCache(ctx context.Context) error {
 		return errors.New("Error executing OffersBatchInsertBuilder")
 	}
 
-	if len(p.batchUpsertOffers) > 0 {
-		err := p.offersQ.UpsertOffers(ctx, p.batchUpsertOffers)
+	if len(p.batchUpdateOffers) > 0 {
+		err := p.offersQ.UpsertOffers(ctx, p.batchUpdateOffers)
 		if err != nil {
 			return errors.Wrap(err, "errors in UpsertOffers")
 		}
