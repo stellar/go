@@ -116,7 +116,7 @@ func (c *compactingChangeReader) Read() (Change, error) {
 }
 
 func (c *compactingChangeReader) Close() error {
-	return nil
+	return c.input.Close()
 }
 
 // NewCompactingChangeReader wraps a given ChangeReader and returns a ChangeReader
