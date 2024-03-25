@@ -541,6 +541,39 @@ func TestDeprecatedOutputs(t *testing.T) {
 			"Configuring section in the developer documentation on how to use them - "+
 			"https://developers.stellar.org/docs/run-api-server/configuring")
 	})
+	t.Run("deprecated output for --captive-core-use-db", func(t *testing.T) {
+		originalStderr := os.Stderr
+		r, w, _ := os.Pipe()
+		os.Stderr = w
+		stdLog.SetOutput(os.Stderr)
+
+		testConfig := integration.GetTestConfig()
+		testConfig.HorizonIngestParameters = map[string]string{"captive-core-use-db": "false"}
+		test := integration.NewTest(t, *testConfig)
+		err := test.StartHorizon()
+		assert.NoError(t, err)
+		test.WaitForHorizon()
+
+		// Use a wait group to wait for the goroutine to finish before proceeding
+		var wg sync.WaitGroup
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if err := w.Close(); err != nil {
+				t.Errorf("Failed to close Stdout")
+				return
+			}
+		}()
+
+		outputBytes, _ := io.ReadAll(r)
+		wg.Wait() // Wait for the goroutine to finish before proceeding
+		_ = r.Close()
+		os.Stderr = originalStderr
+
+		assert.Contains(t, string(outputBytes), "The usage of the flag --captive-core-use-db has been deprecated. "+
+			"Setting it to false to achieve in-memory functionality on captive core will be removed in "+
+			"future releases. We recommend removing usage of this flag now in preparation.")
+	})
 }
 
 func TestGlobalFlagsOutput(t *testing.T) {
