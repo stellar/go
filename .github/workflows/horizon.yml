@@ -12,9 +12,8 @@ jobs:
       matrix:
         os: [ubuntu-20.04, ubuntu-22.04]
         go: ["1.21", "1.22"]
-        pg: [12]
-        ingestion-backend: [captive-core, captive-core-remote-storage]
-        protocol-version: [19, 20]
+        pg: [12, 16]
+        protocol-version: [20]
     runs-on: ${{ matrix.os }}
     services:
       postgres:
@@ -72,16 +71,14 @@ jobs:
           docker pull "$PROTOCOL_${{ matrix.protocol-version }}_CORE_DOCKER_IMG"
           echo HORIZON_INTEGRATION_TESTS_DOCKER_IMG="$PROTOCOL_${{ matrix.protocol-version }}_CORE_DOCKER_IMG" >> $GITHUB_ENV
 
-      - if: ${{ matrix.protocol-version == '20' }}
-        name: Pull and set Soroban RPC image
+      - name: Pull and set Soroban RPC image
         shell: bash
         run: |
           docker pull "$PROTOCOL_${{ matrix.protocol-version }}_SOROBAN_RPC_DOCKER_IMG"
           echo HORIZON_INTEGRATION_TESTS_SOROBAN_RPC_DOCKER_IMG="$PROTOCOL_${{ matrix.protocol-version }}_SOROBAN_RPC_DOCKER_IMG" >> $GITHUB_ENV
           echo HORIZON_INTEGRATION_TESTS_ENABLE_SOROBAN_RPC=true >> $GITHUB_ENV
 
-      - if: ${{ startsWith(matrix.ingestion-backend, 'captive-core') }}
-        name: Install and enable Captive Core
+      - name: Install and enable Captive Core
         run: |
           # Workaround for https://github.com/actions/virtual-environments/issues/5245,
           # libc++1-8 won't be installed if another version is installed (but apt won't give you a helpul
@@ -95,10 +92,7 @@ jobs:
           echo "Using stellar core version $(stellar-core version)"
           echo 'HORIZON_INTEGRATION_TESTS_ENABLE_CAPTIVE_CORE=true' >> $GITHUB_ENV
           echo 'HORIZON_INTEGRATION_TESTS_CAPTIVE_CORE_BIN=/usr/bin/stellar-core' >> $GITHUB_ENV
-
-      - if: ${{ matrix.ingestion-backend == 'captive-core-remote-storage' }}
-        name: Setup Captive Core Remote Storage
-        run: echo 'HORIZON_INTEGRATION_TESTS_CAPTIVE_CORE_USE_DB=true' >> $GITHUB_ENV
+          echo 'HORIZON_INTEGRATION_TESTS_CAPTIVE_CORE_USE_DB=true' >> $GITHUB_ENV
 
       - name: Build Horizon reproducible build
         run: |
