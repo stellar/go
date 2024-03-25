@@ -10,6 +10,7 @@ import (
 type OffersBatchInsertBuilder interface {
 	Add(offer Offer) error
 	Exec(ctx context.Context) error
+	Len() int
 }
 
 // OffersBatchInsertBuilder is a simple wrapper around db.FastBatchInsertBuilder
@@ -36,4 +37,9 @@ func (i *offersBatchInsertBuilder) Add(offer Offer) error {
 // Exec writes the batch of offers to the database.
 func (i *offersBatchInsertBuilder) Exec(ctx context.Context) error {
 	return i.builder.Exec(ctx, i.session, i.table)
+}
+
+// Len returns the number of items in the batch.
+func (i *offersBatchInsertBuilder) Len() int {
+	return i.builder.Len()
 }

@@ -14,8 +14,9 @@ import (
 type AccountsProcessor struct {
 	accountsQ history.QAccounts
 
-	cache              *ingest.ChangeCompactor
-	batchInsertBuilder history.AccountsBatchInsertBuilder
+	batchUpdateAccounts []history.AccountEntry
+	removeBatch         []string
+	batchInsertBuilder  history.AccountsBatchInsertBuilder
 }
 
 func NewAccountsProcessor(accountsQ history.QAccounts) *AccountsProcessor {
@@ -25,8 +26,9 @@ func NewAccountsProcessor(accountsQ history.QAccounts) *AccountsProcessor {
 }
 
 func (p *AccountsProcessor) reset() {
-	p.cache = ingest.NewChangeCompactor()
 	p.batchInsertBuilder = p.accountsQ.NewAccountsBatchInsertBuilder()
+	p.batchUpdateAccounts = []history.AccountEntry{}
+	p.removeBatch = []string{}
 }
 
 func (p *AccountsProcessor) Name() string {
@@ -38,12 +40,37 @@ func (p *AccountsProcessor) ProcessChange(ctx context.Context, change ingest.Cha
 		return nil
 	}
 
-	err := p.cache.AddChange(change)
+	changed, err := change.AccountChangedExceptSigners()
 	if err != nil {
-		return errors.Wrap(err, "error adding to ledgerCache")
+		return errors.Wrap(err, "Error running change.AccountChangedExceptSigners")
 	}
 
-	if p.cache.Size() > maxBatchSize {
+	if !changed {
+		return nil
+	}
+
+	switch {
+	case change.Pre == nil && change.Post != nil:
+		// Created
+		row := p.ledgerEntryToRow(*change.Post)
+		err = p.batchInsertBuilder.Add(row)
+		if err != nil {
+			return errors.Wrap(err, "Error adding to AccountsBatchInsertBuilder")
+		}
+	case change.Pre != nil && change.Post != nil:
+		// Updated
+		row := p.ledgerEntryToRow(*change.Post)
+		p.batchUpdateAccounts = append(p.batchUpdateAccounts, row)
+	case change.Pre != nil && change.Post == nil:
+		// Removed
+		account := change.Pre.Data.MustAccount()
+		accountID := account.AccountId.Address()
+		p.removeBatch = append(p.removeBatch, accountID)
+	default:
+		return errors.New("Invalid io.Change: change.Pre == nil && change.Post == nil")
+	}
+
+	if p.batchInsertBuilder.Len()+len(p.batchUpdateAccounts)+len(p.removeBatch) > maxBatchSize {
 		err = p.Commit(ctx)
 		if err != nil {
 			return errors.Wrap(err, "error in Commit")
@@ -56,66 +83,30 @@ func (p *AccountsProcessor) ProcessChange(ctx context.Context, change ingest.Cha
 func (p *AccountsProcessor) Commit(ctx context.Context) error {
 	defer p.reset()
 
-	batchUpsertAccounts := []history.AccountEntry{}
-	removeBatch := []string{}
-
-	changes := p.cache.GetChanges()
-	for _, change := range changes {
-		changed, err := change.AccountChangedExceptSigners()
-		if err != nil {
-			return errors.Wrap(err, "Error running change.AccountChangedExceptSigners")
-		}
-
-		if !changed {
-			continue
-		}
-
-		switch {
-		case change.Pre == nil && change.Post != nil:
-			// Created
-			row := p.ledgerEntryToRow(*change.Post)
-			err := p.batchInsertBuilder.Add(row)
-			if err != nil {
-				return errors.Wrap(err, "Error adding to AccountsBatchInsertBuilder")
-			}
-		case change.Pre != nil && change.Post != nil:
-			// Updated
-			row := p.ledgerEntryToRow(*change.Post)
-			batchUpsertAccounts = append(batchUpsertAccounts, row)
-		case change.Pre != nil && change.Post == nil:
-			// Removed
-			account := change.Pre.Data.MustAccount()
-			accountID := account.AccountId.Address()
-			removeBatch = append(removeBatch, accountID)
-		default:
-			return errors.New("Invalid io.Change: change.Pre == nil && change.Post == nil")
-		}
-	}
-
 	err := p.batchInsertBuilder.Exec(ctx)
 	if err != nil {
 		return errors.Wrap(err, "Error executing AccountsBatchInsertBuilder")
 	}
 
 	// Upsert accounts
-	if len(batchUpsertAccounts) > 0 {
-		err := p.accountsQ.UpsertAccounts(ctx, batchUpsertAccounts)
+	if len(p.batchUpdateAccounts) > 0 {
+		err := p.accountsQ.UpsertAccounts(ctx, p.batchUpdateAccounts)
 		if err != nil {
 			return errors.Wrap(err, "errors in UpsertAccounts")
 		}
 	}
 
-	if len(removeBatch) > 0 {
-		rowsAffected, err := p.accountsQ.RemoveAccounts(ctx, removeBatch)
+	if len(p.removeBatch) > 0 {
+		rowsAffected, err := p.accountsQ.RemoveAccounts(ctx, p.removeBatch)
 		if err != nil {
 			return errors.Wrap(err, "error in RemoveAccounts")
 		}
 
-		if rowsAffected != int64(len(removeBatch)) {
+		if rowsAffected != int64(len(p.removeBatch)) {
 			return ingest.NewStateError(errors.Errorf(
 				"%d rows affected when removing %d accounts",
 				rowsAffected,
-				len(removeBatch),
+				len(p.removeBatch),
 			))
 		}
 	}

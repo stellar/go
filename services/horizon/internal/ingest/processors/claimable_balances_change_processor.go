@@ -12,7 +12,8 @@ import (
 type ClaimableBalancesChangeProcessor struct {
 	encodingBuffer                *xdr.EncodingBuffer
 	qClaimableBalances            history.QClaimableBalances
-	cache                         *ingest.ChangeCompactor
+	cbIDsToDelete                 []string
+	updatedBalances               []history.ClaimableBalance
 	claimantsInsertBuilder        history.ClaimableBalanceClaimantBatchInsertBuilder
 	claimableBalanceInsertBuilder history.ClaimableBalanceBatchInsertBuilder
 }
@@ -31,7 +32,8 @@ func (p *ClaimableBalancesChangeProcessor) Name() string {
 }
 
 func (p *ClaimableBalancesChangeProcessor) reset() {
-	p.cache = ingest.NewChangeCompactor()
+	p.cbIDsToDelete = []string{}
+	p.updatedBalances = []history.ClaimableBalance{}
 	p.claimantsInsertBuilder = p.qClaimableBalances.NewClaimableBalanceClaimantBatchInsertBuilder()
 	p.claimableBalanceInsertBuilder = p.qClaimableBalances.NewClaimableBalanceBatchInsertBuilder()
 }
@@ -41,14 +43,50 @@ func (p *ClaimableBalancesChangeProcessor) ProcessChange(ctx context.Context, ch
 		return nil
 	}
 
-	err := p.cache.AddChange(change)
-	if err != nil {
-		return errors.Wrap(err, "error adding to ledgerCache")
-	}
-
-	if p.cache.Size() > maxBatchSize {
-		err = p.Commit(ctx)
+	switch {
+	case change.Pre == nil && change.Post != nil:
+		// Created
+		cb, err := p.ledgerEntryToRow(change.Post)
 		if err != nil {
+			return err
+		}
+		// Add claimable balance
+		if err := p.claimableBalanceInsertBuilder.Add(cb); err != nil {
+			return errors.Wrap(err, "error adding to ClaimableBalanceBatchInsertBuilder")
+		}
+
+		// Add claimants
+		for _, claimant := range cb.Claimants {
+			claimant := history.ClaimableBalanceClaimant{
+				BalanceID:          cb.BalanceID,
+				Destination:        claimant.Destination,
+				LastModifiedLedger: cb.LastModifiedLedger,
+			}
+
+			if err := p.claimantsInsertBuilder.Add(claimant); err != nil {
+				return errors.Wrap(err, "error adding to ClaimableBalanceClaimantBatchInsertBuilder")
+			}
+		}
+	case change.Pre != nil && change.Post == nil:
+		// Removed
+		cBalance := change.Pre.Data.MustClaimableBalance()
+		id, err := p.encodingBuffer.MarshalHex(cBalance.BalanceId)
+		if err != nil {
+			return err
+		}
+		p.cbIDsToDelete = append(p.cbIDsToDelete, id)
+	default:
+		// this case should only occur if the sponsor has changed in the claimable balance
+		// the other fields of a claimable balance are immutable
+		postCB, err := p.ledgerEntryToRow(change.Post)
+		if err != nil {
+			return err
+		}
+		p.updatedBalances = append(p.updatedBalances, postCB)
+	}
+	if p.claimableBalanceInsertBuilder.Len()+p.claimantsInsertBuilder.Len()+len(p.updatedBalances)+len(p.cbIDsToDelete) > maxBatchSize {
+
+		if err := p.Commit(ctx); err != nil {
 			return errors.Wrap(err, "error in Commit")
 		}
 	}
@@ -58,54 +96,6 @@ func (p *ClaimableBalancesChangeProcessor) ProcessChange(ctx context.Context, ch
 
 func (p *ClaimableBalancesChangeProcessor) Commit(ctx context.Context) error {
 	defer p.reset()
-	var (
-		cbIDsToDelete   []string
-		updatedBalances []history.ClaimableBalance
-	)
-	changes := p.cache.GetChanges()
-	for _, change := range changes {
-		switch {
-		case change.Pre == nil && change.Post != nil:
-			// Created
-			cb, err := p.ledgerEntryToRow(change.Post)
-			if err != nil {
-				return err
-			}
-			// Add claimable balance
-			if err := p.claimableBalanceInsertBuilder.Add(cb); err != nil {
-				return errors.Wrap(err, "error adding to ClaimableBalanceBatchInsertBuilder")
-			}
-
-			// Add claimants
-			for _, claimant := range cb.Claimants {
-				claimant := history.ClaimableBalanceClaimant{
-					BalanceID:          cb.BalanceID,
-					Destination:        claimant.Destination,
-					LastModifiedLedger: cb.LastModifiedLedger,
-				}
-
-				if err := p.claimantsInsertBuilder.Add(claimant); err != nil {
-					return errors.Wrap(err, "error adding to ClaimableBalanceClaimantBatchInsertBuilder")
-				}
-			}
-		case change.Pre != nil && change.Post == nil:
-			// Removed
-			cBalance := change.Pre.Data.MustClaimableBalance()
-			id, err := p.encodingBuffer.MarshalHex(cBalance.BalanceId)
-			if err != nil {
-				return err
-			}
-			cbIDsToDelete = append(cbIDsToDelete, id)
-		default:
-			// this case should only occur if the sponsor has changed in the claimable balance
-			// the other fields of a claimable balance are immutable
-			postCB, err := p.ledgerEntryToRow(change.Post)
-			if err != nil {
-				return err
-			}
-			updatedBalances = append(updatedBalances, postCB)
-		}
-	}
 
 	err := p.claimantsInsertBuilder.Exec(ctx)
 	if err != nil {
@@ -117,27 +107,27 @@ func (p *ClaimableBalancesChangeProcessor) Commit(ctx context.Context) error {
 		return errors.Wrap(err, "error executing ClaimableBalanceBatchInsertBuilder")
 	}
 
-	if len(updatedBalances) > 0 {
-		if err = p.qClaimableBalances.UpsertClaimableBalances(ctx, updatedBalances); err != nil {
+	if len(p.updatedBalances) > 0 {
+		if err = p.qClaimableBalances.UpsertClaimableBalances(ctx, p.updatedBalances); err != nil {
 			return errors.Wrap(err, "error updating claimable balances")
 		}
 	}
 
-	if len(cbIDsToDelete) > 0 {
-		count, err := p.qClaimableBalances.RemoveClaimableBalances(ctx, cbIDsToDelete)
+	if len(p.cbIDsToDelete) > 0 {
+		count, err := p.qClaimableBalances.RemoveClaimableBalances(ctx, p.cbIDsToDelete)
 		if err != nil {
 			return errors.Wrap(err, "error executing removal")
 		}
-		if count != int64(len(cbIDsToDelete)) {
+		if count != int64(len(p.cbIDsToDelete)) {
 			return ingest.NewStateError(errors.Errorf(
 				"%d rows affected when deleting %d claimable balances",
 				count,
-				len(cbIDsToDelete),
+				len(p.cbIDsToDelete),
 			))
 		}
 
 		// Remove ClaimableBalanceClaimants
-		_, err = p.qClaimableBalances.RemoveClaimableBalanceClaimants(ctx, cbIDsToDelete)
+		_, err = p.qClaimableBalances.RemoveClaimableBalanceClaimants(ctx, p.cbIDsToDelete)
 		if err != nil {
 			return errors.Wrap(err, "error executing removal of claimants")
 		}

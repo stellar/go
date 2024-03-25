@@ -15,8 +15,9 @@ import (
 
 type AssetStatsProcessor struct {
 	assetStatsQ              history.QAssetStats
-	cache                    *ingest.ChangeCompactor
 	currentLedger            uint32
+	assetStatSet             AssetStatSet
+	contractDataChanges      []ingest.Change
 	removedExpirationEntries map[xdr.Hash]uint32
 	createdExpirationEntries map[xdr.Hash]uint32
 	updatedExpirationEntries map[xdr.Hash][2]uint32
@@ -36,7 +37,8 @@ func NewAssetStatsProcessor(
 		assetStatsQ:              assetStatsQ,
 		ingestFromHistoryArchive: ingestFromHistoryArchive,
 		networkPassphrase:        networkPassphrase,
-		cache:                    ingest.NewChangeCompactor(),
+		assetStatSet:             NewAssetStatSet(),
+		contractDataChanges:      []ingest.Change{},
 		removedExpirationEntries: map[xdr.Hash]uint32{},
 		createdExpirationEntries: map[xdr.Hash]uint32{},
 		updatedExpirationEntries: map[xdr.Hash][2]uint32{},
@@ -56,9 +58,18 @@ func (p *AssetStatsProcessor) ProcessChange(ctx context.Context, change ingest.C
 		change.Type != xdr.LedgerEntryTypeTtl {
 		return nil
 	}
-	// only ingest contract data entries which could be relevant to
-	// asset stats
-	if change.Type == xdr.LedgerEntryTypeContractData {
+
+	var err error
+	switch change.Type {
+	case xdr.LedgerEntryTypeLiquidityPool:
+		err = p.assetStatSet.AddLiquidityPool(change)
+	case xdr.LedgerEntryTypeClaimableBalance:
+		err = p.assetStatSet.AddClaimableBalance(change)
+	case xdr.LedgerEntryTypeTrustline:
+		err = p.assetStatSet.AddTrustline(change)
+	case xdr.LedgerEntryTypeContractData:
+		// only ingest contract data entries which could be relevant to
+		// asset stats
 		ledgerEntry := change.Post
 		if ledgerEntry == nil {
 			ledgerEntry = change.Pre
@@ -68,11 +79,14 @@ func (p *AssetStatsProcessor) ProcessChange(ctx context.Context, change ingest.C
 		if asset == nil && !balanceFound {
 			return nil
 		}
+		p.contractDataChanges = append(p.contractDataChanges, change)
+	case xdr.LedgerEntryTypeTtl:
+		err = p.addExpirationChange(change)
+	default:
+		return errors.Errorf("Change type %v is unexpected", change.Type)
 	}
-	if err := p.cache.AddChange(change); err != nil {
-		return errors.Wrap(err, "error adding to ledgerCache")
-	}
-	return nil
+
+	return err
 }
 
 func (p *AssetStatsProcessor) addExpirationChange(change ingest.Change) error {
@@ -121,30 +135,6 @@ func (p *AssetStatsProcessor) addExpirationChange(change ingest.Change) error {
 }
 
 func (p *AssetStatsProcessor) Commit(ctx context.Context) error {
-	assetStatSet := NewAssetStatSet()
-
-	changes := p.cache.GetChanges()
-	var contractDataChanges []ingest.Change
-	for _, change := range changes {
-		var err error
-		switch change.Type {
-		case xdr.LedgerEntryTypeLiquidityPool:
-			err = assetStatSet.AddLiquidityPool(change)
-		case xdr.LedgerEntryTypeClaimableBalance:
-			err = assetStatSet.AddClaimableBalance(change)
-		case xdr.LedgerEntryTypeTrustline:
-			err = assetStatSet.AddTrustline(change)
-		case xdr.LedgerEntryTypeContractData:
-			contractDataChanges = append(contractDataChanges, change)
-		case xdr.LedgerEntryTypeTtl:
-			err = p.addExpirationChange(change)
-		default:
-			return errors.Errorf("Change type %v is unexpected", change.Type)
-		}
-		if err != nil {
-			return errors.Wrap(err, "Error adjusting asset stat")
-		}
-	}
 
 	contractAssetStatSet := NewContractAssetStatSet(
 		p.assetStatsQ,
@@ -154,18 +144,17 @@ func (p *AssetStatsProcessor) Commit(ctx context.Context) error {
 		p.updatedExpirationEntries,
 		p.currentLedger,
 	)
-	for _, change := range contractDataChanges {
+	for _, change := range p.contractDataChanges {
 		if err := contractAssetStatSet.AddContractData(ctx, change); err != nil {
 			return errors.Wrap(err, "Error ingesting contract data")
 		}
 	}
 
-	return p.updateDB(ctx, assetStatSet, contractAssetStatSet)
+	return p.updateDB(ctx, contractAssetStatSet)
 }
 
 func (p *AssetStatsProcessor) updateDB(
 	ctx context.Context,
-	assetStatSet AssetStatSet,
 	contractAssetStatSet *ContractAssetStatSet,
 ) error {
 	if p.ingestFromHistoryArchive {
@@ -173,7 +162,7 @@ func (p *AssetStatsProcessor) updateDB(
 		// that there are only created ledger entries. We don't need to execute any
 		// updates or removals on the asset stats tables. And we can also skip
 		// ingesting restored contract balances and expired contract balances.
-		assetStatsDeltas := assetStatSet.All()
+		assetStatsDeltas := p.assetStatSet.All()
 		if len(assetStatsDeltas) > 0 {
 			var err error
 			assetStatsDeltas, err = IncludeContractIDsInAssetStats(
@@ -203,7 +192,7 @@ func (p *AssetStatsProcessor) updateDB(
 		return nil
 	}
 
-	assetStatsDeltas := assetStatSet.All()
+	assetStatsDeltas := p.assetStatSet.All()
 
 	if err := p.updateAssetStats(ctx, assetStatsDeltas, contractAssetStatSet.contractToAsset); err != nil {
 		return err

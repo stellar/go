@@ -43,6 +43,8 @@ func (s *ClaimableBalancesChangeProcessorTestSuiteState) SetupTest() {
 
 	s.mockClaimantsBatchInsertBuilder.On("Exec", s.ctx).Return(nil)
 	s.mockClaimableBalanceBatchInsertBuilder.On("Exec", s.ctx).Return(nil)
+	s.mockClaimantsBatchInsertBuilder.On("Len").Return(1).Maybe()
+	s.mockClaimableBalanceBatchInsertBuilder.On("Len").Return(1).Maybe()
 
 	s.processor = NewClaimableBalancesChangeProcessor(s.mockQ)
 }
@@ -140,6 +142,8 @@ func (s *ClaimableBalancesChangeProcessorTestSuiteLedger) SetupTest() {
 
 	s.mockClaimantsBatchInsertBuilder.On("Exec", s.ctx).Return(nil)
 	s.mockClaimableBalanceBatchInsertBuilder.On("Exec", s.ctx).Return(nil)
+	s.mockClaimantsBatchInsertBuilder.On("Len").Return(1).Maybe()
+	s.mockClaimableBalanceBatchInsertBuilder.On("Len").Return(1).Maybe()
 
 	s.processor = NewClaimableBalancesChangeProcessor(s.mockQ)
 }

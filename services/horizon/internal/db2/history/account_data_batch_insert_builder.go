@@ -9,6 +9,7 @@ import (
 type AccountDataBatchInsertBuilder interface {
 	Add(data Data) error
 	Exec(ctx context.Context) error
+	Len() int
 }
 
 type accountDataBatchInsertBuilder struct {
@@ -47,4 +48,9 @@ func (i *accountDataBatchInsertBuilder) Add(data Data) error {
 // Exec writes the batch of account data to the database.
 func (i *accountDataBatchInsertBuilder) Exec(ctx context.Context) error {
 	return i.builder.Exec(ctx, i.session, i.table)
+}
+
+// Len returns the number of elements in the batch
+func (i *accountDataBatchInsertBuilder) Len() int {
+	return i.builder.Len()
 }
