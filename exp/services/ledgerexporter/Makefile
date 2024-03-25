@@ -2,19 +2,19 @@ SUDO := $(shell docker version >/dev/null 2>&1 || echo "sudo")
 
 # https://github.com/opencontainers/image-spec/blob/master/annotations.md
 BUILD_DATE := $(shell date -u +%FT%TZ)
-VERSION ?= latest
+VERSION ?= $(shell git rev-parse --short HEAD)
 TAG ?= stellar/ledger-exporter:$(VERSION)
 
 docker-build:
 ifndef STELLAR_CORE_VERSION
 	cd ../../../ && \
-	$(SUDO) docker build --pull --label org.opencontainers.image.created="$(BUILD_DATE)" \
+	$(SUDO) docker build --platform linux/amd64 --pull --label org.opencontainers.image.created="$(BUILD_DATE)" \
 	--build-arg VERSION=$(VERSION) \
 	-f exp/services/ledgerexporter/docker/Dockerfile \
 	-t $(TAG) .
 else
 	cd ../../../ && \
-	$(SUDO) docker build --pull --label org.opencontainers.image.created="$(BUILD_DATE)" \
+	$(SUDO) docker build --platform linux/amd64 --pull --label org.opencontainers.image.created="$(BUILD_DATE)" \
 	--build-arg VERSION=$(VERSION) --build-arg STELLAR_CORE_VERSION=$(STELLAR_CORE_VERSION) \
 	-f exp/services/ledgerexporter/docker/Dockerfile \
 	-t $(TAG) .
@@ -38,7 +38,7 @@ docker-test:
 		 -e START=1000 \
 		 -e END=2000 \
 		 -e STORAGE_EMULATOR_HOST=http://fake-gcs-server:4443 \
-		 stellar/ledger-exporter
+		 $(TAG)
 
 	# Cleanup
 	$(SUDO) docker stop fake-gcs-server
@@ -47,5 +47,4 @@ docker-test:
 	$(SUDO) docker network rm test-network
 
 docker-push:
-	cd ../../../ && \
 	$(SUDO) docker push $(TAG)

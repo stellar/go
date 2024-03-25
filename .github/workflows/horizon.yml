@@ -177,4 +177,6 @@ jobs:
 
       - if: github.ref == 'refs/heads/master'
         name: Push to DockerHub
-        run: make -C exp/services/ledgerexporter docker-push
+        run: |
+          make -C exp/services/ledgerexporter docker-push
+          VERSION=latest make -C exp/services/ledgerexporter docker-push
