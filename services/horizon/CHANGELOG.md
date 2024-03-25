@@ -3,19 +3,37 @@
 All notable changes to this project will be documented in this
 file. This project adheres to [Semantic Versioning](http://semver.org/).
 
-## unreleased
+## Unreleased
+
+## 2.29.0
 
 ### Added
-- New `db_error_total` metrics key with labels `ctx_error`, `db_error`, and `db_error_extra` ([5225](https://github.com/stellar/go/pull/5225)). 
+- New `db_error_total` metrics key with labels `ctx_error`, `db_error`, and `db_error_extra` ([5225](https://github.com/stellar/go/pull/5225)).
+- Bumped go version to the latest (1.22.1) ([5232](https://github.com/stellar/go/pull/5232))
+- Add metrics for ingestion loaders ([5209](https://github.com/stellar/go/pull/5209)).
+- Add metrics for http api requests in flight and requests received ([5240](https://github.com/stellar/go/pull/5240)).
+- Add `MAX_CONCURRENT_REQUESTS`, defaults to 1000, limits the number of horizon api requests in flight ([5244](https://github.com/stellar/go/pull/5244))
+
+### Fixed
+- History archive access is more effective when you pass list of URLs to Horizon: they will now be accessed in a round-robin fashion, use alternative archives on errors, and intelligently back off ([5224](https://github.com/stellar/go/pull/5224))
+- Remove captive core info request error logs ([5145](https://github.com/stellar/go/pull/5145))
+- Removed duplicate "Processed Ledger" log statement during resume state ([5152](https://github.com/stellar/go/pull/5152))
+- Fixed incorrect duration for ingestion processor metric ([5216](https://github.com/stellar/go/pull/5216))
+- Fixed sql performance on account transactions query ([5229](https://github.com/stellar/go/pull/5229))
+- Fix bug in claimable balance change processor ([5246](https://github.com/stellar/go/pull/5246))
+- Delay canceling queries from client side when there's a statement / transaction timeout configured in postgres ([5223](https://github.com/stellar/go/pull/5223))
+
+### Breaking Changes
+- The Horizon API Transaction resource field in json `result_meta_xdr` is now optional and Horizon API will not emit the field when Horizon has been configured with `SKIP_TXMETA=true`, effectively null, otherwise if Horizon is configured with `SKIP_TXMETA=false` which is default, then the API Transaction field `result_meta_xdr` will remain present and populated with base64 encoded xdr [5228](https://github.com/stellar/go/pull/5228).
 
 ## 2.28.3
 
 ### Fixed
-- Fix claimable_balance_claimants subquery in GetClaimableBalances() [5207](https://github.com/stellar/go/pull/5207)
+- Fix claimable_balance_claimants subquery in GetClaimableBalances() ([5207](https://github.com/stellar/go/pull/5207))
 
 ### Added
 - New optional config `SKIP_TXMETA` ([5189](https://github.com/stellar/go/issues/5189)). Defaults to `FALSE`, when `TRUE` the following will occur:
-  * history_transactions.tx_meta column will have serialized xdr that equates to empty for any protocol version, such as for `xdr.TransactionMeta.V3`, `Operations`, `TxChangesAfter`, `TxChangesBefore` will be empty arrays and `SorobanMeta` will be nil. 
+  * history_transactions.tx_meta column will have serialized xdr that equates to empty for any protocol version, such as for `xdr.TransactionMeta.V3`, `Operations`, `TxChangesAfter`, `TxChangesBefore` will be empty arrays and `SorobanMeta` will be nil.
 
 ### Breaking Changes
 - Removed `DISABLE_SOROBAN_INGEST` configuration parameter, use the new `SKIP_TXMETA` parameter instead.
@@ -23,14 +41,13 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 ## 2.28.2
 
 ### Fixed
-- History archive caching would cause file corruption in certain environments [5197](https://github.com/stellar/go/pull/5197)
-- Server error in claimable balance API when claimant, asset and cursor query params are supplied [5200](https://github.com/stellar/go/pull/5200)
+- History archive caching would cause file corruption in certain environments ([5197](https://github.com/stellar/go/pull/5197))
+- Server error in claimable balance API when claimant, asset and cursor query params are supplied ([5200](https://github.com/stellar/go/pull/5200))
 
 ## 2.28.1
 
 ### Fixed
 - Submitting transaction with a future gapped sequence number greater than 1 past current source account sequence, may result in delayed 60s timeout response, rather than expected HTTP 400 error response with `result_codes: {transaction: "tx_bad_seq"}` ([5191](https://github.com/stellar/go/pull/5191))
-
 
 ## 2.28.0
 
@@ -51,21 +68,21 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
   * API `Operation` model for `InvokeHostFunctionOp` type, will have empty `asset_balance_changes`
 
 ### Breaking Changes
-- Deprecation of legacy, non-captive core ingestion([5158](https://github.com/stellar/go/pull/5158)): 
+- Deprecation of legacy, non-captive core ingestion([5158](https://github.com/stellar/go/pull/5158)):
   * removed configuration flags `--stellar-core-url-db`, `--cursor-name` `--skip-cursor-update`, they are no longer usable.
   * removed automatic updating of core cursor from ingestion background processing.<br/>
-    **Note** for upgrading on existing horizon deployments - Since horizon will no longer maintain advancement of this cursor on core, it may require manual removal of the cursor from the core process that your horizon was using for captive core, otherwise that core process may un-necessarily retain older data in buckets on disk up to the last cursor ledger sequence set by prior horizon release. 
-    
+    **Note** for upgrading on existing horizon deployments - Since horizon will no longer maintain advancement of this cursor on core, it may require manual removal of the cursor from the core process that your horizon was using for captive core, otherwise that core process may un-necessarily retain older data in buckets on disk up to the last cursor ledger sequence set by prior horizon release.
+
     The captive core process to check and verify presence of cursor usage is determined by the horizon deployment, if `NETWORK` is present, or `STELLAR_CORE_URL` is present or  `CAPTIVE-CORE-HTTP-PORT` is present and set to non-zero value, or `CAPTIVE-CORE_CONFIG_PATH` is used and the toml has `HTTP_PORT` set to non-zero and `PUBLIC_HTTP_PORT` is not set to false, then it is recommended to perform the following preventative measure on the machine hosting horizon after upgraded to 2.28.0 and process restarted:
     ```
     $ curl http://<captive_core_process_url:captive_core_process_port>/getcursor
     # If there are no cursors reported, done, no need for any action
-    # If any horizon cursors exist they need to be dropped by id. 
-    # By default horizon sets cursor id to "HORIZON" but if it was customized 
+    # If any horizon cursors exist they need to be dropped by id.
+    # By default horizon sets cursor id to "HORIZON" but if it was customized
     # using the --cursor-name flag the id might be different
     $ curl http://<captive_core_process_url:captive_core_process_port>/dropcursor?id=<reported_id_from_getcursor>
-    ```     
-   
+    ```
+
 
 ## 2.27.0
 

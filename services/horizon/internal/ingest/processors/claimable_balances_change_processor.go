@@ -2,7 +2,6 @@ package processors
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
@@ -60,7 +59,8 @@ func (p *ClaimableBalancesChangeProcessor) ProcessChange(ctx context.Context, ch
 func (p *ClaimableBalancesChangeProcessor) Commit(ctx context.Context) error {
 	defer p.reset()
 	var (
-		cbIDsToDelete []string
+		cbIDsToDelete   []string
+		updatedBalances []history.ClaimableBalance
 	)
 	changes := p.cache.GetChanges()
 	for _, change := range changes {
@@ -97,8 +97,13 @@ func (p *ClaimableBalancesChangeProcessor) Commit(ctx context.Context) error {
 			}
 			cbIDsToDelete = append(cbIDsToDelete, id)
 		default:
-			// claimable balance can only be created or removed
-			return fmt.Errorf("invalid change entry for a claimable balance was detected")
+			// this case should only occur if the sponsor has changed in the claimable balance
+			// the other fields of a claimable balance are immutable
+			postCB, err := p.ledgerEntryToRow(change.Post)
+			if err != nil {
+				return err
+			}
+			updatedBalances = append(updatedBalances, postCB)
 		}
 	}
 
@@ -110,6 +115,12 @@ func (p *ClaimableBalancesChangeProcessor) Commit(ctx context.Context) error {
 	err = p.claimableBalanceInsertBuilder.Exec(ctx)
 	if err != nil {
 		return errors.Wrap(err, "error executing ClaimableBalanceBatchInsertBuilder")
+	}
+
+	if len(updatedBalances) > 0 {
+		if err = p.qClaimableBalances.UpsertClaimableBalances(ctx, updatedBalances); err != nil {
+			return errors.Wrap(err, "error updating claimable balances")
+		}
 	}
 
 	if len(cbIDsToDelete) > 0 {

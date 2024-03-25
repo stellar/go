@@ -6,12 +6,12 @@ import (
 	"testing"
 	"time"
 
-	//"github.com/lib/pq"
 	"github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/stellar/go/support/db/dbtest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/stellar/go/support/db/dbtest"
 )
 
 func TestContextTimeoutDuringSql(t *testing.T) {
@@ -138,6 +138,45 @@ func TestStatementTimeout(t *testing.T) {
 	err = sess.GetRaw(context.Background(), &count, "SELECT pg_sleep(2) FROM people")
 	assert.ErrorIs(err, ErrStatementTimeout)
 	assertDbErrorMetrics(reg, "n/a", "57014", "statement_timeout", assert)
+}
+
+func TestDeadlineOverride(t *testing.T) {
+	db := dbtest.Postgres(t).Load(testSchema)
+	defer db.Close()
+
+	sess := &Session{DB: db.Open()}
+	defer sess.DB.Close()
+
+	resultCtx, _, err := sess.context(context.Background())
+	assert.NoError(t, err)
+	_, ok := resultCtx.Deadline()
+	assert.False(t, ok)
+
+	deadline := time.Now().Add(time.Hour)
+	requestCtx := context.WithValue(context.Background(), &DeadlineCtxKey, deadline)
+	resultCtx, _, err = sess.context(requestCtx)
+	assert.NoError(t, err)
+	d, ok := resultCtx.Deadline()
+	assert.True(t, ok)
+	assert.Equal(t, deadline, d)
+
+	requestCtx, cancel := context.WithDeadline(requestCtx, time.Now().Add(time.Minute*30))
+	resultCtx, _, err = sess.context(requestCtx)
+	assert.NoError(t, err)
+	d, ok = resultCtx.Deadline()
+	assert.True(t, ok)
+	assert.Equal(t, deadline, d)
+
+	cancel()
+	assert.NoError(t, resultCtx.Err())
+	_, _, err = sess.context(requestCtx)
+	assert.EqualError(t, err, "context canceled")
+
+	var emptyTime time.Time
+	resultCtx, _, err = sess.context(context.WithValue(context.Background(), &DeadlineCtxKey, emptyTime))
+	assert.NoError(t, err)
+	_, ok = resultCtx.Deadline()
+	assert.False(t, ok)
 }
 
 func TestSession(t *testing.T) {

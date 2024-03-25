@@ -7,8 +7,6 @@ import (
 	"sort"
 	"strings"
 
-	sq "github.com/Masterminds/squirrel"
-
 	"github.com/stellar/go/support/collections/set"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
@@ -108,13 +106,17 @@ func (a *AssetLoader) lookupKeys(ctx context.Context, q *Q, keys []AssetKey) err
 	for i := 0; i < len(keys); i += loaderLookupBatchSize {
 		end := ordered.Min(len(keys), i+loaderLookupBatchSize)
 		subset := keys[i:end]
-		keyStrings := make([]string, 0, len(subset))
+		args := make([]interface{}, 0, 3*len(subset))
+		placeHolders := make([]string, 0, len(subset))
 		for _, key := range subset {
-			keyStrings = append(keyStrings, key.Type+"/"+key.Code+"/"+key.Issuer)
+			args = append(args, key.Code, key.Type, key.Issuer)
+			placeHolders = append(placeHolders, "(?, ?, ?)")
 		}
-		err := q.Select(ctx, &rows, sq.Select("*").From("history_assets").Where(sq.Eq{
-			"concat(asset_type, '/', asset_code, '/', asset_issuer)": keyStrings,
-		}))
+		rawSQL := fmt.Sprintf(
+			"SELECT * FROM  history_assets WHERE (asset_code, asset_type, asset_issuer) in (%s)",
+			strings.Join(placeHolders, ", "),
+		)
+		err := q.SelectRaw(ctx, &rows, rawSQL, args...)
 		if err != nil {
 			return errors.Wrap(err, "could not select assets")
 		}

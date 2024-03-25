@@ -71,8 +71,6 @@ const (
 	// bucket in a single run. This is done to allow preloading keys from
 	// temp set.
 	preloadedEntries = 20000
-
-	sleepDuration = time.Second
 )
 
 // NewCheckpointChangeReader constructs a new CheckpointChangeReader instance.
@@ -126,21 +124,7 @@ func NewCheckpointChangeReader(
 }
 
 func (r *CheckpointChangeReader) bucketExists(hash historyarchive.Hash) (bool, error) {
-	duration := sleepDuration
-	var exists bool
-	var err error
-	for attempts := 0; ; attempts++ {
-		exists, err = r.archive.BucketExists(hash)
-		if err == nil {
-			return exists, nil
-		}
-		if attempts >= maxStreamRetries {
-			break
-		}
-		r.sleep(duration)
-		duration *= 2
-	}
-	return exists, err
+	return r.archive.BucketExists(hash)
 }
 
 // streamBuckets is internal method that streams buckets from the given HAS.

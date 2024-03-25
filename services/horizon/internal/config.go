@@ -38,12 +38,14 @@ type Config struct {
 
 	SSEUpdateFrequency time.Duration
 	ConnectionTimeout  time.Duration
+	ClientQueryTimeout time.Duration
 	// MaxHTTPRequestSize is the maximum allowed request payload size
-	MaxHTTPRequestSize uint
-	RateQuota          *throttled.RateQuota
-	FriendbotURL       *url.URL
-	LogLevel           logrus.Level
-	LogFile            string
+	MaxHTTPRequestSize    uint
+	RateQuota             *throttled.RateQuota
+	MaxConcurrentRequests uint
+	FriendbotURL          *url.URL
+	LogLevel              logrus.Level
+	LogFile               string
 
 	// MaxPathLength is the maximum length of the path returned by `/paths` endpoint.
 	MaxPathLength uint

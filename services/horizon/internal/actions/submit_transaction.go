@@ -27,6 +27,7 @@ type SubmitTransactionHandler struct {
 	NetworkPassphrase string
 	DisableTxSub      bool
 	CoreStateGetter
+	SkipTxMeta bool
 }
 
 type envelopeInfo struct {
@@ -84,6 +85,7 @@ func (handler SubmitTransactionHandler) response(r *http.Request, info envelopeI
 			info.hash,
 			&resource,
 			result.Transaction,
+			handler.SkipTxMeta,
 		)
 		return resource, err
 	}

@@ -28,16 +28,18 @@ import (
 )
 
 type RouterConfig struct {
-	DBSession        db.SessionInterface
-	PrimaryDBSession db.SessionInterface
-	TxSubmitter      *txsub.System
-	RateQuota        *throttled.RateQuota
+	DBSession             db.SessionInterface
+	PrimaryDBSession      db.SessionInterface
+	TxSubmitter           *txsub.System
+	RateQuota             *throttled.RateQuota
+	MaxConcurrentRequests uint
 
 	BehindCloudflare         bool
 	BehindAWSLoadBalancer    bool
 	SSEUpdateFrequency       time.Duration
 	StaleThreshold           uint
 	ConnectionTimeout        time.Duration
+	ClientQueryTimeout       time.Duration
 	MaxHTTPRequestSize       uint
 	NetworkPassphrase        string
 	MaxPathLength            uint
@@ -50,6 +52,7 @@ type RouterConfig struct {
 	HealthCheck              http.Handler
 	EnableIngestionFiltering bool
 	DisableTxSub             bool
+	SkipTxMeta               bool
 }
 
 type Router struct {
@@ -89,6 +92,9 @@ func (r *Router) addMiddleware(config *RouterConfig,
 		BehindAWSLoadBalancer: config.BehindAWSLoadBalancer,
 	}))
 	r.Use(loggerMiddleware(serverMetrics))
+	if config.MaxConcurrentRequests > 0 {
+		r.Use(chimiddleware.Throttle(int(config.MaxConcurrentRequests)))
+	}
 	r.Use(timeoutMiddleware(config.ConnectionTimeout))
 	if config.MaxHTTPRequestSize > 0 {
 		r.Use(func(handler http.Handler) http.Handler {
@@ -138,7 +144,8 @@ func (r *Router) addMiddleware(config *RouterConfig,
 
 func (r *Router) addRoutes(config *RouterConfig, rateLimiter *throttled.HTTPRateLimiter, ledgerState *ledger.State) {
 	stateMiddleware := StateMiddleware{
-		HorizonSession: config.DBSession,
+		HorizonSession:     config.DBSession,
+		ClientQueryTimeout: config.ClientQueryTimeout,
 	}
 
 	r.Method(http.MethodGet, "/health", config.HealthCheck)
@@ -156,7 +163,7 @@ func (r *Router) addRoutes(config *RouterConfig, rateLimiter *throttled.HTTPRate
 		LedgerSourceFactory: historyLedgerSourceFactory{ledgerState: ledgerState, updateFrequency: config.SSEUpdateFrequency},
 	}
 
-	historyMiddleware := NewHistoryMiddleware(ledgerState, int32(config.StaleThreshold), config.DBSession)
+	historyMiddleware := NewHistoryMiddleware(ledgerState, int32(config.StaleThreshold), config.DBSession, config.ClientQueryTimeout)
 	// State endpoints behind stateMiddleware
 	r.Group(func(r chi.Router) {
 		r.Route("/accounts", func(r chi.Router) {
@@ -191,8 +198,9 @@ func (r *Router) addRoutes(config *RouterConfig, rateLimiter *throttled.HTTPRate
 				r.With(historyMiddleware).Method(http.MethodGet, "/operations", streamableHistoryPageHandler(ledgerState, actions.GetOperationsHandler{
 					LedgerState:  ledgerState,
 					OnlyPayments: false,
+					SkipTxMeta:   config.SkipTxMeta,
 				}, streamHandler))
-				r.With(historyMiddleware).Method(http.MethodGet, "/transactions", streamableHistoryPageHandler(ledgerState, actions.GetTransactionsHandler{LedgerState: ledgerState}, streamHandler))
+				r.With(historyMiddleware).Method(http.MethodGet, "/transactions", streamableHistoryPageHandler(ledgerState, actions.GetTransactionsHandler{LedgerState: ledgerState, SkipTxMeta: config.SkipTxMeta}, streamHandler))
 				r.With(historyMiddleware).Method(http.MethodGet, "/effects", streamableHistoryPageHandler(ledgerState, actions.GetEffectsHandler{LedgerState: ledgerState}, streamHandler))
 				r.With(historyMiddleware).Method(http.MethodGet, "/trades", streamableHistoryPageHandler(ledgerState, actions.GetTradesHandler{LedgerState: ledgerState, CoreStateGetter: config.CoreGetter}, streamHandler))
 			})
@@ -241,29 +249,32 @@ func (r *Router) addRoutes(config *RouterConfig, rateLimiter *throttled.HTTPRate
 		r.With(historyMiddleware).Method(http.MethodGet, "/accounts/{account_id:\\w+}/operations", streamableHistoryPageHandler(ledgerState, actions.GetOperationsHandler{
 			LedgerState:  ledgerState,
 			OnlyPayments: false,
+			SkipTxMeta:   config.SkipTxMeta,
 		}, streamHandler))
 		r.With(historyMiddleware).Method(http.MethodGet, "/accounts/{account_id:\\w+}/payments", streamableHistoryPageHandler(ledgerState, actions.GetOperationsHandler{
 			LedgerState:  ledgerState,
 			OnlyPayments: true,
 		}, streamHandler))
 		r.With(historyMiddleware).Method(http.MethodGet, "/accounts/{account_id:\\w+}/trades", streamableHistoryPageHandler(ledgerState, actions.GetTradesHandler{LedgerState: ledgerState, CoreStateGetter: config.CoreGetter}, streamHandler))
-		r.With(historyMiddleware).Method(http.MethodGet, "/accounts/{account_id:\\w+}/transactions", streamableHistoryPageHandler(ledgerState, actions.GetTransactionsHandler{LedgerState: ledgerState}, streamHandler))
+		r.With(historyMiddleware).Method(http.MethodGet, "/accounts/{account_id:\\w+}/transactions", streamableHistoryPageHandler(ledgerState, actions.GetTransactionsHandler{LedgerState: ledgerState, SkipTxMeta: config.SkipTxMeta}, streamHandler))
 	})
 	// ledger actions
 	r.Route("/ledgers", func(r chi.Router) {
 		r.With(historyMiddleware).Method(http.MethodGet, "/", streamableHistoryPageHandler(ledgerState, actions.GetLedgersHandler{LedgerState: ledgerState}, streamHandler))
 		r.Route("/{ledger_id}", func(r chi.Router) {
 			r.With(historyMiddleware).Method(http.MethodGet, "/", ObjectActionHandler{actions.GetLedgerByIDHandler{LedgerState: ledgerState}})
-			r.With(historyMiddleware).Method(http.MethodGet, "/transactions", streamableHistoryPageHandler(ledgerState, actions.GetTransactionsHandler{LedgerState: ledgerState}, streamHandler))
+			r.With(historyMiddleware).Method(http.MethodGet, "/transactions", streamableHistoryPageHandler(ledgerState, actions.GetTransactionsHandler{LedgerState: ledgerState, SkipTxMeta: config.SkipTxMeta}, streamHandler))
 			r.Group(func(r chi.Router) {
 				r.With(historyMiddleware).Method(http.MethodGet, "/effects", streamableHistoryPageHandler(ledgerState, actions.GetEffectsHandler{LedgerState: ledgerState}, streamHandler))
 				r.With(historyMiddleware).Method(http.MethodGet, "/operations", streamableHistoryPageHandler(ledgerState, actions.GetOperationsHandler{
 					LedgerState:  ledgerState,
 					OnlyPayments: false,
+					SkipTxMeta:   config.SkipTxMeta,
 				}, streamHandler))
 				r.With(historyMiddleware).Method(http.MethodGet, "/payments", streamableHistoryPageHandler(ledgerState, actions.GetOperationsHandler{
 					LedgerState:  ledgerState,
 					OnlyPayments: true,
+					SkipTxMeta:   config.SkipTxMeta,
 				}, streamHandler))
 			})
 		})
@@ -275,18 +286,19 @@ func (r *Router) addRoutes(config *RouterConfig, rateLimiter *throttled.HTTPRate
 			LedgerState:  ledgerState,
 			OnlyPayments: false,
 		}, streamHandler))
-		r.With(historyMiddleware).Method(http.MethodGet, "/claimable_balances/{claimable_balance_id:\\w+}/transactions", streamableHistoryPageHandler(ledgerState, actions.GetTransactionsHandler{LedgerState: ledgerState}, streamHandler))
+		r.With(historyMiddleware).Method(http.MethodGet, "/claimable_balances/{claimable_balance_id:\\w+}/transactions", streamableHistoryPageHandler(ledgerState, actions.GetTransactionsHandler{LedgerState: ledgerState, SkipTxMeta: config.SkipTxMeta}, streamHandler))
 	})
 
 	// transaction history actions
 	r.Route("/transactions", func(r chi.Router) {
-		r.With(historyMiddleware).Method(http.MethodGet, "/", streamableHistoryPageHandler(ledgerState, actions.GetTransactionsHandler{LedgerState: ledgerState}, streamHandler))
+		r.With(historyMiddleware).Method(http.MethodGet, "/", streamableHistoryPageHandler(ledgerState, actions.GetTransactionsHandler{LedgerState: ledgerState, SkipTxMeta: config.SkipTxMeta}, streamHandler))
 		r.Route("/{tx_id}", func(r chi.Router) {
 			r.With(historyMiddleware).Method(http.MethodGet, "/", ObjectActionHandler{actions.GetTransactionByHashHandler{}})
 			r.With(historyMiddleware).Method(http.MethodGet, "/effects", streamableHistoryPageHandler(ledgerState, actions.GetEffectsHandler{LedgerState: ledgerState}, streamHandler))
 			r.With(historyMiddleware).Method(http.MethodGet, "/operations", streamableHistoryPageHandler(ledgerState, actions.GetOperationsHandler{
 				LedgerState:  ledgerState,
 				OnlyPayments: false,
+				SkipTxMeta:   config.SkipTxMeta,
 			}, streamHandler))
 			r.With(historyMiddleware).Method(http.MethodGet, "/payments", streamableHistoryPageHandler(ledgerState, actions.GetOperationsHandler{
 				LedgerState:  ledgerState,
@@ -300,8 +312,9 @@ func (r *Router) addRoutes(config *RouterConfig, rateLimiter *throttled.HTTPRate
 		r.With(historyMiddleware).Method(http.MethodGet, "/", streamableHistoryPageHandler(ledgerState, actions.GetOperationsHandler{
 			LedgerState:  ledgerState,
 			OnlyPayments: false,
+			SkipTxMeta:   config.SkipTxMeta,
 		}, streamHandler))
-		r.With(historyMiddleware).Method(http.MethodGet, "/{id}", ObjectActionHandler{actions.GetOperationByIDHandler{LedgerState: ledgerState}})
+		r.With(historyMiddleware).Method(http.MethodGet, "/{id}", ObjectActionHandler{actions.GetOperationByIDHandler{LedgerState: ledgerState, SkipTxMeta: config.SkipTxMeta}})
 		r.With(historyMiddleware).Method(http.MethodGet, "/{op_id}/effects", streamableHistoryPageHandler(ledgerState, actions.GetEffectsHandler{LedgerState: ledgerState}, streamHandler))
 	})
 
@@ -329,6 +342,7 @@ func (r *Router) addRoutes(config *RouterConfig, rateLimiter *throttled.HTTPRate
 		NetworkPassphrase: config.NetworkPassphrase,
 		DisableTxSub:      config.DisableTxSub,
 		CoreStateGetter:   config.CoreGetter,
+		SkipTxMeta:        config.SkipTxMeta,
 	}})
 
 	// Network state related endpoints

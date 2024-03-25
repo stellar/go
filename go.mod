@@ -1,6 +1,8 @@
 module github.com/stellar/go
 
-go 1.20
+go 1.22
+
+toolchain go1.22.1
 
 require (
 	cloud.google.com/go/firestore v1.14.0 // indirect
@@ -56,7 +58,10 @@ require (
 	gopkg.in/tylerb/graceful.v1 v1.2.15
 )
 
-require golang.org/x/sync v0.6.0
+require (
+	github.com/cenkalti/backoff/v4 v4.2.1
+	golang.org/x/sync v0.6.0
+)
 
 require (
 	cloud.google.com/go/compute v1.23.3 // indirect

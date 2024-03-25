@@ -892,12 +892,20 @@ func TestFetchFeeBumpTransaction(t *testing.T) {
 		tt.Assert.Equal(byOuterhash, byInnerHash)
 	}
 
-	var outerEffects, innerEffects []Effect
-	err = q.Effects().ForTransaction(tt.Ctx, fixture.OuterHash).Select(tt.Ctx, &outerEffects)
+	var innerEffects []Effect
+	outerEffects, err := q.EffectsForTransaction(tt.Ctx, fixture.OuterHash, db2.PageQuery{
+		Cursor: "0-0",
+		Order:  "asc",
+		Limit:  200,
+	})
 	tt.Assert.NoError(err)
 	tt.Assert.Len(outerEffects, 1)
 
-	err = q.Effects().ForTransaction(tt.Ctx, fixture.InnerHash).Select(tt.Ctx, &innerEffects)
+	innerEffects, err = q.EffectsForTransaction(tt.Ctx, fixture.InnerHash, db2.PageQuery{
+		Cursor: "0-0",
+		Order:  "asc",
+		Limit:  200,
+	})
 	tt.Assert.NoError(err)
 	tt.Assert.Equal(outerEffects, innerEffects)
 }

@@ -588,6 +588,85 @@ func TestFindClaimableBalancesByDestinationWithLimit(t *testing.T) {
 	})
 }
 
+func TestUpdateClaimableBalance(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	test.ResetHorizonDB(t, tt.HorizonDB)
+	q := &Q{tt.HorizonSession()}
+
+	accountID := "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"
+	lastModifiedLedgerSeq := xdr.Uint32(123)
+	asset := xdr.MustNewCreditAsset("USD", accountID)
+	balanceID := xdr.ClaimableBalanceId{
+		Type: xdr.ClaimableBalanceIdTypeClaimableBalanceIdTypeV0,
+		V0:   &xdr.Hash{1, 2, 3},
+	}
+	id, err := xdr.MarshalHex(balanceID)
+	tt.Assert.NoError(err)
+	cBalance := ClaimableBalance{
+		BalanceID: id,
+		Claimants: []Claimant{
+			{
+				Destination: accountID,
+				Predicate: xdr.ClaimPredicate{
+					Type: xdr.ClaimPredicateTypeClaimPredicateUnconditional,
+				},
+			},
+		},
+		Asset:              asset,
+		LastModifiedLedger: 123,
+		Amount:             10,
+	}
+
+	err = q.UpsertClaimableBalances(tt.Ctx, []ClaimableBalance{cBalance})
+	tt.Assert.NoError(err)
+
+	cBalancesClaimants, err := q.GetClaimantsByClaimableBalances(tt.Ctx, []string{cBalance.BalanceID})
+	tt.Assert.NoError(err)
+	tt.Assert.Len(cBalancesClaimants[cBalance.BalanceID], 1)
+	tt.Assert.Equal(ClaimableBalanceClaimant{
+		BalanceID:          cBalance.BalanceID,
+		Destination:        accountID,
+		LastModifiedLedger: cBalance.LastModifiedLedger,
+	}, cBalancesClaimants[cBalance.BalanceID][0])
+
+	// add sponsor
+	cBalance2 := ClaimableBalance{
+		BalanceID: id,
+		Claimants: []Claimant{
+			{
+				Destination: accountID,
+				Predicate: xdr.ClaimPredicate{
+					Type: xdr.ClaimPredicateTypeClaimPredicateUnconditional,
+				},
+			},
+		},
+		Asset:              asset,
+		LastModifiedLedger: 123 + 1,
+		Amount:             10,
+		Sponsor:            null.StringFrom("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+	}
+
+	err = q.UpsertClaimableBalances(tt.Ctx, []ClaimableBalance{cBalance2})
+	tt.Assert.NoError(err)
+
+	cbs := []ClaimableBalance{}
+	err = q.Select(tt.Ctx, &cbs, selectClaimableBalances)
+	tt.Assert.NoError(err)
+	tt.Assert.Len(cbs, 1)
+	tt.Assert.Equal("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML", cbs[0].Sponsor.String)
+	tt.Assert.Equal(uint32(lastModifiedLedgerSeq+1), cbs[0].LastModifiedLedger)
+
+	cBalancesClaimants, err = q.GetClaimantsByClaimableBalances(tt.Ctx, []string{cBalance2.BalanceID})
+	tt.Assert.NoError(err)
+	tt.Assert.Len(cBalancesClaimants[cBalance2.BalanceID], 1)
+	tt.Assert.Equal(ClaimableBalanceClaimant{
+		BalanceID:          cBalance2.BalanceID,
+		Destination:        accountID,
+		LastModifiedLedger: cBalance2.LastModifiedLedger,
+	}, cBalancesClaimants[cBalance2.BalanceID][0])
+}
+
 func TestFindClaimableBalance(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()

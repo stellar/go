@@ -19,7 +19,6 @@ cd stellar-go
 git config --add remote.origin.fetch "+refs/pull/*/head:refs/remotes/origin/pull/*"
 git fetch --force --quiet origin
 
-GO_VERSION=$(sed -En 's/^go[[:space:]]+([[:digit:].]+)$/\1/p' go.mod)
 wget -q https://dl.google.com/go/go${GO_VERSION}.linux-amd64.tar.gz
 tar -C /usr/local -xzf go${GO_VERSION}.linux-amd64.tar.gz
 rm -f go${GO_VERSION}.linux-amd64.tar.gz

@@ -57,11 +57,11 @@ func TestEffectsForLiquidityPool(t *testing.T) {
 	tt.Assert.NoError(q.Commit())
 
 	var result []Effect
-	err = q.Effects().ForLiquidityPool(tt.Ctx, db2.PageQuery{
+	result, err = q.EffectsForLiquidityPool(tt.Ctx, liquidityPoolID, db2.PageQuery{
 		Cursor: "0-0",
 		Order:  "asc",
 		Limit:  10,
-	}, liquidityPoolID).Select(tt.Ctx, &result)
+	})
 	tt.Assert.NoError(err)
 
 	tt.Assert.Len(result, 1)
@@ -156,8 +156,12 @@ func TestEffectsForTrustlinesSponsorshipEmptyAssetType(t *testing.T) {
 	tt.Require.NoError(builder.Exec(tt.Ctx, q))
 	tt.Assert.NoError(q.Commit())
 
-	var results []Effect
-	tt.Require.NoError(q.Effects().Select(tt.Ctx, &results))
+	results, err := q.Effects(tt.Ctx, db2.PageQuery{
+		Cursor: "0-0",
+		Order:  "asc",
+		Limit:  200,
+	})
+	tt.Require.NoError(err)
 	tt.Require.Len(results, len(tests))
 
 	for i, test := range tests {
