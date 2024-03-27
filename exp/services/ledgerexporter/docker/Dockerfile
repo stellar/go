@@ -25,11 +25,11 @@ RUN echo "deb https://apt.stellar.org focal unstable" >/etc/apt/sources.list.d/S
 RUN apt-get update && apt-get install -y stellar-core=${STELLAR_CORE_VERSION}
 RUN apt-get clean
 
-COPY --from=builder /go/src/github.com/stellar/go/exp/services/ledgerexporter/docker/start /
+COPY exp/services/ledgerexporter/docker/start /
 
 RUN ["chmod", "+x", "/start"]
 
-COPY --from=builder /go/bin/ledgerexporter /
+COPY --from=builder /go/bin/ledgerexporter /usr/bin/ledgerexporter
 
 ENTRYPOINT ["/start"]
 
