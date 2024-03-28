@@ -2,12 +2,21 @@ package httpjson
 
 import (
 	"encoding/json"
+	"github.com/stellar/go/protocols/horizon"
+	proto "github.com/stellar/go/protocols/stellarcore"
 	"net/http"
 
 	"github.com/stellar/go/support/errors"
 )
 
 type contentType int
+
+var coreStatusToHTTPStatus = map[string]int{
+	proto.TXStatusPending:       http.StatusCreated,
+	proto.TXStatusDuplicate:     http.StatusConflict,
+	proto.TXStatusTryAgainLater: http.StatusServiceUnavailable,
+	proto.TXStatusError:         http.StatusBadRequest,
+}
 
 const (
 	JSON contentType = iota
@@ -27,7 +36,12 @@ func renderToString(data interface{}, pretty bool) ([]byte, error) {
 // Render write data to w, after marshaling to json. The response header is
 // set based on cType.
 func Render(w http.ResponseWriter, data interface{}, cType contentType) {
-	RenderStatus(w, http.StatusOK, data, cType)
+	statusCode := http.StatusOK
+	if asyncTxSubResponse, ok := data.(horizon.AsyncTransactionSubmissionResponse); ok {
+		statusCode = coreStatusToHTTPStatus[asyncTxSubResponse.TxStatus]
+	}
+
+	RenderStatus(w, statusCode, data, cType)
 }
 
 // RenderStatus write data to w, after marshaling to json.

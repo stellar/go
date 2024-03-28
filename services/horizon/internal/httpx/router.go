@@ -3,6 +3,7 @@ package httpx
 import (
 	"compress/flate"
 	"fmt"
+	"github.com/stellar/go/clients/stellarcore"
 	"net/http"
 	"net/http/pprof"
 	"net/url"
@@ -53,6 +54,7 @@ type RouterConfig struct {
 	EnableIngestionFiltering bool
 	DisableTxSub             bool
 	SkipTxMeta               bool
+	StellarCoreURL           string
 }
 
 type Router struct {
@@ -345,6 +347,17 @@ func (r *Router) addRoutes(config *RouterConfig, rateLimiter *throttled.HTTPRate
 		SkipTxMeta:        config.SkipTxMeta,
 	}})
 
+	// Async Transaction submission API
+	r.Method(http.MethodPost, "/transactions_async", ObjectActionHandler{actions.AsyncSubmitTransactionHandler{
+		NetworkPassphrase: config.NetworkPassphrase,
+		DisableTxSub:      config.DisableTxSub,
+		CoreStateGetter:   config.CoreGetter,
+		ClientWithMetrics: stellarcore.NewClientWithMetrics(stellarcore.Client{
+			HTTP: http.DefaultClient,
+			URL:  config.StellarCoreURL,
+		}, config.PrometheusRegistry, "async_txsub"),
+	}})
+
 	// Network state related endpoints
 	r.Method(http.MethodGet, "/fee_stats", ObjectActionHandler{actions.FeeStatsHandler{}})
 
@@ -365,6 +378,15 @@ func (r *Router) addRoutes(config *RouterConfig, rateLimiter *throttled.HTTPRate
 	// internal
 	r.Internal.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		p, err := staticFiles.ReadFile("static/admin_oapi.yml")
+		if err != nil {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		w.Header().Set("Content-Type", "application/openapi+yaml")
+		w.Write(p)
+	})
+	r.Internal.Get("/transactions_async", func(w http.ResponseWriter, r *http.Request) {
+		p, err := staticFiles.ReadFile("static/txsub_async_oapi.yaml")
 		if err != nil {
 			w.WriteHeader(http.StatusNotFound)
 			return

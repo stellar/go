@@ -1,6 +1,8 @@
 package txsub
 
 import (
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
 	"net/http"
 	"testing"
@@ -17,8 +19,8 @@ func TestDefaultSubmitter(t *testing.T) {
 		}`)
 	defer server.Close()
 
-	s := NewDefaultSubmitter(http.DefaultClient, server.URL)
-	sr := s.Submit(ctx, "hello")
+	s := NewDefaultSubmitter(http.DefaultClient, server.URL, prometheus.NewRegistry())
+	sr := s.Submit(ctx, "hello", xdr.TransactionEnvelope{})
 	assert.Nil(t, sr.Err)
 	assert.True(t, sr.Duration > 0)
 	assert.Equal(t, "hello", server.LastRequest.URL.Query().Get("blob"))
@@ -30,41 +32,41 @@ func TestDefaultSubmitter(t *testing.T) {
 				}`)
 	defer server.Close()
 
-	s = NewDefaultSubmitter(http.DefaultClient, server.URL)
-	sr = s.Submit(ctx, "hello")
+	s = NewDefaultSubmitter(http.DefaultClient, server.URL, prometheus.NewRegistry())
+	sr = s.Submit(ctx, "hello", xdr.TransactionEnvelope{})
 	assert.Nil(t, sr.Err)
 
 	// Errors when the stellar-core url is empty
 
-	s = NewDefaultSubmitter(http.DefaultClient, "")
-	sr = s.Submit(ctx, "hello")
+	s = NewDefaultSubmitter(http.DefaultClient, "", prometheus.NewRegistry())
+	sr = s.Submit(ctx, "hello", xdr.TransactionEnvelope{})
 	assert.NotNil(t, sr.Err)
 
 	//errors when the stellar-core url is not parseable
 
-	s = NewDefaultSubmitter(http.DefaultClient, "http://Not a url")
-	sr = s.Submit(ctx, "hello")
+	s = NewDefaultSubmitter(http.DefaultClient, "http://Not a url", prometheus.NewRegistry())
+	sr = s.Submit(ctx, "hello", xdr.TransactionEnvelope{})
 	assert.NotNil(t, sr.Err)
 
 	// errors when the stellar-core url is not reachable
-	s = NewDefaultSubmitter(http.DefaultClient, "http://127.0.0.1:65535")
-	sr = s.Submit(ctx, "hello")
+	s = NewDefaultSubmitter(http.DefaultClient, "http://127.0.0.1:65535", prometheus.NewRegistry())
+	sr = s.Submit(ctx, "hello", xdr.TransactionEnvelope{})
 	assert.NotNil(t, sr.Err)
 
 	// errors when the stellar-core returns an unparseable response
 	server = test.NewStaticMockServer(`{`)
 	defer server.Close()
 
-	s = NewDefaultSubmitter(http.DefaultClient, server.URL)
-	sr = s.Submit(ctx, "hello")
+	s = NewDefaultSubmitter(http.DefaultClient, server.URL, prometheus.NewRegistry())
+	sr = s.Submit(ctx, "hello", xdr.TransactionEnvelope{})
 	assert.NotNil(t, sr.Err)
 
 	// errors when the stellar-core returns an exception response
 	server = test.NewStaticMockServer(`{"exception": "Invalid XDR"}`)
 	defer server.Close()
 
-	s = NewDefaultSubmitter(http.DefaultClient, server.URL)
-	sr = s.Submit(ctx, "hello")
+	s = NewDefaultSubmitter(http.DefaultClient, server.URL, prometheus.NewRegistry())
+	sr = s.Submit(ctx, "hello", xdr.TransactionEnvelope{})
 	assert.NotNil(t, sr.Err)
 	assert.Contains(t, sr.Err.Error(), "Invalid XDR")
 
@@ -72,8 +74,8 @@ func TestDefaultSubmitter(t *testing.T) {
 	server = test.NewStaticMockServer(`{"status": "NOTREAL"}`)
 	defer server.Close()
 
-	s = NewDefaultSubmitter(http.DefaultClient, server.URL)
-	sr = s.Submit(ctx, "hello")
+	s = NewDefaultSubmitter(http.DefaultClient, server.URL, prometheus.NewRegistry())
+	sr = s.Submit(ctx, "hello", xdr.TransactionEnvelope{})
 	assert.NotNil(t, sr.Err)
 	assert.Contains(t, sr.Err.Error(), "NOTREAL")
 
@@ -81,8 +83,8 @@ func TestDefaultSubmitter(t *testing.T) {
 	server = test.NewStaticMockServer(`{"status": "ERROR", "error": "1234"}`)
 	defer server.Close()
 
-	s = NewDefaultSubmitter(http.DefaultClient, server.URL)
-	sr = s.Submit(ctx, "hello")
+	s = NewDefaultSubmitter(http.DefaultClient, server.URL, prometheus.NewRegistry())
+	sr = s.Submit(ctx, "hello", xdr.TransactionEnvelope{})
 	assert.IsType(t, &FailedTransactionError{}, sr.Err)
 	ferr := sr.Err.(*FailedTransactionError)
 	assert.Equal(t, "1234", ferr.ResultXDR)

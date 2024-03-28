@@ -11,6 +11,7 @@ import (
 	"database/sql"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stellar/go/services/horizon/internal/ledger"
+	"github.com/stellar/go/xdr"
 
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stretchr/testify/mock"
@@ -23,7 +24,7 @@ type MockSubmitter struct {
 }
 
 // Submit implements `txsub.Submitter`
-func (sub *MockSubmitter) Submit(ctx context.Context, env string) SubmissionResult {
+func (sub *MockSubmitter) Submit(ctx context.Context, env string, envelope xdr.TransactionEnvelope) SubmissionResult {
 	sub.WasSubmittedTo = true
 	return sub.R
 }

@@ -567,6 +567,22 @@ type InnerTransaction struct {
 	MaxFee     int64    `json:"max_fee,string"`
 }
 
+// AsyncTransactionSubmissionResponse represents the response returned by Horizon
+// when using the transaction-async endpoint.
+type AsyncTransactionSubmissionResponse struct {
+	// ErrorResultXDR is present only if Status is equal to proto.TXStatusError.
+	// ErrorResultXDR is a TransactionResult xdr string which contains details on why
+	// the transaction could not be accepted by stellar-core.
+	ErrorResultXDR string `json:"errorResultXdr,omitempty"`
+	// TxStatus represents the status of the transaction submission returned by stellar-core.
+	// It can be one of: proto.TXStatusPending, proto.TXStatusDuplicate,
+	// proto.TXStatusTryAgainLater, or proto.TXStatusError.
+	TxStatus string `json:"tx_status"`
+	// Hash is a hash of the transaction which can be used to look up whether
+	// the transaction was included in the ledger.
+	Hash string `json:"hash"`
+}
+
 // MarshalJSON implements a custom marshaler for Transaction.
 // The memo field should be omitted if and only if the
 // memo_type is "none".

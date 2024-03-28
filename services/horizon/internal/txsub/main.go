@@ -42,7 +42,7 @@ type OpenSubmissionList interface {
 // provider.
 type Submitter interface {
 	// Submit sends the provided transaction envelope to stellar-core
-	Submit(context.Context, string) SubmissionResult
+	Submit(context.Context, string, xdr.TransactionEnvelope) SubmissionResult
 }
 
 // Result represents the response from a ResultProvider.  Given no

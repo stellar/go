@@ -545,6 +545,7 @@ func (a *App) init() error {
 		FriendbotURL:             a.config.FriendbotURL,
 		EnableIngestionFiltering: a.config.EnableIngestionFiltering,
 		DisableTxSub:             a.config.DisableTxSub,
+		StellarCoreURL:           a.config.StellarCoreURL,
 		HealthCheck: healthCheck{
 			session: a.historyQ.SessionInterface,
 			ctx:     a.ctx,

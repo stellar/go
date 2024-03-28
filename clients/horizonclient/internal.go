@@ -27,7 +27,10 @@ func decodeResponse(resp *http.Response, object interface{}, horizonUrl string, 
 	}
 	setCurrentServerTime(u.Hostname(), resp.Header["Date"], clock)
 
-	if !(resp.StatusCode >= 200 && resp.StatusCode < 300) {
+	// While this part of code assumes that any error < 200 or error >= 300 is a Horizon problem, it is not
+	// true for the response from /transactions_async endpoint which does give these codes for certain responses
+	// from core.
+	if !(resp.StatusCode >= 200 && resp.StatusCode < 300) && (resp.Request == nil || resp.Request.URL == nil || resp.Request.URL.Path != "/transactions_async") {
 		horizonError := &Error{
 			Response: resp,
 		}

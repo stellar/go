@@ -3,16 +3,16 @@ package actions
 import (
 	"context"
 	"encoding/hex"
+	"github.com/stellar/go/network"
+	"github.com/stellar/go/support/errors"
 	"mime"
 	"net/http"
 
-	"github.com/stellar/go/network"
 	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/protocols/stellarcore"
 	hProblem "github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"
 	"github.com/stellar/go/services/horizon/internal/txsub"
-	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/render/hal"
 	"github.com/stellar/go/support/render/problem"
 	"github.com/stellar/go/xdr"
@@ -37,7 +37,7 @@ type envelopeInfo struct {
 	parsed    xdr.TransactionEnvelope
 }
 
-func (handler SubmitTransactionHandler) extractEnvelopeInfo(raw string, passphrase string) (envelopeInfo, error) {
+func extractEnvelopeInfo(raw string, passphrase string) (envelopeInfo, error) {
 	result := envelopeInfo{raw: raw}
 	err := xdr.SafeUnmarshalBase64(raw, &result.parsed)
 	if err != nil {
@@ -60,7 +60,7 @@ func (handler SubmitTransactionHandler) extractEnvelopeInfo(raw string, passphra
 	return result, nil
 }
 
-func (handler SubmitTransactionHandler) validateBodyType(r *http.Request) error {
+func validateBodyType(r *http.Request) error {
 	c := r.Header.Get("Content-Type")
 	if c == "" {
 		return nil
@@ -139,7 +139,7 @@ func (handler SubmitTransactionHandler) response(r *http.Request, info envelopeI
 }
 
 func (handler SubmitTransactionHandler) GetResource(w HeaderWriter, r *http.Request) (interface{}, error) {
-	if err := handler.validateBodyType(r); err != nil {
+	if err := validateBodyType(r); err != nil {
 		return nil, err
 	}
 
@@ -159,7 +159,7 @@ func (handler SubmitTransactionHandler) GetResource(w HeaderWriter, r *http.Requ
 		return nil, err
 	}
 
-	info, err := handler.extractEnvelopeInfo(raw, handler.NetworkPassphrase)
+	info, err := extractEnvelopeInfo(raw, handler.NetworkPassphrase)
 	if err != nil {
 		return nil, &problem.P{
 			Type:   "transaction_malformed",

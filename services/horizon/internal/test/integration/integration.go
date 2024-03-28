@@ -916,6 +916,11 @@ func (i *Test) MetricsURL() string {
 	return fmt.Sprintf("http://localhost:%d/metrics", i.AdminPort())
 }
 
+// AsyncTxSubOpenAPISpecURL returns the URL for getting the openAPI spec yaml for async-txsub endpoint.
+func (i *Test) AsyncTxSubOpenAPISpecURL() string {
+	return fmt.Sprintf("http://localhost:%d/transactions_async", i.AdminPort())
+}
+
 // Master returns a keypair of the network masterKey account.
 func (i *Test) Master() *keypair.Full {
 	if i.masterKey != nil {
@@ -1149,6 +1154,22 @@ func (i *Test) SubmitMultiSigTransaction(
 		return proto.Transaction{}, err
 	}
 	return i.Client().SubmitTransaction(tx)
+}
+
+func (i *Test) AsyncSubmitTransaction(
+	signer *keypair.Full, txParams txnbuild.TransactionParams,
+) (proto.AsyncTransactionSubmissionResponse, error) {
+	return i.AsyncSubmitMultiSigTransaction([]*keypair.Full{signer}, txParams)
+}
+
+func (i *Test) AsyncSubmitMultiSigTransaction(
+	signers []*keypair.Full, txParams txnbuild.TransactionParams,
+) (proto.AsyncTransactionSubmissionResponse, error) {
+	tx, err := i.CreateSignedTransaction(signers, txParams)
+	if err != nil {
+		return proto.AsyncTransactionSubmissionResponse{}, err
+	}
+	return i.Client().AsyncSubmitTransaction(tx)
 }
 
 func (i *Test) MustSubmitMultiSigTransaction(
