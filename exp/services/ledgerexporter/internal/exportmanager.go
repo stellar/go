@@ -2,15 +2,52 @@ package ledgerexporter
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/pkg/errors"
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/xdr"
 )
 
+const (
+	fileSuffix = ".xdr.gz"
+)
+
 type ExporterConfig struct {
 	LedgersPerFile    uint32 `toml:"ledgers_per_file"`
 	FilesPerPartition uint32 `toml:"files_per_partition"`
+}
+
+func (ec ExporterConfig) GetSequenceNumberStartBoundary(ledgerSeq uint32) uint32 {
+	return (ledgerSeq / ec.LedgersPerFile) * ec.LedgersPerFile
+}
+
+func (ec ExporterConfig) GetSequenceNumberEndBoundary(ledgerSeq uint32) uint32 {
+	return ec.GetSequenceNumberStartBoundary(ledgerSeq) + ec.LedgersPerFile - 1
+}
+
+// GetObjectKeyFromSequenceNumber generates the object key name from the ledger sequence number based on configuration.
+func (ec ExporterConfig) GetObjectKeyFromSequenceNumber(ledgerSeq uint32) string {
+	var objectKey string
+
+	if ec.FilesPerPartition > 1 {
+		partitionSize := ec.LedgersPerFile * ec.FilesPerPartition
+		partitionStart := (ledgerSeq / partitionSize) * partitionSize
+		partitionEnd := partitionStart + partitionSize - 1
+		objectKey = fmt.Sprintf("%d-%d/", partitionStart, partitionEnd)
+	}
+
+	fileStart := ec.GetSequenceNumberStartBoundary(ledgerSeq)
+	fileEnd := ec.GetSequenceNumberEndBoundary(ledgerSeq)
+	objectKey += fmt.Sprintf("%d", fileStart)
+
+	// Multiple ledgers per file
+	if fileStart != fileEnd {
+		objectKey += fmt.Sprintf("-%d", fileEnd)
+	}
+	objectKey += fileSuffix
+
+	return objectKey
 }
 
 // ExportManager manages the creation and handling of export objects.
@@ -28,12 +65,17 @@ type exportManager struct {
 }
 
 // NewExportManager creates a new ExportManager with the provided configuration.
-func NewExportManager(config ExporterConfig, backend ledgerbackend.LedgerBackend) ExportManager {
+func NewExportManager(config ExporterConfig, backend ledgerbackend.LedgerBackend) (ExportManager, error) {
+
+	if config.LedgersPerFile < 1 {
+		return nil, errors.Errorf("Invalid ledgers per file (%d): must be at least 1", config.LedgersPerFile)
+	}
+
 	return &exportManager{
 		config:        config,
 		ledgerBackend: backend,
 		metaArchiveCh: make(chan *LedgerMetaArchive, 1),
-	}
+	}, nil
 }
 
 // GetMetaArchiveChannel returns a channel that receives LedgerMetaArchive objects.
@@ -46,10 +88,8 @@ func (e *exportManager) AddLedgerCloseMeta(ctx context.Context, ledgerCloseMeta 
 	ledgerSeq := ledgerCloseMeta.LedgerSequence()
 
 	// Determine the object key for the given ledger sequence
-	objectKey, err := GetObjectKeyFromSequenceNumber(e.config, ledgerSeq)
-	if err != nil {
-		return errors.Wrapf(err, "failed to get object key for ledger %d", ledgerSeq)
-	}
+	objectKey := e.config.GetObjectKeyFromSequenceNumber(ledgerSeq)
+
 	if e.currentMetaArchive != nil && e.currentMetaArchive.GetObjectKey() != objectKey {
 		return errors.New("Current meta archive object key mismatch")
 	}
@@ -67,7 +107,7 @@ func (e *exportManager) AddLedgerCloseMeta(ctx context.Context, ledgerCloseMeta 
 		e.currentMetaArchive = NewLedgerMetaArchive(objectKey, ledgerSeq, endSeq)
 	}
 
-	err = e.currentMetaArchive.AddLedger(ledgerCloseMeta)
+	err := e.currentMetaArchive.AddLedger(ledgerCloseMeta)
 	if err != nil {
 		return errors.Wrapf(err, "failed to add ledger %d", ledgerSeq)
 	}

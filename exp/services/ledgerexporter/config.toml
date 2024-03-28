@@ -1,4 +1,9 @@
 network = "testnet"
+
+[datastore_config]
+type = "GCS"
+
+[datastore_config.params]
 destination_url = "gcs://exporter-test/ledgers"
 
 [exporter_config]

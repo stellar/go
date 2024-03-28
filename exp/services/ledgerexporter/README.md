@@ -43,6 +43,11 @@ ledgerexporter --from-last <number_of_ledgers> --config-file <config_file_path>
 
 ```toml
 network = "testnet"  # Options: `testnet` or `pubnet`
+
+[datastore_config]
+type = "GCS"
+
+[datastore_config.params]
 destination_url = "gcs://your-bucket-name"
 
 [exporter_config]

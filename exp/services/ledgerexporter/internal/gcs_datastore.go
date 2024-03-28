@@ -2,15 +2,19 @@ package ledgerexporter
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"path"
+	"strings"
 
 	"google.golang.org/api/googleapi"
+	"google.golang.org/api/option"
 
 	"cloud.google.com/go/storage"
 	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/support/url"
 )
 
 // GCSDataStore implements DataStore for GCS
@@ -18,6 +22,45 @@ type GCSDataStore struct {
 	client *storage.Client
 	bucket *storage.BucketHandle
 	prefix string
+}
+
+func NewGCSDataStore(ctx context.Context, params map[string]string, network string) (DataStore, error) {
+	destinationURL, ok := params["destinationURL"]
+	if !ok {
+		return nil, errors.Errorf("Invalid GCS config, no destination URL")
+	}
+
+	gcsNetworkURL := fmt.Sprintf("%s/%s", destinationURL, network)
+	parsed, err := url.Parse(gcsNetworkURL)
+	if err != nil {
+		return nil, err
+	}
+
+	pth := parsed.Path
+	if parsed.Scheme != "gcs" {
+		return nil, errors.Errorf("Invalid destination URL %v. Expected GCS URL ", gcsNetworkURL)
+	}
+
+	// Inside gcs, all paths start _without_ the leading /
+	pth = strings.TrimPrefix(pth, "/")
+	bucketName := parsed.Host
+	prefix := pth
+
+	logger.Infof("creating GCS client for bucket: %s, prefix: %s", bucketName, prefix)
+
+	var options []option.ClientOption
+	client, err := storage.NewClient(ctx, options...)
+	if err != nil {
+		return nil, err
+	}
+
+	// Check the bucket exists
+	bucket := client.Bucket(bucketName)
+	if _, err := bucket.Attrs(ctx); err != nil {
+		return nil, errors.Wrap(err, "failed to retrieve bucket attributes")
+	}
+
+	return &GCSDataStore{client: client, bucket: bucket, prefix: prefix}, nil
 }
 
 // GetFile retrieves a file from the GCS bucket.

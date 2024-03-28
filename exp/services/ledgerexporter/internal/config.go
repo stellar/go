@@ -1,8 +1,8 @@
 package ledgerexporter
 
 import (
+	"context"
 	_ "embed"
-	"flag"
 	"os/exec"
 
 	"github.com/stellar/go/historyarchive"
@@ -17,6 +17,12 @@ import (
 const Pubnet = "pubnet"
 const Testnet = "testnet"
 
+type Flags struct {
+	StartLedger    uint
+	EndLedger      uint
+	ConfigFilePath string
+}
+
 type StellarCoreConfig struct {
 	NetworkPassphrase     string   `toml:"network_passphrase"`
 	HistoryArchiveUrls    []string `toml:"history_archive_urls"`
@@ -24,89 +30,57 @@ type StellarCoreConfig struct {
 	CaptiveCoreTomlPath   string   `toml:"captive_core_toml_path"`
 }
 
+type DataStoreConfig struct {
+	Type   string            `toml:"type"`
+	Params map[string]string `toml:"params"`
+}
+
 type Config struct {
 	Network           string            `toml:"network"`
-	DestinationURL    string            `toml:"destination_url"`
+	DataStoreConfig   DataStoreConfig   `toml:"datastore_config"`
 	ExporterConfig    ExporterConfig    `toml:"exporter_config"`
 	StellarCoreConfig StellarCoreConfig `toml:"stellar_core_config"`
 
 	//From command-line
-	StartLedger          uint32 `toml:"start"`
-	EndLedger            uint32 `toml:"end"`
-	StartFromLastLedgers uint32 `toml:"from-last"`
+	StartLedger uint32 `toml:"start"`
+	EndLedger   uint32 `toml:"end"`
 }
 
-func (config *Config) LoadConfig() error {
-	// Parse command-line options
-	startLedger := flag.Uint("start", 0, "Starting ledger")
-	endLedger := flag.Uint("end", 0, "Ending ledger (inclusive)")
-	startFromLastNLedger := flag.Uint("from-last", 0, "Start streaming from last N ledgers")
+func NewConfig(ctx context.Context, networkManager NetworkManager, flags Flags) (*Config, error) {
+	config := &Config{}
 
-	configFilePath := flag.String("config-file", "config.toml", "Path to the TOML config file")
-	flag.Parse()
+	config.StartLedger = uint32(flags.StartLedger)
+	config.EndLedger = uint32(flags.EndLedger)
 
-	config.StartLedger = uint32(*startLedger)
-	config.EndLedger = uint32(*endLedger)
-	config.StartFromLastLedgers = uint32(*startFromLastNLedger)
+	logger.Infof("Requested ledger range start=%d, end=%d", config.StartLedger, config.EndLedger)
 
 	// Load config TOML file
-	cfg, err := toml.LoadFile(*configFilePath)
+	cfg, err := toml.LoadFile(flags.ConfigFilePath)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Unmarshal TOML data into the Config struct
-	err = cfg.Unmarshal(config)
-	logFatalIf(err, "Error unmarshalling TOML config.")
+	if err := cfg.Unmarshal(config); err != nil {
+		return nil, errors.Wrap(err, "Error unmarshalling TOML config.")
+	}
 	logger.Infof("Config: %v", *config)
 
-	var historyArchiveUrls []string
-	switch config.Network {
-	case Pubnet:
-		historyArchiveUrls = network.PublicNetworkhistoryArchiveURLs
-	case Testnet:
-		historyArchiveUrls = network.TestNetworkhistoryArchiveURLs
-	default:
-		logger.Fatalf("Invalid network %s", config.Network)
-	}
-
-	// Retrieve the latest ledger sequence from history archives
-	latestNetworkLedger, err := getLatestLedgerSequenceFromHistoryArchives(historyArchiveUrls)
-	logFatalIf(err, "Failed to retrieve the latest ledger sequence from history archives.")
-
-	// Validate config params
-	err = config.validateAndSetLedgerRange(latestNetworkLedger)
-	logFatalIf(err, "Error validating config params.")
-
-	// Validate and build the appropriate range
-	// TODO: Make it configurable
-	config.adjustLedgerRange()
-
-	return nil
+	return config, config.validateAndSetLedgerRange(ctx, networkManager)
 }
 
-func (config *Config) validateAndSetLedgerRange(latestNetworkLedger uint32) error {
-	if config.StartFromLastLedgers > 0 && (config.StartLedger > 0 || config.EndLedger > 0) {
-		return errors.New("--from-last cannot be used with --start or --end")
+func (config *Config) validateAndSetLedgerRange(ctx context.Context, network NetworkManager) error {
+	// Retrieve the latest ledger sequence from history archives
+	latestNetworkLedger, err := network.GetLatestLedgerSequenceFromHistoryArchives(ctx, config.Network)
+	if err != nil {
+		return errors.Wrap(err, "Failed to retrieve the latest ledger sequence from history archives.")
 	}
-
-	if config.StartFromLastLedgers > 0 {
-		if config.StartFromLastLedgers > latestNetworkLedger {
-			return errors.Errorf("--from-last %d exceeds latest network ledger %d",
-				config.StartLedger, latestNetworkLedger)
-		}
-		config.StartLedger = latestNetworkLedger - config.StartFromLastLedgers
-		logger.Infof("Setting start ledger to %d, calculated as latest ledger (%d) minus --from-last value (%d)",
-			config.StartLedger, latestNetworkLedger, config.StartFromLastLedgers)
-	}
+	logger.Infof("Latest %v ledger sequence was detected as %d", config.Network, latestNetworkLedger)
 
 	if config.StartLedger > latestNetworkLedger {
 		return errors.Errorf("--start %d exceeds latest network ledger %d",
 			config.StartLedger, latestNetworkLedger)
 	}
-
-	// Ensure that the start ledger is at least 2.
-	config.StartLedger = ordered.Max(2, config.StartLedger)
 
 	if config.EndLedger != 0 { // Bounded mode
 		if config.EndLedger < config.StartLedger {
@@ -118,16 +92,16 @@ func (config *Config) validateAndSetLedgerRange(latestNetworkLedger uint32) erro
 		}
 	}
 
+	config.adjustLedgerRange()
 	return nil
 }
 
 func (config *Config) adjustLedgerRange() {
-	logger.Infof("Requested ledger range start=%d, end=%d", config.StartLedger, config.EndLedger)
 
 	// Check if either the start or end ledger does not fall on the "LedgersPerFile" boundary
 	// and adjust the start and end ledger accordingly.
 	// Align the start ledger to the nearest "LedgersPerFile" boundary.
-	config.StartLedger = config.StartLedger / config.ExporterConfig.LedgersPerFile * config.ExporterConfig.LedgersPerFile
+	config.StartLedger = config.ExporterConfig.GetSequenceNumberStartBoundary(config.StartLedger)
 
 	// Ensure that the adjusted start ledger is at least 2.
 	config.StartLedger = ordered.Max(2, config.StartLedger)
@@ -140,17 +114,18 @@ func (config *Config) adjustLedgerRange() {
 		}
 	}
 
-	logger.Infof("Adjusted ledger range: start=%d, end=%d", config.StartLedger, config.EndLedger)
+	logger.Infof("Computed effective export boundary ledger range: start=%d, end=%d", config.StartLedger, config.EndLedger)
 }
 
-func (config *Config) GenerateCaptiveCoreConfig() ledgerbackend.CaptiveCoreConfig {
+func (config *Config) GenerateCaptiveCoreConfig() (ledgerbackend.CaptiveCoreConfig, error) {
 	coreConfig := &config.StellarCoreConfig
 
 	// Look for stellar-core binary in $PATH, if not supplied
 	if coreConfig.StellarCoreBinaryPath == "" {
 		var err error
-		coreConfig.StellarCoreBinaryPath, err = exec.LookPath("stellar-core")
-		logFatalIf(err, "Failed to find stellar-core binary")
+		if coreConfig.StellarCoreBinaryPath, err = exec.LookPath("stellar-core"); err != nil {
+			return ledgerbackend.CaptiveCoreConfig{}, errors.Wrap(err, "Failed to find stellar-core binary")
+		}
 	}
 
 	var captiveCoreConfig []byte
@@ -177,7 +152,9 @@ func (config *Config) GenerateCaptiveCoreConfig() ledgerbackend.CaptiveCoreConfi
 	}
 
 	captiveCoreToml, err := ledgerbackend.NewCaptiveCoreTomlFromData(captiveCoreConfig, params)
-	logFatalIf(err, "Failed to create captive-core toml")
+	if err != nil {
+		return ledgerbackend.CaptiveCoreConfig{}, errors.Wrap(err, "Failed to create captive-core toml")
+	}
 
 	return ledgerbackend.CaptiveCoreConfig{
 		BinaryPath:          coreConfig.StellarCoreBinaryPath,
@@ -188,5 +165,5 @@ func (config *Config) GenerateCaptiveCoreConfig() ledgerbackend.CaptiveCoreConfi
 		Toml:                captiveCoreToml,
 		UserAgent:           "ledger-exporter",
 		UseDB:               true,
-	}
+	}, nil
 }

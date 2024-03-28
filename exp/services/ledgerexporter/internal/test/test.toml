@@ -1,0 +1,11 @@
+network = "test"  
+
+[datastore_config]
+type = "ABC"
+
+[datastore_config.params]
+destination_url = "gcs://your-bucket-name"
+
+[exporter_config]
+ledgers_per_file = 3
+files_per_partition = 1
