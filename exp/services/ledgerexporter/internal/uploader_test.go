@@ -35,6 +35,7 @@ func (s *UploaderSuite) SetupTest() {
 
 func (s *UploaderSuite) TestUpload() {
 	s.testUpload(false)
+	s.testUpload(true)
 }
 
 func (s *UploaderSuite) testUpload(putOkReturnVal bool) {
