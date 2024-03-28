@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strconv"
 	"testing"
 	"time"
 
@@ -33,6 +34,10 @@ func (s *UploaderSuite) SetupTest() {
 }
 
 func (s *UploaderSuite) TestUpload() {
+	s.testUpload(false)
+}
+
+func (s *UploaderSuite) testUpload(putOkReturnVal bool) {
 	key, start, end := "test-1-100", uint32(1), uint32(100)
 	archive := NewLedgerMetaArchive(key, start, end)
 	for i := start; i <= end; i++ {
@@ -46,7 +51,7 @@ func (s *UploaderSuite) TestUpload() {
 			capturedKey = args.Get(1).(string)
 			_, err := args.Get(2).(io.WriterTo).WriteTo(&capturedBuf)
 			require.NoError(s.T(), err)
-		}).Return(nil).Once()
+		}).Return(putOkReturnVal, nil).Once()
 
 	registry := prometheus.NewRegistry()
 	queue := NewUploadQueue(1, registry)
@@ -63,8 +68,10 @@ func (s *UploaderSuite) TestUpload() {
 	require.Equal(s.T(), key, capturedKey)
 	require.Equal(s.T(), archive.data, decodedArchive.data)
 
+	alreadyExists := !putOkReturnVal
 	metric, err := dataUploader.uploadDurationMetric.MetricVec.GetMetricWith(prometheus.Labels{
-		"ledgers": "100",
+		"ledgers":        "100",
+		"already_exists": strconv.FormatBool(alreadyExists),
 	})
 	require.NoError(s.T(), err)
 	require.Equal(
@@ -73,10 +80,21 @@ func (s *UploaderSuite) TestUpload() {
 		getMetricValue(metric).GetSummary().GetSampleCount(),
 	)
 	require.Positive(s.T(), getMetricValue(metric).GetSummary().GetSampleSum())
+	metric, err = dataUploader.uploadDurationMetric.MetricVec.GetMetricWith(prometheus.Labels{
+		"ledgers":        "100",
+		"already_exists": strconv.FormatBool(!alreadyExists),
+	})
+	require.NoError(s.T(), err)
+	require.Equal(
+		s.T(),
+		uint64(0),
+		getMetricValue(metric).GetSummary().GetSampleCount(),
+	)
 
 	metric, err = dataUploader.objectSizeMetrics.MetricVec.GetMetricWith(prometheus.Labels{
-		"ledgers":     "100",
-		"compression": "gzip",
+		"ledgers":        "100",
+		"compression":    "gzip",
+		"already_exists": strconv.FormatBool(alreadyExists),
 	})
 	require.NoError(s.T(), err)
 	require.Equal(
@@ -89,10 +107,22 @@ func (s *UploaderSuite) TestUpload() {
 		float64(expectedCompressedLength),
 		getMetricValue(metric).GetSummary().GetSampleSum(),
 	)
+	metric, err = dataUploader.objectSizeMetrics.MetricVec.GetMetricWith(prometheus.Labels{
+		"ledgers":        "100",
+		"compression":    "gzip",
+		"already_exists": strconv.FormatBool(!alreadyExists),
+	})
+	require.NoError(s.T(), err)
+	require.Equal(
+		s.T(),
+		uint64(0),
+		getMetricValue(metric).GetSummary().GetSampleCount(),
+	)
 
 	metric, err = dataUploader.objectSizeMetrics.MetricVec.GetMetricWith(prometheus.Labels{
-		"ledgers":     "100",
-		"compression": "none",
+		"ledgers":        "100",
+		"compression":    "none",
+		"already_exists": strconv.FormatBool(alreadyExists),
 	})
 	require.NoError(s.T(), err)
 	require.Equal(
@@ -107,14 +137,30 @@ func (s *UploaderSuite) TestUpload() {
 		float64(len(uncompressedPayload)),
 		getMetricValue(metric).GetSummary().GetSampleSum(),
 	)
+	metric, err = dataUploader.objectSizeMetrics.MetricVec.GetMetricWith(prometheus.Labels{
+		"ledgers":        "100",
+		"compression":    "none",
+		"already_exists": strconv.FormatBool(!alreadyExists),
+	})
+	require.NoError(s.T(), err)
+	require.Equal(
+		s.T(),
+		uint64(0),
+		getMetricValue(metric).GetSummary().GetSampleCount(),
+	)
 }
 
 func (s *UploaderSuite) TestUploadPutError() {
+	s.testUploadPutError(true)
+	s.testUploadPutError(false)
+}
+
+func (s *UploaderSuite) testUploadPutError(putOkReturnVal bool) {
 	key, start, end := "test-1-100", uint32(1), uint32(100)
 	archive := NewLedgerMetaArchive(key, start, end)
 
 	s.mockDataStore.On("PutFileIfNotExists", context.Background(), key,
-		mock.Anything).Return(errors.New("error in PutFileIfNotExists"))
+		mock.Anything).Return(putOkReturnVal, errors.New("error in PutFileIfNotExists"))
 
 	registry := prometheus.NewRegistry()
 	queue := NewUploadQueue(1, registry)
@@ -122,42 +168,37 @@ func (s *UploaderSuite) TestUploadPutError() {
 	err := dataUploader.Upload(context.Background(), archive)
 	require.Equal(s.T(), fmt.Sprintf("error uploading %s: error in PutFileIfNotExists", key), err.Error())
 
-	metric, err := dataUploader.uploadDurationMetric.MetricVec.GetMetricWith(prometheus.Labels{
-		"ledgers": "100",
-	})
-	require.NoError(s.T(), err)
-	require.Equal(
-		s.T(),
-		uint64(0),
-		getMetricValue(metric).GetSummary().GetSampleCount(),
-	)
+	for _, alreadyExists := range []string{"true", "false"} {
+		metric, err := dataUploader.uploadDurationMetric.MetricVec.GetMetricWith(prometheus.Labels{
+			"ledgers":        "100",
+			"already_exists": alreadyExists,
+		})
+		require.NoError(s.T(), err)
+		require.Equal(
+			s.T(),
+			uint64(0),
+			getMetricValue(metric).GetSummary().GetSampleCount(),
+		)
 
-	metric, err = dataUploader.objectSizeMetrics.MetricVec.GetMetricWith(prometheus.Labels{
-		"ledgers":     "100",
-		"compression": "none",
-	})
-	require.NoError(s.T(), err)
-	require.Equal(
-		s.T(),
-		uint64(0),
-		getMetricValue(metric).GetSummary().GetSampleCount(),
-	)
-
-	metric, err = dataUploader.objectSizeMetrics.MetricVec.GetMetricWith(prometheus.Labels{
-		"ledgers":     "100",
-		"compression": "gzip",
-	})
-	require.NoError(s.T(), err)
-	require.Equal(
-		s.T(),
-		uint64(0),
-		getMetricValue(metric).GetSummary().GetSampleCount(),
-	)
+		for _, compression := range []string{"gzip", "none"} {
+			metric, err = dataUploader.objectSizeMetrics.MetricVec.GetMetricWith(prometheus.Labels{
+				"ledgers":        "100",
+				"compression":    compression,
+				"already_exists": alreadyExists,
+			})
+			require.NoError(s.T(), err)
+			require.Equal(
+				s.T(),
+				uint64(0),
+				getMetricValue(metric).GetSummary().GetSampleCount(),
+			)
+		}
+	}
 }
 
 func (s *UploaderSuite) TestRunChannelClose() {
 	s.mockDataStore.On("PutFileIfNotExists", mock.Anything,
-		mock.Anything, mock.Anything).Return(nil)
+		mock.Anything, mock.Anything).Return(true, nil)
 
 	registry := prometheus.NewRegistry()
 	queue := NewUploadQueue(1, registry)
@@ -175,7 +216,7 @@ func (s *UploaderSuite) TestRunChannelClose() {
 }
 
 func (s *UploaderSuite) TestRunContextCancel() {
-	s.mockDataStore.On("PutFileIfNotExists", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	s.mockDataStore.On("PutFileIfNotExists", mock.Anything, mock.Anything, mock.Anything).Return(true, nil)
 	ctx, cancel := context.WithCancel(context.Background())
 	registry := prometheus.NewRegistry()
 	queue := NewUploadQueue(1, registry)
@@ -197,7 +238,7 @@ func (s *UploaderSuite) TestRunUploadError() {
 
 	s.Assert().NoError(queue.Enqueue(s.ctx, NewLedgerMetaArchive("test", 1, 1)))
 	s.mockDataStore.On("PutFileIfNotExists", mock.Anything, "test",
-		mock.Anything).Return(errors.New("Put error"))
+		mock.Anything).Return(false, errors.New("Put error"))
 
 	dataUploader := NewUploader(&s.mockDataStore, queue, registry)
 	err := dataUploader.Run(context.Background())

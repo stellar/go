@@ -26,11 +26,11 @@ func NewUploader(
 ) Uploader {
 	uploadDurationMetric := prometheus.NewSummaryVec(
 		prometheus.SummaryOpts{
-			Namespace: "ledger_exporter", Subsystem: "uploader", Name: "upload_duration_seconds",
+			Namespace: "ledger_exporter", Subsystem: "uploader", Name: "put_duration_seconds",
 			Help:       "duration for uploading a ledger batch, sliding window = 10m",
 			Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
 		},
-		[]string{"ledgers"},
+		[]string{"already_exists", "ledgers"},
 	)
 	objectSizeMetrics := prometheus.NewSummaryVec(
 		prometheus.SummaryOpts{
@@ -38,7 +38,7 @@ func NewUploader(
 			Help:       "size of a ledger batch in bytes, sliding window = 10m",
 			Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
 		},
-		[]string{"ledgers", "compression"},
+		[]string{"ledgers", "already_exists", "compression"},
 	)
 	prometheusRegistry.MustRegister(uploadDurationMetric)
 	return Uploader{
@@ -51,39 +51,28 @@ func NewUploader(
 
 type writerRecorder struct {
 	io.Writer
-	count int
+	count *int64
 }
 
-func (r *writerRecorder) Write(p []byte) (int, error) {
+func (r writerRecorder) Write(p []byte) (int, error) {
 	total, err := r.Writer.Write(p)
-	r.count += total
+	*r.count += int64(total)
 	return total, err
 }
 
 type writerToRecorder struct {
 	io.WriterTo
-	compression       string
-	ledgers           string
-	objectSizeMetrics *prometheus.SummaryVec
+	totalCompressed   int64
+	totalUncompressed int64
 }
 
-func (r writerToRecorder) WriteTo(w io.Writer) (int64, error) {
-	wrapper := &writerRecorder{
+func (r *writerToRecorder) WriteTo(w io.Writer) (int64, error) {
+	uncompressedCount, err := r.WriterTo.WriteTo(writerRecorder{
 		Writer: w,
-	}
-	totalUncompressed, err := r.WriterTo.WriteTo(wrapper)
-	if err != nil {
-		return totalUncompressed, err
-	}
-	r.objectSizeMetrics.With(prometheus.Labels{
-		"compression": "none",
-		"ledgers":     r.ledgers,
-	}).Observe(float64(totalUncompressed))
-	r.objectSizeMetrics.With(prometheus.Labels{
-		"compression": r.compression,
-		"ledgers":     r.ledgers,
-	}).Observe(float64(wrapper.count))
-	return totalUncompressed, nil
+		count:  &r.totalCompressed,
+	})
+	r.totalUncompressed += uncompressedCount
+	return uncompressedCount, err
 }
 
 // Upload uploads the serialized binary data of ledger TxMeta to the specified destination.
@@ -92,18 +81,29 @@ func (u Uploader) Upload(ctx context.Context, metaArchive *LedgerMetaArchive) er
 	startTime := time.Now()
 	numLedgers := strconv.FormatUint(uint64(metaArchive.GetLedgerCount()), 10)
 
-	writerTo := writerToRecorder{
-		WriterTo:          &XDRGzipEncoder{XdrPayload: &metaArchive.data},
-		compression:       "gzip",
-		ledgers:           numLedgers,
-		objectSizeMetrics: u.objectSizeMetrics,
+	writerTo := &writerToRecorder{
+		WriterTo: &XDRGzipEncoder{XdrPayload: &metaArchive.data},
 	}
-	err := u.dataStore.PutFileIfNotExists(ctx, metaArchive.GetObjectKey(), writerTo)
+	ok, err := u.dataStore.PutFileIfNotExists(ctx, metaArchive.GetObjectKey(), writerTo)
 	if err != nil {
 		return errors.Wrapf(err, "error uploading %s", metaArchive.GetObjectKey())
 	}
+	alreadyExists := strconv.FormatBool(!ok)
 
-	u.uploadDurationMetric.With(prometheus.Labels{"ledgers": numLedgers}).Observe(time.Since(startTime).Seconds())
+	u.uploadDurationMetric.With(prometheus.Labels{
+		"ledgers":        numLedgers,
+		"already_exists": alreadyExists,
+	}).Observe(time.Since(startTime).Seconds())
+	u.objectSizeMetrics.With(prometheus.Labels{
+		"compression":    "none",
+		"ledgers":        numLedgers,
+		"already_exists": alreadyExists,
+	}).Observe(float64(writerTo.totalUncompressed))
+	u.objectSizeMetrics.With(prometheus.Labels{
+		"compression":    "gzip",
+		"ledgers":        numLedgers,
+		"already_exists": alreadyExists,
+	}).Observe(float64(writerTo.totalCompressed))
 	return nil
 }
 
