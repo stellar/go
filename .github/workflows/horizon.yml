@@ -156,47 +156,25 @@ jobs:
   ledger-exporter:
     name: Test and push the Ledger Exporter images
     runs-on: ubuntu-latest
-    if: false # Disable the job
     steps:
       - uses: actions/checkout@v3
         with:
           # For pull requests, build and test the PR head not a merge of the PR with the destination.
           ref:  ${{ github.event.pull_request.head.sha || github.ref }}
-      - name: Build and test Ledger Exporter images
-        # Any range should do for basic testing, this range was chosen pretty early in history so that it only takes a few mins to run
-        run: |
-          chmod 755 ./exp/lighthorizon/build/build.sh
-          mkdir $PWD/ledgerexport
-          # mkdir $PWD/index
+      - name: Build Ledger Exporter docker
+        run: make -C exp/services/ledgerexporter docker-build
 
-          ./exp/lighthorizon/build/build.sh ledgerexporter stellar latest false
-          docker run -e ARCHIVE_TARGET=file:///ledgerexport\
-                     -e START=5\
-                     -e END=150\
-                     -e NETWORK_PASSPHRASE="Public Global Stellar Network ; September 2015"\
-                     -e CAPTIVE_CORE_CONFIG="/captive-core-pubnet.cfg"\
-                     -e HISTORY_ARCHIVE_URLS="https://history.stellar.org/prd/core-live/core_live_001"\
-                     -v $PWD/ledgerexport:/ledgerexport\
-                     stellar/lighthorizon-ledgerexporter
-
-          # # run map job
-          # docker run -e NETWORK_PASSPHRASE='pubnet' -e JOB_INDEX_ENV=AWS_BATCH_JOB_ARRAY_INDEX -e AWS_BATCH_JOB_ARRAY_INDEX=0 -e BATCH_SIZE=64 -e FIRST_CHECKPOINT=64 \
-          #            -e WORKER_COUNT=1 -e RUN_MODE=map -v $PWD/ledgerexport:/ledgermeta -e TXMETA_SOURCE=file:///ledgermeta -v $PWD/index:/index -e INDEX_TARGET=file:///index stellar/lighthorizon-index-batch
-
-          # # run reduce job
-          # docker run -e NETWORK_PASSPHRASE='pubnet' -e JOB_INDEX_ENV=AWS_BATCH_JOB_ARRAY_INDEX -e AWS_BATCH_JOB_ARRAY_INDEX=0 -e MAP_JOB_COUNT=1 -e REDUCE_JOB_COUNT=1 \
-          #            -e WORKER_COUNT=1 -e RUN_MODE=reduce -v $PWD/index:/index -e INDEX_SOURCE_ROOT=file:///index -e INDEX_TARGET=file:///index stellar/lighthorizon-index-batch
+      - name: Run Ledger Exporter test
+        run: make -C exp/services/ledgerexporter docker-test
 
       # Push images
-      - if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/lighthorizon'
+      - if: github.ref == 'refs/heads/master'
         name: Login to DockerHub
         uses: docker/login-action@bb984efc561711aaa26e433c32c3521176eae55b
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/lighthorizon'
+      - if: github.ref == 'refs/heads/master'
         name: Push to DockerHub
-        run: |
-          chmod 755 ./exp/lighthorizon/build/build.sh
-          ./exp/lighthorizon/build/build.sh ledgerexporter stellar latest true
+        run: make -C exp/services/ledgerexporter docker-push
