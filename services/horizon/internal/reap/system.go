@@ -2,6 +2,8 @@ package reap
 
 import (
 	"context"
+	"os"
+	"strconv"
 	"time"
 
 	herrors "github.com/stellar/go/services/horizon/internal/errors"
@@ -79,10 +81,19 @@ func (r *System) runOnce(ctx context.Context) {
 // batch/second, that seems like a reasonable balance between running well
 // under an hour, and slowing it down enough to leave some CPU for other
 // processes.
-var batchSize = int32(100_000)
+
+var batchSize int32
+var batchSizeStr = os.Getenv("REAPER_BATCH_SIZE")
 var sleep = 1 * time.Second
 
 func (r *System) clearBefore(ctx context.Context, startSeq, endSeq int32) error {
+	batchSize64, err := strconv.ParseInt(batchSizeStr, 10, 32)
+	if err != nil || batchSize64 <= 0 {
+		batchSize = int32(100_000)
+	} else {
+		batchSize = int32(batchSize64)
+	}
+
 	for batchEndSeq := endSeq - 1; batchEndSeq >= startSeq; batchEndSeq -= batchSize {
 		batchStartSeq := batchEndSeq - batchSize
 		if batchStartSeq < startSeq {
