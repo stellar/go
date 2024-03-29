@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"time"
 
 	"github.com/stellar/go/ingest"
@@ -272,7 +273,7 @@ func (s *ProcessorRunner) RunHistoryArchiveIngestion(
 		log.WithField("sequence", checkpointLedger).
 			Info("Processing entries from History Archive Snapshot")
 
-		err = processors.StreamChanges(s.ctx, changeProcessor, newloggingChangeReader(
+		err = streamChanges(s.ctx, changeProcessor, checkpointLedger, newloggingChangeReader(
 			changeReader,
 			"historyArchive",
 			checkpointLedger,
@@ -301,7 +302,7 @@ func (s *ProcessorRunner) runChangeProcessorOnLedger(
 		return errors.Wrap(err, "Error creating ledger change reader")
 	}
 	changeReader = ingest.NewCompactingChangeReader(changeReader)
-	if err = processors.StreamChanges(s.ctx, changeProcessor, changeReader); err != nil {
+	if err = streamChanges(s.ctx, changeProcessor, ledger.LedgerSequence(), changeReader); err != nil {
 		return errors.Wrap(err, "Error streaming changes from ledger")
 
 	}
@@ -312,6 +313,36 @@ func (s *ProcessorRunner) runChangeProcessorOnLedger(
 	}
 
 	return nil
+}
+
+func streamChanges(
+	ctx context.Context,
+	changeProcessor processors.ChangeProcessor,
+	ledger uint32,
+	reader ingest.ChangeReader,
+) error {
+
+	for {
+		change, err := reader.Read()
+		if err == io.EOF {
+			return nil
+		}
+		if err != nil {
+			return errors.Wrap(err, "could not read transaction")
+		}
+
+		if err = changeProcessor.ProcessChange(ctx, change); err != nil {
+			if !isCancelledError(ctx, err) {
+				log.WithError(err).WithField("sequence", ledger).WithField(
+					"change", change.String(),
+				).Error("error processing change")
+			}
+			return errors.Wrap(
+				err,
+				"could not process change",
+			)
+		}
+	}
 }
 
 func (s *ProcessorRunner) streamLedger(ledger xdr.LedgerCloseMeta,
