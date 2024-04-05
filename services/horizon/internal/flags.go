@@ -651,7 +651,15 @@ func Flags() (*Config, support.ConfigOptions) {
 			ConfigKey:      &config.HistoryRetentionCount,
 			OptType:        types.Uint,
 			FlagDefault:    uint(0),
-			Usage:          "the minimum number of ledgers to maintain within horizon's history tables.  0 signifies an unlimited number of ledgers will be retained",
+			Usage:          "the minimum number of ledgers to maintain within Horizon's history tables (0 = retain an unlimited number of ledgers)",
+			UsedInCommands: IngestionCommands,
+		},
+		&support.ConfigOption{
+			Name:           "history-retention-reap-count",
+			ConfigKey:      &config.HistoryRetentionReapCount,
+			OptType:        types.Uint,
+			FlagDefault:    uint(50_000),
+			Usage:          "the number of ledgers worth of history data to remove per second from the Horizon database",
 			UsedInCommands: IngestionCommands,
 		},
 		&support.ConfigOption{
