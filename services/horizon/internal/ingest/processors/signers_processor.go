@@ -14,18 +14,13 @@ import (
 type SignersProcessor struct {
 	signersQ history.QSigners
 
-	cache              *ingest.ChangeCompactor
 	batchInsertBuilder history.AccountSignersBatchInsertBuilder
-	// insertOnlyMode is a mode in which we don't use ledger cache and we just
-	// add signers to a batch, then we Exec all signers in one insert query.
-	// This is done to make history buckets processing faster (batch inserting).
-	useLedgerEntryCache bool
 }
 
 func NewSignersProcessor(
-	signersQ history.QSigners, useLedgerEntryCache bool,
+	signersQ history.QSigners,
 ) *SignersProcessor {
-	p := &SignersProcessor{signersQ: signersQ, useLedgerEntryCache: useLedgerEntryCache}
+	p := &SignersProcessor{signersQ: signersQ}
 	p.reset()
 	return p
 }
@@ -36,7 +31,43 @@ func (p *SignersProcessor) Name() string {
 
 func (p *SignersProcessor) reset() {
 	p.batchInsertBuilder = p.signersQ.NewAccountSignersBatchInsertBuilder()
-	p.cache = ingest.NewChangeCompactor()
+}
+
+func accountSignersDiff(change ingest.Change) ([]string, map[string]int32, map[string]string) {
+	var preSignerSummary map[string]int32
+	var preSponsorsPerSigner map[string]string
+	var postSignerSummary map[string]int32
+	var postSponsorsPerSigner map[string]string
+	var removedSigners []string
+
+	if change.Pre != nil {
+		accountEntry := change.Pre.Data.MustAccount()
+		preSignerSummary = accountEntry.SignerSummary()
+		preSponsorsPerSigner = map[string]string{}
+		for signer, sponsor := range accountEntry.SponsorPerSigner() {
+			preSponsorsPerSigner[signer] = sponsor.Address()
+		}
+	}
+
+	if change.Post != nil {
+		accountEntry := change.Post.Data.MustAccount()
+		postSignerSummary = accountEntry.SignerSummary()
+		postSponsorsPerSigner = map[string]string{}
+		for signer, sponsor := range accountEntry.SponsorPerSigner() {
+			postSponsorsPerSigner[signer] = sponsor.Address()
+		}
+	}
+
+	for signer, preWeight := range preSignerSummary {
+		postWeight, ok := postSignerSummary[signer]
+		if ok && preWeight == postWeight && preSponsorsPerSigner[signer] == postSponsorsPerSigner[signer] {
+			delete(postSignerSummary, signer)
+			delete(postSponsorsPerSigner, signer)
+			continue
+		}
+		removedSigners = append(removedSigners, signer)
+	}
+	return removedSigners, postSignerSummary, postSponsorsPerSigner
 }
 
 func (p *SignersProcessor) ProcessChange(ctx context.Context, change ingest.Change) error {
@@ -44,29 +75,29 @@ func (p *SignersProcessor) ProcessChange(ctx context.Context, change ingest.Chan
 		return nil
 	}
 
-	if p.useLedgerEntryCache {
-		err := p.cache.AddChange(change)
-		if err != nil {
-			return errors.Wrap(err, "error adding to ledgerCache")
-		}
-
-		if p.cache.Size() > maxBatchSize {
-			err = p.Commit(ctx)
-			if err != nil {
-				return errors.Wrap(err, "error in Commit")
-			}
-		}
-
+	removed, signerSummary, sponsersPerSigner := accountSignersDiff(change)
+	if len(removed) == 0 && len(signerSummary) == 0 {
 		return nil
 	}
 
-	if change.Pre == nil && change.Post != nil {
-		postAccountEntry := change.Post.Data.MustAccount()
-		if err := p.addAccountSigners(postAccountEntry); err != nil {
+	if len(removed) > 0 {
+		accountAddress := change.Pre.Data.MustAccount().AccountId.Address()
+		if err := p.removeAccountSigners(ctx, accountAddress, removed); err != nil {
 			return err
 		}
-	} else {
-		return errors.New("SignersProcessor is in insert only mode")
+	}
+
+	if len(signerSummary) > 0 {
+		accountAddress := change.Post.Data.MustAccount().AccountId.Address()
+		if err := p.addAccountSigners(accountAddress, signerSummary, sponsersPerSigner); err != nil {
+			return err
+		}
+	}
+
+	if p.batchInsertBuilder.Len() > maxBatchSize {
+		if err := p.Commit(ctx); err != nil {
+			return errors.Wrap(err, "error in Commit")
+		}
 	}
 
 	return nil
@@ -74,29 +105,6 @@ func (p *SignersProcessor) ProcessChange(ctx context.Context, change ingest.Chan
 
 func (p *SignersProcessor) Commit(ctx context.Context) error {
 	defer p.reset()
-
-	if p.useLedgerEntryCache {
-		changes := p.cache.GetChanges()
-		for _, change := range changes {
-			if !change.AccountSignersChanged() {
-				continue
-			}
-
-			// The code below removes all Pre signers adds Post signers but
-			// can be improved by finding a diff (check performance first).
-			if change.Pre != nil {
-				if err := p.removeAccountSigners(ctx, change.Pre.Data.MustAccount()); err != nil {
-					return err
-				}
-			}
-
-			if change.Post != nil {
-				if err := p.addAccountSigners(change.Post.Data.MustAccount()); err != nil {
-					return err
-				}
-			}
-		}
-	}
 
 	err := p.batchInsertBuilder.Exec(ctx)
 	if err != nil {
@@ -106,38 +114,40 @@ func (p *SignersProcessor) Commit(ctx context.Context) error {
 	return nil
 }
 
-func (p *SignersProcessor) removeAccountSigners(ctx context.Context, accountEntry xdr.AccountEntry) error {
-	for signer := range accountEntry.SignerSummary() {
-		rowsAffected, err := p.signersQ.RemoveAccountSigner(ctx, accountEntry.AccountId.Address(), signer)
-		if err != nil {
-			return errors.Wrap(err, "Error removing a signer")
-		}
-
-		if rowsAffected != 1 {
-			return ingest.NewStateError(errors.Errorf(
-				"Expected account=%s signer=%s in database but not found when removing (rows affected = %d)",
-				accountEntry.AccountId.Address(),
-				signer,
-				rowsAffected,
-			))
-		}
+func (p *SignersProcessor) removeAccountSigners(ctx context.Context, accountAddress string, signers []string) error {
+	rowsAffected, err := p.signersQ.RemoveAccountSigners(ctx, accountAddress, signers)
+	if err != nil {
+		return errors.Wrap(err, "Error removing a signer")
 	}
+
+	if rowsAffected != int64(len(signers)) {
+		return ingest.NewStateError(errors.Errorf(
+			"Expected account=%s signers=%s in database but not found when removing (rows affected = %d)",
+			accountAddress,
+			signers,
+			rowsAffected,
+		))
+	}
+
 	return nil
 }
 
-func (p *SignersProcessor) addAccountSigners(accountEntry xdr.AccountEntry) error {
-	sponsorsPerSigner := accountEntry.SponsorPerSigner()
-	for signer, weight := range accountEntry.SignerSummary() {
+func (p *SignersProcessor) addAccountSigners(
+	accountAddress string,
+	signerSummary map[string]int32,
+	sponsorsPerSigner map[string]string,
+) error {
+	for signer, weight := range signerSummary {
 		// Ignore master key
 		var sponsor null.String
-		if signer != accountEntry.AccountId.Address() {
+		if signer != accountAddress {
 			if sponsorDesc, isSponsored := sponsorsPerSigner[signer]; isSponsored {
-				sponsor = null.StringFrom(sponsorDesc.Address())
+				sponsor = null.StringFrom(sponsorDesc)
 			}
 		}
 
 		if err := p.batchInsertBuilder.Add(history.AccountSigner{
-			Account: accountEntry.AccountId.Address(),
+			Account: accountAddress,
 			Signer:  signer,
 			Weight:  weight,
 			Sponsor: sponsor,

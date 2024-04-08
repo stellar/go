@@ -26,7 +26,7 @@ RUN echo "host all all all trust" > /etc/postgresql/9.6/main/pg_hba.conf
 # And add `listen_addresses` to `/etc/postgresql/9.6/main/postgresql.conf`
 RUN echo "listen_addresses='*'" >> /etc/postgresql/9.6/main/postgresql.conf
 
-RUN curl -sL https://storage.googleapis.com/golang/go1.19.linux-amd64.tar.gz | tar -C /usr/local -xz
+COPY --from=golang:1.22-bullseye /usr/local/go/ /usr/local/go/
 RUN ln -s  /usr/local/go/bin/go /usr/local/bin/go
 WORKDIR /go/src/github.com/stellar/go
 COPY go.mod go.sum ./

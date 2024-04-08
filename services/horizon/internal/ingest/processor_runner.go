@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"time"
 
 	"github.com/stellar/go/ingest"
@@ -120,14 +121,13 @@ func buildChangeProcessor(
 		StatsChangeProcessor: changeStats,
 	}
 
-	useLedgerCache := source == ledgerSource
 	return newGroupChangeProcessors([]horizonChangeProcessor{
 		statsChangeProcessor,
 		processors.NewAccountDataProcessor(historyQ),
 		processors.NewAccountsProcessor(historyQ),
 		processors.NewOffersProcessor(historyQ, ledgerSequence),
 		processors.NewAssetStatsProcessor(historyQ, networkPassphrase, source == historyArchiveSource, ledgerSequence),
-		processors.NewSignersProcessor(historyQ, useLedgerCache),
+		processors.NewSignersProcessor(historyQ),
 		processors.NewTrustLinesProcessor(historyQ),
 		processors.NewClaimableBalancesChangeProcessor(historyQ),
 		processors.NewLiquidityPoolsChangeProcessor(historyQ, ledgerSequence),
@@ -273,7 +273,7 @@ func (s *ProcessorRunner) RunHistoryArchiveIngestion(
 		log.WithField("sequence", checkpointLedger).
 			Info("Processing entries from History Archive Snapshot")
 
-		err = processors.StreamChanges(s.ctx, changeProcessor, newloggingChangeReader(
+		err = streamChanges(s.ctx, changeProcessor, checkpointLedger, newloggingChangeReader(
 			changeReader,
 			"historyArchive",
 			checkpointLedger,
@@ -301,15 +301,10 @@ func (s *ProcessorRunner) runChangeProcessorOnLedger(
 	if err != nil {
 		return errors.Wrap(err, "Error creating ledger change reader")
 	}
-	changeReader = newloggingChangeReader(
-		changeReader,
-		"ledger",
-		ledger.LedgerSequence(),
-		logFrequency,
-		s.logMemoryStats,
-	)
-	if err = processors.StreamChanges(s.ctx, changeProcessor, changeReader); err != nil {
+	changeReader = ingest.NewCompactingChangeReader(changeReader)
+	if err = streamChanges(s.ctx, changeProcessor, ledger.LedgerSequence(), changeReader); err != nil {
 		return errors.Wrap(err, "Error streaming changes from ledger")
+
 	}
 
 	err = changeProcessor.Commit(s.ctx)
@@ -318,6 +313,36 @@ func (s *ProcessorRunner) runChangeProcessorOnLedger(
 	}
 
 	return nil
+}
+
+func streamChanges(
+	ctx context.Context,
+	changeProcessor processors.ChangeProcessor,
+	ledger uint32,
+	reader ingest.ChangeReader,
+) error {
+
+	for {
+		change, err := reader.Read()
+		if err == io.EOF {
+			return nil
+		}
+		if err != nil {
+			return errors.Wrap(err, "could not read transaction")
+		}
+
+		if err = changeProcessor.ProcessChange(ctx, change); err != nil {
+			if !isCancelledError(ctx, err) {
+				log.WithError(err).WithField("sequence", ledger).WithField(
+					"change", change.String(),
+				).Error("error processing change")
+			}
+			return errors.Wrap(
+				err,
+				"could not process change",
+			)
+		}
+	}
 }
 
 func (s *ProcessorRunner) streamLedger(ledger xdr.LedgerCloseMeta,

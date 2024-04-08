@@ -12,8 +12,9 @@ import (
 type TrustLinesProcessor struct {
 	trustLinesQ history.QTrustLines
 
-	cache              *ingest.ChangeCompactor
-	batchInsertBuilder history.TrustLinesBatchInsertBuilder
+	batchUpdateTrustlines    []history.TrustLine
+	batchRemoveTrustLineKeys []string
+	batchInsertBuilder       history.TrustLinesBatchInsertBuilder
 }
 
 func NewTrustLinesProcessor(trustLinesQ history.QTrustLines) *TrustLinesProcessor {
@@ -27,7 +28,8 @@ func (p *TrustLinesProcessor) Name() string {
 }
 
 func (p *TrustLinesProcessor) reset() {
-	p.cache = ingest.NewChangeCompactor()
+	p.batchUpdateTrustlines = []history.TrustLine{}
+	p.batchRemoveTrustLineKeys = []string{}
 	p.batchInsertBuilder = p.trustLinesQ.NewTrustLinesBatchInsertBuilder()
 }
 
@@ -36,14 +38,41 @@ func (p *TrustLinesProcessor) ProcessChange(ctx context.Context, change ingest.C
 		return nil
 	}
 
-	err := p.cache.AddChange(change)
-	if err != nil {
-		return errors.Wrap(err, "error adding to ledgerCache")
+	switch {
+	case change.Pre == nil && change.Post != nil:
+		// Created
+		line, err := xdrToTrustline(*change.Post)
+		if err != nil {
+			return errors.Wrap(err, "Error extracting trustline")
+		}
+
+		err = p.batchInsertBuilder.Add(line)
+		if err != nil {
+			return errors.Wrap(err, "Error adding to TrustLinesBatchInsertBuilder")
+		}
+	case change.Pre != nil && change.Post != nil:
+		// Updated
+		tl, err := xdrToTrustline(*change.Post)
+		if err != nil {
+			return errors.Wrap(err, "Error extracting trustline")
+		}
+		p.batchUpdateTrustlines = append(p.batchUpdateTrustlines, tl)
+	case change.Pre != nil && change.Post == nil:
+		// Removed
+		trustLineEntry := change.Pre.Data.MustTrustLine()
+		ledgerKeyString, err := trustLineLedgerKey(trustLineEntry)
+		if err != nil {
+			return errors.Wrap(err, "Error extracting ledger key")
+		}
+		p.batchRemoveTrustLineKeys = append(p.batchRemoveTrustLineKeys, ledgerKeyString)
+
+	default:
+		return errors.New("Invalid io.Change: change.Pre == nil && change.Post == nil")
 	}
 
-	if p.cache.Size() > maxBatchSize {
-		err = p.Commit(ctx)
-		if err != nil {
+	if p.batchInsertBuilder.Len()+len(p.batchUpdateTrustlines)+len(p.batchRemoveTrustLineKeys) > maxBatchSize {
+
+		if err := p.Commit(ctx); err != nil {
 			return errors.Wrap(err, "error in Commit")
 		}
 	}
@@ -104,67 +133,29 @@ func xdrToTrustline(ledgerEntry xdr.LedgerEntry) (history.TrustLine, error) {
 func (p *TrustLinesProcessor) Commit(ctx context.Context) error {
 	defer p.reset()
 
-	var batchUpsertTrustLines []history.TrustLine
-	var batchRemoveTrustLineKeys []string
-
-	changes := p.cache.GetChanges()
-	for _, change := range changes {
-		switch {
-		case change.Pre == nil && change.Post != nil:
-			// Created
-			line, err := xdrToTrustline(*change.Post)
-			if err != nil {
-				return errors.Wrap(err, "Error extracting trustline")
-			}
-
-			err = p.batchInsertBuilder.Add(line)
-			if err != nil {
-				return errors.Wrap(err, "Error adding to TrustLinesBatchInsertBuilder")
-			}
-		case change.Pre != nil && change.Post != nil:
-			// Updated
-			tl, err := xdrToTrustline(*change.Post)
-			if err != nil {
-				return errors.Wrap(err, "Error extracting trustline")
-			}
-			batchUpsertTrustLines = append(batchUpsertTrustLines, tl)
-		case change.Pre != nil && change.Post == nil:
-			// Removed
-			trustLineEntry := change.Pre.Data.MustTrustLine()
-			ledgerKeyString, err := trustLineLedgerKey(trustLineEntry)
-			if err != nil {
-				return errors.Wrap(err, "Error extracting ledger key")
-			}
-			batchRemoveTrustLineKeys = append(batchRemoveTrustLineKeys, ledgerKeyString)
-
-		default:
-			return errors.New("Invalid io.Change: change.Pre == nil && change.Post == nil")
-		}
-	}
-
 	err := p.batchInsertBuilder.Exec(ctx)
 	if err != nil {
 		return errors.Wrap(err, "Error executing TrustLinesBatchInsertBuilder")
 	}
 
-	if len(batchUpsertTrustLines) > 0 {
-		err := p.trustLinesQ.UpsertTrustLines(ctx, batchUpsertTrustLines)
+	if len(p.batchUpdateTrustlines) > 0 {
+		err := p.trustLinesQ.UpsertTrustLines(ctx, p.batchUpdateTrustlines)
 		if err != nil {
 			return errors.Wrap(err, "errors in UpsertTrustLines")
 		}
 	}
 
-	if len(batchRemoveTrustLineKeys) > 0 {
-		rowsAffected, err := p.trustLinesQ.RemoveTrustLines(ctx, batchRemoveTrustLineKeys)
+	if len(p.batchRemoveTrustLineKeys) > 0 {
+		rowsAffected, err := p.trustLinesQ.RemoveTrustLines(ctx, p.batchRemoveTrustLineKeys)
 		if err != nil {
 			return err
 		}
 
-		if rowsAffected != int64(len(batchRemoveTrustLineKeys)) {
+		if rowsAffected != int64(len(p.batchRemoveTrustLineKeys)) {
 			return ingest.NewStateError(errors.Errorf(
 				"%d rows affected when removing %d trust lines",
 				rowsAffected,
-				len(batchRemoveTrustLineKeys),
+				len(p.batchRemoveTrustLineKeys),
 			))
 		}
 	}

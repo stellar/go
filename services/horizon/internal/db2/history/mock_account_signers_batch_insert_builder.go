@@ -2,6 +2,7 @@ package history
 
 import (
 	"context"
+
 	"github.com/stretchr/testify/mock"
 )
 
@@ -17,4 +18,9 @@ func (m *MockAccountSignersBatchInsertBuilder) Add(signer AccountSigner) error {
 func (m *MockAccountSignersBatchInsertBuilder) Exec(ctx context.Context) error {
 	a := m.Called(ctx)
 	return a.Error(0)
+}
+
+func (m *MockAccountSignersBatchInsertBuilder) Len() int {
+	a := m.Called()
+	return a.Get(0).(int)
 }
