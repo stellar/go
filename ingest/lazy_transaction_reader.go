@@ -23,12 +23,20 @@ type LazyTransactionReader struct {
 // xdr.LedgerCloseMeta starting at a particular transaction index. Note that
 // LazyTransactionReader is not thread safe and should not be shared by multiple
 // goroutines.
-func NewLazyTransactionReader(ledgerCloseMeta xdr.LedgerCloseMeta, start int) *LazyTransactionReader {
+func NewLazyTransactionReader(ledgerCloseMeta xdr.LedgerCloseMeta, start int) (*LazyTransactionReader, error) {
+	if start >= ledgerCloseMeta.CountTransactions() || start < 0 {
+		return nil, errors.New("'start' index exceeds ledger transaction count")
+	}
+
+	if ledgerCloseMeta.ProtocolVersion() < 20 {
+		return nil, errors.New("LazyTransactionReader only works from Protocol 20 onward")
+	}
+
 	return &LazyTransactionReader{
 		lcm:      ledgerCloseMeta,
 		start:    start,
 		lastRead: -1, // haven't started yet
-	}
+	}, nil
 }
 
 // GetSequence returns the sequence number of the ledger data stored by this object.
@@ -47,9 +55,6 @@ func (reader *LazyTransactionReader) GetHeader() xdr.LedgerHeaderHistoryEntry {
 // index, it will EOF when it cycles back to the start rather than when it
 // reaches the end.
 func (reader *LazyTransactionReader) Read() (LedgerTransaction, error) {
-	if reader.lcm.ProtocolVersion() < 20 {
-		return LedgerTransaction{}, errors.New("LazyTransactionReader only works from Protocol 20 onward.")
-	}
 	txCount := reader.lcm.CountTransactions()
 
 	i := reader.start // assume first time
