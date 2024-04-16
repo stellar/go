@@ -30,7 +30,6 @@ func TestContractInvokeHostFunctionInstallContract(t *testing.T) {
 	}
 
 	itest := integration.NewTest(t, integration.Config{
-		ProtocolVersion:  20,
 		EnableSorobanRPC: true,
 	})
 
@@ -80,7 +79,6 @@ func TestContractInvokeHostFunctionCreateContractByAddress(t *testing.T) {
 	}
 
 	itest := integration.NewTest(t, integration.Config{
-		ProtocolVersion:  20,
 		EnableSorobanRPC: true,
 	})
 
@@ -134,7 +132,6 @@ func TestContractInvokeHostFunctionInvokeStatelessContractFn(t *testing.T) {
 	}
 
 	itest := integration.NewTest(t, integration.Config{
-		ProtocolVersion:  20,
 		EnableSorobanRPC: true,
 	})
 
@@ -243,7 +240,6 @@ func TestContractInvokeHostFunctionInvokeStatefulContractFn(t *testing.T) {
 	}
 
 	itest := integration.NewTest(t, integration.Config{
-		ProtocolVersion:  20,
 		EnableSorobanRPC: true,
 	})
 

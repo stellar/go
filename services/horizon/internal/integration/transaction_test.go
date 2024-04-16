@@ -72,7 +72,6 @@ func TestP20MetaTransaction(t *testing.T) {
 	}
 
 	itest := integration.NewTest(t, integration.Config{
-		ProtocolVersion:  20,
 		EnableSorobanRPC: true,
 	})
 
@@ -102,7 +101,6 @@ func TestP20MetaDisabledTransaction(t *testing.T) {
 	}
 
 	itest := integration.NewTest(t, integration.Config{
-		ProtocolVersion:    20,
 		HorizonEnvironment: map[string]string{"SKIP_TXMETA": "TRUE"},
 		EnableSorobanRPC:   true,
 	})
