@@ -10,11 +10,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/suite"
+
 	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
-	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/suite"
 )
 
 func TestSingleLedgerStateReaderTestSuite(t *testing.T) {
@@ -218,6 +219,141 @@ func (s *SingleLedgerStateReaderTestSuite) TestEnsureLatestLiveEntry() {
 
 	_, err = s.reader.Read()
 	s.Require().Equal(err, io.EOF)
+}
+
+func (s *SingleLedgerStateReaderTestSuite) TestUniqueInitEntryOptimization() {
+	curr1 := createXdrStream(
+		metaEntry(20),
+		entryAccount(xdr.BucketEntryTypeLiveentry, "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML", 1),
+		entryCB(xdr.BucketEntryTypeDeadentry, xdr.Hash{1, 2, 3}, 100),
+		entryOffer(xdr.BucketEntryTypeDeadentry, "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML", 20),
+	)
+
+	snap1 := createXdrStream(
+		metaEntry(20),
+		entryAccount(xdr.BucketEntryTypeInitentry, "GALPCCZN4YXA3YMJHKL6CVIECKPLJJCTVMSNYWBTKJW4K5HQLYLDMZTB", 1),
+		entryAccount(xdr.BucketEntryTypeInitentry, "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML", 1),
+		entryAccount(xdr.BucketEntryTypeInitentry, "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H", 1),
+		entryCB(xdr.BucketEntryTypeInitentry, xdr.Hash{1, 2, 3}, 100),
+		entryOffer(xdr.BucketEntryTypeInitentry, "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML", 20),
+		entryAccount(xdr.BucketEntryTypeInitentry, "GAP2KHWUMOHY7IO37UJY7SEBIITJIDZS5DRIIQRPEUT4VUKHZQGIRWS4", 1),
+		entryAccount(xdr.BucketEntryTypeInitentry, "GAIH3ULLFQ4DGSECF2AR555KZ4KNDGEKN4AFI4SU2M7B43MGK3QJZNSR", 1),
+	)
+
+	nextBucket := s.getNextBucketChannel()
+
+	// Return curr1 and snap1 stream for the first two bucket...
+	s.mockArchive.
+		On("GetXdrStreamForHash", <-nextBucket).
+		Return(curr1, nil).Once()
+
+	s.mockArchive.
+		On("GetXdrStreamForHash", <-nextBucket).
+		Return(snap1, nil).Once()
+
+	// ...and empty streams for the rest of the buckets.
+	for hash := range nextBucket {
+		s.mockArchive.
+			On("GetXdrStreamForHash", hash).
+			Return(createXdrStream(), nil).Once()
+	}
+
+	// replace readChan with an unbuffered channel so we can test behavior of when items are added / removed
+	// from visitedLedgerKeys
+	s.reader.readChan = make(chan readResult, 0)
+
+	change, err := s.reader.Read()
+	s.Require().NoError(err)
+	key, err := change.Post.Data.LedgerKey()
+	s.Require().NoError(err)
+	s.Require().True(
+		key.Equals(xdr.LedgerKey{
+			Type:    xdr.LedgerEntryTypeAccount,
+			Account: &xdr.LedgerKeyAccount{AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML")},
+		}),
+	)
+
+	change, err = s.reader.Read()
+	s.Require().NoError(err)
+	key, err = change.Post.Data.LedgerKey()
+	s.Require().NoError(err)
+	s.Require().True(
+		key.Equals(xdr.LedgerKey{
+			Type:    xdr.LedgerEntryTypeAccount,
+			Account: &xdr.LedgerKeyAccount{AccountId: xdr.MustAddress("GALPCCZN4YXA3YMJHKL6CVIECKPLJJCTVMSNYWBTKJW4K5HQLYLDMZTB")},
+		}),
+	)
+	s.Require().Equal(len(s.reader.visitedLedgerKeys), 3)
+	s.assertVisitedLedgerKeysContains(xdr.LedgerKey{
+		Type:    xdr.LedgerEntryTypeAccount,
+		Account: &xdr.LedgerKeyAccount{AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML")},
+	})
+	s.assertVisitedLedgerKeysContains(xdr.LedgerKey{
+		Type: xdr.LedgerEntryTypeOffer,
+		Offer: &xdr.LedgerKeyOffer{
+			SellerId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+			OfferId:  20,
+		},
+	})
+	s.assertVisitedLedgerKeysContains(xdr.LedgerKey{
+		Type: xdr.LedgerEntryTypeClaimableBalance,
+		ClaimableBalance: &xdr.LedgerKeyClaimableBalance{
+			BalanceId: xdr.ClaimableBalanceId{
+				Type: xdr.ClaimableBalanceIdTypeClaimableBalanceIdTypeV0,
+				V0:   &xdr.Hash{1, 2, 3},
+			},
+		},
+	})
+
+	change, err = s.reader.Read()
+	s.Require().NoError(err)
+	key, err = change.Post.Data.LedgerKey()
+	s.Require().NoError(err)
+	s.Require().True(
+		key.Equals(xdr.LedgerKey{
+			Type:    xdr.LedgerEntryTypeAccount,
+			Account: &xdr.LedgerKeyAccount{AccountId: xdr.MustAddress("GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")},
+		}),
+	)
+
+	change, err = s.reader.Read()
+	s.Require().NoError(err)
+	key, err = change.Post.Data.LedgerKey()
+	s.Require().NoError(err)
+	s.Require().True(
+		key.Equals(xdr.LedgerKey{
+			Type:    xdr.LedgerEntryTypeAccount,
+			Account: &xdr.LedgerKeyAccount{AccountId: xdr.MustAddress("GAP2KHWUMOHY7IO37UJY7SEBIITJIDZS5DRIIQRPEUT4VUKHZQGIRWS4")},
+		}),
+	)
+	// the offer and cb ledger keys should now be removed from visitedLedgerKeys
+	// because we encountered the init entries in the bucket
+	s.Require().Equal(len(s.reader.visitedLedgerKeys), 1)
+	s.assertVisitedLedgerKeysContains(xdr.LedgerKey{
+		Type:    xdr.LedgerEntryTypeAccount,
+		Account: &xdr.LedgerKeyAccount{AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML")},
+	})
+
+	change, err = s.reader.Read()
+	s.Require().NoError(err)
+	key, err = change.Post.Data.LedgerKey()
+	s.Require().NoError(err)
+	s.Require().True(
+		key.Equals(xdr.LedgerKey{
+			Type:    xdr.LedgerEntryTypeAccount,
+			Account: &xdr.LedgerKeyAccount{AccountId: xdr.MustAddress("GAIH3ULLFQ4DGSECF2AR555KZ4KNDGEKN4AFI4SU2M7B43MGK3QJZNSR")},
+		}),
+	)
+
+	_, err = s.reader.Read()
+	s.Require().Equal(err, io.EOF)
+}
+
+func (s *SingleLedgerStateReaderTestSuite) assertVisitedLedgerKeysContains(key xdr.LedgerKey) {
+	encodingBuffer := xdr.NewEncodingBuffer()
+	keyBytes, err := encodingBuffer.LedgerKeyUnsafeMarshalBinaryCompress(key)
+	s.Require().NoError(err)
+	s.Require().True(s.reader.visitedLedgerKeys.Contains(string(keyBytes)))
 }
 
 // TestMalformedProtocol11Bucket tests a buggy protocol 11 bucket (meta not the first entry)
@@ -726,6 +862,78 @@ func entryAccount(t xdr.BucketEntryType, id string, balance uint32) xdr.BucketEn
 			DeadEntry: &xdr.LedgerKey{
 				Type:    xdr.LedgerEntryTypeAccount,
 				Account: &xdr.LedgerKeyAccount{AccountId: xdr.MustAddress(id)},
+			},
+		}
+	default:
+		panic("Unknown entry type")
+	}
+}
+
+func entryCB(t xdr.BucketEntryType, id xdr.Hash, balance xdr.Int64) xdr.BucketEntry {
+	switch t {
+	case xdr.BucketEntryTypeLiveentry, xdr.BucketEntryTypeInitentry:
+		return xdr.BucketEntry{
+			Type: t,
+			LiveEntry: &xdr.LedgerEntry{
+				Data: xdr.LedgerEntryData{
+					Type: xdr.LedgerEntryTypeClaimableBalance,
+					ClaimableBalance: &xdr.ClaimableBalanceEntry{
+						BalanceId: xdr.ClaimableBalanceId{
+							Type: xdr.ClaimableBalanceIdTypeClaimableBalanceIdTypeV0,
+							V0:   &id,
+						},
+						Asset:  xdr.MustNewNativeAsset(),
+						Amount: balance,
+					},
+				},
+			},
+		}
+	case xdr.BucketEntryTypeDeadentry:
+		return xdr.BucketEntry{
+			Type: xdr.BucketEntryTypeDeadentry,
+			DeadEntry: &xdr.LedgerKey{
+				Type: xdr.LedgerEntryTypeClaimableBalance,
+				ClaimableBalance: &xdr.LedgerKeyClaimableBalance{
+					BalanceId: xdr.ClaimableBalanceId{
+						Type: xdr.ClaimableBalanceIdTypeClaimableBalanceIdTypeV0,
+						V0:   &id,
+					},
+				},
+			},
+		}
+	default:
+		panic("Unknown entry type")
+	}
+}
+
+func entryOffer(t xdr.BucketEntryType, seller string, id xdr.Int64) xdr.BucketEntry {
+	switch t {
+	case xdr.BucketEntryTypeLiveentry, xdr.BucketEntryTypeInitentry:
+		return xdr.BucketEntry{
+			Type: t,
+			LiveEntry: &xdr.LedgerEntry{
+				Data: xdr.LedgerEntryData{
+					Type: xdr.LedgerEntryTypeOffer,
+					Offer: &xdr.OfferEntry{
+						OfferId:  id,
+						SellerId: xdr.MustAddress(seller),
+						Selling:  xdr.MustNewNativeAsset(),
+						Buying:   xdr.MustNewCreditAsset("USD", "GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7"),
+						Amount:   100,
+						Price:    xdr.Price{1, 1},
+					},
+				},
+			},
+		}
+	case xdr.BucketEntryTypeDeadentry:
+		return xdr.BucketEntry{
+			Type: xdr.BucketEntryTypeDeadentry,
+			DeadEntry: &xdr.LedgerKey{
+				Type: xdr.LedgerEntryTypeOffer,
+				Offer: &xdr.LedgerKeyOffer{
+					OfferId:  id,
+					SellerId: xdr.MustAddress(seller),
+				},
 			},
 		}
 	default:
