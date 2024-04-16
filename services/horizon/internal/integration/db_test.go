@@ -14,10 +14,12 @@ import (
 	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/keypair"
+	hProtocol "github.com/stellar/go/protocols/horizon"
 	horizoncmd "github.com/stellar/go/services/horizon/cmd"
 	horizon "github.com/stellar/go/services/horizon/internal"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/db2/schema"
+	"github.com/stellar/go/services/horizon/internal/ingest/filters"
 	"github.com/stellar/go/services/horizon/internal/test/integration"
 	"github.com/stellar/go/support/collections/set"
 	"github.com/stellar/go/support/db"
@@ -416,7 +418,10 @@ func submitAccountOps(itest *integration.Test, tt *assert.Assertions) (submitted
 }
 
 func initializeDBIntegrationTest(t *testing.T) (*integration.Test, int32) {
-	itest := integration.NewTest(t, integration.Config{})
+	itest := integration.NewTest(t, integration.Config{
+		HorizonIngestParameters: map[string]string{
+			"admin-port": strconv.Itoa(6000),
+		}})
 	tt := assert.New(t)
 
 	// Make sure all possible operations are covered by reingestion
@@ -543,6 +548,147 @@ func TestReingestDB(t *testing.T) {
 
 	tt.NoError(horizoncmd.RootCmd.Execute())
 	tt.NoError(horizoncmd.RootCmd.Execute(), "Repeat the same reingest range against db, should not have errors.")
+}
+
+func TestReingestDBWithFilterRules(t *testing.T) {
+	itest, _ := initializeDBIntegrationTest(t)
+	tt := assert.New(t)
+
+	fullKeys, accounts := itest.CreateAccounts(2, "10000")
+	whitelistedAccount := accounts[0]
+	whitelistedAccountKey := fullKeys[0]
+	nonWhitelistedAccount := accounts[1]
+	nonWhitelistedAccountKey := fullKeys[1]
+	enabled := true
+
+	// all assets are allowed by default because the asset filter config is empty.
+	defaultAllowedAsset := txnbuild.CreditAsset{Code: "PTS", Issuer: itest.Master().Address()}
+	itest.MustEstablishTrustline(whitelistedAccountKey, whitelistedAccount, defaultAllowedAsset)
+	itest.MustEstablishTrustline(nonWhitelistedAccountKey, nonWhitelistedAccount, defaultAllowedAsset)
+
+	// Setup a whitelisted account rule, force refresh of filter configs to be quick
+	filters.SetFilterConfigCheckIntervalSeconds(1)
+
+	expectedAccountFilter := hProtocol.AccountFilterConfig{
+		Whitelist: []string{whitelistedAccount.GetAccountID()},
+		Enabled:   &enabled,
+	}
+	err := itest.AdminClient().SetIngestionAccountFilter(expectedAccountFilter)
+	tt.NoError(err)
+
+	accountFilter, err := itest.AdminClient().GetIngestionAccountFilter()
+	tt.NoError(err)
+
+	tt.ElementsMatch(expectedAccountFilter.Whitelist, accountFilter.Whitelist)
+	tt.Equal(expectedAccountFilter.Enabled, accountFilter.Enabled)
+
+	// Ensure the latest filter configs are reloaded by the ingestion state machine processor
+	time.Sleep(time.Duration(filters.GetFilterConfigCheckIntervalSeconds()) * time.Second)
+
+	// Make sure that when using a non-whitelisted account, the transaction is not stored
+	nonWhiteListTxResp := itest.MustSubmitOperations(itest.MasterAccount(), itest.Master(),
+		&txnbuild.Payment{
+			Destination: nonWhitelistedAccount.GetAccountID(),
+			Amount:      "10",
+			Asset:       defaultAllowedAsset,
+		},
+	)
+	_, err = itest.Client().TransactionDetail(nonWhiteListTxResp.Hash)
+	tt.True(horizonclient.IsNotFoundError(err))
+
+	// Make sure that when using a whitelisted account, the transaction is stored
+	whiteListTxResp := itest.MustSubmitOperations(itest.MasterAccount(), itest.Master(),
+		&txnbuild.Payment{
+			Destination: whitelistedAccount.GetAccountID(),
+			Amount:      "10",
+			Asset:       defaultAllowedAsset,
+		},
+	)
+	lastTx, err := itest.Client().TransactionDetail(whiteListTxResp.Hash)
+	tt.NoError(err)
+
+	reachedLedger := uint32(lastTx.Ledger)
+
+	t.Logf("reached ledger is %v", reachedLedger)
+	// cap reachedLedger to the nearest checkpoint ledger because reingest range
+	// cannot ingest past the most recent checkpoint ledger when using captive
+	// core
+	archive, err := historyarchive.Connect(
+		itest.GetHorizonIngestConfig().HistoryArchiveURLs[0],
+		historyarchive.ArchiveOptions{
+			NetworkPassphrase:   itest.GetHorizonIngestConfig().NetworkPassphrase,
+			CheckpointFrequency: itest.GetHorizonIngestConfig().CheckpointFrequency,
+		})
+	tt.NoError(err)
+
+	// make sure a full checkpoint has elapsed otherwise there will be nothing to reingest
+	var latestCheckpoint uint32
+	publishedFirstCheckpoint := func() bool {
+		has, requestErr := archive.GetRootHAS()
+		if requestErr != nil {
+			t.Logf("request to fetch checkpoint failed: %v", requestErr)
+			return false
+		}
+		latestCheckpoint = has.CurrentLedger
+		return latestCheckpoint > reachedLedger
+	}
+	tt.Eventually(publishedFirstCheckpoint, 10*time.Second, time.Second)
+
+	// to test reingestion, stop horizon web and captive core,
+	// it was used to create ledger entries for test.
+	itest.StopHorizon()
+
+	// clear the db with reaping all ledgers
+	horizoncmd.RootCmd.SetArgs(command(t, itest.GetHorizonIngestConfig(), "db",
+		"reap",
+		"--history-retention-count=1",
+	))
+	tt.NoError(horizoncmd.RootCmd.Execute())
+
+	// repopulate the db with reingestion which should catchup using core reapply filter rules
+	// correctly on reingestion ranged
+	horizoncmd.RootCmd.SetArgs(command(t, itest.GetHorizonIngestConfig(), "db",
+		"reingest",
+		"range",
+		"--parallel-workers=1",
+		"1",
+		fmt.Sprintf("%d", reachedLedger),
+	))
+
+	tt.NoError(horizoncmd.RootCmd.Execute())
+
+	// bring up horizon, just the api server no ingestion, to query
+	// for tx's that should have been repopulated on db from reingestion per
+	// filter rule expectations
+	webApp, err := horizon.NewApp(itest.GetHorizonWebConfig())
+	tt.NoError(err)
+
+	webAppDone := make(chan struct{})
+	go func() {
+		webApp.Serve()
+		close(webAppDone)
+	}()
+
+	// Make sure that a non-whitelisted account, the transaction is not stored
+	_, err = itest.Client().TransactionDetail(nonWhiteListTxResp.Hash)
+	tt.True(horizonclient.IsNotFoundError(err))
+
+	// Make sure that a whitelisted account, the transaction is stored
+	lastTx, err = itest.Client().TransactionDetail(whiteListTxResp.Hash)
+	tt.NoError(err)
+
+	// tell the horizon web server to shutdown
+	webApp.Close()
+
+	// wait for horizon to finish shutdown
+	tt.Eventually(func() bool {
+		select {
+		case <-webAppDone:
+			return true
+		default:
+			return false
+		}
+	}, 30*time.Second, time.Second)
 }
 
 func getCoreConfigFile(itest *integration.Test) string {

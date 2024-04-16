@@ -279,12 +279,8 @@ func Flags() (*Config, support.ConfigOptions) {
 			OptType:     types.String,
 			FlagDefault: "",
 			Required:    false,
-			ConfigKey:   &config.EnableIngestionFiltering,
 			CustomSetValue: func(opt *support.ConfigOption) error {
-
-				// Always enable ingestion filtering by default.
-				config.EnableIngestionFiltering = true
-
+				// ingestion filtering is always enabled, it has no rules by default.
 				if val := viper.GetString(opt.Name); val != "" {
 					stdLog.Printf(
 						"DEPRECATED - No ingestion filter rules are defined by default, which equates to " +
