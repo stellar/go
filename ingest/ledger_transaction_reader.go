@@ -17,8 +17,7 @@ type LedgerTransactionReader struct {
 	lcm             xdr.LedgerCloseMeta                  // read-only
 	envelopesByHash map[xdr.Hash]xdr.TransactionEnvelope // set once
 
-	txByIdx map[int]LedgerTransaction // cache
-	readIdx int                       // tracks iteration & seeking
+	readIdx int // tracks iteration & seeking
 }
 
 // NewLedgerTransactionReader creates a new TransactionReader instance. Note
@@ -47,7 +46,6 @@ func NewLedgerTransactionReaderFromLedgerCloseMeta(
 ) (*LedgerTransactionReader, error) {
 	reader := &LedgerTransactionReader{
 		lcm:             ledgerCloseMeta,
-		txByIdx:         make(map[int]LedgerTransaction, ledgerCloseMeta.CountTransactions()),
 		envelopesByHash: make(map[xdr.Hash]xdr.TransactionEnvelope, ledgerCloseMeta.CountTransactions()),
 		readIdx:         0,
 	}
@@ -71,11 +69,11 @@ func (reader *LedgerTransactionReader) GetHeader() xdr.LedgerHeaderHistoryEntry 
 // Read returns the next transaction in the ledger, ordered by tx number, each time
 // it is called. When there are no more transactions to return, an EOF error is returned.
 func (reader *LedgerTransactionReader) Read() (LedgerTransaction, error) {
-	i := reader.readIdx
-	if i >= reader.lcm.CountTransactions() {
+	if reader.readIdx >= reader.lcm.CountTransactions() {
 		return LedgerTransaction{}, io.EOF
 	}
-	reader.readIdx++
+	i := reader.readIdx
+	reader.readIdx++ // next read will advance even on error
 
 	hash := reader.lcm.TransactionHash(i)
 	envelope, ok := reader.envelopesByHash[hash]
@@ -94,20 +92,14 @@ func (reader *LedgerTransactionReader) Read() (LedgerTransaction, error) {
 		)
 	}
 
-	if ledgerTx, ok := reader.txByIdx[i]; ok {
-		return ledgerTx, nil
-	}
-	// generate and cache if not found
-	ledgerTx := LedgerTransaction{
+	return LedgerTransaction{
 		Index:         uint32(i + 1), // Transactions start at '1'
 		Envelope:      envelope,
 		Result:        reader.lcm.TransactionResultPair(i),
 		UnsafeMeta:    reader.lcm.TxApplyProcessing(i),
 		FeeChanges:    reader.lcm.FeeProcessing(i),
 		LedgerVersion: uint32(reader.lcm.LedgerHeaderHistoryEntry().Header.LedgerVersion),
-	}
-	reader.txByIdx[i] = ledgerTx
-	return ledgerTx, nil
+	}, nil
 }
 
 // Rewind resets the reader back to the first transaction in the ledger
@@ -149,6 +141,5 @@ func (reader *LedgerTransactionReader) storeTransactions(networkPassphrase strin
 // streaming them.
 func (reader *LedgerTransactionReader) Close() error {
 	reader.envelopesByHash = nil
-	reader.txByIdx = nil
 	return nil
 }
