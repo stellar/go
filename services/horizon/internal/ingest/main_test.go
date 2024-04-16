@@ -528,8 +528,8 @@ func (m *mockProcessorsRunner) RunAllProcessorsOnLedger(ledger xdr.LedgerCloseMe
 		args.Error(1)
 }
 
-func (m *mockProcessorsRunner) RunTransactionProcessorsOnLedgers(ledgers []xdr.LedgerCloseMeta) error {
-	args := m.Called(ledgers)
+func (m *mockProcessorsRunner) RunTransactionProcessorsOnLedgers(ledgers []xdr.LedgerCloseMeta, execInTx bool) error {
+	args := m.Called(ledgers, execInTx)
 	return args.Error(0)
 }
 

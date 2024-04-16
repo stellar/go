@@ -157,7 +157,7 @@ func (s *GroupTransactionProcessorsTestSuiteLedger) SetupTest() {
 	s.processors = newGroupTransactionProcessors([]horizonTransactionProcessor{
 		s.processorA,
 		s.processorB,
-	}, nil, statsProcessor, tradesProcessor)
+	}, statsProcessor, tradesProcessor)
 	s.session = &db.MockSession{}
 }
 
