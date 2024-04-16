@@ -10,22 +10,22 @@ From a high level, the ingestion library is broken down into a few modular compo
 
 ```
                   [ Processors ]
-                        _|_
-                       /   \
-                      /     \
-                     /       \
-              [Change]        [Transaction]
-                 |                    |
-             |---+---|        |-------+----|
-       Checkpoint Ledger    Ledger        Lazy
-         Change   Change  Transaction  Transaction
-         Reader   Reader    Reader       Reader
+                        |
+                       / \
+                      /   \
+                     /     \
+              [Change]      [Transaction]
+                 |               |
+             |---+---|           |
+       Checkpoint Ledger      Ledger
+         Change   Change    Transaction
+         Reader   Reader      Reader
 
                 [ Ledger Backend ]
                         |
                         |
-                     Captive
-                      Core
+                     Captive  
+                      Core 
 ```
 
 This is described in a little more detail in [`doc.go`](./doc.go), its accompanying examples, the documentation within this package, and the rest of this tutorial.
@@ -290,7 +290,7 @@ First thing's first: we need to establish a connection to a history archive.
 ```
 
 ## Tracking Changes
-Each history archive contains the current cumulative state of the entire network.
+Each history archive contains the current cumulative state of the entire network. 
 
 Now we can use the history archive to actually read in all of the changes that have accumulated in the entire network by a particular checkpoint.
 

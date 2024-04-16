@@ -7,7 +7,7 @@ All notable changes to this project will be documented in this file. This projec
 
 ### New Features
 * Support for Soroban and Protocol 20!
-* There is now a `LazyTransactionReader` that provides transactions starting from any part of the ledger and will only transform the ones that are being used [5274](https://github.com/stellar/go/pull/5274).
+* The `LedgerTransactionReader` now has a `Seek(index int)` method to provide reading from arbitrary parts of the ledger [5274](https://github.com/stellar/go/pull/5274).
 * `Change` now has a canonical stringification and a set of them is deterministically sortable.
 * `NewCompactingChangeReader` will give you a wrapped `ChangeReader` that compacts the changes.
 * Let filewatcher use binary hash instead of timestamp to detect core version update [4050](https://github.com/stellar/go/pull/4050).
