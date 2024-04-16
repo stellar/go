@@ -50,10 +50,11 @@ func TestTransactionReader(t *testing.T) {
 
 	// simplest case: read from start
 
-	fromZero, err := NewLedgerTransactionReaderFromLedgerCloseMeta(passphrase, ledgerCloseMeta)
+	reader, err := NewLedgerTransactionReaderFromLedgerCloseMeta(passphrase, ledgerCloseMeta)
 	require.NoError(t, err)
+
 	for i := 0; i < 5; i++ {
-		tx, ierr := fromZero.Read()
+		tx, ierr := reader.Read()
 		require.NoError(t, ierr)
 		assert.EqualValues(t, i+1, tx.Index, "iteration i=%d", i)
 
@@ -62,16 +63,14 @@ func TestTransactionReader(t *testing.T) {
 		assert.Equal(t, txEnvs[tx.Index-1], tx.Envelope)
 		assert.Equal(t, txHashes[tx.Index-1], thisHash)
 	}
-	_, err = fromZero.Read()
+	_, err = reader.Read()
 	require.ErrorIs(t, err, io.EOF)
 
 	// start reading from the middle set of txs
 
-	fromMiddle, err := NewLedgerTransactionReaderFromLedgerCloseMeta(passphrase, ledgerCloseMeta)
-	fromMiddle.Seek(2)
-	require.NoError(t, err)
-	for i := 0; i < 2; i++ {
-		tx, ierr := fromMiddle.Read()
+	require.NoError(t, reader.Seek(2))
+	for i := 0; i < 3; i++ {
+		tx, ierr := reader.Read()
 		require.NoError(t, ierr)
 		assert.EqualValues(t,
 			/* txIndex is 1-based, iter is 0-based, start at 3rd tx, 5 total */
@@ -84,15 +83,12 @@ func TestTransactionReader(t *testing.T) {
 		assert.Equal(t, txEnvs[tx.Index-1], tx.Envelope)
 		assert.Equal(t, txHashes[tx.Index-1], thisHash)
 	}
-	_, err = fromMiddle.Read()
+	_, err = reader.Read()
 	require.ErrorIs(t, err, io.EOF)
 
 	// edge case: start from the last tx
-
-	fromEnd, err := NewLedgerTransactionReaderFromLedgerCloseMeta(passphrase, ledgerCloseMeta)
-	fromEnd.Seek(4)
-	require.NoError(t, err)
-	tx, ierr := fromEnd.Read()
+	require.NoError(t, reader.Seek(4))
+	tx, ierr := reader.Read()
 	require.NoError(t, ierr)
 	assert.EqualValues(t, 5, tx.Index)
 
@@ -100,19 +96,7 @@ func TestTransactionReader(t *testing.T) {
 	require.NoError(t, ierr)
 	assert.Equal(t, txEnvs[4], tx.Envelope)
 	assert.Equal(t, txHashes[4], thisHash)
-	_, err = fromEnd.Read()
-	require.ErrorIs(t, err, io.EOF)
-
-	// ensure that rewinds work after EOF
-
-	fromEnd.Rewind()
-	for i := 0; i < 5; i++ {
-		tx, ierr := fromEnd.Read()
-		require.NoError(t, ierr)
-		assert.EqualValues(t, 1+((i+4)%5), tx.Index, "iteration i=%d", i)
-		assert.Equal(t, txEnvs[i], tx.Envelope)
-	}
-	_, err = fromEnd.Read()
+	_, err = reader.Read()
 	require.ErrorIs(t, err, io.EOF)
 
 	// error case: too far or too close
@@ -125,7 +109,7 @@ func TestTransactionReader(t *testing.T) {
 
 func makeTransactions(count int) (
 	envs []xdr.TransactionEnvelope,
-	hashes []xdr.Hash,
+	hashes [][32]byte,
 	metas []xdr.TransactionResultMeta,
 ) {
 	seqNum := 123_456

@@ -11,6 +11,11 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
+var badMetaVersionErr = errors.New(
+	"TransactionMeta.V=2 is required in protocol version older than version 10. " +
+		"Please process ledgers again using the latest stellar-core version.",
+)
+
 // LedgerTransactionReader reads transactions for a given ledger sequence from a
 // backend. Use NewTransactionReader to create a new instance.
 type LedgerTransactionReader struct {
@@ -82,16 +87,6 @@ func (reader *LedgerTransactionReader) Read() (LedgerTransaction, error) {
 		return LedgerTransaction{}, errors.Errorf("unknown tx hash in LedgerCloseMeta: %v", hexHash)
 	}
 
-	// We check the version only if FeeProcessing are non empty because some backends
-	// (like HistoryArchiveBackend) do not return meta.
-	if reader.lcm.ProtocolVersion() < 10 && reader.lcm.TxApplyProcessing(i).V < 2 &&
-		len(reader.lcm.FeeProcessing(i)) > 0 {
-		return LedgerTransaction{}, errors.New(
-			"TransactionMeta.V=2 is required in protocol version older than version 10. " +
-				"Please process ledgers again using the latest stellar-core version.",
-		)
-	}
-
 	return LedgerTransaction{
 		Index:         uint32(i + 1), // Transactions start at '1'
 		Envelope:      envelope,
@@ -131,6 +126,16 @@ func (reader *LedgerTransactionReader) storeTransactions(networkPassphrase strin
 			return errors.Wrapf(err, "could not hash transaction %d in TxSet", i)
 		}
 		reader.envelopesByHash[xdr.Hash(hash)] = tx
+
+		// We check the version only if FeeProcessing is non-empty, because some
+		// backends (like HistoryArchiveBackend) do not return meta.
+		//
+		// Note that the ordering differences are irrelevant here because all we
+		// care about is checking every meta for this condition.
+		if reader.lcm.ProtocolVersion() < 10 && reader.lcm.TxApplyProcessing(i).V < 2 &&
+			len(reader.lcm.FeeProcessing(i)) > 0 {
+			return badMetaVersionErr
+		}
 	}
 
 	return nil
