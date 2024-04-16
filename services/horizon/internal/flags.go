@@ -662,7 +662,7 @@ func Flags() (*Config, support.ConfigOptions) {
 			ConfigKey:      &config.HistoryRetentionReapCount,
 			OptType:        types.Uint,
 			FlagDefault:    uint(50_000),
-			Usage:          "the number of ledgers worth of history data to remove per second from the Horizon database",
+			Usage:          "the batch size (in ledgers) to remove per reap from the Horizon database",
 			UsedInCommands: IngestionCommands,
 		},
 		&support.ConfigOption{

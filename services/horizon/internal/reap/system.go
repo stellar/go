@@ -2,6 +2,7 @@ package reap
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	herrors "github.com/stellar/go/services/horizon/internal/errors"
@@ -84,7 +85,7 @@ var sleep = 1 * time.Second
 func (r *System) clearBefore(ctx context.Context, startSeq, endSeq int32) error {
 	batchSize := int32(r.RetentionBatch)
 	if batchSize <= 0 {
-		batchSize = int32(50_000)
+		return fmt.Errorf("invalid batch size for reaping (%d)", batchSize)
 	}
 
 	for batchEndSeq := endSeq - 1; batchEndSeq >= startSeq; batchEndSeq -= batchSize {
