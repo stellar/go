@@ -2,6 +2,7 @@ package reap
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	herrors "github.com/stellar/go/services/horizon/internal/errors"
@@ -70,25 +71,31 @@ func (r *System) runOnce(ctx context.Context) {
 	}
 }
 
-// Work backwards in 100k ledger blocks to prevent using all the CPU.
+// Work backwards in 50k (by default, otherwise configurable via the CLI) ledger
+// blocks to prevent using all the CPU.
 //
-// This runs every hour, so we need to make sure it doesn't
-// run for longer than an hour.
+// This runs every hour, so we need to make sure it doesn't run for longer than
+// an hour.
 //
-// Current ledger at 2021-08-12 is 36,827,497, so 100k means 368 batches. At 1
-// batch/second, that seems like a reasonable balance between running well
-// under an hour, and slowing it down enough to leave some CPU for other
-// processes.
-var batchSize = int32(100_000)
+// Current ledger at 2024-04-04s is 51,092,283, so 50k means 1021 batches. At 1
+// batch/second, that seems like a reasonable balance between running under an
+// hour, and slowing it down enough to leave some CPU for other processes.
 var sleep = 1 * time.Second
 
 func (r *System) clearBefore(ctx context.Context, startSeq, endSeq int32) error {
+	batchSize := int32(r.RetentionBatch)
+	if batchSize <= 0 {
+		return fmt.Errorf("invalid batch size for reaping (%d)", batchSize)
+	}
+
 	for batchEndSeq := endSeq - 1; batchEndSeq >= startSeq; batchEndSeq -= batchSize {
 		batchStartSeq := batchEndSeq - batchSize
 		if batchStartSeq < startSeq {
 			batchStartSeq = startSeq
 		}
-		log.WithField("start_ledger", batchStartSeq).WithField("end_ledger", batchEndSeq).Info("reaper: clearing")
+		log.WithField("start_ledger", batchStartSeq).
+			WithField("end_ledger", batchEndSeq).
+			Info("reaper: clearing")
 
 		batchStart, batchEnd, err := toid.LedgerRangeInclusive(batchStartSeq, batchEndSeq)
 		if err != nil {

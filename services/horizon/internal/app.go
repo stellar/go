@@ -512,7 +512,11 @@ func (a *App) init() error {
 	initSubmissionSystem(a)
 
 	// reaper
-	a.reaper = reap.New(a.config.HistoryRetentionCount, a.HorizonSession(), a.ledgerState)
+	a.reaper = reap.New(
+		a.config.HistoryRetentionCount,
+		a.config.HistoryRetentionReapCount,
+		a.HorizonSession(),
+		a.ledgerState)
 
 	// go metrics
 	initGoMetrics(a)

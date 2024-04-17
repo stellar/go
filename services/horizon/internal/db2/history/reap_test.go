@@ -17,7 +17,7 @@ func TestReapLookupTables(t *testing.T) {
 
 	db := tt.HorizonSession()
 
-	sys := reap.New(0, db, ledgerState)
+	sys := reap.New(0, 0, db, ledgerState)
 
 	var (
 		prevLedgers, curLedgers                     int
@@ -43,6 +43,7 @@ func TestReapLookupTables(t *testing.T) {
 
 	ledgerState.SetStatus(tt.LoadLedgerStatus())
 	sys.RetentionCount = 1
+	sys.RetentionBatch = 50
 	err := sys.DeleteUnretainedHistory(tt.Ctx)
 	tt.Require.NoError(err)
 
