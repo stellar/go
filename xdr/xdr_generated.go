@@ -37,7 +37,7 @@ var XdrFilesSHA256 = map[string]string{
 	"xdr/Stellar-contract-config-setting.x": "393369678663cb0f9471a0b69e2a9cfa3ac93c4415fa40cec166e9a231ecbe0d",
 	"xdr/Stellar-contract-env-meta.x":       "928a30de814ee589bc1d2aadd8dd81c39f71b7e6f430f56974505ccb1f49654b",
 	"xdr/Stellar-contract-meta.x":           "f01532c11ca044e19d9f9f16fe373e9af64835da473be556b9a807ee3319ae0d",
-	"xdr/Stellar-contract-spec.x":           "c7ffa21d2e91afb8e666b33524d307955426ff553a486d670c29217ed9888d49",
+	"xdr/Stellar-contract-spec.x":           "8d7f6bdd82c3e529cd8c6f035202ca0e7677cc05e4727492a165dfdc51a9cb3e",
 	"xdr/Stellar-contract.x":                "7f665e4103e146a88fcdabce879aaaacd3bf9283feb194cc47ff986264c1e315",
 	"xdr/Stellar-exporter.x":                "a00c83d02e8c8382e06f79a191f1fb5abd097a4bbcab8481c67467e3270e0529",
 	"xdr/Stellar-internal.x":                "227835866c1b2122d1eaf28839ba85ea7289d1cb681dda4ca619c2da3d71fe00",
@@ -48095,6 +48095,7 @@ const ScSpecDocLimit = 1024
 //	     SC_SPEC_TYPE_MAP = 1004,
 //	     SC_SPEC_TYPE_TUPLE = 1005,
 //	     SC_SPEC_TYPE_BYTES_N = 1006,
+//	     SC_SPEC_TYPE_HASH = 1007,
 //
 //	     // User defined types.
 //	     SC_SPEC_TYPE_UDT = 2000
@@ -48126,6 +48127,7 @@ const (
 	ScSpecTypeScSpecTypeMap       ScSpecType = 1004
 	ScSpecTypeScSpecTypeTuple     ScSpecType = 1005
 	ScSpecTypeScSpecTypeBytesN    ScSpecType = 1006
+	ScSpecTypeScSpecTypeHash      ScSpecType = 1007
 	ScSpecTypeScSpecTypeUdt       ScSpecType = 2000
 )
 
@@ -48154,6 +48156,7 @@ var scSpecTypeMap = map[int32]string{
 	1004: "ScSpecTypeScSpecTypeMap",
 	1005: "ScSpecTypeScSpecTypeTuple",
 	1006: "ScSpecTypeScSpecTypeBytesN",
+	1007: "ScSpecTypeScSpecTypeHash",
 	2000: "ScSpecTypeScSpecTypeUdt",
 }
 
@@ -48659,6 +48662,71 @@ func (s ScSpecTypeBytesN) xdrType() {}
 
 var _ xdrType = (*ScSpecTypeBytesN)(nil)
 
+// ScSpectTypeHash is an XDR Struct defines as:
+//
+//	struct SCSpectTypeHash
+//	 {
+//	     uint32 n;
+//	 };
+type ScSpectTypeHash struct {
+	N Uint32
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s *ScSpectTypeHash) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = s.N.EncodeTo(e); err != nil {
+		return err
+	}
+	return nil
+}
+
+var _ decoderFrom = (*ScSpectTypeHash)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *ScSpectTypeHash) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, fmt.Errorf("decoding ScSpectTypeHash: %w", ErrMaxDecodingDepthReached)
+	}
+	maxDepth -= 1
+	var err error
+	var n, nTmp int
+	nTmp, err = s.N.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %w", err)
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s ScSpectTypeHash) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *ScSpectTypeHash) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*ScSpectTypeHash)(nil)
+	_ encoding.BinaryUnmarshaler = (*ScSpectTypeHash)(nil)
+)
+
+// xdrType signals that this type represents XDR values defined by this package.
+func (s ScSpectTypeHash) xdrType() {}
+
+var _ xdrType = (*ScSpectTypeHash)(nil)
+
 // ScSpecTypeUdt is an XDR Struct defines as:
 //
 //	struct SCSpecTypeUDT
@@ -48759,6 +48827,8 @@ var _ xdrType = (*ScSpecTypeUdt)(nil)
 //	     SCSpecTypeTuple tuple;
 //	 case SC_SPEC_TYPE_BYTES_N:
 //	     SCSpecTypeBytesN bytesN;
+//	 case SC_SPEC_TYPE_HASH:
+//	     SCSpectTypeHash hash;
 //	 case SC_SPEC_TYPE_UDT:
 //	     SCSpecTypeUDT udt;
 //	 };
@@ -48770,6 +48840,7 @@ type ScSpecTypeDef struct {
 	Map    *ScSpecTypeMap
 	Tuple  *ScSpecTypeTuple
 	BytesN *ScSpecTypeBytesN
+	Hash   *ScSpectTypeHash
 	Udt    *ScSpecTypeUdt
 }
 
@@ -48831,6 +48902,8 @@ func (u ScSpecTypeDef) ArmForSwitch(sw int32) (string, bool) {
 		return "Tuple", true
 	case ScSpecTypeScSpecTypeBytesN:
 		return "BytesN", true
+	case ScSpecTypeScSpecTypeHash:
+		return "Hash", true
 	case ScSpecTypeScSpecTypeUdt:
 		return "Udt", true
 	}
@@ -48919,6 +48992,13 @@ func NewScSpecTypeDef(aType ScSpecType, value interface{}) (result ScSpecTypeDef
 			return
 		}
 		result.BytesN = &tv
+	case ScSpecTypeScSpecTypeHash:
+		tv, ok := value.(ScSpectTypeHash)
+		if !ok {
+			err = errors.New("invalid value, must be ScSpectTypeHash")
+			return
+		}
+		result.Hash = &tv
 	case ScSpecTypeScSpecTypeUdt:
 		tv, ok := value.(ScSpecTypeUdt)
 		if !ok {
@@ -49080,6 +49160,31 @@ func (u ScSpecTypeDef) GetBytesN() (result ScSpecTypeBytesN, ok bool) {
 	return
 }
 
+// MustHash retrieves the Hash value from the union,
+// panicing if the value is not set.
+func (u ScSpecTypeDef) MustHash() ScSpectTypeHash {
+	val, ok := u.GetHash()
+
+	if !ok {
+		panic("arm Hash is not set")
+	}
+
+	return val
+}
+
+// GetHash retrieves the Hash value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u ScSpecTypeDef) GetHash() (result ScSpectTypeHash, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "Hash" {
+		result = *u.Hash
+		ok = true
+	}
+
+	return
+}
+
 // MustUdt retrieves the Udt value from the union,
 // panicing if the value is not set.
 func (u ScSpecTypeDef) MustUdt() ScSpecTypeUdt {
@@ -49193,6 +49298,11 @@ func (u ScSpecTypeDef) EncodeTo(e *xdr.Encoder) error {
 		return nil
 	case ScSpecTypeScSpecTypeBytesN:
 		if err = (*u.BytesN).EncodeTo(e); err != nil {
+			return err
+		}
+		return nil
+	case ScSpecTypeScSpecTypeHash:
+		if err = (*u.Hash).EncodeTo(e); err != nil {
 			return err
 		}
 		return nil
@@ -49321,6 +49431,14 @@ func (u *ScSpecTypeDef) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ScSpecTypeBytesN: %w", err)
+		}
+		return n, nil
+	case ScSpecTypeScSpecTypeHash:
+		u.Hash = new(ScSpectTypeHash)
+		nTmp, err = (*u.Hash).DecodeFrom(d, maxDepth)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding ScSpectTypeHash: %w", err)
 		}
 		return n, nil
 	case ScSpecTypeScSpecTypeUdt:

@@ -3804,6 +3804,7 @@ const (
 	SC_SPEC_TYPE_MAP     SCSpecType = 1004
 	SC_SPEC_TYPE_TUPLE   SCSpecType = 1005
 	SC_SPEC_TYPE_BYTES_N SCSpecType = 1006
+	SC_SPEC_TYPE_HASH    SCSpecType = 1007
 	// User defined types.
 	SC_SPEC_TYPE_UDT SCSpecType = 2000
 )
@@ -3834,6 +3835,10 @@ type SCSpecTypeBytesN struct {
 	N Uint32
 }
 
+type SCSpectTypeHash struct {
+	N Uint32
+}
+
 type SCSpecTypeUDT struct {
 	Name string // bound 60
 }
@@ -3854,6 +3859,8 @@ type SCSpecTypeDef struct {
 	//      Tuple() *SCSpecTypeTuple
 	//   SC_SPEC_TYPE_BYTES_N:
 	//      BytesN() *SCSpecTypeBytesN
+	//   SC_SPEC_TYPE_HASH:
+	//      Hash() *SCSpectTypeHash
 	//   SC_SPEC_TYPE_UDT:
 	//      Udt() *SCSpecTypeUDT
 	Type SCSpecType
@@ -25624,6 +25631,7 @@ var _XdrNames_SCSpecType = map[int32]string{
 	int32(SC_SPEC_TYPE_MAP):       "SC_SPEC_TYPE_MAP",
 	int32(SC_SPEC_TYPE_TUPLE):     "SC_SPEC_TYPE_TUPLE",
 	int32(SC_SPEC_TYPE_BYTES_N):   "SC_SPEC_TYPE_BYTES_N",
+	int32(SC_SPEC_TYPE_HASH):      "SC_SPEC_TYPE_HASH",
 	int32(SC_SPEC_TYPE_UDT):       "SC_SPEC_TYPE_UDT",
 }
 var _XdrValues_SCSpecType = map[string]int32{
@@ -25651,6 +25659,7 @@ var _XdrValues_SCSpecType = map[string]int32{
 	"SC_SPEC_TYPE_MAP":       int32(SC_SPEC_TYPE_MAP),
 	"SC_SPEC_TYPE_TUPLE":     int32(SC_SPEC_TYPE_TUPLE),
 	"SC_SPEC_TYPE_BYTES_N":   int32(SC_SPEC_TYPE_BYTES_N),
+	"SC_SPEC_TYPE_HASH":      int32(SC_SPEC_TYPE_HASH),
 	"SC_SPEC_TYPE_UDT":       int32(SC_SPEC_TYPE_UDT),
 }
 
@@ -25843,6 +25852,20 @@ func (v *SCSpecTypeBytesN) XdrRecurse(x XDR, name string) {
 }
 func XDR_SCSpecTypeBytesN(v *SCSpecTypeBytesN) *SCSpecTypeBytesN { return v }
 
+type XdrType_SCSpectTypeHash = *SCSpectTypeHash
+
+func (v *SCSpectTypeHash) XdrPointer() interface{}       { return v }
+func (SCSpectTypeHash) XdrTypeName() string              { return "SCSpectTypeHash" }
+func (v SCSpectTypeHash) XdrValue() interface{}          { return v }
+func (v *SCSpectTypeHash) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *SCSpectTypeHash) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	x.Marshal(x.Sprintf("%sn", name), XDR_Uint32(&v.N))
+}
+func XDR_SCSpectTypeHash(v *SCSpectTypeHash) *SCSpectTypeHash { return v }
+
 type XdrType_SCSpecTypeUDT = *SCSpecTypeUDT
 
 func (v *SCSpecTypeUDT) XdrPointer() interface{}       { return v }
@@ -25882,6 +25905,7 @@ var _XdrTags_SCSpecTypeDef = map[int32]bool{
 	XdrToI32(SC_SPEC_TYPE_MAP):       true,
 	XdrToI32(SC_SPEC_TYPE_TUPLE):     true,
 	XdrToI32(SC_SPEC_TYPE_BYTES_N):   true,
+	XdrToI32(SC_SPEC_TYPE_HASH):      true,
 	XdrToI32(SC_SPEC_TYPE_UDT):       true,
 }
 
@@ -25978,6 +26002,21 @@ func (u *SCSpecTypeDef) BytesN() *SCSpecTypeBytesN {
 		return nil
 	}
 }
+func (u *SCSpecTypeDef) Hash() *SCSpectTypeHash {
+	switch u.Type {
+	case SC_SPEC_TYPE_HASH:
+		if v, ok := u._u.(*SCSpectTypeHash); ok {
+			return v
+		} else {
+			var zero SCSpectTypeHash
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("SCSpecTypeDef.Hash accessed when Type == %v", u.Type)
+		return nil
+	}
+}
 func (u *SCSpecTypeDef) Udt() *SCSpecTypeUDT {
 	switch u.Type {
 	case SC_SPEC_TYPE_UDT:
@@ -25995,7 +26034,7 @@ func (u *SCSpecTypeDef) Udt() *SCSpecTypeUDT {
 }
 func (u SCSpecTypeDef) XdrValid() bool {
 	switch u.Type {
-	case SC_SPEC_TYPE_VAL, SC_SPEC_TYPE_BOOL, SC_SPEC_TYPE_VOID, SC_SPEC_TYPE_ERROR, SC_SPEC_TYPE_U32, SC_SPEC_TYPE_I32, SC_SPEC_TYPE_U64, SC_SPEC_TYPE_I64, SC_SPEC_TYPE_TIMEPOINT, SC_SPEC_TYPE_DURATION, SC_SPEC_TYPE_U128, SC_SPEC_TYPE_I128, SC_SPEC_TYPE_U256, SC_SPEC_TYPE_I256, SC_SPEC_TYPE_BYTES, SC_SPEC_TYPE_STRING, SC_SPEC_TYPE_SYMBOL, SC_SPEC_TYPE_ADDRESS, SC_SPEC_TYPE_OPTION, SC_SPEC_TYPE_RESULT, SC_SPEC_TYPE_VEC, SC_SPEC_TYPE_MAP, SC_SPEC_TYPE_TUPLE, SC_SPEC_TYPE_BYTES_N, SC_SPEC_TYPE_UDT:
+	case SC_SPEC_TYPE_VAL, SC_SPEC_TYPE_BOOL, SC_SPEC_TYPE_VOID, SC_SPEC_TYPE_ERROR, SC_SPEC_TYPE_U32, SC_SPEC_TYPE_I32, SC_SPEC_TYPE_U64, SC_SPEC_TYPE_I64, SC_SPEC_TYPE_TIMEPOINT, SC_SPEC_TYPE_DURATION, SC_SPEC_TYPE_U128, SC_SPEC_TYPE_I128, SC_SPEC_TYPE_U256, SC_SPEC_TYPE_I256, SC_SPEC_TYPE_BYTES, SC_SPEC_TYPE_STRING, SC_SPEC_TYPE_SYMBOL, SC_SPEC_TYPE_ADDRESS, SC_SPEC_TYPE_OPTION, SC_SPEC_TYPE_RESULT, SC_SPEC_TYPE_VEC, SC_SPEC_TYPE_MAP, SC_SPEC_TYPE_TUPLE, SC_SPEC_TYPE_BYTES_N, SC_SPEC_TYPE_HASH, SC_SPEC_TYPE_UDT:
 		return true
 	}
 	return false
@@ -26022,6 +26061,8 @@ func (u *SCSpecTypeDef) XdrUnionBody() XdrType {
 		return XDR_SCSpecTypeTuple(u.Tuple())
 	case SC_SPEC_TYPE_BYTES_N:
 		return XDR_SCSpecTypeBytesN(u.BytesN())
+	case SC_SPEC_TYPE_HASH:
+		return XDR_SCSpectTypeHash(u.Hash())
 	case SC_SPEC_TYPE_UDT:
 		return XDR_SCSpecTypeUDT(u.Udt())
 	}
@@ -26043,6 +26084,8 @@ func (u *SCSpecTypeDef) XdrUnionBodyName() string {
 		return "Tuple"
 	case SC_SPEC_TYPE_BYTES_N:
 		return "BytesN"
+	case SC_SPEC_TYPE_HASH:
+		return "Hash"
 	case SC_SPEC_TYPE_UDT:
 		return "Udt"
 	}
@@ -26080,6 +26123,9 @@ func (u *SCSpecTypeDef) XdrRecurse(x XDR, name string) {
 		return
 	case SC_SPEC_TYPE_BYTES_N:
 		x.Marshal(x.Sprintf("%sbytesN", name), XDR_SCSpecTypeBytesN(u.BytesN()))
+		return
+	case SC_SPEC_TYPE_HASH:
+		x.Marshal(x.Sprintf("%shash", name), XDR_SCSpectTypeHash(u.Hash()))
 		return
 	case SC_SPEC_TYPE_UDT:
 		x.Marshal(x.Sprintf("%sudt", name), XDR_SCSpecTypeUDT(u.Udt()))
