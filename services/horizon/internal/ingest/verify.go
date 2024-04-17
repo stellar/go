@@ -174,7 +174,7 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool, checkpointSeque
 		return errors.Wrap(err, "Error running GetState")
 	}
 	defer stateReader.Close()
-	if err := stateReader.VerifyBucketList(expectedBucketListHash); err != nil {
+	if err = stateReader.VerifyBucketList(expectedBucketListHash); err != nil {
 		return ingest.NewStateError(err)
 	}
 

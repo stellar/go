@@ -240,7 +240,7 @@ func (s *ProcessorRunner) RunHistoryArchiveIngestion(
 		}
 
 		if !skipChecks {
-			if err := changeReader.VerifyBucketList(bucketListHash); err != nil {
+			if err = changeReader.VerifyBucketList(bucketListHash); err != nil {
 				return changeStats.GetResults(), errors.Wrap(err, "Error validating bucket list from HAS")
 			}
 		}
