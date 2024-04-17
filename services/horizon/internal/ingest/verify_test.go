@@ -355,7 +355,7 @@ func TestStateVerifierLockBusy(t *testing.T) {
 	tt.Assert.NoError(err)
 	tt.Assert.True(ok)
 
-	tt.Assert.NoError(sys.verifyState(false))
+	tt.Assert.NoError(sys.verifyState(false, checkpointLedger, xdr.Hash{}))
 	mockHistoryAdapter.AssertExpectations(t)
 
 	tt.Assert.NoError(otherQ.Rollback())
@@ -386,6 +386,8 @@ func TestStateVerifier(t *testing.T) {
 
 	mockChangeReader.On("Read").Return(ingest.Change{}, io.EOF).Twice()
 	mockChangeReader.On("Close").Return(nil).Once()
+	bucketListHash := xdr.Hash{1, 2, 3}
+	mockChangeReader.On("VerifyBucketList", bucketListHash).Return(nil).Once()
 
 	mockHistoryAdapter := &mockHistoryArchiveAdapter{}
 	mockHistoryAdapter.On("GetState", mock.AnythingOfType("*context.timerCtx"), uint32(checkpointLedger)).Return(mockChangeReader, nil).Once()
@@ -399,7 +401,7 @@ func TestStateVerifier(t *testing.T) {
 	}
 	sys.initMetrics()
 
-	tt.Assert.NoError(sys.verifyState(false))
+	tt.Assert.NoError(sys.verifyState(false, checkpointLedger, bucketListHash))
 	mockChangeReader.AssertExpectations(t)
 	mockHistoryAdapter.AssertExpectations(t)
 }

@@ -24,6 +24,7 @@ import (
 	"github.com/stellar/go/support/errors"
 	logpkg "github.com/stellar/go/support/log"
 	"github.com/stellar/go/support/storage"
+	"github.com/stellar/go/xdr"
 )
 
 const (
@@ -669,7 +670,7 @@ func (s *system) runStateMachine(cur stateMachineNode) error {
 	}
 }
 
-func (s *system) maybeVerifyState(lastIngestedLedger uint32) {
+func (s *system) maybeVerifyState(lastIngestedLedger uint32, expectedBucketListHash xdr.Hash) {
 	stateInvalid, err := s.historyQ.GetExpStateInvalid(s.ctx)
 	if err != nil {
 		if !isCancelledError(s.ctx, err) {
@@ -686,7 +687,7 @@ func (s *system) maybeVerifyState(lastIngestedLedger uint32) {
 		go func() {
 			defer s.wg.Done()
 
-			err := s.verifyState(true)
+			err := s.verifyState(true, lastIngestedLedger, expectedBucketListHash)
 			if err != nil {
 				if isCancelledError(s.ctx, err) {
 					return

@@ -551,7 +551,7 @@ func (r resumeState) run(s *system) (transition, error) {
 
 	localLog.Info("Processed ledger")
 
-	s.maybeVerifyState(ingestLedger)
+	s.maybeVerifyState(ingestLedger, ledgerCloseMeta.BucketListHash())
 	s.maybeReapLookupTables(ingestLedger)
 
 	return resumeImmediately(ingestLedger), nil
@@ -745,7 +745,6 @@ func (v verifyRangeState) run(s *system) (transition, error) {
 			return stop(), err
 		}
 
-		var ledgerCloseMeta xdr.LedgerCloseMeta
 		ledgerCloseMeta, err = s.ledgerBackend.GetLedger(s.ctx, sequence)
 		if err != nil {
 			return stop(), errors.Wrap(err, "error getting ledger")
@@ -782,7 +781,11 @@ func (v verifyRangeState) run(s *system) (transition, error) {
 	}
 
 	if v.verifyState {
-		err = s.verifyState(false)
+		err = s.verifyState(
+			false,
+			ledgerCloseMeta.LedgerSequence(),
+			ledgerCloseMeta.BucketListHash(),
+		)
 	}
 
 	return stop(), err

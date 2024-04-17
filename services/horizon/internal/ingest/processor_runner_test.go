@@ -78,13 +78,12 @@ func TestProcessorRunnerRunHistoryArchiveIngestionHistoryArchive(t *testing.T) {
 	historyAdapter := &mockHistoryArchiveAdapter{}
 	defer mock.AssertExpectationsForObjects(t, historyAdapter)
 
-	bucketListHash := xdr.Hash([32]byte{0, 1, 2})
-	historyAdapter.On("BucketListHash", uint32(63)).Return(bucketListHash, nil).Once()
-
 	m := &ingest.MockChangeReader{}
 	m.On("Read").Return(ingest.GenesisChange(network.PublicNetworkPassphrase), nil).Once()
 	m.On("Read").Return(ingest.Change{}, io.EOF).Once()
 	m.On("Close").Return(nil).Once()
+	bucketListHash := xdr.Hash([32]byte{0, 1, 2})
+	m.On("VerifyBucketList", bucketListHash).Return(nil).Once()
 
 	historyAdapter.
 		On("GetState", ctx, uint32(63)).

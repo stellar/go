@@ -1,7 +1,9 @@
 package ingest
 
 import (
+	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"sync"
 	"time"
@@ -95,6 +97,29 @@ func NewCheckpointChangeReader(
 		encodingBuffer:    xdr.NewEncodingBuffer(),
 		sleep:             time.Sleep,
 	}, nil
+}
+
+// VerifyBucketList verifies that the bucket list hash computed from the history archive snapshot
+// associated with the CheckpointChangeReader matches the expectedHash.
+// Assuming expectedHash comes from a trusted source (captive-core running in unbounded mode), this
+// check will give you full security that the data returned by the CheckpointChangeReader can be trusted.
+// Note that XdrStream will verify all the ledger entries from an individual bucket and
+// VerifyBucketList() verifies the entire list of bucket hashes.
+func (r *CheckpointChangeReader) VerifyBucketList(expectedHash xdr.Hash) error {
+	historyBucketListHash, err := r.has.BucketListHash()
+	if err != nil {
+		return errors.Wrap(err, "Error getting bucket list hash")
+	}
+
+	if !bytes.Equal(historyBucketListHash[:], expectedHash[:]) {
+		return fmt.Errorf(
+			"bucket list hash of history archive does not match expected hash: %#x %#x",
+			historyBucketListHash,
+			expectedHash,
+		)
+	}
+
+	return nil
 }
 
 func (r *CheckpointChangeReader) bucketExists(hash historyarchive.Hash) (bool, error) {
