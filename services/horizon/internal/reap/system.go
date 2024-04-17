@@ -93,7 +93,9 @@ func (r *System) clearBefore(ctx context.Context, startSeq, endSeq int32) error 
 		if batchStartSeq < startSeq {
 			batchStartSeq = startSeq
 		}
-		log.WithField("start_ledger", batchStartSeq).WithField("end_ledger", batchEndSeq).Info("reaper: clearing")
+		log.WithField("start_ledger", batchStartSeq).
+			WithField("end_ledger", batchEndSeq).
+			Info("reaper: clearing")
 
 		batchStart, batchEnd, err := toid.LedgerRangeInclusive(batchStartSeq, batchEndSeq)
 		if err != nil {
