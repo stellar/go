@@ -664,6 +664,12 @@ func Flags() (*Config, support.ConfigOptions) {
 			FlagDefault:    uint(50_000),
 			Usage:          "the batch size (in ledgers) to remove per reap from the Horizon database",
 			UsedInCommands: IngestionCommands,
+			CustomSetValue: func(opt *support.ConfigOption) error {
+				if val := viper.GetUint(opt.Name); val <= 0 || val > 500_000 {
+					return fmt.Errorf("flag --history-retention-reap-count must be in range [1, 500,000]")
+				}
+				return nil
+			},
 		},
 		&support.ConfigOption{
 			Name:           "history-stale-threshold",
