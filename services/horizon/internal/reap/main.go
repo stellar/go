@@ -16,19 +16,22 @@ import (
 type System struct {
 	HistoryQ       *history.Q
 	RetentionCount uint
-	ledgerState    *ledger.State
-	ctx            context.Context
-	cancel         context.CancelFunc
+	RetentionBatch uint
+
+	ledgerState *ledger.State
+	ctx         context.Context
+	cancel      context.CancelFunc
 }
 
 // New initializes the reaper, causing it to begin polling the stellar-core
 // database for now ledgers and ingesting data into the horizon database.
-func New(retention uint, dbSession db.SessionInterface, ledgerState *ledger.State) *System {
+func New(retention, retentionBatchSize uint, dbSession db.SessionInterface, ledgerState *ledger.State) *System {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	r := &System{
 		HistoryQ:       &history.Q{dbSession.Clone()},
 		RetentionCount: retention,
+		RetentionBatch: retentionBatchSize,
 		ledgerState:    ledgerState,
 		ctx:            ctx,
 		cancel:         cancel,

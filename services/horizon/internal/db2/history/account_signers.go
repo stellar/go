@@ -68,12 +68,12 @@ func (q *Q) CreateAccountSigner(ctx context.Context, account, signer string, wei
 	return result.RowsAffected()
 }
 
-// RemoveAccountSigner deletes a row in the accounts_signers table.
+// RemoveAccountSigners deletes rows in the accounts_signers table.
 // Returns number of rows affected and error.
-func (q *Q) RemoveAccountSigner(ctx context.Context, account, signer string) (int64, error) {
+func (q *Q) RemoveAccountSigners(ctx context.Context, account string, signers []string) (int64, error) {
 	sql := sq.Delete("accounts_signers").Where(sq.Eq{
 		"account_id": account,
-		"signer":     signer,
+		"signer":     signers,
 	})
 
 	result, err := q.Exec(ctx, sql)

@@ -91,7 +91,7 @@ func (h historyRangeState) run(s *system) (transition, error) {
 		ledgers = append(ledgers, ledgerCloseMeta)
 
 		if len(ledgers) == cap(ledgers) {
-			if err = s.runner.RunTransactionProcessorsOnLedgers(ledgers); err != nil {
+			if err = s.runner.RunTransactionProcessorsOnLedgers(ledgers, false); err != nil {
 				return start(), errors.Wrapf(err, "error processing ledger range %d - %d", ledgers[0].LedgerSequence(), ledgers[len(ledgers)-1].LedgerSequence())
 			}
 			ledgers = ledgers[0:0]
@@ -99,7 +99,7 @@ func (h historyRangeState) run(s *system) (transition, error) {
 	}
 
 	if len(ledgers) > 0 {
-		if err = s.runner.RunTransactionProcessorsOnLedgers(ledgers); err != nil {
+		if err = s.runner.RunTransactionProcessorsOnLedgers(ledgers, false); err != nil {
 			return start(), errors.Wrapf(err, "error processing ledger range %d - %d", ledgers[0].LedgerSequence(), ledgers[len(ledgers)-1].LedgerSequence())
 		}
 	}

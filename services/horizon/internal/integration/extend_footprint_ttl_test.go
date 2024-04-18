@@ -17,7 +17,6 @@ func TestExtendFootprintTtl(t *testing.T) {
 	}
 
 	itest := integration.NewTest(t, integration.Config{
-		ProtocolVersion:  20,
 		EnableSorobanRPC: true,
 	})
 

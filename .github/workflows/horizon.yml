@@ -12,9 +12,8 @@ jobs:
       matrix:
         os: [ubuntu-20.04, ubuntu-22.04]
         go: ["1.21", "1.22"]
-        pg: [12]
-        ingestion-backend: [captive-core, captive-core-remote-storage]
-        protocol-version: [19, 20]
+        pg: [12, 16]
+        protocol-version: [20, 21]
     runs-on: ${{ matrix.os }}
     services:
       postgres:
@@ -33,11 +32,13 @@ jobs:
     env:
       HORIZON_INTEGRATION_TESTS_ENABLED: true
       HORIZON_INTEGRATION_TESTS_CORE_MAX_SUPPORTED_PROTOCOL: ${{ matrix.protocol-version }}
-      PROTOCOL_20_CORE_DEBIAN_PKG_VERSION: 20.2.0-1716.rc3.34d82fc00.focal
-      PROTOCOL_20_CORE_DOCKER_IMG: stellar/unsafe-stellar-core:20.2.0-1716.rc3.34d82fc00.focal
+      PROTOCOL_21_CORE_DEBIAN_PKG_VERSION: 20.4.1-1807.b152dc51d.focal
+      PROTOCOL_21_CORE_DOCKER_IMG: stellar/unsafe-stellar-core:20.4.1-1807.b152dc51d.focal
+      PROTOCOL_21_SOROBAN_RPC_DOCKER_IMG: stellar/soroban-rpc:21.0.0-rc1-68
+      PROTOCOL_20_CORE_DEBIAN_PKG_VERSION: 20.4.1-1807.b152dc51d.focal
+      PROTOCOL_20_CORE_DOCKER_IMG: stellar/unsafe-stellar-core:20.4.1-1807.b152dc51d.focal
+      # TODO: bump soroban-rpc to the p21 version once it supports it
       PROTOCOL_20_SOROBAN_RPC_DOCKER_IMG: stellar/soroban-rpc:20.3.0-rc1-52
-      PROTOCOL_19_CORE_DEBIAN_PKG_VERSION: 19.14.0-1500.5664eff4e.focal
-      PROTOCOL_19_CORE_DOCKER_IMG: stellar/stellar-core:19.14.0-1500.5664eff4e.focal
       PGHOST: localhost
       PGPORT: 5432
       PGUSER: postgres
@@ -72,16 +73,14 @@ jobs:
           docker pull "$PROTOCOL_${{ matrix.protocol-version }}_CORE_DOCKER_IMG"
           echo HORIZON_INTEGRATION_TESTS_DOCKER_IMG="$PROTOCOL_${{ matrix.protocol-version }}_CORE_DOCKER_IMG" >> $GITHUB_ENV
 
-      - if: ${{ matrix.protocol-version == '20' }}
-        name: Pull and set Soroban RPC image
+      - name: Pull and set Soroban RPC image
         shell: bash
         run: |
           docker pull "$PROTOCOL_${{ matrix.protocol-version }}_SOROBAN_RPC_DOCKER_IMG"
           echo HORIZON_INTEGRATION_TESTS_SOROBAN_RPC_DOCKER_IMG="$PROTOCOL_${{ matrix.protocol-version }}_SOROBAN_RPC_DOCKER_IMG" >> $GITHUB_ENV
           echo HORIZON_INTEGRATION_TESTS_ENABLE_SOROBAN_RPC=true >> $GITHUB_ENV
 
-      - if: ${{ startsWith(matrix.ingestion-backend, 'captive-core') }}
-        name: Install and enable Captive Core
+      - name: Install and enable Captive Core
         run: |
           # Workaround for https://github.com/actions/virtual-environments/issues/5245,
           # libc++1-8 won't be installed if another version is installed (but apt won't give you a helpul
@@ -95,10 +94,7 @@ jobs:
           echo "Using stellar core version $(stellar-core version)"
           echo 'HORIZON_INTEGRATION_TESTS_ENABLE_CAPTIVE_CORE=true' >> $GITHUB_ENV
           echo 'HORIZON_INTEGRATION_TESTS_CAPTIVE_CORE_BIN=/usr/bin/stellar-core' >> $GITHUB_ENV
-
-      - if: ${{ matrix.ingestion-backend == 'captive-core-remote-storage' }}
-        name: Setup Captive Core Remote Storage
-        run: echo 'HORIZON_INTEGRATION_TESTS_CAPTIVE_CORE_USE_DB=true' >> $GITHUB_ENV
+          echo 'HORIZON_INTEGRATION_TESTS_CAPTIVE_CORE_USE_DB=true' >> $GITHUB_ENV
 
       - name: Build Horizon reproducible build
         run: |
@@ -162,47 +158,25 @@ jobs:
   ledger-exporter:
     name: Test and push the Ledger Exporter images
     runs-on: ubuntu-latest
-    if: false # Disable the job
     steps:
       - uses: actions/checkout@v3
         with:
           # For pull requests, build and test the PR head not a merge of the PR with the destination.
           ref:  ${{ github.event.pull_request.head.sha || github.ref }}
-      - name: Build and test Ledger Exporter images
-        # Any range should do for basic testing, this range was chosen pretty early in history so that it only takes a few mins to run
-        run: |
-          chmod 755 ./exp/lighthorizon/build/build.sh
-          mkdir $PWD/ledgerexport
-          # mkdir $PWD/index
+      - name: Build Ledger Exporter docker
+        run: make -C exp/services/ledgerexporter docker-build
 
-          ./exp/lighthorizon/build/build.sh ledgerexporter stellar latest false
-          docker run -e ARCHIVE_TARGET=file:///ledgerexport\
-                     -e START=5\
-                     -e END=150\
-                     -e NETWORK_PASSPHRASE="Public Global Stellar Network ; September 2015"\
-                     -e CAPTIVE_CORE_CONFIG="/captive-core-pubnet.cfg"\
-                     -e HISTORY_ARCHIVE_URLS="https://history.stellar.org/prd/core-live/core_live_001"\
-                     -v $PWD/ledgerexport:/ledgerexport\
-                     stellar/lighthorizon-ledgerexporter
-
-          # # run map job
-          # docker run -e NETWORK_PASSPHRASE='pubnet' -e JOB_INDEX_ENV=AWS_BATCH_JOB_ARRAY_INDEX -e AWS_BATCH_JOB_ARRAY_INDEX=0 -e BATCH_SIZE=64 -e FIRST_CHECKPOINT=64 \
-          #            -e WORKER_COUNT=1 -e RUN_MODE=map -v $PWD/ledgerexport:/ledgermeta -e TXMETA_SOURCE=file:///ledgermeta -v $PWD/index:/index -e INDEX_TARGET=file:///index stellar/lighthorizon-index-batch
-
-          # # run reduce job
-          # docker run -e NETWORK_PASSPHRASE='pubnet' -e JOB_INDEX_ENV=AWS_BATCH_JOB_ARRAY_INDEX -e AWS_BATCH_JOB_ARRAY_INDEX=0 -e MAP_JOB_COUNT=1 -e REDUCE_JOB_COUNT=1 \
-          #            -e WORKER_COUNT=1 -e RUN_MODE=reduce -v $PWD/index:/index -e INDEX_SOURCE_ROOT=file:///index -e INDEX_TARGET=file:///index stellar/lighthorizon-index-batch
+      - name: Run Ledger Exporter test
+        run: make -C exp/services/ledgerexporter docker-test
 
       # Push images
-      - if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/lighthorizon'
+      - if: github.ref == 'refs/heads/master'
         name: Login to DockerHub
         uses: docker/login-action@bb984efc561711aaa26e433c32c3521176eae55b
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/lighthorizon'
+      - if: github.ref == 'refs/heads/master'
         name: Push to DockerHub
-        run: |
-          chmod 755 ./exp/lighthorizon/build/build.sh
-          ./exp/lighthorizon/build/build.sh ledgerexporter stellar latest true
+        run: make -C exp/services/ledgerexporter docker-push

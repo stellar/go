@@ -11,6 +11,7 @@ import (
 type ClaimableBalanceClaimantBatchInsertBuilder interface {
 	Add(claimableBalanceClaimant ClaimableBalanceClaimant) error
 	Exec(ctx context.Context) error
+	Len() int
 }
 
 // ClaimableBalanceClaimantBatchInsertBuilder is a simple wrapper around db.FastBatchInsertBuilder
@@ -37,4 +38,9 @@ func (i *claimableBalanceClaimantBatchInsertBuilder) Add(claimableBalanceClaiman
 // Exec writes the batch of claimants to the database.
 func (i *claimableBalanceClaimantBatchInsertBuilder) Exec(ctx context.Context) error {
 	return i.builder.Exec(ctx, i.session, i.table)
+}
+
+// Len returns the number of items in the batch.
+func (i *claimableBalanceClaimantBatchInsertBuilder) Len() int {
+	return i.builder.Len()
 }

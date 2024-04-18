@@ -19,3 +19,8 @@ func (m *MockAccountDataBatchInsertBuilder) Exec(ctx context.Context) error {
 	a := m.Called(ctx)
 	return a.Error(0)
 }
+
+func (m *MockAccountDataBatchInsertBuilder) Len() int {
+	a := m.Called()
+	return a.Int(0)
+}

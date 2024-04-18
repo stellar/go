@@ -57,7 +57,7 @@ jobs:
       matrix:
         os: [ubuntu-22.04]
         go: ["1.21", "1.22"]
-        pg: [12]
+        pg: [12, 16]
     runs-on: ${{ matrix.os }}
     services:
       postgres:

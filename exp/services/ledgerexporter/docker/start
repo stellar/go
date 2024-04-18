@@ -1,0 +1,39 @@
+#! /usr/bin/env bash
+set -e
+
+# Validation
+if [ -z "$ARCHIVE_TARGET" ]; then
+  echo "error: undefined ARCHIVE_TARGET env variable"
+  exit 1
+fi
+
+if [ -z "$NETWORK" ]; then
+  echo "error: undefined NETWORK env variable"
+  exit 1
+fi
+
+ledgers_per_file="${LEDGERS_PER_FILE:-1}"
+files_per_partition="${FILES_PER_PARTITION:-64000}"
+
+# Generate TOML configuration
+cat <<EOF > config.toml
+network = "${NETWORK}"
+destination_url = "${ARCHIVE_TARGET}"
+
+[exporter_config]
+  ledgers_per_file = $ledgers_per_file
+  files_per_partition = $files_per_partition
+EOF
+
+# Check if START or END variables are set
+if [[ -n "$START" || -n "$END" ]]; then
+    echo "START: $START END: $END"
+    /usr/bin/ledgerexporter --config-file config.toml --start $START --end $END
+# Check if FROM_LAST variable is set
+elif [[ -n "$FROM_LAST" ]]; then
+    echo "FROM_LAST: $FROM_LAST"
+    /usr/bin/ledgerexporter --config-file config.toml --from-last  $FROM_LAST
+else
+    echo "Error: No ledger range provided."
+    exit 1
+fi

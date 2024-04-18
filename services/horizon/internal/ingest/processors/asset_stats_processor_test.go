@@ -1193,7 +1193,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestExpirationLedgerCannotDecrease(
 	s.Assert().NoError(err)
 
 	keyHash := getKeyHashForBalance(s.T(), eurID, [32]byte{1})
-	s.Assert().NoError(s.processor.ProcessChange(s.ctx, ingest.Change{
+	s.Assert().EqualError(s.processor.ProcessChange(s.ctx, ingest.Change{
 		Type: xdr.LedgerEntryTypeTtl,
 		Pre: &xdr.LedgerEntry{
 			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
@@ -1215,11 +1215,8 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestExpirationLedgerCannotDecrease(
 				},
 			},
 		},
-	}))
-
-	s.Assert().EqualError(
-		s.processor.Commit(s.ctx),
-		"Error adjusting asset stat: unexpected change in expiration ledger Pre: 2235 Post: 2234",
+	}),
+		"unexpected change in expiration ledger Pre: 2235 Post: 2234",
 	)
 }
 
@@ -1230,7 +1227,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestExpirationLedgerCannotBeLessTha
 	s.Assert().NoError(err)
 
 	keyHash := getKeyHashForBalance(s.T(), eurID, [32]byte{1})
-	s.Assert().NoError(s.processor.ProcessChange(s.ctx, ingest.Change{
+	s.Assert().EqualError(s.processor.ProcessChange(s.ctx, ingest.Change{
 		Type: xdr.LedgerEntryTypeTtl,
 		Pre: &xdr.LedgerEntry{
 			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
@@ -1252,11 +1249,8 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestExpirationLedgerCannotBeLessTha
 				},
 			},
 		},
-	}))
-
-	s.Assert().EqualError(
-		s.processor.Commit(s.ctx),
-		"Error adjusting asset stat: post expiration ledger is less than current ledger. Pre: 1230 Post: 1234 current ledger: 1235",
+	}),
+		"post expiration ledger is less than current ledger. Pre: 1230 Post: 1234 current ledger: 1235",
 	)
 }
 

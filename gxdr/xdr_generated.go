@@ -639,10 +639,37 @@ type ContractDataEntry struct {
 	Val        SCVal
 }
 
+type ContractCodeCostInputs struct {
+	Ext               ExtensionPoint
+	NInstructions     Uint32
+	NFunctions        Uint32
+	NGlobals          Uint32
+	NTableEntries     Uint32
+	NTypes            Uint32
+	NDataSegments     Uint32
+	NElemSegments     Uint32
+	NImports          Uint32
+	NExports          Uint32
+	NDataSegmentBytes Uint32
+}
+
 type ContractCodeEntry struct {
-	Ext  ExtensionPoint
+	Ext  XdrAnon_ContractCodeEntry_Ext
 	Hash Hash
 	Code []byte
+}
+type XdrAnon_ContractCodeEntry_Ext struct {
+	// The union discriminant V selects among the following arms:
+	//   0:
+	//      void
+	//   1:
+	//      V1() *XdrAnon_ContractCodeEntry_Ext_V1
+	V  int32
+	_u interface{}
+}
+type XdrAnon_ContractCodeEntry_Ext_V1 struct {
+	Ext        ExtensionPoint
+	CostInputs ContractCodeCostInputs
 }
 
 type TTLEntry struct {
@@ -1197,8 +1224,39 @@ type DiagnosticEvent struct {
 	Event                    ContractEvent
 }
 
-type SorobanTransactionMeta struct {
+type SorobanTransactionMetaExtV1 struct {
 	Ext ExtensionPoint
+	// Total amount (in stroops) that has been charged for non-refundable
+	// Soroban resources.
+	// Non-refundable resources are charged based on the usage declared in
+	// the transaction envelope (such as `instructions`, `readBytes` etc.) and
+	// is charged regardless of the success of the transaction.
+	TotalNonRefundableResourceFeeCharged Int64
+	// Total amount (in stroops) that has been charged for refundable
+	// Soroban resource fees.
+	// Currently this comprises the rent fee (`rentFeeCharged`) and the
+	// fee for the events and return value.
+	// Refundable resources are charged based on the actual resources usage.
+	// Since currently refundable resources are only used for the successful
+	// transactions, this will be `0` for failed transactions.
+	TotalRefundableResourceFeeCharged Int64
+	// Amount (in stroops) that has been charged for rent.
+	// This is a part of `totalNonRefundableResourceFeeCharged`.
+	RentFeeCharged Int64
+}
+
+type SorobanTransactionMetaExt struct {
+	// The union discriminant V selects among the following arms:
+	//   0:
+	//      void
+	//   1:
+	//      V1() *SorobanTransactionMetaExtV1
+	V  int32
+	_u interface{}
+}
+
+type SorobanTransactionMeta struct {
+	Ext SorobanTransactionMetaExt
 	// custom events populated by the
 	Events []ContractEvent
 	// contracts themselves.
@@ -1273,10 +1331,23 @@ type LedgerCloseMetaV0 struct {
 	ScpInfo []SCPHistoryEntry
 }
 
+type LedgerCloseMetaExtV1 struct {
+	Ext                ExtensionPoint
+	SorobanFeeWrite1KB Int64
+}
+
+type LedgerCloseMetaExt struct {
+	// The union discriminant V selects among the following arms:
+	//   0:
+	//      void
+	//   1:
+	//      V1() *LedgerCloseMetaExtV1
+	V  int32
+	_u interface{}
+}
+
 type LedgerCloseMetaV1 struct {
-	// We forgot to add an ExtensionPoint in v0 but at least
-	// we can add one now in v1.
-	Ext          ExtensionPoint
+	Ext          LedgerCloseMetaExt
 	LedgerHeader LedgerHeaderHistoryEntry
 	TxSet        GeneralizedTransactionSet
 	// NB: transactions are sorted in apply order here
@@ -3733,6 +3804,7 @@ const (
 	SC_SPEC_TYPE_MAP     SCSpecType = 1004
 	SC_SPEC_TYPE_TUPLE   SCSpecType = 1005
 	SC_SPEC_TYPE_BYTES_N SCSpecType = 1006
+	SC_SPEC_TYPE_HASH    SCSpecType = 1007
 	// User defined types.
 	SC_SPEC_TYPE_UDT SCSpecType = 2000
 )
@@ -3763,6 +3835,10 @@ type SCSpecTypeBytesN struct {
 	N Uint32
 }
 
+type SCSpectTypeHash struct {
+	N Uint32
+}
+
 type SCSpecTypeUDT struct {
 	Name string // bound 60
 }
@@ -3783,6 +3859,8 @@ type SCSpecTypeDef struct {
 	//      Tuple() *SCSpecTypeTuple
 	//   SC_SPEC_TYPE_BYTES_N:
 	//      BytesN() *SCSpecTypeBytesN
+	//   SC_SPEC_TYPE_HASH:
+	//      Hash() *SCSpectTypeHash
 	//   SC_SPEC_TYPE_UDT:
 	//      Udt() *SCSpecTypeUDT
 	Type SCSpecType
@@ -4305,8 +4383,9 @@ const (
 	InvokeVmFunction ContractCostType = 13
 	// Cost of computing a keccak256 hash from bytes.
 	ComputeKeccak256Hash ContractCostType = 14
-	// Cost of computing an ECDSA secp256k1 signature from bytes.
-	ComputeEcdsaSecp256k1Sig ContractCostType = 15
+	// Cost of decoding an ECDSA signature computed from a 256-bit prime modulus
+	// curve (e.g. secp256k1 and secp256r1)
+	DecodeEcdsaCurve256Sig ContractCostType = 15
 	// Cost of recovering an ECDSA secp256k1 key from a signature.
 	RecoverEcdsaSecp256k1Key ContractCostType = 16
 	// Cost of int256 addition (`+`) and subtraction (`-`) operations
@@ -4321,6 +4400,51 @@ const (
 	Int256Shift ContractCostType = 21
 	// Cost of drawing random bytes using a ChaCha20 PRNG
 	ChaCha20DrawBytes ContractCostType = 22
+	// Cost of parsing wasm bytes that only encode instructions.
+	ParseWasmInstructions ContractCostType = 23
+	// Cost of parsing a known number of wasm functions.
+	ParseWasmFunctions ContractCostType = 24
+	// Cost of parsing a known number of wasm globals.
+	ParseWasmGlobals ContractCostType = 25
+	// Cost of parsing a known number of wasm table entries.
+	ParseWasmTableEntries ContractCostType = 26
+	// Cost of parsing a known number of wasm types.
+	ParseWasmTypes ContractCostType = 27
+	// Cost of parsing a known number of wasm data segments.
+	ParseWasmDataSegments ContractCostType = 28
+	// Cost of parsing a known number of wasm element segments.
+	ParseWasmElemSegments ContractCostType = 29
+	// Cost of parsing a known number of wasm imports.
+	ParseWasmImports ContractCostType = 30
+	// Cost of parsing a known number of wasm exports.
+	ParseWasmExports ContractCostType = 31
+	// Cost of parsing a known number of data segment bytes.
+	ParseWasmDataSegmentBytes ContractCostType = 32
+	// Cost of instantiating wasm bytes that only encode instructions.
+	InstantiateWasmInstructions ContractCostType = 33
+	// Cost of instantiating a known number of wasm functions.
+	InstantiateWasmFunctions ContractCostType = 34
+	// Cost of instantiating a known number of wasm globals.
+	InstantiateWasmGlobals ContractCostType = 35
+	// Cost of instantiating a known number of wasm table entries.
+	InstantiateWasmTableEntries ContractCostType = 36
+	// Cost of instantiating a known number of wasm types.
+	InstantiateWasmTypes ContractCostType = 37
+	// Cost of instantiating a known number of wasm data segments.
+	InstantiateWasmDataSegments ContractCostType = 38
+	// Cost of instantiating a known number of wasm element segments.
+	InstantiateWasmElemSegments ContractCostType = 39
+	// Cost of instantiating a known number of wasm imports.
+	InstantiateWasmImports ContractCostType = 40
+	// Cost of instantiating a known number of wasm exports.
+	InstantiateWasmExports ContractCostType = 41
+	// Cost of instantiating a known number of data segment bytes.
+	InstantiateWasmDataSegmentBytes ContractCostType = 42
+	// Cost of decoding a bytes array representing an uncompressed SEC-1 encoded
+	// point on a 256-bit elliptic curve
+	Sec1DecodePointUncompressed ContractCostType = 43
+	// Cost of verifying an ECDSA Secp256r1 signature
+	VerifyEcdsaSecp256r1Sig ContractCostType = 44
 )
 
 type ContractCostParamEntry struct {
@@ -7966,6 +8090,128 @@ func (v *ContractDataEntry) XdrRecurse(x XDR, name string) {
 }
 func XDR_ContractDataEntry(v *ContractDataEntry) *ContractDataEntry { return v }
 
+type XdrType_ContractCodeCostInputs = *ContractCodeCostInputs
+
+func (v *ContractCodeCostInputs) XdrPointer() interface{}       { return v }
+func (ContractCodeCostInputs) XdrTypeName() string              { return "ContractCodeCostInputs" }
+func (v ContractCodeCostInputs) XdrValue() interface{}          { return v }
+func (v *ContractCodeCostInputs) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *ContractCodeCostInputs) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	x.Marshal(x.Sprintf("%sext", name), XDR_ExtensionPoint(&v.Ext))
+	x.Marshal(x.Sprintf("%snInstructions", name), XDR_Uint32(&v.NInstructions))
+	x.Marshal(x.Sprintf("%snFunctions", name), XDR_Uint32(&v.NFunctions))
+	x.Marshal(x.Sprintf("%snGlobals", name), XDR_Uint32(&v.NGlobals))
+	x.Marshal(x.Sprintf("%snTableEntries", name), XDR_Uint32(&v.NTableEntries))
+	x.Marshal(x.Sprintf("%snTypes", name), XDR_Uint32(&v.NTypes))
+	x.Marshal(x.Sprintf("%snDataSegments", name), XDR_Uint32(&v.NDataSegments))
+	x.Marshal(x.Sprintf("%snElemSegments", name), XDR_Uint32(&v.NElemSegments))
+	x.Marshal(x.Sprintf("%snImports", name), XDR_Uint32(&v.NImports))
+	x.Marshal(x.Sprintf("%snExports", name), XDR_Uint32(&v.NExports))
+	x.Marshal(x.Sprintf("%snDataSegmentBytes", name), XDR_Uint32(&v.NDataSegmentBytes))
+}
+func XDR_ContractCodeCostInputs(v *ContractCodeCostInputs) *ContractCodeCostInputs { return v }
+
+type XdrType_XdrAnon_ContractCodeEntry_Ext_V1 = *XdrAnon_ContractCodeEntry_Ext_V1
+
+func (v *XdrAnon_ContractCodeEntry_Ext_V1) XdrPointer() interface{} { return v }
+func (XdrAnon_ContractCodeEntry_Ext_V1) XdrTypeName() string {
+	return "XdrAnon_ContractCodeEntry_Ext_V1"
+}
+func (v XdrAnon_ContractCodeEntry_Ext_V1) XdrValue() interface{}          { return v }
+func (v *XdrAnon_ContractCodeEntry_Ext_V1) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *XdrAnon_ContractCodeEntry_Ext_V1) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	x.Marshal(x.Sprintf("%sext", name), XDR_ExtensionPoint(&v.Ext))
+	x.Marshal(x.Sprintf("%scostInputs", name), XDR_ContractCodeCostInputs(&v.CostInputs))
+}
+func XDR_XdrAnon_ContractCodeEntry_Ext_V1(v *XdrAnon_ContractCodeEntry_Ext_V1) *XdrAnon_ContractCodeEntry_Ext_V1 {
+	return v
+}
+
+var _XdrTags_XdrAnon_ContractCodeEntry_Ext = map[int32]bool{
+	XdrToI32(0): true,
+	XdrToI32(1): true,
+}
+
+func (_ XdrAnon_ContractCodeEntry_Ext) XdrValidTags() map[int32]bool {
+	return _XdrTags_XdrAnon_ContractCodeEntry_Ext
+}
+func (u *XdrAnon_ContractCodeEntry_Ext) V1() *XdrAnon_ContractCodeEntry_Ext_V1 {
+	switch u.V {
+	case 1:
+		if v, ok := u._u.(*XdrAnon_ContractCodeEntry_Ext_V1); ok {
+			return v
+		} else {
+			var zero XdrAnon_ContractCodeEntry_Ext_V1
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("XdrAnon_ContractCodeEntry_Ext.V1 accessed when V == %v", u.V)
+		return nil
+	}
+}
+func (u XdrAnon_ContractCodeEntry_Ext) XdrValid() bool {
+	switch u.V {
+	case 0, 1:
+		return true
+	}
+	return false
+}
+func (u *XdrAnon_ContractCodeEntry_Ext) XdrUnionTag() XdrNum32 {
+	return XDR_int32(&u.V)
+}
+func (u *XdrAnon_ContractCodeEntry_Ext) XdrUnionTagName() string {
+	return "V"
+}
+func (u *XdrAnon_ContractCodeEntry_Ext) XdrUnionBody() XdrType {
+	switch u.V {
+	case 0:
+		return nil
+	case 1:
+		return XDR_XdrAnon_ContractCodeEntry_Ext_V1(u.V1())
+	}
+	return nil
+}
+func (u *XdrAnon_ContractCodeEntry_Ext) XdrUnionBodyName() string {
+	switch u.V {
+	case 0:
+		return ""
+	case 1:
+		return "V1"
+	}
+	return ""
+}
+
+type XdrType_XdrAnon_ContractCodeEntry_Ext = *XdrAnon_ContractCodeEntry_Ext
+
+func (v *XdrAnon_ContractCodeEntry_Ext) XdrPointer() interface{}       { return v }
+func (XdrAnon_ContractCodeEntry_Ext) XdrTypeName() string              { return "XdrAnon_ContractCodeEntry_Ext" }
+func (v XdrAnon_ContractCodeEntry_Ext) XdrValue() interface{}          { return v }
+func (v *XdrAnon_ContractCodeEntry_Ext) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (u *XdrAnon_ContractCodeEntry_Ext) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	XDR_int32(&u.V).XdrMarshal(x, x.Sprintf("%sv", name))
+	switch u.V {
+	case 0:
+		return
+	case 1:
+		x.Marshal(x.Sprintf("%sv1", name), XDR_XdrAnon_ContractCodeEntry_Ext_V1(u.V1()))
+		return
+	}
+	XdrPanic("invalid V (%v) in XdrAnon_ContractCodeEntry_Ext", u.V)
+}
+func XDR_XdrAnon_ContractCodeEntry_Ext(v *XdrAnon_ContractCodeEntry_Ext) *XdrAnon_ContractCodeEntry_Ext {
+	return v
+}
+
 type XdrType_ContractCodeEntry = *ContractCodeEntry
 
 func (v *ContractCodeEntry) XdrPointer() interface{}       { return v }
@@ -7976,7 +8222,7 @@ func (v *ContractCodeEntry) XdrRecurse(x XDR, name string) {
 	if name != "" {
 		name = x.Sprintf("%s.", name)
 	}
-	x.Marshal(x.Sprintf("%sext", name), XDR_ExtensionPoint(&v.Ext))
+	x.Marshal(x.Sprintf("%sext", name), XDR_XdrAnon_ContractCodeEntry_Ext(&v.Ext))
 	x.Marshal(x.Sprintf("%shash", name), XDR_Hash(&v.Hash))
 	x.Marshal(x.Sprintf("%scode", name), XdrVecOpaque{&v.Code, 0xffffffff})
 }
@@ -11779,6 +12025,102 @@ func (v *DiagnosticEvent) XdrRecurse(x XDR, name string) {
 }
 func XDR_DiagnosticEvent(v *DiagnosticEvent) *DiagnosticEvent { return v }
 
+type XdrType_SorobanTransactionMetaExtV1 = *SorobanTransactionMetaExtV1
+
+func (v *SorobanTransactionMetaExtV1) XdrPointer() interface{}       { return v }
+func (SorobanTransactionMetaExtV1) XdrTypeName() string              { return "SorobanTransactionMetaExtV1" }
+func (v SorobanTransactionMetaExtV1) XdrValue() interface{}          { return v }
+func (v *SorobanTransactionMetaExtV1) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *SorobanTransactionMetaExtV1) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	x.Marshal(x.Sprintf("%sext", name), XDR_ExtensionPoint(&v.Ext))
+	x.Marshal(x.Sprintf("%stotalNonRefundableResourceFeeCharged", name), XDR_Int64(&v.TotalNonRefundableResourceFeeCharged))
+	x.Marshal(x.Sprintf("%stotalRefundableResourceFeeCharged", name), XDR_Int64(&v.TotalRefundableResourceFeeCharged))
+	x.Marshal(x.Sprintf("%srentFeeCharged", name), XDR_Int64(&v.RentFeeCharged))
+}
+func XDR_SorobanTransactionMetaExtV1(v *SorobanTransactionMetaExtV1) *SorobanTransactionMetaExtV1 {
+	return v
+}
+
+var _XdrTags_SorobanTransactionMetaExt = map[int32]bool{
+	XdrToI32(0): true,
+	XdrToI32(1): true,
+}
+
+func (_ SorobanTransactionMetaExt) XdrValidTags() map[int32]bool {
+	return _XdrTags_SorobanTransactionMetaExt
+}
+func (u *SorobanTransactionMetaExt) V1() *SorobanTransactionMetaExtV1 {
+	switch u.V {
+	case 1:
+		if v, ok := u._u.(*SorobanTransactionMetaExtV1); ok {
+			return v
+		} else {
+			var zero SorobanTransactionMetaExtV1
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("SorobanTransactionMetaExt.V1 accessed when V == %v", u.V)
+		return nil
+	}
+}
+func (u SorobanTransactionMetaExt) XdrValid() bool {
+	switch u.V {
+	case 0, 1:
+		return true
+	}
+	return false
+}
+func (u *SorobanTransactionMetaExt) XdrUnionTag() XdrNum32 {
+	return XDR_int32(&u.V)
+}
+func (u *SorobanTransactionMetaExt) XdrUnionTagName() string {
+	return "V"
+}
+func (u *SorobanTransactionMetaExt) XdrUnionBody() XdrType {
+	switch u.V {
+	case 0:
+		return nil
+	case 1:
+		return XDR_SorobanTransactionMetaExtV1(u.V1())
+	}
+	return nil
+}
+func (u *SorobanTransactionMetaExt) XdrUnionBodyName() string {
+	switch u.V {
+	case 0:
+		return ""
+	case 1:
+		return "V1"
+	}
+	return ""
+}
+
+type XdrType_SorobanTransactionMetaExt = *SorobanTransactionMetaExt
+
+func (v *SorobanTransactionMetaExt) XdrPointer() interface{}       { return v }
+func (SorobanTransactionMetaExt) XdrTypeName() string              { return "SorobanTransactionMetaExt" }
+func (v SorobanTransactionMetaExt) XdrValue() interface{}          { return v }
+func (v *SorobanTransactionMetaExt) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (u *SorobanTransactionMetaExt) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	XDR_int32(&u.V).XdrMarshal(x, x.Sprintf("%sv", name))
+	switch u.V {
+	case 0:
+		return
+	case 1:
+		x.Marshal(x.Sprintf("%sv1", name), XDR_SorobanTransactionMetaExtV1(u.V1()))
+		return
+	}
+	XdrPanic("invalid V (%v) in SorobanTransactionMetaExt", u.V)
+}
+func XDR_SorobanTransactionMetaExt(v *SorobanTransactionMetaExt) *SorobanTransactionMetaExt { return v }
+
 type _XdrVec_unbounded_ContractEvent []ContractEvent
 
 func (_XdrVec_unbounded_ContractEvent) XdrBound() uint32 {
@@ -11903,7 +12245,7 @@ func (v *SorobanTransactionMeta) XdrRecurse(x XDR, name string) {
 	if name != "" {
 		name = x.Sprintf("%s.", name)
 	}
-	x.Marshal(x.Sprintf("%sext", name), XDR_ExtensionPoint(&v.Ext))
+	x.Marshal(x.Sprintf("%sext", name), XDR_SorobanTransactionMetaExt(&v.Ext))
 	x.Marshal(x.Sprintf("%sevents", name), (*_XdrVec_unbounded_ContractEvent)(&v.Events))
 	x.Marshal(x.Sprintf("%sreturnValue", name), XDR_SCVal(&v.ReturnValue))
 	x.Marshal(x.Sprintf("%sdiagnosticEvents", name), (*_XdrVec_unbounded_DiagnosticEvent)(&v.DiagnosticEvents))
@@ -12385,6 +12727,98 @@ func (v *LedgerCloseMetaV0) XdrRecurse(x XDR, name string) {
 }
 func XDR_LedgerCloseMetaV0(v *LedgerCloseMetaV0) *LedgerCloseMetaV0 { return v }
 
+type XdrType_LedgerCloseMetaExtV1 = *LedgerCloseMetaExtV1
+
+func (v *LedgerCloseMetaExtV1) XdrPointer() interface{}       { return v }
+func (LedgerCloseMetaExtV1) XdrTypeName() string              { return "LedgerCloseMetaExtV1" }
+func (v LedgerCloseMetaExtV1) XdrValue() interface{}          { return v }
+func (v *LedgerCloseMetaExtV1) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *LedgerCloseMetaExtV1) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	x.Marshal(x.Sprintf("%sext", name), XDR_ExtensionPoint(&v.Ext))
+	x.Marshal(x.Sprintf("%ssorobanFeeWrite1KB", name), XDR_Int64(&v.SorobanFeeWrite1KB))
+}
+func XDR_LedgerCloseMetaExtV1(v *LedgerCloseMetaExtV1) *LedgerCloseMetaExtV1 { return v }
+
+var _XdrTags_LedgerCloseMetaExt = map[int32]bool{
+	XdrToI32(0): true,
+	XdrToI32(1): true,
+}
+
+func (_ LedgerCloseMetaExt) XdrValidTags() map[int32]bool {
+	return _XdrTags_LedgerCloseMetaExt
+}
+func (u *LedgerCloseMetaExt) V1() *LedgerCloseMetaExtV1 {
+	switch u.V {
+	case 1:
+		if v, ok := u._u.(*LedgerCloseMetaExtV1); ok {
+			return v
+		} else {
+			var zero LedgerCloseMetaExtV1
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("LedgerCloseMetaExt.V1 accessed when V == %v", u.V)
+		return nil
+	}
+}
+func (u LedgerCloseMetaExt) XdrValid() bool {
+	switch u.V {
+	case 0, 1:
+		return true
+	}
+	return false
+}
+func (u *LedgerCloseMetaExt) XdrUnionTag() XdrNum32 {
+	return XDR_int32(&u.V)
+}
+func (u *LedgerCloseMetaExt) XdrUnionTagName() string {
+	return "V"
+}
+func (u *LedgerCloseMetaExt) XdrUnionBody() XdrType {
+	switch u.V {
+	case 0:
+		return nil
+	case 1:
+		return XDR_LedgerCloseMetaExtV1(u.V1())
+	}
+	return nil
+}
+func (u *LedgerCloseMetaExt) XdrUnionBodyName() string {
+	switch u.V {
+	case 0:
+		return ""
+	case 1:
+		return "V1"
+	}
+	return ""
+}
+
+type XdrType_LedgerCloseMetaExt = *LedgerCloseMetaExt
+
+func (v *LedgerCloseMetaExt) XdrPointer() interface{}       { return v }
+func (LedgerCloseMetaExt) XdrTypeName() string              { return "LedgerCloseMetaExt" }
+func (v LedgerCloseMetaExt) XdrValue() interface{}          { return v }
+func (v *LedgerCloseMetaExt) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (u *LedgerCloseMetaExt) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	XDR_int32(&u.V).XdrMarshal(x, x.Sprintf("%sv", name))
+	switch u.V {
+	case 0:
+		return
+	case 1:
+		x.Marshal(x.Sprintf("%sv1", name), XDR_LedgerCloseMetaExtV1(u.V1()))
+		return
+	}
+	XdrPanic("invalid V (%v) in LedgerCloseMetaExt", u.V)
+}
+func XDR_LedgerCloseMetaExt(v *LedgerCloseMetaExt) *LedgerCloseMetaExt { return v }
+
 type _XdrVec_unbounded_LedgerKey []LedgerKey
 
 func (_XdrVec_unbounded_LedgerKey) XdrBound() uint32 {
@@ -12509,7 +12943,7 @@ func (v *LedgerCloseMetaV1) XdrRecurse(x XDR, name string) {
 	if name != "" {
 		name = x.Sprintf("%s.", name)
 	}
-	x.Marshal(x.Sprintf("%sext", name), XDR_ExtensionPoint(&v.Ext))
+	x.Marshal(x.Sprintf("%sext", name), XDR_LedgerCloseMetaExt(&v.Ext))
 	x.Marshal(x.Sprintf("%sledgerHeader", name), XDR_LedgerHeaderHistoryEntry(&v.LedgerHeader))
 	x.Marshal(x.Sprintf("%stxSet", name), XDR_GeneralizedTransactionSet(&v.TxSet))
 	x.Marshal(x.Sprintf("%stxProcessing", name), (*_XdrVec_unbounded_TransactionResultMeta)(&v.TxProcessing))
@@ -25197,6 +25631,7 @@ var _XdrNames_SCSpecType = map[int32]string{
 	int32(SC_SPEC_TYPE_MAP):       "SC_SPEC_TYPE_MAP",
 	int32(SC_SPEC_TYPE_TUPLE):     "SC_SPEC_TYPE_TUPLE",
 	int32(SC_SPEC_TYPE_BYTES_N):   "SC_SPEC_TYPE_BYTES_N",
+	int32(SC_SPEC_TYPE_HASH):      "SC_SPEC_TYPE_HASH",
 	int32(SC_SPEC_TYPE_UDT):       "SC_SPEC_TYPE_UDT",
 }
 var _XdrValues_SCSpecType = map[string]int32{
@@ -25224,6 +25659,7 @@ var _XdrValues_SCSpecType = map[string]int32{
 	"SC_SPEC_TYPE_MAP":       int32(SC_SPEC_TYPE_MAP),
 	"SC_SPEC_TYPE_TUPLE":     int32(SC_SPEC_TYPE_TUPLE),
 	"SC_SPEC_TYPE_BYTES_N":   int32(SC_SPEC_TYPE_BYTES_N),
+	"SC_SPEC_TYPE_HASH":      int32(SC_SPEC_TYPE_HASH),
 	"SC_SPEC_TYPE_UDT":       int32(SC_SPEC_TYPE_UDT),
 }
 
@@ -25416,6 +25852,20 @@ func (v *SCSpecTypeBytesN) XdrRecurse(x XDR, name string) {
 }
 func XDR_SCSpecTypeBytesN(v *SCSpecTypeBytesN) *SCSpecTypeBytesN { return v }
 
+type XdrType_SCSpectTypeHash = *SCSpectTypeHash
+
+func (v *SCSpectTypeHash) XdrPointer() interface{}       { return v }
+func (SCSpectTypeHash) XdrTypeName() string              { return "SCSpectTypeHash" }
+func (v SCSpectTypeHash) XdrValue() interface{}          { return v }
+func (v *SCSpectTypeHash) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *SCSpectTypeHash) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	x.Marshal(x.Sprintf("%sn", name), XDR_Uint32(&v.N))
+}
+func XDR_SCSpectTypeHash(v *SCSpectTypeHash) *SCSpectTypeHash { return v }
+
 type XdrType_SCSpecTypeUDT = *SCSpecTypeUDT
 
 func (v *SCSpecTypeUDT) XdrPointer() interface{}       { return v }
@@ -25455,6 +25905,7 @@ var _XdrTags_SCSpecTypeDef = map[int32]bool{
 	XdrToI32(SC_SPEC_TYPE_MAP):       true,
 	XdrToI32(SC_SPEC_TYPE_TUPLE):     true,
 	XdrToI32(SC_SPEC_TYPE_BYTES_N):   true,
+	XdrToI32(SC_SPEC_TYPE_HASH):      true,
 	XdrToI32(SC_SPEC_TYPE_UDT):       true,
 }
 
@@ -25551,6 +26002,21 @@ func (u *SCSpecTypeDef) BytesN() *SCSpecTypeBytesN {
 		return nil
 	}
 }
+func (u *SCSpecTypeDef) Hash() *SCSpectTypeHash {
+	switch u.Type {
+	case SC_SPEC_TYPE_HASH:
+		if v, ok := u._u.(*SCSpectTypeHash); ok {
+			return v
+		} else {
+			var zero SCSpectTypeHash
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("SCSpecTypeDef.Hash accessed when Type == %v", u.Type)
+		return nil
+	}
+}
 func (u *SCSpecTypeDef) Udt() *SCSpecTypeUDT {
 	switch u.Type {
 	case SC_SPEC_TYPE_UDT:
@@ -25568,7 +26034,7 @@ func (u *SCSpecTypeDef) Udt() *SCSpecTypeUDT {
 }
 func (u SCSpecTypeDef) XdrValid() bool {
 	switch u.Type {
-	case SC_SPEC_TYPE_VAL, SC_SPEC_TYPE_BOOL, SC_SPEC_TYPE_VOID, SC_SPEC_TYPE_ERROR, SC_SPEC_TYPE_U32, SC_SPEC_TYPE_I32, SC_SPEC_TYPE_U64, SC_SPEC_TYPE_I64, SC_SPEC_TYPE_TIMEPOINT, SC_SPEC_TYPE_DURATION, SC_SPEC_TYPE_U128, SC_SPEC_TYPE_I128, SC_SPEC_TYPE_U256, SC_SPEC_TYPE_I256, SC_SPEC_TYPE_BYTES, SC_SPEC_TYPE_STRING, SC_SPEC_TYPE_SYMBOL, SC_SPEC_TYPE_ADDRESS, SC_SPEC_TYPE_OPTION, SC_SPEC_TYPE_RESULT, SC_SPEC_TYPE_VEC, SC_SPEC_TYPE_MAP, SC_SPEC_TYPE_TUPLE, SC_SPEC_TYPE_BYTES_N, SC_SPEC_TYPE_UDT:
+	case SC_SPEC_TYPE_VAL, SC_SPEC_TYPE_BOOL, SC_SPEC_TYPE_VOID, SC_SPEC_TYPE_ERROR, SC_SPEC_TYPE_U32, SC_SPEC_TYPE_I32, SC_SPEC_TYPE_U64, SC_SPEC_TYPE_I64, SC_SPEC_TYPE_TIMEPOINT, SC_SPEC_TYPE_DURATION, SC_SPEC_TYPE_U128, SC_SPEC_TYPE_I128, SC_SPEC_TYPE_U256, SC_SPEC_TYPE_I256, SC_SPEC_TYPE_BYTES, SC_SPEC_TYPE_STRING, SC_SPEC_TYPE_SYMBOL, SC_SPEC_TYPE_ADDRESS, SC_SPEC_TYPE_OPTION, SC_SPEC_TYPE_RESULT, SC_SPEC_TYPE_VEC, SC_SPEC_TYPE_MAP, SC_SPEC_TYPE_TUPLE, SC_SPEC_TYPE_BYTES_N, SC_SPEC_TYPE_HASH, SC_SPEC_TYPE_UDT:
 		return true
 	}
 	return false
@@ -25595,6 +26061,8 @@ func (u *SCSpecTypeDef) XdrUnionBody() XdrType {
 		return XDR_SCSpecTypeTuple(u.Tuple())
 	case SC_SPEC_TYPE_BYTES_N:
 		return XDR_SCSpecTypeBytesN(u.BytesN())
+	case SC_SPEC_TYPE_HASH:
+		return XDR_SCSpectTypeHash(u.Hash())
 	case SC_SPEC_TYPE_UDT:
 		return XDR_SCSpecTypeUDT(u.Udt())
 	}
@@ -25616,6 +26084,8 @@ func (u *SCSpecTypeDef) XdrUnionBodyName() string {
 		return "Tuple"
 	case SC_SPEC_TYPE_BYTES_N:
 		return "BytesN"
+	case SC_SPEC_TYPE_HASH:
+		return "Hash"
 	case SC_SPEC_TYPE_UDT:
 		return "Udt"
 	}
@@ -25653,6 +26123,9 @@ func (u *SCSpecTypeDef) XdrRecurse(x XDR, name string) {
 		return
 	case SC_SPEC_TYPE_BYTES_N:
 		x.Marshal(x.Sprintf("%sbytesN", name), XDR_SCSpecTypeBytesN(u.BytesN()))
+		return
+	case SC_SPEC_TYPE_HASH:
+		x.Marshal(x.Sprintf("%shash", name), XDR_SCSpectTypeHash(u.Hash()))
 		return
 	case SC_SPEC_TYPE_UDT:
 		x.Marshal(x.Sprintf("%sudt", name), XDR_SCSpecTypeUDT(u.Udt()))
@@ -28467,54 +28940,98 @@ func XDR_ConfigSettingContractBandwidthV0(v *ConfigSettingContractBandwidthV0) *
 }
 
 var _XdrNames_ContractCostType = map[int32]string{
-	int32(WasmInsnExec):             "WasmInsnExec",
-	int32(MemAlloc):                 "MemAlloc",
-	int32(MemCpy):                   "MemCpy",
-	int32(MemCmp):                   "MemCmp",
-	int32(DispatchHostFunction):     "DispatchHostFunction",
-	int32(VisitObject):              "VisitObject",
-	int32(ValSer):                   "ValSer",
-	int32(ValDeser):                 "ValDeser",
-	int32(ComputeSha256Hash):        "ComputeSha256Hash",
-	int32(ComputeEd25519PubKey):     "ComputeEd25519PubKey",
-	int32(VerifyEd25519Sig):         "VerifyEd25519Sig",
-	int32(VmInstantiation):          "VmInstantiation",
-	int32(VmCachedInstantiation):    "VmCachedInstantiation",
-	int32(InvokeVmFunction):         "InvokeVmFunction",
-	int32(ComputeKeccak256Hash):     "ComputeKeccak256Hash",
-	int32(ComputeEcdsaSecp256k1Sig): "ComputeEcdsaSecp256k1Sig",
-	int32(RecoverEcdsaSecp256k1Key): "RecoverEcdsaSecp256k1Key",
-	int32(Int256AddSub):             "Int256AddSub",
-	int32(Int256Mul):                "Int256Mul",
-	int32(Int256Div):                "Int256Div",
-	int32(Int256Pow):                "Int256Pow",
-	int32(Int256Shift):              "Int256Shift",
-	int32(ChaCha20DrawBytes):        "ChaCha20DrawBytes",
+	int32(WasmInsnExec):                    "WasmInsnExec",
+	int32(MemAlloc):                        "MemAlloc",
+	int32(MemCpy):                          "MemCpy",
+	int32(MemCmp):                          "MemCmp",
+	int32(DispatchHostFunction):            "DispatchHostFunction",
+	int32(VisitObject):                     "VisitObject",
+	int32(ValSer):                          "ValSer",
+	int32(ValDeser):                        "ValDeser",
+	int32(ComputeSha256Hash):               "ComputeSha256Hash",
+	int32(ComputeEd25519PubKey):            "ComputeEd25519PubKey",
+	int32(VerifyEd25519Sig):                "VerifyEd25519Sig",
+	int32(VmInstantiation):                 "VmInstantiation",
+	int32(VmCachedInstantiation):           "VmCachedInstantiation",
+	int32(InvokeVmFunction):                "InvokeVmFunction",
+	int32(ComputeKeccak256Hash):            "ComputeKeccak256Hash",
+	int32(DecodeEcdsaCurve256Sig):          "DecodeEcdsaCurve256Sig",
+	int32(RecoverEcdsaSecp256k1Key):        "RecoverEcdsaSecp256k1Key",
+	int32(Int256AddSub):                    "Int256AddSub",
+	int32(Int256Mul):                       "Int256Mul",
+	int32(Int256Div):                       "Int256Div",
+	int32(Int256Pow):                       "Int256Pow",
+	int32(Int256Shift):                     "Int256Shift",
+	int32(ChaCha20DrawBytes):               "ChaCha20DrawBytes",
+	int32(ParseWasmInstructions):           "ParseWasmInstructions",
+	int32(ParseWasmFunctions):              "ParseWasmFunctions",
+	int32(ParseWasmGlobals):                "ParseWasmGlobals",
+	int32(ParseWasmTableEntries):           "ParseWasmTableEntries",
+	int32(ParseWasmTypes):                  "ParseWasmTypes",
+	int32(ParseWasmDataSegments):           "ParseWasmDataSegments",
+	int32(ParseWasmElemSegments):           "ParseWasmElemSegments",
+	int32(ParseWasmImports):                "ParseWasmImports",
+	int32(ParseWasmExports):                "ParseWasmExports",
+	int32(ParseWasmDataSegmentBytes):       "ParseWasmDataSegmentBytes",
+	int32(InstantiateWasmInstructions):     "InstantiateWasmInstructions",
+	int32(InstantiateWasmFunctions):        "InstantiateWasmFunctions",
+	int32(InstantiateWasmGlobals):          "InstantiateWasmGlobals",
+	int32(InstantiateWasmTableEntries):     "InstantiateWasmTableEntries",
+	int32(InstantiateWasmTypes):            "InstantiateWasmTypes",
+	int32(InstantiateWasmDataSegments):     "InstantiateWasmDataSegments",
+	int32(InstantiateWasmElemSegments):     "InstantiateWasmElemSegments",
+	int32(InstantiateWasmImports):          "InstantiateWasmImports",
+	int32(InstantiateWasmExports):          "InstantiateWasmExports",
+	int32(InstantiateWasmDataSegmentBytes): "InstantiateWasmDataSegmentBytes",
+	int32(Sec1DecodePointUncompressed):     "Sec1DecodePointUncompressed",
+	int32(VerifyEcdsaSecp256r1Sig):         "VerifyEcdsaSecp256r1Sig",
 }
 var _XdrValues_ContractCostType = map[string]int32{
-	"WasmInsnExec":             int32(WasmInsnExec),
-	"MemAlloc":                 int32(MemAlloc),
-	"MemCpy":                   int32(MemCpy),
-	"MemCmp":                   int32(MemCmp),
-	"DispatchHostFunction":     int32(DispatchHostFunction),
-	"VisitObject":              int32(VisitObject),
-	"ValSer":                   int32(ValSer),
-	"ValDeser":                 int32(ValDeser),
-	"ComputeSha256Hash":        int32(ComputeSha256Hash),
-	"ComputeEd25519PubKey":     int32(ComputeEd25519PubKey),
-	"VerifyEd25519Sig":         int32(VerifyEd25519Sig),
-	"VmInstantiation":          int32(VmInstantiation),
-	"VmCachedInstantiation":    int32(VmCachedInstantiation),
-	"InvokeVmFunction":         int32(InvokeVmFunction),
-	"ComputeKeccak256Hash":     int32(ComputeKeccak256Hash),
-	"ComputeEcdsaSecp256k1Sig": int32(ComputeEcdsaSecp256k1Sig),
-	"RecoverEcdsaSecp256k1Key": int32(RecoverEcdsaSecp256k1Key),
-	"Int256AddSub":             int32(Int256AddSub),
-	"Int256Mul":                int32(Int256Mul),
-	"Int256Div":                int32(Int256Div),
-	"Int256Pow":                int32(Int256Pow),
-	"Int256Shift":              int32(Int256Shift),
-	"ChaCha20DrawBytes":        int32(ChaCha20DrawBytes),
+	"WasmInsnExec":                    int32(WasmInsnExec),
+	"MemAlloc":                        int32(MemAlloc),
+	"MemCpy":                          int32(MemCpy),
+	"MemCmp":                          int32(MemCmp),
+	"DispatchHostFunction":            int32(DispatchHostFunction),
+	"VisitObject":                     int32(VisitObject),
+	"ValSer":                          int32(ValSer),
+	"ValDeser":                        int32(ValDeser),
+	"ComputeSha256Hash":               int32(ComputeSha256Hash),
+	"ComputeEd25519PubKey":            int32(ComputeEd25519PubKey),
+	"VerifyEd25519Sig":                int32(VerifyEd25519Sig),
+	"VmInstantiation":                 int32(VmInstantiation),
+	"VmCachedInstantiation":           int32(VmCachedInstantiation),
+	"InvokeVmFunction":                int32(InvokeVmFunction),
+	"ComputeKeccak256Hash":            int32(ComputeKeccak256Hash),
+	"DecodeEcdsaCurve256Sig":          int32(DecodeEcdsaCurve256Sig),
+	"RecoverEcdsaSecp256k1Key":        int32(RecoverEcdsaSecp256k1Key),
+	"Int256AddSub":                    int32(Int256AddSub),
+	"Int256Mul":                       int32(Int256Mul),
+	"Int256Div":                       int32(Int256Div),
+	"Int256Pow":                       int32(Int256Pow),
+	"Int256Shift":                     int32(Int256Shift),
+	"ChaCha20DrawBytes":               int32(ChaCha20DrawBytes),
+	"ParseWasmInstructions":           int32(ParseWasmInstructions),
+	"ParseWasmFunctions":              int32(ParseWasmFunctions),
+	"ParseWasmGlobals":                int32(ParseWasmGlobals),
+	"ParseWasmTableEntries":           int32(ParseWasmTableEntries),
+	"ParseWasmTypes":                  int32(ParseWasmTypes),
+	"ParseWasmDataSegments":           int32(ParseWasmDataSegments),
+	"ParseWasmElemSegments":           int32(ParseWasmElemSegments),
+	"ParseWasmImports":                int32(ParseWasmImports),
+	"ParseWasmExports":                int32(ParseWasmExports),
+	"ParseWasmDataSegmentBytes":       int32(ParseWasmDataSegmentBytes),
+	"InstantiateWasmInstructions":     int32(InstantiateWasmInstructions),
+	"InstantiateWasmFunctions":        int32(InstantiateWasmFunctions),
+	"InstantiateWasmGlobals":          int32(InstantiateWasmGlobals),
+	"InstantiateWasmTableEntries":     int32(InstantiateWasmTableEntries),
+	"InstantiateWasmTypes":            int32(InstantiateWasmTypes),
+	"InstantiateWasmDataSegments":     int32(InstantiateWasmDataSegments),
+	"InstantiateWasmElemSegments":     int32(InstantiateWasmElemSegments),
+	"InstantiateWasmImports":          int32(InstantiateWasmImports),
+	"InstantiateWasmExports":          int32(InstantiateWasmExports),
+	"InstantiateWasmDataSegmentBytes": int32(InstantiateWasmDataSegmentBytes),
+	"Sec1DecodePointUncompressed":     int32(Sec1DecodePointUncompressed),
+	"VerifyEcdsaSecp256r1Sig":         int32(VerifyEcdsaSecp256r1Sig),
 }
 
 func (ContractCostType) XdrEnumNames() map[int32]string {
@@ -28554,29 +29071,51 @@ type XdrType_ContractCostType = *ContractCostType
 func XDR_ContractCostType(v *ContractCostType) *ContractCostType { return v }
 
 var _XdrComments_ContractCostType = map[int32]string{
-	int32(WasmInsnExec):             "Cost of running 1 wasm instruction",
-	int32(MemAlloc):                 "Cost of allocating a slice of memory (in bytes)",
-	int32(MemCpy):                   "Cost of copying a slice of bytes into a pre-allocated memory",
-	int32(MemCmp):                   "Cost of comparing two slices of memory",
-	int32(DispatchHostFunction):     "Cost of a host function dispatch, not including the actual work done by the function nor the cost of VM invocation machinary",
-	int32(VisitObject):              "Cost of visiting a host object from the host object storage. Exists to make sure some baseline cost coverage, i.e. repeatly visiting objects by the guest will always incur some charges.",
-	int32(ValSer):                   "Cost of serializing an xdr object to bytes",
-	int32(ValDeser):                 "Cost of deserializing an xdr object from bytes",
-	int32(ComputeSha256Hash):        "Cost of computing the sha256 hash from bytes",
-	int32(ComputeEd25519PubKey):     "Cost of computing the ed25519 pubkey from bytes",
-	int32(VerifyEd25519Sig):         "Cost of verifying ed25519 signature of a payload.",
-	int32(VmInstantiation):          "Cost of instantiation a VM from wasm bytes code.",
-	int32(VmCachedInstantiation):    "Cost of instantiation a VM from a cached state.",
-	int32(InvokeVmFunction):         "Cost of invoking a function on the VM. If the function is a host function, additional cost will be covered by `DispatchHostFunction`.",
-	int32(ComputeKeccak256Hash):     "Cost of computing a keccak256 hash from bytes.",
-	int32(ComputeEcdsaSecp256k1Sig): "Cost of computing an ECDSA secp256k1 signature from bytes.",
-	int32(RecoverEcdsaSecp256k1Key): "Cost of recovering an ECDSA secp256k1 key from a signature.",
-	int32(Int256AddSub):             "Cost of int256 addition (`+`) and subtraction (`-`) operations",
-	int32(Int256Mul):                "Cost of int256 multiplication (`*`) operation",
-	int32(Int256Div):                "Cost of int256 division (`/`) operation",
-	int32(Int256Pow):                "Cost of int256 power (`exp`) operation",
-	int32(Int256Shift):              "Cost of int256 shift (`shl`, `shr`) operation",
-	int32(ChaCha20DrawBytes):        "Cost of drawing random bytes using a ChaCha20 PRNG",
+	int32(WasmInsnExec):                    "Cost of running 1 wasm instruction",
+	int32(MemAlloc):                        "Cost of allocating a slice of memory (in bytes)",
+	int32(MemCpy):                          "Cost of copying a slice of bytes into a pre-allocated memory",
+	int32(MemCmp):                          "Cost of comparing two slices of memory",
+	int32(DispatchHostFunction):            "Cost of a host function dispatch, not including the actual work done by the function nor the cost of VM invocation machinary",
+	int32(VisitObject):                     "Cost of visiting a host object from the host object storage. Exists to make sure some baseline cost coverage, i.e. repeatly visiting objects by the guest will always incur some charges.",
+	int32(ValSer):                          "Cost of serializing an xdr object to bytes",
+	int32(ValDeser):                        "Cost of deserializing an xdr object from bytes",
+	int32(ComputeSha256Hash):               "Cost of computing the sha256 hash from bytes",
+	int32(ComputeEd25519PubKey):            "Cost of computing the ed25519 pubkey from bytes",
+	int32(VerifyEd25519Sig):                "Cost of verifying ed25519 signature of a payload.",
+	int32(VmInstantiation):                 "Cost of instantiation a VM from wasm bytes code.",
+	int32(VmCachedInstantiation):           "Cost of instantiation a VM from a cached state.",
+	int32(InvokeVmFunction):                "Cost of invoking a function on the VM. If the function is a host function, additional cost will be covered by `DispatchHostFunction`.",
+	int32(ComputeKeccak256Hash):            "Cost of computing a keccak256 hash from bytes.",
+	int32(DecodeEcdsaCurve256Sig):          "Cost of decoding an ECDSA signature computed from a 256-bit prime modulus curve (e.g. secp256k1 and secp256r1)",
+	int32(RecoverEcdsaSecp256k1Key):        "Cost of recovering an ECDSA secp256k1 key from a signature.",
+	int32(Int256AddSub):                    "Cost of int256 addition (`+`) and subtraction (`-`) operations",
+	int32(Int256Mul):                       "Cost of int256 multiplication (`*`) operation",
+	int32(Int256Div):                       "Cost of int256 division (`/`) operation",
+	int32(Int256Pow):                       "Cost of int256 power (`exp`) operation",
+	int32(Int256Shift):                     "Cost of int256 shift (`shl`, `shr`) operation",
+	int32(ChaCha20DrawBytes):               "Cost of drawing random bytes using a ChaCha20 PRNG",
+	int32(ParseWasmInstructions):           "Cost of parsing wasm bytes that only encode instructions.",
+	int32(ParseWasmFunctions):              "Cost of parsing a known number of wasm functions.",
+	int32(ParseWasmGlobals):                "Cost of parsing a known number of wasm globals.",
+	int32(ParseWasmTableEntries):           "Cost of parsing a known number of wasm table entries.",
+	int32(ParseWasmTypes):                  "Cost of parsing a known number of wasm types.",
+	int32(ParseWasmDataSegments):           "Cost of parsing a known number of wasm data segments.",
+	int32(ParseWasmElemSegments):           "Cost of parsing a known number of wasm element segments.",
+	int32(ParseWasmImports):                "Cost of parsing a known number of wasm imports.",
+	int32(ParseWasmExports):                "Cost of parsing a known number of wasm exports.",
+	int32(ParseWasmDataSegmentBytes):       "Cost of parsing a known number of data segment bytes.",
+	int32(InstantiateWasmInstructions):     "Cost of instantiating wasm bytes that only encode instructions.",
+	int32(InstantiateWasmFunctions):        "Cost of instantiating a known number of wasm functions.",
+	int32(InstantiateWasmGlobals):          "Cost of instantiating a known number of wasm globals.",
+	int32(InstantiateWasmTableEntries):     "Cost of instantiating a known number of wasm table entries.",
+	int32(InstantiateWasmTypes):            "Cost of instantiating a known number of wasm types.",
+	int32(InstantiateWasmDataSegments):     "Cost of instantiating a known number of wasm data segments.",
+	int32(InstantiateWasmElemSegments):     "Cost of instantiating a known number of wasm element segments.",
+	int32(InstantiateWasmImports):          "Cost of instantiating a known number of wasm imports.",
+	int32(InstantiateWasmExports):          "Cost of instantiating a known number of wasm exports.",
+	int32(InstantiateWasmDataSegmentBytes): "Cost of instantiating a known number of data segment bytes.",
+	int32(Sec1DecodePointUncompressed):     "Cost of decoding a bytes array representing an uncompressed SEC-1 encoded point on a 256-bit elliptic curve",
+	int32(VerifyEcdsaSecp256r1Sig):         "Cost of verifying an ECDSA Secp256r1 signature",
 }
 
 func (e ContractCostType) XdrEnumComments() map[int32]string {

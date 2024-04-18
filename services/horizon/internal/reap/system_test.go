@@ -15,7 +15,7 @@ func TestDeleteUnretainedHistory(t *testing.T) {
 
 	db := tt.HorizonSession()
 
-	sys := New(0, db, ledgerState)
+	sys := New(0, 50, db, ledgerState)
 
 	// Disable sleeps for this.
 	sleep = 0

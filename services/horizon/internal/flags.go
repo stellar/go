@@ -245,6 +245,9 @@ func Flags() (*Config, support.ConfigOptions) {
 			Usage:       `when enabled, Horizon ingestion will instruct the captive core invocation to use an external db url for ledger states rather than in memory(RAM). Will result in several GB of space shifting out of RAM and to the external db persistence. The external db url is determined by the presence of DATABASE parameter in the captive-core-config-path or if absent, the db will default to sqlite and the db file will be stored at location derived from captive-core-storage-path parameter.`,
 			CustomSetValue: func(opt *support.ConfigOption) error {
 				if val := viper.GetBool(opt.Name); val {
+					stdLog.Printf("The usage of the flag --captive-core-use-db has been deprecated. " +
+						"Setting it to false to achieve in-memory functionality on captive core will be removed in " +
+						"future releases. We recommend removing usage of this flag now in preparation.")
 					config.CaptiveCoreConfigUseDB = val
 					config.CaptiveCoreTomlParams.UseDB = val
 				}
@@ -651,8 +654,22 @@ func Flags() (*Config, support.ConfigOptions) {
 			ConfigKey:      &config.HistoryRetentionCount,
 			OptType:        types.Uint,
 			FlagDefault:    uint(0),
-			Usage:          "the minimum number of ledgers to maintain within horizon's history tables.  0 signifies an unlimited number of ledgers will be retained",
+			Usage:          "the minimum number of ledgers to maintain within Horizon's history tables (0 = retain an unlimited number of ledgers)",
 			UsedInCommands: IngestionCommands,
+		},
+		&support.ConfigOption{
+			Name:           "history-retention-reap-count",
+			ConfigKey:      &config.HistoryRetentionReapCount,
+			OptType:        types.Uint,
+			FlagDefault:    uint(50_000),
+			Usage:          "the batch size (in ledgers) to remove per reap from the Horizon database",
+			UsedInCommands: IngestionCommands,
+			CustomSetValue: func(opt *support.ConfigOption) error {
+				if val := viper.GetUint(opt.Name); val <= 0 || val > 500_000 {
+					return fmt.Errorf("flag --history-retention-reap-count must be in range [1, 500,000]")
+				}
+				return nil
+			},
 		},
 		&support.ConfigOption{
 			Name:           "history-stale-threshold",

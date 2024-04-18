@@ -10,6 +10,7 @@ import (
 type AccountsBatchInsertBuilder interface {
 	Add(account AccountEntry) error
 	Exec(ctx context.Context) error
+	Len() int
 }
 
 // AccountsBatchInsertBuilder is a simple wrapper around db.FastBatchInsertBuilder
@@ -36,4 +37,9 @@ func (i *accountsBatchInsertBuilder) Add(account AccountEntry) error {
 // Exec writes the batch of accounts to the database.
 func (i *accountsBatchInsertBuilder) Exec(ctx context.Context) error {
 	return i.builder.Exec(ctx, i.session, i.table)
+}
+
+// Len returns the number of elements in the batch
+func (i *accountsBatchInsertBuilder) Len() int {
+	return i.builder.Len()
 }

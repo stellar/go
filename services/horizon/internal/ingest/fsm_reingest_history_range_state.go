@@ -30,11 +30,7 @@ func (reingestHistoryRangeState) GetState() State {
 	return ReingestHistoryRange
 }
 
-func (h reingestHistoryRangeState) ingestRange(s *system, fromLedger, toLedger uint32) error {
-	if s.historyQ.GetTx() == nil {
-		return errors.New("expected transaction to be present")
-	}
-
+func (h reingestHistoryRangeState) ingestRange(s *system, fromLedger, toLedger uint32, execBatchInTx bool) error {
 	if s.maxLedgerPerFlush < 1 {
 		return errors.New("invalid maxLedgerPerFlush, must be greater than 0")
 	}
@@ -75,7 +71,7 @@ func (h reingestHistoryRangeState) ingestRange(s *system, fromLedger, toLedger u
 		ledgers = append(ledgers, ledgerCloseMeta)
 
 		if len(ledgers)%int(s.maxLedgerPerFlush) == 0 {
-			if err = s.runner.RunTransactionProcessorsOnLedgers(ledgers); err != nil {
+			if err = s.runner.RunTransactionProcessorsOnLedgers(ledgers, execBatchInTx); err != nil {
 				return errors.Wrapf(err, "error processing ledger range %d - %d", ledgers[0].LedgerSequence(), ledgers[len(ledgers)-1].LedgerSequence())
 			}
 			ledgers = ledgers[0:0]
@@ -83,7 +79,7 @@ func (h reingestHistoryRangeState) ingestRange(s *system, fromLedger, toLedger u
 	}
 
 	if len(ledgers) > 0 {
-		if err = s.runner.RunTransactionProcessorsOnLedgers(ledgers); err != nil {
+		if err = s.runner.RunTransactionProcessorsOnLedgers(ledgers, execBatchInTx); err != nil {
 			return errors.Wrapf(err, "error processing ledger range %d - %d", ledgers[0].LedgerSequence(), ledgers[len(ledgers)-1].LedgerSequence())
 		}
 	}
@@ -142,7 +138,7 @@ func (h reingestHistoryRangeState) run(s *system) (transition, error) {
 			return stop(), errors.Wrap(err, getLastIngestedErrMsg)
 		}
 
-		if ingestErr := h.ingestRange(s, h.fromLedger, h.toLedger); ingestErr != nil {
+		if ingestErr := h.ingestRange(s, h.fromLedger, h.toLedger, false); ingestErr != nil {
 			if err := s.historyQ.Commit(); err != nil {
 				return stop(), errors.Wrap(ingestErr, commitErrMsg)
 			}
@@ -169,17 +165,8 @@ func (h reingestHistoryRangeState) run(s *system) (transition, error) {
 		}
 
 		startTime = time.Now()
-		if err := s.historyQ.Begin(s.ctx); err != nil {
-			return stop(), errors.Wrap(err, "Error starting a transaction")
-		}
-		defer s.historyQ.Rollback()
-
-		if e := h.ingestRange(s, h.fromLedger, h.toLedger); e != nil {
+		if e := h.ingestRange(s, h.fromLedger, h.toLedger, true); e != nil {
 			return stop(), e
-		}
-
-		if e := s.historyQ.Commit(); e != nil {
-			return stop(), errors.Wrap(e, commitErrMsg)
 		}
 	}
 

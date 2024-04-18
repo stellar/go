@@ -3,6 +3,7 @@ package ingest
 import (
 	"crypto/sha256"
 	"database/sql"
+	"fmt"
 	"io"
 	"math/rand"
 	"regexp"
@@ -283,6 +284,39 @@ func ttlForContractData(tt *test.T, gen randxdr.Generator, contractData xdr.Ledg
 	return ttl
 }
 
+func TestTruncateIngestStateTables(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	test.ResetHorizonDB(t, tt.HorizonDB)
+	q := &history.Q{&db.Session{DB: tt.HorizonDB}}
+
+	ledgerEntries := generateRandomLedgerEntries(tt)
+	// insert ledger entries of all types into the DB
+	tt.Assert.NoError(q.BeginTx(tt.Ctx, &sql.TxOptions{}))
+	checkpointLedger := uint32(63)
+	changeProcessor := buildChangeProcessor(q, &ingest.StatsChangeProcessor{}, historyArchiveSource, checkpointLedger, "")
+	for _, change := range ingest.GetChangesFromLedgerEntryChanges(ledgerEntries) {
+		tt.Assert.NoError(changeProcessor.ProcessChange(tt.Ctx, change))
+	}
+	tt.Assert.NoError(changeProcessor.Commit(tt.Ctx))
+	tt.Assert.NoError(q.Commit())
+
+	// clear out the state tables
+	q.TruncateIngestStateTables(tt.Ctx)
+
+	// reinsert the same ledger entries from before
+	tt.Assert.NoError(q.BeginTx(tt.Ctx, &sql.TxOptions{}))
+	changeProcessor = buildChangeProcessor(q, &ingest.StatsChangeProcessor{}, historyArchiveSource, checkpointLedger, "")
+	for _, change := range ingest.GetChangesFromLedgerEntryChanges(ledgerEntries) {
+		tt.Assert.NoError(changeProcessor.ProcessChange(tt.Ctx, change))
+	}
+	// this should succeed if we cleared out the state tables properly
+	// otherwise, there will be a duplicate key error when we attempt to
+	// insert a row that is already present
+	tt.Assert.NoError(changeProcessor.Commit(tt.Ctx))
+	tt.Assert.NoError(q.Commit())
+}
+
 func TestStateVerifierLockBusy(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
@@ -292,21 +326,9 @@ func TestStateVerifierLockBusy(t *testing.T) {
 	tt.Assert.NoError(q.BeginTx(tt.Ctx, &sql.TxOptions{}))
 
 	checkpointLedger := uint32(63)
-	changeProcessor := buildChangeProcessor(q, &ingest.StatsChangeProcessor{}, ledgerSource, checkpointLedger, "")
+	changeProcessor := buildChangeProcessor(q, &ingest.StatsChangeProcessor{}, historyArchiveSource, checkpointLedger, "")
 
-	gen := randxdr.NewGenerator()
-	var changes []xdr.LedgerEntryChange
-	for i := 0; i < 10; i++ {
-		changes = append(changes,
-			genLiquidityPool(tt, gen),
-			genClaimableBalance(tt, gen),
-			genOffer(tt, gen),
-			genTrustLine(tt, gen),
-			genAccount(tt, gen),
-			genAccountData(tt, gen),
-		)
-	}
-	for _, change := range ingest.GetChangesFromLedgerEntryChanges(changes) {
+	for _, change := range ingest.GetChangesFromLedgerEntryChanges(generateRandomLedgerEntries(tt)) {
 		tt.Assert.NoError(changeProcessor.ProcessChange(tt.Ctx, change))
 	}
 	tt.Assert.NoError(changeProcessor.Commit(tt.Ctx))
@@ -334,7 +356,7 @@ func TestStateVerifierLockBusy(t *testing.T) {
 	tt.Assert.NoError(err)
 	tt.Assert.True(ok)
 
-	tt.Assert.NoError(sys.verifyState(false))
+	tt.Assert.NoError(sys.verifyState(false, checkpointLedger, xdr.Hash{}))
 	mockHistoryAdapter.AssertExpectations(t)
 
 	tt.Assert.NoError(otherQ.Rollback())
@@ -350,10 +372,80 @@ func TestStateVerifier(t *testing.T) {
 
 	ledger := rand.Int31()
 	checkpointLedger := uint32(ledger - (ledger % 64) - 1)
-	changeProcessor := buildChangeProcessor(q, &ingest.StatsChangeProcessor{}, ledgerSource, checkpointLedger, "")
+	changeProcessor := buildChangeProcessor(q, &ingest.StatsChangeProcessor{}, historyArchiveSource, checkpointLedger, "")
 	mockChangeReader := &ingest.MockChangeReader{}
 
+	for _, change := range ingest.GetChangesFromLedgerEntryChanges(generateRandomLedgerEntries(tt)) {
+		mockChangeReader.On("Read").Return(change, nil).Once()
+		tt.Assert.NoError(changeProcessor.ProcessChange(tt.Ctx, change))
+	}
+	tt.Assert.NoError(changeProcessor.Commit(tt.Ctx))
+
+	tt.Assert.NoError(q.Commit())
+
+	q.UpdateLastLedgerIngest(tt.Ctx, checkpointLedger)
+
+	mockChangeReader.On("Read").Return(ingest.Change{}, io.EOF).Twice()
+	mockChangeReader.On("Close").Return(nil).Once()
+	bucketListHash := xdr.Hash{1, 2, 3}
+	mockChangeReader.On("VerifyBucketList", bucketListHash).Return(nil).Once()
+
+	mockHistoryAdapter := &mockHistoryArchiveAdapter{}
+	mockHistoryAdapter.On("GetState", mock.AnythingOfType("*context.timerCtx"), uint32(checkpointLedger)).Return(mockChangeReader, nil).Once()
+
+	sys := &system{
+		ctx:                          tt.Ctx,
+		historyQ:                     q,
+		historyAdapter:               mockHistoryAdapter,
+		runStateVerificationOnLedger: ledgerEligibleForStateVerification(64, 1),
+		config:                       Config{StateVerificationTimeout: time.Hour},
+	}
+	sys.initMetrics()
+
+	tt.Assert.NoError(sys.verifyState(false, checkpointLedger, bucketListHash))
+	mockChangeReader.AssertExpectations(t)
+	mockHistoryAdapter.AssertExpectations(t)
+}
+
+func TestStateVerifierHashError(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	test.ResetHorizonDB(t, tt.HorizonDB)
+	q := &history.Q{&db.Session{DB: tt.HorizonDB}}
+
+	ledger := rand.Int31()
+	checkpointLedger := uint32(ledger - (ledger % 64) - 1)
+	mockChangeReader := &ingest.MockChangeReader{}
+
+	q.UpdateLastLedgerIngest(tt.Ctx, checkpointLedger)
+
+	mockChangeReader.On("Close").Return(nil).Once()
+	bucketListHash := xdr.Hash{1, 2, 3}
+	mockChangeReader.On("VerifyBucketList", bucketListHash).Return(fmt.Errorf("hash mismatch error")).Once()
+
+	mockHistoryAdapter := &mockHistoryArchiveAdapter{}
+	mockHistoryAdapter.On("GetState", mock.AnythingOfType("*context.timerCtx"), uint32(checkpointLedger)).Return(mockChangeReader, nil).Once()
+
+	sys := &system{
+		ctx:                          tt.Ctx,
+		historyQ:                     q,
+		historyAdapter:               mockHistoryAdapter,
+		runStateVerificationOnLedger: ledgerEligibleForStateVerification(64, 1),
+		config:                       Config{StateVerificationTimeout: time.Hour},
+	}
+	sys.initMetrics()
+
+	err := sys.verifyState(false, checkpointLedger, bucketListHash)
+	tt.Assert.EqualError(err, "hash mismatch error")
+	_, isStateError := err.(ingest.StateError)
+	tt.Assert.True(isStateError)
+	mockChangeReader.AssertExpectations(t)
+	mockHistoryAdapter.AssertExpectations(t)
+}
+
+func generateRandomLedgerEntries(tt *test.T) []xdr.LedgerEntryChange {
 	gen := randxdr.NewGenerator()
+
 	var changes []xdr.LedgerEntryChange
 	for i := 0; i < 100; i++ {
 		changes = append(changes,
@@ -371,34 +463,10 @@ func TestStateVerifier(t *testing.T) {
 	}
 
 	coverage := map[xdr.LedgerEntryType]int{}
-	for _, change := range ingest.GetChangesFromLedgerEntryChanges(changes) {
-		mockChangeReader.On("Read").Return(change, nil).Once()
-		tt.Assert.NoError(changeProcessor.ProcessChange(tt.Ctx, change))
-		coverage[change.Type]++
+	for _, change := range changes {
+		coverage[change.Created.Data.Type]++
 	}
-	tt.Assert.NoError(changeProcessor.Commit(tt.Ctx))
 	tt.Assert.Equal(len(xdr.LedgerEntryTypeMap), len(coverage))
 
-	tt.Assert.NoError(q.Commit())
-
-	q.UpdateLastLedgerIngest(tt.Ctx, checkpointLedger)
-
-	mockChangeReader.On("Read").Return(ingest.Change{}, io.EOF).Twice()
-	mockChangeReader.On("Close").Return(nil).Once()
-
-	mockHistoryAdapter := &mockHistoryArchiveAdapter{}
-	mockHistoryAdapter.On("GetState", mock.AnythingOfType("*context.timerCtx"), uint32(checkpointLedger)).Return(mockChangeReader, nil).Once()
-
-	sys := &system{
-		ctx:                          tt.Ctx,
-		historyQ:                     q,
-		historyAdapter:               mockHistoryAdapter,
-		runStateVerificationOnLedger: ledgerEligibleForStateVerification(64, 1),
-		config:                       Config{StateVerificationTimeout: time.Hour},
-	}
-	sys.initMetrics()
-
-	tt.Assert.NoError(sys.verifyState(false))
-	mockChangeReader.AssertExpectations(t)
-	mockHistoryAdapter.AssertExpectations(t)
+	return changes
 }

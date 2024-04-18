@@ -60,7 +60,6 @@ func TestTxSubLimitsBodySize(t *testing.T) {
 	}
 
 	itest := integration.NewTest(t, integration.Config{
-		ProtocolVersion:  20,
 		EnableSorobanRPC: true,
 		HorizonEnvironment: map[string]string{
 			"MAX_HTTP_REQUEST_SIZE": "1800",

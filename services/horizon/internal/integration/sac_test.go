@@ -40,7 +40,6 @@ func TestContractMintToAccount(t *testing.T) {
 	}
 
 	itest := integration.NewTest(t, integration.Config{
-		ProtocolVersion:    20,
 		HorizonEnvironment: map[string]string{"INGEST_DISABLE_STATE_VERIFICATION": "true", "CONNECTION_TIMEOUT": "360000"},
 		EnableSorobanRPC:   true,
 	})
@@ -145,7 +144,6 @@ func TestContractMintToContract(t *testing.T) {
 	}
 
 	itest := integration.NewTest(t, integration.Config{
-		ProtocolVersion:  20,
 		EnableSorobanRPC: true,
 	})
 
@@ -225,7 +223,6 @@ func TestExpirationAndRestoration(t *testing.T) {
 	}
 
 	itest := integration.NewTest(t, integration.Config{
-		ProtocolVersion:  20,
 		EnableSorobanRPC: true,
 		HorizonIngestParameters: map[string]string{
 			// disable state verification because we will insert
@@ -506,7 +503,6 @@ func TestContractTransferBetweenAccounts(t *testing.T) {
 	}
 
 	itest := integration.NewTest(t, integration.Config{
-		ProtocolVersion:  20,
 		EnableSorobanRPC: true,
 	})
 
@@ -581,7 +577,6 @@ func TestContractTransferBetweenAccountAndContract(t *testing.T) {
 	}
 
 	itest := integration.NewTest(t, integration.Config{
-		ProtocolVersion:  20,
 		EnableSorobanRPC: true,
 	})
 
@@ -702,7 +697,6 @@ func TestContractTransferBetweenContracts(t *testing.T) {
 	}
 
 	itest := integration.NewTest(t, integration.Config{
-		ProtocolVersion:  20,
 		EnableSorobanRPC: true,
 	})
 
@@ -784,7 +778,6 @@ func TestContractBurnFromAccount(t *testing.T) {
 	}
 
 	itest := integration.NewTest(t, integration.Config{
-		ProtocolVersion:  20,
 		EnableSorobanRPC: true,
 	})
 
@@ -860,7 +853,6 @@ func TestContractBurnFromContract(t *testing.T) {
 	}
 
 	itest := integration.NewTest(t, integration.Config{
-		ProtocolVersion:  20,
 		EnableSorobanRPC: true,
 	})
 
@@ -928,7 +920,6 @@ func TestContractClawbackFromAccount(t *testing.T) {
 	}
 
 	itest := integration.NewTest(t, integration.Config{
-		ProtocolVersion:  20,
 		EnableSorobanRPC: true,
 	})
 
@@ -1006,7 +997,6 @@ func TestContractClawbackFromContract(t *testing.T) {
 	}
 
 	itest := integration.NewTest(t, integration.Config{
-		ProtocolVersion:  20,
 		EnableSorobanRPC: true,
 	})
 

@@ -24,12 +24,13 @@ import (
 	"github.com/stellar/go/support/errors"
 	logpkg "github.com/stellar/go/support/log"
 	"github.com/stellar/go/support/storage"
+	"github.com/stellar/go/xdr"
 )
 
 const (
 	// MaxSupportedProtocolVersion defines the maximum supported version of
 	// the Stellar protocol.
-	MaxSupportedProtocolVersion uint32 = 20
+	MaxSupportedProtocolVersion uint32 = 21
 
 	// CurrentVersion reflects the latest version of the ingestion
 	// algorithm. This value is stored in KV store and is used to decide
@@ -669,7 +670,7 @@ func (s *system) runStateMachine(cur stateMachineNode) error {
 	}
 }
 
-func (s *system) maybeVerifyState(lastIngestedLedger uint32) {
+func (s *system) maybeVerifyState(lastIngestedLedger uint32, expectedBucketListHash xdr.Hash) {
 	stateInvalid, err := s.historyQ.GetExpStateInvalid(s.ctx)
 	if err != nil {
 		if !isCancelledError(s.ctx, err) {
@@ -686,7 +687,7 @@ func (s *system) maybeVerifyState(lastIngestedLedger uint32) {
 		go func() {
 			defer s.wg.Done()
 
-			err := s.verifyState(true)
+			err := s.verifyState(true, lastIngestedLedger, expectedBucketListHash)
 			if err != nil {
 				if isCancelledError(s.ctx, err) {
 					return

@@ -16,3 +16,7 @@ func (i *accountSignersBatchInsertBuilder) Add(signer AccountSigner) error {
 func (i *accountSignersBatchInsertBuilder) Exec(ctx context.Context) error {
 	return i.builder.Exec(ctx, i.session, i.table)
 }
+
+func (i *accountSignersBatchInsertBuilder) Len() int {
+	return i.builder.Len()
+}
