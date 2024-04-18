@@ -3,6 +3,7 @@ package ingest
 import (
 	"crypto/sha256"
 	"database/sql"
+	"fmt"
 	"io"
 	"math/rand"
 	"regexp"
@@ -355,7 +356,7 @@ func TestStateVerifierLockBusy(t *testing.T) {
 	tt.Assert.NoError(err)
 	tt.Assert.True(ok)
 
-	tt.Assert.NoError(sys.verifyState(false))
+	tt.Assert.NoError(sys.verifyState(false, checkpointLedger, xdr.Hash{}))
 	mockHistoryAdapter.AssertExpectations(t)
 
 	tt.Assert.NoError(otherQ.Rollback())
@@ -386,6 +387,8 @@ func TestStateVerifier(t *testing.T) {
 
 	mockChangeReader.On("Read").Return(ingest.Change{}, io.EOF).Twice()
 	mockChangeReader.On("Close").Return(nil).Once()
+	bucketListHash := xdr.Hash{1, 2, 3}
+	mockChangeReader.On("VerifyBucketList", bucketListHash).Return(nil).Once()
 
 	mockHistoryAdapter := &mockHistoryArchiveAdapter{}
 	mockHistoryAdapter.On("GetState", mock.AnythingOfType("*context.timerCtx"), uint32(checkpointLedger)).Return(mockChangeReader, nil).Once()
@@ -399,7 +402,43 @@ func TestStateVerifier(t *testing.T) {
 	}
 	sys.initMetrics()
 
-	tt.Assert.NoError(sys.verifyState(false))
+	tt.Assert.NoError(sys.verifyState(false, checkpointLedger, bucketListHash))
+	mockChangeReader.AssertExpectations(t)
+	mockHistoryAdapter.AssertExpectations(t)
+}
+
+func TestStateVerifierHashError(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	test.ResetHorizonDB(t, tt.HorizonDB)
+	q := &history.Q{&db.Session{DB: tt.HorizonDB}}
+
+	ledger := rand.Int31()
+	checkpointLedger := uint32(ledger - (ledger % 64) - 1)
+	mockChangeReader := &ingest.MockChangeReader{}
+
+	q.UpdateLastLedgerIngest(tt.Ctx, checkpointLedger)
+
+	mockChangeReader.On("Close").Return(nil).Once()
+	bucketListHash := xdr.Hash{1, 2, 3}
+	mockChangeReader.On("VerifyBucketList", bucketListHash).Return(fmt.Errorf("hash mismatch error")).Once()
+
+	mockHistoryAdapter := &mockHistoryArchiveAdapter{}
+	mockHistoryAdapter.On("GetState", mock.AnythingOfType("*context.timerCtx"), uint32(checkpointLedger)).Return(mockChangeReader, nil).Once()
+
+	sys := &system{
+		ctx:                          tt.Ctx,
+		historyQ:                     q,
+		historyAdapter:               mockHistoryAdapter,
+		runStateVerificationOnLedger: ledgerEligibleForStateVerification(64, 1),
+		config:                       Config{StateVerificationTimeout: time.Hour},
+	}
+	sys.initMetrics()
+
+	err := sys.verifyState(false, checkpointLedger, bucketListHash)
+	tt.Assert.EqualError(err, "hash mismatch error")
+	_, isStateError := err.(ingest.StateError)
+	tt.Assert.True(isStateError)
 	mockChangeReader.AssertExpectations(t)
 	mockHistoryAdapter.AssertExpectations(t)
 }

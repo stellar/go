@@ -188,11 +188,11 @@ func TestMaybeVerifyStateGetExpStateInvalidError(t *testing.T) {
 	defer func() { log = oldLogger }()
 
 	historyQ.On("GetExpStateInvalid", system.ctx).Return(false, db.ErrCancelled).Once()
-	system.maybeVerifyState(63)
+	system.maybeVerifyState(63, xdr.Hash{})
 	system.wg.Wait()
 
 	historyQ.On("GetExpStateInvalid", system.ctx).Return(false, context.Canceled).Once()
-	system.maybeVerifyState(63)
+	system.maybeVerifyState(63, xdr.Hash{})
 	system.wg.Wait()
 
 	logged := done()
@@ -200,7 +200,7 @@ func TestMaybeVerifyStateGetExpStateInvalidError(t *testing.T) {
 
 	// Ensure state verifier does not start also for any other error
 	historyQ.On("GetExpStateInvalid", system.ctx).Return(false, errors.New("my error")).Once()
-	system.maybeVerifyState(63)
+	system.maybeVerifyState(63, xdr.Hash{})
 	system.wg.Wait()
 
 	historyQ.AssertExpectations(t)
@@ -227,11 +227,11 @@ func TestMaybeVerifyInternalDBErrCancelOrContextCanceled(t *testing.T) {
 	historyQ.On("CloneIngestionQ").Return(historyQ).Twice()
 
 	historyQ.On("BeginTx", mock.Anything, mock.Anything).Return(db.ErrCancelled).Once()
-	system.maybeVerifyState(63)
+	system.maybeVerifyState(63, xdr.Hash{})
 	system.wg.Wait()
 
 	historyQ.On("BeginTx", mock.Anything, mock.Anything).Return(context.Canceled).Once()
-	system.maybeVerifyState(63)
+	system.maybeVerifyState(63, xdr.Hash{})
 	system.wg.Wait()
 
 	logged := done()

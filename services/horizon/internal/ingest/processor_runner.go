@@ -1,7 +1,6 @@
 package ingest
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -198,30 +197,6 @@ func (s *ProcessorRunner) checkIfProtocolVersionSupported(ledgerProtocolVersion 
 	return nil
 }
 
-// validateBucketList validates if the bucket list hash in history archive
-// matches the one in corresponding ledger header in stellar-core backend.
-// This gives you full security if data in stellar-core backend can be trusted
-// (ex. you run it in your infrastructure).
-// The hashes of actual buckets of this HAS file are checked using
-// historyarchive.XdrStream.SetExpectedHash (this is done in
-// CheckpointChangeReader).
-func (s *ProcessorRunner) validateBucketList(ledgerSequence uint32, ledgerBucketHashList xdr.Hash) error {
-	historyBucketListHash, err := s.historyAdapter.BucketListHash(ledgerSequence)
-	if err != nil {
-		return errors.Wrap(err, "Error getting bucket list hash")
-	}
-
-	if !bytes.Equal(historyBucketListHash[:], ledgerBucketHashList[:]) {
-		return fmt.Errorf(
-			"Bucket list hash of history archive and ledger header does not match: %#x %#x",
-			historyBucketListHash,
-			ledgerBucketHashList,
-		)
-	}
-
-	return nil
-}
-
 func (s *ProcessorRunner) RunGenesisStateIngestion() (ingest.StatsChangeProcessorResults, error) {
 	return s.RunHistoryArchiveIngestion(1, false, 0, xdr.Hash{})
 }
@@ -257,15 +232,17 @@ func (s *ProcessorRunner) RunHistoryArchiveIngestion(
 			if err := s.checkIfProtocolVersionSupported(ledgerProtocolVersion); err != nil {
 				return changeStats.GetResults(), errors.Wrap(err, "Error while checking for supported protocol version")
 			}
-
-			if err := s.validateBucketList(checkpointLedger, bucketListHash); err != nil {
-				return changeStats.GetResults(), errors.Wrap(err, "Error validating bucket list from HAS")
-			}
 		}
 
 		changeReader, err := s.historyAdapter.GetState(s.ctx, checkpointLedger)
 		if err != nil {
 			return changeStats.GetResults(), errors.Wrap(err, "Error creating HAS reader")
+		}
+
+		if !skipChecks {
+			if err = changeReader.VerifyBucketList(bucketListHash); err != nil {
+				return changeStats.GetResults(), errors.Wrap(err, "Error validating bucket list from HAS")
+			}
 		}
 
 		defer changeReader.Close()
