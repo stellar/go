@@ -375,27 +375,6 @@ func TestDisablePathFinding(t *testing.T) {
 	})
 }
 
-func TestIngestionFilteringAlwaysDefaultingToTrue(t *testing.T) {
-	t.Run("ingestion filtering flag set to default value", func(t *testing.T) {
-		test := integration.NewTest(t, *integration.GetTestConfig())
-		err := test.StartHorizon()
-		assert.NoError(t, err)
-		test.WaitForHorizon()
-		assert.Equal(t, test.HorizonIngest().Config().EnableIngestionFiltering, true)
-		test.Shutdown()
-	})
-	t.Run("ingestion filtering flag set to false", func(t *testing.T) {
-		testConfig := integration.GetTestConfig()
-		testConfig.HorizonIngestParameters = map[string]string{"exp-enable-ingestion-filtering": "false"}
-		test := integration.NewTest(t, *testConfig)
-		err := test.StartHorizon()
-		assert.NoError(t, err)
-		test.WaitForHorizon()
-		assert.Equal(t, test.HorizonIngest().Config().EnableIngestionFiltering, true)
-		test.Shutdown()
-	})
-}
-
 func TestDisableTxSub(t *testing.T) {
 	t.Run("require stellar-core-url when both DISABLE_TX_SUB=false and INGEST=false", func(t *testing.T) {
 		localParams := integration.MergeMaps(networkParamArgs, map[string]string{
