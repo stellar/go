@@ -32,13 +32,12 @@ jobs:
     env:
       HORIZON_INTEGRATION_TESTS_ENABLED: true
       HORIZON_INTEGRATION_TESTS_CORE_MAX_SUPPORTED_PROTOCOL: ${{ matrix.protocol-version }}
-      PROTOCOL_21_CORE_DEBIAN_PKG_VERSION: 20.4.1-1807.b152dc51d.focal
-      PROTOCOL_21_CORE_DOCKER_IMG: stellar/unsafe-stellar-core:20.4.1-1807.b152dc51d.focal
-      PROTOCOL_21_SOROBAN_RPC_DOCKER_IMG: stellar/soroban-rpc:21.0.0-rc1-68
-      PROTOCOL_20_CORE_DEBIAN_PKG_VERSION: 20.4.1-1807.b152dc51d.focal
-      PROTOCOL_20_CORE_DOCKER_IMG: stellar/unsafe-stellar-core:20.4.1-1807.b152dc51d.focal
-      # TODO: bump soroban-rpc to the p21 version once it supports it
-      PROTOCOL_20_SOROBAN_RPC_DOCKER_IMG: stellar/soroban-rpc:20.3.0-rc1-52
+      PROTOCOL_21_CORE_DEBIAN_PKG_VERSION: 21.0.0-1812.rc1.a10329cca.focal
+      PROTOCOL_21_CORE_DOCKER_IMG: stellar/unsafe-stellar-core:21.0.0-1812.rc1.a10329cca.focal
+      PROTOCOL_21_SOROBAN_RPC_DOCKER_IMG: stellar/soroban-rpc:21.0.0-rc2-73
+      PROTOCOL_20_CORE_DEBIAN_PKG_VERSION: 21.0.0-1812.rc1.a10329cca.focal
+      PROTOCOL_20_CORE_DOCKER_IMG: stellar/unsafe-stellar-core:21.0.0-1812.rc1.a10329cca.focal
+      PROTOCOL_20_SOROBAN_RPC_DOCKER_IMG: stellar/soroban-rpc:21.0.0-rc2-73
       PGHOST: localhost
       PGPORT: 5432
       PGUSER: postgres
