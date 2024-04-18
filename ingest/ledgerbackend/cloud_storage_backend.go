@@ -5,6 +5,9 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"path/filepath"
+	"strconv"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/stellar/go/support/datastore"
@@ -40,9 +43,42 @@ func NewCloudStorageBackend(ctx context.Context, storageURL string) (*CloudStora
 
 // GetLatestLedgerSequence returns the most recent ledger sequence number in the cloud storage bucket.
 func (csb *CloudStorageBackend) GetLatestLedgerSequence(ctx context.Context) (uint32, error) {
-	// TODO: Can probably copy the code that the ledger exporter will use for resumability
-	// Otherwise can use the ListObject function in datastore and find the largest valued filename
-	return uint32(0), nil
+	directories, err := csb.lcmDataStore.ListDirectoryNames(ctx, "")
+	if err != nil {
+		return 0, errors.Wrapf(err, "failed getting list of directory names")
+	}
+
+	var latestDirectory string
+	largestDirectoryLedger := 0
+	for _, dir := range directories {
+		dirParts := strings.Split(dir, "/")
+		lastDirPart := dirParts[len(dirParts)-1]
+		parts := strings.Split(lastDirPart, "-")
+		if len(parts) == 2 {
+			upper, _ := strconv.Atoi(parts[1])
+			if upper > largestDirectoryLedger {
+				latestDirectory = dir
+				largestDirectoryLedger = upper
+			}
+		}
+	}
+
+	latestLedgerSequence := uint32(0)
+	fileNames, err := csb.lcmDataStore.ListFileNames(ctx, latestDirectory)
+	if err != nil {
+		return 0, errors.Wrapf(err, "failed getting filenames in dir %s", latestDirectory)
+	}
+	for _, fileName := range fileNames {
+		ledgerSequence, err := strconv.ParseUint(strings.TrimSuffix(fileName, filepath.Ext(fileName)), 10, 32)
+		if err != nil {
+			return 0, errors.Wrapf(err, "failed converting filename to uint32 %s", fileName)
+		}
+		if uint32(ledgerSequence) > latestLedgerSequence {
+			latestLedgerSequence = uint32(ledgerSequence)
+		}
+	}
+
+	return latestLedgerSequence, nil
 }
 
 // GetLedger returns the LedgerCloseMeta for the specified ledger sequence number
@@ -55,7 +91,6 @@ func (csb *CloudStorageBackend) GetLedger(ctx context.Context, sequence uint32) 
 	}
 
 	reader, err := csb.lcmDataStore.GetFile(ctx, objectKey)
-
 	if err != nil {
 		return xdr.LedgerCloseMeta{}, errors.Wrapf(err, "failed getting file: %s", objectKey)
 	}

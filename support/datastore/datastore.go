@@ -20,7 +20,8 @@ type DataStore interface {
 	Exists(ctx context.Context, path string) (bool, error)
 	Size(ctx context.Context, path string) (int64, error)
 	Close() error
-	ListObjects(ctx context.Context, path string) ([]string, error)
+	ListDirectoryNames(ctx context.Context, path string) ([]string, error)
+	ListFileNames(ctx context.Context, path string) ([]string, error)
 }
 
 // NewDataStore creates a new DataStore based on the destination URL.

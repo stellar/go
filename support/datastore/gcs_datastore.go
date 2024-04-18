@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"strings"
 
 	"google.golang.org/api/googleapi"
 	"google.golang.org/api/iterator"
@@ -106,10 +107,10 @@ func (b *GCSDataStore) putFile(ctx context.Context, filePath string, in io.Write
 	return w.Close()
 }
 
-func (b *GCSDataStore) ListObjects(ctx context.Context, path string) ([]string, error) {
-	var objectNames []string
+func (b *GCSDataStore) ListDirectoryNames(ctx context.Context, path string) ([]string, error) {
+	var directories []string
 
-	o := b.bucket.Objects(ctx, nil)
+	o := b.bucket.Objects(ctx, &storage.Query{Delimiter: "/"})
 	for {
 		attrs, err := o.Next()
 		if err == iterator.Done {
@@ -118,8 +119,30 @@ func (b *GCSDataStore) ListObjects(ctx context.Context, path string) ([]string, 
 		if err != nil {
 			log.Fatal(err)
 		}
-		objectNames = append(objectNames, attrs.Name)
+		if attrs.Prefix != "" {
+			directories = append(directories, strings.TrimSuffix(attrs.Prefix, "/"))
+		}
 	}
 
-	return nil, nil
+	return directories, nil
+}
+
+func (b *GCSDataStore) ListFileNames(ctx context.Context, path string) ([]string, error) {
+	var files []string
+
+	o := b.bucket.Objects(ctx, &storage.Query{Prefix: path + "/", Delimiter: "/"})
+	for {
+		attrs, err := o.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			log.Fatal(err)
+		}
+		if attrs.Name != "" && !strings.HasSuffix(attrs.Name, "/") {
+			files = append(files, attrs.Name)
+		}
+	}
+
+	return files, nil
 }
