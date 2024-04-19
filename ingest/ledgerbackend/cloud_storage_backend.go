@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"path"
 	"strconv"
 	"strings"
 
@@ -13,31 +14,42 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-// Suffix for TxMeta files
-const (
-	fileSuffix        = ".xdr.gz"
-	ledgersPerFile    = 1
-	filesPerPartition = 64000
-)
-
 // Ensure CloudStorageBackend implements LedgerBackend
 var _ LedgerBackend = (*CloudStorageBackend)(nil)
+
+type LCMFileConfig struct {
+	StorageURL        string
+	FileSuffix        string
+	LedgersPerFile    uint32
+	FilesPerPartition uint32
+}
 
 // CloudStorageBackend is a ledger backend that reads from a cloud storage service.
 // The cloud storage service contains files generated from the ledgerExporter.
 type CloudStorageBackend struct {
-	lcmDataStore datastore.DataStore
-	storageURL   string
+	lcmDataStore      datastore.DataStore
+	storageURL        string
+	fileSuffix        string
+	ledgersPerFile    uint32
+	filesPerPartition uint32
 }
 
 // Return a new CloudStorageBackend instance.
-func NewCloudStorageBackend(ctx context.Context, storageURL string) (*CloudStorageBackend, error) {
-	lcmDataStore, err := datastore.NewDataStore(ctx, storageURL)
+func NewCloudStorageBackend(ctx context.Context, fileConfig LCMFileConfig) (*CloudStorageBackend, error) {
+	lcmDataStore, err := datastore.NewDataStore(ctx, fileConfig.StorageURL)
 	if err != nil {
 		return nil, err
 	}
 
-	return &CloudStorageBackend{lcmDataStore: lcmDataStore, storageURL: storageURL}, nil
+	cloudStorageBackend := &CloudStorageBackend{
+		lcmDataStore:      lcmDataStore,
+		storageURL:        fileConfig.StorageURL,
+		fileSuffix:        fileConfig.FileSuffix,
+		ledgersPerFile:    fileConfig.LedgersPerFile,
+		filesPerPartition: fileConfig.FilesPerPartition,
+	}
+
+	return cloudStorageBackend, nil
 }
 
 // GetLatestLedgerSequence returns the most recent ledger sequence number in the cloud storage bucket.
@@ -48,7 +60,7 @@ func (csb *CloudStorageBackend) GetLatestLedgerSequence(ctx context.Context) (ui
 		return 0, errors.Wrapf(err, "failed getting list of directory names")
 	}
 
-	latestDirectory, err := getLatestDirectory(directories)
+	latestDirectory, err := csb.GetLatestDirectory(directories)
 	if err != nil {
 		return 0, errors.Wrapf(err, "failed getting latest directory")
 	}
@@ -59,7 +71,7 @@ func (csb *CloudStorageBackend) GetLatestLedgerSequence(ctx context.Context) (ui
 		return 0, errors.Wrapf(err, "failed getting filenames in dir %s", latestDirectory)
 	}
 
-	latestLedgerSequence, err := getLatestFileNameLedgerSequence(fileNames, latestDirectory)
+	latestLedgerSequence, err := csb.GetLatestFileNameLedgerSequence(fileNames, latestDirectory)
 	if err != nil {
 		return 0, errors.Wrapf(err, "failed converting filename to ledger sequence")
 	}
@@ -71,7 +83,7 @@ func (csb *CloudStorageBackend) GetLatestLedgerSequence(ctx context.Context) (ui
 func (csb *CloudStorageBackend) GetLedger(ctx context.Context, sequence uint32) (xdr.LedgerCloseMeta, error) {
 	var ledgerCloseMetaBatch xdr.LedgerCloseMetaBatch
 
-	objectKey, err := GetObjectKeyFromSequenceNumber(sequence, ledgersPerFile, filesPerPartition)
+	objectKey, err := csb.GetObjectKeyFromSequenceNumber(sequence, csb.ledgersPerFile, csb.filesPerPartition)
 	if err != nil {
 		return xdr.LedgerCloseMeta{}, errors.Wrapf(err, "failed to get object key for ledger %d", sequence)
 	}
@@ -100,7 +112,12 @@ func (csb *CloudStorageBackend) GetLedger(ctx context.Context, sequence uint32) 
 		return xdr.LedgerCloseMeta{}, errors.Wrapf(err, "failed unmarshalling file: %s", objectKey)
 	}
 
-	ledgerCloseMetasIndex := sequence - uint32(ledgerCloseMetaBatch.StartSequence)
+	startSequence := uint32(ledgerCloseMetaBatch.StartSequence)
+	if startSequence > sequence {
+		return xdr.LedgerCloseMeta{}, errors.Errorf("start sequence: %d; greater than sequence to get: %d", startSequence, sequence)
+	}
+
+	ledgerCloseMetasIndex := sequence - startSequence
 	ledgerCloseMeta := ledgerCloseMetaBatch.LedgerCloseMetas[ledgerCloseMetasIndex]
 
 	return ledgerCloseMeta, nil
@@ -135,7 +152,7 @@ func (csb *CloudStorageBackend) Close() error {
 
 // TODO: Should this function also be modified and added to support/datastore?
 // This function should be shared between ledger exporter and this legerbackend reader
-func GetObjectKeyFromSequenceNumber(ledgerSeq uint32, ledgersPerFile uint32, filesPerPartition uint32) (string, error) {
+func (csb *CloudStorageBackend) GetObjectKeyFromSequenceNumber(ledgerSeq uint32, ledgersPerFile uint32, filesPerPartition uint32) (string, error) {
 	var objectKey string
 
 	if ledgersPerFile < 1 {
@@ -157,21 +174,21 @@ func GetObjectKeyFromSequenceNumber(ledgerSeq uint32, ledgersPerFile uint32, fil
 	if fileStart != fileEnd {
 		objectKey += fmt.Sprintf("-%d", fileEnd)
 	}
-	objectKey += fileSuffix
+	objectKey += csb.fileSuffix
 
 	return objectKey, nil
 }
 
-func getLatestDirectory(directories []string) (string, error) {
+func (csb *CloudStorageBackend) GetLatestDirectory(directories []string) (string, error) {
 	var latestDirectory string
 	largestDirectoryLedger := 0
 
 	for _, dir := range directories {
 		// dir follows the format of "ledgers/<network>/<start>-<end>"
 		// Need to split the dir string to retrieve the <end> ledger value to get the latest directory
-		dirParts := strings.Split(dir, "/")
-		lastDirPart := dirParts[len(dirParts)-1]
-		parts := strings.Split(lastDirPart, "-")
+		dirTruncSlash := strings.TrimSuffix(dir, "/")
+		_, dirName := path.Split(dirTruncSlash)
+		parts := strings.Split(dirName, "-")
 
 		if len(parts) == 2 {
 			upper, err := strconv.Atoi(parts[1])
@@ -189,12 +206,13 @@ func getLatestDirectory(directories []string) (string, error) {
 	return latestDirectory, nil
 }
 
-func getLatestFileNameLedgerSequence(fileNames []string, directory string) (uint32, error) {
+func (csb *CloudStorageBackend) GetLatestFileNameLedgerSequence(fileNames []string, directory string) (uint32, error) {
 	latestLedgerSequence := uint32(0)
 
 	for _, fileName := range fileNames {
-		// Trim file down to just the ledgerSequence
-		fileNameTrimExt := strings.TrimSuffix(fileName, fileSuffix)
+		// fileName follows the format of "ledgers/<network>/<start>-<end>/<ledger_sequence>.<fileSuffix>"
+		// Trim the file down to just the <ledger_sequence>
+		fileNameTrimExt := strings.TrimSuffix(fileName, csb.fileSuffix)
 		fileNameTrimPath := strings.TrimPrefix(fileNameTrimExt, directory+"/")
 		ledgerSequence, err := strconv.ParseUint(fileNameTrimPath, 10, 32)
 		if err != nil {

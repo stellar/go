@@ -117,7 +117,7 @@ func (b *GCSDataStore) ListDirectoryNames(ctx context.Context) ([]string, error)
 			break
 		}
 		if err != nil {
-			log.Fatal(err)
+			return nil, err
 		}
 		if attrs.Prefix != "" {
 			directories = append(directories, strings.TrimSuffix(attrs.Prefix, "/"))
