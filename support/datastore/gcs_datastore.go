@@ -110,7 +110,7 @@ func (b *GCSDataStore) putFile(ctx context.Context, filePath string, in io.Write
 func (b *GCSDataStore) ListDirectoryNames(ctx context.Context) ([]string, error) {
 	var directories []string
 
-	o := b.bucket.Objects(ctx, &storage.Query{Prefix: b.prefix, Delimiter: "/"})
+	o := b.bucket.Objects(ctx, &storage.Query{Prefix: b.prefix + "/", Delimiter: "/"})
 	for {
 		attrs, err := o.Next()
 		if err == iterator.Done {
