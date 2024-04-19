@@ -177,6 +177,7 @@ func getLatestDirectory(directories []string) string {
 	largestDirectoryLedger := 0
 
 	for _, dir := range directories {
+		fmt.Printf("dir %s\n", dir)
 		// dir follows the format of "ledgers/<network>/<start>-<end>"
 		// Need to split the dir string to retrieve the <end> ledger value to get the latest directory
 		dirParts := strings.Split(dir, "/")
