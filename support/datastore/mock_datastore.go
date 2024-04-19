@@ -42,8 +42,8 @@ func (m *MockDataStore) Close() error {
 	return args.Error(0)
 }
 
-func (m *MockDataStore) ListDirectoryNames(ctx context.Context, path string) ([]string, error) {
-	args := m.Called(ctx, path)
+func (m *MockDataStore) ListDirectoryNames(ctx context.Context) ([]string, error) {
+	args := m.Called(ctx)
 	return args.Get(0).([]string), args.Error(0)
 }
 

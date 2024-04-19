@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -43,36 +42,31 @@ func NewCloudStorageBackend(ctx context.Context, storageURL string) (*CloudStora
 
 // GetLatestLedgerSequence returns the most recent ledger sequence number in the cloud storage bucket.
 func (csb *CloudStorageBackend) GetLatestLedgerSequence(ctx context.Context) (uint32, error) {
-	directories, err := csb.lcmDataStore.ListDirectoryNames(ctx, "")
+	// Get the latest parition directory from the bucket
+	directories, err := csb.lcmDataStore.ListDirectoryNames(ctx)
 	if err != nil {
 		return 0, errors.Wrapf(err, "failed getting list of directory names")
 	}
 
-	var latestDirectory string
-	largestDirectoryLedger := 0
-	for _, dir := range directories {
-		dirParts := strings.Split(dir, "/")
-		lastDirPart := dirParts[len(dirParts)-1]
-		parts := strings.Split(lastDirPart, "-")
-		if len(parts) == 2 {
-			upper, _ := strconv.Atoi(parts[1])
-			if upper > largestDirectoryLedger {
-				latestDirectory = dir
-				largestDirectoryLedger = upper
-			}
-		}
-	}
+	latestDirectory := getLatestDirectory(directories)
 
-	latestLedgerSequence := uint32(0)
+	// Search through the latest partition to find the latest file which would be the latestLedgerSequence
 	fileNames, err := csb.lcmDataStore.ListFileNames(ctx, latestDirectory)
 	if err != nil {
 		return 0, errors.Wrapf(err, "failed getting filenames in dir %s", latestDirectory)
 	}
+
+	latestLedgerSequence := uint32(0)
+
 	for _, fileName := range fileNames {
-		ledgerSequence, err := strconv.ParseUint(strings.TrimSuffix(fileName, filepath.Ext(fileName)), 10, 32)
+		// Trim file down to just the ledgerSequence
+		fileNameTrimExt := strings.TrimSuffix(fileName, ".xdr.gz")
+		fileNameTrimPath := strings.TrimPrefix(fileNameTrimExt, latestDirectory+"/")
+		ledgerSequence, err := strconv.ParseUint(fileNameTrimPath, 10, 32)
 		if err != nil {
 			return 0, errors.Wrapf(err, "failed converting filename to uint32 %s", fileName)
 		}
+
 		if uint32(ledgerSequence) > latestLedgerSequence {
 			latestLedgerSequence = uint32(ledgerSequence)
 		}
@@ -174,4 +168,28 @@ func GetObjectKeyFromSequenceNumber(ledgerSeq uint32, ledgersPerFile uint32, fil
 	objectKey += fileSuffix
 
 	return objectKey, nil
+}
+
+func getLatestDirectory(directories []string) string {
+	var latestDirectory string
+	largestDirectoryLedger := 0
+
+	for _, dir := range directories {
+		// dir follows the format of "ledgers/<network>/<start>-<end>"
+		// Need to split the dir string to retrieve the <end> ledger value to get the latest directory
+		dirParts := strings.Split(dir, "/")
+		lastDirPart := dirParts[len(dirParts)-1]
+		parts := strings.Split(lastDirPart, "-")
+
+		if len(parts) == 2 {
+			upper, _ := strconv.Atoi(parts[1])
+
+			if upper > largestDirectoryLedger {
+				latestDirectory = dir
+				largestDirectoryLedger = upper
+			}
+		}
+	}
+
+	return latestDirectory
 }
