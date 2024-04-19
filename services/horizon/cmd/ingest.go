@@ -125,17 +125,16 @@ var ingestVerifyRangeCmd = &cobra.Command{
 		}
 
 		ingestConfig := ingest.Config{
-			NetworkPassphrase:        globalConfig.NetworkPassphrase,
-			HistorySession:           horizonSession,
-			HistoryArchiveURLs:       globalConfig.HistoryArchiveURLs,
-			HistoryArchiveCaching:    globalConfig.HistoryArchiveCaching,
-			CaptiveCoreBinaryPath:    globalConfig.CaptiveCoreBinaryPath,
-			CaptiveCoreConfigUseDB:   globalConfig.CaptiveCoreConfigUseDB,
-			CheckpointFrequency:      globalConfig.CheckpointFrequency,
-			CaptiveCoreToml:          globalConfig.CaptiveCoreToml,
-			CaptiveCoreStoragePath:   globalConfig.CaptiveCoreStoragePath,
-			RoundingSlippageFilter:   globalConfig.RoundingSlippageFilter,
-			EnableIngestionFiltering: globalConfig.EnableIngestionFiltering,
+			NetworkPassphrase:      globalConfig.NetworkPassphrase,
+			HistorySession:         horizonSession,
+			HistoryArchiveURLs:     globalConfig.HistoryArchiveURLs,
+			HistoryArchiveCaching:  globalConfig.HistoryArchiveCaching,
+			CaptiveCoreBinaryPath:  globalConfig.CaptiveCoreBinaryPath,
+			CaptiveCoreConfigUseDB: globalConfig.CaptiveCoreConfigUseDB,
+			CheckpointFrequency:    globalConfig.CheckpointFrequency,
+			CaptiveCoreToml:        globalConfig.CaptiveCoreToml,
+			CaptiveCoreStoragePath: globalConfig.CaptiveCoreStoragePath,
+			RoundingSlippageFilter: globalConfig.RoundingSlippageFilter,
 		}
 
 		system, err := ingest.NewSystem(ingestConfig)
@@ -285,14 +284,13 @@ var ingestInitGenesisStateCmd = &cobra.Command{
 		}
 
 		ingestConfig := ingest.Config{
-			NetworkPassphrase:        globalConfig.NetworkPassphrase,
-			HistorySession:           horizonSession,
-			HistoryArchiveURLs:       globalConfig.HistoryArchiveURLs,
-			CheckpointFrequency:      globalConfig.CheckpointFrequency,
-			RoundingSlippageFilter:   globalConfig.RoundingSlippageFilter,
-			EnableIngestionFiltering: globalConfig.EnableIngestionFiltering,
-			CaptiveCoreBinaryPath:    globalConfig.CaptiveCoreBinaryPath,
-			CaptiveCoreConfigUseDB:   globalConfig.CaptiveCoreConfigUseDB,
+			NetworkPassphrase:      globalConfig.NetworkPassphrase,
+			HistorySession:         horizonSession,
+			HistoryArchiveURLs:     globalConfig.HistoryArchiveURLs,
+			CheckpointFrequency:    globalConfig.CheckpointFrequency,
+			RoundingSlippageFilter: globalConfig.RoundingSlippageFilter,
+			CaptiveCoreBinaryPath:  globalConfig.CaptiveCoreBinaryPath,
+			CaptiveCoreConfigUseDB: globalConfig.CaptiveCoreConfigUseDB,
 		}
 
 		system, err := ingest.NewSystem(ingestConfig)
@@ -348,17 +346,16 @@ var ingestBuildStateCmd = &cobra.Command{
 		}
 
 		ingestConfig := ingest.Config{
-			NetworkPassphrase:        globalConfig.NetworkPassphrase,
-			HistorySession:           horizonSession,
-			HistoryArchiveURLs:       globalConfig.HistoryArchiveURLs,
-			HistoryArchiveCaching:    globalConfig.HistoryArchiveCaching,
-			CaptiveCoreBinaryPath:    globalConfig.CaptiveCoreBinaryPath,
-			CaptiveCoreConfigUseDB:   globalConfig.CaptiveCoreConfigUseDB,
-			CheckpointFrequency:      globalConfig.CheckpointFrequency,
-			CaptiveCoreToml:          globalConfig.CaptiveCoreToml,
-			CaptiveCoreStoragePath:   globalConfig.CaptiveCoreStoragePath,
-			RoundingSlippageFilter:   globalConfig.RoundingSlippageFilter,
-			EnableIngestionFiltering: globalConfig.EnableIngestionFiltering,
+			NetworkPassphrase:      globalConfig.NetworkPassphrase,
+			HistorySession:         horizonSession,
+			HistoryArchiveURLs:     globalConfig.HistoryArchiveURLs,
+			HistoryArchiveCaching:  globalConfig.HistoryArchiveCaching,
+			CaptiveCoreBinaryPath:  globalConfig.CaptiveCoreBinaryPath,
+			CaptiveCoreConfigUseDB: globalConfig.CaptiveCoreConfigUseDB,
+			CheckpointFrequency:    globalConfig.CheckpointFrequency,
+			CaptiveCoreToml:        globalConfig.CaptiveCoreToml,
+			CaptiveCoreStoragePath: globalConfig.CaptiveCoreStoragePath,
+			RoundingSlippageFilter: globalConfig.RoundingSlippageFilter,
 		}
 
 		system, err := ingest.NewSystem(ingestConfig)

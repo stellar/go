@@ -19,7 +19,6 @@ type Config struct {
 	Port               uint
 	AdminPort          uint
 
-	EnableIngestionFiltering    bool
 	CaptiveCoreBinaryPath       string
 	CaptiveCoreConfigPath       string
 	CaptiveCoreTomlParams       ledgerbackend.CaptiveCoreTomlParams

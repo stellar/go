@@ -279,12 +279,8 @@ func Flags() (*Config, support.ConfigOptions) {
 			OptType:     types.String,
 			FlagDefault: "",
 			Required:    false,
-			ConfigKey:   &config.EnableIngestionFiltering,
 			CustomSetValue: func(opt *support.ConfigOption) error {
-
-				// Always enable ingestion filtering by default.
-				config.EnableIngestionFiltering = true
-
+				// ingestion filtering is always enabled, it has no rules by default.
 				if val := viper.GetString(opt.Name); val != "" {
 					stdLog.Printf(
 						"DEPRECATED - No ingestion filter rules are defined by default, which equates to " +
@@ -665,9 +661,11 @@ func Flags() (*Config, support.ConfigOptions) {
 			Usage:          "the batch size (in ledgers) to remove per reap from the Horizon database",
 			UsedInCommands: IngestionCommands,
 			CustomSetValue: func(opt *support.ConfigOption) error {
-				if val := viper.GetUint(opt.Name); val <= 0 || val > 500_000 {
+				val := viper.GetUint(opt.Name)
+				if val <= 0 || val > 500_000 {
 					return fmt.Errorf("flag --history-retention-reap-count must be in range [1, 500,000]")
 				}
+				*(opt.ConfigKey.(*uint)) = val
 				return nil
 			},
 		},

@@ -97,7 +97,6 @@ type Config struct {
 	EnableReapLookupTables       bool
 	EnableExtendedLogLedgerStats bool
 
-	ReingestEnabled             bool
 	MaxReingestRetries          int
 	ReingestRetryBackoffSeconds int
 
@@ -108,9 +107,8 @@ type Config struct {
 
 	RoundingSlippageFilter int
 
-	EnableIngestionFiltering bool
-	MaxLedgerPerFlush        uint32
-	SkipTxmeta               bool
+	MaxLedgerPerFlush uint32
+	SkipTxmeta        bool
 }
 
 const (

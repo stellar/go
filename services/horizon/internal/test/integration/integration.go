@@ -96,6 +96,7 @@ type Test struct {
 	config              Config
 	coreConfig          CaptiveConfig
 	horizonIngestConfig horizon.Config
+	horizonWebConfig    horizon.Config
 	environment         *test.EnvironmentManager
 
 	horizonClient      *sdk.Client
@@ -334,6 +335,10 @@ func (i *Test) GetHorizonIngestConfig() horizon.Config {
 	return i.horizonIngestConfig
 }
 
+func (i *Test) GetHorizonWebConfig() horizon.Config {
+	return i.horizonWebConfig
+}
+
 // Shutdown stops the integration tests and destroys all its associated
 // resources. It will be implicitly called when the calling test (i.e. the
 // `testing.Test` passed to `New()`) is finished if it hasn't been explicitly
@@ -401,6 +406,7 @@ func (i *Test) StartHorizon() error {
 	}
 
 	i.horizonIngestConfig = *ingestConfig
+	i.horizonWebConfig = *webConfig
 
 	i.appStopped = &sync.WaitGroup{}
 	i.appStopped.Add(2)

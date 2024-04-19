@@ -224,6 +224,10 @@ var dbReapCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		defer func() {
+			app.Shutdown()
+			app.CloseDB()
+		}()
 		ctx := context.Background()
 		app.UpdateHorizonLedgerState(ctx)
 		return app.DeleteUnretainedHistory(ctx)
@@ -409,7 +413,6 @@ func runDBReingestRange(ledgerRanges []history.LedgerRange, reingestForce bool, 
 		HistoryArchiveURLs:          config.HistoryArchiveURLs,
 		HistoryArchiveCaching:       config.HistoryArchiveCaching,
 		CheckpointFrequency:         config.CheckpointFrequency,
-		ReingestEnabled:             true,
 		MaxReingestRetries:          int(retries),
 		ReingestRetryBackoffSeconds: int(retryBackoffSeconds),
 		CaptiveCoreBinaryPath:       config.CaptiveCoreBinaryPath,
@@ -418,7 +421,6 @@ func runDBReingestRange(ledgerRanges []history.LedgerRange, reingestForce bool, 
 		CaptiveCoreStoragePath:      config.CaptiveCoreStoragePath,
 		StellarCoreURL:              config.StellarCoreURL,
 		RoundingSlippageFilter:      config.RoundingSlippageFilter,
-		EnableIngestionFiltering:    config.EnableIngestionFiltering,
 		MaxLedgerPerFlush:           maxLedgersPerFlush,
 		SkipTxmeta:                  config.SkipTxmeta,
 	}

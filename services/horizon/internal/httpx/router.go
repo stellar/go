@@ -34,25 +34,24 @@ type RouterConfig struct {
 	RateQuota             *throttled.RateQuota
 	MaxConcurrentRequests uint
 
-	BehindCloudflare         bool
-	BehindAWSLoadBalancer    bool
-	SSEUpdateFrequency       time.Duration
-	StaleThreshold           uint
-	ConnectionTimeout        time.Duration
-	ClientQueryTimeout       time.Duration
-	MaxHTTPRequestSize       uint
-	NetworkPassphrase        string
-	MaxPathLength            uint
-	MaxAssetsPerPathRequest  int
-	PathFinder               paths.Finder
-	PrometheusRegistry       *prometheus.Registry
-	CoreGetter               actions.CoreStateGetter
-	HorizonVersion           string
-	FriendbotURL             *url.URL
-	HealthCheck              http.Handler
-	EnableIngestionFiltering bool
-	DisableTxSub             bool
-	SkipTxMeta               bool
+	BehindCloudflare        bool
+	BehindAWSLoadBalancer   bool
+	SSEUpdateFrequency      time.Duration
+	StaleThreshold          uint
+	ConnectionTimeout       time.Duration
+	ClientQueryTimeout      time.Duration
+	MaxHTTPRequestSize      uint
+	NetworkPassphrase       string
+	MaxPathLength           uint
+	MaxAssetsPerPathRequest int
+	PathFinder              paths.Finder
+	PrometheusRegistry      *prometheus.Registry
+	CoreGetter              actions.CoreStateGetter
+	HorizonVersion          string
+	FriendbotURL            *url.URL
+	HealthCheck             http.Handler
+	DisableTxSub            bool
+	SkipTxMeta              bool
 }
 
 type Router struct {
@@ -375,13 +374,11 @@ func (r *Router) addRoutes(config *RouterConfig, rateLimiter *throttled.HTTPRate
 	r.Internal.Get("/metrics", promhttp.HandlerFor(config.PrometheusRegistry, promhttp.HandlerOpts{}).ServeHTTP)
 	r.Internal.Get("/debug/pprof/heap", pprof.Index)
 	r.Internal.Get("/debug/pprof/profile", pprof.Profile)
-	if config.EnableIngestionFiltering {
-		r.Internal.Route("/ingestion/filters", func(r chi.Router) {
-			handler := actions.FilterConfigHandler{}
-			r.With(historyMiddleware).Put("/asset", handler.UpdateAssetConfig)
-			r.With(historyMiddleware).Put("/account", handler.UpdateAccountConfig)
-			r.With(historyMiddleware).Get("/asset", handler.GetAssetConfig)
-			r.With(historyMiddleware).Get("/account", handler.GetAccountConfig)
-		})
-	}
+	r.Internal.Route("/ingestion/filters", func(r chi.Router) {
+		handler := actions.FilterConfigHandler{}
+		r.With(historyMiddleware).Put("/asset", handler.UpdateAssetConfig)
+		r.With(historyMiddleware).Put("/account", handler.UpdateAccountConfig)
+		r.With(historyMiddleware).Get("/asset", handler.GetAssetConfig)
+		r.With(historyMiddleware).Get("/account", handler.GetAccountConfig)
+	})
 }
