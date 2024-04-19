@@ -194,7 +194,7 @@ func getLatestFileNameLedgerSequence(fileNames []string, directory string) (uint
 
 	for _, fileName := range fileNames {
 		// Trim file down to just the ledgerSequence
-		fileNameTrimExt := strings.TrimSuffix(fileName, ".xdr.gz")
+		fileNameTrimExt := strings.TrimSuffix(fileName, fileSuffix)
 		fileNameTrimPath := strings.TrimPrefix(fileNameTrimExt, directory+"/")
 		ledgerSequence, err := strconv.ParseUint(fileNameTrimPath, 10, 32)
 		if err != nil {
