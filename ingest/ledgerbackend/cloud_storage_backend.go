@@ -219,9 +219,7 @@ func (csb *CloudStorageBackend) GetLatestFileNameLedgerSequence(fileNames []stri
 			return uint32(0), errors.Wrapf(err, "failed converting filename to uint32 %s", fileName)
 		}
 
-		if uint32(ledgerSequence) > latestLedgerSequence {
-			latestLedgerSequence = uint32(ledgerSequence)
-		}
+		latestLedgerSequence = ordered.Max(latestLedgerSequence, uint32(ledgerSequence))
 	}
 
 	return latestLedgerSequence, nil
