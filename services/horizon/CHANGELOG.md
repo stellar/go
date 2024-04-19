@@ -15,7 +15,7 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 - Add deprecation warning for `--captive-core-use-db` ([5231](https://github.com/stellar/go/pull/5231))
 
 ### Fixed
--  Optimized reingestion by addressing performance slowdown due to unnecessary operations on `history_transactions_filtered_tmp`. Removed obsolete `EnableIngestionFiltering` flag. ([5278](https://github.com/stellar/go/pull/5278))
+-  Optimized reingestion by addressing performance slowdown due to unnecessary operations on `history_transactions_filtered_tmp`. Removed obsolete `EnableIngestionFiltering` flag. ([5283](https://github.com/stellar/go/pull/5283))
 - Fix deadlock in parallel ingestion ([5263](https://github.com/stellar/go/pull/5263))
 - Add missing tables to TruncateIngestStateTables() ([5253](https://github.com/stellar/go/pull/5253))
 - Performance improvements in ingest library
