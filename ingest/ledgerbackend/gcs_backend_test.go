@@ -6,14 +6,14 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func MockCloudStorageBackend() CloudStorageBackend {
-	return CloudStorageBackend{
+func MockGCSBackend() GCSBackend {
+	return GCSBackend{
 		fileSuffix: ".xdr.gz",
 	}
 }
 
 func TestGetLatestFileNameLedgerSequence(t *testing.T) {
-	csb := MockCloudStorageBackend()
+	csb := MockGCSBackend()
 	directory := "ledgers/pubnet/21-30"
 	filenames := []string{
 		"ledgers/pubnet/21-30/21.xdr.gz",
@@ -26,7 +26,7 @@ func TestGetLatestFileNameLedgerSequence(t *testing.T) {
 }
 
 func TestGetLatestDirectory(t *testing.T) {
-	csb := MockCloudStorageBackend()
+	csb := MockGCSBackend()
 	directories := []string{"ledgers/pubnet/1-10", "ledgers/pubnet/11-20", "ledgers/pubnet/21-30"}
 	latestDirectory, _ := csb.GetLatestDirectory(directories)
 

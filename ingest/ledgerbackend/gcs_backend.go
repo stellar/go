@@ -11,11 +11,12 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/stellar/go/support/datastore"
+	"github.com/stellar/go/support/ordered"
 	"github.com/stellar/go/xdr"
 )
 
-// Ensure CloudStorageBackend implements LedgerBackend
-var _ LedgerBackend = (*CloudStorageBackend)(nil)
+// Ensure GCSBackend implements LedgerBackend
+var _ LedgerBackend = (*GCSBackend)(nil)
 
 type LCMFileConfig struct {
 	StorageURL        string
@@ -24,9 +25,9 @@ type LCMFileConfig struct {
 	FilesPerPartition uint32
 }
 
-// CloudStorageBackend is a ledger backend that reads from a cloud storage service.
+// GCSBackend is a ledger backend that reads from a cloud storage service.
 // The cloud storage service contains files generated from the ledgerExporter.
-type CloudStorageBackend struct {
+type GCSBackend struct {
 	lcmDataStore      datastore.DataStore
 	storageURL        string
 	fileSuffix        string
@@ -34,14 +35,14 @@ type CloudStorageBackend struct {
 	filesPerPartition uint32
 }
 
-// Return a new CloudStorageBackend instance.
-func NewCloudStorageBackend(ctx context.Context, fileConfig LCMFileConfig) (*CloudStorageBackend, error) {
+// Return a new GCSBackend instance.
+func NewGCSBackend(ctx context.Context, fileConfig LCMFileConfig) (*GCSBackend, error) {
 	lcmDataStore, err := datastore.NewDataStore(ctx, fileConfig.StorageURL)
 	if err != nil {
 		return nil, err
 	}
 
-	cloudStorageBackend := &CloudStorageBackend{
+	cloudStorageBackend := &GCSBackend{
 		lcmDataStore:      lcmDataStore,
 		storageURL:        fileConfig.StorageURL,
 		fileSuffix:        fileConfig.FileSuffix,
@@ -53,25 +54,25 @@ func NewCloudStorageBackend(ctx context.Context, fileConfig LCMFileConfig) (*Clo
 }
 
 // GetLatestLedgerSequence returns the most recent ledger sequence number in the cloud storage bucket.
-func (csb *CloudStorageBackend) GetLatestLedgerSequence(ctx context.Context) (uint32, error) {
+func (gcsb *GCSBackend) GetLatestLedgerSequence(ctx context.Context) (uint32, error) {
 	// Get the latest parition directory from the bucket
-	directories, err := csb.lcmDataStore.ListDirectoryNames(ctx)
+	directories, err := gcsb.lcmDataStore.ListDirectoryNames(ctx)
 	if err != nil {
 		return 0, errors.Wrapf(err, "failed getting list of directory names")
 	}
 
-	latestDirectory, err := csb.GetLatestDirectory(directories)
+	latestDirectory, err := gcsb.GetLatestDirectory(directories)
 	if err != nil {
 		return 0, errors.Wrapf(err, "failed getting latest directory")
 	}
 
 	// Search through the latest partition to find the latest file which would be the latestLedgerSequence
-	fileNames, err := csb.lcmDataStore.ListFileNames(ctx, latestDirectory)
+	fileNames, err := gcsb.lcmDataStore.ListFileNames(ctx, latestDirectory)
 	if err != nil {
 		return 0, errors.Wrapf(err, "failed getting filenames in dir %s", latestDirectory)
 	}
 
-	latestLedgerSequence, err := csb.GetLatestFileNameLedgerSequence(fileNames, latestDirectory)
+	latestLedgerSequence, err := gcsb.GetLatestFileNameLedgerSequence(fileNames, latestDirectory)
 	if err != nil {
 		return 0, errors.Wrapf(err, "failed converting filename to ledger sequence")
 	}
@@ -80,15 +81,15 @@ func (csb *CloudStorageBackend) GetLatestLedgerSequence(ctx context.Context) (ui
 }
 
 // GetLedger returns the LedgerCloseMeta for the specified ledger sequence number
-func (csb *CloudStorageBackend) GetLedger(ctx context.Context, sequence uint32) (xdr.LedgerCloseMeta, error) {
+func (gcsb *GCSBackend) GetLedger(ctx context.Context, sequence uint32) (xdr.LedgerCloseMeta, error) {
 	var ledgerCloseMetaBatch xdr.LedgerCloseMetaBatch
 
-	objectKey, err := csb.GetObjectKeyFromSequenceNumber(sequence, csb.ledgersPerFile, csb.filesPerPartition)
+	objectKey, err := gcsb.GetObjectKeyFromSequenceNumber(sequence, gcsb.ledgersPerFile, gcsb.filesPerPartition)
 	if err != nil {
 		return xdr.LedgerCloseMeta{}, errors.Wrapf(err, "failed to get object key for ledger %d", sequence)
 	}
 
-	reader, err := csb.lcmDataStore.GetFile(ctx, objectKey)
+	reader, err := gcsb.lcmDataStore.GetFile(ctx, objectKey)
 	if err != nil {
 		return xdr.LedgerCloseMeta{}, errors.Wrapf(err, "failed getting file: %s", objectKey)
 	}
@@ -124,14 +125,14 @@ func (csb *CloudStorageBackend) GetLedger(ctx context.Context, sequence uint32) 
 }
 
 // PrepareRange checks if the starting and ending (if bounded) ledgers exist.
-func (csb *CloudStorageBackend) PrepareRange(ctx context.Context, ledgerRange Range) error {
-	_, err := csb.GetLedger(ctx, ledgerRange.from)
+func (gcsb *GCSBackend) PrepareRange(ctx context.Context, ledgerRange Range) error {
+	_, err := gcsb.GetLedger(ctx, ledgerRange.from)
 	if err != nil {
 		return errors.Wrapf(err, "error getting ledger %d", ledgerRange.from)
 	}
 
 	if ledgerRange.bounded {
-		_, err := csb.GetLedger(ctx, ledgerRange.to)
+		_, err := gcsb.GetLedger(ctx, ledgerRange.to)
 		if err != nil {
 			return errors.Wrapf(err, "error getting ending ledger %d", ledgerRange.to)
 		}
@@ -140,19 +141,19 @@ func (csb *CloudStorageBackend) PrepareRange(ctx context.Context, ledgerRange Ra
 	return nil
 }
 
-// IsPrepared is a no-op for CloudStorageBackend.
-func (csb *CloudStorageBackend) IsPrepared(ctx context.Context, ledgerRange Range) (bool, error) {
+// IsPrepared is a no-op for GCSBackend.
+func (gcsb *GCSBackend) IsPrepared(ctx context.Context, ledgerRange Range) (bool, error) {
 	return true, nil
 }
 
-// Close is a no-op for CloudStorageBackend.
-func (csb *CloudStorageBackend) Close() error {
+// Close is a no-op for GCSBackend.
+func (gcsb *GCSBackend) Close() error {
 	return nil
 }
 
 // TODO: Should this function also be modified and added to support/datastore?
 // This function should be shared between ledger exporter and this legerbackend reader
-func (csb *CloudStorageBackend) GetObjectKeyFromSequenceNumber(ledgerSeq uint32, ledgersPerFile uint32, filesPerPartition uint32) (string, error) {
+func (gcsb *GCSBackend) GetObjectKeyFromSequenceNumber(ledgerSeq uint32, ledgersPerFile uint32, filesPerPartition uint32) (string, error) {
 	var objectKey string
 
 	if ledgersPerFile < 1 {
@@ -174,12 +175,12 @@ func (csb *CloudStorageBackend) GetObjectKeyFromSequenceNumber(ledgerSeq uint32,
 	if fileStart != fileEnd {
 		objectKey += fmt.Sprintf("-%d", fileEnd)
 	}
-	objectKey += csb.fileSuffix
+	objectKey += gcsb.fileSuffix
 
 	return objectKey, nil
 }
 
-func (csb *CloudStorageBackend) GetLatestDirectory(directories []string) (string, error) {
+func (gcsb *GCSBackend) GetLatestDirectory(directories []string) (string, error) {
 	var latestDirectory string
 	largestDirectoryLedger := 0
 
@@ -206,13 +207,13 @@ func (csb *CloudStorageBackend) GetLatestDirectory(directories []string) (string
 	return latestDirectory, nil
 }
 
-func (csb *CloudStorageBackend) GetLatestFileNameLedgerSequence(fileNames []string, directory string) (uint32, error) {
+func (gcsb *GCSBackend) GetLatestFileNameLedgerSequence(fileNames []string, directory string) (uint32, error) {
 	latestLedgerSequence := uint32(0)
 
 	for _, fileName := range fileNames {
 		// fileName follows the format of "ledgers/<network>/<start>-<end>/<ledger_sequence>.<fileSuffix>"
 		// Trim the file down to just the <ledger_sequence>
-		fileNameTrimExt := strings.TrimSuffix(fileName, csb.fileSuffix)
+		fileNameTrimExt := strings.TrimSuffix(fileName, gcsb.fileSuffix)
 		fileNameTrimPath := strings.TrimPrefix(fileNameTrimExt, directory+"/")
 		ledgerSequence, err := strconv.ParseUint(fileNameTrimPath, 10, 32)
 		if err != nil {
