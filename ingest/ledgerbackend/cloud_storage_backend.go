@@ -48,7 +48,10 @@ func (csb *CloudStorageBackend) GetLatestLedgerSequence(ctx context.Context) (ui
 		return 0, errors.Wrapf(err, "failed getting list of directory names")
 	}
 
-	latestDirectory := getLatestDirectory(directories)
+	latestDirectory, err := getLatestDirectory(directories)
+	if err != nil {
+		return 0, errors.Wrapf(err, "failed getting latest directory")
+	}
 
 	// Search through the latest partition to find the latest file which would be the latestLedgerSequence
 	fileNames, err := csb.lcmDataStore.ListFileNames(ctx, latestDirectory)
@@ -56,20 +59,9 @@ func (csb *CloudStorageBackend) GetLatestLedgerSequence(ctx context.Context) (ui
 		return 0, errors.Wrapf(err, "failed getting filenames in dir %s", latestDirectory)
 	}
 
-	latestLedgerSequence := uint32(0)
-
-	for _, fileName := range fileNames {
-		// Trim file down to just the ledgerSequence
-		fileNameTrimExt := strings.TrimSuffix(fileName, ".xdr.gz")
-		fileNameTrimPath := strings.TrimPrefix(fileNameTrimExt, latestDirectory+"/")
-		ledgerSequence, err := strconv.ParseUint(fileNameTrimPath, 10, 32)
-		if err != nil {
-			return 0, errors.Wrapf(err, "failed converting filename to uint32 %s", fileName)
-		}
-
-		if uint32(ledgerSequence) > latestLedgerSequence {
-			latestLedgerSequence = uint32(ledgerSequence)
-		}
+	latestLedgerSequence, err := getLatestFileNameLedgerSequence(fileNames, latestDirectory)
+	if err != nil {
+		return 0, errors.Wrapf(err, "failed converting filename to ledger sequence")
 	}
 
 	return latestLedgerSequence, nil
@@ -170,7 +162,7 @@ func GetObjectKeyFromSequenceNumber(ledgerSeq uint32, ledgersPerFile uint32, fil
 	return objectKey, nil
 }
 
-func getLatestDirectory(directories []string) string {
+func getLatestDirectory(directories []string) (string, error) {
 	var latestDirectory string
 	largestDirectoryLedger := 0
 
@@ -182,7 +174,10 @@ func getLatestDirectory(directories []string) string {
 		parts := strings.Split(lastDirPart, "-")
 
 		if len(parts) == 2 {
-			upper, _ := strconv.Atoi(parts[1])
+			upper, err := strconv.Atoi(parts[1])
+			if err != nil {
+				return "", errors.Wrapf(err, "failed getting latest directory %s", dir)
+			}
 
 			if upper > largestDirectoryLedger {
 				latestDirectory = dir
@@ -191,5 +186,25 @@ func getLatestDirectory(directories []string) string {
 		}
 	}
 
-	return latestDirectory
+	return latestDirectory, nil
+}
+
+func getLatestFileNameLedgerSequence(fileNames []string, directory string) (uint32, error) {
+	latestLedgerSequence := uint32(0)
+
+	for _, fileName := range fileNames {
+		// Trim file down to just the ledgerSequence
+		fileNameTrimExt := strings.TrimSuffix(fileName, ".xdr.gz")
+		fileNameTrimPath := strings.TrimPrefix(fileNameTrimExt, directory+"/")
+		ledgerSequence, err := strconv.ParseUint(fileNameTrimPath, 10, 32)
+		if err != nil {
+			return uint32(0), errors.Wrapf(err, "failed converting filename to uint32 %s", fileName)
+		}
+
+		if uint32(ledgerSequence) > latestLedgerSequence {
+			latestLedgerSequence = uint32(ledgerSequence)
+		}
+	}
+
+	return latestLedgerSequence, nil
 }
