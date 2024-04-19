@@ -156,9 +156,15 @@ func (a *App) Close() {
 
 func (a *App) waitForDone() {
 	<-a.done
-	webShutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	a.webServer.Shutdown(webShutdownCtx)
+	a.Shutdown()
+}
+
+func (a *App) Shutdown() {
+	if a.webServer != nil {
+		webShutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		a.webServer.Shutdown(webShutdownCtx)
+	}
 	a.cancel()
 	if a.ingester != nil {
 		a.ingester.Shutdown()
@@ -506,7 +512,11 @@ func (a *App) init() error {
 	initSubmissionSystem(a)
 
 	// reaper
-	a.reaper = reap.New(a.config.HistoryRetentionCount, a.HorizonSession(), a.ledgerState)
+	a.reaper = reap.New(
+		a.config.HistoryRetentionCount,
+		a.config.HistoryRetentionReapCount,
+		a.HorizonSession(),
+		a.ledgerState)
 
 	// go metrics
 	initGoMetrics(a)
@@ -524,27 +534,26 @@ func (a *App) init() error {
 	initTxSubMetrics(a)
 
 	routerConfig := httpx.RouterConfig{
-		DBSession:                a.historyQ.SessionInterface,
-		TxSubmitter:              a.submitter,
-		RateQuota:                a.config.RateQuota,
-		BehindCloudflare:         a.config.BehindCloudflare,
-		BehindAWSLoadBalancer:    a.config.BehindAWSLoadBalancer,
-		SSEUpdateFrequency:       a.config.SSEUpdateFrequency,
-		StaleThreshold:           a.config.StaleThreshold,
-		ConnectionTimeout:        a.config.ConnectionTimeout,
-		ClientQueryTimeout:       a.config.ClientQueryTimeout,
-		MaxConcurrentRequests:    a.config.MaxConcurrentRequests,
-		MaxHTTPRequestSize:       a.config.MaxHTTPRequestSize,
-		NetworkPassphrase:        a.config.NetworkPassphrase,
-		MaxPathLength:            a.config.MaxPathLength,
-		MaxAssetsPerPathRequest:  a.config.MaxAssetsPerPathRequest,
-		PathFinder:               a.paths,
-		PrometheusRegistry:       a.prometheusRegistry,
-		CoreGetter:               a,
-		HorizonVersion:           a.horizonVersion,
-		FriendbotURL:             a.config.FriendbotURL,
-		EnableIngestionFiltering: a.config.EnableIngestionFiltering,
-		DisableTxSub:             a.config.DisableTxSub,
+		DBSession:               a.historyQ.SessionInterface,
+		TxSubmitter:             a.submitter,
+		RateQuota:               a.config.RateQuota,
+		BehindCloudflare:        a.config.BehindCloudflare,
+		BehindAWSLoadBalancer:   a.config.BehindAWSLoadBalancer,
+		SSEUpdateFrequency:      a.config.SSEUpdateFrequency,
+		StaleThreshold:          a.config.StaleThreshold,
+		ConnectionTimeout:       a.config.ConnectionTimeout,
+		ClientQueryTimeout:      a.config.ClientQueryTimeout,
+		MaxConcurrentRequests:   a.config.MaxConcurrentRequests,
+		MaxHTTPRequestSize:      a.config.MaxHTTPRequestSize,
+		NetworkPassphrase:       a.config.NetworkPassphrase,
+		MaxPathLength:           a.config.MaxPathLength,
+		MaxAssetsPerPathRequest: a.config.MaxAssetsPerPathRequest,
+		PathFinder:              a.paths,
+		PrometheusRegistry:      a.prometheusRegistry,
+		CoreGetter:              a,
+		HorizonVersion:          a.horizonVersion,
+		FriendbotURL:            a.config.FriendbotURL,
+		DisableTxSub:            a.config.DisableTxSub,
 		HealthCheck: healthCheck{
 			session: a.historyQ.SessionInterface,
 			ctx:     a.ctx,

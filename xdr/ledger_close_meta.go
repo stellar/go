@@ -19,6 +19,10 @@ func (l LedgerCloseMeta) LedgerSequence() uint32 {
 	return uint32(l.LedgerHeaderHistoryEntry().Header.LedgerSeq)
 }
 
+func (l LedgerCloseMeta) LedgerCloseTime() int64 {
+	return int64(l.LedgerHeaderHistoryEntry().Header.ScpValue.CloseTime)
+}
+
 func (l LedgerCloseMeta) LedgerHash() Hash {
 	return l.LedgerHeaderHistoryEntry().Hash
 }

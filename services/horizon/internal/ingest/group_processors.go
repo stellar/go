@@ -125,6 +125,10 @@ func newGroupTransactionProcessors(processors []horizonTransactionProcessor,
 	}
 }
 
+func (g groupTransactionProcessors) IsEmpty() bool {
+	return len(g.processors) == 0
+}
+
 func (g groupTransactionProcessors) ProcessTransaction(lcm xdr.LedgerCloseMeta, tx ingest.LedgerTransaction) error {
 	for _, p := range g.processors {
 		startTime := time.Now()

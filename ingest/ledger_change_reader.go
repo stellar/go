@@ -176,7 +176,7 @@ func (r *LedgerChangeReader) Read() (Change, error) {
 		}
 		return r.Read()
 	case evictionChangesState:
-		entries, err := r.ledgerCloseMeta.EvictedPersistentLedgerEntries()
+		entries, err := r.lcm.EvictedPersistentLedgerEntries()
 		if err != nil {
 			return Change{}, err
 		}
@@ -196,9 +196,9 @@ func (r *LedgerChangeReader) Read() (Change, error) {
 		return r.Read()
 	case upgradeChangesState:
 		// Get upgrade changes
-		if r.upgradeIndex < len(r.LedgerTransactionReader.ledgerCloseMeta.UpgradesProcessing()) {
+		if r.upgradeIndex < len(r.LedgerTransactionReader.lcm.UpgradesProcessing()) {
 			changes := GetChangesFromLedgerEntryChanges(
-				r.LedgerTransactionReader.ledgerCloseMeta.UpgradesProcessing()[r.upgradeIndex].Changes,
+				r.LedgerTransactionReader.lcm.UpgradesProcessing()[r.upgradeIndex].Changes,
 			)
 			r.pending = append(r.pending, changes...)
 			r.upgradeIndex++

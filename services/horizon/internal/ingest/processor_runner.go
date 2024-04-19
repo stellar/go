@@ -1,7 +1,6 @@
 package ingest
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -165,20 +164,15 @@ func (s *ProcessorRunner) buildTransactionProcessor(ledgersProcessor *processors
 
 func (s *ProcessorRunner) buildTransactionFilterer() *groupTransactionFilterers {
 	var f []processors.LedgerTransactionFilterer
-	if s.config.EnableIngestionFiltering {
-		f = append(f, s.filters.GetFilters(s.historyQ, s.ctx)...)
-	}
-
+	f = append(f, s.filters.GetFilters(s.historyQ, s.ctx)...)
 	return newGroupTransactionFilterers(f)
 }
 
 func (s *ProcessorRunner) buildFilteredOutProcessor() *groupTransactionProcessors {
-	// when in online mode, the submission result processor must always run (regardless of filtering)
 	var p []horizonTransactionProcessor
-	if s.config.EnableIngestionFiltering {
-		txSubProc := processors.NewTransactionFilteredTmpProcessor(s.historyQ.NewTransactionFilteredTmpBatchInsertBuilder(), s.config.SkipTxmeta)
-		p = append(p, txSubProc)
-	}
+
+	txSubProc := processors.NewTransactionFilteredTmpProcessor(s.historyQ.NewTransactionFilteredTmpBatchInsertBuilder(), s.config.SkipTxmeta)
+	p = append(p, txSubProc)
 
 	return newGroupTransactionProcessors(p, nil, nil)
 }
@@ -192,30 +186,6 @@ func (s *ProcessorRunner) checkIfProtocolVersionSupported(ledgerProtocolVersion 
 				"The latest supported protocol version is %d. Please upgrade to the latest Horizon version.",
 			ledgerProtocolVersion,
 			MaxSupportedProtocolVersion,
-		)
-	}
-
-	return nil
-}
-
-// validateBucketList validates if the bucket list hash in history archive
-// matches the one in corresponding ledger header in stellar-core backend.
-// This gives you full security if data in stellar-core backend can be trusted
-// (ex. you run it in your infrastructure).
-// The hashes of actual buckets of this HAS file are checked using
-// historyarchive.XdrStream.SetExpectedHash (this is done in
-// CheckpointChangeReader).
-func (s *ProcessorRunner) validateBucketList(ledgerSequence uint32, ledgerBucketHashList xdr.Hash) error {
-	historyBucketListHash, err := s.historyAdapter.BucketListHash(ledgerSequence)
-	if err != nil {
-		return errors.Wrap(err, "Error getting bucket list hash")
-	}
-
-	if !bytes.Equal(historyBucketListHash[:], ledgerBucketHashList[:]) {
-		return fmt.Errorf(
-			"Bucket list hash of history archive and ledger header does not match: %#x %#x",
-			historyBucketListHash,
-			ledgerBucketHashList,
 		)
 	}
 
@@ -257,15 +227,17 @@ func (s *ProcessorRunner) RunHistoryArchiveIngestion(
 			if err := s.checkIfProtocolVersionSupported(ledgerProtocolVersion); err != nil {
 				return changeStats.GetResults(), errors.Wrap(err, "Error while checking for supported protocol version")
 			}
-
-			if err := s.validateBucketList(checkpointLedger, bucketListHash); err != nil {
-				return changeStats.GetResults(), errors.Wrap(err, "Error validating bucket list from HAS")
-			}
 		}
 
 		changeReader, err := s.historyAdapter.GetState(s.ctx, checkpointLedger)
 		if err != nil {
 			return changeStats.GetResults(), errors.Wrap(err, "Error creating HAS reader")
+		}
+
+		if !skipChecks {
+			if err = changeReader.VerifyBucketList(bucketListHash); err != nil {
+				return changeStats.GetResults(), errors.Wrap(err, "Error validating bucket list from HAS")
+			}
 		}
 
 		defer changeReader.Close()
@@ -407,6 +379,7 @@ func (s *ProcessorRunner) runTransactionProcessorsOnLedger(registry nameRegistry
 	ledgersProcessor.ProcessLedger(ledger)
 
 	groupTransactionFilterers := s.buildTransactionFilterer()
+	// when in online mode, the submission result processor must always run (regardless of whether filter rules exist or not)
 	groupFilteredOutProcessors := s.buildFilteredOutProcessor()
 	loaders, groupTransactionProcessors := s.buildTransactionProcessor(ledgersProcessor)
 
@@ -511,11 +484,16 @@ func registerTransactionProcessors(
 	return nil
 }
 
+// Runs only transaction processors on the inbound list of ledgers.
+// Updates history tables based on transactions.
+// Intentionally do not make effort to insert or purge tx's on history_transactions_filtered_tmp
+// Thus, using this method does not support tx sub processing for the ledgers passed in, i.e. tx submission queue will not see these.
 func (s *ProcessorRunner) RunTransactionProcessorsOnLedgers(ledgers []xdr.LedgerCloseMeta, execInTx bool) (err error) {
 	ledgersProcessor := processors.NewLedgerProcessor(s.historyQ.NewLedgerBatchInsertBuilder(), CurrentVersion)
 
 	groupTransactionFilterers := s.buildTransactionFilterer()
-	groupFilteredOutProcessors := s.buildFilteredOutProcessor()
+	// intentionally skip filtered out processor
+	groupFilteredOutProcessors := newGroupTransactionProcessors(nil, nil, nil)
 	loaders, groupTransactionProcessors := s.buildTransactionProcessor(ledgersProcessor)
 
 	startTime := time.Now()
@@ -577,16 +555,16 @@ func (s *ProcessorRunner) flushProcessors(groupFilteredOutProcessors *groupTrans
 		defer s.session.Rollback()
 	}
 
-	if s.config.EnableIngestionFiltering {
+	if err := groupFilteredOutProcessors.Flush(s.ctx, s.session); err != nil {
+		return errors.Wrap(err, "Error flushing temp filtered tx from processor")
+	}
 
-		if err := groupFilteredOutProcessors.Flush(s.ctx, s.session); err != nil {
-			return errors.Wrap(err, "Error flushing temp filtered tx from processor")
+	if !groupFilteredOutProcessors.IsEmpty() &&
+		time.Since(s.lastTransactionsTmpGC) > transactionsFilteredTmpGCPeriod {
+		if _, err := s.historyQ.DeleteTransactionsFilteredTmpOlderThan(s.ctx, uint64(transactionsFilteredTmpGCPeriod.Seconds())); err != nil {
+			return errors.Wrap(err, "Error trimming filtered transactions")
 		}
-		if time.Since(s.lastTransactionsTmpGC) > transactionsFilteredTmpGCPeriod {
-			if _, err := s.historyQ.DeleteTransactionsFilteredTmpOlderThan(s.ctx, uint64(transactionsFilteredTmpGCPeriod.Seconds())); err != nil {
-				return errors.Wrap(err, "Error trimming filtered transactions")
-			}
-		}
+		s.lastTransactionsTmpGC = time.Now()
 	}
 
 	if err := groupTransactionProcessors.Flush(s.ctx, s.session); err != nil {

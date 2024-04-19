@@ -102,7 +102,6 @@ func initIngester(app *App) {
 		EnableReapLookupTables:               app.config.HistoryRetentionCount > 0,
 		EnableExtendedLogLedgerStats:         app.config.IngestEnableExtendedLogLedgerStats,
 		RoundingSlippageFilter:               app.config.RoundingSlippageFilter,
-		EnableIngestionFiltering:             app.config.EnableIngestionFiltering,
 		SkipTxmeta:                           app.config.SkipTxmeta,
 	})
 
