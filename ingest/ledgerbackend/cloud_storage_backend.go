@@ -49,6 +49,7 @@ func (csb *CloudStorageBackend) GetLatestLedgerSequence(ctx context.Context) (ui
 	}
 
 	latestDirectory := getLatestDirectory(directories)
+	fmt.Printf("latestDirectory %s\n", latestDirectory)
 
 	// Search through the latest partition to find the latest file which would be the latestLedgerSequence
 	fileNames, err := csb.lcmDataStore.ListFileNames(ctx, latestDirectory)
@@ -62,6 +63,7 @@ func (csb *CloudStorageBackend) GetLatestLedgerSequence(ctx context.Context) (ui
 		// Trim file down to just the ledgerSequence
 		fileNameTrimExt := strings.TrimSuffix(fileName, ".xdr.gz")
 		fileNameTrimPath := strings.TrimPrefix(fileNameTrimExt, latestDirectory+"/")
+		fmt.Printf("fileNameTrimPath %s \n", fileNameTrimPath)
 		ledgerSequence, err := strconv.ParseUint(fileNameTrimPath, 10, 32)
 		if err != nil {
 			return 0, errors.Wrapf(err, "failed converting filename to uint32 %s", fileName)
