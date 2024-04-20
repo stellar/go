@@ -51,7 +51,8 @@ func NewApp() *App {
 func (a *App) init(ctx context.Context) {
 	a.dataStore = mustNewDataStore(ctx, a.config)
 	a.ledgerBackend = mustNewLedgerBackend(ctx, a.config, a.prometheusRegistry)
-	queue := NewUploadQueue(a.config.UploadWorkers, a.prometheusRegistry)
+	// TODO: make number of upload workers configurable instead of hard coding it to 1
+	queue := NewUploadQueue(1, a.prometheusRegistry)
 	a.exportManager = NewExportManager(a.config.ExporterConfig, a.ledgerBackend, queue, a.prometheusRegistry)
 	a.uploader = NewUploader(
 		a.dataStore,
@@ -95,19 +96,17 @@ func (a *App) Run() {
 	defer a.close()
 
 	var wg sync.WaitGroup
-	wg.Add(1 + a.config.UploadWorkers)
+	wg.Add(2)
 
-	for i := 0; i < a.config.UploadWorkers; i++ {
-		go func() {
-			defer wg.Done()
+	go func() {
+		defer wg.Done()
 
-			err := a.uploader.Run(ctx)
-			if err != nil && !errors.Is(err, context.Canceled) {
-				logger.WithError(err).Error("Error executing Uploader")
-				cancel()
-			}
-		}()
-	}
+		err := a.uploader.Run(ctx)
+		if err != nil && !errors.Is(err, context.Canceled) {
+			logger.WithError(err).Error("Error executing Uploader")
+			cancel()
+		}
+	}()
 
 	go func() {
 		defer wg.Done()
