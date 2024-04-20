@@ -40,7 +40,7 @@ func NewUploader(
 		},
 		[]string{"ledgers", "already_exists", "compression"},
 	)
-	prometheusRegistry.MustRegister(uploadDurationMetric)
+	prometheusRegistry.MustRegister(uploadDurationMetric, objectSizeMetrics)
 	return Uploader{
 		dataStore:            destination,
 		queue:                queue,
