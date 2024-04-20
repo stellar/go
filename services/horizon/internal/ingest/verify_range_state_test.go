@@ -255,7 +255,9 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 			V0: &xdr.LedgerCloseMetaV0{
 				LedgerHeader: xdr.LedgerHeaderHistoryEntry{
 					Header: xdr.LedgerHeader{
-						LedgerSeq: xdr.Uint32(i),
+						LedgerSeq:      xdr.Uint32(i),
+						LedgerVersion:  xdr.Uint32(MaxSupportedProtocolVersion),
+						BucketListHash: xdr.Hash{byte(i), 2, 3},
 					},
 				},
 			},
@@ -281,7 +283,10 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 		s.Assert().True(arg.ReadOnly)
 	}).Return(nil).Once()
 	clonedQ.On("Rollback").Return(nil).Once()
-	clonedQ.On("GetLastLedgerIngestNonBlocking", s.ctx).Return(uint32(63), nil).Once()
+	clonedQ.On("GetLastLedgerIngestNonBlocking", s.ctx).Return(uint32(110), nil).Once()
+	s.system.runStateVerificationOnLedger = func(u uint32) bool {
+		return u == 110
+	}
 	clonedQ.On("TryStateVerificationLock", s.ctx).Return(true, nil).Once()
 	mockChangeReader := &ingest.MockChangeReader{}
 	mockChangeReader.On("Close").Return(nil).Once()
@@ -482,7 +487,8 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 	mockChangeReader.On("Read").Return(liquidityPoolChange, nil).Once()
 	mockChangeReader.On("Read").Return(ingest.Change{}, io.EOF).Once()
 	mockChangeReader.On("Read").Return(ingest.Change{}, io.EOF).Once()
-	s.historyAdapter.On("GetState", s.ctx, uint32(63)).Return(mockChangeReader, nil).Once()
+	mockChangeReader.On("VerifyBucketList", xdr.Hash{110, 2, 3}).Return(nil).Once()
+	s.historyAdapter.On("GetState", s.ctx, uint32(110)).Return(mockChangeReader, nil).Once()
 	mockAccount := history.AccountEntry{
 		AccountID:          mockAccountID,
 		Balance:            600,

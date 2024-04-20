@@ -78,13 +78,12 @@ func TestProcessorRunnerRunHistoryArchiveIngestionHistoryArchive(t *testing.T) {
 	historyAdapter := &mockHistoryArchiveAdapter{}
 	defer mock.AssertExpectationsForObjects(t, historyAdapter)
 
-	bucketListHash := xdr.Hash([32]byte{0, 1, 2})
-	historyAdapter.On("BucketListHash", uint32(63)).Return(bucketListHash, nil).Once()
-
 	m := &ingest.MockChangeReader{}
 	m.On("Read").Return(ingest.GenesisChange(network.PublicNetworkPassphrase), nil).Once()
 	m.On("Read").Return(ingest.Change{}, io.EOF).Once()
 	m.On("Close").Return(nil).Once()
+	bucketListHash := xdr.Hash([32]byte{0, 1, 2})
+	m.On("VerifyBucketList", bucketListHash).Return(nil).Once()
 
 	historyAdapter.
 		On("GetState", ctx, uint32(63)).
@@ -249,7 +248,7 @@ func TestProcessorRunnerBuildTransactionProcessor(t *testing.T) {
 
 	ledgersProcessor := &processors.LedgersProcessor{}
 
-	processor := runner.buildTransactionProcessor(ledgersProcessor)
+	_, processor := runner.buildTransactionProcessor(ledgersProcessor)
 	assert.IsType(t, &groupTransactionProcessors{}, processor)
 	assert.IsType(t, &processors.StatsLedgerTransactionProcessor{}, processor.processors[0])
 	assert.IsType(t, &processors.EffectProcessor{}, processor.processors[1])
@@ -259,75 +258,6 @@ func TestProcessorRunnerBuildTransactionProcessor(t *testing.T) {
 	assert.IsType(t, &processors.ParticipantsProcessor{}, processor.processors[5])
 	assert.IsType(t, &processors.ClaimableBalancesTransactionProcessor{}, processor.processors[7])
 	assert.IsType(t, &processors.LiquidityPoolsTransactionProcessor{}, processor.processors[8])
-}
-
-func TestProcessorRunnerWithFilterEnabled(t *testing.T) {
-	ctx := context.Background()
-
-	config := Config{
-		NetworkPassphrase:        network.PublicNetworkPassphrase,
-		EnableIngestionFiltering: true,
-	}
-
-	q := &mockDBQ{}
-	mockSession := &db.MockSession{}
-	defer mock.AssertExpectationsForObjects(t, q)
-
-	ledger := xdr.LedgerCloseMeta{
-		V0: &xdr.LedgerCloseMetaV0{
-			LedgerHeader: xdr.LedgerHeaderHistoryEntry{
-				Header: xdr.LedgerHeader{
-					BucketListHash: xdr.Hash([32]byte{0, 1, 2}),
-					LedgerSeq:      23,
-				},
-			},
-		},
-	}
-
-	mockTransactionsFilteredTmpBatchInsertBuilder := &history.MockTransactionsBatchInsertBuilder{}
-	defer mock.AssertExpectationsForObjects(t, mockTransactionsFilteredTmpBatchInsertBuilder)
-	mockTransactionsFilteredTmpBatchInsertBuilder.On("Exec", ctx, mockSession).Return(nil).Once()
-	q.MockQTransactions.On("NewTransactionFilteredTmpBatchInsertBuilder").
-		Return(mockTransactionsFilteredTmpBatchInsertBuilder)
-	q.On("DeleteTransactionsFilteredTmpOlderThan", ctx, mock.AnythingOfType("uint64")).
-		Return(int64(0), nil)
-
-	defer mock.AssertExpectationsForObjects(t, mockTxProcessorBatchBuilders(q, mockSession, ctx)...)
-	defer mock.AssertExpectationsForObjects(t, mockChangeProcessorBatchBuilders(q, ctx, true)...)
-
-	mockBatchInsertBuilder := &history.MockLedgersBatchInsertBuilder{}
-	q.MockQLedgers.On("NewLedgerBatchInsertBuilder").Return(mockBatchInsertBuilder)
-	mockBatchInsertBuilder.On(
-		"Add",
-		ledger.V0.LedgerHeader, 0, 0, 0, 0, CurrentVersion).Return(nil)
-	mockBatchInsertBuilder.On(
-		"Exec",
-		ctx,
-		mockSession,
-	).Return(nil)
-	defer mock.AssertExpectationsForObjects(t, mockBatchInsertBuilder)
-
-	q.MockQAssetStats.On("RemoveContractAssetBalances", ctx, []xdr.Hash(nil)).
-		Return(nil).Once()
-	q.MockQAssetStats.On("UpdateContractAssetBalanceAmounts", ctx, []xdr.Hash{}, []string{}).
-		Return(nil).Once()
-	q.MockQAssetStats.On("InsertContractAssetBalances", ctx, []history.ContractAssetBalance(nil)).
-		Return(nil).Once()
-	q.MockQAssetStats.On("UpdateContractAssetBalanceExpirations", ctx, []xdr.Hash{}, []uint32{}).
-		Return(nil).Once()
-	q.MockQAssetStats.On("GetContractAssetBalancesExpiringAt", ctx, uint32(22)).
-		Return([]history.ContractAssetBalance{}, nil).Once()
-
-	runner := ProcessorRunner{
-		ctx:      ctx,
-		config:   config,
-		historyQ: q,
-		session:  mockSession,
-		filters:  &MockFilters{},
-	}
-
-	_, err := runner.RunAllProcessorsOnLedger(ledger)
-	assert.NoError(t, err)
 }
 
 func TestProcessorRunnerRunAllProcessorsOnLedger(t *testing.T) {
@@ -355,6 +285,7 @@ func TestProcessorRunnerRunAllProcessorsOnLedger(t *testing.T) {
 	// Batches
 	defer mock.AssertExpectationsForObjects(t, mockTxProcessorBatchBuilders(q, mockSession, ctx)...)
 	defer mock.AssertExpectationsForObjects(t, mockChangeProcessorBatchBuilders(q, ctx, true)...)
+	defer mock.AssertExpectationsForObjects(t, mockFilteredOutProcessorsForNoRules(q, mockSession, ctx)...)
 
 	mockBatchInsertBuilder := &history.MockLedgersBatchInsertBuilder{}
 	q.MockQLedgers.On("NewLedgerBatchInsertBuilder").Return(mockBatchInsertBuilder)
@@ -435,6 +366,10 @@ func TestProcessorRunnerRunTransactionsProcessorsOnLedgers(t *testing.T) {
 		},
 	}
 
+	// filtered out processor should not be created
+	q.MockQTransactions.AssertNotCalled(t, "NewTransactionFilteredTmpBatchInsertBuilder")
+	q.AssertNotCalled(t, "DeleteTransactionsFilteredTmpOlderThan", ctx, mock.AnythingOfType("uint64"))
+
 	// Batches
 	defer mock.AssertExpectationsForObjects(t, mockTxProcessorBatchBuilders(q, mockSession, ctx)...)
 
@@ -477,7 +412,7 @@ func TestProcessorRunnerRunTransactionsProcessorsOnLedgers(t *testing.T) {
 		filters:  &MockFilters{},
 	}
 
-	err := runner.RunTransactionProcessorsOnLedgers(ledgers)
+	err := runner.RunTransactionProcessorsOnLedgers(ledgers, false)
 	assert.NoError(t, err)
 }
 
@@ -659,5 +594,20 @@ func mockChangeProcessorBatchBuilders(q *mockDBQ, ctx context.Context, mockExec 
 		mockOfferBatchInsertBuilder,
 		mockAccountDataBatchInsertBuilder,
 		mockTrustLinesBatchInsertBuilder,
+	}
+}
+
+func mockFilteredOutProcessorsForNoRules(q *mockDBQ, mockSession *db.MockSession, ctx context.Context) []interface{} {
+	mockTransactionsFilteredTmpBatchInsertBuilder := &history.MockTransactionsBatchInsertBuilder{}
+	// since no filter rules are used on tests in this suite, we do not need to mock the "Add" call
+	// the "Exec" call gets run by flush all the time
+	mockTransactionsFilteredTmpBatchInsertBuilder.On("Exec", ctx, mockSession).Return(nil).Once()
+	q.MockQTransactions.On("NewTransactionFilteredTmpBatchInsertBuilder").
+		Return(mockTransactionsFilteredTmpBatchInsertBuilder)
+	q.On("DeleteTransactionsFilteredTmpOlderThan", ctx, mock.AnythingOfType("uint64")).
+		Return(int64(0), nil)
+
+	return []interface{}{
+		mockTransactionsFilteredTmpBatchInsertBuilder,
 	}
 }

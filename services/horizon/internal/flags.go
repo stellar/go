@@ -279,12 +279,8 @@ func Flags() (*Config, support.ConfigOptions) {
 			OptType:     types.String,
 			FlagDefault: "",
 			Required:    false,
-			ConfigKey:   &config.EnableIngestionFiltering,
 			CustomSetValue: func(opt *support.ConfigOption) error {
-
-				// Always enable ingestion filtering by default.
-				config.EnableIngestionFiltering = true
-
+				// ingestion filtering is always enabled, it has no rules by default.
 				if val := viper.GetString(opt.Name); val != "" {
 					stdLog.Printf(
 						"DEPRECATED - No ingestion filter rules are defined by default, which equates to " +
@@ -654,8 +650,24 @@ func Flags() (*Config, support.ConfigOptions) {
 			ConfigKey:      &config.HistoryRetentionCount,
 			OptType:        types.Uint,
 			FlagDefault:    uint(0),
-			Usage:          "the minimum number of ledgers to maintain within horizon's history tables.  0 signifies an unlimited number of ledgers will be retained",
+			Usage:          "the minimum number of ledgers to maintain within Horizon's history tables (0 = retain an unlimited number of ledgers)",
 			UsedInCommands: IngestionCommands,
+		},
+		&support.ConfigOption{
+			Name:           "history-retention-reap-count",
+			ConfigKey:      &config.HistoryRetentionReapCount,
+			OptType:        types.Uint,
+			FlagDefault:    uint(50_000),
+			Usage:          "the batch size (in ledgers) to remove per reap from the Horizon database",
+			UsedInCommands: IngestionCommands,
+			CustomSetValue: func(opt *support.ConfigOption) error {
+				val := viper.GetUint(opt.Name)
+				if val <= 0 || val > 500_000 {
+					return fmt.Errorf("flag --history-retention-reap-count must be in range [1, 500,000]")
+				}
+				*(opt.ConfigKey.(*uint)) = val
+				return nil
+			},
 		},
 		&support.ConfigOption{
 			Name:           "history-stale-threshold",

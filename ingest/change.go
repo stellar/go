@@ -2,6 +2,7 @@ package ingest
 
 import (
 	"bytes"
+	"fmt"
 	"sort"
 
 	"github.com/stellar/go/support/errors"
@@ -21,7 +22,29 @@ type Change struct {
 	Post *xdr.LedgerEntry
 }
 
-func (c *Change) ledgerKey() (xdr.LedgerKey, error) {
+// String returns a best effort string representation of the change.
+// If the Pre or Post xdr is invalid, the field will be omitted from the string.
+func (c Change) String() string {
+	var pre, post string
+	if c.Pre != nil {
+		if b64, err := xdr.MarshalBase64(c.Pre); err == nil {
+			pre = b64
+		}
+	}
+	if c.Post != nil {
+		if b64, err := xdr.MarshalBase64(c.Post); err == nil {
+			post = b64
+		}
+	}
+	return fmt.Sprintf(
+		"Change{Type: %s, Pre: %s, Post: %s}",
+		c.Type.String(),
+		pre,
+		post,
+	)
+}
+
+func (c Change) ledgerKey() (xdr.LedgerKey, error) {
 	if c.Pre != nil {
 		return c.Pre.LedgerKey()
 	}
@@ -124,7 +147,7 @@ func sortChanges(changes []Change) {
 }
 
 // LedgerEntryChangeType returns type in terms of LedgerEntryChangeType.
-func (c *Change) LedgerEntryChangeType() xdr.LedgerEntryChangeType {
+func (c Change) LedgerEntryChangeType() xdr.LedgerEntryChangeType {
 	switch {
 	case c.Pre == nil && c.Post != nil:
 		return xdr.LedgerEntryChangeTypeLedgerEntryCreated
@@ -138,7 +161,7 @@ func (c *Change) LedgerEntryChangeType() xdr.LedgerEntryChangeType {
 }
 
 // getLiquidityPool gets the most recent state of the LiquidityPool that exists or existed.
-func (c *Change) getLiquidityPool() (*xdr.LiquidityPoolEntry, error) {
+func (c Change) getLiquidityPool() (*xdr.LiquidityPoolEntry, error) {
 	var entry *xdr.LiquidityPoolEntry
 	if c.Pre != nil {
 		entry = c.Pre.Data.LiquidityPool
@@ -153,7 +176,7 @@ func (c *Change) getLiquidityPool() (*xdr.LiquidityPoolEntry, error) {
 }
 
 // GetLiquidityPoolType returns the liquidity pool type.
-func (c *Change) GetLiquidityPoolType() (xdr.LiquidityPoolType, error) {
+func (c Change) GetLiquidityPoolType() (xdr.LiquidityPoolType, error) {
 	lp, err := c.getLiquidityPool()
 	if err != nil {
 		return xdr.LiquidityPoolType(0), err
@@ -164,7 +187,7 @@ func (c *Change) GetLiquidityPoolType() (xdr.LiquidityPoolType, error) {
 // AccountChangedExceptSigners returns true if account has changed WITHOUT
 // checking the signers (except master key weight!). In other words, if the only
 // change is connected to signers, this function will return false.
-func (c *Change) AccountChangedExceptSigners() (bool, error) {
+func (c Change) AccountChangedExceptSigners() (bool, error) {
 	if c.Type != xdr.LedgerEntryTypeAccount {
 		panic("This should not be called on changes other than Account changes")
 	}

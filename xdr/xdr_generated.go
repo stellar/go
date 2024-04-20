@@ -34,15 +34,15 @@ import (
 // XdrFilesSHA256 is the SHA256 hashes of source files.
 var XdrFilesSHA256 = map[string]string{
 	"xdr/Stellar-SCP.x":                     "8f32b04d008f8bc33b8843d075e69837231a673691ee41d8b821ca229a6e802a",
-	"xdr/Stellar-contract-config-setting.x": "fc42980e8710514679477f767ecad6f9348c38d24b1e4476fdd7e73e8e672ea8",
+	"xdr/Stellar-contract-config-setting.x": "393369678663cb0f9471a0b69e2a9cfa3ac93c4415fa40cec166e9a231ecbe0d",
 	"xdr/Stellar-contract-env-meta.x":       "928a30de814ee589bc1d2aadd8dd81c39f71b7e6f430f56974505ccb1f49654b",
 	"xdr/Stellar-contract-meta.x":           "f01532c11ca044e19d9f9f16fe373e9af64835da473be556b9a807ee3319ae0d",
-	"xdr/Stellar-contract-spec.x":           "c7ffa21d2e91afb8e666b33524d307955426ff553a486d670c29217ed9888d49",
+	"xdr/Stellar-contract-spec.x":           "8d7f6bdd82c3e529cd8c6f035202ca0e7677cc05e4727492a165dfdc51a9cb3e",
 	"xdr/Stellar-contract.x":                "7f665e4103e146a88fcdabce879aaaacd3bf9283feb194cc47ff986264c1e315",
 	"xdr/Stellar-exporter.x":                "a00c83d02e8c8382e06f79a191f1fb5abd097a4bbcab8481c67467e3270e0529",
 	"xdr/Stellar-internal.x":                "227835866c1b2122d1eaf28839ba85ea7289d1cb681dda4ca619c2da3d71fe00",
-	"xdr/Stellar-ledger-entries.x":          "4f8f2324f567a40065f54f696ea1428740f043ea4154f5986d9f499ad00ac333",
-	"xdr/Stellar-ledger.x":                  "2c842f3fe6e269498af5467f849cf6818554e90babc845f34c87cda471298d0f",
+	"xdr/Stellar-ledger-entries.x":          "77dc7062ae6d0812136333e12e35b2294d7c2896a536be9c811eb0ed2abbbccb",
+	"xdr/Stellar-ledger.x":                  "888152fb940b79a01ac00a5218ca91360cb0f01af7acc030d5805ebfec280203",
 	"xdr/Stellar-lighthorizon.x":            "1aac09eaeda224154f653a0c95f02167be0c110fc295bb41b756a080eb8c06df",
 	"xdr/Stellar-overlay.x":                 "de3957c58b96ae07968b3d3aebea84f83603e95322d1fa336360e13e3aba737a",
 	"xdr/Stellar-transaction.x":             "0d2b35a331a540b48643925d0869857236eb2487c02d340ea32e365e784ea2b8",
@@ -8049,16 +8049,421 @@ func (s ContractDataEntry) xdrType() {}
 
 var _ xdrType = (*ContractDataEntry)(nil)
 
+// ContractCodeCostInputs is an XDR Struct defines as:
+//
+//	struct ContractCodeCostInputs {
+//	     ExtensionPoint ext;
+//	     uint32 nInstructions;
+//	     uint32 nFunctions;
+//	     uint32 nGlobals;
+//	     uint32 nTableEntries;
+//	     uint32 nTypes;
+//	     uint32 nDataSegments;
+//	     uint32 nElemSegments;
+//	     uint32 nImports;
+//	     uint32 nExports;
+//	     uint32 nDataSegmentBytes;
+//	 };
+type ContractCodeCostInputs struct {
+	Ext               ExtensionPoint
+	NInstructions     Uint32
+	NFunctions        Uint32
+	NGlobals          Uint32
+	NTableEntries     Uint32
+	NTypes            Uint32
+	NDataSegments     Uint32
+	NElemSegments     Uint32
+	NImports          Uint32
+	NExports          Uint32
+	NDataSegmentBytes Uint32
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s *ContractCodeCostInputs) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = s.Ext.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.NInstructions.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.NFunctions.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.NGlobals.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.NTableEntries.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.NTypes.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.NDataSegments.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.NElemSegments.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.NImports.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.NExports.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.NDataSegmentBytes.EncodeTo(e); err != nil {
+		return err
+	}
+	return nil
+}
+
+var _ decoderFrom = (*ContractCodeCostInputs)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *ContractCodeCostInputs) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, fmt.Errorf("decoding ContractCodeCostInputs: %w", ErrMaxDecodingDepthReached)
+	}
+	maxDepth -= 1
+	var err error
+	var n, nTmp int
+	nTmp, err = s.Ext.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding ExtensionPoint: %w", err)
+	}
+	nTmp, err = s.NInstructions.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %w", err)
+	}
+	nTmp, err = s.NFunctions.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %w", err)
+	}
+	nTmp, err = s.NGlobals.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %w", err)
+	}
+	nTmp, err = s.NTableEntries.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %w", err)
+	}
+	nTmp, err = s.NTypes.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %w", err)
+	}
+	nTmp, err = s.NDataSegments.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %w", err)
+	}
+	nTmp, err = s.NElemSegments.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %w", err)
+	}
+	nTmp, err = s.NImports.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %w", err)
+	}
+	nTmp, err = s.NExports.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %w", err)
+	}
+	nTmp, err = s.NDataSegmentBytes.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %w", err)
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s ContractCodeCostInputs) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *ContractCodeCostInputs) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*ContractCodeCostInputs)(nil)
+	_ encoding.BinaryUnmarshaler = (*ContractCodeCostInputs)(nil)
+)
+
+// xdrType signals that this type represents XDR values defined by this package.
+func (s ContractCodeCostInputs) xdrType() {}
+
+var _ xdrType = (*ContractCodeCostInputs)(nil)
+
+// ContractCodeEntryV1 is an XDR NestedStruct defines as:
+//
+//	struct
+//	             {
+//	                 ExtensionPoint ext;
+//	                 ContractCodeCostInputs costInputs;
+//	             }
+type ContractCodeEntryV1 struct {
+	Ext        ExtensionPoint
+	CostInputs ContractCodeCostInputs
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s *ContractCodeEntryV1) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = s.Ext.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.CostInputs.EncodeTo(e); err != nil {
+		return err
+	}
+	return nil
+}
+
+var _ decoderFrom = (*ContractCodeEntryV1)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *ContractCodeEntryV1) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, fmt.Errorf("decoding ContractCodeEntryV1: %w", ErrMaxDecodingDepthReached)
+	}
+	maxDepth -= 1
+	var err error
+	var n, nTmp int
+	nTmp, err = s.Ext.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding ExtensionPoint: %w", err)
+	}
+	nTmp, err = s.CostInputs.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding ContractCodeCostInputs: %w", err)
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s ContractCodeEntryV1) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *ContractCodeEntryV1) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*ContractCodeEntryV1)(nil)
+	_ encoding.BinaryUnmarshaler = (*ContractCodeEntryV1)(nil)
+)
+
+// xdrType signals that this type represents XDR values defined by this package.
+func (s ContractCodeEntryV1) xdrType() {}
+
+var _ xdrType = (*ContractCodeEntryV1)(nil)
+
+// ContractCodeEntryExt is an XDR NestedUnion defines as:
+//
+//	union switch (int v)
+//	     {
+//	         case 0:
+//	             void;
+//	         case 1:
+//	             struct
+//	             {
+//	                 ExtensionPoint ext;
+//	                 ContractCodeCostInputs costInputs;
+//	             } v1;
+//	     }
+type ContractCodeEntryExt struct {
+	V  int32
+	V1 *ContractCodeEntryV1
+}
+
+// SwitchFieldName returns the field name in which this union's
+// discriminant is stored
+func (u ContractCodeEntryExt) SwitchFieldName() string {
+	return "V"
+}
+
+// ArmForSwitch returns which field name should be used for storing
+// the value for an instance of ContractCodeEntryExt
+func (u ContractCodeEntryExt) ArmForSwitch(sw int32) (string, bool) {
+	switch int32(sw) {
+	case 0:
+		return "", true
+	case 1:
+		return "V1", true
+	}
+	return "-", false
+}
+
+// NewContractCodeEntryExt creates a new  ContractCodeEntryExt.
+func NewContractCodeEntryExt(v int32, value interface{}) (result ContractCodeEntryExt, err error) {
+	result.V = v
+	switch int32(v) {
+	case 0:
+		// void
+	case 1:
+		tv, ok := value.(ContractCodeEntryV1)
+		if !ok {
+			err = errors.New("invalid value, must be ContractCodeEntryV1")
+			return
+		}
+		result.V1 = &tv
+	}
+	return
+}
+
+// MustV1 retrieves the V1 value from the union,
+// panicing if the value is not set.
+func (u ContractCodeEntryExt) MustV1() ContractCodeEntryV1 {
+	val, ok := u.GetV1()
+
+	if !ok {
+		panic("arm V1 is not set")
+	}
+
+	return val
+}
+
+// GetV1 retrieves the V1 value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u ContractCodeEntryExt) GetV1() (result ContractCodeEntryV1, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.V))
+
+	if armName == "V1" {
+		result = *u.V1
+		ok = true
+	}
+
+	return
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (u ContractCodeEntryExt) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if _, err = e.EncodeInt(int32(u.V)); err != nil {
+		return err
+	}
+	switch int32(u.V) {
+	case 0:
+		// Void
+		return nil
+	case 1:
+		if err = (*u.V1).EncodeTo(e); err != nil {
+			return err
+		}
+		return nil
+	}
+	return fmt.Errorf("V (int32) switch value '%d' is not valid for union ContractCodeEntryExt", u.V)
+}
+
+var _ decoderFrom = (*ContractCodeEntryExt)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (u *ContractCodeEntryExt) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, fmt.Errorf("decoding ContractCodeEntryExt: %w", ErrMaxDecodingDepthReached)
+	}
+	maxDepth -= 1
+	var err error
+	var n, nTmp int
+	u.V, nTmp, err = d.DecodeInt()
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Int: %w", err)
+	}
+	switch int32(u.V) {
+	case 0:
+		// Void
+		return n, nil
+	case 1:
+		u.V1 = new(ContractCodeEntryV1)
+		nTmp, err = (*u.V1).DecodeFrom(d, maxDepth)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding ContractCodeEntryV1: %w", err)
+		}
+		return n, nil
+	}
+	return n, fmt.Errorf("union ContractCodeEntryExt has invalid V (int32) switch value '%d'", u.V)
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s ContractCodeEntryExt) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *ContractCodeEntryExt) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*ContractCodeEntryExt)(nil)
+	_ encoding.BinaryUnmarshaler = (*ContractCodeEntryExt)(nil)
+)
+
+// xdrType signals that this type represents XDR values defined by this package.
+func (s ContractCodeEntryExt) xdrType() {}
+
+var _ xdrType = (*ContractCodeEntryExt)(nil)
+
 // ContractCodeEntry is an XDR Struct defines as:
 //
 //	struct ContractCodeEntry {
-//	     ExtensionPoint ext;
+//	     union switch (int v)
+//	     {
+//	         case 0:
+//	             void;
+//	         case 1:
+//	             struct
+//	             {
+//	                 ExtensionPoint ext;
+//	                 ContractCodeCostInputs costInputs;
+//	             } v1;
+//	     } ext;
 //
 //	     Hash hash;
 //	     opaque code<>;
 //	 };
 type ContractCodeEntry struct {
-	Ext  ExtensionPoint
+	Ext  ContractCodeEntryExt
 	Hash Hash
 	Code []byte
 }
@@ -8091,7 +8496,7 @@ func (s *ContractCodeEntry) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, erro
 	nTmp, err = s.Ext.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
-		return n, fmt.Errorf("decoding ExtensionPoint: %w", err)
+		return n, fmt.Errorf("decoding ContractCodeEntryExt: %w", err)
 	}
 	nTmp, err = s.Hash.DecodeFrom(d, maxDepth)
 	n += nTmp
@@ -16349,11 +16754,284 @@ func (s DiagnosticEvent) xdrType() {}
 
 var _ xdrType = (*DiagnosticEvent)(nil)
 
+// SorobanTransactionMetaExtV1 is an XDR Struct defines as:
+//
+//	struct SorobanTransactionMetaExtV1
+//	 {
+//	     ExtensionPoint ext;
+//
+//	     // The following are the components of the overall Soroban resource fee
+//	     // charged for the transaction.
+//	     // The following relation holds:
+//	     // `resourceFeeCharged = totalNonRefundableResourceFeeCharged + totalRefundableResourceFeeCharged`
+//	     // where `resourceFeeCharged` is the overall fee charged for the
+//	     // transaction. Also, `resourceFeeCharged` <= `sorobanData.resourceFee`
+//	     // i.e.we never charge more than the declared resource fee.
+//	     // The inclusion fee for charged the Soroban transaction can be found using
+//	     // the following equation:
+//	     // `result.feeCharged = resourceFeeCharged + inclusionFeeCharged`.
+//
+//	     // Total amount (in stroops) that has been charged for non-refundable
+//	     // Soroban resources.
+//	     // Non-refundable resources are charged based on the usage declared in
+//	     // the transaction envelope (such as `instructions`, `readBytes` etc.) and
+//	     // is charged regardless of the success of the transaction.
+//	     int64 totalNonRefundableResourceFeeCharged;
+//	     // Total amount (in stroops) that has been charged for refundable
+//	     // Soroban resource fees.
+//	     // Currently this comprises the rent fee (`rentFeeCharged`) and the
+//	     // fee for the events and return value.
+//	     // Refundable resources are charged based on the actual resources usage.
+//	     // Since currently refundable resources are only used for the successful
+//	     // transactions, this will be `0` for failed transactions.
+//	     int64 totalRefundableResourceFeeCharged;
+//	     // Amount (in stroops) that has been charged for rent.
+//	     // This is a part of `totalNonRefundableResourceFeeCharged`.
+//	     int64 rentFeeCharged;
+//	 };
+type SorobanTransactionMetaExtV1 struct {
+	Ext                                  ExtensionPoint
+	TotalNonRefundableResourceFeeCharged Int64
+	TotalRefundableResourceFeeCharged    Int64
+	RentFeeCharged                       Int64
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s *SorobanTransactionMetaExtV1) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = s.Ext.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.TotalNonRefundableResourceFeeCharged.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.TotalRefundableResourceFeeCharged.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.RentFeeCharged.EncodeTo(e); err != nil {
+		return err
+	}
+	return nil
+}
+
+var _ decoderFrom = (*SorobanTransactionMetaExtV1)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *SorobanTransactionMetaExtV1) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, fmt.Errorf("decoding SorobanTransactionMetaExtV1: %w", ErrMaxDecodingDepthReached)
+	}
+	maxDepth -= 1
+	var err error
+	var n, nTmp int
+	nTmp, err = s.Ext.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding ExtensionPoint: %w", err)
+	}
+	nTmp, err = s.TotalNonRefundableResourceFeeCharged.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Int64: %w", err)
+	}
+	nTmp, err = s.TotalRefundableResourceFeeCharged.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Int64: %w", err)
+	}
+	nTmp, err = s.RentFeeCharged.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Int64: %w", err)
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s SorobanTransactionMetaExtV1) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *SorobanTransactionMetaExtV1) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*SorobanTransactionMetaExtV1)(nil)
+	_ encoding.BinaryUnmarshaler = (*SorobanTransactionMetaExtV1)(nil)
+)
+
+// xdrType signals that this type represents XDR values defined by this package.
+func (s SorobanTransactionMetaExtV1) xdrType() {}
+
+var _ xdrType = (*SorobanTransactionMetaExtV1)(nil)
+
+// SorobanTransactionMetaExt is an XDR Union defines as:
+//
+//	union SorobanTransactionMetaExt switch (int v)
+//	 {
+//	 case 0:
+//	     void;
+//	 case 1:
+//	     SorobanTransactionMetaExtV1 v1;
+//	 };
+type SorobanTransactionMetaExt struct {
+	V  int32
+	V1 *SorobanTransactionMetaExtV1
+}
+
+// SwitchFieldName returns the field name in which this union's
+// discriminant is stored
+func (u SorobanTransactionMetaExt) SwitchFieldName() string {
+	return "V"
+}
+
+// ArmForSwitch returns which field name should be used for storing
+// the value for an instance of SorobanTransactionMetaExt
+func (u SorobanTransactionMetaExt) ArmForSwitch(sw int32) (string, bool) {
+	switch int32(sw) {
+	case 0:
+		return "", true
+	case 1:
+		return "V1", true
+	}
+	return "-", false
+}
+
+// NewSorobanTransactionMetaExt creates a new  SorobanTransactionMetaExt.
+func NewSorobanTransactionMetaExt(v int32, value interface{}) (result SorobanTransactionMetaExt, err error) {
+	result.V = v
+	switch int32(v) {
+	case 0:
+		// void
+	case 1:
+		tv, ok := value.(SorobanTransactionMetaExtV1)
+		if !ok {
+			err = errors.New("invalid value, must be SorobanTransactionMetaExtV1")
+			return
+		}
+		result.V1 = &tv
+	}
+	return
+}
+
+// MustV1 retrieves the V1 value from the union,
+// panicing if the value is not set.
+func (u SorobanTransactionMetaExt) MustV1() SorobanTransactionMetaExtV1 {
+	val, ok := u.GetV1()
+
+	if !ok {
+		panic("arm V1 is not set")
+	}
+
+	return val
+}
+
+// GetV1 retrieves the V1 value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u SorobanTransactionMetaExt) GetV1() (result SorobanTransactionMetaExtV1, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.V))
+
+	if armName == "V1" {
+		result = *u.V1
+		ok = true
+	}
+
+	return
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (u SorobanTransactionMetaExt) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if _, err = e.EncodeInt(int32(u.V)); err != nil {
+		return err
+	}
+	switch int32(u.V) {
+	case 0:
+		// Void
+		return nil
+	case 1:
+		if err = (*u.V1).EncodeTo(e); err != nil {
+			return err
+		}
+		return nil
+	}
+	return fmt.Errorf("V (int32) switch value '%d' is not valid for union SorobanTransactionMetaExt", u.V)
+}
+
+var _ decoderFrom = (*SorobanTransactionMetaExt)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (u *SorobanTransactionMetaExt) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, fmt.Errorf("decoding SorobanTransactionMetaExt: %w", ErrMaxDecodingDepthReached)
+	}
+	maxDepth -= 1
+	var err error
+	var n, nTmp int
+	u.V, nTmp, err = d.DecodeInt()
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Int: %w", err)
+	}
+	switch int32(u.V) {
+	case 0:
+		// Void
+		return n, nil
+	case 1:
+		u.V1 = new(SorobanTransactionMetaExtV1)
+		nTmp, err = (*u.V1).DecodeFrom(d, maxDepth)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding SorobanTransactionMetaExtV1: %w", err)
+		}
+		return n, nil
+	}
+	return n, fmt.Errorf("union SorobanTransactionMetaExt has invalid V (int32) switch value '%d'", u.V)
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s SorobanTransactionMetaExt) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *SorobanTransactionMetaExt) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*SorobanTransactionMetaExt)(nil)
+	_ encoding.BinaryUnmarshaler = (*SorobanTransactionMetaExt)(nil)
+)
+
+// xdrType signals that this type represents XDR values defined by this package.
+func (s SorobanTransactionMetaExt) xdrType() {}
+
+var _ xdrType = (*SorobanTransactionMetaExt)(nil)
+
 // SorobanTransactionMeta is an XDR Struct defines as:
 //
 //	struct SorobanTransactionMeta
 //	 {
-//	     ExtensionPoint ext;
+//	     SorobanTransactionMetaExt ext;
 //
 //	     ContractEvent events<>;             // custom events populated by the
 //	                                         // contracts themselves.
@@ -16365,7 +17043,7 @@ var _ xdrType = (*DiagnosticEvent)(nil)
 //	     DiagnosticEvent diagnosticEvents<>;
 //	 };
 type SorobanTransactionMeta struct {
-	Ext              ExtensionPoint
+	Ext              SorobanTransactionMetaExt
 	Events           []ContractEvent
 	ReturnValue      ScVal
 	DiagnosticEvents []DiagnosticEvent
@@ -16412,7 +17090,7 @@ func (s *SorobanTransactionMeta) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int,
 	nTmp, err = s.Ext.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
-		return n, fmt.Errorf("decoding ExtensionPoint: %w", err)
+		return n, fmt.Errorf("decoding SorobanTransactionMetaExt: %w", err)
 	}
 	var l uint32
 	l, nTmp, err = d.DecodeUint()
@@ -17370,13 +18048,238 @@ func (s LedgerCloseMetaV0) xdrType() {}
 
 var _ xdrType = (*LedgerCloseMetaV0)(nil)
 
+// LedgerCloseMetaExtV1 is an XDR Struct defines as:
+//
+//	struct LedgerCloseMetaExtV1
+//	 {
+//	     ExtensionPoint ext;
+//	     int64 sorobanFeeWrite1KB;
+//	 };
+type LedgerCloseMetaExtV1 struct {
+	Ext                ExtensionPoint
+	SorobanFeeWrite1Kb Int64
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s *LedgerCloseMetaExtV1) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = s.Ext.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.SorobanFeeWrite1Kb.EncodeTo(e); err != nil {
+		return err
+	}
+	return nil
+}
+
+var _ decoderFrom = (*LedgerCloseMetaExtV1)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *LedgerCloseMetaExtV1) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, fmt.Errorf("decoding LedgerCloseMetaExtV1: %w", ErrMaxDecodingDepthReached)
+	}
+	maxDepth -= 1
+	var err error
+	var n, nTmp int
+	nTmp, err = s.Ext.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding ExtensionPoint: %w", err)
+	}
+	nTmp, err = s.SorobanFeeWrite1Kb.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Int64: %w", err)
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s LedgerCloseMetaExtV1) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *LedgerCloseMetaExtV1) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*LedgerCloseMetaExtV1)(nil)
+	_ encoding.BinaryUnmarshaler = (*LedgerCloseMetaExtV1)(nil)
+)
+
+// xdrType signals that this type represents XDR values defined by this package.
+func (s LedgerCloseMetaExtV1) xdrType() {}
+
+var _ xdrType = (*LedgerCloseMetaExtV1)(nil)
+
+// LedgerCloseMetaExt is an XDR Union defines as:
+//
+//	union LedgerCloseMetaExt switch (int v)
+//	 {
+//	 case 0:
+//	     void;
+//	 case 1:
+//	     LedgerCloseMetaExtV1 v1;
+//	 };
+type LedgerCloseMetaExt struct {
+	V  int32
+	V1 *LedgerCloseMetaExtV1
+}
+
+// SwitchFieldName returns the field name in which this union's
+// discriminant is stored
+func (u LedgerCloseMetaExt) SwitchFieldName() string {
+	return "V"
+}
+
+// ArmForSwitch returns which field name should be used for storing
+// the value for an instance of LedgerCloseMetaExt
+func (u LedgerCloseMetaExt) ArmForSwitch(sw int32) (string, bool) {
+	switch int32(sw) {
+	case 0:
+		return "", true
+	case 1:
+		return "V1", true
+	}
+	return "-", false
+}
+
+// NewLedgerCloseMetaExt creates a new  LedgerCloseMetaExt.
+func NewLedgerCloseMetaExt(v int32, value interface{}) (result LedgerCloseMetaExt, err error) {
+	result.V = v
+	switch int32(v) {
+	case 0:
+		// void
+	case 1:
+		tv, ok := value.(LedgerCloseMetaExtV1)
+		if !ok {
+			err = errors.New("invalid value, must be LedgerCloseMetaExtV1")
+			return
+		}
+		result.V1 = &tv
+	}
+	return
+}
+
+// MustV1 retrieves the V1 value from the union,
+// panicing if the value is not set.
+func (u LedgerCloseMetaExt) MustV1() LedgerCloseMetaExtV1 {
+	val, ok := u.GetV1()
+
+	if !ok {
+		panic("arm V1 is not set")
+	}
+
+	return val
+}
+
+// GetV1 retrieves the V1 value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u LedgerCloseMetaExt) GetV1() (result LedgerCloseMetaExtV1, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.V))
+
+	if armName == "V1" {
+		result = *u.V1
+		ok = true
+	}
+
+	return
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (u LedgerCloseMetaExt) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if _, err = e.EncodeInt(int32(u.V)); err != nil {
+		return err
+	}
+	switch int32(u.V) {
+	case 0:
+		// Void
+		return nil
+	case 1:
+		if err = (*u.V1).EncodeTo(e); err != nil {
+			return err
+		}
+		return nil
+	}
+	return fmt.Errorf("V (int32) switch value '%d' is not valid for union LedgerCloseMetaExt", u.V)
+}
+
+var _ decoderFrom = (*LedgerCloseMetaExt)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (u *LedgerCloseMetaExt) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, fmt.Errorf("decoding LedgerCloseMetaExt: %w", ErrMaxDecodingDepthReached)
+	}
+	maxDepth -= 1
+	var err error
+	var n, nTmp int
+	u.V, nTmp, err = d.DecodeInt()
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Int: %w", err)
+	}
+	switch int32(u.V) {
+	case 0:
+		// Void
+		return n, nil
+	case 1:
+		u.V1 = new(LedgerCloseMetaExtV1)
+		nTmp, err = (*u.V1).DecodeFrom(d, maxDepth)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding LedgerCloseMetaExtV1: %w", err)
+		}
+		return n, nil
+	}
+	return n, fmt.Errorf("union LedgerCloseMetaExt has invalid V (int32) switch value '%d'", u.V)
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s LedgerCloseMetaExt) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *LedgerCloseMetaExt) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*LedgerCloseMetaExt)(nil)
+	_ encoding.BinaryUnmarshaler = (*LedgerCloseMetaExt)(nil)
+)
+
+// xdrType signals that this type represents XDR values defined by this package.
+func (s LedgerCloseMetaExt) xdrType() {}
+
+var _ xdrType = (*LedgerCloseMetaExt)(nil)
+
 // LedgerCloseMetaV1 is an XDR Struct defines as:
 //
 //	struct LedgerCloseMetaV1
 //	 {
-//	     // We forgot to add an ExtensionPoint in v0 but at least
-//	     // we can add one now in v1.
-//	     ExtensionPoint ext;
+//	     LedgerCloseMetaExt ext;
 //
 //	     LedgerHeaderHistoryEntry ledgerHeader;
 //
@@ -17405,7 +18308,7 @@ var _ xdrType = (*LedgerCloseMetaV0)(nil)
 //	     LedgerEntry evictedPersistentLedgerEntries<>;
 //	 };
 type LedgerCloseMetaV1 struct {
-	Ext                            ExtensionPoint
+	Ext                            LedgerCloseMetaExt
 	LedgerHeader                   LedgerHeaderHistoryEntry
 	TxSet                          GeneralizedTransactionSet
 	TxProcessing                   []TransactionResultMeta
@@ -17487,7 +18390,7 @@ func (s *LedgerCloseMetaV1) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, erro
 	nTmp, err = s.Ext.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
-		return n, fmt.Errorf("decoding ExtensionPoint: %w", err)
+		return n, fmt.Errorf("decoding LedgerCloseMetaExt: %w", err)
 	}
 	nTmp, err = s.LedgerHeader.DecodeFrom(d, maxDepth)
 	n += nTmp
@@ -47192,6 +48095,7 @@ const ScSpecDocLimit = 1024
 //	     SC_SPEC_TYPE_MAP = 1004,
 //	     SC_SPEC_TYPE_TUPLE = 1005,
 //	     SC_SPEC_TYPE_BYTES_N = 1006,
+//	     SC_SPEC_TYPE_HASH = 1007,
 //
 //	     // User defined types.
 //	     SC_SPEC_TYPE_UDT = 2000
@@ -47223,6 +48127,7 @@ const (
 	ScSpecTypeScSpecTypeMap       ScSpecType = 1004
 	ScSpecTypeScSpecTypeTuple     ScSpecType = 1005
 	ScSpecTypeScSpecTypeBytesN    ScSpecType = 1006
+	ScSpecTypeScSpecTypeHash      ScSpecType = 1007
 	ScSpecTypeScSpecTypeUdt       ScSpecType = 2000
 )
 
@@ -47251,6 +48156,7 @@ var scSpecTypeMap = map[int32]string{
 	1004: "ScSpecTypeScSpecTypeMap",
 	1005: "ScSpecTypeScSpecTypeTuple",
 	1006: "ScSpecTypeScSpecTypeBytesN",
+	1007: "ScSpecTypeScSpecTypeHash",
 	2000: "ScSpecTypeScSpecTypeUdt",
 }
 
@@ -47756,6 +48662,71 @@ func (s ScSpecTypeBytesN) xdrType() {}
 
 var _ xdrType = (*ScSpecTypeBytesN)(nil)
 
+// ScSpectTypeHash is an XDR Struct defines as:
+//
+//	struct SCSpectTypeHash
+//	 {
+//	     uint32 n;
+//	 };
+type ScSpectTypeHash struct {
+	N Uint32
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s *ScSpectTypeHash) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = s.N.EncodeTo(e); err != nil {
+		return err
+	}
+	return nil
+}
+
+var _ decoderFrom = (*ScSpectTypeHash)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *ScSpectTypeHash) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, fmt.Errorf("decoding ScSpectTypeHash: %w", ErrMaxDecodingDepthReached)
+	}
+	maxDepth -= 1
+	var err error
+	var n, nTmp int
+	nTmp, err = s.N.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %w", err)
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s ScSpectTypeHash) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *ScSpectTypeHash) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*ScSpectTypeHash)(nil)
+	_ encoding.BinaryUnmarshaler = (*ScSpectTypeHash)(nil)
+)
+
+// xdrType signals that this type represents XDR values defined by this package.
+func (s ScSpectTypeHash) xdrType() {}
+
+var _ xdrType = (*ScSpectTypeHash)(nil)
+
 // ScSpecTypeUdt is an XDR Struct defines as:
 //
 //	struct SCSpecTypeUDT
@@ -47856,6 +48827,8 @@ var _ xdrType = (*ScSpecTypeUdt)(nil)
 //	     SCSpecTypeTuple tuple;
 //	 case SC_SPEC_TYPE_BYTES_N:
 //	     SCSpecTypeBytesN bytesN;
+//	 case SC_SPEC_TYPE_HASH:
+//	     SCSpectTypeHash hash;
 //	 case SC_SPEC_TYPE_UDT:
 //	     SCSpecTypeUDT udt;
 //	 };
@@ -47867,6 +48840,7 @@ type ScSpecTypeDef struct {
 	Map    *ScSpecTypeMap
 	Tuple  *ScSpecTypeTuple
 	BytesN *ScSpecTypeBytesN
+	Hash   *ScSpectTypeHash
 	Udt    *ScSpecTypeUdt
 }
 
@@ -47928,6 +48902,8 @@ func (u ScSpecTypeDef) ArmForSwitch(sw int32) (string, bool) {
 		return "Tuple", true
 	case ScSpecTypeScSpecTypeBytesN:
 		return "BytesN", true
+	case ScSpecTypeScSpecTypeHash:
+		return "Hash", true
 	case ScSpecTypeScSpecTypeUdt:
 		return "Udt", true
 	}
@@ -48016,6 +48992,13 @@ func NewScSpecTypeDef(aType ScSpecType, value interface{}) (result ScSpecTypeDef
 			return
 		}
 		result.BytesN = &tv
+	case ScSpecTypeScSpecTypeHash:
+		tv, ok := value.(ScSpectTypeHash)
+		if !ok {
+			err = errors.New("invalid value, must be ScSpectTypeHash")
+			return
+		}
+		result.Hash = &tv
 	case ScSpecTypeScSpecTypeUdt:
 		tv, ok := value.(ScSpecTypeUdt)
 		if !ok {
@@ -48177,6 +49160,31 @@ func (u ScSpecTypeDef) GetBytesN() (result ScSpecTypeBytesN, ok bool) {
 	return
 }
 
+// MustHash retrieves the Hash value from the union,
+// panicing if the value is not set.
+func (u ScSpecTypeDef) MustHash() ScSpectTypeHash {
+	val, ok := u.GetHash()
+
+	if !ok {
+		panic("arm Hash is not set")
+	}
+
+	return val
+}
+
+// GetHash retrieves the Hash value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u ScSpecTypeDef) GetHash() (result ScSpectTypeHash, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "Hash" {
+		result = *u.Hash
+		ok = true
+	}
+
+	return
+}
+
 // MustUdt retrieves the Udt value from the union,
 // panicing if the value is not set.
 func (u ScSpecTypeDef) MustUdt() ScSpecTypeUdt {
@@ -48290,6 +49298,11 @@ func (u ScSpecTypeDef) EncodeTo(e *xdr.Encoder) error {
 		return nil
 	case ScSpecTypeScSpecTypeBytesN:
 		if err = (*u.BytesN).EncodeTo(e); err != nil {
+			return err
+		}
+		return nil
+	case ScSpecTypeScSpecTypeHash:
+		if err = (*u.Hash).EncodeTo(e); err != nil {
 			return err
 		}
 		return nil
@@ -48418,6 +49431,14 @@ func (u *ScSpecTypeDef) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ScSpecTypeBytesN: %w", err)
+		}
+		return n, nil
+	case ScSpecTypeScSpecTypeHash:
+		u.Hash = new(ScSpectTypeHash)
+		nTmp, err = (*u.Hash).DecodeFrom(d, maxDepth)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding ScSpectTypeHash: %w", err)
 		}
 		return n, nil
 	case ScSpecTypeScSpecTypeUdt:
@@ -55059,8 +56080,9 @@ var _ xdrType = (*ConfigSettingContractBandwidthV0)(nil)
 //	     InvokeVmFunction = 13,
 //	     // Cost of computing a keccak256 hash from bytes.
 //	     ComputeKeccak256Hash = 14,
-//	     // Cost of computing an ECDSA secp256k1 signature from bytes.
-//	     ComputeEcdsaSecp256k1Sig = 15,
+//	     // Cost of decoding an ECDSA signature computed from a 256-bit prime modulus
+//	     // curve (e.g. secp256k1 and secp256r1)
+//	     DecodeEcdsaCurve256Sig = 15,
 //	     // Cost of recovering an ECDSA secp256k1 key from a signature.
 //	     RecoverEcdsaSecp256k1Key = 16,
 //	     // Cost of int256 addition (`+`) and subtraction (`-`) operations
@@ -55074,34 +56096,104 @@ var _ xdrType = (*ConfigSettingContractBandwidthV0)(nil)
 //	     // Cost of int256 shift (`shl`, `shr`) operation
 //	     Int256Shift = 21,
 //	     // Cost of drawing random bytes using a ChaCha20 PRNG
-//	     ChaCha20DrawBytes = 22
+//	     ChaCha20DrawBytes = 22,
+//
+//	     // Cost of parsing wasm bytes that only encode instructions.
+//	     ParseWasmInstructions = 23,
+//	     // Cost of parsing a known number of wasm functions.
+//	     ParseWasmFunctions = 24,
+//	     // Cost of parsing a known number of wasm globals.
+//	     ParseWasmGlobals = 25,
+//	     // Cost of parsing a known number of wasm table entries.
+//	     ParseWasmTableEntries = 26,
+//	     // Cost of parsing a known number of wasm types.
+//	     ParseWasmTypes = 27,
+//	     // Cost of parsing a known number of wasm data segments.
+//	     ParseWasmDataSegments = 28,
+//	     // Cost of parsing a known number of wasm element segments.
+//	     ParseWasmElemSegments = 29,
+//	     // Cost of parsing a known number of wasm imports.
+//	     ParseWasmImports = 30,
+//	     // Cost of parsing a known number of wasm exports.
+//	     ParseWasmExports = 31,
+//	     // Cost of parsing a known number of data segment bytes.
+//	     ParseWasmDataSegmentBytes = 32,
+//
+//	     // Cost of instantiating wasm bytes that only encode instructions.
+//	     InstantiateWasmInstructions = 33,
+//	     // Cost of instantiating a known number of wasm functions.
+//	     InstantiateWasmFunctions = 34,
+//	     // Cost of instantiating a known number of wasm globals.
+//	     InstantiateWasmGlobals = 35,
+//	     // Cost of instantiating a known number of wasm table entries.
+//	     InstantiateWasmTableEntries = 36,
+//	     // Cost of instantiating a known number of wasm types.
+//	     InstantiateWasmTypes = 37,
+//	     // Cost of instantiating a known number of wasm data segments.
+//	     InstantiateWasmDataSegments = 38,
+//	     // Cost of instantiating a known number of wasm element segments.
+//	     InstantiateWasmElemSegments = 39,
+//	     // Cost of instantiating a known number of wasm imports.
+//	     InstantiateWasmImports = 40,
+//	     // Cost of instantiating a known number of wasm exports.
+//	     InstantiateWasmExports = 41,
+//	     // Cost of instantiating a known number of data segment bytes.
+//	     InstantiateWasmDataSegmentBytes = 42,
+//
+//	     // Cost of decoding a bytes array representing an uncompressed SEC-1 encoded
+//	     // point on a 256-bit elliptic curve
+//	     Sec1DecodePointUncompressed = 43,
+//	     // Cost of verifying an ECDSA Secp256r1 signature
+//	     VerifyEcdsaSecp256r1Sig = 44
 //	 };
 type ContractCostType int32
 
 const (
-	ContractCostTypeWasmInsnExec             ContractCostType = 0
-	ContractCostTypeMemAlloc                 ContractCostType = 1
-	ContractCostTypeMemCpy                   ContractCostType = 2
-	ContractCostTypeMemCmp                   ContractCostType = 3
-	ContractCostTypeDispatchHostFunction     ContractCostType = 4
-	ContractCostTypeVisitObject              ContractCostType = 5
-	ContractCostTypeValSer                   ContractCostType = 6
-	ContractCostTypeValDeser                 ContractCostType = 7
-	ContractCostTypeComputeSha256Hash        ContractCostType = 8
-	ContractCostTypeComputeEd25519PubKey     ContractCostType = 9
-	ContractCostTypeVerifyEd25519Sig         ContractCostType = 10
-	ContractCostTypeVmInstantiation          ContractCostType = 11
-	ContractCostTypeVmCachedInstantiation    ContractCostType = 12
-	ContractCostTypeInvokeVmFunction         ContractCostType = 13
-	ContractCostTypeComputeKeccak256Hash     ContractCostType = 14
-	ContractCostTypeComputeEcdsaSecp256k1Sig ContractCostType = 15
-	ContractCostTypeRecoverEcdsaSecp256k1Key ContractCostType = 16
-	ContractCostTypeInt256AddSub             ContractCostType = 17
-	ContractCostTypeInt256Mul                ContractCostType = 18
-	ContractCostTypeInt256Div                ContractCostType = 19
-	ContractCostTypeInt256Pow                ContractCostType = 20
-	ContractCostTypeInt256Shift              ContractCostType = 21
-	ContractCostTypeChaCha20DrawBytes        ContractCostType = 22
+	ContractCostTypeWasmInsnExec                    ContractCostType = 0
+	ContractCostTypeMemAlloc                        ContractCostType = 1
+	ContractCostTypeMemCpy                          ContractCostType = 2
+	ContractCostTypeMemCmp                          ContractCostType = 3
+	ContractCostTypeDispatchHostFunction            ContractCostType = 4
+	ContractCostTypeVisitObject                     ContractCostType = 5
+	ContractCostTypeValSer                          ContractCostType = 6
+	ContractCostTypeValDeser                        ContractCostType = 7
+	ContractCostTypeComputeSha256Hash               ContractCostType = 8
+	ContractCostTypeComputeEd25519PubKey            ContractCostType = 9
+	ContractCostTypeVerifyEd25519Sig                ContractCostType = 10
+	ContractCostTypeVmInstantiation                 ContractCostType = 11
+	ContractCostTypeVmCachedInstantiation           ContractCostType = 12
+	ContractCostTypeInvokeVmFunction                ContractCostType = 13
+	ContractCostTypeComputeKeccak256Hash            ContractCostType = 14
+	ContractCostTypeDecodeEcdsaCurve256Sig          ContractCostType = 15
+	ContractCostTypeRecoverEcdsaSecp256k1Key        ContractCostType = 16
+	ContractCostTypeInt256AddSub                    ContractCostType = 17
+	ContractCostTypeInt256Mul                       ContractCostType = 18
+	ContractCostTypeInt256Div                       ContractCostType = 19
+	ContractCostTypeInt256Pow                       ContractCostType = 20
+	ContractCostTypeInt256Shift                     ContractCostType = 21
+	ContractCostTypeChaCha20DrawBytes               ContractCostType = 22
+	ContractCostTypeParseWasmInstructions           ContractCostType = 23
+	ContractCostTypeParseWasmFunctions              ContractCostType = 24
+	ContractCostTypeParseWasmGlobals                ContractCostType = 25
+	ContractCostTypeParseWasmTableEntries           ContractCostType = 26
+	ContractCostTypeParseWasmTypes                  ContractCostType = 27
+	ContractCostTypeParseWasmDataSegments           ContractCostType = 28
+	ContractCostTypeParseWasmElemSegments           ContractCostType = 29
+	ContractCostTypeParseWasmImports                ContractCostType = 30
+	ContractCostTypeParseWasmExports                ContractCostType = 31
+	ContractCostTypeParseWasmDataSegmentBytes       ContractCostType = 32
+	ContractCostTypeInstantiateWasmInstructions     ContractCostType = 33
+	ContractCostTypeInstantiateWasmFunctions        ContractCostType = 34
+	ContractCostTypeInstantiateWasmGlobals          ContractCostType = 35
+	ContractCostTypeInstantiateWasmTableEntries     ContractCostType = 36
+	ContractCostTypeInstantiateWasmTypes            ContractCostType = 37
+	ContractCostTypeInstantiateWasmDataSegments     ContractCostType = 38
+	ContractCostTypeInstantiateWasmElemSegments     ContractCostType = 39
+	ContractCostTypeInstantiateWasmImports          ContractCostType = 40
+	ContractCostTypeInstantiateWasmExports          ContractCostType = 41
+	ContractCostTypeInstantiateWasmDataSegmentBytes ContractCostType = 42
+	ContractCostTypeSec1DecodePointUncompressed     ContractCostType = 43
+	ContractCostTypeVerifyEcdsaSecp256r1Sig         ContractCostType = 44
 )
 
 var contractCostTypeMap = map[int32]string{
@@ -55120,7 +56212,7 @@ var contractCostTypeMap = map[int32]string{
 	12: "ContractCostTypeVmCachedInstantiation",
 	13: "ContractCostTypeInvokeVmFunction",
 	14: "ContractCostTypeComputeKeccak256Hash",
-	15: "ContractCostTypeComputeEcdsaSecp256k1Sig",
+	15: "ContractCostTypeDecodeEcdsaCurve256Sig",
 	16: "ContractCostTypeRecoverEcdsaSecp256k1Key",
 	17: "ContractCostTypeInt256AddSub",
 	18: "ContractCostTypeInt256Mul",
@@ -55128,6 +56220,28 @@ var contractCostTypeMap = map[int32]string{
 	20: "ContractCostTypeInt256Pow",
 	21: "ContractCostTypeInt256Shift",
 	22: "ContractCostTypeChaCha20DrawBytes",
+	23: "ContractCostTypeParseWasmInstructions",
+	24: "ContractCostTypeParseWasmFunctions",
+	25: "ContractCostTypeParseWasmGlobals",
+	26: "ContractCostTypeParseWasmTableEntries",
+	27: "ContractCostTypeParseWasmTypes",
+	28: "ContractCostTypeParseWasmDataSegments",
+	29: "ContractCostTypeParseWasmElemSegments",
+	30: "ContractCostTypeParseWasmImports",
+	31: "ContractCostTypeParseWasmExports",
+	32: "ContractCostTypeParseWasmDataSegmentBytes",
+	33: "ContractCostTypeInstantiateWasmInstructions",
+	34: "ContractCostTypeInstantiateWasmFunctions",
+	35: "ContractCostTypeInstantiateWasmGlobals",
+	36: "ContractCostTypeInstantiateWasmTableEntries",
+	37: "ContractCostTypeInstantiateWasmTypes",
+	38: "ContractCostTypeInstantiateWasmDataSegments",
+	39: "ContractCostTypeInstantiateWasmElemSegments",
+	40: "ContractCostTypeInstantiateWasmImports",
+	41: "ContractCostTypeInstantiateWasmExports",
+	42: "ContractCostTypeInstantiateWasmDataSegmentBytes",
+	43: "ContractCostTypeSec1DecodePointUncompressed",
+	44: "ContractCostTypeVerifyEcdsaSecp256r1Sig",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements

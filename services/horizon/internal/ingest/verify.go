@@ -35,7 +35,7 @@ const stateVerifierExpectedIngestionVersion = 18
 // verifyState is called as a go routine from pipeline post hook every 64
 // ledgers. It checks if the state is correct. If another go routine is already
 // running it exits.
-func (s *system) verifyState(verifyAgainstLatestCheckpoint bool) error {
+func (s *system) verifyState(verifyAgainstLatestCheckpoint bool, checkpointSequence uint32, expectedBucketListHash xdr.Hash) error {
 	s.stateVerificationMutex.Lock()
 	if s.stateVerificationRunning {
 		log.Warn("State verification is already running...")
@@ -91,6 +91,12 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool) error {
 
 	if !s.runStateVerificationOnLedger(ledgerSequence) {
 		localLog.Info("Current ledger is not eligible for state verification. Canceling...")
+		return nil
+	}
+
+	if ledgerSequence != checkpointSequence {
+		localLog.WithField("checkpointSequence", checkpointSequence).
+			Info("Current ledger does not match checkpoint sequence. Canceling...")
 		return nil
 	}
 
@@ -168,6 +174,9 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool) error {
 		return errors.Wrap(err, "Error running GetState")
 	}
 	defer stateReader.Close()
+	if err = stateReader.VerifyBucketList(expectedBucketListHash); err != nil {
+		return ingest.NewStateError(err)
+	}
 
 	verifier := verify.NewStateVerifier(stateReader, func(entry xdr.LedgerEntry) (bool, xdr.LedgerEntry) {
 		entryType := entry.Data.Type
