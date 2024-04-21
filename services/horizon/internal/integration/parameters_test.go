@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+
 	"github.com/stellar/go/services/horizon/internal/paths"
 	"github.com/stellar/go/services/horizon/internal/simplepath"
 
@@ -63,15 +64,6 @@ var (
 
 // Ensures that BUCKET_DIR_PATH is not an allowed value for Captive Core.
 func TestBucketDirDisallowed(t *testing.T) {
-	// This is a bit of a hacky workaround.
-	//
-	// In CI, we run our integration tests twice: once with Captive Core
-	// enabled, and once without. *These* tests only run with Captive Core
-	// configured properly (specifically, w/ the CAPTIVE_CORE_BIN envvar set).
-	if !integration.RunWithCaptiveCore {
-		t.Skip()
-	}
-
 	config := `BUCKET_DIR_PATH="/tmp"
 		` + SimpleCaptiveCoreToml
 
@@ -134,10 +126,6 @@ func TestEnvironmentPreserved(t *testing.T) {
 // using NETWORK environment variables, history archive urls or network passphrase
 // parameters are also set.
 func TestInvalidNetworkParameters(t *testing.T) {
-	if !integration.RunWithCaptiveCore {
-		t.Skip()
-	}
-
 	var captiveCoreConfigErrMsg = integration.HorizonInitErrStr + ": error generating captive " +
 		"core configuration: invalid config: %s parameter not allowed with the %s parameter"
 	testCases := []struct {
@@ -191,9 +179,6 @@ func TestInvalidNetworkParameters(t *testing.T) {
 // success. However, for "pubnet" or "testnet," we can not wait for Horizon to catch up,
 // so we skip starting stellar-core containers.
 func TestNetworkParameter(t *testing.T) {
-	if !integration.RunWithCaptiveCore {
-		t.Skip()
-	}
 	testCases := []struct {
 		networkValue       string
 		networkPassphrase  string
@@ -241,9 +226,6 @@ func TestNetworkParameter(t *testing.T) {
 // success. However, for "pubnet" or "testnet," we can not wait for Horizon to catch up,
 // so we skip starting stellar-core containers.
 func TestNetworkEnvironmentVariable(t *testing.T) {
-	if !integration.RunWithCaptiveCore {
-		t.Skip()
-	}
 	testCases := []string{
 		horizon.StellarPubnet,
 		horizon.StellarTestnet,
@@ -277,10 +259,6 @@ func TestNetworkEnvironmentVariable(t *testing.T) {
 
 // Ensures that the filesystem ends up in the correct state with Captive Core.
 func TestCaptiveCoreConfigFilesystemState(t *testing.T) {
-	if !integration.RunWithCaptiveCore {
-		t.Skip() // explained above
-	}
-
 	confName, storagePath, cleanup := createCaptiveCoreConfig(SimpleCaptiveCoreToml)
 	defer cleanup()
 
