@@ -5,6 +5,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/stellar/go/ingest/ledgerbackend"
+	"github.com/stellar/go/support/datastore"
 	"github.com/stellar/go/xdr"
 )
 
@@ -46,7 +47,7 @@ func (e *exportManager) AddLedgerCloseMeta(ctx context.Context, ledgerCloseMeta 
 	ledgerSeq := ledgerCloseMeta.LedgerSequence()
 
 	// Determine the object key for the given ledger sequence
-	objectKey, err := GetObjectKeyFromSequenceNumber(e.config, ledgerSeq)
+	objectKey, err := datastore.GetObjectKeyFromSequenceNumber(ledgerSeq, e.config.LedgersPerFile, e.config.FilesPerPartition, fileSuffix)
 	if err != nil {
 		return errors.Wrapf(err, "failed to get object key for ledger %d", ledgerSeq)
 	}

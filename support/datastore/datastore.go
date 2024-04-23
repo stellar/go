@@ -2,6 +2,7 @@ package datastore
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"strings"
 
@@ -57,4 +58,32 @@ func NewDataStore(ctx context.Context, destinationURL string) (DataStore, error)
 	}
 
 	return &GCSDataStore{client: client, bucket: bucket, prefix: prefix}, nil
+}
+
+// GetObjectKeyFromSequenceNumber generates the file name from the ledger sequence number.
+func GetObjectKeyFromSequenceNumber(ledgerSeq uint32, ledgersPerFile uint32, filesPerPartition uint32, fileSuffix string) (string, error) {
+	var objectKey string
+
+	if ledgersPerFile < 1 {
+		return "", errors.Errorf("Invalid ledgers per file (%d): must be at least 1", ledgersPerFile)
+	}
+
+	if filesPerPartition > 1 {
+		partitionSize := ledgersPerFile * filesPerPartition
+		partitionStart := (ledgerSeq / partitionSize) * partitionSize
+		partitionEnd := partitionStart + partitionSize - 1
+		objectKey = fmt.Sprintf("%d-%d/", partitionStart, partitionEnd)
+	}
+
+	fileStart := (ledgerSeq / ledgersPerFile) * ledgersPerFile
+	fileEnd := fileStart + ledgersPerFile - 1
+	objectKey += fmt.Sprintf("%d", fileStart)
+
+	// Multiple ledgers per file
+	if fileStart != fileEnd {
+		objectKey += fmt.Sprintf("-%d", fileEnd)
+	}
+	objectKey += fileSuffix
+
+	return objectKey, nil
 }

@@ -10,6 +10,7 @@ import (
 
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/support/collections/set"
+	"github.com/stellar/go/support/datastore"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -44,7 +45,7 @@ func (s *ExportManagerSuite) TestRun() {
 	for i := start; i <= end; i++ {
 		s.mockBackend.On("GetLedger", s.ctx, i).
 			Return(createLedgerCloseMeta(i), nil)
-		key, _ := GetObjectKeyFromSequenceNumber(config, i)
+		key, _ := datastore.GetObjectKeyFromSequenceNumber(i, config.LedgersPerFile, config.FilesPerPartition, fileSuffix)
 		expectedKeys.Add(key)
 	}
 
@@ -121,7 +122,7 @@ func (s *ExportManagerSuite) TestAddLedgerCloseMeta() {
 	for i := start; i <= end; i++ {
 		require.NoError(s.T(), exporter.AddLedgerCloseMeta(context.Background(), createLedgerCloseMeta(i)))
 
-		key, err := GetObjectKeyFromSequenceNumber(config, i)
+		key, err := datastore.GetObjectKeyFromSequenceNumber(i, config.LedgersPerFile, config.FilesPerPartition, fileSuffix)
 		require.NoError(s.T(), err)
 		expectedkeys.Add(key)
 	}

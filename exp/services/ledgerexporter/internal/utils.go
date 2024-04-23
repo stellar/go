@@ -2,7 +2,6 @@ package ledgerexporter
 
 import (
 	"compress/gzip"
-	"fmt"
 	"io"
 
 	xdr3 "github.com/stellar/go-xdr/xdr3"
@@ -14,34 +13,6 @@ import (
 const (
 	fileSuffix = ".xdr.gz"
 )
-
-// GetObjectKeyFromSequenceNumber generates the file name from the ledger sequence number based on configuration.
-func GetObjectKeyFromSequenceNumber(config ExporterConfig, ledgerSeq uint32) (string, error) {
-	var objectKey string
-
-	if config.LedgersPerFile < 1 {
-		return "", errors.Errorf("Invalid ledgers per file (%d): must be at least 1", config.LedgersPerFile)
-	}
-
-	if config.FilesPerPartition > 1 {
-		partitionSize := config.LedgersPerFile * config.FilesPerPartition
-		partitionStart := (ledgerSeq / partitionSize) * partitionSize
-		partitionEnd := partitionStart + partitionSize - 1
-		objectKey = fmt.Sprintf("%d-%d/", partitionStart, partitionEnd)
-	}
-
-	fileStart := (ledgerSeq / config.LedgersPerFile) * config.LedgersPerFile
-	fileEnd := fileStart + config.LedgersPerFile - 1
-	objectKey += fmt.Sprintf("%d", fileStart)
-
-	// Multiple ledgers per file
-	if fileStart != fileEnd {
-		objectKey += fmt.Sprintf("-%d", fileEnd)
-	}
-	objectKey += fileSuffix
-
-	return objectKey, nil
-}
 
 // getLatestLedgerSequenceFromHistoryArchives returns the most recent ledger sequence (checkpoint ledger)
 // number present in the history archives.

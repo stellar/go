@@ -3,7 +3,6 @@ package ledgerbackend
 import (
 	"compress/gzip"
 	"context"
-	"fmt"
 	"io"
 	"path"
 	"strconv"
@@ -84,7 +83,7 @@ func (gcsb *GCSBackend) GetLatestLedgerSequence(ctx context.Context) (uint32, er
 func (gcsb *GCSBackend) GetLedger(ctx context.Context, sequence uint32) (xdr.LedgerCloseMeta, error) {
 	var ledgerCloseMetaBatch xdr.LedgerCloseMetaBatch
 
-	objectKey, err := gcsb.GetObjectKeyFromSequenceNumber(sequence, gcsb.ledgersPerFile, gcsb.filesPerPartition)
+	objectKey, err := datastore.GetObjectKeyFromSequenceNumber(sequence, gcsb.ledgersPerFile, gcsb.filesPerPartition, gcsb.fileSuffix)
 	if err != nil {
 		return xdr.LedgerCloseMeta{}, errors.Wrapf(err, "failed to get object key for ledger %d", sequence)
 	}
@@ -149,35 +148,6 @@ func (gcsb *GCSBackend) IsPrepared(ctx context.Context, ledgerRange Range) (bool
 // Close is a no-op for GCSBackend.
 func (gcsb *GCSBackend) Close() error {
 	return nil
-}
-
-// TODO: Should this function also be modified and added to support/datastore?
-// This function should be shared between ledger exporter and this legerbackend reader
-func (gcsb *GCSBackend) GetObjectKeyFromSequenceNumber(ledgerSeq uint32, ledgersPerFile uint32, filesPerPartition uint32) (string, error) {
-	var objectKey string
-
-	if ledgersPerFile < 1 {
-		return "", errors.Errorf("Invalid ledgers per file (%d): must be at least 1", ledgersPerFile)
-	}
-
-	if filesPerPartition > 1 {
-		partitionSize := ledgersPerFile * filesPerPartition
-		partitionStart := (ledgerSeq / partitionSize) * partitionSize
-		partitionEnd := partitionStart + partitionSize - 1
-		objectKey = fmt.Sprintf("%d-%d/", partitionStart, partitionEnd)
-	}
-
-	fileStart := (ledgerSeq / ledgersPerFile) * ledgersPerFile
-	fileEnd := fileStart + ledgersPerFile - 1
-	objectKey += fmt.Sprintf("%d", fileStart)
-
-	// Multiple ledgers per file
-	if fileStart != fileEnd {
-		objectKey += fmt.Sprintf("-%d", fileEnd)
-	}
-	objectKey += gcsb.fileSuffix
-
-	return objectKey, nil
 }
 
 func (gcsb *GCSBackend) GetLatestDirectory(directories []string) (string, error) {
