@@ -7,6 +7,8 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
  
 ## 2.30.0
 
+**This release adds support for Protocol 21**
+
 ### Added
 
 - Bump XDR for [protocol 21](https://github.com/stellar/stellar-xdr/releases/tag/v21.0)
