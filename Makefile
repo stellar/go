@@ -19,7 +19,7 @@ XDRS = $(DOWNLOADABLE_XDRS) xdr/Stellar-lighthorizon.x \
 
 
 XDRGEN_COMMIT=e2cac557162d99b12ae73b846cf3d5bfe16636de
-XDR_COMMIT=2ba4049554bb0564950e6d9213e01a60fc190f54
+XDR_COMMIT=1a04392432dacc0092caaeae22a600ea1af3c6a5
 
 .PHONY: xdr xdr-clean xdr-update
 
