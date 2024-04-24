@@ -10,8 +10,13 @@ import (
 	"syscall"
 
 	"github.com/pkg/errors"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/collectors"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+
 	"github.com/stellar/go/ingest/ledgerbackend"
 	_ "github.com/stellar/go/network"
+	supporthttp "github.com/stellar/go/support/http"
 	"github.com/stellar/go/support/log"
 )
 
@@ -20,11 +25,12 @@ var (
 )
 
 type App struct {
-	config        Config
-	ledgerBackend ledgerbackend.LedgerBackend
-	dataStore     DataStore
-	exportManager ExportManager
-	uploader      Uploader
+	config             Config
+	ledgerBackend      ledgerbackend.LedgerBackend
+	dataStore          DataStore
+	exportManager      *ExportManager
+	uploader           Uploader
+	prometheusRegistry *prometheus.Registry
 }
 
 func NewApp() *App {
@@ -34,15 +40,25 @@ func NewApp() *App {
 	err := config.LoadConfig()
 	logFatalIf(err, "Could not load configuration")
 
-	app := &App{config: config}
+	app := &App{config: config, prometheusRegistry: prometheus.NewRegistry()}
+	app.prometheusRegistry.MustRegister(
+		collectors.NewProcessCollector(collectors.ProcessCollectorOpts{Namespace: "ledger_exporter"}),
+		collectors.NewGoCollector(),
+	)
 	return app
 }
 
 func (a *App) init(ctx context.Context) {
-	a.dataStore = mustNewDataStore(ctx, &a.config)
-	a.ledgerBackend = mustNewLedgerBackend(ctx, a.config)
-	a.exportManager = NewExportManager(a.config.ExporterConfig, a.ledgerBackend)
-	a.uploader = NewUploader(a.dataStore, a.exportManager.GetMetaArchiveChannel())
+	a.dataStore = mustNewDataStore(ctx, a.config)
+	a.ledgerBackend = mustNewLedgerBackend(ctx, a.config, a.prometheusRegistry)
+	// TODO: make number of upload workers configurable instead of hard coding it to 1
+	queue := NewUploadQueue(1, a.prometheusRegistry)
+	a.exportManager = NewExportManager(a.config.ExporterConfig, a.ledgerBackend, queue, a.prometheusRegistry)
+	a.uploader = NewUploader(
+		a.dataStore,
+		queue,
+		a.prometheusRegistry,
+	)
 }
 
 func (a *App) close() {
@@ -52,6 +68,24 @@ func (a *App) close() {
 	if err := a.ledgerBackend.Close(); err != nil {
 		logger.WithError(err).Error("Error closing ledgerBackend")
 	}
+}
+
+func (a *App) serveAdmin() {
+	if a.config.AdminPort == 0 {
+		return
+	}
+
+	mux := supporthttp.NewMux(logger)
+	mux.Handle("/metrics", promhttp.HandlerFor(a.prometheusRegistry, promhttp.HandlerOpts{}))
+
+	addr := fmt.Sprintf(":%d", a.config.AdminPort)
+	supporthttp.Run(supporthttp.Config{
+		ListenAddr: addr,
+		Handler:    mux,
+		OnStarting: func() {
+			logger.Infof("Starting admin port server on %s", addr)
+		},
+	})
 }
 
 func (a *App) Run() {
@@ -84,6 +118,8 @@ func (a *App) Run() {
 		}
 	}()
 
+	go a.serveAdmin()
+
 	// Handle OS signals to gracefully terminate the service
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
@@ -97,7 +133,7 @@ func (a *App) Run() {
 	logger.Info("Shutting down ledger-exporter")
 }
 
-func mustNewDataStore(ctx context.Context, config *Config) DataStore {
+func mustNewDataStore(ctx context.Context, config Config) DataStore {
 	dataStore, err := NewDataStore(ctx, fmt.Sprintf("%s/%s", config.DestinationURL, config.Network))
 	logFatalIf(err, "Could not connect to destination data store")
 	return dataStore
@@ -105,12 +141,15 @@ func mustNewDataStore(ctx context.Context, config *Config) DataStore {
 
 // mustNewLedgerBackend Creates and initializes captive core ledger backend
 // Currently, only supports captive-core as ledger backend
-func mustNewLedgerBackend(ctx context.Context, config Config) ledgerbackend.LedgerBackend {
+func mustNewLedgerBackend(ctx context.Context, config Config, prometheusRegistry *prometheus.Registry) ledgerbackend.LedgerBackend {
 	captiveConfig := config.GenerateCaptiveCoreConfig()
 
+	var backend ledgerbackend.LedgerBackend
+	var err error
 	// Create a new captive core backend
-	backend, err := ledgerbackend.NewCaptive(captiveConfig)
+	backend, err = ledgerbackend.NewCaptive(captiveConfig)
 	logFatalIf(err, "Failed to create captive-core instance")
+	backend = ledgerbackend.WithMetrics(backend, prometheusRegistry, "ledger_exporter")
 
 	var ledgerRange ledgerbackend.Range
 	if config.EndLedger == 0 {

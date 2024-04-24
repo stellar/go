@@ -10,6 +10,7 @@ import (
 	"google.golang.org/api/googleapi"
 
 	"cloud.google.com/go/storage"
+
 	"github.com/stellar/go/support/errors"
 )
 
@@ -21,7 +22,7 @@ type GCSDataStore struct {
 }
 
 // GetFile retrieves a file from the GCS bucket.
-func (b *GCSDataStore) GetFile(ctx context.Context, filePath string) (io.ReadCloser, error) {
+func (b GCSDataStore) GetFile(ctx context.Context, filePath string) (io.ReadCloser, error) {
 	filePath = path.Join(b.prefix, filePath)
 	r, err := b.bucket.Object(filePath).NewReader(ctx)
 	if err != nil {
@@ -35,26 +36,26 @@ func (b *GCSDataStore) GetFile(ctx context.Context, filePath string) (io.ReadClo
 }
 
 // PutFileIfNotExists uploads a file to GCS only if it doesn't already exist.
-func (b *GCSDataStore) PutFileIfNotExists(ctx context.Context, filePath string, in io.WriterTo) error {
+func (b GCSDataStore) PutFileIfNotExists(ctx context.Context, filePath string, in io.WriterTo) (bool, error) {
 	err := b.putFile(ctx, filePath, in, &storage.Conditions{DoesNotExist: true})
 	if err != nil {
 		if gcsError, ok := err.(*googleapi.Error); ok {
 			switch gcsError.Code {
 			case http.StatusPreconditionFailed:
 				logger.Infof("Precondition failed: %s already exists in the bucket", filePath)
-				return nil // Treat as success
+				return false, nil // Treat as success
 			default:
 				logger.Errorf("GCS error: %s %s", gcsError.Message, gcsError.Body)
 			}
 		}
-		return errors.Wrapf(err, "error uploading file:  %s", filePath)
+		return false, errors.Wrapf(err, "error uploading file:  %s", filePath)
 	}
 	logger.Infof("File uploaded successfully: %s", filePath)
-	return nil
+	return true, nil
 }
 
 // PutFile uploads a file to GCS
-func (b *GCSDataStore) PutFile(ctx context.Context, filePath string, in io.WriterTo) error {
+func (b GCSDataStore) PutFile(ctx context.Context, filePath string, in io.WriterTo) error {
 	err := b.putFile(ctx, filePath, in, nil) // No conditions for regular PutFile
 
 	if err != nil {
@@ -68,7 +69,7 @@ func (b *GCSDataStore) PutFile(ctx context.Context, filePath string, in io.Write
 }
 
 // Size retrieves the size of a file in the GCS bucket.
-func (b *GCSDataStore) Size(ctx context.Context, pth string) (int64, error) {
+func (b GCSDataStore) Size(ctx context.Context, pth string) (int64, error) {
 	pth = path.Join(b.prefix, pth)
 	attrs, err := b.bucket.Object(pth).Attrs(ctx)
 	if err == storage.ErrObjectNotExist {
@@ -81,17 +82,17 @@ func (b *GCSDataStore) Size(ctx context.Context, pth string) (int64, error) {
 }
 
 // Exists checks if a file exists in the GCS bucket.
-func (b *GCSDataStore) Exists(ctx context.Context, pth string) (bool, error) {
+func (b GCSDataStore) Exists(ctx context.Context, pth string) (bool, error) {
 	_, err := b.Size(ctx, pth)
 	return err == nil, err
 }
 
 // Close closes the GCS client connection.
-func (b *GCSDataStore) Close() error {
+func (b GCSDataStore) Close() error {
 	return b.client.Close()
 }
 
-func (b *GCSDataStore) putFile(ctx context.Context, filePath string, in io.WriterTo, conditions *storage.Conditions) error {
+func (b GCSDataStore) putFile(ctx context.Context, filePath string, in io.WriterTo, conditions *storage.Conditions) error {
 	filePath = path.Join(b.prefix, filePath)
 	o := b.bucket.Object(filePath)
 	if conditions != nil {

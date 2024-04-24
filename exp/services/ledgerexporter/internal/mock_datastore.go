@@ -32,9 +32,9 @@ func (m *MockDataStore) PutFile(ctx context.Context, path string, in io.WriterTo
 	return args.Error(0)
 }
 
-func (m *MockDataStore) PutFileIfNotExists(ctx context.Context, path string, in io.WriterTo) error {
+func (m *MockDataStore) PutFileIfNotExists(ctx context.Context, path string, in io.WriterTo) (bool, error) {
 	args := m.Called(ctx, path, in)
-	return args.Error(0)
+	return args.Bool(0), args.Error(1)
 }
 
 func (m *MockDataStore) Close() error {

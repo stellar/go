@@ -10,6 +10,7 @@ import (
 	"github.com/stellar/go/network"
 
 	"github.com/pelletier/go-toml"
+
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/ordered"
 )
@@ -25,6 +26,8 @@ type StellarCoreConfig struct {
 }
 
 type Config struct {
+	AdminPort int `toml:"admin_port"`
+
 	Network           string            `toml:"network"`
 	DestinationURL    string            `toml:"destination_url"`
 	ExporterConfig    ExporterConfig    `toml:"exporter_config"`
@@ -41,6 +44,7 @@ func (config *Config) LoadConfig() error {
 	startLedger := flag.Uint("start", 0, "Starting ledger")
 	endLedger := flag.Uint("end", 0, "Ending ledger (inclusive)")
 	startFromLastNLedger := flag.Uint("from-last", 0, "Start streaming from last N ledgers")
+	adminPort := flag.Int("admin-port", 0, "Admin HTTP port for prometheus metrics")
 
 	configFilePath := flag.String("config-file", "config.toml", "Path to the TOML config file")
 	flag.Parse()
@@ -48,6 +52,7 @@ func (config *Config) LoadConfig() error {
 	config.StartLedger = uint32(*startLedger)
 	config.EndLedger = uint32(*endLedger)
 	config.StartFromLastLedgers = uint32(*startFromLastNLedger)
+	config.AdminPort = *adminPort
 
 	// Load config TOML file
 	cfg, err := toml.LoadFile(*configFilePath)
