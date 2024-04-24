@@ -45,7 +45,7 @@ func (b GCSDataStore) PutFileIfNotExists(ctx context.Context, filePath string, i
 		if gcsError, ok := err.(*googleapi.Error); ok {
 			switch gcsError.Code {
 			case http.StatusPreconditionFailed:
-				logger.Infof("Precondition failed: %s already exists in the bucket", filePath)
+				log.Infof("Precondition failed: %s already exists in the bucket", filePath)
 				return false, nil // Treat as success
 			default:
 				log.Errorf("GCS error: %s %s", gcsError.Message, gcsError.Body)
@@ -53,7 +53,7 @@ func (b GCSDataStore) PutFileIfNotExists(ctx context.Context, filePath string, i
 		}
 		return false, errors.Wrapf(err, "error uploading file:  %s", filePath)
 	}
-	logger.Infof("File uploaded successfully: %s", filePath)
+	log.Infof("File uploaded successfully: %s", filePath)
 	return true, nil
 }
 

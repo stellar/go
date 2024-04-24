@@ -9,14 +9,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stellar/go/support/datastore"
 	"github.com/stellar/go/support/errors"
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-
-	"github.com/stellar/go/support/errors"
 )
 
 func TestUploaderSuite(t *testing.T) {

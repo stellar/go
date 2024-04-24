@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/stellar/go/support/datastore"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/stellar/go/support/datastore"
 )
 
 // Uploader is responsible for uploading data to a storage destination.
@@ -21,7 +21,7 @@ type Uploader struct {
 
 // NewUploader constructs a new Uploader instance
 func NewUploader(
-	destination DataStore,
+	destination datastore.DataStore,
 	queue UploadQueue,
 	prometheusRegistry *prometheus.Registry,
 ) Uploader {

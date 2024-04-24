@@ -26,11 +26,11 @@ var (
 )
 
 type App struct {
-	config        Config
-	ledgerBackend ledgerbackend.LedgerBackend
-	dataStore     datastore.DataStore
-	exportManager ExportManager
-	uploader      Uploader
+	config             Config
+	ledgerBackend      ledgerbackend.LedgerBackend
+	dataStore          datastore.DataStore
+	exportManager      *ExportManager
+	uploader           Uploader
 	prometheusRegistry *prometheus.Registry
 }
 
@@ -134,7 +134,7 @@ func (a *App) Run() {
 	logger.Info("Shutting down ledger-exporter")
 }
 
-func mustNewDataStore(ctx context.Context, config *Config) datastore.DataStore {
+func mustNewDataStore(ctx context.Context, config Config) datastore.DataStore {
 	dataStore, err := datastore.NewDataStore(ctx, fmt.Sprintf("%s/%s", config.DestinationURL, config.Network))
 	logFatalIf(err, "Could not connect to destination data store")
 	return dataStore
