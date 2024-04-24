@@ -49,12 +49,7 @@ const (
 	sorobanRPCPort              = 8080
 )
 
-var (
-	HorizonInitErrStr       = "cannot initialize Horizon"
-	RunWithCaptiveCore      = os.Getenv("HORIZON_INTEGRATION_TESTS_ENABLE_CAPTIVE_CORE") != ""
-	RunWithSorobanRPC       = os.Getenv("HORIZON_INTEGRATION_TESTS_ENABLE_SOROBAN_RPC") != ""
-	RunWithCaptiveCoreUseDB = os.Getenv("HORIZON_INTEGRATION_TESTS_CAPTIVE_CORE_USE_DB") != ""
-)
+const HorizonInitErrStr = "cannot initialize Horizon"
 
 type Config struct {
 	ProtocolVersion           uint32
@@ -169,7 +164,7 @@ func NewTest(t *testing.T, config Config) *Test {
 	i.coreClient = &stellarcore.Client{URL: "http://localhost:" + strconv.Itoa(stellarCorePort)}
 	if !config.SkipCoreContainerCreation {
 		i.waitForCore()
-		if RunWithSorobanRPC && i.config.EnableSorobanRPC {
+		if i.config.EnableSorobanRPC {
 			i.runComposeCommand("up", "--detach", "--quiet-pull", "--no-color", "soroban-rpc")
 			i.waitForSorobanRPC()
 		}
@@ -187,21 +182,15 @@ func NewTest(t *testing.T, config Config) *Test {
 }
 
 func (i *Test) configureCaptiveCore() {
-	// We either test Captive Core through environment variables or through
-	// custom Horizon parameters.
-	if RunWithCaptiveCore {
-		composePath := findDockerComposePath()
-		i.coreConfig.binaryPath = os.Getenv("HORIZON_INTEGRATION_TESTS_CAPTIVE_CORE_BIN")
-		coreConfigFile := "captive-core-classic-integration-tests.cfg"
-		if i.config.ProtocolVersion >= ledgerbackend.MinimalSorobanProtocolSupport {
-			coreConfigFile = "captive-core-integration-tests.cfg"
-		}
-		i.coreConfig.configPath = filepath.Join(composePath, coreConfigFile)
-		i.coreConfig.storagePath = i.CurrentTest().TempDir()
-		if RunWithCaptiveCoreUseDB {
-			i.coreConfig.useDB = true
-		}
+	composePath := findDockerComposePath()
+	i.coreConfig.binaryPath = os.Getenv("HORIZON_INTEGRATION_TESTS_CAPTIVE_CORE_BIN")
+	coreConfigFile := "captive-core-classic-integration-tests.cfg"
+	if i.config.ProtocolVersion >= ledgerbackend.MinimalSorobanProtocolSupport {
+		coreConfigFile = "captive-core-integration-tests.cfg"
 	}
+	i.coreConfig.configPath = filepath.Join(composePath, coreConfigFile)
+	i.coreConfig.storagePath = i.CurrentTest().TempDir()
+	i.coreConfig.useDB = true
 
 	if value := i.getIngestParameter(
 		horizon.StellarCoreBinaryPathName,
@@ -233,7 +222,7 @@ func (i *Test) runComposeCommand(args ...string) {
 	integrationSorobanRPCYaml := filepath.Join(i.composePath, "docker-compose.integration-tests.soroban-rpc.yml")
 
 	cmdline := args
-	if RunWithSorobanRPC {
+	if i.config.EnableSorobanRPC {
 		cmdline = append([]string{"-f", integrationSorobanRPCYaml}, cmdline...)
 	}
 	cmdline = append([]string{"-f", integrationYaml}, cmdline...)
@@ -298,7 +287,7 @@ func (i *Test) prepareShutdownHandlers() {
 			if !i.config.SkipCoreContainerCreation {
 				i.runComposeCommand("rm", "-fvs", "core")
 				i.runComposeCommand("rm", "-fvs", "core-postgres")
-				if os.Getenv("HORIZON_INTEGRATION_TESTS_ENABLE_SOROBAN_RPC") != "" {
+				if i.config.EnableSorobanRPC {
 					i.runComposeCommand("logs", "soroban-rpc")
 					i.runComposeCommand("rm", "-fvs", "soroban-rpc")
 				}

@@ -6,13 +6,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/mock"
+
+	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/support/collections/set"
 	"github.com/stellar/go/support/datastore"
-	"github.com/stretchr/testify/require"
-	"github.com/stretchr/testify/suite"
 )
 
 func TestExporterSuite(t *testing.T) {
@@ -37,7 +39,9 @@ func (s *ExportManagerSuite) TearDownTest() {
 
 func (s *ExportManagerSuite) TestRun() {
 	config := ExporterConfig{LedgersPerFile: 64, FilesPerPartition: 10}
-	exporter := NewExportManager(config, &s.mockBackend)
+	registry := prometheus.NewRegistry()
+	queue := NewUploadQueue(1, registry)
+	exporter := NewExportManager(config, &s.mockBackend, queue, registry)
 
 	start := uint32(0)
 	end := uint32(255)
@@ -54,7 +58,12 @@ func (s *ExportManagerSuite) TestRun() {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		for v := range exporter.GetMetaArchiveChannel() {
+		for {
+			v, ok, err := queue.Dequeue(s.ctx)
+			s.Assert().NoError(err)
+			if !ok {
+				break
+			}
 			actualKeys.Add(v.objectKey)
 		}
 	}()
@@ -65,11 +74,23 @@ func (s *ExportManagerSuite) TestRun() {
 	wg.Wait()
 
 	require.Equal(s.T(), expectedKeys, actualKeys)
+	require.Equal(
+		s.T(),
+		float64(255),
+		getMetricValue(exporter.latestLedgerMetric.With(
+			prometheus.Labels{
+				"start_ledger": "0",
+				"end_ledger":   "255",
+			}),
+		).GetGauge().GetValue(),
+	)
 }
 
 func (s *ExportManagerSuite) TestRunContextCancel() {
 	config := ExporterConfig{LedgersPerFile: 1, FilesPerPartition: 1}
-	exporter := NewExportManager(config, &s.mockBackend)
+	registry := prometheus.NewRegistry()
+	queue := NewUploadQueue(1, registry)
+	exporter := NewExportManager(config, &s.mockBackend, queue, registry)
 	ctx, cancel := context.WithCancel(context.Background())
 
 	s.mockBackend.On("GetLedger", mock.Anything, mock.Anything).
@@ -81,9 +102,10 @@ func (s *ExportManagerSuite) TestRunContextCancel() {
 	}()
 
 	go func() {
-		ch := exporter.GetMetaArchiveChannel()
 		for i := 0; i < 127; i++ {
-			<-ch
+			_, ok, err := queue.Dequeue(s.ctx)
+			s.Assert().NoError(err)
+			s.Assert().True(ok)
 		}
 	}()
 
@@ -94,7 +116,9 @@ func (s *ExportManagerSuite) TestRunContextCancel() {
 
 func (s *ExportManagerSuite) TestRunWithCanceledContext() {
 	config := ExporterConfig{LedgersPerFile: 1, FilesPerPartition: 10}
-	exporter := NewExportManager(config, &s.mockBackend)
+	registry := prometheus.NewRegistry()
+	queue := NewUploadQueue(1, registry)
+	exporter := NewExportManager(config, &s.mockBackend, queue, registry)
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	err := exporter.Run(ctx, 1, 10)
@@ -103,8 +127,9 @@ func (s *ExportManagerSuite) TestRunWithCanceledContext() {
 
 func (s *ExportManagerSuite) TestAddLedgerCloseMeta() {
 	config := ExporterConfig{LedgersPerFile: 1, FilesPerPartition: 10}
-	exporter := NewExportManager(config, &s.mockBackend)
-	objectCh := exporter.GetMetaArchiveChannel()
+	registry := prometheus.NewRegistry()
+	queue := NewUploadQueue(1, registry)
+	exporter := NewExportManager(config, &s.mockBackend, queue, registry)
 	expectedkeys := set.NewSet[string](10)
 	actualKeys := set.NewSet[string](10)
 
@@ -112,7 +137,12 @@ func (s *ExportManagerSuite) TestAddLedgerCloseMeta() {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		for v := range objectCh {
+		for {
+			v, ok, err := queue.Dequeue(s.ctx)
+			s.Assert().NoError(err)
+			if !ok {
+				break
+			}
 			actualKeys.Add(v.objectKey)
 		}
 	}()
@@ -127,14 +157,16 @@ func (s *ExportManagerSuite) TestAddLedgerCloseMeta() {
 		expectedkeys.Add(key)
 	}
 
-	close(objectCh)
+	queue.Close()
 	wg.Wait()
 	require.Equal(s.T(), expectedkeys, actualKeys)
 }
 
 func (s *ExportManagerSuite) TestAddLedgerCloseMetaContextCancel() {
 	config := ExporterConfig{LedgersPerFile: 1, FilesPerPartition: 10}
-	exporter := NewExportManager(config, &s.mockBackend)
+	registry := prometheus.NewRegistry()
+	queue := NewUploadQueue(1, registry)
+	exporter := NewExportManager(config, &s.mockBackend, queue, registry)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	go func() {
@@ -149,7 +181,9 @@ func (s *ExportManagerSuite) TestAddLedgerCloseMetaContextCancel() {
 
 func (s *ExportManagerSuite) TestAddLedgerCloseMetaKeyMismatch() {
 	config := ExporterConfig{LedgersPerFile: 10, FilesPerPartition: 1}
-	exporter := NewExportManager(config, &s.mockBackend)
+	registry := prometheus.NewRegistry()
+	queue := NewUploadQueue(1, registry)
+	exporter := NewExportManager(config, &s.mockBackend, queue, registry)
 
 	require.NoError(s.T(), exporter.AddLedgerCloseMeta(context.Background(), createLedgerCloseMeta(16)))
 	require.EqualError(s.T(), exporter.AddLedgerCloseMeta(context.Background(), createLedgerCloseMeta(21)),
