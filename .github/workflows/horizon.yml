@@ -77,9 +77,8 @@ jobs:
         run: |
           docker pull "$PROTOCOL_${{ matrix.protocol-version }}_SOROBAN_RPC_DOCKER_IMG"
           echo HORIZON_INTEGRATION_TESTS_SOROBAN_RPC_DOCKER_IMG="$PROTOCOL_${{ matrix.protocol-version }}_SOROBAN_RPC_DOCKER_IMG" >> $GITHUB_ENV
-          echo HORIZON_INTEGRATION_TESTS_ENABLE_SOROBAN_RPC=true >> $GITHUB_ENV
 
-      - name: Install and enable Captive Core
+      - name: Install core
         run: |
           # Workaround for https://github.com/actions/virtual-environments/issues/5245,
           # libc++1-8 won't be installed if another version is installed (but apt won't give you a helpul
@@ -91,9 +90,7 @@ jobs:
           sudo bash -c 'echo "deb https://apt.stellar.org focal unstable" > /etc/apt/sources.list.d/SDF-unstable.list'
           sudo apt-get update && sudo apt-get install -y stellar-core="$PROTOCOL_${{ matrix.protocol-version }}_CORE_DEBIAN_PKG_VERSION"
           echo "Using stellar core version $(stellar-core version)"
-          echo 'HORIZON_INTEGRATION_TESTS_ENABLE_CAPTIVE_CORE=true' >> $GITHUB_ENV
           echo 'HORIZON_INTEGRATION_TESTS_CAPTIVE_CORE_BIN=/usr/bin/stellar-core' >> $GITHUB_ENV
-          echo 'HORIZON_INTEGRATION_TESTS_CAPTIVE_CORE_USE_DB=true' >> $GITHUB_ENV
 
       - name: Build Horizon reproducible build
         run: |
