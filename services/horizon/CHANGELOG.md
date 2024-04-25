@@ -4,6 +4,25 @@ All notable changes to this project will be documented in this
 file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
+ 
+## 2.30.0
+
+**This release adds support for Protocol 21**
+
+### Added
+
+- Bump XDR for [protocol 21](https://github.com/stellar/stellar-xdr/releases/tag/v21.0)
+- Make reaping batch sizes configurable via `--history-retention-reap-count` ([5272](https://github.com/stellar/go/pull/5272))
+- Log tx meta when ingestion failures occur ([5268](https://github.com/stellar/go/pull/5268))
+- Add deprecation warning for `--captive-core-use-db` ([5231](https://github.com/stellar/go/pull/5231))
+
+### Fixed
+-  Optimized reingestion by addressing performance slowdown due to unnecessary operations on `history_transactions_filtered_tmp`. Removed obsolete `EnableIngestionFiltering` flag. ([5283](https://github.com/stellar/go/pull/5283))
+- Fix deadlock in parallel ingestion ([5263](https://github.com/stellar/go/pull/5263))
+- Add missing tables to TruncateIngestStateTables() ([5253](https://github.com/stellar/go/pull/5253))
+- Performance improvements in ingest library
+    - Reduce memory consumption of CheckpointChangeReader during state verification and state rebuild ([5270](https://github.com/stellar/go/pull/5270))
+    - Remove unnecessary use of ChangeCompactor to reduce memory bloat during ingestion ([5252](https://github.com/stellar/go/pull/5252))
 
 ## 2.29.0
 
