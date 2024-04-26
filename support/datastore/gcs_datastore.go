@@ -6,10 +6,8 @@ import (
 	"net/http"
 	"os"
 	"path"
-	"strings"
 
 	"google.golang.org/api/googleapi"
-	"google.golang.org/api/iterator"
 
 	"cloud.google.com/go/storage"
 
@@ -108,6 +106,8 @@ func (b GCSDataStore) putFile(ctx context.Context, filePath string, in io.Writer
 	return w.Close()
 }
 
+// TODO: Remove when binary search code is added
+/*
 func (b *GCSDataStore) ListDirectoryNames(ctx context.Context) ([]string, error) {
 	var directories []string
 
@@ -147,3 +147,4 @@ func (b *GCSDataStore) ListFileNames(ctx context.Context, path string) ([]string
 
 	return files, nil
 }
+*/

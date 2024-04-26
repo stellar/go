@@ -42,6 +42,8 @@ func (m *MockDataStore) Close() error {
 	return args.Error(0)
 }
 
+// TODO: Remove when binary search code is added
+/*
 func (m *MockDataStore) ListDirectoryNames(ctx context.Context) ([]string, error) {
 	args := m.Called(ctx)
 	return args.Get(0).([]string), args.Error(0)
@@ -51,3 +53,4 @@ func (m *MockDataStore) ListFileNames(ctx context.Context, path string) ([]strin
 	args := m.Called(ctx, path)
 	return args.Get(0).([]string), args.Error(0)
 }
+*/
