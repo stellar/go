@@ -34,8 +34,8 @@ type BufferConfig struct {
 }
 
 type GCSBackendConfig struct {
-	lcmFileConfig LCMFileConfig
-	bufferConfig  BufferConfig
+	LcmFileConfig LCMFileConfig
+	BufferConfig  BufferConfig
 }
 
 // GCSBackend is a ledger backend that reads from a cloud storage service.
@@ -53,13 +53,13 @@ type GCSBackend struct {
 	gcsBackendLock sync.RWMutex
 
 	// ledgerBuffer is the buffer for LedgerCloseMeta data read in parallel.
-	ledgerBuffer *LedgerBufferGCS
+	ledgerBuffer *ledgerBufferGCS
 
 	prepared *Range // non-nil if any range is prepared
 	closed   bool   // False until the core is closed
 }
 
-type LedgerBufferGCS struct {
+type ledgerBufferGCS struct {
 	config                GCSBackendConfig
 	lcmDataStore          datastore.DataStore
 	taskQueue             chan uint32
@@ -76,29 +76,29 @@ type LedgerBufferGCS struct {
 	ledgerRange           *Range
 }
 
-func NewLedgerBuffer(ctx context.Context, config GCSBackendConfig) (*LedgerBufferGCS, error) {
+func NewLedgerBuffer(ctx context.Context, config GCSBackendConfig) (*ledgerBufferGCS, error) {
 	var cancel context.CancelFunc
 
-	lcmDataStore, err := datastore.NewDataStore(ctx, config.lcmFileConfig.StorageURL)
+	lcmDataStore, err := datastore.NewDataStore(ctx, config.LcmFileConfig.StorageURL)
 	if err != nil {
 		return nil, err
 	}
 
-	pq := make(priorityqueue.PriorityQueue, config.bufferConfig.BufferSize)
+	pq := make(priorityqueue.PriorityQueue, config.BufferConfig.BufferSize)
 	heap.Init(&pq)
 
-	ledgerBuffer := &LedgerBufferGCS{
+	ledgerBuffer := &ledgerBufferGCS{
 		lcmDataStore:        lcmDataStore,
-		taskQueue:           make(chan uint32, config.bufferConfig.BufferSize),
-		ledgerQueue:         make(chan []byte, config.bufferConfig.BufferSize),
+		taskQueue:           make(chan uint32, config.BufferConfig.BufferSize),
+		ledgerQueue:         make(chan []byte, config.BufferConfig.BufferSize),
 		ledgerPriorityQueue: pq,
 		count:               0,
-		limit:               config.bufferConfig.BufferSize,
+		limit:               config.BufferConfig.BufferSize,
 		cancel:              cancel,
 	}
 
 	// Workers to read LCM files
-	for i := uint32(0); i < config.bufferConfig.NumWorkers; i++ {
+	for i := uint32(0); i < config.BufferConfig.NumWorkers; i++ {
 		go ledgerBuffer.worker()
 	}
 
@@ -108,7 +108,7 @@ func NewLedgerBuffer(ctx context.Context, config GCSBackendConfig) (*LedgerBuffe
 	return ledgerBuffer, nil
 }
 
-func (lb *LedgerBufferGCS) pushTaskQueue() {
+func (lb *ledgerBufferGCS) pushTaskQueue() {
 	for lb.count <= lb.limit {
 		lb.taskQueue <- lb.nextTaskLedger
 		lb.nextTaskLedger++
@@ -116,20 +116,21 @@ func (lb *LedgerBufferGCS) pushTaskQueue() {
 	}
 }
 
-func (lb *LedgerBufferGCS) worker() {
+func (lb *ledgerBufferGCS) worker() {
 	for sequence := range lb.taskQueue {
 		retryCount := uint32(0)
-		for retryCount <= lb.config.bufferConfig.RetryLimit {
+		for retryCount <= lb.config.BufferConfig.RetryLimit {
 			ledgerObject, err := lb.getLedgerGCSObject(sequence)
 			if err != nil {
 				if e, ok := err.(*googleapi.Error); ok {
 					// ledgerObject not found and unbounded
 					if e.Code == 404 && !lb.bounded {
+						time.Sleep(lb.config.BufferConfig.RetryWait * time.Second)
 						continue
 					}
 				}
 				retryCount++
-				time.Sleep(lb.config.bufferConfig.RetryWait * time.Second)
+				time.Sleep(lb.config.BufferConfig.RetryWait * time.Second)
 			}
 
 			// Add to priority queue and continue to next task
@@ -143,17 +144,18 @@ func (lb *LedgerBufferGCS) worker() {
 			lb.priorityQueueLock.Unlock()
 			break
 		}
+		// Add abort case for max retries
 	}
 }
 
-func (lb *LedgerBufferGCS) getLedgerGCSObject(sequence uint32) ([]byte, error) {
+func (lb *ledgerBufferGCS) getLedgerGCSObject(sequence uint32) ([]byte, error) {
 	var ledgerCloseMetaBatch xdr.LedgerCloseMetaBatch
 
 	objectKey, err := datastore.GetObjectKeyFromSequenceNumber(
 		sequence,
-		lb.config.lcmFileConfig.LedgersPerFile,
-		lb.config.lcmFileConfig.FilesPerPartition,
-		lb.config.lcmFileConfig.FileSuffix)
+		lb.config.LcmFileConfig.LedgersPerFile,
+		lb.config.LcmFileConfig.FilesPerPartition,
+		lb.config.LcmFileConfig.FileSuffix)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to get object key for ledger %d", sequence)
 	}
@@ -202,7 +204,7 @@ func (lb *LedgerBufferGCS) getLedgerGCSObject(sequence uint32) ([]byte, error) {
 	return lcmBinary, nil
 }
 
-func (lb *LedgerBufferGCS) reorderLedgers() {
+func (lb *ledgerBufferGCS) reorderLedgers() {
 	lb.priorityQueueLock.Lock()
 	defer lb.priorityQueueLock.Unlock()
 
@@ -219,7 +221,7 @@ func (lb *LedgerBufferGCS) reorderLedgers() {
 	}
 }
 
-func (lb *LedgerBufferGCS) getFromLedgerQueue(ctx context.Context) ([]byte, error) {
+func (lb *ledgerBufferGCS) getFromLedgerQueue(ctx context.Context) ([]byte, error) {
 	for {
 		select {
 		case <-ctx.Done():
@@ -240,29 +242,29 @@ func (lb *LedgerBufferGCS) getFromLedgerQueue(ctx context.Context) ([]byte, erro
 // Return a new GCSBackend instance.
 func NewGCSBackend(ctx context.Context, config GCSBackendConfig) (*GCSBackend, error) {
 	// Check/set minimum config values
-	if config.lcmFileConfig.StorageURL == "" {
+	if config.LcmFileConfig.StorageURL == "" {
 		return nil, errors.New("fileConfig.storageURL is not set")
 	}
 
-	if config.lcmFileConfig.FileSuffix == "" {
+	if config.LcmFileConfig.FileSuffix == "" {
 		return nil, errors.New("fileConfig.FileSuffix is not set")
 	}
 
-	if config.lcmFileConfig.LedgersPerFile == 0 {
-		config.lcmFileConfig.LedgersPerFile = 1
+	if config.LcmFileConfig.LedgersPerFile == 0 {
+		config.LcmFileConfig.LedgersPerFile = 1
 	}
 
-	if config.lcmFileConfig.FilesPerPartition == 0 {
-		config.lcmFileConfig.FilesPerPartition = 1
+	if config.LcmFileConfig.FilesPerPartition == 0 {
+		config.LcmFileConfig.FilesPerPartition = 1
 	}
 
 	// Check/set minimum config values
-	if config.bufferConfig.BufferSize == 0 {
-		config.bufferConfig.BufferSize = 1
+	if config.BufferConfig.BufferSize == 0 {
+		config.BufferConfig.BufferSize = 1
 	}
 
-	if config.bufferConfig.NumWorkers == 0 {
-		config.bufferConfig.NumWorkers = 1
+	if config.BufferConfig.NumWorkers == 0 {
+		config.BufferConfig.NumWorkers = 1
 	}
 
 	var cancel context.CancelFunc
