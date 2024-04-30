@@ -42,20 +42,6 @@ func (m *MockDataStore) Close() error {
 	return args.Error(0)
 }
 
-<<<<<<<< HEAD:support/datastore/mock_datastore.go
-// TODO: Remove when binary search code is added
-/*
-func (m *MockDataStore) ListDirectoryNames(ctx context.Context) ([]string, error) {
-	args := m.Called(ctx)
-	return args.Get(0).([]string), args.Error(0)
-}
-
-func (m *MockDataStore) ListFileNames(ctx context.Context, path string) ([]string, error) {
-	args := m.Called(ctx, path)
-	return args.Get(0).([]string), args.Error(0)
-}
-*/
-========
 type MockResumableManager struct {
 	mock.Mock
 }
@@ -68,4 +54,3 @@ func (m *MockResumableManager) FindStart(ctx context.Context, start, end uint32)
 // ensure that the MockClient implements ClientInterface
 var _ DataStore = &MockDataStore{}
 var _ ResumableManager = &MockResumableManager{}
->>>>>>>> master:exp/services/ledgerexporter/internal/mocks.go

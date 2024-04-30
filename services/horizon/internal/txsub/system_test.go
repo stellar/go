@@ -250,7 +250,6 @@ func (suite *SystemTestSuite) TestSubmit_NotFoundError() {
 	assert.True(suite.T(), suite.submitter.WasSubmittedTo)
 	assert.Equal(suite.T(), float64(0), getMetricValue(suite.system.Metrics.SuccessfulSubmissionsCounter).GetCounter().GetValue())
 	assert.Equal(suite.T(), float64(1), getMetricValue(suite.system.Metrics.FailedSubmissionsCounter).GetCounter().GetValue())
-	assert.Equal(suite.T(), uint64(1), getMetricValue(suite.system.Metrics.SubmissionDuration).GetSummary().GetSampleCount())
 }
 
 // If the error is bad_seq and the result at the transaction's sequence number is for the same hash, return result.
@@ -408,7 +407,6 @@ func (suite *SystemTestSuite) TestSubmit_OpenTransactionList() {
 	assert.Equal(suite.T(), suite.successTx.Transaction.TransactionHash, pending[0])
 	assert.Equal(suite.T(), float64(1), getMetricValue(suite.system.Metrics.SuccessfulSubmissionsCounter).GetCounter().GetValue())
 	assert.Equal(suite.T(), float64(0), getMetricValue(suite.system.Metrics.FailedSubmissionsCounter).GetCounter().GetValue())
-	assert.Equal(suite.T(), uint64(1), getMetricValue(suite.system.Metrics.SubmissionDuration).GetSummary().GetSampleCount())
 }
 
 // Tick should be a no-op if there are no open submissions.

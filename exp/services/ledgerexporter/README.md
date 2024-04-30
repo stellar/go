@@ -33,17 +33,24 @@ Exports ledgers continuously starting from --start. In this mode, the end ledger
 ledgerexporter --start <start_ledger> --config-file <config_file_path>
 ```
 
+#### Resumability:
+Exporting a ledger range can be optimized further by enabling resumability if the remote data store supports it.
 
-Starts exporting from a specified number of ledgers before the latest ledger sequence number on the network.
-```bash
-ledgerexporter --from-last <number_of_ledgers> --config-file <config_file_path>
-```
+By default, resumability is disabled, `--resume false`
+
+When enabled, `--resume true`, ledgerexporter will search the remote data store within the requested range, looking for the oldest absent ledger sequence number within range. If abscence is detected, the export range is narrowed to `--start <absent_ledger_sequence>`. 
+This feature requires all ledgers to be present on the remote data store for some (possibly empty) prefix of the requested range and then absent for the (possibly empty) remainder.
 
 ### Configuration (toml):
 
 ```toml
 network = "testnet"  # Options: `testnet` or `pubnet`
-destination_url = "gcs://your-bucket-name"
+
+[datastore_config]
+type = "GCS"
+
+[datastore_config.params]
+destination_bucket_path = "your-bucket-name/<optional_subpaths>"
 
 [exporter_config]
 ledgers_per_file = 64

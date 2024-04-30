@@ -6,12 +6,10 @@ import (
 	"io"
 	"strings"
 
-	"cloud.google.com/go/storage"
-	"google.golang.org/api/option"
-
+	"github.com/stellar/go/pkg/mod/firebase.google.com/go@v3.12.0+incompatible/storage"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
-	"github.com/stellar/go/support/url"
+	"google.golang.org/api/option"
 )
 
 // DataStore defines an interface for interacting with data storage
@@ -27,12 +25,13 @@ type DataStore interface {
 	//ListFileNames(ctx context.Context, path string) ([]string, error)
 }
 
-// NewDataStore creates a new DataStore based on the destination URL.
-// Currently, only accepts GCS URLs.
-func NewDataStore(ctx context.Context, destinationURL string) (DataStore, error) {
-	parsed, err := url.Parse(destinationURL)
-	if err != nil {
-		return nil, err
+// NewDataStore factory, it creates a new DataStore based on the config type
+func NewDataStore(ctx context.Context, datastoreConfig DataStoreConfig, network string) (DataStore, error) {
+	switch datastoreConfig.Type {
+	case "GCS":
+		return NewGCSDataStore(ctx, datastoreConfig.Params, network)
+	default:
+		return nil, errors.Errorf("Invalid datastore type %v, not supported", datastoreConfig.Type)
 	}
 
 	pth := parsed.Path

@@ -554,6 +554,7 @@ func (a *App) init() error {
 		HorizonVersion:          a.horizonVersion,
 		FriendbotURL:            a.config.FriendbotURL,
 		DisableTxSub:            a.config.DisableTxSub,
+		StellarCoreURL:          a.config.StellarCoreURL,
 		HealthCheck: healthCheck{
 			session: a.historyQ.SessionInterface,
 			ctx:     a.ctx,

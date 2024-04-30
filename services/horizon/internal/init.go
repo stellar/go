@@ -223,7 +223,7 @@ func initWebMetrics(app *App) {
 func initSubmissionSystem(app *App) {
 	app.submitter = &txsub.System{
 		Pending:   txsub.NewDefaultSubmissionList(),
-		Submitter: txsub.NewDefaultSubmitter(http.DefaultClient, app.config.StellarCoreURL),
+		Submitter: txsub.NewDefaultSubmitter(http.DefaultClient, app.config.StellarCoreURL, app.prometheusRegistry),
 		DB: func(ctx context.Context) txsub.HorizonDB {
 			return &history.Q{SessionInterface: app.HorizonSession()}
 		},
