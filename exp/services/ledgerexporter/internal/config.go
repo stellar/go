@@ -1,8 +1,8 @@
 package ledgerexporter
 
 import (
+	"context"
 	_ "embed"
-	"flag"
 	"os/exec"
 
 	"github.com/stellar/go/historyarchive"
@@ -13,10 +13,19 @@ import (
 
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/ordered"
+	"github.com/stellar/go/support/storage"
 )
 
 const Pubnet = "pubnet"
 const Testnet = "testnet"
+
+type Flags struct {
+	StartLedger    uint32
+	EndLedger      uint32
+	ConfigFilePath string
+	Resume         bool
+	AdminPort      uint
+}
 
 type StellarCoreConfig struct {
 	NetworkPassphrase     string   `toml:"network_passphrase"`
@@ -25,93 +34,96 @@ type StellarCoreConfig struct {
 	CaptiveCoreTomlPath   string   `toml:"captive_core_toml_path"`
 }
 
+type DataStoreConfig struct {
+	Type   string            `toml:"type"`
+	Params map[string]string `toml:"params"`
+}
+
 type Config struct {
 	AdminPort int `toml:"admin_port"`
 
 	Network           string            `toml:"network"`
-	DestinationURL    string            `toml:"destination_url"`
-	ExporterConfig    ExporterConfig    `toml:"exporter_config"`
+	DataStoreConfig   DataStoreConfig   `toml:"datastore_config"`
+	LedgerBatchConfig LedgerBatchConfig `toml:"exporter_config"`
 	StellarCoreConfig StellarCoreConfig `toml:"stellar_core_config"`
 
-	//From command-line
-	StartLedger          uint32 `toml:"start"`
-	EndLedger            uint32 `toml:"end"`
-	StartFromLastLedgers uint32 `toml:"from-last"`
+	StartLedger uint32
+	EndLedger   uint32
+	Resume      bool
 }
 
-func (config *Config) LoadConfig() error {
-	// Parse command-line options
-	startLedger := flag.Uint("start", 0, "Starting ledger")
-	endLedger := flag.Uint("end", 0, "Ending ledger (inclusive)")
-	startFromLastNLedger := flag.Uint("from-last", 0, "Start streaming from last N ledgers")
-	adminPort := flag.Int("admin-port", 0, "Admin HTTP port for prometheus metrics")
-
-	configFilePath := flag.String("config-file", "config.toml", "Path to the TOML config file")
-	flag.Parse()
-
-	config.StartLedger = uint32(*startLedger)
-	config.EndLedger = uint32(*endLedger)
-	config.StartFromLastLedgers = uint32(*startFromLastNLedger)
-	config.AdminPort = *adminPort
-
-	// Load config TOML file
-	cfg, err := toml.LoadFile(*configFilePath)
-	if err != nil {
-		return err
-	}
-
-	// Unmarshal TOML data into the Config struct
-	err = cfg.Unmarshal(config)
-	logFatalIf(err, "Error unmarshalling TOML config.")
-	logger.Infof("Config: %v", *config)
-
+func createHistoryArchiveFromNetworkName(ctx context.Context, networkName string) (historyarchive.ArchiveInterface, error) {
 	var historyArchiveUrls []string
-	switch config.Network {
+	switch networkName {
 	case Pubnet:
 		historyArchiveUrls = network.PublicNetworkhistoryArchiveURLs
 	case Testnet:
 		historyArchiveUrls = network.TestNetworkhistoryArchiveURLs
 	default:
-		logger.Fatalf("Invalid network %s", config.Network)
+		return nil, errors.Errorf("Invalid network name %s", networkName)
 	}
 
-	// Retrieve the latest ledger sequence from history archives
-	latestNetworkLedger, err := getLatestLedgerSequenceFromHistoryArchives(historyArchiveUrls)
-	logFatalIf(err, "Failed to retrieve the latest ledger sequence from history archives.")
-
-	// Validate config params
-	err = config.validateAndSetLedgerRange(latestNetworkLedger)
-	logFatalIf(err, "Error validating config params.")
-
-	// Validate and build the appropriate range
-	// TODO: Make it configurable
-	config.adjustLedgerRange()
-
-	return nil
+	return historyarchive.NewArchivePool(historyArchiveUrls, historyarchive.ArchiveOptions{
+		ConnectOptions: storage.ConnectOptions{
+			UserAgent: "ledger-exporter",
+			Context:   ctx,
+		},
+	})
 }
 
-func (config *Config) validateAndSetLedgerRange(latestNetworkLedger uint32) error {
-	if config.StartFromLastLedgers > 0 && (config.StartLedger > 0 || config.EndLedger > 0) {
-		return errors.New("--from-last cannot be used with --start or --end")
+func getLatestLedgerSequenceFromHistoryArchives(archive historyarchive.ArchiveInterface) (uint32, error) {
+	has, err := archive.GetRootHAS()
+	if err != nil {
+		logger.WithError(err).Warnf("Error getting root HAS from archives")
+		return 0, errors.Wrap(err, "failed to retrieve the latest ledger sequence from any history archive")
 	}
 
-	if config.StartFromLastLedgers > 0 {
-		if config.StartFromLastLedgers > latestNetworkLedger {
-			return errors.Errorf("--from-last %d exceeds latest network ledger %d",
-				config.StartLedger, latestNetworkLedger)
-		}
-		config.StartLedger = latestNetworkLedger - config.StartFromLastLedgers
-		logger.Infof("Setting start ledger to %d, calculated as latest ledger (%d) minus --from-last value (%d)",
-			config.StartLedger, latestNetworkLedger, config.StartFromLastLedgers)
+	return has.CurrentLedger, nil
+}
+
+func getHistoryArchivesCheckPointFrequency() uint32 {
+	// this could evolve to use other sources for checkpoint freq
+	return historyarchive.DefaultCheckpointFrequency
+}
+
+// This will generate the config based on commandline flags and toml
+//
+// ctx                   - the caller context
+// flags                 - command line flags
+//
+// return                - *Config or an error if any range validation failed.
+func NewConfig(ctx context.Context, flags Flags) (*Config, error) {
+	config := &Config{}
+
+	config.StartLedger = uint32(flags.StartLedger)
+	config.EndLedger = uint32(flags.EndLedger)
+	config.Resume = flags.Resume
+
+	logger.Infof("Requested ledger range start=%d, end=%d, resume=%v", config.StartLedger, config.EndLedger, config.Resume)
+
+	var err error
+	if err = config.processToml(flags.ConfigFilePath); err != nil {
+		return nil, err
 	}
+	logger.Infof("Config: %v", *config)
+
+	return config, nil
+}
+
+// Validates requested ledger range, and will automatically adjust it
+// to be ledgers-per-file boundary aligned
+func (config *Config) ValidateAndSetLedgerRange(ctx context.Context, archive historyarchive.ArchiveInterface) error {
+	latestNetworkLedger, err := getLatestLedgerSequenceFromHistoryArchives(archive)
+
+	if err != nil {
+		return errors.Wrap(err, "Failed to retrieve the latest ledger sequence from history archives.")
+	}
+	logger.Infof("Latest %v ledger sequence was detected as %d", config.Network, latestNetworkLedger)
 
 	if config.StartLedger > latestNetworkLedger {
 		return errors.Errorf("--start %d exceeds latest network ledger %d",
 			config.StartLedger, latestNetworkLedger)
 	}
-
-	// Ensure that the start ledger is at least 2.
-	config.StartLedger = ordered.Max(2, config.StartLedger)
 
 	if config.EndLedger != 0 { // Bounded mode
 		if config.EndLedger < config.StartLedger {
@@ -123,39 +135,19 @@ func (config *Config) validateAndSetLedgerRange(latestNetworkLedger uint32) erro
 		}
 	}
 
+	config.adjustLedgerRange()
 	return nil
 }
 
-func (config *Config) adjustLedgerRange() {
-	logger.Infof("Requested ledger range start=%d, end=%d", config.StartLedger, config.EndLedger)
-
-	// Check if either the start or end ledger does not fall on the "LedgersPerFile" boundary
-	// and adjust the start and end ledger accordingly.
-	// Align the start ledger to the nearest "LedgersPerFile" boundary.
-	config.StartLedger = config.StartLedger / config.ExporterConfig.LedgersPerFile * config.ExporterConfig.LedgersPerFile
-
-	// Ensure that the adjusted start ledger is at least 2.
-	config.StartLedger = ordered.Max(2, config.StartLedger)
-
-	// Align the end ledger (for bounded cases) to the nearest "LedgersPerFile" boundary.
-	if config.EndLedger != 0 {
-		// Add an extra batch only if "LedgersPerFile" is greater than 1 and the end ledger doesn't fall on the boundary.
-		if config.ExporterConfig.LedgersPerFile > 1 && config.EndLedger%config.ExporterConfig.LedgersPerFile != 0 {
-			config.EndLedger = (config.EndLedger/config.ExporterConfig.LedgersPerFile + 1) * config.ExporterConfig.LedgersPerFile
-		}
-	}
-
-	logger.Infof("Adjusted ledger range: start=%d, end=%d", config.StartLedger, config.EndLedger)
-}
-
-func (config *Config) GenerateCaptiveCoreConfig() ledgerbackend.CaptiveCoreConfig {
+func (config *Config) GenerateCaptiveCoreConfig() (ledgerbackend.CaptiveCoreConfig, error) {
 	coreConfig := &config.StellarCoreConfig
 
 	// Look for stellar-core binary in $PATH, if not supplied
 	if coreConfig.StellarCoreBinaryPath == "" {
 		var err error
-		coreConfig.StellarCoreBinaryPath, err = exec.LookPath("stellar-core")
-		logFatalIf(err, "Failed to find stellar-core binary")
+		if coreConfig.StellarCoreBinaryPath, err = exec.LookPath("stellar-core"); err != nil {
+			return ledgerbackend.CaptiveCoreConfig{}, errors.Wrap(err, "Failed to find stellar-core binary")
+		}
 	}
 
 	var captiveCoreConfig []byte
@@ -182,16 +174,58 @@ func (config *Config) GenerateCaptiveCoreConfig() ledgerbackend.CaptiveCoreConfi
 	}
 
 	captiveCoreToml, err := ledgerbackend.NewCaptiveCoreTomlFromData(captiveCoreConfig, params)
-	logFatalIf(err, "Failed to create captive-core toml")
+	if err != nil {
+		return ledgerbackend.CaptiveCoreConfig{}, errors.Wrap(err, "Failed to create captive-core toml")
+	}
 
 	return ledgerbackend.CaptiveCoreConfig{
 		BinaryPath:          coreConfig.StellarCoreBinaryPath,
 		NetworkPassphrase:   params.NetworkPassphrase,
 		HistoryArchiveURLs:  params.HistoryArchiveURLs,
-		CheckpointFrequency: historyarchive.DefaultCheckpointFrequency,
+		CheckpointFrequency: getHistoryArchivesCheckPointFrequency(),
 		Log:                 logger.WithField("subservice", "stellar-core"),
 		Toml:                captiveCoreToml,
 		UserAgent:           "ledger-exporter",
 		UseDB:               true,
+	}, nil
+}
+
+func (config *Config) processToml(tomlPath string) error {
+	// Load config TOML file
+	cfg, err := toml.LoadFile(tomlPath)
+	if err != nil {
+		return err
 	}
+
+	// Unmarshal TOML data into the Config struct
+	if err := cfg.Unmarshal(config); err != nil {
+		return errors.Wrap(err, "Error unmarshalling TOML config.")
+	}
+
+	// validate TOML data
+	if config.Network == "" {
+		return errors.New("Invalid TOML config, 'network' must be set, supported values are 'testnet' or 'pubnet'")
+	}
+	return nil
+}
+
+func (config *Config) adjustLedgerRange() {
+
+	// Check if either the start or end ledger does not fall on the "LedgersPerFile" boundary
+	// and adjust the start and end ledger accordingly.
+	// Align the start ledger to the nearest "LedgersPerFile" boundary.
+	config.StartLedger = config.LedgerBatchConfig.GetSequenceNumberStartBoundary(config.StartLedger)
+
+	// Ensure that the adjusted start ledger is at least 2.
+	config.StartLedger = ordered.Max(2, config.StartLedger)
+
+	// Align the end ledger (for bounded cases) to the nearest "LedgersPerFile" boundary.
+	if config.EndLedger != 0 {
+		// Add an extra batch only if "LedgersPerFile" is greater than 1 and the end ledger doesn't fall on the boundary.
+		if config.LedgerBatchConfig.LedgersPerFile > 1 && config.EndLedger%config.LedgerBatchConfig.LedgersPerFile != 0 {
+			config.EndLedger = (config.EndLedger/config.LedgerBatchConfig.LedgersPerFile + 1) * config.LedgerBatchConfig.LedgersPerFile
+		}
+	}
+
+	logger.Infof("Computed effective export boundary ledger range: start=%d, end=%d", config.StartLedger, config.EndLedger)
 }

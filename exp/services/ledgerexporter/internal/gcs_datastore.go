@@ -2,16 +2,20 @@ package ledgerexporter
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"path"
+	"strings"
 
 	"google.golang.org/api/googleapi"
+	"google.golang.org/api/option"
 
 	"cloud.google.com/go/storage"
 
 	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/support/url"
 )
 
 // GCSDataStore implements DataStore for GCS
@@ -19,6 +23,41 @@ type GCSDataStore struct {
 	client *storage.Client
 	bucket *storage.BucketHandle
 	prefix string
+}
+
+func NewGCSDataStore(ctx context.Context, params map[string]string, network string) (DataStore, error) {
+	destinationBucketPath, ok := params["destination_bucket_path"]
+	if !ok {
+		return nil, errors.Errorf("Invalid GCS config, no destination_bucket_path")
+	}
+
+	// append the gcs:// scheme to enable usage of the url package reliably to
+	// get parse bucket name which is first path segment as URL.Host
+	gcsBucketURL := fmt.Sprintf("gcs://%s/%s", destinationBucketPath, network)
+	parsed, err := url.Parse(gcsBucketURL)
+	if err != nil {
+		return nil, err
+	}
+
+	// Inside gcs, all paths start _without_ the leading /
+	prefix := strings.TrimPrefix(parsed.Path, "/")
+	bucketName := parsed.Host
+
+	logger.Infof("creating GCS client for bucket: %s, prefix: %s", bucketName, prefix)
+
+	var options []option.ClientOption
+	client, err := storage.NewClient(ctx, options...)
+	if err != nil {
+		return nil, err
+	}
+
+	// Check the bucket exists
+	bucket := client.Bucket(bucketName)
+	if _, err := bucket.Attrs(ctx); err != nil {
+		return nil, errors.Wrap(err, "failed to retrieve bucket attributes")
+	}
+
+	return &GCSDataStore{client: client, bucket: bucket, prefix: prefix}, nil
 }
 
 // GetFile retrieves a file from the GCS bucket.
@@ -84,6 +123,11 @@ func (b GCSDataStore) Size(ctx context.Context, pth string) (int64, error) {
 // Exists checks if a file exists in the GCS bucket.
 func (b GCSDataStore) Exists(ctx context.Context, pth string) (bool, error) {
 	_, err := b.Size(ctx, pth)
+
+	if err == os.ErrNotExist {
+		return false, nil
+	}
+
 	return err == nil, err
 }
 

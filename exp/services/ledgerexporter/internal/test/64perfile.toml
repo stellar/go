@@ -1,0 +1,4 @@
+network = "test"  
+
+[exporter_config]
+ledgers_per_file = 64

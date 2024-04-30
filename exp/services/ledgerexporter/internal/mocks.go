@@ -34,10 +34,23 @@ func (m *MockDataStore) PutFile(ctx context.Context, path string, in io.WriterTo
 
 func (m *MockDataStore) PutFileIfNotExists(ctx context.Context, path string, in io.WriterTo) (bool, error) {
 	args := m.Called(ctx, path, in)
-	return args.Bool(0), args.Error(1)
+	return args.Get(0).(bool), args.Error(1)
 }
 
 func (m *MockDataStore) Close() error {
 	args := m.Called()
 	return args.Error(0)
 }
+
+type MockResumableManager struct {
+	mock.Mock
+}
+
+func (m *MockResumableManager) FindStart(ctx context.Context, start, end uint32) (absentLedger uint32, ok bool, err error) {
+	a := m.Called(ctx, start, end)
+	return a.Get(0).(uint32), a.Get(1).(bool), a.Error(2)
+}
+
+// ensure that the MockClient implements ClientInterface
+var _ DataStore = &MockDataStore{}
+var _ ResumableManager = &MockResumableManager{}

@@ -58,6 +58,6 @@ func TestQueue(t *testing.T) {
 
 	l, ok, err = queue.Dequeue(context.Background())
 	require.NoError(t, err)
-	require.False(t, false)
+	require.False(t, ok)
 	require.Nil(t, l)
 }

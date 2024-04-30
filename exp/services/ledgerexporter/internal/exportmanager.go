@@ -11,14 +11,8 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-type ExporterConfig struct {
-	LedgersPerFile    uint32 `toml:"ledgers_per_file"`
-	FilesPerPartition uint32 `toml:"files_per_partition"`
-}
-
-// ExportManager manages the creation and handling of export objects.
 type ExportManager struct {
-	config             ExporterConfig
+	config             LedgerBatchConfig
 	ledgerBackend      ledgerbackend.LedgerBackend
 	currentMetaArchive *LedgerMetaArchive
 	queue              UploadQueue
@@ -26,7 +20,11 @@ type ExportManager struct {
 }
 
 // NewExportManager creates a new ExportManager with the provided configuration.
-func NewExportManager(config ExporterConfig, backend ledgerbackend.LedgerBackend, queue UploadQueue, prometheusRegistry *prometheus.Registry) *ExportManager {
+func NewExportManager(config LedgerBatchConfig, backend ledgerbackend.LedgerBackend, queue UploadQueue, prometheusRegistry *prometheus.Registry) (*ExportManager, error) {
+	if config.LedgersPerFile < 1 {
+		return nil, errors.Errorf("Invalid ledgers per file (%d): must be at least 1", config.LedgersPerFile)
+	}
+
 	latestLedgerMetric := prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: "ledger_exporter", Subsystem: "export_manager", Name: "latest_ledger",
 		Help: "sequence number of the latest ledger consumed by the export manager",
@@ -38,7 +36,7 @@ func NewExportManager(config ExporterConfig, backend ledgerbackend.LedgerBackend
 		ledgerBackend:      backend,
 		queue:              queue,
 		latestLedgerMetric: latestLedgerMetric,
-	}
+	}, nil
 }
 
 // AddLedgerCloseMeta adds ledger metadata to the current export object
@@ -46,10 +44,8 @@ func (e *ExportManager) AddLedgerCloseMeta(ctx context.Context, ledgerCloseMeta 
 	ledgerSeq := ledgerCloseMeta.LedgerSequence()
 
 	// Determine the object key for the given ledger sequence
-	objectKey, err := GetObjectKeyFromSequenceNumber(e.config, ledgerSeq)
-	if err != nil {
-		return errors.Wrapf(err, "failed to get object key for ledger %d", ledgerSeq)
-	}
+	objectKey := e.config.GetObjectKeyFromSequenceNumber(ledgerSeq)
+
 	if e.currentMetaArchive != nil && e.currentMetaArchive.GetObjectKey() != objectKey {
 		return errors.New("Current meta archive object key mismatch")
 	}
@@ -67,13 +63,13 @@ func (e *ExportManager) AddLedgerCloseMeta(ctx context.Context, ledgerCloseMeta 
 		e.currentMetaArchive = NewLedgerMetaArchive(objectKey, ledgerSeq, endSeq)
 	}
 
-	if err = e.currentMetaArchive.AddLedger(ledgerCloseMeta); err != nil {
+	if err := e.currentMetaArchive.AddLedger(ledgerCloseMeta); err != nil {
 		return errors.Wrapf(err, "failed to add ledger %d", ledgerSeq)
 	}
 
 	if ledgerSeq >= e.currentMetaArchive.GetEndLedgerSequence() {
 		// Current archive is full, send it for upload
-		if err = e.queue.Enqueue(ctx, e.currentMetaArchive); err != nil {
+		if err := e.queue.Enqueue(ctx, e.currentMetaArchive); err != nil {
 			return err
 		}
 		e.currentMetaArchive = nil
