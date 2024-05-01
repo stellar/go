@@ -89,17 +89,17 @@ func (a *App) init(ctx context.Context) error {
 	if a.config, err = NewConfig(ctx, a.flags); err != nil {
 		return errors.Wrap(err, "Could not load configuration")
 	}
-	if archive, err = createHistoryArchiveFromNetworkName(ctx, a.config.Network); err != nil {
+	if archive, err = datastore.CreateHistoryArchiveFromNetworkName(ctx, a.config.Network); err != nil {
 		return err
 	}
 	a.config.ValidateAndSetLedgerRange(ctx, archive)
 
-	if a.dataStore, err = NewDataStore(ctx, a.config.DataStoreConfig, a.config.Network); err != nil {
+	if a.dataStore, err = datastore.NewDataStore(ctx, a.config.DataStoreConfig, a.config.Network); err != nil {
 		return errors.Wrap(err, "Could not connect to destination data store")
 	}
 	if a.config.Resume {
 		if err = a.applyResumability(ctx,
-			NewResumableManager(a.dataStore, a.config.Network, a.config.LedgerBatchConfig, archive)); err != nil {
+			datastore.NewResumableManager(a.dataStore, a.config.Network, a.config.LedgerBatchConfig, archive)); err != nil {
 			return err
 		}
 	}
@@ -120,7 +120,7 @@ func (a *App) init(ctx context.Context) error {
 	return nil
 }
 
-func (a *App) applyResumability(ctx context.Context, resumableManager ResumableManager) error {
+func (a *App) applyResumability(ctx context.Context, resumableManager datastore.ResumableManager) error {
 	absentLedger, ok, err := resumableManager.FindStart(ctx, a.config.StartLedger, a.config.EndLedger)
 	if err != nil {
 		return err

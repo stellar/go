@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+
+	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/support/datastore"
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/support/priorityqueue"
@@ -55,13 +57,16 @@ type GCSBackend struct {
 	// ledgerBuffer is the buffer for LedgerCloseMeta data read in parallel.
 	ledgerBuffer *ledgerBufferGCS
 
-	prepared *Range // non-nil if any range is prepared
-	closed   bool   // False until the core is closed
+	dataStore         datastore.DataStore
+	ledgerBatchConfig datastore.LedgerBatchConfig
+	network           string
+	prepared          *Range // non-nil if any range is prepared
+	closed            bool   // False until the core is closed
 }
 
 type ledgerBufferGCS struct {
 	config                GCSBackendConfig
-	lcmDataStore          datastore.DataStore
+	dataStore             datastore.DataStore
 	taskQueue             chan uint32
 	ledgerQueue           chan []byte
 	ledgerPriorityQueue   priorityqueue.PriorityQueue
@@ -79,16 +84,16 @@ type ledgerBufferGCS struct {
 func NewLedgerBuffer(ctx context.Context, config GCSBackendConfig) (*ledgerBufferGCS, error) {
 	var cancel context.CancelFunc
 
-	lcmDataStore, err := datastore.NewDataStore(ctx, config.LcmFileConfig.StorageURL)
-	if err != nil {
-		return nil, err
-	}
+	//lcmDataStore, err := datastore.NewDataStore(ctx, config.datastoreConfig, config.network)
+	//if err != nil {
+	//	return nil, err
+	//}
 
 	pq := make(priorityqueue.PriorityQueue, config.BufferConfig.BufferSize)
 	heap.Init(&pq)
 
 	ledgerBuffer := &ledgerBufferGCS{
-		lcmDataStore:        lcmDataStore,
+		//lcmDataStore:        lcmDataStore,
 		taskQueue:           make(chan uint32, config.BufferConfig.BufferSize),
 		ledgerQueue:         make(chan []byte, config.BufferConfig.BufferSize),
 		ledgerPriorityQueue: pq,
@@ -151,16 +156,10 @@ func (lb *ledgerBufferGCS) worker() {
 func (lb *ledgerBufferGCS) getLedgerGCSObject(sequence uint32) ([]byte, error) {
 	var ledgerCloseMetaBatch xdr.LedgerCloseMetaBatch
 
-	objectKey, err := datastore.GetObjectKeyFromSequenceNumber(
-		sequence,
-		lb.config.LcmFileConfig.LedgersPerFile,
-		lb.config.LcmFileConfig.FilesPerPartition,
-		lb.config.LcmFileConfig.FileSuffix)
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to get object key for ledger %d", sequence)
-	}
+	config := datastore.LedgerBatchConfig{}
+	objectKey := config.GetObjectKeyFromSequenceNumber(sequence)
 
-	reader, err := lb.lcmDataStore.GetFile(context.Background(), objectKey)
+	reader, err := lb.dataStore.GetFile(context.Background(), objectKey)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed getting file: %s", objectKey)
 	}
@@ -285,35 +284,23 @@ func NewGCSBackend(ctx context.Context, config GCSBackendConfig) (*GCSBackend, e
 
 // GetLatestLedgerSequence returns the most recent ledger sequence number in the cloud storage bucket.
 func (gcsb *GCSBackend) GetLatestLedgerSequence(ctx context.Context) (uint32, error) {
-	/* TODO: replace with binary search code
-	gcsb.gcsBackendLock.RLock()
-	defer gcsb.gcsBackendLock.RUnlock()
+	var err error
+	var archive historyarchive.ArchiveInterface
 
-	// Get the latest parition directory from the bucket
-	directories, err := gcsb.lcmDataStore.ListDirectoryNames(ctx)
+	if archive, err = datastore.CreateHistoryArchiveFromNetworkName(ctx, gcsb.network); err != nil {
+		return 0, err
+	}
+	resumableManager := datastore.NewResumableManager(gcsb.dataStore, gcsb.network, gcsb.ledgerBatchConfig, archive)
+	absentLedger, ok, err := resumableManager.FindStart(ctx, 1, 0)
 	if err != nil {
-		return 0, errors.Wrapf(err, "failed getting list of directory names")
+		return 0, err
+	}
+	if !ok {
+		return 0, errors.New("findStart returned sequence beyond latest history archive ledger")
 	}
 
-	latestDirectory, err := gcsb.GetLatestDirectory(directories)
-	if err != nil {
-		return 0, errors.Wrapf(err, "failed getting latest directory")
-	}
-
-	// Search through the latest partition to find the latest file which would be the latestLedgerSequence
-	fileNames, err := gcsb.lcmDataStore.ListFileNames(ctx, latestDirectory)
-	if err != nil {
-		return 0, errors.Wrapf(err, "failed getting filenames in dir %s", latestDirectory)
-	}
-
-	latestLedgerSequence, err := gcsb.GetLatestFileNameLedgerSequence(fileNames, latestDirectory)
-	if err != nil {
-		return 0, errors.Wrapf(err, "failed converting filename to ledger sequence")
-	}
-
-	return latestLedgerSequence, nil
-	*/
-	return 0, nil
+	// Subtract one to get the oldest existing ledger seq closest to genesis
+	return absentLedger - 1, nil
 }
 
 // GetLedger returns the LedgerCloseMeta for the specified ledger sequence number
@@ -415,57 +402,6 @@ func (gcsb *GCSBackend) Close() error {
 
 	return nil
 }
-
-// TODO: remove when binary search is merged
-/*
-// GetLatestDirectory returns the latest directory from an array of directories
-func (gcsb *GCSBackend) GetLatestDirectory(directories []string) (string, error) {
-	var latestDirectory string
-	largestDirectoryLedger := 0
-
-	for _, dir := range directories {
-		// dir follows the format of "ledgers/<network>/<start>-<end>"
-		// Need to split the dir string to retrieve the <end> ledger value to get the latest directory
-		dirTruncSlash := strings.TrimSuffix(dir, "/")
-		_, dirName := path.Split(dirTruncSlash)
-		parts := strings.Split(dirName, "-")
-
-		if len(parts) == 2 {
-			upper, err := strconv.Atoi(parts[1])
-			if err != nil {
-				return "", errors.Wrapf(err, "failed getting latest directory %s", dir)
-			}
-
-			if upper > largestDirectoryLedger {
-				latestDirectory = dir
-				largestDirectoryLedger = upper
-			}
-		}
-	}
-
-	return latestDirectory, nil
-}
-
-// GetLatestFileNameLedgerSequence returns the lastest ledger sequence in a directory
-func (gcsb *GCSBackend) GetLatestFileNameLedgerSequence(fileNames []string, directory string) (uint32, error) {
-	latestLedgerSequence := uint32(0)
-
-	for _, fileName := range fileNames {
-		// fileName follows the format of "ledgers/<network>/<start>-<end>/<ledger_sequence>.<fileSuffix>"
-		// Trim the file down to just the <ledger_sequence>
-		fileNameTrimExt := strings.TrimSuffix(fileName, gcsb.lcmFileConfig.FileSuffix)
-		fileNameTrimPath := strings.TrimPrefix(fileNameTrimExt, directory+"/")
-		ledgerSequence, err := strconv.ParseUint(fileNameTrimPath, 10, 32)
-		if err != nil {
-			return uint32(0), errors.Wrapf(err, "failed converting filename to uint32 %s", fileName)
-		}
-
-		latestLedgerSequence = ordered.Max(latestLedgerSequence, uint32(ledgerSequence))
-	}
-
-	return latestLedgerSequence, nil
-}
-*/
 
 // startPreparingRange prepares the ledger range by setting the range in the ledgerBuffer
 func (gcsb *GCSBackend) startPreparingRange(ledgerRange Range) (bool, error) {

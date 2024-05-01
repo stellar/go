@@ -44,7 +44,7 @@ func NewGCSDataStore(ctx context.Context, params map[string]string, network stri
 	prefix := strings.TrimPrefix(parsed.Path, "/")
 	bucketName := parsed.Host
 
-	logger.Infof("creating GCS client for bucket: %s, prefix: %s", bucketName, prefix)
+	log.Infof("creating GCS client for bucket: %s, prefix: %s", bucketName, prefix)
 
 	var options []option.ClientOption
 	client, err := storage.NewClient(ctx, options...)
@@ -149,46 +149,3 @@ func (b GCSDataStore) putFile(ctx context.Context, filePath string, in io.Writer
 	}
 	return w.Close()
 }
-
-// TODO: Remove when binary search code is added
-/*
-func (b *GCSDataStore) ListDirectoryNames(ctx context.Context) ([]string, error) {
-	var directories []string
-
-	o := b.bucket.Objects(ctx, &storage.Query{Prefix: b.prefix + "/", Delimiter: "/"})
-	for {
-		attrs, err := o.Next()
-		if err == iterator.Done {
-			break
-		}
-		if err != nil {
-			return nil, err
-		}
-		if attrs.Prefix != "" {
-			directories = append(directories, strings.TrimSuffix(attrs.Prefix, "/"))
-		}
-	}
-
-	return directories, nil
-}
-
-func (b *GCSDataStore) ListFileNames(ctx context.Context, path string) ([]string, error) {
-	var files []string
-
-	o := b.bucket.Objects(ctx, &storage.Query{Prefix: path + "/", Delimiter: "/"})
-	for {
-		attrs, err := o.Next()
-		if err == iterator.Done {
-			break
-		}
-		if err != nil {
-			log.Fatal(err)
-		}
-		if attrs.Name != "" && !strings.HasSuffix(attrs.Name, "/") {
-			files = append(files, attrs.Name)
-		}
-	}
-
-	return files, nil
-}
-*/

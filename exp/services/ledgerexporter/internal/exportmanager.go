@@ -13,7 +13,7 @@ import (
 )
 
 type ExportManager struct {
-	config             LedgerBatchConfig
+	config             datastore.LedgerBatchConfig
 	ledgerBackend      ledgerbackend.LedgerBackend
 	currentMetaArchive *LedgerMetaArchive
 	queue              UploadQueue
@@ -21,7 +21,7 @@ type ExportManager struct {
 }
 
 // NewExportManager creates a new ExportManager with the provided configuration.
-func NewExportManager(config LedgerBatchConfig, backend ledgerbackend.LedgerBackend, queue UploadQueue, prometheusRegistry *prometheus.Registry) (*ExportManager, error) {
+func NewExportManager(config datastore.LedgerBatchConfig, backend ledgerbackend.LedgerBackend, queue UploadQueue, prometheusRegistry *prometheus.Registry) (*ExportManager, error) {
 	if config.LedgersPerFile < 1 {
 		return nil, errors.Errorf("Invalid ledgers per file (%d): must be at least 1", config.LedgersPerFile)
 	}
@@ -45,10 +45,8 @@ func (e *ExportManager) AddLedgerCloseMeta(ctx context.Context, ledgerCloseMeta 
 	ledgerSeq := ledgerCloseMeta.LedgerSequence()
 
 	// Determine the object key for the given ledger sequence
-	objectKey, err := datastore.GetObjectKeyFromSequenceNumber(ledgerSeq, e.config.LedgersPerFile, e.config.FilesPerPartition, fileSuffix)
-	if err != nil {
-		return errors.Wrapf(err, "failed to get object key for ledger %d", ledgerSeq)
-	}
+	objectKey := e.config.GetObjectKeyFromSequenceNumber(ledgerSeq)
+
 	if e.currentMetaArchive != nil && e.currentMetaArchive.GetObjectKey() != objectKey {
 		return errors.New("Current meta archive object key mismatch")
 	}
