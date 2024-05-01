@@ -188,7 +188,7 @@ func streamableStatePageHandler(
 	}
 }
 
-// streamableStatePageHandler creates a streamable page handler than generates
+// streamableHistoryPageHandler creates a streamable page handler than generates
 // events without starting a REPEATABLE READ transaction.
 func streamableHistoryPageHandler(
 	ledgerState *ledger.State,

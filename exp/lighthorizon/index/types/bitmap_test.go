@@ -202,7 +202,7 @@ func TestSetInactive(t *testing.T) {
 	assert.EqualValues(t, 2+9, index.lastBit)
 }
 
-// TestFuzzerSetInactive attempt to fuzz random bits into two bitmap sets, one
+// TestFuzzySetUnset attempt to fuzz random bits into two bitmap sets, one
 // by addition, and one by subtraction - then, it compares the outcome.
 func TestFuzzySetUnset(t *testing.T) {
 	permLen := uint32(128) // should be a multiple of 8
