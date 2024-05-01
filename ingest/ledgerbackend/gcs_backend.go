@@ -2,7 +2,6 @@ package ledgerbackend
 
 import (
 	"compress/gzip"
-	"container/heap"
 	"context"
 	"io"
 	"sync"
@@ -11,39 +10,48 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/stellar/go/historyarchive"
+	"github.com/stellar/go/support/collections/heap"
 	"github.com/stellar/go/support/datastore"
 	"github.com/stellar/go/support/log"
-	"github.com/stellar/go/support/priorityqueue"
 	"github.com/stellar/go/xdr"
+
 	"google.golang.org/api/googleapi"
 )
 
 // Ensure GCSBackend implements LedgerBackend
 var _ LedgerBackend = (*GCSBackend)(nil)
 
+// An Item is something we manage in a priority queue.
+type Item struct {
+	Value    []byte // Value of the item
+	Priority int    // The priority of the item in the queue.
+}
+
 type LCMFileConfig struct {
 	StorageURL        string
 	FileSuffix        string
-	LedgersPerFile    uint32 `default:"1"`
-	FilesPerPartition uint32 `default:"64000"`
+	LedgersPerFile    uint32
+	FilesPerPartition uint32
 }
 
 type BufferConfig struct {
-	BufferSize uint32        `default:"1000"`
-	NumWorkers uint32        `default:"5"`
-	RetryLimit uint32        `default:"3"`
-	RetryWait  time.Duration `default:"5"`
+	BufferSize uint32
+	NumWorkers uint32
+	RetryLimit uint32
+	RetryWait  time.Duration
 }
 
-type GCSBackendConfig struct {
-	LcmFileConfig LCMFileConfig
-	BufferConfig  BufferConfig
+type gcsBackendConfig struct {
+	lcmFileConfig   LCMFileConfig
+	bufferConfig    BufferConfig
+	dataStoreConfig datastore.DataStoreConfig
+	network         string
 }
 
 // GCSBackend is a ledger backend that reads from a cloud storage service.
 // The cloud storage service contains files generated from the ledgerExporter.
 type GCSBackend struct {
-	config GCSBackendConfig
+	config gcsBackendConfig
 
 	// cancel is the CancelFunc for context which controls the lifetime of a GCSBackend instance.
 	// Once it is invoked GCSBackend will not be able to stream ledgers from GCSBackend.
@@ -65,45 +73,45 @@ type GCSBackend struct {
 }
 
 type ledgerBufferGCS struct {
-	config                GCSBackendConfig
+	config                gcsBackendConfig
 	dataStore             datastore.DataStore
 	taskQueue             chan uint32
 	ledgerQueue           chan []byte
-	ledgerPriorityQueue   priorityqueue.PriorityQueue
+	ledgerPriorityQueue   *heap.Heap[Item]
 	priorityQueueLock     sync.Mutex
 	count                 uint32
 	limit                 uint32
+	cancel                context.CancelFunc
 	currentLedger         uint32
 	nextTaskLedger        uint32
 	nextLedgerQueueLedger uint32
-	cancel                context.CancelFunc
-	bounded               bool
-	ledgerRange           *Range
+	ledgerRange           Range
 }
 
-func NewLedgerBuffer(ctx context.Context, config GCSBackendConfig) (*ledgerBufferGCS, error) {
+func (gcsb *GCSBackend) NewLedgerBuffer(ctx context.Context, ledgerRange Range) (*ledgerBufferGCS, error) {
 	var cancel context.CancelFunc
-
-	//lcmDataStore, err := datastore.NewDataStore(ctx, config.datastoreConfig, config.network)
-	//if err != nil {
-	//	return nil, err
-	//}
-
-	pq := make(priorityqueue.PriorityQueue, config.BufferConfig.BufferSize)
-	heap.Init(&pq)
+	less := func(a, b Item) bool {
+		return a.Priority < b.Priority
+	}
+	pq := heap.New(less, int(gcsb.config.bufferConfig.BufferSize))
 
 	ledgerBuffer := &ledgerBufferGCS{
-		//lcmDataStore:        lcmDataStore,
-		taskQueue:           make(chan uint32, config.BufferConfig.BufferSize),
-		ledgerQueue:         make(chan []byte, config.BufferConfig.BufferSize),
-		ledgerPriorityQueue: pq,
-		count:               0,
-		limit:               config.BufferConfig.BufferSize,
-		cancel:              cancel,
+		config:                gcsb.config,
+		dataStore:             gcsb.dataStore,
+		taskQueue:             make(chan uint32, gcsb.config.bufferConfig.BufferSize),
+		ledgerQueue:           make(chan []byte, gcsb.config.bufferConfig.BufferSize),
+		ledgerPriorityQueue:   pq,
+		count:                 0,
+		limit:                 gcsb.config.bufferConfig.BufferSize,
+		cancel:                cancel,
+		currentLedger:         ledgerRange.from,
+		nextTaskLedger:        ledgerRange.from,
+		nextLedgerQueueLedger: ledgerRange.from,
+		ledgerRange:           ledgerRange,
 	}
 
 	// Workers to read LCM files
-	for i := uint32(0); i < config.BufferConfig.NumWorkers; i++ {
+	for i := uint32(0); i < gcsb.config.bufferConfig.NumWorkers; i++ {
 		go ledgerBuffer.worker()
 	}
 
@@ -115,6 +123,10 @@ func NewLedgerBuffer(ctx context.Context, config GCSBackendConfig) (*ledgerBuffe
 
 func (lb *ledgerBufferGCS) pushTaskQueue() {
 	for lb.count <= lb.limit {
+		// In bounded mode, don't queue past the end ledger
+		if lb.ledgerRange.to < lb.nextTaskLedger && lb.ledgerRange.bounded {
+			return
+		}
 		lb.taskQueue <- lb.nextTaskLedger
 		lb.nextTaskLedger++
 		lb.count++
@@ -124,28 +136,27 @@ func (lb *ledgerBufferGCS) pushTaskQueue() {
 func (lb *ledgerBufferGCS) worker() {
 	for sequence := range lb.taskQueue {
 		retryCount := uint32(0)
-		for retryCount <= lb.config.BufferConfig.RetryLimit {
+		for retryCount <= lb.config.bufferConfig.RetryLimit {
 			ledgerObject, err := lb.getLedgerGCSObject(sequence)
 			if err != nil {
 				if e, ok := err.(*googleapi.Error); ok {
 					// ledgerObject not found and unbounded
-					if e.Code == 404 && !lb.bounded {
-						time.Sleep(lb.config.BufferConfig.RetryWait * time.Second)
+					if e.Code == 404 && !lb.ledgerRange.bounded {
+						time.Sleep(lb.config.bufferConfig.RetryWait * time.Second)
 						continue
 					}
 				}
 				retryCount++
-				time.Sleep(lb.config.BufferConfig.RetryWait * time.Second)
+				time.Sleep(lb.config.bufferConfig.RetryWait * time.Second)
 			}
 
 			// Add to priority queue and continue to next task
 			lb.priorityQueueLock.Lock()
-			item := &priorityqueue.Item{
+			item := Item{
 				Value:    ledgerObject,
 				Priority: int(sequence),
 			}
-			heap.Push(&lb.ledgerPriorityQueue, item)
-			lb.ledgerPriorityQueue.Update(item, item.Value, int(sequence))
+			lb.ledgerPriorityQueue.Push(item)
 			lb.priorityQueueLock.Unlock()
 			break
 		}
@@ -213,8 +224,8 @@ func (lb *ledgerBufferGCS) reorderLedgers() {
 	}
 
 	// Check if the nextLedger is the next item in the priority queue
-	for lb.currentLedger == uint32(lb.ledgerPriorityQueue[0].Priority) {
-		item := heap.Pop(&lb.ledgerPriorityQueue).(*priorityqueue.Item)
+	for lb.currentLedger == uint32(lb.ledgerPriorityQueue.Peek().Priority) {
+		item := lb.ledgerPriorityQueue.Pop()
 		lb.ledgerQueue <- item.Value
 		lb.nextLedgerQueueLedger++
 	}
@@ -239,44 +250,44 @@ func (lb *ledgerBufferGCS) getFromLedgerQueue(ctx context.Context) ([]byte, erro
 }
 
 // Return a new GCSBackend instance.
-func NewGCSBackend(ctx context.Context, config GCSBackendConfig) (*GCSBackend, error) {
+func NewGCSBackend(ctx context.Context, config gcsBackendConfig) (*GCSBackend, error) {
 	// Check/set minimum config values
-	if config.LcmFileConfig.StorageURL == "" {
+	if config.lcmFileConfig.StorageURL == "" {
 		return nil, errors.New("fileConfig.storageURL is not set")
 	}
 
-	if config.LcmFileConfig.FileSuffix == "" {
+	if config.lcmFileConfig.FileSuffix == "" {
 		return nil, errors.New("fileConfig.FileSuffix is not set")
 	}
 
-	if config.LcmFileConfig.LedgersPerFile == 0 {
-		config.LcmFileConfig.LedgersPerFile = 1
+	if config.lcmFileConfig.LedgersPerFile == 0 {
+		config.lcmFileConfig.LedgersPerFile = 1
 	}
 
-	if config.LcmFileConfig.FilesPerPartition == 0 {
-		config.LcmFileConfig.FilesPerPartition = 1
+	if config.lcmFileConfig.FilesPerPartition == 0 {
+		config.lcmFileConfig.FilesPerPartition = 1
 	}
 
 	// Check/set minimum config values
-	if config.BufferConfig.BufferSize == 0 {
-		config.BufferConfig.BufferSize = 1
+	if config.bufferConfig.BufferSize == 0 {
+		config.bufferConfig.BufferSize = 1
 	}
 
-	if config.BufferConfig.NumWorkers == 0 {
-		config.BufferConfig.NumWorkers = 1
+	if config.bufferConfig.NumWorkers == 0 {
+		config.bufferConfig.NumWorkers = 1
 	}
 
 	var cancel context.CancelFunc
 
-	ledgerBuffer, err := NewLedgerBuffer(ctx, config)
+	dataStore, err := datastore.NewDataStore(ctx, config.dataStoreConfig, config.network)
 	if err != nil {
 		return nil, err
 	}
 
 	gcsBackend := &GCSBackend{
-		config:       config,
-		cancel:       cancel,
-		ledgerBuffer: ledgerBuffer,
+		config:    config,
+		cancel:    cancel,
+		dataStore: dataStore,
 	}
 
 	return gcsBackend, nil
@@ -336,7 +347,7 @@ func (gcsb *GCSBackend) GetLedger(ctx context.Context, sequence uint32) (xdr.Led
 
 // PrepareRange checks if the starting and ending (if bounded) ledgers exist.
 func (gcsb *GCSBackend) PrepareRange(ctx context.Context, ledgerRange Range) error {
-	if alreadyPrepared, err := gcsb.startPreparingRange(ledgerRange); err != nil {
+	if alreadyPrepared, err := gcsb.startPreparingRange(ctx, ledgerRange); err != nil {
 		return errors.Wrap(err, "error starting prepare range")
 	} else if alreadyPrepared {
 		return nil
@@ -361,10 +372,6 @@ func (gcsb *GCSBackend) isPrepared(ledgerRange Range) bool {
 	}
 
 	if gcsb.prepared == nil {
-		return false
-	}
-
-	if gcsb.ledgerBuffer.ledgerRange == nil {
 		return false
 	}
 
@@ -404,7 +411,7 @@ func (gcsb *GCSBackend) Close() error {
 }
 
 // startPreparingRange prepares the ledger range by setting the range in the ledgerBuffer
-func (gcsb *GCSBackend) startPreparingRange(ledgerRange Range) (bool, error) {
+func (gcsb *GCSBackend) startPreparingRange(ctx context.Context, ledgerRange Range) (bool, error) {
 	gcsb.gcsBackendLock.Lock()
 	defer gcsb.gcsBackendLock.Unlock()
 
@@ -412,12 +419,11 @@ func (gcsb *GCSBackend) startPreparingRange(ledgerRange Range) (bool, error) {
 		return true, nil
 	}
 
-	// Set the ledgerRange in ledgerBuffer
-	gcsb.ledgerBuffer.ledgerRange = &ledgerRange
-	gcsb.ledgerBuffer.currentLedger = ledgerRange.from
-	gcsb.ledgerBuffer.nextTaskLedger = ledgerRange.from
-	gcsb.ledgerBuffer.nextLedgerQueueLedger = ledgerRange.from
-	gcsb.ledgerBuffer.bounded = ledgerRange.bounded
+	var err error
+	gcsb.ledgerBuffer, err = gcsb.NewLedgerBuffer(ctx, ledgerRange)
+	if err != nil {
+		return false, err
+	}
 
 	// Start the ledgerBuffer
 	gcsb.ledgerBuffer.pushTaskQueue()
