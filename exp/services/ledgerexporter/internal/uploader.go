@@ -8,6 +8,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/stellar/go/support/compressxdr"
 	"github.com/stellar/go/support/datastore"
 )
 
@@ -77,13 +78,20 @@ func (r *writerToRecorder) WriteTo(w io.Writer) (int64, error) {
 }
 
 // Upload uploads the serialized binary data of ledger TxMeta to the specified destination.
-func (u Uploader) Upload(ctx context.Context, metaArchive *LedgerMetaArchive) error {
+func (u Uploader) Upload(ctx context.Context, metaArchive *datastore.LedgerMetaArchive) error {
 	logger.Infof("Uploading: %s", metaArchive.GetObjectKey())
 	startTime := time.Now()
 	numLedgers := strconv.FormatUint(uint64(metaArchive.GetLedgerCount()), 10)
 
+	// TODO: Add compression config and optimize best compression algorithm
+	// JIRA https://stellarorg.atlassian.net/browse/HUBBLE-368
+	xdrEncoder, err := compressxdr.NewXDREncoder(compressxdr.GZIP, &metaArchive.Data)
+	if err != nil {
+		return err
+	}
+
 	writerTo := &writerToRecorder{
-		WriterTo: &XDRGzipEncoder{XdrPayload: &metaArchive.data},
+		WriterTo: xdrEncoder,
 	}
 	ok, err := u.dataStore.PutFileIfNotExists(ctx, metaArchive.GetObjectKey(), writerTo)
 	if err != nil {
@@ -101,7 +109,7 @@ func (u Uploader) Upload(ctx context.Context, metaArchive *LedgerMetaArchive) er
 		"already_exists": alreadyExists,
 	}).Observe(float64(writerTo.totalUncompressed))
 	u.objectSizeMetrics.With(prometheus.Labels{
-		"compression":    "gzip",
+		"compression":    compressxdr.GZIP,
 		"ledgers":        numLedgers,
 		"already_exists": alreadyExists,
 	}).Observe(float64(writerTo.totalCompressed))
@@ -137,6 +145,6 @@ func (u Uploader) Run(ctx context.Context) error {
 		if err = u.Upload(uploadCtx, metaObject); err != nil {
 			return err
 		}
-		logger.Infof("Uploaded %s successfully", metaObject.objectKey)
+		logger.Infof("Uploaded %s successfully", metaObject.ObjectKey)
 	}
 }

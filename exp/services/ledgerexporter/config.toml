@@ -9,6 +9,7 @@ destination_bucket_path = "exporter-test/ledgers"
 [exporter_config]
   ledgers_per_file = 1
   files_per_partition = 64000
+  file_suffix = ".xdr.gz"
 
 [stellar_core_config]
   stellar_core_binary_path = "/usr/local/bin/stellar-core"
