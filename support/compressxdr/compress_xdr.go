@@ -16,7 +16,7 @@ type XDREncoder interface {
 
 type XDRDecoder interface {
 	ReadFrom(r io.Reader) (int64, error)
-	Unzip(r io.ReadCloser) ([]byte, error)
+	Unzip(r io.Reader) ([]byte, error)
 }
 
 func NewXDREncoder(compressionType string, xdrPayload interface{}) (XDREncoder, error) {

@@ -20,30 +20,54 @@ func createTestLedgerCloseMetaBatch(startSeq, endSeq uint32, count int) xdr.Ledg
 	}
 }
 
-func TestEncodeDecodeLedgerCloseMetaBatch(t *testing.T) {
+func TestEncodeDecodeLedgerCloseMetaBatchGzip(t *testing.T) {
 	testData := createTestLedgerCloseMetaBatch(1000, 1005, 6)
 
 	// Encode the test data
-	var encoder XDRGzipEncoder
-	encoder.XdrPayload = testData
+	encoder, err := NewXDREncoder(GZIP, testData)
+	require.NoError(t, err)
 
 	var buf bytes.Buffer
-	_, err := encoder.WriteTo(&buf)
+	_, err = encoder.WriteTo(&buf)
 	require.NoError(t, err)
 
 	// Decode the encoded data
-	var decoder XDRGzipDecoder
-	decoder.XdrPayload = &xdr.LedgerCloseMetaBatch{}
+	lcmBatch := xdr.LedgerCloseMetaBatch{}
+	decoder, err := NewXDRDecoder(GZIP, &lcmBatch)
+	require.NoError(t, err)
 
 	_, err = decoder.ReadFrom(&buf)
 	require.NoError(t, err)
 
 	// Check if the decoded data matches the original test data
-	decodedData := decoder.XdrPayload.(*xdr.LedgerCloseMetaBatch)
+	decodedData := lcmBatch
 	require.Equal(t, testData.StartSequence, decodedData.StartSequence)
 	require.Equal(t, testData.EndSequence, decodedData.EndSequence)
 	require.Equal(t, len(testData.LedgerCloseMetas), len(decodedData.LedgerCloseMetas))
 	for i := range testData.LedgerCloseMetas {
 		require.Equal(t, testData.LedgerCloseMetas[i], decodedData.LedgerCloseMetas[i])
 	}
+}
+
+func TestDecodeUnzipGzip(t *testing.T) {
+	testData := createTestLedgerCloseMetaBatch(1000, 1005, 6)
+
+	// Encode the test data
+	encoder, err := NewXDREncoder(GZIP, testData)
+	require.NoError(t, err)
+
+	var buf bytes.Buffer
+	_, err = encoder.WriteTo(&buf)
+	require.NoError(t, err)
+
+	// Decode the encoded data
+	lcmBatch := xdr.LedgerCloseMetaBatch{}
+	decoder, err := NewXDRDecoder(GZIP, &lcmBatch)
+	require.NoError(t, err)
+
+	binary, err := decoder.Unzip(&buf)
+	require.NoError(t, err)
+
+	require.Equal(t, []uint8([]byte{0x0, 0x0, 0x3, 0xe8, 0x0, 0x0, 0x3, 0xed, 0x0, 0x0, 0x0, 0x0}), binary)
+
 }

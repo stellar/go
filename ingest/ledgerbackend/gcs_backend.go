@@ -270,6 +270,7 @@ func NewGCSBackend(ctx context.Context, config gcsBackendConfig) (*GCSBackend, e
 
 	gcsBackend := &GCSBackend{
 		config:            config,
+		context:           ctx,
 		cancel:            cancel,
 		dataStore:         dataStore,
 		ledgerMetaArchive: ledgerMetaArchive,
@@ -396,6 +397,10 @@ func (gcsb *GCSBackend) isPrepared(ledgerRange Range) bool {
 	}
 
 	if !gcsb.ledgerBuffer.ledgerRange.bounded && !ledgerRange.bounded {
+		return true
+	}
+
+	if !gcsb.ledgerBuffer.ledgerRange.bounded && ledgerRange.bounded {
 		return true
 	}
 

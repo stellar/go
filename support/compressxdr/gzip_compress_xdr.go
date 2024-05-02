@@ -38,7 +38,7 @@ func (d *XDRGzipDecoder) ReadFrom(r io.Reader) (int64, error) {
 	return int64(n), nil
 }
 
-func (d *XDRGzipDecoder) Unzip(r io.ReadCloser) ([]byte, error) {
+func (d *XDRGzipDecoder) Unzip(r io.Reader) ([]byte, error) {
 	gzipReader, err := gzip.NewReader(r)
 	if err != nil {
 		return nil, err
