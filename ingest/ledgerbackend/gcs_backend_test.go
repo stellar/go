@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func createGCSBackendConfigForTesting() gcsBackendConfig {
+func createGCSBackendConfigForTesting() GCSBackendConfig {
 	bufferConfig := BufferConfig{
 		BufferSize: 1000,
 		NumWorkers: 5,
@@ -30,13 +30,13 @@ func createGCSBackendConfigForTesting() gcsBackendConfig {
 		FileSuffix:        ".xdr.gz",
 	}
 
-	return gcsBackendConfig{
-		bufferConfig:      bufferConfig,
-		dataStoreConfig:   dataStoreConfig,
-		ledgerBatchConfig: ledgerBatchConfig,
-		storageUrl:        "testURL",
-		network:           "testnet",
-		compressionType:   compressxdr.GZIP,
+	return GCSBackendConfig{
+		BufferConfig:      bufferConfig,
+		DataStoreConfig:   dataStoreConfig,
+		LedgerBatchConfig: ledgerBatchConfig,
+		StorageUrl:        "testURL",
+		Network:           "testnet",
+		CompressionType:   compressxdr.GZIP,
 	}
 }
 
@@ -45,7 +45,7 @@ func createGCSBackendForTesting() GCSBackend {
 	ctx := context.Background()
 	mockDataStore := new(datastore.MockDataStore)
 	ledgerMetaArchive := datastore.NewLedgerMetaArchive("", 0, 0)
-	decoder, _ := compressxdr.NewXDRDecoder(config.compressionType, nil)
+	decoder, _ := compressxdr.NewXDRDecoder(config.CompressionType, nil)
 
 	return GCSBackend{
 		config:            config,
