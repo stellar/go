@@ -79,12 +79,18 @@ func (f *LedgerMetaArchive) GetLedger(sequence uint32) (*xdr.LedgerCloseMeta, er
 
 func CreateLedgerCloseMeta(ledgerSeq uint32) xdr.LedgerCloseMeta {
 	return xdr.LedgerCloseMeta{
+		V: int32(0),
 		V0: &xdr.LedgerCloseMetaV0{
 			LedgerHeader: xdr.LedgerHeaderHistoryEntry{
 				Header: xdr.LedgerHeader{
 					LedgerSeq: xdr.Uint32(ledgerSeq),
 				},
 			},
+			TxSet:              xdr.TransactionSet{},
+			TxProcessing:       nil,
+			UpgradesProcessing: nil,
+			ScpInfo:            nil,
 		},
+		V1: nil,
 	}
 }

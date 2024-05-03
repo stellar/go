@@ -36,9 +36,10 @@ type GCSBackendConfig struct {
 	BufferConfig      BufferConfig
 	DataStoreConfig   datastore.DataStoreConfig
 	LedgerBatchConfig datastore.LedgerBatchConfig
-	StorageUrl        string
 	Network           string
 	CompressionType   string
+	DataStore         datastore.DataStore
+	ResumableManager  datastore.ResumableManager
 }
 
 // GCSBackend is a ledger backend that reads from a cloud storage service.
@@ -60,6 +61,7 @@ type GCSBackend struct {
 	ledgerBuffer *ledgerBufferGCS
 
 	dataStore         datastore.DataStore
+	resumableManager  datastore.ResumableManager
 	prepared          *Range // non-nil if any range is prepared
 	closed            bool   // False until the core is closed
 	ledgerMetaArchive *datastore.LedgerMetaArchive
@@ -127,7 +129,7 @@ func (gcsb *GCSBackend) NewLedgerBuffer(ledgerRange Range) (*ledgerBufferGCS, er
 func (lb *ledgerBufferGCS) pushTaskQueue() {
 	for lb.count <= lb.limit {
 		// In bounded mode, don't queue past the end ledger
-		if lb.ledgerRange.to < lb.nextTaskLedger && lb.ledgerRange.bounded {
+		if lb.nextTaskLedger > lb.ledgerRange.to && lb.ledgerRange.bounded {
 			return
 		}
 		lb.taskQueue <- lb.nextTaskLedger
@@ -204,6 +206,7 @@ func (lb *ledgerBufferGCS) storeObject(ledgerObject []byte, sequence uint32) {
 	for lb.ledgerPriorityQueue.Len() > 0 && lb.currentLedger == uint32(lb.ledgerPriorityQueue.Peek().StartLedger) {
 		item := lb.ledgerPriorityQueue.Pop()
 		lb.ledgerQueue <- item.Payload
+		lb.currentLedger++
 		lb.nextLedgerQueueLedger++
 	}
 }
@@ -216,7 +219,6 @@ func (lb *ledgerBufferGCS) getFromLedgerQueue() ([]byte, error) {
 			close(lb.done)
 			return nil, lb.context.Err()
 		case lcmBinary := <-lb.ledgerQueue:
-			lb.currentLedger++
 			// Decrement ledger buffer counter
 			lb.count--
 			// Add next task to the TaskQueue
@@ -229,13 +231,9 @@ func (lb *ledgerBufferGCS) getFromLedgerQueue() ([]byte, error) {
 
 // Return a new GCSBackend instance.
 func NewGCSBackend(ctx context.Context, config GCSBackendConfig) (*GCSBackend, error) {
-	// Check/set minimum config values
-	if config.StorageUrl == "" {
-		return nil, errors.New("storageURL is not set")
-	}
-
+	// Check/set minimum config values for LedgerBatchConfig
 	if config.LedgerBatchConfig.FileSuffix == "" {
-		return nil, errors.New("ledgerBatchConfig.FileSuffix is not set")
+		config.LedgerBatchConfig.FileSuffix = ".xdr.gz"
 	}
 
 	if config.LedgerBatchConfig.LedgersPerFile == 0 {
@@ -243,23 +241,45 @@ func NewGCSBackend(ctx context.Context, config GCSBackendConfig) (*GCSBackend, e
 	}
 
 	if config.LedgerBatchConfig.FilesPerPartition == 0 {
-		config.LedgerBatchConfig.FilesPerPartition = 1
+		config.LedgerBatchConfig.FilesPerPartition = 64000
 	}
 
-	// Check/set minimum config values
+	// Check/set minimum config values for BufferConfig
 	if config.BufferConfig.BufferSize == 0 {
-		config.BufferConfig.BufferSize = 1
+		config.BufferConfig.BufferSize = 1000
 	}
 
 	if config.BufferConfig.NumWorkers == 0 {
-		config.BufferConfig.NumWorkers = 1
+		config.BufferConfig.NumWorkers = 5
+	}
+
+	if config.BufferConfig.RetryLimit == 0 {
+		config.BufferConfig.RetryLimit = 3
+	}
+
+	if config.BufferConfig.RetryWait == 0 {
+		config.BufferConfig.RetryWait = 5
 	}
 
 	ctx, cancel := context.WithCancelCause(ctx)
 
-	dataStore, err := datastore.NewDataStore(ctx, config.DataStoreConfig, config.Network)
-	if err != nil {
-		return nil, err
+	if config.DataStore == nil {
+		dataStore, err := datastore.NewDataStore(ctx, config.DataStoreConfig, config.Network)
+		if err != nil {
+			return nil, err
+		}
+		config.DataStore = dataStore
+	}
+
+	if config.ResumableManager == nil {
+		var err error
+		var archive historyarchive.ArchiveInterface
+
+		if archive, err = datastore.CreateHistoryArchiveFromNetworkName(ctx, config.Network); err != nil {
+			return nil, err
+		}
+
+		config.ResumableManager = datastore.NewResumableManager(config.DataStore, config.Network, config.LedgerBatchConfig, archive)
 	}
 
 	ledgerMetaArchive := datastore.NewLedgerMetaArchive("", 0, 0)
@@ -272,7 +292,8 @@ func NewGCSBackend(ctx context.Context, config GCSBackendConfig) (*GCSBackend, e
 		config:            config,
 		context:           ctx,
 		cancel:            cancel,
-		dataStore:         dataStore,
+		dataStore:         config.DataStore,
+		resumableManager:  config.ResumableManager,
 		ledgerMetaArchive: ledgerMetaArchive,
 		decoder:           decoder,
 	}
@@ -283,15 +304,13 @@ func NewGCSBackend(ctx context.Context, config GCSBackendConfig) (*GCSBackend, e
 // GetLatestLedgerSequence returns the most recent ledger sequence number in the cloud storage bucket.
 func (gcsb *GCSBackend) GetLatestLedgerSequence(ctx context.Context) (uint32, error) {
 	var err error
-	var archive historyarchive.ArchiveInterface
 
-	if archive, err = datastore.CreateHistoryArchiveFromNetworkName(ctx, gcsb.config.Network); err != nil {
-		return 0, err
+	if gcsb.closed {
+		return 0, errors.New("gcsBackend is closed; cannot GetLatestLedgerSequence")
 	}
 
-	resumableManager := datastore.NewResumableManager(gcsb.dataStore, gcsb.config.Network, gcsb.config.LedgerBatchConfig, archive)
 	// Start at 2 to skip the genesis ledger
-	absentLedger, ok, err := resumableManager.FindStart(ctx, 2, 0)
+	absentLedger, ok, err := gcsb.resumableManager.FindStart(ctx, uint32(2), uint32(0))
 	if err != nil {
 		return 0, err
 	}
@@ -338,11 +357,21 @@ func (gcsb *GCSBackend) GetLedger(ctx context.Context, sequence uint32) (xdr.Led
 	defer gcsb.gcsBackendLock.RUnlock()
 
 	if gcsb.closed {
-		return xdr.LedgerCloseMeta{}, errors.New("gcsBackend is closed")
+		return xdr.LedgerCloseMeta{}, errors.New("gcsBackend is closed; cannot GetLedger")
 	}
 
 	if gcsb.prepared == nil {
 		return xdr.LedgerCloseMeta{}, errors.New("session is not prepared, call PrepareRange first")
+	}
+
+	if sequence < gcsb.ledgerBuffer.ledgerRange.from {
+		return xdr.LedgerCloseMeta{}, errors.New("requested sequence preceeds current LedgerRange")
+	}
+
+	if gcsb.ledgerBuffer.ledgerRange.bounded {
+		if sequence > gcsb.ledgerBuffer.ledgerRange.to {
+			return xdr.LedgerCloseMeta{}, errors.New("requested sequence beyond current LedgerRange")
+		}
 	}
 
 	err := gcsb.getSequenceInBatch(sequence)
@@ -360,6 +389,10 @@ func (gcsb *GCSBackend) GetLedger(ctx context.Context, sequence uint32) (xdr.Led
 
 // PrepareRange checks if the starting and ending (if bounded) ledgers exist.
 func (gcsb *GCSBackend) PrepareRange(ctx context.Context, ledgerRange Range) error {
+	if gcsb.closed {
+		return errors.New("gcsBackend is closed; cannot PrepareRange")
+	}
+
 	if alreadyPrepared, err := gcsb.startPreparingRange(ledgerRange); err != nil {
 		return errors.Wrap(err, "error starting prepare range")
 	} else if alreadyPrepared {
@@ -375,6 +408,10 @@ func (gcsb *GCSBackend) PrepareRange(ctx context.Context, ledgerRange Range) err
 func (gcsb *GCSBackend) IsPrepared(ctx context.Context, ledgerRange Range) (bool, error) {
 	gcsb.gcsBackendLock.RLock()
 	defer gcsb.gcsBackendLock.RUnlock()
+
+	if gcsb.closed {
+		return false, errors.New("gcsBackend is closed; cannot IsPrepared")
+	}
 
 	return gcsb.isPrepared(ledgerRange), nil
 }
