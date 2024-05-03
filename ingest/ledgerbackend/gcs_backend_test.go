@@ -16,7 +16,7 @@ import (
 func createGCSBackendConfigForTesting() GCSBackendConfig {
 	bufferConfig := BufferConfig{
 		BufferSize: 100,
-		NumWorkers: 5,
+		NumWorkers: 1,
 		RetryLimit: 3,
 		RetryWait:  1,
 	}
@@ -147,32 +147,33 @@ func createLCMBatchBinaryForTesting(lcm xdr.LedgerCloseMeta, start uint32, end u
 
 func TestGCSGetLedger(t *testing.T) {
 	startLedger := uint32(3)
-	endLedger := uint32(4)
+	endLedger := uint32(5)
 	lcmArray := createLCMForTesting(startLedger, endLedger)
 
 	gcsb := createGCSBackendForTesting()
 	ctx := context.Background()
 	ledgerRange := BoundedRange(startLedger, endLedger)
-	gcsb.ledgerBuffer = createGCSLedgerBufferForTesting(ledgerRange)
-	gcsb.PrepareRange(ctx, ledgerRange)
-
 	readCloser1 := createReadCloserForTesting()
 	readCloser2 := createReadCloserForTesting()
+	readCloser3 := createReadCloserForTesting()
 
 	mockDataStore := new(datastore.MockDataStore)
 	gcsb.dataStore = mockDataStore
-	gcsb.ledgerBuffer.dataStore = mockDataStore
 	mockDataStore.On("GetFile", ctx, "0-63999/3.xdr.gz").Return(readCloser1, nil)
 	mockDataStore.On("GetFile", ctx, "0-63999/4.xdr.gz").Return(readCloser2, nil)
+	mockDataStore.On("GetFile", ctx, "0-63999/5.xdr.gz").Return(readCloser3, nil)
 
 	objectBytes1 := createLCMBatchBinaryForTesting(lcmArray[0], uint32(3), uint32(3))
 	objectBytes2 := createLCMBatchBinaryForTesting(lcmArray[1], uint32(4), uint32(4))
+	objectBytes3 := createLCMBatchBinaryForTesting(lcmArray[2], uint32(5), uint32(5))
 
 	mockDecoder := new(compressxdr.MockXDRDecoder)
 	gcsb.decoder = mockDecoder
-	gcsb.ledgerBuffer.decoder = mockDecoder
 	mockDecoder.On("Unzip", readCloser1).Return(objectBytes1, nil)
 	mockDecoder.On("Unzip", readCloser2).Return(objectBytes2, nil)
+	mockDecoder.On("Unzip", readCloser3).Return(objectBytes3, nil)
+
+	gcsb.PrepareRange(ctx, ledgerRange)
 
 	lcm, err := gcsb.GetLedger(ctx, uint32(3))
 	assert.NoError(t, err)
