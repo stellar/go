@@ -15,24 +15,15 @@ import (
 // Ensure CloudStorageBackend implements LedgerBackend
 var _ LedgerBackend = (*CloudStorageBackend)(nil)
 
-type ledgerBatchObject struct {
-	payload     []byte
-	startLedger int // Ledger sequence used as the priority for the priorityqueue.
-}
-
-type BufferConfig struct {
-	BufferSize uint32
-	NumWorkers uint32
-	RetryLimit uint32
-	RetryWait  time.Duration
-}
-
 type CloudStorageBackendConfig struct {
-	BufferConfig      BufferConfig
 	LedgerBatchConfig datastore.LedgerBatchConfig
 	CompressionType   string
 	DataStore         datastore.DataStore
 	ResumableManager  datastore.ResumableManager
+	BufferSize        uint32
+	NumWorkers        uint32
+	RetryLimit        uint32
+	RetryWait         time.Duration
 }
 
 // CloudStorageBackend is a ledger backend that reads from a cloud storage service.
@@ -279,14 +270,6 @@ func (csb *CloudStorageBackend) startPreparingRange(ledgerRange Range) (bool, er
 	csb.ledgerBuffer, err = csb.newLedgerBuffer(ledgerRange)
 	if err != nil {
 		return false, err
-	}
-
-	// Start the ledgerBuffer
-	for i := 0; i <= int(csb.config.BufferConfig.BufferSize); i++ {
-		if csb.ledgerBuffer.nextTaskLedger > ledgerRange.to && ledgerRange.bounded {
-			break
-		}
-		csb.ledgerBuffer.pushTaskQueue()
 	}
 
 	csb.nextLedger = ledgerRange.from

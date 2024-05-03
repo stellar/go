@@ -14,13 +14,6 @@ import (
 )
 
 func createCloudStorageBackendConfigForTesting() CloudStorageBackendConfig {
-	bufferConfig := BufferConfig{
-		BufferSize: 100,
-		NumWorkers: 5,
-		RetryLimit: 3,
-		RetryWait:  1,
-	}
-
 	param := make(map[string]string)
 	param["destination_bucket_path"] = "testURL"
 
@@ -35,11 +28,14 @@ func createCloudStorageBackendConfigForTesting() CloudStorageBackendConfig {
 	resumableManager := new(datastore.MockResumableManager)
 
 	return CloudStorageBackendConfig{
-		BufferConfig:      bufferConfig,
 		LedgerBatchConfig: ledgerBatchConfig,
 		CompressionType:   compressxdr.GZIP,
 		DataStore:         dataStore,
 		ResumableManager:  resumableManager,
+		BufferSize:        100,
+		NumWorkers:        5,
+		RetryLimit:        3,
+		RetryWait:         1,
 	}
 }
 
@@ -71,10 +67,10 @@ func TestNewCloudStorageBackend(t *testing.T) {
 	assert.Equal(t, ".xdr.gz", csb.config.LedgerBatchConfig.FileSuffix)
 	assert.Equal(t, uint32(1), csb.config.LedgerBatchConfig.LedgersPerFile)
 	assert.Equal(t, uint32(64000), csb.config.LedgerBatchConfig.FilesPerPartition)
-	assert.Equal(t, uint32(100), csb.config.BufferConfig.BufferSize)
-	assert.Equal(t, uint32(5), csb.config.BufferConfig.NumWorkers)
-	assert.Equal(t, uint32(3), csb.config.BufferConfig.RetryLimit)
-	assert.Equal(t, time.Duration(1), csb.config.BufferConfig.RetryWait)
+	assert.Equal(t, uint32(100), csb.config.BufferSize)
+	assert.Equal(t, uint32(5), csb.config.NumWorkers)
+	assert.Equal(t, uint32(3), csb.config.RetryLimit)
+	assert.Equal(t, time.Duration(1), csb.config.RetryWait)
 }
 
 func TestGCSNewLedgerBuffer(t *testing.T) {

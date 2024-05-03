@@ -15,6 +15,11 @@ import (
 	"github.com/stellar/go/support/log"
 )
 
+type ledgerBatchObject struct {
+	payload     []byte
+	startLedger int // Ledger sequence used as the priority for the priorityqueue.
+}
+
 type ledgerBuffer struct {
 	config              CloudStorageBackendConfig
 	dataStore           datastore.DataStore
@@ -40,15 +45,15 @@ func (csb *CloudStorageBackend) newLedgerBuffer(ledgerRange Range) (*ledgerBuffe
 	less := func(a, b ledgerBatchObject) bool {
 		return a.startLedger < b.startLedger
 	}
-	pq := heap.New(less, int(csb.config.BufferConfig.BufferSize))
+	pq := heap.New(less, int(csb.config.BufferSize))
 
 	done := make(chan struct{})
 
 	ledgerBuffer := &ledgerBuffer{
 		config:              csb.config,
 		dataStore:           csb.dataStore,
-		taskQueue:           make(chan uint32, csb.config.BufferConfig.BufferSize),
-		ledgerQueue:         make(chan []byte, csb.config.BufferConfig.BufferSize),
+		taskQueue:           make(chan uint32, csb.config.BufferSize),
+		ledgerQueue:         make(chan []byte, csb.config.BufferSize),
 		ledgerPriorityQueue: pq,
 		done:                done,
 		currentLedger:       ledgerRange.from,
@@ -60,8 +65,16 @@ func (csb *CloudStorageBackend) newLedgerBuffer(ledgerRange Range) (*ledgerBuffe
 	}
 
 	// Workers to read LCM files
-	for i := uint32(0); i < csb.config.BufferConfig.NumWorkers; i++ {
+	for i := uint32(0); i < csb.config.NumWorkers; i++ {
 		go ledgerBuffer.worker()
+	}
+
+	// Start the ledgerBuffer
+	for i := 0; i <= int(csb.config.BufferSize); i++ {
+		if csb.ledgerBuffer.nextTaskLedger > ledgerRange.to && ledgerRange.bounded {
+			break
+		}
+		csb.ledgerBuffer.pushTaskQueue()
 	}
 
 	return ledgerBuffer, nil
@@ -87,25 +100,25 @@ func (lb *ledgerBuffer) worker() {
 			return
 		case sequence := <-lb.taskQueue:
 			retryCount := uint32(0)
-			for retryCount <= lb.config.BufferConfig.RetryLimit {
+			for retryCount <= lb.config.RetryLimit {
 				ledgerObject, err := lb.getLedgerObject(sequence)
 				if err != nil {
 					if err == os.ErrNotExist {
 						// ledgerObject not found and unbounded
 						if !lb.ledgerRange.bounded {
-							time.Sleep(lb.config.BufferConfig.RetryWait * time.Second)
+							time.Sleep(lb.config.RetryWait * time.Second)
 							continue
 						}
 						lb.cancel(err)
 						return
 					}
-					if retryCount == lb.config.BufferConfig.RetryLimit {
+					if retryCount == lb.config.RetryLimit {
 						err = errors.New("maximum retries exceeded for object reads")
 						lb.cancel(err)
 						return
 					}
 					retryCount++
-					time.Sleep(lb.config.BufferConfig.RetryWait * time.Second)
+					time.Sleep(lb.config.RetryWait * time.Second)
 				}
 
 				// Add to priority queue and continue to next task
