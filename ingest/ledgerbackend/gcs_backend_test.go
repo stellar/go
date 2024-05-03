@@ -16,7 +16,7 @@ import (
 func createGCSBackendConfigForTesting() GCSBackendConfig {
 	bufferConfig := BufferConfig{
 		BufferSize: 100,
-		NumWorkers: 1,
+		NumWorkers: 5,
 		RetryLimit: 3,
 		RetryWait:  1,
 	}
@@ -63,18 +63,6 @@ func createGCSBackendForTesting() GCSBackend {
 		ledgerMetaArchive: ledgerMetaArchive,
 		decoder:           decoder,
 	}
-}
-
-func createGCSLedgerBufferForTesting(ledgerRange Range) *ledgerBufferGCS {
-	gcsb := createGCSBackendForTesting()
-	ledgerBuffer, _ := gcsb.NewLedgerBuffer(ledgerRange)
-	return ledgerBuffer
-}
-
-func createReadCloserForTesting() io.ReadCloser {
-	var capturedBuf []byte
-	reader := bytes.NewReader(capturedBuf)
-	return io.NopCloser(reader)
 }
 
 func TestNewGCSBackend(t *testing.T) {
@@ -133,29 +121,39 @@ func createLCMForTesting(start, end uint32) []xdr.LedgerCloseMeta {
 	return lcmArray
 }
 
-func createLCMBatchBinaryForTesting(lcm xdr.LedgerCloseMeta, start uint32, end uint32) []byte {
-	lcmBatch := xdr.LedgerCloseMetaBatch{
-		StartSequence: xdr.Uint32(start),
-		EndSequence:   xdr.Uint32(end),
-		LedgerCloseMetas: []xdr.LedgerCloseMeta{
-			lcm,
-		},
+func createTestLedgerCloseMetaBatch(startSeq, endSeq uint32, count int) xdr.LedgerCloseMetaBatch {
+	var ledgerCloseMetas []xdr.LedgerCloseMeta
+	for i := 0; i < count; i++ {
+		ledgerCloseMetas = append(ledgerCloseMetas, datastore.CreateLedgerCloseMeta(startSeq+uint32(i)))
 	}
-	lcmBatchBinary, _ := lcmBatch.MarshalBinary()
-	return lcmBatchBinary
+	return xdr.LedgerCloseMetaBatch{
+		StartSequence:    xdr.Uint32(startSeq),
+		EndSequence:      xdr.Uint32(endSeq),
+		LedgerCloseMetas: ledgerCloseMetas,
+	}
 }
 
-func TestGCSGetLedger(t *testing.T) {
+func createLCMBatchReader(start, end uint32, count int) io.ReadCloser {
+	testData := createTestLedgerCloseMetaBatch(start, end, count)
+	encoder, _ := compressxdr.NewXDREncoder(compressxdr.GZIP, testData)
+	var buf bytes.Buffer
+	encoder.WriteTo(&buf)
+	capturedBuf := buf.Bytes()
+	reader1 := bytes.NewReader(capturedBuf)
+	return io.NopCloser(reader1)
+}
+
+func TestGCSGetLedger_SingleLedgerPerFile(t *testing.T) {
 	startLedger := uint32(3)
 	endLedger := uint32(5)
 	lcmArray := createLCMForTesting(startLedger, endLedger)
-
 	gcsb := createGCSBackendForTesting()
 	ctx := context.Background()
 	ledgerRange := BoundedRange(startLedger, endLedger)
-	readCloser1 := createReadCloserForTesting()
-	readCloser2 := createReadCloserForTesting()
-	readCloser3 := createReadCloserForTesting()
+
+	readCloser1 := createLCMBatchReader(uint32(3), uint32(3), 1)
+	readCloser2 := createLCMBatchReader(uint32(4), uint32(4), 1)
+	readCloser3 := createLCMBatchReader(uint32(5), uint32(5), 1)
 
 	mockDataStore := new(datastore.MockDataStore)
 	gcsb.dataStore = mockDataStore
@@ -163,25 +161,75 @@ func TestGCSGetLedger(t *testing.T) {
 	mockDataStore.On("GetFile", ctx, "0-63999/4.xdr.gz").Return(readCloser2, nil)
 	mockDataStore.On("GetFile", ctx, "0-63999/5.xdr.gz").Return(readCloser3, nil)
 
-	objectBytes1 := createLCMBatchBinaryForTesting(lcmArray[0], uint32(3), uint32(3))
-	objectBytes2 := createLCMBatchBinaryForTesting(lcmArray[1], uint32(4), uint32(4))
-	objectBytes3 := createLCMBatchBinaryForTesting(lcmArray[2], uint32(5), uint32(5))
-
-	mockDecoder := new(compressxdr.MockXDRDecoder)
-	gcsb.decoder = mockDecoder
-	mockDecoder.On("Unzip", readCloser1).Return(objectBytes1, nil)
-	mockDecoder.On("Unzip", readCloser2).Return(objectBytes2, nil)
-	mockDecoder.On("Unzip", readCloser3).Return(objectBytes3, nil)
-
 	gcsb.PrepareRange(ctx, ledgerRange)
 
 	lcm, err := gcsb.GetLedger(ctx, uint32(3))
 	assert.NoError(t, err)
 	assert.Equal(t, lcmArray[0], lcm)
+	// Skip sequence 4; Test non consecutive GetLedger
+	lcm, err = gcsb.GetLedger(ctx, uint32(5))
+	assert.NoError(t, err)
+	assert.Equal(t, lcmArray[2], lcm)
+}
+
+func TestGCSGetLedger_MultipleLedgerPerFile(t *testing.T) {
+	startLedger := uint32(2)
+	endLedger := uint32(5)
+	lcmArray := createLCMForTesting(startLedger, endLedger)
+	gcsb := createGCSBackendForTesting()
+	ctx := context.Background()
+	gcsb.config.LedgerBatchConfig.LedgersPerFile = uint32(2)
+	ledgerRange := BoundedRange(startLedger, endLedger)
+
+	readCloser1 := createLCMBatchReader(uint32(2), uint32(3), 2)
+	readCloser2 := createLCMBatchReader(uint32(4), uint32(5), 2)
+
+	mockDataStore := new(datastore.MockDataStore)
+	gcsb.dataStore = mockDataStore
+	mockDataStore.On("GetFile", ctx, "0-127999/2-3.xdr.gz").Return(readCloser1, nil)
+	mockDataStore.On("GetFile", ctx, "0-127999/4-5.xdr.gz").Return(readCloser2, nil)
+
+	gcsb.PrepareRange(ctx, ledgerRange)
+
+	lcm, err := gcsb.GetLedger(ctx, uint32(2))
+	assert.NoError(t, err)
+	assert.Equal(t, lcmArray[0], lcm)
+
+	lcm, err = gcsb.GetLedger(ctx, uint32(3))
+	assert.NoError(t, err)
+	assert.Equal(t, lcmArray[1], lcm)
 
 	lcm, err = gcsb.GetLedger(ctx, uint32(4))
 	assert.NoError(t, err)
-	assert.Equal(t, lcmArray[1], lcm)
+	assert.Equal(t, lcmArray[2], lcm)
+}
+
+func TestGCSGetLedger_ErrorPreceedingLedger(t *testing.T) {
+	startLedger := uint32(3)
+	endLedger := uint32(5)
+	lcmArray := createLCMForTesting(startLedger, endLedger)
+	gcsb := createGCSBackendForTesting()
+	ctx := context.Background()
+	ledgerRange := BoundedRange(startLedger, endLedger)
+
+	readCloser1 := createLCMBatchReader(uint32(3), uint32(3), 1)
+	readCloser2 := createLCMBatchReader(uint32(4), uint32(4), 1)
+	readCloser3 := createLCMBatchReader(uint32(5), uint32(5), 1)
+
+	mockDataStore := new(datastore.MockDataStore)
+	gcsb.dataStore = mockDataStore
+	mockDataStore.On("GetFile", ctx, "0-63999/3.xdr.gz").Return(readCloser1, nil)
+	mockDataStore.On("GetFile", ctx, "0-63999/4.xdr.gz").Return(readCloser2, nil)
+	mockDataStore.On("GetFile", ctx, "0-63999/5.xdr.gz").Return(readCloser3, nil)
+
+	gcsb.PrepareRange(ctx, ledgerRange)
+
+	lcm, err := gcsb.GetLedger(ctx, uint32(5))
+	assert.NoError(t, err)
+	assert.Equal(t, lcmArray[2], lcm)
+
+	_, err = gcsb.GetLedger(ctx, uint32(4))
+	assert.Error(t, err, "requested sequence preceeds current LedgerCloseMetaBatch")
 }
 
 func TestGCSGetLedger_NotPrepared(t *testing.T) {
@@ -196,7 +244,6 @@ func TestGCSGetLedger_SequenceNotInBatch(t *testing.T) {
 	gcsb := createGCSBackendForTesting()
 	ctx := context.Background()
 	ledgerRange := BoundedRange(3, 5)
-	gcsb.ledgerBuffer = createGCSLedgerBufferForTesting(ledgerRange)
 	gcsb.PrepareRange(ctx, ledgerRange)
 	gcsb.ledgerMetaArchive = datastore.NewLedgerMetaArchive("", 4, 0)
 
@@ -214,7 +261,6 @@ func TestGCSPrepareRange(t *testing.T) {
 	gcsb := createGCSBackendForTesting()
 	ctx := context.Background()
 	ledgerRange := BoundedRange(2, 3)
-	gcsb.ledgerBuffer = createGCSLedgerBufferForTesting(ledgerRange)
 
 	err := gcsb.PrepareRange(ctx, ledgerRange)
 	assert.NoError(t, err)
@@ -225,7 +271,6 @@ func TestGCSPrepareRange_AlreadyPrepared(t *testing.T) {
 	gcsb := createGCSBackendForTesting()
 	ctx := context.Background()
 	ledgerRange := BoundedRange(2, 3)
-	gcsb.ledgerBuffer = createGCSLedgerBufferForTesting(ledgerRange)
 	gcsb.prepared = &ledgerRange
 
 	err := gcsb.PrepareRange(ctx, ledgerRange)
@@ -236,7 +281,6 @@ func TestGCSIsPrepared_Bounded(t *testing.T) {
 	gcsb := createGCSBackendForTesting()
 	ctx := context.Background()
 	ledgerRange := BoundedRange(3, 4)
-	gcsb.ledgerBuffer = createGCSLedgerBufferForTesting(ledgerRange)
 	gcsb.PrepareRange(ctx, ledgerRange)
 
 	ok, err := gcsb.IsPrepared(ctx, ledgerRange)
@@ -260,7 +304,6 @@ func TestGCSIsPrepared_Unbounded(t *testing.T) {
 	gcsb := createGCSBackendForTesting()
 	ctx := context.Background()
 	ledgerRange := UnboundedRange(3)
-	gcsb.ledgerBuffer = createGCSLedgerBufferForTesting(ledgerRange)
 	gcsb.PrepareRange(ctx, ledgerRange)
 
 	ok, err := gcsb.IsPrepared(ctx, ledgerRange)
@@ -288,7 +331,6 @@ func TestGCSClose(t *testing.T) {
 	gcsb := createGCSBackendForTesting()
 	ctx := context.Background()
 	ledgerRange := UnboundedRange(3)
-	gcsb.ledgerBuffer = createGCSLedgerBufferForTesting(ledgerRange)
 	gcsb.PrepareRange(ctx, ledgerRange)
 
 	err := gcsb.Close()

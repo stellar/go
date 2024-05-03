@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"testing"
 
+	"github.com/stellar/go/support/datastore"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/require"
 )
@@ -11,7 +12,7 @@ import (
 func createTestLedgerCloseMetaBatch(startSeq, endSeq uint32, count int) xdr.LedgerCloseMetaBatch {
 	var ledgerCloseMetas []xdr.LedgerCloseMeta
 	for i := 0; i < count; i++ {
-		//	ledgerCloseMetas = append(ledgerCloseMetas, createLedgerCloseMeta(startSeq+uint32(i)))
+		ledgerCloseMetas = append(ledgerCloseMetas, datastore.CreateLedgerCloseMeta(startSeq+uint32(i)))
 	}
 	return xdr.LedgerCloseMetaBatch{
 		StartSequence:    xdr.Uint32(startSeq),

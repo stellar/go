@@ -206,7 +206,7 @@ func (lb *ledgerBufferGCS) storeObject(ledgerObject []byte, sequence uint32) {
 	for lb.ledgerPriorityQueue.Len() > 0 && lb.currentLedger == uint32(lb.ledgerPriorityQueue.Peek().StartLedger) {
 		item := lb.ledgerPriorityQueue.Pop()
 		lb.ledgerQueue <- item.Payload
-		lb.currentLedger++
+		lb.currentLedger += lb.config.LedgerBatchConfig.LedgersPerFile
 		lb.nextLedgerQueueLedger++
 	}
 }
