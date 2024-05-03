@@ -64,17 +64,17 @@ func (f *LedgerMetaArchive) GetObjectKey() string {
 	return f.ObjectKey
 }
 
-func (f *LedgerMetaArchive) GetLedger(sequence uint32) (*xdr.LedgerCloseMeta, error) {
+func (f *LedgerMetaArchive) GetLedger(sequence uint32) (xdr.LedgerCloseMeta, error) {
 	if sequence < uint32(f.Data.StartSequence) || sequence > uint32(f.Data.EndSequence) {
-		return nil, fmt.Errorf("ledger sequence %d is outside valid range [%d, %d]",
+		return xdr.LedgerCloseMeta{}, fmt.Errorf("ledger sequence %d is outside valid range [%d, %d]",
 			sequence, f.Data.StartSequence, f.Data.EndSequence)
 	}
 
 	ledgerIndex := sequence - f.GetStartLedgerSequence()
 	if ledgerIndex >= uint32(len(f.Data.LedgerCloseMetas)) {
-		return nil, fmt.Errorf("LedgerCloseMeta for sequence %d not found", sequence)
+		return xdr.LedgerCloseMeta{}, fmt.Errorf("LedgerCloseMeta for sequence %d not found", sequence)
 	}
-	return &f.Data.LedgerCloseMetas[ledgerIndex], nil
+	return f.Data.LedgerCloseMetas[ledgerIndex], nil
 }
 
 func CreateLedgerCloseMeta(ledgerSeq uint32) xdr.LedgerCloseMeta {

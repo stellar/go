@@ -23,10 +23,6 @@ func createGCSBackendConfigForTesting() GCSBackendConfig {
 
 	param := make(map[string]string)
 	param["destination_bucket_path"] = "testURL"
-	dataStoreConfig := datastore.DataStoreConfig{
-		Type:   "GCS",
-		Params: param,
-	}
 
 	ledgerBatchConfig := datastore.LedgerBatchConfig{
 		LedgersPerFile:    1,
@@ -40,9 +36,7 @@ func createGCSBackendConfigForTesting() GCSBackendConfig {
 
 	return GCSBackendConfig{
 		BufferConfig:      bufferConfig,
-		DataStoreConfig:   dataStoreConfig,
 		LedgerBatchConfig: ledgerBatchConfig,
-		Network:           "testnet",
 		CompressionType:   compressxdr.GZIP,
 		DataStore:         dataStore,
 		ResumableManager:  resumableManager,
@@ -89,12 +83,11 @@ func TestGCSNewLedgerBuffer(t *testing.T) {
 	gcsb := createGCSBackendForTesting()
 	ledgerRange := BoundedRange(2, 3)
 
-	ledgerBuffer, err := gcsb.NewLedgerBuffer(ledgerRange)
+	ledgerBuffer, err := gcsb.newLedgerBuffer(ledgerRange)
 	assert.NoError(t, err)
 
 	assert.Equal(t, uint32(2), ledgerBuffer.currentLedger)
 	assert.Equal(t, uint32(2), ledgerBuffer.nextTaskLedger)
-	assert.Equal(t, uint32(2), ledgerBuffer.nextLedgerQueueLedger)
 	assert.Equal(t, ledgerRange, ledgerBuffer.ledgerRange)
 }
 
@@ -244,17 +237,14 @@ func TestGCSGetLedger_SequenceNotInBatch(t *testing.T) {
 	gcsb := createGCSBackendForTesting()
 	ctx := context.Background()
 	ledgerRange := BoundedRange(3, 5)
+
 	gcsb.PrepareRange(ctx, ledgerRange)
-	gcsb.ledgerMetaArchive = datastore.NewLedgerMetaArchive("", 4, 0)
 
 	_, err := gcsb.GetLedger(ctx, uint32(2))
 	assert.Error(t, err, "requested sequence preceeds current LedgerRange")
 
 	_, err = gcsb.GetLedger(ctx, uint32(6))
 	assert.Error(t, err, "requested sequence beyond current LedgerRange")
-
-	_, err = gcsb.GetLedger(ctx, uint32(3))
-	assert.Error(t, err, "requested sequence preceeds current LedgerCloseMetaBatch")
 }
 
 func TestGCSPrepareRange(t *testing.T) {
@@ -265,16 +255,11 @@ func TestGCSPrepareRange(t *testing.T) {
 	err := gcsb.PrepareRange(ctx, ledgerRange)
 	assert.NoError(t, err)
 	assert.NotNil(t, gcsb.prepared)
-}
 
-func TestGCSPrepareRange_AlreadyPrepared(t *testing.T) {
-	gcsb := createGCSBackendForTesting()
-	ctx := context.Background()
-	ledgerRange := BoundedRange(2, 3)
-	gcsb.prepared = &ledgerRange
-
-	err := gcsb.PrepareRange(ctx, ledgerRange)
+	// check alreadyPrepared
+	err = gcsb.PrepareRange(ctx, ledgerRange)
 	assert.NoError(t, err)
+	assert.NotNil(t, gcsb.prepared)
 }
 
 func TestGCSIsPrepared_Bounded(t *testing.T) {
@@ -330,7 +315,7 @@ func TestGCSIsPrepared_Unbounded(t *testing.T) {
 func TestGCSClose(t *testing.T) {
 	gcsb := createGCSBackendForTesting()
 	ctx := context.Background()
-	ledgerRange := UnboundedRange(3)
+	ledgerRange := BoundedRange(3, 5)
 	gcsb.PrepareRange(ctx, ledgerRange)
 
 	err := gcsb.Close()
