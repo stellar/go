@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"os"
 	"sync"
 	"time"
 
@@ -12,13 +13,12 @@ import (
 	"github.com/stellar/go/support/compressxdr"
 	"github.com/stellar/go/support/datastore"
 	"github.com/stellar/go/support/log"
-	"google.golang.org/api/googleapi"
 )
 
-type ledgerBufferGCS struct {
-	config              GCSBackendConfig
+type ledgerBuffer struct {
+	config              CloudStorageBackendConfig
 	dataStore           datastore.DataStore
-	taskQueue           chan uint32 // buffer next gcs object read
+	taskQueue           chan uint32 // buffer next object read
 	ledgerQueue         chan []byte // order corrected lcm batches
 	ledgerPriorityQueue *heap.Heap[ledgerBatchObject]
 	priorityQueueLock   sync.Mutex
@@ -30,59 +30,53 @@ type ledgerBufferGCS struct {
 	nextTaskLedger uint32
 	ledgerRange    Range
 
-	// passed through from GCSBackend to control lifetime of ledgerBufferGCS instance
+	// passed through from CloudStorageBackend to control lifetime of ledgerBuffer instance
 	context context.Context
 	cancel  context.CancelCauseFunc
 	decoder compressxdr.XDRDecoder
 }
 
-func (gcsb *GCSBackend) newLedgerBuffer(ledgerRange Range) (*ledgerBufferGCS, error) {
+func (csb *CloudStorageBackend) newLedgerBuffer(ledgerRange Range) (*ledgerBuffer, error) {
 	less := func(a, b ledgerBatchObject) bool {
 		return a.startLedger < b.startLedger
 	}
-	pq := heap.New(less, int(gcsb.config.BufferConfig.BufferSize))
+	pq := heap.New(less, int(csb.config.BufferConfig.BufferSize))
 
 	done := make(chan struct{})
 
-	ledgerBuffer := &ledgerBufferGCS{
-		config:              gcsb.config,
-		dataStore:           gcsb.dataStore,
-		taskQueue:           make(chan uint32, gcsb.config.BufferConfig.BufferSize),
-		ledgerQueue:         make(chan []byte, gcsb.config.BufferConfig.BufferSize),
+	ledgerBuffer := &ledgerBuffer{
+		config:              csb.config,
+		dataStore:           csb.dataStore,
+		taskQueue:           make(chan uint32, csb.config.BufferConfig.BufferSize),
+		ledgerQueue:         make(chan []byte, csb.config.BufferConfig.BufferSize),
 		ledgerPriorityQueue: pq,
 		done:                done,
 		currentLedger:       ledgerRange.from,
 		nextTaskLedger:      ledgerRange.from,
 		ledgerRange:         ledgerRange,
-		context:             gcsb.context,
-		cancel:              gcsb.cancel,
-		decoder:             gcsb.decoder,
+		context:             csb.context,
+		cancel:              csb.cancel,
+		decoder:             csb.decoder,
 	}
 
 	// Workers to read LCM files
-	for i := uint32(0); i < gcsb.config.BufferConfig.NumWorkers; i++ {
+	for i := uint32(0); i < csb.config.BufferConfig.NumWorkers; i++ {
 		go ledgerBuffer.worker()
 	}
 
 	return ledgerBuffer, nil
 }
 
-func (lb *ledgerBufferGCS) pushTaskQueue() {
-	for {
-		// In bounded mode, don't queue past the end ledger
-		if lb.nextTaskLedger > lb.ledgerRange.to && lb.ledgerRange.bounded {
-			return
-		}
-		select {
-		case lb.taskQueue <- lb.nextTaskLedger:
-			lb.nextTaskLedger += lb.config.LedgerBatchConfig.LedgersPerFile
-		default:
-			return
-		}
+func (lb *ledgerBuffer) pushTaskQueue() {
+	// In bounded mode, don't queue past the end ledger
+	if lb.nextTaskLedger > lb.ledgerRange.to && lb.ledgerRange.bounded {
+		return
 	}
+	lb.taskQueue <- lb.nextTaskLedger
+	lb.nextTaskLedger += lb.config.LedgerBatchConfig.LedgersPerFile
 }
 
-func (lb *ledgerBufferGCS) worker() {
+func (lb *ledgerBuffer) worker() {
 	for {
 		select {
 		case <-lb.done:
@@ -94,18 +88,21 @@ func (lb *ledgerBufferGCS) worker() {
 		case sequence := <-lb.taskQueue:
 			retryCount := uint32(0)
 			for retryCount <= lb.config.BufferConfig.RetryLimit {
-				ledgerObject, err := lb.getLedgerGCSObject(sequence)
+				ledgerObject, err := lb.getLedgerObject(sequence)
 				if err != nil {
-					if e, ok := err.(*googleapi.Error); ok {
+					if err == os.ErrNotExist {
 						// ledgerObject not found and unbounded
-						if e.Code == 404 && !lb.ledgerRange.bounded {
+						if !lb.ledgerRange.bounded {
 							time.Sleep(lb.config.BufferConfig.RetryWait * time.Second)
 							continue
 						}
+						lb.cancel(err)
+						return
 					}
 					if retryCount == lb.config.BufferConfig.RetryLimit {
-						err = errors.New("maximum retries exceeded for gcs object reads")
+						err = errors.New("maximum retries exceeded for object reads")
 						lb.cancel(err)
+						return
 					}
 					retryCount++
 					time.Sleep(lb.config.BufferConfig.RetryWait * time.Second)
@@ -119,12 +116,20 @@ func (lb *ledgerBufferGCS) worker() {
 	}
 }
 
-func (lb *ledgerBufferGCS) getLedgerGCSObject(sequence uint32) ([]byte, error) {
+func (lb *ledgerBuffer) getLedgerObject(sequence uint32) ([]byte, error) {
 	objectKey := lb.config.LedgerBatchConfig.GetObjectKeyFromSequenceNumber(sequence)
+
+	ok, err := lb.dataStore.Exists(context.Background(), objectKey)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, os.ErrNotExist
+	}
 
 	reader, err := lb.dataStore.GetFile(context.Background(), objectKey)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed getting file: %s", objectKey)
+		return nil, err
 	}
 
 	defer reader.Close()
@@ -137,7 +142,7 @@ func (lb *ledgerBufferGCS) getLedgerGCSObject(sequence uint32) ([]byte, error) {
 	return objectBytes, nil
 }
 
-func (lb *ledgerBufferGCS) storeObject(ledgerObject []byte, sequence uint32) {
+func (lb *ledgerBuffer) storeObject(ledgerObject []byte, sequence uint32) {
 	lb.priorityQueueLock.Lock()
 	defer lb.priorityQueueLock.Unlock()
 
@@ -154,7 +159,7 @@ func (lb *ledgerBufferGCS) storeObject(ledgerObject []byte, sequence uint32) {
 	}
 }
 
-func (lb *ledgerBufferGCS) getFromLedgerQueue() ([]byte, error) {
+func (lb *ledgerBuffer) getFromLedgerQueue() ([]byte, error) {
 	for {
 		select {
 		case <-lb.context.Done():
