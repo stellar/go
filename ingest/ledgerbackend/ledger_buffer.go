@@ -3,6 +3,7 @@ package ledgerbackend
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"os"
 	"sync"
@@ -71,10 +72,10 @@ func (csb *CloudStorageBackend) newLedgerBuffer(ledgerRange Range) (*ledgerBuffe
 
 	// Start the ledgerBuffer
 	for i := 0; i <= int(csb.config.BufferSize); i++ {
-		if csb.ledgerBuffer.nextTaskLedger > ledgerRange.to && ledgerRange.bounded {
+		if ledgerBuffer.nextTaskLedger > ledgerRange.to && ledgerRange.bounded {
 			break
 		}
-		csb.ledgerBuffer.pushTaskQueue()
+		ledgerBuffer.pushTaskQueue()
 	}
 
 	return ledgerBuffer, nil
@@ -103,7 +104,9 @@ func (lb *ledgerBuffer) worker() {
 			for retryCount <= lb.config.RetryLimit {
 				ledgerObject, err := lb.getLedgerObject(sequence)
 				if err != nil {
-					if err == os.ErrNotExist {
+					fmt.Print("here1\n")
+					if errors.Is(err, os.ErrNotExist) {
+						fmt.Print("here2\n")
 						// ledgerObject not found and unbounded
 						if !lb.ledgerRange.bounded {
 							time.Sleep(lb.config.RetryWait * time.Second)
@@ -131,14 +134,6 @@ func (lb *ledgerBuffer) worker() {
 
 func (lb *ledgerBuffer) getLedgerObject(sequence uint32) ([]byte, error) {
 	objectKey := lb.config.LedgerBatchConfig.GetObjectKeyFromSequenceNumber(sequence)
-
-	ok, err := lb.dataStore.Exists(context.Background(), objectKey)
-	if err != nil {
-		return nil, err
-	}
-	if !ok {
-		return nil, os.ErrNotExist
-	}
 
 	reader, err := lb.dataStore.GetFile(context.Background(), objectKey)
 	if err != nil {

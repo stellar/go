@@ -66,6 +66,9 @@ func (b GCSDataStore) GetFile(ctx context.Context, filePath string) (io.ReadClos
 	filePath = path.Join(b.prefix, filePath)
 	r, err := b.bucket.Object(filePath).NewReader(ctx)
 	if err != nil {
+		if err == storage.ErrObjectNotExist {
+			return nil, os.ErrNotExist
+		}
 		if gcsError, ok := err.(*googleapi.Error); ok {
 			log.Errorf("GCS error: %s %s", gcsError.Message, gcsError.Body)
 		}
