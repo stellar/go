@@ -72,9 +72,6 @@ func (csb *CloudStorageBackend) newLedgerBuffer(ledgerRange Range) (*ledgerBuffe
 
 	// Start the ledgerBuffer
 	for i := 0; i <= int(csb.config.BufferSize); i++ {
-		if ledgerBuffer.nextTaskLedger > ledgerRange.to && ledgerRange.bounded {
-			break
-		}
 		ledgerBuffer.pushTaskQueue()
 	}
 
