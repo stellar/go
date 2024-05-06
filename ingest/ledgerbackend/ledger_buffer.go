@@ -186,7 +186,7 @@ func (lb *ledgerBuffer) getFromLedgerQueue(ctx context.Context) ([]byte, error) 
 			// we create an extra task when consuming one item from the ledger queue.
 			// Thus len(ledgerQueue) decreases by 1 and the number of tasks increases by 1.
 			// The overall sum below remains the same:
-			// len(taskQueue) + len(ledgerQueue) + ledgerPriorityQueue.Len() == bsb.config.BufferSize
+			// len(taskQueue) + len(ledgerQueue) + ledgerPriorityQueue.Len() <= bsb.config.BufferSize
 			lb.pushTaskQueue()
 
 			reader := bytes.NewReader(compressedBinary)
