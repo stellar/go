@@ -1,3 +1,6 @@
+// BufferedStorageBackend is a ledger backend that provides buffered access over a given DataStore.
+// The DataStore must contain files generated from a LedgerExporter.
+
 package ledgerbackend
 
 import (
