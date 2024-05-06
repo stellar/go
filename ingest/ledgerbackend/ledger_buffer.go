@@ -12,7 +12,6 @@ import (
 	"github.com/stellar/go/support/collections/heap"
 	"github.com/stellar/go/support/compressxdr"
 	"github.com/stellar/go/support/datastore"
-	"github.com/stellar/go/support/log"
 )
 
 type ledgerBatchObject struct {
@@ -21,12 +20,14 @@ type ledgerBatchObject struct {
 }
 
 type ledgerBuffer struct {
-	// passed through from BufferedStorageBackend to control lifetime of ledgerBuffer instance
+	// Passed through from BufferedStorageBackend to control lifetime of ledgerBuffer instance
 	config    BufferedStorageBackendConfig
 	dataStore datastore.DataStore
-	context   context.Context
-	cancel    context.CancelCauseFunc
 	decoder   compressxdr.XDRDecoder
+
+	// context used to cancel workers within the ledgerBuffer
+	context context.Context
+	cancel  context.CancelCauseFunc
 
 	// The pipes and data structures below help establish the ledgerBuffer invariant which is
 	// the number of tasks (both pending and in-flight) + len(ledgerQueue) + ledgerPriorityQueue.Len()
@@ -36,10 +37,7 @@ type ledgerBuffer struct {
 	ledgerPriorityQueue *heap.Heap[ledgerBatchObject] // Priority is set to the sequence number
 	priorityQueueLock   sync.Mutex
 
-	// done is used to signal the closure of the ledgerBuffer and workers
-	done chan struct{}
-
-	// keep track of the ledgers to be processed and the next ordering
+	// Keep track of the ledgers to be processed and the next ordering
 	// the ledgers should be buffered
 	currentLedger     uint32 // The current ledger that should be popped from ledgerPriorityQueue
 	nextTaskLedger    uint32 // The next task ledger that should be added to taskQueue
@@ -48,12 +46,12 @@ type ledgerBuffer struct {
 }
 
 func (bsb *BufferedStorageBackend) newLedgerBuffer(ledgerRange Range) (*ledgerBuffer, error) {
+	ctx, cancel := context.WithCancelCause(context.Background())
+
 	less := func(a, b ledgerBatchObject) bool {
 		return a.startLedger < b.startLedger
 	}
 	pq := heap.New(less, int(bsb.config.BufferSize))
-
-	done := make(chan struct{})
 
 	ledgerBuffer := &ledgerBuffer{
 		config:              bsb.config,
@@ -61,18 +59,17 @@ func (bsb *BufferedStorageBackend) newLedgerBuffer(ledgerRange Range) (*ledgerBu
 		taskQueue:           make(chan uint32, bsb.config.BufferSize),
 		ledgerQueue:         make(chan []byte, bsb.config.BufferSize),
 		ledgerPriorityQueue: pq,
-		done:                done,
 		currentLedger:       ledgerRange.from,
 		nextTaskLedger:      ledgerRange.from,
 		ledgerRange:         ledgerRange,
-		context:             bsb.context,
-		cancel:              bsb.cancel,
+		context:             ctx,
+		cancel:              cancel,
 		decoder:             bsb.decoder,
 	}
 
 	// Start workers to read LCM files
 	for i := uint32(0); i < bsb.config.NumWorkers; i++ {
-		go ledgerBuffer.worker()
+		go ledgerBuffer.worker(ctx)
 	}
 
 	// Upon initialization, the ledgerBuffer invariant is maintained because
@@ -98,18 +95,14 @@ func (lb *ledgerBuffer) pushTaskQueue() {
 	lb.nextTaskLedger += lb.config.LedgerBatchConfig.LedgersPerFile
 }
 
-func (lb *ledgerBuffer) worker() {
+func (lb *ledgerBuffer) worker(ctx context.Context) {
 	for {
 		select {
-		case <-lb.done:
-			log.Error("abort: getFromLedgerQueue blocked")
-			return
-		case <-lb.context.Done():
-			log.Error(lb.context.Err())
+		case <-ctx.Done():
 			return
 		case sequence := <-lb.taskQueue:
 			for retryCount := uint32(0); retryCount <= lb.config.RetryLimit; {
-				ledgerObject, err := lb.downloadLedgerObject(sequence)
+				ledgerObject, err := lb.downloadLedgerObject(lb.context, sequence)
 				if err != nil {
 					if errors.Is(err, os.ErrNotExist) {
 						// ledgerObject not found and unbounded
@@ -141,10 +134,10 @@ func (lb *ledgerBuffer) worker() {
 	}
 }
 
-func (lb *ledgerBuffer) downloadLedgerObject(sequence uint32) ([]byte, error) {
+func (lb *ledgerBuffer) downloadLedgerObject(ctx context.Context, sequence uint32) ([]byte, error) {
 	objectKey := lb.config.LedgerBatchConfig.GetObjectKeyFromSequenceNumber(sequence)
 
-	reader, err := lb.dataStore.GetFile(context.Background(), objectKey)
+	reader, err := lb.dataStore.GetFile(ctx, objectKey)
 	if err != nil {
 		return nil, err
 	}
@@ -181,13 +174,13 @@ func (lb *ledgerBuffer) storeObject(ledgerObject []byte, sequence uint32) {
 	}
 }
 
-func (lb *ledgerBuffer) getFromLedgerQueue() ([]byte, error) {
+func (lb *ledgerBuffer) getFromLedgerQueue(ctx context.Context) ([]byte, error) {
 	for {
 		select {
 		case <-lb.context.Done():
-			log.Info("Stopping getFromLedgerQueue due to context cancellation")
-			close(lb.done)
 			return nil, lb.context.Err()
+		case <-ctx.Done():
+			return nil, ctx.Err()
 		case compressedBinary := <-lb.ledgerQueue:
 			// The ledger buffer invariant is maintained here because
 			// we create an extra task when consuming one item from the ledger queue.
@@ -217,4 +210,8 @@ func (lb *ledgerBuffer) getLatestLedgerSequence() (uint32, error) {
 
 	// Subtract 1 to get the latest ledger in buffer
 	return lb.currentLedger - 1, nil
+}
+
+func (lb *ledgerBuffer) close() {
+	lb.cancel(context.Canceled)
 }

@@ -29,22 +29,18 @@ type BufferedStorageBackendConfig struct {
 	RetryWait         time.Duration
 }
 
-// BufferedStorageBackend is a ledger backend that reads from a cloud storage service.
-// The cloud storage service contains files generated from the ledgerExporter.
+// BufferedStorageBackend is a ledger backend that reads from a storage service.
+// The storage service contains files generated from the ledgerExporter.
 type BufferedStorageBackend struct {
 	config BufferedStorageBackendConfig
 
-	context context.Context
-	// cancel is the CancelCauseFunc for context which controls the lifetime of a BufferedStorageBackend instance.
-	// Once it is invoked BufferedStorageBackend will not be able to stream ledgers from BufferedStorageBackend.
-	cancel        context.CancelCauseFunc
 	bsBackendLock sync.RWMutex
 
 	// ledgerBuffer is the buffer for LedgerCloseMeta data read in parallel.
 	ledgerBuffer *ledgerBuffer
 
 	dataStore         datastore.DataStore
-	prepared          *Range // non-nil if any range is prepared
+	prepared          *Range // Non-nil if any range is prepared
 	closed            bool   // False until the core is closed
 	ledgerMetaArchive *datastore.LedgerMetaArchive
 	decoder           compressxdr.XDRDecoder
@@ -78,8 +74,6 @@ func NewBufferedStorageBackend(ctx context.Context, config BufferedStorageBacken
 		return nil, errors.New("no compression type provided in config")
 	}
 
-	ctx, cancel := context.WithCancelCause(ctx)
-
 	ledgerMetaArchive := datastore.NewLedgerMetaArchive("", 0, 0)
 	decoder, err := compressxdr.NewXDRDecoder(config.CompressionType, nil)
 	if err != nil {
@@ -88,8 +82,6 @@ func NewBufferedStorageBackend(ctx context.Context, config BufferedStorageBacken
 
 	bsBackend := &BufferedStorageBackend{
 		config:            config,
-		context:           ctx,
-		cancel:            cancel,
 		dataStore:         config.DataStore,
 		ledgerMetaArchive: ledgerMetaArchive,
 		decoder:           decoder,
@@ -98,7 +90,7 @@ func NewBufferedStorageBackend(ctx context.Context, config BufferedStorageBacken
 	return bsBackend, nil
 }
 
-// GetLatestLedgerSequence returns the most recent ledger sequence number in the cloud storage bucket.
+// GetLatestLedgerSequence returns the most recent ledger sequence number available in the buffer.
 func (bsb *BufferedStorageBackend) GetLatestLedgerSequence(ctx context.Context) (uint32, error) {
 	bsb.bsBackendLock.RLock()
 	defer bsb.bsBackendLock.RUnlock()
@@ -121,7 +113,7 @@ func (bsb *BufferedStorageBackend) GetLatestLedgerSequence(ctx context.Context) 
 
 // getBatchForSequence checks if the requested sequence is in the cached batch.
 // Otherwise will continuously load in the next LedgerCloseMetaBatch until found.
-func (bsb *BufferedStorageBackend) getBatchForSequence(sequence uint32) error {
+func (bsb *BufferedStorageBackend) getBatchForSequence(ctx context.Context, sequence uint32) error {
 	for {
 		// Sequence inside the current cached LedgerCloseMetaBatch
 		if sequence >= bsb.ledgerMetaArchive.GetStartLedgerSequence() && sequence <= bsb.ledgerMetaArchive.GetEndLedgerSequence() {
@@ -135,7 +127,7 @@ func (bsb *BufferedStorageBackend) getBatchForSequence(sequence uint32) error {
 		}
 
 		// Sequence is beyond the current LedgerCloseMetaBatch
-		lcmBatchBinary, err := bsb.ledgerBuffer.getFromLedgerQueue()
+		lcmBatchBinary, err := bsb.ledgerBuffer.getFromLedgerQueue(ctx)
 		if err != nil {
 			return errors.Wrap(err, "failed getting next ledger batch from queue")
 		}
@@ -187,7 +179,7 @@ func (bsb *BufferedStorageBackend) GetLedger(ctx context.Context, sequence uint3
 		return xdr.LedgerCloseMeta{}, fmt.Errorf("requested sequence is not the lastLedger (%d) nor the next available ledger (%d)", bsb.lastLedger, bsb.nextLedger)
 	}
 
-	err := bsb.getBatchForSequence(sequence)
+	err := bsb.getBatchForSequence(ctx, sequence)
 	if err != nil {
 		return xdr.LedgerCloseMeta{}, err
 	}
@@ -274,10 +266,11 @@ func (bsb *BufferedStorageBackend) Close() error {
 	bsb.bsBackendLock.RLock()
 	defer bsb.bsBackendLock.RUnlock()
 
-	bsb.closed = true
+	if bsb.ledgerBuffer != nil {
+		bsb.ledgerBuffer.close()
+	}
 
-	// after the BufferedStorageBackend context is Done all subsequent calls to PrepareRange() will fail
-	bsb.context.Done()
+	bsb.closed = true
 
 	return nil
 }
