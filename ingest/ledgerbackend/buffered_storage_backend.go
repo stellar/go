@@ -12,10 +12,10 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-// Ensure CloudStorageBackend implements LedgerBackend
-var _ LedgerBackend = (*CloudStorageBackend)(nil)
+// Ensure BufferedStorageBackend implements LedgerBackend
+var _ LedgerBackend = (*BufferedStorageBackend)(nil)
 
-type CloudStorageBackendConfig struct {
+type BufferedStorageBackendConfig struct {
 	LedgerBatchConfig datastore.LedgerBatchConfig
 	CompressionType   string
 	DataStore         datastore.DataStore
@@ -26,16 +26,16 @@ type CloudStorageBackendConfig struct {
 	RetryWait         time.Duration
 }
 
-// CloudStorageBackend is a ledger backend that reads from a cloud storage service.
+// BufferedStorageBackend is a ledger backend that reads from a cloud storage service.
 // The cloud storage service contains files generated from the ledgerExporter.
-type CloudStorageBackend struct {
-	config CloudStorageBackendConfig
+type BufferedStorageBackend struct {
+	config BufferedStorageBackendConfig
 
 	context context.Context
-	// cancel is the CancelCauseFunc for context which controls the lifetime of a CloudStorageBackend instance.
-	// Once it is invoked CloudStorageBackend will not be able to stream ledgers from CloudStorageBackend.
+	// cancel is the CancelCauseFunc for context which controls the lifetime of a BufferedStorageBackend instance.
+	// Once it is invoked BufferedStorageBackend will not be able to stream ledgers from BufferedStorageBackend.
 	cancel        context.CancelCauseFunc
-	csBackendLock sync.RWMutex
+	bsBackendLock sync.RWMutex
 
 	// ledgerBuffer is the buffer for LedgerCloseMeta data read in parallel.
 	ledgerBuffer *ledgerBuffer
@@ -49,8 +49,8 @@ type CloudStorageBackend struct {
 	lastLedger        uint32
 }
 
-// Return a new CloudStorageBackend instance.
-func NewCloudStorageBackend(ctx context.Context, config CloudStorageBackendConfig) (*CloudStorageBackend, error) {
+// Return a new BufferedStorageBackend instance.
+func NewBufferedStorageBackend(ctx context.Context, config BufferedStorageBackendConfig) (*BufferedStorageBackend, error) {
 	if config.BufferSize == 0 {
 		return nil, errors.New("buffer size must be > 0")
 	}
@@ -87,7 +87,7 @@ func NewCloudStorageBackend(ctx context.Context, config CloudStorageBackendConfi
 		return nil, err
 	}
 
-	csBackend := &CloudStorageBackend{
+	bsBackend := &BufferedStorageBackend{
 		config:            config,
 		context:           ctx,
 		cancel:            cancel,
@@ -96,23 +96,23 @@ func NewCloudStorageBackend(ctx context.Context, config CloudStorageBackendConfi
 		decoder:           decoder,
 	}
 
-	return csBackend, nil
+	return bsBackend, nil
 }
 
 // GetLatestLedgerSequence returns the most recent ledger sequence number in the cloud storage bucket.
-func (csb *CloudStorageBackend) GetLatestLedgerSequence(ctx context.Context) (uint32, error) {
-	csb.csBackendLock.RLock()
-	defer csb.csBackendLock.RUnlock()
+func (bsb *BufferedStorageBackend) GetLatestLedgerSequence(ctx context.Context) (uint32, error) {
+	bsb.bsBackendLock.RLock()
+	defer bsb.bsBackendLock.RUnlock()
 
-	if csb.closed {
-		return 0, errors.New("CloudStorageBackend is closed; cannot GetLatestLedgerSequence")
+	if bsb.closed {
+		return 0, errors.New("BufferedStorageBackend is closed; cannot GetLatestLedgerSequence")
 	}
 
-	if csb.prepared == nil {
-		return 0, errors.New("CloudStorageBackend must be prepared, call PrepareRange first")
+	if bsb.prepared == nil {
+		return 0, errors.New("BufferedStorageBackend must be prepared, call PrepareRange first")
 	}
 
-	latestSeq, err := csb.ledgerBuffer.getLatestLedgerSequence()
+	latestSeq, err := bsb.ledgerBuffer.getLatestLedgerSequence()
 	if err != nil {
 		return 0, err
 	}
@@ -122,27 +122,27 @@ func (csb *CloudStorageBackend) GetLatestLedgerSequence(ctx context.Context) (ui
 
 // getBatchForSequence checks if the requested sequence is in the cached batch.
 // Otherwise will continuously load in the next LedgerCloseMetaBatch until found.
-func (csb *CloudStorageBackend) getBatchForSequence(sequence uint32) error {
+func (bsb *BufferedStorageBackend) getBatchForSequence(sequence uint32) error {
 	for {
 		// Sequence inside the current cached LedgerCloseMetaBatch
-		if sequence >= csb.ledgerMetaArchive.GetStartLedgerSequence() && sequence <= csb.ledgerMetaArchive.GetEndLedgerSequence() {
+		if sequence >= bsb.ledgerMetaArchive.GetStartLedgerSequence() && sequence <= bsb.ledgerMetaArchive.GetEndLedgerSequence() {
 			return nil
 		}
 
 		// Sequence is before the current LedgerCloseMetaBatch
 		// Does not support retrieving LedgerCloseMeta before the current cached batch
-		if sequence < csb.ledgerMetaArchive.GetStartLedgerSequence() {
+		if sequence < bsb.ledgerMetaArchive.GetStartLedgerSequence() {
 			return errors.New("requested sequence preceeds current LedgerCloseMetaBatch")
 		}
 
 		// Sequence is beyond the current LedgerCloseMetaBatch
-		lcmBatchBinary, err := csb.ledgerBuffer.getFromLedgerQueue()
+		lcmBatchBinary, err := bsb.ledgerBuffer.getFromLedgerQueue()
 		if err != nil {
 			return errors.Wrap(err, "failed getting next ledger batch from queue")
 		}
 
 		// Turn binary into xdr
-		err = csb.ledgerMetaArchive.Data.UnmarshalBinary(lcmBatchBinary)
+		err = bsb.ledgerMetaArchive.Data.UnmarshalBinary(lcmBatchBinary)
 		if err != nil {
 			return errors.Wrap(err, "failed unmarshalling lcmBatchBinary")
 		}
@@ -154,148 +154,148 @@ func (csb *CloudStorageBackend) getBatchForSequence(sequence uint32) error {
 // This is done because `nextLedger` is 0 between the moment Stellar-Core is
 // started and streaming the first ledger (in such case we return first ledger
 // in requested range).
-func (csb *CloudStorageBackend) nextExpectedSequence() uint32 {
-	if csb.nextLedger == 0 && csb.prepared != nil {
-		return csb.prepared.from
+func (bsb *BufferedStorageBackend) nextExpectedSequence() uint32 {
+	if bsb.nextLedger == 0 && bsb.prepared != nil {
+		return bsb.prepared.from
 	}
-	return csb.nextLedger
+	return bsb.nextLedger
 }
 
 // GetLedger returns the LedgerCloseMeta for the specified ledger sequence number
-func (csb *CloudStorageBackend) GetLedger(ctx context.Context, sequence uint32) (xdr.LedgerCloseMeta, error) {
-	csb.csBackendLock.RLock()
-	defer csb.csBackendLock.RUnlock()
+func (bsb *BufferedStorageBackend) GetLedger(ctx context.Context, sequence uint32) (xdr.LedgerCloseMeta, error) {
+	bsb.bsBackendLock.RLock()
+	defer bsb.bsBackendLock.RUnlock()
 
-	if csb.closed {
-		return xdr.LedgerCloseMeta{}, errors.New("CloudStorageBackend is closed; cannot GetLedger")
+	if bsb.closed {
+		return xdr.LedgerCloseMeta{}, errors.New("BufferedStorageBackend is closed; cannot GetLedger")
 	}
 
-	if csb.prepared == nil {
+	if bsb.prepared == nil {
 		return xdr.LedgerCloseMeta{}, errors.New("session is not prepared, call PrepareRange first")
 	}
 
-	if sequence < csb.ledgerBuffer.ledgerRange.from {
+	if sequence < bsb.ledgerBuffer.ledgerRange.from {
 		return xdr.LedgerCloseMeta{}, errors.New("requested sequence preceeds current LedgerRange")
 	}
 
-	if csb.ledgerBuffer.ledgerRange.bounded {
-		if sequence > csb.ledgerBuffer.ledgerRange.to {
+	if bsb.ledgerBuffer.ledgerRange.bounded {
+		if sequence > bsb.ledgerBuffer.ledgerRange.to {
 			return xdr.LedgerCloseMeta{}, errors.New("requested sequence beyond current LedgerRange")
 		}
 	}
 
-	if sequence > csb.nextExpectedSequence() {
+	if sequence > bsb.nextExpectedSequence() {
 		return xdr.LedgerCloseMeta{}, errors.New("requested sequence is not the lastLedger nor the next available ledger")
 	}
 
-	err := csb.getBatchForSequence(sequence)
+	err := bsb.getBatchForSequence(sequence)
 	if err != nil {
 		return xdr.LedgerCloseMeta{}, err
 	}
 
-	ledgerCloseMeta, err := csb.ledgerMetaArchive.GetLedger(sequence)
+	ledgerCloseMeta, err := bsb.ledgerMetaArchive.GetLedger(sequence)
 	if err != nil {
 		return xdr.LedgerCloseMeta{}, err
 	}
-	csb.lastLedger = csb.nextLedger
-	csb.nextLedger++
+	bsb.lastLedger = bsb.nextLedger
+	bsb.nextLedger++
 
 	return ledgerCloseMeta, nil
 }
 
 // PrepareRange checks if the starting and ending (if bounded) ledgers exist.
-func (csb *CloudStorageBackend) PrepareRange(ctx context.Context, ledgerRange Range) error {
-	csb.csBackendLock.Lock()
-	defer csb.csBackendLock.Unlock()
+func (bsb *BufferedStorageBackend) PrepareRange(ctx context.Context, ledgerRange Range) error {
+	bsb.bsBackendLock.Lock()
+	defer bsb.bsBackendLock.Unlock()
 
-	if csb.closed {
-		return errors.New("CloudStorageBackend is closed; cannot PrepareRange")
+	if bsb.closed {
+		return errors.New("BufferedStorageBackend is closed; cannot PrepareRange")
 	}
 
-	if alreadyPrepared, err := csb.startPreparingRange(ledgerRange); err != nil {
+	if alreadyPrepared, err := bsb.startPreparingRange(ledgerRange); err != nil {
 		return errors.Wrap(err, "error starting prepare range")
 	} else if alreadyPrepared {
 		return nil
 	}
 
-	csb.prepared = &ledgerRange
+	bsb.prepared = &ledgerRange
 
 	return nil
 }
 
 // IsPrepared returns true if a given ledgerRange is prepared.
-func (csb *CloudStorageBackend) IsPrepared(ctx context.Context, ledgerRange Range) (bool, error) {
-	csb.csBackendLock.RLock()
-	defer csb.csBackendLock.RUnlock()
+func (bsb *BufferedStorageBackend) IsPrepared(ctx context.Context, ledgerRange Range) (bool, error) {
+	bsb.bsBackendLock.RLock()
+	defer bsb.bsBackendLock.RUnlock()
 
-	if csb.closed {
-		return false, errors.New("CloudStorageBackend is closed; cannot IsPrepared")
+	if bsb.closed {
+		return false, errors.New("BufferedStorageBackend is closed; cannot IsPrepared")
 	}
 
-	return csb.isPrepared(ledgerRange), nil
+	return bsb.isPrepared(ledgerRange), nil
 }
 
-func (csb *CloudStorageBackend) isPrepared(ledgerRange Range) bool {
-	if csb.closed {
+func (bsb *BufferedStorageBackend) isPrepared(ledgerRange Range) bool {
+	if bsb.closed {
 		return false
 	}
 
-	if csb.prepared == nil {
+	if bsb.prepared == nil {
 		return false
 	}
 
-	if csb.ledgerBuffer.ledgerRange.from > ledgerRange.from {
+	if bsb.ledgerBuffer.ledgerRange.from > ledgerRange.from {
 		return false
 	}
 
-	if csb.ledgerBuffer.ledgerRange.bounded && !ledgerRange.bounded {
+	if bsb.ledgerBuffer.ledgerRange.bounded && !ledgerRange.bounded {
 		return false
 	}
 
-	if !csb.ledgerBuffer.ledgerRange.bounded && !ledgerRange.bounded {
+	if !bsb.ledgerBuffer.ledgerRange.bounded && !ledgerRange.bounded {
 		return true
 	}
 
-	if !csb.ledgerBuffer.ledgerRange.bounded && ledgerRange.bounded {
+	if !bsb.ledgerBuffer.ledgerRange.bounded && ledgerRange.bounded {
 		return true
 	}
 
-	if csb.ledgerBuffer.ledgerRange.to >= ledgerRange.to {
+	if bsb.ledgerBuffer.ledgerRange.to >= ledgerRange.to {
 		return true
 	}
 
 	return false
 }
 
-// Close closes existing CloudStorageBackend processes.
-// Note, once a CloudStorageBackend instance is closed it can no longer be used and
+// Close closes existing BufferedStorageBackend processes.
+// Note, once a BufferedStorageBackend instance is closed it can no longer be used and
 // all subsequent calls to PrepareRange(), GetLedger(), etc will fail.
 // Close is thread-safe and can be called from another go routine.
-func (csb *CloudStorageBackend) Close() error {
-	csb.csBackendLock.RLock()
-	defer csb.csBackendLock.RUnlock()
+func (bsb *BufferedStorageBackend) Close() error {
+	bsb.bsBackendLock.RLock()
+	defer bsb.bsBackendLock.RUnlock()
 
-	csb.closed = true
+	bsb.closed = true
 
-	// after the CloudStorageBackend context is Done all subsequent calls to PrepareRange() will fail
-	csb.context.Done()
+	// after the BufferedStorageBackend context is Done all subsequent calls to PrepareRange() will fail
+	bsb.context.Done()
 
 	return nil
 }
 
 // startPreparingRange prepares the ledger range by setting the range in the ledgerBuffer
-func (csb *CloudStorageBackend) startPreparingRange(ledgerRange Range) (bool, error) {
-	if csb.isPrepared(ledgerRange) {
+func (bsb *BufferedStorageBackend) startPreparingRange(ledgerRange Range) (bool, error) {
+	if bsb.isPrepared(ledgerRange) {
 		return true, nil
 	}
 
 	var err error
-	csb.ledgerBuffer, err = csb.newLedgerBuffer(ledgerRange)
+	bsb.ledgerBuffer, err = bsb.newLedgerBuffer(ledgerRange)
 	if err != nil {
 		return false, err
 	}
 
-	csb.nextLedger = ledgerRange.from
+	bsb.nextLedger = ledgerRange.from
 
 	return false, nil
 }

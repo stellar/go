@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func createCloudStorageBackendConfigForTesting() CloudStorageBackendConfig {
+func createBufferedStorageBackendConfigForTesting() BufferedStorageBackendConfig {
 	param := make(map[string]string)
 	param["destination_bucket_path"] = "testURL"
 
@@ -27,7 +27,7 @@ func createCloudStorageBackendConfigForTesting() CloudStorageBackendConfig {
 
 	resumableManager := new(datastore.MockResumableManager)
 
-	return CloudStorageBackendConfig{
+	return BufferedStorageBackendConfig{
 		LedgerBatchConfig: ledgerBatchConfig,
 		CompressionType:   compressxdr.GZIP,
 		DataStore:         dataStore,
@@ -39,13 +39,13 @@ func createCloudStorageBackendConfigForTesting() CloudStorageBackendConfig {
 	}
 }
 
-func createCloudStorageBackendForTesting() CloudStorageBackend {
-	config := createCloudStorageBackendConfigForTesting()
+func createBufferedStorageBackendForTesting() BufferedStorageBackend {
+	config := createBufferedStorageBackendConfigForTesting()
 	ctx := context.Background()
 	ledgerMetaArchive := datastore.NewLedgerMetaArchive("", 0, 0)
 	decoder, _ := compressxdr.NewXDRDecoder(config.CompressionType, nil)
 
-	return CloudStorageBackend{
+	return BufferedStorageBackend{
 		config:            config,
 		context:           ctx,
 		dataStore:         config.DataStore,
@@ -54,28 +54,28 @@ func createCloudStorageBackendForTesting() CloudStorageBackend {
 	}
 }
 
-func TestNewCloudStorageBackend(t *testing.T) {
+func TestNewBufferedStorageBackend(t *testing.T) {
 	ctx := context.Background()
-	config := createCloudStorageBackendConfigForTesting()
+	config := createBufferedStorageBackendConfigForTesting()
 
-	csb, err := NewCloudStorageBackend(ctx, config)
+	bsb, err := NewBufferedStorageBackend(ctx, config)
 	assert.NoError(t, err)
 
-	assert.Equal(t, csb.dataStore, config.DataStore)
-	assert.Equal(t, ".xdr.gz", csb.config.LedgerBatchConfig.FileSuffix)
-	assert.Equal(t, uint32(1), csb.config.LedgerBatchConfig.LedgersPerFile)
-	assert.Equal(t, uint32(64000), csb.config.LedgerBatchConfig.FilesPerPartition)
-	assert.Equal(t, uint32(100), csb.config.BufferSize)
-	assert.Equal(t, uint32(5), csb.config.NumWorkers)
-	assert.Equal(t, uint32(3), csb.config.RetryLimit)
-	assert.Equal(t, time.Duration(1), csb.config.RetryWait)
+	assert.Equal(t, bsb.dataStore, config.DataStore)
+	assert.Equal(t, ".xdr.gz", bsb.config.LedgerBatchConfig.FileSuffix)
+	assert.Equal(t, uint32(1), bsb.config.LedgerBatchConfig.LedgersPerFile)
+	assert.Equal(t, uint32(64000), bsb.config.LedgerBatchConfig.FilesPerPartition)
+	assert.Equal(t, uint32(100), bsb.config.BufferSize)
+	assert.Equal(t, uint32(5), bsb.config.NumWorkers)
+	assert.Equal(t, uint32(3), bsb.config.RetryLimit)
+	assert.Equal(t, time.Duration(1), bsb.config.RetryWait)
 }
 
 func TestGCSNewLedgerBuffer(t *testing.T) {
-	csb := createCloudStorageBackendForTesting()
+	bsb := createBufferedStorageBackendForTesting()
 	ledgerRange := BoundedRange(2, 3)
 
-	ledgerBuffer, err := csb.newLedgerBuffer(ledgerRange)
+	ledgerBuffer, err := bsb.newLedgerBuffer(ledgerRange)
 	assert.NoError(t, err)
 
 	assert.Equal(t, uint32(2), ledgerBuffer.currentLedger)
@@ -86,7 +86,7 @@ func TestGCSNewLedgerBuffer(t *testing.T) {
 func TestCloudStorageGetLatestLedgerSequence(t *testing.T) {
 	startLedger := uint32(3)
 	endLedger := uint32(5)
-	csb := createCloudStorageBackendForTesting()
+	bsb := createBufferedStorageBackendForTesting()
 	ctx := context.Background()
 	ledgerRange := BoundedRange(startLedger, endLedger)
 
@@ -95,13 +95,13 @@ func TestCloudStorageGetLatestLedgerSequence(t *testing.T) {
 	readCloser3 := createLCMBatchReader(uint32(5), uint32(5), 1)
 
 	mockDataStore := new(datastore.MockDataStore)
-	csb.dataStore = mockDataStore
+	bsb.dataStore = mockDataStore
 	mockDataStore.On("GetFile", ctx, "0-63999/3.xdr.gz").Return(readCloser1, nil)
 	mockDataStore.On("GetFile", ctx, "0-63999/4.xdr.gz").Return(readCloser2, nil)
 	mockDataStore.On("GetFile", ctx, "0-63999/5.xdr.gz").Return(readCloser3, nil)
 
-	csb.PrepareRange(ctx, ledgerRange)
-	latestSeq, err := csb.GetLatestLedgerSequence(ctx)
+	bsb.PrepareRange(ctx, ledgerRange)
+	latestSeq, err := bsb.GetLatestLedgerSequence(ctx)
 	assert.NoError(t, err)
 
 	assert.Equal(t, uint32(5), latestSeq)
@@ -142,7 +142,7 @@ func TestCloudStorageGetLedger_SingleLedgerPerFile(t *testing.T) {
 	startLedger := uint32(3)
 	endLedger := uint32(5)
 	lcmArray := createLCMForTesting(startLedger, endLedger)
-	csb := createCloudStorageBackendForTesting()
+	bsb := createBufferedStorageBackendForTesting()
 	ctx := context.Background()
 	ledgerRange := BoundedRange(startLedger, endLedger)
 
@@ -151,20 +151,20 @@ func TestCloudStorageGetLedger_SingleLedgerPerFile(t *testing.T) {
 	readCloser3 := createLCMBatchReader(uint32(5), uint32(5), 1)
 
 	mockDataStore := new(datastore.MockDataStore)
-	csb.dataStore = mockDataStore
+	bsb.dataStore = mockDataStore
 	mockDataStore.On("GetFile", ctx, "0-63999/3.xdr.gz").Return(readCloser1, nil)
 	mockDataStore.On("GetFile", ctx, "0-63999/4.xdr.gz").Return(readCloser2, nil)
 	mockDataStore.On("GetFile", ctx, "0-63999/5.xdr.gz").Return(readCloser3, nil)
 
-	csb.PrepareRange(ctx, ledgerRange)
+	bsb.PrepareRange(ctx, ledgerRange)
 
-	lcm, err := csb.GetLedger(ctx, uint32(3))
+	lcm, err := bsb.GetLedger(ctx, uint32(3))
 	assert.NoError(t, err)
 	assert.Equal(t, lcmArray[0], lcm)
-	lcm, err = csb.GetLedger(ctx, uint32(4))
+	lcm, err = bsb.GetLedger(ctx, uint32(4))
 	assert.NoError(t, err)
 	assert.Equal(t, lcmArray[1], lcm)
-	lcm, err = csb.GetLedger(ctx, uint32(5))
+	lcm, err = bsb.GetLedger(ctx, uint32(5))
 	assert.NoError(t, err)
 	assert.Equal(t, lcmArray[2], lcm)
 }
@@ -173,30 +173,30 @@ func TestCloudStorageGetLedger_MultipleLedgerPerFile(t *testing.T) {
 	startLedger := uint32(2)
 	endLedger := uint32(5)
 	lcmArray := createLCMForTesting(startLedger, endLedger)
-	csb := createCloudStorageBackendForTesting()
+	bsb := createBufferedStorageBackendForTesting()
 	ctx := context.Background()
-	csb.config.LedgerBatchConfig.LedgersPerFile = uint32(2)
+	bsb.config.LedgerBatchConfig.LedgersPerFile = uint32(2)
 	ledgerRange := BoundedRange(startLedger, endLedger)
 
 	readCloser1 := createLCMBatchReader(uint32(2), uint32(3), 2)
 	readCloser2 := createLCMBatchReader(uint32(4), uint32(5), 2)
 
 	mockDataStore := new(datastore.MockDataStore)
-	csb.dataStore = mockDataStore
+	bsb.dataStore = mockDataStore
 	mockDataStore.On("GetFile", ctx, "0-127999/2-3.xdr.gz").Return(readCloser1, nil)
 	mockDataStore.On("GetFile", ctx, "0-127999/4-5.xdr.gz").Return(readCloser2, nil)
 
-	csb.PrepareRange(ctx, ledgerRange)
+	bsb.PrepareRange(ctx, ledgerRange)
 
-	lcm, err := csb.GetLedger(ctx, uint32(2))
+	lcm, err := bsb.GetLedger(ctx, uint32(2))
 	assert.NoError(t, err)
 	assert.Equal(t, lcmArray[0], lcm)
 
-	lcm, err = csb.GetLedger(ctx, uint32(3))
+	lcm, err = bsb.GetLedger(ctx, uint32(3))
 	assert.NoError(t, err)
 	assert.Equal(t, lcmArray[1], lcm)
 
-	lcm, err = csb.GetLedger(ctx, uint32(4))
+	lcm, err = bsb.GetLedger(ctx, uint32(4))
 	assert.NoError(t, err)
 	assert.Equal(t, lcmArray[2], lcm)
 }
@@ -205,7 +205,7 @@ func TestGCSGetLedger_ErrorPreceedingLedger(t *testing.T) {
 	startLedger := uint32(3)
 	endLedger := uint32(5)
 	lcmArray := createLCMForTesting(startLedger, endLedger)
-	csb := createCloudStorageBackendForTesting()
+	bsb := createBufferedStorageBackendForTesting()
 	ctx := context.Background()
 	ledgerRange := BoundedRange(startLedger, endLedger)
 
@@ -214,127 +214,127 @@ func TestGCSGetLedger_ErrorPreceedingLedger(t *testing.T) {
 	readCloser3 := createLCMBatchReader(uint32(5), uint32(5), 1)
 
 	mockDataStore := new(datastore.MockDataStore)
-	csb.dataStore = mockDataStore
+	bsb.dataStore = mockDataStore
 	mockDataStore.On("GetFile", ctx, "0-63999/3.xdr.gz").Return(readCloser1, nil)
 	mockDataStore.On("GetFile", ctx, "0-63999/4.xdr.gz").Return(readCloser2, nil)
 	mockDataStore.On("GetFile", ctx, "0-63999/5.xdr.gz").Return(readCloser3, nil)
 
-	csb.PrepareRange(ctx, ledgerRange)
+	bsb.PrepareRange(ctx, ledgerRange)
 
-	lcm, err := csb.GetLedger(ctx, uint32(3))
+	lcm, err := bsb.GetLedger(ctx, uint32(3))
 	assert.NoError(t, err)
 	assert.Equal(t, lcmArray[0], lcm)
 
-	_, err = csb.GetLedger(ctx, uint32(2))
+	_, err = bsb.GetLedger(ctx, uint32(2))
 	assert.Error(t, err, "requested sequence preceeds current LedgerCloseMetaBatch")
 }
 
 func TestGCSGetLedger_NotPrepared(t *testing.T) {
-	csb := createCloudStorageBackendForTesting()
+	bsb := createBufferedStorageBackendForTesting()
 	ctx := context.Background()
 
-	_, err := csb.GetLedger(ctx, uint32(3))
+	_, err := bsb.GetLedger(ctx, uint32(3))
 	assert.Error(t, err, "session is not prepared, call PrepareRange first")
 }
 
 func TestGCSGetLedger_SequenceNotInBatch(t *testing.T) {
-	csb := createCloudStorageBackendForTesting()
+	bsb := createBufferedStorageBackendForTesting()
 	ctx := context.Background()
 	ledgerRange := BoundedRange(3, 5)
 
-	csb.PrepareRange(ctx, ledgerRange)
+	bsb.PrepareRange(ctx, ledgerRange)
 
-	_, err := csb.GetLedger(ctx, uint32(2))
+	_, err := bsb.GetLedger(ctx, uint32(2))
 	assert.Error(t, err, "requested sequence preceeds current LedgerRange")
 
-	_, err = csb.GetLedger(ctx, uint32(6))
+	_, err = bsb.GetLedger(ctx, uint32(6))
 	assert.Error(t, err, "requested sequence beyond current LedgerRange")
 }
 
 func TestGCSPrepareRange(t *testing.T) {
-	csb := createCloudStorageBackendForTesting()
+	bsb := createBufferedStorageBackendForTesting()
 	ctx := context.Background()
 	ledgerRange := BoundedRange(2, 3)
 
-	err := csb.PrepareRange(ctx, ledgerRange)
+	err := bsb.PrepareRange(ctx, ledgerRange)
 	assert.NoError(t, err)
-	assert.NotNil(t, csb.prepared)
+	assert.NotNil(t, bsb.prepared)
 
 	// check alreadyPrepared
-	err = csb.PrepareRange(ctx, ledgerRange)
+	err = bsb.PrepareRange(ctx, ledgerRange)
 	assert.NoError(t, err)
-	assert.NotNil(t, csb.prepared)
+	assert.NotNil(t, bsb.prepared)
 }
 
 func TestGCSIsPrepared_Bounded(t *testing.T) {
-	csb := createCloudStorageBackendForTesting()
+	bsb := createBufferedStorageBackendForTesting()
 	ctx := context.Background()
 	ledgerRange := BoundedRange(3, 4)
-	csb.PrepareRange(ctx, ledgerRange)
+	bsb.PrepareRange(ctx, ledgerRange)
 
-	ok, err := csb.IsPrepared(ctx, ledgerRange)
+	ok, err := bsb.IsPrepared(ctx, ledgerRange)
 	assert.NoError(t, err)
 	assert.True(t, ok)
 
-	ok, err = csb.IsPrepared(ctx, BoundedRange(2, 4))
+	ok, err = bsb.IsPrepared(ctx, BoundedRange(2, 4))
 	assert.NoError(t, err)
 	assert.False(t, ok)
 
-	ok, err = csb.IsPrepared(ctx, UnboundedRange(3))
+	ok, err = bsb.IsPrepared(ctx, UnboundedRange(3))
 	assert.NoError(t, err)
 	assert.False(t, ok)
 
-	ok, err = csb.IsPrepared(ctx, UnboundedRange(2))
+	ok, err = bsb.IsPrepared(ctx, UnboundedRange(2))
 	assert.NoError(t, err)
 	assert.False(t, ok)
 }
 
 func TestGCSIsPrepared_Unbounded(t *testing.T) {
-	csb := createCloudStorageBackendForTesting()
+	bsb := createBufferedStorageBackendForTesting()
 	ctx := context.Background()
 	ledgerRange := UnboundedRange(3)
-	csb.PrepareRange(ctx, ledgerRange)
+	bsb.PrepareRange(ctx, ledgerRange)
 
-	ok, err := csb.IsPrepared(ctx, ledgerRange)
+	ok, err := bsb.IsPrepared(ctx, ledgerRange)
 	assert.NoError(t, err)
 	assert.True(t, ok)
 
-	ok, err = csb.IsPrepared(ctx, BoundedRange(3, 4))
+	ok, err = bsb.IsPrepared(ctx, BoundedRange(3, 4))
 	assert.NoError(t, err)
 	assert.True(t, ok)
 
-	ok, err = csb.IsPrepared(ctx, BoundedRange(2, 4))
+	ok, err = bsb.IsPrepared(ctx, BoundedRange(2, 4))
 	assert.NoError(t, err)
 	assert.False(t, ok)
 
-	ok, err = csb.IsPrepared(ctx, UnboundedRange(4))
+	ok, err = bsb.IsPrepared(ctx, UnboundedRange(4))
 	assert.NoError(t, err)
 	assert.True(t, ok)
 
-	ok, err = csb.IsPrepared(ctx, UnboundedRange(2))
+	ok, err = bsb.IsPrepared(ctx, UnboundedRange(2))
 	assert.NoError(t, err)
 	assert.False(t, ok)
 }
 
 func TestGCSClose(t *testing.T) {
-	csb := createCloudStorageBackendForTesting()
+	bsb := createBufferedStorageBackendForTesting()
 	ctx := context.Background()
 	ledgerRange := BoundedRange(3, 5)
-	csb.PrepareRange(ctx, ledgerRange)
+	bsb.PrepareRange(ctx, ledgerRange)
 
-	err := csb.Close()
+	err := bsb.Close()
 	assert.NoError(t, err)
-	assert.Equal(t, true, csb.closed)
+	assert.Equal(t, true, bsb.closed)
 
-	_, err = csb.GetLatestLedgerSequence(ctx)
-	assert.Error(t, err, "gcsBackend is closed; cannot GetLatestLedgerSequence")
+	_, err = bsb.GetLatestLedgerSequence(ctx)
+	assert.Error(t, err, "gbsbackend is closed; cannot GetLatestLedgerSequence")
 
-	_, err = csb.GetLedger(ctx, 3)
-	assert.Error(t, err, "gcsBackend is closed; cannot GetLedger")
+	_, err = bsb.GetLedger(ctx, 3)
+	assert.Error(t, err, "gbsbackend is closed; cannot GetLedger")
 
-	err = csb.PrepareRange(ctx, ledgerRange)
-	assert.Error(t, err, "gcsBackend is closed; cannot PrepareRange")
+	err = bsb.PrepareRange(ctx, ledgerRange)
+	assert.Error(t, err, "gbsbackend is closed; cannot PrepareRange")
 
-	_, err = csb.IsPrepared(ctx, ledgerRange)
-	assert.Error(t, err, "gcsBackend is closed; cannot IsPrepared")
+	_, err = bsb.IsPrepared(ctx, ledgerRange)
+	assert.Error(t, err, "gbsbackend is closed; cannot IsPrepared")
 }

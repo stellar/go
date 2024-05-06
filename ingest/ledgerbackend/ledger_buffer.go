@@ -21,8 +21,8 @@ type ledgerBatchObject struct {
 }
 
 type ledgerBuffer struct {
-	// passed through from CloudStorageBackend to control lifetime of ledgerBuffer instance
-	config    CloudStorageBackendConfig
+	// passed through from BufferedStorageBackend to control lifetime of ledgerBuffer instance
+	config    BufferedStorageBackendConfig
 	dataStore datastore.DataStore
 	context   context.Context
 	cancel    context.CancelCauseFunc
@@ -47,42 +47,42 @@ type ledgerBuffer struct {
 	currentLedgerLock sync.RWMutex
 }
 
-func (csb *CloudStorageBackend) newLedgerBuffer(ledgerRange Range) (*ledgerBuffer, error) {
+func (bsb *BufferedStorageBackend) newLedgerBuffer(ledgerRange Range) (*ledgerBuffer, error) {
 	less := func(a, b ledgerBatchObject) bool {
 		return a.startLedger < b.startLedger
 	}
-	pq := heap.New(less, int(csb.config.BufferSize))
+	pq := heap.New(less, int(bsb.config.BufferSize))
 
 	done := make(chan struct{})
 
 	ledgerBuffer := &ledgerBuffer{
-		config:              csb.config,
-		dataStore:           csb.dataStore,
-		taskQueue:           make(chan uint32, csb.config.BufferSize),
-		ledgerQueue:         make(chan []byte, csb.config.BufferSize),
+		config:              bsb.config,
+		dataStore:           bsb.dataStore,
+		taskQueue:           make(chan uint32, bsb.config.BufferSize),
+		ledgerQueue:         make(chan []byte, bsb.config.BufferSize),
 		ledgerPriorityQueue: pq,
 		done:                done,
 		currentLedger:       ledgerRange.from,
 		nextTaskLedger:      ledgerRange.from,
 		ledgerRange:         ledgerRange,
-		context:             csb.context,
-		cancel:              csb.cancel,
-		decoder:             csb.decoder,
+		context:             bsb.context,
+		cancel:              bsb.cancel,
+		decoder:             bsb.decoder,
 	}
 
 	// Start workers to read LCM files
-	for i := uint32(0); i < csb.config.NumWorkers; i++ {
+	for i := uint32(0); i < bsb.config.NumWorkers; i++ {
 		go ledgerBuffer.worker()
 	}
 
 	// Upon initialization, the ledgerBuffer invariant is maintained because
-	// we create csb.config.BufferSize tasks while the len(ledgerQueue) and ledgerPriorityQueue.Len() are 0.
-	// Effectively, this is len(taskQueue) + len(ledgerQueue) + ledgerPriorityQueue.Len() == csb.config.BufferSize
-	// which enforces a limit of max tasks (both pending and in-flight) to be equal to csb.config.BufferSize.
+	// we create bsb.config.BufferSize tasks while the len(ledgerQueue) and ledgerPriorityQueue.Len() are 0.
+	// Effectively, this is len(taskQueue) + len(ledgerQueue) + ledgerPriorityQueue.Len() == bsb.config.BufferSize
+	// which enforces a limit of max tasks (both pending and in-flight) to be equal to bsb.config.BufferSize.
 	// Note: when a task is in-flight it is no longer in the taskQueue
 	// but for easier conceptualization, len(taskQueue) can be interpreted as both pending and in-flight tasks
 	// where we assume the workers are empty and not processing any tasks.
-	for i := 0; i <= int(csb.config.BufferSize); i++ {
+	for i := 0; i <= int(bsb.config.BufferSize); i++ {
 		ledgerBuffer.pushTaskQueue()
 	}
 
@@ -193,7 +193,7 @@ func (lb *ledgerBuffer) getFromLedgerQueue() ([]byte, error) {
 			// we create an extra task when consuming one item from the ledger queue.
 			// Thus len(ledgerQueue) decreases by 1 and the number of tasks increases by 1.
 			// The overall sum below remains the same:
-			// len(taskQueue) + len(ledgerQueue) + ledgerPriorityQueue.Len() == csb.config.BufferSize
+			// len(taskQueue) + len(ledgerQueue) + ledgerPriorityQueue.Len() == bsb.config.BufferSize
 			lb.pushTaskQueue()
 
 			reader := bytes.NewReader(compressedBinary)
