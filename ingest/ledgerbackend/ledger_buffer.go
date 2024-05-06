@@ -102,7 +102,7 @@ func (lb *ledgerBuffer) worker(ctx context.Context) {
 			return
 		case sequence := <-lb.taskQueue:
 			for retryCount := uint32(0); retryCount <= lb.config.RetryLimit; {
-				ledgerObject, err := lb.downloadLedgerObject(lb.context, sequence)
+				ledgerObject, err := lb.downloadLedgerObject(ctx, sequence)
 				if err != nil {
 					if errors.Is(err, os.ErrNotExist) {
 						// ledgerObject not found and unbounded
