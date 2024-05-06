@@ -5,7 +5,6 @@ package ledgerbackend
 
 import (
 	"context"
-	"fmt"
 	"sync"
 	"time"
 
@@ -175,8 +174,12 @@ func (bsb *BufferedStorageBackend) GetLedger(ctx context.Context, sequence uint3
 		}
 	}
 
+	if sequence < bsb.lastLedger {
+		return xdr.LedgerCloseMeta{}, errors.New("requested sequence preceeds the lastLedger")
+	}
+
 	if sequence > bsb.nextExpectedSequence() {
-		return xdr.LedgerCloseMeta{}, fmt.Errorf("requested sequence is not the lastLedger (%d) nor the next available ledger (%d)", bsb.lastLedger, bsb.nextLedger)
+		return xdr.LedgerCloseMeta{}, errors.New("requested sequence is not the lastLedger nor the next available ledger")
 	}
 
 	err := bsb.getBatchForSequence(ctx, sequence)
