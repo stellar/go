@@ -123,15 +123,23 @@ func TestNewBufferedStorageBackend(t *testing.T) {
 }
 
 func TestNewLedgerBuffer(t *testing.T) {
+	startLedger := uint32(2)
+	endLedger := uint32(3)
 	bsb := createBufferedStorageBackendForTesting()
-	ledgerRange := BoundedRange(2, 3)
+	ledgerRange := BoundedRange(startLedger, endLedger)
+	mockDataStore := createMockdataStore(startLedger, endLedger, partitionSize, ledgerPerFileCount)
+	bsb.dataStore = mockDataStore
 
 	ledgerBuffer, err := bsb.newLedgerBuffer(ledgerRange)
+	assert.Eventually(t, func() bool { return len(ledgerBuffer.ledgerQueue) == 2 }, time.Second*5, time.Millisecond*50)
 	assert.NoError(t, err)
 
-	assert.Equal(t, uint32(2), ledgerBuffer.currentLedger)
+	// values should be the ledger following ledgerRange.to
+	assert.Equal(t, uint32(4), ledgerBuffer.currentLedger)
 	assert.Equal(t, uint32(4), ledgerBuffer.nextTaskLedger)
 	assert.Equal(t, ledgerRange, ledgerBuffer.ledgerRange)
+
+	mockDataStore.AssertExpectations(t)
 }
 
 func TestBSBGetLatestLedgerSequence(t *testing.T) {

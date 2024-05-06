@@ -113,30 +113,30 @@ func (bsb *BufferedStorageBackend) GetLatestLedgerSequence(ctx context.Context) 
 // getBatchForSequence checks if the requested sequence is in the cached batch.
 // Otherwise will continuously load in the next LedgerCloseMetaBatch until found.
 func (bsb *BufferedStorageBackend) getBatchForSequence(ctx context.Context, sequence uint32) error {
-	for {
-		// Sequence inside the current cached LedgerCloseMetaBatch
-		if sequence >= bsb.ledgerMetaArchive.GetStartLedgerSequence() && sequence <= bsb.ledgerMetaArchive.GetEndLedgerSequence() {
-			return nil
-		}
-
-		// Sequence is before the current LedgerCloseMetaBatch
-		// Does not support retrieving LedgerCloseMeta before the current cached batch
-		if sequence < bsb.ledgerMetaArchive.GetStartLedgerSequence() {
-			return errors.New("requested sequence preceeds current LedgerCloseMetaBatch")
-		}
-
-		// Sequence is beyond the current LedgerCloseMetaBatch
-		lcmBatchBinary, err := bsb.ledgerBuffer.getFromLedgerQueue(ctx)
-		if err != nil {
-			return errors.Wrap(err, "failed getting next ledger batch from queue")
-		}
-
-		// Turn binary into xdr
-		err = bsb.ledgerMetaArchive.Data.UnmarshalBinary(lcmBatchBinary)
-		if err != nil {
-			return errors.Wrap(err, "failed unmarshalling lcmBatchBinary")
-		}
+	// Sequence inside the current cached LedgerCloseMetaBatch
+	if sequence >= bsb.ledgerMetaArchive.GetStartLedgerSequence() && sequence <= bsb.ledgerMetaArchive.GetEndLedgerSequence() {
+		return nil
 	}
+
+	// Sequence is before the current LedgerCloseMetaBatch
+	// Does not support retrieving LedgerCloseMeta before the current cached batch
+	if sequence < bsb.ledgerMetaArchive.GetStartLedgerSequence() {
+		return errors.New("requested sequence preceeds current LedgerCloseMetaBatch")
+	}
+
+	// Sequence is beyond the current LedgerCloseMetaBatch
+	lcmBatchBinary, err := bsb.ledgerBuffer.getFromLedgerQueue(ctx)
+	if err != nil {
+		return errors.Wrap(err, "failed getting next ledger batch from queue")
+	}
+
+	// Turn binary into xdr
+	err = bsb.ledgerMetaArchive.Data.UnmarshalBinary(lcmBatchBinary)
+	if err != nil {
+		return errors.Wrap(err, "failed unmarshalling lcmBatchBinary")
+	}
+
+	return nil
 }
 
 // nextExpectedSequence returns nextLedger (if currently set) or start of

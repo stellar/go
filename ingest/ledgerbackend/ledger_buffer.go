@@ -95,6 +95,17 @@ func (lb *ledgerBuffer) pushTaskQueue() {
 	lb.nextTaskLedger += lb.config.LedgerBatchConfig.LedgersPerFile
 }
 
+func (lb *ledgerBuffer) sleepWithContext(ctx context.Context, d time.Duration) {
+	timer := time.NewTimer(d)
+	select {
+	case <-ctx.Done():
+		if !timer.Stop() {
+			<-timer.C
+		}
+	case <-timer.C:
+	}
+}
+
 func (lb *ledgerBuffer) worker(ctx context.Context) {
 	for {
 		select {
@@ -107,7 +118,7 @@ func (lb *ledgerBuffer) worker(ctx context.Context) {
 					if errors.Is(err, os.ErrNotExist) {
 						// ledgerObject not found and unbounded
 						if !lb.ledgerRange.bounded {
-							time.Sleep(lb.config.RetryWait * time.Second)
+							lb.sleepWithContext(ctx, lb.config.RetryWait*time.Second)
 							continue
 						}
 						lb.cancel(err)
@@ -119,7 +130,7 @@ func (lb *ledgerBuffer) worker(ctx context.Context) {
 						return
 					}
 					retryCount++
-					time.Sleep(lb.config.RetryWait * time.Second)
+					lb.sleepWithContext(ctx, lb.config.RetryWait*time.Second)
 				}
 
 				// When we store an object we still maintain the ledger buffer invariant because
