@@ -74,8 +74,8 @@ func (bsb *BufferedStorageBackend) newLedgerBuffer(ledgerRange Range) (*ledgerBu
 
 	// Upon initialization, the ledgerBuffer invariant is maintained because
 	// we create bsb.config.BufferSize tasks while the len(ledgerQueue) and ledgerPriorityQueue.Len() are 0.
-	// Effectively, this is len(taskQueue) + len(ledgerQueue) + ledgerPriorityQueue.Len() == bsb.config.BufferSize
-	// which enforces a limit of max tasks (both pending and in-flight) to be equal to bsb.config.BufferSize.
+	// Effectively, this is len(taskQueue) + len(ledgerQueue) + ledgerPriorityQueue.Len() <= bsb.config.BufferSize
+	// which enforces a limit of max tasks (both pending and in-flight) to be less than or equal to bsb.config.BufferSize.
 	// Note: when a task is in-flight it is no longer in the taskQueue
 	// but for easier conceptualization, len(taskQueue) can be interpreted as both pending and in-flight tasks
 	// where we assume the workers are empty and not processing any tasks.
