@@ -132,6 +132,8 @@ func TestNewLedgerBuffer(t *testing.T) {
 
 	ledgerBuffer, err := bsb.newLedgerBuffer(ledgerRange)
 	assert.Eventually(t, func() bool { return len(ledgerBuffer.ledgerQueue) == 2 }, time.Second*5, time.Millisecond*50)
+	assert.Eventually(t, func() bool { return len(ledgerBuffer.taskQueue) == 0 }, time.Second*5, time.Millisecond*50)
+	assert.Eventually(t, func() bool { return ledgerBuffer.ledgerPriorityQueue.Len() == 0 }, time.Second*5, time.Millisecond*50)
 	assert.NoError(t, err)
 
 	// values should be the ledger following ledgerRange.to
@@ -321,17 +323,18 @@ func TestBSBIsPrepared_Bounded(t *testing.T) {
 }
 
 func TestBSBIsPrepared_Unbounded(t *testing.T) {
+	startLedger := uint32(3)
+	endLedger := uint32(8)
 	ctx := context.Background()
 	bsb := createBufferedStorageBackendForTesting()
+	bsb.config.NumWorkers = 2
+	bsb.config.BufferSize = 5
 	ledgerRange := UnboundedRange(3)
-
-	readCloser := createLCMBatchReader(3, 3, 1)
-	mockDataStore := new(datastore.MockDataStore)
-	mockDataStore.On("GetFile", mock.Anything, mock.Anything).Return(readCloser, nil)
+	mockDataStore := createMockdataStore(startLedger, endLedger, partitionSize, ledgerPerFileCount)
 	bsb.dataStore = mockDataStore
 
 	assert.NoError(t, bsb.PrepareRange(ctx, ledgerRange))
-	assert.Eventually(t, func() bool { return len(bsb.ledgerBuffer.ledgerQueue) > 3 }, time.Second*5, time.Millisecond*50)
+	assert.Eventually(t, func() bool { return len(bsb.ledgerBuffer.ledgerQueue) == 5 }, time.Second*5, time.Millisecond*50)
 
 	ok, err := bsb.IsPrepared(ctx, ledgerRange)
 	assert.NoError(t, err)
