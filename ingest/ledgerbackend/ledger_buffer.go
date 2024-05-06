@@ -3,7 +3,6 @@ package ledgerbackend
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"io"
 	"os"
 	"sync"
@@ -22,24 +21,30 @@ type ledgerBatchObject struct {
 }
 
 type ledgerBuffer struct {
-	config              CloudStorageBackendConfig
-	dataStore           datastore.DataStore
-	taskQueue           chan uint32 // buffer next object read
-	ledgerQueue         chan []byte // order corrected lcm batches
-	ledgerPriorityQueue *heap.Heap[ledgerBatchObject]
+	// passed through from CloudStorageBackend to control lifetime of ledgerBuffer instance
+	config    CloudStorageBackendConfig
+	dataStore datastore.DataStore
+	context   context.Context
+	cancel    context.CancelCauseFunc
+	decoder   compressxdr.XDRDecoder
+
+	// The pipes and data structures below help establish the ledgerBuffer invariant which is
+	// the number of tasks (both pending and in-flight) + len(ledgerQueue) + ledgerPriorityQueue.Len()
+	// is always less than or equal to the config.BufferSize
+	taskQueue           chan uint32                   // Buffer next object read
+	ledgerQueue         chan []byte                   // Order corrected lcm batches
+	ledgerPriorityQueue *heap.Heap[ledgerBatchObject] // Priority is set to the sequence number
 	priorityQueueLock   sync.Mutex
-	done                chan struct{}
+
+	// done is used to signal the closure of the ledgerBuffer and workers
+	done chan struct{}
 
 	// keep track of the ledgers to be processed and the next ordering
 	// the ledgers should be buffered
-	currentLedger  uint32
-	nextTaskLedger uint32
-	ledgerRange    Range
-
-	// passed through from CloudStorageBackend to control lifetime of ledgerBuffer instance
-	context context.Context
-	cancel  context.CancelCauseFunc
-	decoder compressxdr.XDRDecoder
+	currentLedger     uint32 // The current ledger that should be popped from ledgerPriorityQueue
+	nextTaskLedger    uint32 // The next task ledger that should be added to taskQueue
+	ledgerRange       Range
+	currentLedgerLock sync.RWMutex
 }
 
 func (csb *CloudStorageBackend) newLedgerBuffer(ledgerRange Range) (*ledgerBuffer, error) {
@@ -65,12 +70,18 @@ func (csb *CloudStorageBackend) newLedgerBuffer(ledgerRange Range) (*ledgerBuffe
 		decoder:             csb.decoder,
 	}
 
-	// Workers to read LCM files
+	// Start workers to read LCM files
 	for i := uint32(0); i < csb.config.NumWorkers; i++ {
 		go ledgerBuffer.worker()
 	}
 
-	// Start the ledgerBuffer
+	// Upon initialization, the ledgerBuffer invariant is maintained because
+	// we create csb.config.BufferSize tasks while the len(ledgerQueue) and ledgerPriorityQueue.Len() are 0.
+	// Effectively, this is len(taskQueue) + len(ledgerQueue) + ledgerPriorityQueue.Len() == csb.config.BufferSize
+	// which enforces a limit of max tasks (both pending and in-flight) to be equal to csb.config.BufferSize.
+	// Note: when a task is in-flight it is no longer in the taskQueue
+	// but for easier conceptualization, len(taskQueue) can be interpreted as both pending and in-flight tasks
+	// where we assume the workers are empty and not processing any tasks.
 	for i := 0; i <= int(csb.config.BufferSize); i++ {
 		ledgerBuffer.pushTaskQueue()
 	}
@@ -97,13 +108,10 @@ func (lb *ledgerBuffer) worker() {
 			log.Error(lb.context.Err())
 			return
 		case sequence := <-lb.taskQueue:
-			retryCount := uint32(0)
-			for retryCount <= lb.config.RetryLimit {
-				ledgerObject, err := lb.getLedgerObject(sequence)
+			for retryCount := uint32(0); retryCount <= lb.config.RetryLimit; {
+				ledgerObject, err := lb.downloadLedgerObject(sequence)
 				if err != nil {
-					fmt.Print("here1\n")
 					if errors.Is(err, os.ErrNotExist) {
-						fmt.Print("here2\n")
 						// ledgerObject not found and unbounded
 						if !lb.ledgerRange.bounded {
 							time.Sleep(lb.config.RetryWait * time.Second)
@@ -113,7 +121,7 @@ func (lb *ledgerBuffer) worker() {
 						return
 					}
 					if retryCount == lb.config.RetryLimit {
-						err = errors.New("maximum retries exceeded for object reads")
+						err = errors.Wrap(err, "maximum retries exceeded for object reads")
 						lb.cancel(err)
 						return
 					}
@@ -121,7 +129,11 @@ func (lb *ledgerBuffer) worker() {
 					time.Sleep(lb.config.RetryWait * time.Second)
 				}
 
-				// Add to priority queue and continue to next task
+				// When we store an object we still maintain the ledger buffer invariant because
+				// at this point the current task is finished and we add 1 ledger object to the priority queue.
+				// Thus, the number of tasks decreases by 1 and the priority queue length increases by 1.
+				// This keeps the overall total the same (<= BufferSize). As long as the the ledger buffer invariant
+				// was maintained in the previous state, it is still maintained during this state transition.
 				lb.storeObject(ledgerObject, sequence)
 				break
 			}
@@ -129,7 +141,7 @@ func (lb *ledgerBuffer) worker() {
 	}
 }
 
-func (lb *ledgerBuffer) getLedgerObject(sequence uint32) ([]byte, error) {
+func (lb *ledgerBuffer) downloadLedgerObject(sequence uint32) ([]byte, error) {
 	objectKey := lb.config.LedgerBatchConfig.GetObjectKeyFromSequenceNumber(sequence)
 
 	reader, err := lb.dataStore.GetFile(context.Background(), objectKey)
@@ -151,12 +163,17 @@ func (lb *ledgerBuffer) storeObject(ledgerObject []byte, sequence uint32) {
 	lb.priorityQueueLock.Lock()
 	defer lb.priorityQueueLock.Unlock()
 
+	lb.currentLedgerLock.Lock()
+	defer lb.currentLedgerLock.Unlock()
+
 	lb.ledgerPriorityQueue.Push(ledgerBatchObject{
 		payload:     ledgerObject,
 		startLedger: int(sequence),
 	})
 
-	// Check if the nextLedger is the next item in the priority queue
+	// Check if the nextLedger is the next item in the ledgerPriorityQueue
+	// The ledgerBuffer invariant is maintained here because items are transferred from the ledgerPriorityQueue to the ledgerQueue.
+	// Thus the overall sum of ledgerPriorityQueue.Len() + len(lb.ledgerQueue) remains the same.
 	for lb.ledgerPriorityQueue.Len() > 0 && lb.currentLedger == uint32(lb.ledgerPriorityQueue.Peek().startLedger) {
 		item := lb.ledgerPriorityQueue.Pop()
 		lb.ledgerQueue <- item.payload
@@ -172,7 +189,11 @@ func (lb *ledgerBuffer) getFromLedgerQueue() ([]byte, error) {
 			close(lb.done)
 			return nil, lb.context.Err()
 		case compressedBinary := <-lb.ledgerQueue:
-			// Add next task to the TaskQueue
+			// The ledger buffer invariant is maintained here because
+			// we create an extra task when consuming one item from the ledger queue.
+			// Thus len(ledgerQueue) decreases by 1 and the number of tasks increases by 1.
+			// The overall sum below remains the same:
+			// len(taskQueue) + len(ledgerQueue) + ledgerPriorityQueue.Len() == csb.config.BufferSize
 			lb.pushTaskQueue()
 
 			reader := bytes.NewReader(compressedBinary)
@@ -184,4 +205,16 @@ func (lb *ledgerBuffer) getFromLedgerQueue() ([]byte, error) {
 			return lcmBinary, nil
 		}
 	}
+}
+
+func (lb *ledgerBuffer) getLatestLedgerSequence() (uint32, error) {
+	lb.currentLedgerLock.Lock()
+	defer lb.currentLedgerLock.Unlock()
+
+	if lb.currentLedger == lb.ledgerRange.from {
+		return 0, nil
+	}
+
+	// Subtract 1 to get the latest ledger in buffer
+	return lb.currentLedger - 1, nil
 }

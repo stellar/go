@@ -49,7 +49,6 @@ func createCloudStorageBackendForTesting() CloudStorageBackend {
 		config:            config,
 		context:           ctx,
 		dataStore:         config.DataStore,
-		resumableManager:  config.ResumableManager,
 		ledgerMetaArchive: ledgerMetaArchive,
 		decoder:           decoder,
 	}
@@ -63,7 +62,6 @@ func TestNewCloudStorageBackend(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, csb.dataStore, config.DataStore)
-	assert.Equal(t, csb.resumableManager, config.ResumableManager)
 	assert.Equal(t, ".xdr.gz", csb.config.LedgerBatchConfig.FileSuffix)
 	assert.Equal(t, uint32(1), csb.config.LedgerBatchConfig.LedgersPerFile)
 	assert.Equal(t, uint32(64000), csb.config.LedgerBatchConfig.FilesPerPartition)
@@ -81,22 +79,32 @@ func TestGCSNewLedgerBuffer(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, uint32(2), ledgerBuffer.currentLedger)
-	assert.Equal(t, uint32(2), ledgerBuffer.nextTaskLedger)
+	assert.Equal(t, uint32(4), ledgerBuffer.nextTaskLedger)
 	assert.Equal(t, ledgerRange, ledgerBuffer.ledgerRange)
 }
 
 func TestCloudStorageGetLatestLedgerSequence(t *testing.T) {
-	ctx := context.Background()
+	startLedger := uint32(3)
+	endLedger := uint32(5)
 	csb := createCloudStorageBackendForTesting()
-	resumableManager := new(datastore.MockResumableManager)
-	csb.resumableManager = resumableManager
+	ctx := context.Background()
+	ledgerRange := BoundedRange(startLedger, endLedger)
 
-	resumableManager.On("FindStart", ctx, uint32(2), uint32(0)).Return(uint32(6), true, nil)
+	readCloser1 := createLCMBatchReader(uint32(3), uint32(3), 1)
+	readCloser2 := createLCMBatchReader(uint32(4), uint32(4), 1)
+	readCloser3 := createLCMBatchReader(uint32(5), uint32(5), 1)
 
-	seq, err := csb.GetLatestLedgerSequence(ctx)
+	mockDataStore := new(datastore.MockDataStore)
+	csb.dataStore = mockDataStore
+	mockDataStore.On("GetFile", ctx, "0-63999/3.xdr.gz").Return(readCloser1, nil)
+	mockDataStore.On("GetFile", ctx, "0-63999/4.xdr.gz").Return(readCloser2, nil)
+	mockDataStore.On("GetFile", ctx, "0-63999/5.xdr.gz").Return(readCloser3, nil)
+
+	csb.PrepareRange(ctx, ledgerRange)
+	latestSeq, err := csb.GetLatestLedgerSequence(ctx)
 	assert.NoError(t, err)
 
-	assert.Equal(t, uint32(5), seq)
+	assert.Equal(t, uint32(5), latestSeq)
 }
 
 func createLCMForTesting(start, end uint32) []xdr.LedgerCloseMeta {
@@ -153,7 +161,9 @@ func TestCloudStorageGetLedger_SingleLedgerPerFile(t *testing.T) {
 	lcm, err := csb.GetLedger(ctx, uint32(3))
 	assert.NoError(t, err)
 	assert.Equal(t, lcmArray[0], lcm)
-	// Skip sequence 4; Test non consecutive GetLedger
+	lcm, err = csb.GetLedger(ctx, uint32(4))
+	assert.NoError(t, err)
+	assert.Equal(t, lcmArray[1], lcm)
 	lcm, err = csb.GetLedger(ctx, uint32(5))
 	assert.NoError(t, err)
 	assert.Equal(t, lcmArray[2], lcm)
@@ -211,11 +221,11 @@ func TestGCSGetLedger_ErrorPreceedingLedger(t *testing.T) {
 
 	csb.PrepareRange(ctx, ledgerRange)
 
-	lcm, err := csb.GetLedger(ctx, uint32(5))
+	lcm, err := csb.GetLedger(ctx, uint32(3))
 	assert.NoError(t, err)
-	assert.Equal(t, lcmArray[2], lcm)
+	assert.Equal(t, lcmArray[0], lcm)
 
-	_, err = csb.GetLedger(ctx, uint32(4))
+	_, err = csb.GetLedger(ctx, uint32(2))
 	assert.Error(t, err, "requested sequence preceeds current LedgerCloseMetaBatch")
 }
 

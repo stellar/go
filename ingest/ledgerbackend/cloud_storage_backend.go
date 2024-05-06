@@ -41,17 +41,23 @@ type CloudStorageBackend struct {
 	ledgerBuffer *ledgerBuffer
 
 	dataStore         datastore.DataStore
-	resumableManager  datastore.ResumableManager
 	prepared          *Range // non-nil if any range is prepared
 	closed            bool   // False until the core is closed
 	ledgerMetaArchive *datastore.LedgerMetaArchive
 	decoder           compressxdr.XDRDecoder
 	nextLedger        uint32
+	lastLedger        uint32
 }
 
 // Return a new CloudStorageBackend instance.
 func NewCloudStorageBackend(ctx context.Context, config CloudStorageBackendConfig) (*CloudStorageBackend, error) {
-	ctx, cancel := context.WithCancelCause(ctx)
+	if config.BufferSize == 0 {
+		return nil, errors.New("buffer size must be > 0")
+	}
+
+	if config.NumWorkers > config.BufferSize {
+		return nil, errors.New("number of workers must be <= BufferSize")
+	}
 
 	if config.DataStore == nil {
 		return nil, errors.New("no DataStore provided")
@@ -60,6 +66,20 @@ func NewCloudStorageBackend(ctx context.Context, config CloudStorageBackendConfi
 	if config.ResumableManager == nil {
 		return nil, errors.New("no ResumableManager provided")
 	}
+
+	if config.LedgerBatchConfig.LedgersPerFile <= 0 {
+		return nil, errors.New("ledgersPerFile must be > 0")
+	}
+
+	if config.LedgerBatchConfig.FileSuffix == "" {
+		return nil, errors.New("no file suffix provided in LedgerBatchConfig")
+	}
+
+	if config.CompressionType == "" {
+		return nil, errors.New("no compression type provided in config")
+	}
+
+	ctx, cancel := context.WithCancelCause(ctx)
 
 	ledgerMetaArchive := datastore.NewLedgerMetaArchive("", 0, 0)
 	decoder, err := compressxdr.NewXDRDecoder(config.CompressionType, nil)
@@ -72,7 +92,6 @@ func NewCloudStorageBackend(ctx context.Context, config CloudStorageBackendConfi
 		context:           ctx,
 		cancel:            cancel,
 		dataStore:         config.DataStore,
-		resumableManager:  config.ResumableManager,
 		ledgerMetaArchive: ledgerMetaArchive,
 		decoder:           decoder,
 	}
@@ -82,6 +101,9 @@ func NewCloudStorageBackend(ctx context.Context, config CloudStorageBackendConfi
 
 // GetLatestLedgerSequence returns the most recent ledger sequence number in the cloud storage bucket.
 func (csb *CloudStorageBackend) GetLatestLedgerSequence(ctx context.Context) (uint32, error) {
+	csb.csBackendLock.RLock()
+	defer csb.csBackendLock.RUnlock()
+
 	if csb.closed {
 		return 0, errors.New("CloudStorageBackend is closed; cannot GetLatestLedgerSequence")
 	}
@@ -90,17 +112,17 @@ func (csb *CloudStorageBackend) GetLatestLedgerSequence(ctx context.Context) (ui
 		return 0, errors.New("CloudStorageBackend must be prepared, call PrepareRange first")
 	}
 
-	if csb.ledgerBuffer.nextTaskLedger == csb.ledgerBuffer.ledgerRange.from {
-		return 0, nil
+	latestSeq, err := csb.ledgerBuffer.getLatestLedgerSequence()
+	if err != nil {
+		return 0, err
 	}
 
-	// Subtract 1 to get the latest ledger in buffer
-	return csb.ledgerBuffer.nextTaskLedger - 1, nil
+	return latestSeq, nil
 }
 
-// getSequenceInBatch checks if the requested sequence is in the cached batch.
+// getBatchForSequence checks if the requested sequence is in the cached batch.
 // Otherwise will continuously load in the next LedgerCloseMetaBatch until found.
-func (csb *CloudStorageBackend) getSequenceInBatch(sequence uint32) error {
+func (csb *CloudStorageBackend) getBatchForSequence(sequence uint32) error {
 	for {
 		// Sequence inside the current cached LedgerCloseMetaBatch
 		if sequence >= csb.ledgerMetaArchive.GetStartLedgerSequence() && sequence <= csb.ledgerMetaArchive.GetEndLedgerSequence() {
@@ -162,11 +184,11 @@ func (csb *CloudStorageBackend) GetLedger(ctx context.Context, sequence uint32) 
 		}
 	}
 
-	if csb.nextExpectedSequence() != sequence {
-		return xdr.LedgerCloseMeta{}, errors.New("requested sequence is not the next available ledger")
+	if sequence > csb.nextExpectedSequence() {
+		return xdr.LedgerCloseMeta{}, errors.New("requested sequence is not the lastLedger nor the next available ledger")
 	}
 
-	err := csb.getSequenceInBatch(sequence)
+	err := csb.getBatchForSequence(sequence)
 	if err != nil {
 		return xdr.LedgerCloseMeta{}, err
 	}
@@ -175,6 +197,7 @@ func (csb *CloudStorageBackend) GetLedger(ctx context.Context, sequence uint32) 
 	if err != nil {
 		return xdr.LedgerCloseMeta{}, err
 	}
+	csb.lastLedger = csb.nextLedger
 	csb.nextLedger++
 
 	return ledgerCloseMeta, nil
@@ -182,6 +205,9 @@ func (csb *CloudStorageBackend) GetLedger(ctx context.Context, sequence uint32) 
 
 // PrepareRange checks if the starting and ending (if bounded) ledgers exist.
 func (csb *CloudStorageBackend) PrepareRange(ctx context.Context, ledgerRange Range) error {
+	csb.csBackendLock.Lock()
+	defer csb.csBackendLock.Unlock()
+
 	if csb.closed {
 		return errors.New("CloudStorageBackend is closed; cannot PrepareRange")
 	}
@@ -259,9 +285,6 @@ func (csb *CloudStorageBackend) Close() error {
 
 // startPreparingRange prepares the ledger range by setting the range in the ledgerBuffer
 func (csb *CloudStorageBackend) startPreparingRange(ledgerRange Range) (bool, error) {
-	csb.csBackendLock.Lock()
-	defer csb.csBackendLock.Unlock()
-
 	if csb.isPrepared(ledgerRange) {
 		return true, nil
 	}
