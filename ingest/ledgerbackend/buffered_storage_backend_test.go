@@ -25,13 +25,10 @@ func createBufferedStorageBackendConfigForTesting() BufferedStorageBackendConfig
 
 	dataStore := new(datastore.MockDataStore)
 
-	resumableManager := new(datastore.MockResumableManager)
-
 	return BufferedStorageBackendConfig{
 		LedgerBatchConfig: ledgerBatchConfig,
 		CompressionType:   compressxdr.GZIP,
 		DataStore:         dataStore,
-		ResumableManager:  resumableManager,
 		BufferSize:        100,
 		NumWorkers:        5,
 		RetryLimit:        3,

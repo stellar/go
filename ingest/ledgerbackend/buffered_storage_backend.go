@@ -22,7 +22,6 @@ type BufferedStorageBackendConfig struct {
 	LedgerBatchConfig datastore.LedgerBatchConfig
 	CompressionType   string
 	DataStore         datastore.DataStore
-	ResumableManager  datastore.ResumableManager
 	BufferSize        uint32
 	NumWorkers        uint32
 	RetryLimit        uint32
@@ -64,10 +63,6 @@ func NewBufferedStorageBackend(ctx context.Context, config BufferedStorageBacken
 
 	if config.DataStore == nil {
 		return nil, errors.New("no DataStore provided")
-	}
-
-	if config.ResumableManager == nil {
-		return nil, errors.New("no ResumableManager provided")
 	}
 
 	if config.LedgerBatchConfig.LedgersPerFile <= 0 {
