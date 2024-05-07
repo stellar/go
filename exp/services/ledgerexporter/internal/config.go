@@ -11,9 +11,9 @@ import (
 
 	"github.com/pelletier/go-toml"
 
+	"github.com/stellar/go/support/datastore"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/ordered"
-	"github.com/stellar/go/support/storage"
 )
 
 const Pubnet = "pubnet"
@@ -34,56 +34,17 @@ type StellarCoreConfig struct {
 	CaptiveCoreTomlPath   string   `toml:"captive_core_toml_path"`
 }
 
-type DataStoreConfig struct {
-	Type   string            `toml:"type"`
-	Params map[string]string `toml:"params"`
-}
-
 type Config struct {
 	AdminPort int `toml:"admin_port"`
 
-	Network           string            `toml:"network"`
-	DataStoreConfig   DataStoreConfig   `toml:"datastore_config"`
-	LedgerBatchConfig LedgerBatchConfig `toml:"exporter_config"`
-	StellarCoreConfig StellarCoreConfig `toml:"stellar_core_config"`
+	Network           string                      `toml:"network"`
+	DataStoreConfig   datastore.DataStoreConfig   `toml:"datastore_config"`
+	LedgerBatchConfig datastore.LedgerBatchConfig `toml:"exporter_config"`
+	StellarCoreConfig StellarCoreConfig           `toml:"stellar_core_config"`
 
 	StartLedger uint32
 	EndLedger   uint32
 	Resume      bool
-}
-
-func createHistoryArchiveFromNetworkName(ctx context.Context, networkName string) (historyarchive.ArchiveInterface, error) {
-	var historyArchiveUrls []string
-	switch networkName {
-	case Pubnet:
-		historyArchiveUrls = network.PublicNetworkhistoryArchiveURLs
-	case Testnet:
-		historyArchiveUrls = network.TestNetworkhistoryArchiveURLs
-	default:
-		return nil, errors.Errorf("Invalid network name %s", networkName)
-	}
-
-	return historyarchive.NewArchivePool(historyArchiveUrls, historyarchive.ArchiveOptions{
-		ConnectOptions: storage.ConnectOptions{
-			UserAgent: "ledger-exporter",
-			Context:   ctx,
-		},
-	})
-}
-
-func getLatestLedgerSequenceFromHistoryArchives(archive historyarchive.ArchiveInterface) (uint32, error) {
-	has, err := archive.GetRootHAS()
-	if err != nil {
-		logger.WithError(err).Warnf("Error getting root HAS from archives")
-		return 0, errors.Wrap(err, "failed to retrieve the latest ledger sequence from any history archive")
-	}
-
-	return has.CurrentLedger, nil
-}
-
-func getHistoryArchivesCheckPointFrequency() uint32 {
-	// this could evolve to use other sources for checkpoint freq
-	return historyarchive.DefaultCheckpointFrequency
 }
 
 // This will generate the config based on commandline flags and toml
@@ -113,7 +74,7 @@ func NewConfig(ctx context.Context, flags Flags) (*Config, error) {
 // Validates requested ledger range, and will automatically adjust it
 // to be ledgers-per-file boundary aligned
 func (config *Config) ValidateAndSetLedgerRange(ctx context.Context, archive historyarchive.ArchiveInterface) error {
-	latestNetworkLedger, err := getLatestLedgerSequenceFromHistoryArchives(archive)
+	latestNetworkLedger, err := datastore.GetLatestLedgerSequenceFromHistoryArchives(archive)
 
 	if err != nil {
 		return errors.Wrap(err, "Failed to retrieve the latest ledger sequence from history archives.")
@@ -182,7 +143,7 @@ func (config *Config) GenerateCaptiveCoreConfig() (ledgerbackend.CaptiveCoreConf
 		BinaryPath:          coreConfig.StellarCoreBinaryPath,
 		NetworkPassphrase:   params.NetworkPassphrase,
 		HistoryArchiveURLs:  params.HistoryArchiveURLs,
-		CheckpointFrequency: getHistoryArchivesCheckPointFrequency(),
+		CheckpointFrequency: datastore.GetHistoryArchivesCheckPointFrequency(),
 		Log:                 logger.WithField("subservice", "stellar-core"),
 		Toml:                captiveCoreToml,
 		UserAgent:           "ledger-exporter",

@@ -10,11 +10,12 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/stellar/go/support/compressxdr"
+	"github.com/stellar/go/support/datastore"
+	"github.com/stellar/go/support/errors"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-
-	"github.com/stellar/go/support/errors"
 )
 
 func TestUploaderSuite(t *testing.T) {
@@ -25,12 +26,12 @@ func TestUploaderSuite(t *testing.T) {
 type UploaderSuite struct {
 	suite.Suite
 	ctx           context.Context
-	mockDataStore MockDataStore
+	mockDataStore datastore.MockDataStore
 }
 
 func (s *UploaderSuite) SetupTest() {
 	s.ctx = context.Background()
-	s.mockDataStore = MockDataStore{}
+	s.mockDataStore = datastore.MockDataStore{}
 }
 
 func (s *UploaderSuite) TestUpload() {
@@ -40,9 +41,9 @@ func (s *UploaderSuite) TestUpload() {
 
 func (s *UploaderSuite) testUpload(putOkReturnVal bool) {
 	key, start, end := "test-1-100", uint32(1), uint32(100)
-	archive := NewLedgerMetaArchive(key, start, end)
+	archive := datastore.NewLedgerMetaArchive(key, start, end)
 	for i := start; i <= end; i++ {
-		_ = archive.AddLedger(createLedgerCloseMeta(i))
+		_ = archive.AddLedger(datastore.CreateLedgerCloseMeta(i))
 	}
 
 	var capturedBuf bytes.Buffer
@@ -60,14 +61,17 @@ func (s *UploaderSuite) testUpload(putOkReturnVal bool) {
 	require.NoError(s.T(), dataUploader.Upload(context.Background(), archive))
 
 	expectedCompressedLength := capturedBuf.Len()
-	var decodedArchive LedgerMetaArchive
-	decoder := &XDRGzipDecoder{XdrPayload: &decodedArchive.data}
-	_, err := decoder.ReadFrom(&capturedBuf)
+	var decodedArchive datastore.LedgerMetaArchive
+	xdrDecoder, err := compressxdr.NewXDRDecoder(compressxdr.GZIP, &decodedArchive.Data)
+	require.NoError(s.T(), err)
+
+	decoder := xdrDecoder
+	_, err = decoder.ReadFrom(&capturedBuf)
 	require.NoError(s.T(), err)
 
 	// require that the decoded data matches the original test data
 	require.Equal(s.T(), key, capturedKey)
-	require.Equal(s.T(), archive.data, decodedArchive.data)
+	require.Equal(s.T(), archive.Data, decodedArchive.Data)
 
 	alreadyExists := !putOkReturnVal
 	metric, err := dataUploader.uploadDurationMetric.MetricVec.GetMetricWith(prometheus.Labels{
@@ -94,7 +98,7 @@ func (s *UploaderSuite) testUpload(putOkReturnVal bool) {
 
 	metric, err = dataUploader.objectSizeMetrics.MetricVec.GetMetricWith(prometheus.Labels{
 		"ledgers":        "100",
-		"compression":    "gzip",
+		"compression":    compressxdr.GZIP,
 		"already_exists": strconv.FormatBool(alreadyExists),
 	})
 	require.NoError(s.T(), err)
@@ -110,7 +114,7 @@ func (s *UploaderSuite) testUpload(putOkReturnVal bool) {
 	)
 	metric, err = dataUploader.objectSizeMetrics.MetricVec.GetMetricWith(prometheus.Labels{
 		"ledgers":        "100",
-		"compression":    "gzip",
+		"compression":    compressxdr.GZIP,
 		"already_exists": strconv.FormatBool(!alreadyExists),
 	})
 	require.NoError(s.T(), err)
@@ -131,7 +135,7 @@ func (s *UploaderSuite) testUpload(putOkReturnVal bool) {
 		uint64(1),
 		getMetricValue(metric).GetSummary().GetSampleCount(),
 	)
-	uncompressedPayload, err := decodedArchive.data.MarshalBinary()
+	uncompressedPayload, err := decodedArchive.Data.MarshalBinary()
 	require.NoError(s.T(), err)
 	require.Equal(
 		s.T(),
@@ -158,7 +162,7 @@ func (s *UploaderSuite) TestUploadPutError() {
 
 func (s *UploaderSuite) testUploadPutError(putOkReturnVal bool) {
 	key, start, end := "test-1-100", uint32(1), uint32(100)
-	archive := NewLedgerMetaArchive(key, start, end)
+	archive := datastore.NewLedgerMetaArchive(key, start, end)
 
 	s.mockDataStore.On("PutFileIfNotExists", context.Background(), key,
 		mock.Anything).Return(putOkReturnVal, errors.New("error in PutFileIfNotExists"))
@@ -181,7 +185,7 @@ func (s *UploaderSuite) testUploadPutError(putOkReturnVal bool) {
 			getMetricValue(metric).GetSummary().GetSampleCount(),
 		)
 
-		for _, compression := range []string{"gzip", "none"} {
+		for _, compression := range []string{compressxdr.GZIP, "none"} {
 			metric, err = dataUploader.objectSizeMetrics.MetricVec.GetMetricWith(prometheus.Labels{
 				"ledgers":        "100",
 				"compression":    compression,
@@ -206,7 +210,7 @@ func (s *UploaderSuite) TestRunChannelClose() {
 	go func() {
 		key, start, end := "test", uint32(1), uint32(100)
 		for i := start; i <= end; i++ {
-			s.Assert().NoError(queue.Enqueue(s.ctx, NewLedgerMetaArchive(key, i, i)))
+			s.Assert().NoError(queue.Enqueue(s.ctx, datastore.NewLedgerMetaArchive(key, i, i)))
 		}
 		<-time.After(time.Second * 2)
 		queue.Close()
@@ -222,7 +226,7 @@ func (s *UploaderSuite) TestRunContextCancel() {
 	registry := prometheus.NewRegistry()
 	queue := NewUploadQueue(1, registry)
 
-	s.Assert().NoError(queue.Enqueue(s.ctx, NewLedgerMetaArchive("test", 1, 1)))
+	s.Assert().NoError(queue.Enqueue(s.ctx, datastore.NewLedgerMetaArchive("test", 1, 1)))
 
 	go func() {
 		<-time.After(time.Second * 2)
@@ -237,7 +241,7 @@ func (s *UploaderSuite) TestRunUploadError() {
 	registry := prometheus.NewRegistry()
 	queue := NewUploadQueue(1, registry)
 
-	s.Assert().NoError(queue.Enqueue(s.ctx, NewLedgerMetaArchive("test", 1, 1)))
+	s.Assert().NoError(queue.Enqueue(s.ctx, datastore.NewLedgerMetaArchive("test", 1, 1)))
 	s.mockDataStore.On("PutFileIfNotExists", mock.Anything, "test",
 		mock.Anything).Return(false, errors.New("Put error"))
 

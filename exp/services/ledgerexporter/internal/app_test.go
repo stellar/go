@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/pkg/errors"
+	"github.com/stellar/go/support/datastore"
 	"github.com/stretchr/testify/require"
 )
 
@@ -12,7 +13,7 @@ func TestApplyResumeHasStartError(t *testing.T) {
 	ctx := context.Background()
 	app := &App{}
 	app.config = &Config{StartLedger: 10, EndLedger: 19, Resume: true}
-	mockResumableManager := &MockResumableManager{}
+	mockResumableManager := &datastore.MockResumableManager{}
 	mockResumableManager.On("FindStart", ctx, uint32(10), uint32(19)).Return(uint32(0), false, errors.New("start error")).Once()
 
 	err := app.applyResumability(ctx, mockResumableManager)
@@ -24,7 +25,7 @@ func TestApplyResumeDatastoreComplete(t *testing.T) {
 	ctx := context.Background()
 	app := &App{}
 	app.config = &Config{StartLedger: 10, EndLedger: 19, Resume: true}
-	mockResumableManager := &MockResumableManager{}
+	mockResumableManager := &datastore.MockResumableManager{}
 	mockResumableManager.On("FindStart", ctx, uint32(10), uint32(19)).Return(uint32(0), false, nil).Once()
 
 	var alreadyExported *DataAlreadyExportedError
@@ -40,9 +41,9 @@ func TestApplyResumeInvalidDataStoreLedgersPerFileBoundary(t *testing.T) {
 		StartLedger:       3,
 		EndLedger:         9,
 		Resume:            true,
-		LedgerBatchConfig: LedgerBatchConfig{LedgersPerFile: 10, FilesPerPartition: 50},
+		LedgerBatchConfig: datastore.LedgerBatchConfig{LedgersPerFile: 10, FilesPerPartition: 50, FileSuffix: ".xdr.gz"},
 	}
-	mockResumableManager := &MockResumableManager{}
+	mockResumableManager := &datastore.MockResumableManager{}
 	// simulate the datastore has inconsistent data,
 	// with last ledger not aligned to starting boundary
 	mockResumableManager.On("FindStart", ctx, uint32(3), uint32(9)).Return(uint32(6), true, nil).Once()
@@ -60,9 +61,9 @@ func TestApplyResumeWithPartialRemoteDataPresent(t *testing.T) {
 		StartLedger:       10,
 		EndLedger:         99,
 		Resume:            true,
-		LedgerBatchConfig: LedgerBatchConfig{LedgersPerFile: 10, FilesPerPartition: 50},
+		LedgerBatchConfig: datastore.LedgerBatchConfig{LedgersPerFile: 10, FilesPerPartition: 50, FileSuffix: ".xdr.gz"},
 	}
-	mockResumableManager := &MockResumableManager{}
+	mockResumableManager := &datastore.MockResumableManager{}
 	// simulates a data store that had ledger files populated up to seq=49, so the first absent ledger would be 50
 	mockResumableManager.On("FindStart", ctx, uint32(10), uint32(99)).Return(uint32(50), true, nil).Once()
 
@@ -79,9 +80,9 @@ func TestApplyResumeWithNoRemoteDataPresent(t *testing.T) {
 		StartLedger:       10,
 		EndLedger:         99,
 		Resume:            true,
-		LedgerBatchConfig: LedgerBatchConfig{LedgersPerFile: 10, FilesPerPartition: 50},
+		LedgerBatchConfig: datastore.LedgerBatchConfig{LedgersPerFile: 10, FilesPerPartition: 50, FileSuffix: ".xdr.gz"},
 	}
-	mockResumableManager := &MockResumableManager{}
+	mockResumableManager := &datastore.MockResumableManager{}
 	// simulates a data store that had no data in the requested range
 	mockResumableManager.On("FindStart", ctx, uint32(10), uint32(99)).Return(uint32(2), true, nil).Once()
 
@@ -101,9 +102,9 @@ func TestApplyResumeWithNoRemoteDataAndRequestFromGenesis(t *testing.T) {
 		StartLedger:       2,
 		EndLedger:         99,
 		Resume:            true,
-		LedgerBatchConfig: LedgerBatchConfig{LedgersPerFile: 10, FilesPerPartition: 50},
+		LedgerBatchConfig: datastore.LedgerBatchConfig{LedgersPerFile: 10, FilesPerPartition: 50, FileSuffix: ".xdr.gz"},
 	}
-	mockResumableManager := &MockResumableManager{}
+	mockResumableManager := &datastore.MockResumableManager{}
 	// simulates a data store that had no data in the requested range
 	mockResumableManager.On("FindStart", ctx, uint32(2), uint32(99)).Return(uint32(2), true, nil).Once()
 

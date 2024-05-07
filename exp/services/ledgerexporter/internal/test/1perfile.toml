@@ -2,3 +2,4 @@ network = "test"
 
 [exporter_config]
 ledgers_per_file = 1
+file_suffix = ".xdr.gz"

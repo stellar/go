@@ -15,6 +15,7 @@ import (
 
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/support/collections/set"
+	"github.com/stellar/go/support/datastore"
 )
 
 func TestExporterSuite(t *testing.T) {
@@ -38,7 +39,7 @@ func (s *ExportManagerSuite) TearDownTest() {
 }
 
 func (s *ExportManagerSuite) TestInvalidExportConfig() {
-	config := LedgerBatchConfig{LedgersPerFile: 0, FilesPerPartition: 10}
+	config := datastore.LedgerBatchConfig{LedgersPerFile: 0, FilesPerPartition: 10, FileSuffix: ".xdr.gz"}
 	registry := prometheus.NewRegistry()
 	queue := NewUploadQueue(1, registry)
 	_, err := NewExportManager(config, &s.mockBackend, queue, registry)
@@ -46,7 +47,7 @@ func (s *ExportManagerSuite) TestInvalidExportConfig() {
 }
 
 func (s *ExportManagerSuite) TestRun() {
-	config := LedgerBatchConfig{LedgersPerFile: 64, FilesPerPartition: 10}
+	config := datastore.LedgerBatchConfig{LedgersPerFile: 64, FilesPerPartition: 10, FileSuffix: ".xdr.gz"}
 	registry := prometheus.NewRegistry()
 	queue := NewUploadQueue(1, registry)
 	exporter, err := NewExportManager(config, &s.mockBackend, queue, registry)
@@ -57,7 +58,7 @@ func (s *ExportManagerSuite) TestRun() {
 	expectedKeys := set.NewSet[string](10)
 	for i := start; i <= end; i++ {
 		s.mockBackend.On("GetLedger", s.ctx, i).
-			Return(createLedgerCloseMeta(i), nil)
+			Return(datastore.CreateLedgerCloseMeta(i), nil)
 		key := config.GetObjectKeyFromSequenceNumber(i)
 		expectedKeys.Add(key)
 	}
@@ -73,7 +74,7 @@ func (s *ExportManagerSuite) TestRun() {
 			if !ok {
 				break
 			}
-			actualKeys.Add(v.objectKey)
+			actualKeys.Add(v.ObjectKey)
 		}
 	}()
 
@@ -96,7 +97,7 @@ func (s *ExportManagerSuite) TestRun() {
 }
 
 func (s *ExportManagerSuite) TestRunContextCancel() {
-	config := LedgerBatchConfig{LedgersPerFile: 1, FilesPerPartition: 1}
+	config := datastore.LedgerBatchConfig{LedgersPerFile: 1, FilesPerPartition: 1, FileSuffix: ".xdr.gz"}
 	registry := prometheus.NewRegistry()
 	queue := NewUploadQueue(1, registry)
 	exporter, err := NewExportManager(config, &s.mockBackend, queue, registry)
@@ -104,7 +105,7 @@ func (s *ExportManagerSuite) TestRunContextCancel() {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	s.mockBackend.On("GetLedger", mock.Anything, mock.Anything).
-		Return(createLedgerCloseMeta(1), nil)
+		Return(datastore.CreateLedgerCloseMeta(1), nil)
 
 	go func() {
 		<-time.After(time.Second * 1)
@@ -125,7 +126,7 @@ func (s *ExportManagerSuite) TestRunContextCancel() {
 }
 
 func (s *ExportManagerSuite) TestRunWithCanceledContext() {
-	config := LedgerBatchConfig{LedgersPerFile: 1, FilesPerPartition: 10}
+	config := datastore.LedgerBatchConfig{LedgersPerFile: 1, FilesPerPartition: 10, FileSuffix: ".xdr.gz"}
 	registry := prometheus.NewRegistry()
 	queue := NewUploadQueue(1, registry)
 	exporter, err := NewExportManager(config, &s.mockBackend, queue, registry)
@@ -142,23 +143,24 @@ func (s *ExportManagerSuite) TestGetObjectKeyFromSequenceNumber() {
 		filesPerPartition uint32
 		ledgerSeq         uint32
 		ledgersPerFile    uint32
+		fileSuffix        string
 		expectedKey       string
 	}{
-		{0, 5, 1, "5.xdr.gz"},
-		{0, 5, 10, "0-9.xdr.gz"},
-		{2, 10, 100, "0-199/0-99.xdr.gz"},
-		{2, 150, 50, "100-199/150-199.xdr.gz"},
-		{2, 300, 200, "0-399/200-399.xdr.gz"},
-		{2, 1, 1, "0-1/1.xdr.gz"},
-		{4, 10, 100, "0-399/0-99.xdr.gz"},
-		{4, 250, 50, "200-399/250-299.xdr.gz"},
-		{1, 300, 200, "200-399.xdr.gz"},
-		{1, 1, 1, "1.xdr.gz"},
+		{0, 5, 1, ".xdr.gz", "5.xdr.gz"},
+		{0, 5, 10, ".xdr.gz", "0-9.xdr.gz"},
+		{2, 10, 100, ".xdr.gz", "0-199/0-99.xdr.gz"},
+		{2, 150, 50, ".xdr.gz", "100-199/150-199.xdr.gz"},
+		{2, 300, 200, ".xdr.gz", "0-399/200-399.xdr.gz"},
+		{2, 1, 1, ".xdr.gz", "0-1/1.xdr.gz"},
+		{4, 10, 100, ".xdr.gz", "0-399/0-99.xdr.gz"},
+		{4, 250, 50, ".xdr.gz", "200-399/250-299.xdr.gz"},
+		{1, 300, 200, ".xdr.gz", "200-399.xdr.gz"},
+		{1, 1, 1, ".xdr.gz", "1.xdr.gz"},
 	}
 
 	for _, tc := range testCases {
 		s.T().Run(fmt.Sprintf("LedgerSeq-%d-LedgersPerFile-%d", tc.ledgerSeq, tc.ledgersPerFile), func(t *testing.T) {
-			config := LedgerBatchConfig{FilesPerPartition: tc.filesPerPartition, LedgersPerFile: tc.ledgersPerFile}
+			config := datastore.LedgerBatchConfig{FilesPerPartition: tc.filesPerPartition, LedgersPerFile: tc.ledgersPerFile, FileSuffix: tc.fileSuffix}
 			key := config.GetObjectKeyFromSequenceNumber(tc.ledgerSeq)
 			require.Equal(t, tc.expectedKey, key)
 		})
@@ -166,7 +168,7 @@ func (s *ExportManagerSuite) TestGetObjectKeyFromSequenceNumber() {
 }
 
 func (s *ExportManagerSuite) TestAddLedgerCloseMeta() {
-	config := LedgerBatchConfig{LedgersPerFile: 1, FilesPerPartition: 10}
+	config := datastore.LedgerBatchConfig{LedgersPerFile: 1, FilesPerPartition: 10, FileSuffix: ".xdr.gz"}
 	registry := prometheus.NewRegistry()
 	queue := NewUploadQueue(1, registry)
 	exporter, err := NewExportManager(config, &s.mockBackend, queue, registry)
@@ -185,14 +187,15 @@ func (s *ExportManagerSuite) TestAddLedgerCloseMeta() {
 			if !ok {
 				break
 			}
-			actualKeys.Add(v.objectKey)
+			actualKeys.Add(v.ObjectKey)
 		}
 	}()
 
 	start := uint32(0)
 	end := uint32(255)
 	for i := start; i <= end; i++ {
-		require.NoError(s.T(), exporter.AddLedgerCloseMeta(context.Background(), createLedgerCloseMeta(i)))
+		require.NoError(s.T(), exporter.AddLedgerCloseMeta(context.Background(), datastore.CreateLedgerCloseMeta(i)))
+
 		key := config.GetObjectKeyFromSequenceNumber(i)
 		expectedkeys.Add(key)
 	}
@@ -203,7 +206,7 @@ func (s *ExportManagerSuite) TestAddLedgerCloseMeta() {
 }
 
 func (s *ExportManagerSuite) TestAddLedgerCloseMetaContextCancel() {
-	config := LedgerBatchConfig{LedgersPerFile: 1, FilesPerPartition: 10}
+	config := datastore.LedgerBatchConfig{LedgersPerFile: 1, FilesPerPartition: 10, FileSuffix: ".xdr.gz"}
 	registry := prometheus.NewRegistry()
 	queue := NewUploadQueue(1, registry)
 	exporter, err := NewExportManager(config, &s.mockBackend, queue, registry)
@@ -215,19 +218,19 @@ func (s *ExportManagerSuite) TestAddLedgerCloseMetaContextCancel() {
 		cancel()
 	}()
 
-	require.NoError(s.T(), exporter.AddLedgerCloseMeta(ctx, createLedgerCloseMeta(1)))
-	err = exporter.AddLedgerCloseMeta(ctx, createLedgerCloseMeta(2))
+	require.NoError(s.T(), exporter.AddLedgerCloseMeta(ctx, datastore.CreateLedgerCloseMeta(1)))
+	err = exporter.AddLedgerCloseMeta(ctx, datastore.CreateLedgerCloseMeta(2))
 	require.EqualError(s.T(), err, "context canceled")
 }
 
 func (s *ExportManagerSuite) TestAddLedgerCloseMetaKeyMismatch() {
-	config := LedgerBatchConfig{LedgersPerFile: 10, FilesPerPartition: 1}
+	config := datastore.LedgerBatchConfig{LedgersPerFile: 10, FilesPerPartition: 1, FileSuffix: ".xdr.gz"}
 	registry := prometheus.NewRegistry()
 	queue := NewUploadQueue(1, registry)
 	exporter, err := NewExportManager(config, &s.mockBackend, queue, registry)
 	require.NoError(s.T(), err)
 
-	require.NoError(s.T(), exporter.AddLedgerCloseMeta(context.Background(), createLedgerCloseMeta(16)))
-	require.EqualError(s.T(), exporter.AddLedgerCloseMeta(context.Background(), createLedgerCloseMeta(21)),
+	require.NoError(s.T(), exporter.AddLedgerCloseMeta(context.Background(), datastore.CreateLedgerCloseMeta(16)))
+	require.EqualError(s.T(), exporter.AddLedgerCloseMeta(context.Background(), datastore.CreateLedgerCloseMeta(21)),
 		"Current meta archive object key mismatch")
 }

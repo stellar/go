@@ -8,19 +8,20 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/stellar/go/ingest/ledgerbackend"
+	"github.com/stellar/go/support/datastore"
 	"github.com/stellar/go/xdr"
 )
 
 type ExportManager struct {
-	config             LedgerBatchConfig
+	config             datastore.LedgerBatchConfig
 	ledgerBackend      ledgerbackend.LedgerBackend
-	currentMetaArchive *LedgerMetaArchive
+	currentMetaArchive *datastore.LedgerMetaArchive
 	queue              UploadQueue
 	latestLedgerMetric *prometheus.GaugeVec
 }
 
 // NewExportManager creates a new ExportManager with the provided configuration.
-func NewExportManager(config LedgerBatchConfig, backend ledgerbackend.LedgerBackend, queue UploadQueue, prometheusRegistry *prometheus.Registry) (*ExportManager, error) {
+func NewExportManager(config datastore.LedgerBatchConfig, backend ledgerbackend.LedgerBackend, queue UploadQueue, prometheusRegistry *prometheus.Registry) (*ExportManager, error) {
 	if config.LedgersPerFile < 1 {
 		return nil, errors.Errorf("Invalid ledgers per file (%d): must be at least 1", config.LedgersPerFile)
 	}
@@ -60,7 +61,7 @@ func (e *ExportManager) AddLedgerCloseMeta(ctx context.Context, ledgerCloseMeta 
 		}
 
 		// Create a new LedgerMetaArchive and add it to the map.
-		e.currentMetaArchive = NewLedgerMetaArchive(objectKey, ledgerSeq, endSeq)
+		e.currentMetaArchive = datastore.NewLedgerMetaArchive(objectKey, ledgerSeq, endSeq)
 	}
 
 	if err := e.currentMetaArchive.AddLedger(ledgerCloseMeta); err != nil {

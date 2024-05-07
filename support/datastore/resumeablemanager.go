@@ -1,4 +1,4 @@
-package ledgerexporter
+package datastore
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/stellar/go/historyarchive"
+	"github.com/stellar/go/support/log"
 )
 
 type ResumableManager interface {
@@ -58,18 +59,18 @@ func (rm resumableManagerService) FindStart(ctx context.Context, start, end uint
 		return 0, false, errors.New("Invalid start value, must be greater than zero")
 	}
 
-	log := logger.WithField("start", start).WithField("end", end).WithField("network", rm.network)
+	log.WithField("start", start).WithField("end", end).WithField("network", rm.network)
 
 	networkLatest := uint32(0)
 	if end < 1 {
 		var latestErr error
-		networkLatest, latestErr = getLatestLedgerSequenceFromHistoryArchives(rm.archive)
+		networkLatest, latestErr = GetLatestLedgerSequenceFromHistoryArchives(rm.archive)
 		if latestErr != nil {
 			err := errors.Wrap(latestErr, "Resumability of requested export ledger range, was not able to get latest ledger from network")
 			return 0, false, err
 		}
-		networkLatest = networkLatest + (getHistoryArchivesCheckPointFrequency() * 2)
-		logger.Infof("Resumability computed effective latest network ledger including padding of checkpoint frequency to be %d + for network=%v", networkLatest, rm.network)
+		networkLatest = networkLatest + (GetHistoryArchivesCheckPointFrequency() * 2)
+		log.Infof("Resumability computed effective latest network ledger including padding of checkpoint frequency to be %d + for network=%v", networkLatest, rm.network)
 
 		if start > networkLatest {
 			// requested to start at a point beyond the latest network, resume not applicable.
