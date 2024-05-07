@@ -140,7 +140,7 @@ func (lb *ledgerBuffer) worker(ctx context.Context) {
 						return
 					}
 					if attempt == lb.config.RetryLimit {
-						err = errors.Wrap(err, "maximum retries exceeded for object reads")
+						err = errors.Wrapf(err, "maximum retries exceeded for downloading object containing sequence %v", sequence)
 						lb.cancel(err)
 						return
 					}

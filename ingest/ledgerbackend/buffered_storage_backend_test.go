@@ -541,5 +541,5 @@ func TestLedgerBufferRetryLimit(t *testing.T) {
 	bsb.ledgerBuffer.wg.Wait()
 
 	_, err := bsb.GetLedger(context.Background(), 3)
-	assert.EqualError(t, err, "failed getting next ledger batch from queue: maximum retries exceeded for object reads: transient error")
+	assert.EqualError(t, err, "failed getting next ledger batch from queue: maximum retries exceeded for downloading object containing sequence 3: transient error")
 }
