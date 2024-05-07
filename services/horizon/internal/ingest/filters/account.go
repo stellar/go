@@ -45,6 +45,10 @@ func (f *accountFilter) RefreshAccountFilter(filterConfig *history.AccountFilter
 }
 
 func (f *accountFilter) FilterTransaction(ctx context.Context, transaction ingest.LedgerTransaction) (bool, error) {
+	if f.IsEmpty(ctx) {
+		return true, nil
+	}
+
 	participants, err := processors.ParticipantsForTransaction(0, transaction)
 	if err != nil {
 		return false, err

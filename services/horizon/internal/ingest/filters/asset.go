@@ -52,6 +52,10 @@ func (f *assetFilter) RefreshAssetFilter(filterConfig *history.AssetFilterConfig
 }
 
 func (f *assetFilter) FilterTransaction(ctx context.Context, transaction ingest.LedgerTransaction) (bool, error) {
+	if f.IsEmpty(ctx) {
+		return true, nil
+	}
+
 	var operations []xdr.Operation
 
 	if txv1, v1Exists := transaction.Envelope.GetV1(); v1Exists {
