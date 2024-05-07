@@ -486,7 +486,7 @@ func (c *CaptiveCoreToml) checkCoreVersion(coreBinaryPath string) coreVersion {
 
 	re := regexp.MustCompile(`\D*(\d*)\.(\d*).*`)
 	versionStr := re.FindStringSubmatch(versionRaw)
-	if err == nil && len(versionStr) == 3 {
+	if len(versionStr) == 3 {
 		for i := 1; i < len(versionStr); i++ {
 			val, err := strconv.Atoi((versionStr[i]))
 			if err != nil {

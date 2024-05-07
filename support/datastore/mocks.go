@@ -1,4 +1,4 @@
-package ledgerexporter
+package datastore
 
 import (
 	"context"
@@ -52,5 +52,5 @@ func (m *MockResumableManager) FindStart(ctx context.Context, start, end uint32)
 }
 
 // ensure that the MockClient implements ClientInterface
-var _ DataStore = &MockDataStore{}
 var _ ResumableManager = &MockResumableManager{}
+var _ DataStore = &MockDataStore{}

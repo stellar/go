@@ -1,16 +1,13 @@
-package ledgerexporter
+package datastore
 
 import (
 	"fmt"
 )
 
-const (
-	fileSuffix = ".xdr.gz"
-)
-
 type LedgerBatchConfig struct {
 	LedgersPerFile    uint32 `toml:"ledgers_per_file"`
 	FilesPerPartition uint32 `toml:"files_per_partition"`
+	FileSuffix        string `toml:"file_suffix"`
 }
 
 func (ec LedgerBatchConfig) GetSequenceNumberStartBoundary(ledgerSeq uint32) uint32 {
@@ -43,7 +40,7 @@ func (ec LedgerBatchConfig) GetObjectKeyFromSequenceNumber(ledgerSeq uint32) str
 	if fileStart != fileEnd {
 		objectKey += fmt.Sprintf("-%d", fileEnd)
 	}
-	objectKey += fileSuffix
+	objectKey += ec.FileSuffix
 
 	return objectKey
 }

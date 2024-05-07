@@ -1,4 +1,4 @@
-package ledgerexporter
+package datastore
 
 import (
 	"context"
@@ -32,6 +32,7 @@ func TestResumability(t *testing.T) {
 			ledgerBatchConfig: LedgerBatchConfig{
 				FilesPerPartition: uint32(1),
 				LedgersPerFile:    uint32(10),
+				FileSuffix:        ".xdr.gz",
 			},
 			networkName:  "test",
 			errorSnippet: "archive error",
@@ -46,6 +47,7 @@ func TestResumability(t *testing.T) {
 			ledgerBatchConfig: LedgerBatchConfig{
 				FilesPerPartition: uint32(1),
 				LedgersPerFile:    uint32(10),
+				FileSuffix:        ".xdr.gz",
 			},
 			networkName: "test",
 		},
@@ -58,6 +60,7 @@ func TestResumability(t *testing.T) {
 			ledgerBatchConfig: LedgerBatchConfig{
 				FilesPerPartition: uint32(1),
 				LedgersPerFile:    uint32(10),
+				FileSuffix:        ".xdr.gz",
 			},
 			networkName: "test",
 		},
@@ -70,6 +73,7 @@ func TestResumability(t *testing.T) {
 			ledgerBatchConfig: LedgerBatchConfig{
 				FilesPerPartition: uint32(1),
 				LedgersPerFile:    uint32(10),
+				FileSuffix:        ".xdr.gz",
 			},
 			networkName:  "test",
 			errorSnippet: "datastore error happened",
@@ -83,6 +87,7 @@ func TestResumability(t *testing.T) {
 			ledgerBatchConfig: LedgerBatchConfig{
 				FilesPerPartition: uint32(1),
 				LedgersPerFile:    uint32(10),
+				FileSuffix:        ".xdr.gz",
 			},
 			networkName: "test",
 		},
@@ -95,6 +100,7 @@ func TestResumability(t *testing.T) {
 			ledgerBatchConfig: LedgerBatchConfig{
 				FilesPerPartition: uint32(1),
 				LedgersPerFile:    uint32(10),
+				FileSuffix:        ".xdr.gz",
 			},
 			networkName: "test",
 		},
@@ -107,6 +113,7 @@ func TestResumability(t *testing.T) {
 			ledgerBatchConfig: LedgerBatchConfig{
 				FilesPerPartition: uint32(1),
 				LedgersPerFile:    uint32(10),
+				FileSuffix:        ".xdr.gz",
 			},
 			networkName: "test",
 		},
@@ -119,6 +126,7 @@ func TestResumability(t *testing.T) {
 			ledgerBatchConfig: LedgerBatchConfig{
 				FilesPerPartition: uint32(1),
 				LedgersPerFile:    uint32(10),
+				FileSuffix:        ".xdr.gz",
 			},
 			networkName: "test",
 		},
@@ -131,6 +139,7 @@ func TestResumability(t *testing.T) {
 			ledgerBatchConfig: LedgerBatchConfig{
 				FilesPerPartition: uint32(1),
 				LedgersPerFile:    uint32(10),
+				FileSuffix:        ".xdr.gz",
 			},
 			networkName:  "test",
 			errorSnippet: "Invalid start value",
@@ -144,6 +153,7 @@ func TestResumability(t *testing.T) {
 			ledgerBatchConfig: LedgerBatchConfig{
 				FilesPerPartition: uint32(1),
 				LedgersPerFile:    uint32(10),
+				FileSuffix:        ".xdr.gz",
 			},
 			networkName:  "test2",
 			latestLedger: uint32(2000),
@@ -157,6 +167,7 @@ func TestResumability(t *testing.T) {
 			ledgerBatchConfig: LedgerBatchConfig{
 				FilesPerPartition: uint32(1),
 				LedgersPerFile:    uint32(10),
+				FileSuffix:        ".xdr.gz",
 			},
 			networkName:  "test3",
 			latestLedger: uint32(3000),
@@ -170,6 +181,7 @@ func TestResumability(t *testing.T) {
 			ledgerBatchConfig: LedgerBatchConfig{
 				FilesPerPartition: uint32(1),
 				LedgersPerFile:    uint32(10),
+				FileSuffix:        ".xdr.gz",
 			},
 			networkName:  "test4",
 			latestLedger: uint32(4000),
@@ -183,6 +195,7 @@ func TestResumability(t *testing.T) {
 			ledgerBatchConfig: LedgerBatchConfig{
 				FilesPerPartition: uint32(1),
 				LedgersPerFile:    uint32(10),
+				FileSuffix:        ".xdr.gz",
 			},
 			networkName:  "test5",
 			latestLedger: uint32(5000),
