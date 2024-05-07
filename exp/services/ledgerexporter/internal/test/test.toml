@@ -9,3 +9,4 @@ destination_bucket_path = "your-bucket-name/subpath"
 [exporter_config]
 ledgers_per_file = 3
 files_per_partition = 1
+file_suffix = ".xdr.gz"

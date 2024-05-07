@@ -4,11 +4,12 @@ import (
 	"context"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/stellar/go/support/datastore"
 )
 
 // UploadQueue is a queue of LedgerMetaArchive objects which are scheduled for upload
 type UploadQueue struct {
-	metaArchiveCh     chan *LedgerMetaArchive
+	metaArchiveCh     chan *datastore.LedgerMetaArchive
 	queueLengthMetric prometheus.Gauge
 }
 
@@ -22,13 +23,13 @@ func NewUploadQueue(size int, prometheusRegistry *prometheus.Registry) UploadQue
 	})
 	prometheusRegistry.MustRegister(queueLengthMetric)
 	return UploadQueue{
-		metaArchiveCh:     make(chan *LedgerMetaArchive, size),
+		metaArchiveCh:     make(chan *datastore.LedgerMetaArchive, size),
 		queueLengthMetric: queueLengthMetric,
 	}
 }
 
 // Enqueue will add an upload task to the queue. Enqueue may block if the queue is full.
-func (u UploadQueue) Enqueue(ctx context.Context, archive *LedgerMetaArchive) error {
+func (u UploadQueue) Enqueue(ctx context.Context, archive *datastore.LedgerMetaArchive) error {
 	u.queueLengthMetric.Inc()
 	select {
 	case u.metaArchiveCh <- archive:
@@ -39,7 +40,7 @@ func (u UploadQueue) Enqueue(ctx context.Context, archive *LedgerMetaArchive) er
 }
 
 // Dequeue will pop a task off the queue. Dequeue may block if the queue is empty.
-func (u UploadQueue) Dequeue(ctx context.Context) (*LedgerMetaArchive, bool, error) {
+func (u UploadQueue) Dequeue(ctx context.Context) (*datastore.LedgerMetaArchive, bool, error) {
 	select {
 	case <-ctx.Done():
 		return nil, false, ctx.Err()

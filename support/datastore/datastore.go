@@ -1,4 +1,4 @@
-package ledgerexporter
+package datastore
 
 import (
 	"context"
@@ -6,6 +6,11 @@ import (
 
 	"github.com/stellar/go/support/errors"
 )
+
+type DataStoreConfig struct {
+	Type   string            `toml:"type"`
+	Params map[string]string `toml:"params"`
+}
 
 // DataStore defines an interface for interacting with data storage
 type DataStore interface {

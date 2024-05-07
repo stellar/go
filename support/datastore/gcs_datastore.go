@@ -1,4 +1,4 @@
-package ledgerexporter
+package datastore
 
 import (
 	"context"
@@ -15,6 +15,7 @@ import (
 	"cloud.google.com/go/storage"
 
 	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/support/url"
 )
 
@@ -43,7 +44,7 @@ func NewGCSDataStore(ctx context.Context, params map[string]string, network stri
 	prefix := strings.TrimPrefix(parsed.Path, "/")
 	bucketName := parsed.Host
 
-	logger.Infof("creating GCS client for bucket: %s, prefix: %s", bucketName, prefix)
+	log.Infof("creating GCS client for bucket: %s, prefix: %s", bucketName, prefix)
 
 	var options []option.ClientOption
 	client, err := storage.NewClient(ctx, options...)
@@ -65,12 +66,15 @@ func (b GCSDataStore) GetFile(ctx context.Context, filePath string) (io.ReadClos
 	filePath = path.Join(b.prefix, filePath)
 	r, err := b.bucket.Object(filePath).NewReader(ctx)
 	if err != nil {
+		if err == storage.ErrObjectNotExist {
+			return nil, os.ErrNotExist
+		}
 		if gcsError, ok := err.(*googleapi.Error); ok {
-			logger.Errorf("GCS error: %s %s", gcsError.Message, gcsError.Body)
+			log.Errorf("GCS error: %s %s", gcsError.Message, gcsError.Body)
 		}
 		return nil, errors.Wrapf(err, "error retrieving file: %s", filePath)
 	}
-	logger.Infof("File retrieved successfully: %s", filePath)
+	log.Infof("File retrieved successfully: %s", filePath)
 	return r, nil
 }
 
@@ -81,15 +85,15 @@ func (b GCSDataStore) PutFileIfNotExists(ctx context.Context, filePath string, i
 		if gcsError, ok := err.(*googleapi.Error); ok {
 			switch gcsError.Code {
 			case http.StatusPreconditionFailed:
-				logger.Infof("Precondition failed: %s already exists in the bucket", filePath)
+				log.Infof("Precondition failed: %s already exists in the bucket", filePath)
 				return false, nil // Treat as success
 			default:
-				logger.Errorf("GCS error: %s %s", gcsError.Message, gcsError.Body)
+				log.Errorf("GCS error: %s %s", gcsError.Message, gcsError.Body)
 			}
 		}
 		return false, errors.Wrapf(err, "error uploading file:  %s", filePath)
 	}
-	logger.Infof("File uploaded successfully: %s", filePath)
+	log.Infof("File uploaded successfully: %s", filePath)
 	return true, nil
 }
 
@@ -99,11 +103,11 @@ func (b GCSDataStore) PutFile(ctx context.Context, filePath string, in io.Writer
 
 	if err != nil {
 		if gcsError, ok := err.(*googleapi.Error); ok {
-			logger.Errorf("GCS error: %s %s", gcsError.Message, gcsError.Body)
+			log.Errorf("GCS error: %s %s", gcsError.Message, gcsError.Body)
 		}
 		return errors.Wrapf(err, "error uploading file: %v", filePath)
 	}
-	logger.Infof("File uploaded successfully: %s", filePath)
+	log.Infof("File uploaded successfully: %s", filePath)
 	return nil
 }
 
