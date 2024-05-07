@@ -29,6 +29,7 @@ type LedgerTransactionProcessor interface {
 type LedgerTransactionFilterer interface {
 	Name() string
 	FilterTransaction(ctx context.Context, transaction ingest.LedgerTransaction) (bool, error)
+	IsEmpty(ctx context.Context) bool
 }
 
 func StreamLedgerTransactions(

@@ -34,29 +34,24 @@ func NewAssetFilter() AssetFilter {
 	}
 }
 
-func (filter *assetFilter) Name() string {
+func (f *assetFilter) Name() string {
 	return "filters.assetFilter"
 }
 
-func (filter *assetFilter) RefreshAssetFilter(filterConfig *history.AssetFilterConfig) error {
+func (f *assetFilter) RefreshAssetFilter(filterConfig *history.AssetFilterConfig) error {
 	// only need to re-initialize the filter config state(rules) if it's cached version(in  memory)
 	// is older than the incoming config version based on lastModified epoch timestamp
-	if filterConfig.LastModified > filter.lastModified {
+	if filterConfig.LastModified > f.lastModified {
 		logger.Infof("New Asset Filter config detected, reloading new config %v ", *filterConfig)
-		filter.enabled = filterConfig.Enabled
-		filter.canonicalAssetsLookup = listToSet(filterConfig.Whitelist)
-		filter.lastModified = filterConfig.LastModified
+		f.enabled = filterConfig.Enabled
+		f.canonicalAssetsLookup = listToSet(filterConfig.Whitelist)
+		f.lastModified = filterConfig.LastModified
 	}
 
 	return nil
 }
 
 func (f *assetFilter) FilterTransaction(ctx context.Context, transaction ingest.LedgerTransaction) (bool, error) {
-	// filtering is disabled if the whitelist is empty for now as that is the only filter rule
-	if len(f.canonicalAssetsLookup) < 1 || !f.enabled {
-		return true, nil
-	}
-
 	var operations []xdr.Operation
 
 	if txv1, v1Exists := transaction.Envelope.GetV1(); v1Exists {
@@ -143,4 +138,9 @@ func listToSet(list []string) set.Set[string] {
 		set.Add(list[i])
 	}
 	return set
+}
+
+func (f assetFilter) IsEmpty(ctx context.Context) bool {
+	// filtering is disabled if the whitelist is empty for now as that is the only filter rule
+	return len(f.canonicalAssetsLookup) < 1 || !f.enabled
 }

@@ -179,20 +179,38 @@ func (g *groupTransactionFilterers) Name() string {
 }
 
 func (g *groupTransactionFilterers) FilterTransaction(ctx context.Context, tx ingest.LedgerTransaction) (bool, error) {
+	include := false
+	noFiltersDefined := true
+
 	for _, f := range g.filterers {
+		if f.IsEmpty(ctx) {
+			continue
+		}
+
+		// This means atleast one filter is defined.
+		noFiltersDefined = false
+
 		startTime := time.Now()
-		include, err := f.FilterTransaction(ctx, tx)
+		inc, err := f.FilterTransaction(ctx, tx)
 		if err != nil {
 			return false, errors.Wrapf(err, "error in %T.FilterTransaction", f)
 		}
 		g.AddRunDuration(f.Name(), startTime)
-		if !include {
-			// filter out, we can return early
-			g.droppedTransactions++
-			return false, nil
-		}
+		include = include || inc
 	}
-	return true, nil
+
+	// Transaction is stored only if there are no filtering rules or atleast one of the rules
+	// whitelists the transaction.
+	if noFiltersDefined || include {
+		return true, nil
+	}
+
+	g.droppedTransactions++
+	return false, nil
+}
+
+func (g *groupTransactionFilterers) IsEmpty(ctx context.Context) bool {
+	return len(g.filterers) < 1
 }
 
 func (g *groupTransactionFilterers) ResetStats() {
