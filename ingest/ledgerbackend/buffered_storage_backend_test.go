@@ -441,9 +441,12 @@ func TestLedgerBufferClose(t *testing.T) {
 	partition := ledgerPerFileCount*partitionSize - 1
 
 	objectName := fmt.Sprintf("0-%d/%d.xdr.gz", partition, 3)
+	afterPrepareRange := make(chan struct{})
 	mockDataStore.On("GetFile", mock.Anything, objectName).Return(io.NopCloser(&bytes.Buffer{}), context.Canceled).Run(func(args mock.Arguments) {
+		<-afterPrepareRange
 		go bsb.ledgerBuffer.close()
 	}).Once()
+
 	t.Cleanup(func() {
 		mockDataStore.AssertExpectations(t)
 	})
@@ -451,6 +454,7 @@ func TestLedgerBufferClose(t *testing.T) {
 	bsb.dataStore = mockDataStore
 
 	assert.NoError(t, bsb.PrepareRange(ctx, ledgerRange))
+	close(afterPrepareRange)
 
 	bsb.ledgerBuffer.wg.Wait()
 
