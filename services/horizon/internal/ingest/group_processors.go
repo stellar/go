@@ -179,7 +179,7 @@ func (g *groupTransactionFilterers) Name() string {
 }
 
 func (g *groupTransactionFilterers) FilterTransaction(ctx context.Context, tx ingest.LedgerTransaction) (bool, error) {
-	include := false
+	matchAtleastOneFilter := false
 	noFiltersDefined := true
 
 	for _, f := range g.filterers {
@@ -196,12 +196,12 @@ func (g *groupTransactionFilterers) FilterTransaction(ctx context.Context, tx in
 			return false, errors.Wrapf(err, "error in %T.FilterTransaction", f)
 		}
 		g.AddRunDuration(f.Name(), startTime)
-		include = include || inc
+		matchAtleastOneFilter = matchAtleastOneFilter || inc
 	}
 
 	// Transaction is stored only if there are no filtering rules or atleast one of the rules
 	// whitelists the transaction.
-	if noFiltersDefined || include {
+	if noFiltersDefined || matchAtleastOneFilter {
 		return true, nil
 	}
 
