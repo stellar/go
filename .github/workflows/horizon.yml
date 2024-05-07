@@ -154,6 +154,8 @@ jobs:
   ledger-exporter:
     name: Test and push the Ledger Exporter images
     runs-on: ubuntu-latest
+    env:
+      STELLAR_CORE_VERSION: 21.0.0-1812.rc1.a10329cca.focal
     steps:
       - uses: actions/checkout@v3
         with:
