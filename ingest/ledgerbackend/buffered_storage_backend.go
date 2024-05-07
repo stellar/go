@@ -47,7 +47,7 @@ type BufferedStorageBackend struct {
 	lastLedger        uint32
 }
 
-// Return a new BufferedStorageBackend instance.
+// NewBufferedStorageBackend returns a new BufferedStorageBackend instance.
 func NewBufferedStorageBackend(ctx context.Context, config BufferedStorageBackendConfig) (*BufferedStorageBackend, error) {
 	if config.BufferSize == 0 {
 		return nil, errors.New("buffer size must be > 0")

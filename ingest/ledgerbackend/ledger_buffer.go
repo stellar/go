@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+
 	"github.com/stellar/go/support/collections/heap"
 	"github.com/stellar/go/support/compressxdr"
 	"github.com/stellar/go/support/datastore"
@@ -28,6 +29,8 @@ type ledgerBuffer struct {
 	// context used to cancel workers within the ledgerBuffer
 	context context.Context
 	cancel  context.CancelCauseFunc
+
+	wg sync.WaitGroup
 
 	// The pipes and data structures below help establish the ledgerBuffer invariant which is
 	// the number of tasks (both pending and in-flight) + len(ledgerQueue) + ledgerPriorityQueue.Len()
@@ -68,6 +71,7 @@ func (bsb *BufferedStorageBackend) newLedgerBuffer(ledgerRange Range) (*ledgerBu
 	}
 
 	// Start workers to read LCM files
+	ledgerBuffer.wg.Add(int(bsb.config.NumWorkers))
 	for i := uint32(0); i < bsb.config.NumWorkers; i++ {
 		go ledgerBuffer.worker(ctx)
 	}
@@ -95,42 +99,56 @@ func (lb *ledgerBuffer) pushTaskQueue() {
 	lb.nextTaskLedger += lb.config.LedgerBatchConfig.LedgersPerFile
 }
 
-func (lb *ledgerBuffer) sleepWithContext(ctx context.Context, d time.Duration) {
+// sleepWithContext returns true upon sleeping without interruption from the context
+func (lb *ledgerBuffer) sleepWithContext(ctx context.Context, d time.Duration) bool {
 	timer := time.NewTimer(d)
 	select {
 	case <-ctx.Done():
 		if !timer.Stop() {
 			<-timer.C
 		}
+		return false
 	case <-timer.C:
 	}
+	return true
 }
 
 func (lb *ledgerBuffer) worker(ctx context.Context) {
+	defer lb.wg.Done()
+
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case sequence := <-lb.taskQueue:
-			for retryCount := uint32(0); retryCount <= lb.config.RetryLimit; {
+			for attempt := uint32(0); attempt <= lb.config.RetryLimit; {
 				ledgerObject, err := lb.downloadLedgerObject(ctx, sequence)
 				if err != nil {
 					if errors.Is(err, os.ErrNotExist) {
 						// ledgerObject not found and unbounded
 						if !lb.ledgerRange.bounded {
-							lb.sleepWithContext(ctx, lb.config.RetryWait*time.Second)
+							if !lb.sleepWithContext(ctx, lb.config.RetryWait) {
+								return
+							}
 							continue
 						}
-						lb.cancel(err)
+						lb.cancel(errors.Wrapf(err, "ledger object containing sequence %v is missing", sequence))
 						return
 					}
-					if retryCount == lb.config.RetryLimit {
+					// don't bother retrying if we've received the signal to shut down
+					if errors.Is(err, context.Canceled) {
+						return
+					}
+					if attempt == lb.config.RetryLimit {
 						err = errors.Wrap(err, "maximum retries exceeded for object reads")
 						lb.cancel(err)
 						return
 					}
-					retryCount++
-					lb.sleepWithContext(ctx, lb.config.RetryWait*time.Second)
+					attempt++
+					if !lb.sleepWithContext(ctx, lb.config.RetryWait) {
+						return
+					}
+					continue
 				}
 
 				// When we store an object we still maintain the ledger buffer invariant because
@@ -189,7 +207,7 @@ func (lb *ledgerBuffer) getFromLedgerQueue(ctx context.Context) ([]byte, error) 
 	for {
 		select {
 		case <-lb.context.Done():
-			return nil, lb.context.Err()
+			return nil, context.Cause(lb.context)
 		case <-ctx.Done():
 			return nil, ctx.Err()
 		case compressedBinary := <-lb.ledgerQueue:
@@ -225,4 +243,6 @@ func (lb *ledgerBuffer) getLatestLedgerSequence() (uint32, error) {
 
 func (lb *ledgerBuffer) close() {
 	lb.cancel(context.Canceled)
+	// wait for all workers to finish terminating
+	lb.wg.Wait()
 }
