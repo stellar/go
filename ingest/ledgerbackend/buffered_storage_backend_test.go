@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"sync/atomic"
 	"testing"
@@ -66,10 +67,10 @@ func createMockdataStore(t *testing.T, start, end, partitionSize, count uint32) 
 		if count > 1 {
 			endFileSeq := i + count - 1
 			readCloser = createLCMBatchReader(i, endFileSeq, count)
-			objectName = fmt.Sprintf("0-%d/%d-%d.xdr.gz", partition, i, endFileSeq)
+			objectName = fmt.Sprintf("FFFFFFFF--0-%d/%08X--%d-%d.xdr.gz", partition, math.MaxUint32-i, i, endFileSeq)
 		} else {
 			readCloser = createLCMBatchReader(i, i, count)
-			objectName = fmt.Sprintf("0-%d/%d.xdr.gz", partition, i)
+			objectName = fmt.Sprintf("FFFFFFFF--0-%d/%08X--%d.xdr.gz", partition, math.MaxUint32-i, i)
 		}
 		mockDataStore.On("GetFile", mock.Anything, objectName).Return(readCloser, nil)
 	}
@@ -440,7 +441,7 @@ func TestLedgerBufferClose(t *testing.T) {
 	mockDataStore := new(datastore.MockDataStore)
 	partition := ledgerPerFileCount*partitionSize - 1
 
-	objectName := fmt.Sprintf("0-%d/%d.xdr.gz", partition, 3)
+	objectName := fmt.Sprintf("FFFFFFFF--0-%d/%08X--%d.xdr.gz", partition, math.MaxUint32-3, 3)
 	afterPrepareRange := make(chan struct{})
 	mockDataStore.On("GetFile", mock.Anything, objectName).Return(io.NopCloser(&bytes.Buffer{}), context.Canceled).Run(func(args mock.Arguments) {
 		<-afterPrepareRange
@@ -472,7 +473,7 @@ func TestLedgerBufferBoundedObjectNotFound(t *testing.T) {
 	mockDataStore := new(datastore.MockDataStore)
 	partition := ledgerPerFileCount*partitionSize - 1
 
-	objectName := fmt.Sprintf("0-%d/%d.xdr.gz", partition, 3)
+	objectName := fmt.Sprintf("FFFFFFFF--0-%d/%08X--%d.xdr.gz", partition, math.MaxUint32-3, 3)
 	mockDataStore.On("GetFile", mock.Anything, objectName).Return(io.NopCloser(&bytes.Buffer{}), os.ErrNotExist).Once()
 	t.Cleanup(func() {
 		mockDataStore.AssertExpectations(t)
@@ -498,7 +499,7 @@ func TestLedgerBufferUnboundedObjectNotFound(t *testing.T) {
 	mockDataStore := new(datastore.MockDataStore)
 	partition := ledgerPerFileCount*partitionSize - 1
 
-	objectName := fmt.Sprintf("0-%d/%d.xdr.gz", partition, 3)
+	objectName := fmt.Sprintf("FFFFFFFF--0-%d/%08X--%d.xdr.gz", partition, math.MaxUint32-3, 3)
 	iteration := &atomic.Int32{}
 	cancelAfter := int32(bsb.config.RetryLimit) + 2
 	mockDataStore.On("GetFile", mock.Anything, objectName).Return(io.NopCloser(&bytes.Buffer{}), os.ErrNotExist).Run(func(args mock.Arguments) {
@@ -530,7 +531,7 @@ func TestLedgerBufferRetryLimit(t *testing.T) {
 	mockDataStore := new(datastore.MockDataStore)
 	partition := ledgerPerFileCount*partitionSize - 1
 
-	objectName := fmt.Sprintf("0-%d/%d.xdr.gz", partition, 3)
+	objectName := fmt.Sprintf("FFFFFFFF--0-%d/%08X--%d.xdr.gz", partition, math.MaxUint32-3, 3)
 	mockDataStore.On("GetFile", mock.Anything, objectName).
 		Return(io.NopCloser(&bytes.Buffer{}), fmt.Errorf("transient error")).
 		Times(int(bsb.config.RetryLimit) + 1)
