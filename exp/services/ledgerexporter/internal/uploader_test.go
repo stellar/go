@@ -62,11 +62,10 @@ func (s *UploaderSuite) testUpload(putOkReturnVal bool) {
 
 	expectedCompressedLength := capturedBuf.Len()
 	var decodedArchive datastore.LedgerMetaArchive
-	xdrDecoder, err := compressxdr.NewXDRDecoder(compressxdr.GZIP, &decodedArchive.Data)
-	require.NoError(s.T(), err)
+	xdrDecoder := compressxdr.NewXDRDecoder(compressxdr.DefaultCompressor, &decodedArchive.Data)
 
 	decoder := xdrDecoder
-	_, err = decoder.ReadFrom(&capturedBuf)
+	_, err := decoder.ReadFrom(&capturedBuf)
 	require.NoError(s.T(), err)
 
 	// require that the decoded data matches the original test data
@@ -98,7 +97,7 @@ func (s *UploaderSuite) testUpload(putOkReturnVal bool) {
 
 	metric, err = dataUploader.objectSizeMetrics.MetricVec.GetMetricWith(prometheus.Labels{
 		"ledgers":        "100",
-		"compression":    compressxdr.GZIP,
+		"compression":    decoder.Compressor.GetName(),
 		"already_exists": strconv.FormatBool(alreadyExists),
 	})
 	require.NoError(s.T(), err)
@@ -114,7 +113,7 @@ func (s *UploaderSuite) testUpload(putOkReturnVal bool) {
 	)
 	metric, err = dataUploader.objectSizeMetrics.MetricVec.GetMetricWith(prometheus.Labels{
 		"ledgers":        "100",
-		"compression":    compressxdr.GZIP,
+		"compression":    decoder.Compressor.GetName(),
 		"already_exists": strconv.FormatBool(!alreadyExists),
 	})
 	require.NoError(s.T(), err)
@@ -172,6 +171,7 @@ func (s *UploaderSuite) testUploadPutError(putOkReturnVal bool) {
 	dataUploader := NewUploader(&s.mockDataStore, queue, registry)
 	err := dataUploader.Upload(context.Background(), archive)
 	require.Equal(s.T(), fmt.Sprintf("error uploading %s: error in PutFileIfNotExists", key), err.Error())
+	decoder := compressxdr.NewXDRDecoder(compressxdr.DefaultCompressor, nil)
 
 	for _, alreadyExists := range []string{"true", "false"} {
 		metric, err := dataUploader.uploadDurationMetric.MetricVec.GetMetricWith(prometheus.Labels{
@@ -185,7 +185,7 @@ func (s *UploaderSuite) testUploadPutError(putOkReturnVal bool) {
 			getMetricValue(metric).GetSummary().GetSampleCount(),
 		)
 
-		for _, compression := range []string{compressxdr.GZIP, "none"} {
+		for _, compression := range []string{decoder.Compressor.GetName(), "none"} {
 			metric, err = dataUploader.objectSizeMetrics.MetricVec.GetMetricWith(prometheus.Labels{
 				"ledgers":        "100",
 				"compression":    compression,

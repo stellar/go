@@ -20,7 +20,6 @@ var _ LedgerBackend = (*BufferedStorageBackend)(nil)
 
 type BufferedStorageBackendConfig struct {
 	LedgerBatchConfig datastore.LedgerBatchConfig
-	CompressionType   string
 	DataStore         datastore.DataStore
 	BufferSize        uint32
 	NumWorkers        uint32
@@ -65,19 +64,8 @@ func NewBufferedStorageBackend(ctx context.Context, config BufferedStorageBacken
 		return nil, errors.New("ledgersPerFile must be > 0")
 	}
 
-	if config.LedgerBatchConfig.FileSuffix == "" {
-		return nil, errors.New("no file suffix provided in LedgerBatchConfig")
-	}
-
-	if config.CompressionType == "" {
-		return nil, errors.New("no compression type provided in config")
-	}
-
 	ledgerMetaArchive := datastore.NewLedgerMetaArchive("", 0, 0)
-	decoder, err := compressxdr.NewXDRDecoder(config.CompressionType, nil)
-	if err != nil {
-		return nil, err
-	}
+	decoder := compressxdr.NewXDRDecoder(compressxdr.DefaultCompressor, nil)
 
 	bsBackend := &BufferedStorageBackend{
 		config:            config,

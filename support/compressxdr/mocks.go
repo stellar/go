@@ -19,5 +19,3 @@ func (m *MockXDRDecoder) Unzip(r io.Reader) ([]byte, error) {
 	args := m.Called(r)
 	return args.Get(0).([]byte), args.Error(1)
 }
-
-var _ XDRDecoder = &MockXDRDecoder{}

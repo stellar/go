@@ -83,15 +83,10 @@ func (u Uploader) Upload(ctx context.Context, metaArchive *datastore.LedgerMetaA
 	startTime := time.Now()
 	numLedgers := strconv.FormatUint(uint64(metaArchive.GetLedgerCount()), 10)
 
-	// TODO: Add compression config and optimize best compression algorithm
-	// JIRA https://stellarorg.atlassian.net/browse/HUBBLE-368
-	xdrEncoder, err := compressxdr.NewXDREncoder(compressxdr.GZIP, &metaArchive.Data)
-	if err != nil {
-		return err
-	}
+	xdrEncoder := compressxdr.NewXDREncoder(compressxdr.DefaultCompressor, &metaArchive.Data)
 
 	writerTo := &writerToRecorder{
-		WriterTo: xdrEncoder,
+		WriterTo: &xdrEncoder,
 	}
 	ok, err := u.dataStore.PutFileIfNotExists(ctx, metaArchive.GetObjectKey(), writerTo)
 	if err != nil {
@@ -109,7 +104,7 @@ func (u Uploader) Upload(ctx context.Context, metaArchive *datastore.LedgerMetaA
 		"already_exists": alreadyExists,
 	}).Observe(float64(writerTo.totalUncompressed))
 	u.objectSizeMetrics.With(prometheus.Labels{
-		"compression":    compressxdr.GZIP,
+		"compression":    xdrEncoder.Compressor.GetName(),
 		"ledgers":        numLedgers,
 		"already_exists": alreadyExists,
 	}).Observe(float64(writerTo.totalCompressed))
