@@ -179,37 +179,33 @@ func (g *groupTransactionFilterers) Name() string {
 }
 
 func (g *groupTransactionFilterers) FilterTransaction(ctx context.Context, tx ingest.LedgerTransaction) (bool, error) {
-	matchAtleastOneFilter := false
-	noFiltersDefined := true
+	filtersEnabled := false
 
 	for _, f := range g.filterers {
-		if f.IsEmpty(ctx) {
+		if !f.IsEnabled() {
 			continue
 		}
 
-		// This means atleast one filter is defined.
-		noFiltersDefined = false
-
+		filtersEnabled = true
 		startTime := time.Now()
-		inc, err := f.FilterTransaction(ctx, tx)
+		include, err := f.FilterTransaction(ctx, tx)
 		if err != nil {
 			return false, errors.Wrapf(err, "error in %T.FilterTransaction", f)
 		}
 		g.AddRunDuration(f.Name(), startTime)
-		matchAtleastOneFilter = matchAtleastOneFilter || inc
+		if include {
+			return true, nil
+		}
 	}
 
-	// Transaction is stored only if there are no filtering rules or atleast one of the rules
-	// whitelists the transaction.
-	if noFiltersDefined || matchAtleastOneFilter {
-		return true, nil
+	if filtersEnabled {
+		g.droppedTransactions++
+		return false, nil
 	}
-
-	g.droppedTransactions++
-	return false, nil
+	return true, nil
 }
 
-func (g *groupTransactionFilterers) IsEmpty(ctx context.Context) bool {
+func (g *groupTransactionFilterers) IsEnabled() bool {
 	return len(g.filterers) < 1
 }
 

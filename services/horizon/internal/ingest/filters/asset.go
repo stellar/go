@@ -52,7 +52,7 @@ func (f *assetFilter) RefreshAssetFilter(filterConfig *history.AssetFilterConfig
 }
 
 func (f *assetFilter) FilterTransaction(ctx context.Context, transaction ingest.LedgerTransaction) (bool, error) {
-	if f.IsEmpty(ctx) {
+	if !f.IsEnabled() {
 		return true, nil
 	}
 
@@ -144,7 +144,7 @@ func listToSet(list []string) set.Set[string] {
 	return set
 }
 
-func (f assetFilter) IsEmpty(ctx context.Context) bool {
+func (f assetFilter) IsEnabled() bool {
 	// filtering is disabled if the whitelist is empty for now as that is the only filter rule
-	return len(f.canonicalAssetsLookup) < 1 || !f.enabled
+	return len(f.canonicalAssetsLookup) >= 1 && f.enabled
 }

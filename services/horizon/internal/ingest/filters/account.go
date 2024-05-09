@@ -45,7 +45,7 @@ func (f *accountFilter) RefreshAccountFilter(filterConfig *history.AccountFilter
 }
 
 func (f *accountFilter) FilterTransaction(ctx context.Context, transaction ingest.LedgerTransaction) (bool, error) {
-	if f.IsEmpty(ctx) {
+	if !f.IsEnabled() {
 		return true, nil
 	}
 
@@ -64,7 +64,7 @@ func (f *accountFilter) FilterTransaction(ctx context.Context, transaction inges
 	return false, nil
 }
 
-func (f accountFilter) IsEmpty(ctx context.Context) bool {
+func (f accountFilter) IsEnabled() bool {
 	// filtering is disabled if the whitelist is empty for now, as that is the only filter rule
-	return len(f.whitelistedAccountsSet) == 0 || !f.enabled
+	return len(f.whitelistedAccountsSet) >= 1 && f.enabled
 }
