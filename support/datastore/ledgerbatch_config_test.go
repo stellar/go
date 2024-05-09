@@ -69,7 +69,7 @@ func TestGetObjectKeyFromSequenceNumber_ObjectKeyDescOrder(t *testing.T) {
 	prev := sequenceMap[keys[0]]
 	for i := 1; i < sequenceCount; i++ {
 		curr := sequenceMap[keys[i]]
-		if prev < curr {
+		if prev <= curr {
 			t.Error("sequences not in lexicographic order")
 		}
 		prev = curr
