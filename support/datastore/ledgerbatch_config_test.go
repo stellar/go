@@ -2,6 +2,7 @@ package datastore
 
 import (
 	"fmt"
+	"math"
 	"math/rand"
 	"sort"
 	"testing"
@@ -48,6 +49,12 @@ func TestGetObjectKeyFromSequenceNumber_ObjectKeyDescOrder(t *testing.T) {
 	sequenceMap := make(map[uint32]string)
 	keys := make([]uint32, len(sequenceMap))
 	count := 0
+
+	// Add 0 and MaxUint32 as edge cases
+	sequenceMap[0] = config.GetObjectKeyFromSequenceNumber(0)
+	keys = append(keys, 0)
+	sequenceMap[math.MaxUint32] = config.GetObjectKeyFromSequenceNumber(math.MaxUint32)
+	keys = append(keys, math.MaxUint32)
 
 	for {
 		if count >= sequenceCount {
