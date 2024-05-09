@@ -208,58 +208,58 @@ func TestResumability(t *testing.T) {
 	mockDataStore := &MockDataStore{}
 
 	//"End ledger same as start, data store has it"
-	mockDataStore.On("Exists", ctx, "0-9.xdr.gz").Return(true, nil).Once()
+	mockDataStore.On("Exists", ctx, "FFFFFFFF--0-9.xdr.gz").Return(true, nil).Once()
 
 	//"End ledger same as start, data store does not have it"
-	mockDataStore.On("Exists", ctx, "10-19.xdr.gz").Return(false, nil).Once()
+	mockDataStore.On("Exists", ctx, "FFFFFFF5--10-19.xdr.gz").Return(false, nil).Once()
 
 	//"binary search encounters an error during datastore retrieval",
-	mockDataStore.On("Exists", ctx, "20-29.xdr.gz").Return(false, errors.New("datastore error happened")).Once()
+	mockDataStore.On("Exists", ctx, "FFFFFFEB--20-29.xdr.gz").Return(false, errors.New("datastore error happened")).Once()
 
 	//"Data store is beyond boundary aligned start ledger"
-	mockDataStore.On("Exists", ctx, "30-39.xdr.gz").Return(true, nil).Once()
-	mockDataStore.On("Exists", ctx, "40-49.xdr.gz").Return(false, nil).Once()
+	mockDataStore.On("Exists", ctx, "FFFFFFE1--30-39.xdr.gz").Return(true, nil).Once()
+	mockDataStore.On("Exists", ctx, "FFFFFFD7--40-49.xdr.gz").Return(false, nil).Once()
 
 	//"Data store is beyond non boundary aligned start ledger"
-	mockDataStore.On("Exists", ctx, "70-79.xdr.gz").Return(true, nil).Once()
-	mockDataStore.On("Exists", ctx, "80-89.xdr.gz").Return(false, nil).Once()
+	mockDataStore.On("Exists", ctx, "FFFFFFB9--70-79.xdr.gz").Return(true, nil).Once()
+	mockDataStore.On("Exists", ctx, "FFFFFFAF--80-89.xdr.gz").Return(false, nil).Once()
 
 	//"Data store is beyond start and end ledger"
-	mockDataStore.On("Exists", ctx, "260-269.xdr.gz").Return(true, nil).Once()
-	mockDataStore.On("Exists", ctx, "270-279.xdr.gz").Return(true, nil).Once()
+	mockDataStore.On("Exists", ctx, "FFFFFEFB--260-269.xdr.gz").Return(true, nil).Once()
+	mockDataStore.On("Exists", ctx, "FFFFFEF1--270-279.xdr.gz").Return(true, nil).Once()
 
 	//"Data store is not beyond start ledger"
-	mockDataStore.On("Exists", ctx, "110-119.xdr.gz").Return(false, nil).Once()
-	mockDataStore.On("Exists", ctx, "100-109.xdr.gz").Return(false, nil).Once()
-	mockDataStore.On("Exists", ctx, "90-99.xdr.gz").Return(false, nil).Once()
+	mockDataStore.On("Exists", ctx, "FFFFFF91--110-119.xdr.gz").Return(false, nil).Once()
+	mockDataStore.On("Exists", ctx, "FFFFFF9B--100-109.xdr.gz").Return(false, nil).Once()
+	mockDataStore.On("Exists", ctx, "FFFFFFA5--90-99.xdr.gz").Return(false, nil).Once()
 
 	//"No end ledger provided, data store not beyond start" uses latest from network="test2"
-	mockDataStore.On("Exists", ctx, "1630-1639.xdr.gz").Return(false, nil).Once()
-	mockDataStore.On("Exists", ctx, "1390-1399.xdr.gz").Return(false, nil).Once()
-	mockDataStore.On("Exists", ctx, "1260-1269.xdr.gz").Return(false, nil).Once()
-	mockDataStore.On("Exists", ctx, "1200-1209.xdr.gz").Return(false, nil).Once()
-	mockDataStore.On("Exists", ctx, "1160-1169.xdr.gz").Return(false, nil).Once()
-	mockDataStore.On("Exists", ctx, "1170-1179.xdr.gz").Return(false, nil).Once()
-	mockDataStore.On("Exists", ctx, "1150-1159.xdr.gz").Return(false, nil).Once()
-	mockDataStore.On("Exists", ctx, "1140-1149.xdr.gz").Return(false, nil).Once()
+	mockDataStore.On("Exists", ctx, "FFFFF9A1--1630-1639.xdr.gz").Return(false, nil).Once()
+	mockDataStore.On("Exists", ctx, "FFFFFA91--1390-1399.xdr.gz").Return(false, nil).Once()
+	mockDataStore.On("Exists", ctx, "FFFFFB13--1260-1269.xdr.gz").Return(false, nil).Once()
+	mockDataStore.On("Exists", ctx, "FFFFFB4F--1200-1209.xdr.gz").Return(false, nil).Once()
+	mockDataStore.On("Exists", ctx, "FFFFFB77--1160-1169.xdr.gz").Return(false, nil).Once()
+	mockDataStore.On("Exists", ctx, "FFFFFB6D--1170-1179.xdr.gz").Return(false, nil).Once()
+	mockDataStore.On("Exists", ctx, "FFFFFB81--1150-1159.xdr.gz").Return(false, nil).Once()
+	mockDataStore.On("Exists", ctx, "FFFFFB8B--1140-1149.xdr.gz").Return(false, nil).Once()
 
 	//"No end ledger provided, data store is beyond start" uses latest from network="test3"
-	mockDataStore.On("Exists", ctx, "2630-2639.xdr.gz").Return(false, nil).Once()
-	mockDataStore.On("Exists", ctx, "2390-2399.xdr.gz").Return(false, nil).Once()
-	mockDataStore.On("Exists", ctx, "2260-2269.xdr.gz").Return(false, nil).Once()
-	mockDataStore.On("Exists", ctx, "2250-2259.xdr.gz").Return(false, nil).Once()
-	mockDataStore.On("Exists", ctx, "2240-2249.xdr.gz").Return(true, nil).Once()
-	mockDataStore.On("Exists", ctx, "2230-2239.xdr.gz").Return(true, nil).Once()
-	mockDataStore.On("Exists", ctx, "2200-2209.xdr.gz").Return(true, nil).Once()
+	mockDataStore.On("Exists", ctx, "FFFFF5B9--2630-2639.xdr.gz").Return(false, nil).Once()
+	mockDataStore.On("Exists", ctx, "FFFFF6A9--2390-2399.xdr.gz").Return(false, nil).Once()
+	mockDataStore.On("Exists", ctx, "FFFFF72B--2260-2269.xdr.gz").Return(false, nil).Once()
+	mockDataStore.On("Exists", ctx, "FFFFF735--2250-2259.xdr.gz").Return(false, nil).Once()
+	mockDataStore.On("Exists", ctx, "FFFFF73F--2240-2249.xdr.gz").Return(true, nil).Once()
+	mockDataStore.On("Exists", ctx, "FFFFF749--2230-2239.xdr.gz").Return(true, nil).Once()
+	mockDataStore.On("Exists", ctx, "FFFFF767--2200-2209.xdr.gz").Return(true, nil).Once()
 
 	//"No end ledger provided, data store is beyond start and archive network latest, and partially into checkpoint frequency padding" uses latest from network="test4"
-	mockDataStore.On("Exists", ctx, "3630-3639.xdr.gz").Return(true, nil).Once()
-	mockDataStore.On("Exists", ctx, "3880-3889.xdr.gz").Return(true, nil).Once()
-	mockDataStore.On("Exists", ctx, "4000-4009.xdr.gz").Return(true, nil).Once()
-	mockDataStore.On("Exists", ctx, "4060-4069.xdr.gz").Return(true, nil).Once()
-	mockDataStore.On("Exists", ctx, "4090-4099.xdr.gz").Return(false, nil).Once()
-	mockDataStore.On("Exists", ctx, "4080-4089.xdr.gz").Return(false, nil).Once()
-	mockDataStore.On("Exists", ctx, "4070-4079.xdr.gz").Return(false, nil).Once()
+	mockDataStore.On("Exists", ctx, "FFFFF1D1--3630-3639.xdr.gz").Return(true, nil).Once()
+	mockDataStore.On("Exists", ctx, "FFFFF0D7--3880-3889.xdr.gz").Return(true, nil).Once()
+	mockDataStore.On("Exists", ctx, "FFFFF05F--4000-4009.xdr.gz").Return(true, nil).Once()
+	mockDataStore.On("Exists", ctx, "FFFFF023--4060-4069.xdr.gz").Return(true, nil).Once()
+	mockDataStore.On("Exists", ctx, "FFFFF005--4090-4099.xdr.gz").Return(false, nil).Once()
+	mockDataStore.On("Exists", ctx, "FFFFF00F--4080-4089.xdr.gz").Return(false, nil).Once()
+	mockDataStore.On("Exists", ctx, "FFFFF019--4070-4079.xdr.gz").Return(false, nil).Once()
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

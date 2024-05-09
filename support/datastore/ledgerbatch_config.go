@@ -2,6 +2,7 @@ package datastore
 
 import (
 	"fmt"
+	"math"
 )
 
 type LedgerBatchConfig struct {
@@ -29,12 +30,13 @@ func (ec LedgerBatchConfig) GetObjectKeyFromSequenceNumber(ledgerSeq uint32) str
 		partitionSize := ec.LedgersPerFile * ec.FilesPerPartition
 		partitionStart := (ledgerSeq / partitionSize) * partitionSize
 		partitionEnd := partitionStart + partitionSize - 1
-		objectKey = fmt.Sprintf("%d-%d/", partitionStart, partitionEnd)
+
+		objectKey = fmt.Sprintf("%08X--%d-%d/", math.MaxUint32-partitionStart, partitionStart, partitionEnd)
 	}
 
 	fileStart := ec.GetSequenceNumberStartBoundary(ledgerSeq)
 	fileEnd := ec.GetSequenceNumberEndBoundary(ledgerSeq)
-	objectKey += fmt.Sprintf("%d", fileStart)
+	objectKey += fmt.Sprintf("%08X--%d", math.MaxUint32-fileStart, fileStart)
 
 	// Multiple ledgers per file
 	if fileStart != fileEnd {
