@@ -118,7 +118,7 @@ func Test_createCaptiveCoreConfig(t *testing.T) {
 			config: Config{
 				NetworkPassphrase:     PubnetConf.NetworkPassphrase,
 				HistoryArchiveURLs:    PubnetConf.HistoryArchiveURLs,
-				CaptiveCoreConfigPath: "configs/captive-core-pubnet.cfg",
+				CaptiveCoreConfigPath: "../../../ingest/ledgerbackend/configs/captive-core-pubnet.cfg",
 				CaptiveCoreBinaryPath: "/path/to/captive-core/binary",
 			},
 			networkPassphrase:  PubnetConf.NetworkPassphrase,
@@ -171,7 +171,7 @@ func Test_createCaptiveCoreConfig(t *testing.T) {
 			config: Config{
 				NetworkPassphrase:     PubnetConf.NetworkPassphrase,
 				HistoryArchiveURLs:    PubnetConf.HistoryArchiveURLs,
-				CaptiveCoreConfigPath: "configs/captive-core-testnet.cfg",
+				CaptiveCoreConfigPath: "../../../ingest/ledgerbackend/configs/captive-core-testnet.cfg",
 				CaptiveCoreBinaryPath: "/path/to/captive-core/binary",
 			},
 			errStr: fmt.Sprintf("invalid captive core toml file: invalid captive core toml: "+

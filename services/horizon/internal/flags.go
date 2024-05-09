@@ -835,20 +835,14 @@ type networkConfig struct {
 }
 
 var (
-	//go:embed configs/captive-core-pubnet.cfg
-	PubnetDefaultConfig []byte
-
-	//go:embed configs/captive-core-testnet.cfg
-	TestnetDefaultConfig []byte
-
 	PubnetConf = networkConfig{
-		defaultConfig:      PubnetDefaultConfig,
+		defaultConfig:      ledgerbackend.PubnetDefaultConfig,
 		HistoryArchiveURLs: network.PublicNetworkhistoryArchiveURLs,
 		NetworkPassphrase:  network.PublicNetworkPassphrase,
 	}
 
 	TestnetConf = networkConfig{
-		defaultConfig:      TestnetDefaultConfig,
+		defaultConfig:      ledgerbackend.TestnetDefaultConfig,
 		HistoryArchiveURLs: network.TestNetworkhistoryArchiveURLs,
 		NetworkPassphrase:  network.TestNetworkPassphrase,
 	}
