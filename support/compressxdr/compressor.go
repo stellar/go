@@ -9,11 +9,8 @@ var DefaultCompressor = &ZstdCompressor{}
 
 // Compressor represents a compression algorithm.
 type Compressor interface {
-	// NewWriter creates a new compressor for writing compressed data.
 	NewWriter(w io.Writer) (io.WriteCloser, error)
-	// NewReader creates a new decompressor for reading compressed data.
 	NewReader(r io.Reader) (io.ReadCloser, error)
-	// GetName returns the name of the compression algorithm.
 	GetName() string
 }
 
