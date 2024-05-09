@@ -2,6 +2,8 @@ package datastore
 
 import (
 	"fmt"
+	"math/rand"
+	"sort"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -33,5 +35,43 @@ func TestGetObjectKeyFromSequenceNumber(t *testing.T) {
 			key := config.GetObjectKeyFromSequenceNumber(tc.ledgerSeq)
 			require.Equal(t, tc.expectedKey, key)
 		})
+	}
+}
+
+func TestGetObjectKeyFromSequenceNumber_ObjectKeyDescOrder(t *testing.T) {
+	config := LedgerBatchConfig{
+		LedgersPerFile:    1,
+		FilesPerPartition: 10,
+		FileSuffix:        ".xdr.gz",
+	}
+	sequenceCount := 10000
+	sequenceMap := make(map[uint32]string)
+	keys := make([]uint32, len(sequenceMap))
+	count := 0
+
+	for {
+		if count >= sequenceCount {
+			break
+		}
+		randSequence := rand.Uint32()
+		if _, ok := sequenceMap[randSequence]; ok {
+			continue
+		}
+		sequenceMap[randSequence] = config.GetObjectKeyFromSequenceNumber(randSequence)
+		keys = append(keys, randSequence)
+		count++
+	}
+
+	sort.Slice(keys, func(i, j int) bool {
+		return keys[i] < keys[j]
+	})
+
+	prev := sequenceMap[keys[0]]
+	for i := 1; i < sequenceCount; i++ {
+		curr := sequenceMap[keys[i]]
+		if prev < curr {
+			t.Error("sequences not in lexicographic order")
+		}
+		prev = curr
 	}
 }
