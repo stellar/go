@@ -109,11 +109,11 @@ func (bsb *BufferedStorageBackend) getBatchForSequence(ctx context.Context, sequ
 	}
 
 	// Sequence is beyond the current LedgerCloseMetaBatch
-	lcmBatch, err := bsb.ledgerBuffer.getFromLedgerQueue(ctx)
+	var err error
+	bsb.ledgerMetaArchive.Data, err = bsb.ledgerBuffer.getFromLedgerQueue(ctx)
 	if err != nil {
 		return errors.Wrap(err, "failed getting next ledger batch from queue")
 	}
-	bsb.ledgerMetaArchive.Data = *lcmBatch
 	return nil
 }
 

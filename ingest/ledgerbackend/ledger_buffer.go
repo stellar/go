@@ -202,13 +202,13 @@ func (lb *ledgerBuffer) storeObject(ledgerObject []byte, sequence uint32) {
 	}
 }
 
-func (lb *ledgerBuffer) getFromLedgerQueue(ctx context.Context) (*xdr.LedgerCloseMetaBatch, error) {
+func (lb *ledgerBuffer) getFromLedgerQueue(ctx context.Context) (xdr.LedgerCloseMetaBatch, error) {
 	for {
 		select {
 		case <-lb.context.Done():
-			return nil, context.Cause(lb.context)
+			return xdr.LedgerCloseMetaBatch{}, context.Cause(lb.context)
 		case <-ctx.Done():
-			return nil, ctx.Err()
+			return xdr.LedgerCloseMetaBatch{}, ctx.Err()
 		case compressedBinary := <-lb.ledgerQueue:
 			// The ledger buffer invariant is maintained here because
 			// we create an extra task when consuming one item from the ledger queue.
@@ -217,11 +217,11 @@ func (lb *ledgerBuffer) getFromLedgerQueue(ctx context.Context) (*xdr.LedgerClos
 			// len(taskQueue) + len(ledgerQueue) + ledgerPriorityQueue.Len() <= bsb.config.BufferSize
 			lb.pushTaskQueue()
 
-			lcmBatch := &xdr.LedgerCloseMetaBatch{}
-			decoder := compressxdr.NewXDRDecoder(compressxdr.DefaultCompressor, lcmBatch)
+			lcmBatch := xdr.LedgerCloseMetaBatch{}
+			decoder := compressxdr.NewXDRDecoder(compressxdr.DefaultCompressor, &lcmBatch)
 			_, err := decoder.ReadFrom(bytes.NewReader(compressedBinary))
 			if err != nil {
-				return nil, err
+				return xdr.LedgerCloseMetaBatch{}, err
 			}
 
 			return lcmBatch, nil

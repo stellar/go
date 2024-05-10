@@ -171,7 +171,6 @@ func (s *UploaderSuite) testUploadPutError(putOkReturnVal bool) {
 	dataUploader := NewUploader(&s.mockDataStore, queue, registry)
 	err := dataUploader.Upload(context.Background(), archive)
 	require.Equal(s.T(), fmt.Sprintf("error uploading %s: error in PutFileIfNotExists", key), err.Error())
-	decoder := compressxdr.NewXDRDecoder(compressxdr.DefaultCompressor, nil)
 
 	for _, alreadyExists := range []string{"true", "false"} {
 		metric, err := dataUploader.uploadDurationMetric.MetricVec.GetMetricWith(prometheus.Labels{
@@ -185,7 +184,7 @@ func (s *UploaderSuite) testUploadPutError(putOkReturnVal bool) {
 			getMetricValue(metric).GetSummary().GetSampleCount(),
 		)
 
-		for _, compression := range []string{decoder.Compressor.Name(), "none"} {
+		for _, compression := range []string{compressxdr.DefaultCompressor.Name(), "none"} {
 			metric, err = dataUploader.objectSizeMetrics.MetricVec.GetMetricWith(prometheus.Labels{
 				"ledgers":        "100",
 				"compression":    compression,
