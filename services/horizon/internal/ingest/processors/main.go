@@ -28,7 +28,7 @@ type LedgerTransactionProcessor interface {
 
 type LedgerTransactionFilterer interface {
 	Name() string
-	FilterTransaction(ctx context.Context, transaction ingest.LedgerTransaction) (bool, error)
+	FilterTransaction(ctx context.Context, transaction ingest.LedgerTransaction) (bool, bool, error)
 }
 
 func StreamLedgerTransactions(
@@ -47,7 +47,7 @@ func StreamLedgerTransactions(
 		if err != nil {
 			return errors.Wrap(err, "could not read transaction")
 		}
-		include, err := txFilterer.FilterTransaction(ctx, tx)
+		_, include, err := txFilterer.FilterTransaction(ctx, tx)
 		if err != nil {
 			return errors.Wrapf(
 				err,
