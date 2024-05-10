@@ -4,7 +4,12 @@ All notable changes to this project will be documented in this
 file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
- 
+
+### Breaking Changes
+
+- Change ingestion filtering logic to store transactions if any filter matches on it. ([5303](https://github.com/stellar/go/pull/5303))
+  - The previous behaviour was to store a tx only if both asset and account filters match together. So even if a tx matched an account filter but failed to match an asset filter, it would not be stored by Horizon.  
+
 ## 2.30.0
 
 **This release adds support for Protocol 21**
