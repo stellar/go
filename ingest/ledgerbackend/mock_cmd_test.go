@@ -70,7 +70,7 @@ func simpleCommandMock() *mockCmd {
 	cmdMock.On("getStdout").Return(writer)
 	cmdMock.On("setStderr", mock.Anything)
 	cmdMock.On("getStderr").Return(writer)
-	cmdMock.On("getProcess").Return(&os.Process{})
+	cmdMock.On("getProcess").Return(&os.Process{}).Maybe()
 	cmdMock.On("setExtraFiles", mock.Anything)
 	cmdMock.On("Start").Return(nil)
 	return cmdMock

@@ -302,8 +302,6 @@ func TestCaptivePrepareRangeCloseNotFullyTerminated(t *testing.T) {
 	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(metaChan))
 	mockRunner.On("context").Return(ctx)
 	mockRunner.On("close").Return(nil)
-	mockRunner.On("getProcessExitError").Return(true, nil)
-	mockRunner.On("getProcessExitError").Return(false, nil)
 
 	mockArchive := &historyarchive.MockArchive{}
 	mockArchive.
