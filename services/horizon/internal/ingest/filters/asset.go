@@ -51,9 +51,9 @@ func (f *assetFilter) RefreshAssetFilter(filterConfig *history.AssetFilterConfig
 	return nil
 }
 
-func (f *assetFilter) FilterTransaction(ctx context.Context, transaction ingest.LedgerTransaction) (bool, error) {
-	if !f.IsEnabled() {
-		return true, nil
+func (f *assetFilter) FilterTransaction(ctx context.Context, transaction ingest.LedgerTransaction) (bool, bool, error) {
+	if !f.isEnabled() {
+		return false, true, nil
 	}
 
 	var operations []xdr.Operation
@@ -67,11 +67,11 @@ func (f *assetFilter) FilterTransaction(ctx context.Context, transaction ingest.
 	}
 
 	if f.filterOperationsMatchedOnRules(operations) {
-		return true, nil
+		return true, true, nil
 	}
 
 	logger.Debugf("No match, dropped tx with seq %v ", transaction.Envelope.SeqNum())
-	return false, nil
+	return true, false, nil
 }
 
 func (f assetFilter) filterOperationsMatchedOnRules(operations []xdr.Operation) bool {
@@ -144,7 +144,7 @@ func listToSet(list []string) set.Set[string] {
 	return set
 }
 
-func (f assetFilter) IsEnabled() bool {
+func (f assetFilter) isEnabled() bool {
 	// filtering is disabled if the whitelist is empty for now as that is the only filter rule
 	return len(f.canonicalAssetsLookup) >= 1 && f.enabled
 }

@@ -178,35 +178,31 @@ func (g *groupTransactionFilterers) Name() string {
 	return "groupTransactionFilterers"
 }
 
-func (g *groupTransactionFilterers) FilterTransaction(ctx context.Context, tx ingest.LedgerTransaction) (bool, error) {
+func (g *groupTransactionFilterers) FilterTransaction(ctx context.Context, tx ingest.LedgerTransaction) (bool, bool, error) {
 	filtersEnabled := false
 
 	for _, f := range g.filterers {
-		if !f.IsEnabled() {
+		startTime := time.Now()
+		filterEnabled, include, err := f.FilterTransaction(ctx, tx)
+		if !filterEnabled {
 			continue
 		}
 
 		filtersEnabled = true
-		startTime := time.Now()
-		include, err := f.FilterTransaction(ctx, tx)
 		if err != nil {
-			return false, errors.Wrapf(err, "error in %T.FilterTransaction", f)
+			return true, false, errors.Wrapf(err, "error in %T.FilterTransaction", f)
 		}
 		g.AddRunDuration(f.Name(), startTime)
 		if include {
-			return true, nil
+			return true, true, nil
 		}
 	}
 
 	if filtersEnabled {
 		g.droppedTransactions++
-		return false, nil
+		return true, false, nil
 	}
-	return true, nil
-}
-
-func (g *groupTransactionFilterers) IsEnabled() bool {
-	return len(g.filterers) < 1
+	return false, true, nil
 }
 
 func (g *groupTransactionFilterers) ResetStats() {

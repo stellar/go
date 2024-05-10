@@ -44,27 +44,27 @@ func (f *accountFilter) RefreshAccountFilter(filterConfig *history.AccountFilter
 	return nil
 }
 
-func (f *accountFilter) FilterTransaction(ctx context.Context, transaction ingest.LedgerTransaction) (bool, error) {
-	if !f.IsEnabled() {
-		return true, nil
+func (f *accountFilter) FilterTransaction(ctx context.Context, transaction ingest.LedgerTransaction) (bool, bool, error) {
+	if !f.isEnabled() {
+		return false, true, nil
 	}
 
 	participants, err := processors.ParticipantsForTransaction(0, transaction)
 	if err != nil {
-		return false, err
+		return true, false, err
 	}
 
 	// NOTE: this assumes that the participant list has a small memory footprint
 	//       otherwise, we should be doing the filtering on the DB side
 	for _, p := range participants {
 		if f.whitelistedAccountsSet.Contains(p.Address()) {
-			return true, nil
+			return true, true, nil
 		}
 	}
-	return false, nil
+	return true, false, nil
 }
 
-func (f accountFilter) IsEnabled() bool {
+func (f accountFilter) isEnabled() bool {
 	// filtering is disabled if the whitelist is empty for now, as that is the only filter rule
 	return len(f.whitelistedAccountsSet) >= 1 && f.enabled
 }
