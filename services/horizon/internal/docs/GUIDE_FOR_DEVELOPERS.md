@@ -94,7 +94,7 @@ Add a debug configuration in your IDE to attach a debugger to the local Horizon 
      "program": "${workspaceRoot}/services/horizon/main.go",
      "env": {
          "DATABASE_URL": "postgres://postgres@localhost:5432/horizon?sslmode=disable",
-         "CAPTIVE_CORE_CONFIG_APPEND_PATH": "./services/horizon/internal/configs/captive-core-testnet.cfg",
+         "CAPTIVE_CORE_CONFIG_APPEND_PATH": "./ingest/ledgerbackend/configs/captive-core-testnet.cfg",
          "HISTORY_ARCHIVE_URLS": "https://history.stellar.org/prd/core-testnet/core_testnet_001,https://history.stellar.org/prd/core-testnet/core_testnet_002",
          "NETWORK_PASSPHRASE": "Test SDF Network ; September 2015",
          "PER_HOUR_RATE_LIMIT": "0"

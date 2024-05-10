@@ -49,7 +49,7 @@ require (
 	github.com/spf13/viper v1.17.0
 	github.com/stellar/go-xdr v0.0.0-20231122183749-b53fb00bcac2
 	github.com/stellar/throttled v2.2.3-0.20190823235211-89d75816f59d+incompatible
-	github.com/stretchr/testify v1.8.4
+	github.com/stretchr/testify v1.9.0
 	github.com/tyler-smith/go-bip39 v0.0.0-20180618194314-52158e4697b8
 	github.com/xdrpp/goxdr v0.1.1
 	google.golang.org/api v0.170.0
@@ -136,7 +136,7 @@ require (
 	github.com/prometheus/procfs v0.12.0 // indirect
 	github.com/sergi/go-diff v0.0.0-20161205080420-83532ca1c1ca // indirect
 	github.com/spf13/cast v1.5.1 // indirect
-	github.com/stretchr/objx v0.5.1 // indirect
+	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasthttp v1.34.0 // indirect
 	github.com/xeipuuv/gojsonpointer v0.0.0-20151027082146-e0fe6f683076 // indirect
