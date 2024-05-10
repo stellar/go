@@ -50,20 +50,3 @@ func (d *XDRDecoder) ReadFrom(r io.Reader) (int64, error) {
 	n, err := xdr3.Unmarshal(zr, d.XdrPayload)
 	return int64(n), err
 }
-
-// Unzip returns the decompressed bytes.
-func (d *XDRDecoder) Unzip(r io.Reader) ([]byte, error) {
-	zr, err := d.Compressor.NewReader(r)
-	if err != nil {
-		return nil, err
-	}
-
-	defer zr.Close()
-
-	objectBytes, err := io.ReadAll(zr)
-	if err != nil {
-		return nil, err
-	}
-
-	return objectBytes, nil
-}

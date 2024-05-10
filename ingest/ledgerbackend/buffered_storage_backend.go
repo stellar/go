@@ -10,7 +10,6 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/stellar/go/support/compressxdr"
 	"github.com/stellar/go/support/datastore"
 	"github.com/stellar/go/xdr"
 )
@@ -41,7 +40,6 @@ type BufferedStorageBackend struct {
 	prepared          *Range // Non-nil if any range is prepared
 	closed            bool   // False until the core is closed
 	ledgerMetaArchive *datastore.LedgerMetaArchive
-	decoder           compressxdr.XDRDecoder
 	nextLedger        uint32
 	lastLedger        uint32
 }
@@ -65,13 +63,11 @@ func NewBufferedStorageBackend(ctx context.Context, config BufferedStorageBacken
 	}
 
 	ledgerMetaArchive := datastore.NewLedgerMetaArchive("", 0, 0)
-	decoder := compressxdr.NewXDRDecoder(compressxdr.DefaultCompressor, nil)
 
 	bsBackend := &BufferedStorageBackend{
 		config:            config,
 		dataStore:         config.DataStore,
 		ledgerMetaArchive: ledgerMetaArchive,
-		decoder:           decoder,
 	}
 
 	return bsBackend, nil
@@ -113,17 +109,11 @@ func (bsb *BufferedStorageBackend) getBatchForSequence(ctx context.Context, sequ
 	}
 
 	// Sequence is beyond the current LedgerCloseMetaBatch
-	lcmBatchBinary, err := bsb.ledgerBuffer.getFromLedgerQueue(ctx)
+	lcmBatch, err := bsb.ledgerBuffer.getFromLedgerQueue(ctx)
 	if err != nil {
 		return errors.Wrap(err, "failed getting next ledger batch from queue")
 	}
-
-	// Turn binary into xdr
-	err = bsb.ledgerMetaArchive.Data.UnmarshalBinary(lcmBatchBinary)
-	if err != nil {
-		return errors.Wrap(err, "failed unmarshalling lcmBatchBinary")
-	}
-
+	bsb.ledgerMetaArchive.Data = *lcmBatch
 	return nil
 }
 

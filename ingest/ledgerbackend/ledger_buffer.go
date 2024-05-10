@@ -13,6 +13,7 @@ import (
 	"github.com/stellar/go/support/collections/heap"
 	"github.com/stellar/go/support/compressxdr"
 	"github.com/stellar/go/support/datastore"
+	"github.com/stellar/go/xdr"
 )
 
 type ledgerBatchObject struct {
@@ -24,7 +25,6 @@ type ledgerBuffer struct {
 	// Passed through from BufferedStorageBackend to control lifetime of ledgerBuffer instance
 	config    BufferedStorageBackendConfig
 	dataStore datastore.DataStore
-	decoder   compressxdr.XDRDecoder
 
 	// context used to cancel workers within the ledgerBuffer
 	context context.Context
@@ -67,7 +67,6 @@ func (bsb *BufferedStorageBackend) newLedgerBuffer(ledgerRange Range) (*ledgerBu
 		ledgerRange:         ledgerRange,
 		context:             ctx,
 		cancel:              cancel,
-		decoder:             bsb.decoder,
 	}
 
 	// Start workers to read LCM files
@@ -203,7 +202,7 @@ func (lb *ledgerBuffer) storeObject(ledgerObject []byte, sequence uint32) {
 	}
 }
 
-func (lb *ledgerBuffer) getFromLedgerQueue(ctx context.Context) ([]byte, error) {
+func (lb *ledgerBuffer) getFromLedgerQueue(ctx context.Context) (*xdr.LedgerCloseMetaBatch, error) {
 	for {
 		select {
 		case <-lb.context.Done():
@@ -218,13 +217,14 @@ func (lb *ledgerBuffer) getFromLedgerQueue(ctx context.Context) ([]byte, error) 
 			// len(taskQueue) + len(ledgerQueue) + ledgerPriorityQueue.Len() <= bsb.config.BufferSize
 			lb.pushTaskQueue()
 
-			reader := bytes.NewReader(compressedBinary)
-			lcmBinary, err := lb.decoder.Unzip(reader)
+			lcmBatch := &xdr.LedgerCloseMetaBatch{}
+			decoder := compressxdr.NewXDRDecoder(compressxdr.DefaultCompressor, lcmBatch)
+			_, err := decoder.ReadFrom(bytes.NewReader(compressedBinary))
 			if err != nil {
 				return nil, err
 			}
 
-			return lcmBinary, nil
+			return lcmBatch, nil
 		}
 	}
 }

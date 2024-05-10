@@ -46,13 +46,11 @@ func createBufferedStorageBackendConfigForTesting() BufferedStorageBackendConfig
 func createBufferedStorageBackendForTesting() BufferedStorageBackend {
 	config := createBufferedStorageBackendConfigForTesting()
 	ledgerMetaArchive := datastore.NewLedgerMetaArchive("", 0, 0)
-	decoder := compressxdr.NewXDRDecoder(compressxdr.DefaultCompressor, nil)
 
 	return BufferedStorageBackend{
 		config:            config,
 		dataStore:         config.DataStore,
 		ledgerMetaArchive: ledgerMetaArchive,
-		decoder:           decoder,
 	}
 }
 

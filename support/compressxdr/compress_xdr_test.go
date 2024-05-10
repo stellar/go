@@ -46,24 +46,3 @@ func TestEncodeDecodeLedgerCloseMetaBatch(t *testing.T) {
 		require.Equal(t, testData.LedgerCloseMetas[i], decodedData.LedgerCloseMetas[i])
 	}
 }
-
-func TestDecodeUnzip(t *testing.T) {
-	expectedBinary := []byte{0x0, 0x0, 0x0, 0x2, 0x0, 0x0, 0x0, 0x2, 0x0, 0x0, 0x0, 0x0}
-	testData := createTestLedgerCloseMetaBatch(2, 2, 1)
-
-	// Encode the test data
-	encoder := NewXDREncoder(DefaultCompressor, testData)
-
-	var buf bytes.Buffer
-	_, err := encoder.WriteTo(&buf)
-	require.NoError(t, err)
-
-	// Decode the encoded data
-	lcmBatch := xdr.LedgerCloseMetaBatch{}
-	decoder := NewXDRDecoder(DefaultCompressor, &lcmBatch)
-
-	binary, err := decoder.Unzip(&buf)
-	require.NoError(t, err)
-
-	require.Equal(t, expectedBinary, binary)
-}

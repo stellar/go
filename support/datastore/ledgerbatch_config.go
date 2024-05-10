@@ -3,6 +3,7 @@ package datastore
 import (
 	"fmt"
 	"math"
+
 	"github.com/stellar/go/support/compressxdr"
 )
 
