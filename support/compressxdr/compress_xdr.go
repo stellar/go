@@ -40,7 +40,7 @@ type XDRDecoder struct {
 }
 
 // ReadFrom reads XDR compressed encoded data
-func (d *XDRDecoder) ReadFrom(r io.Reader) (int64, error) {
+func (d XDRDecoder) ReadFrom(r io.Reader) (int64, error) {
 	zr, err := d.Compressor.NewReader(r)
 	if err != nil {
 		return 0, err
