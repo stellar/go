@@ -14,7 +14,6 @@ import (
 
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/support/collections/set"
-	"github.com/stellar/go/support/compressxdr"
 	"github.com/stellar/go/support/datastore"
 )
 
