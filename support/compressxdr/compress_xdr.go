@@ -22,7 +22,7 @@ type XDREncoder struct {
 }
 
 // WriteTo writes the XDR compressed encoded data
-func (e *XDREncoder) WriteTo(w io.Writer) (int64, error) {
+func (e XDREncoder) WriteTo(w io.Writer) (int64, error) {
 	zw, err := e.Compressor.NewWriter(w)
 	if err != nil {
 		return 0, err
