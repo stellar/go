@@ -86,7 +86,7 @@ func (u Uploader) Upload(ctx context.Context, metaArchive *datastore.LedgerMetaA
 	xdrEncoder := compressxdr.NewXDREncoder(compressxdr.DefaultCompressor, &metaArchive.Data)
 
 	writerTo := &writerToRecorder{
-		WriterTo: &xdrEncoder,
+		WriterTo: xdrEncoder,
 	}
 	ok, err := u.dataStore.PutFileIfNotExists(ctx, metaArchive.GetObjectKey(), writerTo)
 	if err != nil {
