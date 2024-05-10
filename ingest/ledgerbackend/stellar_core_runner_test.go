@@ -3,6 +3,7 @@ package ledgerbackend
 import (
 	"context"
 	"encoding/json"
+	"sync"
 	"testing"
 	"time"
 
@@ -46,7 +47,7 @@ func TestCloseOffline(t *testing.T) {
 		"fd:3",
 		"--in-memory",
 	).Return(cmdMock)
-	scMock.On("removeAll", mock.Anything).Return(nil)
+	scMock.On("removeAll", mock.Anything).Return(nil).Once()
 	runner.systemCaller = scMock
 
 	assert.NoError(t, runner.catchup(100, 200))
@@ -133,7 +134,7 @@ func TestCloseOnlineWithError(t *testing.T) {
 		"--metadata-output-stream",
 		"fd:3",
 	).Return(cmdMock)
-	scMock.On("removeAll", mock.Anything).Return(nil)
+	scMock.On("removeAll", mock.Anything).Return(nil).Once()
 	runner.systemCaller = scMock
 
 	assert.NoError(t, runner.runFrom(100, "hash"))
@@ -147,6 +148,61 @@ func TestCloseOnlineWithError(t *testing.T) {
 		time.Sleep(10 * time.Millisecond)
 	}
 	assert.NoError(t, runner.close())
+}
+
+func TestCloseConcurrency(t *testing.T) {
+	captiveCoreToml, err := NewCaptiveCoreToml(CaptiveCoreTomlParams{})
+	assert.NoError(t, err)
+
+	captiveCoreToml.AddExamplePubnetValidators()
+
+	runner := newStellarCoreRunner(CaptiveCoreConfig{
+		BinaryPath:         "/usr/bin/stellar-core",
+		HistoryArchiveURLs: []string{"http://localhost"},
+		Log:                log.New(),
+		Context:            context.Background(),
+		Toml:               captiveCoreToml,
+		StoragePath:        "/tmp/captive-core",
+	})
+
+	cmdMock := simpleCommandMock()
+	cmdMock.On("Wait").Return(errors.New("wait error")).WaitUntil(time.After(time.Millisecond * 300))
+	defer cmdMock.AssertExpectations(t)
+
+	// Replace system calls with a mock
+	scMock := &mockSystemCaller{}
+	defer scMock.AssertExpectations(t)
+	scMock.On("stat", mock.Anything).Return(isDirImpl(true), nil)
+	scMock.On("writeFile", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	scMock.On("command",
+		"/usr/bin/stellar-core",
+		"--conf",
+		mock.Anything,
+		"--console",
+		"catchup",
+		"200/101",
+		"--metadata-output-stream",
+		"fd:3",
+		"--in-memory",
+	).Return(cmdMock)
+	scMock.On("removeAll", mock.Anything).Return(nil).Once()
+	runner.systemCaller = scMock
+
+	assert.NoError(t, runner.catchup(100, 200))
+
+	var wg sync.WaitGroup
+	for i := 0; i < 10; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			assert.NoError(t, runner.close())
+			exited, err := runner.getProcessExitError()
+			assert.True(t, exited)
+			assert.Error(t, err)
+		}()
+	}
+
+	wg.Wait()
 }
 
 func TestRunFromUseDBLedgersMatch(t *testing.T) {
@@ -300,7 +356,7 @@ func TestRunFromUseDBLedgersInFront(t *testing.T) {
 	scMock := &mockSystemCaller{}
 	defer scMock.AssertExpectations(t)
 	// Storage dir is removed because ledgers do not match
-	scMock.On("removeAll", mock.Anything).Return(nil)
+	scMock.On("removeAll", mock.Anything).Return(nil).Once()
 	scMock.On("stat", mock.Anything).Return(isDirImpl(true), nil)
 	scMock.On("writeFile", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	scMock.On("command",

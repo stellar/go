@@ -452,12 +452,6 @@ func (c *CaptiveStellarCore) startPreparingRange(ctx context.Context, ledgerRang
 		if err := c.stellarCoreRunner.close(); err != nil {
 			return false, errors.Wrap(err, "error closing existing session")
 		}
-
-		// Make sure Stellar-Core is terminated before starting a new instance.
-		processExited, _ := c.stellarCoreRunner.getProcessExitError()
-		if !processExited {
-			return false, errors.New("the previous Stellar-Core instance is still running")
-		}
 	}
 
 	var err error

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
+	"sync"
 	"testing"
 	"time"
 
@@ -113,10 +114,13 @@ func TestStateMachineRunReturnsUnexpectedTransaction(t *testing.T) {
 		historyQ: historyQ,
 		ctx:      context.Background(),
 	}
+	reg := setupMetrics(system)
 
 	historyQ.On("GetTx").Return(&sqlx.Tx{}).Once()
-
 	assert.PanicsWithValue(t, "unexpected transaction", func() {
+		defer func() {
+			assertErrorRestartMetrics(reg, "", "", 0, t)
+		}()
 		system.Run()
 	})
 }
@@ -127,12 +131,17 @@ func TestStateMachineTransition(t *testing.T) {
 		historyQ: historyQ,
 		ctx:      context.Background(),
 	}
+	reg := setupMetrics(system)
 
 	historyQ.On("GetTx").Return(nil).Once()
 	historyQ.On("Begin", mock.Anything).Return(errors.New("my error")).Once()
 	historyQ.On("GetTx").Return(&sqlx.Tx{}).Once()
 
 	assert.PanicsWithValue(t, "unexpected transaction", func() {
+		defer func() {
+			// the test triggers error in the first start state exec, so metric is added
+			assertErrorRestartMetrics(reg, "start", "start", 1, t)
+		}()
 		system.Run()
 	})
 }
@@ -144,12 +153,14 @@ func TestContextCancel(t *testing.T) {
 		historyQ: historyQ,
 		ctx:      ctx,
 	}
+	reg := setupMetrics(system)
 
 	historyQ.On("GetTx").Return(nil).Once()
-	historyQ.On("Begin", mock.AnythingOfType("*context.cancelCtx")).Return(errors.New("my error")).Once()
+	historyQ.On("Begin", mock.AnythingOfType("*context.cancelCtx")).Return(context.Canceled).Once()
 
 	cancel()
 	assert.NoError(t, system.runStateMachine(startState{}))
+	assertErrorRestartMetrics(reg, "", "", 0, t)
 }
 
 // TestStateMachineRunReturnsErrorWhenNextStateIsShutdownWithError checks if the
@@ -162,12 +173,61 @@ func TestStateMachineRunReturnsErrorWhenNextStateIsShutdownWithError(t *testing.
 		ctx:      context.Background(),
 		historyQ: historyQ,
 	}
+	reg := setupMetrics(system)
 
 	historyQ.On("GetTx").Return(nil).Once()
 
 	err := system.runStateMachine(verifyRangeState{})
 	assert.Error(t, err)
 	assert.EqualError(t, err, "invalid range: [0, 0]")
+	assertErrorRestartMetrics(reg, "verifyrange", "stop", 1, t)
+}
+
+func TestStateMachineRestartEmitsMetric(t *testing.T) {
+	historyQ := &mockDBQ{}
+	ledgerBackend := &mockLedgerBackend{}
+	ctx, cancel := context.WithCancel(context.Background())
+	var wg sync.WaitGroup
+	defer func() {
+		cancel()
+		wg.Wait()
+	}()
+
+	system := &system{
+		ctx:           ctx,
+		historyQ:      historyQ,
+		ledgerBackend: ledgerBackend,
+	}
+
+	ledgerBackend.On("IsPrepared", system.ctx, ledgerbackend.UnboundedRange(101)).Return(true, nil)
+	ledgerBackend.On("GetLedger", system.ctx, uint32(101)).Return(xdr.LedgerCloseMeta{
+		V0: &xdr.LedgerCloseMetaV0{
+			LedgerHeader: xdr.LedgerHeaderHistoryEntry{
+				Header: xdr.LedgerHeader{
+					LedgerSeq:      101,
+					LedgerVersion:  xdr.Uint32(MaxSupportedProtocolVersion),
+					BucketListHash: xdr.Hash{1, 2, 3},
+				},
+			},
+		},
+	}, nil)
+
+	reg := setupMetrics(system)
+
+	historyQ.On("GetTx").Return(nil)
+	historyQ.On("Begin", system.ctx).Return(errors.New("stop state machine"))
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		system.runStateMachine(resumeState{latestSuccessfullyProcessedLedger: 100})
+	}()
+
+	assert.EventuallyWithT(t, func(c *assert.CollectT) {
+		// this checks every 50ms up to 10s total, for at least 3 fsm retries based on a db Begin error
+		// this condition should be met as the fsm retries every second.
+		assertErrorRestartMetrics(reg, "resume", "resume", 3, c)
+	}, 10*time.Second, 50*time.Millisecond, "horizon_ingest_errors_total metric was not incremented on a fsm error")
 }
 
 func TestMaybeVerifyStateGetExpStateInvalidError(t *testing.T) {
@@ -248,6 +308,7 @@ func TestCurrentStateRaceCondition(t *testing.T) {
 		historyQ: historyQ,
 		ctx:      context.Background(),
 	}
+	reg := setupMetrics(s)
 
 	historyQ.On("GetTx").Return(nil)
 	historyQ.On("Begin", s.ctx).Return(nil)
@@ -280,6 +341,45 @@ loop:
 	}
 	close(getCh)
 	<-doneCh
+	assertErrorRestartMetrics(reg, "", "", 0, t)
+}
+
+func setupMetrics(system *system) *prometheus.Registry {
+	registry := prometheus.NewRegistry()
+	system.initMetrics()
+	registry.Register(system.Metrics().IngestionErrorCounter)
+	return registry
+}
+
+func assertErrorRestartMetrics(reg *prometheus.Registry, assertCurrentState string, assertNextState string, assertRestartCount float64, t assert.TestingT) {
+	assert := assert.New(t)
+	metrics, err := reg.Gather()
+	assert.NoError(err)
+
+	for _, metricFamily := range metrics {
+		if metricFamily.GetName() == "horizon_ingest_errors_total" {
+			assert.Len(metricFamily.GetMetric(), 1)
+			assert.Equal(metricFamily.GetMetric()[0].GetCounter().GetValue(), assertRestartCount)
+			var metricCurrentState = ""
+			var metricNextState = ""
+			for _, label := range metricFamily.GetMetric()[0].GetLabel() {
+				if label.GetName() == "current_state" {
+					metricCurrentState = label.GetValue()
+				}
+				if label.GetName() == "next_state" {
+					metricNextState = label.GetValue()
+				}
+			}
+
+			assert.Equal(metricCurrentState, assertCurrentState)
+			assert.Equal(metricNextState, assertNextState)
+			return
+		}
+	}
+
+	if assertRestartCount > 0.0 {
+		assert.Fail("horizon_ingest_errors_total metrics were not correct")
+	}
 }
 
 type mockDBQ struct {

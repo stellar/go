@@ -46,6 +46,32 @@ const (
 	ReingestHistoryRange
 )
 
+// provide a name represention for a state
+func (state State) Name() string {
+	switch state {
+	case Start:
+		return "start"
+	case Stop:
+		return "stop"
+	case Build:
+		return "build"
+	case Resume:
+		return "resume"
+	case WaitForCheckpoint:
+		return "waitforcheckpoint"
+	case StressTest:
+		return "stresstest"
+	case VerifyRange:
+		return "verifyrange"
+	case HistoryRange:
+		return "historyrange"
+	case ReingestHistoryRange:
+		return "reingesthistoryrange"
+	default:
+		return "none"
+	}
+}
+
 type stateMachineNode interface {
 	run(*system) (transition, error)
 	String() string
