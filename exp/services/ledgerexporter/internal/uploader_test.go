@@ -97,7 +97,7 @@ func (s *UploaderSuite) testUpload(putOkReturnVal bool) {
 
 	metric, err = dataUploader.objectSizeMetrics.MetricVec.GetMetricWith(prometheus.Labels{
 		"ledgers":        "100",
-		"compression":    decoder.Compressor.GetName(),
+		"compression":    decoder.Compressor.Name(),
 		"already_exists": strconv.FormatBool(alreadyExists),
 	})
 	require.NoError(s.T(), err)
@@ -113,7 +113,7 @@ func (s *UploaderSuite) testUpload(putOkReturnVal bool) {
 	)
 	metric, err = dataUploader.objectSizeMetrics.MetricVec.GetMetricWith(prometheus.Labels{
 		"ledgers":        "100",
-		"compression":    decoder.Compressor.GetName(),
+		"compression":    decoder.Compressor.Name(),
 		"already_exists": strconv.FormatBool(!alreadyExists),
 	})
 	require.NoError(s.T(), err)
@@ -185,7 +185,7 @@ func (s *UploaderSuite) testUploadPutError(putOkReturnVal bool) {
 			getMetricValue(metric).GetSummary().GetSampleCount(),
 		)
 
-		for _, compression := range []string{decoder.Compressor.GetName(), "none"} {
+		for _, compression := range []string{decoder.Compressor.Name(), "none"} {
 			metric, err = dataUploader.objectSizeMetrics.MetricVec.GetMetricWith(prometheus.Labels{
 				"ledgers":        "100",
 				"compression":    compression,

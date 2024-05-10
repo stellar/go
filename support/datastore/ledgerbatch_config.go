@@ -42,7 +42,7 @@ func (ec LedgerBatchConfig) GetObjectKeyFromSequenceNumber(ledgerSeq uint32) str
 	if fileStart != fileEnd {
 		objectKey += fmt.Sprintf("-%d", fileEnd)
 	}
-	objectKey += fmt.Sprintf(".xdr.%s", compressxdr.DefaultCompressor.GetName())
+	objectKey += fmt.Sprintf(".xdr.%s", compressxdr.DefaultCompressor.Name())
 
 	return objectKey
 }

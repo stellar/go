@@ -17,7 +17,7 @@ func TestGetObjectKeyFromSequenceNumber(t *testing.T) {
 		ledgersPerFile    uint32
 		expectedKey       string
 	}{
-		{0, 5, 1,  "FFFFFFFA--5.xdr.zstd"},
+		{0, 5, 1, "FFFFFFFA--5.xdr.zstd"},
 		{0, 5, 10, "FFFFFFFF--0-9.xdr.zstd"},
 		{2, 10, 100, "FFFFFFFF--0-199/FFFFFFFF--0-99.xdr.zstd"},
 		{2, 150, 50, "FFFFFF9B--100-199/FFFFFF69--150-199.xdr.zstd"},

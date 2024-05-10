@@ -104,7 +104,7 @@ func (u Uploader) Upload(ctx context.Context, metaArchive *datastore.LedgerMetaA
 		"already_exists": alreadyExists,
 	}).Observe(float64(writerTo.totalUncompressed))
 	u.objectSizeMetrics.With(prometheus.Labels{
-		"compression":    xdrEncoder.Compressor.GetName(),
+		"compression":    xdrEncoder.Compressor.Name(),
 		"ledgers":        numLedgers,
 		"already_exists": alreadyExists,
 	}).Observe(float64(writerTo.totalCompressed))
