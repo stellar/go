@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+
 	"github.com/stellar/go/protocols/stellarcore"
 	"github.com/stellar/go/support/log"
 )
@@ -65,6 +66,7 @@ type stellarCoreRunner struct {
 	systemCaller systemCaller
 
 	lock             sync.Mutex
+	closeOnce        sync.Once
 	processExited    bool
 	processExitError error
 
@@ -285,9 +287,6 @@ func (r *stellarCoreRunner) catchup(from, to uint32) error {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
-	r.mode = stellarCoreRunnerModeOffline
-	r.storagePath = r.getFullStoragePath()
-
 	// check if we have already been closed
 	if r.ctx.Err() != nil {
 		return r.ctx.Err()
@@ -296,6 +295,9 @@ func (r *stellarCoreRunner) catchup(from, to uint32) error {
 	if r.started {
 		return errors.New("runner already started")
 	}
+
+	r.mode = stellarCoreRunnerModeOffline
+	r.storagePath = r.getFullStoragePath()
 
 	rangeArg := fmt.Sprintf("%d/%d", to, to-from+1)
 	params := []string{"catchup", rangeArg, "--metadata-output-stream", r.getPipeName()}
@@ -350,9 +352,6 @@ func (r *stellarCoreRunner) runFrom(from uint32, hash string) error {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
-	r.mode = stellarCoreRunnerModeOnline
-	r.storagePath = r.getFullStoragePath()
-
 	// check if we have already been closed
 	if r.ctx.Err() != nil {
 		return r.ctx.Err()
@@ -361,6 +360,9 @@ func (r *stellarCoreRunner) runFrom(from uint32, hash string) error {
 	if r.started {
 		return errors.New("runner already started")
 	}
+
+	r.mode = stellarCoreRunnerModeOnline
+	r.storagePath = r.getFullStoragePath()
 
 	var err error
 
@@ -546,53 +548,45 @@ func (r *stellarCoreRunner) getProcessExitError() (bool, error) {
 // the necessary cleanup on the resources associated with the captive core process
 // close is both thread safe and idempotent
 func (r *stellarCoreRunner) close() error {
-	r.lock.Lock()
-	started := r.started
-	storagePath := r.storagePath
-
-	r.storagePath = ""
-
-	// check if we have already closed
-	if storagePath == "" {
+	var closeError error
+	r.closeOnce.Do(func() {
+		r.lock.Lock()
+		// we cancel the context while holding the lock in order to guarantee that
+		// this captive core instance cannot start once the lock is released.
+		// catchup() and runFrom() can only execute while holding the lock and if
+		// the context is canceled both catchup() and runFrom() will abort early
+		// without performing any side effects (e.g. state mutations).
+		r.cancel()
 		r.lock.Unlock()
-		return nil
-	}
 
-	if !started {
-		// Update processExited if handleExit that updates it not even started
-		// (error before command run).
-		r.processExited = true
-	}
+		// only reap captive core sub process and related go routines if we've started
+		// otherwise, just cleanup the temp dir
+		if r.started {
+			// wait for the stellar core process to terminate
+			r.wg.Wait()
 
-	r.cancel()
-	r.lock.Unlock()
+			// drain meta pipe channel to make sure the ledger buffer goroutine exits
+			for range r.getMetaPipe() {
 
-	// only reap captive core sub process and related go routines if we've started
-	// otherwise, just cleanup the temp dir
-	if started {
-		// wait for the stellar core process to terminate
-		r.wg.Wait()
+			}
 
-		// drain meta pipe channel to make sure the ledger buffer goroutine exits
-		for range r.getMetaPipe() {
-
+			// now it's safe to close the pipe reader
+			// because the ledger buffer is no longer reading from it
+			r.pipe.Reader.Close()
 		}
 
-		// now it's safe to close the pipe reader
-		// because the ledger buffer is no longer reading from it
-		r.pipe.Reader.Close()
-	}
+		if r.mode != 0 && (runtime.GOOS == "windows" ||
+			(r.processExitError != nil && r.processExitError != context.Canceled) ||
+			r.mode == stellarCoreRunnerModeOffline) {
+			// It's impossible to send SIGINT on Windows so buckets can become
+			// corrupted. If we can't reuse it, then remove it.
+			// We also remove the storage path if there was an error terminating the
+			// process (files can be corrupted).
+			// We remove all files when reingesting to save disk space.
+			closeError = r.systemCaller.removeAll(r.storagePath)
+			return
+		}
+	})
 
-	if r.mode != 0 && (runtime.GOOS == "windows" ||
-		(r.processExitError != nil && r.processExitError != context.Canceled) ||
-		r.mode == stellarCoreRunnerModeOffline) {
-		// It's impossible to send SIGINT on Windows so buckets can become
-		// corrupted. If we can't reuse it, then remove it.
-		// We also remove the storage path if there was an error terminating the
-		// process (files can be corrupted).
-		// We remove all files when reingesting to save disk space.
-		return r.systemCaller.removeAll(storagePath)
-	}
-
-	return nil
+	return closeError
 }

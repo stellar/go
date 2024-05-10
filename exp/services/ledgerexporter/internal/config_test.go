@@ -22,6 +22,7 @@ func TestNewConfigResumeEnabled(t *testing.T) {
 	require.Equal(t, config.DataStoreConfig.Type, "ABC")
 	require.Equal(t, config.LedgerBatchConfig.FilesPerPartition, uint32(1))
 	require.Equal(t, config.LedgerBatchConfig.LedgersPerFile, uint32(3))
+	require.Equal(t, config.LedgerBatchConfig.FileSuffix, ".xdr.gz")
 	require.True(t, config.Resume)
 	url, ok := config.DataStoreConfig.Params["destination_bucket_path"]
 	require.True(t, ok)
