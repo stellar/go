@@ -29,14 +29,12 @@ func createBufferedStorageBackendConfigForTesting() BufferedStorageBackendConfig
 	ledgerBatchConfig := datastore.LedgerBatchConfig{
 		LedgersPerFile:    1,
 		FilesPerPartition: 64000,
-		FileSuffix:        ".xdr.gz",
 	}
 
 	dataStore := new(datastore.MockDataStore)
 
 	return BufferedStorageBackendConfig{
 		LedgerBatchConfig: ledgerBatchConfig,
-		CompressionType:   compressxdr.GZIP,
 		DataStore:         dataStore,
 		BufferSize:        100,
 		NumWorkers:        5,
@@ -48,13 +46,11 @@ func createBufferedStorageBackendConfigForTesting() BufferedStorageBackendConfig
 func createBufferedStorageBackendForTesting() BufferedStorageBackend {
 	config := createBufferedStorageBackendConfigForTesting()
 	ledgerMetaArchive := datastore.NewLedgerMetaArchive("", 0, 0)
-	decoder, _ := compressxdr.NewXDRDecoder(config.CompressionType, nil)
 
 	return BufferedStorageBackend{
 		config:            config,
 		dataStore:         config.DataStore,
 		ledgerMetaArchive: ledgerMetaArchive,
-		decoder:           decoder,
 	}
 }
 
@@ -67,10 +63,10 @@ func createMockdataStore(t *testing.T, start, end, partitionSize, count uint32) 
 		if count > 1 {
 			endFileSeq := i + count - 1
 			readCloser = createLCMBatchReader(i, endFileSeq, count)
-			objectName = fmt.Sprintf("FFFFFFFF--0-%d/%08X--%d-%d.xdr.gz", partition, math.MaxUint32-i, i, endFileSeq)
+			objectName = fmt.Sprintf("FFFFFFFF--0-%d/%08X--%d-%d.xdr.zstd", partition, math.MaxUint32-i, i, endFileSeq)
 		} else {
 			readCloser = createLCMBatchReader(i, i, count)
-			objectName = fmt.Sprintf("FFFFFFFF--0-%d/%08X--%d.xdr.gz", partition, math.MaxUint32-i, i)
+			objectName = fmt.Sprintf("FFFFFFFF--0-%d/%08X--%d.xdr.zstd", partition, math.MaxUint32-i, i)
 		}
 		mockDataStore.On("GetFile", mock.Anything, objectName).Return(readCloser, nil)
 	}
@@ -105,7 +101,7 @@ func createTestLedgerCloseMetaBatch(startSeq, endSeq, count uint32) xdr.LedgerCl
 
 func createLCMBatchReader(start, end, count uint32) io.ReadCloser {
 	testData := createTestLedgerCloseMetaBatch(start, end, count)
-	encoder, _ := compressxdr.NewXDREncoder(compressxdr.GZIP, testData)
+	encoder := compressxdr.NewXDREncoder(compressxdr.DefaultCompressor, testData)
 	var buf bytes.Buffer
 	encoder.WriteTo(&buf)
 	capturedBuf := buf.Bytes()
@@ -121,7 +117,6 @@ func TestNewBufferedStorageBackend(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, bsb.dataStore, config.DataStore)
-	assert.Equal(t, ".xdr.gz", bsb.config.LedgerBatchConfig.FileSuffix)
 	assert.Equal(t, uint32(1), bsb.config.LedgerBatchConfig.LedgersPerFile)
 	assert.Equal(t, uint32(64000), bsb.config.LedgerBatchConfig.FilesPerPartition)
 	assert.Equal(t, uint32(100), bsb.config.BufferSize)
@@ -441,7 +436,7 @@ func TestLedgerBufferClose(t *testing.T) {
 	mockDataStore := new(datastore.MockDataStore)
 	partition := ledgerPerFileCount*partitionSize - 1
 
-	objectName := fmt.Sprintf("FFFFFFFF--0-%d/%08X--%d.xdr.gz", partition, math.MaxUint32-3, 3)
+	objectName := fmt.Sprintf("FFFFFFFF--0-%d/%08X--%d.xdr.zstd", partition, math.MaxUint32-3, 3)
 	afterPrepareRange := make(chan struct{})
 	mockDataStore.On("GetFile", mock.Anything, objectName).Return(io.NopCloser(&bytes.Buffer{}), context.Canceled).Run(func(args mock.Arguments) {
 		<-afterPrepareRange
@@ -473,7 +468,7 @@ func TestLedgerBufferBoundedObjectNotFound(t *testing.T) {
 	mockDataStore := new(datastore.MockDataStore)
 	partition := ledgerPerFileCount*partitionSize - 1
 
-	objectName := fmt.Sprintf("FFFFFFFF--0-%d/%08X--%d.xdr.gz", partition, math.MaxUint32-3, 3)
+	objectName := fmt.Sprintf("FFFFFFFF--0-%d/%08X--%d.xdr.zstd", partition, math.MaxUint32-3, 3)
 	mockDataStore.On("GetFile", mock.Anything, objectName).Return(io.NopCloser(&bytes.Buffer{}), os.ErrNotExist).Once()
 	t.Cleanup(func() {
 		mockDataStore.AssertExpectations(t)
@@ -499,7 +494,7 @@ func TestLedgerBufferUnboundedObjectNotFound(t *testing.T) {
 	mockDataStore := new(datastore.MockDataStore)
 	partition := ledgerPerFileCount*partitionSize - 1
 
-	objectName := fmt.Sprintf("FFFFFFFF--0-%d/%08X--%d.xdr.gz", partition, math.MaxUint32-3, 3)
+	objectName := fmt.Sprintf("FFFFFFFF--0-%d/%08X--%d.xdr.zstd", partition, math.MaxUint32-3, 3)
 	iteration := &atomic.Int32{}
 	cancelAfter := int32(bsb.config.RetryLimit) + 2
 	mockDataStore.On("GetFile", mock.Anything, objectName).Return(io.NopCloser(&bytes.Buffer{}), os.ErrNotExist).Run(func(args mock.Arguments) {
@@ -531,7 +526,7 @@ func TestLedgerBufferRetryLimit(t *testing.T) {
 	mockDataStore := new(datastore.MockDataStore)
 	partition := ledgerPerFileCount*partitionSize - 1
 
-	objectName := fmt.Sprintf("FFFFFFFF--0-%d/%08X--%d.xdr.gz", partition, math.MaxUint32-3, 3)
+	objectName := fmt.Sprintf("FFFFFFFF--0-%d/%08X--%d.xdr.zstd", partition, math.MaxUint32-3, 3)
 	mockDataStore.On("GetFile", mock.Anything, objectName).
 		Return(io.NopCloser(&bytes.Buffer{}), fmt.Errorf("transient error")).
 		Times(int(bsb.config.RetryLimit) + 1)

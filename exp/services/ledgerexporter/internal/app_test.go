@@ -41,7 +41,7 @@ func TestApplyResumeInvalidDataStoreLedgersPerFileBoundary(t *testing.T) {
 		StartLedger:       3,
 		EndLedger:         9,
 		Resume:            true,
-		LedgerBatchConfig: datastore.LedgerBatchConfig{LedgersPerFile: 10, FilesPerPartition: 50, FileSuffix: ".xdr.gz"},
+		LedgerBatchConfig: datastore.LedgerBatchConfig{LedgersPerFile: 10, FilesPerPartition: 50},
 	}
 	mockResumableManager := &datastore.MockResumableManager{}
 	// simulate the datastore has inconsistent data,
@@ -61,7 +61,7 @@ func TestApplyResumeWithPartialRemoteDataPresent(t *testing.T) {
 		StartLedger:       10,
 		EndLedger:         99,
 		Resume:            true,
-		LedgerBatchConfig: datastore.LedgerBatchConfig{LedgersPerFile: 10, FilesPerPartition: 50, FileSuffix: ".xdr.gz"},
+		LedgerBatchConfig: datastore.LedgerBatchConfig{LedgersPerFile: 10, FilesPerPartition: 50},
 	}
 	mockResumableManager := &datastore.MockResumableManager{}
 	// simulates a data store that had ledger files populated up to seq=49, so the first absent ledger would be 50
@@ -80,7 +80,7 @@ func TestApplyResumeWithNoRemoteDataPresent(t *testing.T) {
 		StartLedger:       10,
 		EndLedger:         99,
 		Resume:            true,
-		LedgerBatchConfig: datastore.LedgerBatchConfig{LedgersPerFile: 10, FilesPerPartition: 50, FileSuffix: ".xdr.gz"},
+		LedgerBatchConfig: datastore.LedgerBatchConfig{LedgersPerFile: 10, FilesPerPartition: 50},
 	}
 	mockResumableManager := &datastore.MockResumableManager{}
 	// simulates a data store that had no data in the requested range
@@ -102,7 +102,7 @@ func TestApplyResumeWithNoRemoteDataAndRequestFromGenesis(t *testing.T) {
 		StartLedger:       2,
 		EndLedger:         99,
 		Resume:            true,
-		LedgerBatchConfig: datastore.LedgerBatchConfig{LedgersPerFile: 10, FilesPerPartition: 50, FileSuffix: ".xdr.gz"},
+		LedgerBatchConfig: datastore.LedgerBatchConfig{LedgersPerFile: 10, FilesPerPartition: 50},
 	}
 	mockResumableManager := &datastore.MockResumableManager{}
 	// simulates a data store that had no data in the requested range

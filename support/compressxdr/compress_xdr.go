@@ -3,36 +3,50 @@ package compressxdr
 import (
 	"io"
 
-	"github.com/stellar/go/support/errors"
+	xdr3 "github.com/stellar/go-xdr/xdr3"
 )
 
-const (
-	GZIP = "gzip"
-)
-
-type XDREncoder interface {
-	WriteTo(w io.Writer) (int64, error)
+func NewXDREncoder(compressor Compressor, xdrPayload interface{}) XDREncoder {
+	return XDREncoder{Compressor: compressor, XdrPayload: xdrPayload}
 }
 
-type XDRDecoder interface {
-	ReadFrom(r io.Reader) (int64, error)
-	Unzip(r io.Reader) ([]byte, error)
+func NewXDRDecoder(compressor Compressor, xdrPayload interface{}) XDRDecoder {
+	return XDRDecoder{Compressor: compressor, XdrPayload: xdrPayload}
+
 }
 
-func NewXDREncoder(compressionType string, xdrPayload interface{}) (XDREncoder, error) {
-	switch compressionType {
-	case GZIP:
-		return &XDRGzipEncoder{XdrPayload: xdrPayload}, nil
-	default:
-		return nil, errors.Errorf("invalid compression type %s, not supported", compressionType)
+// XDREncoder combines compression with XDR encoding
+type XDREncoder struct {
+	Compressor Compressor
+	XdrPayload interface{}
+}
+
+// WriteTo writes the XDR compressed encoded data
+func (e XDREncoder) WriteTo(w io.Writer) (int64, error) {
+	zw, err := e.Compressor.NewWriter(w)
+	if err != nil {
+		return 0, err
 	}
+	defer zw.Close()
+
+	n, err := xdr3.Marshal(zw, e.XdrPayload)
+	return int64(n), err
 }
 
-func NewXDRDecoder(compressionType string, xdrPayload interface{}) (XDRDecoder, error) {
-	switch compressionType {
-	case GZIP:
-		return &XDRGzipDecoder{XdrPayload: xdrPayload}, nil
-	default:
-		return nil, errors.Errorf("invalid compression type %s, not supported", compressionType)
+// XDRDecoder combines decompression with XDR decoding
+type XDRDecoder struct {
+	Compressor Compressor
+	XdrPayload interface{}
+}
+
+// ReadFrom reads XDR compressed encoded data
+func (d XDRDecoder) ReadFrom(r io.Reader) (int64, error) {
+	zr, err := d.Compressor.NewReader(r)
+	if err != nil {
+		return 0, err
 	}
+	defer zr.Close()
+
+	n, err := xdr3.Unmarshal(zr, d.XdrPayload)
+	return int64(n), err
 }

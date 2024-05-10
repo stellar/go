@@ -10,7 +10,6 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/stellar/go/support/compressxdr"
 	"github.com/stellar/go/support/datastore"
 	"github.com/stellar/go/xdr"
 )
@@ -20,7 +19,6 @@ var _ LedgerBackend = (*BufferedStorageBackend)(nil)
 
 type BufferedStorageBackendConfig struct {
 	LedgerBatchConfig datastore.LedgerBatchConfig
-	CompressionType   string
 	DataStore         datastore.DataStore
 	BufferSize        uint32
 	NumWorkers        uint32
@@ -42,7 +40,6 @@ type BufferedStorageBackend struct {
 	prepared          *Range // Non-nil if any range is prepared
 	closed            bool   // False until the core is closed
 	ledgerMetaArchive *datastore.LedgerMetaArchive
-	decoder           compressxdr.XDRDecoder
 	nextLedger        uint32
 	lastLedger        uint32
 }
@@ -65,25 +62,12 @@ func NewBufferedStorageBackend(ctx context.Context, config BufferedStorageBacken
 		return nil, errors.New("ledgersPerFile must be > 0")
 	}
 
-	if config.LedgerBatchConfig.FileSuffix == "" {
-		return nil, errors.New("no file suffix provided in LedgerBatchConfig")
-	}
-
-	if config.CompressionType == "" {
-		return nil, errors.New("no compression type provided in config")
-	}
-
 	ledgerMetaArchive := datastore.NewLedgerMetaArchive("", 0, 0)
-	decoder, err := compressxdr.NewXDRDecoder(config.CompressionType, nil)
-	if err != nil {
-		return nil, err
-	}
 
 	bsBackend := &BufferedStorageBackend{
 		config:            config,
 		dataStore:         config.DataStore,
 		ledgerMetaArchive: ledgerMetaArchive,
-		decoder:           decoder,
 	}
 
 	return bsBackend, nil
@@ -125,17 +109,11 @@ func (bsb *BufferedStorageBackend) getBatchForSequence(ctx context.Context, sequ
 	}
 
 	// Sequence is beyond the current LedgerCloseMetaBatch
-	lcmBatchBinary, err := bsb.ledgerBuffer.getFromLedgerQueue(ctx)
+	var err error
+	bsb.ledgerMetaArchive.Data, err = bsb.ledgerBuffer.getFromLedgerQueue(ctx)
 	if err != nil {
 		return errors.Wrap(err, "failed getting next ledger batch from queue")
 	}
-
-	// Turn binary into xdr
-	err = bsb.ledgerMetaArchive.Data.UnmarshalBinary(lcmBatchBinary)
-	if err != nil {
-		return errors.Wrap(err, "failed unmarshalling lcmBatchBinary")
-	}
-
 	return nil
 }
 

@@ -38,7 +38,7 @@ func (s *ExportManagerSuite) TearDownTest() {
 }
 
 func (s *ExportManagerSuite) TestInvalidExportConfig() {
-	config := datastore.LedgerBatchConfig{LedgersPerFile: 0, FilesPerPartition: 10, FileSuffix: ".xdr.gz"}
+	config := datastore.LedgerBatchConfig{LedgersPerFile: 0, FilesPerPartition: 10}
 	registry := prometheus.NewRegistry()
 	queue := NewUploadQueue(1, registry)
 	_, err := NewExportManager(config, &s.mockBackend, queue, registry)
@@ -46,7 +46,7 @@ func (s *ExportManagerSuite) TestInvalidExportConfig() {
 }
 
 func (s *ExportManagerSuite) TestRun() {
-	config := datastore.LedgerBatchConfig{LedgersPerFile: 64, FilesPerPartition: 10, FileSuffix: ".xdr.gz"}
+	config := datastore.LedgerBatchConfig{LedgersPerFile: 64, FilesPerPartition: 10}
 	registry := prometheus.NewRegistry()
 	queue := NewUploadQueue(1, registry)
 	exporter, err := NewExportManager(config, &s.mockBackend, queue, registry)
@@ -96,7 +96,7 @@ func (s *ExportManagerSuite) TestRun() {
 }
 
 func (s *ExportManagerSuite) TestRunContextCancel() {
-	config := datastore.LedgerBatchConfig{LedgersPerFile: 1, FilesPerPartition: 1, FileSuffix: ".xdr.gz"}
+	config := datastore.LedgerBatchConfig{LedgersPerFile: 1, FilesPerPartition: 1}
 	registry := prometheus.NewRegistry()
 	queue := NewUploadQueue(1, registry)
 	exporter, err := NewExportManager(config, &s.mockBackend, queue, registry)
@@ -125,7 +125,7 @@ func (s *ExportManagerSuite) TestRunContextCancel() {
 }
 
 func (s *ExportManagerSuite) TestRunWithCanceledContext() {
-	config := datastore.LedgerBatchConfig{LedgersPerFile: 1, FilesPerPartition: 10, FileSuffix: ".xdr.gz"}
+	config := datastore.LedgerBatchConfig{LedgersPerFile: 1, FilesPerPartition: 10}
 	registry := prometheus.NewRegistry()
 	queue := NewUploadQueue(1, registry)
 	exporter, err := NewExportManager(config, &s.mockBackend, queue, registry)
@@ -138,7 +138,7 @@ func (s *ExportManagerSuite) TestRunWithCanceledContext() {
 }
 
 func (s *ExportManagerSuite) TestAddLedgerCloseMeta() {
-	config := datastore.LedgerBatchConfig{LedgersPerFile: 1, FilesPerPartition: 10, FileSuffix: ".xdr.gz"}
+	config := datastore.LedgerBatchConfig{LedgersPerFile: 1, FilesPerPartition: 10}
 	registry := prometheus.NewRegistry()
 	queue := NewUploadQueue(1, registry)
 	exporter, err := NewExportManager(config, &s.mockBackend, queue, registry)
@@ -176,7 +176,7 @@ func (s *ExportManagerSuite) TestAddLedgerCloseMeta() {
 }
 
 func (s *ExportManagerSuite) TestAddLedgerCloseMetaContextCancel() {
-	config := datastore.LedgerBatchConfig{LedgersPerFile: 1, FilesPerPartition: 10, FileSuffix: ".xdr.gz"}
+	config := datastore.LedgerBatchConfig{LedgersPerFile: 1, FilesPerPartition: 10}
 	registry := prometheus.NewRegistry()
 	queue := NewUploadQueue(1, registry)
 	exporter, err := NewExportManager(config, &s.mockBackend, queue, registry)
@@ -194,7 +194,7 @@ func (s *ExportManagerSuite) TestAddLedgerCloseMetaContextCancel() {
 }
 
 func (s *ExportManagerSuite) TestAddLedgerCloseMetaKeyMismatch() {
-	config := datastore.LedgerBatchConfig{LedgersPerFile: 10, FilesPerPartition: 1, FileSuffix: ".xdr.gz"}
+	config := datastore.LedgerBatchConfig{LedgersPerFile: 10, FilesPerPartition: 1}
 	registry := prometheus.NewRegistry()
 	queue := NewUploadQueue(1, registry)
 	exporter, err := NewExportManager(config, &s.mockBackend, queue, registry)
