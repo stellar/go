@@ -43,7 +43,7 @@ func (s *UploaderSuite) testUpload(putOkReturnVal bool) {
 	key, start, end := "test-1-100", uint32(1), uint32(100)
 	archive := datastore.NewLedgerMetaArchive(key, start, end)
 	for i := start; i <= end; i++ {
-		_ = archive.AddLedger(datastore.CreateLedgerCloseMeta(i))
+		_ = archive.AddLedger(createLedgerCloseMeta(i))
 	}
 
 	var capturedBuf bytes.Buffer

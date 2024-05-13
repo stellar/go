@@ -43,19 +43,19 @@ func TestQueue(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, ok)
 	require.Equal(t, float64(2), getMetricValue(queue.queueLengthMetric).GetGauge().GetValue())
-	require.Equal(t, uint32(1), l.GetStartLedgerSequence())
+	require.Equal(t, uint32(1), uint32(l.Data.StartSequence))
 
 	l, ok, err = queue.Dequeue(context.Background())
 	require.NoError(t, err)
 	require.True(t, ok)
 	require.Equal(t, float64(1), getMetricValue(queue.queueLengthMetric).GetGauge().GetValue())
-	require.Equal(t, uint32(2), l.GetStartLedgerSequence())
+	require.Equal(t, uint32(2), uint32(l.Data.StartSequence))
 
 	l, ok, err = queue.Dequeue(context.Background())
 	require.NoError(t, err)
 	require.True(t, ok)
 	require.Equal(t, float64(0), getMetricValue(queue.queueLengthMetric).GetGauge().GetValue())
-	require.Equal(t, uint32(3), l.GetStartLedgerSequence())
+	require.Equal(t, uint32(3), uint32(l.Data.StartSequence))
 
 	l, ok, err = queue.Dequeue(context.Background())
 	require.NoError(t, err)

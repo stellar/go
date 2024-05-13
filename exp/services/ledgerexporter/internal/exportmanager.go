@@ -47,7 +47,7 @@ func (e *ExportManager) AddLedgerCloseMeta(ctx context.Context, ledgerCloseMeta 
 	// Determine the object key for the given ledger sequence
 	objectKey := e.config.GetObjectKeyFromSequenceNumber(ledgerSeq)
 
-	if e.currentMetaArchive != nil && e.currentMetaArchive.GetObjectKey() != objectKey {
+	if e.currentMetaArchive != nil && e.currentMetaArchive.ObjectKey != objectKey {
 		return errors.New("Current meta archive object key mismatch")
 	}
 	if e.currentMetaArchive == nil {
@@ -68,7 +68,7 @@ func (e *ExportManager) AddLedgerCloseMeta(ctx context.Context, ledgerCloseMeta 
 		return errors.Wrapf(err, "failed to add ledger %d", ledgerSeq)
 	}
 
-	if ledgerSeq >= e.currentMetaArchive.GetEndLedgerSequence() {
+	if ledgerSeq >= uint32(e.currentMetaArchive.Data.EndSequence) {
 		// Current archive is full, send it for upload
 		if err := e.queue.Enqueue(ctx, e.currentMetaArchive); err != nil {
 			return err

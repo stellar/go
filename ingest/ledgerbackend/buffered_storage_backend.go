@@ -98,14 +98,14 @@ func (bsb *BufferedStorageBackend) GetLatestLedgerSequence(ctx context.Context) 
 // Otherwise will continuously load in the next LedgerCloseMetaBatch until found.
 func (bsb *BufferedStorageBackend) getBatchForSequence(ctx context.Context, sequence uint32) error {
 	// Sequence inside the current cached LedgerCloseMetaBatch
-	if sequence >= bsb.ledgerMetaArchive.GetStartLedgerSequence() && sequence <= bsb.ledgerMetaArchive.GetEndLedgerSequence() {
+	if sequence >= uint32(bsb.ledgerMetaArchive.Data.StartSequence) && sequence <= uint32(bsb.ledgerMetaArchive.Data.EndSequence) {
 		return nil
 	}
 
 	// Sequence is before the current LedgerCloseMetaBatch
 	// Does not support retrieving LedgerCloseMeta before the current cached batch
-	if sequence < bsb.ledgerMetaArchive.GetStartLedgerSequence() {
-		return errors.New("requested sequence preceeds current LedgerCloseMetaBatch")
+	if sequence < uint32(bsb.ledgerMetaArchive.Data.StartSequence) {
+		return errors.New("requested sequence precedes current LedgerCloseMetaBatch")
 	}
 
 	// Sequence is beyond the current LedgerCloseMetaBatch

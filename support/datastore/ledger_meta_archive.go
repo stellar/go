@@ -44,53 +44,19 @@ func (f *LedgerMetaArchive) AddLedger(ledgerCloseMeta xdr.LedgerCloseMeta) error
 	return nil
 }
 
-// GetLedgerCount returns the number of ledgers currently in the archive.
-func (f *LedgerMetaArchive) GetLedgerCount() uint32 {
-	return uint32(len(f.Data.LedgerCloseMetas))
-}
-
-// GetStartLedgerSequence returns the starting ledger sequence of the archive.
-func (f *LedgerMetaArchive) GetStartLedgerSequence() uint32 {
-	return uint32(f.Data.StartSequence)
-}
-
-// GetEndLedgerSequence returns the ending ledger sequence of the archive.
-func (f *LedgerMetaArchive) GetEndLedgerSequence() uint32 {
-	return uint32(f.Data.EndSequence)
-}
-
-// GetObjectKey returns the object key of the archive.
-func (f *LedgerMetaArchive) GetObjectKey() string {
-	return f.ObjectKey
-}
-
+// GetLedger retrieves the LedgerCloseMeta for a given sequence number.
+// It returns an error if the sequence number is invalid or if the LedgerCloseMeta for the sequence number is not found.
 func (f *LedgerMetaArchive) GetLedger(sequence uint32) (xdr.LedgerCloseMeta, error) {
 	if sequence < uint32(f.Data.StartSequence) || sequence > uint32(f.Data.EndSequence) {
-		return xdr.LedgerCloseMeta{}, fmt.Errorf("ledger sequence %d is outside valid range [%d, %d]",
+		return xdr.LedgerCloseMeta{}, fmt.Errorf("ledger sequence %d is outside the "+
+			"valid range of ledger sequences [%d, %d] this meta archive holds",
 			sequence, f.Data.StartSequence, f.Data.EndSequence)
 	}
 
-	ledgerIndex := sequence - f.GetStartLedgerSequence()
+	ledgerIndex := sequence - uint32(f.Data.StartSequence)
 	if ledgerIndex >= uint32(len(f.Data.LedgerCloseMetas)) {
-		return xdr.LedgerCloseMeta{}, fmt.Errorf("LedgerCloseMeta for sequence %d not found", sequence)
+		return xdr.LedgerCloseMeta{}, fmt.Errorf("LedgerCloseMeta for sequence %d is "+
+			"not found in %s meta archive", sequence, f.ObjectKey)
 	}
 	return f.Data.LedgerCloseMetas[ledgerIndex], nil
-}
-
-func CreateLedgerCloseMeta(ledgerSeq uint32) xdr.LedgerCloseMeta {
-	return xdr.LedgerCloseMeta{
-		V: int32(0),
-		V0: &xdr.LedgerCloseMetaV0{
-			LedgerHeader: xdr.LedgerHeaderHistoryEntry{
-				Header: xdr.LedgerHeader{
-					LedgerSeq: xdr.Uint32(ledgerSeq),
-				},
-			},
-			TxSet:              xdr.TransactionSet{},
-			TxProcessing:       nil,
-			UpgradesProcessing: nil,
-			ScpInfo:            nil,
-		},
-		V1: nil,
-	}
 }
