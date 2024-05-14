@@ -15,7 +15,7 @@ import (
 type ExportManager struct {
 	config             datastore.LedgerBatchConfig
 	ledgerBackend      ledgerbackend.LedgerBackend
-	currentMetaArchive *datastore.LedgerMetaArchive
+	currentMetaArchive *LedgerMetaArchive
 	queue              UploadQueue
 	latestLedgerMetric *prometheus.GaugeVec
 }
@@ -61,10 +61,10 @@ func (e *ExportManager) AddLedgerCloseMeta(ctx context.Context, ledgerCloseMeta 
 		}
 
 		// Create a new LedgerMetaArchive and add it to the map.
-		e.currentMetaArchive = datastore.NewLedgerMetaArchive(objectKey, ledgerSeq, endSeq)
+		e.currentMetaArchive = NewLedgerMetaArchive(objectKey, ledgerSeq, endSeq)
 	}
 
-	if err := e.currentMetaArchive.AddLedger(ledgerCloseMeta); err != nil {
+	if err := e.currentMetaArchive.Data.AddLedger(ledgerCloseMeta); err != nil {
 		return errors.Wrapf(err, "failed to add ledger %d", ledgerSeq)
 	}
 

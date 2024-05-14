@@ -63,12 +63,10 @@ func createBufferedStorageBackendConfigForTesting() BufferedStorageBackendConfig
 
 func createBufferedStorageBackendForTesting() BufferedStorageBackend {
 	config := createBufferedStorageBackendConfigForTesting()
-	ledgerMetaArchive := datastore.NewLedgerMetaArchive("", 0, 0)
 
 	return BufferedStorageBackend{
-		config:            config,
-		dataStore:         config.DataStore,
-		ledgerMetaArchive: ledgerMetaArchive,
+		config:    config,
+		dataStore: config.DataStore,
 	}
 }
 

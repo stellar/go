@@ -1,24 +1,11 @@
-package datastore
+package xdr
 
 import (
 	"fmt"
 	"testing"
 
-	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/require"
 )
-
-func createLedgerCloseMeta(ledgerSeq uint32) xdr.LedgerCloseMeta {
-	return xdr.LedgerCloseMeta{
-		V0: &xdr.LedgerCloseMetaV0{
-			LedgerHeader: xdr.LedgerHeaderHistoryEntry{
-				Header: xdr.LedgerHeader{
-					LedgerSeq: xdr.Uint32(ledgerSeq),
-				},
-			},
-		},
-	}
-}
 
 func TestLedgerMetaArchive_AddLedgerValidRange(t *testing.T) {
 
@@ -39,8 +26,22 @@ func TestLedgerMetaArchive_AddLedgerValidRange(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(fmt.Sprintf("range [%d, %d]: Add seq %d", tt.startSeq, tt.endSeq, tt.seqNum),
 			func(t *testing.T) {
-				f := NewLedgerMetaArchive("", tt.startSeq, tt.endSeq)
-				err := f.AddLedger(createLedgerCloseMeta(tt.seqNum))
+				f := LedgerCloseMetaBatch{StartSequence: Uint32(tt.startSeq), EndSequence: Uint32(tt.endSeq)}
+				err := f.AddLedger(LedgerCloseMeta{
+					V: int32(0),
+					V0: &LedgerCloseMetaV0{
+						LedgerHeader: LedgerHeaderHistoryEntry{
+							Header: LedgerHeader{
+								LedgerSeq: Uint32(tt.seqNum),
+							},
+						},
+						TxSet:              TransactionSet{},
+						TxProcessing:       nil,
+						UpgradesProcessing: nil,
+						ScpInfo:            nil,
+					},
+					V1: nil,
+				})
 				if tt.errMsg != "" {
 					require.EqualError(t, err, tt.errMsg)
 				} else {
@@ -51,11 +52,25 @@ func TestLedgerMetaArchive_AddLedgerValidRange(t *testing.T) {
 }
 func TestLedgerMetaArchive_AddLedgerSequential(t *testing.T) {
 	var start, end uint32 = 1, 100
-	f := NewLedgerMetaArchive("", start, end+100)
+	f := LedgerCloseMetaBatch{StartSequence: Uint32(start), EndSequence: Uint32(end + 100)}
 
 	// Add ledgers sequentially
 	for i := start; i <= end; i++ {
-		require.NoError(t, f.AddLedger(createLedgerCloseMeta(i)))
+		require.NoError(t, f.AddLedger(LedgerCloseMeta{
+			V: int32(0),
+			V0: &LedgerCloseMetaV0{
+				LedgerHeader: LedgerHeaderHistoryEntry{
+					Header: LedgerHeader{
+						LedgerSeq: Uint32(i),
+					},
+				},
+				TxSet:              TransactionSet{},
+				TxProcessing:       nil,
+				UpgradesProcessing: nil,
+				ScpInfo:            nil,
+			},
+			V1: nil,
+		}))
 	}
 
 	// Test out of sequence
@@ -78,17 +93,45 @@ func TestLedgerMetaArchive_AddLedgerSequential(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		err := f.AddLedger(createLedgerCloseMeta(tc.ledgerSeq))
+		err := f.AddLedger(LedgerCloseMeta{
+			V: int32(0),
+			V0: &LedgerCloseMetaV0{
+				LedgerHeader: LedgerHeaderHistoryEntry{
+					Header: LedgerHeader{
+						LedgerSeq: Uint32(tc.ledgerSeq),
+					},
+				},
+				TxSet:              TransactionSet{},
+				TxProcessing:       nil,
+				UpgradesProcessing: nil,
+				ScpInfo:            nil,
+			},
+			V1: nil,
+		})
 		require.EqualError(t, err, tc.expectedErrMsg)
 	}
 }
 
 func TestGetLedger(t *testing.T) {
 	var start, end uint32 = 121, 1300
-	f := NewLedgerMetaArchive("TestGetLedger.xdr", start, end)
+	f := LedgerCloseMetaBatch{StartSequence: Uint32(start), EndSequence: Uint32(end)}
 
 	for i := start; i <= end-10; i++ {
-		require.NoError(t, f.AddLedger(createLedgerCloseMeta(i)))
+		f.LedgerCloseMetas = append(f.LedgerCloseMetas, LedgerCloseMeta{
+			V: int32(0),
+			V0: &LedgerCloseMetaV0{
+				LedgerHeader: LedgerHeaderHistoryEntry{
+					Header: LedgerHeader{
+						LedgerSeq: Uint32(i),
+					},
+				},
+				TxSet:              TransactionSet{},
+				TxProcessing:       nil,
+				UpgradesProcessing: nil,
+				ScpInfo:            nil,
+			},
+			V1: nil,
+		})
 	}
 
 	testCases := []struct {
@@ -110,19 +153,18 @@ func TestGetLedger(t *testing.T) {
 			name:      "LedgerSequenceAboveRange",
 			ledgerSeq: end + 1,
 			expectedErrMsg: fmt.Sprintf("ledger sequence %d is outside the valid range "+
-				"of ledger sequences [%d, %d] this meta archive holds", end+1, start, end),
+				"of ledger sequences [%d, %d] this batch holds", end+1, start, end),
 		},
 		{
 			name:      "LedgerSequenceBelowRange",
 			ledgerSeq: start - 1,
 			expectedErrMsg: fmt.Sprintf("ledger sequence %d is outside the valid range "+
-				"of ledger sequences [%d, %d] this meta archive holds", start-1, start, end),
+				"of ledger sequences [%d, %d] this batch holds", start-1, start, end),
 		},
 		{
-			name:      "LedgerCloseMetaNotFound",
-			ledgerSeq: end - 5,
-			expectedErrMsg: fmt.Sprintf("LedgerCloseMeta for sequence %d is not found in %s "+
-				"meta archive", end-5, "TestGetLedger.xdr"),
+			name:           "LedgerCloseMetaNotFound",
+			ledgerSeq:      end - 5,
+			expectedErrMsg: fmt.Sprintf("LedgerCloseMeta for sequence %d not found in the batch", end-5),
 		},
 	}
 
@@ -131,7 +173,7 @@ func TestGetLedger(t *testing.T) {
 			archive, err := f.GetLedger(tc.ledgerSeq)
 			if tc.expectedErrMsg != "" {
 				require.EqualError(t, err, tc.expectedErrMsg)
-				require.Equal(t, archive, xdr.LedgerCloseMeta{})
+				require.Equal(t, archive, LedgerCloseMeta{})
 			} else {
 				require.NoError(t, err)
 				require.Equal(t, archive.LedgerSequence(), tc.ledgerSeq)
