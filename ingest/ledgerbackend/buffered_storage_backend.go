@@ -36,12 +36,12 @@ type BufferedStorageBackend struct {
 	// ledgerBuffer is the buffer for LedgerCloseMeta data read in parallel.
 	ledgerBuffer *ledgerBuffer
 
-	dataStore         datastore.DataStore
-	prepared          *Range // Non-nil if any range is prepared
-	closed            bool   // False until the core is closed
-	ledgerMetaArchive *datastore.LedgerMetaArchive
-	nextLedger        uint32
-	lastLedger        uint32
+	dataStore  datastore.DataStore
+	prepared   *Range // Non-nil if any range is prepared
+	closed     bool   // False until the core is closed
+	lcmBatch   xdr.LedgerCloseMetaBatch
+	nextLedger uint32
+	lastLedger uint32
 }
 
 // NewBufferedStorageBackend returns a new BufferedStorageBackend instance.
@@ -62,12 +62,9 @@ func NewBufferedStorageBackend(ctx context.Context, config BufferedStorageBacken
 		return nil, errors.New("ledgersPerFile must be > 0")
 	}
 
-	ledgerMetaArchive := datastore.NewLedgerMetaArchive("", 0, 0)
-
 	bsBackend := &BufferedStorageBackend{
-		config:            config,
-		dataStore:         config.DataStore,
-		ledgerMetaArchive: ledgerMetaArchive,
+		config:    config,
+		dataStore: config.DataStore,
 	}
 
 	return bsBackend, nil
@@ -98,19 +95,19 @@ func (bsb *BufferedStorageBackend) GetLatestLedgerSequence(ctx context.Context) 
 // Otherwise will continuously load in the next LedgerCloseMetaBatch until found.
 func (bsb *BufferedStorageBackend) getBatchForSequence(ctx context.Context, sequence uint32) error {
 	// Sequence inside the current cached LedgerCloseMetaBatch
-	if sequence >= bsb.ledgerMetaArchive.GetStartLedgerSequence() && sequence <= bsb.ledgerMetaArchive.GetEndLedgerSequence() {
+	if sequence >= uint32(bsb.lcmBatch.StartSequence) && sequence <= uint32(bsb.lcmBatch.EndSequence) {
 		return nil
 	}
 
 	// Sequence is before the current LedgerCloseMetaBatch
 	// Does not support retrieving LedgerCloseMeta before the current cached batch
-	if sequence < bsb.ledgerMetaArchive.GetStartLedgerSequence() {
-		return errors.New("requested sequence preceeds current LedgerCloseMetaBatch")
+	if sequence < uint32(bsb.lcmBatch.StartSequence) {
+		return errors.New("requested sequence precedes current LedgerCloseMetaBatch")
 	}
 
 	// Sequence is beyond the current LedgerCloseMetaBatch
 	var err error
-	bsb.ledgerMetaArchive.Data, err = bsb.ledgerBuffer.getFromLedgerQueue(ctx)
+	bsb.lcmBatch, err = bsb.ledgerBuffer.getFromLedgerQueue(ctx)
 	if err != nil {
 		return errors.Wrap(err, "failed getting next ledger batch from queue")
 	}
@@ -165,7 +162,7 @@ func (bsb *BufferedStorageBackend) GetLedger(ctx context.Context, sequence uint3
 		return xdr.LedgerCloseMeta{}, err
 	}
 
-	ledgerCloseMeta, err := bsb.ledgerMetaArchive.GetLedger(sequence)
+	ledgerCloseMeta, err := bsb.lcmBatch.GetLedger(sequence)
 	if err != nil {
 		return xdr.LedgerCloseMeta{}, err
 	}

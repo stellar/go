@@ -8,6 +8,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
+
 	"github.com/stellar/go/support/compressxdr"
 	"github.com/stellar/go/support/datastore"
 )
@@ -78,19 +79,19 @@ func (r *writerToRecorder) WriteTo(w io.Writer) (int64, error) {
 }
 
 // Upload uploads the serialized binary data of ledger TxMeta to the specified destination.
-func (u Uploader) Upload(ctx context.Context, metaArchive *datastore.LedgerMetaArchive) error {
-	logger.Infof("Uploading: %s", metaArchive.GetObjectKey())
+func (u Uploader) Upload(ctx context.Context, metaArchive *LedgerMetaArchive) error {
+	logger.Infof("Uploading: %s", metaArchive.ObjectKey)
 	startTime := time.Now()
-	numLedgers := strconv.FormatUint(uint64(metaArchive.GetLedgerCount()), 10)
+	numLedgers := strconv.FormatUint(uint64(len(metaArchive.Data.LedgerCloseMetas)), 10)
 
 	xdrEncoder := compressxdr.NewXDREncoder(compressxdr.DefaultCompressor, &metaArchive.Data)
 
 	writerTo := &writerToRecorder{
 		WriterTo: xdrEncoder,
 	}
-	ok, err := u.dataStore.PutFileIfNotExists(ctx, metaArchive.GetObjectKey(), writerTo)
+	ok, err := u.dataStore.PutFileIfNotExists(ctx, metaArchive.ObjectKey, writerTo)
 	if err != nil {
-		return errors.Wrapf(err, "error uploading %s", metaArchive.GetObjectKey())
+		return errors.Wrapf(err, "error uploading %s", metaArchive.ObjectKey)
 	}
 	alreadyExists := strconv.FormatBool(!ok)
 

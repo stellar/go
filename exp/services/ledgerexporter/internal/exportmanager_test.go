@@ -15,7 +15,26 @@ import (
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/support/collections/set"
 	"github.com/stellar/go/support/datastore"
+	"github.com/stellar/go/xdr"
 )
+
+func createLedgerCloseMeta(ledgerSeq uint32) xdr.LedgerCloseMeta {
+	return xdr.LedgerCloseMeta{
+		V: int32(0),
+		V0: &xdr.LedgerCloseMetaV0{
+			LedgerHeader: xdr.LedgerHeaderHistoryEntry{
+				Header: xdr.LedgerHeader{
+					LedgerSeq: xdr.Uint32(ledgerSeq),
+				},
+			},
+			TxSet:              xdr.TransactionSet{},
+			TxProcessing:       nil,
+			UpgradesProcessing: nil,
+			ScpInfo:            nil,
+		},
+		V1: nil,
+	}
+}
 
 func TestExporterSuite(t *testing.T) {
 	suite.Run(t, new(ExportManagerSuite))
@@ -57,7 +76,7 @@ func (s *ExportManagerSuite) TestRun() {
 	expectedKeys := set.NewSet[string](10)
 	for i := start; i <= end; i++ {
 		s.mockBackend.On("GetLedger", s.ctx, i).
-			Return(datastore.CreateLedgerCloseMeta(i), nil)
+			Return(createLedgerCloseMeta(i), nil)
 		key := config.GetObjectKeyFromSequenceNumber(i)
 		expectedKeys.Add(key)
 	}
@@ -104,7 +123,7 @@ func (s *ExportManagerSuite) TestRunContextCancel() {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	s.mockBackend.On("GetLedger", mock.Anything, mock.Anything).
-		Return(datastore.CreateLedgerCloseMeta(1), nil)
+		Return(createLedgerCloseMeta(1), nil)
 
 	go func() {
 		<-time.After(time.Second * 1)
@@ -164,7 +183,7 @@ func (s *ExportManagerSuite) TestAddLedgerCloseMeta() {
 	start := uint32(0)
 	end := uint32(255)
 	for i := start; i <= end; i++ {
-		require.NoError(s.T(), exporter.AddLedgerCloseMeta(context.Background(), datastore.CreateLedgerCloseMeta(i)))
+		require.NoError(s.T(), exporter.AddLedgerCloseMeta(context.Background(), createLedgerCloseMeta(i)))
 
 		key := config.GetObjectKeyFromSequenceNumber(i)
 		expectedKeys.Add(key)
@@ -188,8 +207,8 @@ func (s *ExportManagerSuite) TestAddLedgerCloseMetaContextCancel() {
 		cancel()
 	}()
 
-	require.NoError(s.T(), exporter.AddLedgerCloseMeta(ctx, datastore.CreateLedgerCloseMeta(1)))
-	err = exporter.AddLedgerCloseMeta(ctx, datastore.CreateLedgerCloseMeta(2))
+	require.NoError(s.T(), exporter.AddLedgerCloseMeta(ctx, createLedgerCloseMeta(1)))
+	err = exporter.AddLedgerCloseMeta(ctx, createLedgerCloseMeta(2))
 	require.EqualError(s.T(), err, "context canceled")
 }
 
@@ -200,7 +219,7 @@ func (s *ExportManagerSuite) TestAddLedgerCloseMetaKeyMismatch() {
 	exporter, err := NewExportManager(config, &s.mockBackend, queue, registry)
 	require.NoError(s.T(), err)
 
-	require.NoError(s.T(), exporter.AddLedgerCloseMeta(context.Background(), datastore.CreateLedgerCloseMeta(16)))
-	require.EqualError(s.T(), exporter.AddLedgerCloseMeta(context.Background(), datastore.CreateLedgerCloseMeta(21)),
+	require.NoError(s.T(), exporter.AddLedgerCloseMeta(context.Background(), createLedgerCloseMeta(16)))
+	require.EqualError(s.T(), exporter.AddLedgerCloseMeta(context.Background(), createLedgerCloseMeta(21)),
 		"Current meta archive object key mismatch")
 }

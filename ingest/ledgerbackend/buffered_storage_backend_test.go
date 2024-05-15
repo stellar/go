@@ -22,6 +22,24 @@ import (
 var partitionSize = uint32(64000)
 var ledgerPerFileCount = uint32(1)
 
+func createLedgerCloseMeta(ledgerSeq uint32) xdr.LedgerCloseMeta {
+	return xdr.LedgerCloseMeta{
+		V: int32(0),
+		V0: &xdr.LedgerCloseMetaV0{
+			LedgerHeader: xdr.LedgerHeaderHistoryEntry{
+				Header: xdr.LedgerHeader{
+					LedgerSeq: xdr.Uint32(ledgerSeq),
+				},
+			},
+			TxSet:              xdr.TransactionSet{},
+			TxProcessing:       nil,
+			UpgradesProcessing: nil,
+			ScpInfo:            nil,
+		},
+		V1: nil,
+	}
+}
+
 func createBufferedStorageBackendConfigForTesting() BufferedStorageBackendConfig {
 	param := make(map[string]string)
 	param["destination_bucket_path"] = "testURL"
@@ -45,12 +63,10 @@ func createBufferedStorageBackendConfigForTesting() BufferedStorageBackendConfig
 
 func createBufferedStorageBackendForTesting() BufferedStorageBackend {
 	config := createBufferedStorageBackendConfigForTesting()
-	ledgerMetaArchive := datastore.NewLedgerMetaArchive("", 0, 0)
 
 	return BufferedStorageBackend{
-		config:            config,
-		dataStore:         config.DataStore,
-		ledgerMetaArchive: ledgerMetaArchive,
+		config:    config,
+		dataStore: config.DataStore,
 	}
 }
 
@@ -81,7 +97,7 @@ func createMockdataStore(t *testing.T, start, end, partitionSize, count uint32) 
 func createLCMForTesting(start, end uint32) []xdr.LedgerCloseMeta {
 	var lcmArray []xdr.LedgerCloseMeta
 	for i := start; i <= end; i++ {
-		lcmArray = append(lcmArray, datastore.CreateLedgerCloseMeta(i))
+		lcmArray = append(lcmArray, createLedgerCloseMeta(i))
 	}
 
 	return lcmArray
@@ -90,7 +106,7 @@ func createLCMForTesting(start, end uint32) []xdr.LedgerCloseMeta {
 func createTestLedgerCloseMetaBatch(startSeq, endSeq, count uint32) xdr.LedgerCloseMetaBatch {
 	var ledgerCloseMetas []xdr.LedgerCloseMeta
 	for i := uint32(0); i < count; i++ {
-		ledgerCloseMetas = append(ledgerCloseMetas, datastore.CreateLedgerCloseMeta(startSeq+uint32(i)))
+		ledgerCloseMetas = append(ledgerCloseMetas, createLedgerCloseMeta(startSeq+uint32(i)))
 	}
 	return xdr.LedgerCloseMetaBatch{
 		StartSequence:    xdr.Uint32(startSeq),

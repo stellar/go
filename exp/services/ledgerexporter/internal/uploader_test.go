@@ -41,9 +41,9 @@ func (s *UploaderSuite) TestUpload() {
 
 func (s *UploaderSuite) testUpload(putOkReturnVal bool) {
 	key, start, end := "test-1-100", uint32(1), uint32(100)
-	archive := datastore.NewLedgerMetaArchive(key, start, end)
+	archive := NewLedgerMetaArchive(key, start, end)
 	for i := start; i <= end; i++ {
-		_ = archive.AddLedger(datastore.CreateLedgerCloseMeta(i))
+		_ = archive.Data.AddLedger(createLedgerCloseMeta(i))
 	}
 
 	var capturedBuf bytes.Buffer
@@ -61,7 +61,7 @@ func (s *UploaderSuite) testUpload(putOkReturnVal bool) {
 	require.NoError(s.T(), dataUploader.Upload(context.Background(), archive))
 
 	expectedCompressedLength := capturedBuf.Len()
-	var decodedArchive datastore.LedgerMetaArchive
+	var decodedArchive LedgerMetaArchive
 	xdrDecoder := compressxdr.NewXDRDecoder(compressxdr.DefaultCompressor, &decodedArchive.Data)
 
 	decoder := xdrDecoder
@@ -161,7 +161,7 @@ func (s *UploaderSuite) TestUploadPutError() {
 
 func (s *UploaderSuite) testUploadPutError(putOkReturnVal bool) {
 	key, start, end := "test-1-100", uint32(1), uint32(100)
-	archive := datastore.NewLedgerMetaArchive(key, start, end)
+	archive := NewLedgerMetaArchive(key, start, end)
 
 	s.mockDataStore.On("PutFileIfNotExists", context.Background(), key,
 		mock.Anything).Return(putOkReturnVal, errors.New("error in PutFileIfNotExists"))
@@ -209,7 +209,7 @@ func (s *UploaderSuite) TestRunChannelClose() {
 	go func() {
 		key, start, end := "test", uint32(1), uint32(100)
 		for i := start; i <= end; i++ {
-			s.Assert().NoError(queue.Enqueue(s.ctx, datastore.NewLedgerMetaArchive(key, i, i)))
+			s.Assert().NoError(queue.Enqueue(s.ctx, NewLedgerMetaArchive(key, i, i)))
 		}
 		<-time.After(time.Second * 2)
 		queue.Close()
@@ -225,7 +225,7 @@ func (s *UploaderSuite) TestRunContextCancel() {
 	registry := prometheus.NewRegistry()
 	queue := NewUploadQueue(1, registry)
 
-	s.Assert().NoError(queue.Enqueue(s.ctx, datastore.NewLedgerMetaArchive("test", 1, 1)))
+	s.Assert().NoError(queue.Enqueue(s.ctx, NewLedgerMetaArchive("test", 1, 1)))
 
 	go func() {
 		<-time.After(time.Second * 2)
@@ -240,7 +240,7 @@ func (s *UploaderSuite) TestRunUploadError() {
 	registry := prometheus.NewRegistry()
 	queue := NewUploadQueue(1, registry)
 
-	s.Assert().NoError(queue.Enqueue(s.ctx, datastore.NewLedgerMetaArchive("test", 1, 1)))
+	s.Assert().NoError(queue.Enqueue(s.ctx, NewLedgerMetaArchive("test", 1, 1)))
 	s.mockDataStore.On("PutFileIfNotExists", mock.Anything, "test",
 		mock.Anything).Return(false, errors.New("Put error"))
 
