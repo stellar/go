@@ -3,6 +3,7 @@ package datastore
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"hash/crc32"
 	"io"
@@ -11,12 +12,9 @@ import (
 	"path"
 	"strings"
 
-	"google.golang.org/api/googleapi"
-	"google.golang.org/api/option"
-
 	"cloud.google.com/go/storage"
+	"google.golang.org/api/googleapi"
 
-	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/support/url"
 )
@@ -28,15 +26,19 @@ type GCSDataStore struct {
 	prefix string
 }
 
-func NewGCSDataStore(ctx context.Context, params map[string]string, network string) (DataStore, error) {
-	destinationBucketPath, ok := params["destination_bucket_path"]
-	if !ok {
-		return nil, errors.Errorf("Invalid GCS config, no destination_bucket_path")
+func NewGCSDataStore(ctx context.Context, bucketPath string, network string) (DataStore, error) {
+	client, err := storage.NewClient(ctx)
+	if err != nil {
+		return nil, err
 	}
 
+	return FromGCSClient(ctx, client, bucketPath, network)
+}
+
+func FromGCSClient(ctx context.Context, client *storage.Client, bucketPath string, network string) (DataStore, error) {
 	// append the gcs:// scheme to enable usage of the url package reliably to
 	// get parse bucket name which is first path segment as URL.Host
-	gcsBucketURL := fmt.Sprintf("gcs://%s/%s", destinationBucketPath, network)
+	gcsBucketURL := fmt.Sprintf("gcs://%s/%s", bucketPath, network)
 	parsed, err := url.Parse(gcsBucketURL)
 	if err != nil {
 		return nil, err
@@ -47,17 +49,10 @@ func NewGCSDataStore(ctx context.Context, params map[string]string, network stri
 	bucketName := parsed.Host
 
 	log.Infof("creating GCS client for bucket: %s, prefix: %s", bucketName, prefix)
-
-	var options []option.ClientOption
-	client, err := storage.NewClient(ctx, options...)
-	if err != nil {
-		return nil, err
-	}
-
 	// Check the bucket exists
 	bucket := client.Bucket(bucketName)
 	if _, err := bucket.Attrs(ctx); err != nil {
-		return nil, errors.Wrap(err, "failed to retrieve bucket attributes")
+		return nil, fmt.Errorf("failed to retrieve bucket attributes: %w", err)
 	}
 
 	return &GCSDataStore{client: client, bucket: bucket, prefix: prefix}, nil
@@ -74,13 +69,13 @@ func (b GCSDataStore) GetFile(ctx context.Context, filePath string) (io.ReadClos
 	// https://pkg.go.dev/cloud.google.com/go/storage#Reader
 	r, err := b.bucket.Object(filePath).ReadCompressed(true).NewReader(ctx)
 	if err != nil {
-		if err == storage.ErrObjectNotExist {
+		if errors.Is(err, storage.ErrObjectNotExist) {
 			return nil, os.ErrNotExist
 		}
 		if gcsError, ok := err.(*googleapi.Error); ok {
 			log.Errorf("GCS error: %s %s", gcsError.Message, gcsError.Body)
 		}
-		return nil, errors.Wrapf(err, "error retrieving file: %s", filePath)
+		return nil, fmt.Errorf("error retrieving file %s: %w", filePath, err)
 	}
 	log.Infof("File retrieved successfully: %s", filePath)
 	return r, nil
@@ -99,7 +94,7 @@ func (b GCSDataStore) PutFileIfNotExists(ctx context.Context, filePath string, i
 				log.Errorf("GCS error: %s %s", gcsError.Message, gcsError.Body)
 			}
 		}
-		return false, errors.Wrapf(err, "error uploading file:  %s", filePath)
+		return false, fmt.Errorf("error uploading file %s: %w", filePath, err)
 	}
 	log.Infof("File uploaded successfully: %s", filePath)
 	return true, nil
@@ -113,7 +108,7 @@ func (b GCSDataStore) PutFile(ctx context.Context, filePath string, in io.Writer
 		if gcsError, ok := err.(*googleapi.Error); ok {
 			log.Errorf("GCS error: %s %s", gcsError.Message, gcsError.Body)
 		}
-		return errors.Wrapf(err, "error uploading file: %v", filePath)
+		return fmt.Errorf("error uploading file %s: %w", filePath, err)
 	}
 	log.Infof("File uploaded successfully: %s", filePath)
 	return nil
@@ -123,7 +118,7 @@ func (b GCSDataStore) PutFile(ctx context.Context, filePath string, in io.Writer
 func (b GCSDataStore) Size(ctx context.Context, pth string) (int64, error) {
 	pth = path.Join(b.prefix, pth)
 	attrs, err := b.bucket.Object(pth).Attrs(ctx)
-	if err == storage.ErrObjectNotExist {
+	if errors.Is(err, storage.ErrObjectNotExist) {
 		err = os.ErrNotExist
 	}
 	if err != nil {
@@ -136,7 +131,7 @@ func (b GCSDataStore) Size(ctx context.Context, pth string) (int64, error) {
 func (b GCSDataStore) Exists(ctx context.Context, pth string) (bool, error) {
 	_, err := b.Size(ctx, pth)
 
-	if err == os.ErrNotExist {
+	if errors.Is(err, os.ErrNotExist) {
 		return false, nil
 	}
 
@@ -154,16 +149,18 @@ func (b GCSDataStore) putFile(ctx context.Context, filePath string, in io.Writer
 	if conditions != nil {
 		o = o.If(*conditions)
 	}
-	w := o.NewWriter(ctx)
 	buf := &bytes.Buffer{}
 	if _, err := in.WriteTo(buf); err != nil {
-		return errors.Wrapf(err, "failed to write file: %s", filePath)
+		return fmt.Errorf("failed to write file %s: %w", filePath, err)
 	}
+
+	w := o.NewWriter(ctx)
 	w.SendCRC32C = true
 	// we must set CRC32C before invoking w.Write() for the first time
 	w.CRC32C = crc32.Checksum(buf.Bytes(), crc32.MakeTable(crc32.Castagnoli))
-	if _, err := in.WriteTo(buf); err != nil {
-		return errors.Wrapf(err, "failed to put file: %s", filePath)
+	if _, err := io.Copy(w, buf); err != nil {
+		return fmt.Errorf("failed to put file %s: %w", filePath, err)
+
 	}
 	return w.Close()
 }

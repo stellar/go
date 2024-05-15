@@ -26,7 +26,11 @@ type DataStore interface {
 func NewDataStore(ctx context.Context, datastoreConfig DataStoreConfig, network string) (DataStore, error) {
 	switch datastoreConfig.Type {
 	case "GCS":
-		return NewGCSDataStore(ctx, datastoreConfig.Params, network)
+		destinationBucketPath, ok := datastoreConfig.Params["destination_bucket_path"]
+		if !ok {
+			return nil, errors.Errorf("Invalid GCS config, no destination_bucket_path")
+		}
+		return NewGCSDataStore(ctx, destinationBucketPath, network)
 	default:
 		return nil, errors.Errorf("Invalid datastore type %v, not supported", datastoreConfig.Type)
 	}
