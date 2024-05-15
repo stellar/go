@@ -16,12 +16,12 @@ type ExportManager struct {
 	config             datastore.LedgerBatchConfig
 	ledgerBackend      ledgerbackend.LedgerBackend
 	currentMetaArchive *datastore.LedgerMetaArchive
-	queue              UploadQueue
+	queue              *UploadQueue
 	latestLedgerMetric *prometheus.GaugeVec
 }
 
 // NewExportManager creates a new ExportManager with the provided configuration.
-func NewExportManager(config datastore.LedgerBatchConfig, backend ledgerbackend.LedgerBackend, queue UploadQueue, prometheusRegistry *prometheus.Registry) (*ExportManager, error) {
+func NewExportManager(config datastore.LedgerBatchConfig, backend ledgerbackend.LedgerBackend, queue *UploadQueue, prometheusRegistry *prometheus.Registry) (*ExportManager, error) {
 	if config.LedgersPerFile < 1 {
 		return nil, errors.Errorf("Invalid ledgers per file (%d): must be at least 1", config.LedgersPerFile)
 	}
@@ -87,6 +87,16 @@ func (e *ExportManager) Run(ctx context.Context, startLedger, endLedger uint32) 
 	labels := prometheus.Labels{
 		"start_ledger": strconv.FormatUint(uint64(startLedger), 10),
 		"end_ledger":   strconv.FormatUint(uint64(endLedger), 10),
+	}
+
+	var ledgerRange ledgerbackend.Range
+	if endLedger < 1 {
+		ledgerRange = ledgerbackend.UnboundedRange(startLedger)
+	} else {
+		ledgerRange = ledgerbackend.BoundedRange(startLedger, endLedger)
+	}
+	if err := e.ledgerBackend.PrepareRange(ctx, ledgerRange); err != nil {
+		return errors.Wrap(err, "Could not prepare captive core ledger backend")
 	}
 
 	for nextLedger := startLedger; endLedger < 1 || nextLedger <= endLedger; nextLedger++ {

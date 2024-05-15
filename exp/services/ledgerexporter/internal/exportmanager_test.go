@@ -4,11 +4,9 @@ import (
 	"context"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/mock"
-
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
@@ -52,7 +50,7 @@ func (s *ExportManagerSuite) TestRun() {
 	exporter, err := NewExportManager(config, &s.mockBackend, queue, registry)
 	require.NoError(s.T(), err)
 
-	start := uint32(0)
+	start := uint32(1)
 	end := uint32(255)
 	expectedKeys := set.NewSet[string](10)
 	for i := start; i <= end; i++ {
@@ -74,6 +72,7 @@ func (s *ExportManagerSuite) TestRun() {
 				break
 			}
 			actualKeys.Add(v.ObjectKey)
+			queue.Done(v)
 		}
 	}()
 
@@ -88,7 +87,7 @@ func (s *ExportManagerSuite) TestRun() {
 		float64(255),
 		getMetricValue(exporter.latestLedgerMetric.With(
 			prometheus.Labels{
-				"start_ledger": "0",
+				"start_ledger": "1",
 				"end_ledger":   "255",
 			}),
 		).GetGauge().GetValue(),
@@ -103,24 +102,25 @@ func (s *ExportManagerSuite) TestRunContextCancel() {
 	require.NoError(s.T(), err)
 	ctx, cancel := context.WithCancel(context.Background())
 
-	s.mockBackend.On("GetLedger", mock.Anything, mock.Anything).
-		Return(datastore.CreateLedgerCloseMeta(1), nil)
-
-	go func() {
-		<-time.After(time.Second * 1)
-		cancel()
-	}()
+	for i := 1; i <= 255; i++ {
+		s.mockBackend.On("GetLedger", mock.Anything, uint32(i)).
+			Return(datastore.CreateLedgerCloseMeta(uint32(i)), nil).Maybe()
+	}
 
 	go func() {
 		for i := 0; i < 127; i++ {
-			_, ok, dqErr := queue.Dequeue(s.ctx)
+			v, ok, dqErr := queue.Dequeue(s.ctx)
 			s.Assert().NoError(dqErr)
 			s.Assert().True(ok)
+			if ok {
+				queue.Done(v)
+			}
 		}
+		cancel()
 	}()
 
-	err = exporter.Run(ctx, 0, 255)
-	require.EqualError(s.T(), err, "failed to add ledgerCloseMeta for ledger 128: context canceled")
+	err = exporter.Run(ctx, 1, 255)
+	require.ErrorIs(s.T(), err, context.Canceled)
 
 }
 
@@ -134,7 +134,7 @@ func (s *ExportManagerSuite) TestRunWithCanceledContext() {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	err = exporter.Run(ctx, 1, 10)
-	require.EqualError(s.T(), err, "context canceled")
+	require.ErrorIs(s.T(), err, context.Canceled)
 }
 
 func (s *ExportManagerSuite) TestAddLedgerCloseMeta() {
@@ -158,10 +158,11 @@ func (s *ExportManagerSuite) TestAddLedgerCloseMeta() {
 				break
 			}
 			actualKeys.Add(v.ObjectKey)
+			queue.Done(v)
 		}
 	}()
 
-	start := uint32(0)
+	start := uint32(1)
 	end := uint32(255)
 	for i := start; i <= end; i++ {
 		require.NoError(s.T(), exporter.AddLedgerCloseMeta(context.Background(), datastore.CreateLedgerCloseMeta(i)))
@@ -183,14 +184,10 @@ func (s *ExportManagerSuite) TestAddLedgerCloseMetaContextCancel() {
 	require.NoError(s.T(), err)
 
 	ctx, cancel := context.WithCancel(context.Background())
-	go func() {
-		<-time.After(time.Second * 1)
-		cancel()
-	}()
-
 	require.NoError(s.T(), exporter.AddLedgerCloseMeta(ctx, datastore.CreateLedgerCloseMeta(1)))
+	cancel()
 	err = exporter.AddLedgerCloseMeta(ctx, datastore.CreateLedgerCloseMeta(2))
-	require.EqualError(s.T(), err, "context canceled")
+	require.ErrorIs(s.T(), err, context.Canceled)
 }
 
 func (s *ExportManagerSuite) TestAddLedgerCloseMetaKeyMismatch() {

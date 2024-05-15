@@ -6,7 +6,6 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
-	"github.com/stellar/go/support/datastore"
 	"github.com/stretchr/testify/require"
 )
 
@@ -15,7 +14,7 @@ func TestQueueContext(t *testing.T) {
 	queue := NewUploadQueue(0, prometheus.NewRegistry())
 	cancel()
 
-	require.ErrorIs(t, queue.Enqueue(ctx, nil), context.Canceled)
+	require.ErrorIs(t, queue.Enqueue(ctx, newLedgerMetaArchive("1.xdr", 1, 1)), context.Canceled)
 	_, _, err := queue.Dequeue(ctx)
 	require.ErrorIs(t, err, context.Canceled)
 }
@@ -32,9 +31,9 @@ func getMetricValue(metric prometheus.Metric) *dto.Metric {
 func TestQueue(t *testing.T) {
 	queue := NewUploadQueue(3, prometheus.NewRegistry())
 
-	require.NoError(t, queue.Enqueue(context.Background(), datastore.NewLedgerMetaArchive("test", 1, 1)))
-	require.NoError(t, queue.Enqueue(context.Background(), datastore.NewLedgerMetaArchive("test", 2, 2)))
-	require.NoError(t, queue.Enqueue(context.Background(), datastore.NewLedgerMetaArchive("test", 3, 3)))
+	require.NoError(t, queue.Enqueue(context.Background(), newLedgerMetaArchive("test", 1, 1)))
+	require.NoError(t, queue.Enqueue(context.Background(), newLedgerMetaArchive("test", 2, 2)))
+	require.NoError(t, queue.Enqueue(context.Background(), newLedgerMetaArchive("test", 3, 3)))
 
 	require.Equal(t, float64(3), getMetricValue(queue.queueLengthMetric).GetGauge().GetValue())
 	queue.Close()

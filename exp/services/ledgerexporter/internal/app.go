@@ -189,8 +189,8 @@ func (a *App) Run() {
 
 	go func() {
 		defer wg.Done()
-
-		err := a.uploader.Run(ctx)
+		// TODO: make number of upload workers configurable instead of hard coding it to 1
+		err := a.uploader.Run(ctx, 1)
 		if err != nil && !errors.Is(err, context.Canceled) {
 			logger.WithError(err).Error("Error executing Uploader")
 			cancel()
@@ -208,10 +208,6 @@ func (a *App) Run() {
 	}()
 
 	if a.adminServer != nil {
-		// no need to include this goroutine in the wait group
-		// because a.adminServer.Shutdown() is called below and
-		// that will block until a.adminServer has finished
-		// shutting down
 		go func() {
 			logger.Infof("Starting admin server on port %v", a.config.AdminPort)
 			if err := a.adminServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {

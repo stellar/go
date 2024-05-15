@@ -10,12 +10,13 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/stellar/go/support/compressxdr"
-	"github.com/stellar/go/support/datastore"
-	"github.com/stellar/go/support/errors"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/stellar/go/support/compressxdr"
+	"github.com/stellar/go/support/datastore"
+	"github.com/stellar/go/support/errors"
 )
 
 func TestUploaderSuite(t *testing.T) {
@@ -41,10 +42,7 @@ func (s *UploaderSuite) TestUpload() {
 
 func (s *UploaderSuite) testUpload(putOkReturnVal bool) {
 	key, start, end := "test-1-100", uint32(1), uint32(100)
-	archive := datastore.NewLedgerMetaArchive(key, start, end)
-	for i := start; i <= end; i++ {
-		_ = archive.AddLedger(datastore.CreateLedgerCloseMeta(i))
-	}
+	archive := newLedgerMetaArchive(key, start, end)
 
 	var capturedBuf bytes.Buffer
 	var capturedKey string
@@ -154,6 +152,14 @@ func (s *UploaderSuite) testUpload(putOkReturnVal bool) {
 	)
 }
 
+func newLedgerMetaArchive(key string, start uint32, end uint32) *datastore.LedgerMetaArchive {
+	archive := datastore.NewLedgerMetaArchive(key, start, end)
+	for i := start; i <= end; i++ {
+		_ = archive.AddLedger(datastore.CreateLedgerCloseMeta(i))
+	}
+	return archive
+}
+
 func (s *UploaderSuite) TestUploadPutError() {
 	s.testUploadPutError(true)
 	s.testUploadPutError(false)
@@ -161,7 +167,7 @@ func (s *UploaderSuite) TestUploadPutError() {
 
 func (s *UploaderSuite) testUploadPutError(putOkReturnVal bool) {
 	key, start, end := "test-1-100", uint32(1), uint32(100)
-	archive := datastore.NewLedgerMetaArchive(key, start, end)
+	archive := newLedgerMetaArchive(key, start, end)
 
 	s.mockDataStore.On("PutFileIfNotExists", context.Background(), key,
 		mock.Anything).Return(putOkReturnVal, errors.New("error in PutFileIfNotExists"))
@@ -209,14 +215,13 @@ func (s *UploaderSuite) TestRunChannelClose() {
 	go func() {
 		key, start, end := "test", uint32(1), uint32(100)
 		for i := start; i <= end; i++ {
-			s.Assert().NoError(queue.Enqueue(s.ctx, datastore.NewLedgerMetaArchive(key, i, i)))
+			s.Assert().NoError(queue.Enqueue(s.ctx, newLedgerMetaArchive(key, i, i)))
 		}
-		<-time.After(time.Second * 2)
 		queue.Close()
 	}()
 
 	dataUploader := NewUploader(&s.mockDataStore, queue, registry)
-	require.NoError(s.T(), dataUploader.Run(context.Background()))
+	require.NoError(s.T(), dataUploader.Run(context.Background(), 1))
 }
 
 func (s *UploaderSuite) TestRunContextCancel() {
@@ -224,8 +229,7 @@ func (s *UploaderSuite) TestRunContextCancel() {
 	ctx, cancel := context.WithCancel(context.Background())
 	registry := prometheus.NewRegistry()
 	queue := NewUploadQueue(1, registry)
-
-	s.Assert().NoError(queue.Enqueue(s.ctx, datastore.NewLedgerMetaArchive("test", 1, 1)))
+	s.Assert().NoError(queue.Enqueue(s.ctx, newLedgerMetaArchive("test", 1, 1)))
 
 	go func() {
 		<-time.After(time.Second * 2)
@@ -233,18 +237,18 @@ func (s *UploaderSuite) TestRunContextCancel() {
 	}()
 
 	dataUploader := NewUploader(&s.mockDataStore, queue, registry)
-	require.EqualError(s.T(), dataUploader.Run(ctx), "context canceled")
+	require.EqualError(s.T(), dataUploader.Run(ctx, 1), "context canceled")
 }
 
 func (s *UploaderSuite) TestRunUploadError() {
 	registry := prometheus.NewRegistry()
 	queue := NewUploadQueue(1, registry)
 
-	s.Assert().NoError(queue.Enqueue(s.ctx, datastore.NewLedgerMetaArchive("test", 1, 1)))
+	s.Assert().NoError(queue.Enqueue(s.ctx, newLedgerMetaArchive("test", 1, 1)))
 	s.mockDataStore.On("PutFileIfNotExists", mock.Anything, "test",
 		mock.Anything).Return(false, errors.New("Put error"))
 
 	dataUploader := NewUploader(&s.mockDataStore, queue, registry)
-	err := dataUploader.Run(context.Background())
+	err := dataUploader.Run(context.Background(), 1)
 	require.Equal(s.T(), "error uploading test: Put error", err.Error())
 }
