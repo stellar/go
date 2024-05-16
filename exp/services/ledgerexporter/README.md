@@ -5,7 +5,7 @@ The Ledger Exporter is a tool designed to export ledger data from a Stellar netw
 Ledger Exporter currently uses captive-core as the ledger backend and GCS as the destination data store.
 
 # Exported Data Format
-The tool allows for the export of multiple ledgers in a single exported file. The exported data is in XDR format and is compressed using gzip before being uploaded.
+The tool allows for the export of multiple ledgers in a single exported file. The exported data is in XDR format and is compressed using zstd before being uploaded.
 
 ```go
 type LedgerCloseMetaBatch struct {
@@ -68,13 +68,13 @@ files_per_partition = 10
 - Files are further organized into partitions, with the number of files per partition set by `files_per_partition`.
 
 ### Filename Structure:
-- Filenames indicate the ledger range they contain, e.g., `0-63.xdr.gz` holds ledgers 0 to 63.
+- Filenames indicate the ledger range they contain, e.g., `0-63.xdr.zstd` holds ledgers 0 to 63.
 - Partition directories group files, e.g., `/0-639/` holds files for ledgers 0 to 639.
 
 #### Example:
 with `ledgers_per_file = 64` and `files_per_partition = 10`:
 - Partition names: `/0-639`, `/640-1279`, ...
-- Filenames: `/0-639/0-63.xdr.gz`, `/0-639/64-127.xdr.gz`, ...
+- Filenames: `/0-639/0-63.xdr.zstd`, `/0-639/64-127.xdr.zstd`, ...
 
 #### Special Cases:
 
