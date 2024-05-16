@@ -537,10 +537,10 @@ func (c *CaptiveCoreToml) setDefaults(params CaptiveCoreTomlParams) {
 	if checkCoreVersionF == nil {
 		checkCoreVersionF = checkCoreVersion
 	}
-	coreVersion := checkCoreVersionF(params.CoreBinaryPath)
+	currentCoreVersion := checkCoreVersionF(params.CoreBinaryPath)
 	if def := c.tree.Has("EXPERIMENTAL_BUCKETLIST_DB"); !def && params.UseDB {
 		// Supports version 19.6 and above
-		if coreVersion.IsEqualOrAbove(MinimalBucketListDBCoreSupportVersionMajor, MinimalBucketListDBCoreSupportVersionMinor) {
+		if currentCoreVersion.IsEqualOrAbove(MinimalBucketListDBCoreSupportVersionMajor, MinimalBucketListDBCoreSupportVersionMinor) {
 			c.UseBucketListDB = true
 		}
 	}
@@ -584,14 +584,14 @@ func (c *CaptiveCoreToml) setDefaults(params CaptiveCoreTomlParams) {
 	}
 
 	if params.EnforceSorobanDiagnosticEvents {
-		if coreVersion.IsEqualOrAbove(20, 0) {
+		if currentCoreVersion.IsEqualOrAbove(20, 0) {
 			enforceOption(&c.EnableSorobanDiagnosticEvents)
 		}
-		if coreVersion.IsEqualOrAbove(20, 1) {
+		if currentCoreVersion.IsEqualOrAbove(20, 1) {
 			enforceOption(&c.EnableDiagnosticsForTxSubmission)
 		}
 	}
-	if params.EnforceSorobanTransactionMetaExtV1 && coreVersion.IsEqualOrAbove(20, 4) {
+	if params.EnforceSorobanTransactionMetaExtV1 && currentCoreVersion.IsEqualOrAbove(20, 4) {
 		enforceOption(&c.EnableEmitSorobanTransactionMetaExtV1)
 	}
 }
