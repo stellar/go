@@ -342,8 +342,12 @@ type CaptiveCoreTomlParams struct {
 	UseDB bool
 	// the path to the core binary, used to introspect core at runtime, determine some toml capabilities
 	CoreBinaryPath string
-	// Enforce EnableSorobanDiagnosticEvents when not disabled explicitly
+	// Enforce EnableSorobanDiagnosticEvents and EnableDiagnosticsForTxSubmission when not disabled explicitly
 	EnforceSorobanDiagnosticEvents bool
+	// Enfore EnableSorobanTransactionMetaExtV1 when not disabled explicitly
+	EnforceSorobanTransactionMetaExtV1 bool
+	// used for testing
+	checkCoreVersion func(coreBinaryPath string) coreVersion
 }
 
 // NewCaptiveCoreTomlFromFile constructs a new CaptiveCoreToml instance by merging configuration
@@ -470,7 +474,7 @@ func (c *coreVersion) IsProtocolVersionEqualOrAbove(protocolVer int) bool {
 	return c.ledgerProtocolVersion >= protocolVer
 }
 
-func (c *CaptiveCoreToml) checkCoreVersion(coreBinaryPath string) coreVersion {
+func checkCoreVersion(coreBinaryPath string) coreVersion {
 	if coreBinaryPath == "" {
 		return coreVersion{}
 	}
@@ -529,10 +533,14 @@ func (c *CaptiveCoreToml) setDefaults(params CaptiveCoreTomlParams) {
 		c.Database = "sqlite3://stellar.db"
 	}
 
-	coreVersion := c.checkCoreVersion(params.CoreBinaryPath)
+	checkCoreVersionF := params.checkCoreVersion
+	if checkCoreVersionF == nil {
+		checkCoreVersionF = checkCoreVersion
+	}
+	currentCoreVersion := checkCoreVersionF(params.CoreBinaryPath)
 	if def := c.tree.Has("EXPERIMENTAL_BUCKETLIST_DB"); !def && params.UseDB {
 		// Supports version 19.6 and above
-		if coreVersion.IsEqualOrAbove(MinimalBucketListDBCoreSupportVersionMajor, MinimalBucketListDBCoreSupportVersionMinor) {
+		if currentCoreVersion.IsEqualOrAbove(MinimalBucketListDBCoreSupportVersionMajor, MinimalBucketListDBCoreSupportVersionMinor) {
 			c.UseBucketListDB = true
 		}
 	}
@@ -575,18 +583,29 @@ func (c *CaptiveCoreToml) setDefaults(params CaptiveCoreTomlParams) {
 		}
 	}
 
-	// starting version 20, we have dignostics events.
-	if params.EnforceSorobanDiagnosticEvents && coreVersion.IsProtocolVersionEqualOrAbove(MinimalSorobanProtocolSupport) {
-		if c.EnableSorobanDiagnosticEvents == nil {
-			// We are generating the file from scratch or the user didn't explicitly oppose to diagnostic events in the config file.
-			// Enforce it.
-			t := true
-			c.EnableSorobanDiagnosticEvents = &t
+	if params.EnforceSorobanDiagnosticEvents {
+		if currentCoreVersion.IsEqualOrAbove(20, 0) {
+			enforceOption(&c.EnableSorobanDiagnosticEvents)
 		}
-		if !*c.EnableSorobanDiagnosticEvents {
-			// The user opposed to diagnostic events in the config file, but there is no need to pass on the option
-			c.EnableSorobanDiagnosticEvents = nil
+		if currentCoreVersion.IsEqualOrAbove(20, 1) {
+			enforceOption(&c.EnableDiagnosticsForTxSubmission)
 		}
+	}
+	if params.EnforceSorobanTransactionMetaExtV1 && currentCoreVersion.IsEqualOrAbove(20, 4) {
+		enforceOption(&c.EnableEmitSorobanTransactionMetaExtV1)
+	}
+}
+
+func enforceOption(opt **bool) {
+	if *opt == nil {
+		// We are generating the file from scratch or the user didn't explicitly oppose the option.
+		// Enforce it.
+		t := true
+		*opt = &t
+	}
+	if !**opt {
+		// The user opposed the option, but there is no need to pass it on
+		*opt = nil
 	}
 }
 
