@@ -25,6 +25,15 @@ import (
 const (
 	adminServerReadTimeout     = 5 * time.Second
 	adminServerShutdownTimeout = time.Second * 5
+	// TODO: make this timeout configurable
+	uploadShutdownTimeout = 10 * time.Second
+	// We expect the queue size to rarely exceed 1 or 2 because
+	// upload speeds are expected to be much faster than the rate at which
+	// captive core emits ledgers. However, configuring a higher capacity
+	// than our expectation is useful because if we observe a large queue
+	// size in our metrics that is an indication that uploads to the
+	// data store have degraded
+	uploadQueueCapacity = 128
 )
 
 var (
@@ -116,8 +125,7 @@ func (a *App) init(ctx context.Context) error {
 		return err
 	}
 
-	// TODO: make queue size configurable instead of hard coding it to 1
-	queue := NewUploadQueue(1, registry)
+	queue := NewUploadQueue(uploadQueueCapacity, registry)
 	if a.exportManager, err = NewExportManager(a.config.LedgerBatchConfig, a.ledgerBackend, queue, registry); err != nil {
 		return err
 	}
@@ -190,7 +198,7 @@ func (a *App) Run() {
 	go func() {
 		defer wg.Done()
 
-		err := a.uploader.Run(ctx)
+		err := a.uploader.Run(ctx, uploadShutdownTimeout)
 		if err != nil && !errors.Is(err, context.Canceled) {
 			logger.WithError(err).Error("Error executing Uploader")
 			cancel()
