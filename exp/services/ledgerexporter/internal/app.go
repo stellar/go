@@ -112,7 +112,7 @@ func (a *App) init(ctx context.Context) error {
 
 	logger.Infof("Final computed ledger range for backend retrieval and export, start=%d, end=%d", a.config.StartLedger, a.config.EndLedger)
 
-	if a.ledgerBackend, err = newLedgerBackend(ctx, a.config, registry); err != nil {
+	if a.ledgerBackend, err = newLedgerBackend(a.config, registry); err != nil {
 		return err
 	}
 
@@ -247,7 +247,7 @@ func (a *App) Run() {
 
 // newLedgerBackend Creates and initializes captive core ledger backend
 // Currently, only supports captive-core as ledger backend
-func newLedgerBackend(ctx context.Context, config *Config, prometheusRegistry *prometheus.Registry) (ledgerbackend.LedgerBackend, error) {
+func newLedgerBackend(config *Config, prometheusRegistry *prometheus.Registry) (ledgerbackend.LedgerBackend, error) {
 	captiveConfig, err := config.GenerateCaptiveCoreConfig()
 	if err != nil {
 		return nil, err
@@ -261,15 +261,5 @@ func newLedgerBackend(ctx context.Context, config *Config, prometheusRegistry *p
 	}
 	backend = ledgerbackend.WithMetrics(backend, prometheusRegistry, "ledger_exporter")
 
-	var ledgerRange ledgerbackend.Range
-	if config.EndLedger == 0 {
-		ledgerRange = ledgerbackend.UnboundedRange(config.StartLedger)
-	} else {
-		ledgerRange = ledgerbackend.BoundedRange(config.StartLedger, config.EndLedger)
-	}
-
-	if err = backend.PrepareRange(ctx, ledgerRange); err != nil {
-		return nil, errors.Wrap(err, "Could not prepare captive core ledger backend")
-	}
 	return backend, nil
 }

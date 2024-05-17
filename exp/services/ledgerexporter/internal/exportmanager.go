@@ -89,21 +89,25 @@ func (e *ExportManager) Run(ctx context.Context, startLedger, endLedger uint32) 
 		"end_ledger":   strconv.FormatUint(uint64(endLedger), 10),
 	}
 
+	var ledgerRange ledgerbackend.Range
+	if endLedger < 1 {
+		ledgerRange = ledgerbackend.UnboundedRange(startLedger)
+	} else {
+		ledgerRange = ledgerbackend.BoundedRange(startLedger, endLedger)
+	}
+	if err := e.ledgerBackend.PrepareRange(ctx, ledgerRange); err != nil {
+		return errors.Wrap(err, "Could not prepare captive core ledger backend")
+	}
+
 	for nextLedger := startLedger; endLedger < 1 || nextLedger <= endLedger; nextLedger++ {
-		select {
-		case <-ctx.Done():
-			logger.Info("Stopping ExportManager due to context cancellation")
-			return ctx.Err()
-		default:
-			ledgerCloseMeta, err := e.ledgerBackend.GetLedger(ctx, nextLedger)
-			if err != nil {
-				return errors.Wrapf(err, "failed to retrieve ledger %d from the ledger backend", nextLedger)
-			}
-			e.latestLedgerMetric.With(labels).Set(float64(nextLedger))
-			err = e.AddLedgerCloseMeta(ctx, ledgerCloseMeta)
-			if err != nil {
-				return errors.Wrapf(err, "failed to add ledgerCloseMeta for ledger %d", nextLedger)
-			}
+		ledgerCloseMeta, err := e.ledgerBackend.GetLedger(ctx, nextLedger)
+		if err != nil {
+			return errors.Wrapf(err, "failed to retrieve ledger %d from the ledger backend", nextLedger)
+		}
+		e.latestLedgerMetric.With(labels).Set(float64(nextLedger))
+		err = e.AddLedgerCloseMeta(ctx, ledgerCloseMeta)
+		if err != nil {
+			return errors.Wrapf(err, "failed to add ledgerCloseMeta for ledger %d", nextLedger)
 		}
 	}
 	logger.Infof("ExportManager successfully exported ledgers from %d to %d", startLedger, endLedger)
