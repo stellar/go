@@ -3,7 +3,10 @@ package ledgerexporter
 import (
 	"context"
 	_ "embed"
+	"fmt"
 	"os/exec"
+	"regexp"
+	"strings"
 
 	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/ingest/ledgerbackend"
@@ -45,15 +48,20 @@ type Config struct {
 	StartLedger uint32
 	EndLedger   uint32
 	Resume      bool
+
+	// derived config
+	Version         string // lexie version
+	CoreVersion     string // stellar-core version
+	ProtocolVersion string // stellar protocol version
 }
 
 // This will generate the config based on commandline flags and toml
 //
-// ctx                   - the caller context
+// version               - Ledger Exporter version
 // flags                 - command line flags
 //
 // return                - *Config or an error if any range validation failed.
-func NewConfig(ctx context.Context, flags Flags) (*Config, error) {
+func NewConfig(version string, flags Flags) (*Config, error) {
 	config := &Config{}
 
 	config.StartLedger = uint32(flags.StartLedger)
@@ -67,6 +75,7 @@ func NewConfig(ctx context.Context, flags Flags) (*Config, error) {
 		return nil, err
 	}
 	logger.Infof("Config: %v", *config)
+	config.Version = version
 
 	return config, nil
 }
@@ -100,16 +109,17 @@ func (config *Config) ValidateAndSetLedgerRange(ctx context.Context, archive his
 	return nil
 }
 
-func (config *Config) GenerateCaptiveCoreConfig() (ledgerbackend.CaptiveCoreConfig, error) {
+func (config *Config) generateCaptiveCoreConfig() (ledgerbackend.CaptiveCoreConfig, error) {
 	coreConfig := &config.StellarCoreConfig
 
 	// Look for stellar-core binary in $PATH, if not supplied
-	if coreConfig.StellarCoreBinaryPath == "" {
+	if config.StellarCoreConfig.StellarCoreBinaryPath == "" {
 		var err error
-		if coreConfig.StellarCoreBinaryPath, err = exec.LookPath("stellar-core"); err != nil {
+		if config.StellarCoreConfig.StellarCoreBinaryPath, err = exec.LookPath("stellar-core"); err != nil {
 			return ledgerbackend.CaptiveCoreConfig{}, errors.Wrap(err, "Failed to find stellar-core binary")
 		}
 	}
+	config.setCoreVersionInfo()
 
 	var captiveCoreConfig []byte
 	// Default network config
@@ -149,6 +159,54 @@ func (config *Config) GenerateCaptiveCoreConfig() (ledgerbackend.CaptiveCoreConf
 		UserAgent:           "ledger-exporter",
 		UseDB:               true,
 	}, nil
+}
+
+// By default, it points to exec.Command, overridden for testing purpose
+var execCommand = exec.Command
+
+// retrieves and sets the core and protocol versions from the stellar-core binary.
+// It executes the "stellar-core version" command and parses its output to extract
+// the core version and ledger protocol version.
+// The output of the "version" command is expected to be a multi-line string where:
+// - The first line is the core version in format "vX.Y.Z-*".
+// - One of the subsequent lines contains the protocol version in the format "ledger protocol version: X", where X is a number.
+func (c *Config) setCoreVersionInfo() (err error) {
+	versionCmd := execCommand(c.StellarCoreConfig.StellarCoreBinaryPath, "version")
+	versionOutput, err := versionCmd.Output()
+	if err != nil {
+		return fmt.Errorf("failed to execute stellar-core version command: %w", err)
+	}
+
+	// Split the output into lines
+	rows := strings.Split(string(versionOutput), "\n")
+	if len(rows) == 0 {
+		return fmt.Errorf("stellar-core version command output is empty")
+	}
+
+	// Validate and set the core version
+	coreVersionPattern := `^v\d+\.\d+\.\d+`
+	if match, _ := regexp.MatchString(coreVersionPattern, rows[0]); !match {
+		return fmt.Errorf("core version not found in stellar-core version output")
+	}
+	c.CoreVersion = rows[0]
+
+	// Validate and set the protocol version
+	if len(rows) < 2 {
+		return fmt.Errorf("protocol version not found in stellar-core version output")
+	}
+
+	re := regexp.MustCompile(`ledger protocol version: (\d+)`)
+	for _, row := range rows[1:] {
+		if matches := re.FindStringSubmatch(row); len(matches) > 1 {
+			c.ProtocolVersion = matches[1]
+			break
+		}
+	}
+	if c.ProtocolVersion == "" {
+		return fmt.Errorf("protocol version not found in stellar-core version output")
+	}
+
+	return nil
 }
 
 func (config *Config) processToml(tomlPath string) error {

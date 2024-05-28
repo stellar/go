@@ -59,8 +59,14 @@ func FromGCSClient(ctx context.Context, client *storage.Client, bucketPath strin
 }
 
 // GetFile retrieves a file from the GCS bucket.
-func (b GCSDataStore) GetFile(ctx context.Context, filePath string) (io.ReadCloser, error) {
+func (b GCSDataStore) GetFile(ctx context.Context, filePath string) (io.ReadCloser, map[string]string, error) {
 	filePath = path.Join(b.prefix, filePath)
+	attrs, err := b.bucket.Object(filePath).Attrs(ctx)
+	if err != nil {
+		if errors.Is(err, storage.ErrObjectNotExist) {
+			return nil, map[string]string{}, os.ErrNotExist
+		}
+	}
 	// setting ReadCompressed(true) will avoid transcoding of compressed files by including
 	// an "Accept-Encoding: gzip" header in the request:
 	// https://github.com/googleapis/google-cloud-go/blob/main/storage/http_client.go#L1307-L1309
@@ -70,20 +76,20 @@ func (b GCSDataStore) GetFile(ctx context.Context, filePath string) (io.ReadClos
 	r, err := b.bucket.Object(filePath).ReadCompressed(true).NewReader(ctx)
 	if err != nil {
 		if errors.Is(err, storage.ErrObjectNotExist) {
-			return nil, os.ErrNotExist
+			return nil, map[string]string{}, os.ErrNotExist
 		}
 		if gcsError, ok := err.(*googleapi.Error); ok {
 			log.Errorf("GCS error: %s %s", gcsError.Message, gcsError.Body)
 		}
-		return nil, fmt.Errorf("error retrieving file %s: %w", filePath, err)
+		return nil, attrs.Metadata, fmt.Errorf("error retrieving file %s: %w", filePath, err)
 	}
 	log.Infof("File retrieved successfully: %s", filePath)
-	return r, nil
+	return r, attrs.Metadata, nil
 }
 
 // PutFileIfNotExists uploads a file to GCS only if it doesn't already exist.
-func (b GCSDataStore) PutFileIfNotExists(ctx context.Context, filePath string, in io.WriterTo) (bool, error) {
-	err := b.putFile(ctx, filePath, in, &storage.Conditions{DoesNotExist: true})
+func (b GCSDataStore) PutFileIfNotExists(ctx context.Context, filePath string, in io.WriterTo, metaData map[string]string) (bool, error) {
+	err := b.putFile(ctx, filePath, in, &storage.Conditions{DoesNotExist: true}, metaData)
 	if err != nil {
 		if gcsError, ok := err.(*googleapi.Error); ok {
 			switch gcsError.Code {
@@ -101,8 +107,8 @@ func (b GCSDataStore) PutFileIfNotExists(ctx context.Context, filePath string, i
 }
 
 // PutFile uploads a file to GCS
-func (b GCSDataStore) PutFile(ctx context.Context, filePath string, in io.WriterTo) error {
-	err := b.putFile(ctx, filePath, in, nil) // No conditions for regular PutFile
+func (b GCSDataStore) PutFile(ctx context.Context, filePath string, in io.WriterTo, metaData map[string]string) error {
+	err := b.putFile(ctx, filePath, in, nil, metaData) // No conditions for regular PutFile
 
 	if err != nil {
 		if gcsError, ok := err.(*googleapi.Error); ok {
@@ -143,7 +149,7 @@ func (b GCSDataStore) Close() error {
 	return b.client.Close()
 }
 
-func (b GCSDataStore) putFile(ctx context.Context, filePath string, in io.WriterTo, conditions *storage.Conditions) error {
+func (b GCSDataStore) putFile(ctx context.Context, filePath string, in io.WriterTo, conditions *storage.Conditions, metaData map[string]string) error {
 	filePath = path.Join(b.prefix, filePath)
 	o := b.bucket.Object(filePath)
 	if conditions != nil {
@@ -155,6 +161,7 @@ func (b GCSDataStore) putFile(ctx context.Context, filePath string, in io.Writer
 	}
 
 	w := o.NewWriter(ctx)
+	w.Metadata = metaData
 	w.SendCRC32C = true
 	// we must set CRC32C before invoking w.Write() for the first time
 	w.CRC32C = crc32.Checksum(buf.Bytes(), crc32.MakeTable(crc32.Castagnoli))

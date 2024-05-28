@@ -91,6 +91,16 @@ func NewApp(flags Flags) *App {
 	return app
 }
 
+// Version gets the version of the app from environment variable "LEXIE_VERSION" which is set during the build process.
+// If the environment variable is not set, it defaults to "develop".
+func Version() string {
+	version := os.Getenv("LEXIE_VERSION")
+	if version == "" {
+		version = "develop"
+	}
+	return version
+}
+
 func (a *App) init(ctx context.Context) error {
 	var err error
 	var archive historyarchive.ArchiveInterface
@@ -101,7 +111,7 @@ func (a *App) init(ctx context.Context) error {
 		collectors.NewGoCollector(),
 	)
 
-	if a.config, err = NewConfig(ctx, a.flags); err != nil {
+	if a.config, err = NewConfig(Version(), a.flags); err != nil {
 		return errors.Wrap(err, "Could not load configuration")
 	}
 	if archive, err = datastore.CreateHistoryArchiveFromNetworkName(ctx, a.config.Network); err != nil {
@@ -126,7 +136,7 @@ func (a *App) init(ctx context.Context) error {
 	}
 
 	queue := NewUploadQueue(uploadQueueCapacity, registry)
-	if a.exportManager, err = NewExportManager(a.config.LedgerBatchConfig, a.ledgerBackend, queue, registry); err != nil {
+	if a.exportManager, err = NewExportManager(a.config, a.ledgerBackend, queue, registry); err != nil {
 		return err
 	}
 	a.uploader = NewUploader(a.dataStore, queue, registry)
@@ -256,7 +266,7 @@ func (a *App) Run() {
 // newLedgerBackend Creates and initializes captive core ledger backend
 // Currently, only supports captive-core as ledger backend
 func newLedgerBackend(config *Config, prometheusRegistry *prometheus.Registry) (ledgerbackend.LedgerBackend, error) {
-	captiveConfig, err := config.GenerateCaptiveCoreConfig()
+	captiveConfig, err := config.generateCaptiveCoreConfig()
 	if err != nil {
 		return nil, err
 	}
