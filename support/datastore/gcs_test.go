@@ -247,7 +247,7 @@ func TestGCSGetNonExistentFile(t *testing.T) {
 
 	_, metadata, err := store.GetFile(context.Background(), "other-file.txt")
 	require.ErrorIs(t, err, os.ErrNotExist)
-	require.Equal(t, nil, metadata)
+	require.Equal(t, map[string]string(nil), metadata)
 }
 
 func TestGCSGetFileValidatesCRC32C(t *testing.T) {

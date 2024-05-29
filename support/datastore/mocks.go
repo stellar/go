@@ -24,6 +24,9 @@ func (m *MockDataStore) Size(ctx context.Context, path string) (int64, error) {
 
 func (m *MockDataStore) GetFile(ctx context.Context, path string) (io.ReadCloser, map[string]string, error) {
 	args := m.Called(ctx, path)
+	if args.Error(1) == nil {
+		return args.Get(0).(io.ReadCloser), nil, args.Error(2)
+	}
 	return args.Get(0).(io.ReadCloser), args.Get(1).(map[string]string), args.Error(2)
 }
 

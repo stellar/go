@@ -64,7 +64,7 @@ func (b GCSDataStore) GetFile(ctx context.Context, filePath string) (io.ReadClos
 	attrs, err := b.bucket.Object(filePath).Attrs(ctx)
 	if err != nil {
 		if errors.Is(err, storage.ErrObjectNotExist) {
-			return nil, map[string]string{}, os.ErrNotExist
+			return nil, nil, os.ErrNotExist
 		}
 	}
 	// setting ReadCompressed(true) will avoid transcoding of compressed files by including
@@ -76,12 +76,12 @@ func (b GCSDataStore) GetFile(ctx context.Context, filePath string) (io.ReadClos
 	r, err := b.bucket.Object(filePath).ReadCompressed(true).NewReader(ctx)
 	if err != nil {
 		if errors.Is(err, storage.ErrObjectNotExist) {
-			return nil, map[string]string{}, os.ErrNotExist
+			return nil, nil, os.ErrNotExist
 		}
 		if gcsError, ok := err.(*googleapi.Error); ok {
 			log.Errorf("GCS error: %s %s", gcsError.Message, gcsError.Body)
 		}
-		return nil, attrs.Metadata, fmt.Errorf("error retrieving file %s: %w", filePath, err)
+		return nil, nil, fmt.Errorf("error retrieving file %s: %w", filePath, err)
 	}
 	log.Infof("File retrieved successfully: %s", filePath)
 	return r, attrs.Metadata, nil
