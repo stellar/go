@@ -16,21 +16,21 @@ type MetaData struct {
 
 func (m MetaData) ToMap() map[string]string {
 	return map[string]string{
-		"x-lexie-start-ledger":            strconv.FormatUint(uint64(m.StartLedger), 10),
-		"x-lexie-end-ledger":              strconv.FormatUint(uint64(m.EndLedger), 10),
-		"x-lexie-start-ledger-close-time": strconv.FormatInt(m.StartLedgerCloseTime, 10),
-		"x-lexie-end-ledger-close-time":   strconv.FormatInt(m.EndLedgerCloseTime, 10),
-		"x-lexie-protocol-version":        strconv.FormatInt(int64(m.ProtocolVersion), 10),
-		"x-lexie-core-version":            m.CoreVersion,
-		"x-lexie-network":                 m.Network,
-		"x-lexie-compression-type":        m.CompressionType,
-		"x-lexie-version":                 m.Version,
+		"start-ledger":            strconv.FormatUint(uint64(m.StartLedger), 10),
+		"end-ledger":              strconv.FormatUint(uint64(m.EndLedger), 10),
+		"start-ledger-close-time": strconv.FormatInt(m.StartLedgerCloseTime, 10),
+		"end-ledger-close-time":   strconv.FormatInt(m.EndLedgerCloseTime, 10),
+		"protocol-version":        strconv.FormatInt(int64(m.ProtocolVersion), 10),
+		"core-version":            m.CoreVersion,
+		"network":                 m.Network,
+		"compression-type":        m.CompressionType,
+		"version":                 m.Version,
 	}
 }
 func NewMetaDataFromMap(data map[string]string) (MetaData, error) {
 	var metaData MetaData
 
-	if val, ok := data["x-lexie-start-ledger"]; ok {
+	if val, ok := data["start-ledger"]; ok {
 		startLedger, err := strconv.ParseUint(val, 10, 32)
 		if err != nil {
 			return metaData, err
@@ -38,7 +38,7 @@ func NewMetaDataFromMap(data map[string]string) (MetaData, error) {
 		metaData.StartLedger = uint32(startLedger)
 	}
 
-	if val, ok := data["x-lexie-end-ledger"]; ok {
+	if val, ok := data["end-ledger"]; ok {
 		endLedger, err := strconv.ParseUint(val, 10, 32)
 		if err != nil {
 			return metaData, err
@@ -46,7 +46,7 @@ func NewMetaDataFromMap(data map[string]string) (MetaData, error) {
 		metaData.EndLedger = uint32(endLedger)
 	}
 
-	if val, ok := data["x-lexie-start-ledger-close-time"]; ok {
+	if val, ok := data["start-ledger-close-time"]; ok {
 		startLedgerCloseTime, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
 			return metaData, err
@@ -54,7 +54,7 @@ func NewMetaDataFromMap(data map[string]string) (MetaData, error) {
 		metaData.StartLedgerCloseTime = startLedgerCloseTime
 	}
 
-	if val, ok := data["x-lexie-end-ledger-close-time"]; ok {
+	if val, ok := data["end-ledger-close-time"]; ok {
 		endLedgerCloseTime, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
 			return metaData, err
@@ -62,7 +62,7 @@ func NewMetaDataFromMap(data map[string]string) (MetaData, error) {
 		metaData.EndLedgerCloseTime = endLedgerCloseTime
 	}
 
-	if val, ok := data["x-lexie-protocol-version"]; ok {
+	if val, ok := data["protocol-version"]; ok {
 		protocolVersion, err := strconv.ParseInt(val, 10, 32)
 		if err != nil {
 			return metaData, err
@@ -70,10 +70,10 @@ func NewMetaDataFromMap(data map[string]string) (MetaData, error) {
 		metaData.ProtocolVersion = uint32(protocolVersion)
 	}
 
-	metaData.CoreVersion = data["x-lexie-core-version"]
-	metaData.Network = data["x-lexie-network"]
-	metaData.CompressionType = data["x-lexie-compression-type"]
-	metaData.Version = data["x-lexie-version"]
+	metaData.CoreVersion = data["core-version"]
+	metaData.Network = data["network"]
+	metaData.CompressionType = data["compression-type"]
+	metaData.Version = data["version"]
 
 	return metaData, nil
 }

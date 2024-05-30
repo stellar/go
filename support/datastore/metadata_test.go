@@ -27,15 +27,15 @@ func TestMetaDataToMap(t *testing.T) {
 				Version:              "1.0.0",
 			},
 			expected: map[string]string{
-				"x-lexie-start-ledger":            "100",
-				"x-lexie-end-ledger":              "200",
-				"x-lexie-start-ledger-close-time": "123456789",
-				"x-lexie-end-ledger-close-time":   "987654321",
-				"x-lexie-protocol-version":        "3",
-				"x-lexie-core-version":            "v1.2.3",
-				"x-lexie-network":                 "testnet",
-				"x-lexie-compression-type":        "gzip",
-				"x-lexie-version":                 "1.0.0",
+				"start-ledger":            "100",
+				"end-ledger":              "200",
+				"start-ledger-close-time": "123456789",
+				"end-ledger-close-time":   "987654321",
+				"protocol-version":        "3",
+				"core-version":            "v1.2.3",
+				"network":                 "testnet",
+				"compression-type":        "gzip",
+				"version":                 "1.0.0",
 			},
 		},
 	}
@@ -60,15 +60,15 @@ func TestMetaDataToMap(t *testing.T) {
 
 func TestNewMetaDataFromMap(t *testing.T) {
 	data := map[string]string{
-		"x-lexie-start-ledger":            "100",
-		"x-lexie-end-ledger":              "200",
-		"x-lexie-start-ledger-close-time": "123456789",
-		"x-lexie-end-ledger-close-time":   "987654321",
-		"x-lexie-protocol-version":        "3",
-		"x-lexie-core-version":            "v1.2.3",
-		"x-lexie-network":                 "testnet",
-		"x-lexie-compression-type":        "gzip",
-		"x-lexie-version":                 "1.0.0",
+		"start-ledger":            "100",
+		"end-ledger":              "200",
+		"start-ledger-close-time": "123456789",
+		"end-ledger-close-time":   "987654321",
+		"protocol-version":        "3",
+		"core-version":            "v1.2.3",
+		"network":                 "testnet",
+		"compression-type":        "gzip",
+		"version":                 "1.0.0",
 	}
 
 	expected := MetaData{
