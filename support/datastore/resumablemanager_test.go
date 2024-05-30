@@ -5,8 +5,9 @@ import (
 	"testing"
 
 	"github.com/pkg/errors"
-	"github.com/stellar/go/historyarchive"
 	"github.com/stretchr/testify/require"
+
+	"github.com/stellar/go/historyarchive"
 )
 
 func TestResumability(t *testing.T) {
@@ -58,6 +59,42 @@ func TestResumability(t *testing.T) {
 			ledgerBatchConfig: LedgerBatchConfig{
 				FilesPerPartition: uint32(1),
 				LedgersPerFile:    uint32(10),
+			},
+			networkName: "test",
+		},
+		{
+			name:         "start and end ledger are in same file, data store does not have it",
+			startLedger:  64,
+			endLedger:    68,
+			absentLedger: 64,
+			findStartOk:  true,
+			ledgerBatchConfig: LedgerBatchConfig{
+				FilesPerPartition: uint32(100),
+				LedgersPerFile:    uint32(64),
+			},
+			networkName: "test",
+		},
+		{
+			name:         "start and end ledger are in same file, data store has it",
+			startLedger:  128,
+			endLedger:    130,
+			absentLedger: 0,
+			findStartOk:  false,
+			ledgerBatchConfig: LedgerBatchConfig{
+				FilesPerPartition: uint32(100),
+				LedgersPerFile:    uint32(64),
+			},
+			networkName: "test",
+		},
+		{
+			name:         "ledger range overlaps with an range which is already exported",
+			startLedger:  2,
+			endLedger:    127,
+			absentLedger: 2,
+			findStartOk:  true,
+			ledgerBatchConfig: LedgerBatchConfig{
+				FilesPerPartition: uint32(1000),
+				LedgersPerFile:    uint32(64),
 			},
 			networkName: "test",
 		},
@@ -198,24 +235,36 @@ func TestResumability(t *testing.T) {
 	mockDataStore.On("Exists", ctx, "FFFFFFFF--0-9.xdr.zstd").Return(true, nil).Once()
 
 	//"End ledger same as start, data store does not have it"
-	mockDataStore.On("Exists", ctx, "FFFFFFF5--10-19.xdr.zstd").Return(false, nil).Once()
+	mockDataStore.On("Exists", ctx, "FFFFFFF5--10-19.xdr.zstd").Return(false, nil).Twice()
+
+	// start and end ledger are in same file, data store does not have it
+	mockDataStore.On("Exists", ctx, "FFFFFFFF--0-6399/FFFFFFBF--64-127.xdr.zstd").Return(false, nil).Twice()
+
+	// start and end ledger are in same file, data store has it
+	mockDataStore.On("Exists", ctx, "FFFFFFFF--0-6399/FFFFFF7F--128-191.xdr.zstd").Return(true, nil).Once()
+
+	// ledger range overlaps with an range which is already exported
+	mockDataStore.On("Exists", ctx, "FFFFFFFF--0-63999/FFFFFFBF--64-127.xdr.zstd").Return(true, nil).Once()
+	mockDataStore.On("Exists", ctx, "FFFFFFFF--0-63999/FFFFFFFF--0-63.xdr.zstd").Return(false, nil).Once()
 
 	//"binary search encounters an error during datastore retrieval",
 	mockDataStore.On("Exists", ctx, "FFFFFFEB--20-29.xdr.zstd").Return(false, errors.New("datastore error happened")).Once()
 
 	//"Data store is beyond boundary aligned start ledger"
+	mockDataStore.On("Exists", ctx, "FFFFFFCD--50-59.xdr.zstd").Return(false, nil).Once()
 	mockDataStore.On("Exists", ctx, "FFFFFFE1--30-39.xdr.zstd").Return(true, nil).Once()
 	mockDataStore.On("Exists", ctx, "FFFFFFD7--40-49.xdr.zstd").Return(false, nil).Once()
 
 	//"Data store is beyond non boundary aligned start ledger"
 	mockDataStore.On("Exists", ctx, "FFFFFFB9--70-79.xdr.zstd").Return(true, nil).Once()
-	mockDataStore.On("Exists", ctx, "FFFFFFAF--80-89.xdr.zstd").Return(false, nil).Once()
+	mockDataStore.On("Exists", ctx, "FFFFFFAF--80-89.xdr.zstd").Return(false, nil).Twice()
 
 	//"Data store is beyond start and end ledger"
 	mockDataStore.On("Exists", ctx, "FFFFFEFB--260-269.xdr.zstd").Return(true, nil).Once()
 	mockDataStore.On("Exists", ctx, "FFFFFEF1--270-279.xdr.zstd").Return(true, nil).Once()
 
 	//"Data store is not beyond start ledger"
+	mockDataStore.On("Exists", ctx, "FFFFFF87--120-129.xdr.zstd").Return(false, nil).Once()
 	mockDataStore.On("Exists", ctx, "FFFFFF91--110-119.xdr.zstd").Return(false, nil).Once()
 	mockDataStore.On("Exists", ctx, "FFFFFF9B--100-109.xdr.zstd").Return(false, nil).Once()
 	mockDataStore.On("Exists", ctx, "FFFFFFA5--90-99.xdr.zstd").Return(false, nil).Once()
