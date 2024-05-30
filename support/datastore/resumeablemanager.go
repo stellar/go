@@ -5,6 +5,7 @@ import (
 	"sort"
 
 	"github.com/pkg/errors"
+
 	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/support/log"
 )
@@ -77,6 +78,29 @@ func (rm resumableManagerService) FindStart(ctx context.Context, start, end uint
 			return 0, false, errors.Errorf("Invalid start value of %v, it is greater than network's latest ledger of %v", start, networkLatest)
 		}
 		end = networkLatest
+	} else if end >= rm.ledgerBatchConfig.LedgersPerFile {
+		// Adjacent ranges may end up overlapping due to the clamping behavior in adjustLedgerRange()
+		// https://github.com/stellar/go/blob/fff01229a5af77dee170a37bf0c71b2ce8bb8474/exp/services/ledgerexporter/internal/config.go#L173-L192
+		// For example, assuming 64 ledgers per file, [2, 100] and [101, 150] get adjusted to [2, 127] and [64, 191]
+		// If we export [64, 191] and then try to resume on [2, 127], the binary search logic will determine that
+		// [2, 127] is fully exported because the midpoint of [2, 127] is present.
+		// To fix this issue we query the end ledger and if it is present, we only do the binary search on the
+		// preceding sub range. This will allow resumability to work on adjacent ranges that end up overlapping
+		// due to adjustLedgerRange().
+		// Note that if there is an overlap the size of the overlap will never be larger than the number of files
+		// per partition and that is why it is sufficient to only check if the end ledger is present.
+		exists, err := rm.dataStore.Exists(ctx, rm.ledgerBatchConfig.GetObjectKeyFromSequenceNumber(end))
+		if err != nil {
+			return 0, false, err
+		}
+		if exists {
+			end -= rm.ledgerBatchConfig.LedgersPerFile
+			if start > end {
+				// data store had all ledgers for requested range, no resumability needed.
+				log.Infof("Resumability found no absent object keys in requested ledger range")
+				return 0, false, nil
+			}
+		}
 	}
 
 	rangeSize := max(int(end-start), 1)
