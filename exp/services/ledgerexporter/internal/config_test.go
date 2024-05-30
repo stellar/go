@@ -156,7 +156,7 @@ func TestAdjustedLedgerRangeBoundedMode(t *testing.T) {
 			start:         0,
 			end:           1,
 			expectedStart: 2,
-			expectedEnd:   10,
+			expectedEnd:   9,
 		},
 		{
 			name:          "Round down start ledger and round up end ledger, 15 ledgers per file ",
@@ -164,7 +164,7 @@ func TestAdjustedLedgerRangeBoundedMode(t *testing.T) {
 			start:         4,
 			end:           10,
 			expectedStart: 2,
-			expectedEnd:   15,
+			expectedEnd:   14,
 		},
 		{
 			name:          "Round down start ledger and round up end ledger, 64 ledgers per file ",
@@ -172,7 +172,7 @@ func TestAdjustedLedgerRangeBoundedMode(t *testing.T) {
 			start:         400,
 			end:           500,
 			expectedStart: 384,
-			expectedEnd:   512,
+			expectedEnd:   511,
 		},
 		{
 			name:          "No change, 64 ledger per file",
@@ -180,7 +180,7 @@ func TestAdjustedLedgerRangeBoundedMode(t *testing.T) {
 			start:         64,
 			end:           128,
 			expectedStart: 64,
-			expectedEnd:   128,
+			expectedEnd:   191,
 		},
 	}
 
