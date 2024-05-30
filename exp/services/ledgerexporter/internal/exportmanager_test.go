@@ -23,8 +23,9 @@ func createLedgerCloseMeta(ledgerSeq uint32) xdr.LedgerCloseMeta {
 		V0: &xdr.LedgerCloseMetaV0{
 			LedgerHeader: xdr.LedgerHeaderHistoryEntry{
 				Header: xdr.LedgerHeader{
-					LedgerSeq: xdr.Uint32(ledgerSeq),
-					ScpValue:  xdr.StellarValue{CloseTime: xdr.TimePoint(ledgerSeq * 100)},
+					LedgerVersion: 21,
+					LedgerSeq:     xdr.Uint32(ledgerSeq),
+					ScpValue:      xdr.StellarValue{CloseTime: xdr.TimePoint(ledgerSeq * 100)},
 				},
 			},
 			TxSet:              xdr.TransactionSet{},

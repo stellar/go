@@ -57,7 +57,7 @@ func (s *UploaderSuite) TestUploadWithMetadata() {
 		EndLedger:            end,
 		StartLedgerCloseTime: 123456789,
 		EndLedgerCloseTime:   987654321,
-		ProtocolVersion:      "3",
+		ProtocolVersion:      3,
 		CoreVersion:          "v1.2.3",
 		Network:              "testnet",
 		CompressionType:      "gzip",

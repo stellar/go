@@ -22,12 +22,14 @@ func (m *MockDataStore) Size(ctx context.Context, path string) (int64, error) {
 	return args.Get(0).(int64), args.Error(1)
 }
 
-func (m *MockDataStore) GetFile(ctx context.Context, path string) (io.ReadCloser, map[string]string, error) {
+func (m *MockDataStore) GetFileMetadata(ctx context.Context, path string) (map[string]string, error) {
 	args := m.Called(ctx, path)
-	if args.Error(1) == nil {
-		return args.Get(0).(io.ReadCloser), nil, args.Error(2)
-	}
-	return args.Get(0).(io.ReadCloser), args.Get(1).(map[string]string), args.Error(2)
+	return args.Get(0).(map[string]string), args.Error(1)
+}
+
+func (m *MockDataStore) GetFile(ctx context.Context, path string) (io.ReadCloser, error) {
+	args := m.Called(ctx, path)
+	return args.Get(0).(io.ReadCloser), args.Error(1)
 }
 
 func (m *MockDataStore) PutFile(ctx context.Context, path string, in io.WriterTo, metadata map[string]string) error {

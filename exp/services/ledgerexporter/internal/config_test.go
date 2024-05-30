@@ -289,11 +289,10 @@ func TestExecCmdHelperProcess(t *testing.T) {
 
 func TestSetCoreVersionInfo(t *testing.T) {
 	tests := []struct {
-		name             string
-		commandOutput    string
-		expectedError    error
-		expectedCoreVer  string
-		expectedProtoVer string
+		name            string
+		commandOutput   string
+		expectedError   error
+		expectedCoreVer string
 	}{
 		{
 			name: "version found",
@@ -309,30 +308,20 @@ func TestSetCoreVersionInfo(t *testing.T) {
 				"           package version: 20.1.0\n" +
 				"           git version: 8b9d623ef40423a8462442b86997155f2c04d3a1\n" +
 				"           base XDR git version: b96148cd4acc372cc9af17b909ffe4b12c43ecb6\n",
-			expectedError:    nil,
-			expectedCoreVer:  "v20.2.0-2-g6e73c0a88",
-			expectedProtoVer: "20",
+			expectedError:   nil,
+			expectedCoreVer: "v20.2.0-2-g6e73c0a88",
 		},
 		{
-			name:             "protocol version not found",
-			commandOutput:    "v20.2.0-2-g6e73c0a88\n",
-			expectedError:    errors.New("protocol version not found in stellar-core version output"),
-			expectedCoreVer:  "v20.2.0-2-g6e73c0a88",
-			expectedProtoVer: "",
+			name:            "core version invalid format",
+			commandOutput:   "ledger protocol version: 20\\n\" +",
+			expectedError:   errors.New("core version not found in stellar-core version output"),
+			expectedCoreVer: "",
 		},
 		{
-			name:             "core version invalid format",
-			commandOutput:    "ledger protocol version: 20\\n\" +",
-			expectedError:    errors.New("core version not found in stellar-core version output"),
-			expectedCoreVer:  "",
-			expectedProtoVer: "",
-		},
-		{
-			name:             "core version not found",
-			commandOutput:    "",
-			expectedError:    errors.New("core version not found in stellar-core version output"),
-			expectedCoreVer:  "",
-			expectedProtoVer: "",
+			name:            "core version not found",
+			commandOutput:   "",
+			expectedError:   errors.New("core version not found in stellar-core version output"),
+			expectedCoreVer: "",
 		},
 	}
 	for _, tt := range tests {
@@ -348,7 +337,6 @@ func TestSetCoreVersionInfo(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 				require.Equal(t, tt.expectedCoreVer, config.CoreVersion)
-				require.Equal(t, tt.expectedProtoVer, config.ProtocolVersion)
 			}
 		})
 	}

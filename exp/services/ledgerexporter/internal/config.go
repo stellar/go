@@ -50,9 +50,8 @@ type Config struct {
 	Resume      bool
 
 	// derived config
-	Version         string // lexie version
-	CoreVersion     string // stellar-core version
-	ProtocolVersion string // stellar protocol version
+	Version     string // lexie version
+	CoreVersion string // stellar-core version
 }
 
 // This will generate the config based on commandline flags and toml
@@ -164,12 +163,10 @@ func (config *Config) generateCaptiveCoreConfig() (ledgerbackend.CaptiveCoreConf
 // By default, it points to exec.Command, overridden for testing purpose
 var execCommand = exec.Command
 
-// retrieves and sets the core and protocol versions from the stellar-core binary.
-// It executes the "stellar-core version" command and parses its output to extract
-// the core version and ledger protocol version.
-// The output of the "version" command is expected to be a multi-line string where:
-// - The first line is the core version in format "vX.Y.Z-*".
-// - One of the subsequent lines contains the protocol version in the format "ledger protocol version: X", where X is a number.
+// Executes the "stellar-core version" command and parses its output to extract
+// the core version
+// The output of the "version" command is expected to be a multi-line string where the
+// first line is the core version in format "vX.Y.Z-*".
 func (c *Config) setCoreVersionInfo() (err error) {
 	versionCmd := execCommand(c.StellarCoreConfig.StellarCoreBinaryPath, "version")
 	versionOutput, err := versionCmd.Output()
@@ -189,23 +186,6 @@ func (c *Config) setCoreVersionInfo() (err error) {
 		return fmt.Errorf("core version not found in stellar-core version output")
 	}
 	c.CoreVersion = rows[0]
-
-	// Validate and set the protocol version
-	if len(rows) < 2 {
-		return fmt.Errorf("protocol version not found in stellar-core version output")
-	}
-
-	re := regexp.MustCompile(`ledger protocol version: (\d+)`)
-	for _, row := range rows[1:] {
-		if matches := re.FindStringSubmatch(row); len(matches) > 1 {
-			c.ProtocolVersion = matches[1]
-			break
-		}
-	}
-	if c.ProtocolVersion == "" {
-		return fmt.Errorf("protocol version not found in stellar-core version output")
-	}
-
 	return nil
 }
 

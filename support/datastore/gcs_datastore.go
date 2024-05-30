@@ -58,15 +58,21 @@ func FromGCSClient(ctx context.Context, client *storage.Client, bucketPath strin
 	return &GCSDataStore{client: client, bucket: bucket, prefix: prefix}, nil
 }
 
-// GetFile retrieves a file from the GCS bucket.
-func (b GCSDataStore) GetFile(ctx context.Context, filePath string) (io.ReadCloser, map[string]string, error) {
+// GetFileMetadata retrieves the metadata for the specified file in the GCS bucket.
+func (b GCSDataStore) GetFileMetadata(ctx context.Context, filePath string) (map[string]string, error) {
 	filePath = path.Join(b.prefix, filePath)
 	attrs, err := b.bucket.Object(filePath).Attrs(ctx)
 	if err != nil {
 		if errors.Is(err, storage.ErrObjectNotExist) {
-			return nil, nil, os.ErrNotExist
+			return nil, os.ErrNotExist
 		}
 	}
+	return attrs.Metadata, nil
+}
+
+// GetFile retrieves a file from the GCS bucket.
+func (b GCSDataStore) GetFile(ctx context.Context, filePath string) (io.ReadCloser, error) {
+	filePath = path.Join(b.prefix, filePath)
 	// setting ReadCompressed(true) will avoid transcoding of compressed files by including
 	// an "Accept-Encoding: gzip" header in the request:
 	// https://github.com/googleapis/google-cloud-go/blob/main/storage/http_client.go#L1307-L1309
@@ -76,15 +82,15 @@ func (b GCSDataStore) GetFile(ctx context.Context, filePath string) (io.ReadClos
 	r, err := b.bucket.Object(filePath).ReadCompressed(true).NewReader(ctx)
 	if err != nil {
 		if errors.Is(err, storage.ErrObjectNotExist) {
-			return nil, nil, os.ErrNotExist
+			return nil, os.ErrNotExist
 		}
 		if gcsError, ok := err.(*googleapi.Error); ok {
 			log.Errorf("GCS error: %s %s", gcsError.Message, gcsError.Body)
 		}
-		return nil, nil, fmt.Errorf("error retrieving file %s: %w", filePath, err)
+		return nil, fmt.Errorf("error retrieving file %s: %w", filePath, err)
 	}
 	log.Infof("File retrieved successfully: %s", filePath)
-	return r, attrs.Metadata, nil
+	return r, nil
 }
 
 // PutFileIfNotExists uploads a file to GCS only if it doesn't already exist.

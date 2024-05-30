@@ -165,7 +165,7 @@ func (lb *ledgerBuffer) worker(ctx context.Context) {
 func (lb *ledgerBuffer) downloadLedgerObject(ctx context.Context, sequence uint32) ([]byte, error) {
 	objectKey := lb.config.LedgerBatchConfig.GetObjectKeyFromSequenceNumber(sequence)
 
-	reader, _, err := lb.dataStore.GetFile(ctx, objectKey)
+	reader, err := lb.dataStore.GetFile(ctx, objectKey)
 	if err != nil {
 		return nil, err
 	}
