@@ -13,9 +13,7 @@ func TestNewLedgerMetaArchiveFromXDR(t *testing.T) {
 	config := &Config{
 		Network:     "testnet",
 		CoreVersion: "v1.2.3",
-		Version:     "1.0.0",
 	}
-
 	data := xdr.LedgerCloseMetaBatch{
 		StartSequence: 1234,
 		EndSequence:   1234,
@@ -39,7 +37,7 @@ func TestNewLedgerMetaArchiveFromXDR(t *testing.T) {
 		CompressionType:      "zstd",
 		ProtocolVersion:      21,
 		CoreVersion:          "v1.2.3",
-		Version:              "1.0.0",
+		Version:              "develop",
 	}
 
 	require.Equal(t, expectedMetaData, archive.metaData)
@@ -70,7 +68,7 @@ func TestNewLedgerMetaArchiveFromXDR(t *testing.T) {
 		CompressionType:      "zstd",
 		ProtocolVersion:      21,
 		CoreVersion:          "v1.2.3",
-		Version:              "1.0.0",
+		Version:              "develop",
 	}
 
 	require.Equal(t, expectedMetaData, archive.metaData)

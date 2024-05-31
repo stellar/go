@@ -37,7 +37,7 @@ func NewLedgerMetaArchiveFromXDR(config *Config, key string, data xdr.LedgerClos
 			CompressionType:      compressxdr.DefaultCompressor.Name(),
 			ProtocolVersion:      endLedger.ProtocolVersion(),
 			CoreVersion:          config.CoreVersion,
-			Version:              config.Version,
+			Version:              version,
 		},
 	}, nil
 }

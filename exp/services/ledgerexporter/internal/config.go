@@ -49,18 +49,15 @@ type Config struct {
 	EndLedger   uint32
 	Resume      bool
 
-	// derived config
-	Version     string // lexie version
-	CoreVersion string // stellar-core version
+	CoreVersion string
 }
 
 // This will generate the config based on commandline flags and toml
 //
-// version               - Ledger Exporter version
 // flags                 - command line flags
 //
 // return                - *Config or an error if any range validation failed.
-func NewConfig(version string, flags Flags) (*Config, error) {
+func NewConfig(flags Flags) (*Config, error) {
 	config := &Config{}
 
 	config.StartLedger = uint32(flags.StartLedger)
@@ -74,7 +71,6 @@ func NewConfig(version string, flags Flags) (*Config, error) {
 		return nil, err
 	}
 	logger.Infof("Config: %v", *config)
-	config.Version = version
 
 	return config, nil
 }

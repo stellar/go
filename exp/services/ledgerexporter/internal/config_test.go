@@ -19,8 +19,7 @@ func TestNewConfigResumeEnabled(t *testing.T) {
 	mockArchive := &historyarchive.MockArchive{}
 	mockArchive.On("GetRootHAS").Return(historyarchive.HistoryArchiveState{CurrentLedger: 5}, nil).Once()
 
-	config, err := NewConfig("v1.0",
-		Flags{StartLedger: 1, EndLedger: 2, ConfigFilePath: "test/test.toml", Resume: true})
+	config, err := NewConfig(Flags{StartLedger: 1, EndLedger: 2, ConfigFilePath: "test/test.toml", Resume: true})
 	config.ValidateAndSetLedgerRange(ctx, mockArchive)
 	require.NoError(t, err)
 	require.Equal(t, config.DataStoreConfig.Type, "ABC")
@@ -38,16 +37,14 @@ func TestNewConfigResumeDisabled(t *testing.T) {
 	mockArchive.On("GetRootHAS").Return(historyarchive.HistoryArchiveState{CurrentLedger: 5}, nil).Once()
 
 	// resume disabled by default
-	config, err := NewConfig("v1.0",
-		Flags{StartLedger: 1, EndLedger: 2, ConfigFilePath: "test/test.toml"})
+	config, err := NewConfig(Flags{StartLedger: 1, EndLedger: 2, ConfigFilePath: "test/test.toml"})
 	require.NoError(t, err)
 	require.False(t, config.Resume)
 }
 
 func TestInvalidTomlConfig(t *testing.T) {
 
-	_, err := NewConfig("v1.0",
-		Flags{StartLedger: 1, EndLedger: 2, ConfigFilePath: "test/no_network.toml", Resume: true})
+	_, err := NewConfig(Flags{StartLedger: 1, EndLedger: 2, ConfigFilePath: "test/no_network.toml", Resume: true})
 	require.ErrorContains(t, err, "Invalid TOML config")
 }
 
@@ -112,8 +109,7 @@ func TestValidateStartAndEndLedger(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			config, err := NewConfig("v1.0",
-				Flags{StartLedger: tt.startLedger, EndLedger: tt.endLedger, ConfigFilePath: "test/validate_start_end.toml"})
+			config, err := NewConfig(Flags{StartLedger: tt.startLedger, EndLedger: tt.endLedger, ConfigFilePath: "test/validate_start_end.toml"})
 			require.NoError(t, err)
 			err = config.ValidateAndSetLedgerRange(ctx, mockArchive)
 			if tt.errMsg != "" {
@@ -190,8 +186,7 @@ func TestAdjustedLedgerRangeBoundedMode(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			config, err := NewConfig("v1.0",
-				Flags{StartLedger: tt.start, EndLedger: tt.end, ConfigFilePath: tt.configFile})
+			config, err := NewConfig(Flags{StartLedger: tt.start, EndLedger: tt.end, ConfigFilePath: tt.configFile})
 			require.NoError(t, err)
 			err = config.ValidateAndSetLedgerRange(ctx, mockArchive)
 			require.NoError(t, err)
@@ -259,8 +254,7 @@ func TestAdjustedLedgerRangeUnBoundedMode(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			config, err := NewConfig("v1.0",
-				Flags{StartLedger: tt.start, EndLedger: tt.end, ConfigFilePath: tt.configFile})
+			config, err := NewConfig(Flags{StartLedger: tt.start, EndLedger: tt.end, ConfigFilePath: tt.configFile})
 			require.NoError(t, err)
 			err = config.ValidateAndSetLedgerRange(ctx, mockArchive)
 			require.NoError(t, err)
