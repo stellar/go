@@ -114,7 +114,10 @@ func (config *Config) generateCaptiveCoreConfig() (ledgerbackend.CaptiveCoreConf
 			return ledgerbackend.CaptiveCoreConfig{}, errors.Wrap(err, "Failed to find stellar-core binary")
 		}
 	}
-	config.setCoreVersionInfo()
+
+	if err := config.setCoreVersionInfo(); err != nil {
+		return ledgerbackend.CaptiveCoreConfig{}, fmt.Errorf("failed to set stellar-core version info: %w", err)
+	}
 
 	var captiveCoreConfig []byte
 	// Default network config
@@ -178,10 +181,11 @@ func (c *Config) setCoreVersionInfo() (err error) {
 
 	// Validate and set the core version
 	coreVersionPattern := `^v\d+\.\d+\.\d+`
-	if match, _ := regexp.MatchString(coreVersionPattern, rows[0]); !match {
-		return fmt.Errorf("core version not found in stellar-core version output")
+	if match, err := regexp.MatchString(coreVersionPattern, rows[0]); !match || err != nil {
+		return fmt.Errorf("stellar-core version not found")
 	}
 	c.CoreVersion = rows[0]
+	logger.Infof("stellar-core version: %s", c.CoreVersion)
 	return nil
 }
 

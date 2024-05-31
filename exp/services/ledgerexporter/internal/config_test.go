@@ -308,13 +308,13 @@ func TestSetCoreVersionInfo(t *testing.T) {
 		{
 			name:            "core version invalid format",
 			commandOutput:   "ledger protocol version: 20\\n\" +",
-			expectedError:   errors.New("core version not found in stellar-core version output"),
+			expectedError:   errors.New("stellar-core version not found"),
 			expectedCoreVer: "",
 		},
 		{
 			name:            "core version not found",
 			commandOutput:   "",
-			expectedError:   errors.New("core version not found in stellar-core version output"),
+			expectedError:   errors.New("stellar-core version not found"),
 			expectedCoreVer: "",
 		},
 	}

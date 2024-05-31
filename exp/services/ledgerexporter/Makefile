@@ -9,7 +9,6 @@ docker-build:
 	cd ../../../ && \
 	$(SUDO) docker build --platform linux/amd64 --pull --label org.opencontainers.image.created="$(BUILD_DATE)" \
     --build-arg GOFLAGS="-ldflags=-X=github.com/stellar/go/exp/services/ledgerexporter/internal.version=$(VERSION)" \
-	--build-arg VERSION=$(VERSION) \
 $(if $(STELLAR_CORE_VERSION), --build-arg STELLAR_CORE_VERSION=$(STELLAR_CORE_VERSION)) \
 	-f exp/services/ledgerexporter/docker/Dockerfile \
 	-t $(DOCKER_IMAGE):$(VERSION) \
