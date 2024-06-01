@@ -5,7 +5,6 @@ import (
 	_ "embed"
 	"fmt"
 	"os/exec"
-	"regexp"
 	"strings"
 
 	"github.com/stellar/go/historyarchive"
@@ -175,13 +174,7 @@ func (c *Config) setCoreVersionInfo() (err error) {
 
 	// Split the output into lines
 	rows := strings.Split(string(versionOutput), "\n")
-	if len(rows) == 0 {
-		return fmt.Errorf("stellar-core version command output is empty")
-	}
-
-	// Validate and set the core version
-	coreVersionPattern := `^v\d+\.\d+\.\d+`
-	if match, err := regexp.MatchString(coreVersionPattern, rows[0]); !match || err != nil {
+	if len(rows) == 0 || len(rows[0]) == 0 {
 		return fmt.Errorf("stellar-core version not found")
 	}
 	c.CoreVersion = rows[0]
