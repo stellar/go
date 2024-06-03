@@ -7,6 +7,8 @@ package reap
 import (
 	"context"
 
+	"github.com/prometheus/client_golang/prometheus"
+
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/ledger"
 	"github.com/stellar/go/support/db"
@@ -17,6 +19,9 @@ type System struct {
 	HistoryQ       *history.Q
 	RetentionCount uint
 	RetentionBatch uint
+
+	deleteBatchDuration prometheus.Summary
+	rowsDeleted         prometheus.Summary
 
 	ledgerState *ledger.State
 	ctx         context.Context
@@ -32,9 +37,19 @@ func New(retention, retentionBatchSize uint, dbSession db.SessionInterface, ledg
 		HistoryQ:       &history.Q{dbSession.Clone()},
 		RetentionCount: retention,
 		RetentionBatch: retentionBatchSize,
-		ledgerState:    ledgerState,
-		ctx:            ctx,
-		cancel:         cancel,
+		deleteBatchDuration: prometheus.NewSummary(prometheus.SummaryOpts{
+			Namespace: "horizon", Subsystem: "reap", Name: "delete_batch_duration",
+			Help:       "reap batch duration in seconds, sliding window = 10m",
+			Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
+		}),
+		rowsDeleted: prometheus.NewSummary(prometheus.SummaryOpts{
+			Namespace: "horizon", Subsystem: "reap", Name: "rows_deleted",
+			Help:       "rows deleted during reap batch , sliding window = 10m",
+			Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
+		}),
+		ledgerState: ledgerState,
+		ctx:         ctx,
+		cancel:      cancel,
 	}
 
 	return r

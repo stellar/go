@@ -125,6 +125,7 @@ func (m *MockSession) DeleteRange(
 	start, end int64,
 	table string,
 	idCol string,
-) (err error) {
-	return m.Called(ctx, start, end, table, idCol).Error(0)
+) (int64, error) {
+	args := m.Called(ctx, start, end, table, idCol)
+	return args.Get(0).(int64), args.Error(1)
 }

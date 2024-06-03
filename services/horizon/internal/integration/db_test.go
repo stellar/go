@@ -835,7 +835,8 @@ func TestFillGaps(t *testing.T) {
 	var oldestLedger, latestLedger int64
 	tt.NoError(historyQ.ElderLedger(context.Background(), &oldestLedger))
 	tt.NoError(historyQ.LatestLedger(context.Background(), &latestLedger))
-	tt.NoError(historyQ.DeleteRangeAll(context.Background(), oldestLedger, latestLedger))
+	_, err = historyQ.DeleteRangeAll(context.Background(), oldestLedger, latestLedger)
+	tt.NoError(err)
 
 	horizonConfig.CaptiveCoreConfigPath = filepath.Join(
 		filepath.Dir(horizonConfig.CaptiveCoreConfigPath),

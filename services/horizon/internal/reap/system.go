@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+
 	herrors "github.com/stellar/go/services/horizon/internal/errors"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
@@ -52,6 +54,11 @@ func (r *System) Run() {
 	}
 }
 
+// RegisterMetrics registers the prometheus metrics
+func (s *System) RegisterMetrics(registry *prometheus.Registry) {
+	registry.MustRegister(s.deleteBatchDuration, s.rowsDeleted)
+}
+
 func (r *System) Shutdown() {
 	r.cancel()
 }
@@ -97,29 +104,39 @@ func (r *System) clearBefore(ctx context.Context, startSeq, endSeq int32) error 
 			WithField("end_ledger", batchEndSeq).
 			Info("reaper: clearing")
 
-		batchStart, batchEnd, err := toid.LedgerRangeInclusive(batchStartSeq, batchEndSeq)
-		if err != nil {
+		if err := r.deleteBatch(ctx, batchStartSeq, batchEndSeq); err != nil {
 			return err
 		}
-
-		err = r.HistoryQ.Begin(ctx)
-		if err != nil {
-			return errors.Wrap(err, "Error in begin")
-		}
-		defer r.HistoryQ.Rollback()
-
-		err = r.HistoryQ.DeleteRangeAll(ctx, batchStart, batchEnd)
-		if err != nil {
-			return errors.Wrap(err, "Error in DeleteRangeAll")
-		}
-
-		err = r.HistoryQ.Commit()
-		if err != nil {
-			return errors.Wrap(err, "Error in commit")
-		}
-
 		time.Sleep(sleep)
 	}
 
+	return nil
+}
+
+func (r *System) deleteBatch(ctx context.Context, batchStartSeq int32, batchEndSeq int32) error {
+	batchStart, batchEnd, err := toid.LedgerRangeInclusive(batchStartSeq, batchEndSeq)
+	if err != nil {
+		return err
+	}
+
+	startTime := time.Now()
+	err = r.HistoryQ.Begin(ctx)
+	if err != nil {
+		return errors.Wrap(err, "Error in begin")
+	}
+	defer r.HistoryQ.Rollback()
+
+	count, err := r.HistoryQ.DeleteRangeAll(ctx, batchStart, batchEnd)
+	if err != nil {
+		return errors.Wrap(err, "Error in DeleteRangeAll")
+	}
+
+	err = r.HistoryQ.Commit()
+	if err != nil {
+		return errors.Wrap(err, "Error in commit")
+	}
+
+	r.rowsDeleted.Observe(float64(count))
+	r.deleteBatchDuration.Observe(time.Since(startTime).Seconds())
 	return nil
 }

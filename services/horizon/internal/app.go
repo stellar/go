@@ -517,6 +517,7 @@ func (a *App) init() error {
 		a.config.HistoryRetentionReapCount,
 		a.HorizonSession(),
 		a.ledgerState)
+	a.reaper.RegisterMetrics(a.prometheusRegistry)
 
 	// go metrics
 	initGoMetrics(a)

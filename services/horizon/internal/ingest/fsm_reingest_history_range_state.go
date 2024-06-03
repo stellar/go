@@ -44,7 +44,7 @@ func (h reingestHistoryRangeState) ingestRange(s *system, fromLedger, toLedger u
 		return errors.Wrap(err, "Invalid range")
 	}
 
-	err = s.historyQ.DeleteRangeAll(s.ctx, start, end)
+	_, err = s.historyQ.DeleteRangeAll(s.ctx, start, end)
 	if err != nil {
 		return errors.Wrap(err, "error in DeleteRangeAll")
 	}

@@ -142,14 +142,17 @@ func (s *Session) DeleteRange(
 	start, end int64,
 	table string,
 	idCol string,
-) error {
+) (int64, error) {
 	del := sq.Delete(table).Where(
 		fmt.Sprintf("%s >= ? AND %s < ?", idCol, idCol),
 		start,
 		end,
 	)
-	_, err := s.Exec(ctx, del)
-	return err
+	result, err := s.Exec(ctx, del)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
 // Get runs `query`, setting the first result found on `dest`, if
