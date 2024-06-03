@@ -22,18 +22,23 @@ func (m *MockDataStore) Size(ctx context.Context, path string) (int64, error) {
 	return args.Get(0).(int64), args.Error(1)
 }
 
+func (m *MockDataStore) GetFileMetadata(ctx context.Context, path string) (map[string]string, error) {
+	args := m.Called(ctx, path)
+	return args.Get(0).(map[string]string), args.Error(1)
+}
+
 func (m *MockDataStore) GetFile(ctx context.Context, path string) (io.ReadCloser, error) {
 	args := m.Called(ctx, path)
 	return args.Get(0).(io.ReadCloser), args.Error(1)
 }
 
-func (m *MockDataStore) PutFile(ctx context.Context, path string, in io.WriterTo) error {
-	args := m.Called(ctx, path, in)
+func (m *MockDataStore) PutFile(ctx context.Context, path string, in io.WriterTo, metadata map[string]string) error {
+	args := m.Called(ctx, path, in, metadata)
 	return args.Error(0)
 }
 
-func (m *MockDataStore) PutFileIfNotExists(ctx context.Context, path string, in io.WriterTo) (bool, error) {
-	args := m.Called(ctx, path, in)
+func (m *MockDataStore) PutFileIfNotExists(ctx context.Context, path string, in io.WriterTo, metadata map[string]string) (bool, error) {
+	args := m.Called(ctx, path, in, metadata)
 	return args.Get(0).(bool), args.Error(1)
 }
 

@@ -9,6 +9,7 @@ RUN go mod download
 
 COPY . ./
 
+ARG GOFLAGS
 RUN go install github.com/stellar/go/exp/services/ledgerexporter
 
 FROM ubuntu:22.04

@@ -8,22 +8,21 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/stellar/go/ingest/ledgerbackend"
-	"github.com/stellar/go/support/datastore"
 	"github.com/stellar/go/xdr"
 )
 
 type ExportManager struct {
-	config             datastore.LedgerBatchConfig
+	config             *Config
 	ledgerBackend      ledgerbackend.LedgerBackend
-	currentMetaArchive *LedgerMetaArchive
+	currentMetaArchive *xdr.LedgerCloseMetaBatch
 	queue              UploadQueue
 	latestLedgerMetric *prometheus.GaugeVec
 }
 
 // NewExportManager creates a new ExportManager with the provided configuration.
-func NewExportManager(config datastore.LedgerBatchConfig, backend ledgerbackend.LedgerBackend, queue UploadQueue, prometheusRegistry *prometheus.Registry) (*ExportManager, error) {
-	if config.LedgersPerFile < 1 {
-		return nil, errors.Errorf("Invalid ledgers per file (%d): must be at least 1", config.LedgersPerFile)
+func NewExportManager(config *Config, backend ledgerbackend.LedgerBackend, queue UploadQueue, prometheusRegistry *prometheus.Registry) (*ExportManager, error) {
+	if config.LedgerBatchConfig.LedgersPerFile < 1 {
+		return nil, errors.Errorf("Invalid ledgers per file (%d): must be at least 1", config.LedgerBatchConfig.LedgersPerFile)
 	}
 
 	latestLedgerMetric := prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -45,32 +44,32 @@ func (e *ExportManager) AddLedgerCloseMeta(ctx context.Context, ledgerCloseMeta 
 	ledgerSeq := ledgerCloseMeta.LedgerSequence()
 
 	// Determine the object key for the given ledger sequence
-	objectKey := e.config.GetObjectKeyFromSequenceNumber(ledgerSeq)
+	objectKey := e.config.LedgerBatchConfig.GetObjectKeyFromSequenceNumber(ledgerSeq)
 
-	if e.currentMetaArchive != nil && e.currentMetaArchive.ObjectKey != objectKey {
-		return errors.New("Current meta archive object key mismatch")
-	}
 	if e.currentMetaArchive == nil {
-		endSeq := ledgerSeq + e.config.LedgersPerFile - 1
-		if ledgerSeq < e.config.LedgersPerFile {
+		endSeq := ledgerSeq + e.config.LedgerBatchConfig.LedgersPerFile - 1
+		if ledgerSeq < e.config.LedgerBatchConfig.LedgersPerFile {
 			// Special case: Adjust the end ledger sequence for the first batch.
 			// Since the start ledger is 2 instead of 0, we want to ensure that the end ledger sequence
 			// does not exceed LedgersPerFile.
 			// For example, if LedgersPerFile is 64, the file name for the first batch should be 0-63, not 2-66.
-			endSeq = e.config.LedgersPerFile - 1
+			endSeq = e.config.LedgerBatchConfig.LedgersPerFile - 1
 		}
 
-		// Create a new LedgerMetaArchive and add it to the map.
-		e.currentMetaArchive = NewLedgerMetaArchive(objectKey, ledgerSeq, endSeq)
+		// Create a new LedgerCloseMetaBatch
+		e.currentMetaArchive = &xdr.LedgerCloseMetaBatch{StartSequence: xdr.Uint32(ledgerSeq), EndSequence: xdr.Uint32(endSeq)}
 	}
 
-	if err := e.currentMetaArchive.Data.AddLedger(ledgerCloseMeta); err != nil {
+	if err := e.currentMetaArchive.AddLedger(ledgerCloseMeta); err != nil {
 		return errors.Wrapf(err, "failed to add ledger %d", ledgerSeq)
 	}
 
-	if ledgerSeq >= uint32(e.currentMetaArchive.Data.EndSequence) {
-		// Current archive is full, send it for upload
-		if err := e.queue.Enqueue(ctx, e.currentMetaArchive); err != nil {
+	if ledgerSeq >= uint32(e.currentMetaArchive.EndSequence) {
+		ledgerMetaArchive, err := NewLedgerMetaArchiveFromXDR(e.config, objectKey, *e.currentMetaArchive)
+		if err != nil {
+			return err
+		}
+		if err := e.queue.Enqueue(ctx, ledgerMetaArchive); err != nil {
 			return err
 		}
 		e.currentMetaArchive = nil
