@@ -525,9 +525,9 @@ func (m *mockDBQ) TruncateIngestStateTables(ctx context.Context) error {
 	return args.Error(0)
 }
 
-func (m *mockDBQ) DeleteRangeAll(ctx context.Context, start, end int64) error {
+func (m *mockDBQ) DeleteRangeAll(ctx context.Context, start, end int64) (int64, error) {
 	args := m.Called(ctx, start, end)
-	return args.Error(0)
+	return args.Get(0).(int64), args.Error(1)
 }
 
 // Methods from interfaces duplicating methods:
