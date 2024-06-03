@@ -42,9 +42,9 @@ var XdrFilesSHA256 = map[string]string{
 	"xdr/Stellar-exporter.x":                "a00c83d02e8c8382e06f79a191f1fb5abd097a4bbcab8481c67467e3270e0529",
 	"xdr/Stellar-internal.x":                "227835866c1b2122d1eaf28839ba85ea7289d1cb681dda4ca619c2da3d71fe00",
 	"xdr/Stellar-ledger-entries.x":          "77dc7062ae6d0812136333e12e35b2294d7c2896a536be9c811eb0ed2abbbccb",
-	"xdr/Stellar-ledger.x":                  "888152fb940b79a01ac00a5218ca91360cb0f01af7acc030d5805ebfec280203",
+	"xdr/Stellar-ledger.x":                  "46c1c55972750b97650ff00788a2be4764975b787ef51c8fa931c56e2028a3c4",
 	"xdr/Stellar-lighthorizon.x":            "1aac09eaeda224154f653a0c95f02167be0c110fc295bb41b756a080eb8c06df",
-	"xdr/Stellar-overlay.x":                 "de3957c58b96ae07968b3d3aebea84f83603e95322d1fa336360e13e3aba737a",
+	"xdr/Stellar-overlay.x":                 "8c73b7c3ad974e7fc4aa4fdf34f7ad50053406254efbd7406c96657cf41691d3",
 	"xdr/Stellar-transaction.x":             "0d2b35a331a540b48643925d0869857236eb2487c02d340ea32e365e784ea2b8",
 	"xdr/Stellar-types.x":                   "6e3b13f0d3e360b09fa5e2b0e55d43f4d974a769df66afb34e8aecbb329d3f15",
 }
@@ -16754,6 +16754,86 @@ func (s DiagnosticEvent) xdrType() {}
 
 var _ xdrType = (*DiagnosticEvent)(nil)
 
+// DiagnosticEvents is an XDR Typedef defines as:
+//
+//	typedef DiagnosticEvent DiagnosticEvents<>;
+type DiagnosticEvents []DiagnosticEvent
+
+// EncodeTo encodes this value using the Encoder.
+func (s DiagnosticEvents) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if _, err = e.EncodeUint(uint32(len(s))); err != nil {
+		return err
+	}
+	for i := 0; i < len(s); i++ {
+		if err = s[i].EncodeTo(e); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+var _ decoderFrom = (*DiagnosticEvents)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *DiagnosticEvents) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, fmt.Errorf("decoding DiagnosticEvents: %w", ErrMaxDecodingDepthReached)
+	}
+	maxDepth -= 1
+	var err error
+	var n, nTmp int
+	var l uint32
+	l, nTmp, err = d.DecodeUint()
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding DiagnosticEvent: %w", err)
+	}
+	(*s) = nil
+	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding DiagnosticEvent: length (%d) exceeds remaining input length (%d)", l, il)
+		}
+		(*s) = make([]DiagnosticEvent, l)
+		for i := uint32(0); i < l; i++ {
+			nTmp, err = (*s)[i].DecodeFrom(d, maxDepth)
+			n += nTmp
+			if err != nil {
+				return n, fmt.Errorf("decoding DiagnosticEvent: %w", err)
+			}
+		}
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s DiagnosticEvents) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *DiagnosticEvents) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*DiagnosticEvents)(nil)
+	_ encoding.BinaryUnmarshaler = (*DiagnosticEvents)(nil)
+)
+
+// xdrType signals that this type represents XDR values defined by this package.
+func (s DiagnosticEvents) xdrType() {}
+
+var _ xdrType = (*DiagnosticEvents)(nil)
+
 // SorobanTransactionMetaExtV1 is an XDR Struct defines as:
 //
 //	struct SorobanTransactionMetaExtV1
@@ -19739,31 +19819,40 @@ var _ xdrType = (*PeerAddress)(nil)
 //	     SEND_MORE_EXTENDED = 20,
 //
 //	     FLOOD_ADVERT = 18,
-//	     FLOOD_DEMAND = 19
+//	     FLOOD_DEMAND = 19,
+//
+//	     TIME_SLICED_SURVEY_REQUEST = 21,
+//	     TIME_SLICED_SURVEY_RESPONSE = 22,
+//	     TIME_SLICED_SURVEY_START_COLLECTING = 23,
+//	     TIME_SLICED_SURVEY_STOP_COLLECTING = 24
 //	 };
 type MessageType int32
 
 const (
-	MessageTypeErrorMsg         MessageType = 0
-	MessageTypeAuth             MessageType = 2
-	MessageTypeDontHave         MessageType = 3
-	MessageTypeGetPeers         MessageType = 4
-	MessageTypePeers            MessageType = 5
-	MessageTypeGetTxSet         MessageType = 6
-	MessageTypeTxSet            MessageType = 7
-	MessageTypeGeneralizedTxSet MessageType = 17
-	MessageTypeTransaction      MessageType = 8
-	MessageTypeGetScpQuorumset  MessageType = 9
-	MessageTypeScpQuorumset     MessageType = 10
-	MessageTypeScpMessage       MessageType = 11
-	MessageTypeGetScpState      MessageType = 12
-	MessageTypeHello            MessageType = 13
-	MessageTypeSurveyRequest    MessageType = 14
-	MessageTypeSurveyResponse   MessageType = 15
-	MessageTypeSendMore         MessageType = 16
-	MessageTypeSendMoreExtended MessageType = 20
-	MessageTypeFloodAdvert      MessageType = 18
-	MessageTypeFloodDemand      MessageType = 19
+	MessageTypeErrorMsg                        MessageType = 0
+	MessageTypeAuth                            MessageType = 2
+	MessageTypeDontHave                        MessageType = 3
+	MessageTypeGetPeers                        MessageType = 4
+	MessageTypePeers                           MessageType = 5
+	MessageTypeGetTxSet                        MessageType = 6
+	MessageTypeTxSet                           MessageType = 7
+	MessageTypeGeneralizedTxSet                MessageType = 17
+	MessageTypeTransaction                     MessageType = 8
+	MessageTypeGetScpQuorumset                 MessageType = 9
+	MessageTypeScpQuorumset                    MessageType = 10
+	MessageTypeScpMessage                      MessageType = 11
+	MessageTypeGetScpState                     MessageType = 12
+	MessageTypeHello                           MessageType = 13
+	MessageTypeSurveyRequest                   MessageType = 14
+	MessageTypeSurveyResponse                  MessageType = 15
+	MessageTypeSendMore                        MessageType = 16
+	MessageTypeSendMoreExtended                MessageType = 20
+	MessageTypeFloodAdvert                     MessageType = 18
+	MessageTypeFloodDemand                     MessageType = 19
+	MessageTypeTimeSlicedSurveyRequest         MessageType = 21
+	MessageTypeTimeSlicedSurveyResponse        MessageType = 22
+	MessageTypeTimeSlicedSurveyStartCollecting MessageType = 23
+	MessageTypeTimeSlicedSurveyStopCollecting  MessageType = 24
 )
 
 var messageTypeMap = map[int32]string{
@@ -19787,6 +19876,10 @@ var messageTypeMap = map[int32]string{
 	20: "MessageTypeSendMoreExtended",
 	18: "MessageTypeFloodAdvert",
 	19: "MessageTypeFloodDemand",
+	21: "MessageTypeTimeSlicedSurveyRequest",
+	22: "MessageTypeTimeSlicedSurveyResponse",
+	23: "MessageTypeTimeSlicedSurveyStartCollecting",
+	24: "MessageTypeTimeSlicedSurveyStopCollecting",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -19937,16 +20030,19 @@ var _ xdrType = (*DontHave)(nil)
 //
 //	enum SurveyMessageCommandType
 //	 {
-//	     SURVEY_TOPOLOGY = 0
+//	     SURVEY_TOPOLOGY = 0,
+//	     TIME_SLICED_SURVEY_TOPOLOGY = 1
 //	 };
 type SurveyMessageCommandType int32
 
 const (
-	SurveyMessageCommandTypeSurveyTopology SurveyMessageCommandType = 0
+	SurveyMessageCommandTypeSurveyTopology           SurveyMessageCommandType = 0
+	SurveyMessageCommandTypeTimeSlicedSurveyTopology SurveyMessageCommandType = 1
 )
 
 var surveyMessageCommandTypeMap = map[int32]string{
 	0: "SurveyMessageCommandTypeSurveyTopology",
+	1: "SurveyMessageCommandTypeTimeSlicedSurveyTopology",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -20023,18 +20119,21 @@ var _ xdrType = (*SurveyMessageCommandType)(nil)
 //	enum SurveyMessageResponseType
 //	 {
 //	     SURVEY_TOPOLOGY_RESPONSE_V0 = 0,
-//	     SURVEY_TOPOLOGY_RESPONSE_V1 = 1
+//	     SURVEY_TOPOLOGY_RESPONSE_V1 = 1,
+//	     SURVEY_TOPOLOGY_RESPONSE_V2 = 2
 //	 };
 type SurveyMessageResponseType int32
 
 const (
 	SurveyMessageResponseTypeSurveyTopologyResponseV0 SurveyMessageResponseType = 0
 	SurveyMessageResponseTypeSurveyTopologyResponseV1 SurveyMessageResponseType = 1
+	SurveyMessageResponseTypeSurveyTopologyResponseV2 SurveyMessageResponseType = 2
 )
 
 var surveyMessageResponseTypeMap = map[int32]string{
 	0: "SurveyMessageResponseTypeSurveyTopologyResponseV0",
 	1: "SurveyMessageResponseTypeSurveyTopologyResponseV1",
+	2: "SurveyMessageResponseTypeSurveyTopologyResponseV2",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -20105,6 +20204,326 @@ var (
 func (s SurveyMessageResponseType) xdrType() {}
 
 var _ xdrType = (*SurveyMessageResponseType)(nil)
+
+// TimeSlicedSurveyStartCollectingMessage is an XDR Struct defines as:
+//
+//	struct TimeSlicedSurveyStartCollectingMessage
+//	 {
+//	     NodeID surveyorID;
+//	     uint32 nonce;
+//	     uint32 ledgerNum;
+//	 };
+type TimeSlicedSurveyStartCollectingMessage struct {
+	SurveyorId NodeId
+	Nonce      Uint32
+	LedgerNum  Uint32
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s *TimeSlicedSurveyStartCollectingMessage) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = s.SurveyorId.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.Nonce.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.LedgerNum.EncodeTo(e); err != nil {
+		return err
+	}
+	return nil
+}
+
+var _ decoderFrom = (*TimeSlicedSurveyStartCollectingMessage)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *TimeSlicedSurveyStartCollectingMessage) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, fmt.Errorf("decoding TimeSlicedSurveyStartCollectingMessage: %w", ErrMaxDecodingDepthReached)
+	}
+	maxDepth -= 1
+	var err error
+	var n, nTmp int
+	nTmp, err = s.SurveyorId.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding NodeId: %w", err)
+	}
+	nTmp, err = s.Nonce.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %w", err)
+	}
+	nTmp, err = s.LedgerNum.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %w", err)
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s TimeSlicedSurveyStartCollectingMessage) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *TimeSlicedSurveyStartCollectingMessage) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*TimeSlicedSurveyStartCollectingMessage)(nil)
+	_ encoding.BinaryUnmarshaler = (*TimeSlicedSurveyStartCollectingMessage)(nil)
+)
+
+// xdrType signals that this type represents XDR values defined by this package.
+func (s TimeSlicedSurveyStartCollectingMessage) xdrType() {}
+
+var _ xdrType = (*TimeSlicedSurveyStartCollectingMessage)(nil)
+
+// SignedTimeSlicedSurveyStartCollectingMessage is an XDR Struct defines as:
+//
+//	struct SignedTimeSlicedSurveyStartCollectingMessage
+//	 {
+//	     Signature signature;
+//	     TimeSlicedSurveyStartCollectingMessage startCollecting;
+//	 };
+type SignedTimeSlicedSurveyStartCollectingMessage struct {
+	Signature       Signature
+	StartCollecting TimeSlicedSurveyStartCollectingMessage
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s *SignedTimeSlicedSurveyStartCollectingMessage) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = s.Signature.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.StartCollecting.EncodeTo(e); err != nil {
+		return err
+	}
+	return nil
+}
+
+var _ decoderFrom = (*SignedTimeSlicedSurveyStartCollectingMessage)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *SignedTimeSlicedSurveyStartCollectingMessage) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, fmt.Errorf("decoding SignedTimeSlicedSurveyStartCollectingMessage: %w", ErrMaxDecodingDepthReached)
+	}
+	maxDepth -= 1
+	var err error
+	var n, nTmp int
+	nTmp, err = s.Signature.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Signature: %w", err)
+	}
+	nTmp, err = s.StartCollecting.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding TimeSlicedSurveyStartCollectingMessage: %w", err)
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s SignedTimeSlicedSurveyStartCollectingMessage) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *SignedTimeSlicedSurveyStartCollectingMessage) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*SignedTimeSlicedSurveyStartCollectingMessage)(nil)
+	_ encoding.BinaryUnmarshaler = (*SignedTimeSlicedSurveyStartCollectingMessage)(nil)
+)
+
+// xdrType signals that this type represents XDR values defined by this package.
+func (s SignedTimeSlicedSurveyStartCollectingMessage) xdrType() {}
+
+var _ xdrType = (*SignedTimeSlicedSurveyStartCollectingMessage)(nil)
+
+// TimeSlicedSurveyStopCollectingMessage is an XDR Struct defines as:
+//
+//	struct TimeSlicedSurveyStopCollectingMessage
+//	 {
+//	     NodeID surveyorID;
+//	     uint32 nonce;
+//	     uint32 ledgerNum;
+//	 };
+type TimeSlicedSurveyStopCollectingMessage struct {
+	SurveyorId NodeId
+	Nonce      Uint32
+	LedgerNum  Uint32
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s *TimeSlicedSurveyStopCollectingMessage) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = s.SurveyorId.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.Nonce.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.LedgerNum.EncodeTo(e); err != nil {
+		return err
+	}
+	return nil
+}
+
+var _ decoderFrom = (*TimeSlicedSurveyStopCollectingMessage)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *TimeSlicedSurveyStopCollectingMessage) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, fmt.Errorf("decoding TimeSlicedSurveyStopCollectingMessage: %w", ErrMaxDecodingDepthReached)
+	}
+	maxDepth -= 1
+	var err error
+	var n, nTmp int
+	nTmp, err = s.SurveyorId.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding NodeId: %w", err)
+	}
+	nTmp, err = s.Nonce.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %w", err)
+	}
+	nTmp, err = s.LedgerNum.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %w", err)
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s TimeSlicedSurveyStopCollectingMessage) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *TimeSlicedSurveyStopCollectingMessage) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*TimeSlicedSurveyStopCollectingMessage)(nil)
+	_ encoding.BinaryUnmarshaler = (*TimeSlicedSurveyStopCollectingMessage)(nil)
+)
+
+// xdrType signals that this type represents XDR values defined by this package.
+func (s TimeSlicedSurveyStopCollectingMessage) xdrType() {}
+
+var _ xdrType = (*TimeSlicedSurveyStopCollectingMessage)(nil)
+
+// SignedTimeSlicedSurveyStopCollectingMessage is an XDR Struct defines as:
+//
+//	struct SignedTimeSlicedSurveyStopCollectingMessage
+//	 {
+//	     Signature signature;
+//	     TimeSlicedSurveyStopCollectingMessage stopCollecting;
+//	 };
+type SignedTimeSlicedSurveyStopCollectingMessage struct {
+	Signature      Signature
+	StopCollecting TimeSlicedSurveyStopCollectingMessage
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s *SignedTimeSlicedSurveyStopCollectingMessage) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = s.Signature.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.StopCollecting.EncodeTo(e); err != nil {
+		return err
+	}
+	return nil
+}
+
+var _ decoderFrom = (*SignedTimeSlicedSurveyStopCollectingMessage)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *SignedTimeSlicedSurveyStopCollectingMessage) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, fmt.Errorf("decoding SignedTimeSlicedSurveyStopCollectingMessage: %w", ErrMaxDecodingDepthReached)
+	}
+	maxDepth -= 1
+	var err error
+	var n, nTmp int
+	nTmp, err = s.Signature.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Signature: %w", err)
+	}
+	nTmp, err = s.StopCollecting.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding TimeSlicedSurveyStopCollectingMessage: %w", err)
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s SignedTimeSlicedSurveyStopCollectingMessage) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *SignedTimeSlicedSurveyStopCollectingMessage) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*SignedTimeSlicedSurveyStopCollectingMessage)(nil)
+	_ encoding.BinaryUnmarshaler = (*SignedTimeSlicedSurveyStopCollectingMessage)(nil)
+)
+
+// xdrType signals that this type represents XDR values defined by this package.
+func (s SignedTimeSlicedSurveyStopCollectingMessage) xdrType() {}
+
+var _ xdrType = (*SignedTimeSlicedSurveyStopCollectingMessage)(nil)
 
 // SurveyRequestMessage is an XDR Struct defines as:
 //
@@ -20211,6 +20630,101 @@ func (s SurveyRequestMessage) xdrType() {}
 
 var _ xdrType = (*SurveyRequestMessage)(nil)
 
+// TimeSlicedSurveyRequestMessage is an XDR Struct defines as:
+//
+//	struct TimeSlicedSurveyRequestMessage
+//	 {
+//	     SurveyRequestMessage request;
+//	     uint32 nonce;
+//	     uint32 inboundPeersIndex;
+//	     uint32 outboundPeersIndex;
+//	 };
+type TimeSlicedSurveyRequestMessage struct {
+	Request            SurveyRequestMessage
+	Nonce              Uint32
+	InboundPeersIndex  Uint32
+	OutboundPeersIndex Uint32
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s *TimeSlicedSurveyRequestMessage) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = s.Request.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.Nonce.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.InboundPeersIndex.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.OutboundPeersIndex.EncodeTo(e); err != nil {
+		return err
+	}
+	return nil
+}
+
+var _ decoderFrom = (*TimeSlicedSurveyRequestMessage)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *TimeSlicedSurveyRequestMessage) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, fmt.Errorf("decoding TimeSlicedSurveyRequestMessage: %w", ErrMaxDecodingDepthReached)
+	}
+	maxDepth -= 1
+	var err error
+	var n, nTmp int
+	nTmp, err = s.Request.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding SurveyRequestMessage: %w", err)
+	}
+	nTmp, err = s.Nonce.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %w", err)
+	}
+	nTmp, err = s.InboundPeersIndex.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %w", err)
+	}
+	nTmp, err = s.OutboundPeersIndex.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %w", err)
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s TimeSlicedSurveyRequestMessage) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *TimeSlicedSurveyRequestMessage) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*TimeSlicedSurveyRequestMessage)(nil)
+	_ encoding.BinaryUnmarshaler = (*TimeSlicedSurveyRequestMessage)(nil)
+)
+
+// xdrType signals that this type represents XDR values defined by this package.
+func (s TimeSlicedSurveyRequestMessage) xdrType() {}
+
+var _ xdrType = (*TimeSlicedSurveyRequestMessage)(nil)
+
 // SignedSurveyRequestMessage is an XDR Struct defines as:
 //
 //	struct SignedSurveyRequestMessage
@@ -20285,6 +20799,81 @@ var (
 func (s SignedSurveyRequestMessage) xdrType() {}
 
 var _ xdrType = (*SignedSurveyRequestMessage)(nil)
+
+// SignedTimeSlicedSurveyRequestMessage is an XDR Struct defines as:
+//
+//	struct SignedTimeSlicedSurveyRequestMessage
+//	 {
+//	     Signature requestSignature;
+//	     TimeSlicedSurveyRequestMessage request;
+//	 };
+type SignedTimeSlicedSurveyRequestMessage struct {
+	RequestSignature Signature
+	Request          TimeSlicedSurveyRequestMessage
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s *SignedTimeSlicedSurveyRequestMessage) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = s.RequestSignature.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.Request.EncodeTo(e); err != nil {
+		return err
+	}
+	return nil
+}
+
+var _ decoderFrom = (*SignedTimeSlicedSurveyRequestMessage)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *SignedTimeSlicedSurveyRequestMessage) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, fmt.Errorf("decoding SignedTimeSlicedSurveyRequestMessage: %w", ErrMaxDecodingDepthReached)
+	}
+	maxDepth -= 1
+	var err error
+	var n, nTmp int
+	nTmp, err = s.RequestSignature.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Signature: %w", err)
+	}
+	nTmp, err = s.Request.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding TimeSlicedSurveyRequestMessage: %w", err)
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s SignedTimeSlicedSurveyRequestMessage) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *SignedTimeSlicedSurveyRequestMessage) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*SignedTimeSlicedSurveyRequestMessage)(nil)
+	_ encoding.BinaryUnmarshaler = (*SignedTimeSlicedSurveyRequestMessage)(nil)
+)
+
+// xdrType signals that this type represents XDR values defined by this package.
+func (s SignedTimeSlicedSurveyRequestMessage) xdrType() {}
+
+var _ xdrType = (*SignedTimeSlicedSurveyRequestMessage)(nil)
 
 // EncryptedBody is an XDR Typedef defines as:
 //
@@ -20456,6 +21045,81 @@ func (s SurveyResponseMessage) xdrType() {}
 
 var _ xdrType = (*SurveyResponseMessage)(nil)
 
+// TimeSlicedSurveyResponseMessage is an XDR Struct defines as:
+//
+//	struct TimeSlicedSurveyResponseMessage
+//	 {
+//	     SurveyResponseMessage response;
+//	     uint32 nonce;
+//	 };
+type TimeSlicedSurveyResponseMessage struct {
+	Response SurveyResponseMessage
+	Nonce    Uint32
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s *TimeSlicedSurveyResponseMessage) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = s.Response.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.Nonce.EncodeTo(e); err != nil {
+		return err
+	}
+	return nil
+}
+
+var _ decoderFrom = (*TimeSlicedSurveyResponseMessage)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *TimeSlicedSurveyResponseMessage) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, fmt.Errorf("decoding TimeSlicedSurveyResponseMessage: %w", ErrMaxDecodingDepthReached)
+	}
+	maxDepth -= 1
+	var err error
+	var n, nTmp int
+	nTmp, err = s.Response.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding SurveyResponseMessage: %w", err)
+	}
+	nTmp, err = s.Nonce.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %w", err)
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s TimeSlicedSurveyResponseMessage) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *TimeSlicedSurveyResponseMessage) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*TimeSlicedSurveyResponseMessage)(nil)
+	_ encoding.BinaryUnmarshaler = (*TimeSlicedSurveyResponseMessage)(nil)
+)
+
+// xdrType signals that this type represents XDR values defined by this package.
+func (s TimeSlicedSurveyResponseMessage) xdrType() {}
+
+var _ xdrType = (*TimeSlicedSurveyResponseMessage)(nil)
+
 // SignedSurveyResponseMessage is an XDR Struct defines as:
 //
 //	struct SignedSurveyResponseMessage
@@ -20530,6 +21194,81 @@ var (
 func (s SignedSurveyResponseMessage) xdrType() {}
 
 var _ xdrType = (*SignedSurveyResponseMessage)(nil)
+
+// SignedTimeSlicedSurveyResponseMessage is an XDR Struct defines as:
+//
+//	struct SignedTimeSlicedSurveyResponseMessage
+//	 {
+//	     Signature responseSignature;
+//	     TimeSlicedSurveyResponseMessage response;
+//	 };
+type SignedTimeSlicedSurveyResponseMessage struct {
+	ResponseSignature Signature
+	Response          TimeSlicedSurveyResponseMessage
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s *SignedTimeSlicedSurveyResponseMessage) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = s.ResponseSignature.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.Response.EncodeTo(e); err != nil {
+		return err
+	}
+	return nil
+}
+
+var _ decoderFrom = (*SignedTimeSlicedSurveyResponseMessage)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *SignedTimeSlicedSurveyResponseMessage) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, fmt.Errorf("decoding SignedTimeSlicedSurveyResponseMessage: %w", ErrMaxDecodingDepthReached)
+	}
+	maxDepth -= 1
+	var err error
+	var n, nTmp int
+	nTmp, err = s.ResponseSignature.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Signature: %w", err)
+	}
+	nTmp, err = s.Response.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding TimeSlicedSurveyResponseMessage: %w", err)
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s SignedTimeSlicedSurveyResponseMessage) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *SignedTimeSlicedSurveyResponseMessage) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*SignedTimeSlicedSurveyResponseMessage)(nil)
+	_ encoding.BinaryUnmarshaler = (*SignedTimeSlicedSurveyResponseMessage)(nil)
+)
+
+// xdrType signals that this type represents XDR values defined by this package.
+func (s SignedTimeSlicedSurveyResponseMessage) xdrType() {}
+
+var _ xdrType = (*SignedTimeSlicedSurveyResponseMessage)(nil)
 
 // PeerStats is an XDR Struct defines as:
 //
@@ -20826,6 +21565,330 @@ func (s PeerStatList) xdrType() {}
 
 var _ xdrType = (*PeerStatList)(nil)
 
+// TimeSlicedNodeData is an XDR Struct defines as:
+//
+//	struct TimeSlicedNodeData
+//	 {
+//	     uint32 addedAuthenticatedPeers;
+//	     uint32 droppedAuthenticatedPeers;
+//	     uint32 totalInboundPeerCount;
+//	     uint32 totalOutboundPeerCount;
+//
+//	     // SCP stats
+//	     uint32 p75SCPFirstToSelfLatencyMs;
+//	     uint32 p75SCPSelfToOtherLatencyMs;
+//
+//	     // How many times the node lost sync in the time slice
+//	     uint32 lostSyncCount;
+//
+//	     // Config data
+//	     bool isValidator;
+//	     uint32 maxInboundPeerCount;
+//	     uint32 maxOutboundPeerCount;
+//	 };
+type TimeSlicedNodeData struct {
+	AddedAuthenticatedPeers    Uint32
+	DroppedAuthenticatedPeers  Uint32
+	TotalInboundPeerCount      Uint32
+	TotalOutboundPeerCount     Uint32
+	P75ScpFirstToSelfLatencyMs Uint32
+	P75ScpSelfToOtherLatencyMs Uint32
+	LostSyncCount              Uint32
+	IsValidator                bool
+	MaxInboundPeerCount        Uint32
+	MaxOutboundPeerCount       Uint32
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s *TimeSlicedNodeData) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = s.AddedAuthenticatedPeers.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.DroppedAuthenticatedPeers.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.TotalInboundPeerCount.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.TotalOutboundPeerCount.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.P75ScpFirstToSelfLatencyMs.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.P75ScpSelfToOtherLatencyMs.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.LostSyncCount.EncodeTo(e); err != nil {
+		return err
+	}
+	if _, err = e.EncodeBool(bool(s.IsValidator)); err != nil {
+		return err
+	}
+	if err = s.MaxInboundPeerCount.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.MaxOutboundPeerCount.EncodeTo(e); err != nil {
+		return err
+	}
+	return nil
+}
+
+var _ decoderFrom = (*TimeSlicedNodeData)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *TimeSlicedNodeData) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, fmt.Errorf("decoding TimeSlicedNodeData: %w", ErrMaxDecodingDepthReached)
+	}
+	maxDepth -= 1
+	var err error
+	var n, nTmp int
+	nTmp, err = s.AddedAuthenticatedPeers.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %w", err)
+	}
+	nTmp, err = s.DroppedAuthenticatedPeers.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %w", err)
+	}
+	nTmp, err = s.TotalInboundPeerCount.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %w", err)
+	}
+	nTmp, err = s.TotalOutboundPeerCount.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %w", err)
+	}
+	nTmp, err = s.P75ScpFirstToSelfLatencyMs.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %w", err)
+	}
+	nTmp, err = s.P75ScpSelfToOtherLatencyMs.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %w", err)
+	}
+	nTmp, err = s.LostSyncCount.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %w", err)
+	}
+	s.IsValidator, nTmp, err = d.DecodeBool()
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Bool: %w", err)
+	}
+	nTmp, err = s.MaxInboundPeerCount.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %w", err)
+	}
+	nTmp, err = s.MaxOutboundPeerCount.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %w", err)
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s TimeSlicedNodeData) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *TimeSlicedNodeData) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*TimeSlicedNodeData)(nil)
+	_ encoding.BinaryUnmarshaler = (*TimeSlicedNodeData)(nil)
+)
+
+// xdrType signals that this type represents XDR values defined by this package.
+func (s TimeSlicedNodeData) xdrType() {}
+
+var _ xdrType = (*TimeSlicedNodeData)(nil)
+
+// TimeSlicedPeerData is an XDR Struct defines as:
+//
+//	struct TimeSlicedPeerData
+//	 {
+//	     PeerStats peerStats;
+//	     uint32 averageLatencyMs;
+//	 };
+type TimeSlicedPeerData struct {
+	PeerStats        PeerStats
+	AverageLatencyMs Uint32
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s *TimeSlicedPeerData) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = s.PeerStats.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.AverageLatencyMs.EncodeTo(e); err != nil {
+		return err
+	}
+	return nil
+}
+
+var _ decoderFrom = (*TimeSlicedPeerData)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *TimeSlicedPeerData) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, fmt.Errorf("decoding TimeSlicedPeerData: %w", ErrMaxDecodingDepthReached)
+	}
+	maxDepth -= 1
+	var err error
+	var n, nTmp int
+	nTmp, err = s.PeerStats.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding PeerStats: %w", err)
+	}
+	nTmp, err = s.AverageLatencyMs.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %w", err)
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s TimeSlicedPeerData) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *TimeSlicedPeerData) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*TimeSlicedPeerData)(nil)
+	_ encoding.BinaryUnmarshaler = (*TimeSlicedPeerData)(nil)
+)
+
+// xdrType signals that this type represents XDR values defined by this package.
+func (s TimeSlicedPeerData) xdrType() {}
+
+var _ xdrType = (*TimeSlicedPeerData)(nil)
+
+// TimeSlicedPeerDataList is an XDR Typedef defines as:
+//
+//	typedef TimeSlicedPeerData TimeSlicedPeerDataList<25>;
+type TimeSlicedPeerDataList []TimeSlicedPeerData
+
+// XDRMaxSize implements the Sized interface for TimeSlicedPeerDataList
+func (e TimeSlicedPeerDataList) XDRMaxSize() int {
+	return 25
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s TimeSlicedPeerDataList) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if _, err = e.EncodeUint(uint32(len(s))); err != nil {
+		return err
+	}
+	for i := 0; i < len(s); i++ {
+		if err = s[i].EncodeTo(e); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+var _ decoderFrom = (*TimeSlicedPeerDataList)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *TimeSlicedPeerDataList) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, fmt.Errorf("decoding TimeSlicedPeerDataList: %w", ErrMaxDecodingDepthReached)
+	}
+	maxDepth -= 1
+	var err error
+	var n, nTmp int
+	var l uint32
+	l, nTmp, err = d.DecodeUint()
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding TimeSlicedPeerData: %w", err)
+	}
+	if l > 25 {
+		return n, fmt.Errorf("decoding TimeSlicedPeerData: data size (%d) exceeds size limit (25)", l)
+	}
+	(*s) = nil
+	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding TimeSlicedPeerData: length (%d) exceeds remaining input length (%d)", l, il)
+		}
+		(*s) = make([]TimeSlicedPeerData, l)
+		for i := uint32(0); i < l; i++ {
+			nTmp, err = (*s)[i].DecodeFrom(d, maxDepth)
+			n += nTmp
+			if err != nil {
+				return n, fmt.Errorf("decoding TimeSlicedPeerData: %w", err)
+			}
+		}
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s TimeSlicedPeerDataList) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *TimeSlicedPeerDataList) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*TimeSlicedPeerDataList)(nil)
+	_ encoding.BinaryUnmarshaler = (*TimeSlicedPeerDataList)(nil)
+)
+
+// xdrType signals that this type represents XDR values defined by this package.
+func (s TimeSlicedPeerDataList) xdrType() {}
+
+var _ xdrType = (*TimeSlicedPeerDataList)(nil)
+
 // TopologyResponseBodyV0 is an XDR Struct defines as:
 //
 //	struct TopologyResponseBodyV0
@@ -21039,6 +22102,91 @@ func (s TopologyResponseBodyV1) xdrType() {}
 
 var _ xdrType = (*TopologyResponseBodyV1)(nil)
 
+// TopologyResponseBodyV2 is an XDR Struct defines as:
+//
+//	struct TopologyResponseBodyV2
+//	 {
+//	     TimeSlicedPeerDataList inboundPeers;
+//	     TimeSlicedPeerDataList outboundPeers;
+//	     TimeSlicedNodeData nodeData;
+//	 };
+type TopologyResponseBodyV2 struct {
+	InboundPeers  TimeSlicedPeerDataList
+	OutboundPeers TimeSlicedPeerDataList
+	NodeData      TimeSlicedNodeData
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s *TopologyResponseBodyV2) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = s.InboundPeers.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.OutboundPeers.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.NodeData.EncodeTo(e); err != nil {
+		return err
+	}
+	return nil
+}
+
+var _ decoderFrom = (*TopologyResponseBodyV2)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *TopologyResponseBodyV2) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, fmt.Errorf("decoding TopologyResponseBodyV2: %w", ErrMaxDecodingDepthReached)
+	}
+	maxDepth -= 1
+	var err error
+	var n, nTmp int
+	nTmp, err = s.InboundPeers.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding TimeSlicedPeerDataList: %w", err)
+	}
+	nTmp, err = s.OutboundPeers.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding TimeSlicedPeerDataList: %w", err)
+	}
+	nTmp, err = s.NodeData.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding TimeSlicedNodeData: %w", err)
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s TopologyResponseBodyV2) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *TopologyResponseBodyV2) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*TopologyResponseBodyV2)(nil)
+	_ encoding.BinaryUnmarshaler = (*TopologyResponseBodyV2)(nil)
+)
+
+// xdrType signals that this type represents XDR values defined by this package.
+func (s TopologyResponseBodyV2) xdrType() {}
+
+var _ xdrType = (*TopologyResponseBodyV2)(nil)
+
 // SurveyResponseBody is an XDR Union defines as:
 //
 //	union SurveyResponseBody switch (SurveyMessageResponseType type)
@@ -21047,11 +22195,14 @@ var _ xdrType = (*TopologyResponseBodyV1)(nil)
 //	     TopologyResponseBodyV0 topologyResponseBodyV0;
 //	 case SURVEY_TOPOLOGY_RESPONSE_V1:
 //	     TopologyResponseBodyV1 topologyResponseBodyV1;
+//	 case SURVEY_TOPOLOGY_RESPONSE_V2:
+//	     TopologyResponseBodyV2 topologyResponseBodyV2;
 //	 };
 type SurveyResponseBody struct {
 	Type                   SurveyMessageResponseType
 	TopologyResponseBodyV0 *TopologyResponseBodyV0
 	TopologyResponseBodyV1 *TopologyResponseBodyV1
+	TopologyResponseBodyV2 *TopologyResponseBodyV2
 }
 
 // SwitchFieldName returns the field name in which this union's
@@ -21068,6 +22219,8 @@ func (u SurveyResponseBody) ArmForSwitch(sw int32) (string, bool) {
 		return "TopologyResponseBodyV0", true
 	case SurveyMessageResponseTypeSurveyTopologyResponseV1:
 		return "TopologyResponseBodyV1", true
+	case SurveyMessageResponseTypeSurveyTopologyResponseV2:
+		return "TopologyResponseBodyV2", true
 	}
 	return "-", false
 }
@@ -21090,6 +22243,13 @@ func NewSurveyResponseBody(aType SurveyMessageResponseType, value interface{}) (
 			return
 		}
 		result.TopologyResponseBodyV1 = &tv
+	case SurveyMessageResponseTypeSurveyTopologyResponseV2:
+		tv, ok := value.(TopologyResponseBodyV2)
+		if !ok {
+			err = errors.New("invalid value, must be TopologyResponseBodyV2")
+			return
+		}
+		result.TopologyResponseBodyV2 = &tv
 	}
 	return
 }
@@ -21144,6 +22304,31 @@ func (u SurveyResponseBody) GetTopologyResponseBodyV1() (result TopologyResponse
 	return
 }
 
+// MustTopologyResponseBodyV2 retrieves the TopologyResponseBodyV2 value from the union,
+// panicing if the value is not set.
+func (u SurveyResponseBody) MustTopologyResponseBodyV2() TopologyResponseBodyV2 {
+	val, ok := u.GetTopologyResponseBodyV2()
+
+	if !ok {
+		panic("arm TopologyResponseBodyV2 is not set")
+	}
+
+	return val
+}
+
+// GetTopologyResponseBodyV2 retrieves the TopologyResponseBodyV2 value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u SurveyResponseBody) GetTopologyResponseBodyV2() (result TopologyResponseBodyV2, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "TopologyResponseBodyV2" {
+		result = *u.TopologyResponseBodyV2
+		ok = true
+	}
+
+	return
+}
+
 // EncodeTo encodes this value using the Encoder.
 func (u SurveyResponseBody) EncodeTo(e *xdr.Encoder) error {
 	var err error
@@ -21158,6 +22343,11 @@ func (u SurveyResponseBody) EncodeTo(e *xdr.Encoder) error {
 		return nil
 	case SurveyMessageResponseTypeSurveyTopologyResponseV1:
 		if err = (*u.TopologyResponseBodyV1).EncodeTo(e); err != nil {
+			return err
+		}
+		return nil
+	case SurveyMessageResponseTypeSurveyTopologyResponseV2:
+		if err = (*u.TopologyResponseBodyV2).EncodeTo(e); err != nil {
 			return err
 		}
 		return nil
@@ -21195,6 +22385,14 @@ func (u *SurveyResponseBody) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, err
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding TopologyResponseBodyV1: %w", err)
+		}
+		return n, nil
+	case SurveyMessageResponseTypeSurveyTopologyResponseV2:
+		u.TopologyResponseBodyV2 = new(TopologyResponseBodyV2)
+		nTmp, err = (*u.TopologyResponseBodyV2).DecodeFrom(d, maxDepth)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding TopologyResponseBodyV2: %w", err)
 		}
 		return n, nil
 	}
@@ -21578,6 +22776,20 @@ var _ xdrType = (*FloodDemand)(nil)
 //	 case SURVEY_RESPONSE:
 //	     SignedSurveyResponseMessage signedSurveyResponseMessage;
 //
+//	 case TIME_SLICED_SURVEY_REQUEST:
+//	     SignedTimeSlicedSurveyRequestMessage signedTimeSlicedSurveyRequestMessage;
+//
+//	 case TIME_SLICED_SURVEY_RESPONSE:
+//	     SignedTimeSlicedSurveyResponseMessage signedTimeSlicedSurveyResponseMessage;
+//
+//	 case TIME_SLICED_SURVEY_START_COLLECTING:
+//	     SignedTimeSlicedSurveyStartCollectingMessage
+//	         signedTimeSlicedSurveyStartCollectingMessage;
+//
+//	 case TIME_SLICED_SURVEY_STOP_COLLECTING:
+//	     SignedTimeSlicedSurveyStopCollectingMessage
+//	         signedTimeSlicedSurveyStopCollectingMessage;
+//
 //	 // SCP
 //	 case GET_SCP_QUORUMSET:
 //	     uint256 qSetHash;
@@ -21598,26 +22810,30 @@ var _ xdrType = (*FloodDemand)(nil)
 //	      FloodDemand floodDemand;
 //	 };
 type StellarMessage struct {
-	Type                        MessageType
-	Error                       *Error
-	Hello                       *Hello
-	Auth                        *Auth
-	DontHave                    *DontHave
-	Peers                       *[]PeerAddress `xdrmaxsize:"100"`
-	TxSetHash                   *Uint256
-	TxSet                       *TransactionSet
-	GeneralizedTxSet            *GeneralizedTransactionSet
-	Transaction                 *TransactionEnvelope
-	SignedSurveyRequestMessage  *SignedSurveyRequestMessage
-	SignedSurveyResponseMessage *SignedSurveyResponseMessage
-	QSetHash                    *Uint256
-	QSet                        *ScpQuorumSet
-	Envelope                    *ScpEnvelope
-	GetScpLedgerSeq             *Uint32
-	SendMoreMessage             *SendMore
-	SendMoreExtendedMessage     *SendMoreExtended
-	FloodAdvert                 *FloodAdvert
-	FloodDemand                 *FloodDemand
+	Type                                         MessageType
+	Error                                        *Error
+	Hello                                        *Hello
+	Auth                                         *Auth
+	DontHave                                     *DontHave
+	Peers                                        *[]PeerAddress `xdrmaxsize:"100"`
+	TxSetHash                                    *Uint256
+	TxSet                                        *TransactionSet
+	GeneralizedTxSet                             *GeneralizedTransactionSet
+	Transaction                                  *TransactionEnvelope
+	SignedSurveyRequestMessage                   *SignedSurveyRequestMessage
+	SignedSurveyResponseMessage                  *SignedSurveyResponseMessage
+	SignedTimeSlicedSurveyRequestMessage         *SignedTimeSlicedSurveyRequestMessage
+	SignedTimeSlicedSurveyResponseMessage        *SignedTimeSlicedSurveyResponseMessage
+	SignedTimeSlicedSurveyStartCollectingMessage *SignedTimeSlicedSurveyStartCollectingMessage
+	SignedTimeSlicedSurveyStopCollectingMessage  *SignedTimeSlicedSurveyStopCollectingMessage
+	QSetHash                                     *Uint256
+	QSet                                         *ScpQuorumSet
+	Envelope                                     *ScpEnvelope
+	GetScpLedgerSeq                              *Uint32
+	SendMoreMessage                              *SendMore
+	SendMoreExtendedMessage                      *SendMoreExtended
+	FloodAdvert                                  *FloodAdvert
+	FloodDemand                                  *FloodDemand
 }
 
 // SwitchFieldName returns the field name in which this union's
@@ -21654,6 +22870,14 @@ func (u StellarMessage) ArmForSwitch(sw int32) (string, bool) {
 		return "SignedSurveyRequestMessage", true
 	case MessageTypeSurveyResponse:
 		return "SignedSurveyResponseMessage", true
+	case MessageTypeTimeSlicedSurveyRequest:
+		return "SignedTimeSlicedSurveyRequestMessage", true
+	case MessageTypeTimeSlicedSurveyResponse:
+		return "SignedTimeSlicedSurveyResponseMessage", true
+	case MessageTypeTimeSlicedSurveyStartCollecting:
+		return "SignedTimeSlicedSurveyStartCollectingMessage", true
+	case MessageTypeTimeSlicedSurveyStopCollecting:
+		return "SignedTimeSlicedSurveyStopCollectingMessage", true
 	case MessageTypeGetScpQuorumset:
 		return "QSetHash", true
 	case MessageTypeScpQuorumset:
@@ -21757,6 +22981,34 @@ func NewStellarMessage(aType MessageType, value interface{}) (result StellarMess
 			return
 		}
 		result.SignedSurveyResponseMessage = &tv
+	case MessageTypeTimeSlicedSurveyRequest:
+		tv, ok := value.(SignedTimeSlicedSurveyRequestMessage)
+		if !ok {
+			err = errors.New("invalid value, must be SignedTimeSlicedSurveyRequestMessage")
+			return
+		}
+		result.SignedTimeSlicedSurveyRequestMessage = &tv
+	case MessageTypeTimeSlicedSurveyResponse:
+		tv, ok := value.(SignedTimeSlicedSurveyResponseMessage)
+		if !ok {
+			err = errors.New("invalid value, must be SignedTimeSlicedSurveyResponseMessage")
+			return
+		}
+		result.SignedTimeSlicedSurveyResponseMessage = &tv
+	case MessageTypeTimeSlicedSurveyStartCollecting:
+		tv, ok := value.(SignedTimeSlicedSurveyStartCollectingMessage)
+		if !ok {
+			err = errors.New("invalid value, must be SignedTimeSlicedSurveyStartCollectingMessage")
+			return
+		}
+		result.SignedTimeSlicedSurveyStartCollectingMessage = &tv
+	case MessageTypeTimeSlicedSurveyStopCollecting:
+		tv, ok := value.(SignedTimeSlicedSurveyStopCollectingMessage)
+		if !ok {
+			err = errors.New("invalid value, must be SignedTimeSlicedSurveyStopCollectingMessage")
+			return
+		}
+		result.SignedTimeSlicedSurveyStopCollectingMessage = &tv
 	case MessageTypeGetScpQuorumset:
 		tv, ok := value.(Uint256)
 		if !ok {
@@ -22092,6 +23344,106 @@ func (u StellarMessage) GetSignedSurveyResponseMessage() (result SignedSurveyRes
 	return
 }
 
+// MustSignedTimeSlicedSurveyRequestMessage retrieves the SignedTimeSlicedSurveyRequestMessage value from the union,
+// panicing if the value is not set.
+func (u StellarMessage) MustSignedTimeSlicedSurveyRequestMessage() SignedTimeSlicedSurveyRequestMessage {
+	val, ok := u.GetSignedTimeSlicedSurveyRequestMessage()
+
+	if !ok {
+		panic("arm SignedTimeSlicedSurveyRequestMessage is not set")
+	}
+
+	return val
+}
+
+// GetSignedTimeSlicedSurveyRequestMessage retrieves the SignedTimeSlicedSurveyRequestMessage value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u StellarMessage) GetSignedTimeSlicedSurveyRequestMessage() (result SignedTimeSlicedSurveyRequestMessage, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "SignedTimeSlicedSurveyRequestMessage" {
+		result = *u.SignedTimeSlicedSurveyRequestMessage
+		ok = true
+	}
+
+	return
+}
+
+// MustSignedTimeSlicedSurveyResponseMessage retrieves the SignedTimeSlicedSurveyResponseMessage value from the union,
+// panicing if the value is not set.
+func (u StellarMessage) MustSignedTimeSlicedSurveyResponseMessage() SignedTimeSlicedSurveyResponseMessage {
+	val, ok := u.GetSignedTimeSlicedSurveyResponseMessage()
+
+	if !ok {
+		panic("arm SignedTimeSlicedSurveyResponseMessage is not set")
+	}
+
+	return val
+}
+
+// GetSignedTimeSlicedSurveyResponseMessage retrieves the SignedTimeSlicedSurveyResponseMessage value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u StellarMessage) GetSignedTimeSlicedSurveyResponseMessage() (result SignedTimeSlicedSurveyResponseMessage, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "SignedTimeSlicedSurveyResponseMessage" {
+		result = *u.SignedTimeSlicedSurveyResponseMessage
+		ok = true
+	}
+
+	return
+}
+
+// MustSignedTimeSlicedSurveyStartCollectingMessage retrieves the SignedTimeSlicedSurveyStartCollectingMessage value from the union,
+// panicing if the value is not set.
+func (u StellarMessage) MustSignedTimeSlicedSurveyStartCollectingMessage() SignedTimeSlicedSurveyStartCollectingMessage {
+	val, ok := u.GetSignedTimeSlicedSurveyStartCollectingMessage()
+
+	if !ok {
+		panic("arm SignedTimeSlicedSurveyStartCollectingMessage is not set")
+	}
+
+	return val
+}
+
+// GetSignedTimeSlicedSurveyStartCollectingMessage retrieves the SignedTimeSlicedSurveyStartCollectingMessage value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u StellarMessage) GetSignedTimeSlicedSurveyStartCollectingMessage() (result SignedTimeSlicedSurveyStartCollectingMessage, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "SignedTimeSlicedSurveyStartCollectingMessage" {
+		result = *u.SignedTimeSlicedSurveyStartCollectingMessage
+		ok = true
+	}
+
+	return
+}
+
+// MustSignedTimeSlicedSurveyStopCollectingMessage retrieves the SignedTimeSlicedSurveyStopCollectingMessage value from the union,
+// panicing if the value is not set.
+func (u StellarMessage) MustSignedTimeSlicedSurveyStopCollectingMessage() SignedTimeSlicedSurveyStopCollectingMessage {
+	val, ok := u.GetSignedTimeSlicedSurveyStopCollectingMessage()
+
+	if !ok {
+		panic("arm SignedTimeSlicedSurveyStopCollectingMessage is not set")
+	}
+
+	return val
+}
+
+// GetSignedTimeSlicedSurveyStopCollectingMessage retrieves the SignedTimeSlicedSurveyStopCollectingMessage value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u StellarMessage) GetSignedTimeSlicedSurveyStopCollectingMessage() (result SignedTimeSlicedSurveyStopCollectingMessage, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "SignedTimeSlicedSurveyStopCollectingMessage" {
+		result = *u.SignedTimeSlicedSurveyStopCollectingMessage
+		ok = true
+	}
+
+	return
+}
+
 // MustQSetHash retrieves the QSetHash value from the union,
 // panicing if the value is not set.
 func (u StellarMessage) MustQSetHash() Uint256 {
@@ -22362,6 +23714,26 @@ func (u StellarMessage) EncodeTo(e *xdr.Encoder) error {
 			return err
 		}
 		return nil
+	case MessageTypeTimeSlicedSurveyRequest:
+		if err = (*u.SignedTimeSlicedSurveyRequestMessage).EncodeTo(e); err != nil {
+			return err
+		}
+		return nil
+	case MessageTypeTimeSlicedSurveyResponse:
+		if err = (*u.SignedTimeSlicedSurveyResponseMessage).EncodeTo(e); err != nil {
+			return err
+		}
+		return nil
+	case MessageTypeTimeSlicedSurveyStartCollecting:
+		if err = (*u.SignedTimeSlicedSurveyStartCollectingMessage).EncodeTo(e); err != nil {
+			return err
+		}
+		return nil
+	case MessageTypeTimeSlicedSurveyStopCollecting:
+		if err = (*u.SignedTimeSlicedSurveyStopCollectingMessage).EncodeTo(e); err != nil {
+			return err
+		}
+		return nil
 	case MessageTypeGetScpQuorumset:
 		if err = (*u.QSetHash).EncodeTo(e); err != nil {
 			return err
@@ -22529,6 +23901,38 @@ func (u *StellarMessage) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) 
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding SignedSurveyResponseMessage: %w", err)
+		}
+		return n, nil
+	case MessageTypeTimeSlicedSurveyRequest:
+		u.SignedTimeSlicedSurveyRequestMessage = new(SignedTimeSlicedSurveyRequestMessage)
+		nTmp, err = (*u.SignedTimeSlicedSurveyRequestMessage).DecodeFrom(d, maxDepth)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding SignedTimeSlicedSurveyRequestMessage: %w", err)
+		}
+		return n, nil
+	case MessageTypeTimeSlicedSurveyResponse:
+		u.SignedTimeSlicedSurveyResponseMessage = new(SignedTimeSlicedSurveyResponseMessage)
+		nTmp, err = (*u.SignedTimeSlicedSurveyResponseMessage).DecodeFrom(d, maxDepth)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding SignedTimeSlicedSurveyResponseMessage: %w", err)
+		}
+		return n, nil
+	case MessageTypeTimeSlicedSurveyStartCollecting:
+		u.SignedTimeSlicedSurveyStartCollectingMessage = new(SignedTimeSlicedSurveyStartCollectingMessage)
+		nTmp, err = (*u.SignedTimeSlicedSurveyStartCollectingMessage).DecodeFrom(d, maxDepth)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding SignedTimeSlicedSurveyStartCollectingMessage: %w", err)
+		}
+		return n, nil
+	case MessageTypeTimeSlicedSurveyStopCollecting:
+		u.SignedTimeSlicedSurveyStopCollectingMessage = new(SignedTimeSlicedSurveyStopCollectingMessage)
+		nTmp, err = (*u.SignedTimeSlicedSurveyStopCollectingMessage).DecodeFrom(d, maxDepth)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding SignedTimeSlicedSurveyStopCollectingMessage: %w", err)
 		}
 		return n, nil
 	case MessageTypeGetScpQuorumset:

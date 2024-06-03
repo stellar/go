@@ -1224,6 +1224,8 @@ type DiagnosticEvent struct {
 	Event                    ContractEvent
 }
 
+type DiagnosticEvents = []DiagnosticEvent
+
 type SorobanTransactionMetaExtV1 struct {
 	Ext ExtensionPoint
 	// Total amount (in stroops) that has been charged for non-refundable
@@ -1482,13 +1484,17 @@ const (
 	SCP_MESSAGE       MessageType = 11
 	GET_SCP_STATE     MessageType = 12
 	// new messages
-	HELLO              MessageType = 13
-	SURVEY_REQUEST     MessageType = 14
-	SURVEY_RESPONSE    MessageType = 15
-	SEND_MORE          MessageType = 16
-	SEND_MORE_EXTENDED MessageType = 20
-	FLOOD_ADVERT       MessageType = 18
-	FLOOD_DEMAND       MessageType = 19
+	HELLO                               MessageType = 13
+	SURVEY_REQUEST                      MessageType = 14
+	SURVEY_RESPONSE                     MessageType = 15
+	SEND_MORE                           MessageType = 16
+	SEND_MORE_EXTENDED                  MessageType = 20
+	FLOOD_ADVERT                        MessageType = 18
+	FLOOD_DEMAND                        MessageType = 19
+	TIME_SLICED_SURVEY_REQUEST          MessageType = 21
+	TIME_SLICED_SURVEY_RESPONSE         MessageType = 22
+	TIME_SLICED_SURVEY_START_COLLECTING MessageType = 23
+	TIME_SLICED_SURVEY_STOP_COLLECTING  MessageType = 24
 )
 
 type DontHave struct {
@@ -1499,7 +1505,8 @@ type DontHave struct {
 type SurveyMessageCommandType int32
 
 const (
-	SURVEY_TOPOLOGY SurveyMessageCommandType = 0
+	SURVEY_TOPOLOGY             SurveyMessageCommandType = 0
+	TIME_SLICED_SURVEY_TOPOLOGY SurveyMessageCommandType = 1
 )
 
 type SurveyMessageResponseType int32
@@ -1507,7 +1514,30 @@ type SurveyMessageResponseType int32
 const (
 	SURVEY_TOPOLOGY_RESPONSE_V0 SurveyMessageResponseType = 0
 	SURVEY_TOPOLOGY_RESPONSE_V1 SurveyMessageResponseType = 1
+	SURVEY_TOPOLOGY_RESPONSE_V2 SurveyMessageResponseType = 2
 )
+
+type TimeSlicedSurveyStartCollectingMessage struct {
+	SurveyorID NodeID
+	Nonce      Uint32
+	LedgerNum  Uint32
+}
+
+type SignedTimeSlicedSurveyStartCollectingMessage struct {
+	Signature       Signature
+	StartCollecting TimeSlicedSurveyStartCollectingMessage
+}
+
+type TimeSlicedSurveyStopCollectingMessage struct {
+	SurveyorID NodeID
+	Nonce      Uint32
+	LedgerNum  Uint32
+}
+
+type SignedTimeSlicedSurveyStopCollectingMessage struct {
+	Signature      Signature
+	StopCollecting TimeSlicedSurveyStopCollectingMessage
+}
 
 type SurveyRequestMessage struct {
 	SurveyorPeerID NodeID
@@ -1517,9 +1547,21 @@ type SurveyRequestMessage struct {
 	CommandType    SurveyMessageCommandType
 }
 
+type TimeSlicedSurveyRequestMessage struct {
+	Request            SurveyRequestMessage
+	Nonce              Uint32
+	InboundPeersIndex  Uint32
+	OutboundPeersIndex Uint32
+}
+
 type SignedSurveyRequestMessage struct {
 	RequestSignature Signature
 	Request          SurveyRequestMessage
+}
+
+type SignedTimeSlicedSurveyRequestMessage struct {
+	RequestSignature Signature
+	Request          TimeSlicedSurveyRequestMessage
 }
 
 type EncryptedBody = []byte // bound 64000
@@ -1532,9 +1574,19 @@ type SurveyResponseMessage struct {
 	EncryptedBody  EncryptedBody
 }
 
+type TimeSlicedSurveyResponseMessage struct {
+	Response SurveyResponseMessage
+	Nonce    Uint32
+}
+
 type SignedSurveyResponseMessage struct {
 	ResponseSignature Signature
 	Response          SurveyResponseMessage
+}
+
+type SignedTimeSlicedSurveyResponseMessage struct {
+	ResponseSignature Signature
+	Response          TimeSlicedSurveyResponseMessage
 }
 
 type PeerStats struct {
@@ -1557,6 +1609,29 @@ type PeerStats struct {
 
 type PeerStatList = []PeerStats // bound 25
 
+type TimeSlicedNodeData struct {
+	AddedAuthenticatedPeers   Uint32
+	DroppedAuthenticatedPeers Uint32
+	TotalInboundPeerCount     Uint32
+	TotalOutboundPeerCount    Uint32
+	// SCP stats
+	P75SCPFirstToSelfLatencyMs Uint32
+	P75SCPSelfToOtherLatencyMs Uint32
+	// How many times the node lost sync in the time slice
+	LostSyncCount Uint32
+	// Config data
+	IsValidator          bool
+	MaxInboundPeerCount  Uint32
+	MaxOutboundPeerCount Uint32
+}
+
+type TimeSlicedPeerData struct {
+	PeerStats        PeerStats
+	AverageLatencyMs Uint32
+}
+
+type TimeSlicedPeerDataList = []TimeSlicedPeerData // bound 25
+
 type TopologyResponseBodyV0 struct {
 	InboundPeers           PeerStatList
 	OutboundPeers          PeerStatList
@@ -1573,12 +1648,20 @@ type TopologyResponseBodyV1 struct {
 	MaxOutboundPeerCount   Uint32
 }
 
+type TopologyResponseBodyV2 struct {
+	InboundPeers  TimeSlicedPeerDataList
+	OutboundPeers TimeSlicedPeerDataList
+	NodeData      TimeSlicedNodeData
+}
+
 type SurveyResponseBody struct {
 	// The union discriminant Type selects among the following arms:
 	//   SURVEY_TOPOLOGY_RESPONSE_V0:
 	//      TopologyResponseBodyV0() *TopologyResponseBodyV0
 	//   SURVEY_TOPOLOGY_RESPONSE_V1:
 	//      TopologyResponseBodyV1() *TopologyResponseBodyV1
+	//   SURVEY_TOPOLOGY_RESPONSE_V2:
+	//      TopologyResponseBodyV2() *TopologyResponseBodyV2
 	Type SurveyMessageResponseType
 	_u   interface{}
 }
@@ -1625,6 +1708,14 @@ type StellarMessage struct {
 	//      SignedSurveyRequestMessage() *SignedSurveyRequestMessage
 	//   SURVEY_RESPONSE:
 	//      SignedSurveyResponseMessage() *SignedSurveyResponseMessage
+	//   TIME_SLICED_SURVEY_REQUEST:
+	//      SignedTimeSlicedSurveyRequestMessage() *SignedTimeSlicedSurveyRequestMessage
+	//   TIME_SLICED_SURVEY_RESPONSE:
+	//      SignedTimeSlicedSurveyResponseMessage() *SignedTimeSlicedSurveyResponseMessage
+	//   TIME_SLICED_SURVEY_START_COLLECTING:
+	//      SignedTimeSlicedSurveyStartCollectingMessage() *SignedTimeSlicedSurveyStartCollectingMessage
+	//   TIME_SLICED_SURVEY_STOP_COLLECTING:
+	//      SignedTimeSlicedSurveyStopCollectingMessage() *SignedTimeSlicedSurveyStopCollectingMessage
 	//   GET_SCP_QUORUMSET:
 	//      QSetHash() *Uint256
 	//   SCP_QUORUMSET:
@@ -12018,6 +12109,73 @@ func (v *DiagnosticEvent) XdrRecurse(x XDR, name string) {
 }
 func XDR_DiagnosticEvent(v *DiagnosticEvent) *DiagnosticEvent { return v }
 
+type _XdrVec_unbounded_DiagnosticEvent []DiagnosticEvent
+
+func (_XdrVec_unbounded_DiagnosticEvent) XdrBound() uint32 {
+	const bound uint32 = 4294967295 // Force error if not const or doesn't fit
+	return bound
+}
+func (_XdrVec_unbounded_DiagnosticEvent) XdrCheckLen(length uint32) {
+	if length > uint32(4294967295) {
+		XdrPanic("_XdrVec_unbounded_DiagnosticEvent length %d exceeds bound 4294967295", length)
+	} else if int(length) < 0 {
+		XdrPanic("_XdrVec_unbounded_DiagnosticEvent length %d exceeds max int", length)
+	}
+}
+func (v _XdrVec_unbounded_DiagnosticEvent) GetVecLen() uint32 { return uint32(len(v)) }
+func (v *_XdrVec_unbounded_DiagnosticEvent) SetVecLen(length uint32) {
+	v.XdrCheckLen(length)
+	if int(length) <= cap(*v) {
+		if int(length) != len(*v) {
+			*v = (*v)[:int(length)]
+		}
+		return
+	}
+	newcap := 2 * cap(*v)
+	if newcap < int(length) { // also catches overflow where 2*cap < 0
+		newcap = int(length)
+	} else if bound := uint(4294967295); uint(newcap) > bound {
+		if int(bound) < 0 {
+			bound = ^uint(0) >> 1
+		}
+		newcap = int(bound)
+	}
+	nv := make([]DiagnosticEvent, int(length), newcap)
+	copy(nv, *v)
+	*v = nv
+}
+func (v *_XdrVec_unbounded_DiagnosticEvent) XdrMarshalN(x XDR, name string, n uint32) {
+	v.XdrCheckLen(n)
+	for i := 0; i < int(n); i++ {
+		if i >= len(*v) {
+			v.SetVecLen(uint32(i + 1))
+		}
+		XDR_DiagnosticEvent(&(*v)[i]).XdrMarshal(x, x.Sprintf("%s[%d]", name, i))
+	}
+	if int(n) < len(*v) {
+		*v = (*v)[:int(n)]
+	}
+}
+func (v *_XdrVec_unbounded_DiagnosticEvent) XdrRecurse(x XDR, name string) {
+	size := XdrSize{Size: uint32(len(*v)), Bound: 4294967295}
+	x.Marshal(name, &size)
+	v.XdrMarshalN(x, name, size.Size)
+}
+func (_XdrVec_unbounded_DiagnosticEvent) XdrTypeName() string              { return "DiagnosticEvent<>" }
+func (v *_XdrVec_unbounded_DiagnosticEvent) XdrPointer() interface{}       { return (*[]DiagnosticEvent)(v) }
+func (v _XdrVec_unbounded_DiagnosticEvent) XdrValue() interface{}          { return ([]DiagnosticEvent)(v) }
+func (v *_XdrVec_unbounded_DiagnosticEvent) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+
+type XdrType_DiagnosticEvents struct {
+	*_XdrVec_unbounded_DiagnosticEvent
+}
+
+func XDR_DiagnosticEvents(v *DiagnosticEvents) XdrType_DiagnosticEvents {
+	return XdrType_DiagnosticEvents{(*_XdrVec_unbounded_DiagnosticEvent)(v)}
+}
+func (XdrType_DiagnosticEvents) XdrTypeName() string  { return "DiagnosticEvents" }
+func (v XdrType_DiagnosticEvents) XdrUnwrap() XdrType { return v._XdrVec_unbounded_DiagnosticEvent }
+
 type XdrType_SorobanTransactionMetaExtV1 = *SorobanTransactionMetaExtV1
 
 func (v *SorobanTransactionMetaExtV1) XdrPointer() interface{}       { return v }
@@ -12170,63 +12328,6 @@ func (_XdrVec_unbounded_ContractEvent) XdrTypeName() string              { retur
 func (v *_XdrVec_unbounded_ContractEvent) XdrPointer() interface{}       { return (*[]ContractEvent)(v) }
 func (v _XdrVec_unbounded_ContractEvent) XdrValue() interface{}          { return ([]ContractEvent)(v) }
 func (v *_XdrVec_unbounded_ContractEvent) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
-
-type _XdrVec_unbounded_DiagnosticEvent []DiagnosticEvent
-
-func (_XdrVec_unbounded_DiagnosticEvent) XdrBound() uint32 {
-	const bound uint32 = 4294967295 // Force error if not const or doesn't fit
-	return bound
-}
-func (_XdrVec_unbounded_DiagnosticEvent) XdrCheckLen(length uint32) {
-	if length > uint32(4294967295) {
-		XdrPanic("_XdrVec_unbounded_DiagnosticEvent length %d exceeds bound 4294967295", length)
-	} else if int(length) < 0 {
-		XdrPanic("_XdrVec_unbounded_DiagnosticEvent length %d exceeds max int", length)
-	}
-}
-func (v _XdrVec_unbounded_DiagnosticEvent) GetVecLen() uint32 { return uint32(len(v)) }
-func (v *_XdrVec_unbounded_DiagnosticEvent) SetVecLen(length uint32) {
-	v.XdrCheckLen(length)
-	if int(length) <= cap(*v) {
-		if int(length) != len(*v) {
-			*v = (*v)[:int(length)]
-		}
-		return
-	}
-	newcap := 2 * cap(*v)
-	if newcap < int(length) { // also catches overflow where 2*cap < 0
-		newcap = int(length)
-	} else if bound := uint(4294967295); uint(newcap) > bound {
-		if int(bound) < 0 {
-			bound = ^uint(0) >> 1
-		}
-		newcap = int(bound)
-	}
-	nv := make([]DiagnosticEvent, int(length), newcap)
-	copy(nv, *v)
-	*v = nv
-}
-func (v *_XdrVec_unbounded_DiagnosticEvent) XdrMarshalN(x XDR, name string, n uint32) {
-	v.XdrCheckLen(n)
-	for i := 0; i < int(n); i++ {
-		if i >= len(*v) {
-			v.SetVecLen(uint32(i + 1))
-		}
-		XDR_DiagnosticEvent(&(*v)[i]).XdrMarshal(x, x.Sprintf("%s[%d]", name, i))
-	}
-	if int(n) < len(*v) {
-		*v = (*v)[:int(n)]
-	}
-}
-func (v *_XdrVec_unbounded_DiagnosticEvent) XdrRecurse(x XDR, name string) {
-	size := XdrSize{Size: uint32(len(*v)), Bound: 4294967295}
-	x.Marshal(name, &size)
-	v.XdrMarshalN(x, name, size.Size)
-}
-func (_XdrVec_unbounded_DiagnosticEvent) XdrTypeName() string              { return "DiagnosticEvent<>" }
-func (v *_XdrVec_unbounded_DiagnosticEvent) XdrPointer() interface{}       { return (*[]DiagnosticEvent)(v) }
-func (v _XdrVec_unbounded_DiagnosticEvent) XdrValue() interface{}          { return ([]DiagnosticEvent)(v) }
-func (v *_XdrVec_unbounded_DiagnosticEvent) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
 
 type XdrType_SorobanTransactionMeta = *SorobanTransactionMeta
 
@@ -13371,48 +13472,56 @@ func (v *PeerAddress) XdrRecurse(x XDR, name string) {
 func XDR_PeerAddress(v *PeerAddress) *PeerAddress { return v }
 
 var _XdrNames_MessageType = map[int32]string{
-	int32(ERROR_MSG):          "ERROR_MSG",
-	int32(AUTH):               "AUTH",
-	int32(DONT_HAVE):          "DONT_HAVE",
-	int32(GET_PEERS):          "GET_PEERS",
-	int32(PEERS):              "PEERS",
-	int32(GET_TX_SET):         "GET_TX_SET",
-	int32(TX_SET):             "TX_SET",
-	int32(GENERALIZED_TX_SET): "GENERALIZED_TX_SET",
-	int32(TRANSACTION):        "TRANSACTION",
-	int32(GET_SCP_QUORUMSET):  "GET_SCP_QUORUMSET",
-	int32(SCP_QUORUMSET):      "SCP_QUORUMSET",
-	int32(SCP_MESSAGE):        "SCP_MESSAGE",
-	int32(GET_SCP_STATE):      "GET_SCP_STATE",
-	int32(HELLO):              "HELLO",
-	int32(SURVEY_REQUEST):     "SURVEY_REQUEST",
-	int32(SURVEY_RESPONSE):    "SURVEY_RESPONSE",
-	int32(SEND_MORE):          "SEND_MORE",
-	int32(SEND_MORE_EXTENDED): "SEND_MORE_EXTENDED",
-	int32(FLOOD_ADVERT):       "FLOOD_ADVERT",
-	int32(FLOOD_DEMAND):       "FLOOD_DEMAND",
+	int32(ERROR_MSG):                           "ERROR_MSG",
+	int32(AUTH):                                "AUTH",
+	int32(DONT_HAVE):                           "DONT_HAVE",
+	int32(GET_PEERS):                           "GET_PEERS",
+	int32(PEERS):                               "PEERS",
+	int32(GET_TX_SET):                          "GET_TX_SET",
+	int32(TX_SET):                              "TX_SET",
+	int32(GENERALIZED_TX_SET):                  "GENERALIZED_TX_SET",
+	int32(TRANSACTION):                         "TRANSACTION",
+	int32(GET_SCP_QUORUMSET):                   "GET_SCP_QUORUMSET",
+	int32(SCP_QUORUMSET):                       "SCP_QUORUMSET",
+	int32(SCP_MESSAGE):                         "SCP_MESSAGE",
+	int32(GET_SCP_STATE):                       "GET_SCP_STATE",
+	int32(HELLO):                               "HELLO",
+	int32(SURVEY_REQUEST):                      "SURVEY_REQUEST",
+	int32(SURVEY_RESPONSE):                     "SURVEY_RESPONSE",
+	int32(SEND_MORE):                           "SEND_MORE",
+	int32(SEND_MORE_EXTENDED):                  "SEND_MORE_EXTENDED",
+	int32(FLOOD_ADVERT):                        "FLOOD_ADVERT",
+	int32(FLOOD_DEMAND):                        "FLOOD_DEMAND",
+	int32(TIME_SLICED_SURVEY_REQUEST):          "TIME_SLICED_SURVEY_REQUEST",
+	int32(TIME_SLICED_SURVEY_RESPONSE):         "TIME_SLICED_SURVEY_RESPONSE",
+	int32(TIME_SLICED_SURVEY_START_COLLECTING): "TIME_SLICED_SURVEY_START_COLLECTING",
+	int32(TIME_SLICED_SURVEY_STOP_COLLECTING):  "TIME_SLICED_SURVEY_STOP_COLLECTING",
 }
 var _XdrValues_MessageType = map[string]int32{
-	"ERROR_MSG":          int32(ERROR_MSG),
-	"AUTH":               int32(AUTH),
-	"DONT_HAVE":          int32(DONT_HAVE),
-	"GET_PEERS":          int32(GET_PEERS),
-	"PEERS":              int32(PEERS),
-	"GET_TX_SET":         int32(GET_TX_SET),
-	"TX_SET":             int32(TX_SET),
-	"GENERALIZED_TX_SET": int32(GENERALIZED_TX_SET),
-	"TRANSACTION":        int32(TRANSACTION),
-	"GET_SCP_QUORUMSET":  int32(GET_SCP_QUORUMSET),
-	"SCP_QUORUMSET":      int32(SCP_QUORUMSET),
-	"SCP_MESSAGE":        int32(SCP_MESSAGE),
-	"GET_SCP_STATE":      int32(GET_SCP_STATE),
-	"HELLO":              int32(HELLO),
-	"SURVEY_REQUEST":     int32(SURVEY_REQUEST),
-	"SURVEY_RESPONSE":    int32(SURVEY_RESPONSE),
-	"SEND_MORE":          int32(SEND_MORE),
-	"SEND_MORE_EXTENDED": int32(SEND_MORE_EXTENDED),
-	"FLOOD_ADVERT":       int32(FLOOD_ADVERT),
-	"FLOOD_DEMAND":       int32(FLOOD_DEMAND),
+	"ERROR_MSG":                           int32(ERROR_MSG),
+	"AUTH":                                int32(AUTH),
+	"DONT_HAVE":                           int32(DONT_HAVE),
+	"GET_PEERS":                           int32(GET_PEERS),
+	"PEERS":                               int32(PEERS),
+	"GET_TX_SET":                          int32(GET_TX_SET),
+	"TX_SET":                              int32(TX_SET),
+	"GENERALIZED_TX_SET":                  int32(GENERALIZED_TX_SET),
+	"TRANSACTION":                         int32(TRANSACTION),
+	"GET_SCP_QUORUMSET":                   int32(GET_SCP_QUORUMSET),
+	"SCP_QUORUMSET":                       int32(SCP_QUORUMSET),
+	"SCP_MESSAGE":                         int32(SCP_MESSAGE),
+	"GET_SCP_STATE":                       int32(GET_SCP_STATE),
+	"HELLO":                               int32(HELLO),
+	"SURVEY_REQUEST":                      int32(SURVEY_REQUEST),
+	"SURVEY_RESPONSE":                     int32(SURVEY_RESPONSE),
+	"SEND_MORE":                           int32(SEND_MORE),
+	"SEND_MORE_EXTENDED":                  int32(SEND_MORE_EXTENDED),
+	"FLOOD_ADVERT":                        int32(FLOOD_ADVERT),
+	"FLOOD_DEMAND":                        int32(FLOOD_DEMAND),
+	"TIME_SLICED_SURVEY_REQUEST":          int32(TIME_SLICED_SURVEY_REQUEST),
+	"TIME_SLICED_SURVEY_RESPONSE":         int32(TIME_SLICED_SURVEY_RESPONSE),
+	"TIME_SLICED_SURVEY_START_COLLECTING": int32(TIME_SLICED_SURVEY_START_COLLECTING),
+	"TIME_SLICED_SURVEY_STOP_COLLECTING":  int32(TIME_SLICED_SURVEY_STOP_COLLECTING),
 }
 
 func (MessageType) XdrEnumNames() map[int32]string {
@@ -13479,10 +13588,12 @@ func (v *DontHave) XdrRecurse(x XDR, name string) {
 func XDR_DontHave(v *DontHave) *DontHave { return v }
 
 var _XdrNames_SurveyMessageCommandType = map[int32]string{
-	int32(SURVEY_TOPOLOGY): "SURVEY_TOPOLOGY",
+	int32(SURVEY_TOPOLOGY):             "SURVEY_TOPOLOGY",
+	int32(TIME_SLICED_SURVEY_TOPOLOGY): "TIME_SLICED_SURVEY_TOPOLOGY",
 }
 var _XdrValues_SurveyMessageCommandType = map[string]int32{
-	"SURVEY_TOPOLOGY": int32(SURVEY_TOPOLOGY),
+	"SURVEY_TOPOLOGY":             int32(SURVEY_TOPOLOGY),
+	"TIME_SLICED_SURVEY_TOPOLOGY": int32(TIME_SLICED_SURVEY_TOPOLOGY),
 }
 
 func (SurveyMessageCommandType) XdrEnumNames() map[int32]string {
@@ -13524,10 +13635,12 @@ func XDR_SurveyMessageCommandType(v *SurveyMessageCommandType) *SurveyMessageCom
 var _XdrNames_SurveyMessageResponseType = map[int32]string{
 	int32(SURVEY_TOPOLOGY_RESPONSE_V0): "SURVEY_TOPOLOGY_RESPONSE_V0",
 	int32(SURVEY_TOPOLOGY_RESPONSE_V1): "SURVEY_TOPOLOGY_RESPONSE_V1",
+	int32(SURVEY_TOPOLOGY_RESPONSE_V2): "SURVEY_TOPOLOGY_RESPONSE_V2",
 }
 var _XdrValues_SurveyMessageResponseType = map[string]int32{
 	"SURVEY_TOPOLOGY_RESPONSE_V0": int32(SURVEY_TOPOLOGY_RESPONSE_V0),
 	"SURVEY_TOPOLOGY_RESPONSE_V1": int32(SURVEY_TOPOLOGY_RESPONSE_V1),
+	"SURVEY_TOPOLOGY_RESPONSE_V2": int32(SURVEY_TOPOLOGY_RESPONSE_V2),
 }
 
 func (SurveyMessageResponseType) XdrEnumNames() map[int32]string {
@@ -13566,6 +13679,88 @@ type XdrType_SurveyMessageResponseType = *SurveyMessageResponseType
 
 func XDR_SurveyMessageResponseType(v *SurveyMessageResponseType) *SurveyMessageResponseType { return v }
 
+type XdrType_TimeSlicedSurveyStartCollectingMessage = *TimeSlicedSurveyStartCollectingMessage
+
+func (v *TimeSlicedSurveyStartCollectingMessage) XdrPointer() interface{} { return v }
+func (TimeSlicedSurveyStartCollectingMessage) XdrTypeName() string {
+	return "TimeSlicedSurveyStartCollectingMessage"
+}
+func (v TimeSlicedSurveyStartCollectingMessage) XdrValue() interface{}          { return v }
+func (v *TimeSlicedSurveyStartCollectingMessage) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *TimeSlicedSurveyStartCollectingMessage) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	x.Marshal(x.Sprintf("%ssurveyorID", name), XDR_NodeID(&v.SurveyorID))
+	x.Marshal(x.Sprintf("%snonce", name), XDR_Uint32(&v.Nonce))
+	x.Marshal(x.Sprintf("%sledgerNum", name), XDR_Uint32(&v.LedgerNum))
+}
+func XDR_TimeSlicedSurveyStartCollectingMessage(v *TimeSlicedSurveyStartCollectingMessage) *TimeSlicedSurveyStartCollectingMessage {
+	return v
+}
+
+type XdrType_SignedTimeSlicedSurveyStartCollectingMessage = *SignedTimeSlicedSurveyStartCollectingMessage
+
+func (v *SignedTimeSlicedSurveyStartCollectingMessage) XdrPointer() interface{} { return v }
+func (SignedTimeSlicedSurveyStartCollectingMessage) XdrTypeName() string {
+	return "SignedTimeSlicedSurveyStartCollectingMessage"
+}
+func (v SignedTimeSlicedSurveyStartCollectingMessage) XdrValue() interface{} { return v }
+func (v *SignedTimeSlicedSurveyStartCollectingMessage) XdrMarshal(x XDR, name string) {
+	x.Marshal(name, v)
+}
+func (v *SignedTimeSlicedSurveyStartCollectingMessage) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	x.Marshal(x.Sprintf("%ssignature", name), XDR_Signature(&v.Signature))
+	x.Marshal(x.Sprintf("%sstartCollecting", name), XDR_TimeSlicedSurveyStartCollectingMessage(&v.StartCollecting))
+}
+func XDR_SignedTimeSlicedSurveyStartCollectingMessage(v *SignedTimeSlicedSurveyStartCollectingMessage) *SignedTimeSlicedSurveyStartCollectingMessage {
+	return v
+}
+
+type XdrType_TimeSlicedSurveyStopCollectingMessage = *TimeSlicedSurveyStopCollectingMessage
+
+func (v *TimeSlicedSurveyStopCollectingMessage) XdrPointer() interface{} { return v }
+func (TimeSlicedSurveyStopCollectingMessage) XdrTypeName() string {
+	return "TimeSlicedSurveyStopCollectingMessage"
+}
+func (v TimeSlicedSurveyStopCollectingMessage) XdrValue() interface{}          { return v }
+func (v *TimeSlicedSurveyStopCollectingMessage) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *TimeSlicedSurveyStopCollectingMessage) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	x.Marshal(x.Sprintf("%ssurveyorID", name), XDR_NodeID(&v.SurveyorID))
+	x.Marshal(x.Sprintf("%snonce", name), XDR_Uint32(&v.Nonce))
+	x.Marshal(x.Sprintf("%sledgerNum", name), XDR_Uint32(&v.LedgerNum))
+}
+func XDR_TimeSlicedSurveyStopCollectingMessage(v *TimeSlicedSurveyStopCollectingMessage) *TimeSlicedSurveyStopCollectingMessage {
+	return v
+}
+
+type XdrType_SignedTimeSlicedSurveyStopCollectingMessage = *SignedTimeSlicedSurveyStopCollectingMessage
+
+func (v *SignedTimeSlicedSurveyStopCollectingMessage) XdrPointer() interface{} { return v }
+func (SignedTimeSlicedSurveyStopCollectingMessage) XdrTypeName() string {
+	return "SignedTimeSlicedSurveyStopCollectingMessage"
+}
+func (v SignedTimeSlicedSurveyStopCollectingMessage) XdrValue() interface{} { return v }
+func (v *SignedTimeSlicedSurveyStopCollectingMessage) XdrMarshal(x XDR, name string) {
+	x.Marshal(name, v)
+}
+func (v *SignedTimeSlicedSurveyStopCollectingMessage) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	x.Marshal(x.Sprintf("%ssignature", name), XDR_Signature(&v.Signature))
+	x.Marshal(x.Sprintf("%sstopCollecting", name), XDR_TimeSlicedSurveyStopCollectingMessage(&v.StopCollecting))
+}
+func XDR_SignedTimeSlicedSurveyStopCollectingMessage(v *SignedTimeSlicedSurveyStopCollectingMessage) *SignedTimeSlicedSurveyStopCollectingMessage {
+	return v
+}
+
 type XdrType_SurveyRequestMessage = *SurveyRequestMessage
 
 func (v *SurveyRequestMessage) XdrPointer() interface{}       { return v }
@@ -13584,6 +13779,25 @@ func (v *SurveyRequestMessage) XdrRecurse(x XDR, name string) {
 }
 func XDR_SurveyRequestMessage(v *SurveyRequestMessage) *SurveyRequestMessage { return v }
 
+type XdrType_TimeSlicedSurveyRequestMessage = *TimeSlicedSurveyRequestMessage
+
+func (v *TimeSlicedSurveyRequestMessage) XdrPointer() interface{}       { return v }
+func (TimeSlicedSurveyRequestMessage) XdrTypeName() string              { return "TimeSlicedSurveyRequestMessage" }
+func (v TimeSlicedSurveyRequestMessage) XdrValue() interface{}          { return v }
+func (v *TimeSlicedSurveyRequestMessage) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *TimeSlicedSurveyRequestMessage) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	x.Marshal(x.Sprintf("%srequest", name), XDR_SurveyRequestMessage(&v.Request))
+	x.Marshal(x.Sprintf("%snonce", name), XDR_Uint32(&v.Nonce))
+	x.Marshal(x.Sprintf("%sinboundPeersIndex", name), XDR_Uint32(&v.InboundPeersIndex))
+	x.Marshal(x.Sprintf("%soutboundPeersIndex", name), XDR_Uint32(&v.OutboundPeersIndex))
+}
+func XDR_TimeSlicedSurveyRequestMessage(v *TimeSlicedSurveyRequestMessage) *TimeSlicedSurveyRequestMessage {
+	return v
+}
+
 type XdrType_SignedSurveyRequestMessage = *SignedSurveyRequestMessage
 
 func (v *SignedSurveyRequestMessage) XdrPointer() interface{}       { return v }
@@ -13598,6 +13812,25 @@ func (v *SignedSurveyRequestMessage) XdrRecurse(x XDR, name string) {
 	x.Marshal(x.Sprintf("%srequest", name), XDR_SurveyRequestMessage(&v.Request))
 }
 func XDR_SignedSurveyRequestMessage(v *SignedSurveyRequestMessage) *SignedSurveyRequestMessage {
+	return v
+}
+
+type XdrType_SignedTimeSlicedSurveyRequestMessage = *SignedTimeSlicedSurveyRequestMessage
+
+func (v *SignedTimeSlicedSurveyRequestMessage) XdrPointer() interface{} { return v }
+func (SignedTimeSlicedSurveyRequestMessage) XdrTypeName() string {
+	return "SignedTimeSlicedSurveyRequestMessage"
+}
+func (v SignedTimeSlicedSurveyRequestMessage) XdrValue() interface{}          { return v }
+func (v *SignedTimeSlicedSurveyRequestMessage) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *SignedTimeSlicedSurveyRequestMessage) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	x.Marshal(x.Sprintf("%srequestSignature", name), XDR_Signature(&v.RequestSignature))
+	x.Marshal(x.Sprintf("%srequest", name), XDR_TimeSlicedSurveyRequestMessage(&v.Request))
+}
+func XDR_SignedTimeSlicedSurveyRequestMessage(v *SignedTimeSlicedSurveyRequestMessage) *SignedTimeSlicedSurveyRequestMessage {
 	return v
 }
 
@@ -13629,6 +13862,23 @@ func (v *SurveyResponseMessage) XdrRecurse(x XDR, name string) {
 }
 func XDR_SurveyResponseMessage(v *SurveyResponseMessage) *SurveyResponseMessage { return v }
 
+type XdrType_TimeSlicedSurveyResponseMessage = *TimeSlicedSurveyResponseMessage
+
+func (v *TimeSlicedSurveyResponseMessage) XdrPointer() interface{}       { return v }
+func (TimeSlicedSurveyResponseMessage) XdrTypeName() string              { return "TimeSlicedSurveyResponseMessage" }
+func (v TimeSlicedSurveyResponseMessage) XdrValue() interface{}          { return v }
+func (v *TimeSlicedSurveyResponseMessage) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *TimeSlicedSurveyResponseMessage) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	x.Marshal(x.Sprintf("%sresponse", name), XDR_SurveyResponseMessage(&v.Response))
+	x.Marshal(x.Sprintf("%snonce", name), XDR_Uint32(&v.Nonce))
+}
+func XDR_TimeSlicedSurveyResponseMessage(v *TimeSlicedSurveyResponseMessage) *TimeSlicedSurveyResponseMessage {
+	return v
+}
+
 type XdrType_SignedSurveyResponseMessage = *SignedSurveyResponseMessage
 
 func (v *SignedSurveyResponseMessage) XdrPointer() interface{}       { return v }
@@ -13643,6 +13893,25 @@ func (v *SignedSurveyResponseMessage) XdrRecurse(x XDR, name string) {
 	x.Marshal(x.Sprintf("%sresponse", name), XDR_SurveyResponseMessage(&v.Response))
 }
 func XDR_SignedSurveyResponseMessage(v *SignedSurveyResponseMessage) *SignedSurveyResponseMessage {
+	return v
+}
+
+type XdrType_SignedTimeSlicedSurveyResponseMessage = *SignedTimeSlicedSurveyResponseMessage
+
+func (v *SignedTimeSlicedSurveyResponseMessage) XdrPointer() interface{} { return v }
+func (SignedTimeSlicedSurveyResponseMessage) XdrTypeName() string {
+	return "SignedTimeSlicedSurveyResponseMessage"
+}
+func (v SignedTimeSlicedSurveyResponseMessage) XdrValue() interface{}          { return v }
+func (v *SignedTimeSlicedSurveyResponseMessage) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *SignedTimeSlicedSurveyResponseMessage) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	x.Marshal(x.Sprintf("%sresponseSignature", name), XDR_Signature(&v.ResponseSignature))
+	x.Marshal(x.Sprintf("%sresponse", name), XDR_TimeSlicedSurveyResponseMessage(&v.Response))
+}
+func XDR_SignedTimeSlicedSurveyResponseMessage(v *SignedTimeSlicedSurveyResponseMessage) *SignedTimeSlicedSurveyResponseMessage {
 	return v
 }
 
@@ -13741,6 +14010,111 @@ func XDR_PeerStatList(v *PeerStatList) XdrType_PeerStatList {
 func (XdrType_PeerStatList) XdrTypeName() string  { return "PeerStatList" }
 func (v XdrType_PeerStatList) XdrUnwrap() XdrType { return v._XdrVec_25_PeerStats }
 
+type XdrType_TimeSlicedNodeData = *TimeSlicedNodeData
+
+func (v *TimeSlicedNodeData) XdrPointer() interface{}       { return v }
+func (TimeSlicedNodeData) XdrTypeName() string              { return "TimeSlicedNodeData" }
+func (v TimeSlicedNodeData) XdrValue() interface{}          { return v }
+func (v *TimeSlicedNodeData) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *TimeSlicedNodeData) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	x.Marshal(x.Sprintf("%saddedAuthenticatedPeers", name), XDR_Uint32(&v.AddedAuthenticatedPeers))
+	x.Marshal(x.Sprintf("%sdroppedAuthenticatedPeers", name), XDR_Uint32(&v.DroppedAuthenticatedPeers))
+	x.Marshal(x.Sprintf("%stotalInboundPeerCount", name), XDR_Uint32(&v.TotalInboundPeerCount))
+	x.Marshal(x.Sprintf("%stotalOutboundPeerCount", name), XDR_Uint32(&v.TotalOutboundPeerCount))
+	x.Marshal(x.Sprintf("%sp75SCPFirstToSelfLatencyMs", name), XDR_Uint32(&v.P75SCPFirstToSelfLatencyMs))
+	x.Marshal(x.Sprintf("%sp75SCPSelfToOtherLatencyMs", name), XDR_Uint32(&v.P75SCPSelfToOtherLatencyMs))
+	x.Marshal(x.Sprintf("%slostSyncCount", name), XDR_Uint32(&v.LostSyncCount))
+	x.Marshal(x.Sprintf("%sisValidator", name), XDR_bool(&v.IsValidator))
+	x.Marshal(x.Sprintf("%smaxInboundPeerCount", name), XDR_Uint32(&v.MaxInboundPeerCount))
+	x.Marshal(x.Sprintf("%smaxOutboundPeerCount", name), XDR_Uint32(&v.MaxOutboundPeerCount))
+}
+func XDR_TimeSlicedNodeData(v *TimeSlicedNodeData) *TimeSlicedNodeData { return v }
+
+type XdrType_TimeSlicedPeerData = *TimeSlicedPeerData
+
+func (v *TimeSlicedPeerData) XdrPointer() interface{}       { return v }
+func (TimeSlicedPeerData) XdrTypeName() string              { return "TimeSlicedPeerData" }
+func (v TimeSlicedPeerData) XdrValue() interface{}          { return v }
+func (v *TimeSlicedPeerData) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *TimeSlicedPeerData) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	x.Marshal(x.Sprintf("%speerStats", name), XDR_PeerStats(&v.PeerStats))
+	x.Marshal(x.Sprintf("%saverageLatencyMs", name), XDR_Uint32(&v.AverageLatencyMs))
+}
+func XDR_TimeSlicedPeerData(v *TimeSlicedPeerData) *TimeSlicedPeerData { return v }
+
+type _XdrVec_25_TimeSlicedPeerData []TimeSlicedPeerData
+
+func (_XdrVec_25_TimeSlicedPeerData) XdrBound() uint32 {
+	const bound uint32 = 25 // Force error if not const or doesn't fit
+	return bound
+}
+func (_XdrVec_25_TimeSlicedPeerData) XdrCheckLen(length uint32) {
+	if length > uint32(25) {
+		XdrPanic("_XdrVec_25_TimeSlicedPeerData length %d exceeds bound 25", length)
+	} else if int(length) < 0 {
+		XdrPanic("_XdrVec_25_TimeSlicedPeerData length %d exceeds max int", length)
+	}
+}
+func (v _XdrVec_25_TimeSlicedPeerData) GetVecLen() uint32 { return uint32(len(v)) }
+func (v *_XdrVec_25_TimeSlicedPeerData) SetVecLen(length uint32) {
+	v.XdrCheckLen(length)
+	if int(length) <= cap(*v) {
+		if int(length) != len(*v) {
+			*v = (*v)[:int(length)]
+		}
+		return
+	}
+	newcap := 2 * cap(*v)
+	if newcap < int(length) { // also catches overflow where 2*cap < 0
+		newcap = int(length)
+	} else if bound := uint(25); uint(newcap) > bound {
+		if int(bound) < 0 {
+			bound = ^uint(0) >> 1
+		}
+		newcap = int(bound)
+	}
+	nv := make([]TimeSlicedPeerData, int(length), newcap)
+	copy(nv, *v)
+	*v = nv
+}
+func (v *_XdrVec_25_TimeSlicedPeerData) XdrMarshalN(x XDR, name string, n uint32) {
+	v.XdrCheckLen(n)
+	for i := 0; i < int(n); i++ {
+		if i >= len(*v) {
+			v.SetVecLen(uint32(i + 1))
+		}
+		XDR_TimeSlicedPeerData(&(*v)[i]).XdrMarshal(x, x.Sprintf("%s[%d]", name, i))
+	}
+	if int(n) < len(*v) {
+		*v = (*v)[:int(n)]
+	}
+}
+func (v *_XdrVec_25_TimeSlicedPeerData) XdrRecurse(x XDR, name string) {
+	size := XdrSize{Size: uint32(len(*v)), Bound: 25}
+	x.Marshal(name, &size)
+	v.XdrMarshalN(x, name, size.Size)
+}
+func (_XdrVec_25_TimeSlicedPeerData) XdrTypeName() string              { return "TimeSlicedPeerData<>" }
+func (v *_XdrVec_25_TimeSlicedPeerData) XdrPointer() interface{}       { return (*[]TimeSlicedPeerData)(v) }
+func (v _XdrVec_25_TimeSlicedPeerData) XdrValue() interface{}          { return ([]TimeSlicedPeerData)(v) }
+func (v *_XdrVec_25_TimeSlicedPeerData) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+
+type XdrType_TimeSlicedPeerDataList struct {
+	*_XdrVec_25_TimeSlicedPeerData
+}
+
+func XDR_TimeSlicedPeerDataList(v *TimeSlicedPeerDataList) XdrType_TimeSlicedPeerDataList {
+	return XdrType_TimeSlicedPeerDataList{(*_XdrVec_25_TimeSlicedPeerData)(v)}
+}
+func (XdrType_TimeSlicedPeerDataList) XdrTypeName() string  { return "TimeSlicedPeerDataList" }
+func (v XdrType_TimeSlicedPeerDataList) XdrUnwrap() XdrType { return v._XdrVec_25_TimeSlicedPeerData }
+
 type XdrType_TopologyResponseBodyV0 = *TopologyResponseBodyV0
 
 func (v *TopologyResponseBodyV0) XdrPointer() interface{}       { return v }
@@ -13777,9 +14151,26 @@ func (v *TopologyResponseBodyV1) XdrRecurse(x XDR, name string) {
 }
 func XDR_TopologyResponseBodyV1(v *TopologyResponseBodyV1) *TopologyResponseBodyV1 { return v }
 
+type XdrType_TopologyResponseBodyV2 = *TopologyResponseBodyV2
+
+func (v *TopologyResponseBodyV2) XdrPointer() interface{}       { return v }
+func (TopologyResponseBodyV2) XdrTypeName() string              { return "TopologyResponseBodyV2" }
+func (v TopologyResponseBodyV2) XdrValue() interface{}          { return v }
+func (v *TopologyResponseBodyV2) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *TopologyResponseBodyV2) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	x.Marshal(x.Sprintf("%sinboundPeers", name), XDR_TimeSlicedPeerDataList(&v.InboundPeers))
+	x.Marshal(x.Sprintf("%soutboundPeers", name), XDR_TimeSlicedPeerDataList(&v.OutboundPeers))
+	x.Marshal(x.Sprintf("%snodeData", name), XDR_TimeSlicedNodeData(&v.NodeData))
+}
+func XDR_TopologyResponseBodyV2(v *TopologyResponseBodyV2) *TopologyResponseBodyV2 { return v }
+
 var _XdrTags_SurveyResponseBody = map[int32]bool{
 	XdrToI32(SURVEY_TOPOLOGY_RESPONSE_V0): true,
 	XdrToI32(SURVEY_TOPOLOGY_RESPONSE_V1): true,
+	XdrToI32(SURVEY_TOPOLOGY_RESPONSE_V2): true,
 }
 
 func (_ SurveyResponseBody) XdrValidTags() map[int32]bool {
@@ -13815,9 +14206,24 @@ func (u *SurveyResponseBody) TopologyResponseBodyV1() *TopologyResponseBodyV1 {
 		return nil
 	}
 }
+func (u *SurveyResponseBody) TopologyResponseBodyV2() *TopologyResponseBodyV2 {
+	switch u.Type {
+	case SURVEY_TOPOLOGY_RESPONSE_V2:
+		if v, ok := u._u.(*TopologyResponseBodyV2); ok {
+			return v
+		} else {
+			var zero TopologyResponseBodyV2
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("SurveyResponseBody.TopologyResponseBodyV2 accessed when Type == %v", u.Type)
+		return nil
+	}
+}
 func (u SurveyResponseBody) XdrValid() bool {
 	switch u.Type {
-	case SURVEY_TOPOLOGY_RESPONSE_V0, SURVEY_TOPOLOGY_RESPONSE_V1:
+	case SURVEY_TOPOLOGY_RESPONSE_V0, SURVEY_TOPOLOGY_RESPONSE_V1, SURVEY_TOPOLOGY_RESPONSE_V2:
 		return true
 	}
 	return false
@@ -13834,6 +14240,8 @@ func (u *SurveyResponseBody) XdrUnionBody() XdrType {
 		return XDR_TopologyResponseBodyV0(u.TopologyResponseBodyV0())
 	case SURVEY_TOPOLOGY_RESPONSE_V1:
 		return XDR_TopologyResponseBodyV1(u.TopologyResponseBodyV1())
+	case SURVEY_TOPOLOGY_RESPONSE_V2:
+		return XDR_TopologyResponseBodyV2(u.TopologyResponseBodyV2())
 	}
 	return nil
 }
@@ -13843,6 +14251,8 @@ func (u *SurveyResponseBody) XdrUnionBodyName() string {
 		return "TopologyResponseBodyV0"
 	case SURVEY_TOPOLOGY_RESPONSE_V1:
 		return "TopologyResponseBodyV1"
+	case SURVEY_TOPOLOGY_RESPONSE_V2:
+		return "TopologyResponseBodyV2"
 	}
 	return ""
 }
@@ -13864,6 +14274,9 @@ func (u *SurveyResponseBody) XdrRecurse(x XDR, name string) {
 		return
 	case SURVEY_TOPOLOGY_RESPONSE_V1:
 		x.Marshal(x.Sprintf("%stopologyResponseBodyV1", name), XDR_TopologyResponseBodyV1(u.TopologyResponseBodyV1()))
+		return
+	case SURVEY_TOPOLOGY_RESPONSE_V2:
+		x.Marshal(x.Sprintf("%stopologyResponseBodyV2", name), XDR_TopologyResponseBodyV2(u.TopologyResponseBodyV2()))
 		return
 	}
 	XdrPanic("invalid Type (%v) in SurveyResponseBody", u.Type)
@@ -14033,26 +14446,30 @@ func (v _XdrVec_100_PeerAddress) XdrValue() interface{}          { return ([]Pee
 func (v *_XdrVec_100_PeerAddress) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
 
 var _XdrTags_StellarMessage = map[int32]bool{
-	XdrToI32(ERROR_MSG):          true,
-	XdrToI32(HELLO):              true,
-	XdrToI32(AUTH):               true,
-	XdrToI32(DONT_HAVE):          true,
-	XdrToI32(GET_PEERS):          true,
-	XdrToI32(PEERS):              true,
-	XdrToI32(GET_TX_SET):         true,
-	XdrToI32(TX_SET):             true,
-	XdrToI32(GENERALIZED_TX_SET): true,
-	XdrToI32(TRANSACTION):        true,
-	XdrToI32(SURVEY_REQUEST):     true,
-	XdrToI32(SURVEY_RESPONSE):    true,
-	XdrToI32(GET_SCP_QUORUMSET):  true,
-	XdrToI32(SCP_QUORUMSET):      true,
-	XdrToI32(SCP_MESSAGE):        true,
-	XdrToI32(GET_SCP_STATE):      true,
-	XdrToI32(SEND_MORE):          true,
-	XdrToI32(SEND_MORE_EXTENDED): true,
-	XdrToI32(FLOOD_ADVERT):       true,
-	XdrToI32(FLOOD_DEMAND):       true,
+	XdrToI32(ERROR_MSG):                           true,
+	XdrToI32(HELLO):                               true,
+	XdrToI32(AUTH):                                true,
+	XdrToI32(DONT_HAVE):                           true,
+	XdrToI32(GET_PEERS):                           true,
+	XdrToI32(PEERS):                               true,
+	XdrToI32(GET_TX_SET):                          true,
+	XdrToI32(TX_SET):                              true,
+	XdrToI32(GENERALIZED_TX_SET):                  true,
+	XdrToI32(TRANSACTION):                         true,
+	XdrToI32(SURVEY_REQUEST):                      true,
+	XdrToI32(SURVEY_RESPONSE):                     true,
+	XdrToI32(TIME_SLICED_SURVEY_REQUEST):          true,
+	XdrToI32(TIME_SLICED_SURVEY_RESPONSE):         true,
+	XdrToI32(TIME_SLICED_SURVEY_START_COLLECTING): true,
+	XdrToI32(TIME_SLICED_SURVEY_STOP_COLLECTING):  true,
+	XdrToI32(GET_SCP_QUORUMSET):                   true,
+	XdrToI32(SCP_QUORUMSET):                       true,
+	XdrToI32(SCP_MESSAGE):                         true,
+	XdrToI32(GET_SCP_STATE):                       true,
+	XdrToI32(SEND_MORE):                           true,
+	XdrToI32(SEND_MORE_EXTENDED):                  true,
+	XdrToI32(FLOOD_ADVERT):                        true,
+	XdrToI32(FLOOD_DEMAND):                        true,
 }
 
 func (_ StellarMessage) XdrValidTags() map[int32]bool {
@@ -14223,6 +14640,66 @@ func (u *StellarMessage) SignedSurveyResponseMessage() *SignedSurveyResponseMess
 		return nil
 	}
 }
+func (u *StellarMessage) SignedTimeSlicedSurveyRequestMessage() *SignedTimeSlicedSurveyRequestMessage {
+	switch u.Type {
+	case TIME_SLICED_SURVEY_REQUEST:
+		if v, ok := u._u.(*SignedTimeSlicedSurveyRequestMessage); ok {
+			return v
+		} else {
+			var zero SignedTimeSlicedSurveyRequestMessage
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("StellarMessage.SignedTimeSlicedSurveyRequestMessage accessed when Type == %v", u.Type)
+		return nil
+	}
+}
+func (u *StellarMessage) SignedTimeSlicedSurveyResponseMessage() *SignedTimeSlicedSurveyResponseMessage {
+	switch u.Type {
+	case TIME_SLICED_SURVEY_RESPONSE:
+		if v, ok := u._u.(*SignedTimeSlicedSurveyResponseMessage); ok {
+			return v
+		} else {
+			var zero SignedTimeSlicedSurveyResponseMessage
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("StellarMessage.SignedTimeSlicedSurveyResponseMessage accessed when Type == %v", u.Type)
+		return nil
+	}
+}
+func (u *StellarMessage) SignedTimeSlicedSurveyStartCollectingMessage() *SignedTimeSlicedSurveyStartCollectingMessage {
+	switch u.Type {
+	case TIME_SLICED_SURVEY_START_COLLECTING:
+		if v, ok := u._u.(*SignedTimeSlicedSurveyStartCollectingMessage); ok {
+			return v
+		} else {
+			var zero SignedTimeSlicedSurveyStartCollectingMessage
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("StellarMessage.SignedTimeSlicedSurveyStartCollectingMessage accessed when Type == %v", u.Type)
+		return nil
+	}
+}
+func (u *StellarMessage) SignedTimeSlicedSurveyStopCollectingMessage() *SignedTimeSlicedSurveyStopCollectingMessage {
+	switch u.Type {
+	case TIME_SLICED_SURVEY_STOP_COLLECTING:
+		if v, ok := u._u.(*SignedTimeSlicedSurveyStopCollectingMessage); ok {
+			return v
+		} else {
+			var zero SignedTimeSlicedSurveyStopCollectingMessage
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("StellarMessage.SignedTimeSlicedSurveyStopCollectingMessage accessed when Type == %v", u.Type)
+		return nil
+	}
+}
 func (u *StellarMessage) QSetHash() *Uint256 {
 	switch u.Type {
 	case GET_SCP_QUORUMSET:
@@ -14347,7 +14824,7 @@ func (u *StellarMessage) FloodDemand() *FloodDemand {
 }
 func (u StellarMessage) XdrValid() bool {
 	switch u.Type {
-	case ERROR_MSG, HELLO, AUTH, DONT_HAVE, GET_PEERS, PEERS, GET_TX_SET, TX_SET, GENERALIZED_TX_SET, TRANSACTION, SURVEY_REQUEST, SURVEY_RESPONSE, GET_SCP_QUORUMSET, SCP_QUORUMSET, SCP_MESSAGE, GET_SCP_STATE, SEND_MORE, SEND_MORE_EXTENDED, FLOOD_ADVERT, FLOOD_DEMAND:
+	case ERROR_MSG, HELLO, AUTH, DONT_HAVE, GET_PEERS, PEERS, GET_TX_SET, TX_SET, GENERALIZED_TX_SET, TRANSACTION, SURVEY_REQUEST, SURVEY_RESPONSE, TIME_SLICED_SURVEY_REQUEST, TIME_SLICED_SURVEY_RESPONSE, TIME_SLICED_SURVEY_START_COLLECTING, TIME_SLICED_SURVEY_STOP_COLLECTING, GET_SCP_QUORUMSET, SCP_QUORUMSET, SCP_MESSAGE, GET_SCP_STATE, SEND_MORE, SEND_MORE_EXTENDED, FLOOD_ADVERT, FLOOD_DEMAND:
 		return true
 	}
 	return false
@@ -14384,6 +14861,14 @@ func (u *StellarMessage) XdrUnionBody() XdrType {
 		return XDR_SignedSurveyRequestMessage(u.SignedSurveyRequestMessage())
 	case SURVEY_RESPONSE:
 		return XDR_SignedSurveyResponseMessage(u.SignedSurveyResponseMessage())
+	case TIME_SLICED_SURVEY_REQUEST:
+		return XDR_SignedTimeSlicedSurveyRequestMessage(u.SignedTimeSlicedSurveyRequestMessage())
+	case TIME_SLICED_SURVEY_RESPONSE:
+		return XDR_SignedTimeSlicedSurveyResponseMessage(u.SignedTimeSlicedSurveyResponseMessage())
+	case TIME_SLICED_SURVEY_START_COLLECTING:
+		return XDR_SignedTimeSlicedSurveyStartCollectingMessage(u.SignedTimeSlicedSurveyStartCollectingMessage())
+	case TIME_SLICED_SURVEY_STOP_COLLECTING:
+		return XDR_SignedTimeSlicedSurveyStopCollectingMessage(u.SignedTimeSlicedSurveyStopCollectingMessage())
 	case GET_SCP_QUORUMSET:
 		return XDR_Uint256(u.QSetHash())
 	case SCP_QUORUMSET:
@@ -14429,6 +14914,14 @@ func (u *StellarMessage) XdrUnionBodyName() string {
 		return "SignedSurveyRequestMessage"
 	case SURVEY_RESPONSE:
 		return "SignedSurveyResponseMessage"
+	case TIME_SLICED_SURVEY_REQUEST:
+		return "SignedTimeSlicedSurveyRequestMessage"
+	case TIME_SLICED_SURVEY_RESPONSE:
+		return "SignedTimeSlicedSurveyResponseMessage"
+	case TIME_SLICED_SURVEY_START_COLLECTING:
+		return "SignedTimeSlicedSurveyStartCollectingMessage"
+	case TIME_SLICED_SURVEY_STOP_COLLECTING:
+		return "SignedTimeSlicedSurveyStopCollectingMessage"
 	case GET_SCP_QUORUMSET:
 		return "QSetHash"
 	case SCP_QUORUMSET:
@@ -14495,6 +14988,18 @@ func (u *StellarMessage) XdrRecurse(x XDR, name string) {
 		return
 	case SURVEY_RESPONSE:
 		x.Marshal(x.Sprintf("%ssignedSurveyResponseMessage", name), XDR_SignedSurveyResponseMessage(u.SignedSurveyResponseMessage()))
+		return
+	case TIME_SLICED_SURVEY_REQUEST:
+		x.Marshal(x.Sprintf("%ssignedTimeSlicedSurveyRequestMessage", name), XDR_SignedTimeSlicedSurveyRequestMessage(u.SignedTimeSlicedSurveyRequestMessage()))
+		return
+	case TIME_SLICED_SURVEY_RESPONSE:
+		x.Marshal(x.Sprintf("%ssignedTimeSlicedSurveyResponseMessage", name), XDR_SignedTimeSlicedSurveyResponseMessage(u.SignedTimeSlicedSurveyResponseMessage()))
+		return
+	case TIME_SLICED_SURVEY_START_COLLECTING:
+		x.Marshal(x.Sprintf("%ssignedTimeSlicedSurveyStartCollectingMessage", name), XDR_SignedTimeSlicedSurveyStartCollectingMessage(u.SignedTimeSlicedSurveyStartCollectingMessage()))
+		return
+	case TIME_SLICED_SURVEY_STOP_COLLECTING:
+		x.Marshal(x.Sprintf("%ssignedTimeSlicedSurveyStopCollectingMessage", name), XDR_SignedTimeSlicedSurveyStopCollectingMessage(u.SignedTimeSlicedSurveyStopCollectingMessage()))
 		return
 	case GET_SCP_QUORUMSET:
 		x.Marshal(x.Sprintf("%sqSetHash", name), XDR_Uint256(u.QSetHash()))
