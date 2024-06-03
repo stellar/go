@@ -110,8 +110,9 @@ type CaptiveStellarCore struct {
 	lastLedger         *uint32 // end of current segment if offline, nil if online
 	previousLedgerHash *string
 
-	config            CaptiveCoreConfig
-	stellarCoreClient *stellarcore.Client
+	config             CaptiveCoreConfig
+	stellarCoreClient  *stellarcore.Client
+	captiveCoreVersion string // Updates when captive-core restarts
 }
 
 // CaptiveCoreConfig contains all the parameters required to create a CaptiveStellarCore instance
@@ -210,6 +211,11 @@ func NewCaptive(config CaptiveCoreConfig) (*CaptiveStellarCore, error) {
 			},
 			URL: fmt.Sprintf("http://localhost:%d", config.Toml.HTTPPort),
 		}
+
+		err = c.setCoreVersion()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return c, nil
@@ -243,6 +249,17 @@ func (c *CaptiveStellarCore) coreVersionMetric() float64 {
 	}
 
 	return float64(info.Info.ProtocolVersion)
+}
+
+func (c *CaptiveStellarCore) setCoreVersion() error {
+
+	info, err := c.stellarCoreClient.Info(c.config.Context)
+	if err != nil {
+		return err
+	}
+
+	c.captiveCoreVersion = info.Info.Build
+	return nil
 }
 
 func (c *CaptiveStellarCore) registerMetrics(registry *prometheus.Registry, namespace string) {
