@@ -61,6 +61,9 @@ func (s *System) RegisterMetrics(registry *prometheus.Registry) {
 
 func (r *System) Shutdown() {
 	r.cancel()
+	if err := r.HistoryQ.Close(); err != nil {
+		log.Errorf("reaper could not close db connection: %s", err)
+	}
 }
 
 func (r *System) runOnce(ctx context.Context) {
