@@ -96,7 +96,7 @@ func TestGCSPutFile(t *testing.T) {
 	writerTo := &writerToRecorder{
 		WriterTo: bytes.NewReader(content),
 	}
-	err = store.PutFile(context.Background(), "file.txt", writerTo)
+	err = store.PutFile(context.Background(), "file.txt", writerTo, nil)
 	require.NoError(t, err)
 	require.Equal(t, int64(len(content)), writerTo.total)
 
@@ -104,17 +104,25 @@ func TestGCSPutFile(t *testing.T) {
 	require.NoError(t, err)
 	requireReaderContentEquals(t, reader, content)
 
+	metadata, err := store.GetFileMetadata(context.Background(), "file.txt")
+	require.NoError(t, err)
+	require.Equal(t, map[string]string(nil), metadata)
+
 	otherContent := []byte("other text")
 	writerTo = &writerToRecorder{
 		WriterTo: bytes.NewReader(otherContent),
 	}
-	err = store.PutFile(context.Background(), "file.txt", writerTo)
+	err = store.PutFile(context.Background(), "file.txt", writerTo, nil)
 	require.NoError(t, err)
 	require.Equal(t, int64(len(otherContent)), writerTo.total)
 
 	reader, err = store.GetFile(context.Background(), "file.txt")
 	require.NoError(t, err)
 	requireReaderContentEquals(t, reader, otherContent)
+
+	metadata, err = store.GetFileMetadata(context.Background(), "file.txt")
+	require.NoError(t, err)
+	require.Equal(t, map[string]string(nil), metadata)
 }
 
 func TestGCSPutFileIfNotExists(t *testing.T) {
@@ -140,7 +148,7 @@ func TestGCSPutFileIfNotExists(t *testing.T) {
 	writerTo := &writerToRecorder{
 		WriterTo: bytes.NewReader(newContent),
 	}
-	ok, err := store.PutFileIfNotExists(context.Background(), "file.txt", writerTo)
+	ok, err := store.PutFileIfNotExists(context.Background(), "file.txt", writerTo, nil)
 	require.NoError(t, err)
 	require.False(t, ok)
 	require.Equal(t, int64(len(newContent)), writerTo.total)
@@ -149,10 +157,14 @@ func TestGCSPutFileIfNotExists(t *testing.T) {
 	require.NoError(t, err)
 	requireReaderContentEquals(t, reader, existingContent)
 
+	metadata, err := store.GetFileMetadata(context.Background(), "file.txt")
+	require.NoError(t, err)
+	require.Equal(t, map[string]string(nil), metadata)
+
 	writerTo = &writerToRecorder{
 		WriterTo: bytes.NewReader(newContent),
 	}
-	ok, err = store.PutFileIfNotExists(context.Background(), "other-file.txt", writerTo)
+	ok, err = store.PutFileIfNotExists(context.Background(), "other-file.txt", writerTo, nil)
 	require.NoError(t, err)
 	require.True(t, ok)
 	require.Equal(t, int64(len(newContent)), writerTo.total)
@@ -160,6 +172,142 @@ func TestGCSPutFileIfNotExists(t *testing.T) {
 	reader, err = store.GetFile(context.Background(), "other-file.txt")
 	require.NoError(t, err)
 	requireReaderContentEquals(t, reader, newContent)
+
+	metadata, err = store.GetFileMetadata(context.Background(), "other-file.txt")
+	require.NoError(t, err)
+	require.Equal(t, map[string]string(nil), metadata)
+}
+
+func TestGCSPutFileWithMetadata(t *testing.T) {
+	server := fakestorage.NewServer([]fakestorage.Object{})
+	defer server.Stop()
+	server.CreateBucketWithOpts(fakestorage.CreateBucketOpts{
+		Name:                  "test-bucket",
+		VersioningEnabled:     false,
+		DefaultEventBasedHold: false,
+	})
+
+	store, err := FromGCSClient(context.Background(), server.Client(), "test-bucket/objects", "testnet")
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		require.NoError(t, store.Close())
+	})
+
+	// Initial metadata
+	metadataObj := MetaData{StartLedger: 1234,
+		EndLedger:            1234,
+		StartLedgerCloseTime: 1234,
+		EndLedgerCloseTime:   1234,
+		Network:              "testnet",
+		CompressionType:      "zstd",
+		ProtocolVersion:      21,
+		CoreVersion:          "v1.2.3",
+		Version:              "1.0.0",
+	}
+
+	content := []byte("inside the file")
+	writerTo := &writerToRecorder{
+		WriterTo: bytes.NewReader(content),
+	}
+	err = store.PutFile(context.Background(), "file.txt", writerTo, metadataObj.ToMap())
+	require.NoError(t, err)
+	require.Equal(t, int64(len(content)), writerTo.total)
+
+	metadata, err := store.GetFileMetadata(context.Background(), "file.txt")
+	require.NoError(t, err)
+	require.Equal(t, metadataObj.ToMap(), metadata)
+
+	// Update metadata
+	modifiedMetadataObj := MetaData{
+		StartLedger:          5678,
+		EndLedger:            6789,
+		StartLedgerCloseTime: 1622547800,
+		EndLedgerCloseTime:   1622548900,
+		Network:              "mainnet",
+		CompressionType:      "gzip",
+		ProtocolVersion:      23,
+		CoreVersion:          "v1.4.0",
+		Version:              "2.0.0",
+	}
+
+	otherContent := []byte("other text")
+	writerTo = &writerToRecorder{
+		WriterTo: bytes.NewReader(otherContent),
+	}
+	err = store.PutFile(context.Background(), "file.txt", writerTo, modifiedMetadataObj.ToMap())
+	require.NoError(t, err)
+	require.Equal(t, int64(len(otherContent)), writerTo.total)
+
+	metadata, err = store.GetFileMetadata(context.Background(), "file.txt")
+	require.NoError(t, err)
+	require.Equal(t, modifiedMetadataObj.ToMap(), metadata)
+}
+
+func TestGCSPutFileIfNotExistsWithMetadata(t *testing.T) {
+	existingContent := []byte("inside the file")
+	server := fakestorage.NewServer([]fakestorage.Object{
+		{
+			ObjectAttrs: fakestorage.ObjectAttrs{
+				BucketName: "test-bucket",
+			},
+			Content: existingContent,
+		},
+	})
+	defer server.Stop()
+
+	store, err := FromGCSClient(context.Background(), server.Client(), "test-bucket/objects", "testnet")
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		require.NoError(t, store.Close())
+	})
+
+	metadataObj := MetaData{StartLedger: 1234,
+		EndLedger:            1234,
+		StartLedgerCloseTime: 1234,
+		EndLedgerCloseTime:   1234,
+		Network:              "testnet",
+		CompressionType:      "zstd",
+		ProtocolVersion:      21,
+		CoreVersion:          "v1.2.3",
+		Version:              "1.0.0",
+	}
+
+	newContent := []byte("overwrite the file")
+	writerTo := &writerToRecorder{
+		WriterTo: bytes.NewReader(newContent),
+	}
+	ok, err := store.PutFileIfNotExists(context.Background(), "file.txt", writerTo, metadataObj.ToMap())
+	require.NoError(t, err)
+	require.True(t, ok)
+	require.Equal(t, int64(len(newContent)), writerTo.total)
+
+	metadata, err := store.GetFileMetadata(context.Background(), "file.txt")
+	require.NoError(t, err)
+	require.Equal(t, metadataObj.ToMap(), metadata)
+
+	modifiedMetadataObj := MetaData{
+		StartLedger:          5678,
+		EndLedger:            6789,
+		StartLedgerCloseTime: 1622547800,
+		EndLedgerCloseTime:   1622548900,
+		Network:              "mainnet",
+		CompressionType:      "gzip",
+		ProtocolVersion:      23,
+		CoreVersion:          "v1.4.0",
+		Version:              "2.0.0",
+	}
+
+	writerTo = &writerToRecorder{
+		WriterTo: bytes.NewReader(newContent),
+	}
+	ok, err = store.PutFileIfNotExists(context.Background(), "file.txt", writerTo, modifiedMetadataObj.ToMap())
+	require.NoError(t, err)
+	require.False(t, ok)
+	require.Equal(t, int64(len(newContent)), writerTo.total)
+
+	metadata, err = store.GetFileMetadata(context.Background(), "file.txt")
+	require.NoError(t, err)
+	require.Equal(t, metadataObj.ToMap(), metadata)
 }
 
 func TestGCSGetNonExistentFile(t *testing.T) {
@@ -183,6 +331,10 @@ func TestGCSGetNonExistentFile(t *testing.T) {
 
 	_, err = store.GetFile(context.Background(), "other-file.txt")
 	require.ErrorIs(t, err, os.ErrNotExist)
+
+	metadata, err := store.GetFileMetadata(context.Background(), "other-file.txt")
+	require.ErrorIs(t, err, os.ErrNotExist)
+	require.Equal(t, map[string]string(nil), metadata)
 }
 
 func TestGCSGetFileValidatesCRC32C(t *testing.T) {

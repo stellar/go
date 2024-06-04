@@ -14,9 +14,10 @@ type DataStoreConfig struct {
 
 // DataStore defines an interface for interacting with data storage
 type DataStore interface {
+	GetFileMetadata(ctx context.Context, path string) (map[string]string, error)
 	GetFile(ctx context.Context, path string) (io.ReadCloser, error)
-	PutFile(ctx context.Context, path string, in io.WriterTo) error
-	PutFileIfNotExists(ctx context.Context, path string, in io.WriterTo) (bool, error)
+	PutFile(ctx context.Context, path string, in io.WriterTo, metaData map[string]string) error
+	PutFileIfNotExists(ctx context.Context, path string, in io.WriterTo, metaData map[string]string) (bool, error)
 	Exists(ctx context.Context, path string) (bool, error)
 	Size(ctx context.Context, path string) (int64, error)
 	Close() error

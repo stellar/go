@@ -86,6 +86,7 @@ func Test_createCaptiveCoreDefaultConfig(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			tt.config.CaptiveCoreTomlParams.UseDB = true
 			e := setCaptiveCoreConfiguration(&tt.config,
 				ApplyOptions{RequireCaptiveCoreFullConfig: true})
 			if tt.errStr == "" {
@@ -192,6 +193,7 @@ func Test_createCaptiveCoreConfig(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			tt.config.CaptiveCoreTomlParams.UseDB = true
 			e := setCaptiveCoreConfiguration(&tt.config,
 				ApplyOptions{RequireCaptiveCoreFullConfig: tt.requireCaptiveCoreConfig})
 			if tt.errStr == "" {

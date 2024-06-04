@@ -95,7 +95,7 @@ func (u Uploader) Upload(ctx context.Context, metaArchive *LedgerMetaArchive) er
 	writerTo := &writerToRecorder{
 		WriterTo: xdrEncoder,
 	}
-	ok, err := u.dataStore.PutFileIfNotExists(ctx, metaArchive.ObjectKey, writerTo)
+	ok, err := u.dataStore.PutFileIfNotExists(ctx, metaArchive.ObjectKey, writerTo, metaArchive.metaData.ToMap())
 	if err != nil {
 		return errors.Wrapf(err, "error uploading %s", metaArchive.ObjectKey)
 	}

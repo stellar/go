@@ -16,6 +16,7 @@ import (
 	"github.com/stellar/go/support/compressxdr"
 	"github.com/stellar/go/support/datastore"
 	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/xdr"
 )
 
 var testShutdownDelayTime = 300 * time.Millisecond
@@ -45,6 +46,39 @@ func (s *UploaderSuite) TestUpload() {
 	s.testUpload(true)
 }
 
+func (s *UploaderSuite) TestUploadWithMetadata() {
+	key, start, end := "test-1-100", uint32(1), uint32(100)
+	archive := NewLedgerMetaArchive(key, start, end)
+	for i := start; i <= end; i++ {
+		_ = archive.Data.AddLedger(createLedgerCloseMeta(i))
+	}
+	metadata := datastore.MetaData{
+		StartLedger:          start,
+		EndLedger:            end,
+		StartLedgerCloseTime: 123456789,
+		EndLedgerCloseTime:   987654321,
+		ProtocolVersion:      3,
+		CoreVersion:          "v1.2.3",
+		Network:              "testnet",
+		CompressionType:      "gzip",
+		Version:              "1.0.0",
+	}
+	archive.metaData = metadata
+	var capturedBuf bytes.Buffer
+	s.mockDataStore.On("PutFileIfNotExists", mock.Anything, key, mock.Anything, metadata.ToMap()).
+		Run(func(args mock.Arguments) {
+			_ = args.Get(1).(string)
+			_, err := args.Get(2).(io.WriterTo).WriteTo(&capturedBuf)
+			s.Require().NoError(err)
+		}).Return(true, nil).Once()
+
+	registry := prometheus.NewRegistry()
+	queue := NewUploadQueue(1, registry)
+	dataUploader := NewUploader(&s.mockDataStore, queue, registry)
+	s.Require().NoError(dataUploader.Upload(context.Background(), archive))
+
+}
+
 func (s *UploaderSuite) testUpload(putOkReturnVal bool) {
 	key, start, end := "test-1-100", uint32(1), uint32(100)
 	archive := NewLedgerMetaArchive(key, start, end)
@@ -54,7 +88,7 @@ func (s *UploaderSuite) testUpload(putOkReturnVal bool) {
 
 	var capturedBuf bytes.Buffer
 	var capturedKey string
-	s.mockDataStore.On("PutFileIfNotExists", mock.Anything, key, mock.Anything).
+	s.mockDataStore.On("PutFileIfNotExists", mock.Anything, key, mock.Anything, datastore.MetaData{}.ToMap()).
 		Run(func(args mock.Arguments) {
 			capturedKey = args.Get(1).(string)
 			_, err := args.Get(2).(io.WriterTo).WriteTo(&capturedBuf)
@@ -167,7 +201,7 @@ func (s *UploaderSuite) testUploadPutError(putOkReturnVal bool) {
 	archive := NewLedgerMetaArchive(key, start, end)
 
 	s.mockDataStore.On("PutFileIfNotExists", context.Background(), key,
-		mock.Anything).Return(putOkReturnVal, errors.New("error in PutFileIfNotExists")).Once()
+		mock.Anything, datastore.MetaData{}.ToMap()).Return(putOkReturnVal, errors.New("error in PutFileIfNotExists")).Once()
 
 	registry := prometheus.NewRegistry()
 	queue := NewUploadQueue(1, registry)
@@ -211,7 +245,7 @@ func (s *UploaderSuite) TestRunUntilQueueClose() {
 	for i := 1; i <= 100; i++ {
 		key := fmt.Sprintf("test-%d", i)
 		cur := s.mockDataStore.On("PutFileIfNotExists", mock.Anything,
-			key, mock.Anything).Return(true, nil).Once()
+			key, mock.Anything, mock.Anything).Return(true, nil).Once()
 		if prev != nil {
 			cur.NotBefore(prev)
 		}
@@ -242,11 +276,11 @@ func (s *UploaderSuite) TestRunContextCancel() {
 	registry := prometheus.NewRegistry()
 	queue := NewUploadQueue(1, registry)
 
-	first := s.mockDataStore.On("PutFileIfNotExists", mock.Anything, "test", mock.Anything).
+	first := s.mockDataStore.On("PutFileIfNotExists", mock.Anything, "test", mock.Anything, datastore.MetaData{}.ToMap()).
 		Return(true, nil).Once().Run(func(args mock.Arguments) {
 		cancel()
 	})
-	s.mockDataStore.On("PutFileIfNotExists", mock.Anything, "test1", mock.Anything).
+	s.mockDataStore.On("PutFileIfNotExists", mock.Anything, "test1", mock.Anything, datastore.MetaData{}.ToMap()).
 		Return(true, nil).Once().NotBefore(first).Run(func(args mock.Arguments) {
 		ctxArg := args.Get(0).(context.Context)
 		s.Require().NoError(ctxArg.Err())
@@ -273,9 +307,20 @@ func (s *UploaderSuite) TestRunUploadError() {
 	s.Require().NoError(queue.Enqueue(s.ctx, NewLedgerMetaArchive("test1", 2, 2)))
 
 	s.mockDataStore.On("PutFileIfNotExists", mock.Anything, "test",
-		mock.Anything).Return(false, errors.New("Put error")).Once()
+		mock.Anything, mock.Anything).Return(false, errors.New("Put error")).Once()
 
 	dataUploader := NewUploader(&s.mockDataStore, queue, registry)
 	err := dataUploader.Run(context.Background(), testShutdownDelayTime)
 	s.Require().Equal("error uploading test: Put error", err.Error())
+}
+
+func NewLedgerMetaArchive(key string, startSeq uint32, endSeq uint32) *LedgerMetaArchive {
+	return &LedgerMetaArchive{
+		ObjectKey: key,
+		Data: xdr.LedgerCloseMetaBatch{
+			StartSequence: xdr.Uint32(startSeq),
+			EndSequence:   xdr.Uint32(endSeq),
+		},
+		metaData: datastore.MetaData{},
+	}
 }

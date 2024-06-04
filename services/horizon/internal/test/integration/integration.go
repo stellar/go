@@ -441,7 +441,7 @@ func (i *Test) getDefaultIngestArgs(postgres *dbtest.DB) map[string]string {
 		"stellar-core-binary-path":  i.coreConfig.binaryPath,
 		"captive-core-config-path":  i.coreConfig.configPath,
 		"captive-core-http-port":    "21626",
-		"captive-core-use-db":       strconv.FormatBool(i.coreConfig.useDB),
+		"captive-core-use-db":       "true",
 		"captive-core-storage-path": i.coreConfig.storagePath,
 		"ingest":                    "true"})
 }

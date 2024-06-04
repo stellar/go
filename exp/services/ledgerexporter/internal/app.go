@@ -37,7 +37,8 @@ const (
 )
 
 var (
-	logger = log.New().WithField("service", "ledger-exporter")
+	logger  = log.New().WithField("service", "ledger-exporter")
+	version = "develop"
 )
 
 func NewDataAlreadyExportedError(Start uint32, End uint32) *DataAlreadyExportedError {
@@ -95,13 +96,15 @@ func (a *App) init(ctx context.Context) error {
 	var err error
 	var archive historyarchive.ArchiveInterface
 
+	logger.Infof("Starting Ledger Exporter with version %s", version)
+
 	registry := prometheus.NewRegistry()
 	registry.MustRegister(
 		collectors.NewProcessCollector(collectors.ProcessCollectorOpts{Namespace: "ledger_exporter"}),
 		collectors.NewGoCollector(),
 	)
 
-	if a.config, err = NewConfig(ctx, a.flags); err != nil {
+	if a.config, err = NewConfig(a.flags); err != nil {
 		return errors.Wrap(err, "Could not load configuration")
 	}
 	if archive, err = datastore.CreateHistoryArchiveFromNetworkName(ctx, a.config.Network); err != nil {
@@ -126,7 +129,7 @@ func (a *App) init(ctx context.Context) error {
 	}
 
 	queue := NewUploadQueue(uploadQueueCapacity, registry)
-	if a.exportManager, err = NewExportManager(a.config.LedgerBatchConfig, a.ledgerBackend, queue, registry); err != nil {
+	if a.exportManager, err = NewExportManager(a.config, a.ledgerBackend, queue, registry); err != nil {
 		return err
 	}
 	a.uploader = NewUploader(a.dataStore, queue, registry)
@@ -256,7 +259,7 @@ func (a *App) Run() {
 // newLedgerBackend Creates and initializes captive core ledger backend
 // Currently, only supports captive-core as ledger backend
 func newLedgerBackend(config *Config, prometheusRegistry *prometheus.Registry) (ledgerbackend.LedgerBackend, error) {
-	captiveConfig, err := config.GenerateCaptiveCoreConfig()
+	captiveConfig, err := config.generateCaptiveCoreConfig()
 	if err != nil {
 		return nil, err
 	}
