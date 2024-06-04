@@ -505,7 +505,7 @@ func TestDeprecatedOutputs(t *testing.T) {
 		stdLog.SetOutput(os.Stderr)
 
 		testConfig := integration.GetTestConfig()
-		testConfig.HorizonIngestParameters = map[string]string{"captive-core-use-db": "false"}
+		testConfig.HorizonIngestParameters = map[string]string{"captive-core-use-db": "true"}
 		test := integration.NewTest(t, *testConfig)
 		err := test.StartHorizon()
 		assert.NoError(t, err)

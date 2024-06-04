@@ -1,6 +1,6 @@
 FROM ubuntu:22.04
 
-ENV STELLAR_CORE_VERSION=19.14.0-1500.5664eff4e.focal
+ENV STELLAR_CORE_VERSION=21.0.0-1872.c6f474133.focal
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl wget gnupg apt-utils
