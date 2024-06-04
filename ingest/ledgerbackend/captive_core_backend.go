@@ -211,13 +211,8 @@ func NewCaptive(config CaptiveCoreConfig) (*CaptiveStellarCore, error) {
 			},
 			URL: fmt.Sprintf("http://localhost:%d", config.Toml.HTTPPort),
 		}
-
-		err = c.setCoreVersion()
-		if err != nil {
-			return nil, err
-		}
 	}
-
+	c.setCoreVersion()
 	return c, nil
 }
 
@@ -251,15 +246,19 @@ func (c *CaptiveStellarCore) coreVersionMetric() float64 {
 	return float64(info.Info.ProtocolVersion)
 }
 
-func (c *CaptiveStellarCore) setCoreVersion() error {
+func (c *CaptiveStellarCore) setCoreVersion() {
+	if c.stellarCoreClient == nil {
+		log.WithField("err", errors.New("HTTP stellarCoreClient is not initialized")).Error("cannot fetch captive core version details")
+		return
+	}
 
 	info, err := c.stellarCoreClient.Info(c.config.Context)
 	if err != nil {
-		return err
+		log.WithField("err", err).Error("cannot fetch captive core version details from /info endpoint")
+		return
 	}
 
 	c.captiveCoreVersion = info.Info.Build
-	return nil
 }
 
 func (c *CaptiveStellarCore) registerMetrics(registry *prometheus.Registry, namespace string) {
