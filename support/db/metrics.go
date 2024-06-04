@@ -24,6 +24,7 @@ var CoreSubservice = Subservice("core")
 var HistoryPrimarySubservice = Subservice("history_primary")
 var HistorySubservice = Subservice("history")
 var IngestSubservice = Subservice("ingest")
+var ReapSubservice = Subservice("reap")
 
 type QueryType string
 

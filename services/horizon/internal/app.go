@@ -515,7 +515,9 @@ func (a *App) init() error {
 	a.reaper = reap.New(
 		a.config.HistoryRetentionCount,
 		a.config.HistoryRetentionReapCount,
-		a.HorizonSession(),
+		mustNewDBSession(
+			db.ReapSubservice, a.config.DatabaseURL, 1, 1, a.prometheusRegistry,
+		),
 		a.ledgerState)
 	a.reaper.RegisterMetrics(a.prometheusRegistry)
 
