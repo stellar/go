@@ -98,14 +98,16 @@ func (r *System) clearBefore(ctx context.Context, startSeq, endSeq int32) error 
 		return fmt.Errorf("invalid batch size for reaping (%d)", batchSize)
 	}
 
+	log.WithField("start_ledger", startSeq).
+		WithField("end_ledger", endSeq).
+		WithField("batch_size", batchSize).
+		Info("reaper: deleting history outside retention window")
+
 	for batchEndSeq := endSeq - 1; batchEndSeq >= startSeq; batchEndSeq -= batchSize {
 		batchStartSeq := batchEndSeq - batchSize
 		if batchStartSeq < startSeq {
 			batchStartSeq = startSeq
 		}
-		log.WithField("start_ledger", batchStartSeq).
-			WithField("end_ledger", batchEndSeq).
-			Info("reaper: clearing")
 
 		if err := r.deleteBatch(ctx, batchStartSeq, batchEndSeq); err != nil {
 			return err
@@ -139,7 +141,14 @@ func (r *System) deleteBatch(ctx context.Context, batchStartSeq int32, batchEndS
 		return errors.Wrap(err, "Error in commit")
 	}
 
+	elapsedSeconds := time.Since(startTime).Seconds()
+	log.WithField("start_ledger", batchStart).
+		WithField("end_ledger", batchEnd).
+		WithField("rows_deleted", float64(count)).
+		WithField("duration", elapsedSeconds).
+		Info("reaper: successfully deleted batch")
+
 	r.rowsDeleted.Observe(float64(count))
-	r.deleteBatchDuration.Observe(time.Since(startTime).Seconds())
+	r.deleteBatchDuration.Observe(elapsedSeconds)
 	return nil
 }
