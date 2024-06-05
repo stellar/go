@@ -104,10 +104,10 @@ func (r *System) clearBefore(ctx context.Context, startSeq, endSeq int32) error 
 		WithField("batch_size", batchSize).
 		Info("reaper: deleting history outside retention window")
 
-	for batchEndSeq := endSeq - 1; batchEndSeq >= startSeq; batchEndSeq -= batchSize {
-		batchStartSeq := batchEndSeq - batchSize
-		if batchStartSeq < startSeq {
-			batchStartSeq = startSeq
+	for batchStartSeq := startSeq; batchStartSeq < endSeq; batchStartSeq += batchSize {
+		batchEndSeq := batchStartSeq + batchSize
+		if batchEndSeq >= endSeq {
+			batchEndSeq = endSeq - 1
 		}
 
 		if err := r.deleteBatch(ctx, batchStartSeq, batchEndSeq); err != nil {
