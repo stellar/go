@@ -3,6 +3,7 @@ package reap
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -142,9 +143,9 @@ func (r *System) deleteBatch(ctx context.Context, batchStartSeq int32, batchEndS
 	}
 
 	elapsedSeconds := time.Since(startTime).Seconds()
-	log.WithField("start_ledger", batchStart).
-		WithField("end_ledger", batchEnd).
-		WithField("rows_deleted", float64(count)).
+	log.WithField("start_ledger", batchStartSeq).
+		WithField("end_ledger", batchEndSeq).
+		WithField("rows_deleted", strconv.FormatInt(count, 10)).
 		WithField("duration", elapsedSeconds).
 		Info("reaper: successfully deleted batch")
 
