@@ -14,8 +14,7 @@ xdr/Stellar-contract.x \
 xdr/Stellar-internal.x \
 xdr/Stellar-contract-config-setting.x
 
-XDRS = $(DOWNLOADABLE_XDRS) xdr/Stellar-lighthorizon.x \
-		xdr/Stellar-exporter.x
+XDRS = $(DOWNLOADABLE_XDRS) xdr/Stellar-exporter.x
 
 
 XDRGEN_COMMIT=e2cac557162d99b12ae73b846cf3d5bfe16636de
