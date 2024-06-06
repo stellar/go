@@ -212,13 +212,6 @@ func TestCaptiveCoreTomlValidation(t *testing.T) {
 				PeerPort:           testCase.peerPort,
 				LogPath:            testCase.logPath,
 				Strict:             true,
-				checkCoreVersion: func(coreBinaryPath string) coreVersion {
-					return coreVersion{
-						major:                 21,
-						minor:                 0,
-						ledgerProtocolVersion: 21,
-					}
-				},
 			}
 			_, err := NewCaptiveCoreTomlFromFile(testCase.appendPath, params)
 			assert.EqualError(t, err, testCase.expectedError)
@@ -359,6 +352,22 @@ func TestGenerateConfig(t *testing.T) {
 			expectedPath: filepath.Join("testdata", "expected-online-with-appendix-minimum-persistent-entry.cfg"),
 			logPath:      nil,
 		},
+		{
+			name:         "default BucketlistDB config",
+			mode:         stellarCoreRunnerModeOnline,
+			appendPath:   filepath.Join("testdata", "sample-appendix.cfg"),
+			expectedPath: filepath.Join("testdata", "expected-default-bucketlistdb-core.cfg"),
+			useDB:        true,
+			logPath:      nil,
+		},
+		{
+			name:         "BucketlistDB config in appendix",
+			mode:         stellarCoreRunnerModeOnline,
+			appendPath:   filepath.Join("testdata", "sample-appendix-bucketlistdb.cfg"),
+			expectedPath: filepath.Join("testdata", "expected-bucketlistdb-core.cfg"),
+			useDB:        true,
+			logPath:      nil,
+		},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			var err error
@@ -390,6 +399,36 @@ func TestGenerateConfig(t *testing.T) {
 			assert.Equal(t, string(expectedByte), string(configBytes))
 		})
 	}
+}
+
+func TestGenerateCoreConfigInMemory(t *testing.T) {
+	appendPath := filepath.Join("testdata", "sample-appendix.cfg")
+	expectedPath := filepath.Join("testdata", "expected-in-mem-core.cfg")
+	var err error
+	var captiveCoreToml *CaptiveCoreToml
+	params := CaptiveCoreTomlParams{
+		NetworkPassphrase:  "Public Global Stellar Network ; September 2015",
+		HistoryArchiveURLs: []string{"http://localhost:1170"},
+		Strict:             false,
+		UseDB:              false,
+		checkCoreVersion: func(coreBinaryPath string) coreVersion {
+			return coreVersion{
+				major:                 21,
+				minor:                 0,
+				ledgerProtocolVersion: 21,
+			}
+		},
+	}
+	captiveCoreToml, err = NewCaptiveCoreTomlFromFile(appendPath, params)
+	assert.NoError(t, err)
+
+	configBytes, err := generateConfig(captiveCoreToml, stellarCoreRunnerModeOnline)
+	assert.NoError(t, err)
+
+	expectedByte, err := ioutil.ReadFile(expectedPath)
+	assert.NoError(t, err)
+
+	assert.Equal(t, string(expectedByte), string(configBytes))
 }
 
 func TestHistoryArchiveURLTrailingSlash(t *testing.T) {
@@ -468,6 +507,9 @@ func TestDBConfigDefaultsToSqlite(t *testing.T) {
 	toml := CaptiveCoreToml{}
 	require.NoError(t, toml.unmarshal(configBytes, true))
 	assert.Equal(t, toml.Database, "sqlite3://stellar.db")
+	assert.Equal(t, toml.DeprecatedSqlLedgerState, false)
+	assert.Equal(t, *toml.BucketListDBPageSizeExp, DefaultBucketListDBPageSize)
+	assert.Equal(t, toml.BucketListDBCutoff, (*uint)(nil))
 }
 
 func TestNonDBConfigDoesNotUpdateDatabase(t *testing.T) {
