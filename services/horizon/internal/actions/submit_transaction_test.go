@@ -100,6 +100,19 @@ func TestTimeoutSubmission(t *testing.T) {
 	form := url.Values{}
 	form.Set("tx", "AAAAAAGUcmKO5465JxTSLQOQljwk2SfqAJmZSG6JH6wtqpwhAAABLAAAAAAAAAABAAAAAAAAAAEAAAALaGVsbG8gd29ybGQAAAAAAwAAAAAAAAAAAAAAABbxCy3mLg3hiTqX4VUEEp60pFOrJNxYM1JtxXTwXhY2AAAAAAvrwgAAAAAAAAAAAQAAAAAW8Qst5i4N4Yk6l+FVBBKetKRTqyTcWDNSbcV08F4WNgAAAAAN4Lazj4x61AAAAAAAAAAFAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABLaqcIQAAAEBKwqWy3TaOxoGnfm9eUjfTRBvPf34dvDA0Nf+B8z4zBob90UXtuCqmQqwMCyH+okOI3c05br3khkH0yP4kCwcE")
 
+	expectedTimeoutResponse := &problem.P{
+		Type:   "transaction_submission_timeout",
+		Title:  "Transaction Submission Timeout",
+		Status: http.StatusGatewayTimeout,
+		Detail: "Your transaction submission request has timed out. This does not necessarily mean the submission has failed. " +
+			"Before resubmitting, please use the transaction hash provided in `extras.hash` to poll the GET /transactions endpoint for sometime and " +
+			"check if it was included in a ledger.",
+		Extras: map[string]interface{}{
+			"hash":         "3389e9f0f1a65f19736cacf544c2e825313e8447f569233bb8db39aa607c8889",
+			"envelope_xdr": "AAAAAAGUcmKO5465JxTSLQOQljwk2SfqAJmZSG6JH6wtqpwhAAABLAAAAAAAAAABAAAAAAAAAAEAAAALaGVsbG8gd29ybGQAAAAAAwAAAAAAAAAAAAAAABbxCy3mLg3hiTqX4VUEEp60pFOrJNxYM1JtxXTwXhY2AAAAAAvrwgAAAAAAAAAAAQAAAAAW8Qst5i4N4Yk6l+FVBBKetKRTqyTcWDNSbcV08F4WNgAAAAAN4Lazj4x61AAAAAAAAAAFAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABLaqcIQAAAEBKwqWy3TaOxoGnfm9eUjfTRBvPf34dvDA0Nf+B8z4zBob90UXtuCqmQqwMCyH+okOI3c05br3khkH0yP4kCwcE",
+		},
+	}
+
 	request, err := http.NewRequest(
 		"POST",
 		"https://horizon.stellar.org/transactions",
@@ -115,7 +128,7 @@ func TestTimeoutSubmission(t *testing.T) {
 	w := httptest.NewRecorder()
 	_, err = handler.GetResource(w, request)
 	assert.Error(t, err)
-	assert.Equal(t, hProblem.Timeout, err)
+	assert.Equal(t, expectedTimeoutResponse, err)
 }
 
 func TestClientDisconnectSubmission(t *testing.T) {
