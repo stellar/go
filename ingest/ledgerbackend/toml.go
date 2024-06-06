@@ -95,9 +95,9 @@ type captiveCoreTomlValues struct {
 	Validators                            []Validator          `toml:"VALIDATORS,omitempty"`
 	HistoryEntries                        map[string]History   `toml:"-"`
 	QuorumSetEntries                      map[string]QuorumSet `toml:"-"`
-	UseBucketListDB                       bool                 `toml:"EXPERIMENTAL_BUCKETLIST_DB,omitempty"`
-	BucketListDBPageSizeExp               *uint                `toml:"EXPERIMENTAL_BUCKETLIST_DB_INDEX_PAGE_SIZE_EXPONENT,omitempty"`
-	BucketListDBCutoff                    *uint                `toml:"EXPERIMENTAL_BUCKETLIST_DB_INDEX_CUTOFF,omitempty"`
+	BucketListDBPageSizeExp               *uint                `toml:"BUCKETLIST_DB_INDEX_PAGE_SIZE_EXPONENT,omitempty"`
+	BucketListDBCutoff                    *uint                `toml:"BUCKETLIST_DB_INDEX_CUTOFF,omitempty"`
+	DeprecatedSqlLedgerState              bool                 `toml:"DEPRECATED_SQL_LEDGER_STATE"`
 	EnableSorobanDiagnosticEvents         *bool                `toml:"ENABLE_SOROBAN_DIAGNOSTIC_EVENTS,omitempty"`
 	TestingMinimumPersistentEntryLifetime *uint                `toml:"TESTING_MINIMUM_PERSISTENT_ENTRY_LIFETIME,omitempty"`
 	TestingSorobanHighLimitOverride       *bool                `toml:"TESTING_SOROBAN_HIGH_LIMIT_OVERRIDE,omitempty"`
@@ -441,18 +441,108 @@ func (c *CaptiveCoreToml) CatchupToml() (*CaptiveCoreToml, error) {
 	return offline, nil
 }
 
+<<<<<<< HEAD
+=======
+// coreVersion helper struct identify a core version and provides the
+// utilities to compare the version ( i.e. minor + major pair ) to a predefined
+// version.
+type coreVersion struct {
+	major                 int
+	minor                 int
+	ledgerProtocolVersion int
+}
+
+// IsEqualOrAbove compares the core version to a version specific. If unable
+// to make the decision, the result is always "false", leaning toward the
+// common denominator.
+func (c *coreVersion) IsEqualOrAbove(major, minor int) bool {
+	if c.major == 0 && c.minor == 0 {
+		return false
+	}
+	return (c.major == major && c.minor >= minor) || (c.major > major)
+}
+
+// IsEqualOrAbove compares the core version to a version specific. If unable
+// to make the decision, the result is always "false", leaning toward the
+// common denominator.
+func (c *coreVersion) IsProtocolVersionEqualOrAbove(protocolVer int) bool {
+	if c.ledgerProtocolVersion == 0 {
+		return false
+	}
+	return c.ledgerProtocolVersion >= protocolVer
+}
+
+func checkCoreVersion(coreBinaryPath string) coreVersion {
+	if coreBinaryPath == "" {
+		return coreVersion{}
+	}
+
+	versionBytes, err := exec.Command(coreBinaryPath, "version").Output()
+	if err != nil {
+		return coreVersion{}
+	}
+
+	// starting soroban, we want to use only the first row for the version.
+	versionRows := strings.Split(string(versionBytes), "\n")
+	versionRaw := versionRows[0]
+
+	var version [2]int
+
+	re := regexp.MustCompile(`\D*(\d*)\.(\d*).*`)
+	versionStr := re.FindStringSubmatch(versionRaw)
+	if len(versionStr) == 3 {
+		for i := 1; i < len(versionStr); i++ {
+			val, err := strconv.Atoi((versionStr[i]))
+			if err != nil {
+				break
+			}
+			version[i-1] = val
+		}
+	}
+
+	re = regexp.MustCompile(`^\s*ledger protocol version: (\d*)`)
+	var ledgerProtocol int
+	var ledgerProtocolStrings []string
+	for _, line := range versionRows {
+		ledgerProtocolStrings = re.FindStringSubmatch(line)
+		if len(ledgerProtocolStrings) > 0 {
+			break
+		}
+	}
+	if len(ledgerProtocolStrings) == 2 {
+		if val, err := strconv.Atoi(ledgerProtocolStrings[1]); err == nil {
+			ledgerProtocol = val
+		}
+	}
+
+	return coreVersion{
+		major:                 version[0],
+		minor:                 version[1],
+		ledgerProtocolVersion: ledgerProtocol,
+	}
+}
+
+const MinimalSorobanProtocolSupport = 20
+
 func (c *CaptiveCoreToml) setDefaults(params CaptiveCoreTomlParams) {
 	if params.UseDB && !c.tree.Has("DATABASE") {
 		c.Database = "sqlite3://stellar.db"
 	}
 
-	if def := c.tree.Has("EXPERIMENTAL_BUCKETLIST_DB"); !def && params.UseDB {
-		c.UseBucketListDB = true
+	checkCoreVersionF := params.checkCoreVersion
+	if checkCoreVersionF == nil {
+		checkCoreVersionF = checkCoreVersion
 	}
+	currentCoreVersion := checkCoreVersionF(params.CoreBinaryPath)
 
-	if c.UseBucketListDB && !c.tree.Has("EXPERIMENTAL_BUCKETLIST_DB_INDEX_PAGE_SIZE_EXPONENT") {
-		n := uint(12)
-		c.BucketListDBPageSizeExp = &n // Set default page size to 4KB
+	if !params.UseDB {
+		c.DeprecatedSqlLedgerState = true
+	} else {
+		if !c.tree.Has("BUCKETLIST_DB_INDEX_PAGE_SIZE_EXPONENT") {
+			n := uint(12)
+			c.BucketListDBPageSizeExp = &n // Set default page size to 4KB
+		}
+		c.DeprecatedSqlLedgerState = false
 	}
 
 	if !c.tree.Has("NETWORK_PASSPHRASE") {
@@ -540,12 +630,6 @@ func (c *CaptiveCoreToml) validate(params CaptiveCoreTomlParams) error {
 			"LOG_FILE_PATH in captive core config file: %s does not match Horizon captive-core-log-path flag: %s",
 			c.LogFilePath,
 			*params.LogPath,
-		)
-	}
-
-	if def := c.tree.Has("EXPERIMENTAL_BUCKETLIST_DB"); def && !params.UseDB {
-		return fmt.Errorf(
-			"BucketListDB enabled in captive core config file, requires Horizon flag --captive-core-use-db",
 		)
 	}
 

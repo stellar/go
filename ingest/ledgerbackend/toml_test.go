@@ -212,6 +212,13 @@ func TestCaptiveCoreTomlValidation(t *testing.T) {
 				PeerPort:           testCase.peerPort,
 				LogPath:            testCase.logPath,
 				Strict:             true,
+				checkCoreVersion: func(coreBinaryPath string) coreVersion {
+					return coreVersion{
+						major:                 21,
+						minor:                 0,
+						ledgerProtocolVersion: 21,
+					}
+				},
 			}
 			_, err := NewCaptiveCoreTomlFromFile(testCase.appendPath, params)
 			assert.EqualError(t, err, testCase.expectedError)
