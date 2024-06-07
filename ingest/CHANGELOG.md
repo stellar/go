@@ -2,8 +2,11 @@
 
 All notable changes to this project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org/).
 
-
-## Unreleased
+### Stellar Core Protocol 21 Configuration Update:
+* BucketlistDB is now the default database for stellar-core, replacing the experimental option. As a result, the `EXPERIMENTAL_BUCKETLIST_DB` configuration parameter has been deprecated.
+* A new mandatory parameter, `DEPRECATED_SQL_LEDGER_STATE`, has been added with a default value of false which equivalent to `EXPERIMENTAL_BUCKETLIST_DB` being set to true.
+* The parameter `EXPERIMENTAL_BUCKETLIST_DB_INDEX_PAGE_SIZE_EXPONENT` has been renamed to `BUCKETLIST_DB_INDEX_PAGE_SIZE_EXPONENT`.
+* The parameter `EXPERIMENTAL_BUCKETLIST_DB_INDEX_CUTOFF` has been renamed to `BUCKETLIST_DB_INDEX_CUTOFF`.
 
 ### New Features
 * Support for Soroban and Protocol 20!

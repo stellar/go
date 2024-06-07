@@ -99,7 +99,7 @@ type captiveCoreTomlValues struct {
 	QuorumSetEntries                      map[string]QuorumSet `toml:"-"`
 	BucketListDBPageSizeExp               *uint                `toml:"BUCKETLIST_DB_INDEX_PAGE_SIZE_EXPONENT,omitempty"`
 	BucketListDBCutoff                    *uint                `toml:"BUCKETLIST_DB_INDEX_CUTOFF,omitempty"`
-	DeprecatedSqlLedgerState              bool                 `toml:"DEPRECATED_SQL_LEDGER_STATE"`
+	DeprecatedSqlLedgerState              *bool                `toml:"DEPRECATED_SQL_LEDGER_STATE,omitempty"`
 	EnableSorobanDiagnosticEvents         *bool                `toml:"ENABLE_SOROBAN_DIAGNOSTIC_EVENTS,omitempty"`
 	TestingMinimumPersistentEntryLifetime *uint                `toml:"TESTING_MINIMUM_PERSISTENT_ENTRY_LIFETIME,omitempty"`
 	TestingSorobanHighLimitOverride       *bool                `toml:"TESTING_SOROBAN_HIGH_LIMIT_OVERRIDE,omitempty"`
@@ -537,14 +537,15 @@ func (c *CaptiveCoreToml) setDefaults(params CaptiveCoreTomlParams) {
 	}
 	currentCoreVersion := checkCoreVersionF(params.CoreBinaryPath)
 
+	deprecatedSqlLedgerState := false
 	if !params.UseDB {
-		c.DeprecatedSqlLedgerState = true
+		deprecatedSqlLedgerState = true
 	} else {
 		if !c.tree.Has("BUCKETLIST_DB_INDEX_PAGE_SIZE_EXPONENT") {
 			c.BucketListDBPageSizeExp = &DefaultBucketListDBPageSize
 		}
-		c.DeprecatedSqlLedgerState = false
 	}
+	c.DeprecatedSqlLedgerState = &deprecatedSqlLedgerState
 
 	if !c.tree.Has("NETWORK_PASSPHRASE") {
 		c.NetworkPassphrase = params.NetworkPassphrase

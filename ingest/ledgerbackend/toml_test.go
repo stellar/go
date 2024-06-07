@@ -507,7 +507,7 @@ func TestDBConfigDefaultsToSqlite(t *testing.T) {
 	toml := CaptiveCoreToml{}
 	require.NoError(t, toml.unmarshal(configBytes, true))
 	assert.Equal(t, toml.Database, "sqlite3://stellar.db")
-	assert.Equal(t, toml.DeprecatedSqlLedgerState, false)
+	assert.Equal(t, *toml.DeprecatedSqlLedgerState, false)
 	assert.Equal(t, *toml.BucketListDBPageSizeExp, DefaultBucketListDBPageSize)
 	assert.Equal(t, toml.BucketListDBCutoff, (*uint)(nil))
 }
