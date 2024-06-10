@@ -92,7 +92,18 @@ func (handler SubmitTransactionHandler) response(r *http.Request, info envelopeI
 	}
 
 	if result.Err == txsub.ErrTimeout {
-		return nil, &hProblem.Timeout
+		return nil, &problem.P{
+			Type:   "transaction_submission_timeout",
+			Title:  "Transaction Submission Timeout",
+			Status: http.StatusGatewayTimeout,
+			Detail: "Your transaction submission request has timed out. This does not necessarily mean the submission has failed. " +
+				"Before resubmitting, please use the transaction hash provided in `extras.hash` to poll the GET /transactions endpoint for sometime and " +
+				"check if it was included in a ledger.",
+			Extras: map[string]interface{}{
+				"hash":         info.hash,
+				"envelope_xdr": info.raw,
+			},
+		}
 	}
 
 	if result.Err == txsub.ErrCanceled {
@@ -191,6 +202,17 @@ func (handler SubmitTransactionHandler) GetResource(w HeaderWriter, r *http.Requ
 		if r.Context().Err() == context.Canceled {
 			return nil, hProblem.ClientDisconnected
 		}
-		return nil, hProblem.Timeout
+		return nil, &problem.P{
+			Type:   "transaction_submission_timeout",
+			Title:  "Transaction Submission Timeout",
+			Status: http.StatusGatewayTimeout,
+			Detail: "Your transaction submission request has timed out. This does not necessarily mean the submission has failed. " +
+				"Before resubmitting, please use the transaction hash provided in `extras.hash` to poll the GET /transactions endpoint for sometime and " +
+				"check if it was included in a ledger.",
+			Extras: map[string]interface{}{
+				"hash":         info.hash,
+				"envelope_xdr": raw,
+			},
+		}
 	}
 }
