@@ -259,7 +259,7 @@ func (c *CaptiveStellarCore) setCoreVersion() {
 	versionCmd := execCommand(c.config.BinaryPath, "version")
 	versionOutput, err := versionCmd.Output()
 	if err != nil {
-		log.Errorf("failed to execute stellar-core version command: %w", err)
+		log.Errorf("failed to execute stellar-core version command: %s", err)
 	}
 
 	// Split the output into lines
