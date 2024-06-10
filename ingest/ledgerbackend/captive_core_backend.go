@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"os/exec"
+	"strings"
 	"sync"
 	"time"
 
@@ -246,19 +248,29 @@ func (c *CaptiveStellarCore) coreVersionMetric() float64 {
 	return float64(info.Info.ProtocolVersion)
 }
 
+// By default, it points to exec.Command, overridden for testing purpose
+var execCommand = exec.Command
+
+// Executes the "stellar-core version" command and parses its output to extract
+// the core version
+// The output of the "version" command is expected to be a multi-line string where the
+// first line is the core version in format "vX.Y.Z-*".
 func (c *CaptiveStellarCore) setCoreVersion() {
-	if c.stellarCoreClient == nil {
-		log.WithField("err", errors.New("HTTP stellarCoreClient is not initialized")).Error("cannot fetch captive core version details")
-		return
-	}
-
-	info, err := c.stellarCoreClient.Info(c.config.Context)
+	versionCmd := execCommand(c.config.BinaryPath, "version")
+	versionOutput, err := versionCmd.Output()
 	if err != nil {
-		log.WithField("err", err).Error("cannot fetch captive core version details from /info endpoint")
+		log.Errorf("failed to execute stellar-core version command: %w", err)
+	}
+
+	// Split the output into lines
+	rows := strings.Split(string(versionOutput), "\n")
+	if len(rows) == 0 || len(rows[0]) == 0 {
+		log.Error("stellar-core version not found")
 		return
 	}
 
-	c.captiveCoreVersion = info.Info.Build
+	c.captiveCoreVersion = rows[0]
+	log.Infof("stellar-core version: %s", c.captiveCoreVersion)
 }
 
 func (c *CaptiveStellarCore) registerMetrics(registry *prometheus.Registry, namespace string) {
