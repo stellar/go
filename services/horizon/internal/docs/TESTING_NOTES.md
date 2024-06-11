@@ -15,8 +15,8 @@ go test github.com/stellar/go/services/horizon/...
 Before running integration tests, you also need to set some environment variables:
 ```bash
 export HORIZON_INTEGRATION_TESTS_ENABLED=true
-export HORIZON_INTEGRATION_TESTS_CORE_MAX_SUPPORTED_PROTOCOL=19
-export HORIZON_INTEGRATION_TESTS_DOCKER_IMG=stellar/stellar-core:19.11.0-1323.7fb6d5e88.focal
+export HORIZON_INTEGRATION_TESTS_CORE_MAX_SUPPORTED_PROTOCOL=21
+export HORIZON_INTEGRATION_TESTS_DOCKER_IMG=stellar/stellar-core:21.0.0-1872.c6f474133.focal
 ```
 Make sure to check [horizon.yml](/.github/workflows/horizon.yml) for the latest core image version.
 
