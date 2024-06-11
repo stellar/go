@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/services/horizon/internal/ledger"
 	"github.com/stellar/go/services/horizon/internal/reap"
 	"github.com/stellar/go/services/horizon/internal/test"
 )
@@ -12,12 +11,11 @@ import (
 func TestReapLookupTables(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
-	ledgerState := &ledger.State{}
-	ledgerState.SetStatus(tt.Scenario("kahuna"))
+	tt.Scenario("kahuna")
 
 	db := tt.HorizonSession()
 
-	sys := reap.New(0, 0, db, ledgerState)
+	sys := reap.New(0, 0, db)
 
 	var (
 		prevLedgers, curLedgers                     int
@@ -41,7 +39,6 @@ func TestReapLookupTables(t *testing.T) {
 		tt.Require.NoError(err)
 	}
 
-	ledgerState.SetStatus(tt.LoadLedgerStatus())
 	sys.RetentionCount = 1
 	sys.RetentionBatch = 50
 	err := sys.DeleteUnretainedHistory(tt.Ctx)

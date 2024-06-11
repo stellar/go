@@ -513,12 +513,11 @@ func (a *App) init() error {
 
 	// reaper
 	a.reaper = reap.New(
-		a.config.HistoryRetentionCount,
-		a.config.HistoryRetentionReapCount,
+		uint32(a.config.HistoryRetentionCount),
+		uint32(a.config.HistoryRetentionReapCount),
 		mustNewDBSession(
 			db.ReapSubservice, a.config.DatabaseURL, 1, 1, a.prometheusRegistry,
-		),
-		a.ledgerState)
+		))
 	a.reaper.RegisterMetrics(a.prometheusRegistry)
 
 	// go metrics

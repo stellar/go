@@ -21,17 +21,27 @@ func (r *System) DeleteUnretainedHistory(ctx context.Context) error {
 		return nil
 	}
 
-	var (
-		latest      = r.ledgerState.CurrentStatus()
-		targetElder = (latest.HistoryLatest - int32(r.RetentionCount)) + 1
-	)
+	latest, err := r.HistoryQ.GetLatestHistoryLedger(ctx)
+	if err != nil {
+		return errors.Wrap(err, "error fetching latest history ledger")
+	}
+	var oldest uint32
+	err = r.HistoryQ.ElderLedger(ctx, &oldest)
+	if err != nil {
+		return errors.Wrap(err, "error fetching elder ledger")
+	}
 
-	if targetElder < latest.HistoryElder {
+	targetElder := latest - r.RetentionCount + 1
+	if latest <= r.RetentionCount || targetElder < oldest {
+		log.
+			WithField("latest", latest).
+			WithField("oldest", oldest).
+			WithField("retention_count", r.RetentionCount).
+			Info("not enough history to reap")
 		return nil
 	}
 
-	err := r.clearBefore(ctx, latest.HistoryElder, targetElder)
-	if err != nil {
+	if err = r.clearBefore(ctx, oldest, targetElder); err != nil {
 		return err
 	}
 
@@ -93,8 +103,8 @@ func (r *System) runOnce(ctx context.Context) {
 // hour, and slowing it down enough to leave some CPU for other processes.
 var sleep = 1 * time.Second
 
-func (r *System) clearBefore(ctx context.Context, startSeq, endSeq int32) error {
-	batchSize := int32(r.RetentionBatch)
+func (r *System) clearBefore(ctx context.Context, startSeq, endSeq uint32) error {
+	batchSize := r.RetentionBatch
 	if batchSize <= 0 {
 		return fmt.Errorf("invalid batch size for reaping (%d)", batchSize)
 	}
@@ -115,14 +125,14 @@ func (r *System) clearBefore(ctx context.Context, startSeq, endSeq int32) error 
 			return err
 		}
 		if count == 0 {
-			next, ok, err := r.HistoryQ.GetNextLedgerSequence(ctx, uint32(batchStartSeq))
+			next, ok, err := r.HistoryQ.GetNextLedgerSequence(ctx, batchStartSeq)
 			if err != nil {
 				return errors.Wrapf(err, "could not find next ledger sequence after %d", batchStartSeq)
 			}
-			if !ok || next >= uint32(endSeq) {
+			if !ok {
 				break
 			}
-			batchStartSeq = int32(next)
+			batchStartSeq = next
 		} else {
 			batchStartSeq += batchSize
 		}
@@ -132,8 +142,8 @@ func (r *System) clearBefore(ctx context.Context, startSeq, endSeq int32) error 
 	return nil
 }
 
-func (r *System) deleteBatch(ctx context.Context, batchStartSeq int32, batchEndSeq int32) (int64, error) {
-	batchStart, batchEnd, err := toid.LedgerRangeInclusive(batchStartSeq, batchEndSeq)
+func (r *System) deleteBatch(ctx context.Context, batchStartSeq, batchEndSeq uint32) (int64, error) {
+	batchStart, batchEnd, err := toid.LedgerRangeInclusive(int32(batchStartSeq), int32(batchEndSeq))
 	if err != nil {
 		return 0, err
 	}

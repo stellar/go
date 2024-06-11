@@ -10,27 +10,25 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/services/horizon/internal/ledger"
 	"github.com/stellar/go/support/db"
 )
 
 // System represents the history reaping subsystem of horizon.
 type System struct {
 	HistoryQ       *history.Q
-	RetentionCount uint
-	RetentionBatch uint
+	RetentionCount uint32
+	RetentionBatch uint32
 
 	deleteBatchDuration prometheus.Summary
 	rowsDeleted         prometheus.Summary
 
-	ledgerState *ledger.State
-	ctx         context.Context
-	cancel      context.CancelFunc
+	ctx    context.Context
+	cancel context.CancelFunc
 }
 
 // New initializes the reaper, causing it to begin polling the stellar-core
 // database for now ledgers and ingesting data into the horizon database.
-func New(retention, retentionBatchSize uint, dbSession db.SessionInterface, ledgerState *ledger.State) *System {
+func New(retention, retentionBatchSize uint32, dbSession db.SessionInterface) *System {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	r := &System{
@@ -47,9 +45,8 @@ func New(retention, retentionBatchSize uint, dbSession db.SessionInterface, ledg
 			Help:       "rows deleted during reap batch , sliding window = 10m",
 			Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
 		}),
-		ledgerState: ledgerState,
-		ctx:         ctx,
-		cancel:      cancel,
+		ctx:    ctx,
+		cancel: cancel,
 	}
 
 	return r
