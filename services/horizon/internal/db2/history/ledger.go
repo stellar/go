@@ -2,6 +2,7 @@ package history
 
 import (
 	"context"
+	"database/sql"
 	"encoding/hex"
 	"fmt"
 	"sort"
@@ -9,6 +10,7 @@ import (
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/guregu/null"
+
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
@@ -148,6 +150,18 @@ func (i *ledgerBatchInsertBuilder) Add(
 
 func (i *ledgerBatchInsertBuilder) Exec(ctx context.Context, session db.SessionInterface) error {
 	return i.builder.Exec(ctx, session, i.table)
+}
+
+func (q *Q) GetNextLedgerSequence(ctx context.Context, start uint32) (uint32, bool, error) {
+	var value uint32
+	err := q.GetRaw(ctx, &value, `SELECT sequence FROM history_ledgers WHERE sequence > ?`, start)
+	if err == sql.ErrNoRows {
+		return 0, false, nil
+	}
+	if err != nil {
+		return 0, false, err
+	}
+	return value, true, nil
 }
 
 // GetLedgerGaps obtains ingestion gaps in the history_ledgers table.

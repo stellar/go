@@ -104,14 +104,27 @@ func (r *System) clearBefore(ctx context.Context, startSeq, endSeq int32) error 
 		WithField("batch_size", batchSize).
 		Info("reaper: deleting history outside retention window")
 
-	for batchStartSeq := startSeq; batchStartSeq < endSeq; batchStartSeq += batchSize {
+	for batchStartSeq := startSeq; batchStartSeq < endSeq; {
 		batchEndSeq := batchStartSeq + batchSize
 		if batchEndSeq >= endSeq {
 			batchEndSeq = endSeq - 1
 		}
 
-		if err := r.deleteBatch(ctx, batchStartSeq, batchEndSeq); err != nil {
+		count, err := r.deleteBatch(ctx, batchStartSeq, batchEndSeq)
+		if err != nil {
 			return err
+		}
+		if count == 0 {
+			next, ok, err := r.HistoryQ.GetNextLedgerSequence(ctx, uint32(batchStartSeq))
+			if err != nil {
+				return errors.Wrapf(err, "could not find next ledger sequence after %d", batchStartSeq)
+			}
+			if !ok || next >= uint32(endSeq) {
+				break
+			}
+			batchStartSeq = int32(next)
+		} else {
+			batchStartSeq += batchSize
 		}
 		time.Sleep(sleep)
 	}
@@ -119,27 +132,27 @@ func (r *System) clearBefore(ctx context.Context, startSeq, endSeq int32) error 
 	return nil
 }
 
-func (r *System) deleteBatch(ctx context.Context, batchStartSeq int32, batchEndSeq int32) error {
+func (r *System) deleteBatch(ctx context.Context, batchStartSeq int32, batchEndSeq int32) (int64, error) {
 	batchStart, batchEnd, err := toid.LedgerRangeInclusive(batchStartSeq, batchEndSeq)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	startTime := time.Now()
 	err = r.HistoryQ.Begin(ctx)
 	if err != nil {
-		return errors.Wrap(err, "Error in begin")
+		return 0, errors.Wrap(err, "Error in begin")
 	}
 	defer r.HistoryQ.Rollback()
 
 	count, err := r.HistoryQ.DeleteRangeAll(ctx, batchStart, batchEnd)
 	if err != nil {
-		return errors.Wrap(err, "Error in DeleteRangeAll")
+		return 0, errors.Wrap(err, "Error in DeleteRangeAll")
 	}
 
 	err = r.HistoryQ.Commit()
 	if err != nil {
-		return errors.Wrap(err, "Error in commit")
+		return 0, errors.Wrap(err, "Error in commit")
 	}
 
 	elapsedSeconds := time.Since(startTime).Seconds()
@@ -151,5 +164,5 @@ func (r *System) deleteBatch(ctx context.Context, batchStartSeq int32, batchEndS
 
 	r.rowsDeleted.Observe(float64(count))
 	r.deleteBatchDuration.Observe(elapsedSeconds)
-	return nil
+	return count, nil
 }
