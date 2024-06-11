@@ -102,7 +102,7 @@ func (ht *HTTPT) Post(
 
 // ReapHistory causes the test server to run `DeleteUnretainedHistory`, after
 // setting the retention count to the provided number.
-func (ht *HTTPT) ReapHistory(retention uint) {
+func (ht *HTTPT) ReapHistory(retention uint32) {
 	ht.App.reaper.RetentionCount = retention
 	ht.App.reaper.RetentionBatch = 50_000
 	ht.App.reaper.HistoryQ = &history.Q{ht.HorizonSession()}
