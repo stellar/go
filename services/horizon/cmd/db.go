@@ -12,7 +12,9 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/services/horizon/internal/reap"
 
 	horizon "github.com/stellar/go/services/horizon/internal"
 	"github.com/stellar/go/services/horizon/internal/db2/schema"
@@ -220,17 +222,27 @@ var dbReapCmd = &cobra.Command{
 	Short: "reaps (i.e. removes) any reapable history data",
 	Long:  "reap removes any historical data that is earlier than the configured retention cutoff",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		app, err := horizon.NewAppFromFlags(globalConfig, globalFlags)
+
+		err := horizon.ApplyFlags(globalConfig, globalFlags, horizon.ApplyOptions{RequireCaptiveCoreFullConfig: false, AlwaysIngest: false})
 		if err != nil {
 			return err
 		}
+
+		session, err := db.Open("postgres", globalConfig.DatabaseURL)
+		if err != nil {
+			return fmt.Errorf("cannot open Horizon DB: %v", err)
+		}
+
+		reaper := reap.New(
+			uint32(globalConfig.HistoryRetentionCount),
+			uint32(globalConfig.HistoryRetentionReapCount),
+			session,
+		)
 		defer func() {
-			app.Shutdown()
-			app.CloseDB()
+			reaper.Close()
 		}()
 		ctx := context.Background()
-		app.UpdateHorizonLedgerState(ctx)
-		return app.DeleteUnretainedHistory(ctx)
+		return reaper.DeleteUnretainedHistory(ctx)
 	},
 }
 

@@ -103,6 +103,12 @@ func initIngester(app *App) {
 		EnableExtendedLogLedgerStats:         app.config.IngestEnableExtendedLogLedgerStats,
 		RoundingSlippageFilter:               app.config.RoundingSlippageFilter,
 		SkipTxmeta:                           app.config.SkipTxmeta,
+		HistoryRetentionCount:                app.config.HistoryRetentionCount,
+		HistoryRetentionReapCount:            app.config.HistoryRetentionReapCount,
+		ReapSession: mustNewDBSession(
+			db.ReapSubservice, app.config.DatabaseURL, 1, 1, app.prometheusRegistry,
+		),
+		ReapFrequency: app.config.ReapFrequency,
 	})
 
 	if err != nil {

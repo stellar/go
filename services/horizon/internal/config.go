@@ -80,6 +80,11 @@ type Config struct {
 	// especially if enabling reaping for the first time or in times of
 	// increased ledger load.
 	HistoryRetentionReapCount uint
+	// ReapFrequency configures how often (in units of ledgers) history is reaped.
+	// If ReapFrequency is set to 1 history is reaped after ingesting every ledger.
+	// If ReapFrequency is set to 2 history is reaped after ingesting every two ledgers.
+	// etc...
+	ReapFrequency uint
 	// StaleThreshold represents the number of ledgers a history database may be
 	// out-of-date by before horizon begins to respond with an error to history
 	// requests.

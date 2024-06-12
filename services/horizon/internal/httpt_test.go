@@ -7,9 +7,10 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/services/horizon/internal/reap"
 	"github.com/stellar/go/services/horizon/internal/test"
 	tdb "github.com/stellar/go/services/horizon/internal/test/db"
+	"github.com/stellar/go/support/db"
 )
 
 type HTTPT struct {
@@ -17,6 +18,7 @@ type HTTPT struct {
 	App        *App
 	RH         test.RequestHelper
 	coreServer *test.StaticMockServer
+	reaper     *reap.System
 	*test.T
 }
 
@@ -48,6 +50,16 @@ func startHTTPTest(t *testing.T, scenario string) *HTTPT {
 	ret.App.UpdateCoreLedgerState(context.Background())
 	ret.App.UpdateStellarCoreInfo(context.Background())
 	ret.App.UpdateHorizonLedgerState(context.Background())
+	ret.reaper = reap.New(
+		uint32(ret.App.config.HistoryRetentionCount),
+		uint32(ret.App.config.HistoryRetentionReapCount),
+		mustNewDBSession(
+			db.ReapSubservice, ret.App.config.DatabaseURL, 1, 1, ret.App.prometheusRegistry,
+		))
+
+	t.Cleanup(func() {
+		ret.Assert.NoError(ret.reaper.Close())
+	})
 
 	return ret
 }
@@ -103,11 +115,9 @@ func (ht *HTTPT) Post(
 // ReapHistory causes the test server to run `DeleteUnretainedHistory`, after
 // setting the retention count to the provided number.
 func (ht *HTTPT) ReapHistory(retention uint32) {
-	ht.App.reaper.RetentionCount = retention
-	ht.App.reaper.RetentionBatch = 50_000
-	ht.App.reaper.HistoryQ = &history.Q{ht.HorizonSession()}
-	err := ht.App.DeleteUnretainedHistory(context.Background())
-	ht.Require.NoError(err)
+	ht.reaper.RetentionCount = retention
+	ht.reaper.RetentionBatch = 50_000
+	ht.Require.NoError(ht.reaper.DeleteUnretainedHistory(context.Background()))
 	ht.App.UpdateCoreLedgerState(context.Background())
 	ht.App.UpdateHorizonLedgerState(context.Background())
 }

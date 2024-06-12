@@ -104,6 +104,7 @@ func (s *DBTestSuite) SetupTest() {
 	var err error
 	sIface, err := NewSystem(Config{
 		HistorySession:           s.tt.HorizonSession(),
+		ReapSession:              s.tt.HorizonSession(),
 		HistoryArchiveURLs:       []string{"http://ignore.test"},
 		DisableStateVerification: false,
 		CheckpointFrequency:      64,

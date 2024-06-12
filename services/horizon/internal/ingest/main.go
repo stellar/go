@@ -19,6 +19,7 @@ import (
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/ingest/filters"
+	"github.com/stellar/go/services/horizon/internal/reap"
 	apkg "github.com/stellar/go/support/app"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
@@ -110,8 +111,12 @@ type Config struct {
 	MaxLedgerPerFlush uint32
 	SkipTxmeta        bool
 
-	CoreProtocolVersionFn ledgerbackend.CoreProtocolVersionFunc
-	CoreBuildVersionFn    ledgerbackend.CoreBuildVersionFunc
+	CoreProtocolVersionFn     ledgerbackend.CoreProtocolVersionFunc
+	CoreBuildVersionFn        ledgerbackend.CoreBuildVersionFunc
+	ReapSession               db.SessionInterface
+	ReapFrequency             uint
+	HistoryRetentionCount     uint
+	HistoryRetentionReapCount uint
 }
 
 const (
@@ -228,6 +233,8 @@ type system struct {
 	reapOffsets       map[string]int64
 	maxLedgerPerFlush uint32
 
+	reaper *reap.System
+
 	currentStateMutex sync.Mutex
 	currentState      State
 }
@@ -318,6 +325,11 @@ func NewSystem(config Config) (System, error) {
 			config.StateVerificationCheckpointFrequency,
 		),
 		maxLedgerPerFlush: maxLedgersPerFlush,
+		reaper: reap.New(
+			uint32(config.HistoryRetentionCount),
+			uint32(config.HistoryRetentionReapCount),
+			config.ReapSession,
+		),
 	}
 
 	system.initMetrics()
@@ -493,6 +505,7 @@ func (s *system) RegisterMetrics(registry *prometheus.Registry) {
 	registry.MustRegister(s.metrics.HistoryArchiveStatsCounter)
 	registry.MustRegister(s.metrics.IngestionErrorCounter)
 	s.ledgerBackend = ledgerbackend.WithMetrics(s.ledgerBackend, registry, "horizon")
+	s.reaper.RegisterMetrics(registry)
 }
 
 // Run starts ingestion system. Ingestion system supports distributed ingestion
@@ -694,11 +707,24 @@ func (s *system) runStateMachine(cur stateMachineNode) error {
 	}
 }
 
+func (s *system) maybeReapHistory(lastIngestedLedger uint32) {
+	if s.config.ReapFrequency == 0 || lastIngestedLedger%uint32(s.config.ReapFrequency) != 0 {
+		return
+	}
+	s.wg.Add(1)
+	go func() {
+		defer s.wg.Done()
+		if err := s.reaper.DeleteUnretainedHistory(s.ctx); err != nil {
+			log.WithError(err).Warn("could not reap history")
+		}
+	}()
+}
+
 func (s *system) maybeVerifyState(lastIngestedLedger uint32, expectedBucketListHash xdr.Hash) {
 	stateInvalid, err := s.historyQ.GetExpStateInvalid(s.ctx)
 	if err != nil {
 		if !isCancelledError(s.ctx, err) {
-			log.WithField("err", err).Error("Error getting state invalid value")
+			log.WithError(err).Error("Error getting state invalid value")
 		}
 		return
 	}
@@ -722,9 +748,9 @@ func (s *system) maybeVerifyState(lastIngestedLedger uint32, expectedBucketListH
 				case ingest.StateError:
 					markStateInvalid(s.ctx, s.historyQ, err)
 				default:
-					logger := log.WithField("err", err).Warn
+					logger := log.WithError(err).Warn
 					if errorCount >= stateVerificationErrorThreshold {
-						logger = log.WithField("err", err).Error
+						logger = log.WithError(err).Error
 					}
 					logger("State verification errored")
 				}
@@ -743,7 +769,7 @@ func (s *system) maybeReapLookupTables(lastIngestedLedger uint32) {
 	// Check if lastIngestedLedger is the last one available in the backend
 	sequence, err := s.ledgerBackend.GetLatestLedgerSequence(s.ctx)
 	if err != nil {
-		log.WithField("err", err).Error("Error getting latest ledger sequence from backend")
+		log.WithError(err).Error("Error getting latest ledger sequence from backend")
 		return
 	}
 
@@ -754,7 +780,7 @@ func (s *system) maybeReapLookupTables(lastIngestedLedger uint32) {
 
 	err = s.historyQ.Begin(s.ctx)
 	if err != nil {
-		log.WithField("err", err).Error("Error starting a transaction")
+		log.WithError(err).Error("Error starting a transaction")
 		return
 	}
 	defer s.historyQ.Rollback()
@@ -762,7 +788,7 @@ func (s *system) maybeReapLookupTables(lastIngestedLedger uint32) {
 	// If so block ingestion in the cluster to reap tables
 	_, err = s.historyQ.GetLastLedgerIngest(s.ctx)
 	if err != nil {
-		log.WithField("err", err).Error(getLastIngestedErrMsg)
+		log.WithError(err).Error(getLastIngestedErrMsg)
 		return
 	}
 
@@ -774,13 +800,13 @@ func (s *system) maybeReapLookupTables(lastIngestedLedger uint32) {
 	reapStart := time.Now()
 	deletedCount, newOffsets, err := s.historyQ.ReapLookupTables(ctx, s.reapOffsets)
 	if err != nil {
-		log.WithField("err", err).Warn("Error reaping lookup tables")
+		log.WithError(err).Warn("Error reaping lookup tables")
 		return
 	}
 
 	err = s.historyQ.Commit()
 	if err != nil {
-		log.WithField("err", err).Error("Error committing a transaction")
+		log.WithError(err).Error("Error committing a transaction")
 		return
 	}
 
@@ -824,16 +850,17 @@ func (s *system) Shutdown() {
 	// wait for ingestion state machine to terminate
 	s.wg.Wait()
 	s.historyQ.Close()
+	s.reaper.Close()
 	if err := s.ledgerBackend.Close(); err != nil {
 		log.WithError(err).Info("could not close ledger backend")
 	}
 }
 
 func markStateInvalid(ctx context.Context, historyQ history.IngestionQ, err error) {
-	log.WithField("err", err).Error("STATE IS INVALID!")
+	log.WithError(err).Error("STATE IS INVALID!")
 	q := historyQ.CloneIngestionQ()
 	if err := q.UpdateExpStateInvalid(ctx, true); err != nil {
-		log.WithField("err", err).Error(updateExpStateInvalidErrMsg)
+		log.WithError(err).Error(updateExpStateInvalidErrMsg)
 	}
 }
 

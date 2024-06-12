@@ -8,6 +8,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 
+	"github.com/stellar/go/services/horizon/internal/db2/history"
 	herrors "github.com/stellar/go/services/horizon/internal/errors"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
@@ -21,12 +22,34 @@ func (r *System) DeleteUnretainedHistory(ctx context.Context) error {
 		return nil
 	}
 
-	latest, err := r.HistoryQ.GetLatestHistoryLedger(ctx)
+	if !r.lock.TryLock() {
+		log.Infof("reap already in progress")
+		return nil
+	}
+	defer r.lock.Unlock()
+
+	reapLockQ := &history.Q{r.historyQ.Clone()}
+	if err := reapLockQ.Begin(ctx); err != nil {
+		return errors.Wrap(err, "error while acquiring reaper lock transaction")
+	}
+	defer func() {
+		if err := reapLockQ.Rollback(); err != nil {
+			log.WithField("error", err).Error("failed to release reaper lock")
+		}
+	}()
+	if acquired, err := reapLockQ.TryReaperLock(ctx); err != nil {
+		return errors.Wrap(err, "error while acquiring reaper lock")
+	} else if !acquired {
+		log.Info("reap already in progress on another node")
+		return nil
+	}
+
+	latest, err := r.historyQ.GetLatestHistoryLedger(ctx)
 	if err != nil {
 		return errors.Wrap(err, "error fetching latest history ledger")
 	}
 	var oldest uint32
-	err = r.HistoryQ.ElderLedger(ctx, &oldest)
+	err = r.historyQ.ElderLedger(ctx, &oldest)
 	if err != nil {
 		return errors.Wrap(err, "error fetching elder ledger")
 	}
@@ -52,29 +75,13 @@ func (r *System) DeleteUnretainedHistory(ctx context.Context) error {
 	return nil
 }
 
-// Run triggers the reaper system to update itself, deleted unretained history
-// if it is the appropriate time.
-func (r *System) Run() {
-	for {
-		select {
-		case <-time.After(1 * time.Hour):
-			r.runOnce(r.ctx)
-		case <-r.ctx.Done():
-			return
-		}
-	}
-}
-
 // RegisterMetrics registers the prometheus metrics
 func (s *System) RegisterMetrics(registry *prometheus.Registry) {
 	registry.MustRegister(s.deleteBatchDuration, s.rowsDeleted)
 }
 
-func (r *System) Shutdown() {
-	r.cancel()
-	if err := r.HistoryQ.Close(); err != nil {
-		log.Errorf("reaper could not close db connection: %s", err)
-	}
+func (r *System) Close() error {
+	return r.historyQ.Close()
 }
 
 func (r *System) runOnce(ctx context.Context) {
@@ -125,7 +132,7 @@ func (r *System) clearBefore(ctx context.Context, startSeq, endSeq uint32) error
 			return err
 		}
 		if count == 0 {
-			next, ok, err := r.HistoryQ.GetNextLedgerSequence(ctx, batchStartSeq)
+			next, ok, err := r.historyQ.GetNextLedgerSequence(ctx, batchStartSeq)
 			if err != nil {
 				return errors.Wrapf(err, "could not find next ledger sequence after %d", batchStartSeq)
 			}
@@ -149,18 +156,18 @@ func (r *System) deleteBatch(ctx context.Context, batchStartSeq, batchEndSeq uin
 	}
 
 	startTime := time.Now()
-	err = r.HistoryQ.Begin(ctx)
+	err = r.historyQ.Begin(ctx)
 	if err != nil {
 		return 0, errors.Wrap(err, "Error in begin")
 	}
-	defer r.HistoryQ.Rollback()
+	defer r.historyQ.Rollback()
 
-	count, err := r.HistoryQ.DeleteRangeAll(ctx, batchStart, batchEnd)
+	count, err := r.historyQ.DeleteRangeAll(ctx, batchStart, batchEnd)
 	if err != nil {
 		return 0, errors.Wrap(err, "Error in DeleteRangeAll")
 	}
 
-	err = r.HistoryQ.Commit()
+	err = r.historyQ.Commit()
 	if err != nil {
 		return 0, errors.Wrap(err, "Error in commit")
 	}
