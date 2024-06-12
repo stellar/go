@@ -635,7 +635,7 @@ func (c *CaptiveCoreToml) validate(params CaptiveCoreTomlParams) error {
 		)
 	}
 
-	if def := c.tree.Has("DEPRECATED_SQL_LEDGER_STATE"); def && params.UseDB && *c.DeprecatedSqlLedgerState == true {
+	if def := c.tree.Has("DEPRECATED_SQL_LEDGER_STATE"); def && params.UseDB && *c.DeprecatedSqlLedgerState {
 		return fmt.Errorf("CAPTIVE_CORE_USE_DB parameter is set to true, indicating stellar-core on-disk mode, in which DEPRECATED_SQL_LEDGER_STATE must be set to false")
 	}
 
