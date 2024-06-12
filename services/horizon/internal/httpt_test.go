@@ -54,7 +54,7 @@ func startHTTPTest(t *testing.T, scenario string) *HTTPT {
 		uint32(ret.App.config.HistoryRetentionCount),
 		uint32(ret.App.config.HistoryRetentionReapCount),
 		mustNewDBSession(
-			db.ReapSubservice, ret.App.config.DatabaseURL, 1, 1, ret.App.prometheusRegistry,
+			db.ReapSubservice, ret.App.config.DatabaseURL, 2, 2, ret.App.prometheusRegistry,
 		))
 
 	t.Cleanup(func() {

@@ -9,7 +9,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	herrors "github.com/stellar/go/services/horizon/internal/errors"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/toid"
@@ -82,21 +81,6 @@ func (s *System) RegisterMetrics(registry *prometheus.Registry) {
 
 func (r *System) Close() error {
 	return r.historyQ.Close()
-}
-
-func (r *System) runOnce(ctx context.Context) {
-	defer func() {
-		if rec := recover(); rec != nil {
-			err := herrors.FromPanic(rec)
-			log.Errorf("reaper panicked: %s", err)
-			herrors.ReportToSentry(err, nil)
-		}
-	}()
-
-	err := r.DeleteUnretainedHistory(ctx)
-	if err != nil {
-		log.Errorf("reaper failed: %s", err)
-	}
 }
 
 // Work backwards in 50k (by default, otherwise configurable via the CLI) ledger

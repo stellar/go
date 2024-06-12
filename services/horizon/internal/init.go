@@ -106,7 +106,7 @@ func initIngester(app *App) {
 		HistoryRetentionCount:                app.config.HistoryRetentionCount,
 		HistoryRetentionReapCount:            app.config.HistoryRetentionReapCount,
 		ReapSession: mustNewDBSession(
-			db.ReapSubservice, app.config.DatabaseURL, 1, 1, app.prometheusRegistry,
+			db.ReapSubservice, app.config.DatabaseURL, 2, 2, app.prometheusRegistry,
 		),
 		ReapFrequency: app.config.ReapFrequency,
 	})
