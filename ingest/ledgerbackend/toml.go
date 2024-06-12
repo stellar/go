@@ -635,6 +635,10 @@ func (c *CaptiveCoreToml) validate(params CaptiveCoreTomlParams) error {
 		)
 	}
 
+	if def := c.tree.Has("DEPRECATED_SQL_LEDGER_STATE"); def && params.UseDB && *c.DeprecatedSqlLedgerState == true {
+		return fmt.Errorf("CAPTIVE_CORE_USE_DB parameter is set to true, indicating stellar-core on-disk mode, in which DEPRECATED_SQL_LEDGER_STATE must be set to false")
+	}
+
 	homeDomainSet := map[string]HomeDomain{}
 	for _, hd := range c.HomeDomains {
 		if _, ok := homeDomainSet[hd.HomeDomain]; ok {

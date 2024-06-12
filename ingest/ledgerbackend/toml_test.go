@@ -203,6 +203,12 @@ func TestCaptiveCoreTomlValidation(t *testing.T) {
 			appendPath:    filepath.Join("testdata", "appendix-with-bucket-dir-path.cfg"),
 			expectedError: "could not unmarshal captive core toml: setting BUCKET_DIR_PATH is disallowed for Captive Core, use CAPTIVE_CORE_STORAGE_PATH instead",
 		},
+		{
+			name:       "invalid DEPRECATED_SQL_LEDGER_STATE",
+			appendPath: filepath.Join("testdata", "sample-appendix-deprecated_sql_ledger_state.cfg"),
+			expectedError: "invalid captive core toml: CAPTIVE_CORE_USE_DB parameter is set to true, indicating " +
+				"stellar-core on-disk mode, in which DEPRECATED_SQL_LEDGER_STATE must be set to false",
+		},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			params := CaptiveCoreTomlParams{
@@ -212,6 +218,7 @@ func TestCaptiveCoreTomlValidation(t *testing.T) {
 				PeerPort:           testCase.peerPort,
 				LogPath:            testCase.logPath,
 				Strict:             true,
+				UseDB:              true,
 			}
 			_, err := NewCaptiveCoreTomlFromFile(testCase.appendPath, params)
 			assert.EqualError(t, err, testCase.expectedError)
