@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	exporter "github.com/stellar/go/exp/services/ledgerexporter/internal"
+	exporter "github.com/stellar/go/services/ledgerexporter/internal"
 )
 
 func main() {

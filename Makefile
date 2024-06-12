@@ -35,7 +35,7 @@ horizon:
 	$(MAKE) -C services/horizon/ binary-build
 
 ledger-exporter:
-	$(MAKE) -C exp/services/ledgerexporter/ docker-build
+	$(MAKE) -C services/ledgerexporter/ docker-build
 
 webauth:
 	$(MAKE) -C exp/services/webauth/ docker-build
