@@ -10,8 +10,12 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 - Change ingestion filtering logic to store transactions if any filter matches on it. ([5303](https://github.com/stellar/go/pull/5303))
   - The previous behaviour was to store a tx only if both asset and account filters match together. So even if a tx matched an account filter but failed to match an asset filter, it would not be stored by Horizon.  
 
-## 2.30.0
+- Captive-core configuration parameters updated to align with [stellar-core v21](https://github.com/stellar/stellar-core/issues/3811) ([5333](https://github.com/stellar/go/pull/5333))
+  - BucketlistDB is now the default database for stellar-core, deprecating `EXPERIMENTAL_BUCKETLIST_DB`.
+  - A new mandatory parameter `DEPRECATED_SQL_LEDGER_STATE` (default: false) will be added automatically, no action required.
+  - If using `EXPERIMENTAL_BUCKETLIST_DB_INDEX_PAGE_SIZE_EXPONENT` or `EXPERIMENTAL_BUCKETLIST_DB_INDEX_CUTOFF`, they have been renamed to `BUCKETLIST_DB_INDEX_PAGE_SIZE_EXPONENT` and `BUCKETLIST_DB_INDEX_CUTOFF` respectively.
 
+## 2.30.0
 **This release adds support for Protocol 21**
 
 ### Added
