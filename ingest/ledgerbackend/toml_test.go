@@ -366,13 +366,6 @@ func TestGenerateConfig(t *testing.T) {
 				UseDB:                              testCase.useDB,
 				EnforceSorobanDiagnosticEvents:     testCase.enforceSorobanDiagnosticEvents,
 				EnforceSorobanTransactionMetaExtV1: testCase.enforceEmitMetaV1,
-				checkCoreVersion: func(coreBinaryPath string) coreVersion {
-					return coreVersion{
-						major:                 21,
-						minor:                 0,
-						ledgerProtocolVersion: 21,
-					}
-				},
 			}
 			if testCase.appendPath != "" {
 				captiveCoreToml, err = NewCaptiveCoreTomlFromFile(testCase.appendPath, params)
@@ -496,14 +489,4 @@ func TestNonDBConfigDoesNotUpdateDatabase(t *testing.T) {
 	toml := CaptiveCoreToml{}
 	require.NoError(t, toml.unmarshal(configBytes, true))
 	assert.Equal(t, toml.Database, "")
-}
-
-func TestCheckCoreVersion(t *testing.T) {
-	coreBin := os.Getenv("HORIZON_INTEGRATION_TESTS_CAPTIVE_CORE_BIN")
-	if coreBin == "" {
-		t.SkipNow()
-		return
-	}
-	version := checkCoreVersion(coreBin)
-	require.True(t, version.IsEqualOrAbove(20, 0))
 }

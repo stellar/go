@@ -307,7 +307,7 @@ func TestEnvironmentVariables(t *testing.T) {
 	assert.Equal(t, config.AdminPort, uint(6060))
 	assert.Equal(t, config.Port, uint(8001))
 	assert.Equal(t, config.CaptiveCoreBinaryPath, os.Getenv("HORIZON_INTEGRATION_TESTS_CAPTIVE_CORE_BIN"))
-	assert.Equal(t, config.CaptiveCoreConfigPath, "../docker/captive-core-classic-integration-tests.cfg")
+	assert.Equal(t, config.CaptiveCoreConfigPath, "../docker/captive-core-integration-tests.cfg")
 	assert.Equal(t, config.CaptiveCoreConfigUseDB, true)
 }
 
@@ -324,7 +324,7 @@ func horizonEnvVars() map[string]string {
 		"ADMIN_PORT":               "6060",
 		"PORT":                     "8001",
 		"CAPTIVE_CORE_BINARY_PATH": os.Getenv("HORIZON_INTEGRATION_TESTS_CAPTIVE_CORE_BIN"),
-		"CAPTIVE_CORE_CONFIG_PATH": "../docker/captive-core-classic-integration-tests.cfg",
+		"CAPTIVE_CORE_CONFIG_PATH": "../docker/captive-core-integration-tests.cfg",
 		"CAPTIVE_CORE_USE_DB":      "true",
 	}
 }
