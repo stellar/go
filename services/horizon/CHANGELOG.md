@@ -12,7 +12,7 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 - Captive-core configuration parameters updated to align with [stellar-core v21](https://github.com/stellar/stellar-core/issues/3811) ([5333](https://github.com/stellar/go/pull/5333))
   - BucketlistDB is now the default database for stellar-core, deprecating `EXPERIMENTAL_BUCKETLIST_DB`.
-  - A new mandatory parameter `DEPRECATED_SQL_LEDGER_STATE` (default: false) will be added automatically, no action required.
+  - A new mandatory parameter `DEPRECATED_SQL_LEDGER_STATE` (default: false) is required by stellar-core on its configuration toml file. if the toml provided by `CAPTIVE_CORE_CONFIG_PATH` does not have this new setting, Horizon will add it automatically, therefore, no action required.
   - If using `EXPERIMENTAL_BUCKETLIST_DB_INDEX_PAGE_SIZE_EXPONENT` or `EXPERIMENTAL_BUCKETLIST_DB_INDEX_CUTOFF`, they have been renamed to `BUCKETLIST_DB_INDEX_PAGE_SIZE_EXPONENT` and `BUCKETLIST_DB_INDEX_CUTOFF` respectively.
 
 ## 2.30.0
