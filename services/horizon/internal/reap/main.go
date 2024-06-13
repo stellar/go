@@ -13,11 +13,10 @@ import (
 	"github.com/stellar/go/support/db"
 )
 
-// System represents the history reaping subsystem of horizon.
-type System struct {
-	historyQ       *history.Q
-	RetentionCount uint32
-	RetentionBatch uint32
+// Reaper represents the history reaping subsystem of horizon.
+type Reaper struct {
+	historyQ *history.Q
+	config   Config
 
 	deleteBatchDuration prometheus.Summary
 	rowsDeleted         prometheus.Summary
@@ -25,13 +24,17 @@ type System struct {
 	lock sync.Mutex
 }
 
+type Config struct {
+	RetentionCount uint32
+	ReapBatchSize  uint32
+}
+
 // New initializes the reaper, causing it to begin polling the stellar-core
 // database for now ledgers and ingesting data into the horizon database.
-func New(retention, retentionBatchSize uint32, dbSession db.SessionInterface) *System {
-	r := &System{
-		historyQ:       &history.Q{dbSession.Clone()},
-		RetentionCount: retention,
-		RetentionBatch: retentionBatchSize,
+func New(config Config, dbSession db.SessionInterface) *Reaper {
+	r := &Reaper{
+		historyQ: &history.Q{dbSession.Clone()},
+		config:   config,
 		deleteBatchDuration: prometheus.NewSummary(prometheus.SummaryOpts{
 			Namespace: "horizon", Subsystem: "reap", Name: "delete_batch_duration",
 			Help:       "reap batch duration in seconds, sliding window = 10m",

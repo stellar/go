@@ -10,14 +10,16 @@ import (
 
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
-	"github.com/stellar/go/support/log"
+	logpkg "github.com/stellar/go/support/log"
 	"github.com/stellar/go/toid"
 )
 
+var log = logpkg.DefaultLogger.WithField("service", "reaper")
+
 // DeleteUnretainedHistory removes all data associated with unretained ledgers.
-func (r *System) DeleteUnretainedHistory(ctx context.Context) error {
+func (r *Reaper) DeleteUnretainedHistory(ctx context.Context) error {
 	// RetentionCount of 0 indicates "keep all history"
-	if r.RetentionCount == 0 {
+	if r.config.RetentionCount == 0 {
 		return nil
 	}
 
@@ -53,12 +55,12 @@ func (r *System) DeleteUnretainedHistory(ctx context.Context) error {
 		return errors.Wrap(err, "error fetching elder ledger")
 	}
 
-	targetElder := latest - r.RetentionCount + 1
-	if latest <= r.RetentionCount || targetElder < oldest {
+	targetElder := latest - r.config.RetentionCount + 1
+	if latest <= r.config.RetentionCount || targetElder < oldest {
 		log.
 			WithField("latest", latest).
 			WithField("oldest", oldest).
-			WithField("retention_count", r.RetentionCount).
+			WithField("retention_count", r.config.RetentionCount).
 			Info("not enough history to reap")
 		return nil
 	}
@@ -75,12 +77,8 @@ func (r *System) DeleteUnretainedHistory(ctx context.Context) error {
 }
 
 // RegisterMetrics registers the prometheus metrics
-func (s *System) RegisterMetrics(registry *prometheus.Registry) {
+func (s *Reaper) RegisterMetrics(registry *prometheus.Registry) {
 	registry.MustRegister(s.deleteBatchDuration, s.rowsDeleted)
-}
-
-func (r *System) Close() error {
-	return r.historyQ.Close()
 }
 
 // Work backwards in 50k (by default, otherwise configurable via the CLI) ledger
@@ -94,8 +92,8 @@ func (r *System) Close() error {
 // hour, and slowing it down enough to leave some CPU for other processes.
 var sleep = 1 * time.Second
 
-func (r *System) clearBefore(ctx context.Context, startSeq, endSeq uint32) error {
-	batchSize := r.RetentionBatch
+func (r *Reaper) clearBefore(ctx context.Context, startSeq, endSeq uint32) error {
+	batchSize := r.config.ReapBatchSize
 	if batchSize <= 0 {
 		return fmt.Errorf("invalid batch size for reaping (%d)", batchSize)
 	}
@@ -103,7 +101,7 @@ func (r *System) clearBefore(ctx context.Context, startSeq, endSeq uint32) error
 	log.WithField("start_ledger", startSeq).
 		WithField("end_ledger", endSeq).
 		WithField("batch_size", batchSize).
-		Info("reaper: deleting history outside retention window")
+		Info("deleting history outside retention window")
 
 	for batchStartSeq := startSeq; batchStartSeq < endSeq; {
 		batchEndSeq := batchStartSeq + batchSize
@@ -133,7 +131,7 @@ func (r *System) clearBefore(ctx context.Context, startSeq, endSeq uint32) error
 	return nil
 }
 
-func (r *System) deleteBatch(ctx context.Context, batchStartSeq, batchEndSeq uint32) (int64, error) {
+func (r *Reaper) deleteBatch(ctx context.Context, batchStartSeq, batchEndSeq uint32) (int64, error) {
 	batchStart, batchEnd, err := toid.LedgerRangeInclusive(int32(batchStartSeq), int32(batchEndSeq))
 	if err != nil {
 		return 0, err
@@ -161,7 +159,7 @@ func (r *System) deleteBatch(ctx context.Context, batchStartSeq, batchEndSeq uin
 		WithField("end_ledger", batchEndSeq).
 		WithField("rows_deleted", strconv.FormatInt(count, 10)).
 		WithField("duration", elapsedSeconds).
-		Info("reaper: successfully deleted batch")
+		Info("successfully deleted batch")
 
 	r.rowsDeleted.Observe(float64(count))
 	r.deleteBatchDuration.Observe(elapsedSeconds)

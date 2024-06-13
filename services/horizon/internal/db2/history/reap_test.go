@@ -14,8 +14,13 @@ func TestReapLookupTables(t *testing.T) {
 	tt.Scenario("kahuna")
 
 	db := tt.HorizonSession()
-
-	sys := reap.New(0, 0, db)
+	reaper := reap.New(
+		reap.Config{
+			RetentionCount: 1,
+			ReapBatchSize:  50,
+		},
+		db,
+	)
 
 	var (
 		prevLedgers, curLedgers                     int
@@ -39,9 +44,7 @@ func TestReapLookupTables(t *testing.T) {
 		tt.Require.NoError(err)
 	}
 
-	sys.RetentionCount = 1
-	sys.RetentionBatch = 50
-	err := sys.DeleteUnretainedHistory(tt.Ctx)
+	err := reaper.DeleteUnretainedHistory(tt.Ctx)
 	tt.Require.NoError(err)
 
 	q := &history.Q{tt.HorizonSession()}

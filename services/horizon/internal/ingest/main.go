@@ -70,7 +70,8 @@ const (
 	//  * Ledger ingestion,
 	//  * State verifications,
 	//  * Metrics updates.
-	MaxDBConnections = 3
+	//  * Reaping (requires 2 connections, the extra connection is used for holding the advisory lock)
+	MaxDBConnections = 5
 
 	defaultCoreCursorName           = "HORIZON"
 	stateVerificationErrorThreshold = 3
@@ -111,9 +112,9 @@ type Config struct {
 	MaxLedgerPerFlush uint32
 	SkipTxmeta        bool
 
-	CoreProtocolVersionFn     ledgerbackend.CoreProtocolVersionFunc
-	CoreBuildVersionFn        ledgerbackend.CoreBuildVersionFunc
-	ReapSession               db.SessionInterface
+	CoreProtocolVersionFn ledgerbackend.CoreProtocolVersionFunc
+	CoreBuildVersionFn    ledgerbackend.CoreBuildVersionFunc
+
 	ReapFrequency             uint
 	HistoryRetentionCount     uint
 	HistoryRetentionReapCount uint
@@ -233,7 +234,7 @@ type system struct {
 	reapOffsets       map[string]int64
 	maxLedgerPerFlush uint32
 
-	reaper *reap.System
+	reaper *reap.Reaper
 
 	currentStateMutex sync.Mutex
 	currentState      State
@@ -326,9 +327,11 @@ func NewSystem(config Config) (System, error) {
 		),
 		maxLedgerPerFlush: maxLedgersPerFlush,
 		reaper: reap.New(
-			uint32(config.HistoryRetentionCount),
-			uint32(config.HistoryRetentionReapCount),
-			config.ReapSession,
+			reap.Config{
+				RetentionCount: uint32(config.HistoryRetentionCount),
+				ReapBatchSize:  uint32(config.HistoryRetentionReapCount),
+			},
+			config.HistorySession,
 		),
 	}
 
@@ -850,7 +853,6 @@ func (s *system) Shutdown() {
 	// wait for ingestion state machine to terminate
 	s.wg.Wait()
 	s.historyQ.Close()
-	s.reaper.Close()
 	if err := s.ledgerBackend.Close(); err != nil {
 		log.WithError(err).Info("could not close ledger backend")
 	}

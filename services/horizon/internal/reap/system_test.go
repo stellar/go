@@ -13,7 +13,10 @@ func TestDeleteUnretainedHistory(t *testing.T) {
 
 	db := tt.HorizonSession()
 
-	sys := New(0, 50, db)
+	sys := New(Config{
+		RetentionCount: 0,
+		ReapBatchSize:  50,
+	}, db)
 
 	// Disable sleeps for this.
 	sleep = 0
@@ -32,7 +35,7 @@ func TestDeleteUnretainedHistory(t *testing.T) {
 		tt.Assert.Equal(prev, cur, "Ledgers deleted when RetentionCount == 0")
 	}
 
-	sys.RetentionCount = 10
+	sys.config.RetentionCount = 10
 	err = sys.DeleteUnretainedHistory(tt.Ctx)
 	if tt.Assert.NoError(err) {
 		err = db.GetRaw(tt.Ctx, &cur, `SELECT COUNT(*) FROM history_ledgers`)
@@ -40,7 +43,7 @@ func TestDeleteUnretainedHistory(t *testing.T) {
 		tt.Assert.Equal(10, cur)
 	}
 
-	sys.RetentionCount = 1
+	sys.config.RetentionCount = 1
 	err = sys.DeleteUnretainedHistory(tt.Ctx)
 	if tt.Assert.NoError(err) {
 		err = db.GetRaw(tt.Ctx, &cur, `SELECT COUNT(*) FROM history_ledgers`)

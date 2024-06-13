@@ -234,15 +234,13 @@ var dbReapCmd = &cobra.Command{
 		}
 
 		reaper := reap.New(
-			uint32(globalConfig.HistoryRetentionCount),
-			uint32(globalConfig.HistoryRetentionReapCount),
+			reap.Config{
+				RetentionCount: uint32(globalConfig.HistoryRetentionCount),
+				ReapBatchSize:  uint32(globalConfig.HistoryRetentionReapCount),
+			},
 			session,
 		)
-		defer func() {
-			reaper.Close()
-		}()
-		ctx := context.Background()
-		return reaper.DeleteUnretainedHistory(ctx)
+		return reaper.DeleteUnretainedHistory(context.Background())
 	},
 }
 
