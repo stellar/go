@@ -14,8 +14,8 @@ func TestReapLookupTables(t *testing.T) {
 	tt.Scenario("kahuna")
 
 	db := tt.HorizonSession()
-	reaper := ingest.New(
-		ingest.Config{
+	reaper := ingest.NewReaper(
+		ingest.ReapConfig{
 			RetentionCount: 1,
 			ReapBatchSize:  50,
 		},
