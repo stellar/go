@@ -7,7 +7,7 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/stellar/go/services/horizon/internal/reap"
+	"github.com/stellar/go/services/horizon/internal/ingest"
 	"github.com/stellar/go/services/horizon/internal/test"
 	tdb "github.com/stellar/go/services/horizon/internal/test/db"
 )
@@ -103,8 +103,8 @@ func (ht *HTTPT) Post(
 // ReapHistory causes the test server to run `DeleteUnretainedHistory`, after
 // setting the retention count to the provided number.
 func (ht *HTTPT) ReapHistory(retention uint32) {
-	reaper := reap.New(
-		reap.Config{
+	reaper := ingest.NewReaper(
+		ingest.ReapConfig{
 			RetentionCount: retention,
 			ReapBatchSize:  50_000,
 		}, ht.HorizonSession())

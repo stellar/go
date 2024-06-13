@@ -1,4 +1,4 @@
-package reap
+package ingest
 
 import (
 	"testing"
@@ -13,7 +13,7 @@ func TestDeleteUnretainedHistory(t *testing.T) {
 
 	db := tt.HorizonSession()
 
-	sys := New(Config{
+	reaper := NewReaper(ReapConfig{
 		RetentionCount: 0,
 		ReapBatchSize:  50,
 	}, db)
@@ -28,23 +28,23 @@ func TestDeleteUnretainedHistory(t *testing.T) {
 	err := db.GetRaw(tt.Ctx, &prev, `SELECT COUNT(*) FROM history_ledgers`)
 	tt.Require.NoError(err)
 
-	err = sys.DeleteUnretainedHistory(tt.Ctx)
+	err = reaper.DeleteUnretainedHistory(tt.Ctx)
 	if tt.Assert.NoError(err) {
 		err = db.GetRaw(tt.Ctx, &cur, `SELECT COUNT(*) FROM history_ledgers`)
 		tt.Require.NoError(err)
 		tt.Assert.Equal(prev, cur, "Ledgers deleted when RetentionCount == 0")
 	}
 
-	sys.config.RetentionCount = 10
-	err = sys.DeleteUnretainedHistory(tt.Ctx)
+	reaper.config.RetentionCount = 10
+	err = reaper.DeleteUnretainedHistory(tt.Ctx)
 	if tt.Assert.NoError(err) {
 		err = db.GetRaw(tt.Ctx, &cur, `SELECT COUNT(*) FROM history_ledgers`)
 		tt.Require.NoError(err)
 		tt.Assert.Equal(10, cur)
 	}
 
-	sys.config.RetentionCount = 1
-	err = sys.DeleteUnretainedHistory(tt.Ctx)
+	reaper.config.RetentionCount = 1
+	err = reaper.DeleteUnretainedHistory(tt.Ctx)
 	if tt.Assert.NoError(err) {
 		err = db.GetRaw(tt.Ctx, &cur, `SELECT COUNT(*) FROM history_ledgers`)
 		tt.Require.NoError(err)

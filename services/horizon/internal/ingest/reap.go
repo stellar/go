@@ -1,20 +1,60 @@
-package reap
+package ingest
 
 import (
 	"context"
 	"fmt"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 	logpkg "github.com/stellar/go/support/log"
 	"github.com/stellar/go/toid"
 )
 
-var log = logpkg.DefaultLogger.WithField("service", "reaper")
+// Reaper represents the history reaping subsystem of horizon.
+type Reaper struct {
+	historyQ  *history.Q
+	reapLockQ *history.Q
+	config    ReapConfig
+	logger    *logpkg.Entry
+
+	deleteBatchDuration prometheus.Summary
+	rowsDeleted         prometheus.Summary
+
+	lock sync.Mutex
+}
+
+type ReapConfig struct {
+	RetentionCount uint32
+	ReapBatchSize  uint32
+}
+
+// NewReaper creates a new Reaper instance
+func NewReaper(config ReapConfig, dbSession db.SessionInterface) *Reaper {
+	r := &Reaper{
+		historyQ:  &history.Q{dbSession.Clone()},
+		reapLockQ: &history.Q{dbSession.Clone()},
+		config:    config,
+		deleteBatchDuration: prometheus.NewSummary(prometheus.SummaryOpts{
+			Namespace: "horizon", Subsystem: "reap", Name: "delete_batch_duration",
+			Help:       "reap batch duration in seconds, sliding window = 10m",
+			Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
+		}),
+		rowsDeleted: prometheus.NewSummary(prometheus.SummaryOpts{
+			Namespace: "horizon", Subsystem: "reap", Name: "rows_deleted",
+			Help:       "rows deleted during reap batch , sliding window = 10m",
+			Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
+		}),
+		logger: log.WithField("subservice", "reaper"),
+	}
+
+	return r
+}
 
 // DeleteUnretainedHistory removes all data associated with unretained ledgers.
 func (r *Reaper) DeleteUnretainedHistory(ctx context.Context) error {
@@ -24,24 +64,23 @@ func (r *Reaper) DeleteUnretainedHistory(ctx context.Context) error {
 	}
 
 	if !r.lock.TryLock() {
-		log.Infof("reap already in progress")
+		r.logger.Infof("reap already in progress")
 		return nil
 	}
 	defer r.lock.Unlock()
 
-	reapLockQ := &history.Q{r.historyQ.Clone()}
-	if err := reapLockQ.Begin(ctx); err != nil {
+	if err := r.reapLockQ.Begin(ctx); err != nil {
 		return errors.Wrap(err, "error while acquiring reaper lock transaction")
 	}
 	defer func() {
-		if err := reapLockQ.Rollback(); err != nil {
-			log.WithField("error", err).Error("failed to release reaper lock")
+		if err := r.reapLockQ.Rollback(); err != nil {
+			r.logger.WithField("error", err).Error("failed to release reaper lock")
 		}
 	}()
-	if acquired, err := reapLockQ.TryReaperLock(ctx); err != nil {
+	if acquired, err := r.reapLockQ.TryReaperLock(ctx); err != nil {
 		return errors.Wrap(err, "error while acquiring reaper lock")
 	} else if !acquired {
-		log.Info("reap already in progress on another node")
+		r.logger.Info("reap already in progress on another node")
 		return nil
 	}
 
@@ -57,7 +96,7 @@ func (r *Reaper) DeleteUnretainedHistory(ctx context.Context) error {
 
 	targetElder := latest - r.config.RetentionCount + 1
 	if latest <= r.config.RetentionCount || targetElder < oldest {
-		log.
+		r.logger.
 			WithField("latest", latest).
 			WithField("oldest", oldest).
 			WithField("retention_count", r.config.RetentionCount).
@@ -69,7 +108,7 @@ func (r *Reaper) DeleteUnretainedHistory(ctx context.Context) error {
 		return err
 	}
 
-	log.
+	r.logger.
 		WithField("new_elder", targetElder).
 		Info("reaper succeeded")
 
@@ -98,7 +137,7 @@ func (r *Reaper) clearBefore(ctx context.Context, startSeq, endSeq uint32) error
 		return fmt.Errorf("invalid batch size for reaping (%d)", batchSize)
 	}
 
-	log.WithField("start_ledger", startSeq).
+	r.logger.WithField("start_ledger", startSeq).
 		WithField("end_ledger", endSeq).
 		WithField("batch_size", batchSize).
 		Info("deleting history outside retention window")
@@ -155,7 +194,7 @@ func (r *Reaper) deleteBatch(ctx context.Context, batchStartSeq, batchEndSeq uin
 	}
 
 	elapsedSeconds := time.Since(startTime).Seconds()
-	log.WithField("start_ledger", batchStartSeq).
+	r.logger.WithField("start_ledger", batchStartSeq).
 		WithField("end_ledger", batchEndSeq).
 		WithField("rows_deleted", strconv.FormatInt(count, 10)).
 		WithField("duration", elapsedSeconds).

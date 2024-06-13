@@ -13,10 +13,8 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/services/horizon/internal/reap"
-
 	horizon "github.com/stellar/go/services/horizon/internal"
+	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/db2/schema"
 	"github.com/stellar/go/services/horizon/internal/ingest"
 	support "github.com/stellar/go/support/config"
@@ -234,8 +232,8 @@ var dbReapCmd = &cobra.Command{
 		}
 		defer session.Close()
 
-		reaper := reap.New(
-			reap.Config{
+		reaper := ingest.NewReaper(
+			ingest.ReapConfig{
 				RetentionCount: uint32(globalConfig.HistoryRetentionCount),
 				ReapBatchSize:  uint32(globalConfig.HistoryRetentionReapCount),
 			},

@@ -19,7 +19,6 @@ import (
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/ingest/filters"
-	"github.com/stellar/go/services/horizon/internal/reap"
 	apkg "github.com/stellar/go/support/app"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
@@ -234,7 +233,7 @@ type system struct {
 	reapOffsets       map[string]int64
 	maxLedgerPerFlush uint32
 
-	reaper *reap.Reaper
+	reaper *Reaper
 
 	currentStateMutex sync.Mutex
 	currentState      State
@@ -326,8 +325,8 @@ func NewSystem(config Config) (System, error) {
 			config.StateVerificationCheckpointFrequency,
 		),
 		maxLedgerPerFlush: maxLedgersPerFlush,
-		reaper: reap.New(
-			reap.Config{
+		reaper: NewReaper(
+			ReapConfig{
 				RetentionCount: uint32(config.HistoryRetentionCount),
 				ReapBatchSize:  uint32(config.HistoryRetentionReapCount),
 			},

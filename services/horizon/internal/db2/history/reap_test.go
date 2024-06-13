@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/services/horizon/internal/reap"
+	"github.com/stellar/go/services/horizon/internal/ingest"
 	"github.com/stellar/go/services/horizon/internal/test"
 )
 
@@ -14,8 +14,8 @@ func TestReapLookupTables(t *testing.T) {
 	tt.Scenario("kahuna")
 
 	db := tt.HorizonSession()
-	reaper := reap.New(
-		reap.Config{
+	reaper := ingest.New(
+		ingest.Config{
 			RetentionCount: 1,
 			ReapBatchSize:  50,
 		},
