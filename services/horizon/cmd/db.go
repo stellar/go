@@ -232,6 +232,7 @@ var dbReapCmd = &cobra.Command{
 		if err != nil {
 			return fmt.Errorf("cannot open Horizon DB: %v", err)
 		}
+		defer session.Close()
 
 		reaper := reap.New(
 			reap.Config{
