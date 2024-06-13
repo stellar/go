@@ -8,21 +8,29 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/stellar/go/ingest/ledgerbackend"
+	"github.com/stellar/go/support/datastore"
 	"github.com/stellar/go/xdr"
 )
 
 type ExportManager struct {
-	config             *Config
+	dataStoreSchema    datastore.DataStoreSchema
 	ledgerBackend      ledgerbackend.LedgerBackend
 	currentMetaArchive *xdr.LedgerCloseMetaBatch
 	queue              UploadQueue
 	latestLedgerMetric *prometheus.GaugeVec
+	networkPassPhrase  string
+	coreVersion        string
 }
 
 // NewExportManager creates a new ExportManager with the provided configuration.
-func NewExportManager(config *Config, backend ledgerbackend.LedgerBackend, queue UploadQueue, prometheusRegistry *prometheus.Registry) (*ExportManager, error) {
-	if config.LedgerBatchConfig.LedgersPerFile < 1 {
-		return nil, errors.Errorf("Invalid ledgers per file (%d): must be at least 1", config.LedgerBatchConfig.LedgersPerFile)
+func NewExportManager(dataStoreSchema datastore.DataStoreSchema,
+	backend ledgerbackend.LedgerBackend,
+	queue UploadQueue,
+	prometheusRegistry *prometheus.Registry,
+	networkPassPhrase string,
+	coreVersion string) (*ExportManager, error) {
+	if dataStoreSchema.LedgersPerFile < 1 {
+		return nil, errors.Errorf("Invalid ledgers per file (%d): must be at least 1", dataStoreSchema.LedgersPerFile)
 	}
 
 	latestLedgerMetric := prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -32,10 +40,12 @@ func NewExportManager(config *Config, backend ledgerbackend.LedgerBackend, queue
 	prometheusRegistry.MustRegister(latestLedgerMetric)
 
 	return &ExportManager{
-		config:             config,
+		dataStoreSchema:    dataStoreSchema,
 		ledgerBackend:      backend,
 		queue:              queue,
 		latestLedgerMetric: latestLedgerMetric,
+		networkPassPhrase:  networkPassPhrase,
+		coreVersion:        coreVersion,
 	}, nil
 }
 
@@ -44,16 +54,16 @@ func (e *ExportManager) AddLedgerCloseMeta(ctx context.Context, ledgerCloseMeta 
 	ledgerSeq := ledgerCloseMeta.LedgerSequence()
 
 	// Determine the object key for the given ledger sequence
-	objectKey := e.config.LedgerBatchConfig.GetObjectKeyFromSequenceNumber(ledgerSeq)
+	objectKey := e.dataStoreSchema.GetObjectKeyFromSequenceNumber(ledgerSeq)
 
 	if e.currentMetaArchive == nil {
-		endSeq := ledgerSeq + e.config.LedgerBatchConfig.LedgersPerFile - 1
-		if ledgerSeq < e.config.LedgerBatchConfig.LedgersPerFile {
+		endSeq := ledgerSeq + e.dataStoreSchema.LedgersPerFile - 1
+		if ledgerSeq < e.dataStoreSchema.LedgersPerFile {
 			// Special case: Adjust the end ledger sequence for the first batch.
 			// Since the start ledger is 2 instead of 0, we want to ensure that the end ledger sequence
 			// does not exceed LedgersPerFile.
 			// For example, if LedgersPerFile is 64, the file name for the first batch should be 0-63, not 2-66.
-			endSeq = e.config.LedgerBatchConfig.LedgersPerFile - 1
+			endSeq = e.dataStoreSchema.LedgersPerFile - 1
 		}
 
 		// Create a new LedgerCloseMetaBatch
@@ -65,7 +75,7 @@ func (e *ExportManager) AddLedgerCloseMeta(ctx context.Context, ledgerCloseMeta 
 	}
 
 	if ledgerSeq >= uint32(e.currentMetaArchive.EndSequence) {
-		ledgerMetaArchive, err := NewLedgerMetaArchiveFromXDR(e.config, objectKey, *e.currentMetaArchive)
+		ledgerMetaArchive, err := NewLedgerMetaArchiveFromXDR(e.networkPassPhrase, e.coreVersion, objectKey, *e.currentMetaArchive)
 		if err != nil {
 			return err
 		}

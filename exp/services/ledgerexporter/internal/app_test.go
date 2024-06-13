@@ -12,7 +12,7 @@ import (
 func TestApplyResumeHasStartError(t *testing.T) {
 	ctx := context.Background()
 	app := &App{}
-	app.config = &Config{StartLedger: 10, EndLedger: 19, Resume: true}
+	app.config = &Config{StartLedger: 10, EndLedger: 19, Mode: Append}
 	mockResumableManager := &datastore.MockResumableManager{}
 	mockResumableManager.On("FindStart", ctx, uint32(10), uint32(19)).Return(uint32(0), false, errors.New("start error")).Once()
 
@@ -24,7 +24,7 @@ func TestApplyResumeHasStartError(t *testing.T) {
 func TestApplyResumeDatastoreComplete(t *testing.T) {
 	ctx := context.Background()
 	app := &App{}
-	app.config = &Config{StartLedger: 10, EndLedger: 19, Resume: true}
+	app.config = &Config{StartLedger: 10, EndLedger: 19, Mode: Append}
 	mockResumableManager := &datastore.MockResumableManager{}
 	mockResumableManager.On("FindStart", ctx, uint32(10), uint32(19)).Return(uint32(0), false, nil).Once()
 
@@ -38,10 +38,10 @@ func TestApplyResumeInvalidDataStoreLedgersPerFileBoundary(t *testing.T) {
 	ctx := context.Background()
 	app := &App{}
 	app.config = &Config{
-		StartLedger:       3,
-		EndLedger:         9,
-		Resume:            true,
-		LedgerBatchConfig: datastore.LedgerBatchConfig{LedgersPerFile: 10, FilesPerPartition: 50},
+		StartLedger:     3,
+		EndLedger:       9,
+		Mode:            Append,
+		DataStoreConfig: datastore.DataStoreConfig{Schema: datastore.DataStoreSchema{LedgersPerFile: 10, FilesPerPartition: 50}},
 	}
 	mockResumableManager := &datastore.MockResumableManager{}
 	// simulate the datastore has inconsistent data,
@@ -58,10 +58,10 @@ func TestApplyResumeWithPartialRemoteDataPresent(t *testing.T) {
 	ctx := context.Background()
 	app := &App{}
 	app.config = &Config{
-		StartLedger:       10,
-		EndLedger:         99,
-		Resume:            true,
-		LedgerBatchConfig: datastore.LedgerBatchConfig{LedgersPerFile: 10, FilesPerPartition: 50},
+		StartLedger:     10,
+		EndLedger:       99,
+		Mode:            Append,
+		DataStoreConfig: datastore.DataStoreConfig{Schema: datastore.DataStoreSchema{LedgersPerFile: 10, FilesPerPartition: 50}},
 	}
 	mockResumableManager := &datastore.MockResumableManager{}
 	// simulates a data store that had ledger files populated up to seq=49, so the first absent ledger would be 50
@@ -77,10 +77,10 @@ func TestApplyResumeWithNoRemoteDataPresent(t *testing.T) {
 	ctx := context.Background()
 	app := &App{}
 	app.config = &Config{
-		StartLedger:       10,
-		EndLedger:         99,
-		Resume:            true,
-		LedgerBatchConfig: datastore.LedgerBatchConfig{LedgersPerFile: 10, FilesPerPartition: 50},
+		StartLedger:     10,
+		EndLedger:       99,
+		Mode:            Append,
+		DataStoreConfig: datastore.DataStoreConfig{Schema: datastore.DataStoreSchema{LedgersPerFile: 10, FilesPerPartition: 50}},
 	}
 	mockResumableManager := &datastore.MockResumableManager{}
 	// simulates a data store that had no data in the requested range
@@ -99,10 +99,10 @@ func TestApplyResumeWithNoRemoteDataAndRequestFromGenesis(t *testing.T) {
 	ctx := context.Background()
 	app := &App{}
 	app.config = &Config{
-		StartLedger:       2,
-		EndLedger:         99,
-		Resume:            true,
-		LedgerBatchConfig: datastore.LedgerBatchConfig{LedgersPerFile: 10, FilesPerPartition: 50},
+		StartLedger:     2,
+		EndLedger:       99,
+		Mode:            Append,
+		DataStoreConfig: datastore.DataStoreConfig{Schema: datastore.DataStoreSchema{LedgersPerFile: 10, FilesPerPartition: 50}},
 	}
 	mockResumableManager := &datastore.MockResumableManager{}
 	// simulates a data store that had no data in the requested range

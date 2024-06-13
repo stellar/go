@@ -37,19 +37,16 @@ type ResumableManager interface {
 }
 
 type resumableManagerService struct {
-	network           string
-	ledgerBatchConfig LedgerBatchConfig
+	ledgerBatchConfig DataStoreSchema
 	dataStore         DataStore
 	archive           historyarchive.ArchiveInterface
 }
 
 func NewResumableManager(dataStore DataStore,
-	network string,
-	ledgerBatchConfig LedgerBatchConfig,
+	ledgerBatchConfig DataStoreSchema,
 	archive historyarchive.ArchiveInterface) ResumableManager {
 	return &resumableManagerService{
 		ledgerBatchConfig: ledgerBatchConfig,
-		network:           network,
 		dataStore:         dataStore,
 		archive:           archive,
 	}
@@ -60,7 +57,7 @@ func (rm resumableManagerService) FindStart(ctx context.Context, start, end uint
 		return 0, false, errors.New("Invalid start value, must be greater than zero")
 	}
 
-	log.WithField("start", start).WithField("end", end).WithField("network", rm.network)
+	log.WithField("start", start).WithField("end", end)
 
 	networkLatest := uint32(0)
 	if end < 1 {
@@ -71,7 +68,7 @@ func (rm resumableManagerService) FindStart(ctx context.Context, start, end uint
 			return 0, false, err
 		}
 		networkLatest = networkLatest + (GetHistoryArchivesCheckPointFrequency() * 2)
-		log.Infof("Resumability computed effective latest network ledger including padding of checkpoint frequency to be %d + for network=%v", networkLatest, rm.network)
+		log.Infof("Resumability computed effective latest network ledger including padding of checkpoint frequency to be %d", networkLatest)
 
 		if start > networkLatest {
 			// requested to start at a point beyond the latest network, resume not applicable.
