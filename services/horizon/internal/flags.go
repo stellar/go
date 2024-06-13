@@ -673,7 +673,7 @@ func Flags() (*Config, support.ConfigOptions) {
 			Name:        "reap-frequency",
 			ConfigKey:   &config.ReapFrequency,
 			OptType:     types.Uint,
-			FlagDefault: uint(120),
+			FlagDefault: uint(720),
 			Usage: "the frequency in units of ledgers for how often history is reaped. " +
 				"A value of 1 implies history is trimmed after every ledger. " +
 				"A value of 2 implies history is trimmed on every second ledger.",
