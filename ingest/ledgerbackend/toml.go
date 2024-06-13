@@ -22,7 +22,7 @@ var (
 	//go:embed configs/captive-core-testnet.cfg
 	TestnetDefaultConfig []byte
 
-	DefaultBucketListDBPageSize uint = 12
+	defaultBucketListDBPageSize uint = 12
 )
 
 const (
@@ -542,7 +542,7 @@ func (c *CaptiveCoreToml) setDefaults(params CaptiveCoreTomlParams) {
 		deprecatedSqlLedgerState = true
 	} else {
 		if !c.tree.Has("BUCKETLIST_DB_INDEX_PAGE_SIZE_EXPONENT") {
-			c.BucketListDBPageSizeExp = &DefaultBucketListDBPageSize
+			c.BucketListDBPageSizeExp = &defaultBucketListDBPageSize
 		}
 	}
 	c.DeprecatedSqlLedgerState = &deprecatedSqlLedgerState
@@ -635,8 +635,14 @@ func (c *CaptiveCoreToml) validate(params CaptiveCoreTomlParams) error {
 		)
 	}
 
-	if def := c.tree.Has("DEPRECATED_SQL_LEDGER_STATE"); def && params.UseDB && *c.DeprecatedSqlLedgerState {
-		return fmt.Errorf("CAPTIVE_CORE_USE_DB parameter is set to true, indicating stellar-core on-disk mode, in which DEPRECATED_SQL_LEDGER_STATE must be set to false")
+	if c.tree.Has("DEPRECATED_SQL_LEDGER_STATE") {
+		if params.UseDB && *c.DeprecatedSqlLedgerState {
+			return fmt.Errorf("CAPTIVE_CORE_USE_DB parameter is set to true, indicating stellar-core on-disk mode," +
+				" in which DEPRECATED_SQL_LEDGER_STATE must be set to false")
+		} else if !params.UseDB && !*c.DeprecatedSqlLedgerState {
+			return fmt.Errorf("CAPTIVE_CORE_USE_DB parameter is set to false, indicating stellar-core in-memory mode," +
+				" in which DEPRECATED_SQL_LEDGER_STATE must be set to true")
+		}
 	}
 
 	homeDomainSet := map[string]HomeDomain{}

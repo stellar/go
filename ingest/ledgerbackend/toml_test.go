@@ -28,6 +28,7 @@ func TestCaptiveCoreTomlValidation(t *testing.T) {
 		peerPort          *uint
 		logPath           *string
 		expectedError     string
+		inMemory          bool
 	}{
 		{
 			name:              "mismatching NETWORK_PASSPHRASE",
@@ -204,10 +205,17 @@ func TestCaptiveCoreTomlValidation(t *testing.T) {
 			expectedError: "could not unmarshal captive core toml: setting BUCKET_DIR_PATH is disallowed for Captive Core, use CAPTIVE_CORE_STORAGE_PATH instead",
 		},
 		{
-			name:       "invalid DEPRECATED_SQL_LEDGER_STATE",
-			appendPath: filepath.Join("testdata", "sample-appendix-deprecated_sql_ledger_state.cfg"),
+			name:       "invalid DEPRECATED_SQL_LEDGER_STATE on-disk",
+			appendPath: filepath.Join("testdata", "sample-appendix-on-disk.cfg"),
 			expectedError: "invalid captive core toml: CAPTIVE_CORE_USE_DB parameter is set to true, indicating " +
 				"stellar-core on-disk mode, in which DEPRECATED_SQL_LEDGER_STATE must be set to false",
+		},
+		{
+			name:       "invalid DEPRECATED_SQL_LEDGER_STATE in-memory",
+			appendPath: filepath.Join("testdata", "sample-appendix-in-memory.cfg"),
+			expectedError: "invalid captive core toml: CAPTIVE_CORE_USE_DB parameter is set to false, indicating " +
+				"stellar-core in-memory mode, in which DEPRECATED_SQL_LEDGER_STATE must be set to true",
+			inMemory: true,
 		},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
@@ -218,7 +226,7 @@ func TestCaptiveCoreTomlValidation(t *testing.T) {
 				PeerPort:           testCase.peerPort,
 				LogPath:            testCase.logPath,
 				Strict:             true,
-				UseDB:              true,
+				UseDB:              !testCase.inMemory,
 			}
 			_, err := NewCaptiveCoreTomlFromFile(testCase.appendPath, params)
 			assert.EqualError(t, err, testCase.expectedError)
@@ -515,7 +523,7 @@ func TestDBConfigDefaultsToSqlite(t *testing.T) {
 	require.NoError(t, toml.unmarshal(configBytes, true))
 	assert.Equal(t, toml.Database, "sqlite3://stellar.db")
 	assert.Equal(t, *toml.DeprecatedSqlLedgerState, false)
-	assert.Equal(t, *toml.BucketListDBPageSizeExp, DefaultBucketListDBPageSize)
+	assert.Equal(t, *toml.BucketListDBPageSizeExp, defaultBucketListDBPageSize)
 	assert.Equal(t, toml.BucketListDBCutoff, (*uint)(nil))
 }
 
