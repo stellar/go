@@ -13,7 +13,7 @@ jobs:
         os: [ubuntu-20.04, ubuntu-22.04]
         go: ["1.21", "1.22"]
         pg: [12, 16]
-        protocol-version: [20, 21]
+        protocol-version: [21]
     runs-on: ${{ matrix.os }}
     services:
       postgres:
@@ -36,9 +36,6 @@ jobs:
       PROTOCOL_21_CORE_DEBIAN_PKG_VERSION: 21.0.0-1872.c6f474133.focal
       PROTOCOL_21_CORE_DOCKER_IMG: stellar/stellar-core:21
       PROTOCOL_21_SOROBAN_RPC_DOCKER_IMG: stellar/soroban-rpc:21.0.0-rc2-73
-      PROTOCOL_20_CORE_DEBIAN_PKG_VERSION: 21.0.0-1872.c6f474133.focal
-      PROTOCOL_20_CORE_DOCKER_IMG: stellar/stellar-core:21
-      PROTOCOL_20_SOROBAN_RPC_DOCKER_IMG: stellar/soroban-rpc:21.0.0-rc2-73
       PGHOST: localhost
       PGPORT: 5432
       PGUSER: postgres
@@ -101,7 +98,7 @@ jobs:
       - name: Calculate the source hash
         id: calculate_source_hash
         run: |
-          combined_hash=$(echo "horizon-hash-${{ hashFiles('./horizon') }}-${{ hashFiles('./clients/horizonclient/**') }}-${{ hashFiles('./protocols/horizon/**') }}-${{ hashFiles('./txnbuild/**') }}-${{ hashFiles('./ingest/**') }}-${{ hashFiles('./xdr/**') }}-${{ hashFiles('./services/**') }}-${{ env.PROTOCOL_20_CORE_DOCKER_IMG }}-${{ env.PROTOCOL_19_CORE_DOCKER_IMG }}-${{ env.PREFIX }}" | sha256sum | cut -d ' ' -f 1)
+          combined_hash=$(echo "horizon-hash-${{ hashFiles('./horizon') }}-${{ hashFiles('./clients/horizonclient/**') }}-${{ hashFiles('./protocols/horizon/**') }}-${{ hashFiles('./txnbuild/**') }}-${{ hashFiles('./ingest/**') }}-${{ hashFiles('./xdr/**') }}-${{ hashFiles('./services/**') }}-${{ env.PROTOCOL_21_CORE_DOCKER_IMG }}-${{ env.PREFIX }}" | sha256sum | cut -d ' ' -f 1)
           echo "COMBINED_SOURCE_HASH=$combined_hash" >> "$GITHUB_ENV"
 
       - name: Restore Horizon binary and integration tests source hash to cache
