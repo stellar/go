@@ -24,7 +24,7 @@ func TestGCSExists(t *testing.T) {
 	})
 	defer server.Stop()
 
-	store, err := FromGCSClient(context.Background(), server.Client(), "test-bucket/objects", "testnet")
+	store, err := FromGCSClient(context.Background(), server.Client(), "test-bucket/objects/testnet")
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		require.NoError(t, store.Close())
@@ -52,7 +52,7 @@ func TestGCSSize(t *testing.T) {
 	})
 	defer server.Stop()
 
-	store, err := FromGCSClient(context.Background(), server.Client(), "test-bucket/objects", "testnet")
+	store, err := FromGCSClient(context.Background(), server.Client(), "test-bucket/objects/testnet")
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		require.NoError(t, store.Close())
@@ -86,7 +86,7 @@ func TestGCSPutFile(t *testing.T) {
 		DefaultEventBasedHold: false,
 	})
 
-	store, err := FromGCSClient(context.Background(), server.Client(), "test-bucket/objects", "testnet")
+	store, err := FromGCSClient(context.Background(), server.Client(), "test-bucket/objects/testnet")
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		require.NoError(t, store.Close())
@@ -138,7 +138,7 @@ func TestGCSPutFileIfNotExists(t *testing.T) {
 	})
 	defer server.Stop()
 
-	store, err := FromGCSClient(context.Background(), server.Client(), "test-bucket/objects", "testnet")
+	store, err := FromGCSClient(context.Background(), server.Client(), "test-bucket/objects/testnet")
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		require.NoError(t, store.Close())
@@ -187,7 +187,7 @@ func TestGCSPutFileWithMetadata(t *testing.T) {
 		DefaultEventBasedHold: false,
 	})
 
-	store, err := FromGCSClient(context.Background(), server.Client(), "test-bucket/objects", "testnet")
+	store, err := FromGCSClient(context.Background(), server.Client(), "test-bucket/objects/testnet")
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		require.NoError(t, store.Close())
@@ -198,7 +198,7 @@ func TestGCSPutFileWithMetadata(t *testing.T) {
 		EndLedger:            1234,
 		StartLedgerCloseTime: 1234,
 		EndLedgerCloseTime:   1234,
-		Network:              "testnet",
+		NetworkPassPhrase:    "testnet",
 		CompressionType:      "zstd",
 		ProtocolVersion:      21,
 		CoreVersion:          "v1.2.3",
@@ -223,7 +223,7 @@ func TestGCSPutFileWithMetadata(t *testing.T) {
 		EndLedger:            6789,
 		StartLedgerCloseTime: 1622547800,
 		EndLedgerCloseTime:   1622548900,
-		Network:              "mainnet",
+		NetworkPassPhrase:    "mainnet",
 		CompressionType:      "gzip",
 		ProtocolVersion:      23,
 		CoreVersion:          "v1.4.0",
@@ -255,7 +255,7 @@ func TestGCSPutFileIfNotExistsWithMetadata(t *testing.T) {
 	})
 	defer server.Stop()
 
-	store, err := FromGCSClient(context.Background(), server.Client(), "test-bucket/objects", "testnet")
+	store, err := FromGCSClient(context.Background(), server.Client(), "test-bucket/objects/testnet")
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		require.NoError(t, store.Close())
@@ -265,7 +265,7 @@ func TestGCSPutFileIfNotExistsWithMetadata(t *testing.T) {
 		EndLedger:            1234,
 		StartLedgerCloseTime: 1234,
 		EndLedgerCloseTime:   1234,
-		Network:              "testnet",
+		NetworkPassPhrase:    "testnet",
 		CompressionType:      "zstd",
 		ProtocolVersion:      21,
 		CoreVersion:          "v1.2.3",
@@ -290,7 +290,7 @@ func TestGCSPutFileIfNotExistsWithMetadata(t *testing.T) {
 		EndLedger:            6789,
 		StartLedgerCloseTime: 1622547800,
 		EndLedgerCloseTime:   1622548900,
-		Network:              "mainnet",
+		NetworkPassPhrase:    "mainnet",
 		CompressionType:      "gzip",
 		ProtocolVersion:      23,
 		CoreVersion:          "v1.4.0",
@@ -323,7 +323,7 @@ func TestGCSGetNonExistentFile(t *testing.T) {
 	})
 	defer server.Stop()
 
-	store, err := FromGCSClient(context.Background(), server.Client(), "test-bucket/objects", "testnet")
+	store, err := FromGCSClient(context.Background(), server.Client(), "test-bucket/objects/testnet")
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		require.NoError(t, store.Close())
@@ -365,7 +365,7 @@ func TestGCSGetFileValidatesCRC32C(t *testing.T) {
 	})
 	defer server.Stop()
 
-	store, err := FromGCSClient(context.Background(), server.Client(), "test-bucket/objects", "testnet")
+	store, err := FromGCSClient(context.Background(), server.Client(), "test-bucket/objects/testnet")
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		require.NoError(t, store.Close())

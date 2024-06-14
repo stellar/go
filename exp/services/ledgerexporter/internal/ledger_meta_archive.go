@@ -14,7 +14,7 @@ type LedgerMetaArchive struct {
 }
 
 // NewLedgerMetaArchiveFromXDR creates a new LedgerMetaArchive instance.
-func NewLedgerMetaArchiveFromXDR(config *Config, key string, data xdr.LedgerCloseMetaBatch) (*LedgerMetaArchive, error) {
+func NewLedgerMetaArchiveFromXDR(networkPassPhrase string, coreVersion string, key string, data xdr.LedgerCloseMetaBatch) (*LedgerMetaArchive, error) {
 	startLedger, err := data.GetLedger(uint32(data.StartSequence))
 	if err != nil {
 		return &LedgerMetaArchive{}, err
@@ -33,10 +33,10 @@ func NewLedgerMetaArchiveFromXDR(config *Config, key string, data xdr.LedgerClos
 			EndLedger:            endLedger.LedgerSequence(),
 			StartLedgerCloseTime: startLedger.LedgerCloseTime(),
 			EndLedgerCloseTime:   endLedger.LedgerCloseTime(),
-			Network:              config.Network,
+			NetworkPassPhrase:    networkPassPhrase,
 			CompressionType:      compressxdr.DefaultCompressor.Name(),
 			ProtocolVersion:      endLedger.ProtocolVersion(),
-			CoreVersion:          config.CoreVersion,
+			CoreVersion:          coreVersion,
 			Version:              version,
 		},
 	}, nil

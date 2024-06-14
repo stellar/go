@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"os/exec"
 	"os/signal"
 	"sync"
 	"syscall"
@@ -72,7 +73,7 @@ type InvalidDataStoreError struct {
 func (m InvalidDataStoreError) Error() string {
 	return fmt.Sprintf("The remote data store has inconsistent data, "+
 		"a resumable starting ledger of %v was identified, "+
-		"but that is not aligned to expected ledgers-per-file of %v. use '--resume false' to bypass",
+		"but that is not aligned to expected ledgers-per-file of %v. use 'scan-and-fill' sub-command to bypass",
 		m.LedgerSequence, m.LedgersPerFile)
 }
 
@@ -82,17 +83,16 @@ type App struct {
 	dataStore     datastore.DataStore
 	exportManager *ExportManager
 	uploader      Uploader
-	flags         Flags
 	adminServer   *http.Server
 }
 
-func NewApp(flags Flags) *App {
+func NewApp() *App {
 	logger.SetLevel(log.DebugLevel)
-	app := &App{flags: flags}
+	app := &App{}
 	return app
 }
 
-func (a *App) init(ctx context.Context) error {
+func (a *App) init(ctx context.Context, runtimeSettings RuntimeSettings) error {
 	var err error
 	var archive historyarchive.ArchiveInterface
 
@@ -104,20 +104,22 @@ func (a *App) init(ctx context.Context) error {
 		collectors.NewGoCollector(),
 	)
 
-	if a.config, err = NewConfig(a.flags); err != nil {
+	if a.config, err = NewConfig(runtimeSettings); err != nil {
 		return errors.Wrap(err, "Could not load configuration")
 	}
-	if archive, err = datastore.CreateHistoryArchiveFromNetworkName(ctx, a.config.Network); err != nil {
+	if archive, err = a.config.GenerateHistoryArchive(ctx); err != nil {
 		return err
 	}
-	a.config.ValidateAndSetLedgerRange(ctx, archive)
+	if err = a.config.ValidateAndSetLedgerRange(ctx, archive); err != nil {
+		return err
+	}
 
-	if a.dataStore, err = datastore.NewDataStore(ctx, a.config.DataStoreConfig, a.config.Network); err != nil {
+	if a.dataStore, err = datastore.NewDataStore(ctx, a.config.DataStoreConfig); err != nil {
 		return errors.Wrap(err, "Could not connect to destination data store")
 	}
-	if a.config.Resume {
+	if a.config.Resumable() {
 		if err = a.applyResumability(ctx,
-			datastore.NewResumableManager(a.dataStore, a.config.Network, a.config.LedgerBatchConfig, archive)); err != nil {
+			datastore.NewResumableManager(a.dataStore, a.config.DataStoreConfig.Schema, archive)); err != nil {
 			return err
 		}
 	}
@@ -129,7 +131,10 @@ func (a *App) init(ctx context.Context) error {
 	}
 
 	queue := NewUploadQueue(uploadQueueCapacity, registry)
-	if a.exportManager, err = NewExportManager(a.config, a.ledgerBackend, queue, registry); err != nil {
+	if a.exportManager, err = NewExportManager(a.config.DataStoreConfig.Schema,
+		a.ledgerBackend, queue, registry,
+		a.config.StellarCoreConfig.NetworkPassphrase,
+		a.config.CoreVersion); err != nil {
 		return err
 	}
 	a.uploader = NewUploader(a.dataStore, queue, registry)
@@ -151,8 +156,8 @@ func (a *App) applyResumability(ctx context.Context, resumableManager datastore.
 
 	// TODO - evaluate a more robust validation of remote data for ledgers-per-file consistency
 	// this assumes ValidateAndSetLedgerRange() has conditioned the a.config.StartLedger to be at least > 1
-	if absentLedger > 2 && absentLedger != a.config.LedgerBatchConfig.GetSequenceNumberStartBoundary(absentLedger) {
-		return NewInvalidDataStoreError(absentLedger, a.config.LedgerBatchConfig.LedgersPerFile)
+	if absentLedger > 2 && absentLedger != a.config.DataStoreConfig.Schema.GetSequenceNumberStartBoundary(absentLedger) {
+		return NewInvalidDataStoreError(absentLedger, a.config.DataStoreConfig.Schema.LedgersPerFile)
 	}
 	logger.Infof("For export ledger range start=%d, end=%d, the remote storage has some of this data already, will resume at later start ledger of %d", a.config.StartLedger, a.config.EndLedger, absentLedger)
 	a.config.StartLedger = absentLedger
@@ -180,18 +185,19 @@ func newAdminServer(adminPort int, prometheusRegistry *prometheus.Registry) *htt
 	}
 }
 
-func (a *App) Run() {
+func (a *App) Run(runtimeSettings RuntimeSettings) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	if err := a.init(ctx); err != nil {
-		var dataAlreadyExported DataAlreadyExportedError
+	if err := a.init(ctx, runtimeSettings); err != nil {
+		var dataAlreadyExported *DataAlreadyExportedError
 		if errors.As(err, &dataAlreadyExported) {
 			logger.Info(err.Error())
 			logger.Info("Shutting down ledger-exporter")
-			return
+			return nil
 		}
-		logger.WithError(err).Fatal("Stopping ledger-exporter")
+		logger.WithError(err).Error("Stopping ledger-exporter")
+		return err
 	}
 	defer a.close()
 
@@ -254,12 +260,16 @@ func (a *App) Run() {
 			logger.WithError(err).Warn("error in internalServer.Shutdown")
 		}
 	}
+	return nil
 }
 
 // newLedgerBackend Creates and initializes captive core ledger backend
 // Currently, only supports captive-core as ledger backend
 func newLedgerBackend(config *Config, prometheusRegistry *prometheus.Registry) (ledgerbackend.LedgerBackend, error) {
-	captiveConfig, err := config.generateCaptiveCoreConfig()
+	// best effort check on a core bin available from PATH to provide as default if
+	// no core bin is provided from config.
+	coreBinFromPath, _ := exec.LookPath("stellar-core")
+	captiveConfig, err := config.GenerateCaptiveCoreConfig(coreBinFromPath)
 	if err != nil {
 		return nil, err
 	}

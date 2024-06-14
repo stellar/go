@@ -9,7 +9,7 @@ type MetaData struct {
 	EndLedgerCloseTime   int64
 	ProtocolVersion      uint32
 	CoreVersion          string
-	Network              string
+	NetworkPassPhrase    string
 	CompressionType      string
 	Version              string
 }
@@ -22,7 +22,7 @@ func (m MetaData) ToMap() map[string]string {
 		"end-ledger-close-time":   strconv.FormatInt(m.EndLedgerCloseTime, 10),
 		"protocol-version":        strconv.FormatInt(int64(m.ProtocolVersion), 10),
 		"core-version":            m.CoreVersion,
-		"network":                 m.Network,
+		"network-passphrase":      m.NetworkPassPhrase,
 		"compression-type":        m.CompressionType,
 		"version":                 m.Version,
 	}
@@ -71,7 +71,7 @@ func NewMetaDataFromMap(data map[string]string) (MetaData, error) {
 	}
 
 	metaData.CoreVersion = data["core-version"]
-	metaData.Network = data["network"]
+	metaData.NetworkPassPhrase = data["network-passphrase"]
 	metaData.CompressionType = data["compression-type"]
 	metaData.Version = data["version"]
 

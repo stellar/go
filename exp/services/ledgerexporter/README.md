@@ -21,45 +21,56 @@ type LedgerCloseMetaBatch struct {
 
 ### Command Line Options
 
-#### Bounded Mode:
-Exports a specific range of ledgers, defined by --start and --end.
+#### Scan and Fill Mode:
+Exports a specific range of ledgers, defined by --start and --end. Will only export to remote datastore if data is absent.
 ```bash
-ledgerexporter --start <start_ledger> --end <end_ledger> --config-file <config_file_path>
+ledgerexporter scan-and-fill --start <start_ledger> --end <end_ledger> --config-file <config_file_path>
 ```
 
-#### Unbounded Mode:
-Exports ledgers continuously starting from --start. In this mode, the end ledger is either not provided or set to 0.
+#### Append Mode:
+Exports ledgers initially searching from --start, looking for the next absent ledger sequence number proceeding --start on the data store. If abscence is detected, the export range is narrowed to `--start <absent_ledger_sequence>`. 
+This feature requires ledgers to be present on the remote data store for some (possibly empty) prefix of the requested range and then absent for the (possibly empty) remainder. 
+
+In this mode, the --end ledger can be provided to stop the process once export has reached that ledger, or if absent or 0 it will result in continous exporting of new ledgers emitted from the network. 
+
+ It’s guaranteed that ledgers exported during `append` mode from `start` and up to the last logged ledger file `Uploaded {ledger file name}` were contiguous, meaning all ledgers within that range were exported to the data lake with no gaps or missing ledgers in between.
 ```bash
-ledgerexporter --start <start_ledger> --config-file <config_file_path>
+ledgerexporter append --start <start_ledger> --config-file <config_file_path>
 ```
-
-#### Resumability:
-Exporting a ledger range can be optimized further by enabling resumability if the remote data store supports it.
-
-By default, resumability is disabled, `--resume false`
-
-When enabled, `--resume true`, ledgerexporter will search the remote data store within the requested range, looking for the oldest absent ledger sequence number within range. If abscence is detected, the export range is narrowed to `--start <absent_ledger_sequence>`. 
-This feature requires all ledgers to be present on the remote data store for some (possibly empty) prefix of the requested range and then absent for the (possibly empty) remainder.
 
 ### Configuration (toml):
+The `stellar_core_config` supports two ways for configuring captive core:
+  - use prebuilt captive core config toml, archive urls, and passphrase based on `stellar_core_config.network = testnet|pubnet`.
+  - manually set the the captive core confg by supplying these core parameters which will override any defaults when `stellar_core_config.network` is present also:
+    `stellar_core_config.captive_core_toml_path`
+    `stellar_core_config.history_archive_urls`
+    `stellar_core_config.network_passphrase`
 
+Ensure you have stellar-core installed and set `stellar_core_config.stellar_core_binary_path` to it's path on o/s.
+
+Enable web service that will be bound to localhost post and publishes metrics by including `admin_port = {port}`
+
+An example config, demonstrating preconfigured captive core settings and gcs data store config.
 ```toml
-network = "testnet"  # Options: `testnet` or `pubnet`
+admin_port = 6061
 
 [datastore_config]
 type = "GCS"
 
 [datastore_config.params]
-destination_bucket_path = "your-bucket-name/<optional_subpaths>"
+destination_bucket_path = "your-bucket-name/<optional_subpath1>/<optional_subpath2>/"
 
-[exporter_config]
+[datastore_config.schema]
 ledgers_per_file = 64
 files_per_partition = 10
-```
 
-#### Stellar-core configuration:
-- The exporter automatically configures stellar-core based on the network specified in the config.
-- Ensure you have stellar-core installed and accessible in your system's $PATH.
+[stellar_core_config]
+  network = "testnet"
+  stellar_core_binary_path = "/my/path/to/stellar-core"
+  captive_core_toml_path = "my-captive-core.cfg"
+  history_archive_urls = ["http://testarchiveurl1", "http://testarchiveurl2"]
+  network_passphrase = "test"
+```
 
 ### Exported Files
 

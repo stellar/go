@@ -2,5 +2,3 @@
 stellar_core_binary_path = "test/stellar-core"
 network = "pubnet"  
 
-[datastore_config.schema]
-ledgers_per_file = 64

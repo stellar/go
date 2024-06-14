@@ -7,24 +7,24 @@ import (
 	"github.com/stellar/go/support/compressxdr"
 )
 
-type LedgerBatchConfig struct {
+type DataStoreSchema struct {
 	LedgersPerFile    uint32 `toml:"ledgers_per_file"`
 	FilesPerPartition uint32 `toml:"files_per_partition"`
 }
 
-func (ec LedgerBatchConfig) GetSequenceNumberStartBoundary(ledgerSeq uint32) uint32 {
+func (ec DataStoreSchema) GetSequenceNumberStartBoundary(ledgerSeq uint32) uint32 {
 	if ec.LedgersPerFile == 0 {
 		return 0
 	}
 	return (ledgerSeq / ec.LedgersPerFile) * ec.LedgersPerFile
 }
 
-func (ec LedgerBatchConfig) GetSequenceNumberEndBoundary(ledgerSeq uint32) uint32 {
+func (ec DataStoreSchema) GetSequenceNumberEndBoundary(ledgerSeq uint32) uint32 {
 	return ec.GetSequenceNumberStartBoundary(ledgerSeq) + ec.LedgersPerFile - 1
 }
 
 // GetObjectKeyFromSequenceNumber generates the object key name from the ledger sequence number based on configuration.
-func (ec LedgerBatchConfig) GetObjectKeyFromSequenceNumber(ledgerSeq uint32) string {
+func (ec DataStoreSchema) GetObjectKeyFromSequenceNumber(ledgerSeq uint32) string {
 	var objectKey string
 
 	if ec.FilesPerPartition > 1 {

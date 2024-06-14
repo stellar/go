@@ -18,7 +18,7 @@ import (
 var _ LedgerBackend = (*BufferedStorageBackend)(nil)
 
 type BufferedStorageBackendConfig struct {
-	LedgerBatchConfig datastore.LedgerBatchConfig
+	LedgerBatchConfig datastore.DataStoreSchema
 	DataStore         datastore.DataStore
 	BufferSize        uint32
 	NumWorkers        uint32

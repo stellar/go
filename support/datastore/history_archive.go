@@ -10,10 +10,12 @@ import (
 	"github.com/stellar/go/support/storage"
 )
 
-const Pubnet = "pubnet"
-const Testnet = "testnet"
+const (
+	Pubnet  = "pubnet"
+	Testnet = "testnet"
+)
 
-func CreateHistoryArchiveFromNetworkName(ctx context.Context, networkName string) (historyarchive.ArchiveInterface, error) {
+func CreateHistoryArchiveFromNetworkName(ctx context.Context, networkName string, userAgent string) (historyarchive.ArchiveInterface, error) {
 	var historyArchiveUrls []string
 	switch networkName {
 	case Pubnet:
@@ -26,7 +28,7 @@ func CreateHistoryArchiveFromNetworkName(ctx context.Context, networkName string
 
 	return historyarchive.NewArchivePool(historyArchiveUrls, historyarchive.ArchiveOptions{
 		ConnectOptions: storage.ConnectOptions{
-			UserAgent: "ledger-exporter",
+			UserAgent: userAgent,
 			Context:   ctx,
 		},
 	})

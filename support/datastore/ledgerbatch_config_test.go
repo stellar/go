@@ -31,7 +31,7 @@ func TestGetObjectKeyFromSequenceNumber(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(fmt.Sprintf("LedgerSeq-%d-LedgersPerFile-%d", tc.ledgerSeq, tc.ledgersPerFile), func(t *testing.T) {
-			config := LedgerBatchConfig{FilesPerPartition: tc.filesPerPartition, LedgersPerFile: tc.ledgersPerFile}
+			config := DataStoreSchema{FilesPerPartition: tc.filesPerPartition, LedgersPerFile: tc.ledgersPerFile}
 			key := config.GetObjectKeyFromSequenceNumber(tc.ledgerSeq)
 			require.Equal(t, tc.expectedKey, key)
 		})
@@ -39,7 +39,7 @@ func TestGetObjectKeyFromSequenceNumber(t *testing.T) {
 }
 
 func TestGetObjectKeyFromSequenceNumber_ObjectKeyDescOrder(t *testing.T) {
-	config := LedgerBatchConfig{
+	config := DataStoreSchema{
 		LedgersPerFile:    1,
 		FilesPerPartition: 10,
 	}

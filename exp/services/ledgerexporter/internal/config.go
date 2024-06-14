@@ -4,6 +4,7 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 
@@ -16,20 +17,42 @@ import (
 	"github.com/stellar/go/support/datastore"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/ordered"
+	"github.com/stellar/go/support/storage"
 )
 
-const Pubnet = "pubnet"
-const Testnet = "testnet"
+const (
+	Pubnet    = "pubnet"
+	Testnet   = "testnet"
+	UserAgent = "ledgerexporter"
+)
 
-type Flags struct {
+type Mode int
+
+const (
+	_        Mode = iota
+	ScanFill Mode = iota
+	Append
+)
+
+func (mode Mode) Name() string {
+	switch mode {
+	case ScanFill:
+		return "Scan and Fill"
+	case Append:
+		return "Append"
+	}
+	return "none"
+}
+
+type RuntimeSettings struct {
 	StartLedger    uint32
 	EndLedger      uint32
 	ConfigFilePath string
-	Resume         bool
-	AdminPort      uint
+	Mode           Mode
 }
 
 type StellarCoreConfig struct {
+	Network               string   `toml:"network"`
 	NetworkPassphrase     string   `toml:"network_passphrase"`
 	HistoryArchiveUrls    []string `toml:"history_archive_urls"`
 	StellarCoreBinaryPath string   `toml:"stellar_core_binary_path"`
@@ -39,115 +62,126 @@ type StellarCoreConfig struct {
 type Config struct {
 	AdminPort int `toml:"admin_port"`
 
-	Network           string                      `toml:"network"`
-	DataStoreConfig   datastore.DataStoreConfig   `toml:"datastore_config"`
-	LedgerBatchConfig datastore.LedgerBatchConfig `toml:"exporter_config"`
-	StellarCoreConfig StellarCoreConfig           `toml:"stellar_core_config"`
+	DataStoreConfig   datastore.DataStoreConfig `toml:"datastore_config"`
+	StellarCoreConfig StellarCoreConfig         `toml:"stellar_core_config"`
+	UserAgent         string                    `toml:"user_agent"`
 
 	StartLedger uint32
 	EndLedger   uint32
-	Resume      bool
+	Mode        Mode
 
-	CoreVersion string
+	CoreVersion               string
+	SerializedCaptiveCoreToml []byte
 }
 
-// This will generate the config based on commandline flags and toml
+// This will generate the config based on settings
 //
-// flags                 - command line flags
+// settings              - requested settings
 //
 // return                - *Config or an error if any range validation failed.
-func NewConfig(flags Flags) (*Config, error) {
+func NewConfig(settings RuntimeSettings) (*Config, error) {
 	config := &Config{}
 
-	config.StartLedger = uint32(flags.StartLedger)
-	config.EndLedger = uint32(flags.EndLedger)
-	config.Resume = flags.Resume
+	config.StartLedger = uint32(settings.StartLedger)
+	config.EndLedger = uint32(settings.EndLedger)
+	config.Mode = settings.Mode
 
-	logger.Infof("Requested ledger range start=%d, end=%d, resume=%v", config.StartLedger, config.EndLedger, config.Resume)
+	logger.Infof("Requested export mode of %v with start=%d, end=%d", settings.Mode.Name(), config.StartLedger, config.EndLedger)
 
 	var err error
-	if err = config.processToml(flags.ConfigFilePath); err != nil {
+	if err = config.processToml(settings.ConfigFilePath); err != nil {
 		return nil, err
 	}
-	logger.Infof("Config: %v", *config)
+	logger.Infof("Network Config Archive URLs: %v", config.StellarCoreConfig.HistoryArchiveUrls)
+	logger.Infof("Network Config Archive Passphrase: %v", config.StellarCoreConfig.NetworkPassphrase)
+	logger.Infof("Network Config Archive Stellar Core Binary Path: %v", config.StellarCoreConfig.StellarCoreBinaryPath)
+	logger.Infof("Network Config Archive Stellar Core Toml Config: %v", string(config.SerializedCaptiveCoreToml))
 
 	return config, nil
+}
+
+func (config *Config) Resumable() bool {
+	return config.Mode == Append
 }
 
 // Validates requested ledger range, and will automatically adjust it
 // to be ledgers-per-file boundary aligned
 func (config *Config) ValidateAndSetLedgerRange(ctx context.Context, archive historyarchive.ArchiveInterface) error {
+
+	if config.StartLedger < 2 {
+		return errors.New("invalid start value, must be greater than one.")
+	}
+
+	if config.Mode == ScanFill && config.EndLedger == 0 {
+		return errors.New("invalid end value, unbounded mode not supported, end must be greater than start.")
+	}
+
+	if config.EndLedger != 0 && config.EndLedger <= config.StartLedger {
+		return errors.New("invalid end value, must be greater than start")
+	}
+
 	latestNetworkLedger, err := datastore.GetLatestLedgerSequenceFromHistoryArchives(archive)
+	latestNetworkLedger = latestNetworkLedger + (datastore.GetHistoryArchivesCheckPointFrequency() * 2)
 
 	if err != nil {
 		return errors.Wrap(err, "Failed to retrieve the latest ledger sequence from history archives.")
 	}
-	logger.Infof("Latest %v ledger sequence was detected as %d", config.Network, latestNetworkLedger)
+	logger.Infof("Latest ledger sequence was detected as %d", latestNetworkLedger)
 
 	if config.StartLedger > latestNetworkLedger {
-		return errors.Errorf("--start %d exceeds latest network ledger %d",
+		return errors.Errorf("start %d exceeds latest network ledger %d",
 			config.StartLedger, latestNetworkLedger)
 	}
 
-	if config.EndLedger != 0 { // Bounded mode
-		if config.EndLedger < config.StartLedger {
-			return errors.New("invalid --end value, must be >= --start")
-		}
-		if config.EndLedger > latestNetworkLedger {
-			return errors.Errorf("--end %d exceeds latest network ledger %d",
-				config.EndLedger, latestNetworkLedger)
-		}
+	if config.EndLedger > latestNetworkLedger {
+		return errors.Errorf("end %d exceeds latest network ledger %d",
+			config.EndLedger, latestNetworkLedger)
 	}
 
 	config.adjustLedgerRange()
 	return nil
 }
 
-func (config *Config) generateCaptiveCoreConfig() (ledgerbackend.CaptiveCoreConfig, error) {
-	coreConfig := &config.StellarCoreConfig
+func (config *Config) GenerateHistoryArchive(ctx context.Context) (historyarchive.ArchiveInterface, error) {
+	return historyarchive.NewArchivePool(config.StellarCoreConfig.HistoryArchiveUrls, historyarchive.ArchiveOptions{
+		ConnectOptions: storage.ConnectOptions{
+			UserAgent: config.UserAgent,
+			Context:   ctx,
+		},
+	})
+}
 
-	// Look for stellar-core binary in $PATH, if not supplied
-	if config.StellarCoreConfig.StellarCoreBinaryPath == "" {
-		var err error
-		if config.StellarCoreConfig.StellarCoreBinaryPath, err = exec.LookPath("stellar-core"); err != nil {
-			return ledgerbackend.CaptiveCoreConfig{}, errors.Wrap(err, "Failed to find stellar-core binary")
-		}
+// coreBinDefaultPath - a default value to use for core binary path on system.
+//
+//	this will be used if StellarCoreConfig.StellarCoreBinaryPath is not specified
+func (config *Config) GenerateCaptiveCoreConfig(coreBinFromPath string) (ledgerbackend.CaptiveCoreConfig, error) {
+	var err error
+
+	if config.StellarCoreConfig.StellarCoreBinaryPath == "" && coreBinFromPath == "" {
+		return ledgerbackend.CaptiveCoreConfig{}, errors.New("Invalid captive core config, no stellar-core binary path was provided.")
 	}
 
-	if err := config.setCoreVersionInfo(); err != nil {
+	if config.StellarCoreConfig.StellarCoreBinaryPath == "" {
+		config.StellarCoreConfig.StellarCoreBinaryPath = coreBinFromPath
+	}
+
+	if err = config.setCoreVersionInfo(); err != nil {
 		return ledgerbackend.CaptiveCoreConfig{}, fmt.Errorf("failed to set stellar-core version info: %w", err)
 	}
 
-	var captiveCoreConfig []byte
-	// Default network config
-	switch config.Network {
-	case Pubnet:
-		coreConfig.NetworkPassphrase = network.PublicNetworkPassphrase
-		coreConfig.HistoryArchiveUrls = network.PublicNetworkhistoryArchiveURLs
-		captiveCoreConfig = ledgerbackend.PubnetDefaultConfig
-
-	case Testnet:
-		coreConfig.NetworkPassphrase = network.TestNetworkPassphrase
-		coreConfig.HistoryArchiveUrls = network.TestNetworkhistoryArchiveURLs
-		captiveCoreConfig = ledgerbackend.TestnetDefaultConfig
-
-	default:
-		logger.Fatalf("Invalid network %s", config.Network)
-	}
-
 	params := ledgerbackend.CaptiveCoreTomlParams{
-		NetworkPassphrase:  coreConfig.NetworkPassphrase,
-		HistoryArchiveURLs: coreConfig.HistoryArchiveUrls,
+		NetworkPassphrase:  config.StellarCoreConfig.NetworkPassphrase,
+		HistoryArchiveURLs: config.StellarCoreConfig.HistoryArchiveUrls,
 		UseDB:              true,
 	}
 
-	captiveCoreToml, err := ledgerbackend.NewCaptiveCoreTomlFromData(captiveCoreConfig, params)
+	captiveCoreToml, err := ledgerbackend.NewCaptiveCoreTomlFromData(config.SerializedCaptiveCoreToml, params)
 	if err != nil {
 		return ledgerbackend.CaptiveCoreConfig{}, errors.Wrap(err, "Failed to create captive-core toml")
 	}
 
 	return ledgerbackend.CaptiveCoreConfig{
-		BinaryPath:          coreConfig.StellarCoreBinaryPath,
+		BinaryPath:          config.StellarCoreConfig.StellarCoreBinaryPath,
 		NetworkPassphrase:   params.NetworkPassphrase,
 		HistoryArchiveURLs:  params.HistoryArchiveURLs,
 		CheckpointFrequency: datastore.GetHistoryArchivesCheckPointFrequency(),
@@ -186,34 +220,75 @@ func (config *Config) processToml(tomlPath string) error {
 	// Load config TOML file
 	cfg, err := toml.LoadFile(tomlPath)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "config file %v was not found", tomlPath)
 	}
 
 	// Unmarshal TOML data into the Config struct
-	if err := cfg.Unmarshal(config); err != nil {
+	if err = cfg.Unmarshal(config); err != nil {
 		return errors.Wrap(err, "Error unmarshalling TOML config.")
 	}
 
-	// validate TOML data
-	if config.Network == "" {
-		return errors.New("Invalid TOML config, 'network' must be set, supported values are 'testnet' or 'pubnet'")
+	if config.UserAgent == "" {
+		config.UserAgent = UserAgent
 	}
+
+	if config.StellarCoreConfig.Network == "" && (len(config.StellarCoreConfig.HistoryArchiveUrls) == 0 || config.StellarCoreConfig.NetworkPassphrase == "" || config.StellarCoreConfig.CaptiveCoreTomlPath == "") {
+		return errors.New("Invalid captive core config, the 'network' parameter must be set to pubnet or testnet or " +
+			"'stellar_core_config.history_archive_urls' and 'stellar_core_config.network_passphrase' and 'stellar_core_config.captive_core_toml_path' must be set.")
+	}
+
+	// network config values are an overlay, with network preconfigured values being first if network is present
+	// and then toml settings specific for passphrase, archiveurls, core toml file can override lastly.
+	var networkPassPhrase string
+	var networkArchiveUrls []string
+	switch config.StellarCoreConfig.Network {
+	case "":
+
+	case Pubnet:
+		networkPassPhrase = network.PublicNetworkPassphrase
+		networkArchiveUrls = network.PublicNetworkhistoryArchiveURLs
+		config.SerializedCaptiveCoreToml = ledgerbackend.PubnetDefaultConfig
+
+	case Testnet:
+		networkPassPhrase = network.TestNetworkPassphrase
+		networkArchiveUrls = network.TestNetworkhistoryArchiveURLs
+		config.SerializedCaptiveCoreToml = ledgerbackend.TestnetDefaultConfig
+
+	default:
+		return errors.New("invalid captive core config, " +
+			"preconfigured_network must be set to 'pubnet' or 'testnet' or network_passphrase, history_archive_urls," +
+			" and captive_core_toml_path must be set")
+	}
+
+	if config.StellarCoreConfig.NetworkPassphrase == "" {
+		config.StellarCoreConfig.NetworkPassphrase = networkPassPhrase
+	}
+
+	if len(config.StellarCoreConfig.HistoryArchiveUrls) < 1 {
+		config.StellarCoreConfig.HistoryArchiveUrls = networkArchiveUrls
+	}
+
+	if config.StellarCoreConfig.CaptiveCoreTomlPath != "" {
+		if config.SerializedCaptiveCoreToml, err = os.ReadFile(config.StellarCoreConfig.CaptiveCoreTomlPath); err != nil {
+			return errors.Wrap(err, "Failed to load captive-core-toml-path file")
+		}
+	}
+
 	return nil
 }
 
 func (config *Config) adjustLedgerRange() {
-
 	// Check if either the start or end ledger does not fall on the "LedgersPerFile" boundary
 	// and adjust the start and end ledger accordingly.
 	// Align the start ledger to the nearest "LedgersPerFile" boundary.
-	config.StartLedger = config.LedgerBatchConfig.GetSequenceNumberStartBoundary(config.StartLedger)
+	config.StartLedger = config.DataStoreConfig.Schema.GetSequenceNumberStartBoundary(config.StartLedger)
 
 	// Ensure that the adjusted start ledger is at least 2.
 	config.StartLedger = ordered.Max(2, config.StartLedger)
 
 	// Align the end ledger (for bounded cases) to the nearest "LedgersPerFile" boundary.
 	if config.EndLedger != 0 {
-		config.EndLedger = config.LedgerBatchConfig.GetSequenceNumberEndBoundary(config.EndLedger)
+		config.EndLedger = config.DataStoreConfig.Schema.GetSequenceNumberEndBoundary(config.EndLedger)
 	}
 
 	logger.Infof("Computed effective export boundary ledger range: start=%d, end=%d", config.StartLedger, config.EndLedger)

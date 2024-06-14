@@ -10,10 +10,6 @@ import (
 )
 
 func TestNewLedgerMetaArchiveFromXDR(t *testing.T) {
-	config := &Config{
-		Network:     "testnet",
-		CoreVersion: "v1.2.3",
-	}
 	data := xdr.LedgerCloseMetaBatch{
 		StartSequence: 1234,
 		EndSequence:   1234,
@@ -22,7 +18,7 @@ func TestNewLedgerMetaArchiveFromXDR(t *testing.T) {
 		},
 	}
 
-	archive, err := NewLedgerMetaArchiveFromXDR(config, "key", data)
+	archive, err := NewLedgerMetaArchiveFromXDR("testnet", "v1.2.3", "key", data)
 
 	require.NoError(t, err)
 	require.NotNil(t, archive)
@@ -33,7 +29,7 @@ func TestNewLedgerMetaArchiveFromXDR(t *testing.T) {
 		EndLedger:            1234,
 		StartLedgerCloseTime: 1234 * 100,
 		EndLedgerCloseTime:   1234 * 100,
-		Network:              "testnet",
+		NetworkPassPhrase:    "testnet",
 		CompressionType:      "zstd",
 		ProtocolVersion:      21,
 		CoreVersion:          "v1.2.3",
@@ -53,7 +49,7 @@ func TestNewLedgerMetaArchiveFromXDR(t *testing.T) {
 		},
 	}
 
-	archive, err = NewLedgerMetaArchiveFromXDR(config, "key", data)
+	archive, err = NewLedgerMetaArchiveFromXDR("testnet", "v1.2.3", "key", data)
 
 	require.NoError(t, err)
 	require.NotNil(t, archive)
@@ -64,7 +60,7 @@ func TestNewLedgerMetaArchiveFromXDR(t *testing.T) {
 		EndLedger:            1237,
 		StartLedgerCloseTime: 1234 * 100,
 		EndLedgerCloseTime:   1237 * 100,
-		Network:              "testnet",
+		NetworkPassPhrase:    "testnet",
 		CompressionType:      "zstd",
 		ProtocolVersion:      21,
 		CoreVersion:          "v1.2.3",

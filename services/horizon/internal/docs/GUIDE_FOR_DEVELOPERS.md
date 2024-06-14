@@ -6,13 +6,13 @@ This document describes how to build Horizon from source, so that you can test a
 - A [Unix-like](https://en.wikipedia.org/wiki/Unix-like) operating system with the common core commands (cp, tar, mkdir, bash, etc.)
 - Go (this repository is officially supported on the last [two releases of Go](https://go.dev/doc/devel/release))
 - [Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git) (to check out Horizon's source code)
-- [mercurial](https://www.mercurial-scm.org/) (needed for `go-dep`)
 - [Docker](https://www.docker.com/products/docker-desktop)
+- [stellar-core](#building-stellar-core)
 
 ## The Go Monorepo
 All the code for Horizon resides in our Go monorepo.
 ```bash
-git clone https://github.com/go.git
+git clone https://github.com/stellar/go.git
 ```
 If you want to contribute to the project, consider forking the repository and cloning the fork instead.
 
@@ -20,11 +20,11 @@ If you want to contribute to the project, consider forking the repository and cl
 The [start.sh](/services/horizon/docker/start.sh) script builds horizon from current source, and then runs docker-compose to start the docker containers with runtime configs for horizon, postgres, and optionally core if the optional `standalone` network parameter was included. 
 The script takes one optional parameter which configures the Stellar network used by the docker containers. If no parameter is supplied, the containers will run on the Stellar test network. Read more about the public and private networks in the [public documentation](https://developers.stellar.org/docs/fundamentals-and-concepts/testnet-and-pubnet#testnet)
 
-`./start.sh pubnet` will run the containers on the Stellar public network.
+`./services/horizon/docker/start.sh pubnet` will run the containers on the Stellar public network.
 
-`./start.sh standalone` will run the containers on a private standalone Stellar network.
+`./services/horizon/docker/start.sh standalone` will run the containers on a private standalone Stellar network.
 
-`./start.sh testnet` will run the containers on the Stellar test network.
+`./services/horizon/docker/start.sh testnet` will run the containers on the Stellar test network.
 
 The following ports will be exposed:
 - Horizon: **8000**
@@ -42,47 +42,21 @@ We will now configure a development environment to run Horizon service locally w
 ### Building Stellar Core
 Horizon requires an instance of stellar-core binary on the same host. This is referred to as the `Captive Core`. Since, we are running horizon for dev purposes, we recommend considering two approaches to get the stellar-core binary, if saving time is top priority and your development machine is on a linux debian o/s, then consider installing the debian package, otherwise the next option available is to compile the core source directly to binary on your machine, refer to [INSTALL.md](https://github.com/stellar/stellar-core/blob/master/INSTALL.md) file for the instructions on both approaches.
 
-### Building Horizon
-
-1. Change to the horizon services directory - `cd go/services/horizon/`.
-2. Compile the Horizon binary: `go build -o stellar-horizon && go install`. You should see the resulting `stellar-horizon` executable in `go/services/horizon`.
-3. Add the executable to your PATH in your `~/.bashrc` or equivalent, for easy access: `export PATH=$PATH:{absolute-path-to-horizon-folder}`
-
-Open a new terminal. Confirm everything worked by running `stellar-horizon --help` successfully. You should see an informative message listing the command line options supported by Horizon.
-
 ### Database Setup
 
-Horizon uses a Postgres database backend to record information ingested from an associated Stellar Core. The unit and integration tests will also attempt to reference a Postgres db server at ``localhost:5432`` with trust auth method enabled by default for ``postgres`` user.  You can either install the server locally or run any type of docker container that hosts the database server. We recommend using the [docker-compose.yml](/services/horizon/docker/docker-compose.yml) file in the ``docker`` folder:
+Horizon uses a Postgres database to record information ingested from Stellar Core. The unit and integration tests also expect a Postgres DB to be running at ``localhost:5432`` with trust auth method enabled by default for the ``postgres`` user.  You can run the following command to spin up a Horizon database as a docker container:
 ```bash
-docker-compose -f ./docker/docker-compose.yml up horizon-postgres
+docker-compose -f ./services/horizon/docker/docker-compose.yml up -d horizon-postgres
 ```
-This starts a Horizon Postgres docker container and exposes it on the port 5432. Note that while Horizon will run locally, it's PostgresQL db will run in docker.
+The docker container will accept database connections on port 5432. Note that while Horizon will run locally, it's PostgresQL db will run in docker.
 
 To shut down all docker containers and free up resources, run the following command:
 ```bash
-docker-compose -f ./docker/docker-compose.yml down
+docker-compose -f ./services/horizon/docker/docker-compose.yml down --remove-orphans -v
 ```
 
-### Run tests
-At this point you should be able to run Horizon's unit tests:
-```bash
-cd go/services/horizon/
-go test ./...
-```
+### Running Horizon in an IDE
 
-To run the integration tests, you need to set some environment variables:
-
-```bash
-export HORIZON_INTEGRATION_TESTS_ENABLED=true 
-export HORIZON_INTEGRATION_TESTS_CORE_MAX_SUPPORTED_PROTOCOL=19
-export HORIZON_INTEGRATION_TESTS_DOCKER_IMG=stellar/stellar-core:19.11.0-1323.7fb6d5e88.focal
-go test -race -timeout 25m -v ./services/horizon/internal/integration/...
-```
-Note that this will also require a Postgres instance running on port 5432 either locally or exposed through a docker container. Also note that the ``POSTGRES_HOST_AUTH_METHOD`` has been enabled.
-
-### Setup Debug Configuration in IDE
-
-#### Code Debug
 Add a debug configuration in your IDE to attach a debugger to the local Horizon process and set breakpoints in your code. Here is an example configuration for VS Code:
 
 ```json
@@ -94,9 +68,8 @@ Add a debug configuration in your IDE to attach a debugger to the local Horizon 
      "program": "${workspaceRoot}/services/horizon/main.go",
      "env": {
          "DATABASE_URL": "postgres://postgres@localhost:5432/horizon?sslmode=disable",
-         "CAPTIVE_CORE_CONFIG_APPEND_PATH": "./ingest/ledgerbackend/configs/captive-core-testnet.cfg",
-         "HISTORY_ARCHIVE_URLS": "https://history.stellar.org/prd/core-testnet/core_testnet_001,https://history.stellar.org/prd/core-testnet/core_testnet_002",
-         "NETWORK_PASSPHRASE": "Test SDF Network ; September 2015",
+         "APPLY_MIGRATIONS": "true",
+         "NETWORK": "testnet",
          "PER_HOUR_RATE_LIMIT": "0"
      },
      "args": []
@@ -104,8 +77,36 @@ Add a debug configuration in your IDE to attach a debugger to the local Horizon 
 ```
 If all is well, you should see ingest logs written to standard out. You can read more about configuring the different environment variables in [Configuring](https://developers.stellar.org/docs/run-api-server/configuring) section of our public documentation.
 
-#### Test Debug
-You can also use a similar configuration to debug the integration and unit tests. For e.g. here is a configuration for debugging the ```TestFilteringAccountWhiteList``` integration test.
+### Building Horizon Binary
+
+1. Change to the horizon services directory - `cd go/services/horizon/`.
+2. Compile the Horizon binary: `go build -o stellar-horizon && go install`. You should see the resulting `stellar-horizon` executable in `go/services/horizon`.
+3. Add the executable to your PATH in your `~/.bashrc` or equivalent, for easy access: `export PATH=$PATH:{absolute-path-to-horizon-folder}`
+
+Open a new terminal. Confirm everything worked by running `stellar-horizon --help` successfully. You should see an informative message listing the command line options supported by Horizon.
+
+### Run tests
+
+Once you have [installed stellar-core](#building-stellar-core) on your machine and have the 
+[Horizon database](#database-setup) up and running, you should be able to run Horizon's unit tests:
+
+```bash
+cd go/services/horizon/
+go test ./...
+```
+
+To run the integration tests, you need to set some environment variables:
+
+```bash
+export HORIZON_INTEGRATION_TESTS_ENABLED=true 
+export HORIZON_INTEGRATION_TESTS_CORE_MAX_SUPPORTED_PROTOCOL=21
+export HORIZON_INTEGRATION_TESTS_DOCKER_IMG=stellar/stellar-core:21
+go test -race -timeout 25m -v ./services/horizon/internal/integration/...
+```
+
+#### Running tests in IDE
+
+You can debug integration and unit tests in your IDE. For example, here is a VS Code configuration for debugging the ```TestFilteringAccountWhiteList``` integration test.
 ```json
 {
    "name": "Debug Test Function",
@@ -115,8 +116,8 @@ You can also use a similar configuration to debug the integration and unit tests
    "program": "${workspaceRoot}/services/horizon/internal/integration",
    "env": {
        "HORIZON_INTEGRATION_TESTS_ENABLED": "true",
-       "HORIZON_INTEGRATION_TESTS_CORE_MAX_SUPPORTED_PROTOCOL": "19",
-       "HORIZON_INTEGRATION_TESTS_DOCKER_IMG": "stellar/stellar-core:19.11.0-1323.7fb6d5e88.focal"
+       "HORIZON_INTEGRATION_TESTS_CORE_MAX_SUPPORTED_PROTOCOL": "21",
+       "HORIZON_INTEGRATION_TESTS_DOCKER_IMG": "stellar/stellar-core:21"
    },
    "args": [
        "-test.run",
@@ -166,18 +167,18 @@ this customization is only applicable when running a standalone network, as it r
 
 ## Using a specific version of Stellar Core
 
-By default, the Docker Compose file is configured to use version 19 of Protocol and Stellar Core. You can specify optional environment variables from the command shell for stating version overrides for either the docker-compose or start.sh invocations.
+By default, the Docker Compose file is configured to use version 21 of Protocol and Stellar Core. You can specify optional environment variables from the command shell for stating version overrides for either the docker-compose or start.sh invocations.
 ```bash
-export PROTOCOL_VERSION="19"
-export CORE_IMAGE="stellar/stellar-core:19.11.0-1323.7fb6d5e88.focal" 
-export STELLAR_CORE_VERSION="19.11.0-1323.7fb6d5e88.focal"
+export PROTOCOL_VERSION="21"
+export CORE_IMAGE="stellar/stellar-core:21" 
+export STELLAR_CORE_VERSION="21.0.0-1872.c6f474133.focal"
 ```
 
 Example:
 
-Runs Stellar Protocol and Core version 19, for any mode of testnet, standalone, pubnet
+Runs Stellar Protocol and Core version 21, for any mode of testnet, standalone, pubnet
 ```bash
-PROTOCOL_VERSION=19 CORE_IMAGE=stellar/stellar-core:19.11.0-1323.7fb6d5e88.focal STELLAR_CORE_VERSION=19.11.0-1323.7fb6d5e88.focal ./start.sh [standalone|pubnet]
+PROTOCOL_VERSION=21 CORE_IMAGE=stellar/stellar-core:21 STELLAR_CORE_VERSION=21.0.0-1872.c6f474133.focal ./start.sh [standalone|pubnet]
 ```
 
 ## <a name="logging"></a> **Logging**
