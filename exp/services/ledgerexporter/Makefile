@@ -33,12 +33,10 @@ docker-test: docker-clean
 
 	# Run the ledger-exporter
 	$(SUDO) docker run --platform linux/amd64 -t --network test-network\
-		 -e NETWORK=pubnet \
-		 -e ARCHIVE_TARGET=exporter-test/test-subpath \
-		 -e START=1000 \
-		 -e END=2000 \
+		 -v ${PWD}/exp/services/ledgerexporter/docker/config.test.toml:/config.toml \
 		 -e STORAGE_EMULATOR_HOST=http://fake-gcs-server:4443 \
-		 $(DOCKER_IMAGE):$(VERSION)
+		 $(DOCKER_IMAGE):$(VERSION) \
+		 scan-and-fill --start 1000 --end 2000
 		 
 	$(MAKE) docker-clean
 
