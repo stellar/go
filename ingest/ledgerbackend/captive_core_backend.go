@@ -260,18 +260,18 @@ func (c *CaptiveStellarCore) setCoreVersion() {
 	versionCmd := execCommand(c.config.BinaryPath, "version")
 	versionOutput, err := versionCmd.Output()
 	if err != nil {
-		log.Errorf("failed to execute stellar-core version command: %s", err)
+		c.config.Log.Errorf("failed to execute stellar-core version command: %s", err)
 	}
 
 	// Split the output into lines
 	rows := strings.Split(string(versionOutput), "\n")
 	if len(rows) == 0 || len(rows[0]) == 0 {
-		log.Error("stellar-core version not found")
+		c.config.Log.Error("stellar-core version not found")
 		return
 	}
 
 	c.captiveCoreVersion = rows[0]
-	log.Infof("stellar-core version: %s", c.captiveCoreVersion)
+	c.config.Log.Infof("stellar-core version: %s", c.captiveCoreVersion)
 }
 
 func (c *CaptiveStellarCore) GetCoreVersion() string {
