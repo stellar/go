@@ -3,12 +3,26 @@
 All notable changes to this project will be documented in this
 file. This project adheres to [Semantic Versioning](http://semver.org/).
 
-## Unreleased
+## 2.31.0
+
+If you are using a custom captive-core config and setting Horizon `CAPTIVE_CORE_USE_DB=false`, then need to make sure to set `EXPERIMENTAL_BUCKETLIST_DB=false` in the captive core config toml to be compatible with stellar-core versions 21 and earlier
 
 ### Breaking Changes
 
 - Change ingestion filtering logic to store transactions if any filter matches on it. ([5303](https://github.com/stellar/go/pull/5303))
-  - The previous behaviour was to store a tx only if both asset and account filters match together. So even if a tx matched an account filter but failed to match an asset filter, it would not be stored by Horizon.  
+  - The previous behaviour was to store a tx only if both asset and account filters match together. So even if a tx matched an account filter but failed to match an asset filter, it would not be stored by Horizon.
+
+### Added
+
+- Bump XDR definitions ([5289](https://github.com/stellar/go/pull/5289)), ([5330](https://github.com/stellar/go/pull/5330))
+- Add new async transaction submission endpoint ([5188](https://github.com/stellar/go/pull/5188))
+- Add `horizon_ingest_errors_total` metric key ([5302](https://github.com/stellar/go/pull/5302))
+- Add transaction hash to txsub timeout response ([5328](https://github.com/stellar/go/pull/5328))
+- Add new captive-core flags for V1 Meta ([5309](https://github.com/stellar/go/pull/5309))
+
+### Fixed
+
+- Fix the following ingestion error: `error preparing range: error starting prepare range: the previous Stellar-Core instance is still running` ([5307](https://github.com/stellar/go/pull/5307))
 
 - Captive-core configuration parameters updated to align with [stellar-core v21](https://github.com/stellar/stellar-core/issues/3811) ([5333](https://github.com/stellar/go/pull/5333))
   - BucketlistDB is now the default database for stellar-core, deprecating `EXPERIMENTAL_BUCKETLIST_DB`.
