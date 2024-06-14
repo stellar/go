@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"os/exec"
+	"strings"
 	"sync"
 	"time"
 
@@ -110,8 +112,9 @@ type CaptiveStellarCore struct {
 	lastLedger         *uint32 // end of current segment if offline, nil if online
 	previousLedgerHash *string
 
-	config            CaptiveCoreConfig
-	stellarCoreClient *stellarcore.Client
+	config             CaptiveCoreConfig
+	stellarCoreClient  *stellarcore.Client
+	captiveCoreVersion string // Updates when captive-core restarts
 }
 
 // CaptiveCoreConfig contains all the parameters required to create a CaptiveStellarCore instance
@@ -200,6 +203,7 @@ func NewCaptive(config CaptiveCoreConfig) (*CaptiveStellarCore, error) {
 	}
 
 	c.stellarCoreRunnerFactory = func() stellarCoreRunnerInterface {
+		c.setCoreVersion()
 		return newStellarCoreRunner(config)
 	}
 
@@ -211,7 +215,7 @@ func NewCaptive(config CaptiveCoreConfig) (*CaptiveStellarCore, error) {
 			URL: fmt.Sprintf("http://localhost:%d", config.Toml.HTTPPort),
 		}
 	}
-
+	c.setCoreVersion()
 	return c, nil
 }
 
@@ -243,6 +247,35 @@ func (c *CaptiveStellarCore) coreVersionMetric() float64 {
 	}
 
 	return float64(info.Info.ProtocolVersion)
+}
+
+// By default, it points to exec.Command, overridden for testing purpose
+var execCommand = exec.Command
+
+// Executes the "stellar-core version" command and parses its output to extract
+// the core version
+// The output of the "version" command is expected to be a multi-line string where the
+// first line is the core version in format "vX.Y.Z-*".
+func (c *CaptiveStellarCore) setCoreVersion() {
+	versionCmd := execCommand(c.config.BinaryPath, "version")
+	versionOutput, err := versionCmd.Output()
+	if err != nil {
+		c.config.Log.Errorf("failed to execute stellar-core version command: %s", err)
+	}
+
+	// Split the output into lines
+	rows := strings.Split(string(versionOutput), "\n")
+	if len(rows) == 0 || len(rows[0]) == 0 {
+		c.config.Log.Error("stellar-core version not found")
+		return
+	}
+
+	c.captiveCoreVersion = rows[0]
+	c.config.Log.Infof("stellar-core version: %s", c.captiveCoreVersion)
+}
+
+func (c *CaptiveStellarCore) GetCoreVersion() string {
+	return c.captiveCoreVersion
 }
 
 func (c *CaptiveStellarCore) registerMetrics(registry *prometheus.Registry, namespace string) {
