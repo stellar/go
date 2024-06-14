@@ -716,9 +716,7 @@ func (s *system) maybeReapHistory(lastIngestedLedger uint32) {
 	s.wg.Add(1)
 	go func() {
 		defer s.wg.Done()
-		if err := s.reaper.DeleteUnretainedHistory(s.ctx); err != nil {
-			log.WithError(err).Warn("could not reap history")
-		}
+		s.reaper.DeleteUnretainedHistory(s.ctx)
 	}()
 }
 

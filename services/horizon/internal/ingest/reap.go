@@ -18,13 +18,15 @@ import (
 
 // Reaper represents the history reaping subsystem of horizon.
 type Reaper struct {
-	historyQ  *history.Q
-	reapLockQ *history.Q
+	historyQ  history.IngestionQ
+	reapLockQ history.IngestionQ
 	config    ReapConfig
 	logger    *logpkg.Entry
 
+	totalDuration       *prometheus.SummaryVec
+	totalDeleted        *prometheus.SummaryVec
 	deleteBatchDuration prometheus.Summary
-	rowsDeleted         prometheus.Summary
+	rowsInBatchDeleted  prometheus.Summary
 
 	lock sync.Mutex
 }
@@ -36,24 +38,36 @@ type ReapConfig struct {
 
 // NewReaper creates a new Reaper instance
 func NewReaper(config ReapConfig, dbSession db.SessionInterface) *Reaper {
-	r := &Reaper{
-		historyQ:  &history.Q{dbSession.Clone()},
-		reapLockQ: &history.Q{dbSession.Clone()},
+	return newReaper(config, &history.Q{dbSession.Clone()}, &history.Q{dbSession.Clone()})
+}
+
+func newReaper(config ReapConfig, historyQ, reapLockQ history.IngestionQ) *Reaper {
+	return &Reaper{
+		historyQ:  historyQ,
+		reapLockQ: reapLockQ,
 		config:    config,
 		deleteBatchDuration: prometheus.NewSummary(prometheus.SummaryOpts{
-			Namespace: "horizon", Subsystem: "reap", Name: "delete_batch_duration",
+			Namespace: "horizon", Subsystem: "reap", Name: "batch_duration",
 			Help:       "reap batch duration in seconds, sliding window = 10m",
 			Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
 		}),
-		rowsDeleted: prometheus.NewSummary(prometheus.SummaryOpts{
-			Namespace: "horizon", Subsystem: "reap", Name: "rows_deleted",
+		rowsInBatchDeleted: prometheus.NewSummary(prometheus.SummaryOpts{
+			Namespace: "horizon", Subsystem: "reap", Name: "batch_rows_deleted",
 			Help:       "rows deleted during reap batch , sliding window = 10m",
 			Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
 		}),
+		totalDuration: prometheus.NewSummaryVec(prometheus.SummaryOpts{
+			Namespace: "horizon", Subsystem: "reap", Name: "duration",
+			Help:       "reap invocation duration in seconds, sliding window = 10m",
+			Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
+		}, []string{"complete"}),
+		totalDeleted: prometheus.NewSummaryVec(prometheus.SummaryOpts{
+			Namespace: "horizon", Subsystem: "reap", Name: "rows_deleted",
+			Help:       "rows deleted during reap invocation, sliding window = 10m",
+			Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
+		}, []string{"complete"}),
 		logger: log.WithField("subservice", "reaper"),
 	}
-
-	return r
 }
 
 // DeleteUnretainedHistory removes all data associated with unretained ledgers.
@@ -70,7 +84,7 @@ func (r *Reaper) DeleteUnretainedHistory(ctx context.Context) error {
 	defer r.lock.Unlock()
 
 	if err := r.reapLockQ.Begin(ctx); err != nil {
-		return errors.Wrap(err, "error while acquiring reaper lock transaction")
+		return errors.Wrap(err, "error while starting reaper lock transaction")
 	}
 	defer func() {
 		if err := r.reapLockQ.Rollback(); err != nil {
@@ -104,20 +118,40 @@ func (r *Reaper) DeleteUnretainedHistory(ctx context.Context) error {
 		return nil
 	}
 
-	if err = r.clearBefore(ctx, oldest, targetElder); err != nil {
-		return err
+	startTime := time.Now()
+	var totalDeleted int64
+	var complete bool
+	totalDeleted, err = r.clearBefore(ctx, oldest, targetElder)
+	elapsedSeconds := time.Since(startTime).Seconds()
+	logger := r.logger.
+		WithField("duration", elapsedSeconds).
+		WithField("rows_deleted", totalDeleted)
+
+	if err != nil {
+		logger.WithError(err).Warn("reaper failed")
+	} else {
+		complete = true
+		logger.
+			WithField("new_elder", targetElder).
+			Info("reaper succeeded")
 	}
 
-	r.logger.
-		WithField("new_elder", targetElder).
-		Info("reaper succeeded")
-
-	return nil
+	labels := prometheus.Labels{
+		"complete": strconv.FormatBool(complete),
+	}
+	r.totalDeleted.With(labels).Observe(float64(totalDeleted))
+	r.totalDuration.With(labels).Observe(elapsedSeconds)
+	return err
 }
 
 // RegisterMetrics registers the prometheus metrics
 func (s *Reaper) RegisterMetrics(registry *prometheus.Registry) {
-	registry.MustRegister(s.deleteBatchDuration, s.rowsDeleted)
+	registry.MustRegister(
+		s.deleteBatchDuration,
+		s.rowsInBatchDeleted,
+		s.totalDuration,
+		s.totalDeleted,
+	)
 }
 
 // Work backwards in 50k (by default, otherwise configurable via the CLI) ledger
@@ -131,10 +165,11 @@ func (s *Reaper) RegisterMetrics(registry *prometheus.Registry) {
 // hour, and slowing it down enough to leave some CPU for other processes.
 var sleep = 1 * time.Second
 
-func (r *Reaper) clearBefore(ctx context.Context, startSeq, endSeq uint32) error {
+func (r *Reaper) clearBefore(ctx context.Context, startSeq, endSeq uint32) (int64, error) {
 	batchSize := r.config.ReapBatchSize
+	var sum int64
 	if batchSize <= 0 {
-		return fmt.Errorf("invalid batch size for reaping (%d)", batchSize)
+		return sum, fmt.Errorf("invalid batch size for reaping (%d)", batchSize)
 	}
 
 	r.logger.WithField("start_ledger", startSeq).
@@ -150,24 +185,25 @@ func (r *Reaper) clearBefore(ctx context.Context, startSeq, endSeq uint32) error
 
 		count, err := r.deleteBatch(ctx, batchStartSeq, batchEndSeq)
 		if err != nil {
-			return err
+			return sum, err
 		}
+		sum += count
 		if count == 0 {
 			next, ok, err := r.historyQ.GetNextLedgerSequence(ctx, batchStartSeq)
 			if err != nil {
-				return errors.Wrapf(err, "could not find next ledger sequence after %d", batchStartSeq)
+				return sum, errors.Wrapf(err, "could not find next ledger sequence after %d", batchStartSeq)
 			}
 			if !ok {
 				break
 			}
 			batchStartSeq = next
 		} else {
-			batchStartSeq += batchSize
+			batchStartSeq += batchSize + 1
 		}
 		time.Sleep(sleep)
 	}
 
-	return nil
+	return sum, nil
 }
 
 func (r *Reaper) deleteBatch(ctx context.Context, batchStartSeq, batchEndSeq uint32) (int64, error) {
@@ -200,7 +236,7 @@ func (r *Reaper) deleteBatch(ctx context.Context, batchStartSeq, batchEndSeq uin
 		WithField("duration", elapsedSeconds).
 		Info("successfully deleted batch")
 
-	r.rowsDeleted.Observe(float64(count))
+	r.rowsInBatchDeleted.Observe(float64(count))
 	r.deleteBatchDuration.Observe(elapsedSeconds)
 	return count, nil
 }
