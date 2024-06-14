@@ -203,6 +203,7 @@ func NewCaptive(config CaptiveCoreConfig) (*CaptiveStellarCore, error) {
 	}
 
 	c.stellarCoreRunnerFactory = func() stellarCoreRunnerInterface {
+		c.setCoreVersion()
 		return newStellarCoreRunner(config)
 	}
 
@@ -271,6 +272,10 @@ func (c *CaptiveStellarCore) setCoreVersion() {
 
 	c.captiveCoreVersion = rows[0]
 	log.Infof("stellar-core version: %s", c.captiveCoreVersion)
+}
+
+func (c *CaptiveStellarCore) GetCoreVersion() string {
+	return c.captiveCoreVersion
 }
 
 func (c *CaptiveStellarCore) registerMetrics(registry *prometheus.Registry, namespace string) {
