@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+
 	log "github.com/stellar/go/support/log"
 	"github.com/stellar/go/xdr"
 
@@ -19,6 +20,7 @@ import (
 // An ArchivePool is just a collection of `ArchiveInterface`s so that we can
 // distribute requests fairly throughout the pool.
 type ArchivePool struct {
+	logger  *log.Entry
 	backoff backoff.BackOff
 	pool    []ArchiveInterface
 	curr    int
@@ -46,6 +48,7 @@ func NewArchivePoolWithBackoff(archiveURLs []string, opts ArchiveOptions, strate
 	ap := ArchivePool{
 		pool:    make([]ArchiveInterface, 0, len(archiveURLs)),
 		backoff: strategy,
+		logger:  opts.Logger,
 	}
 	var lastErr error
 
@@ -107,8 +110,8 @@ func (pa *ArchivePool) runRoundRobin(runner func(ai ArchiveInterface) error) err
 		}
 
 		// Intentionally avoid logging context errors
-		if stats := ai.GetStats(); len(stats) > 0 {
-			log.WithField("error", err).Warnf(
+		if stats := ai.GetStats(); len(stats) > 0 && pa.logger != nil {
+			pa.logger.WithField("error", err).Warnf(
 				"Encountered an error with archive '%s'",
 				stats[0].GetBackendName())
 		}

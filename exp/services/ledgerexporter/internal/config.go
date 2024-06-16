@@ -11,6 +11,7 @@ import (
 	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/network"
+	"github.com/stellar/go/support/log"
 
 	"github.com/pelletier/go-toml"
 
@@ -142,12 +143,13 @@ func (config *Config) ValidateAndSetLedgerRange(ctx context.Context, archive his
 	return nil
 }
 
-func (config *Config) GenerateHistoryArchive(ctx context.Context) (historyarchive.ArchiveInterface, error) {
+func (config *Config) GenerateHistoryArchive(ctx context.Context, entry *log.Entry) (historyarchive.ArchiveInterface, error) {
 	return historyarchive.NewArchivePool(config.StellarCoreConfig.HistoryArchiveUrls, historyarchive.ArchiveOptions{
 		ConnectOptions: storage.ConnectOptions{
 			UserAgent: config.UserAgent,
 			Context:   ctx,
 		},
+		Logger: logger,
 	})
 }
 

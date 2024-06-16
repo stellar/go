@@ -55,29 +55,7 @@ func (s *Session) context(requestCtx context.Context) (context.Context, context.
 
 // Begin binds this session to a new transaction.
 func (s *Session) Begin(ctx context.Context) error {
-	if s.tx != nil {
-		return errors.New("already in transaction")
-	}
-	ctx, cancel, err := s.context(ctx)
-	if err != nil {
-		return err
-	}
-
-	tx, err := s.DB.BeginTxx(ctx, nil)
-	if err != nil {
-		if knownErr := s.handleError(err, ctx); knownErr != nil {
-			cancel()
-			return knownErr
-		}
-
-		cancel()
-		return errors.Wrap(err, "beginx failed")
-	}
-	log.Debug("sql: begin")
-	s.tx = tx
-	s.txOptions = nil
-	s.txCancel = cancel
-	return nil
+	return s.BeginTx(ctx, nil)
 }
 
 // BeginTx binds this session to a new transaction which is configured with the

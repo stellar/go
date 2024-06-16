@@ -3,10 +3,12 @@ package datastore
 import (
 	"context"
 
+	log "github.com/sirupsen/logrus"
+
 	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/network"
 	"github.com/stellar/go/support/errors"
-	"github.com/stellar/go/support/log"
+	supportlog "github.com/stellar/go/support/log"
 	"github.com/stellar/go/support/storage"
 )
 
@@ -15,7 +17,7 @@ const (
 	Testnet = "testnet"
 )
 
-func CreateHistoryArchiveFromNetworkName(ctx context.Context, networkName string, userAgent string) (historyarchive.ArchiveInterface, error) {
+func CreateHistoryArchiveFromNetworkName(ctx context.Context, networkName string, userAgent string, logger *supportlog.Entry) (historyarchive.ArchiveInterface, error) {
 	var historyArchiveUrls []string
 	switch networkName {
 	case Pubnet:
@@ -27,6 +29,7 @@ func CreateHistoryArchiveFromNetworkName(ctx context.Context, networkName string
 	}
 
 	return historyarchive.NewArchivePool(historyArchiveUrls, historyarchive.ArchiveOptions{
+		Logger: logger,
 		ConnectOptions: storage.ConnectOptions{
 			UserAgent: userAgent,
 			Context:   ctx,

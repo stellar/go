@@ -107,7 +107,7 @@ func (a *App) init(ctx context.Context, runtimeSettings RuntimeSettings) error {
 	if a.config, err = NewConfig(runtimeSettings); err != nil {
 		return errors.Wrap(err, "Could not load configuration")
 	}
-	if archive, err = a.config.GenerateHistoryArchive(ctx); err != nil {
+	if archive, err = a.config.GenerateHistoryArchive(ctx, logger); err != nil {
 		return err
 	}
 	if err = a.config.ValidateAndSetLedgerRange(ctx, archive); err != nil {

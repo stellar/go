@@ -240,6 +240,7 @@ func NewSystem(config Config) (System, error) {
 	archive, err := historyarchive.NewArchivePool(
 		config.HistoryArchiveURLs,
 		historyarchive.ArchiveOptions{
+			Logger:              log.WithField("subservice", "archive"),
 			NetworkPassphrase:   config.NetworkPassphrase,
 			CheckpointFrequency: config.CheckpointFrequency,
 			ConnectOptions: storage.ConnectOptions{
