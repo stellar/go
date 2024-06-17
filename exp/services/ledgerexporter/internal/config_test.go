@@ -46,7 +46,7 @@ func TestGenerateHistoryArchiveFromPreconfiguredNetwork(t *testing.T) {
 		RuntimeSettings{StartLedger: 2, EndLedger: 3, ConfigFilePath: "test/valid_captive_core_preconfigured.toml", Mode: Append})
 	require.NoError(t, err)
 
-	_, err = config.GenerateHistoryArchive(ctx)
+	_, err = config.GenerateHistoryArchive(ctx, nil)
 	require.NoError(t, err)
 }
 
@@ -56,7 +56,7 @@ func TestGenerateHistoryArchiveFromManulConfiguredNetwork(t *testing.T) {
 		RuntimeSettings{StartLedger: 2, EndLedger: 3, ConfigFilePath: "test/valid_captive_core_manual.toml", Mode: Append})
 	require.NoError(t, err)
 
-	_, err = config.GenerateHistoryArchive(ctx)
+	_, err = config.GenerateHistoryArchive(ctx, nil)
 	require.NoError(t, err)
 }
 

@@ -35,22 +35,22 @@ func (m *mockCmd) setDir(dir string) {
 	m.Called(dir)
 }
 
-func (m *mockCmd) setStdout(stdout io.Writer) {
+func (m *mockCmd) setStdout(stdout *logLineWriter) {
 	m.Called(stdout)
 }
 
-func (m *mockCmd) getStdout() io.Writer {
+func (m *mockCmd) getStdout() *logLineWriter {
 	args := m.Called()
-	return args.Get(0).(io.Writer)
+	return args.Get(0).(*logLineWriter)
 }
 
-func (m *mockCmd) setStderr(stderr io.Writer) {
+func (m *mockCmd) setStderr(stderr *logLineWriter) {
 	m.Called(stderr)
 }
 
-func (m *mockCmd) getStderr() io.Writer {
+func (m *mockCmd) getStderr() *logLineWriter {
 	args := m.Called()
-	return args.Get(0).(io.Writer)
+	return args.Get(0).(*logLineWriter)
 }
 
 func (m *mockCmd) getProcess() *os.Process {
@@ -64,12 +64,13 @@ func (m *mockCmd) setExtraFiles(files []*os.File) {
 
 func simpleCommandMock() *mockCmd {
 	_, writer := io.Pipe()
+	llw := logLineWriter{pipeWriter: writer}
 	cmdMock := &mockCmd{}
 	cmdMock.On("setDir", mock.Anything)
 	cmdMock.On("setStdout", mock.Anything)
-	cmdMock.On("getStdout").Return(writer)
+	cmdMock.On("getStdout").Return(&llw)
 	cmdMock.On("setStderr", mock.Anything)
-	cmdMock.On("getStderr").Return(writer)
+	cmdMock.On("getStderr").Return(&llw)
 	cmdMock.On("getProcess").Return(&os.Process{}).Maybe()
 	cmdMock.On("setExtraFiles", mock.Anything)
 	cmdMock.On("Start").Return(nil)

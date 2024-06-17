@@ -194,13 +194,32 @@ func (r *stellarCoreRunner) getConfFileName() string {
 	return path
 }
 
-func (r *stellarCoreRunner) getLogLineWriter() io.Writer {
+type logLineWriter struct {
+	pipeWriter *io.PipeWriter
+	wg         sync.WaitGroup
+}
+
+func (l *logLineWriter) Write(p []byte) (n int, err error) {
+	return l.pipeWriter.Write(p)
+}
+
+func (l *logLineWriter) Close() error {
+	err := l.pipeWriter.Close()
+	l.wg.Wait()
+	return err
+}
+
+func (r *stellarCoreRunner) getLogLineWriter() *logLineWriter {
 	rd, wr := io.Pipe()
 	br := bufio.NewReader(rd)
-
+	result := &logLineWriter{
+		pipeWriter: wr,
+	}
 	// Strip timestamps from log lines from captive stellar-core. We emit our own.
 	dateRx := regexp.MustCompile(`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3} `)
+	result.wg.Add(1)
 	go func() {
+		defer result.wg.Done()
 		levelRx := regexp.MustCompile(`\[(\w+) ([A-Z]+)\] (.*)`)
 		for {
 			line, err := br.ReadString('\n')
@@ -238,7 +257,7 @@ func (r *stellarCoreRunner) getLogLineWriter() io.Writer {
 			}
 		}
 	}()
-	return wr
+	return result
 }
 
 func (r *stellarCoreRunner) offlineInfo() (stellarcore.InfoResponse, error) {
@@ -526,8 +545,8 @@ func (r *stellarCoreRunner) handleExit() {
 
 // closeLogLineWriters closes the go routines created by getLogLineWriter()
 func (r *stellarCoreRunner) closeLogLineWriters(cmd cmdI) {
-	cmd.getStdout().(*io.PipeWriter).Close()
-	cmd.getStderr().(*io.PipeWriter).Close()
+	cmd.getStdout().Close()
+	cmd.getStderr().Close()
 }
 
 // getMetaPipe returns a channel which contains ledgers streamed from the captive core subprocess

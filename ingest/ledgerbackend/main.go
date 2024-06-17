@@ -1,7 +1,6 @@
 package ledgerbackend
 
 import (
-	"io"
 	"io/fs"
 	"io/ioutil"
 	"os"
@@ -40,7 +39,7 @@ func (realSystemCaller) stat(name string) (isDir, error) {
 
 func (realSystemCaller) command(name string, arg ...string) cmdI {
 	cmd := exec.Command(name, arg...)
-	return &realCmd{cmd}
+	return &realCmd{Cmd: cmd}
 }
 
 type cmdI interface {
@@ -49,36 +48,39 @@ type cmdI interface {
 	Start() error
 	Run() error
 	setDir(dir string)
-	setStdout(stdout io.Writer)
-	getStdout() io.Writer
-	setStderr(stderr io.Writer)
-	getStderr() io.Writer
+	setStdout(stdout *logLineWriter)
+	getStdout() *logLineWriter
+	setStderr(stderr *logLineWriter)
+	getStderr() *logLineWriter
 	getProcess() *os.Process
 	setExtraFiles([]*os.File)
 }
 
 type realCmd struct {
 	*exec.Cmd
+	stdout, stderr *logLineWriter
 }
 
 func (r *realCmd) setDir(dir string) {
 	r.Cmd.Dir = dir
 }
 
-func (r *realCmd) setStdout(stdout io.Writer) {
+func (r *realCmd) setStdout(stdout *logLineWriter) {
+	r.stdout = stdout
 	r.Cmd.Stdout = stdout
 }
 
-func (r *realCmd) getStdout() io.Writer {
-	return r.Cmd.Stdout
+func (r *realCmd) getStdout() *logLineWriter {
+	return r.stdout
 }
 
-func (r *realCmd) setStderr(stderr io.Writer) {
+func (r *realCmd) setStderr(stderr *logLineWriter) {
+	r.stderr = stderr
 	r.Cmd.Stderr = stderr
 }
 
-func (r *realCmd) getStderr() io.Writer {
-	return r.Cmd.Stderr
+func (r *realCmd) getStderr() *logLineWriter {
+	return r.stderr
 }
 
 func (r *realCmd) getProcess() *os.Process {

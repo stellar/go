@@ -179,6 +179,7 @@ func NewCaptive(config CaptiveCoreConfig) (*CaptiveStellarCore, error) {
 	archivePool, err := historyarchive.NewArchivePool(
 		config.HistoryArchiveURLs,
 		historyarchive.ArchiveOptions{
+			Logger:              config.Log,
 			NetworkPassphrase:   config.NetworkPassphrase,
 			CheckpointFrequency: config.CheckpointFrequency,
 			ConnectOptions: storage.ConnectOptions{
@@ -780,13 +781,13 @@ func (c *CaptiveStellarCore) GetLatestLedgerSequence(ctx context.Context) (uint3
 // all subsequent calls to PrepareRange(), GetLedger(), etc will fail.
 // Close is thread-safe and can be called from another go routine.
 func (c *CaptiveStellarCore) Close() error {
+	// after the CaptiveStellarCore context is canceled all subsequent calls to PrepareRange() will fail
+	c.cancel()
+
 	c.stellarCoreLock.RLock()
 	defer c.stellarCoreLock.RUnlock()
 
 	c.closed = true
-
-	// after the CaptiveStellarCore context is canceled all subsequent calls to PrepareRange() will fail
-	c.cancel()
 
 	// TODO: Sucks to ignore the error here, but no worse than it was before,
 	// so...

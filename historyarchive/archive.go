@@ -23,6 +23,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/stellar/go/support/errors"
+	supportlog "github.com/stellar/go/support/log"
 	"github.com/stellar/go/support/storage"
 	"github.com/stellar/go/xdr"
 )
@@ -43,6 +44,7 @@ type CommandOptions struct {
 type ArchiveOptions struct {
 	storage.ConnectOptions
 
+	Logger *supportlog.Entry
 	// NetworkPassphrase defines the expected network of history archive. It is
 	// checked when getting HAS. If network passphrase does not match, error is
 	// returned.
