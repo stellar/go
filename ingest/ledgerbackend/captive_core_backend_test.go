@@ -151,6 +151,8 @@ func TestCaptiveNew(t *testing.T) {
 	networkPassphrase := network.PublicNetworkPassphrase
 	historyURLs := []string{server.URL}
 
+	GetCoreProtocolVersionFunc = func(string) (uint, error) { return 21, nil }
+
 	captiveStellarCore, err := NewCaptive(
 		CaptiveCoreConfig{
 			BinaryPath:         executablePath,
@@ -167,6 +169,35 @@ func TestCaptiveNew(t *testing.T) {
 	_, err = captiveStellarCore.archive.BucketExists(historyarchive.EmptyXdrArrayHash())
 	assert.NoError(t, err)
 	assert.Equal(t, "uatest", userAgent)
+}
+
+func TestCaptiveNewUnsupportedProtocolVersion(t *testing.T) {
+	storagePath, err := os.MkdirTemp("", "captive-core-*")
+	require.NoError(t, err)
+	defer os.RemoveAll(storagePath)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	executablePath := "/etc/stellar-core"
+	networkPassphrase := network.PublicNetworkPassphrase
+	historyURLs := []string{server.URL}
+
+	GetCoreProtocolVersionFunc = func(string) (uint, error) { return 20, nil }
+
+	_, err = NewCaptive(
+		CaptiveCoreConfig{
+			BinaryPath:         executablePath,
+			NetworkPassphrase:  networkPassphrase,
+			HistoryArchiveURLs: historyURLs,
+			StoragePath:        storagePath,
+			UserAgent:          "uatest",
+		},
+	)
+
+	assert.EqualError(t, err, "stellar-core version not supported. Installed stellar-core version is at protocol 20, but minimum required version is 21. Please upgrade stellar-core to a version that supports protocol version 21 or higher")
 }
 
 func TestCaptivePrepareRange(t *testing.T) {
@@ -983,6 +1014,8 @@ func TestCaptiveStellarCore_PrepareRangeAfterClose(t *testing.T) {
 
 	captiveCoreToml, err := NewCaptiveCoreToml(CaptiveCoreTomlParams{})
 	assert.NoError(t, err)
+
+	GetCoreProtocolVersionFunc = func(string) (uint, error) { return 21, nil }
 
 	captiveStellarCore, err := NewCaptive(
 		CaptiveCoreConfig{

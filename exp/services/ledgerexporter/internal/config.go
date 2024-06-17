@@ -5,8 +5,6 @@ import (
 	_ "embed"
 	"fmt"
 	"os"
-	"os/exec"
-	"strings"
 
 	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/ingest/ledgerbackend"
@@ -194,26 +192,11 @@ func (config *Config) GenerateCaptiveCoreConfig(coreBinFromPath string) (ledgerb
 	}, nil
 }
 
-// By default, it points to exec.Command, overridden for testing purpose
-var execCommand = exec.Command
-
-// Executes the "stellar-core version" command and parses its output to extract
-// the core version
-// The output of the "version" command is expected to be a multi-line string where the
-// first line is the core version in format "vX.Y.Z-*".
 func (c *Config) setCoreVersionInfo() (err error) {
-	versionCmd := execCommand(c.StellarCoreConfig.StellarCoreBinaryPath, "version")
-	versionOutput, err := versionCmd.Output()
+	c.CoreVersion, err = ledgerbackend.GetCoreBuildVersionFunc(c.StellarCoreConfig.StellarCoreBinaryPath)
 	if err != nil {
-		return fmt.Errorf("failed to execute stellar-core version command: %w", err)
+		return fmt.Errorf("failed to set stellar-core version: %w", err)
 	}
-
-	// Split the output into lines
-	rows := strings.Split(string(versionOutput), "\n")
-	if len(rows) == 0 || len(rows[0]) == 0 {
-		return fmt.Errorf("stellar-core version not found")
-	}
-	c.CoreVersion = rows[0]
 	logger.Infof("stellar-core version: %s", c.CoreVersion)
 	return nil
 }

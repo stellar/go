@@ -96,6 +96,8 @@ func TestNewSystem(t *testing.T) {
 		CheckpointFrequency:      64,
 	}
 
+	ledgerbackend.GetCoreProtocolVersionFunc = func(string) (uint, error) { return 21, nil }
+
 	sIface, err := NewSystem(config)
 	assert.NoError(t, err)
 	system := sIface.(*system)

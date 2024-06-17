@@ -100,6 +100,8 @@ func (s *DBTestSuite) SetupTest() {
 	s.checkpointHash = xdr.Hash{1, 2, 3}
 	s.ledgerBackend = &ledgerbackend.MockDatabaseBackend{}
 	s.historyAdapter = &mockHistoryArchiveAdapter{}
+	ledgerbackend.GetCoreProtocolVersionFunc = func(string) (uint, error) { return 21, nil }
+
 	var err error
 	sIface, err := NewSystem(Config{
 		HistorySession:           s.tt.HorizonSession(),
