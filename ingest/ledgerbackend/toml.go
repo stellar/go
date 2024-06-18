@@ -201,7 +201,7 @@ func unflattenTables(text string, tablePlaceHolders *placeholders) string {
 	})
 }
 
-// AddExamplePubnetQuorum adds example pubnet validators to toml file
+// AddExamplePubnetValidators adds example pubnet validators to toml file
 func (c *CaptiveCoreToml) AddExamplePubnetValidators() {
 	c.captiveCoreTomlValues.Validators = []Validator{
 		{
@@ -464,7 +464,7 @@ func (c *coreVersion) IsEqualOrAbove(major, minor int) bool {
 	return (c.major == major && c.minor >= minor) || (c.major > major)
 }
 
-// IsEqualOrAbove compares the core version to a version specific. If unable
+// IsProtocolVersionEqualOrAbove compares the core version to a version specific. If unable
 // to make the decision, the result is always "false", leaning toward the
 // common denominator.
 func (c *coreVersion) IsProtocolVersionEqualOrAbove(protocolVer int) bool {
