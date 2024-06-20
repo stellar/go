@@ -443,99 +443,10 @@ func (c *CaptiveCoreToml) CatchupToml() (*CaptiveCoreToml, error) {
 	return offline, nil
 }
 
-<<<<<<< HEAD
-=======
-// coreVersion helper struct identify a core version and provides the
-// utilities to compare the version ( i.e. minor + major pair ) to a predefined
-// version.
-type coreVersion struct {
-	major                 int
-	minor                 int
-	ledgerProtocolVersion int
-}
-
-// IsEqualOrAbove compares the core version to a version specific. If unable
-// to make the decision, the result is always "false", leaning toward the
-// common denominator.
-func (c *coreVersion) IsEqualOrAbove(major, minor int) bool {
-	if c.major == 0 && c.minor == 0 {
-		return false
-	}
-	return (c.major == major && c.minor >= minor) || (c.major > major)
-}
-
-// IsEqualOrAbove compares the core version to a version specific. If unable
-// to make the decision, the result is always "false", leaning toward the
-// common denominator.
-func (c *coreVersion) IsProtocolVersionEqualOrAbove(protocolVer int) bool {
-	if c.ledgerProtocolVersion == 0 {
-		return false
-	}
-	return c.ledgerProtocolVersion >= protocolVer
-}
-
-func checkCoreVersion(coreBinaryPath string) coreVersion {
-	if coreBinaryPath == "" {
-		return coreVersion{}
-	}
-
-	versionBytes, err := exec.Command(coreBinaryPath, "version").Output()
-	if err != nil {
-		return coreVersion{}
-	}
-
-	// starting soroban, we want to use only the first row for the version.
-	versionRows := strings.Split(string(versionBytes), "\n")
-	versionRaw := versionRows[0]
-
-	var version [2]int
-
-	re := regexp.MustCompile(`\D*(\d*)\.(\d*).*`)
-	versionStr := re.FindStringSubmatch(versionRaw)
-	if len(versionStr) == 3 {
-		for i := 1; i < len(versionStr); i++ {
-			val, err := strconv.Atoi((versionStr[i]))
-			if err != nil {
-				break
-			}
-			version[i-1] = val
-		}
-	}
-
-	re = regexp.MustCompile(`^\s*ledger protocol version: (\d*)`)
-	var ledgerProtocol int
-	var ledgerProtocolStrings []string
-	for _, line := range versionRows {
-		ledgerProtocolStrings = re.FindStringSubmatch(line)
-		if len(ledgerProtocolStrings) > 0 {
-			break
-		}
-	}
-	if len(ledgerProtocolStrings) == 2 {
-		if val, err := strconv.Atoi(ledgerProtocolStrings[1]); err == nil {
-			ledgerProtocol = val
-		}
-	}
-
-	return coreVersion{
-		major:                 version[0],
-		minor:                 version[1],
-		ledgerProtocolVersion: ledgerProtocol,
-	}
-}
-
-const MinimalSorobanProtocolSupport = 20
-
 func (c *CaptiveCoreToml) setDefaults(params CaptiveCoreTomlParams) {
 	if params.UseDB && !c.tree.Has("DATABASE") {
 		c.Database = "sqlite3://stellar.db"
 	}
-
-	checkCoreVersionF := params.checkCoreVersion
-	if checkCoreVersionF == nil {
-		checkCoreVersionF = checkCoreVersion
-	}
-	currentCoreVersion := checkCoreVersionF(params.CoreBinaryPath)
 
 	deprecatedSqlLedgerState := false
 	if !params.UseDB {
