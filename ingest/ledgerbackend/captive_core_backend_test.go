@@ -153,11 +153,12 @@ func TestCaptiveNew(t *testing.T) {
 
 	captiveStellarCore, err := NewCaptive(
 		CaptiveCoreConfig{
-			BinaryPath:         executablePath,
-			NetworkPassphrase:  networkPassphrase,
-			HistoryArchiveURLs: historyURLs,
-			StoragePath:        storagePath,
-			UserAgent:          "uatest",
+			BinaryPath:            executablePath,
+			NetworkPassphrase:     networkPassphrase,
+			HistoryArchiveURLs:    historyURLs,
+			StoragePath:           storagePath,
+			UserAgent:             "uatest",
+			CoreProtocolVersionFn: func(string) (uint, error) { return 21, nil },
 		},
 	)
 
@@ -167,6 +168,34 @@ func TestCaptiveNew(t *testing.T) {
 	_, err = captiveStellarCore.archive.BucketExists(historyarchive.EmptyXdrArrayHash())
 	assert.NoError(t, err)
 	assert.Equal(t, "uatest", userAgent)
+}
+
+func TestCaptiveNewUnsupportedProtocolVersion(t *testing.T) {
+	storagePath, err := os.MkdirTemp("", "captive-core-*")
+	require.NoError(t, err)
+	defer os.RemoveAll(storagePath)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	executablePath := "/etc/stellar-core"
+	networkPassphrase := network.PublicNetworkPassphrase
+	historyURLs := []string{server.URL}
+
+	_, err = NewCaptive(
+		CaptiveCoreConfig{
+			BinaryPath:            executablePath,
+			NetworkPassphrase:     networkPassphrase,
+			HistoryArchiveURLs:    historyURLs,
+			StoragePath:           storagePath,
+			UserAgent:             "uatest",
+			CoreProtocolVersionFn: func(string) (uint, error) { return 20, nil },
+		},
+	)
+
+	assert.EqualError(t, err, "stellar-core version not supported. Installed stellar-core version is at protocol 20, but minimum required version is 21. Please upgrade stellar-core to a version that supports protocol version 21 or higher")
 }
 
 func TestCaptivePrepareRange(t *testing.T) {
@@ -986,11 +1015,12 @@ func TestCaptiveStellarCore_PrepareRangeAfterClose(t *testing.T) {
 
 	captiveStellarCore, err := NewCaptive(
 		CaptiveCoreConfig{
-			BinaryPath:         executablePath,
-			NetworkPassphrase:  networkPassphrase,
-			HistoryArchiveURLs: historyURLs,
-			Toml:               captiveCoreToml,
-			StoragePath:        storagePath,
+			BinaryPath:            executablePath,
+			NetworkPassphrase:     networkPassphrase,
+			HistoryArchiveURLs:    historyURLs,
+			Toml:                  captiveCoreToml,
+			StoragePath:           storagePath,
+			CoreProtocolVersionFn: func(string) (uint, error) { return 21, nil },
 		},
 	)
 	assert.NoError(t, err)

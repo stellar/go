@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"os/exec"
-	"strings"
 	"sync"
 	"time"
 
@@ -21,6 +19,8 @@ import (
 	"github.com/stellar/go/support/storage"
 	"github.com/stellar/go/xdr"
 )
+
+const minProtocolVersionSupported uint = 21
 
 // Ensure CaptiveStellarCore implements LedgerBackend
 var _ LedgerBackend = (*CaptiveStellarCore)(nil)
@@ -154,6 +154,12 @@ type CaptiveCoreConfig struct {
 	// of DATABASE parameter in the captive-core-config-path or if absent, the db will default to sqlite
 	// and the db file will be stored at location derived from StoragePath parameter.
 	UseDB bool
+
+	// CoreProtocolVersionFn is a function that returns the protocol version of the stellar-core binary.
+	CoreProtocolVersionFn CoreProtocolVersionFunc
+
+	// CoreBuildVersionFn is a function that returns the build version of the stellar-core binary.
+	CoreBuildVersionFn CoreBuildVersionFunc
 }
 
 // NewCaptive returns a new CaptiveStellarCore instance.
@@ -166,6 +172,25 @@ func NewCaptive(config CaptiveCoreConfig) (*CaptiveStellarCore, error) {
 		config.Log = log.New()
 		config.Log.SetOutput(os.Stdout)
 		config.Log.SetLevel(logrus.InfoLevel)
+	}
+
+	if config.CoreProtocolVersionFn == nil {
+		config.CoreProtocolVersionFn = CoreProtocolVersion
+	}
+
+	if config.CoreBuildVersionFn == nil {
+		config.CoreBuildVersionFn = CoreBuildVersion
+	}
+
+	protocolVersion, err := config.CoreProtocolVersionFn(config.BinaryPath)
+	if err != nil {
+		return nil, fmt.Errorf("error determining stellar-core protocol version: %w", err)
+	}
+
+	if protocolVersion < minProtocolVersionSupported {
+		return nil, fmt.Errorf("stellar-core version not supported. Installed stellar-core version is at protocol %d, but minimum "+
+			"required version is %d. Please upgrade stellar-core to a version that supports protocol version %d or higher",
+			protocolVersion, minProtocolVersionSupported, minProtocolVersionSupported)
 	}
 
 	parentCtx := config.Context
@@ -250,28 +275,12 @@ func (c *CaptiveStellarCore) coreVersionMetric() float64 {
 	return float64(info.Info.ProtocolVersion)
 }
 
-// By default, it points to exec.Command, overridden for testing purpose
-var execCommand = exec.Command
-
-// Executes the "stellar-core version" command and parses its output to extract
-// the core version
-// The output of the "version" command is expected to be a multi-line string where the
-// first line is the core version in format "vX.Y.Z-*".
 func (c *CaptiveStellarCore) setCoreVersion() {
-	versionCmd := execCommand(c.config.BinaryPath, "version")
-	versionOutput, err := versionCmd.Output()
+	var err error
+	c.captiveCoreVersion, err = c.config.CoreBuildVersionFn(c.config.BinaryPath)
 	if err != nil {
-		c.config.Log.Errorf("failed to execute stellar-core version command: %s", err)
+		c.config.Log.Errorf("Failed to set stellar-core version: %s", err)
 	}
-
-	// Split the output into lines
-	rows := strings.Split(string(versionOutput), "\n")
-	if len(rows) == 0 || len(rows[0]) == 0 {
-		c.config.Log.Error("stellar-core version not found")
-		return
-	}
-
-	c.captiveCoreVersion = rows[0]
 	c.config.Log.Infof("stellar-core version: %s", c.captiveCoreVersion)
 }
 

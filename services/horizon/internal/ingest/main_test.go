@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
+	"reflect"
 	"sync"
 	"testing"
 	"time"
@@ -94,18 +95,37 @@ func TestNewSystem(t *testing.T) {
 		DisableStateVerification: true,
 		HistoryArchiveURLs:       []string{"https://history.stellar.org/prd/core-live/core_live_001"},
 		CheckpointFrequency:      64,
+		CoreProtocolVersionFn:    func(string) (uint, error) { return 21, nil },
 	}
 
 	sIface, err := NewSystem(config)
 	assert.NoError(t, err)
 	system := sIface.(*system)
 
-	assert.Equal(t, config, system.config)
+	CompareConfigs(t, config, system.config)
 	assert.Equal(t, config.DisableStateVerification, system.disableStateVerification)
 
-	assert.Equal(t, config, system.runner.(*ProcessorRunner).config)
+	CompareConfigs(t, config, system.runner.(*ProcessorRunner).config)
 	assert.Equal(t, system.ctx, system.runner.(*ProcessorRunner).ctx)
 	assert.Equal(t, system.maxLedgerPerFlush, MaxLedgersPerFlush)
+}
+
+// Custom comparator function.This function is needed because structs in Go that contain function fields
+// cannot be directly compared using assert.Equal, so here we compare each individual field, skipping the function fields.
+func CompareConfigs(t *testing.T, expected, actual Config) bool {
+	fields := reflect.TypeOf(expected)
+	for i := 0; i < fields.NumField(); i++ {
+		field := fields.Field(i)
+		if field.Name == "CoreProtocolVersionFn" || field.Name == "CoreBuildVersionFn" {
+			continue
+		}
+		expectedValue := reflect.ValueOf(expected).Field(i).Interface()
+		actualValue := reflect.ValueOf(actual).Field(i).Interface()
+		if !assert.Equal(t, expectedValue, actualValue, field.Name) {
+			return false
+		}
+	}
+	return true
 }
 
 func TestStateMachineRunReturnsUnexpectedTransaction(t *testing.T) {

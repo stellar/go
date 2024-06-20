@@ -109,6 +109,9 @@ type Config struct {
 
 	MaxLedgerPerFlush uint32
 	SkipTxmeta        bool
+
+	CoreProtocolVersionFn ledgerbackend.CoreProtocolVersionFunc
+	CoreBuildVersionFn    ledgerbackend.CoreBuildVersionFunc
 }
 
 const (
@@ -259,17 +262,19 @@ func NewSystem(config Config) (System, error) {
 	logger := log.WithField("subservice", "stellar-core")
 	ledgerBackend, err := ledgerbackend.NewCaptive(
 		ledgerbackend.CaptiveCoreConfig{
-			BinaryPath:          config.CaptiveCoreBinaryPath,
-			StoragePath:         config.CaptiveCoreStoragePath,
-			UseDB:               config.CaptiveCoreConfigUseDB,
-			Toml:                config.CaptiveCoreToml,
-			NetworkPassphrase:   config.NetworkPassphrase,
-			HistoryArchiveURLs:  config.HistoryArchiveURLs,
-			CheckpointFrequency: config.CheckpointFrequency,
-			LedgerHashStore:     ledgerbackend.NewHorizonDBLedgerHashStore(config.HistorySession),
-			Log:                 logger,
-			Context:             ctx,
-			UserAgent:           fmt.Sprintf("captivecore horizon/%s golang/%s", apkg.Version(), runtime.Version()),
+			BinaryPath:            config.CaptiveCoreBinaryPath,
+			StoragePath:           config.CaptiveCoreStoragePath,
+			UseDB:                 config.CaptiveCoreConfigUseDB,
+			Toml:                  config.CaptiveCoreToml,
+			NetworkPassphrase:     config.NetworkPassphrase,
+			HistoryArchiveURLs:    config.HistoryArchiveURLs,
+			CheckpointFrequency:   config.CheckpointFrequency,
+			LedgerHashStore:       ledgerbackend.NewHorizonDBLedgerHashStore(config.HistorySession),
+			Log:                   logger,
+			Context:               ctx,
+			UserAgent:             fmt.Sprintf("captivecore horizon/%s golang/%s", apkg.Version(), runtime.Version()),
+			CoreProtocolVersionFn: config.CoreProtocolVersionFn,
+			CoreBuildVersionFn:    config.CoreBuildVersionFn,
 		},
 	)
 	if err != nil {

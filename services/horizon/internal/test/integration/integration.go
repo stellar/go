@@ -26,7 +26,6 @@ import (
 
 	sdk "github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/clients/stellarcore"
-	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/keypair"
 	proto "github.com/stellar/go/protocols/horizon"
 	horizon "github.com/stellar/go/services/horizon/internal"
@@ -184,11 +183,7 @@ func NewTest(t *testing.T, config Config) *Test {
 func (i *Test) configureCaptiveCore() {
 	composePath := findDockerComposePath()
 	i.coreConfig.binaryPath = os.Getenv("HORIZON_INTEGRATION_TESTS_CAPTIVE_CORE_BIN")
-	coreConfigFile := "captive-core-classic-integration-tests.cfg"
-	if i.config.ProtocolVersion >= ledgerbackend.MinimalSorobanProtocolSupport {
-		coreConfigFile = "captive-core-integration-tests.cfg"
-	}
-	i.coreConfig.configPath = filepath.Join(composePath, coreConfigFile)
+	i.coreConfig.configPath = filepath.Join(composePath, "captive-core-integration-tests.cfg")
 	i.coreConfig.storagePath = i.CurrentTest().TempDir()
 	i.coreConfig.useDB = true
 
@@ -251,13 +246,6 @@ func (i *Test) runComposeCommand(args ...string) {
 		cmd.Env = append(
 			cmd.Environ(),
 			fmt.Sprintf("SOROBAN_RPC_IMAGE=%s", sorobanRPCOverride),
-		)
-	}
-
-	if i.config.ProtocolVersion < ledgerbackend.MinimalSorobanProtocolSupport {
-		cmd.Env = append(
-			cmd.Environ(),
-			"CORE_CONFIG_FILE=stellar-core-classic-integration-tests.cfg",
 		)
 	}
 
