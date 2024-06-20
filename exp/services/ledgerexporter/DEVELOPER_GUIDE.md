@@ -6,7 +6,7 @@ The ledger exporter is a tool to export Stellar network transaction data to clou
 This document assumes that you have installed and can run the ledger exporter, and that you have familiarity with its CLI and configuration. If not, please refer to the [Link to Admin Guide]
 
 ## Goal
-The goal of the ledger exporter is to build an easy-to-use tool to export Stellar network ledger data to cloud storage.
+The goal of the ledger exporter is to build an easy-to-use tool to export Stellar network ledger data to a configurable remote data store, such as cloud blob storage.
  - Use cloud storage optimally
  - Minimize network usage to export
  - Make it easy and fast to search for a specific ledger or ledger range
