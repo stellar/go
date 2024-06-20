@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/network"
 	"github.com/stellar/go/support/datastore"
 
@@ -21,7 +20,7 @@ func TestNewConfig(t *testing.T) {
 	mockArchive.On("GetRootHAS").Return(historyarchive.HistoryArchiveState{CurrentLedger: 5}, nil).Once()
 
 	config, err := NewConfig(
-		RuntimeSettings{StartLedger: 2, EndLedger: 3, ConfigFilePath: "test/test.toml", Mode: Append})
+		RuntimeSettings{StartLedger: 2, EndLedger: 3, ConfigFilePath: "test/test.toml", Mode: Append}, nil)
 
 	require.NoError(t, err)
 	err = config.ValidateAndSetLedgerRange(ctx, mockArchive)
@@ -41,7 +40,7 @@ func TestNewConfig(t *testing.T) {
 func TestGenerateHistoryArchiveFromPreconfiguredNetwork(t *testing.T) {
 	ctx := context.Background()
 	config, err := NewConfig(
-		RuntimeSettings{StartLedger: 2, EndLedger: 3, ConfigFilePath: "test/valid_captive_core_preconfigured.toml", Mode: Append})
+		RuntimeSettings{StartLedger: 2, EndLedger: 3, ConfigFilePath: "test/valid_captive_core_preconfigured.toml", Mode: Append}, nil)
 	require.NoError(t, err)
 
 	_, err = config.GenerateHistoryArchive(ctx, nil)
@@ -51,7 +50,7 @@ func TestGenerateHistoryArchiveFromPreconfiguredNetwork(t *testing.T) {
 func TestGenerateHistoryArchiveFromManulConfiguredNetwork(t *testing.T) {
 	ctx := context.Background()
 	config, err := NewConfig(
-		RuntimeSettings{StartLedger: 2, EndLedger: 3, ConfigFilePath: "test/valid_captive_core_manual.toml", Mode: Append})
+		RuntimeSettings{StartLedger: 2, EndLedger: 3, ConfigFilePath: "test/valid_captive_core_manual.toml", Mode: Append}, nil)
 	require.NoError(t, err)
 
 	_, err = config.GenerateHistoryArchive(ctx, nil)
@@ -60,7 +59,7 @@ func TestGenerateHistoryArchiveFromManulConfiguredNetwork(t *testing.T) {
 
 func TestNewConfigUserAgent(t *testing.T) {
 	config, err := NewConfig(
-		RuntimeSettings{StartLedger: 2, EndLedger: 3, ConfigFilePath: "test/useragent.toml"})
+		RuntimeSettings{StartLedger: 2, EndLedger: 3, ConfigFilePath: "test/useragent.toml"}, nil)
 	require.NoError(t, err)
 	require.Equal(t, config.UserAgent, "useragent_x")
 }
@@ -68,20 +67,20 @@ func TestNewConfigUserAgent(t *testing.T) {
 func TestResumeDisabled(t *testing.T) {
 	// resumable is only enabled when mode is Append
 	config, err := NewConfig(
-		RuntimeSettings{StartLedger: 2, EndLedger: 3, ConfigFilePath: "test/test.toml", Mode: ScanFill})
+		RuntimeSettings{StartLedger: 2, EndLedger: 3, ConfigFilePath: "test/test.toml", Mode: ScanFill}, nil)
 	require.NoError(t, err)
 	require.False(t, config.Resumable())
 }
 
 func TestInvalidConfigFilePath(t *testing.T) {
 	_, err := NewConfig(
-		RuntimeSettings{ConfigFilePath: "test/notfound.toml"})
+		RuntimeSettings{ConfigFilePath: "test/notfound.toml"}, nil)
 	require.ErrorContains(t, err, "config file test/notfound.toml was not found")
 }
 
 func TestNoCaptiveCoreBin(t *testing.T) {
 	cfg, err := NewConfig(
-		RuntimeSettings{ConfigFilePath: "test/no_core_bin.toml"})
+		RuntimeSettings{ConfigFilePath: "test/no_core_bin.toml"}, nil)
 	require.NoError(t, err)
 
 	_, err = cfg.GenerateCaptiveCoreConfig("")
@@ -90,10 +89,10 @@ func TestNoCaptiveCoreBin(t *testing.T) {
 
 func TestDefaultCaptiveCoreBin(t *testing.T) {
 	cfg, err := NewConfig(
-		RuntimeSettings{ConfigFilePath: "test/no_core_bin.toml"})
+		RuntimeSettings{ConfigFilePath: "test/no_core_bin.toml"},
+		func(string) (string, error) { return "v20.2.0-2-g6e73c0a88", nil })
 	require.NoError(t, err)
 
-	ledgerbackend.GetCoreBuildVersionFunc = func(string) (string, error) { return "v20.2.0-2-g6e73c0a88", nil }
 	ccConfig, err := cfg.GenerateCaptiveCoreConfig("/test/default/stellar-core")
 	require.NoError(t, err)
 	require.Equal(t, ccConfig.BinaryPath, "/test/default/stellar-core")
@@ -101,20 +100,20 @@ func TestDefaultCaptiveCoreBin(t *testing.T) {
 
 func TestInvalidCaptiveCorePreconfiguredNetwork(t *testing.T) {
 	_, err := NewConfig(
-		RuntimeSettings{ConfigFilePath: "test/invalid_preconfigured_network.toml"})
+		RuntimeSettings{ConfigFilePath: "test/invalid_preconfigured_network.toml"}, nil)
 
 	require.ErrorContains(t, err, "invalid captive core config")
 }
 
 func TestValidCaptiveCorePreconfiguredNetwork(t *testing.T) {
 	cfg, err := NewConfig(
-		RuntimeSettings{ConfigFilePath: "test/valid_captive_core_preconfigured.toml"})
+		RuntimeSettings{ConfigFilePath: "test/valid_captive_core_preconfigured.toml"},
+		func(string) (string, error) { return "v20.2.0-2-g6e73c0a88", nil })
 	require.NoError(t, err)
 
 	require.Equal(t, cfg.StellarCoreConfig.NetworkPassphrase, network.PublicNetworkPassphrase)
 	require.Equal(t, cfg.StellarCoreConfig.HistoryArchiveUrls, network.PublicNetworkhistoryArchiveURLs)
 
-	ledgerbackend.GetCoreBuildVersionFunc = func(string) (string, error) { return "v20.2.0-2-g6e73c0a88", nil }
 	ccConfig, err := cfg.GenerateCaptiveCoreConfig("")
 	require.NoError(t, err)
 
@@ -129,13 +128,13 @@ func TestValidCaptiveCorePreconfiguredNetwork(t *testing.T) {
 
 func TestValidCaptiveCoreManualNetwork(t *testing.T) {
 	cfg, err := NewConfig(
-		RuntimeSettings{ConfigFilePath: "test/valid_captive_core_manual.toml"})
+		RuntimeSettings{ConfigFilePath: "test/valid_captive_core_manual.toml"},
+		func(string) (string, error) { return "v20.2.0-2-g6e73c0a88", nil })
 	require.NoError(t, err)
 	require.Equal(t, cfg.CoreVersion, "")
 	require.Equal(t, cfg.StellarCoreConfig.NetworkPassphrase, "test")
 	require.Equal(t, cfg.StellarCoreConfig.HistoryArchiveUrls, []string{"http://testarchive"})
 
-	ledgerbackend.GetCoreBuildVersionFunc = func(string) (string, error) { return "v20.2.0-2-g6e73c0a88", nil }
 	ccConfig, err := cfg.GenerateCaptiveCoreConfig("")
 	require.NoError(t, err)
 
@@ -150,12 +149,12 @@ func TestValidCaptiveCoreManualNetwork(t *testing.T) {
 
 func TestValidCaptiveCoreOverridenToml(t *testing.T) {
 	cfg, err := NewConfig(
-		RuntimeSettings{ConfigFilePath: "test/valid_captive_core_override.toml"})
+		RuntimeSettings{ConfigFilePath: "test/valid_captive_core_override.toml"},
+		func(string) (string, error) { return "v20.2.0-2-g6e73c0a88", nil })
 	require.NoError(t, err)
 	require.Equal(t, cfg.StellarCoreConfig.NetworkPassphrase, network.PublicNetworkPassphrase)
 	require.Equal(t, cfg.StellarCoreConfig.HistoryArchiveUrls, network.PublicNetworkhistoryArchiveURLs)
 
-	ledgerbackend.GetCoreBuildVersionFunc = func(string) (string, error) { return "v20.2.0-2-g6e73c0a88", nil }
 	ccConfig, err := cfg.GenerateCaptiveCoreConfig("")
 	require.NoError(t, err)
 
@@ -171,13 +170,13 @@ func TestValidCaptiveCoreOverridenToml(t *testing.T) {
 
 func TestValidCaptiveCoreOverridenArchiveUrls(t *testing.T) {
 	cfg, err := NewConfig(
-		RuntimeSettings{ConfigFilePath: "test/valid_captive_core_override_archives.toml"})
+		RuntimeSettings{ConfigFilePath: "test/valid_captive_core_override_archives.toml"},
+		func(string) (string, error) { return "v20.2.0-2-g6e73c0a88\n", nil })
 	require.NoError(t, err)
 
 	require.Equal(t, cfg.StellarCoreConfig.NetworkPassphrase, network.PublicNetworkPassphrase)
 	require.Equal(t, cfg.StellarCoreConfig.HistoryArchiveUrls, []string{"http://testarchive"})
 
-	ledgerbackend.GetCoreBuildVersionFunc = func(string) (string, error) { return "v20.2.0-2-g6e73c0a88\n", nil }
 	ccConfig, err := cfg.GenerateCaptiveCoreConfig("")
 	require.NoError(t, err)
 
@@ -192,7 +191,8 @@ func TestValidCaptiveCoreOverridenArchiveUrls(t *testing.T) {
 
 func TestInvalidCaptiveCoreTomlPath(t *testing.T) {
 	_, err := NewConfig(
-		RuntimeSettings{ConfigFilePath: "test/invalid_captive_core_toml_path.toml"})
+		RuntimeSettings{ConfigFilePath: "test/invalid_captive_core_toml_path.toml"},
+		nil)
 	require.ErrorContains(t, err, "Failed to load captive-core-toml-path file")
 }
 
@@ -291,7 +291,7 @@ func TestValidateStartAndEndLedger(t *testing.T) {
 				mockedHasCtr++
 			}
 			config, err := NewConfig(
-				RuntimeSettings{StartLedger: tt.startLedger, EndLedger: tt.endLedger, ConfigFilePath: "test/validate_start_end.toml", Mode: tt.mode})
+				RuntimeSettings{StartLedger: tt.startLedger, EndLedger: tt.endLedger, ConfigFilePath: "test/validate_start_end.toml", Mode: tt.mode}, nil)
 			require.NoError(t, err)
 			err = config.ValidateAndSetLedgerRange(ctx, mockArchive)
 			if tt.errMsg != "" {
@@ -363,7 +363,7 @@ func TestAdjustedLedgerRangeBoundedMode(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			config, err := NewConfig(
-				RuntimeSettings{StartLedger: tt.start, EndLedger: tt.end, ConfigFilePath: tt.configFile, Mode: ScanFill})
+				RuntimeSettings{StartLedger: tt.start, EndLedger: tt.end, ConfigFilePath: tt.configFile, Mode: ScanFill}, nil)
 
 			require.NoError(t, err)
 			err = config.ValidateAndSetLedgerRange(ctx, mockArchive)
@@ -426,7 +426,7 @@ func TestAdjustedLedgerRangeUnBoundedMode(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			config, err := NewConfig(
-				RuntimeSettings{StartLedger: tt.start, EndLedger: tt.end, ConfigFilePath: tt.configFile, Mode: Append})
+				RuntimeSettings{StartLedger: tt.start, EndLedger: tt.end, ConfigFilePath: tt.configFile, Mode: Append}, nil)
 			require.NoError(t, err)
 			err = config.ValidateAndSetLedgerRange(ctx, mockArchive)
 			require.NoError(t, err)

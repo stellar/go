@@ -10,14 +10,15 @@ import (
 
 // By default, it points to exec.Command, overridden for testing purpose
 var execCommand = exec.Command
-var GetCoreProtocolVersionFunc = GetCoreProtocolVersion
-var GetCoreBuildVersionFunc = GetCoreBuildVersion
 
-// GetCoreBuildVersion executes the "stellar-core version" command and parses its output to extract
+type CoreBuildVersionFunc func(coreBinaryPath string) (string, error)
+type CoreProtocolVersionFunc func(coreBinaryPath string) (uint, error)
+
+// CoreBuildVersion executes the "stellar-core version" command and parses its output to extract
 // the core version
 // The output of the "version" command is expected to be a multi-line string where the
 // first line is the core version in format "vX.Y.Z-*".
-func GetCoreBuildVersion(coreBinaryPath string) (string, error) {
+func CoreBuildVersion(coreBinaryPath string) (string, error) {
 	versionCmd := execCommand(coreBinaryPath, "version")
 	versionOutput, err := versionCmd.Output()
 	if err != nil {
@@ -33,9 +34,9 @@ func GetCoreBuildVersion(coreBinaryPath string) (string, error) {
 	return rows[0], nil
 }
 
-// GetCoreProtocolVersion retrieves the ledger protocol version from the specified stellar-core binary.
+// CoreProtocolVersion retrieves the ledger protocol version from the specified stellar-core binary.
 // It executes the "stellar-core version" command and parses the output to extract the protocol version.
-func GetCoreProtocolVersion(coreBinaryPath string) (uint, error) {
+func CoreProtocolVersion(coreBinaryPath string) (uint, error) {
 	if coreBinaryPath == "" {
 		return 0, fmt.Errorf("stellar-core binary path is empty")
 	}

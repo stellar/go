@@ -104,7 +104,7 @@ func (a *App) init(ctx context.Context, runtimeSettings RuntimeSettings) error {
 		collectors.NewGoCollector(),
 	)
 
-	if a.config, err = NewConfig(runtimeSettings); err != nil {
+	if a.config, err = NewConfig(runtimeSettings, nil); err != nil {
 		return errors.Wrap(err, "Could not load configuration")
 	}
 	if archive, err = a.config.GenerateHistoryArchive(ctx, logger); err != nil {

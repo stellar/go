@@ -64,7 +64,7 @@ func TestGetCoreBuildVersion(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fakeExecCmdOut = tt.commandOutput
-			coreVersion, err := GetCoreBuildVersion("")
+			coreVersion, err := CoreBuildVersion("")
 
 			if tt.expectedError != nil {
 				require.EqualError(t, err, tt.expectedError.Error())
@@ -110,7 +110,7 @@ func TestGetCoreProtcolVersion(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fakeExecCmdOut = tt.commandOutput
-			coreVersion, err := GetCoreProtocolVersion("/usr/bin/stellar-core")
+			coreVersion, err := CoreProtocolVersion("/usr/bin/stellar-core")
 
 			if tt.expectedError != nil {
 				require.EqualError(t, err, tt.expectedError.Error())

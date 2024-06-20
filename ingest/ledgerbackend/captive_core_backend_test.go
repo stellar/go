@@ -151,15 +151,14 @@ func TestCaptiveNew(t *testing.T) {
 	networkPassphrase := network.PublicNetworkPassphrase
 	historyURLs := []string{server.URL}
 
-	GetCoreProtocolVersionFunc = func(string) (uint, error) { return 21, nil }
-
 	captiveStellarCore, err := NewCaptive(
 		CaptiveCoreConfig{
-			BinaryPath:         executablePath,
-			NetworkPassphrase:  networkPassphrase,
-			HistoryArchiveURLs: historyURLs,
-			StoragePath:        storagePath,
-			UserAgent:          "uatest",
+			BinaryPath:            executablePath,
+			NetworkPassphrase:     networkPassphrase,
+			HistoryArchiveURLs:    historyURLs,
+			StoragePath:           storagePath,
+			UserAgent:             "uatest",
+			CoreProtocolVersionFn: func(string) (uint, error) { return 21, nil },
 		},
 	)
 
@@ -185,15 +184,14 @@ func TestCaptiveNewUnsupportedProtocolVersion(t *testing.T) {
 	networkPassphrase := network.PublicNetworkPassphrase
 	historyURLs := []string{server.URL}
 
-	GetCoreProtocolVersionFunc = func(string) (uint, error) { return 20, nil }
-
 	_, err = NewCaptive(
 		CaptiveCoreConfig{
-			BinaryPath:         executablePath,
-			NetworkPassphrase:  networkPassphrase,
-			HistoryArchiveURLs: historyURLs,
-			StoragePath:        storagePath,
-			UserAgent:          "uatest",
+			BinaryPath:            executablePath,
+			NetworkPassphrase:     networkPassphrase,
+			HistoryArchiveURLs:    historyURLs,
+			StoragePath:           storagePath,
+			UserAgent:             "uatest",
+			CoreProtocolVersionFn: func(string) (uint, error) { return 20, nil },
 		},
 	)
 
@@ -1015,15 +1013,14 @@ func TestCaptiveStellarCore_PrepareRangeAfterClose(t *testing.T) {
 	captiveCoreToml, err := NewCaptiveCoreToml(CaptiveCoreTomlParams{})
 	assert.NoError(t, err)
 
-	GetCoreProtocolVersionFunc = func(string) (uint, error) { return 21, nil }
-
 	captiveStellarCore, err := NewCaptive(
 		CaptiveCoreConfig{
-			BinaryPath:         executablePath,
-			NetworkPassphrase:  networkPassphrase,
-			HistoryArchiveURLs: historyURLs,
-			Toml:               captiveCoreToml,
-			StoragePath:        storagePath,
+			BinaryPath:            executablePath,
+			NetworkPassphrase:     networkPassphrase,
+			HistoryArchiveURLs:    historyURLs,
+			Toml:                  captiveCoreToml,
+			StoragePath:           storagePath,
+			CoreProtocolVersionFn: func(string) (uint, error) { return 21, nil },
 		},
 	)
 	assert.NoError(t, err)

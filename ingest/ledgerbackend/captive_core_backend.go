@@ -20,7 +20,7 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-var minProtocolVersionSupported uint = 21
+const minProtocolVersionSupported uint = 21
 
 // Ensure CaptiveStellarCore implements LedgerBackend
 var _ LedgerBackend = (*CaptiveStellarCore)(nil)
@@ -154,6 +154,12 @@ type CaptiveCoreConfig struct {
 	// of DATABASE parameter in the captive-core-config-path or if absent, the db will default to sqlite
 	// and the db file will be stored at location derived from StoragePath parameter.
 	UseDB bool
+
+	// CoreProtocolVersionFn is a function that returns the protocol version of the stellar-core binary.
+	CoreProtocolVersionFn CoreProtocolVersionFunc
+
+	// CoreBuildVersionFn is a function that returns the build version of the stellar-core binary.
+	CoreBuildVersionFn CoreBuildVersionFunc
 }
 
 // NewCaptive returns a new CaptiveStellarCore instance.
@@ -168,7 +174,15 @@ func NewCaptive(config CaptiveCoreConfig) (*CaptiveStellarCore, error) {
 		config.Log.SetLevel(logrus.InfoLevel)
 	}
 
-	protocolVersion, err := GetCoreProtocolVersionFunc(config.BinaryPath)
+	if config.CoreProtocolVersionFn == nil {
+		config.CoreProtocolVersionFn = CoreProtocolVersion
+	}
+
+	if config.CoreBuildVersionFn == nil {
+		config.CoreBuildVersionFn = CoreBuildVersion
+	}
+
+	protocolVersion, err := config.CoreProtocolVersionFn(config.BinaryPath)
 	if err != nil {
 		return nil, fmt.Errorf("error determining stellar-core protocol version: %w", err)
 	}
@@ -263,7 +277,7 @@ func (c *CaptiveStellarCore) coreVersionMetric() float64 {
 
 func (c *CaptiveStellarCore) setCoreVersion() {
 	var err error
-	c.captiveCoreVersion, err = GetCoreBuildVersionFunc(c.config.BinaryPath)
+	c.captiveCoreVersion, err = c.config.CoreBuildVersionFn(c.config.BinaryPath)
 	if err != nil {
 		c.config.Log.Errorf("Failed to set stellar-core version: %s", err)
 	}

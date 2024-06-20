@@ -71,6 +71,7 @@ type Config struct {
 
 	CoreVersion               string
 	SerializedCaptiveCoreToml []byte
+	CoreBuildVersionFn        ledgerbackend.CoreBuildVersionFunc
 }
 
 // This will generate the config based on settings
@@ -78,12 +79,16 @@ type Config struct {
 // settings              - requested settings
 //
 // return                - *Config or an error if any range validation failed.
-func NewConfig(settings RuntimeSettings) (*Config, error) {
+func NewConfig(settings RuntimeSettings, getCoreVersionFn ledgerbackend.CoreBuildVersionFunc) (*Config, error) {
 	config := &Config{}
 
 	config.StartLedger = uint32(settings.StartLedger)
 	config.EndLedger = uint32(settings.EndLedger)
 	config.Mode = settings.Mode
+	config.CoreBuildVersionFn = ledgerbackend.CoreBuildVersion
+	if getCoreVersionFn != nil {
+		config.CoreBuildVersionFn = getCoreVersionFn
+	}
 
 	logger.Infof("Requested export mode of %v with start=%d, end=%d", settings.Mode.Name(), config.StartLedger, config.EndLedger)
 
@@ -193,7 +198,7 @@ func (config *Config) GenerateCaptiveCoreConfig(coreBinFromPath string) (ledgerb
 }
 
 func (c *Config) setCoreVersionInfo() (err error) {
-	c.CoreVersion, err = ledgerbackend.GetCoreBuildVersionFunc(c.StellarCoreConfig.StellarCoreBinaryPath)
+	c.CoreVersion, err = c.CoreBuildVersionFn(c.StellarCoreConfig.StellarCoreBinaryPath)
 	if err != nil {
 		return fmt.Errorf("failed to set stellar-core version: %w", err)
 	}

@@ -100,7 +100,6 @@ func (s *DBTestSuite) SetupTest() {
 	s.checkpointHash = xdr.Hash{1, 2, 3}
 	s.ledgerBackend = &ledgerbackend.MockDatabaseBackend{}
 	s.historyAdapter = &mockHistoryArchiveAdapter{}
-	ledgerbackend.GetCoreProtocolVersionFunc = func(string) (uint, error) { return 21, nil }
 
 	var err error
 	sIface, err := NewSystem(Config{
@@ -108,6 +107,7 @@ func (s *DBTestSuite) SetupTest() {
 		HistoryArchiveURLs:       []string{"http://ignore.test"},
 		DisableStateVerification: false,
 		CheckpointFrequency:      64,
+		CoreProtocolVersionFn:    func(string) (uint, error) { return 21, nil },
 	})
 	s.Assert().NoError(err)
 	s.system = sIface.(*system)
