@@ -2,9 +2,7 @@ package ledgerbackend
 
 import (
 	"io/ioutil"
-	"os"
 	"path/filepath"
-	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -234,18 +232,6 @@ func TestCaptiveCoreTomlValidation(t *testing.T) {
 	}
 }
 
-func checkTestingAboveProtocol19() bool {
-	str := os.Getenv("HORIZON_INTEGRATION_TESTS_CORE_MAX_SUPPORTED_PROTOCOL")
-	if str == "" {
-		return false
-	}
-	version, err := strconv.ParseUint(str, 10, 32)
-	if err != nil {
-		return false
-	}
-	return uint32(version) > 19
-}
-
 func TestGenerateConfig(t *testing.T) {
 	for _, testCase := range []struct {
 		name                           string
@@ -426,13 +412,6 @@ func TestGenerateCoreConfigInMemory(t *testing.T) {
 		HistoryArchiveURLs: []string{"http://localhost:1170"},
 		Strict:             false,
 		UseDB:              false,
-		checkCoreVersion: func(coreBinaryPath string) coreVersion {
-			return coreVersion{
-				major:                 21,
-				minor:                 0,
-				ledgerProtocolVersion: 21,
-			}
-		},
 	}
 	captiveCoreToml, err = NewCaptiveCoreTomlFromFile(appendPath, params)
 	assert.NoError(t, err)
