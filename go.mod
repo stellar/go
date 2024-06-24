@@ -61,7 +61,6 @@ require (
 require (
 	github.com/cenkalti/backoff/v4 v4.2.1
 	github.com/fsouza/fake-gcs-server v1.49.0
-	golang.org/x/sync v0.7.0
 )
 
 require (
@@ -104,6 +103,7 @@ require (
 	go.opentelemetry.io/otel/trace v1.24.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/mod v0.13.0 // indirect
+	golang.org/x/sync v0.7.0 // indirect
 	golang.org/x/tools v0.14.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20240429193739-8cf5692501f6 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240429193739-8cf5692501f6 // indirect
