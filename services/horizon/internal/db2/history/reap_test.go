@@ -17,7 +17,7 @@ func TestReapLookupTables(t *testing.T) {
 	reaper := ingest.NewReaper(
 		ingest.ReapConfig{
 			RetentionCount: 1,
-			ReapBatchSize:  50,
+			BatchSize:      50,
 		},
 		db,
 	)

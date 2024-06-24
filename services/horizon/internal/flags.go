@@ -678,6 +678,14 @@ func Flags() (*Config, support.ConfigOptions) {
 				"A value of 1 implies history is trimmed after every ledger. " +
 				"A value of 2 implies history is trimmed on every second ledger.",
 			UsedInCommands: IngestionCommands,
+			CustomSetValue: func(opt *support.ConfigOption) error {
+				val := viper.GetUint(opt.Name)
+				if val <= 0 {
+					return fmt.Errorf("flag --reap-frequency must be positive")
+				}
+				*(opt.ConfigKey.(*uint)) = val
+				return nil
+			},
 		},
 		&support.ConfigOption{
 			Name:           "history-stale-threshold",

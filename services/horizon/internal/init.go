@@ -103,9 +103,11 @@ func initIngester(app *App) {
 		EnableExtendedLogLedgerStats:         app.config.IngestEnableExtendedLogLedgerStats,
 		RoundingSlippageFilter:               app.config.RoundingSlippageFilter,
 		SkipTxmeta:                           app.config.SkipTxmeta,
-		HistoryRetentionCount:                app.config.HistoryRetentionCount,
-		HistoryRetentionReapCount:            app.config.HistoryRetentionReapCount,
-		ReapFrequency:                        app.config.ReapFrequency,
+		ReapConfig: ingest.ReapConfig{
+			Frequency:      app.config.ReapFrequency,
+			RetentionCount: uint32(app.config.HistoryRetentionCount),
+			BatchSize:      uint32(app.config.HistoryRetentionReapCount),
+		},
 	})
 
 	if err != nil {

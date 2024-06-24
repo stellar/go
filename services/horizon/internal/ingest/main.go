@@ -114,9 +114,7 @@ type Config struct {
 	CoreProtocolVersionFn ledgerbackend.CoreProtocolVersionFunc
 	CoreBuildVersionFn    ledgerbackend.CoreBuildVersionFunc
 
-	ReapFrequency             uint
-	HistoryRetentionCount     uint
-	HistoryRetentionReapCount uint
+	ReapConfig ReapConfig
 }
 
 const (
@@ -326,10 +324,7 @@ func NewSystem(config Config) (System, error) {
 		),
 		maxLedgerPerFlush: maxLedgersPerFlush,
 		reaper: NewReaper(
-			ReapConfig{
-				RetentionCount: uint32(config.HistoryRetentionCount),
-				ReapBatchSize:  uint32(config.HistoryRetentionReapCount),
-			},
+			config.ReapConfig,
 			config.HistorySession,
 		),
 	}
@@ -710,7 +705,7 @@ func (s *system) runStateMachine(cur stateMachineNode) error {
 }
 
 func (s *system) maybeReapHistory(lastIngestedLedger uint32) {
-	if s.config.ReapFrequency == 0 || lastIngestedLedger%uint32(s.config.ReapFrequency) != 0 {
+	if s.config.ReapConfig.Frequency == 0 || lastIngestedLedger%uint32(s.config.ReapConfig.Frequency) != 0 {
 		return
 	}
 	s.wg.Add(1)

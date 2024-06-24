@@ -7,6 +7,7 @@ import (
 	"go/types"
 	"log"
 	"os"
+	"os/signal"
 	"strconv"
 	"strings"
 
@@ -235,11 +236,13 @@ var dbReapCmd = &cobra.Command{
 		reaper := ingest.NewReaper(
 			ingest.ReapConfig{
 				RetentionCount: uint32(globalConfig.HistoryRetentionCount),
-				ReapBatchSize:  uint32(globalConfig.HistoryRetentionReapCount),
+				BatchSize:      uint32(globalConfig.HistoryRetentionReapCount),
 			},
 			session,
 		)
-		return reaper.DeleteUnretainedHistory(context.Background())
+		ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill)
+		defer cancel()
+		return reaper.DeleteUnretainedHistory(ctx)
 	},
 }
 

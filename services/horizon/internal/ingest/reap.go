@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
-	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -20,6 +20,7 @@ import (
 type Reaper struct {
 	historyQ  history.IngestionQ
 	reapLockQ history.IngestionQ
+	pending   atomic.Bool
 	config    ReapConfig
 	logger    *logpkg.Entry
 
@@ -27,13 +28,12 @@ type Reaper struct {
 	totalDeleted        *prometheus.SummaryVec
 	deleteBatchDuration prometheus.Summary
 	rowsInBatchDeleted  prometheus.Summary
-
-	lock sync.Mutex
 }
 
 type ReapConfig struct {
+	Frequency      uint
 	RetentionCount uint32
-	ReapBatchSize  uint32
+	BatchSize      uint32
 }
 
 // NewReaper creates a new Reaper instance
@@ -53,7 +53,7 @@ func newReaper(config ReapConfig, historyQ, reapLockQ history.IngestionQ) *Reape
 		}),
 		rowsInBatchDeleted: prometheus.NewSummary(prometheus.SummaryOpts{
 			Namespace: "horizon", Subsystem: "reap", Name: "batch_rows_deleted",
-			Help:       "rows deleted during reap batch , sliding window = 10m",
+			Help:       "rows deleted during reap batch, sliding window = 10m",
 			Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
 		}),
 		totalDuration: prometheus.NewSummaryVec(prometheus.SummaryOpts{
@@ -77,11 +77,12 @@ func (r *Reaper) DeleteUnretainedHistory(ctx context.Context) error {
 		return nil
 	}
 
-	if !r.lock.TryLock() {
-		r.logger.Infof("reap already in progress")
+	// check if reap is already in progress on this horizon node
+	if !r.pending.CompareAndSwap(false, true) {
+		r.logger.Infof("existing reap already in progress, skipping request to start a new one")
 		return nil
 	}
-	defer r.lock.Unlock()
+	defer r.pending.Store(false)
 
 	if err := r.reapLockQ.Begin(ctx); err != nil {
 		return errors.Wrap(err, "error while starting reaper lock transaction")
@@ -91,8 +92,9 @@ func (r *Reaper) DeleteUnretainedHistory(ctx context.Context) error {
 			r.logger.WithField("error", err).Error("failed to release reaper lock")
 		}
 	}()
+	// check if reap is already in progress on another horizon node
 	if acquired, err := r.reapLockQ.TryReaperLock(ctx); err != nil {
-		return errors.Wrap(err, "error while acquiring reaper lock")
+		return errors.Wrap(err, "error while acquiring reaper database lock")
 	} else if !acquired {
 		r.logger.Info("reap already in progress on another node")
 		return nil
@@ -154,10 +156,11 @@ func (s *Reaper) RegisterMetrics(registry *prometheus.Registry) {
 	)
 }
 
-// Work backwards in 50k (by default, otherwise configurable via the CLI) ledger
+// Work in 50k (by default, otherwise configurable via the CLI) ledger
 // blocks to prevent using all the CPU.
 //
-// This runs every hour, so we need to make sure it doesn't run for longer than
+// By default, this runs every 720 ledgers (approximately 1 hour), so we
+// need to make sure it doesn't run for longer than
 // an hour.
 //
 // Current ledger at 2024-04-04s is 51,092,283, so 50k means 1021 batches. At 1
@@ -166,7 +169,7 @@ func (s *Reaper) RegisterMetrics(registry *prometheus.Registry) {
 var sleep = 1 * time.Second
 
 func (r *Reaper) clearBefore(ctx context.Context, startSeq, endSeq uint32) (int64, error) {
-	batchSize := r.config.ReapBatchSize
+	batchSize := r.config.BatchSize
 	var sum int64
 	if batchSize <= 0 {
 		return sum, fmt.Errorf("invalid batch size for reaping (%d)", batchSize)

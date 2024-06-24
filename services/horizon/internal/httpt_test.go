@@ -106,7 +106,7 @@ func (ht *HTTPT) ReapHistory(retention uint32) {
 	reaper := ingest.NewReaper(
 		ingest.ReapConfig{
 			RetentionCount: retention,
-			ReapBatchSize:  50_000,
+			BatchSize:      50_000,
 		}, ht.HorizonSession())
 
 	ht.Require.NoError(reaper.DeleteUnretainedHistory(context.Background()))

@@ -22,7 +22,7 @@ func TestDeleteUnretainedHistory(t *testing.T) {
 
 	reaper := NewReaper(ReapConfig{
 		RetentionCount: 0,
-		ReapBatchSize:  50,
+		BatchSize:      50,
 	}, db)
 
 	// Disable sleeps for this.
@@ -82,7 +82,7 @@ func (t *ReaperTestSuite) SetupTest() {
 	t.reapLockQ = &mockDBQ{}
 	t.reaper = newReaper(ReapConfig{
 		RetentionCount: 30,
-		ReapBatchSize:  10,
+		BatchSize:      10,
 	}, t.historyQ, t.reapLockQ)
 	t.prevSleep = sleep
 	sleep = 0
