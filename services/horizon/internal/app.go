@@ -22,7 +22,6 @@ import (
 	"github.com/stellar/go/services/horizon/internal/ledger"
 	"github.com/stellar/go/services/horizon/internal/operationfeestats"
 	"github.com/stellar/go/services/horizon/internal/paths"
-	"github.com/stellar/go/services/horizon/internal/reap"
 	"github.com/stellar/go/services/horizon/internal/txsub"
 	"github.com/stellar/go/support/app"
 	"github.com/stellar/go/support/db"
@@ -47,7 +46,6 @@ type App struct {
 	submitter       *txsub.System
 	paths           paths.Finder
 	ingester        ingest.System
-	reaper          *reap.System
 	ticks           *time.Ticker
 	ledgerState     *ledger.State
 
@@ -107,14 +105,6 @@ func (a *App) Serve() error {
 		}()
 	}
 
-	if a.reaper != nil {
-		wg.Add(1)
-		go func() {
-			a.reaper.Run()
-			wg.Done()
-		}()
-	}
-
 	// configure shutdown signal handler
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
@@ -168,9 +158,6 @@ func (a *App) Shutdown() {
 	a.cancel()
 	if a.ingester != nil {
 		a.ingester.Shutdown()
-	}
-	if a.reaper != nil {
-		a.reaper.Shutdown()
 	}
 	a.ticks.Stop()
 }
@@ -441,12 +428,6 @@ func (a *App) UpdateStellarCoreInfo(ctx context.Context) error {
 	return nil
 }
 
-// DeleteUnretainedHistory forwards to the app's reaper.  See
-// `reap.DeleteUnretainedHistory` for details
-func (a *App) DeleteUnretainedHistory(ctx context.Context) error {
-	return a.reaper.DeleteUnretainedHistory(ctx)
-}
-
 // Tick triggers horizon to update all of it's background processes such as
 // transaction submission, metrics, ingestion and reaping.
 func (a *App) Tick(ctx context.Context) error {
@@ -510,13 +491,6 @@ func (a *App) init() error {
 
 	// txsub
 	initSubmissionSystem(a)
-
-	// reaper
-	a.reaper = reap.New(
-		a.config.HistoryRetentionCount,
-		a.config.HistoryRetentionReapCount,
-		a.HorizonSession(),
-		a.ledgerState)
 
 	// go metrics
 	initGoMetrics(a)

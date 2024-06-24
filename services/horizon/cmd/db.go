@@ -7,14 +7,15 @@ import (
 	"go/types"
 	"log"
 	"os"
+	"os/signal"
 	"strconv"
 	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"github.com/stellar/go/services/horizon/internal/db2/history"
 
 	horizon "github.com/stellar/go/services/horizon/internal"
+	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/db2/schema"
 	"github.com/stellar/go/services/horizon/internal/ingest"
 	support "github.com/stellar/go/support/config"
@@ -220,17 +221,28 @@ var dbReapCmd = &cobra.Command{
 	Short: "reaps (i.e. removes) any reapable history data",
 	Long:  "reap removes any historical data that is earlier than the configured retention cutoff",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		app, err := horizon.NewAppFromFlags(globalConfig, globalFlags)
+
+		err := horizon.ApplyFlags(globalConfig, globalFlags, horizon.ApplyOptions{RequireCaptiveCoreFullConfig: false, AlwaysIngest: false})
 		if err != nil {
 			return err
 		}
-		defer func() {
-			app.Shutdown()
-			app.CloseDB()
-		}()
-		ctx := context.Background()
-		app.UpdateHorizonLedgerState(ctx)
-		return app.DeleteUnretainedHistory(ctx)
+
+		session, err := db.Open("postgres", globalConfig.DatabaseURL)
+		if err != nil {
+			return fmt.Errorf("cannot open Horizon DB: %v", err)
+		}
+		defer session.Close()
+
+		reaper := ingest.NewReaper(
+			ingest.ReapConfig{
+				RetentionCount: uint32(globalConfig.HistoryRetentionCount),
+				BatchSize:      uint32(globalConfig.HistoryRetentionReapCount),
+			},
+			session,
+		)
+		ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill)
+		defer cancel()
+		return reaper.DeleteUnretainedHistory(ctx)
 	},
 }
 

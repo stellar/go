@@ -520,7 +520,7 @@ func (s *SessionWithMetrics) DeleteRange(
 	start, end int64,
 	table string,
 	idCol string,
-) (err error) {
+) (count int64, err error) {
 	queryType := "delete"
 	timer := prometheus.NewTimer(prometheus.ObserverFunc(func(v float64) {
 		s.queryDurationSummary.With(prometheus.Labels{
@@ -538,6 +538,6 @@ func (s *SessionWithMetrics) DeleteRange(
 		}).Inc()
 	}()
 
-	err = s.SessionInterface.DeleteRange(ctx, start, end, table, idCol)
-	return err
+	count, err = s.SessionInterface.DeleteRange(ctx, start, end, table, idCol)
+	return count, err
 }

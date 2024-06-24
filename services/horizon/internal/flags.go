@@ -670,6 +670,24 @@ func Flags() (*Config, support.ConfigOptions) {
 			},
 		},
 		&support.ConfigOption{
+			Name:        "reap-frequency",
+			ConfigKey:   &config.ReapFrequency,
+			OptType:     types.Uint,
+			FlagDefault: uint(720),
+			Usage: "the frequency in units of ledgers for how often history is reaped. " +
+				"A value of 1 implies history is trimmed after every ledger. " +
+				"A value of 2 implies history is trimmed on every second ledger.",
+			UsedInCommands: IngestionCommands,
+			CustomSetValue: func(opt *support.ConfigOption) error {
+				val := viper.GetUint(opt.Name)
+				if val <= 0 {
+					return fmt.Errorf("flag --reap-frequency must be positive")
+				}
+				*(opt.ConfigKey.(*uint)) = val
+				return nil
+			},
+		},
+		&support.ConfigOption{
 			Name:           "history-stale-threshold",
 			ConfigKey:      &config.StaleThreshold,
 			OptType:        types.Uint,

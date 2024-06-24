@@ -154,7 +154,7 @@ type SessionInterface interface {
 		start, end int64,
 		table string,
 		idCol string,
-	) error
+	) (int64, error)
 }
 
 // Table helps to build sql queries against a given table.  It logically

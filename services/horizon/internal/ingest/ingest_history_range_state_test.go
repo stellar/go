@@ -352,7 +352,7 @@ func (s *ReingestHistoryRangeStateTestSuite) TestReingestHistoryRangeStateClearH
 	toidTo := toid.New(201, 0, 0)
 	s.historyQ.On(
 		"DeleteRangeAll", s.ctx, toidFrom.ToInt64(), toidTo.ToInt64(),
-	).Return(errors.New("my error")).Once()
+	).Return(int64(0), errors.New("my error")).Once()
 
 	err := s.system.ReingestRange([]history.LedgerRange{{100, 200}}, false, true)
 	s.Assert().EqualError(err, "error in DeleteRangeAll: my error")
@@ -364,7 +364,7 @@ func (s *ReingestHistoryRangeStateTestSuite) TestReingestHistoryRangeStateRunTra
 	toidTo := toid.New(201, 0, 0)
 	s.historyQ.On(
 		"DeleteRangeAll", s.ctx, toidFrom.ToInt64(), toidTo.ToInt64(),
-	).Return(nil).Once()
+	).Return(int64(100), nil).Once()
 
 	meta := xdr.LedgerCloseMeta{
 		V0: &xdr.LedgerCloseMetaV0{
@@ -389,7 +389,7 @@ func (s *ReingestHistoryRangeStateTestSuite) TestReingestHistoryRangeStateSucces
 	toidTo := toid.New(201, 0, 0)
 	s.historyQ.On(
 		"DeleteRangeAll", s.ctx, toidFrom.ToInt64(), toidTo.ToInt64(),
-	).Return(nil).Once()
+	).Return(int64(100), nil).Once()
 	s.historyQ.On("RebuildTradeAggregationBuckets", s.ctx, uint32(100), uint32(200), 0).Return(nil).Once()
 
 	for i := uint32(100); i <= uint32(200); i++ {
@@ -417,7 +417,7 @@ func (s *ReingestHistoryRangeStateTestSuite) TestReingestHistoryRangeStateSucces
 	toidTo := toid.New(201, 0, 0)
 	s.historyQ.On(
 		"DeleteRangeAll", s.ctx, toidFrom.ToInt64(), toidTo.ToInt64(),
-	).Return(nil).Once()
+	).Return(int64(100), nil).Once()
 	s.historyQ.On("RebuildTradeAggregationBuckets", s.ctx, uint32(100), uint32(200), 0).Return(nil).Once()
 
 	firstLedgersBatch := []xdr.LedgerCloseMeta{}
@@ -458,7 +458,7 @@ func (s *ReingestHistoryRangeStateTestSuite) TestReingestHistoryRangeStateSucces
 	toidTo := toid.New(101, 0, 0)
 	s.historyQ.On(
 		"DeleteRangeAll", s.ctx, toidFrom.ToInt64(), toidTo.ToInt64(),
-	).Return(nil).Once()
+	).Return(int64(100), nil).Once()
 
 	meta := xdr.LedgerCloseMeta{
 		V0: &xdr.LedgerCloseMetaV0{
@@ -497,7 +497,7 @@ func (s *ReingestHistoryRangeStateTestSuite) TestReingestHistoryRangeStateForce(
 	toidTo := toid.New(201, 0, 0)
 	s.historyQ.On(
 		"DeleteRangeAll", s.ctx, toidFrom.ToInt64(), toidTo.ToInt64(),
-	).Return(nil).Once()
+	).Return(int64(100), nil).Once()
 
 	for i := 100; i <= 200; i++ {
 		meta := xdr.LedgerCloseMeta{
@@ -528,7 +528,7 @@ func (s *ReingestHistoryRangeStateTestSuite) TestReingestHistoryRangeStateForceL
 	toidTo := toid.New(201, 0, 0)
 	s.historyQ.On(
 		"DeleteRangeAll", s.ctx, toidFrom.ToInt64(), toidTo.ToInt64(),
-	).Return(nil).Once()
+	).Return(int64(100), nil).Once()
 
 	for i := 100; i <= 105; i++ {
 		meta := xdr.LedgerCloseMeta{
@@ -561,7 +561,7 @@ func (s *ReingestHistoryRangeStateTestSuite) TestReingestHistoryRangeStateForceL
 	toidTo := toid.New(201, 0, 0)
 	s.historyQ.On(
 		"DeleteRangeAll", s.ctx, toidFrom.ToInt64(), toidTo.ToInt64(),
-	).Return(nil).Once()
+	).Return(int64(100), nil).Once()
 
 	for i := 100; i <= 105; i++ {
 		meta := xdr.LedgerCloseMeta{
@@ -595,7 +595,7 @@ func (s *ReingestHistoryRangeStateTestSuite) TestReingestHistoryRangeStateForceW
 	toidTo := toid.New(201, 0, 0)
 	s.historyQ.On(
 		"DeleteRangeAll", s.ctx, toidFrom.ToInt64(), toidTo.ToInt64(),
-	).Return(nil).Once()
+	).Return(int64(100), nil).Once()
 
 	firstLedgersBatch := []xdr.LedgerCloseMeta{}
 	secondLedgersBatch := []xdr.LedgerCloseMeta{}

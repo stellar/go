@@ -578,6 +578,7 @@ func (r resumeState) run(s *system) (transition, error) {
 	localLog.Info("Processed ledger")
 
 	s.maybeVerifyState(ingestLedger, ledgerCloseMeta.BucketListHash())
+	s.maybeReapHistory(ingestLedger)
 	s.maybeReapLookupTables(ingestLedger)
 
 	return resumeImmediately(ingestLedger), nil

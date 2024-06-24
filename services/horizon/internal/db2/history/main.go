@@ -302,9 +302,12 @@ type IngestionQ interface {
 	GetOfferCompactionSequence(context.Context) (uint32, error)
 	GetLiquidityPoolCompactionSequence(context.Context) (uint32, error)
 	TruncateIngestStateTables(context.Context) error
-	DeleteRangeAll(ctx context.Context, start, end int64) error
+	DeleteRangeAll(ctx context.Context, start, end int64) (int64, error)
 	DeleteTransactionsFilteredTmpOlderThan(ctx context.Context, howOldInSeconds uint64) (int64, error)
-	TryStateVerificationLock(ctx context.Context) (bool, error)
+	GetNextLedgerSequence(context.Context, uint32) (uint32, bool, error)
+	TryStateVerificationLock(context.Context) (bool, error)
+	TryReaperLock(context.Context) (bool, error)
+	ElderLedger(context.Context, interface{}) error
 }
 
 // QAccounts defines account related queries.
@@ -1154,7 +1157,8 @@ func constructReapLookupTablesQuery(table string, historyTables []tableObjectFie
 
 // DeleteRangeAll deletes a range of rows from all history tables between
 // `start` and `end` (exclusive).
-func (q *Q) DeleteRangeAll(ctx context.Context, start, end int64) error {
+func (q *Q) DeleteRangeAll(ctx context.Context, start, end int64) (int64, error) {
+	var total int64
 	for table, column := range map[string]string{
 		"history_effects":                        "history_operation_id",
 		"history_ledgers":                        "id",
@@ -1169,12 +1173,13 @@ func (q *Q) DeleteRangeAll(ctx context.Context, start, end int64) error {
 		"history_transaction_liquidity_pools":    "history_transaction_id",
 		"history_transactions":                   "id",
 	} {
-		err := q.DeleteRange(ctx, start, end, table, column)
+		count, err := q.DeleteRange(ctx, start, end, table, column)
 		if err != nil {
-			return errors.Wrapf(err, "Error clearing %s", table)
+			return 0, errors.Wrapf(err, "Error clearing %s", table)
 		}
+		total += count
 	}
-	return nil
+	return total, nil
 }
 
 // upsertRows builds and executes an upsert query that allows very fast upserts

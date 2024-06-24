@@ -7,16 +7,34 @@ import (
 	"github.com/stellar/go/support/errors"
 )
 
-// stateVerificationLockId is the objid for the advisory lock acquired during
-// state verification. The value is arbitrary. The only requirement is that
-// all ingesting nodes use the same value which is why it's hard coded here.
-const stateVerificationLockId = 73897213
+const (
+	// stateVerificationLockId is the objid for the advisory lock acquired during
+	// state verification. The value is arbitrary. The only requirement is that
+	// all ingesting nodes use the same value which is why it's hard coded here.`1
+	stateVerificationLockId = 73897213
+	// reaperLockId is the objid for the advisory lock acquired during
+	// reaping. The value is arbitrary. The only requirement is that
+	// all ingesting nodes use the same value which is why it's hard coded here.
+	reaperLockId = 944670730
+)
 
 // TryStateVerificationLock attempts to acquire the state verification lock
 // which gives the ingesting node exclusive access to perform state verification.
 // TryStateVerificationLock returns true if the lock was acquired or false if the
 // lock could not be acquired because it is held by another node.
 func (q *Q) TryStateVerificationLock(ctx context.Context) (bool, error) {
+	return q.tryAdvisoryLock(ctx, stateVerificationLockId)
+}
+
+// TryReaperLock attempts to acquire the reaper lock
+// which gives the ingesting node exclusive access to perform reaping.
+// TryReaperLock returns true if the lock was acquired or false if the
+// lock could not be acquired because it is held by another node.
+func (q *Q) TryReaperLock(ctx context.Context) (bool, error) {
+	return q.tryAdvisoryLock(ctx, reaperLockId)
+}
+
+func (q *Q) tryAdvisoryLock(ctx context.Context, lockId int) (bool, error) {
 	if tx := q.GetTx(); tx == nil {
 		return false, errors.New("cannot be called outside of a transaction")
 	}
@@ -26,7 +44,7 @@ func (q *Q) TryStateVerificationLock(ctx context.Context) (bool, error) {
 		context.WithValue(ctx, &db.QueryTypeContextKey, db.AdvisoryLockQueryType),
 		&acquired,
 		"SELECT pg_try_advisory_xact_lock(?)",
-		stateVerificationLockId,
+		lockId,
 	)
 	if err != nil {
 		return false, errors.Wrap(err, "error acquiring advisory lock for state verification")

@@ -457,6 +457,21 @@ func (m *mockDBQ) TryStateVerificationLock(ctx context.Context) (bool, error) {
 	return args.Get(0).(bool), args.Error(1)
 }
 
+func (m *mockDBQ) TryReaperLock(ctx context.Context) (bool, error) {
+	args := m.Called(ctx)
+	return args.Get(0).(bool), args.Error(1)
+}
+
+func (m *mockDBQ) GetNextLedgerSequence(ctx context.Context, start uint32) (uint32, bool, error) {
+	args := m.Called(ctx, start)
+	return args.Get(0).(uint32), args.Get(1).(bool), args.Error(2)
+}
+
+func (m *mockDBQ) ElderLedger(ctx context.Context, dest interface{}) error {
+	args := m.Called(ctx, dest)
+	return args.Error(0)
+}
+
 func (m *mockDBQ) GetTx() *sqlx.Tx {
 	args := m.Called()
 	if args.Get(0) == nil {
@@ -525,9 +540,9 @@ func (m *mockDBQ) TruncateIngestStateTables(ctx context.Context) error {
 	return args.Error(0)
 }
 
-func (m *mockDBQ) DeleteRangeAll(ctx context.Context, start, end int64) error {
+func (m *mockDBQ) DeleteRangeAll(ctx context.Context, start, end int64) (int64, error) {
 	args := m.Called(ctx, start, end)
-	return args.Error(0)
+	return args.Get(0).(int64), args.Error(1)
 }
 
 // Methods from interfaces duplicating methods:
