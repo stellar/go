@@ -21,6 +21,8 @@ var (
 
 	//go:embed configs/captive-core-testnet.cfg
 	TestnetDefaultConfig []byte
+
+	defaultBucketListDBPageSize uint = 12
 )
 
 const (
@@ -95,9 +97,9 @@ type captiveCoreTomlValues struct {
 	Validators                            []Validator          `toml:"VALIDATORS,omitempty"`
 	HistoryEntries                        map[string]History   `toml:"-"`
 	QuorumSetEntries                      map[string]QuorumSet `toml:"-"`
-	UseBucketListDB                       bool                 `toml:"EXPERIMENTAL_BUCKETLIST_DB,omitempty"`
-	BucketListDBPageSizeExp               *uint                `toml:"EXPERIMENTAL_BUCKETLIST_DB_INDEX_PAGE_SIZE_EXPONENT,omitempty"`
-	BucketListDBCutoff                    *uint                `toml:"EXPERIMENTAL_BUCKETLIST_DB_INDEX_CUTOFF,omitempty"`
+	BucketListDBPageSizeExp               *uint                `toml:"BUCKETLIST_DB_INDEX_PAGE_SIZE_EXPONENT,omitempty"`
+	BucketListDBCutoff                    *uint                `toml:"BUCKETLIST_DB_INDEX_CUTOFF,omitempty"`
+	DeprecatedSqlLedgerState              *bool                `toml:"DEPRECATED_SQL_LEDGER_STATE,omitempty"`
 	EnableSorobanDiagnosticEvents         *bool                `toml:"ENABLE_SOROBAN_DIAGNOSTIC_EVENTS,omitempty"`
 	TestingMinimumPersistentEntryLifetime *uint                `toml:"TESTING_MINIMUM_PERSISTENT_ENTRY_LIFETIME,omitempty"`
 	TestingSorobanHighLimitOverride       *bool                `toml:"TESTING_SOROBAN_HIGH_LIMIT_OVERRIDE,omitempty"`
@@ -446,14 +448,15 @@ func (c *CaptiveCoreToml) setDefaults(params CaptiveCoreTomlParams) {
 		c.Database = "sqlite3://stellar.db"
 	}
 
-	if def := c.tree.Has("EXPERIMENTAL_BUCKETLIST_DB"); !def && params.UseDB {
-		c.UseBucketListDB = true
+	deprecatedSqlLedgerState := false
+	if !params.UseDB {
+		deprecatedSqlLedgerState = true
+	} else {
+		if !c.tree.Has("BUCKETLIST_DB_INDEX_PAGE_SIZE_EXPONENT") {
+			c.BucketListDBPageSizeExp = &defaultBucketListDBPageSize
+		}
 	}
-
-	if c.UseBucketListDB && !c.tree.Has("EXPERIMENTAL_BUCKETLIST_DB_INDEX_PAGE_SIZE_EXPONENT") {
-		n := uint(12)
-		c.BucketListDBPageSizeExp = &n // Set default page size to 4KB
-	}
+	c.DeprecatedSqlLedgerState = &deprecatedSqlLedgerState
 
 	if !c.tree.Has("NETWORK_PASSPHRASE") {
 		c.NetworkPassphrase = params.NetworkPassphrase
@@ -543,10 +546,14 @@ func (c *CaptiveCoreToml) validate(params CaptiveCoreTomlParams) error {
 		)
 	}
 
-	if def := c.tree.Has("EXPERIMENTAL_BUCKETLIST_DB"); def && !params.UseDB {
-		return fmt.Errorf(
-			"BucketListDB enabled in captive core config file, requires Horizon flag --captive-core-use-db",
-		)
+	if c.tree.Has("DEPRECATED_SQL_LEDGER_STATE") {
+		if params.UseDB && *c.DeprecatedSqlLedgerState {
+			return fmt.Errorf("CAPTIVE_CORE_USE_DB parameter is set to true, indicating stellar-core on-disk mode," +
+				" in which DEPRECATED_SQL_LEDGER_STATE must be set to false")
+		} else if !params.UseDB && !*c.DeprecatedSqlLedgerState {
+			return fmt.Errorf("CAPTIVE_CORE_USE_DB parameter is set to false, indicating stellar-core in-memory mode," +
+				" in which DEPRECATED_SQL_LEDGER_STATE must be set to true")
+		}
 	}
 
 	homeDomainSet := map[string]HomeDomain{}
