@@ -45,6 +45,7 @@ func (s *ResumeTestTestSuite) SetupTest() {
 		ledgerBackend:                s.ledgerBackend,
 		stellarCoreClient:            s.stellarCoreClient,
 		runStateVerificationOnLedger: ledgerEligibleForStateVerification(64, 1),
+		reaper:                       &Reaper{},
 	}
 	s.system.initMetrics()
 

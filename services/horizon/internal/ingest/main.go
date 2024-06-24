@@ -705,7 +705,7 @@ func (s *system) runStateMachine(cur stateMachineNode) error {
 }
 
 func (s *system) maybeReapHistory(lastIngestedLedger uint32) {
-	if s.config.ReapConfig.Frequency == 0 || lastIngestedLedger%uint32(s.config.ReapConfig.Frequency) != 0 {
+	if s.reaper.config.Frequency == 0 || lastIngestedLedger%uint32(s.reaper.config.Frequency) != 0 {
 		return
 	}
 	s.wg.Add(1)

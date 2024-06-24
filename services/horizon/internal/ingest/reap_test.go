@@ -83,6 +83,7 @@ func (t *ReaperTestSuite) SetupTest() {
 	t.reaper = newReaper(ReapConfig{
 		RetentionCount: 30,
 		BatchSize:      10,
+		Frequency:      7,
 	}, t.historyQ, t.reapLockQ)
 	t.prevSleep = sleep
 	sleep = 0
@@ -124,6 +125,29 @@ func (t *ReaperTestSuite) TestInProgress() {
 		t.reaper.DeleteUnretainedHistory(t.ctx),
 		"error while starting reaper lock transaction: transient error",
 	)
+}
+
+func (t *ReaperTestSuite) TestReaperInvokedOnMatchingLedger() {
+	s := &system{
+		ctx:    t.ctx,
+		reaper: t.reaper,
+	}
+	assertMocksInOrder(
+		t.reapLockQ.On("Begin", t.ctx).Return(nil).Once(),
+		t.reapLockQ.On("TryReaperLock", t.ctx).Return(false, nil).Once(),
+		t.reapLockQ.On("Rollback").Return(nil).Once(),
+	)
+	s.maybeReapHistory(49)
+	s.wg.Wait()
+}
+
+func (t *ReaperTestSuite) TestReaperIgnoredOnMismatchingLedger() {
+	s := &system{
+		ctx:    t.ctx,
+		reaper: t.reaper,
+	}
+	s.maybeReapHistory(48)
+	s.wg.Wait()
 }
 
 func (t *ReaperTestSuite) TestLatestLedgerTooSmall() {
