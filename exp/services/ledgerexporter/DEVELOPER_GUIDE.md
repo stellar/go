@@ -41,7 +41,7 @@ The Dockerfile contains all the necessary dependencies (e.g., Stellar-core) requ
 ## Adding support for a new storage type
 To add support for a new storage type (e.g. AWS S3), follow these steps:
 
-- Implement the interface defined in [datastore.go](https://github.com/stellar/go/blob/master/support/datastore/datastore.go).
+- A data storage plugin must implement the [DataStore](https://github.com/stellar/go/blob/master/support/datastore/datastore.go) interface.
 - Add support for new datastore-specific features. Implement any datastore-specific custom logic. Different datastores have different ways of handling 
   - race conditions
   - automatic retries
