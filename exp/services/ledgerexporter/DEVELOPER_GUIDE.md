@@ -27,7 +27,7 @@ To achieve its goals, the ledger exporter uses the following architecture, which
 - Objects are compressed before uploading using the zstd (zstandard) compression algorithm to optimize network usage and storage needs.
 
 ## Data Storage (GCS)
-- The source for the cloud storage plugin is in the [support](https://github.com/stellar/go/tree/master/support/datastore) package. Any new storage plugin must implement the interface defined in [datastore.go](https://github.com/stellar/go/blob/master/support/datastore/datastore.go). 
+- An example implementation of `DataStore` for GCS, Google Cloud Storage. This plugin is located in the [support](https://github.com/stellar/go/tree/master/support/datastore) package. 
 - The ledger exporter currently implements the interface only for Google Cloud Storage (GCS). The [GCS plugin](https://github.com/stellar/go/blob/master/support/datastore/gcs_datastore.go) uses GCS-specific behaviors like conditional puts, automatic retry, metadata, and CRC checksum.
 
 ## Build, Run and Test using Docker
