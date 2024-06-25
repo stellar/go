@@ -3,7 +3,7 @@
 The ledger exporter is a tool to export Stellar network transaction data to cloud storage in a way that is easy to access.
 
 ## Prerequisites
-This document assumes that you have installed and can run the ledger exporter, and that you have familiarity with its CLI and configuration. If not, please refer to the [Link to Admin Guide]
+This document assumes that you have installed and can run the ledger exporter, and that you have familiarity with its CLI and configuration. If not, please refer to the [Installation Guide](./README.md)
 
 ## Goal
 The goal of the ledger exporter is to build an easy-to-use tool to export Stellar network ledger data to a configurable remote data store, such as cloud blob storage.
@@ -13,11 +13,13 @@ The goal of the ledger exporter is to build an easy-to-use tool to export Stella
 
 ## Architecture
 To achieve its goals, the ledger exporter uses the following architecture, which consists of the 3 main components:
-- Captive-core [Link to existing documentation on captive-core basics] to extract raw transaction metadata from the Stellar Network
-- Export manager to bundles and organizes the ledgers to get them ready for export
+- Captive-core to extract raw transaction metadata from the Stellar Network.
+- Export manager to bundles and organizes the ledgers to get them ready for export.
 - The cloud storage plugin writes to the cloud storage. This is specific to the type of cloud storage, GCS in this case.
 
-[Insert Architecture diagram here]
+
+![ledgerexporter-architecture](https://github.com/urvisavla/go/assets/30014929/8fcc4733-6e35-4de7-ad06-0a27515364cd)
+
 
 ## Data Format
 - Ledger exporter uses a compact and efficient data format called XDR (External Data Representation), which is a compact binary format. The captive-core emits data in this format and the data structure is referred to as `LedgerCloseMeta`. The exporter bundle multiple LedgerCloseMeta's into a single object using a custom XDR struct called LedgerCloseMetaBatch which is defined in [Stellar-exporter.x](https://github.com/stellar/go/blob/master/xdr/Stellar-exporter.x).
@@ -32,9 +34,10 @@ To achieve its goals, the ledger exporter uses the following architecture, which
 
 ## Build, Run and Test using Docker
 The Dockerfile contains all the necessary dependencies (e.g., Stellar-core) required to run the ledger exporter. 
+
 - Build: To build the Docker container, use the provided [Makefile](https://github.com/stellar/go/exp/services/ledgerexporter/Makefile). Simply run make `make docker-build` to build a new container after making any changes.
 
-- Run: For instructions on running the Docker container, refer to the Admin Guide [Link to Admin Guide].
+- Run: For instructions on running the Docker container, refer to the [Installation Guide](./README.md).
 
 - Test: To test the Docker container, refer to the [docker-test](https://github.com/stellar/go/blob/master/exp/services/ledgerexporter/Makefile) command for an example of how to use the [GCS emulator](https://github.com/fsouza/fake-gcs-server) for local testing. 
 
@@ -47,7 +50,7 @@ Support for different data storage types are encapsulated as 'plugins', which ar
   - automatic retries
   - metadata storage, etc.
 - Add the new datastore to the factory function [NewDataStore](https://github.com/stellar/go/blob/master/support/datastore/datastore.go).
-- Add a [config](https://github.com/stellar/go/blob/master/exp/services/ledgerexporter/config.toml) section for the new storage type. This includes configurations like destination, authentication information etc.
+- Add a [config](https://github.com/stellar/go/blob/master/exp/services/ledgerexporter/config.example.toml) section for the new storage type. This may include configurations like destination, authentication information etc.
 - An emulator such as a GCS emulator [fake-gcs-server](https://github.com/fsouza/fake-gcs-server) can be used for testing without connecting to real cloud storage.
 
 ### Design DOs and DONTs
