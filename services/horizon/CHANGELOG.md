@@ -11,6 +11,10 @@ If you are using a custom captive-core config and setting Horizon `CAPTIVE_CORE_
 
 - Change ingestion filtering logic to store transactions if any filter matches on it. ([5303](https://github.com/stellar/go/pull/5303))
   - The previous behaviour was to store a tx only if both asset and account filters match together. So even if a tx matched an account filter but failed to match an asset filter, it would not be stored by Horizon.
+- Captive-core configuration parameters updated to align with [stellar-core v21](https://github.com/stellar/stellar-core/issues/3811) ([5333](https://github.com/stellar/go/pull/5333))
+  - BucketlistDB is now the default database for stellar-core, deprecating `EXPERIMENTAL_BUCKETLIST_DB`.
+  - A new mandatory parameter `DEPRECATED_SQL_LEDGER_STATE` (default: false) is required by stellar-core on its configuration toml file. if the toml provided by `CAPTIVE_CORE_CONFIG_PATH` does not have this new setting, Horizon will add it automatically, therefore, no action required.
+  - If using `EXPERIMENTAL_BUCKETLIST_DB_INDEX_PAGE_SIZE_EXPONENT` or `EXPERIMENTAL_BUCKETLIST_DB_INDEX_CUTOFF`, they have been renamed to `BUCKETLIST_DB_INDEX_PAGE_SIZE_EXPONENT` and `BUCKETLIST_DB_INDEX_CUTOFF` respectively.  
 
 ### Added
 
@@ -19,15 +23,13 @@ If you are using a custom captive-core config and setting Horizon `CAPTIVE_CORE_
 - Add `horizon_ingest_errors_total` metric key ([5302](https://github.com/stellar/go/pull/5302))
 - Add transaction hash to txsub timeout response ([5328](https://github.com/stellar/go/pull/5328))
 - Add new captive-core flags for V1 Meta ([5309](https://github.com/stellar/go/pull/5309))
+- Add version check for protocol 21 ([5346](https://github.com/stellar/go/pull/5346))
+- Improve horizon history reaper ([5331](https://github.com/stellar/go/pull/5331)). New reaper configuration flags `REAP_FREQUENCY` - the frequency in units of ledgers for how often history is reaped.
 
 ### Fixed
 
 - Fix the following ingestion error: `error preparing range: error starting prepare range: the previous Stellar-Core instance is still running` ([5307](https://github.com/stellar/go/pull/5307))
 
-- Captive-core configuration parameters updated to align with [stellar-core v21](https://github.com/stellar/stellar-core/issues/3811) ([5333](https://github.com/stellar/go/pull/5333))
-  - BucketlistDB is now the default database for stellar-core, deprecating `EXPERIMENTAL_BUCKETLIST_DB`.
-  - A new mandatory parameter `DEPRECATED_SQL_LEDGER_STATE` (default: false) is required by stellar-core on its configuration toml file. if the toml provided by `CAPTIVE_CORE_CONFIG_PATH` does not have this new setting, Horizon will add it automatically, therefore, no action required.
-  - If using `EXPERIMENTAL_BUCKETLIST_DB_INDEX_PAGE_SIZE_EXPONENT` or `EXPERIMENTAL_BUCKETLIST_DB_INDEX_CUTOFF`, they have been renamed to `BUCKETLIST_DB_INDEX_PAGE_SIZE_EXPONENT` and `BUCKETLIST_DB_INDEX_CUTOFF` respectively.
 
 ## 2.30.0
 **This release adds support for Protocol 21**
