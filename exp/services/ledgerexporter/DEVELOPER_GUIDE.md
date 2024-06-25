@@ -39,7 +39,7 @@ The Dockerfile contains all the necessary dependencies (e.g., Stellar-core) requ
 - Test: To test the Docker container, refer to the [docker-test](https://github.com/stellar/go/blob/master/exp/services/ledgerexporter/Makefile) command for an example of how to use the [GCS emulator](https://github.com/fsouza/fake-gcs-server) for local testing. 
 
 ## Adding support for a new storage type
-To add support for a new storage type (e.g. AWS S3), follow these steps:
+Support for different data storage types are encapsulated as 'plugins', which are implementation of `DataStore` interface in a go package. To add a data storage plugin based on a new storage type (e.g. AWS S3), follow these steps:
 
 - A data storage plugin must implement the [DataStore](https://github.com/stellar/go/blob/master/support/datastore/datastore.go) interface.
 - Add support for new datastore-specific features. Implement any datastore-specific custom logic. Different datastores have different ways of handling 
