@@ -11,7 +11,7 @@ import (
 	"github.com/stellar/go/support/errors"
 )
 
-// Separator seperates the name and domain portions of an address
+// Separator separates the name and domain portions of an address
 const Separator = "*"
 
 var (
