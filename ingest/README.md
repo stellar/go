@@ -67,15 +67,15 @@ func main() {
 
 _(The `panicIf` function is defined in the [footnotes](#footnotes); it's used here for error-checking brevity.)_
 
-Notice that the mysterious `config` variable above isn't defined. This will be environment-specific and users should consult both the [Captive Core documentation](../../services/horizon/internal/docs/captive_core.md) and the [config docs](./ledgerbackend/captive_core_backend.go#L96-L125) directly for more details if they want to use this backend in production. For now, though, we'll have some hardcoded values for the SDF testnet:
+Notice that the mysterious `config` variable above isn't defined. This will be environment-specific and refer to the code [here](./ledgerbackend/captive_core_backend.go) for the complete list of configuration parameters. For now, we'll use the [default](../network/main.go) values defined for the SDF testnet:
 
 ```go
-networkPassphrase := "Test SDF Network ; September 2015"
+archiveURLs := network.TestNetworkhistoryArchiveURLs
+networkPassphrase := network.TestNetworkPassphrase
 captiveCoreToml, err := ledgerbackend.NewCaptiveCoreToml(
 	ledgerbackend.CaptiveCoreTomlParams{
 		NetworkPassphrase:  networkPassphrase,
-		HistoryArchiveURLs: []string{
-			"https://history.stellar.org/prd/core-testnet/core_testnet_001",
+		HistoryArchiveURLs: archiveURLs,
 		},
 	})
 panicIf(err)
@@ -258,7 +258,7 @@ As of this writing, the stats are as follows:
       - total operations:   33845
       - succeeded / failed: 25387 / 8458
 
-The full, runnable example is available [here](./example_statistics.go).
+The full, runnable example is available [here](./tutorial/example_statistics.go).
 
 
 # **Example**: Feature Popularity
@@ -392,4 +392,4 @@ func panicIf(err error) {
 
   2. Since the Stellar testnet undergoes periodic resets, the example outputs from various sections (especially regarding network statistics) will not always be accurate.
 
-  3. It's worth noting that even though the [second example](example-tracking-feature-popularity) could *also* be done by using the `LedgerTransactionReader` and inspecting the individual operations, that'd be bit redundant as far as examples go.
+  3. It's worth noting that even though the [second example](#example-feature-popularity) could *also* be done by using the `LedgerTransactionReader` and inspecting the individual operations, that'd be bit redundant as far as examples go.
