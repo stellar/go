@@ -75,13 +75,40 @@ docker run --platform linux/amd64 \
   * `${PWD}/config.toml`: Your local configuration file.
 * `-e GOOGLE_APPLICATION_CREDENTIALS=/.config/gcp/credentials.json`: Sets the environment variable for credentials within the container.
 * `stellar/ledger-exporter`: The Docker image name.
-* `<command>`: The Stellar Ledger Exporter command: [scan-and-fill](#1-scan-and-fill-fill-data-gaps),  [append](#2-append-continuously-export-new-data))
+* `<command>`: The Stellar Ledger Exporter command: [append](#1-append-continuously-export-new-data), [scan-and-fill](#2-scan-and-fill-fill-data-gaps))
 
 ## Command Line Interface (CLI)
 
 The Ledger Exporter offers two mode of operation for exporting ledger data:
 
-### 1. scan-and-fill: Fill Data Gaps
+### 1. append: Continuously Export New Data
+
+
+Exports ledgers initially searching from --start, looking for the next absent ledger sequence number proceeding --start on the data store. If abscence is detected, the export range is narrowed to `--start <absent_ledger_sequence>`. 
+This feature requires ledgers to be present on the remote data store for some (possibly empty) prefix of the requested range and then absent for the (possibly empty) remainder. 
+
+In this mode, the --end ledger can be provided to stop the process once export has reached that ledger, or if absent or 0 it will result in continous exporting of new ledgers emitted from the network. 
+
+It’s guaranteed that ledgers exported during `append` mode from `start` and up to the last logged ledger file `Uploaded {ledger file name}` were contiguous, meaning all ledgers within that range were exported to the data lake with no gaps or missing ledgers in between.
+
+
+**Usage:**
+
+```bash
+docker run --platform linux/amd64 -d \
+  -v "$HOME/.config/gcloud/application_default_credentials.json":/.config/gcp/credentials.json:ro \
+  -e GOOGLE_APPLICATION_CREDENTIALS=/.config/gcp/credentials.json \
+  -v ${PWD}/config.toml:/config.toml \
+  stellar/ledger-exporter \
+  append --start <start_ledger> [--end <end_ledger>] [--config-file <config_file>]
+```
+
+Arguments:
+- `--start <start_ledger>` (required): The starting ledger sequence number for the export process.
+- `--end <end_ledger>` (optional): The ending ledger sequence number. If omitted or set to 0, the exporter will continuously export new ledgers as they appear on the network.
+- `--config-file <config_file_path>` (optional): The path to your configuration file, containing details like GCS bucket information. If not provided, the exporter will look for config.toml in the directory where you run the command.
+
+### 2. scan-and-fill: Fill Data Gaps
 
 Scans the datastore (GCS bucket) for the specified ledger range and exports any missing ledgers to the datastore. This mode avoids unnecessary exports if the data is already present. The range is specified using the --start and --end options.
 
@@ -100,24 +127,4 @@ Arguments:
 - `--start <start_ledger>` (required): The starting ledger sequence number in the range to export.
 - `--end <end_ledger>` (required): The ending ledger sequence number in the range.
 - `--config-file <config_file_path>` (optional): The path to your configuration file, containing details like GCS bucket information. If not provided, the exporter will look for config.toml in the directory where you run the command.
-### 2. append: Continuously Export New Data
 
-Exports ledgers starting from the specified start ledger, searching for the next absent ledger sequence number in the datastore (GCS bucket). If an absence is found, the export range is narrowed to start from the absent ledger
-
-The range is specified using the `--start` and `--end` options. If `--end` is absent or set to 0, exporting will continue for new ledgers emitted by the network. Providing an --end ledger will stop the process once export reaches that ledger.
-
-**Usage:**
-
-```bash
-docker run --platform linux/amd64 -d \
-  -v "$HOME/.config/gcloud/application_default_credentials.json":/.config/gcp/credentials.json:ro \
-  -e GOOGLE_APPLICATION_CREDENTIALS=/.config/gcp/credentials.json \
-  -v ${PWD}/config.toml:/config.toml \
-  stellar/ledger-exporter \
-  append --start <start_ledger> [--end <end_ledger>] [--config-file <config_file>]
-```
-
-Arguments:
-- `--start <start_ledger>` (required): The starting ledger sequence number for the export process.
-- `--end <end_ledger>` (optional): The ending ledger sequence number. If omitted or set to 0, the exporter will continuously export new ledgers as they appear on the network.
-- `--config-file <config_file_path>` (optional): The path to your configuration file, containing details like GCS bucket information. If not provided, the exporter will look for config.toml in the directory where you run the command.
