@@ -26,7 +26,7 @@ To achieve its goals, the ledger exporter uses the following architecture, which
 
 - The metadata for the same batch is also stored alongside each exported object. Supported metadata is defined in [metadata.go](https://github.com/stellar/go/blob/master/support/datastore/metadata.go). 
 
-- Objects are compressed before uploading using the zstd (zstandard) compression algorithm to optimize network usage and storage needs.
+- Objects are compressed before uploading using the [zstd](http://facebook.github.io/zstd/) (zstandard) compression algorithm to optimize network usage and storage needs.
 
 ## Data Storage
 - An example implementation of `DataStore` for GCS, Google Cloud Storage. This plugin is located in the [support](https://github.com/stellar/go/tree/master/support/datastore) package. 
