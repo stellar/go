@@ -18,7 +18,7 @@ To achieve its goals, the ledger exporter uses the following architecture, which
 - The cloud storage plugin writes to the cloud storage. This is specific to the type of cloud storage, GCS in this case.
 
 
-![ledgerexporter-architecture](https://github.com/urvisavla/go/assets/30014929/8fcc4733-6e35-4de7-ad06-0a27515364cd)
+![ledgerexporter-architecture](./architecture.png)
 
 
 ## Data Format
