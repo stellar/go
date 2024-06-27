@@ -71,6 +71,7 @@ type ArchiveInterface interface {
 	GetLedgerHeader(chk uint32) (xdr.LedgerHeaderHistoryEntry, error)
 	GetRootHAS() (HistoryArchiveState, error)
 	GetLedgers(start, end uint32) (map[uint32]*Ledger, error)
+	GetLatestLedgerSequence() (uint32, error)
 	GetCheckpointHAS(chk uint32) (HistoryArchiveState, error)
 	PutCheckpointHAS(chk uint32, has HistoryArchiveState, opts *CommandOptions) error
 	PutRootHAS(has HistoryArchiveState, opts *CommandOptions) error
@@ -174,6 +175,16 @@ func (a *Archive) PutPathHAS(path string, has HistoryArchiveState, opts *Command
 	}
 	a.stats.incrementUploads()
 	return a.backend.PutFile(path, io.NopCloser(bytes.NewReader(buf)))
+}
+
+func (a *Archive) GetLatestLedgerSequence() (uint32, error) {
+	has, err := a.GetRootHAS()
+	if err != nil {
+		log.Error("Error getting root HAS from archive", err)
+		return 0, errors.Wrap(err, "failed to retrieve the latest ledger sequence from history archive")
+	}
+
+	return has.CurrentLedger, nil
 }
 
 func (a *Archive) BucketExists(bucket Hash) (bool, error) {
