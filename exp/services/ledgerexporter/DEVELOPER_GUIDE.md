@@ -3,7 +3,7 @@
 The ledger exporter is a tool to export Stellar network transaction data to cloud storage in a way that is easy to access.
 
 ## Prerequisites
-This document assumes that you have installed and can run the ledger exporter, and that you have familiarity with its CLI and configuration. If not, please refer to the [Installation Guide](./README.md)
+This document assumes that you have installed and can run the ledger exporter, and that you have familiarity with its CLI and configuration. If not, please refer to the [Installation Guide](./README.md).
 
 ## Goal
 The goal of the ledger exporter is to build an easy-to-use tool to export Stellar network ledger data to a configurable remote data store, such as cloud blob storage.
@@ -28,18 +28,18 @@ To achieve its goals, the ledger exporter uses the following architecture, which
 
 - Objects are compressed before uploading using the zstd (zstandard) compression algorithm to optimize network usage and storage needs.
 
-## Data Storage (GCS)
+## Data Storage
 - An example implementation of `DataStore` for GCS, Google Cloud Storage. This plugin is located in the [support](https://github.com/stellar/go/tree/master/support/datastore) package. 
 - The ledger exporter currently implements the interface only for Google Cloud Storage (GCS). The [GCS plugin](https://github.com/stellar/go/blob/master/support/datastore/gcs_datastore.go) uses GCS-specific behaviors like conditional puts, automatic retry, metadata, and CRC checksum.
 
 ## Build, Run and Test using Docker
 The Dockerfile contains all the necessary dependencies (e.g., Stellar-core) required to run the ledger exporter. 
 
-- Build: To build the Docker container, use the provided [Makefile](https://github.com/stellar/go/exp/services/ledgerexporter/Makefile). Simply run make `make docker-build` to build a new container after making any changes.
+- Build: To build the Docker container, use the provided [Makefile](./Makefile). Simply run make `make docker-build` to build a new container after making any changes.
 
 - Run: For instructions on running the Docker container, refer to the [Installation Guide](./README.md).
 
-- Test: To test the Docker container, refer to the [docker-test](https://github.com/stellar/go/blob/master/exp/services/ledgerexporter/Makefile) command for an example of how to use the [GCS emulator](https://github.com/fsouza/fake-gcs-server) for local testing. 
+- Test: To test the Docker container, refer to the [docker-test](./Makefile) command for an example of how to use the [GCS emulator](https://github.com/fsouza/fake-gcs-server) for local testing.
 
 ## Adding support for a new storage type
 Support for different data storage types are encapsulated as 'plugins', which are implementation of `DataStore` interface in a go package. To add a data storage plugin based on a new storage type (e.g. AWS S3), follow these steps:
@@ -50,7 +50,7 @@ Support for different data storage types are encapsulated as 'plugins', which ar
   - automatic retries
   - metadata storage, etc.
 - Add the new datastore to the factory function [NewDataStore](https://github.com/stellar/go/blob/master/support/datastore/datastore.go).
-- Add a [config](https://github.com/stellar/go/blob/master/exp/services/ledgerexporter/config.example.toml) section for the new storage type. This may include configurations like destination, authentication information etc.
+- Add a [config](./config.example.toml) section for the new storage type. This may include configurations like destination, authentication information etc.
 - An emulator such as a GCS emulator [fake-gcs-server](https://github.com/fsouza/fake-gcs-server) can be used for testing without connecting to real cloud storage.
 
 ### Design DOs and DONTs
