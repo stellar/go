@@ -537,9 +537,6 @@ func (r resumeState) run(s *system) (transition, error) {
 		return retryResume(r), err
 	}
 
-	duration = time.Since(startTime).Seconds()
-	s.Metrics().LedgerIngestionDuration.Observe(float64(duration))
-
 	// Update stats metrics
 	changeStatsMap := stats.changeStats.Map()
 	r.addLedgerStatsMetricFromMap(s, "change", changeStatsMap)
@@ -560,6 +557,13 @@ func (r resumeState) run(s *system) (transition, error) {
 	// roll up and be reported here as part of resumeState transition
 	addHistoryArchiveStatsMetrics(s, s.historyAdapter.GetStats())
 
+	s.maybeVerifyState(ingestLedger, ledgerCloseMeta.BucketListHash())
+	s.maybeReapHistory(ingestLedger)
+	s.maybeReapLookupTables(ingestLedger)
+
+	duration = time.Since(startTime).Seconds()
+	s.Metrics().LedgerIngestionDuration.Observe(float64(duration))
+
 	localLog := log.WithFields(logpkg.F{
 		"sequence": ingestLedger,
 		"duration": duration,
@@ -576,10 +580,6 @@ func (r resumeState) run(s *system) (transition, error) {
 	}
 
 	localLog.Info("Processed ledger")
-
-	s.maybeVerifyState(ingestLedger, ledgerCloseMeta.BucketListHash())
-	s.maybeReapHistory(ingestLedger)
-	s.maybeReapLookupTables(ingestLedger)
 
 	return resumeImmediately(ingestLedger), nil
 }
