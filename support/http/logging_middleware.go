@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
+
 	"github.com/stellar/go/support/http/mutil"
 	"github.com/stellar/go/support/log"
 )
@@ -136,6 +137,7 @@ func logEndOfRequest(
 		"subsys":   "http",
 		"path":     r.URL.String(),
 		"method":   r.Method,
+		"ip":       r.RemoteAddr,
 		"status":   mw.Status(),
 		"bytes":    mw.BytesWritten(),
 		"duration": duration,

@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/spf13/cobra"
+
 	"github.com/stellar/go/services/friendbot/internal"
 	"github.com/stellar/go/support/app"
 	"github.com/stellar/go/support/config"
@@ -29,6 +30,7 @@ type Config struct {
 	BaseFee                int64       `toml:"base_fee" valid:"optional"`
 	MinionBatchSize        int         `toml:"minion_batch_size" valid:"optional"`
 	SubmitTxRetriesAllowed int         `toml:"submit_tx_retries_allowed" valid:"optional"`
+	UseCloudflareIP        bool        `toml:"use_cloudflare_ip" valid:"optional"`
 }
 
 func main() {
@@ -68,7 +70,7 @@ func run(cmd *cobra.Command, args []string) {
 		log.Error(err)
 		os.Exit(1)
 	}
-	router := initRouter(fb)
+	router := initRouter(cfg, fb)
 	registerProblems()
 
 	addr := fmt.Sprintf("0.0.0.0:%d", cfg.Port)
@@ -84,8 +86,8 @@ func run(cmd *cobra.Command, args []string) {
 	})
 }
 
-func initRouter(fb *internal.Bot) *chi.Mux {
-	mux := http.NewAPIMux(log.DefaultLogger)
+func initRouter(cfg Config, fb *internal.Bot) *chi.Mux {
+	mux := newMux(cfg)
 
 	handler := &internal.FriendbotHandler{Friendbot: fb}
 	mux.Get("/", handler.Handle)
@@ -94,6 +96,15 @@ func initRouter(fb *internal.Bot) *chi.Mux {
 		problem.Render(r.Context(), w, problem.NotFound)
 	}))
 
+	return mux
+}
+
+func newMux(cfg Config) *chi.Mux {
+	mux := chi.NewRouter()
+	// first apply XFFMiddleware so we can have the real ip in the subsequent
+	// middlewares
+	mux.Use(http.XFFMiddleware(http.XFFMiddlewareConfig{BehindCloudflare: cfg.UseCloudflareIP}))
+	mux.Use(http.NewAPIMux(log.DefaultLogger).Middlewares()...)
 	return mux
 }
 
