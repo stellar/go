@@ -62,12 +62,12 @@ func (rm resumableManagerService) FindStart(ctx context.Context, start, end uint
 	networkLatest := uint32(0)
 	if end < 1 {
 		var latestErr error
-		networkLatest, latestErr = GetLatestLedgerSequenceFromHistoryArchives(rm.archive)
+		networkLatest, latestErr = rm.archive.GetLatestLedgerSequence()
 		if latestErr != nil {
 			err := errors.Wrap(latestErr, "Resumability of requested export ledger range, was not able to get latest ledger from network")
 			return 0, false, err
 		}
-		networkLatest = networkLatest + (GetHistoryArchivesCheckPointFrequency() * 2)
+		networkLatest = networkLatest + (rm.archive.GetCheckpointManager().GetCheckpointFrequency() * 2)
 		log.Infof("Resumability computed effective latest network ledger including padding of checkpoint frequency to be %d", networkLatest)
 
 		if start > networkLatest {

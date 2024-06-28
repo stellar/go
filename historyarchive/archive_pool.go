@@ -204,6 +204,16 @@ func (pa *ArchivePool) GetCheckpointHAS(chk uint32) (HistoryArchiveState, error)
 	})
 }
 
+func (pa *ArchivePool) GetLatestLedgerSequence() (uint32, error) {
+	has, err := pa.GetRootHAS()
+	if err != nil {
+		log.Error("Error getting root HAS from archive", err)
+		return 0, errors.Wrap(err, "failed to retrieve the latest ledger sequence from history archive")
+	}
+
+	return has.CurrentLedger, nil
+}
+
 func (pa *ArchivePool) PutCheckpointHAS(chk uint32, has HistoryArchiveState, opts *CommandOptions) error {
 	return pa.runRoundRobin(func(ai ArchiveInterface) error {
 		return ai.PutCheckpointHAS(chk, has, opts)

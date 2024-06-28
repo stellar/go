@@ -124,8 +124,8 @@ func (config *Config) ValidateAndSetLedgerRange(ctx context.Context, archive his
 		return errors.New("invalid end value, must be greater than start")
 	}
 
-	latestNetworkLedger, err := datastore.GetLatestLedgerSequenceFromHistoryArchives(archive)
-	latestNetworkLedger = latestNetworkLedger + (datastore.GetHistoryArchivesCheckPointFrequency() * 2)
+	latestNetworkLedger, err := archive.GetLatestLedgerSequence()
+	latestNetworkLedger = latestNetworkLedger + (archive.GetCheckpointManager().GetCheckpointFrequency() * 2)
 
 	if err != nil {
 		return errors.Wrap(err, "Failed to retrieve the latest ledger sequence from history archives.")
@@ -189,7 +189,7 @@ func (config *Config) GenerateCaptiveCoreConfig(coreBinFromPath string) (ledgerb
 		BinaryPath:          config.StellarCoreConfig.StellarCoreBinaryPath,
 		NetworkPassphrase:   params.NetworkPassphrase,
 		HistoryArchiveURLs:  params.HistoryArchiveURLs,
-		CheckpointFrequency: datastore.GetHistoryArchivesCheckPointFrequency(),
+		CheckpointFrequency: historyarchive.DefaultCheckpointFrequency,
 		Log:                 logger.WithField("subservice", "stellar-core"),
 		Toml:                captiveCoreToml,
 		UserAgent:           "ledger-exporter",

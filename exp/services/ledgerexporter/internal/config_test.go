@@ -5,19 +5,20 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/network"
-	"github.com/stellar/go/support/datastore"
 
 	"github.com/stretchr/testify/require"
-
-	"github.com/stellar/go/historyarchive"
 )
 
 func TestNewConfig(t *testing.T) {
 	ctx := context.Background()
 
 	mockArchive := &historyarchive.MockArchive{}
-	mockArchive.On("GetRootHAS").Return(historyarchive.HistoryArchiveState{CurrentLedger: 5}, nil).Once()
+	mockArchive.On("GetLatestLedgerSequence").Return(uint32(5), nil).Once()
+	mockArchive.On("GetCheckpointManager").
+		Return(historyarchive.NewCheckpointManager(
+			historyarchive.DefaultCheckpointFrequency)).Once()
 
 	config, err := NewConfig(
 		RuntimeSettings{StartLedger: 2, EndLedger: 3, ConfigFilePath: "test/test.toml", Mode: Append}, nil)
@@ -198,7 +199,7 @@ func TestInvalidCaptiveCoreTomlPath(t *testing.T) {
 
 func TestValidateStartAndEndLedger(t *testing.T) {
 	latestNetworkLedger := uint32(20000)
-	latestNetworkLedgerPadding := datastore.GetHistoryArchivesCheckPointFrequency() * 2
+	latestNetworkLedgerPadding := historyarchive.DefaultCheckpointFrequency * 2
 
 	tests := []struct {
 		name        string
@@ -282,7 +283,10 @@ func TestValidateStartAndEndLedger(t *testing.T) {
 
 	ctx := context.Background()
 	mockArchive := &historyarchive.MockArchive{}
-	mockArchive.On("GetRootHAS").Return(historyarchive.HistoryArchiveState{CurrentLedger: latestNetworkLedger}, nil)
+	mockArchive.On("GetLatestLedgerSequence").Return(latestNetworkLedger, nil)
+	mockArchive.On("GetCheckpointManager").
+		Return(historyarchive.NewCheckpointManager(
+			historyarchive.DefaultCheckpointFrequency))
 
 	mockedHasCtr := 0
 	for _, tt := range tests {
@@ -302,7 +306,7 @@ func TestValidateStartAndEndLedger(t *testing.T) {
 			}
 		})
 	}
-	mockArchive.AssertNumberOfCalls(t, "GetRootHAS", mockedHasCtr)
+	mockArchive.AssertExpectations(t)
 }
 
 func TestAdjustedLedgerRangeBoundedMode(t *testing.T) {
@@ -358,7 +362,10 @@ func TestAdjustedLedgerRangeBoundedMode(t *testing.T) {
 
 	ctx := context.Background()
 	mockArchive := &historyarchive.MockArchive{}
-	mockArchive.On("GetRootHAS").Return(historyarchive.HistoryArchiveState{CurrentLedger: 500}, nil).Times(len(tests))
+	mockArchive.On("GetLatestLedgerSequence").Return(uint32(500), nil)
+	mockArchive.On("GetCheckpointManager").
+		Return(historyarchive.NewCheckpointManager(
+			historyarchive.DefaultCheckpointFrequency))
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -421,7 +428,10 @@ func TestAdjustedLedgerRangeUnBoundedMode(t *testing.T) {
 	ctx := context.Background()
 
 	mockArchive := &historyarchive.MockArchive{}
-	mockArchive.On("GetRootHAS").Return(historyarchive.HistoryArchiveState{CurrentLedger: 500}, nil).Times(len(tests))
+	mockArchive.On("GetLatestLedgerSequence").Return(uint32(500), nil)
+	mockArchive.On("GetCheckpointManager").
+		Return(historyarchive.NewCheckpointManager(
+			historyarchive.DefaultCheckpointFrequency))
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

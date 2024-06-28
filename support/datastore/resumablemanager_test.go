@@ -282,8 +282,12 @@ func TestResumability(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockArchive := &historyarchive.MockArchive{}
-			mockArchive.On("GetRootHAS").Return(historyarchive.HistoryArchiveState{CurrentLedger: tt.latestLedger}, tt.archiveError).Once()
-
+			mockArchive.On("GetLatestLedgerSequence").Return(tt.latestLedger, tt.archiveError).Once()
+			if tt.archiveError == nil {
+				mockArchive.On("GetCheckpointManager").
+					Return(historyarchive.NewCheckpointManager(
+						historyarchive.DefaultCheckpointFrequency)).Once()
+			}
 			mockDataStore := &MockDataStore{}
 			tt.registerMockCalls(mockDataStore)
 

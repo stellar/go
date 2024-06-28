@@ -10,6 +10,11 @@ type MockArchive struct {
 	mock.Mock
 }
 
+func (m *MockArchive) GetLatestLedgerSequence() (uint32, error) {
+	a := m.Called()
+	return a.Get(0).(uint32), a.Error(1)
+}
+
 func (m *MockArchive) GetCheckpointManager() CheckpointManager {
 	a := m.Called()
 	return a.Get(0).(CheckpointManager)
