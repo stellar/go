@@ -5,16 +5,14 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## 2.31.0
 
-If you are using a custom captive-core config and setting Horizon `CAPTIVE_CORE_USE_DB=false`, then need to make sure to set `EXPERIMENTAL_BUCKETLIST_DB=false` in the captive core config toml to be compatible with stellar-core versions 21 and earlier
-
 ### Breaking Changes
 
 - Change ingestion filtering logic to store transactions if any filter matches on it. ([5303](https://github.com/stellar/go/pull/5303))
   - The previous behaviour was to store a tx only if both asset and account filters match together. So even if a tx matched an account filter but failed to match an asset filter, it would not be stored by Horizon.
 - Captive-core configuration parameters updated to align with [stellar-core v21](https://github.com/stellar/stellar-core/issues/3811) ([5333](https://github.com/stellar/go/pull/5333))
-  - BucketlistDB is now the default database for stellar-core, deprecating `EXPERIMENTAL_BUCKETLIST_DB`.
-  - A new mandatory parameter `DEPRECATED_SQL_LEDGER_STATE` (default: false) is required by stellar-core on its configuration toml file. if the toml provided by `CAPTIVE_CORE_CONFIG_PATH` does not have this new setting, Horizon will add it automatically, therefore, no action required.
-  - If using `EXPERIMENTAL_BUCKETLIST_DB_INDEX_PAGE_SIZE_EXPONENT` or `EXPERIMENTAL_BUCKETLIST_DB_INDEX_CUTOFF`, they have been renamed to `BUCKETLIST_DB_INDEX_PAGE_SIZE_EXPONENT` and `BUCKETLIST_DB_INDEX_CUTOFF` respectively.  
+  - BucketlistDB is now the default database for stellar-core, deprecating the usage of `EXPERIMENTAL_BUCKETLIST_DB` in captive core configuration toml.
+  - A new mandatory parameter `DEPRECATED_SQL_LEDGER_STATE` (default: false) is required by stellar-core on its captive core configuration toml file. if the toml provided by `CAPTIVE_CORE_CONFIG_PATH` does not have this new setting, Horizon will add it automatically, therefore, no action required.
+  - If using `EXPERIMENTAL_BUCKETLIST_DB_INDEX_PAGE_SIZE_EXPONENT` or `EXPERIMENTAL_BUCKETLIST_DB_INDEX_CUTOFF` in captive core configuration toml, they must be renamed to `BUCKETLIST_DB_INDEX_PAGE_SIZE_EXPONENT` and `BUCKETLIST_DB_INDEX_CUTOFF` respectively.  
 
 ### Added
 
