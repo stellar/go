@@ -37,6 +37,7 @@ func TestCloseOffline(t *testing.T) {
 	scMock.On("stat", mock.Anything).Return(isDirImpl(true), nil)
 	scMock.On("writeFile", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	scMock.On("command",
+		runner.ctx,
 		"/usr/bin/stellar-core",
 		"--conf",
 		mock.Anything,
@@ -78,6 +79,7 @@ func TestCloseOnline(t *testing.T) {
 	scMock.On("stat", mock.Anything).Return(isDirImpl(true), nil)
 	scMock.On("writeFile", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	scMock.On("command",
+		runner.ctx,
 		"/usr/bin/stellar-core",
 		"--conf",
 		mock.Anything,
@@ -121,6 +123,7 @@ func TestCloseOnlineWithError(t *testing.T) {
 	scMock.On("stat", mock.Anything).Return(isDirImpl(true), nil)
 	scMock.On("writeFile", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	scMock.On("command",
+		runner.ctx,
 		"/usr/bin/stellar-core",
 		"--conf",
 		mock.Anything,
@@ -141,7 +144,7 @@ func TestCloseOnlineWithError(t *testing.T) {
 
 	// Wait with calling close until r.processExitError is set to Wait() error
 	for {
-		_, err := runner.getProcessExitError()
+		err, _ := runner.getProcessExitError()
 		if err != nil {
 			break
 		}
@@ -175,6 +178,7 @@ func TestCloseConcurrency(t *testing.T) {
 	scMock.On("stat", mock.Anything).Return(isDirImpl(true), nil)
 	scMock.On("writeFile", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	scMock.On("command",
+		runner.ctx,
 		"/usr/bin/stellar-core",
 		"--conf",
 		mock.Anything,
@@ -196,7 +200,7 @@ func TestCloseConcurrency(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			assert.NoError(t, runner.close())
-			exited, err := runner.getProcessExitError()
+			err, exited := runner.getProcessExitError()
 			assert.True(t, exited)
 			assert.Error(t, err)
 		}()
@@ -238,12 +242,14 @@ func TestRunFromUseDBLedgersMatch(t *testing.T) {
 	scMock.On("stat", mock.Anything).Return(isDirImpl(true), nil)
 	scMock.On("writeFile", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	scMock.On("command",
+		runner.ctx,
 		"/usr/bin/stellar-core",
 		"--conf",
 		mock.Anything,
 		"offline-info",
 	).Return(offlineInfoCmdMock)
 	scMock.On("command",
+		runner.ctx,
 		"/usr/bin/stellar-core",
 		"--conf",
 		mock.Anything,
@@ -299,12 +305,14 @@ func TestRunFromUseDBLedgersBehind(t *testing.T) {
 	scMock.On("stat", mock.Anything).Return(isDirImpl(true), nil)
 	scMock.On("writeFile", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	scMock.On("command",
+		runner.ctx,
 		"/usr/bin/stellar-core",
 		"--conf",
 		mock.Anything,
 		"offline-info",
 	).Return(offlineInfoCmdMock)
 	scMock.On("command",
+		runner.ctx,
 		"/usr/bin/stellar-core",
 		"--conf",
 		mock.Anything,
@@ -360,12 +368,14 @@ func TestRunFromUseDBLedgersInFront(t *testing.T) {
 	scMock.On("stat", mock.Anything).Return(isDirImpl(true), nil)
 	scMock.On("writeFile", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	scMock.On("command",
+		runner.ctx,
 		"/usr/bin/stellar-core",
 		"--conf",
 		mock.Anything,
 		"offline-info",
 	).Return(offlineInfoCmdMock)
 	scMock.On("command",
+		runner.ctx,
 		"/usr/bin/stellar-core",
 		"--conf",
 		mock.Anything,
@@ -373,6 +383,7 @@ func TestRunFromUseDBLedgersInFront(t *testing.T) {
 		"new-db",
 	).Return(newDBCmdMock)
 	scMock.On("command",
+		runner.ctx,
 		"/usr/bin/stellar-core",
 		"--conf",
 		mock.Anything,
@@ -381,6 +392,7 @@ func TestRunFromUseDBLedgersInFront(t *testing.T) {
 		"99/0",
 	).Return(catchupCmdMock)
 	scMock.On("command",
+		runner.ctx,
 		"/usr/bin/stellar-core",
 		"--conf",
 		mock.Anything,

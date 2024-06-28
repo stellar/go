@@ -42,14 +42,14 @@ func (m *stellarCoreRunnerMock) runFrom(from uint32, hash string) error {
 	return a.Error(0)
 }
 
-func (m *stellarCoreRunnerMock) getMetaPipe() <-chan metaResult {
+func (m *stellarCoreRunnerMock) getMetaPipe() (<-chan metaResult, bool) {
 	a := m.Called()
-	return a.Get(0).(<-chan metaResult)
+	return a.Get(0).(<-chan metaResult), a.Bool(1)
 }
 
-func (m *stellarCoreRunnerMock) getProcessExitError() (bool, error) {
+func (m *stellarCoreRunnerMock) getProcessExitError() (error, bool) {
 	a := m.Called()
-	return a.Bool(0), a.Error(1)
+	return a.Error(0), a.Bool(1)
 }
 
 func (m *stellarCoreRunnerMock) close() error {
@@ -213,7 +213,7 @@ func TestCaptivePrepareRange(t *testing.T) {
 	ctx := context.Background()
 	mockRunner := &stellarCoreRunnerMock{}
 	mockRunner.On("catchup", uint32(100), uint32(200)).Return(nil).Once()
-	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(metaChan))
+	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(metaChan), true)
 	mockRunner.On("context").Return(ctx)
 
 	mockArchive := &historyarchive.MockArchive{}
@@ -251,8 +251,8 @@ func TestCaptivePrepareRangeCrash(t *testing.T) {
 	ctx := context.Background()
 	mockRunner := &stellarCoreRunnerMock{}
 	mockRunner.On("catchup", uint32(100), uint32(200)).Return(nil).Once()
-	mockRunner.On("getProcessExitError").Return(true, errors.New("exit code -1"))
-	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(metaChan))
+	mockRunner.On("getProcessExitError").Return(errors.New("exit code -1"), true)
+	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(metaChan), true)
 	mockRunner.On("close").Return(nil).Once()
 	mockRunner.On("context").Return(ctx)
 
@@ -292,7 +292,7 @@ func TestCaptivePrepareRangeTerminated(t *testing.T) {
 	ctx := context.Background()
 	mockRunner := &stellarCoreRunnerMock{}
 	mockRunner.On("catchup", uint32(100), uint32(200)).Return(nil).Once()
-	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(metaChan))
+	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(metaChan), true)
 	mockRunner.On("context").Return(ctx)
 
 	mockArchive := &historyarchive.MockArchive{}
@@ -328,7 +328,7 @@ func TestCaptivePrepareRangeCloseNotFullyTerminated(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	mockRunner := &stellarCoreRunnerMock{}
 	mockRunner.On("catchup", uint32(100), uint32(200)).Return(nil).Twice()
-	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(metaChan))
+	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(metaChan), true)
 	mockRunner.On("context").Return(ctx)
 	mockRunner.On("close").Return(nil)
 
@@ -364,7 +364,7 @@ func TestCaptivePrepareRange_ErrClosingSession(t *testing.T) {
 	ctx := context.Background()
 	mockRunner := &stellarCoreRunnerMock{}
 	mockRunner.On("close").Return(fmt.Errorf("transient error"))
-	mockRunner.On("getProcessExitError").Return(false, nil)
+	mockRunner.On("getProcessExitError").Return(nil, false)
 	mockRunner.On("context").Return(ctx)
 
 	captiveBackend := CaptiveStellarCore{
@@ -440,7 +440,7 @@ func TestCaptivePrepareRange_FromIsAheadOfRootHAS(t *testing.T) {
 	}
 
 	mockRunner.On("runFrom", uint32(63), "0000000000000000000000000000000000000000000000000000000000000000").Return(nil).Once()
-	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(metaChan))
+	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(metaChan), true)
 	mockRunner.On("context").Return(ctx)
 
 	assert.NoError(t, captiveBackend.PrepareRange(ctx, UnboundedRange(100)))
@@ -481,7 +481,7 @@ func TestCaptivePrepareRangeWithDB_FromIsAheadOfRootHAS(t *testing.T) {
 		LedgerCloseMeta: &meta,
 	}
 	mockRunner.On("runFrom", uint32(99), "").Return(nil).Once()
-	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(metaChan))
+	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(metaChan), true)
 	mockRunner.On("context").Return(ctx)
 
 	assert.NoError(t, captiveBackend.PrepareRange(ctx, UnboundedRange(100)))
@@ -517,7 +517,6 @@ func TestCaptivePrepareRange_ToIsAheadOfRootHAS(t *testing.T) {
 func TestCaptivePrepareRange_ErrCatchup(t *testing.T) {
 	mockRunner := &stellarCoreRunnerMock{}
 	mockRunner.On("catchup", uint32(100), uint32(192)).Return(errors.New("transient error")).Once()
-	mockRunner.On("close").Return(nil).Once()
 
 	mockArchive := &historyarchive.MockArchive{}
 	mockArchive.
@@ -552,7 +551,6 @@ func TestCaptivePrepareRange_ErrCatchup(t *testing.T) {
 func TestCaptivePrepareRangeUnboundedRange_ErrRunFrom(t *testing.T) {
 	mockRunner := &stellarCoreRunnerMock{}
 	mockRunner.On("runFrom", uint32(126), "0000000000000000000000000000000000000000000000000000000000000000").Return(errors.New("transient error")).Once()
-	mockRunner.On("close").Return(nil).Once()
 
 	mockArchive := &historyarchive.MockArchive{}
 	mockArchive.
@@ -604,9 +602,9 @@ func TestCaptivePrepareRangeUnboundedRange_ReuseSession(t *testing.T) {
 	ctx := context.Background()
 	mockRunner := &stellarCoreRunnerMock{}
 	mockRunner.On("runFrom", uint32(64), "0000000000000000000000000000000000000000000000000000000000000000").Return(nil).Once()
-	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(metaChan))
+	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(metaChan), true)
 	mockRunner.On("context").Return(ctx)
-	mockRunner.On("getProcessExitError").Return(false, nil)
+	mockRunner.On("getProcessExitError").Return(nil, false)
 
 	mockArchive := &historyarchive.MockArchive{}
 	mockArchive.
@@ -653,7 +651,7 @@ func TestGetLatestLedgerSequence(t *testing.T) {
 	ctx := context.Background()
 	mockRunner := &stellarCoreRunnerMock{}
 	mockRunner.On("runFrom", uint32(63), "0000000000000000000000000000000000000000000000000000000000000000").Return(nil).Once()
-	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(metaChan))
+	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(metaChan), true)
 	mockRunner.On("context").Return(ctx)
 
 	mockArchive := &historyarchive.MockArchive{}
@@ -699,7 +697,7 @@ func TestGetLatestLedgerSequenceRaceCondition(t *testing.T) {
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	mockRunner := &stellarCoreRunnerMock{}
-	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(metaChan))
+	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(metaChan), true)
 	mockRunner.On("context").Return(ctx)
 	mockRunner.On("runFrom", mock.Anything, mock.Anything).Return(nil)
 
@@ -766,9 +764,9 @@ func TestCaptiveGetLedger(t *testing.T) {
 	ctx, cancel := context.WithCancel(ctx)
 	mockRunner := &stellarCoreRunnerMock{}
 	mockRunner.On("catchup", uint32(65), uint32(66)).Return(nil)
-	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(metaChan))
+	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(metaChan), true)
 	mockRunner.On("context").Return(ctx)
-	mockRunner.On("getProcessExitError").Return(false, nil)
+	mockRunner.On("getProcessExitError").Return(nil, false)
 
 	mockArchive := &historyarchive.MockArchive{}
 	mockArchive.
@@ -857,7 +855,7 @@ func TestCaptiveGetLedgerCacheLatestLedger(t *testing.T) {
 	defer cancel()
 	mockRunner := &stellarCoreRunnerMock{}
 	mockRunner.On("runFrom", uint32(65), "0101010100000000000000000000000000000000000000000000000000000000").Return(nil).Once()
-	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(metaChan))
+	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(metaChan), true)
 	mockRunner.On("context").Return(ctx)
 
 	mockArchive := &historyarchive.MockArchive{}
@@ -919,7 +917,7 @@ func TestCaptiveGetLedger_NextLedgerIsDifferentToLedgerFromBuffer(t *testing.T) 
 	ctx := context.Background()
 	mockRunner := &stellarCoreRunnerMock{}
 	mockRunner.On("catchup", uint32(65), uint32(66)).Return(nil)
-	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(metaChan))
+	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(metaChan), true)
 	mockRunner.On("context").Return(ctx)
 	mockRunner.On("close").Return(nil)
 
@@ -965,7 +963,7 @@ func TestCaptiveGetLedger_NextLedger0RangeFromIsSmallerThanLedgerFromBuffer(t *t
 	ctx := context.Background()
 	mockRunner := &stellarCoreRunnerMock{}
 	mockRunner.On("runFrom", uint32(64), mock.Anything).Return(nil)
-	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(metaChan))
+	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(metaChan), true)
 	mockRunner.On("context").Return(ctx)
 	mockRunner.On("close").Return(nil)
 
@@ -1067,13 +1065,13 @@ func TestCaptiveGetLedger_ErrReadingMetaResult(t *testing.T) {
 	ctx := context.Background()
 	mockRunner := &stellarCoreRunnerMock{}
 	mockRunner.On("catchup", uint32(65), uint32(66)).Return(nil)
-	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(metaChan))
+	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(metaChan), true)
 	ctx, cancel := context.WithCancel(ctx)
 	mockRunner.On("context").Return(ctx)
 	mockRunner.On("close").Return(nil).Run(func(args mock.Arguments) {
 		cancel()
 	}).Once()
-	mockRunner.On("getProcessExitError").Return(false, nil)
+	mockRunner.On("getProcessExitError").Return(nil, false)
 
 	// even if the request to fetch the latest checkpoint succeeds, we should fail at creating the subprocess
 	mockArchive := &historyarchive.MockArchive{}
@@ -1125,7 +1123,7 @@ func TestCaptiveGetLedger_ErrClosingAfterLastLedger(t *testing.T) {
 	ctx := context.Background()
 	mockRunner := &stellarCoreRunnerMock{}
 	mockRunner.On("catchup", uint32(65), uint32(66)).Return(nil)
-	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(metaChan))
+	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(metaChan), true)
 	mockRunner.On("context").Return(ctx)
 	mockRunner.On("close").Return(fmt.Errorf("transient error")).Once()
 
@@ -1167,7 +1165,7 @@ func TestCaptiveAfterClose(t *testing.T) {
 	mockRunner := &stellarCoreRunnerMock{}
 	ctx, cancel := context.WithCancel(context.Background())
 	mockRunner.On("catchup", uint32(65), uint32(66)).Return(nil)
-	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(metaChan))
+	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(metaChan), true)
 	mockRunner.On("context").Return(ctx)
 	mockRunner.On("close").Return(nil).Once()
 
@@ -1222,7 +1220,7 @@ func TestGetLedgerBoundsCheck(t *testing.T) {
 	ctx := context.Background()
 	mockRunner := &stellarCoreRunnerMock{}
 	mockRunner.On("catchup", uint32(128), uint32(130)).Return(nil).Once()
-	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(metaChan))
+	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(metaChan), true)
 	mockRunner.On("context").Return(ctx)
 
 	mockArchive := &historyarchive.MockArchive{}
@@ -1346,9 +1344,9 @@ func TestCaptiveGetLedgerTerminatedUnexpectedly(t *testing.T) {
 			ctx := testCase.ctx
 			mockRunner := &stellarCoreRunnerMock{}
 			mockRunner.On("catchup", uint32(64), uint32(100)).Return(nil).Once()
-			mockRunner.On("getMetaPipe").Return((<-chan metaResult)(metaChan))
+			mockRunner.On("getMetaPipe").Return((<-chan metaResult)(metaChan), true)
 			mockRunner.On("context").Return(ctx)
-			mockRunner.On("getProcessExitError").Return(testCase.processExited, testCase.processExitedError)
+			mockRunner.On("getProcessExitError").Return(testCase.processExitedError, testCase.processExited)
 			mockRunner.On("close").Return(nil).Once()
 
 			mockArchive := &historyarchive.MockArchive{}
@@ -1514,7 +1512,7 @@ func TestCaptiveRunFromParams(t *testing.T) {
 func TestCaptiveIsPrepared(t *testing.T) {
 	mockRunner := &stellarCoreRunnerMock{}
 	mockRunner.On("context").Return(context.Background()).Maybe()
-	mockRunner.On("getProcessExitError").Return(false, nil)
+	mockRunner.On("getProcessExitError").Return(nil, false)
 
 	// c.prepared == nil
 	captiveBackend := CaptiveStellarCore{
@@ -1578,7 +1576,7 @@ func TestCaptiveIsPreparedCoreContextCancelled(t *testing.T) {
 	mockRunner := &stellarCoreRunnerMock{}
 	ctx, cancel := context.WithCancel(context.Background())
 	mockRunner.On("context").Return(ctx).Maybe()
-	mockRunner.On("getProcessExitError").Return(false, nil)
+	mockRunner.On("getProcessExitError").Return(nil, false)
 
 	rang := UnboundedRange(100)
 	captiveBackend := CaptiveStellarCore{
@@ -1630,7 +1628,7 @@ func TestCaptivePreviousLedgerCheck(t *testing.T) {
 	ctx := context.Background()
 	mockRunner := &stellarCoreRunnerMock{}
 	mockRunner.On("runFrom", uint32(254), "0101010100000000000000000000000000000000000000000000000000000000").Return(nil).Once()
-	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(metaChan))
+	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(metaChan), true)
 	mockRunner.On("context").Return(ctx)
 	mockRunner.On("close").Return(nil).Once()
 

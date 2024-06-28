@@ -349,11 +349,11 @@ func (c *CaptiveStellarCore) openOfflineReplaySubprocess(from, to uint32) error 
 		)
 	}
 
-	c.stellarCoreRunner = c.stellarCoreRunnerFactory()
-	err = c.stellarCoreRunner.catchup(from, to)
-	if err != nil {
+	stellarCoreRunner := c.stellarCoreRunnerFactory()
+	if err = stellarCoreRunner.catchup(from, to); err != nil {
 		return errors.Wrap(err, "error running stellar-core")
 	}
+	c.stellarCoreRunner = stellarCoreRunner
 
 	// The next ledger should be the first ledger of the checkpoint containing
 	// the requested ledger
@@ -375,11 +375,11 @@ func (c *CaptiveStellarCore) openOnlineReplaySubprocess(ctx context.Context, fro
 		return errors.Wrap(err, "error calculating ledger and hash for stellar-core run")
 	}
 
-	c.stellarCoreRunner = c.stellarCoreRunnerFactory()
-	err = c.stellarCoreRunner.runFrom(runFrom, ledgerHash)
-	if err != nil {
+	stellarCoreRunner := c.stellarCoreRunnerFactory()
+	if err = stellarCoreRunner.runFrom(runFrom, ledgerHash); err != nil {
 		return errors.Wrap(err, "error running stellar-core")
 	}
+	c.stellarCoreRunner = stellarCoreRunner
 
 	// In the online mode we update nextLedger after streaming the first ledger.
 	// This is to support versions before and after/including v17.1.0 that
@@ -556,7 +556,7 @@ func (c *CaptiveStellarCore) isPrepared(ledgerRange Range) bool {
 		return false
 	}
 
-	if exited, _ := c.stellarCoreRunner.getProcessExitError(); exited {
+	if _, exited := c.stellarCoreRunner.getProcessExitError(); exited {
 		return false
 	}
 
@@ -627,9 +627,6 @@ func (c *CaptiveStellarCore) GetLedger(ctx context.Context, sequence uint32) (xd
 	if c.stellarCoreRunner == nil {
 		return xdr.LedgerCloseMeta{}, errors.New("stellar-core cannot be nil, call PrepareRange first")
 	}
-	if c.closed {
-		return xdr.LedgerCloseMeta{}, errors.New("stellar-core has an error, call PrepareRange first")
-	}
 
 	if sequence < c.nextExpectedSequence() {
 		return xdr.LedgerCloseMeta{}, errors.Errorf(
@@ -647,12 +644,17 @@ func (c *CaptiveStellarCore) GetLedger(ctx context.Context, sequence uint32) (xd
 		)
 	}
 
+	ch, ok := c.stellarCoreRunner.getMetaPipe()
+	if !ok {
+		return xdr.LedgerCloseMeta{}, errors.New("stellar-core is not running, call PrepareRange first")
+	}
+
 	// Now loop along the range until we find the ledger we want.
 	for {
 		select {
 		case <-ctx.Done():
 			return xdr.LedgerCloseMeta{}, ctx.Err()
-		case result, ok := <-c.stellarCoreRunner.getMetaPipe():
+		case result, ok := <-ch:
 			found, ledger, err := c.handleMetaPipeResult(sequence, result, ok)
 			if found || err != nil {
 				return ledger, err
@@ -732,7 +734,7 @@ func (c *CaptiveStellarCore) checkMetaPipeResult(result metaResult, ok bool) err
 		return err
 	}
 	if !ok || result.err != nil {
-		exited, err := c.stellarCoreRunner.getProcessExitError()
+		err, exited := c.stellarCoreRunner.getProcessExitError()
 		if exited && err != nil {
 			// Case 2 - The stellar core process exited unexpectedly with an error message
 			return errors.Wrap(err, "stellar core exited unexpectedly")
@@ -775,12 +777,12 @@ func (c *CaptiveStellarCore) GetLatestLedgerSequence(ctx context.Context) (uint3
 	if c.stellarCoreRunner == nil {
 		return 0, errors.New("stellar-core cannot be nil, call PrepareRange first")
 	}
-	if c.closed {
-		return 0, errors.New("stellar-core is closed, call PrepareRange first")
-
+	ch, ok := c.stellarCoreRunner.getMetaPipe()
+	if !ok {
+		return 0, errors.New("stellar-core is not running, call PrepareRange first")
 	}
 	if c.lastLedger == nil {
-		return c.nextExpectedSequence() - 1 + uint32(len(c.stellarCoreRunner.getMetaPipe())), nil
+		return c.nextExpectedSequence() - 1 + uint32(len(ch)), nil
 	}
 	return *c.lastLedger, nil
 }
