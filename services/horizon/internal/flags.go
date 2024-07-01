@@ -687,6 +687,14 @@ func Flags() (*Config, support.ConfigOptions) {
 				return nil
 			},
 		},
+		{
+			Name:           "reap-lookup-tables",
+			ConfigKey:      &config.ReapLookupTables,
+			OptType:        types.Bool,
+			FlagDefault:    true,
+			Usage:          "enables the reaping of history lookup tables.",
+			UsedInCommands: IngestionCommands,
+		},
 		&support.ConfigOption{
 			Name:           "history-stale-threshold",
 			ConfigKey:      &config.StaleThreshold,
