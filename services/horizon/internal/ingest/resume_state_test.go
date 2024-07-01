@@ -402,9 +402,9 @@ func (s *ResumeTestTestSuite) TestReapingObjectsDisabled() {
 }
 
 func (s *ResumeTestTestSuite) TestErrorReapingObjectsIgnored() {
-	s.system.config.EnableReapLookupTables = true
+	s.system.config.ReapLookupTables = true
 	defer func() {
-		s.system.config.EnableReapLookupTables = false
+		s.system.config.ReapLookupTables = false
 	}()
 	s.historyQ.On("Begin", s.ctx).Return(nil).Once()
 	s.historyQ.On("GetLastLedgerIngest", s.ctx).Return(uint32(100), nil).Once()
