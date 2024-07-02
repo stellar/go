@@ -1,0 +1,33 @@
+name: Ledger Exporter release
+
+on:
+  push:
+    tags: ['ledgerexporter-v*']
+
+jobs:
+
+  publish-docker:
+    name: Test and push the Ledger Exporter images
+    runs-on: ubuntu-latest
+    env:
+      STELLAR_CORE_VERSION: 21.1.0-1921.b3aeb14cc.focal
+      VERSION: ${GITHUB_REF_NAME#ledgerexporter-v}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: github.sha
+      - name: Build Ledger Exporter docker
+        run: make -C exp/services/ledgerexporter docker-build
+
+      - name: Run Ledger Exporter test
+        run: make -C exp/services/ledgerexporter docker-test
+
+      # Push images
+      - name: Login to DockerHub
+        uses: docker/login-action@bb984efc561711aaa26e433c32c3521176eae55b
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Push to DockerHub
+        run: make -C exp/services/ledgerexporter docker-push

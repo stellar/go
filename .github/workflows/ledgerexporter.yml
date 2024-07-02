@@ -1,0 +1,24 @@
+name: LedgerExporter
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  ledger-exporter:
+    name: Build and test Ledger Exporter image
+    runs-on: ubuntu-latest
+    env:
+      STELLAR_CORE_VERSION: 21.1.0-1921.b3aeb14cc.focal
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          # For pull requests, build and test the PR head not a merge of the PR with the destination.
+          ref:  ${{ github.event.pull_request.head.sha || github.ref }}
+      - name: Build Ledger Exporter docker
+        run: make -C exp/services/ledgerexporter docker-build
+
+      - name: Run Ledger Exporter test
+        run: make -C exp/services/ledgerexporter docker-test
+
