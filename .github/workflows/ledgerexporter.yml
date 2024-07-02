@@ -10,7 +10,7 @@ jobs:
     name: Build and test Ledger Exporter image
     runs-on: ubuntu-latest
     env:
-      STELLAR_CORE_VERSION: 21.0.0-1872.c6f474133.focal
+      STELLAR_CORE_VERSION: 21.1.0-1921.b3aeb14cc.focal
     steps:
       - uses: actions/checkout@v3
         with:
