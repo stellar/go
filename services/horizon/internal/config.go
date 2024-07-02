@@ -85,6 +85,8 @@ type Config struct {
 	// If ReapFrequency is set to 2 history is reaped after ingesting every two ledgers.
 	// etc...
 	ReapFrequency uint
+	// ReapLookupTables enables the reaping of history lookup tables
+	ReapLookupTables bool
 	// StaleThreshold represents the number of ledgers a history database may be
 	// out-of-date by before horizon begins to respond with an error to history
 	// requests.

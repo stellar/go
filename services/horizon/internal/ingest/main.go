@@ -95,7 +95,7 @@ type Config struct {
 	HistoryArchiveCaching bool
 
 	DisableStateVerification     bool
-	EnableReapLookupTables       bool
+	ReapLookupTables             bool
 	EnableExtendedLogLedgerStats bool
 
 	MaxReingestRetries          int
@@ -757,7 +757,7 @@ func (s *system) maybeVerifyState(lastIngestedLedger uint32, expectedBucketListH
 }
 
 func (s *system) maybeReapLookupTables(lastIngestedLedger uint32) {
-	if !s.config.EnableReapLookupTables {
+	if !s.config.ReapLookupTables {
 		return
 	}
 
