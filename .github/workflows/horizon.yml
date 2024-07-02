@@ -149,30 +149,3 @@ jobs:
         name: Push to DockerHub
         run: docker push stellar/horizon-verify-range:latest
 
-  ledger-exporter:
-    name: Test and push the Ledger Exporter images
-    runs-on: ubuntu-latest
-    env:
-      STELLAR_CORE_VERSION: 21.0.0-1872.c6f474133.focal
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          # For pull requests, build and test the PR head not a merge of the PR with the destination.
-          ref:  ${{ github.event.pull_request.head.sha || github.ref }}
-      - name: Build Ledger Exporter docker
-        run: make -C exp/services/ledgerexporter docker-build
-
-      - name: Run Ledger Exporter test
-        run: make -C exp/services/ledgerexporter docker-test
-
-      # Push images
-      - if: github.ref == 'refs/heads/master'
-        name: Login to DockerHub
-        uses: docker/login-action@bb984efc561711aaa26e433c32c3521176eae55b
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - if: github.ref == 'refs/heads/master'
-        name: Push to DockerHub
-        run: make -C exp/services/ledgerexporter docker-push
