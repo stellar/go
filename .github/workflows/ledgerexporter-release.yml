@@ -15,7 +15,6 @@ jobs:
     steps:
       - uses: actions/checkout@v3
         with:
-          # For pull requests, build and test the PR head not a merge of the PR with the destination.
           ref: github.sha
       - name: Build Ledger Exporter docker
         run: make -C exp/services/ledgerexporter docker-build
