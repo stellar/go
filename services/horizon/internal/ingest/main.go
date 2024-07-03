@@ -20,6 +20,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/ingest/filters"
 	apkg "github.com/stellar/go/support/app"
+	"github.com/stellar/go/support/datastore"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 	logpkg "github.com/stellar/go/support/log"
@@ -82,7 +83,35 @@ const (
 
 var log = logpkg.DefaultLogger.WithField("service", "ingest")
 
+type LedgerMetaBackendType int64
+
+const (
+	LedgerBackendCaptiveCore LedgerMetaBackendType = iota
+	LedgerBackendPrecomputed
+)
+
+func (s LedgerMetaBackendType) String() string {
+	switch s {
+	case LedgerBackendCaptiveCore:
+		return "captive core"
+	case LedgerBackendPrecomputed:
+		return "precomputed"
+}
+
+type BufferedBackendConfig struct {
+    BufferSize        uint32 `toml:"size"`
+	NumWorkers        uint32 `toml:"num_workers"`
+	RetryLimit        uint32 `toml:"retry_limit"`
+	RetryWait         time.Duration	`toml:"retry_wait"`
+}
+
+type PrecomputedLedgerMetaConfig struct {
+	DataStoreConfig   datastore.DataStoreConfig `toml:"datastore_config"`
+	BufferedBackendConfig   BufferedBackendConfig `toml:"buffered_backend_config"`
+}
+
 type Config struct {
+	LedgerMetaBackendType  LedgerMetaBackendType
 	StellarCoreURL         string
 	CaptiveCoreBinaryPath  string
 	CaptiveCoreStoragePath string
@@ -115,6 +144,8 @@ type Config struct {
 	CoreBuildVersionFn    ledgerbackend.CoreBuildVersionFunc
 
 	ReapConfig ReapConfig
+
+	PrecomputedMetaConfig PrecomputedLedgerMetaConfig
 }
 
 const (
