@@ -11,14 +11,17 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/pelletier/go-toml"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
+	"github.com/stellar/go/ingest/ledgerbackend"
 	horizon "github.com/stellar/go/services/horizon/internal"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/db2/schema"
 	"github.com/stellar/go/services/horizon/internal/ingest"
 	support "github.com/stellar/go/support/config"
+	"github.com/stellar/go/support/datastore"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 	hlog "github.com/stellar/go/support/log"
@@ -257,12 +260,20 @@ var dbReingestCmd = &cobra.Command{
 }
 
 var (
-	reingestForce       bool
-	parallelWorkers     uint
-	parallelJobSize     uint32
-	retries             uint
-	retryBackoffSeconds uint
+	reingestForce            bool
+	parallelWorkers          uint
+	parallelJobSize          uint32
+	retries                  uint
+	retryBackoffSeconds      uint
+	ledgerBackendStr         string
+	storageBackendConfigPath string
+	ledgerBackendType        ingest.LedgerBackendType
 )
+
+type StorageBackendConfig struct {
+	DataStoreConfig              datastore.DataStoreConfig                  `toml:"datastore_config"`
+	BufferedStorageBackendConfig ledgerbackend.BufferedStorageBackendConfig `toml:"buffered_storage_backend_config"`
+}
 
 func ingestRangeCmdOpts() support.ConfigOptions {
 	return support.ConfigOptions{
@@ -307,6 +318,42 @@ func ingestRangeCmdOpts() support.ConfigOptions {
 			FlagDefault: uint(5),
 			Usage:       "[optional] backoff seconds between reingest retries",
 		},
+		{
+			Name:        "ledgerbackend",
+			ConfigKey:   &ledgerBackendStr,
+			OptType:     types.String,
+			Required:    false,
+			FlagDefault: ingest.CaptiveCoreBackend.String(),
+			Usage:       "[optional] Specify the ledger backend type: 'captive-core' (default) or 'datastore'",
+			CustomSetValue: func(co *support.ConfigOption) error {
+				val := viper.GetString(co.Name)
+				switch val {
+				case ingest.CaptiveCoreBackend.String():
+					ledgerBackendType = ingest.CaptiveCoreBackend
+				case ingest.BufferedStorageBackend.String():
+					ledgerBackendType = ingest.BufferedStorageBackend
+				default:
+					return fmt.Errorf("invalid ledger backend: %s, must be 'captive-core' or 'datastore'", val)
+				}
+				*co.ConfigKey.(*string) = val
+				return nil
+			},
+		},
+		{
+			Name:      "datastore-config",
+			ConfigKey: &storageBackendConfigPath,
+			OptType:   types.String,
+			Required:  false,
+			Usage:     "[optional] Specify the path to the datastore config file (required for datastore backend)",
+			CustomSetValue: func(co *support.ConfigOption) error {
+				val := viper.GetString(co.Name)
+				if ledgerBackendType == ingest.BufferedStorageBackend && val == "" {
+					return errors.New("datastore config file is required for datastore backend type")
+				}
+				*co.ConfigKey.(*string) = val
+				return nil
+			},
+		},
 	}
 }
 
@@ -337,7 +384,18 @@ var dbReingestRangeCmd = &cobra.Command{
 			}
 		}
 
-		err := horizon.ApplyFlags(globalConfig, globalFlags, horizon.ApplyOptions{RequireCaptiveCoreFullConfig: false, AlwaysIngest: true})
+		var storageBackendConfig StorageBackendConfig
+		if ledgerBackendType == ingest.BufferedStorageBackend {
+			cfg, err := toml.LoadFile(storageBackendConfigPath)
+			if err != nil {
+				return fmt.Errorf("failed to load config file %v: %w", storageBackendConfigPath, err)
+			}
+			if err = cfg.Unmarshal(&storageBackendConfig); err != nil {
+				return fmt.Errorf("error unmarshalling TOML config: %w", err)
+			}
+		}
+
+		err := horizon.ApplyFlags(globalConfig, globalFlags, horizon.ApplyOptions{RequireCaptiveCoreFullConfig: false, AlwaysIngest: false})
 		if err != nil {
 			return err
 		}
@@ -346,6 +404,7 @@ var dbReingestRangeCmd = &cobra.Command{
 			reingestForce,
 			parallelWorkers,
 			*globalConfig,
+			storageBackendConfig,
 		)
 	},
 }
@@ -385,7 +444,18 @@ var dbFillGapsCmd = &cobra.Command{
 			withRange = true
 		}
 
-		err := horizon.ApplyFlags(globalConfig, globalFlags, horizon.ApplyOptions{RequireCaptiveCoreFullConfig: false, AlwaysIngest: true})
+		var storageBackendConfig StorageBackendConfig
+		if ledgerBackendType == ingest.BufferedStorageBackend {
+			cfg, err := toml.LoadFile(storageBackendConfigPath)
+			if err != nil {
+				return fmt.Errorf("failed to load config file %v: %w", storageBackendConfigPath, err)
+			}
+			if err = cfg.Unmarshal(&storageBackendConfig); err != nil {
+				return fmt.Errorf("error unmarshalling TOML config: %w", err)
+			}
+		}
+
+		err := horizon.ApplyFlags(globalConfig, globalFlags, horizon.ApplyOptions{RequireCaptiveCoreFullConfig: false, AlwaysIngest: false})
 		if err != nil {
 			return err
 		}
@@ -404,11 +474,11 @@ var dbFillGapsCmd = &cobra.Command{
 			hlog.Infof("found gaps %v", gaps)
 		}
 
-		return runDBReingestRange(gaps, reingestForce, parallelWorkers, *globalConfig)
+		return runDBReingestRange(gaps, reingestForce, parallelWorkers, *globalConfig, storageBackendConfig)
 	},
 }
 
-func runDBReingestRange(ledgerRanges []history.LedgerRange, reingestForce bool, parallelWorkers uint, config horizon.Config) error {
+func runDBReingestRange(ledgerRanges []history.LedgerRange, reingestForce bool, parallelWorkers uint, config horizon.Config, storageBackendConfig StorageBackendConfig) error {
 	var err error
 
 	if reingestForce && parallelWorkers > 1 {
@@ -435,6 +505,9 @@ func runDBReingestRange(ledgerRanges []history.LedgerRange, reingestForce bool, 
 		RoundingSlippageFilter:      config.RoundingSlippageFilter,
 		MaxLedgerPerFlush:           maxLedgersPerFlush,
 		SkipTxmeta:                  config.SkipTxmeta,
+		LedgerBackendType:           ledgerBackendType,
+		DataStoreConfig:             storageBackendConfig.DataStoreConfig,
+		BufferedBackendConfig:       storageBackendConfig.BufferedStorageBackendConfig,
 	}
 
 	if ingestConfig.HistorySession, err = db.Open("postgres", config.DatabaseURL); err != nil {

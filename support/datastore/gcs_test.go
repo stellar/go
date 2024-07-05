@@ -24,7 +24,7 @@ func TestGCSExists(t *testing.T) {
 	})
 	defer server.Stop()
 
-	store, err := FromGCSClient(context.Background(), server.Client(), "test-bucket/objects/testnet")
+	store, err := FromGCSClient(context.Background(), server.Client(), "test-bucket/objects/testnet", DataStoreSchema{})
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		require.NoError(t, store.Close())
@@ -52,7 +52,7 @@ func TestGCSSize(t *testing.T) {
 	})
 	defer server.Stop()
 
-	store, err := FromGCSClient(context.Background(), server.Client(), "test-bucket/objects/testnet")
+	store, err := FromGCSClient(context.Background(), server.Client(), "test-bucket/objects/testnet", DataStoreSchema{})
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		require.NoError(t, store.Close())
@@ -86,7 +86,7 @@ func TestGCSPutFile(t *testing.T) {
 		DefaultEventBasedHold: false,
 	})
 
-	store, err := FromGCSClient(context.Background(), server.Client(), "test-bucket/objects/testnet")
+	store, err := FromGCSClient(context.Background(), server.Client(), "test-bucket/objects/testnet", DataStoreSchema{})
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		require.NoError(t, store.Close())
@@ -138,7 +138,7 @@ func TestGCSPutFileIfNotExists(t *testing.T) {
 	})
 	defer server.Stop()
 
-	store, err := FromGCSClient(context.Background(), server.Client(), "test-bucket/objects/testnet")
+	store, err := FromGCSClient(context.Background(), server.Client(), "test-bucket/objects/testnet", DataStoreSchema{})
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		require.NoError(t, store.Close())
@@ -187,7 +187,7 @@ func TestGCSPutFileWithMetadata(t *testing.T) {
 		DefaultEventBasedHold: false,
 	})
 
-	store, err := FromGCSClient(context.Background(), server.Client(), "test-bucket/objects/testnet")
+	store, err := FromGCSClient(context.Background(), server.Client(), "test-bucket/objects/testnet", DataStoreSchema{})
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		require.NoError(t, store.Close())
@@ -255,7 +255,7 @@ func TestGCSPutFileIfNotExistsWithMetadata(t *testing.T) {
 	})
 	defer server.Stop()
 
-	store, err := FromGCSClient(context.Background(), server.Client(), "test-bucket/objects/testnet")
+	store, err := FromGCSClient(context.Background(), server.Client(), "test-bucket/objects/testnet", DataStoreSchema{})
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		require.NoError(t, store.Close())
@@ -323,7 +323,7 @@ func TestGCSGetNonExistentFile(t *testing.T) {
 	})
 	defer server.Stop()
 
-	store, err := FromGCSClient(context.Background(), server.Client(), "test-bucket/objects/testnet")
+	store, err := FromGCSClient(context.Background(), server.Client(), "test-bucket/objects/testnet", DataStoreSchema{})
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		require.NoError(t, store.Close())
@@ -365,7 +365,7 @@ func TestGCSGetFileValidatesCRC32C(t *testing.T) {
 	})
 	defer server.Stop()
 
-	store, err := FromGCSClient(context.Background(), server.Client(), "test-bucket/objects/testnet")
+	store, err := FromGCSClient(context.Background(), server.Client(), "test-bucket/objects/testnet", DataStoreSchema{})
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		require.NoError(t, store.Close())
