@@ -96,6 +96,9 @@ func (s LedgerMetaBackendType) String() string {
 		return "captive core"
 	case LedgerBackendPrecomputed:
 		return "precomputed"
+	default:
+		return ""	
+	}
 }
 
 type BufferedBackendConfig struct {
