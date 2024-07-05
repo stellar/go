@@ -270,6 +270,11 @@ var (
 	ledgerBackendType        ingest.LedgerBackendType
 )
 
+type StorageBackendConfig struct {
+	DataStoreConfig              datastore.DataStoreConfig                  `toml:"datastore_config"`
+	BufferedStorageBackendConfig ledgerbackend.BufferedStorageBackendConfig `toml:"buffered_storage_backend_config"`
+}
+
 func ingestRangeCmdOpts() support.ConfigOptions {
 	return support.ConfigOptions{
 		{
