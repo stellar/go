@@ -300,6 +300,7 @@ func NewSystem(config Config) (System, error) {
 		}
 	} else {
 		// Ingest from local captive core
+
 		logger := log.WithField("subservice", "stellar-core")
 		ledgerBackend, err = ledgerbackend.NewCaptive(
 			ledgerbackend.CaptiveCoreConfig{
