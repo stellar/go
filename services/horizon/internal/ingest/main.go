@@ -83,38 +83,24 @@ const (
 
 var log = logpkg.DefaultLogger.WithField("service", "ingest")
 
-type LedgerMetaBackendType int64
+type LedgerBackendType uint
 
 const (
-	LedgerBackendCaptiveCore LedgerMetaBackendType = iota
-	LedgerBackendPrecomputed
+	CaptiveCoreBackend LedgerBackendType = iota
+	BufferedStorageBackend
 )
 
-func (s LedgerMetaBackendType) String() string {
+func (s LedgerBackendType) String() string {
 	switch s {
-	case LedgerBackendCaptiveCore:
-		return "captive core"
-	case LedgerBackendPrecomputed:
-		return "precomputed"
-	default:
-		return ""
+	case CaptiveCoreBackend:
+		return "captive-core"
+	case BufferedStorageBackend:
+		return "datastore"
 	}
-}
-
-type BufferedBackendConfig struct {
-	BufferSize uint32        `toml:"size"`
-	NumWorkers uint32        `toml:"num_workers"`
-	RetryLimit uint32        `toml:"retry_limit"`
-	RetryWait  time.Duration `toml:"retry_wait"`
-}
-
-type PrecomputedLedgerMetaConfig struct {
-	DataStoreConfig       datastore.DataStoreConfig `toml:"datastore_config"`
-	BufferedBackendConfig BufferedBackendConfig     `toml:"buffered_backend_config"`
+	return ""
 }
 
 type Config struct {
-	LedgerMetaBackendType  LedgerMetaBackendType
 	StellarCoreURL         string
 	CaptiveCoreBinaryPath  string
 	CaptiveCoreStoragePath string
@@ -148,7 +134,9 @@ type Config struct {
 
 	ReapConfig ReapConfig
 
-	PrecomputedMetaConfig *PrecomputedLedgerMetaConfig
+	LedgerBackendType     LedgerBackendType
+	DataStoreConfig       datastore.DataStoreConfig
+	BufferedBackendConfig ledgerbackend.BufferedStorageBackendConfig
 }
 
 const (
@@ -296,11 +284,24 @@ func NewSystem(config Config) (System, error) {
 		cancel()
 		return nil, errors.Wrap(err, "error creating history archive")
 	}
-
 	var ledgerBackend ledgerbackend.LedgerBackend
 
-	switch config.LedgerMetaBackendType {
-	case LedgerBackendCaptiveCore:
+	if config.LedgerBackendType == BufferedStorageBackend {
+		// Ingest from datastore
+		var dataStore datastore.DataStore
+		dataStore, err = datastore.NewDataStore(context.Background(), config.DataStoreConfig)
+		if err != nil {
+			cancel()
+			return nil, fmt.Errorf("failed to create datastore: %w", err)
+		}
+		ledgerBackend, err = ledgerbackend.NewBufferedStorageBackend(ctx, config.BufferedBackendConfig, dataStore)
+		if err != nil {
+			cancel()
+			return nil, fmt.Errorf("failed to create buffered storage backend: %w", err)
+		}
+	} else {
+		// Ingest from local captive core
+
 		logger := log.WithField("subservice", "stellar-core")
 		ledgerBackend, err = ledgerbackend.NewCaptive(
 			ledgerbackend.CaptiveCoreConfig{
@@ -323,37 +324,6 @@ func NewSystem(config Config) (System, error) {
 			cancel()
 			return nil, errors.Wrap(err, "error creating captive core backend")
 		}
-		log.Infof("successfully created ledger backend of type captive core")
-	case LedgerBackendPrecomputed:
-		if config.PrecomputedMetaConfig == nil {
-			cancel()
-			return nil, errors.New("error creating precomputed buffered backend, precomputed backend config is not present")
-		}
-		precompConfig := config.PrecomputedMetaConfig
-
-		dataStore, err := datastore.NewDataStore(ctx, precompConfig.DataStoreConfig)
-		if err != nil {
-			cancel()
-			return nil, errors.Wrapf(err, "error creating datastore from config, %v", precompConfig.DataStoreConfig)
-		}
-
-		bufferedConfig := ledgerbackend.BufferedStorageBackendConfig{
-			LedgerBatchConfig: precompConfig.DataStoreConfig.Schema,
-			DataStore:         dataStore,
-			BufferSize:        precompConfig.BufferedBackendConfig.BufferSize,
-			NumWorkers:        precompConfig.BufferedBackendConfig.NumWorkers,
-			RetryLimit:        precompConfig.BufferedBackendConfig.RetryLimit,
-			RetryWait:         precompConfig.BufferedBackendConfig.RetryWait,
-		}
-
-		if ledgerBackend, err = ledgerbackend.NewBufferedStorageBackend(ctx, bufferedConfig); err != nil {
-			cancel()
-			return nil, errors.Wrapf(err, "error creating buffered storage backend, %v", bufferedConfig)
-		}
-		log.Infof("successfully created ledger backend of type buffered storage")
-	default:
-		cancel()
-		return nil, errors.Errorf("unsupported ledger backend type %v", config.LedgerMetaBackendType.String())
 	}
 
 	historyQ := &history.Q{config.HistorySession.Clone()}
