@@ -288,12 +288,13 @@ func NewSystem(config Config) (System, error) {
 
 	if config.LedgerBackendType == BufferedStorageBackend {
 		// Ingest from datastore
-		datastore, err := datastore.NewDataStore(context.Background(), config.DataStoreConfig)
+		var dataStore datastore.DataStore
+		dataStore, err = datastore.NewDataStore(context.Background(), config.DataStoreConfig)
 		if err != nil {
 			cancel()
 			return nil, fmt.Errorf("failed to create datastore: %w", err)
 		}
-		ledgerBackend, err = ledgerbackend.NewBufferedStorageBackend(ctx, config.BufferedBackendConfig, datastore)
+		ledgerBackend, err = ledgerbackend.NewBufferedStorageBackend(ctx, config.BufferedBackendConfig, dataStore)
 		if err != nil {
 			cancel()
 			return nil, fmt.Errorf("failed to create buffered storage backend: %w", err)
