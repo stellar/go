@@ -23,7 +23,7 @@ require (
 	github.com/go-errors/errors v1.5.1
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/google/uuid v1.6.0
-	github.com/gorilla/schema v1.2.0
+	github.com/gorilla/schema v1.4.1
 	github.com/graph-gophers/graphql-go v1.3.0
 	github.com/guregu/null v4.0.0+incompatible
 	github.com/holiman/uint256 v1.2.3
