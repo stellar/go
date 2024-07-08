@@ -39,7 +39,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.17.0
 	github.com/prometheus/client_model v0.5.0
-	github.com/rs/cors v1.10.1
+	github.com/rs/cors v1.11.0
 	github.com/rubenv/sql-migrate v1.5.2
 	github.com/segmentio/go-loggly v0.5.1-0.20171222203950-eb91657e62b2
 	github.com/shurcooL/httpfs v0.0.0-20230704072500-f1e31cf0ba5c
