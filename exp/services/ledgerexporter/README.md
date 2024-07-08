@@ -127,4 +127,3 @@ Arguments:
 - `--start <start_ledger>` (required): The starting ledger sequence number in the range to export.
 - `--end <end_ledger>` (required): The ending ledger sequence number in the range.
 - `--config-file <config_file_path>` (optional): The path to your configuration file, containing details like GCS bucket information. If not provided, the exporter will look for config.toml in the directory where you run the command.
-

@@ -7,18 +7,39 @@ on:
 
 jobs:
   ledger-exporter:
-    name: Build and test Ledger Exporter image
+    name: Test Ledger Exporter
     runs-on: ubuntu-latest
     env:
-      STELLAR_CORE_VERSION: 21.1.0-1921.b3aeb14cc.focal
+      CAPTIVE_CORE_DEBIAN_PKG_VERSION: 21.1.0-1921.b3aeb14cc.focal
+      LEDGEREXPORTER_INTEGRATION_TESTS_ENABLED: "true"
+      LEDGEREXPORTER_INTEGRATION_TESTS_CAPTIVE_CORE_BIN: /usr/bin/stellar-core
+      # this pins to a version of quickstart:testing that has the same version as LEDGEREXPORTER_INTEGRATION_TESTS_CAPTIVE_CORE_BIN
+      # this is the multi-arch index sha, get it by 'docker buildx imagetools inspect stellar/quickstart:testing'
+      LEDGEREXPORTER_INTEGRATION_TESTS_QUICKSTART_IMAGE: docker.io/stellar/quickstart:testing@sha256:03c6679f838a92b1eda4cd3a9e2bdee4c3586e278a138a0acf36a9bc99a0041f
+      LEDGEREXPORTER_INTEGRATION_TESTS_QUICKSTART_IMAGE_PULL: "false"
     steps:
+      - name: Install captive core
+        run: |
+          # Workaround for https://github.com/actions/virtual-environments/issues/5245,
+          # libc++1-8 won't be installed if another version is installed (but apt won't give you a helpul
+          # message about why the installation fails)
+          sudo apt list --installed | grep libc++
+          sudo apt-get remove -y libc++1-* libc++abi1-* || true
+
+          sudo wget -qO - https://apt.stellar.org/SDF.asc | APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=true sudo apt-key add -
+          sudo bash -c 'echo "deb https://apt.stellar.org focal unstable" > /etc/apt/sources.list.d/SDF-unstable.list'
+          sudo apt-get update && sudo apt-get install -y stellar-core="$CAPTIVE_CORE_DEBIAN_PKG_VERSION"
+          echo "Using stellar core version $(stellar-core version)"
+
+      - name: Pull Quickstart image
+        shell: bash
+        run: |
+          docker pull "$LEDGEREXPORTER_INTEGRATION_TESTS_QUICKSTART_IMAGE"
+
       - uses: actions/checkout@v3
         with:
           # For pull requests, build and test the PR head not a merge of the PR with the destination.
           ref:  ${{ github.event.pull_request.head.sha || github.ref }}
-      - name: Build Ledger Exporter docker
-        run: make -C exp/services/ledgerexporter docker-build
-
+          
       - name: Run Ledger Exporter test
-        run: make -C exp/services/ledgerexporter docker-test
-
+        run: go test -v -race -run TestLedgerExporterTestSuite ./exp/services/ledgerexporter/... 

@@ -48,6 +48,7 @@ type RuntimeSettings struct {
 	EndLedger      uint32
 	ConfigFilePath string
 	Mode           Mode
+	Ctx            context.Context
 }
 
 type StellarCoreConfig struct {
@@ -56,6 +57,8 @@ type StellarCoreConfig struct {
 	HistoryArchiveUrls    []string `toml:"history_archive_urls"`
 	StellarCoreBinaryPath string   `toml:"stellar_core_binary_path"`
 	CaptiveCoreTomlPath   string   `toml:"captive_core_toml_path"`
+	CheckpointFrequency   uint32   `toml:"checkpoint_frequency"`
+	StoragePath           string   `toml:"storage_path"`
 }
 
 type Config struct {
@@ -98,8 +101,8 @@ func NewConfig(settings RuntimeSettings, getCoreVersionFn ledgerbackend.CoreBuil
 	}
 	logger.Infof("Network Config Archive URLs: %v", config.StellarCoreConfig.HistoryArchiveUrls)
 	logger.Infof("Network Config Archive Passphrase: %v", config.StellarCoreConfig.NetworkPassphrase)
-	logger.Infof("Network Config Archive Stellar Core Binary Path: %v", config.StellarCoreConfig.StellarCoreBinaryPath)
-	logger.Infof("Network Config Archive Stellar Core Toml Config: %v", string(config.SerializedCaptiveCoreToml))
+	logger.Infof("Network Config Stellar Core Binary Path: %v", config.StellarCoreConfig.StellarCoreBinaryPath)
+	logger.Infof("Network Config Stellar Core Toml Config: %v", string(config.SerializedCaptiveCoreToml))
 
 	return config, nil
 }
@@ -185,15 +188,20 @@ func (config *Config) GenerateCaptiveCoreConfig(coreBinFromPath string) (ledgerb
 		return ledgerbackend.CaptiveCoreConfig{}, errors.Wrap(err, "Failed to create captive-core toml")
 	}
 
+	checkpointFrequency := historyarchive.DefaultCheckpointFrequency
+	if config.StellarCoreConfig.CheckpointFrequency > 0 {
+		checkpointFrequency = config.StellarCoreConfig.CheckpointFrequency
+	}
 	return ledgerbackend.CaptiveCoreConfig{
 		BinaryPath:          config.StellarCoreConfig.StellarCoreBinaryPath,
 		NetworkPassphrase:   params.NetworkPassphrase,
 		HistoryArchiveURLs:  params.HistoryArchiveURLs,
-		CheckpointFrequency: historyarchive.DefaultCheckpointFrequency,
+		CheckpointFrequency: checkpointFrequency,
 		Log:                 logger.WithField("subservice", "stellar-core"),
 		Toml:                captiveCoreToml,
 		UserAgent:           "ledger-exporter",
 		UseDB:               true,
+		StoragePath:         config.StellarCoreConfig.StoragePath,
 	}, nil
 }
 
