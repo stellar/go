@@ -16,6 +16,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/stellar/go/network"
 	"github.com/stellar/go/services/horizon/internal/paths"
 	"github.com/stellar/go/services/horizon/internal/simplepath"
 
@@ -186,13 +187,13 @@ func TestNetworkParameter(t *testing.T) {
 	}{
 		{
 			networkValue:       horizon.StellarTestnet,
-			networkPassphrase:  horizon.TestnetConf.NetworkPassphrase,
-			historyArchiveURLs: horizon.TestnetConf.HistoryArchiveURLs,
+			networkPassphrase:  network.TestNetworkPassphrase,
+			historyArchiveURLs: network.TestNetworkhistoryArchiveURLs,
 		},
 		{
 			networkValue:       horizon.StellarPubnet,
-			networkPassphrase:  horizon.PubnetConf.NetworkPassphrase,
-			historyArchiveURLs: horizon.PubnetConf.HistoryArchiveURLs,
+			networkPassphrase:  network.PublicNetworkPassphrase,
+			historyArchiveURLs: network.PublicNetworkhistoryArchiveURLs,
 		},
 	}
 	for _, tt := range testCases {

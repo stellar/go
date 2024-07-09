@@ -225,7 +225,7 @@ var dbReapCmd = &cobra.Command{
 	Long:  "reap removes any historical data that is earlier than the configured retention cutoff",
 	RunE: func(cmd *cobra.Command, args []string) error {
 
-		err := horizon.ApplyFlags(globalConfig, globalFlags, horizon.ApplyOptions{RequireCaptiveCoreFullConfig: false, AlwaysIngest: false})
+		err := horizon.ApplyFlags(globalConfig, globalFlags, horizon.ApplyOptions{RequireCaptiveCoreFullConfig: false})
 		if err != nil {
 			return err
 		}
@@ -380,6 +380,7 @@ var dbReingestRangeCmd = &cobra.Command{
 		}
 
 		var storageBackendConfig ingest.StorageBackendConfig
+		options := horizon.ApplyOptions{RequireCaptiveCoreFullConfig: false}
 		if ledgerBackendType == ingest.BufferedStorageBackend {
 			cfg, err := toml.LoadFile(storageBackendConfigPath)
 			if err != nil {
@@ -390,9 +391,10 @@ var dbReingestRangeCmd = &cobra.Command{
 			}
 			storageBackendConfig.BufferedStorageBackendFactory = ledgerbackend.NewBufferedStorageBackend
 			storageBackendConfig.DataStoreFactory = datastore.NewDataStore
+			options.NoCaptiveCore = true
 		}
 
-		err := horizon.ApplyFlags(globalConfig, globalFlags, horizon.ApplyOptions{RequireCaptiveCoreFullConfig: false, AlwaysIngest: false})
+		err := horizon.ApplyFlags(globalConfig, globalFlags, options)
 		if err != nil {
 			return err
 		}
@@ -442,6 +444,7 @@ var dbFillGapsCmd = &cobra.Command{
 		}
 
 		var storageBackendConfig ingest.StorageBackendConfig
+		options := horizon.ApplyOptions{RequireCaptiveCoreFullConfig: false}
 		if ledgerBackendType == ingest.BufferedStorageBackend {
 			cfg, err := toml.LoadFile(storageBackendConfigPath)
 			if err != nil {
@@ -452,9 +455,10 @@ var dbFillGapsCmd = &cobra.Command{
 			}
 			storageBackendConfig.BufferedStorageBackendFactory = ledgerbackend.NewBufferedStorageBackend
 			storageBackendConfig.DataStoreFactory = datastore.NewDataStore
+			options.NoCaptiveCore = true
 		}
 
-		err := horizon.ApplyFlags(globalConfig, globalFlags, horizon.ApplyOptions{RequireCaptiveCoreFullConfig: false, AlwaysIngest: false})
+		err := horizon.ApplyFlags(globalConfig, globalFlags, options)
 		if err != nil {
 			return err
 		}

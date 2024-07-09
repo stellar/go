@@ -8,6 +8,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/stellar/go/network"
 	"github.com/stellar/go/services/horizon/internal/test"
 
 	"github.com/stretchr/testify/assert"
@@ -29,16 +30,16 @@ func Test_createCaptiveCoreDefaultConfig(t *testing.T) {
 			config: Config{Network: StellarTestnet,
 				CaptiveCoreBinaryPath: "/path/to/captive-core/binary",
 			},
-			networkPassphrase:  TestnetConf.NetworkPassphrase,
-			historyArchiveURLs: TestnetConf.HistoryArchiveURLs,
+			networkPassphrase:  network.TestNetworkPassphrase,
+			historyArchiveURLs: network.TestNetworkhistoryArchiveURLs,
 		},
 		{
 			name: "pubnet default config",
 			config: Config{Network: StellarPubnet,
 				CaptiveCoreBinaryPath: "/path/to/captive-core/binary",
 			},
-			networkPassphrase:  PubnetConf.NetworkPassphrase,
-			historyArchiveURLs: PubnetConf.HistoryArchiveURLs,
+			networkPassphrase:  network.PublicNetworkPassphrase,
+			historyArchiveURLs: network.PublicNetworkhistoryArchiveURLs,
 		},
 		{
 			name: "testnet validation; history archive urls supplied",
@@ -83,18 +84,41 @@ func Test_createCaptiveCoreDefaultConfig(t *testing.T) {
 			},
 			errStr: "no default configuration found for network unknown",
 		},
+		{
+			name: "no network specified; passphrase not supplied",
+			config: Config{
+				HistoryArchiveURLs:    []string{"HistoryArchiveURLs"},
+				CaptiveCoreBinaryPath: "/path/to/captive-core/binary",
+			},
+			errStr: fmt.Sprintf("%s must be set", NetworkPassphraseFlagName),
+		},
+		{
+			name: "no network specified; history archive urls not supplied",
+			config: Config{
+				NetworkPassphrase:     "NetworkPassphrase",
+				CaptiveCoreBinaryPath: "/path/to/captive-core/binary",
+			},
+			errStr: fmt.Sprintf("%s must be set", HistoryArchiveURLsFlagName),
+		},
+
+		{
+			name: "unknown network specified",
+			config: Config{Network: "unknown",
+				NetworkPassphrase:     "",
+				HistoryArchiveURLs:    []string{},
+				CaptiveCoreBinaryPath: "/path/to/captive-core/binary",
+			},
+			errStr: "no default configuration found for network unknown",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.config.CaptiveCoreTomlParams.UseDB = true
-			e := setCaptiveCoreConfiguration(&tt.config,
-				ApplyOptions{RequireCaptiveCoreFullConfig: true})
+			e := setNetworkConfiguration(&tt.config)
 			if tt.errStr == "" {
 				assert.NoError(t, e)
 				assert.Equal(t, tt.networkPassphrase, tt.config.NetworkPassphrase)
 				assert.Equal(t, tt.historyArchiveURLs, tt.config.HistoryArchiveURLs)
-				assert.Equal(t, tt.networkPassphrase, tt.config.CaptiveCoreTomlParams.NetworkPassphrase)
-				assert.Equal(t, tt.historyArchiveURLs, tt.config.CaptiveCoreTomlParams.HistoryArchiveURLs)
 			} else {
 				assert.Equal(t, tt.errStr, e.Error())
 			}
@@ -102,53 +126,50 @@ func Test_createCaptiveCoreDefaultConfig(t *testing.T) {
 	}
 }
 
-func Test_createCaptiveCoreConfig(t *testing.T) {
-
-	var errorMsgConfig = "%s must be set"
+func TestSetCaptiveCoreConfig(t *testing.T) {
 	tests := []struct {
 		name                     string
 		requireCaptiveCoreConfig bool
 		config                   Config
-		networkPassphrase        string
-		historyArchiveURLs       []string
 		errStr                   string
 	}{
+		{
+			name:                     "testnet default config",
+			requireCaptiveCoreConfig: true,
+			config: Config{
+				Network:               StellarTestnet,
+				NetworkPassphrase:     network.TestNetworkPassphrase,
+				HistoryArchiveURLs:    network.TestNetworkhistoryArchiveURLs,
+				CaptiveCoreBinaryPath: "/path/to/captive-core/binary",
+			},
+		},
+		{
+			name:                     "pubnet default config",
+			requireCaptiveCoreConfig: true,
+			config: Config{
+				Network:               StellarPubnet,
+				NetworkPassphrase:     network.PublicNetworkPassphrase,
+				HistoryArchiveURLs:    network.PublicNetworkhistoryArchiveURLs,
+				CaptiveCoreBinaryPath: "/path/to/captive-core/binary",
+			},
+		},
 		{
 			name:                     "no network specified; valid parameters",
 			requireCaptiveCoreConfig: true,
 			config: Config{
-				NetworkPassphrase:     PubnetConf.NetworkPassphrase,
-				HistoryArchiveURLs:    PubnetConf.HistoryArchiveURLs,
+				NetworkPassphrase:     network.PublicNetworkPassphrase,
+				HistoryArchiveURLs:    network.PublicNetworkhistoryArchiveURLs,
 				CaptiveCoreConfigPath: "../../../ingest/ledgerbackend/configs/captive-core-pubnet.cfg",
 				CaptiveCoreBinaryPath: "/path/to/captive-core/binary",
 			},
-			networkPassphrase:  PubnetConf.NetworkPassphrase,
-			historyArchiveURLs: PubnetConf.HistoryArchiveURLs,
 		},
-		{
-			name:                     "no network specified; passphrase not supplied",
-			requireCaptiveCoreConfig: true,
-			config: Config{
-				HistoryArchiveURLs:    []string{"HistoryArchiveURLs"},
-				CaptiveCoreBinaryPath: "/path/to/captive-core/binary",
-			},
-			errStr: fmt.Sprintf(errorMsgConfig, NetworkPassphraseFlagName),
-		},
-		{
-			name:                     "no network specified; history archive urls not supplied",
-			requireCaptiveCoreConfig: true,
-			config: Config{
-				NetworkPassphrase:     "NetworkPassphrase",
-				CaptiveCoreBinaryPath: "/path/to/captive-core/binary",
-			},
-			errStr: fmt.Sprintf(errorMsgConfig, HistoryArchiveURLsFlagName),
-		},
+
 		{
 			name:                     "no network specified; captive-core-config-path not supplied",
 			requireCaptiveCoreConfig: true,
 			config: Config{
-				NetworkPassphrase:     PubnetConf.NetworkPassphrase,
-				HistoryArchiveURLs:    PubnetConf.HistoryArchiveURLs,
+				NetworkPassphrase:     network.PublicNetworkPassphrase,
+				HistoryArchiveURLs:    network.PublicNetworkhistoryArchiveURLs,
 				CaptiveCoreBinaryPath: "/path/to/captive-core/binary",
 			},
 			errStr: fmt.Sprintf("invalid config: captive core requires that --%s is set or "+
@@ -158,8 +179,8 @@ func Test_createCaptiveCoreConfig(t *testing.T) {
 			name:                     "no network specified; captive-core-config-path invalid file",
 			requireCaptiveCoreConfig: true,
 			config: Config{
-				NetworkPassphrase:     PubnetConf.NetworkPassphrase,
-				HistoryArchiveURLs:    PubnetConf.HistoryArchiveURLs,
+				NetworkPassphrase:     network.PublicNetworkPassphrase,
+				HistoryArchiveURLs:    network.PublicNetworkhistoryArchiveURLs,
 				CaptiveCoreConfigPath: "xyz.cfg",
 				CaptiveCoreBinaryPath: "/path/to/captive-core/binary",
 			},
@@ -170,25 +191,21 @@ func Test_createCaptiveCoreConfig(t *testing.T) {
 			name:                     "no network specified; captive-core-config-path incorrect config",
 			requireCaptiveCoreConfig: true,
 			config: Config{
-				NetworkPassphrase:     PubnetConf.NetworkPassphrase,
-				HistoryArchiveURLs:    PubnetConf.HistoryArchiveURLs,
+				NetworkPassphrase:     network.PublicNetworkPassphrase,
+				HistoryArchiveURLs:    network.PublicNetworkhistoryArchiveURLs,
 				CaptiveCoreConfigPath: "../../../ingest/ledgerbackend/configs/captive-core-testnet.cfg",
 				CaptiveCoreBinaryPath: "/path/to/captive-core/binary",
 			},
 			errStr: fmt.Sprintf("invalid captive core toml file: invalid captive core toml: "+
 				"NETWORK_PASSPHRASE in captive core config file: %s does not match Horizon "+
-				"network-passphrase flag: %s", TestnetConf.NetworkPassphrase, PubnetConf.NetworkPassphrase),
+				"network-passphrase flag: %s", network.TestNetworkPassphrase, network.PublicNetworkPassphrase),
 		},
 		{
-			name:                     "no network specified; captive-core-config not required",
+			name:                     "no network specified; full captive-core-config not required",
 			requireCaptiveCoreConfig: false,
 			config: Config{
-				NetworkPassphrase:     PubnetConf.NetworkPassphrase,
-				HistoryArchiveURLs:    PubnetConf.HistoryArchiveURLs,
 				CaptiveCoreBinaryPath: "/path/to/captive-core/binary",
 			},
-			networkPassphrase:  PubnetConf.NetworkPassphrase,
-			historyArchiveURLs: PubnetConf.HistoryArchiveURLs,
 		},
 	}
 	for _, tt := range tests {
@@ -198,10 +215,6 @@ func Test_createCaptiveCoreConfig(t *testing.T) {
 				ApplyOptions{RequireCaptiveCoreFullConfig: tt.requireCaptiveCoreConfig})
 			if tt.errStr == "" {
 				assert.NoError(t, e)
-				assert.Equal(t, tt.networkPassphrase, tt.config.NetworkPassphrase)
-				assert.Equal(t, tt.historyArchiveURLs, tt.config.HistoryArchiveURLs)
-				assert.Equal(t, tt.networkPassphrase, tt.config.CaptiveCoreTomlParams.NetworkPassphrase)
-				assert.Equal(t, tt.historyArchiveURLs, tt.config.CaptiveCoreTomlParams.HistoryArchiveURLs)
 			} else {
 				require.Error(t, e)
 				assert.Equal(t, tt.errStr, e.Error())
@@ -261,7 +274,7 @@ func TestClientQueryTimeoutFlag(t *testing.T) {
 			if err := flags.Init(horizonCmd); err != nil {
 				require.NoError(t, err)
 			}
-			if err := ApplyFlags(config, flags, ApplyOptions{RequireCaptiveCoreFullConfig: true, AlwaysIngest: false}); err != nil {
+			if err := ApplyFlags(config, flags, ApplyOptions{RequireCaptiveCoreFullConfig: true}); err != nil {
 				require.EqualError(t, err, testCase.err)
 			} else {
 				require.Empty(t, testCase.err)
@@ -293,7 +306,7 @@ func TestEnvironmentVariables(t *testing.T) {
 	if err := flags.Init(horizonCmd); err != nil {
 		fmt.Println(err)
 	}
-	if err := ApplyFlags(config, flags, ApplyOptions{RequireCaptiveCoreFullConfig: true, AlwaysIngest: false}); err != nil {
+	if err := ApplyFlags(config, flags, ApplyOptions{RequireCaptiveCoreFullConfig: true}); err != nil {
 		fmt.Println(err)
 	}
 	assert.Equal(t, config.Ingest, false)
