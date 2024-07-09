@@ -270,11 +270,6 @@ var (
 	ledgerBackendType        ingest.LedgerBackendType
 )
 
-type StorageBackendConfig struct {
-	DataStoreConfig              datastore.DataStoreConfig                  `toml:"datastore_config"`
-	BufferedStorageBackendConfig ledgerbackend.BufferedStorageBackendConfig `toml:"buffered_storage_backend_config"`
-}
-
 func ingestRangeCmdOpts() support.ConfigOptions {
 	return support.ConfigOptions{
 		{
@@ -385,6 +380,7 @@ var dbReingestRangeCmd = &cobra.Command{
 		}
 
 		var storageBackendConfig ingest.StorageBackendConfig
+		options := horizon.ApplyOptions{RequireCaptiveCoreFullConfig: false, AlwaysIngest: false}
 		if ledgerBackendType == ingest.BufferedStorageBackend {
 			cfg, err := toml.LoadFile(storageBackendConfigPath)
 			if err != nil {
@@ -395,9 +391,10 @@ var dbReingestRangeCmd = &cobra.Command{
 			}
 			storageBackendConfig.BufferedStorageBackendFactory = ledgerbackend.NewBufferedStorageBackend
 			storageBackendConfig.DataStoreFactory = datastore.NewDataStore
+			options.NoCaptiveCore = true
 		}
 
-		err := horizon.ApplyFlags(globalConfig, globalFlags, horizon.ApplyOptions{RequireCaptiveCoreFullConfig: false, AlwaysIngest: false})
+		err := horizon.ApplyFlags(globalConfig, globalFlags, options)
 		if err != nil {
 			return err
 		}
@@ -447,6 +444,7 @@ var dbFillGapsCmd = &cobra.Command{
 		}
 
 		var storageBackendConfig ingest.StorageBackendConfig
+		options := horizon.ApplyOptions{RequireCaptiveCoreFullConfig: false, AlwaysIngest: false}
 		if ledgerBackendType == ingest.BufferedStorageBackend {
 			cfg, err := toml.LoadFile(storageBackendConfigPath)
 			if err != nil {
@@ -457,9 +455,10 @@ var dbFillGapsCmd = &cobra.Command{
 			}
 			storageBackendConfig.BufferedStorageBackendFactory = ledgerbackend.NewBufferedStorageBackend
 			storageBackendConfig.DataStoreFactory = datastore.NewDataStore
+			options.NoCaptiveCore = true
 		}
 
-		err := horizon.ApplyFlags(globalConfig, globalFlags, horizon.ApplyOptions{RequireCaptiveCoreFullConfig: false, AlwaysIngest: false})
+		err := horizon.ApplyFlags(globalConfig, globalFlags, options)
 		if err != nil {
 			return err
 		}
