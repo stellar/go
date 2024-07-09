@@ -17,6 +17,7 @@ import (
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/support/datastore"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 	logpkg "github.com/stellar/go/support/log"
@@ -108,6 +109,32 @@ func TestNewSystem(t *testing.T) {
 	CompareConfigs(t, config, system.runner.(*ProcessorRunner).config)
 	assert.Equal(t, system.ctx, system.runner.(*ProcessorRunner).ctx)
 	assert.Equal(t, system.maxLedgerPerFlush, MaxLedgersPerFlush)
+}
+
+func TestNewSystemBuffered(t *testing.T) {
+	mockDataStore := &datastore.MockDataStore{}
+	bufferedStorageBackend := &ledgerbackend.BufferedStorageBackend{}
+	config := Config{
+		HistorySession:      &db.Session{DB: &sqlx.DB{}},
+		HistoryArchiveURLs:  []string{"https://history.stellar.org/prd/core-live/core_live_001"},
+		CheckpointFrequency: 64,
+		LedgerBackendType:   BufferedStorageBackend,
+		StorageBackendConfig: StorageBackendConfig{
+			DataStoreConfig:              datastore.DataStoreConfig{Type: "GCS", Params: map[string]string{"destination_bucket_path": "Test"}},
+			BufferedStorageBackendConfig: ledgerbackend.BufferedStorageBackendConfig{NumWorkers: 1, BufferSize: 2},
+			DataStoreFactory: func(ctx context.Context, datastoreConfig datastore.DataStoreConfig) (datastore.DataStore, error) {
+				return mockDataStore, nil
+			},
+			BufferedStorageBackendFactory: func(ctx context.Context, config ledgerbackend.BufferedStorageBackendConfig, dataStore datastore.DataStore) (*ledgerbackend.BufferedStorageBackend, error) {
+				return bufferedStorageBackend, nil
+			},
+		},
+	}
+
+	sIface, err := NewSystem(config)
+	assert.NoError(t, err)
+	system := sIface.(*system)
+	assert.Same(t, system.ledgerBackend, bufferedStorageBackend)
 }
 
 // Custom comparator function.This function is needed because structs in Go that contain function fields

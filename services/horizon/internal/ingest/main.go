@@ -100,6 +100,13 @@ func (s LedgerBackendType) String() string {
 	return ""
 }
 
+type StorageBackendConfig struct {
+	DataStoreConfig               datastore.DataStoreConfig `toml:"datastore_config"`
+	DataStoreFactory              datastore.DataStoreFactory
+	BufferedStorageBackendConfig  ledgerbackend.BufferedStorageBackendConfig `toml:"buffered_storage_backend_config"`
+	BufferedStorageBackendFactory ledgerbackend.BufferedStorageBackendFactory
+}
+
 type Config struct {
 	StellarCoreURL         string
 	CaptiveCoreBinaryPath  string
@@ -134,9 +141,8 @@ type Config struct {
 
 	ReapConfig ReapConfig
 
-	LedgerBackendType     LedgerBackendType
-	DataStoreConfig       datastore.DataStoreConfig
-	BufferedBackendConfig ledgerbackend.BufferedStorageBackendConfig
+	LedgerBackendType    LedgerBackendType
+	StorageBackendConfig StorageBackendConfig
 }
 
 const (
@@ -289,12 +295,12 @@ func NewSystem(config Config) (System, error) {
 	if config.LedgerBackendType == BufferedStorageBackend {
 		// Ingest from datastore
 		var dataStore datastore.DataStore
-		dataStore, err = datastore.NewDataStore(context.Background(), config.DataStoreConfig)
+		dataStore, err = config.StorageBackendConfig.DataStoreFactory(context.Background(), config.StorageBackendConfig.DataStoreConfig)
 		if err != nil {
 			cancel()
 			return nil, fmt.Errorf("failed to create datastore: %w", err)
 		}
-		ledgerBackend, err = ledgerbackend.NewBufferedStorageBackend(ctx, config.BufferedBackendConfig, dataStore)
+		ledgerBackend, err = config.StorageBackendConfig.BufferedStorageBackendFactory(ctx, config.StorageBackendConfig.BufferedStorageBackendConfig, dataStore)
 		if err != nil {
 			cancel()
 			return nil, fmt.Errorf("failed to create buffered storage backend: %w", err)

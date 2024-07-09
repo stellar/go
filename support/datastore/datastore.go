@@ -13,6 +13,8 @@ type DataStoreConfig struct {
 	Schema DataStoreSchema   `toml:"schema"`
 }
 
+type DataStoreFactory func(ctx context.Context, datastoreConfig DataStoreConfig) (DataStore, error)
+
 // DataStore defines an interface for interacting with data storage
 type DataStore interface {
 	GetFileMetadata(ctx context.Context, path string) (map[string]string, error)

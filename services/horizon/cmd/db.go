@@ -270,11 +270,6 @@ var (
 	ledgerBackendType        ingest.LedgerBackendType
 )
 
-type StorageBackendConfig struct {
-	DataStoreConfig              datastore.DataStoreConfig                  `toml:"datastore_config"`
-	BufferedStorageBackendConfig ledgerbackend.BufferedStorageBackendConfig `toml:"buffered_storage_backend_config"`
-}
-
 func ingestRangeCmdOpts() support.ConfigOptions {
 	return support.ConfigOptions{
 		{
@@ -384,7 +379,7 @@ var dbReingestRangeCmd = &cobra.Command{
 			}
 		}
 
-		var storageBackendConfig StorageBackendConfig
+		var storageBackendConfig ingest.StorageBackendConfig
 		if ledgerBackendType == ingest.BufferedStorageBackend {
 			cfg, err := toml.LoadFile(storageBackendConfigPath)
 			if err != nil {
@@ -393,6 +388,8 @@ var dbReingestRangeCmd = &cobra.Command{
 			if err = cfg.Unmarshal(&storageBackendConfig); err != nil {
 				return fmt.Errorf("error unmarshalling TOML config: %w", err)
 			}
+			storageBackendConfig.BufferedStorageBackendFactory = ledgerbackend.NewBufferedStorageBackend
+			storageBackendConfig.DataStoreFactory = datastore.NewDataStore
 		}
 
 		err := horizon.ApplyFlags(globalConfig, globalFlags, horizon.ApplyOptions{RequireCaptiveCoreFullConfig: false, AlwaysIngest: false})
@@ -444,7 +441,7 @@ var dbFillGapsCmd = &cobra.Command{
 			withRange = true
 		}
 
-		var storageBackendConfig StorageBackendConfig
+		var storageBackendConfig ingest.StorageBackendConfig
 		if ledgerBackendType == ingest.BufferedStorageBackend {
 			cfg, err := toml.LoadFile(storageBackendConfigPath)
 			if err != nil {
@@ -453,6 +450,8 @@ var dbFillGapsCmd = &cobra.Command{
 			if err = cfg.Unmarshal(&storageBackendConfig); err != nil {
 				return fmt.Errorf("error unmarshalling TOML config: %w", err)
 			}
+			storageBackendConfig.BufferedStorageBackendFactory = ledgerbackend.NewBufferedStorageBackend
+			storageBackendConfig.DataStoreFactory = datastore.NewDataStore
 		}
 
 		err := horizon.ApplyFlags(globalConfig, globalFlags, horizon.ApplyOptions{RequireCaptiveCoreFullConfig: false, AlwaysIngest: false})
@@ -478,7 +477,7 @@ var dbFillGapsCmd = &cobra.Command{
 	},
 }
 
-func runDBReingestRange(ledgerRanges []history.LedgerRange, reingestForce bool, parallelWorkers uint, config horizon.Config, storageBackendConfig StorageBackendConfig) error {
+func runDBReingestRange(ledgerRanges []history.LedgerRange, reingestForce bool, parallelWorkers uint, config horizon.Config, storageBackendConfig ingest.StorageBackendConfig) error {
 	var err error
 
 	if reingestForce && parallelWorkers > 1 {
@@ -506,8 +505,7 @@ func runDBReingestRange(ledgerRanges []history.LedgerRange, reingestForce bool, 
 		MaxLedgerPerFlush:           maxLedgersPerFlush,
 		SkipTxmeta:                  config.SkipTxmeta,
 		LedgerBackendType:           ledgerBackendType,
-		DataStoreConfig:             storageBackendConfig.DataStoreConfig,
-		BufferedBackendConfig:       storageBackendConfig.BufferedStorageBackendConfig,
+		StorageBackendConfig:        storageBackendConfig,
 	}
 
 	if ingestConfig.HistorySession, err = db.Open("postgres", config.DatabaseURL); err != nil {
