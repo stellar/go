@@ -832,7 +832,7 @@ func Flags() (*Config, support.ConfigOptions) {
 
 // NewAppFromFlags constructs a new Horizon App from the given command line flags
 func NewAppFromFlags(config *Config, flags support.ConfigOptions) (*App, error) {
-	err := ApplyFlags(config, flags, ApplyOptions{RequireCaptiveCoreFullConfig: true, AlwaysIngest: false})
+	err := ApplyFlags(config, flags, ApplyOptions{RequireCaptiveCoreFullConfig: true})
 	if err != nil {
 		return nil, err
 	}
@@ -850,7 +850,6 @@ func NewAppFromFlags(config *Config, flags support.ConfigOptions) (*App, error) 
 }
 
 type ApplyOptions struct {
-	AlwaysIngest                 bool
 	RequireCaptiveCoreFullConfig bool
 	NoCaptiveCore                bool
 }
@@ -946,10 +945,6 @@ func ApplyFlags(config *Config, flags support.ConfigOptions, options ApplyOption
 	// Validate options that should be provided together
 	if err := validateBothOrNeither("tls-cert", "tls-key"); err != nil {
 		return err
-	}
-
-	if options.AlwaysIngest {
-		config.Ingest = true
 	}
 
 	if config.Ingest {
