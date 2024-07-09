@@ -148,4 +148,3 @@ jobs:
       - if: github.ref == 'refs/heads/master'
         name: Push to DockerHub
         run: docker push stellar/horizon-verify-range:latest
-

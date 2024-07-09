@@ -186,7 +186,7 @@ func newAdminServer(adminPort int, prometheusRegistry *prometheus.Registry) *htt
 }
 
 func (a *App) Run(runtimeSettings RuntimeSettings) error {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(runtimeSettings.Ctx)
 	defer cancel()
 
 	if err := a.init(ctx, runtimeSettings); err != nil {

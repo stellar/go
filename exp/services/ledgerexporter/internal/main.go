@@ -1,6 +1,7 @@
 package ledgerexporter
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -14,16 +15,15 @@ var (
 		app := NewApp()
 		return app.Run(runtimeSettings)
 	}
-	rootCmd, scanAndFillCmd, appendCmd *cobra.Command
 )
 
 func Execute() error {
-	defineCommands()
+	rootCmd := defineCommands()
 	return rootCmd.Execute()
 }
 
-func defineCommands() {
-	rootCmd = &cobra.Command{
+func defineCommands() *cobra.Command {
+	var rootCmd = &cobra.Command{
 		Use:   "ledgerexporter",
 		Short: "Export Stellar network ledger data to a remote data store",
 		Long:  "Converts ledger meta data from Stellar network into static data and exports it remote data storage.",
@@ -32,7 +32,7 @@ func defineCommands() {
 			return fmt.Errorf("please specify one of the availble sub-commands to initiate export")
 		},
 	}
-	scanAndFillCmd = &cobra.Command{
+	var scanAndFillCmd = &cobra.Command{
 		Use:   "scan-and-fill",
 		Short: "scans the entire bounded requested range between 'start' and 'end' flags and exports only the ledgers which are missing from the data lake.",
 		Long:  "scans the entire bounded requested range between 'start' and 'end' flags and exports only the ledgers which are missing from the data lake.",
@@ -42,10 +42,14 @@ func defineCommands() {
 				cmd.PersistentFlags().Lookup("config-file"),
 			)
 			settings.Mode = ScanFill
+			settings.Ctx = cmd.Context()
+			if settings.Ctx == nil {
+				settings.Ctx = context.Background()
+			}
 			return ledgerExporterCmdRunner(settings)
 		},
 	}
-	appendCmd = &cobra.Command{
+	var appendCmd = &cobra.Command{
 		Use:   "append",
 		Short: "export ledgers beginning with the first missing ledger after the specified 'start' ledger and resumes exporting from there",
 		Long:  "export ledgers beginning with the first missing ledger after the specified 'start' ledger and resumes exporting from there",
@@ -55,6 +59,10 @@ func defineCommands() {
 				cmd.PersistentFlags().Lookup("config-file"),
 			)
 			settings.Mode = Append
+			settings.Ctx = cmd.Context()
+			if settings.Ctx == nil {
+				settings.Ctx = context.Background()
+			}
 			return ledgerExporterCmdRunner(settings)
 		},
 	}
@@ -73,6 +81,8 @@ func defineCommands() {
 		"If 'end' is absent or '0' means unbounded mode, exporter will continue to run indefintely and export the latest closed ledgers from network as they are generated in real time.")
 	appendCmd.PersistentFlags().String("config-file", "config.toml", "Path to the TOML config file. Defaults to 'config.toml' on runtime working directory path.")
 	viper.BindPFlags(appendCmd.PersistentFlags())
+
+	return rootCmd
 }
 
 func bindCliParameters(startFlag *pflag.Flag, endFlag *pflag.Flag, configFileFlag *pflag.Flag) RuntimeSettings {

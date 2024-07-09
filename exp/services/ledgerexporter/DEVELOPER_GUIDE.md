@@ -32,14 +32,31 @@ To achieve its goals, the ledger exporter uses the following architecture, which
 - An example implementation of `DataStore` for GCS, Google Cloud Storage. This plugin is located in the [support](https://github.com/stellar/go/tree/master/support/datastore) package. 
 - The ledger exporter currently implements the interface only for Google Cloud Storage (GCS). The [GCS plugin](https://github.com/stellar/go/blob/master/support/datastore/gcs_datastore.go) uses GCS-specific behaviors like conditional puts, automatic retry, metadata, and CRC checksum.
 
-## Build, Run and Test using Docker
+## Build and Run using Docker
 The Dockerfile contains all the necessary dependencies (e.g., Stellar-core) required to run the ledger exporter. 
 
 - Build: To build the Docker container, use the provided [Makefile](./Makefile). Simply run make `make docker-build` to build a new container after making any changes.
 
 - Run: For instructions on running the Docker container, refer to the [Installation Guide](./README.md).
 
-- Test: To test the Docker container, refer to the [docker-test](./Makefile) command for an example of how to use the [GCS emulator](https://github.com/fsouza/fake-gcs-server) for local testing.
+- Run ledgerexporter with a local, fake GCS backend: Requires `make docker-build` first, then run `make docker-test-fake-gcs`. This will run the ledger exporter against `testnet` and export to the 'fake' GCS instance started in the container.
+
+## Running Integration Tests:
+from top directory of stellar/go repo, run go test to launch ledger exporter integration
+tests.
+
+`LEDGEREXPORTER_INTEGRATION_TESTS_ENABLED=true` is required environment variable to allow
+tests to run.
+
+Optional, tests will try to run `stellar-core` from o/s PATH for captive core, if not resolvable, then set `LEDGEREXPORTER_INTEGRATION_TESTS_CAPTIVE_CORE_BIN=/path/to/stellar-core` 
+
+Optional, can override the version of quickstart used to run standalone stellar network, `LEDGEREXPORTER_INTEGRATION_TESTS_QUICKSTART_IMAGE=docker.io/stellar/quickstart:<tag>`. By default it will try to docker pull `stellar/quickstart:testing` image to local host's docker image store. Set `LEDGEREXPORTER_INTEGRATION_TESTS_QUICKSTART_IMAGE_PULL=false` to skip the pull, if you know host has up to date image.
+
+Note, the version of stellar core in `LEDGEREXPORTER_INTEGRATION_TESTS_QUICKSTART_IMAGE` and `LEDGEREXPORTER_INTEGRATION_TESTS_CAPTIVE_CORE_BIN` needs to be on the same major rev or the captive core process may not be able to join or parse ledger meta from the `local` network created by `LEDGEREXPORTER_INTEGRATION_TESTS_QUICKSTART_IMAGE`
+
+```
+$ LEDGEREXPORTER_INTEGRATION_TESTS_ENABLED=true go test -v -race -run TestLedgerExporterTestSuite ./exp/services/ledgerexporter/...
+```
 
 ## Adding support for a new storage type
 Support for different data storage types are encapsulated as 'plugins', which are implementation of `DataStore` interface in a go package. To add a data storage plugin based on a new storage type (e.g. AWS S3), follow these steps:

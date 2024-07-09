@@ -2,6 +2,7 @@ package ledgerexporter
 
 import (
 	"bytes"
+	"context"
 	"io"
 	"testing"
 
@@ -19,6 +20,8 @@ func TestFlagsOutput(t *testing.T) {
 	appRunnerError := func(runtimeSettings RuntimeSettings) error {
 		return errors.New("test error")
 	}
+
+	ctx := context.Background()
 
 	testCases := []struct {
 		name              string
@@ -42,6 +45,7 @@ func TestFlagsOutput(t *testing.T) {
 				EndLedger:      5,
 				ConfigFilePath: "myfile",
 				Mode:           Append,
+				Ctx:            ctx,
 			},
 		},
 		{
@@ -54,6 +58,7 @@ func TestFlagsOutput(t *testing.T) {
 				EndLedger:      0,
 				ConfigFilePath: "myfile",
 				Mode:           Append,
+				Ctx:            ctx,
 			},
 		},
 		{
@@ -72,6 +77,7 @@ func TestFlagsOutput(t *testing.T) {
 				EndLedger:      5,
 				ConfigFilePath: "myfile",
 				Mode:           ScanFill,
+				Ctx:            ctx,
 			},
 		},
 		{
@@ -84,6 +90,7 @@ func TestFlagsOutput(t *testing.T) {
 				EndLedger:      0,
 				ConfigFilePath: "myfile",
 				Mode:           ScanFill,
+				Ctx:            ctx,
 			},
 		},
 		{
@@ -97,13 +104,13 @@ func TestFlagsOutput(t *testing.T) {
 		t.Run(testCase.name, func(t *testing.T) {
 			// mock the ledger exporter's cmd runner to be this test's mock routine instead of real app
 			ledgerExporterCmdRunner = testCase.appRunner
-			defineCommands()
+			rootCmd := defineCommands()
 			rootCmd.SetArgs(testCase.commandArgs)
 			var errWriter io.Writer = &bytes.Buffer{}
 			var outWriter io.Writer = &bytes.Buffer{}
 			rootCmd.SetErr(errWriter)
 			rootCmd.SetOut(outWriter)
-			rootCmd.Execute()
+			rootCmd.ExecuteContext(ctx)
 
 			errOutput := errWriter.(*bytes.Buffer).String()
 			if testCase.expectedErrOutput != "" {

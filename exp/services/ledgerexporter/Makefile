@@ -20,7 +20,7 @@ docker-clean:
 	$(SUDO) rm -rf ${PWD}/storage || true
 	$(SUDO) docker network rm test-network || true
     
-docker-test: docker-clean
+docker-test-fake-gcs: docker-clean
 	# Create temp storage dir
 	$(SUDO) mkdir -p ${PWD}/storage/exporter-test 
 
