@@ -127,8 +127,7 @@ func TestEnvironmentPreserved(t *testing.T) {
 // using NETWORK environment variables, history archive urls or network passphrase
 // parameters are also set.
 func TestInvalidNetworkParameters(t *testing.T) {
-	var captiveCoreConfigErrMsg = integration.HorizonInitErrStr + ": error generating captive " +
-		"core configuration: invalid config: %s parameter not allowed with the %s parameter"
+	var captiveCoreConfigErrMsg = integration.HorizonInitErrStr + ": invalid config: %s parameter not allowed with the %s parameter"
 	testCases := []struct {
 		name         string
 		errMsg       string
