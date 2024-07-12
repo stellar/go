@@ -63,6 +63,7 @@ require (
 	github.com/docker/docker v27.0.3+incompatible
 	github.com/docker/go-connections v0.5.0
 	github.com/fsouza/fake-gcs-server v1.49.2
+	github.com/otiai10/copy v1.14.0
 )
 
 require (

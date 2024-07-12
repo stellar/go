@@ -3,6 +3,7 @@ package cmd
 import (
 	"testing"
 
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
@@ -19,21 +20,8 @@ func TestDBCommandsTestSuite(t *testing.T) {
 
 type DBCommandsTestSuite struct {
 	suite.Suite
-	dsn string
-}
-
-func (s *DBCommandsTestSuite) SetupTest() {
-	resetFlags()
-}
-
-func resetFlags() {
-	RootCmd.ResetFlags()
-	dbFillGapsCmd.ResetFlags()
-	dbReingestRangeCmd.ResetFlags()
-
-	globalFlags.Init(RootCmd)
-	dbFillGapsCmdOpts.Init(dbFillGapsCmd)
-	dbReingestRangeCmdOpts.Init(dbReingestRangeCmd)
+	db      *dbtest.DB
+	rootCmd *cobra.Command
 }
 
 func (s *DBCommandsTestSuite) SetupSuite() {
@@ -42,18 +30,25 @@ func (s *DBCommandsTestSuite) SetupSuite() {
 		return nil
 	}
 
-	newDB := dbtest.Postgres(s.T())
-	s.dsn = newDB.DSN
+	s.db = dbtest.Postgres(s.T())
 
 	RootCmd.SetArgs([]string{
-		"db", "migrate", "up", "--db-url", s.dsn})
+		"db", "migrate", "up", "--db-url", s.db.DSN})
 	require.NoError(s.T(), RootCmd.Execute())
 }
 
+func (s *DBCommandsTestSuite) TearDownSuite() {
+	s.db.Close()
+}
+
+func (s *DBCommandsTestSuite) BeforeTest(suiteName string, testName string) {
+	s.rootCmd = NewRootCmd()
+}
+
 func (s *DBCommandsTestSuite) TestDefaultParallelJobSizeForBufferedBackend() {
-	RootCmd.SetArgs([]string{
+	s.rootCmd.SetArgs([]string{
 		"db", "reingest", "range",
-		"--db-url", s.dsn,
+		"--db-url", s.db.DSN,
 		"--network", "testnet",
 		"--parallel-workers", "2",
 		"--ledgerbackend", "datastore",
@@ -61,14 +56,14 @@ func (s *DBCommandsTestSuite) TestDefaultParallelJobSizeForBufferedBackend() {
 		"2",
 		"10"})
 
-	require.NoError(s.T(), dbReingestRangeCmd.Execute())
+	require.NoError(s.T(), s.rootCmd.Execute())
 	require.Equal(s.T(), parallelJobSize, uint32(100))
 }
 
 func (s *DBCommandsTestSuite) TestDefaultParallelJobSizeForCaptiveBackend() {
-	RootCmd.SetArgs([]string{
+	s.rootCmd.SetArgs([]string{
 		"db", "reingest", "range",
-		"--db-url", s.dsn,
+		"--db-url", s.db.DSN,
 		"--network", "testnet",
 		"--stellar-core-binary-path", "/test/core/bin/path",
 		"--parallel-workers", "2",
@@ -76,14 +71,14 @@ func (s *DBCommandsTestSuite) TestDefaultParallelJobSizeForCaptiveBackend() {
 		"2",
 		"10"})
 
-	require.NoError(s.T(), RootCmd.Execute())
+	require.NoError(s.T(), s.rootCmd.Execute())
 	require.Equal(s.T(), parallelJobSize, uint32(100_000))
 }
 
 func (s *DBCommandsTestSuite) TestUsesParallelJobSizeWhenSetForCaptive() {
-	RootCmd.SetArgs([]string{
+	s.rootCmd.SetArgs([]string{
 		"db", "reingest", "range",
-		"--db-url", s.dsn,
+		"--db-url", s.db.DSN,
 		"--network", "testnet",
 		"--stellar-core-binary-path", "/test/core/bin/path",
 		"--parallel-workers", "2",
@@ -92,14 +87,14 @@ func (s *DBCommandsTestSuite) TestUsesParallelJobSizeWhenSetForCaptive() {
 		"2",
 		"10"})
 
-	require.NoError(s.T(), RootCmd.Execute())
+	require.NoError(s.T(), s.rootCmd.Execute())
 	require.Equal(s.T(), parallelJobSize, uint32(5))
 }
 
 func (s *DBCommandsTestSuite) TestUsesParallelJobSizeWhenSetForBuffered() {
-	RootCmd.SetArgs([]string{
+	s.rootCmd.SetArgs([]string{
 		"db", "reingest", "range",
-		"--db-url", s.dsn,
+		"--db-url", s.db.DSN,
 		"--network", "testnet",
 		"--parallel-workers", "2",
 		"--parallel-job-size", "5",
@@ -108,7 +103,7 @@ func (s *DBCommandsTestSuite) TestUsesParallelJobSizeWhenSetForBuffered() {
 		"2",
 		"10"})
 
-	require.NoError(s.T(), RootCmd.Execute())
+	require.NoError(s.T(), s.rootCmd.Execute())
 	require.Equal(s.T(), parallelJobSize, uint32(5))
 }
 
@@ -249,21 +244,21 @@ func (s *DBCommandsTestSuite) TestDbReingestAndFillGapsCmds() {
 	for _, command := range commands {
 		for _, tt := range tests {
 			s.T().Run(tt.name+"_"+command.name, func(t *testing.T) {
-				resetFlags()
 
+				rootCmd := NewRootCmd()
 				var args []string
 				args = append(command.cmd, tt.args...)
-				RootCmd.SetArgs(append([]string{
-					"--db-url", s.dsn,
+				rootCmd.SetArgs(append([]string{
+					"--db-url", s.db.DSN,
 					"--stellar-core-binary-path", "/test/core/bin/path",
 				}, args...))
 
 				if tt.expectError {
-					err := RootCmd.Execute()
+					err := rootCmd.Execute()
 					require.Error(t, err)
 					require.Contains(t, err.Error(), tt.errorMessage)
 				} else {
-					require.NoError(t, RootCmd.Execute())
+					require.NoError(t, rootCmd.Execute())
 				}
 			})
 		}
