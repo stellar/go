@@ -326,6 +326,7 @@ func NewSystem(config Config) (System, error) {
 			config.ReapConfig,
 			config.HistorySession,
 		),
+		reapOffsets: map[string]int64{},
 	}
 
 	system.initMetrics()
