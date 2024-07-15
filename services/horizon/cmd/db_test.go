@@ -52,7 +52,7 @@ func (s *DBCommandsTestSuite) TestDefaultParallelJobSizeForBufferedBackend() {
 		"--network", "testnet",
 		"--parallel-workers", "2",
 		"--ledgerbackend", "datastore",
-		"--datastore-config", "../config.storagebackend.toml",
+		"--datastore-config", "../internal/ingest/testdata/config.storagebackend.toml",
 		"2",
 		"10"})
 
@@ -99,7 +99,7 @@ func (s *DBCommandsTestSuite) TestUsesParallelJobSizeWhenSetForBuffered() {
 		"--parallel-workers", "2",
 		"--parallel-job-size", "5",
 		"--ledgerbackend", "datastore",
-		"--datastore-config", "../config.storagebackend.toml",
+		"--datastore-config", "../internal/ingest/testdata/config.storagebackend.toml",
 		"2",
 		"10"})
 
@@ -154,7 +154,7 @@ func (s *DBCommandsTestSuite) TestDbReingestAndFillGapsCmds() {
 			args: []string{
 				"1", "100",
 				"--ledgerbackend", "datastore",
-				"--datastore-config", "../config.storagebackend.toml",
+				"--datastore-config", "../internal/ingest/testdata/config.storagebackend.toml",
 				"--network-passphrase", "passphrase",
 				"--history-archive-urls", "[]",
 			},
@@ -165,7 +165,7 @@ func (s *DBCommandsTestSuite) TestDbReingestAndFillGapsCmds() {
 			args: []string{
 				"1", "100",
 				"--ledgerbackend", "datastore",
-				"--datastore-config", "../config.storagebackend.toml",
+				"--datastore-config", "../internal/ingest/testdata/config.storagebackend.toml",
 			},
 			expectError:  true,
 			errorMessage: "network-passphrase must be set",
@@ -175,7 +175,7 @@ func (s *DBCommandsTestSuite) TestDbReingestAndFillGapsCmds() {
 			args: []string{
 				"1", "100",
 				"--ledgerbackend", "datastore",
-				"--datastore-config", "../config.storagebackend.toml",
+				"--datastore-config", "../internal/ingest/testdata/config.storagebackend.toml",
 				"--network-passphrase", "passphrase",
 			},
 			expectError:  true,
@@ -217,7 +217,7 @@ func (s *DBCommandsTestSuite) TestDbReingestAndFillGapsCmds() {
 				"1", "100",
 				"--network", "testnet",
 				"--ledgerbackend", "datastore",
-				"--datastore-config", "../config.storagebackend.toml",
+				"--datastore-config", "../internal/ingest/testdata/config.storagebackend.toml",
 			},
 			expectError: false,
 		},

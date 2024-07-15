@@ -614,7 +614,7 @@ func TestReingestDatastore(t *testing.T) {
 		"--network", "testnet",
 		"--parallel-workers", "1",
 		"--ledgerbackend", "datastore",
-		"--datastore-config", "../../config.storagebackend.toml",
+		"--datastore-config", "../ingest/testdata/config.storagebackend.toml",
 		"997",
 		"999"})
 
