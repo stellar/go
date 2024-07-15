@@ -17,15 +17,18 @@ jobs:
       LEDGEREXPORTER_INTEGRATION_TESTS_QUICKSTART_IMAGE: docker.io/stellar/quickstart:testing@sha256:03c6679f838a92b1eda4cd3a9e2bdee4c3586e278a138a0acf36a9bc99a0041f
       LEDGEREXPORTER_INTEGRATION_TESTS_QUICKSTART_IMAGE_PULL: "false"
       STELLAR_CORE_VERSION: 21.1.0-1921.b3aeb14cc.focal
-      VERSION: ${GITHUB_REF_NAME#ledgerexporter-v} 
     steps:
+      - name: Set VERSION
+        run: |
+          echo "VERSION=${GITHUB_REF_NAME#ledgerexporter-v}" >> $GITHUB_ENV
+
       - uses: actions/checkout@v3
         with:
-          ref: github.sha
+          ref: ${{ github.sha }}
       - name: Pull Quickstart image
         shell: bash
         run: |
-          docker pull "$LEDGEREXPORTER_INTEGRATION_TESTS_QUICKSTART_IMAGE"    
+          docker pull "$LEDGEREXPORTER_INTEGRATION_TESTS_QUICKSTART_IMAGE"
       - name: Install captive core
         run: |
           # Workaround for https://github.com/actions/virtual-environments/issues/5245,
@@ -40,7 +43,7 @@ jobs:
           echo "Using stellar core version $(stellar-core version)"
 
       - name: Run Ledger Exporter test
-        run: go test -v -race -run TestLedgerExporterTestSuite ./exp/services/ledgerexporter/... 
+        run: go test -v -race -run TestLedgerExporterTestSuite ./exp/services/ledgerexporter/...
 
       - name: Build Ledger Exporter docker
         run: make -C exp/services/ledgerexporter docker-build
