@@ -145,9 +145,8 @@ type Metrics struct {
 	// duration of rebuilding trade aggregation buckets.
 	LedgerIngestionTradeAggregationDuration prometheus.Summary
 
-	// LedgerIngestionReapLookupTablesDuration exposes timing metrics about the rate and
-	// duration of reaping lookup tables.
-	LedgerIngestionReapLookupTablesDuration prometheus.Summary
+	ReapDurationByLookupTable *prometheus.SummaryVec
+	RowsReapedByLookupTable   *prometheus.SummaryVec
 
 	// StateVerifyDuration exposes timing metrics about the rate and
 	// duration of state verification.
@@ -228,7 +227,7 @@ type system struct {
 
 	runStateVerificationOnLedger func(uint32) bool
 
-	reapOffsets       map[string]int64
+	reapOffsetByTable map[string]int64
 	maxLedgerPerFlush uint32
 
 	reaper *Reaper
@@ -327,6 +326,7 @@ func NewSystem(config Config) (System, error) {
 			config.ReapConfig,
 			config.HistorySession,
 		),
+		reapOffsetByTable: map[string]int64{},
 	}
 
 	system.initMetrics()
@@ -367,11 +367,17 @@ func (s *system) initMetrics() {
 		Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
 	})
 
-	s.metrics.LedgerIngestionReapLookupTablesDuration = prometheus.NewSummary(prometheus.SummaryOpts{
-		Namespace: "horizon", Subsystem: "ingest", Name: "ledger_ingestion_reap_lookup_tables_duration_seconds",
-		Help:       "ledger ingestion reap lookup tables durations, sliding window = 10m",
+	s.metrics.ReapDurationByLookupTable = prometheus.NewSummaryVec(prometheus.SummaryOpts{
+		Namespace: "horizon", Subsystem: "ingest", Name: "reap_lookup_tables_duration_seconds",
+		Help:       "reap lookup tables durations, sliding window = 10m",
 		Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
-	})
+	}, []string{"table"})
+
+	s.metrics.RowsReapedByLookupTable = prometheus.NewSummaryVec(prometheus.SummaryOpts{
+		Namespace: "horizon", Subsystem: "ingest", Name: "reap_lookup_tables_rows_reaped",
+		Help:       "rows deleted during lookup tables reap, sliding window = 10m",
+		Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
+	}, []string{"table"})
 
 	s.metrics.StateVerifyDuration = prometheus.NewSummary(prometheus.SummaryOpts{
 		Namespace: "horizon", Subsystem: "ingest", Name: "state_verify_duration_seconds",
@@ -490,7 +496,8 @@ func (s *system) RegisterMetrics(registry *prometheus.Registry) {
 	registry.MustRegister(s.metrics.LocalLatestLedger)
 	registry.MustRegister(s.metrics.LedgerIngestionDuration)
 	registry.MustRegister(s.metrics.LedgerIngestionTradeAggregationDuration)
-	registry.MustRegister(s.metrics.LedgerIngestionReapLookupTablesDuration)
+	registry.MustRegister(s.metrics.ReapDurationByLookupTable)
+	registry.MustRegister(s.metrics.RowsReapedByLookupTable)
 	registry.MustRegister(s.metrics.StateVerifyDuration)
 	registry.MustRegister(s.metrics.StateInvalidGauge)
 	registry.MustRegister(s.metrics.LedgerStatsCounter)
@@ -793,7 +800,7 @@ func (s *system) maybeReapLookupTables(lastIngestedLedger uint32) {
 	defer cancel()
 
 	reapStart := time.Now()
-	deletedCount, newOffsets, err := s.historyQ.ReapLookupTables(ctx, s.reapOffsets)
+	results, err := s.historyQ.ReapLookupTables(ctx, s.reapOffsetByTable)
 	if err != nil {
 		log.WithError(err).Warn("Error reaping lookup tables")
 		return
@@ -807,18 +814,20 @@ func (s *system) maybeReapLookupTables(lastIngestedLedger uint32) {
 
 	totalDeleted := int64(0)
 	reapLog := log
-	for table, c := range deletedCount {
-		totalDeleted += c
-		reapLog = reapLog.WithField(table, c)
+	for table, result := range results {
+		totalDeleted += result.RowsDeleted
+		reapLog = reapLog.WithField(table, result)
+		s.reapOffsetByTable[table] = result.Offset
+		s.Metrics().RowsReapedByLookupTable.With(prometheus.Labels{"table": table}).Observe(float64(result.RowsDeleted))
+		s.Metrics().ReapDurationByLookupTable.With(prometheus.Labels{"table": table}).Observe(result.Duration.Seconds())
 	}
 
 	if totalDeleted > 0 {
 		reapLog.Info("Reaper deleted rows from lookup tables")
 	}
 
-	s.reapOffsets = newOffsets
-	reapDuration := time.Since(reapStart).Seconds()
-	s.Metrics().LedgerIngestionReapLookupTablesDuration.Observe(float64(reapDuration))
+	s.Metrics().RowsReapedByLookupTable.With(prometheus.Labels{"table": "total"}).Observe(float64(totalDeleted))
+	s.Metrics().ReapDurationByLookupTable.With(prometheus.Labels{"table": "total"}).Observe(time.Since(reapStart).Seconds())
 }
 
 func (s *system) incrementStateVerificationErrors() int {

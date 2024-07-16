@@ -282,7 +282,7 @@ type IngestionQ interface {
 	NewTradeBatchInsertBuilder() TradeBatchInsertBuilder
 	RebuildTradeAggregationTimes(ctx context.Context, from, to strtime.Millis, roundingSlippageFilter int) error
 	RebuildTradeAggregationBuckets(ctx context.Context, fromLedger, toLedger uint32, roundingSlippageFilter int) error
-	ReapLookupTables(ctx context.Context, offsets map[string]int64) (map[string]int64, map[string]int64, error)
+	ReapLookupTables(ctx context.Context, offsets map[string]int64) (map[string]LookupTableReapResult, error)
 	CreateAssets(ctx context.Context, assets []xdr.Asset, batchSize int) (map[string]Asset, error)
 	QTransactions
 	QTrustLines
@@ -971,27 +971,27 @@ type tableObjectFieldPair struct {
 	objectField string
 }
 
+type LookupTableReapResult struct {
+	Offset      int64
+	RowsDeleted int64
+	Duration    time.Duration
+}
+
 // ReapLookupTables removes rows from lookup tables like history_claimable_balances
 // which aren't used (orphaned), i.e. history entries for them were reaped.
 // This method must be executed inside ingestion transaction. Otherwise it may
 // create invalid state in lookup and history tables.
 func (q Q) ReapLookupTables(ctx context.Context, offsets map[string]int64) (
-	map[string]int64, // deleted rows count
-	map[string]int64, // new offsets
+	map[string]LookupTableReapResult,
 	error,
 ) {
 	if q.GetTx() == nil {
-		return nil, nil, errors.New("cannot be called outside of an ingestion transaction")
+		return nil, errors.New("cannot be called outside of an ingestion transaction")
 	}
 
 	const batchSize = 1000
 
-	deletedCount := make(map[string]int64)
-
-	if offsets == nil {
-		offsets = make(map[string]int64)
-	}
-
+	results := map[string]LookupTableReapResult{}
 	for table, historyTables := range map[string][]tableObjectFieldPair{
 		"history_accounts": {
 			{
@@ -1054,9 +1054,10 @@ func (q Q) ReapLookupTables(ctx context.Context, offsets map[string]int64) (
 			},
 		},
 	} {
+		startTime := time.Now()
 		query, err := constructReapLookupTablesQuery(table, historyTables, batchSize, offsets[table])
 		if err != nil {
-			return nil, nil, errors.Wrap(err, "error constructing a query")
+			return nil, errors.Wrap(err, "error constructing a query")
 		}
 
 		// Find new offset before removing the rows
@@ -1066,7 +1067,7 @@ func (q Q) ReapLookupTables(ctx context.Context, offsets map[string]int64) (
 			if q.NoRows(err) {
 				newOffset = 0
 			} else {
-				return nil, nil, err
+				return nil, err
 			}
 		}
 
@@ -1075,18 +1076,21 @@ func (q Q) ReapLookupTables(ctx context.Context, offsets map[string]int64) (
 			query,
 		)
 		if err != nil {
-			return nil, nil, errors.Wrapf(err, "error running query: %s", query)
+			return nil, errors.Wrapf(err, "error running query: %s", query)
 		}
 
 		rows, err := res.RowsAffected()
 		if err != nil {
-			return nil, nil, errors.Wrapf(err, "error running RowsAffected after query: %s", query)
+			return nil, errors.Wrapf(err, "error running RowsAffected after query: %s", query)
 		}
 
-		deletedCount[table] = rows
-		offsets[table] = newOffset
+		results[table] = LookupTableReapResult{
+			Offset:      newOffset,
+			RowsDeleted: rows,
+			Duration:    time.Since(startTime),
+		}
 	}
-	return deletedCount, offsets, nil
+	return results, nil
 }
 
 // constructReapLookupTablesQuery creates a query like (using history_claimable_balances
