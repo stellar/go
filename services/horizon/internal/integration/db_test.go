@@ -3,6 +3,7 @@ package integration
 import (
 	"context"
 	"fmt"
+	"io/fs"
 	"net"
 	"os"
 	"path/filepath"
@@ -11,7 +12,6 @@ import (
 	"time"
 
 	"github.com/fsouza/fake-gcs-server/fakestorage"
-	cp "github.com/otiai10/copy"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -573,27 +573,42 @@ func TestReingestDatastore(t *testing.T) {
 	require.NoError(t, rootCmd.Execute())
 
 	testTempDir := t.TempDir()
-	tempSeedDataPath := filepath.Join(testTempDir, "data")
-	tempSeedBucketPath := filepath.Join(tempSeedDataPath, "path", "to", "my", "bucket")
-	tempSeedBucketFolder := filepath.Join(tempSeedBucketPath, "FFFFFFFF--0-63999")
-	if err := os.MkdirAll(tempSeedBucketFolder, 0777); err != nil {
-		t.Fatalf("unable to create seed data in temp path, %v", err)
-	}
+	fakeBucketFilesSource := "testdata/testbucket"
+	fakeBucketFiles := []fakestorage.Object{}
 
-	err := cp.Copy("./testdata/testbucket", tempSeedBucketFolder)
-	if err != nil {
-		t.Fatalf("unable to copy seed data files for fake gcs, %v", err)
+	if err := filepath.WalkDir(fakeBucketFilesSource, func(path string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if entry.Type().IsRegular() {
+			contents, err := os.ReadFile(fmt.Sprintf("%s/%s", fakeBucketFilesSource, entry.Name()))
+			if err != nil {
+				return err
+			}
+
+			fakeBucketFiles = append(fakeBucketFiles, fakestorage.Object{
+				ObjectAttrs: fakestorage.ObjectAttrs{
+					BucketName: "path",
+					Name:       fmt.Sprintf("to/my/bucket/FFFFFFFF--0-63999/%s", entry.Name()),
+				},
+				Content: contents,
+			})
+		}
+		return nil
+	}); err != nil {
+		t.Fatalf("unable to setup fake bucket files: %v", err)
 	}
 
 	testWriter := &testWriter{test: t}
 	opts := fakestorage.Options{
-		Scheme:      "http",
-		Host:        "127.0.0.1",
-		Port:        uint16(0),
-		Writer:      testWriter,
-		Seed:        tempSeedDataPath,
-		StorageRoot: filepath.Join(testTempDir, "bucket"),
-		PublicHost:  "127.0.0.1",
+		Scheme:         "http",
+		Host:           "127.0.0.1",
+		Port:           uint16(0),
+		Writer:         testWriter,
+		StorageRoot:    filepath.Join(testTempDir, "bucket"),
+		PublicHost:     "127.0.0.1",
+		InitialObjects: fakeBucketFiles,
 	}
 
 	gcsServer, err := fakestorage.NewServerWithOptions(opts)
