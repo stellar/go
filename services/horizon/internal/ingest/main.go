@@ -227,7 +227,7 @@ type system struct {
 
 	runStateVerificationOnLedger func(uint32) bool
 
-	reapOffsets       map[string]int64
+	reapOffsetByTable map[string]int64
 	maxLedgerPerFlush uint32
 
 	reaper *Reaper
@@ -326,7 +326,7 @@ func NewSystem(config Config) (System, error) {
 			config.ReapConfig,
 			config.HistorySession,
 		),
-		reapOffsets: map[string]int64{},
+		reapOffsetByTable: map[string]int64{},
 	}
 
 	system.initMetrics()
@@ -375,7 +375,7 @@ func (s *system) initMetrics() {
 
 	s.metrics.RowsReapedByLookupTable = prometheus.NewSummaryVec(prometheus.SummaryOpts{
 		Namespace: "horizon", Subsystem: "ingest", Name: "reap_lookup_tables_rows_reaped",
-		Help:       "rows delated during lookup tables reap, sliding window = 10m",
+		Help:       "rows deleted during lookup tables reap, sliding window = 10m",
 		Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
 	}, []string{"table"})
 
@@ -800,7 +800,7 @@ func (s *system) maybeReapLookupTables(lastIngestedLedger uint32) {
 	defer cancel()
 
 	reapStart := time.Now()
-	results, err := s.historyQ.ReapLookupTables(ctx, s.reapOffsets)
+	results, err := s.historyQ.ReapLookupTables(ctx, s.reapOffsetByTable)
 	if err != nil {
 		log.WithError(err).Warn("Error reaping lookup tables")
 		return
@@ -817,7 +817,7 @@ func (s *system) maybeReapLookupTables(lastIngestedLedger uint32) {
 	for table, result := range results {
 		totalDeleted += result.RowsDeleted
 		reapLog = reapLog.WithField(table, result)
-		s.reapOffsets[table] = result.Offset
+		s.reapOffsetByTable[table] = result.Offset
 		s.Metrics().RowsReapedByLookupTable.With(prometheus.Labels{"table": table}).Observe(float64(result.RowsDeleted))
 		s.Metrics().ReapDurationByLookupTable.With(prometheus.Labels{"table": table}).Observe(result.Duration.Seconds())
 	}
