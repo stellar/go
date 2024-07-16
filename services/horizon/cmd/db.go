@@ -150,7 +150,9 @@ func ingestRangeCmdOpts() support.ConfigOptions {
 			OptType:     types.String,
 			Required:    false,
 			FlagDefault: ingest.CaptiveCoreBackend.String(),
-			Usage:       "[optional] Specify the ledger backend type: 'captive-core' (default) or 'datastore'",
+			Usage: fmt.Sprintf("[optional] Specify the ledger backend type: '%s' (default) or '%s'",
+				ingest.CaptiveCoreBackend.String(),
+				ingest.BufferedStorageBackend.String()),
 			CustomSetValue: func(co *support.ConfigOption) error {
 				val := viper.GetString(co.Name)
 				switch val {
