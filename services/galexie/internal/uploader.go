@@ -1,4 +1,4 @@
-package ledgerexporter
+package galexie
 
 import (
 	"context"
@@ -30,7 +30,7 @@ func NewUploader(
 ) Uploader {
 	uploadDurationMetric := prometheus.NewSummaryVec(
 		prometheus.SummaryOpts{
-			Namespace: "ledger_exporter", Subsystem: "uploader", Name: "put_duration_seconds",
+			Namespace: nameSpace, Subsystem: "uploader", Name: "put_duration_seconds",
 			Help:       "duration for uploading a ledger batch, sliding window = 10m",
 			Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
 		},
@@ -38,14 +38,14 @@ func NewUploader(
 	)
 	objectSizeMetrics := prometheus.NewSummaryVec(
 		prometheus.SummaryOpts{
-			Namespace: "ledger_exporter", Subsystem: "uploader", Name: "object_size_bytes",
+			Namespace: nameSpace, Subsystem: "uploader", Name: "object_size_bytes",
 			Help:       "size of a ledger batch in bytes, sliding window = 10m",
 			Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
 		},
 		[]string{"ledgers", "already_exists", "compression"},
 	)
 	latestLedgerMetric := prometheus.NewGauge(prometheus.GaugeOpts{
-		Namespace: "ledger_exporter", Subsystem: "uploader", Name: "latest_ledger",
+		Namespace: nameSpace, Subsystem: "uploader", Name: "latest_ledger",
 		Help: "sequence number of the latest ledger uploaded",
 	})
 	prometheusRegistry.MustRegister(uploadDurationMetric, objectSizeMetrics, latestLedgerMetric)

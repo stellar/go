@@ -1,4 +1,4 @@
-package ledgerexporter
+package galexie
 
 import (
 	"context"
@@ -34,7 +34,7 @@ func NewExportManager(dataStoreSchema datastore.DataStoreSchema,
 	}
 
 	latestLedgerMetric := prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Namespace: "ledger_exporter", Subsystem: "export_manager", Name: "latest_ledger",
+		Namespace: nameSpace, Subsystem: "export_manager", Name: "latest_ledger",
 		Help: "sequence number of the latest ledger consumed by the export manager",
 	}, []string{"start_ledger", "end_ledger"})
 	prometheusRegistry.MustRegister(latestLedgerMetric)

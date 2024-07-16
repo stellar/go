@@ -1,4 +1,4 @@
-package ledgerexporter
+package galexie
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	ledgerExporterCmdRunner = func(runtimeSettings RuntimeSettings) error {
+	galexieCmdRunner = func(runtimeSettings RuntimeSettings) error {
 		app := NewApp()
 		return app.Run(runtimeSettings)
 	}
@@ -24,7 +24,7 @@ func Execute() error {
 
 func defineCommands() *cobra.Command {
 	var rootCmd = &cobra.Command{
-		Use:   "ledgerexporter",
+		Use:   "galexie",
 		Short: "Export Stellar network ledger data to a remote data store",
 		Long:  "Converts ledger meta data from Stellar network into static data and exports it remote data storage.",
 
@@ -46,7 +46,7 @@ func defineCommands() *cobra.Command {
 			if settings.Ctx == nil {
 				settings.Ctx = context.Background()
 			}
-			return ledgerExporterCmdRunner(settings)
+			return galexieCmdRunner(settings)
 		},
 	}
 	var appendCmd = &cobra.Command{
@@ -63,7 +63,7 @@ func defineCommands() *cobra.Command {
 			if settings.Ctx == nil {
 				settings.Ctx = context.Background()
 			}
-			return ledgerExporterCmdRunner(settings)
+			return galexieCmdRunner(settings)
 		},
 	}
 

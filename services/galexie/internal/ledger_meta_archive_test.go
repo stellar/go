@@ -1,4 +1,4 @@
-package ledgerexporter
+package galexie
 
 import (
 	"testing"

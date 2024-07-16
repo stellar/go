@@ -1,4 +1,4 @@
-package ledgerexporter
+package galexie
 
 import (
 	"context"
@@ -22,7 +22,7 @@ import (
 const (
 	Pubnet    = "pubnet"
 	Testnet   = "testnet"
-	UserAgent = "ledgerexporter"
+	UserAgent = "galexie"
 )
 
 type Mode int
@@ -199,7 +199,7 @@ func (config *Config) GenerateCaptiveCoreConfig(coreBinFromPath string) (ledgerb
 		CheckpointFrequency: checkpointFrequency,
 		Log:                 logger.WithField("subservice", "stellar-core"),
 		Toml:                captiveCoreToml,
-		UserAgent:           "ledger-exporter",
+		UserAgent:           config.UserAgent,
 		UseDB:               true,
 		StoragePath:         config.StellarCoreConfig.StoragePath,
 	}, nil

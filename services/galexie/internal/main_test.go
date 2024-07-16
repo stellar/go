@@ -1,4 +1,4 @@
-package ledgerexporter
+package galexie
 
 import (
 	"bytes"
@@ -102,8 +102,8 @@ func TestFlagsOutput(t *testing.T) {
 	}
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
-			// mock the ledger exporter's cmd runner to be this test's mock routine instead of real app
-			ledgerExporterCmdRunner = testCase.appRunner
+			// mock galexie's cmd runner to be this test's mock routine instead of real app
+			galexieCmdRunner = testCase.appRunner
 			rootCmd := defineCommands()
 			rootCmd.SetArgs(testCase.commandArgs)
 			var errWriter io.Writer = &bytes.Buffer{}
