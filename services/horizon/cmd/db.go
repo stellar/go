@@ -485,7 +485,7 @@ func DefineDBCommands(rootCmd *cobra.Command, horizonConfig *horizon.Config, hor
 			var storageBackendConfig ingest.StorageBackendConfig
 			options := horizon.ApplyOptions{RequireCaptiveCoreFullConfig: false}
 			if ledgerBackendType == ingest.BufferedStorageBackend {
-				if err, storageBackendConfig = loadStorageBackendConfig(storageBackendConfigPath); err != nil {
+				if storageBackendConfig, err = loadStorageBackendConfig(storageBackendConfigPath); err != nil {
 					return err
 				}
 				// when using buffered storage, performance observations have noted optimal parallel batch size
@@ -547,7 +547,7 @@ func DefineDBCommands(rootCmd *cobra.Command, horizonConfig *horizon.Config, hor
 			var storageBackendConfig ingest.StorageBackendConfig
 			options := horizon.ApplyOptions{RequireCaptiveCoreFullConfig: false}
 			if ledgerBackendType == ingest.BufferedStorageBackend {
-				if err, storageBackendConfig = loadStorageBackendConfig(storageBackendConfigPath); err != nil {
+				if storageBackendConfig, err = loadStorageBackendConfig(storageBackendConfigPath); err != nil {
 					return err
 				}
 				options.NoCaptiveCore = true
@@ -632,22 +632,22 @@ func DefineDBCommands(rootCmd *cobra.Command, horizonConfig *horizon.Config, hor
 	dbReingestCmd.AddCommand(dbReingestRangeCmd)
 }
 
-func loadStorageBackendConfig(storageBackendConfigPath string) (error, ingest.StorageBackendConfig) {
+func loadStorageBackendConfig(storageBackendConfigPath string) (ingest.StorageBackendConfig, error) {
 	if storageBackendConfigPath == "" {
-		return errors.New("datastore config file is required for datastore ledgerbackend type"), ingest.StorageBackendConfig{}
+		return ingest.StorageBackendConfig{}, errors.New("datastore config file is required for datastore ledgerbackend type")
 	}
 	cfg, err := toml.LoadFile(storageBackendConfigPath)
 	if err != nil {
-		return fmt.Errorf("failed to load datastore ledgerbackend config file %v: %w", storageBackendConfigPath, err), ingest.StorageBackendConfig{}
+		return ingest.StorageBackendConfig{}, fmt.Errorf("failed to load datastore ledgerbackend config file %v: %w", storageBackendConfigPath, err)
 	}
 	var storageBackendConfig ingest.StorageBackendConfig
 	if err = cfg.Unmarshal(&storageBackendConfig); err != nil {
-		return fmt.Errorf("error unmarshalling datastore ledgerbackend TOML config: %w", err), ingest.StorageBackendConfig{}
+		return ingest.StorageBackendConfig{}, fmt.Errorf("error unmarshalling datastore ledgerbackend TOML config: %w", err)
 	}
 
 	storageBackendConfig.BufferedStorageBackendFactory = ledgerbackend.NewBufferedStorageBackend
 	storageBackendConfig.DataStoreFactory = datastore.NewDataStore
-	return nil, storageBackendConfig
+	return storageBackendConfig, nil
 }
 
 func init() {
