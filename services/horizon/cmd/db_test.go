@@ -209,7 +209,7 @@ func (s *DBCommandsTestSuite) TestDbReingestAndFillGapsCmds() {
 				"--datastore-config", "invalid.config.toml",
 			},
 			expectError:  true,
-			errorMessage: "failed to load config file",
+			errorMessage: "failed to load datastore ledgerbackend config file",
 		},
 		{
 			name: "datastore; w/ config",
@@ -229,7 +229,7 @@ func (s *DBCommandsTestSuite) TestDbReingestAndFillGapsCmds() {
 				"--ledgerbackend", "datastore",
 			},
 			expectError:  true,
-			errorMessage: "datastore config file is required for datastore backend type",
+			errorMessage: "datastore config file is required for datastore ledgerbackend type",
 		},
 	}
 

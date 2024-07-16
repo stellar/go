@@ -173,14 +173,6 @@ func ingestRangeCmdOpts() support.ConfigOptions {
 			OptType:   types.String,
 			Required:  false,
 			Usage:     "[optional] Specify the path to the datastore config file (required for datastore backend)",
-			CustomSetValue: func(co *support.ConfigOption) error {
-				val := viper.GetString(co.Name)
-				if ledgerBackendType == ingest.BufferedStorageBackend && val == "" {
-					return errors.New("datastore config file is required for datastore backend type")
-				}
-				*co.ConfigKey.(*string) = val
-				return nil
-			},
 		},
 	}
 }
@@ -489,18 +481,13 @@ func DefineDBCommands(rootCmd *cobra.Command, horizonConfig *horizon.Config, hor
 				}
 			}
 
+			var err error
 			var storageBackendConfig ingest.StorageBackendConfig
 			options := horizon.ApplyOptions{RequireCaptiveCoreFullConfig: false}
 			if ledgerBackendType == ingest.BufferedStorageBackend {
-				cfg, err := toml.LoadFile(storageBackendConfigPath)
-				if err != nil {
-					return fmt.Errorf("failed to load config file %v: %w", storageBackendConfigPath, err)
+				if err, storageBackendConfig = loadStorageBackendConfig(storageBackendConfigPath); err != nil {
+					return err
 				}
-				if err = cfg.Unmarshal(&storageBackendConfig); err != nil {
-					return fmt.Errorf("error unmarshalling TOML config: %w", err)
-				}
-				storageBackendConfig.BufferedStorageBackendFactory = ledgerbackend.NewBufferedStorageBackend
-				storageBackendConfig.DataStoreFactory = datastore.NewDataStore
 				// when using buffered storage, performance observations have noted optimal parallel batch size
 				// of 100, apply that as default if the flag was absent.
 				if !viper.IsSet("parallel-job-size") {
@@ -509,8 +496,7 @@ func DefineDBCommands(rootCmd *cobra.Command, horizonConfig *horizon.Config, hor
 				options.NoCaptiveCore = true
 			}
 
-			err := horizon.ApplyFlags(horizonConfig, horizonFlags, options)
-			if err != nil {
+			if err = horizon.ApplyFlags(horizonConfig, horizonFlags, options); err != nil {
 				return err
 			}
 			return runDBReingestRangeFn(
@@ -557,23 +543,17 @@ func DefineDBCommands(rootCmd *cobra.Command, horizonConfig *horizon.Config, hor
 				withRange = true
 			}
 
+			var err error
 			var storageBackendConfig ingest.StorageBackendConfig
 			options := horizon.ApplyOptions{RequireCaptiveCoreFullConfig: false}
 			if ledgerBackendType == ingest.BufferedStorageBackend {
-				cfg, err := toml.LoadFile(storageBackendConfigPath)
-				if err != nil {
-					return fmt.Errorf("failed to load config file %v: %w", storageBackendConfigPath, err)
+				if err, storageBackendConfig = loadStorageBackendConfig(storageBackendConfigPath); err != nil {
+					return err
 				}
-				if err = cfg.Unmarshal(&storageBackendConfig); err != nil {
-					return fmt.Errorf("error unmarshalling TOML config: %w", err)
-				}
-				storageBackendConfig.BufferedStorageBackendFactory = ledgerbackend.NewBufferedStorageBackend
-				storageBackendConfig.DataStoreFactory = datastore.NewDataStore
 				options.NoCaptiveCore = true
 			}
 
-			err := horizon.ApplyFlags(horizonConfig, horizonFlags, options)
-			if err != nil {
+			if err = horizon.ApplyFlags(horizonConfig, horizonFlags, options); err != nil {
 				return err
 			}
 			var gaps []history.LedgerRange
@@ -650,6 +630,24 @@ func DefineDBCommands(rootCmd *cobra.Command, horizonConfig *horizon.Config, hor
 		dbMigrateUpCmd,
 	)
 	dbReingestCmd.AddCommand(dbReingestRangeCmd)
+}
+
+func loadStorageBackendConfig(storageBackendConfigPath string) (error, ingest.StorageBackendConfig) {
+	if storageBackendConfigPath == "" {
+		return errors.New("datastore config file is required for datastore ledgerbackend type"), ingest.StorageBackendConfig{}
+	}
+	cfg, err := toml.LoadFile(storageBackendConfigPath)
+	if err != nil {
+		return fmt.Errorf("failed to load datastore ledgerbackend config file %v: %w", storageBackendConfigPath, err), ingest.StorageBackendConfig{}
+	}
+	var storageBackendConfig ingest.StorageBackendConfig
+	if err = cfg.Unmarshal(&storageBackendConfig); err != nil {
+		return fmt.Errorf("error unmarshalling datastore ledgerbackend TOML config: %w", err), ingest.StorageBackendConfig{}
+	}
+
+	storageBackendConfig.BufferedStorageBackendFactory = ledgerbackend.NewBufferedStorageBackend
+	storageBackendConfig.DataStoreFactory = datastore.NewDataStore
+	return nil, storageBackendConfig
 }
 
 func init() {
