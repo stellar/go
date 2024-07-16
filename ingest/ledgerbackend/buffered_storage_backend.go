@@ -54,10 +54,6 @@ func NewBufferedStorageBackend(ctx context.Context, config BufferedStorageBacken
 		return nil, errors.New("number of workers must be <= BufferSize")
 	}
 
-	if dataStore == nil {
-		return nil, errors.New("no DataStore provided")
-	}
-
 	if dataStore.GetSchema(ctx).LedgersPerFile <= 0 {
 		return nil, errors.New("ledgersPerFile must be > 0")
 	}
