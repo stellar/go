@@ -95,7 +95,7 @@ func (lb *ledgerBuffer) pushTaskQueue(ctx context.Context) {
 		return
 	}
 	lb.taskQueue <- lb.nextTaskLedger
-	lb.nextTaskLedger += lb.dataStore.GetSchema(ctx).LedgersPerFile
+	lb.nextTaskLedger += lb.dataStore.GetSchema().LedgersPerFile
 }
 
 // sleepWithContext returns true upon sleeping without interruption from the context
@@ -163,7 +163,7 @@ func (lb *ledgerBuffer) worker(ctx context.Context) {
 }
 
 func (lb *ledgerBuffer) downloadLedgerObject(ctx context.Context, sequence uint32) ([]byte, error) {
-	objectKey := lb.dataStore.GetSchema(ctx).GetObjectKeyFromSequenceNumber(sequence)
+	objectKey := lb.dataStore.GetSchema().GetObjectKeyFromSequenceNumber(sequence)
 
 	reader, err := lb.dataStore.GetFile(ctx, objectKey)
 	if err != nil {
@@ -198,7 +198,7 @@ func (lb *ledgerBuffer) storeObject(ctx context.Context, ledgerObject []byte, se
 	for lb.ledgerPriorityQueue.Len() > 0 && lb.currentLedger == uint32(lb.ledgerPriorityQueue.Peek().startLedger) {
 		item := lb.ledgerPriorityQueue.Pop()
 		lb.ledgerQueue <- item.payload
-		lb.currentLedger += lb.dataStore.GetSchema(ctx).LedgersPerFile
+		lb.currentLedger += lb.dataStore.GetSchema().LedgersPerFile
 	}
 }
 

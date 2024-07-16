@@ -23,7 +23,7 @@ type DataStore interface {
 	PutFileIfNotExists(ctx context.Context, path string, in io.WriterTo, metaData map[string]string) (bool, error)
 	Exists(ctx context.Context, path string) (bool, error)
 	Size(ctx context.Context, path string) (int64, error)
-	GetSchema(ctx context.Context) DataStoreSchema
+	GetSchema() DataStoreSchema
 	Close() error
 }
 

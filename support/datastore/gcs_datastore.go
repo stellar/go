@@ -182,6 +182,6 @@ func (b GCSDataStore) putFile(ctx context.Context, filePath string, in io.Writer
 
 // GetSchema returns the schema information which defines the structure
 // and organization of data in the datastore.
-func (b GCSDataStore) GetSchema(ctx context.Context) DataStoreSchema {
+func (b GCSDataStore) GetSchema() DataStoreSchema {
 	return b.schema
 }

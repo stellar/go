@@ -78,7 +78,7 @@ func createMockdataStore(t *testing.T, start, end, partitionSize, count uint32) 
 		}
 		mockDataStore.On("GetFile", mock.Anything, objectName).Return(readCloser, nil)
 	}
-	mockDataStore.On("GetSchema", mock.Anything).Return(datastore.DataStoreSchema{
+	mockDataStore.On("GetSchema").Return(datastore.DataStoreSchema{
 		LedgersPerFile:    count,
 		FilesPerPartition: partitionSize,
 	})
@@ -125,7 +125,7 @@ func TestNewBufferedStorageBackend(t *testing.T) {
 	ctx := context.Background()
 	config := createBufferedStorageBackendConfigForTesting()
 	mockDataStore := new(datastore.MockDataStore)
-	mockDataStore.On("GetSchema", mock.Anything).Return(datastore.DataStoreSchema{
+	mockDataStore.On("GetSchema").Return(datastore.DataStoreSchema{
 		LedgersPerFile:    uint32(1),
 		FilesPerPartition: partitionSize,
 	})
@@ -133,8 +133,8 @@ func TestNewBufferedStorageBackend(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, bsb.dataStore, mockDataStore)
-	assert.Equal(t, uint32(1), bsb.dataStore.GetSchema(ctx).LedgersPerFile)
-	assert.Equal(t, uint32(64000), bsb.dataStore.GetSchema(ctx).FilesPerPartition)
+	assert.Equal(t, uint32(1), bsb.dataStore.GetSchema().LedgersPerFile)
+	assert.Equal(t, uint32(64000), bsb.dataStore.GetSchema().FilesPerPartition)
 	assert.Equal(t, uint32(100), bsb.config.BufferSize)
 	assert.Equal(t, uint32(5), bsb.config.NumWorkers)
 	assert.Equal(t, uint32(3), bsb.config.RetryLimit)
@@ -214,7 +214,7 @@ func TestCloudStorageGetLedger_MultipleLedgerPerFile(t *testing.T) {
 
 	mockDataStore := createMockdataStore(t, startLedger, endLedger, partitionSize, 2)
 	bsb.dataStore = mockDataStore
-	mockDataStore.On("GetSchema", mock.Anything).Return(datastore.DataStoreSchema{
+	mockDataStore.On("GetSchema").Return(datastore.DataStoreSchema{
 		LedgersPerFile:    uint32(2),
 		FilesPerPartition: partitionSize,
 	})
@@ -453,7 +453,7 @@ func TestLedgerBufferClose(t *testing.T) {
 
 	mockDataStore := new(datastore.MockDataStore)
 	partition := ledgerPerFileCount*partitionSize - 1
-	mockDataStore.On("GetSchema", mock.Anything).Return(datastore.DataStoreSchema{
+	mockDataStore.On("GetSchema").Return(datastore.DataStoreSchema{
 		LedgersPerFile:    ledgerPerFileCount,
 		FilesPerPartition: partitionSize,
 	})
@@ -489,7 +489,7 @@ func TestLedgerBufferBoundedObjectNotFound(t *testing.T) {
 
 	mockDataStore := new(datastore.MockDataStore)
 	partition := ledgerPerFileCount*partitionSize - 1
-	mockDataStore.On("GetSchema", mock.Anything).Return(datastore.DataStoreSchema{
+	mockDataStore.On("GetSchema").Return(datastore.DataStoreSchema{
 		LedgersPerFile:    ledgerPerFileCount,
 		FilesPerPartition: partitionSize,
 	})
@@ -518,7 +518,7 @@ func TestLedgerBufferUnboundedObjectNotFound(t *testing.T) {
 
 	mockDataStore := new(datastore.MockDataStore)
 	partition := ledgerPerFileCount*partitionSize - 1
-	mockDataStore.On("GetSchema", mock.Anything).Return(datastore.DataStoreSchema{
+	mockDataStore.On("GetSchema").Return(datastore.DataStoreSchema{
 		LedgersPerFile:    ledgerPerFileCount,
 		FilesPerPartition: partitionSize,
 	})
@@ -563,7 +563,7 @@ func TestLedgerBufferRetryLimit(t *testing.T) {
 	})
 
 	bsb.dataStore = mockDataStore
-	mockDataStore.On("GetSchema", mock.Anything).Return(datastore.DataStoreSchema{
+	mockDataStore.On("GetSchema").Return(datastore.DataStoreSchema{
 		LedgersPerFile:    ledgerPerFileCount,
 		FilesPerPartition: partitionSize,
 	})
