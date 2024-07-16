@@ -17,7 +17,7 @@ import (
 // Ensure BufferedStorageBackend implements LedgerBackend
 var _ LedgerBackend = (*BufferedStorageBackend)(nil)
 
-type BufferedStorageBackendFactory func(ctx context.Context, config BufferedStorageBackendConfig, dataStore datastore.DataStore) (*BufferedStorageBackend, error)
+type BufferedStorageBackendFactory func(config BufferedStorageBackendConfig, dataStore datastore.DataStore) (*BufferedStorageBackend, error)
 
 type BufferedStorageBackendConfig struct {
 	BufferSize uint32        `toml:"buffer_size"`
@@ -45,7 +45,7 @@ type BufferedStorageBackend struct {
 }
 
 // NewBufferedStorageBackend returns a new BufferedStorageBackend instance.
-func NewBufferedStorageBackend(ctx context.Context, config BufferedStorageBackendConfig, dataStore datastore.DataStore) (*BufferedStorageBackend, error) {
+func NewBufferedStorageBackend(config BufferedStorageBackendConfig, dataStore datastore.DataStore) (*BufferedStorageBackend, error) {
 	if config.BufferSize == 0 {
 		return nil, errors.New("buffer size must be > 0")
 	}

@@ -125,7 +125,7 @@ func TestNewSystemBuffered(t *testing.T) {
 			DataStoreFactory: func(ctx context.Context, datastoreConfig datastore.DataStoreConfig) (datastore.DataStore, error) {
 				return mockDataStore, nil
 			},
-			BufferedStorageBackendFactory: func(ctx context.Context, config ledgerbackend.BufferedStorageBackendConfig, dataStore datastore.DataStore) (*ledgerbackend.BufferedStorageBackend, error) {
+			BufferedStorageBackendFactory: func(config ledgerbackend.BufferedStorageBackendConfig, dataStore datastore.DataStore) (*ledgerbackend.BufferedStorageBackend, error) {
 				return bufferedStorageBackend, nil
 			},
 		},

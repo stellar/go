@@ -300,7 +300,7 @@ func NewSystem(config Config) (System, error) {
 			cancel()
 			return nil, fmt.Errorf("failed to create datastore: %w", err)
 		}
-		ledgerBackend, err = config.StorageBackendConfig.BufferedStorageBackendFactory(ctx, config.StorageBackendConfig.BufferedStorageBackendConfig, dataStore)
+		ledgerBackend, err = config.StorageBackendConfig.BufferedStorageBackendFactory(config.StorageBackendConfig.BufferedStorageBackendConfig, dataStore)
 		if err != nil {
 			cancel()
 			return nil, fmt.Errorf("failed to create buffered storage backend: %w", err)

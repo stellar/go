@@ -83,13 +83,13 @@ func (bsb *BufferedStorageBackend) newLedgerBuffer(ledgerRange Range) (*ledgerBu
 	// but for easier conceptualization, len(taskQueue) can be interpreted as both pending and in-flight tasks
 	// where we assume the workers are empty and not processing any tasks.
 	for i := 0; i <= int(bsb.config.BufferSize); i++ {
-		ledgerBuffer.pushTaskQueue(ctx)
+		ledgerBuffer.pushTaskQueue()
 	}
 
 	return ledgerBuffer, nil
 }
 
-func (lb *ledgerBuffer) pushTaskQueue(ctx context.Context) {
+func (lb *ledgerBuffer) pushTaskQueue() {
 	// In bounded mode, don't queue past the end ledger
 	if lb.nextTaskLedger > lb.ledgerRange.to && lb.ledgerRange.bounded {
 		return
@@ -155,7 +155,7 @@ func (lb *ledgerBuffer) worker(ctx context.Context) {
 				// Thus, the number of tasks decreases by 1 and the priority queue length increases by 1.
 				// This keeps the overall total the same (<= BufferSize). As long as the the ledger buffer invariant
 				// was maintained in the previous state, it is still maintained during this state transition.
-				lb.storeObject(ctx, ledgerObject, sequence)
+				lb.storeObject(ledgerObject, sequence)
 				break
 			}
 		}
@@ -180,7 +180,7 @@ func (lb *ledgerBuffer) downloadLedgerObject(ctx context.Context, sequence uint3
 	return objectBytes, nil
 }
 
-func (lb *ledgerBuffer) storeObject(ctx context.Context, ledgerObject []byte, sequence uint32) {
+func (lb *ledgerBuffer) storeObject(ledgerObject []byte, sequence uint32) {
 	lb.priorityQueueLock.Lock()
 	defer lb.priorityQueueLock.Unlock()
 
@@ -215,7 +215,7 @@ func (lb *ledgerBuffer) getFromLedgerQueue(ctx context.Context) (xdr.LedgerClose
 			// Thus len(ledgerQueue) decreases by 1 and the number of tasks increases by 1.
 			// The overall sum below remains the same:
 			// len(taskQueue) + len(ledgerQueue) + ledgerPriorityQueue.Len() <= bsb.config.BufferSize
-			lb.pushTaskQueue(ctx)
+			lb.pushTaskQueue()
 
 			lcmBatch := xdr.LedgerCloseMetaBatch{}
 			decoder := compressxdr.NewXDRDecoder(compressxdr.DefaultCompressor, &lcmBatch)

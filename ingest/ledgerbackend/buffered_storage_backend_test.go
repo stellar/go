@@ -122,14 +122,13 @@ func createLCMBatchReader(start, end, count uint32) io.ReadCloser {
 }
 
 func TestNewBufferedStorageBackend(t *testing.T) {
-	ctx := context.Background()
 	config := createBufferedStorageBackendConfigForTesting()
 	mockDataStore := new(datastore.MockDataStore)
 	mockDataStore.On("GetSchema").Return(datastore.DataStoreSchema{
 		LedgersPerFile:    uint32(1),
 		FilesPerPartition: partitionSize,
 	})
-	bsb, err := NewBufferedStorageBackend(ctx, config, mockDataStore)
+	bsb, err := NewBufferedStorageBackend(config, mockDataStore)
 	assert.NoError(t, err)
 
 	assert.Equal(t, bsb.dataStore, mockDataStore)
