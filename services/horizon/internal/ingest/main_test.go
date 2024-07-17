@@ -562,16 +562,13 @@ func (m *mockDBQ) NewTradeBatchInsertBuilder() history.TradeBatchInsertBuilder {
 	return args.Get(0).(history.TradeBatchInsertBuilder)
 }
 
-func (m *mockDBQ) ReapLookupTables(ctx context.Context, offsets map[string]int64) (map[string]int64, map[string]int64, error) {
+func (m *mockDBQ) ReapLookupTables(ctx context.Context, offsets map[string]int64) (map[string]history.LookupTableReapResult, error) {
 	args := m.Called(ctx, offsets)
-	var r1, r2 map[string]int64
+	var r1 map[string]history.LookupTableReapResult
 	if args.Get(0) != nil {
-		r1 = args.Get(0).(map[string]int64)
+		r1 = args.Get(0).(map[string]history.LookupTableReapResult)
 	}
-	if args.Get(1) != nil {
-		r1 = args.Get(1).(map[string]int64)
-	}
-	return r1, r2, args.Error(2)
+	return r1, args.Error(2)
 }
 
 func (m *mockDBQ) RebuildTradeAggregationTimes(ctx context.Context, from, to strtime.Millis, roundingSlippageFilter int) error {
