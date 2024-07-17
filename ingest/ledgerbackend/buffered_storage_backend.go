@@ -17,8 +17,6 @@ import (
 // Ensure BufferedStorageBackend implements LedgerBackend
 var _ LedgerBackend = (*BufferedStorageBackend)(nil)
 
-type BufferedStorageBackendFactory func(config BufferedStorageBackendConfig, dataStore datastore.DataStore) (*BufferedStorageBackend, error)
-
 type BufferedStorageBackendConfig struct {
 	BufferSize uint32        `toml:"buffer_size"`
 	NumWorkers uint32        `toml:"num_workers"`

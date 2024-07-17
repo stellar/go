@@ -15,14 +15,12 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	"github.com/stellar/go/ingest/ledgerbackend"
 	horizon "github.com/stellar/go/services/horizon/internal"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/db2/schema"
 	"github.com/stellar/go/services/horizon/internal/ingest"
 	"github.com/stellar/go/support/config"
 	support "github.com/stellar/go/support/config"
-	"github.com/stellar/go/support/datastore"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 	hlog "github.com/stellar/go/support/log"
@@ -645,8 +643,6 @@ func loadStorageBackendConfig(storageBackendConfigPath string) (ingest.StorageBa
 		return ingest.StorageBackendConfig{}, fmt.Errorf("error unmarshalling datastore ledgerbackend TOML config: %w", err)
 	}
 
-	storageBackendConfig.BufferedStorageBackendFactory = ledgerbackend.NewBufferedStorageBackend
-	storageBackendConfig.DataStoreFactory = datastore.NewDataStore
 	return storageBackendConfig, nil
 }
 

@@ -101,10 +101,8 @@ func (s LedgerBackendType) String() string {
 }
 
 type StorageBackendConfig struct {
-	DataStoreConfig               datastore.DataStoreConfig `toml:"datastore_config"`
-	DataStoreFactory              datastore.DataStoreFactory
-	BufferedStorageBackendConfig  ledgerbackend.BufferedStorageBackendConfig `toml:"buffered_storage_backend_config"`
-	BufferedStorageBackendFactory ledgerbackend.BufferedStorageBackendFactory
+	DataStoreConfig              datastore.DataStoreConfig                  `toml:"datastore_config"`
+	BufferedStorageBackendConfig ledgerbackend.BufferedStorageBackendConfig `toml:"buffered_storage_backend_config"`
 }
 
 type Config struct {
@@ -295,12 +293,12 @@ func NewSystem(config Config) (System, error) {
 	if config.LedgerBackendType == BufferedStorageBackend {
 		// Ingest from datastore
 		var dataStore datastore.DataStore
-		dataStore, err = config.StorageBackendConfig.DataStoreFactory(context.Background(), config.StorageBackendConfig.DataStoreConfig)
+		dataStore, err = datastore.NewDataStore(context.Background(), config.StorageBackendConfig.DataStoreConfig)
 		if err != nil {
 			cancel()
 			return nil, fmt.Errorf("failed to create datastore: %w", err)
 		}
-		ledgerBackend, err = config.StorageBackendConfig.BufferedStorageBackendFactory(config.StorageBackendConfig.BufferedStorageBackendConfig, dataStore)
+		ledgerBackend, err = ledgerbackend.NewBufferedStorageBackend(config.StorageBackendConfig.BufferedStorageBackendConfig, dataStore)
 		if err != nil {
 			cancel()
 			return nil, fmt.Errorf("failed to create buffered storage backend: %w", err)
