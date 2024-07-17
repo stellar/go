@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io/fs"
-	"net"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -12,15 +11,12 @@ import (
 	"time"
 
 	"github.com/fsouza/fake-gcs-server/fakestorage"
-	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/stellar/go/clients/horizonclient"
-	sdk "github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/keypair"
-	"github.com/stellar/go/network"
 	hProtocol "github.com/stellar/go/protocols/horizon"
 	horizoncmd "github.com/stellar/go/services/horizon/cmd"
 	horizon "github.com/stellar/go/services/horizon/internal"
@@ -33,7 +29,6 @@ import (
 	"github.com/stellar/go/support/db/dbtest"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stellar/go/xdr"
-	"github.com/stellar/throttled"
 )
 
 func submitLiquidityPoolOps(itest *integration.Test, tt *assert.Assertions) (submittedOperations []txnbuild.Operation, lastLedger int32) {
@@ -561,22 +556,19 @@ func TestReingestDB(t *testing.T) {
 }
 
 func TestReingestDatastore(t *testing.T) {
-	if os.Getenv("HORIZON_INTEGRATION_TESTS_ENABLED") == "" {
-		t.Skip("skipping integration test: HORIZON_INTEGRATION_TESTS_ENABLED not set")
-	}
-
-	newDB := dbtest.Postgres(t)
-	defer newDB.Close()
-	var rootCmd = horizoncmd.NewRootCmd()
-	rootCmd.SetArgs([]string{
-		"db", "migrate", "up", "--db-url", newDB.DSN})
-	require.NoError(t, rootCmd.Execute())
+	test := integration.NewTest(t, integration.Config{
+		SkipHorizonStart:          true,
+		SkipCoreContainerCreation: true,
+	})
+	err := test.StartHorizon(false)
+	assert.NoError(t, err)
+	test.WaitForHorizonWeb()
 
 	testTempDir := t.TempDir()
 	fakeBucketFilesSource := "testdata/testbucket"
 	fakeBucketFiles := []fakestorage.Object{}
 
-	if err := filepath.WalkDir(fakeBucketFilesSource, func(path string, entry fs.DirEntry, err error) error {
+	if err = filepath.WalkDir(fakeBucketFilesSource, func(path string, entry fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -621,11 +613,11 @@ func TestReingestDatastore(t *testing.T) {
 	t.Logf("fake gcs server started at %v", gcsServer.URL())
 	t.Setenv("STORAGE_EMULATOR_HOST", gcsServer.URL())
 
-	rootCmd = horizoncmd.NewRootCmd()
+	rootCmd := horizoncmd.NewRootCmd()
 	rootCmd.SetArgs([]string{"db",
 		"reingest",
 		"range",
-		"--db-url", newDB.DSN,
+		"--db-url", test.GetTestDB().DSN,
 		"--network", "testnet",
 		"--parallel-workers", "1",
 		"--ledgerbackend", "datastore",
@@ -635,71 +627,8 @@ func TestReingestDatastore(t *testing.T) {
 
 	require.NoError(t, rootCmd.Execute())
 
-	listener, webApp, webPort, err := dynamicHorizonWeb(newDB.DSN)
-	if err != nil {
-		t.Fatalf("couldn't create and start horizon web app on dynamic port %v", err)
-	}
-
-	webAppDone := make(chan struct{})
-	go func() {
-		defer close(webAppDone)
-		if err = listener.Close(); err != nil {
-			return
-		}
-		webApp.Serve()
-	}()
-
-	defer func() {
-		webApp.Close()
-		select {
-		case <-webAppDone:
-			return
-		default:
-		}
-	}()
-
-	horizonClient := &sdk.Client{
-		HorizonURL: fmt.Sprintf("http://localhost:%v", webPort),
-	}
-
-	// wait until the web server is up before continuing to test requests
-	require.Eventually(t, func() bool {
-		if _, horizonErr := horizonClient.Root(); horizonErr != nil {
-			return false
-		}
-		return true
-	}, time.Second*15, time.Millisecond*100)
-
-	_, err = horizonClient.LedgerDetail(998)
+	_, err = test.Client().LedgerDetail(998)
 	require.NoError(t, err)
-}
-
-func dynamicHorizonWeb(dsn string) (net.Listener, *horizon.App, uint, error) {
-	listener, err := net.Listen("tcp", "localhost:0")
-	if err != nil {
-		return nil, nil, 0, err
-	}
-	webPort := uint(listener.Addr().(*net.TCPAddr).Port)
-
-	webApp, err := horizon.NewApp(horizon.Config{
-		DatabaseURL:       dsn,
-		Port:              webPort,
-		NetworkPassphrase: network.TestNetworkPassphrase,
-		LogLevel:          logrus.InfoLevel,
-		DisableTxSub:      true,
-		Ingest:            false,
-		ConnectionTimeout: 10 * time.Second,
-		RateQuota: &throttled.RateQuota{
-			MaxRate:  throttled.PerHour(1000),
-			MaxBurst: 100,
-		},
-	})
-	if err != nil {
-		listener.Close()
-		return nil, nil, 0, err
-	}
-
-	return listener, webApp, webPort, nil
 }
 
 func TestReingestDBWithFilterRules(t *testing.T) {
@@ -833,7 +762,7 @@ func TestReingestDBWithFilterRules(t *testing.T) {
 	}()
 
 	// wait until the web server is up before continuing to test requests
-	itest.WaitForHorizon()
+	itest.WaitForHorizonIngest()
 
 	// Make sure that a tx from non-whitelisted account is not stored after reingestion
 	_, err = itest.Client().TransactionDetail(nonWhiteListTxResp.Hash)
@@ -1056,7 +985,7 @@ func TestResumeFromInitializedDB(t *testing.T) {
 	tt := assert.New(t)
 
 	// Stop the integration test, and restart it with the same database
-	err := itest.RestartHorizon()
+	err := itest.RestartHorizon(true)
 	tt.NoError(err)
 
 	successfullyResumed := func() bool {

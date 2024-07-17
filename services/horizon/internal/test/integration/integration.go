@@ -23,11 +23,13 @@ import (
 	"github.com/creachadair/jrpc2/jhttp"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	sdk "github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/clients/stellarcore"
 	"github.com/stellar/go/keypair"
 	proto "github.com/stellar/go/protocols/horizon"
+	horizoncmd "github.com/stellar/go/services/horizon/cmd"
 	horizon "github.com/stellar/go/services/horizon/internal"
 	"github.com/stellar/go/services/horizon/internal/ingest"
 	"github.com/stellar/go/support/config"
@@ -91,6 +93,7 @@ type Test struct {
 	coreConfig          CaptiveConfig
 	horizonIngestConfig horizon.Config
 	horizonWebConfig    horizon.Config
+	testDB              *dbtest.DB
 	environment         *test.EnvironmentManager
 
 	horizonClient      *sdk.Client
@@ -170,11 +173,11 @@ func NewTest(t *testing.T, config Config) *Test {
 	}
 
 	if !config.SkipHorizonStart {
-		if innerErr := i.StartHorizon(); innerErr != nil {
+		if innerErr := i.StartHorizon(true); innerErr != nil {
 			t.Fatalf("Failed to start Horizon: %v", innerErr)
 		}
 
-		i.WaitForHorizon()
+		i.WaitForHorizonIngest()
 	}
 
 	return i
@@ -297,14 +300,15 @@ func (i *Test) prepareShutdownHandlers() {
 	}()
 }
 
-func (i *Test) RestartHorizon() error {
+// if startIngestProcess=true, will restart the ingest sub process also
+func (i *Test) RestartHorizon(restartIngestProcess bool) error {
 	i.StopHorizon()
 
-	if err := i.StartHorizon(); err != nil {
+	if err := i.StartHorizon(restartIngestProcess); err != nil {
 		return err
 	}
 
-	i.WaitForHorizon()
+	i.WaitForHorizonIngest()
 	return nil
 }
 
@@ -314,6 +318,10 @@ func (i *Test) GetHorizonIngestConfig() horizon.Config {
 
 func (i *Test) GetHorizonWebConfig() horizon.Config {
 	return i.horizonWebConfig
+}
+
+func (i *Test) GetTestDB() *dbtest.DB {
+	return i.testDB
 }
 
 // Shutdown stops the integration tests and destroys all its associated
@@ -329,52 +337,24 @@ func (i *Test) Shutdown() {
 	})
 }
 
-// StartHorizon initializes and starts the Horizon client-facing API server and the ingest server.
-func (i *Test) StartHorizon() error {
-	postgres := dbtest.Postgres(i.t)
+// StartHorizon initializes and starts the Horizon client-facing API server.
+// When startIngestProcess=true, start a second process for ingest server
+func (i *Test) StartHorizon(startIngestProcess bool) error {
+	i.testDB = dbtest.Postgres(i.t)
 	i.shutdownCalls = append(i.shutdownCalls, func() {
 		i.StopHorizon()
-		postgres.Close()
+		i.testDB.Close()
 	})
-
-	// To facilitate custom runs of Horizon, we merge a default set of
-	// parameters with the tester-supplied ones (if any).
-	mergedWebArgs := MergeMaps(i.getDefaultWebArgs(postgres), i.config.HorizonWebParameters)
-	webArgs := mapToFlags(mergedWebArgs)
-	i.t.Log("Horizon command line webArgs:", webArgs)
-
-	mergedIngestArgs := MergeMaps(i.getDefaultIngestArgs(postgres), i.config.HorizonIngestParameters)
-	ingestArgs := mapToFlags(mergedIngestArgs)
-	i.t.Log("Horizon command line ingestArgs:", ingestArgs)
-
-	// setup Horizon web command
 	var err error
-	webConfig, webConfigOpts := horizon.Flags()
-	webCmd := i.createWebCommand(webConfig, webConfigOpts)
-	webCmd.SetArgs(webArgs)
-	if err = webConfigOpts.Init(webCmd); err != nil {
-		return errors.Wrap(err, "cannot initialize params")
-	}
-
-	// setup Horizon ingest command
-	ingestConfig, ingestConfigOpts := horizon.Flags()
-	ingestCmd := i.createIngestCommand(ingestConfig, ingestConfigOpts)
-	ingestCmd.SetArgs(ingestArgs)
-	if err = ingestConfigOpts.Init(ingestCmd); err != nil {
-		return errors.Wrap(err, "cannot initialize params")
-	}
 
 	if err = i.initializeEnvironmentVariables(); err != nil {
 		return err
 	}
 
-	if err = ingestCmd.Execute(); err != nil {
-		return errors.Wrap(err, HorizonInitErrStr)
-	}
-
-	if err = webCmd.Execute(); err != nil {
-		return errors.Wrap(err, HorizonInitErrStr)
-	}
+	// To facilitate custom runs of Horizon, we merge a default set of
+	// parameters with the tester-supplied ones (if any).
+	mergedWebArgs := MergeMaps(i.getDefaultWebArgs(), i.config.HorizonWebParameters)
+	mergedIngestArgs := MergeMaps(i.getDefaultIngestArgs(), i.config.HorizonIngestParameters)
 
 	// Set up Horizon clients
 	i.setupHorizonClient(mergedWebArgs)
@@ -382,15 +362,55 @@ func (i *Test) StartHorizon() error {
 		return err
 	}
 
-	i.horizonIngestConfig = *ingestConfig
+	// setup Horizon web process
+	webArgs := mapToFlags(mergedWebArgs)
+	i.t.Log("Horizon command line webArgs:", webArgs)
+	webConfig, webConfigOpts := horizon.Flags()
+	webCmd := i.createWebCommand(webConfig, webConfigOpts)
+	webCmd.SetArgs(webArgs)
+	if err = webConfigOpts.Init(webCmd); err != nil {
+		return errors.Wrap(err, "cannot initialize params")
+	}
+	if err = webCmd.Execute(); err != nil {
+		return errors.Wrap(err, HorizonInitErrStr)
+	}
 	i.horizonWebConfig = *webConfig
 
+	// setup horizon ingest process
+	if startIngestProcess {
+		ingestArgs := mapToFlags(mergedIngestArgs)
+		i.t.Log("Horizon command line ingestArgs:", ingestArgs)
+		// setup Horizon ingest command
+		ingestConfig, ingestConfigOpts := horizon.Flags()
+		ingestCmd := i.createIngestCommand(ingestConfig, ingestConfigOpts)
+		ingestCmd.SetArgs(ingestArgs)
+		if err = ingestConfigOpts.Init(ingestCmd); err != nil {
+			return errors.Wrap(err, "cannot initialize params")
+		}
+		if err = ingestCmd.Execute(); err != nil {
+			return errors.Wrap(err, HorizonInitErrStr)
+		}
+		i.horizonIngestConfig = *ingestConfig
+	} else {
+		// not running ingestion, normally that process would do migration through --apply-migrations
+		// so migrage the empty in any case directly
+		var rootCmd = horizoncmd.NewRootCmd()
+		rootCmd.SetArgs([]string{
+			"db", "migrate", "up", "--db-url", i.testDB.DSN})
+		require.NoError(i.t, rootCmd.Execute())
+	}
+
 	i.appStopped = &sync.WaitGroup{}
-	i.appStopped.Add(2)
-	go func() {
-		_ = i.ingestNode.Serve()
-		i.appStopped.Done()
-	}()
+
+	if i.ingestNode != nil {
+		i.appStopped.Add(1)
+		go func() {
+			_ = i.ingestNode.Serve()
+			i.appStopped.Done()
+		}()
+	}
+
+	i.appStopped.Add(1)
 	go func() {
 		_ = i.webNode.Serve()
 		i.appStopped.Done()
@@ -399,13 +419,13 @@ func (i *Test) StartHorizon() error {
 	return nil
 }
 
-func (i *Test) getDefaultArgs(postgres *dbtest.DB) map[string]string {
+func (i *Test) getDefaultArgs() map[string]string {
 	// TODO: Ideally, we'd be pulling host/port information from the Docker
 	//       Compose YAML file itself rather than hardcoding it.
 	return map[string]string{
 		"ingest":               "false",
 		"history-archive-urls": fmt.Sprintf("http://%s:%d", "localhost", historyArchivePort),
-		"db-url":               postgres.RO_DSN,
+		"db-url":               i.testDB.RO_DSN,
 		"stellar-core-url":     i.coreClient.URL,
 		"network-passphrase":   i.passPhrase,
 		"apply-migrations":     "true",
@@ -417,15 +437,15 @@ func (i *Test) getDefaultArgs(postgres *dbtest.DB) map[string]string {
 	}
 }
 
-func (i *Test) getDefaultWebArgs(postgres *dbtest.DB) map[string]string {
-	return MergeMaps(i.getDefaultArgs(postgres), map[string]string{"admin-port": "0"})
+func (i *Test) getDefaultWebArgs() map[string]string {
+	return MergeMaps(i.getDefaultArgs(), map[string]string{"admin-port": "0"})
 }
 
-func (i *Test) getDefaultIngestArgs(postgres *dbtest.DB) map[string]string {
-	return MergeMaps(i.getDefaultArgs(postgres), map[string]string{
+func (i *Test) getDefaultIngestArgs() map[string]string {
+	return MergeMaps(i.getDefaultArgs(), map[string]string{
 		"admin-port":                strconv.Itoa(i.AdminPort()),
 		"port":                      "8001",
-		"db-url":                    postgres.DSN,
+		"db-url":                    i.testDB.DSN,
 		"stellar-core-binary-path":  i.coreConfig.binaryPath,
 		"captive-core-config-path":  i.coreConfig.configPath,
 		"captive-core-http-port":    "21626",
@@ -816,7 +836,17 @@ func (i *Test) UpgradeProtocol(version uint32) {
 	i.t.Fatalf("could not upgrade protocol in 10s")
 }
 
-func (i *Test) WaitForHorizon() {
+func (i *Test) WaitForHorizonWeb() {
+	// wait until the web server is up before continuing to test requests
+	require.Eventually(i.t, func() bool {
+		if _, horizonErr := i.Client().Root(); horizonErr != nil {
+			return false
+		}
+		return true
+	}, time.Second*15, time.Millisecond*100)
+}
+
+func (i *Test) WaitForHorizonIngest() {
 	for t := 60; t >= 0; t -= 1 {
 		time.Sleep(time.Second)
 
