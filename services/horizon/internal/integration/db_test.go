@@ -3,12 +3,16 @@ package integration
 import (
 	"context"
 	"fmt"
+	"io/fs"
+	"os"
 	"path/filepath"
 	"strconv"
 	"testing"
 	"time"
 
+	"github.com/fsouza/fake-gcs-server/fakestorage"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/historyarchive"
@@ -485,7 +489,8 @@ func TestReingestDB(t *testing.T) {
 
 	horizonConfig := itest.GetHorizonIngestConfig()
 	t.Run("validate parallel range", func(t *testing.T) {
-		horizoncmd.RootCmd.SetArgs(command(t, horizonConfig,
+		var rootCmd = horizoncmd.NewRootCmd()
+		rootCmd.SetArgs(command(t, horizonConfig,
 			"db",
 			"reingest",
 			"range",
@@ -494,7 +499,7 @@ func TestReingestDB(t *testing.T) {
 			"2",
 		))
 
-		assert.EqualError(t, horizoncmd.RootCmd.Execute(), "Invalid range: {10 2} from > to")
+		assert.EqualError(t, rootCmd.Execute(), "Invalid range: {10 2} from > to")
 	})
 
 	t.Logf("reached ledger is %v", reachedLedger)
@@ -537,7 +542,8 @@ func TestReingestDB(t *testing.T) {
 		"captive-core-reingest-range-integration-tests.cfg",
 	)
 
-	horizoncmd.RootCmd.SetArgs(command(t, horizonConfig, "db",
+	var rootCmd = horizoncmd.NewRootCmd()
+	rootCmd.SetArgs(command(t, horizonConfig, "db",
 		"reingest",
 		"range",
 		"--parallel-workers=1",
@@ -545,8 +551,84 @@ func TestReingestDB(t *testing.T) {
 		fmt.Sprintf("%d", toLedger),
 	))
 
-	tt.NoError(horizoncmd.RootCmd.Execute())
-	tt.NoError(horizoncmd.RootCmd.Execute(), "Repeat the same reingest range against db, should not have errors.")
+	tt.NoError(rootCmd.Execute())
+	tt.NoError(rootCmd.Execute(), "Repeat the same reingest range against db, should not have errors.")
+}
+
+func TestReingestDatastore(t *testing.T) {
+	test := integration.NewTest(t, integration.Config{
+		SkipHorizonStart:          true,
+		SkipCoreContainerCreation: true,
+	})
+	err := test.StartHorizon(false)
+	assert.NoError(t, err)
+	test.WaitForHorizonWeb()
+
+	testTempDir := t.TempDir()
+	fakeBucketFilesSource := "testdata/testbucket"
+	fakeBucketFiles := []fakestorage.Object{}
+
+	if err = filepath.WalkDir(fakeBucketFilesSource, func(path string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if entry.Type().IsRegular() {
+			contents, err := os.ReadFile(fmt.Sprintf("%s/%s", fakeBucketFilesSource, entry.Name()))
+			if err != nil {
+				return err
+			}
+
+			fakeBucketFiles = append(fakeBucketFiles, fakestorage.Object{
+				ObjectAttrs: fakestorage.ObjectAttrs{
+					BucketName: "path",
+					Name:       fmt.Sprintf("to/my/bucket/FFFFFFFF--0-63999/%s", entry.Name()),
+				},
+				Content: contents,
+			})
+		}
+		return nil
+	}); err != nil {
+		t.Fatalf("unable to setup fake bucket files: %v", err)
+	}
+
+	testWriter := &testWriter{test: t}
+	opts := fakestorage.Options{
+		Scheme:         "http",
+		Host:           "127.0.0.1",
+		Port:           uint16(0),
+		Writer:         testWriter,
+		StorageRoot:    filepath.Join(testTempDir, "bucket"),
+		PublicHost:     "127.0.0.1",
+		InitialObjects: fakeBucketFiles,
+	}
+
+	gcsServer, err := fakestorage.NewServerWithOptions(opts)
+
+	if err != nil {
+		t.Fatalf("couldn't start the fake gcs http server %v", err)
+	}
+
+	defer gcsServer.Stop()
+	t.Logf("fake gcs server started at %v", gcsServer.URL())
+	t.Setenv("STORAGE_EMULATOR_HOST", gcsServer.URL())
+
+	rootCmd := horizoncmd.NewRootCmd()
+	rootCmd.SetArgs([]string{"db",
+		"reingest",
+		"range",
+		"--db-url", test.GetTestDB().DSN,
+		"--network", "testnet",
+		"--parallel-workers", "1",
+		"--ledgerbackend", "datastore",
+		"--datastore-config", "../ingest/testdata/config.storagebackend.toml",
+		"997",
+		"999"})
+
+	require.NoError(t, rootCmd.Execute())
+
+	_, err = test.Client().LedgerDetail(998)
+	require.NoError(t, err)
 }
 
 func TestReingestDBWithFilterRules(t *testing.T) {
@@ -648,22 +730,24 @@ func TestReingestDBWithFilterRules(t *testing.T) {
 	itest.StopHorizon()
 
 	// clear the db with reaping all ledgers
-	horizoncmd.RootCmd.SetArgs(command(t, itest.GetHorizonIngestConfig(), "db",
+	var rootCmd = horizoncmd.NewRootCmd()
+	rootCmd.SetArgs(command(t, itest.GetHorizonIngestConfig(), "db",
 		"reap",
 		"--history-retention-count=1",
 	))
-	tt.NoError(horizoncmd.RootCmd.Execute())
+	tt.NoError(rootCmd.Execute())
 
 	// repopulate the db with reingestion which should catchup using core reapply filter rules
 	// correctly on reingestion ranged
-	horizoncmd.RootCmd.SetArgs(command(t, itest.GetHorizonIngestConfig(), "db",
+	rootCmd = horizoncmd.NewRootCmd()
+	rootCmd.SetArgs(command(t, itest.GetHorizonIngestConfig(), "db",
 		"reingest",
 		"range",
 		"1",
 		fmt.Sprintf("%d", reachedLedger),
 	))
 
-	tt.NoError(horizoncmd.RootCmd.Execute())
+	tt.NoError(rootCmd.Execute())
 
 	// bring up horizon, just the api server no ingestion, to query
 	// for tx's that should have been repopulated on db from reingestion per
@@ -678,7 +762,7 @@ func TestReingestDBWithFilterRules(t *testing.T) {
 	}()
 
 	// wait until the web server is up before continuing to test requests
-	itest.WaitForHorizon()
+	itest.WaitForHorizonIngest()
 
 	// Make sure that a tx from non-whitelisted account is not stored after reingestion
 	_, err = itest.Client().TransactionDetail(nonWhiteListTxResp.Hash)
@@ -733,12 +817,13 @@ func TestMigrateIngestIsTrueByDefault(t *testing.T) {
 	newDB := dbtest.Postgres(t)
 	freshHorizonPostgresURL := newDB.DSN
 
-	horizoncmd.RootCmd.SetArgs([]string{
+	rootCmd := horizoncmd.NewRootCmd()
+	rootCmd.SetArgs([]string{
 		// ingest is set to true by default
 		"--db-url", freshHorizonPostgresURL,
 		"db", "migrate", "up",
 	})
-	tt.NoError(horizoncmd.RootCmd.Execute())
+	tt.NoError(rootCmd.Execute())
 
 	dbConn, err := db.Open("postgres", freshHorizonPostgresURL)
 	tt.NoError(err)
@@ -754,12 +839,13 @@ func TestMigrateChecksIngestFlag(t *testing.T) {
 	newDB := dbtest.Postgres(t)
 	freshHorizonPostgresURL := newDB.DSN
 
-	horizoncmd.RootCmd.SetArgs([]string{
+	rootCmd := horizoncmd.NewRootCmd()
+	rootCmd.SetArgs([]string{
 		"--ingest=false",
 		"--db-url", freshHorizonPostgresURL,
 		"db", "migrate", "up",
 	})
-	tt.NoError(horizoncmd.RootCmd.Execute())
+	tt.NoError(rootCmd.Execute())
 
 	dbConn, err := db.Open("postgres", freshHorizonPostgresURL)
 	tt.NoError(err)
@@ -802,7 +888,8 @@ func TestFillGaps(t *testing.T) {
 	tt.NoError(err)
 
 	t.Run("validate parallel range", func(t *testing.T) {
-		horizoncmd.RootCmd.SetArgs(command(t, horizonConfig,
+		var rootCmd = horizoncmd.NewRootCmd()
+		rootCmd.SetArgs(command(t, horizonConfig,
 			"db",
 			"fill-gaps",
 			"--parallel-workers=2",
@@ -810,7 +897,7 @@ func TestFillGaps(t *testing.T) {
 			"2",
 		))
 
-		assert.EqualError(t, horizoncmd.RootCmd.Execute(), "Invalid range: {10 2} from > to")
+		assert.EqualError(t, rootCmd.Execute(), "Invalid range: {10 2} from > to")
 	})
 
 	// make sure a full checkpoint has elapsed otherwise there will be nothing to reingest
@@ -842,21 +929,25 @@ func TestFillGaps(t *testing.T) {
 		filepath.Dir(horizonConfig.CaptiveCoreConfigPath),
 		"captive-core-reingest-range-integration-tests.cfg",
 	)
-	horizoncmd.RootCmd.SetArgs(command(t, horizonConfig, "db", "fill-gaps", "--parallel-workers=1"))
-	tt.NoError(horizoncmd.RootCmd.Execute())
+
+	rootCmd := horizoncmd.NewRootCmd()
+	rootCmd.SetArgs(command(t, horizonConfig, "db", "fill-gaps", "--parallel-workers=1"))
+	tt.NoError(rootCmd.Execute())
 
 	tt.NoError(historyQ.LatestLedger(context.Background(), &latestLedger))
 	tt.Equal(int64(0), latestLedger)
 
-	horizoncmd.RootCmd.SetArgs(command(t, horizonConfig, "db", "fill-gaps", "3", "4"))
-	tt.NoError(horizoncmd.RootCmd.Execute())
+	rootCmd = horizoncmd.NewRootCmd()
+	rootCmd.SetArgs(command(t, horizonConfig, "db", "fill-gaps", "3", "4"))
+	tt.NoError(rootCmd.Execute())
 	tt.NoError(historyQ.LatestLedger(context.Background(), &latestLedger))
 	tt.NoError(historyQ.ElderLedger(context.Background(), &oldestLedger))
 	tt.Equal(int64(3), oldestLedger)
 	tt.Equal(int64(4), latestLedger)
 
-	horizoncmd.RootCmd.SetArgs(command(t, horizonConfig, "db", "fill-gaps", "6", "7"))
-	tt.NoError(horizoncmd.RootCmd.Execute())
+	rootCmd = horizoncmd.NewRootCmd()
+	rootCmd.SetArgs(command(t, horizonConfig, "db", "fill-gaps", "6", "7"))
+	tt.NoError(rootCmd.Execute())
 	tt.NoError(historyQ.LatestLedger(context.Background(), &latestLedger))
 	tt.NoError(historyQ.ElderLedger(context.Background(), &oldestLedger))
 	tt.Equal(int64(3), oldestLedger)
@@ -866,8 +957,9 @@ func TestFillGaps(t *testing.T) {
 	tt.NoError(err)
 	tt.Equal([]history.LedgerRange{{StartSequence: 5, EndSequence: 5}}, gaps)
 
-	horizoncmd.RootCmd.SetArgs(command(t, horizonConfig, "db", "fill-gaps"))
-	tt.NoError(horizoncmd.RootCmd.Execute())
+	rootCmd = horizoncmd.NewRootCmd()
+	rootCmd.SetArgs(command(t, horizonConfig, "db", "fill-gaps"))
+	tt.NoError(rootCmd.Execute())
 	tt.NoError(historyQ.LatestLedger(context.Background(), &latestLedger))
 	tt.NoError(historyQ.ElderLedger(context.Background(), &oldestLedger))
 	tt.Equal(int64(3), oldestLedger)
@@ -876,8 +968,9 @@ func TestFillGaps(t *testing.T) {
 	tt.NoError(err)
 	tt.Empty(gaps)
 
-	horizoncmd.RootCmd.SetArgs(command(t, horizonConfig, "db", "fill-gaps", "2", "8"))
-	tt.NoError(horizoncmd.RootCmd.Execute())
+	rootCmd = horizoncmd.NewRootCmd()
+	rootCmd.SetArgs(command(t, horizonConfig, "db", "fill-gaps", "2", "8"))
+	tt.NoError(rootCmd.Execute())
 	tt.NoError(historyQ.LatestLedger(context.Background(), &latestLedger))
 	tt.NoError(historyQ.ElderLedger(context.Background(), &oldestLedger))
 	tt.Equal(int64(2), oldestLedger)
@@ -892,7 +985,7 @@ func TestResumeFromInitializedDB(t *testing.T) {
 	tt := assert.New(t)
 
 	// Stop the integration test, and restart it with the same database
-	err := itest.RestartHorizon()
+	err := itest.RestartHorizon(true)
 	tt.NoError(err)
 
 	successfullyResumed := func() bool {
@@ -904,4 +997,13 @@ func TestResumeFromInitializedDB(t *testing.T) {
 	}
 
 	tt.Eventually(successfullyResumed, 1*time.Minute, 1*time.Second)
+}
+
+type testWriter struct {
+	test *testing.T
+}
+
+func (w *testWriter) Write(p []byte) (n int, err error) {
+	w.test.Log(string(p))
+	return len(p), nil
 }

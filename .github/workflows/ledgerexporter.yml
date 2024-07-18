@@ -13,9 +13,10 @@ jobs:
       CAPTIVE_CORE_DEBIAN_PKG_VERSION: 21.1.0-1921.b3aeb14cc.focal
       LEDGEREXPORTER_INTEGRATION_TESTS_ENABLED: "true"
       LEDGEREXPORTER_INTEGRATION_TESTS_CAPTIVE_CORE_BIN: /usr/bin/stellar-core
-      # this pins to a version of quickstart:testing that has the same version as LEDGEREXPORTER_INTEGRATION_TESTS_CAPTIVE_CORE_BIN
+      # this pins to a version of quickstart:testing that has the same version of core
+      # as specified on LEDGEREXPORTER_INTEGRATION_TESTS_CAPTIVE_CORE_BIN
       # this is the multi-arch index sha, get it by 'docker buildx imagetools inspect stellar/quickstart:testing'
-      LEDGEREXPORTER_INTEGRATION_TESTS_QUICKSTART_IMAGE: docker.io/stellar/quickstart:testing@sha256:03c6679f838a92b1eda4cd3a9e2bdee4c3586e278a138a0acf36a9bc99a0041f
+      LEDGEREXPORTER_INTEGRATION_TESTS_QUICKSTART_IMAGE: docker.io/stellar/quickstart:testing@sha256:5c8186f53cc98571749054dd782dce33b0aca2d1a622a7610362f7c15b79b1bf
       LEDGEREXPORTER_INTEGRATION_TESTS_QUICKSTART_IMAGE_PULL: "false"
     steps:
       - name: Install captive core

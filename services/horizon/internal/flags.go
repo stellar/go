@@ -832,7 +832,7 @@ func Flags() (*Config, support.ConfigOptions) {
 
 // NewAppFromFlags constructs a new Horizon App from the given command line flags
 func NewAppFromFlags(config *Config, flags support.ConfigOptions) (*App, error) {
-	err := ApplyFlags(config, flags, ApplyOptions{RequireCaptiveCoreFullConfig: true, AlwaysIngest: false})
+	err := ApplyFlags(config, flags, ApplyOptions{RequireCaptiveCoreFullConfig: true})
 	if err != nil {
 		return nil, err
 	}
@@ -850,29 +850,9 @@ func NewAppFromFlags(config *Config, flags support.ConfigOptions) (*App, error) 
 }
 
 type ApplyOptions struct {
-	AlwaysIngest                 bool
 	RequireCaptiveCoreFullConfig bool
+	NoCaptiveCore                bool
 }
-
-type networkConfig struct {
-	defaultConfig      []byte
-	HistoryArchiveURLs []string
-	NetworkPassphrase  string
-}
-
-var (
-	PubnetConf = networkConfig{
-		defaultConfig:      ledgerbackend.PubnetDefaultConfig,
-		HistoryArchiveURLs: network.PublicNetworkhistoryArchiveURLs,
-		NetworkPassphrase:  network.PublicNetworkPassphrase,
-	}
-
-	TestnetConf = networkConfig{
-		defaultConfig:      ledgerbackend.TestnetDefaultConfig,
-		HistoryArchiveURLs: network.TestNetworkhistoryArchiveURLs,
-		NetworkPassphrase:  network.TestNetworkPassphrase,
-	}
-)
 
 // getCaptiveCoreBinaryPath retrieves the path of the Captive Core binary
 // Returns the path or an error if the binary is not found
@@ -884,69 +864,32 @@ func getCaptiveCoreBinaryPath() (string, error) {
 	return result, nil
 }
 
-// getCaptiveCoreConfigFromNetworkParameter returns the default Captive Core configuration based on the network.
-func getCaptiveCoreConfigFromNetworkParameter(config *Config) (networkConfig, error) {
-	var defaultNetworkConfig networkConfig
-
-	if config.NetworkPassphrase != "" {
-		return defaultNetworkConfig, fmt.Errorf("invalid config: %s parameter not allowed with the %s parameter",
-			NetworkPassphraseFlagName, NetworkFlagName)
-	}
-
-	if len(config.HistoryArchiveURLs) > 0 {
-		return defaultNetworkConfig, fmt.Errorf("invalid config: %s parameter not allowed with the %s parameter",
-			HistoryArchiveURLsFlagName, NetworkFlagName)
-	}
-
-	switch config.Network {
-	case StellarPubnet:
-		defaultNetworkConfig = PubnetConf
-	case StellarTestnet:
-		defaultNetworkConfig = TestnetConf
-	default:
-		return defaultNetworkConfig, fmt.Errorf("no default configuration found for network %s", config.Network)
-	}
-
-	return defaultNetworkConfig, nil
-}
-
 // setCaptiveCoreConfiguration prepares configuration for the Captive Core
 func setCaptiveCoreConfiguration(config *Config, options ApplyOptions) error {
 	stdLog.Println("Preparing captive core...")
 
+	var err error
 	// If the user didn't specify a Stellar Core binary, we can check the
 	// $PATH and possibly fill it in for them.
 	if config.CaptiveCoreBinaryPath == "" {
-		var err error
 		if config.CaptiveCoreBinaryPath, err = getCaptiveCoreBinaryPath(); err != nil {
 			return fmt.Errorf("captive core requires %s", StellarCoreBinaryPathName)
 		}
 	}
 
-	var defaultNetworkConfig networkConfig
-	if config.Network != "" {
-		var err error
-		defaultNetworkConfig, err = getCaptiveCoreConfigFromNetworkParameter(config)
-		if err != nil {
-			return err
-		}
-		config.NetworkPassphrase = defaultNetworkConfig.NetworkPassphrase
-		config.HistoryArchiveURLs = defaultNetworkConfig.HistoryArchiveURLs
-	} else {
-		if config.NetworkPassphrase == "" {
-			return fmt.Errorf("%s must be set", NetworkPassphraseFlagName)
-		}
+	var defaultCaptiveCoreConfig []byte
+	switch config.Network {
+	case StellarPubnet:
+		defaultCaptiveCoreConfig = ledgerbackend.PubnetDefaultConfig
+	case StellarTestnet:
 
-		if len(config.HistoryArchiveURLs) == 0 {
-			return fmt.Errorf("%s must be set", HistoryArchiveURLsFlagName)
-		}
+		defaultCaptiveCoreConfig = ledgerbackend.TestnetDefaultConfig
 	}
 
 	config.CaptiveCoreTomlParams.CoreBinaryPath = config.CaptiveCoreBinaryPath
 	config.CaptiveCoreTomlParams.HistoryArchiveURLs = config.HistoryArchiveURLs
 	config.CaptiveCoreTomlParams.NetworkPassphrase = config.NetworkPassphrase
 
-	var err error
 	if config.CaptiveCoreConfigPath != "" {
 		config.CaptiveCoreToml, err = ledgerbackend.NewCaptiveCoreTomlFromFile(config.CaptiveCoreConfigPath,
 			config.CaptiveCoreTomlParams)
@@ -960,8 +903,8 @@ func setCaptiveCoreConfiguration(config *Config, options ApplyOptions) error {
 		if err != nil {
 			return errors.Wrap(err, "invalid captive core toml file")
 		}
-	} else if len(defaultNetworkConfig.defaultConfig) != 0 {
-		config.CaptiveCoreToml, err = ledgerbackend.NewCaptiveCoreTomlFromData(defaultNetworkConfig.defaultConfig,
+	} else if len(defaultCaptiveCoreConfig) != 0 {
+		config.CaptiveCoreToml, err = ledgerbackend.NewCaptiveCoreTomlFromData(defaultCaptiveCoreConfig,
 			config.CaptiveCoreTomlParams)
 		if err != nil {
 			return errors.Wrap(err, "invalid captive core toml file")
@@ -1004,10 +947,6 @@ func ApplyFlags(config *Config, flags support.ConfigOptions, options ApplyOption
 		return err
 	}
 
-	if options.AlwaysIngest {
-		config.Ingest = true
-	}
-
 	if config.Ingest {
 		// Migrations should be checked as early as possible. Apply and check
 		// only on ingesting instances which are required to have write-access
@@ -1023,9 +962,15 @@ func ApplyFlags(config *Config, flags support.ConfigOptions, options ApplyOption
 			return err
 		}
 
-		err := setCaptiveCoreConfiguration(config, options)
-		if err != nil {
-			return errors.Wrap(err, "error generating captive core configuration")
+		if err := setNetworkConfiguration(config); err != nil {
+			return err
+		}
+
+		if !options.NoCaptiveCore {
+			err := setCaptiveCoreConfiguration(config, options)
+			if err != nil {
+				return errors.Wrap(err, "error generating captive core configuration")
+			}
 		}
 	}
 
@@ -1059,5 +1004,39 @@ func ApplyFlags(config *Config, flags support.ConfigOptions, options ApplyOption
 		config.ClientQueryTimeout = config.ConnectionTimeout * 2
 	}
 
+	return nil
+}
+
+func setNetworkConfiguration(config *Config) error {
+	if config.Network != "" {
+		if config.NetworkPassphrase != "" {
+			return fmt.Errorf("invalid config: %s parameter not allowed with the %s parameter",
+				NetworkPassphraseFlagName, NetworkFlagName)
+		}
+
+		if len(config.HistoryArchiveURLs) > 0 {
+			return fmt.Errorf("invalid config: %s parameter not allowed with the %s parameter",
+				HistoryArchiveURLsFlagName, NetworkFlagName)
+		}
+
+		switch config.Network {
+		case StellarPubnet:
+			config.NetworkPassphrase = network.PublicNetworkPassphrase
+			config.HistoryArchiveURLs = network.PublicNetworkhistoryArchiveURLs
+		case StellarTestnet:
+			config.NetworkPassphrase = network.TestNetworkPassphrase
+			config.HistoryArchiveURLs = network.TestNetworkhistoryArchiveURLs
+		default:
+			return fmt.Errorf("no default configuration found for network %s", config.Network)
+		}
+	}
+
+	if config.NetworkPassphrase == "" {
+		return fmt.Errorf("%s must be set", NetworkPassphraseFlagName)
+	}
+
+	if len(config.HistoryArchiveURLs) == 0 {
+		return fmt.Errorf("%s must be set", HistoryArchiveURLsFlagName)
+	}
 	return nil
 }

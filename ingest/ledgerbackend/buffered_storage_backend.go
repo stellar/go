@@ -18,12 +18,10 @@ import (
 var _ LedgerBackend = (*BufferedStorageBackend)(nil)
 
 type BufferedStorageBackendConfig struct {
-	LedgerBatchConfig datastore.DataStoreSchema
-	DataStore         datastore.DataStore
-	BufferSize        uint32
-	NumWorkers        uint32
-	RetryLimit        uint32
-	RetryWait         time.Duration
+	BufferSize uint32        `toml:"buffer_size"`
+	NumWorkers uint32        `toml:"num_workers"`
+	RetryLimit uint32        `toml:"retry_limit"`
+	RetryWait  time.Duration `toml:"retry_wait"`
 }
 
 // BufferedStorageBackend is a ledger backend that reads from a storage service.
@@ -45,7 +43,7 @@ type BufferedStorageBackend struct {
 }
 
 // NewBufferedStorageBackend returns a new BufferedStorageBackend instance.
-func NewBufferedStorageBackend(ctx context.Context, config BufferedStorageBackendConfig) (*BufferedStorageBackend, error) {
+func NewBufferedStorageBackend(config BufferedStorageBackendConfig, dataStore datastore.DataStore) (*BufferedStorageBackend, error) {
 	if config.BufferSize == 0 {
 		return nil, errors.New("buffer size must be > 0")
 	}
@@ -54,17 +52,13 @@ func NewBufferedStorageBackend(ctx context.Context, config BufferedStorageBacken
 		return nil, errors.New("number of workers must be <= BufferSize")
 	}
 
-	if config.DataStore == nil {
-		return nil, errors.New("no DataStore provided")
-	}
-
-	if config.LedgerBatchConfig.LedgersPerFile <= 0 {
+	if dataStore.GetSchema().LedgersPerFile <= 0 {
 		return nil, errors.New("ledgersPerFile must be > 0")
 	}
 
 	bsBackend := &BufferedStorageBackend{
 		config:    config,
-		dataStore: config.DataStore,
+		dataStore: dataStore,
 	}
 
 	return bsBackend, nil

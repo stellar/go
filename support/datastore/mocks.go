@@ -47,6 +47,11 @@ func (m *MockDataStore) Close() error {
 	return args.Error(0)
 }
 
+func (m *MockDataStore) GetSchema() DataStoreSchema {
+	args := m.Called()
+	return args.Get(0).(DataStoreSchema)
+}
+
 type MockResumableManager struct {
 	mock.Mock
 }

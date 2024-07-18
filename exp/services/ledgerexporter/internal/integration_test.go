@@ -34,6 +34,7 @@ const (
 	// tests then refer to ledger sequences only up to this, therefore
 	// don't have to do complex waiting within test for a sequence to exist.
 	waitForCoreLedgerSequence = 16
+	configTemplate            = "test/integration_config_template.toml"
 )
 
 func TestLedgerExporterTestSuite(t *testing.T) {
@@ -54,6 +55,7 @@ type LedgerExporterTestSuite struct {
 	dockerCli       *client.Client
 	gcsServer       *fakestorage.Server
 	finishedSetup   bool
+	config          Config
 }
 
 func (s *LedgerExporterTestSuite) TestScanAndFill() {
@@ -74,7 +76,7 @@ func (s *LedgerExporterTestSuite) TestScanAndFill() {
 	s.T().Log(output)
 	s.T().Log(errOutput)
 
-	datastore, err := datastore.NewGCSDataStore(s.ctx, "integration-test/standalone")
+	datastore, err := datastore.NewDataStore(s.ctx, s.config.DataStoreConfig)
 	require.NoError(err)
 
 	_, err = datastore.GetFile(s.ctx, "FFFFFFFF--0-9/FFFFFFFA--5.xdr.zstd")
@@ -104,7 +106,7 @@ func (s *LedgerExporterTestSuite) TestAppend() {
 	s.T().Log(output)
 	s.T().Log(errOutput)
 
-	datastore, err := datastore.NewGCSDataStore(s.ctx, "integration-test/standalone")
+	datastore, err := datastore.NewDataStore(s.ctx, s.config.DataStoreConfig)
 	require.NoError(err)
 
 	_, err = datastore.GetFile(s.ctx, "FFFFFFFF--0-9/FFFFFFF6--9.xdr.zstd")
@@ -134,7 +136,7 @@ func (s *LedgerExporterTestSuite) TestAppendUnbounded() {
 		s.T().Log(errOutput)
 	}()
 
-	datastore, err := datastore.NewGCSDataStore(s.ctx, "integration-test/standalone")
+	datastore, err := datastore.NewDataStore(s.ctx, s.config.DataStoreConfig)
 	require.NoError(err)
 
 	require.EventuallyWithT(func(c *assert.CollectT) {
@@ -158,9 +160,9 @@ func (s *LedgerExporterTestSuite) SetupSuite() {
 	}()
 	testTempDir := t.TempDir()
 
-	ledgerExporterConfigTemplate, err := toml.LoadFile("test/integration_config_template.toml")
+	ledgerExporterConfigTemplate, err := toml.LoadFile(configTemplate)
 	if err != nil {
-		t.Fatalf("unable to load config template file %v", err)
+		t.Fatalf("unable to load config template file %v, %v", configTemplate, err)
 	}
 
 	// if LEDGEREXPORTER_INTEGRATION_TESTS_CAPTIVE_CORE_BIN not specified,
@@ -172,7 +174,10 @@ func (s *LedgerExporterTestSuite) SetupSuite() {
 
 	tomlBytes, err := toml.Marshal(ledgerExporterConfigTemplate)
 	if err != nil {
-		t.Fatalf("unable to load config file %v", err)
+		t.Fatalf("unable to parse config file toml %v, %v", configTemplate, err)
+	}
+	if err = toml.Unmarshal(tomlBytes, &s.config); err != nil {
+		t.Fatalf("unable to marshal config file toml into struct, %v", err)
 	}
 
 	tempSeedDataPath := filepath.Join(testTempDir, "data")

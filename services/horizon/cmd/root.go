@@ -12,7 +12,13 @@ import (
 var (
 	globalConfig, globalFlags = horizon.Flags()
 
-	RootCmd = &cobra.Command{
+	RootCmd           = createRootCmd(globalConfig, globalFlags)
+	originalHelpFunc  = RootCmd.HelpFunc()
+	originalUsageFunc = RootCmd.UsageFunc()
+)
+
+func createRootCmd(horizonConfig *horizon.Config, configOptions config.ConfigOptions) *cobra.Command {
+	return &cobra.Command{
 		Use:           "horizon",
 		Short:         "client-facing api server for the Stellar network",
 		SilenceErrors: true,
@@ -23,16 +29,44 @@ var (
 			"DEPRECATED - the use of command-line flags has been deprecated in favor of environment variables. Please" +
 			"consult our Configuring section in the developer documentation on how to use them - https://developers.stellar.org/docs/run-api-server/configuring",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			app, err := horizon.NewAppFromFlags(globalConfig, globalFlags)
+			app, err := horizon.NewAppFromFlags(horizonConfig, configOptions)
 			if err != nil {
 				return err
 			}
 			return app.Serve()
 		},
 	}
-	originalHelpFunc  = RootCmd.HelpFunc()
-	originalUsageFunc = RootCmd.UsageFunc()
-)
+}
+
+func initRootCmd(cmd *cobra.Command,
+	originalHelpFn func(*cobra.Command, []string),
+	originalUsageFn func(*cobra.Command) error,
+	horizonGlobalFlags config.ConfigOptions) {
+	// override the default help output, apply further filtering on which global flags
+	// will be shown on the help outout dependent on the command help was issued upon.
+	cmd.SetHelpFunc(func(c *cobra.Command, args []string) {
+		enableGlobalOptionsInHelp(c, horizonGlobalFlags)
+		originalHelpFn(c, args)
+	})
+
+	cmd.SetUsageFunc(func(c *cobra.Command) error {
+		enableGlobalOptionsInHelp(c, horizonGlobalFlags)
+		return originalUsageFn(c)
+	})
+
+	err := horizonGlobalFlags.Init(cmd)
+	if err != nil {
+		stdLog.Fatal(err.Error())
+	}
+}
+
+func NewRootCmd() *cobra.Command {
+	horizonGlobalConfig, horizonGlobalFlags := horizon.Flags()
+	cmd := createRootCmd(horizonGlobalConfig, horizonGlobalFlags)
+	initRootCmd(cmd, cmd.HelpFunc(), cmd.UsageFunc(), horizonGlobalFlags)
+	DefineDBCommands(cmd, horizonGlobalConfig, horizonGlobalFlags)
+	return cmd
+}
 
 // ErrUsage indicates we should print the usage string and exit with code 1
 type ErrUsage struct {
@@ -51,23 +85,7 @@ func (e ErrExitCode) Error() string {
 }
 
 func init() {
-
-	// override the default help output, apply further filtering on which global flags
-	// will be shown on the help outout dependent on the command help was issued upon.
-	RootCmd.SetHelpFunc(func(c *cobra.Command, args []string) {
-		enableGlobalOptionsInHelp(c, globalFlags)
-		originalHelpFunc(c, args)
-	})
-
-	RootCmd.SetUsageFunc(func(c *cobra.Command) error {
-		enableGlobalOptionsInHelp(c, globalFlags)
-		return originalUsageFunc(c)
-	})
-
-	err := globalFlags.Init(RootCmd)
-	if err != nil {
-		stdLog.Fatal(err.Error())
-	}
+	initRootCmd(RootCmd, originalHelpFunc, originalUsageFunc, globalFlags)
 }
 
 func Execute() error {

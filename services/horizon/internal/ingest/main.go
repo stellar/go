@@ -20,6 +20,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/ingest/filters"
 	apkg "github.com/stellar/go/support/app"
+	"github.com/stellar/go/support/datastore"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 	logpkg "github.com/stellar/go/support/log"
@@ -82,6 +83,28 @@ const (
 
 var log = logpkg.DefaultLogger.WithField("service", "ingest")
 
+type LedgerBackendType uint
+
+const (
+	CaptiveCoreBackend LedgerBackendType = iota
+	BufferedStorageBackend
+)
+
+func (s LedgerBackendType) String() string {
+	switch s {
+	case CaptiveCoreBackend:
+		return "captive-core"
+	case BufferedStorageBackend:
+		return "datastore"
+	}
+	return ""
+}
+
+type StorageBackendConfig struct {
+	DataStoreConfig              datastore.DataStoreConfig                  `toml:"datastore_config"`
+	BufferedStorageBackendConfig ledgerbackend.BufferedStorageBackendConfig `toml:"buffered_storage_backend_config"`
+}
+
 type Config struct {
 	StellarCoreURL         string
 	CaptiveCoreBinaryPath  string
@@ -115,6 +138,9 @@ type Config struct {
 	CoreBuildVersionFn    ledgerbackend.CoreBuildVersionFunc
 
 	ReapConfig ReapConfig
+
+	LedgerBackendType    LedgerBackendType
+	StorageBackendConfig StorageBackendConfig
 }
 
 const (
@@ -261,29 +287,46 @@ func NewSystem(config Config) (System, error) {
 		cancel()
 		return nil, errors.Wrap(err, "error creating history archive")
 	}
+	var ledgerBackend ledgerbackend.LedgerBackend
 
-	// the only ingest option is local captive core config
-	logger := log.WithField("subservice", "stellar-core")
-	ledgerBackend, err := ledgerbackend.NewCaptive(
-		ledgerbackend.CaptiveCoreConfig{
-			BinaryPath:            config.CaptiveCoreBinaryPath,
-			StoragePath:           config.CaptiveCoreStoragePath,
-			UseDB:                 config.CaptiveCoreConfigUseDB,
-			Toml:                  config.CaptiveCoreToml,
-			NetworkPassphrase:     config.NetworkPassphrase,
-			HistoryArchiveURLs:    config.HistoryArchiveURLs,
-			CheckpointFrequency:   config.CheckpointFrequency,
-			LedgerHashStore:       ledgerbackend.NewHorizonDBLedgerHashStore(config.HistorySession),
-			Log:                   logger,
-			Context:               ctx,
-			UserAgent:             fmt.Sprintf("captivecore horizon/%s golang/%s", apkg.Version(), runtime.Version()),
-			CoreProtocolVersionFn: config.CoreProtocolVersionFn,
-			CoreBuildVersionFn:    config.CoreBuildVersionFn,
-		},
-	)
-	if err != nil {
-		cancel()
-		return nil, errors.Wrap(err, "error creating captive core backend")
+	if config.LedgerBackendType == BufferedStorageBackend {
+		// Ingest from datastore
+		var dataStore datastore.DataStore
+		dataStore, err = datastore.NewDataStore(context.Background(), config.StorageBackendConfig.DataStoreConfig)
+		if err != nil {
+			cancel()
+			return nil, fmt.Errorf("failed to create datastore: %w", err)
+		}
+		ledgerBackend, err = ledgerbackend.NewBufferedStorageBackend(config.StorageBackendConfig.BufferedStorageBackendConfig, dataStore)
+		if err != nil {
+			cancel()
+			return nil, fmt.Errorf("failed to create buffered storage backend: %w", err)
+		}
+	} else {
+		// Ingest from local captive core
+
+		logger := log.WithField("subservice", "stellar-core")
+		ledgerBackend, err = ledgerbackend.NewCaptive(
+			ledgerbackend.CaptiveCoreConfig{
+				BinaryPath:            config.CaptiveCoreBinaryPath,
+				StoragePath:           config.CaptiveCoreStoragePath,
+				UseDB:                 config.CaptiveCoreConfigUseDB,
+				Toml:                  config.CaptiveCoreToml,
+				NetworkPassphrase:     config.NetworkPassphrase,
+				HistoryArchiveURLs:    config.HistoryArchiveURLs,
+				CheckpointFrequency:   config.CheckpointFrequency,
+				LedgerHashStore:       ledgerbackend.NewHorizonDBLedgerHashStore(config.HistorySession),
+				Log:                   logger,
+				Context:               ctx,
+				UserAgent:             fmt.Sprintf("captivecore horizon/%s golang/%s", apkg.Version(), runtime.Version()),
+				CoreProtocolVersionFn: config.CoreProtocolVersionFn,
+				CoreBuildVersionFn:    config.CoreBuildVersionFn,
+			},
+		)
+		if err != nil {
+			cancel()
+			return nil, errors.Wrap(err, "error creating captive core backend")
+		}
 	}
 
 	historyQ := &history.Q{config.HistorySession.Clone()}
