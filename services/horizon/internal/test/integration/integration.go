@@ -359,10 +359,6 @@ func (i *Test) StartHorizon(startIngestProcess bool) error {
 	})
 	var err error
 
-	if err = i.initializeEnvironmentVariables(); err != nil {
-		return err
-	}
-
 	// To facilitate custom runs of Horizon, we merge a default set of
 	// parameters with the tester-supplied ones (if any).
 	mergedWebArgs := MergeMaps(i.getDefaultWebArgs(), i.config.HorizonWebParameters)
@@ -371,6 +367,10 @@ func (i *Test) StartHorizon(startIngestProcess bool) error {
 	// Set up Horizon clients
 	i.setupHorizonClient(mergedWebArgs)
 	if err = i.setupHorizonAdminClient(mergedIngestArgs); err != nil {
+		return err
+	}
+
+	if err = i.initializeEnvironmentVariables(); err != nil {
 		return err
 	}
 

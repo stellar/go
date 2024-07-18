@@ -113,6 +113,8 @@ func TestEnvironmentPreserved(t *testing.T) {
 	envValue := os.Getenv("STELLAR_CORE_URL")
 	assert.Equal(t, StellarCoreURL, envValue)
 
+	test.Shutdown()
+
 	envValue = os.Getenv("STELLAR_CORE_URL")
 	assert.Equal(t, "original value", envValue)
 }
