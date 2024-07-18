@@ -342,6 +342,18 @@ func (i *Test) Shutdown() {
 func (i *Test) StartHorizon(startIngestProcess bool) error {
 	i.testDB = dbtest.Postgres(i.t)
 	i.shutdownCalls = append(i.shutdownCalls, func() {
+		if i.appStopped == nil {
+			// appStopped is nil when the horizon cmd.Execute creates an App, but gets an intentional error and StartHorizon
+			// never gets to point of running App.Serve() which would have closed the db conn eventually
+			// since it wires up listener to App.Close() invocation, so, we must manually detect this edge case and
+			// close the app's db here to clean up
+			if i.webNode != nil {
+				i.webNode.CloseDB()
+			}
+			if i.ingestNode != nil {
+				i.ingestNode.CloseDB()
+			}
+		}
 		i.StopHorizon()
 		i.testDB.Close()
 	})
@@ -401,7 +413,6 @@ func (i *Test) StartHorizon(startIngestProcess bool) error {
 	}
 
 	i.appStopped = &sync.WaitGroup{}
-
 	if i.ingestNode != nil {
 		i.appStopped.Add(1)
 		go func() {

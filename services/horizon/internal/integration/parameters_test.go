@@ -12,7 +12,6 @@ import (
 	"strings"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/spf13/cobra"
 
@@ -80,9 +79,6 @@ func TestBucketDirDisallowed(t *testing.T) {
 	assert.Equal(t, err.Error(), integration.HorizonInitErrStr+": error generating captive core configuration:"+
 		" invalid captive core toml file: could not unmarshal captive core toml: setting BUCKET_DIR_PATH is disallowed"+
 		" for Captive Core, use CAPTIVE_CORE_STORAGE_PATH instead")
-	time.Sleep(1 * time.Second)
-	test.StopHorizon()
-	test.Shutdown()
 }
 
 func TestEnvironmentPreserved(t *testing.T) {
@@ -116,8 +112,6 @@ func TestEnvironmentPreserved(t *testing.T) {
 
 	envValue := os.Getenv("STELLAR_CORE_URL")
 	assert.Equal(t, StellarCoreURL, envValue)
-
-	test.Shutdown()
 
 	envValue = os.Getenv("STELLAR_CORE_URL")
 	assert.Equal(t, "original value", envValue)
@@ -161,11 +155,7 @@ func TestInvalidNetworkParameters(t *testing.T) {
 			testConfig.HorizonIngestParameters = localParams
 			test := integration.NewTest(t, *testConfig)
 			err := test.StartHorizon(true)
-			// Adding sleep as a workaround for the race condition in the ingestion system.
-			// https://github.com/stellar/go/issues/5005
-			time.Sleep(2 * time.Second)
 			assert.Equal(t, testCase.errMsg, err.Error())
-			test.Shutdown()
 		})
 	}
 }
@@ -205,14 +195,9 @@ func TestNetworkParameter(t *testing.T) {
 			testConfig.HorizonIngestParameters = localParams
 			test := integration.NewTest(t, *testConfig)
 			err := test.StartHorizon(true)
-			// Adding sleep as a workaround for the race condition in the ingestion system.
-			// https://github.com/stellar/go/issues/5005
-			time.Sleep(2 * time.Second)
 			assert.NoError(t, err)
 			assert.Equal(t, test.GetHorizonIngestConfig().HistoryArchiveURLs, tt.historyArchiveURLs)
 			assert.Equal(t, test.GetHorizonIngestConfig().NetworkPassphrase, tt.networkPassphrase)
-
-			test.Shutdown()
 		})
 	}
 }
@@ -248,11 +233,7 @@ func TestNetworkEnvironmentVariable(t *testing.T) {
 			testConfig.HorizonEnvironment = map[string]string{"NETWORK": networkValue}
 			test := integration.NewTest(t, *testConfig)
 			err := test.StartHorizon(true)
-			// Adding sleep here as a workaround for the race condition in the ingestion system.
-			// More details can be found at https://github.com/stellar/go/issues/5005
-			time.Sleep(2 * time.Second)
 			assert.NoError(t, err)
-			test.Shutdown()
 		})
 	}
 }
@@ -300,7 +281,6 @@ func TestMaxAssetsForPathRequests(t *testing.T) {
 		assert.NoError(t, err)
 		test.WaitForHorizonIngest()
 		assert.Equal(t, test.HorizonIngest().Config().MaxAssetsPerPathRequest, 2)
-		test.Shutdown()
 	})
 }
 
@@ -326,7 +306,6 @@ func TestMaxPathFindingRequests(t *testing.T) {
 		finder, ok := test.HorizonIngest().Paths().(*paths.RateLimitedFinder)
 		assert.True(t, ok)
 		assert.Equal(t, finder.Limit(), 5)
-		test.Shutdown()
 	})
 }
 
@@ -339,7 +318,6 @@ func TestDisablePathFinding(t *testing.T) {
 		assert.Equal(t, test.HorizonIngest().Config().MaxPathFindingRequests, uint(0))
 		_, ok := test.HorizonIngest().Paths().(simplepath.InMemoryFinder)
 		assert.True(t, ok)
-		test.Shutdown()
 	})
 	t.Run("set to true", func(t *testing.T) {
 		testConfig := integration.GetTestConfig()
@@ -349,7 +327,6 @@ func TestDisablePathFinding(t *testing.T) {
 		assert.NoError(t, err)
 		test.WaitForHorizonIngest()
 		assert.Nil(t, test.HorizonIngest().Paths())
-		test.Shutdown()
 	})
 }
 
@@ -366,7 +343,6 @@ func TestDisableTxSub(t *testing.T) {
 		test := integration.NewTest(t, *testConfig)
 		err := test.StartHorizon(true)
 		assert.ErrorContains(t, err, "cannot initialize Horizon: flag --stellar-core-url cannot be empty")
-		test.Shutdown()
 	})
 	t.Run("horizon starts successfully when DISABLE_TX_SUB=false, INGEST=false and stellar-core-url is provided", func(t *testing.T) {
 		localParams := integration.MergeMaps(networkParamArgs, map[string]string{
@@ -381,7 +357,6 @@ func TestDisableTxSub(t *testing.T) {
 		test := integration.NewTest(t, *testConfig)
 		err := test.StartHorizon(true)
 		assert.NoError(t, err)
-		test.Shutdown()
 	})
 	t.Run("horizon starts successfully when DISABLE_TX_SUB=true and INGEST=true", func(t *testing.T) {
 		testConfig := integration.GetTestConfig()
@@ -393,7 +368,6 @@ func TestDisableTxSub(t *testing.T) {
 		err := test.StartHorizon(true)
 		assert.NoError(t, err)
 		test.WaitForHorizonIngest()
-		test.Shutdown()
 	})
 	t.Run("do not require stellar-core-url when both DISABLE_TX_SUB=true and INGEST=false", func(t *testing.T) {
 		localParams := integration.MergeMaps(networkParamArgs, map[string]string{
@@ -407,7 +381,6 @@ func TestDisableTxSub(t *testing.T) {
 		test := integration.NewTest(t, *testConfig)
 		err := test.StartHorizon(true)
 		assert.NoError(t, err)
-		test.Shutdown()
 	})
 }
 
