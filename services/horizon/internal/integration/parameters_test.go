@@ -12,6 +12,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -157,6 +158,9 @@ func TestInvalidNetworkParameters(t *testing.T) {
 			testConfig.HorizonIngestParameters = localParams
 			test := integration.NewTest(t, *testConfig)
 			err := test.StartHorizon(true)
+			// Adding sleep as a workaround for the race condition in the ingestion system.
+			// https://github.com/stellar/go/issues/5005
+			time.Sleep(2 * time.Second)
 			assert.Equal(t, testCase.errMsg, err.Error())
 		})
 	}
@@ -197,6 +201,9 @@ func TestNetworkParameter(t *testing.T) {
 			testConfig.HorizonIngestParameters = localParams
 			test := integration.NewTest(t, *testConfig)
 			err := test.StartHorizon(true)
+			// Adding sleep as a workaround for the race condition in the ingestion system.
+			// https://github.com/stellar/go/issues/5005
+			time.Sleep(2 * time.Second)
 			assert.NoError(t, err)
 			assert.Equal(t, test.GetHorizonIngestConfig().HistoryArchiveURLs, tt.historyArchiveURLs)
 			assert.Equal(t, test.GetHorizonIngestConfig().NetworkPassphrase, tt.networkPassphrase)
@@ -235,6 +242,9 @@ func TestNetworkEnvironmentVariable(t *testing.T) {
 			testConfig.HorizonEnvironment = map[string]string{"NETWORK": networkValue}
 			test := integration.NewTest(t, *testConfig)
 			err := test.StartHorizon(true)
+			// Adding sleep as a workaround for the race condition in the ingestion system.
+			// https://github.com/stellar/go/issues/5005
+			time.Sleep(2 * time.Second)
 			assert.NoError(t, err)
 		})
 	}
