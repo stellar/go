@@ -171,14 +171,14 @@ By default, the Docker Compose file is configured to use version 21 of Protocol 
 ```bash
 export PROTOCOL_VERSION="21"
 export CORE_IMAGE="stellar/stellar-core:21" 
-export STELLAR_CORE_VERSION="21.0.0-1872.c6f474133.focal"
+export STELLAR_CORE_VERSION="21.2.0-1953.d78f48eac.focal"
 ```
 
 Example:
 
 Runs Stellar Protocol and Core version 21, for any mode of testnet, standalone, pubnet
 ```bash
-PROTOCOL_VERSION=21 CORE_IMAGE=stellar/stellar-core:21 STELLAR_CORE_VERSION=21.0.0-1872.c6f474133.focal ./start.sh [standalone|pubnet]
+PROTOCOL_VERSION=21 CORE_IMAGE=stellar/stellar-core:21 STELLAR_CORE_VERSION=21.2.0-1953.d78f48eac.focal ./start.sh [standalone|pubnet]
 ```
 
 ## <a name="logging"></a> **Logging**

@@ -33,7 +33,7 @@ jobs:
       HORIZON_INTEGRATION_TESTS_ENABLED: true
       HORIZON_INTEGRATION_TESTS_CORE_MAX_SUPPORTED_PROTOCOL: ${{ matrix.protocol-version }}
       HORIZON_INTEGRATION_TESTS_CAPTIVE_CORE_USE_DB: true
-      PROTOCOL_21_CORE_DEBIAN_PKG_VERSION: 21.0.0-1872.c6f474133.focal
+      PROTOCOL_21_CORE_DEBIAN_PKG_VERSION: 21.2.0-1953.d78f48eac.focal
       PROTOCOL_21_CORE_DOCKER_IMG: stellar/stellar-core:21
       PROTOCOL_21_SOROBAN_RPC_DOCKER_IMG: stellar/soroban-rpc:21.0.0-rc2-73
       PGHOST: localhost
@@ -123,7 +123,7 @@ jobs:
     name: Test (and push) verify-range image
     runs-on: ubuntu-22.04
     env:
-      STELLAR_CORE_VERSION: 21.0.0-1872.c6f474133.focal
+      STELLAR_CORE_VERSION: 21.2.0-1953.d78f48eac.focal
       CAPTIVE_CORE_STORAGE_PATH: /tmp
     steps:
       - uses: actions/checkout@v3

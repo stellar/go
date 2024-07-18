@@ -10,7 +10,7 @@ jobs:
     name: Test Ledger Exporter
     runs-on: ubuntu-latest
     env:
-      CAPTIVE_CORE_DEBIAN_PKG_VERSION: 21.1.0-1921.b3aeb14cc.focal
+      CAPTIVE_CORE_DEBIAN_PKG_VERSION: 21.2.0-1953.d78f48eac.focal
       LEDGEREXPORTER_INTEGRATION_TESTS_ENABLED: "true"
       LEDGEREXPORTER_INTEGRATION_TESTS_CAPTIVE_CORE_BIN: /usr/bin/stellar-core
       # this pins to a version of quickstart:testing that has the same version of core

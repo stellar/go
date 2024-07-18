@@ -16,7 +16,7 @@ jobs:
       # this is the multi-arch index sha, get it by 'docker buildx imagetools inspect stellar/quickstart:testing'
       LEDGEREXPORTER_INTEGRATION_TESTS_QUICKSTART_IMAGE: docker.io/stellar/quickstart:testing@sha256:03c6679f838a92b1eda4cd3a9e2bdee4c3586e278a138a0acf36a9bc99a0041f
       LEDGEREXPORTER_INTEGRATION_TESTS_QUICKSTART_IMAGE_PULL: "false"
-      STELLAR_CORE_VERSION: 21.1.0-1921.b3aeb14cc.focal
+      STELLAR_CORE_VERSION: 21.2.0-1953.d78f48eac.focal
     steps:
       - name: Set VERSION
         run: |

@@ -16,7 +16,7 @@ Before running integration tests, you also need to set some environment variable
 ```bash
 export HORIZON_INTEGRATION_TESTS_ENABLED=true
 export HORIZON_INTEGRATION_TESTS_CORE_MAX_SUPPORTED_PROTOCOL=21
-export HORIZON_INTEGRATION_TESTS_DOCKER_IMG=stellar/stellar-core:21.0.0-1872.c6f474133.focal
+export HORIZON_INTEGRATION_TESTS_DOCKER_IMG=stellar/stellar-core:21.2.0-1953.d78f48eac.focal
 ```
 Make sure to check [horizon.yml](/.github/workflows/horizon.yml) for the latest core image version.
 
