@@ -8,7 +8,7 @@ import (
 )
 
 // EndSponsoringFutureReserves represents the Stellar begin sponsoring future reserves operation. See
-// https://developers.stellar.org/docs/start/list-of-operations/
+// https://developers.stellar.org/docs/learn/fundamentals/transactions/list-of-operations/
 type EndSponsoringFutureReserves struct {
 	SourceAccount string
 }

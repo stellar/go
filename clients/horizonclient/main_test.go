@@ -2241,7 +2241,7 @@ var multipleOpsResponse = `{
         "selling_asset_code": "XRP",
         "selling_asset_issuer": "GBVOL67TMUQBGL4TZYNMY3ZQ5WGQYFPFD5VJRWXR72VA33VFNL225PL5",
         "offer_id": "73938565"
-      },  
+      },
       {
         "_links": {
           "self": {
@@ -2271,7 +2271,7 @@ var multipleOpsResponse = `{
         "starting_balance": "2.0000000",
         "funder": "GD7C4MQJDM3AHXKO2Z2OF7BK3FYL6QMNBGVEO4H2DHM65B7JMHD2IU2E",
         "account": "GD6LCN37TNJZW3JF2R7N5EYGQGVWRPMSGQHR6RZD4X4NATEQLP7RFAMA"
-      }          
+      }
     ]
   }
 }`
@@ -2361,7 +2361,7 @@ var transactionFailure = `{
   "type": "https://stellar.org/horizon-errors/transaction_failed",
   "title": "Transaction Failed",
   "status": 400,
-  "detail": "The transaction failed when submitted to the stellar network. The extras.result_codes field on this response contains further details.  Descriptions of each code can be found at: https://developers.stellar.org/docs/start/list-of-operations/",
+  "detail": "The transaction failed when submitted to the stellar network. The extras.result_codes field on this response contains further details.  Descriptions of each code can be found at: https://developers.stellar.org/docs/data/horizon/api-reference/retrieve-an-order-book",
   "instance": "horizon-testnet-001.prd.stellar001.internal.stellar-ops.com/4elYz2fHhC-528285",
   "extras": {
     "envelope_xdr": "AAAAAKpmDL6Z4hvZmkTBkYpHftan4ogzTaO4XTB7joLgQnYYAAAAZAAAAAAABeoyAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAABAAAAAD3sEVVGZGi/NoC3ta/8f/YZKMzyi9ZJpOi0H47x7IqYAAAAAAAAAAAF9eEAAAAAAAAAAAA=",

@@ -481,7 +481,7 @@ func TestDeprecatedOutputs(t *testing.T) {
 		assert.Contains(t, string(outputBytes), "DEPRECATED - the use of command-line flags: "+
 			"[--disable-tx-sub], has been deprecated in favor of environment variables. Please consult our "+
 			"Configuring section in the developer documentation on how to use them - "+
-			"https://developers.stellar.org/docs/run-api-server/configuring")
+			"https://developers.stellar.org/docs/data/horizon/admin-guide/configuring")
 	})
 	t.Run("deprecated output for --captive-core-use-db", func(t *testing.T) {
 		originalStderr := os.Stderr

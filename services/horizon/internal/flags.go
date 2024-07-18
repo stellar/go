@@ -929,7 +929,7 @@ func ApplyFlags(config *Config, flags support.ConfigOptions, options ApplyOption
 	flagsPassedByUser := flags.GetCommandLineFlagsPassedByUser()
 	if len(flagsPassedByUser) > 0 {
 		result := fmt.Sprintf("DEPRECATED - the use of command-line flags: [%s], has been deprecated in favor of environment variables. "+
-			"Please consult our Configuring section in the developer documentation on how to use them - https://developers.stellar.org/docs/run-api-server/configuring", "--"+strings.Join(flagsPassedByUser, ",--"))
+			"Please consult our Configuring section in the developer documentation on how to use them - https://developers.stellar.org/docs/data/horizon/admin-guide/configuring", "--"+strings.Join(flagsPassedByUser, ",--"))
 		stdLog.Println(result)
 	}
 

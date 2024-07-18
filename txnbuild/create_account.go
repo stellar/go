@@ -7,7 +7,7 @@ import (
 )
 
 // CreateAccount represents the Stellar create account operation. See
-// https://developers.stellar.org/docs/start/list-of-operations/
+// https://developers.stellar.org/docs/learn/fundamentals/transactions/list-of-operations/
 type CreateAccount struct {
 	Destination   string
 	Amount        string

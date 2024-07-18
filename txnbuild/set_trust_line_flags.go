@@ -19,7 +19,7 @@ const TrustLineAuthorizedToMaintainLiabilities = TrustLineFlag(xdr.TrustLineFlag
 const TrustLineClawbackEnabled = TrustLineFlag(xdr.TrustLineFlagsTrustlineClawbackEnabledFlag)
 
 // SetTrustLineFlags represents the Stellar set trust line flags operation. See
-// https://developers.stellar.org/docs/start/list-of-operations/
+// https://developers.stellar.org/docs/learn/fundamentals/transactions/list-of-operations/
 type SetTrustLineFlags struct {
 	Trustor       string
 	Asset         Asset

@@ -27,7 +27,7 @@ func createRootCmd(horizonConfig *horizon.Config, configOptions config.ConfigOpt
 			"and applications that want to access the Stellar network. It allows you to submit transactions to the " +
 			"network, check the status of accounts, subscribe to event streams and more.\n" +
 			"DEPRECATED - the use of command-line flags has been deprecated in favor of environment variables. Please" +
-			"consult our Configuring section in the developer documentation on how to use them - https://developers.stellar.org/docs/run-api-server/configuring",
+			"consult our Configuring section in the developer documentation on how to use them - https://developers.stellar.org/docs/data/horizon/admin-guide/configuring",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			app, err := horizon.NewAppFromFlags(horizonConfig, configOptions)
 			if err != nil {

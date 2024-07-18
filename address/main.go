@@ -1,5 +1,5 @@
 // Package address provides utility functions for working with stellar
-// addresses. See https://developers.stellar.org/docs/glossary/federation/
+// addresses. See https://developers.stellar.org/docs/learn/encyclopedia/network-configuration/federation
 // html#stellar-addresses for more on addresses.
 package address
 

@@ -33,7 +33,7 @@ import (
 const MinBaseFee = 100
 
 // Account represents the aspects of a Stellar account necessary to construct transactions. See
-// https://developers.stellar.org/docs/glossary/accounts/
+// https://developers.stellar.org/docs/learn/glossary#account
 type Account interface {
 	GetAccountID() string
 	IncrementSequenceNumber() (int64, error)
@@ -202,7 +202,7 @@ func marshallBase64Bytes(e xdr.TransactionEnvelope, signatures []xdr.DecoratedSi
 }
 
 // Transaction represents a Stellar transaction. See
-// https://developers.stellar.org/docs/glossary/transactions/
+// https://developers.stellar.org/docs/learn/glossary#transaction
 // A Transaction may be wrapped by a FeeBumpTransaction in which case
 // the account authorizing the FeeBumpTransaction will pay for the transaction fees
 // instead of the Transaction's source account.
@@ -314,7 +314,7 @@ func (t *Transaction) SignWithKeyString(network string, keys ...string) (*Transa
 
 // SignHashX returns a new Transaction instance which extends the current instance
 // with HashX signature type.
-// See description here: https://developers.stellar.org/docs/glossary/multisig/#hashx
+// See description here: https://developers.stellar.org/docs/learn/encyclopedia/security/signatures-multisig#hashx
 func (t *Transaction) SignHashX(preimage []byte) (*Transaction, error) {
 	extendedSignatures, err := concatHashX(t.Signatures(), preimage)
 	if err != nil {
@@ -516,7 +516,7 @@ func (t *FeeBumpTransaction) SignWithKeyString(network string, keys ...string) (
 
 // SignHashX returns a new FeeBumpTransaction instance which extends the current instance
 // with HashX signature type.
-// See description here: https://developers.stellar.org/docs/glossary/multisig/#hashx
+// See description here: https://developers.stellar.org/docs/learn/encyclopedia/security/signatures-multisig#hashx
 func (t *FeeBumpTransaction) SignHashX(preimage []byte) (*FeeBumpTransaction, error) {
 	extendedSignatures, err := concatHashX(t.Signatures(), preimage)
 	if err != nil {

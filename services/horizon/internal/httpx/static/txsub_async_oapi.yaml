@@ -27,7 +27,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AsyncTransactionSubmissionResponse'
-              example: 
+              example:
                   tx_status: "PENDING"
                   hash: "6cbb7f714bd08cea7c30cab7818a35c510cbbfc0a6aa06172a1e94146ecf0165"
 
@@ -36,7 +36,7 @@ paths:
           content:
             application/json:
               schema:
-                oneOf: 
+                oneOf:
                   - $ref: '#/components/schemas/AsyncTransactionSubmissionResponse'
                   - $ref: '#/components/schemas/Problem'
               examples:
@@ -77,7 +77,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AsyncTransactionSubmissionResponse'
-              example: 
+              example:
                   errorResultXdr: ""
                   tx_status: "DUPLICATE"
                   hash: "6cbb7f714bd08cea7c30cab7818a35c510cbbfc0a6aa06172a1e94146ecf0165"
@@ -94,7 +94,7 @@ paths:
                     type: "transaction_submission_failed"
                     title: "Transaction Submission Failed"
                     status: 500
-                    detail: "Could not submit transaction to stellar-core. The `extras.error` field on this response contains further details. Descriptions of each code can be found at: https://developers.stellar.org/api/errors/http-status-codes/horizon-specific/transaction-submission-async/transaction_submission_failed"
+                    detail: "Could not submit transaction to stellar-core. The `extras.error` field on this response contains further details. Descriptions of each code can be found at: https://developers.stellar.org/docs/data/horizon/api-reference/errors/http-status-codes/horizon-specific/transaction-failed"
                     extras:
                       envelope_xdr: ""
                       error: "Error details here"
@@ -104,7 +104,7 @@ paths:
                     type: "transaction_submission_exception"
                     title: "Transaction Submission Exception"
                     status: 500
-                    detail: "Received exception from stellar-core. The `extras.error` field on this response contains further details. Descriptions of each code can be found at: https://developers.stellar.org/api/errors/http-status-codes/horizon-specific/transaction-submission-async/transaction_submission_exception"
+                    detail: "Received exception from stellar-core. The `extras.error` field on this response contains further details. Descriptions of each code can be found at: https://developers.stellar.org/docs/data/horizon/api-reference/errors/http-status-codes/horizon-specific/transaction-malformed"
                     extras:
                       envelope_xdr: ""
                       error: "Exception details here"
@@ -130,7 +130,7 @@ paths:
                     tx_status: "TRY_AGAIN_LATER"
                     hash: "6cbb7f714bd08cea7c30cab7818a35c510cbbfc0a6aa06172a1e94146ecf0165"
 
-                  
+
 components:
   schemas:
     AsyncTransactionSubmissionResponse:

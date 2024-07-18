@@ -7,7 +7,7 @@ import (
 )
 
 // PathPaymentStrictSend represents the Stellar path_payment_strict_send operation. See
-// https://developers.stellar.org/docs/start/list-of-operations/
+// https://developers.stellar.org/docs/learn/fundamentals/transactions/list-of-operations/
 type PathPaymentStrictSend struct {
 	SendAsset     Asset
 	SendAmount    string

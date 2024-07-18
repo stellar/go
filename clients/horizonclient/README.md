@@ -1,7 +1,7 @@
 # horizonclient
 
 
-`horizonclient` is a [Stellar Go SDK](https://developers.stellar.org/api/) package that provides client access to a horizon server. It supports all endpoints exposed by the [horizon API](https://developers.stellar.org/api/introduction/).
+`horizonclient` is a [Stellar Go SDK](https://developers.stellar.org/docs/data/horizon) package that provides client access to a horizon server. It supports all endpoints exposed by the [horizon API](https://developers.stellar.org/docs/data/horizon/api-reference).
 
 This project is maintained by the Stellar Development Foundation.
 

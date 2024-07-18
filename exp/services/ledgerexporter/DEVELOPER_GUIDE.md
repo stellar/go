@@ -24,16 +24,16 @@ To achieve its goals, the ledger exporter uses the following architecture, which
 ## Data Format
 - Ledger exporter uses a compact and efficient data format called [XDR](https://developers.stellar.org/docs/learn/encyclopedia/data-format/xdr) (External Data Representation), which is a compact binary format. A Stellar Captive Core instance emits data in this format and the data structure is referred to as `LedgerCloseMeta`. The exporter bundles multiple `LedgerCloseMeta`'s into a single object using a custom XDR structure called `LedgerCloseMetaBatch` which is defined in [Stellar-exporter.x](https://github.com/stellar/go/blob/master/xdr/Stellar-exporter.x).
 
-- The metadata for the same batch is also stored alongside each exported object. Supported metadata is defined in [metadata.go](https://github.com/stellar/go/blob/master/support/datastore/metadata.go). 
+- The metadata for the same batch is also stored alongside each exported object. Supported metadata is defined in [metadata.go](https://github.com/stellar/go/blob/master/support/datastore/metadata.go).
 
 - Objects are compressed before uploading using the [zstd](http://facebook.github.io/zstd/) (zstandard) compression algorithm to optimize network usage and storage needs.
 
 ## Data Storage
-- An example implementation of `DataStore` for GCS, Google Cloud Storage. This plugin is located in the [support](https://github.com/stellar/go/tree/master/support/datastore) package. 
+- An example implementation of `DataStore` for GCS, Google Cloud Storage. This plugin is located in the [support](https://github.com/stellar/go/tree/master/support/datastore) package.
 - The ledger exporter currently implements the interface only for Google Cloud Storage (GCS). The [GCS plugin](https://github.com/stellar/go/blob/master/support/datastore/gcs_datastore.go) uses GCS-specific behaviors like conditional puts, automatic retry, metadata, and CRC checksum.
 
-## Build and Run using Docker
-The Dockerfile contains all the necessary dependencies (e.g., Stellar-core) required to run the ledger exporter. 
+## Build, Run and Test using Docker
+The Dockerfile contains all the necessary dependencies (e.g., Stellar-core) required to run the ledger exporter.
 
 - Build: To build the Docker container, use the provided [Makefile](./Makefile). Simply run make `make docker-build` to build a new container after making any changes.
 
@@ -48,7 +48,7 @@ tests.
 `LEDGEREXPORTER_INTEGRATION_TESTS_ENABLED=true` is required environment variable to allow
 tests to run.
 
-Optional, tests will try to run `stellar-core` from o/s PATH for captive core, if not resolvable, then set `LEDGEREXPORTER_INTEGRATION_TESTS_CAPTIVE_CORE_BIN=/path/to/stellar-core` 
+Optional, tests will try to run `stellar-core` from o/s PATH for captive core, if not resolvable, then set `LEDGEREXPORTER_INTEGRATION_TESTS_CAPTIVE_CORE_BIN=/path/to/stellar-core`
 
 Optional, can override the version of quickstart used to run standalone stellar network, `LEDGEREXPORTER_INTEGRATION_TESTS_QUICKSTART_IMAGE=docker.io/stellar/quickstart:<tag>`. By default it will try to docker pull `stellar/quickstart:testing` image to local host's docker image store. Set `LEDGEREXPORTER_INTEGRATION_TESTS_QUICKSTART_IMAGE_PULL=false` to skip the pull, if you know host has up to date image.
 
@@ -62,7 +62,7 @@ $ LEDGEREXPORTER_INTEGRATION_TESTS_ENABLED=true go test -v -race -run TestLedger
 Support for different data storage types are encapsulated as 'plugins', which are implementation of `DataStore` interface in a go package. To add a data storage plugin based on a new storage type (e.g. AWS S3), follow these steps:
 
 - A data storage plugin must implement the [DataStore](https://github.com/stellar/go/blob/master/support/datastore/datastore.go) interface.
-- Add support for new datastore-specific features. Implement any datastore-specific custom logic. Different datastores have different ways of handling 
+- Add support for new datastore-specific features. Implement any datastore-specific custom logic. Different datastores have different ways of handling
   - race conditions
   - automatic retries
   - metadata storage, etc.

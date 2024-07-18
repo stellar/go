@@ -142,7 +142,7 @@ func (handler SubmitTransactionHandler) response(r *http.Request, info envelopeI
 			Detail: "The transaction failed when submitted to the stellar network. " +
 				"The `extras.result_codes` field on this response contains further " +
 				"details.  Descriptions of each code can be found at: " +
-				"https://developers.stellar.org/api/errors/http-status-codes/horizon-specific/transaction-failed/",
+				"https://developers.stellar.org/docs/data/horizon/api-reference/errors/http-status-codes/horizon-specific/transaction-failed",
 			Extras: extras,
 		}
 	}

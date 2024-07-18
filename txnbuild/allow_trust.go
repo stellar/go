@@ -10,7 +10,7 @@ import (
 
 // Deprecated: use SetTrustLineFlags instead.
 // AllowTrust represents the Stellar allow trust operation. See
-// https://developers.stellar.org/docs/start/list-of-operations/
+// https://developers.stellar.org/docs/learn/fundamentals/transactions/list-of-operations/
 type AllowTrust struct {
 	Trustor                        string
 	Type                           Asset

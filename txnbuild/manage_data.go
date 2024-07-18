@@ -6,7 +6,7 @@ import (
 )
 
 // ManageData represents the Stellar manage data operation. See
-// https://developers.stellar.org/docs/start/list-of-operations/
+// https://developers.stellar.org/docs/learn/fundamentals/transactions/list-of-operations/
 type ManageData struct {
 	Name          string
 	Value         []byte

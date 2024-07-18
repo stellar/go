@@ -17,7 +17,7 @@ For each new version we will only track changes from the previous version.
 
 #### Changes
 
-* In ["Transaction"](https://developers.stellar.org/api/horizon/resources/transactions/object),
+* In ["Transaction"](https://developers.stellar.org/docs/data/horizon/api-reference/resources/transactions/object),
 `result_meta_xdr` field is [now nullable](https://github.com/stellar/go/pull/5228), and will be `null` when Horizon has `SKIP_TXMETA=true` set, otherwise if Horizon is configured with `SKIP_TXMETA=false` which is default, then `result_meta_xdr` will be the same value of base64 encoded xdr.
 * Operations responses may include a `transaction` field which represents the transaction that created the operation.
 
@@ -32,14 +32,14 @@ For each new version we will only track changes from the previous version.
 
 * Assets stats are disabled by default. This can be changed using an environment variable (`ENABLE_ASSET_STATS=true`) or
 CLI parameter (`--enable-asset-stats=true`). Please note that it has a negative impact on a DB and ingestion time.
-* In ["Offers for Account"](https://developers.stellar.org/api/resources/accounts/offers/),
+* In ["Offers for Account"](https://developers.stellar.org/docs/data/horizon/api-reference/get-offers-by-account-id),
 `last_modified_time` field  endpoint can be `null` when ledger data is not available (has not been ingested yet).
-* ["Trades for Offer"](https://developers.stellar.org/api/resources/offers/trades/) endpoint
+* ["Trades for Offer"](https://developers.stellar.org/docs/data/horizon/api-reference/get-trades-by-offer-id) endpoint
 will query for trades that match the given offer on either side of trades, rather than just the "sell" offer.
-Offer IDs are now [synthetic](https://developers.stellar.org/api/resources/trades/).
+Offer IDs are now [synthetic](https://developers.stellar.org/docs/data/horizon/api-reference/resources/trades).
 * New `/operation_fee_stats` endpoint includes fee stats for the last 5 ledgers.
-* ["Trades"](https://developers.stellar.org/api/resources/trades/list/) endpoint can now be streamed.
-* In ["Trade Aggregations"](https://developers.stellar.org/api/aggregations/trade-aggregations/list/) endpoint,
+* ["Trades"](https://developers.stellar.org/docs/data/horizon/api-reference/get-all-trades) endpoint can now be streamed.
+* In ["Trade Aggregations"](https://developers.stellar.org/docs/data/horizon/api-reference/list-trade-aggregations) endpoint,
 `offset` parameter has been added.
 * Account flags now display `auth_immutable` value.
 * Rate limiting in streams has been changed to be more fair. Now 1 *credit* has to be *paid* every time there's a new ledger

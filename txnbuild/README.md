@@ -1,22 +1,22 @@
 # txnbuild
 
-`txnbuild` is a [Stellar SDK](https://developers.stellar.org/docs/software-and-sdks/), implemented in [Go](https://golang.org/). It provides a reference implementation of the complete [set of operations](https://developers.stellar.org/docs/start/list-of-operations/) that compose [transactions](https://developers.stellar.org/docs/glossary/transactions/) for the Stellar distributed ledger.
+`txnbuild` is a [Stellar SDK](https://developers.stellar.org/docs/tools/sdks/library), implemented in [Go](https://golang.org/). It provides a reference implementation of the complete [set of operations](https://developers.stellar.org/docs/learn/fundamentals/transactions/list-of-operations) that compose [transactions](https://developers.stellar.org/docs/learn/glossary#transaction) for the Stellar distributed ledger.
 
 This project is maintained by the Stellar Development Foundation.
 
 ```golang
     import (
         "log"
-        
+
         "github.com/stellar/go/clients/horizonclient"
         "github.com/stellar/go/keypair"
         "github.com/stellar/go/network"
         "github.com/stellar/go/txnbuild"
     )
-    
+
     // Make a keypair for a known account from a secret seed
     kp, _ := keypair.Parse("SBPQUZ6G4FZNWFHKUWC5BEYWF6R52E3SEP7R3GWYSM2XTKGF5LNTWW4R")
-    
+
     // Get the current state of the account from the network
     client := horizonclient.DefaultTestNetClient
     ar := horizonclient.AccountRequest{AccountID: kp.Address()}
@@ -24,13 +24,13 @@ This project is maintained by the Stellar Development Foundation.
     if err != nil {
         log.Fatalln(err)
     }
-    
+
     // Build an operation to create and fund a new account
     op := txnbuild.CreateAccount{
         Destination: "GCCOBXW2XQNUSL467IEILE6MMCNRR66SSVL4YQADUNYYNUVREF3FIV2Z",
         Amount:      "10",
     }
-    
+
     // Construct the transaction that holds the operations to execute on the network
     tx, err := txnbuild.NewTransaction(
         txnbuild.TransactionParams{
@@ -44,19 +44,19 @@ This project is maintained by the Stellar Development Foundation.
     if err != nil {
         log.Fatalln(err)
     )
-    
+
     // Sign the transaction
     tx, err = tx.Sign(network.TestNetworkPassphrase, kp.(*keypair.Full))
     if err != nil {
         log.Fatalln(err)
     )
-    
+
     // Get the base 64 encoded transaction envelope
     txe, err := tx.Base64()
     if err != nil {
         log.Fatalln(err)
     }
-    
+
     // Send the transaction to the network
     resp, err := client.SubmitTransactionXDR(txe)
     if err != nil {

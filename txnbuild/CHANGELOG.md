@@ -51,7 +51,7 @@ file.  This project adheres to [Semantic Versioning](http://semver.org/).
   * Rename `SetOpSourceMuxedAccount()` to (pre-existing) `SetOpSourceAccount()` which now accepts
     both `G` and `M` (muxed) account strkeys.
 * Use xdr.Price to represent prices in txnbuild instead of strings ([#4167](https://github.com/stellar/go/pull/4167)).
-  
+
 ## [8.0.0-beta.0](https://github.com/stellar/go/releases/tag/horizonclient-v8.0.0-beta.0) - 2021-10-04
 
 **This release adds support for Protocol 18.**
@@ -59,7 +59,7 @@ file.  This project adheres to [Semantic Versioning](http://semver.org/).
 ### New features
 * `GenericTransaction`, `Transaction`, and `FeeBumpTransaction` now implement
 `encoding.TextMarshaler` and `encoding.TextUnmarshaler`.
-* New asset structures that conform to the new ChangeTrust and New assets: 
+* New asset structures that conform to the new ChangeTrust and New assets:
 * Support for the core liquidity pool XDR types: `LiquidityPoolId`, `LiquidityPoolParameters`, `LiquidityPoolDeposit`, and `LiquidityPoolWithdraw`.
 * Support for the new asset structures: `ChangeTrustAsset` and `TrustLineAsset`.
 
@@ -153,7 +153,7 @@ file.  This project adheres to [Semantic Versioning](http://semver.org/).
 
 * Add helper function `ParseAssetString()`, making it easier to build an `Asset` structure from a string in [canonical form](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0011.md#asset) and check its various properties ([#3105](https://github.com/stellar/go/pull/3105)).
 
-* Add helper function `Transaction.ClaimableBalanceID()`, making it easier to calculate balance IDs for [claimable balances](https://developers.stellar.org/docs/glossary/claimable-balance/) without actually submitting the transaction ([#3122](https://github.com/stellar/go/pull/3122)).
+* Add helper function `Transaction.ClaimableBalanceID()`, making it easier to calculate balance IDs for [claimable balances](https://developers.stellar.org/docs/learn/encyclopedia/transactions-specialized/claimable-balances) without actually submitting the transaction ([#3122](https://github.com/stellar/go/pull/3122)).
 
 * Add support for SEP-10 v2.1.0.
   * Remove verification of home domain. (Will be reintroduced and changed in a future release.)

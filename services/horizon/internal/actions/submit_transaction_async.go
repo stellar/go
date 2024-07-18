@@ -81,7 +81,7 @@ func (handler AsyncSubmitTransactionHandler) GetResource(_ HeaderWriter, r *http
 			Detail: "Could not submit transaction to stellar-core. " +
 				"The `extras.error` field on this response contains further " +
 				"details.  Descriptions of each code can be found at: " +
-				"https://developers.stellar.org/api/errors/http-status-codes/horizon-specific/transaction-submission-async/transaction_submission_failed",
+				"https://developers.stellar.org/docs/data/horizon/api-reference/errors/http-status-codes/horizon-specific/transaction-failed",
 			Extras: map[string]interface{}{
 				"envelope_xdr": raw,
 				"error":        err,
@@ -98,7 +98,7 @@ func (handler AsyncSubmitTransactionHandler) GetResource(_ HeaderWriter, r *http
 			Detail: "Received exception from stellar-core." +
 				"The `extras.error` field on this response contains further " +
 				"details.  Descriptions of each code can be found at: " +
-				"https://developers.stellar.org/api/errors/http-status-codes/horizon-specific/transaction-submission-async/transaction_submission_exception",
+				"https://developers.stellar.org/docs/data/horizon/api-reference/errors/http-status-codes/horizon-specific/transaction-malformed",
 			Extras: map[string]interface{}{
 				"envelope_xdr": raw,
 				"error":        resp.Exception,
@@ -127,7 +127,7 @@ func (handler AsyncSubmitTransactionHandler) GetResource(_ HeaderWriter, r *http
 			Detail: "Received invalid status from stellar-core." +
 				"The `extras.error` field on this response contains further " +
 				"details.  Descriptions of each code can be found at: " +
-				"https://developers.stellar.org/api/errors/http-status-codes/horizon-specific/transaction-submission-async/transaction_submission_invalid_status",
+				"https://developers.stellar.org/docs/data/horizon/api-reference/errors/http-status-codes/horizon-specific/timeout",
 			Extras: map[string]interface{}{
 				"envelope_xdr": raw,
 				"error":        resp.Error,

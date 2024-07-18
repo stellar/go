@@ -8,7 +8,7 @@ import (
 )
 
 // LiquidityPoolWithdraw represents the Stellar liquidity pool withdraw operation. See
-// https://developers.stellar.org/docs/start/list-of-operations/
+// https://developers.stellar.org/docs/learn/fundamentals/transactions/list-of-operations/
 type LiquidityPoolWithdraw struct {
 	SourceAccount   string
 	LiquidityPoolID LiquidityPoolId

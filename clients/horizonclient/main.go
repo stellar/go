@@ -391,7 +391,7 @@ type OrderBookRequest struct {
 // PathsRequest struct contains data for getting available strict receive path payments from a horizon server.
 // All the Destination related parameters are required and you need to include either
 // SourceAccount or SourceAssets.
-// See https://developers.stellar.org/api/aggregations/paths/strict-receive/
+// See https://developers.stellar.org/docs/data/horizon/api-reference/list-strict-receive-payment-paths
 type PathsRequest struct {
 	DestinationAccount     string
 	DestinationAssetType   AssetType
@@ -405,7 +405,7 @@ type PathsRequest struct {
 // StrictSendPathsRequest struct contains data for getting available strict send path payments from a horizon server.
 // All the Source related parameters are required and you need to include either
 // DestinationAccount or DestinationAssets.
-// See https://developers.stellar.org/api/aggregations/paths/strict-send/
+// See https://developers.stellar.org/docs/data/horizon/api-reference/list-strict-send-payment-paths
 type StrictSendPathsRequest struct {
 	DestinationAccount string
 	DestinationAssets  string

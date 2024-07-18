@@ -7,7 +7,7 @@ import (
 )
 
 // CreatePassiveSellOffer represents the Stellar create passive offer operation. See
-// https://developers.stellar.org/docs/start/list-of-operations/
+// https://developers.stellar.org/docs/learn/fundamentals/transactions/list-of-operations/
 type CreatePassiveSellOffer struct {
 	Selling       Asset
 	Buying        Asset
