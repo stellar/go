@@ -10,7 +10,7 @@ RUN go mod download
 COPY . ./
 
 ARG GOFLAGS
-RUN go install github.com/stellar/go/exp/services/ledgerexporter
+RUN go install github.com/stellar/go/services/ledgerexporter
 
 FROM ubuntu:22.04
 ARG STELLAR_CORE_VERSION

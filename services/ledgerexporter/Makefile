@@ -6,11 +6,11 @@ VERSION ?= $(shell git rev-parse --short HEAD)
 DOCKER_IMAGE := stellar/ledger-exporter
 
 docker-build:
-	cd ../../../ && \
+	cd ../../ && \
 	$(SUDO) docker build --platform linux/amd64 --pull --label org.opencontainers.image.created="$(BUILD_DATE)" \
-    --build-arg GOFLAGS="-ldflags=-X=github.com/stellar/go/exp/services/ledgerexporter/internal.version=$(VERSION)" \
+    --build-arg GOFLAGS="-ldflags=-X=github.com/stellar/go/services/ledgerexporter/internal.version=$(VERSION)" \
 $(if $(STELLAR_CORE_VERSION), --build-arg STELLAR_CORE_VERSION=$(STELLAR_CORE_VERSION)) \
-	-f exp/services/ledgerexporter/docker/Dockerfile \
+	-f services/ledgerexporter/docker/Dockerfile \
 	-t $(DOCKER_IMAGE):$(VERSION) \
 	-t $(DOCKER_IMAGE):latest .
 
@@ -33,7 +33,7 @@ docker-test-fake-gcs: docker-clean
 
 	# Run the ledger-exporter
 	$(SUDO) docker run --platform linux/amd64 -t --network test-network\
-		 -v ${PWD}/exp/services/ledgerexporter/docker/config.test.toml:/config.toml \
+		 -v ${PWD}/services/ledgerexporter/docker/config.test.toml:/config.toml \
 		 -e STORAGE_EMULATOR_HOST=http://fake-gcs-server:4443 \
 		 $(DOCKER_IMAGE):$(VERSION) \
 		 scan-and-fill --start 1000 --end 2000
