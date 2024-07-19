@@ -127,6 +127,12 @@ func checkReadOnly(t testing.TB, DSN string) {
 
 	if !rows.Next() {
 		_, err = tx.Exec("CREATE ROLE user_ro WITH LOGIN PASSWORD 'user_ro';")
+		if err != nil {
+			// Handle race condition by ignoring the error if it's a duplicate key violation
+			if pqErr, ok := err.(*pq.Error); ok && pqErr.Code == "23505" {
+				return
+			}
+		}
 		require.NoError(t, err)
 	}
 
