@@ -1,4 +1,4 @@
-package ledgerexporter
+package galexie
 
 import (
 	"context"
@@ -35,10 +35,11 @@ const (
 	// size in our metrics that is an indication that uploads to the
 	// data store have degraded
 	uploadQueueCapacity = 128
+	nameSpace           = "galexie"
 )
 
 var (
-	logger  = log.New().WithField("service", "ledger-exporter")
+	logger  = log.New().WithField("service", nameSpace)
 	version = "develop"
 )
 
@@ -96,11 +97,11 @@ func (a *App) init(ctx context.Context, runtimeSettings RuntimeSettings) error {
 	var err error
 	var archive historyarchive.ArchiveInterface
 
-	logger.Infof("Starting Ledger Exporter with version %s", version)
+	logger.Infof("Starting Galexie with version %s", version)
 
 	registry := prometheus.NewRegistry()
 	registry.MustRegister(
-		collectors.NewProcessCollector(collectors.ProcessCollectorOpts{Namespace: "ledger_exporter"}),
+		collectors.NewProcessCollector(collectors.ProcessCollectorOpts{Namespace: nameSpace}),
 		collectors.NewGoCollector(),
 	)
 
@@ -193,10 +194,10 @@ func (a *App) Run(runtimeSettings RuntimeSettings) error {
 		var dataAlreadyExported *DataAlreadyExportedError
 		if errors.As(err, &dataAlreadyExported) {
 			logger.Info(err.Error())
-			logger.Info("Shutting down ledger-exporter")
+			logger.Info("Shutting down Galexie")
 			return nil
 		}
-		logger.WithError(err).Error("Stopping ledger-exporter")
+		logger.WithError(err).Error("Stopping Galexie")
 		return err
 	}
 	defer a.close()
@@ -250,7 +251,7 @@ func (a *App) Run(runtimeSettings RuntimeSettings) error {
 	}()
 
 	wg.Wait()
-	logger.Info("Shutting down ledger-exporter")
+	logger.Info("Shutting down Galexie")
 
 	if a.adminServer != nil {
 		serverShutdownCtx, serverShutdownCancel := context.WithTimeout(context.Background(), adminServerShutdownTimeout)
@@ -280,7 +281,7 @@ func newLedgerBackend(config *Config, prometheusRegistry *prometheus.Registry) (
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to create captive-core instance")
 	}
-	backend = ledgerbackend.WithMetrics(backend, prometheusRegistry, "ledger_exporter")
+	backend = ledgerbackend.WithMetrics(backend, prometheusRegistry, nameSpace)
 
 	return backend, nil
 }

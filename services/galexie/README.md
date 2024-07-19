@@ -1,23 +1,23 @@
-## Ledger Exporter: Installation and Usage Guide
+## Galexie: Installation and Usage Guide
 
-This guide provides step-by-step instructions on installing and using the Ledger Exporter, a tool that exports Stellar network ledger data to a Google Cloud Storage (GCS) bucket for efficient analysis and storage.
+This guide provides step-by-step instructions on installing and using the Galexie - Ledger Exporter, a tool that exports Stellar network ledger data to a Google Cloud Storage (GCS) bucket for efficient analysis and storage.
 
 * [Prerequisites](#prerequisites)
 * [Setup](#setup)
   * [Set Up GCP Credentials](#set-up-gcp-credentials)
   * [Create a GCS Bucket for Storage](#create-a-gcs-bucket-for-storage)
-* [Running the Ledger Exporter](#running-the-ledger-exporter)
+* [Running Galexie](#running-galexie)
   * [Pull the Docker Image](#1-pull-the-docker-image)
-  * [Configure the Exporter](#2-configure-the-exporter-configtoml)
-  * [Run the Exporter](#3-run-the-exporter)
+  * [Configure](#2-configure-configtoml)
+  * [Run](#3-run)
 * [Command Line Interface (CLI)](#command-line-interface-cli)
-  1. [scan-and-fill: Fill Data Gaps](#1-scan-and-fill-fill-data-gaps)
-  2. [append: Continuously Export New Data](#2-append-continuously-export-new-data)
+  1. [append: Continuously Export New Data](#1-append-continuously-export-new-data)
+  2. [scan-and-fill: Fill Data Gaps](#2-scan-and-fill-fill-data-gaps)
 
 ## Prerequisites
 
 * **Google Cloud Platform (GCP) Account:**  You will need a GCP account to create a GCS bucket for storing the exported data.
-* **Docker:** Allows you to run the Ledger Exporter in a self-contained environment. The official Docker installation guide: [https://docs.docker.com/engine/install/](https://docs.docker.com/engine/install/)
+* **Docker:** Allows you to run the Galexie in a self-contained environment. The official Docker installation guide: [https://docs.docker.com/engine/install/](https://docs.docker.com/engine/install/)
 
 ## Setup
 
@@ -37,34 +37,34 @@ For detailed instructions, refer to the [Providing Credentials for Application D
 3. **Note down the bucket name** as you'll need it later in the configuration process.
 
 
-## Running the Ledger Exporter
+## Running Galexie
 
 ### 1. Pull the Docker Image
 
-Open a terminal window and download the Stellar Ledger Exporter Docker image using the following command:
+Open a terminal window and download the Stellar Galexie Docker image using the following command:
 
 ```bash
-docker pull stellar/ledger-exporter
+docker pull stellar/stellar-galexie
 ```
 
-### 2. Configure the Exporter (config.toml)
-The Ledger Exporter relies on a configuration file (config.toml) to connect to your specific environment. This file defines details like:
+### 2. Configure (config.toml)
+Galexie relies on a configuration file (config.toml) to connect to your specific environment. This file defines details like:
 - Your Google Cloud Storage (GCS) bucket where exported ledger data will be stored.
 - Stellar network settings, such as the network you're using (testnet or pubnet).
 - Datastore schema to control data organization.
 
 A sample configuration file [config.example.toml](config.example.toml) is provided. Copy and rename it to config.toml for customization. Edit the copied file (config.toml) to replace placeholders with your specific details.
 
-### 3. Run the Exporter
+### 3. Run
 
-The following command demonstrates how to run the Ledger Exporter:
+The following command demonstrates how to run the Galexie:
 
 ```bash
 docker run --platform linux/amd64 \
   -v "$HOME/.config/gcloud/application_default_credentials.json":/.config/gcp/credentials.json:ro \
   -e GOOGLE_APPLICATION_CREDENTIALS=/.config/gcp/credentials.json \
   -v ${PWD}/config.toml:/config.toml \
-  stellar/ledger-exporter <command> [options]
+  stellar/stellar-galexie <command> [options]
 ```
 
 **Explanation:**
@@ -74,12 +74,12 @@ docker run --platform linux/amd64 \
   * `$HOME/.config/gcloud/application_default_credentials.json`: Your local GCP credentials file.
   * `${PWD}/config.toml`: Your local configuration file.
 * `-e GOOGLE_APPLICATION_CREDENTIALS=/.config/gcp/credentials.json`: Sets the environment variable for credentials within the container.
-* `stellar/ledger-exporter`: The Docker image name.
-* `<command>`: The Stellar Ledger Exporter command: [append](#1-append-continuously-export-new-data), [scan-and-fill](#2-scan-and-fill-fill-data-gaps))
+* `stellar/stellar-galexie`: The Docker image name.
+* `<command>`: The Stellar Galexie command: [append](#1-append-continuously-export-new-data), [scan-and-fill](#2-scan-and-fill-fill-data-gaps))
 
 ## Command Line Interface (CLI)
 
-The Ledger Exporter offers two mode of operation for exporting ledger data:
+Galexie offers two mode of operation for exporting ledger data:
 
 ### 1. append: Continuously Export New Data
 
@@ -99,14 +99,14 @@ docker run --platform linux/amd64 -d \
   -v "$HOME/.config/gcloud/application_default_credentials.json":/.config/gcp/credentials.json:ro \
   -e GOOGLE_APPLICATION_CREDENTIALS=/.config/gcp/credentials.json \
   -v ${PWD}/config.toml:/config.toml \
-  stellar/ledger-exporter \
+  stellar/stellar-galexie \
   append --start <start_ledger> [--end <end_ledger>] [--config-file <config_file>]
 ```
 
 Arguments:
 - `--start <start_ledger>` (required): The starting ledger sequence number for the export process.
-- `--end <end_ledger>` (optional): The ending ledger sequence number. If omitted or set to 0, the exporter will continuously export new ledgers as they appear on the network.
-- `--config-file <config_file_path>` (optional): The path to your configuration file, containing details like GCS bucket information. If not provided, the exporter will look for config.toml in the directory where you run the command.
+- `--end <end_ledger>` (optional): The ending ledger sequence number. If omitted or set to 0, it will continuously export new ledgers as they appear on the network.
+- `--config-file <config_file_path>` (optional): The path to your configuration file, containing details like GCS bucket information. If not provided, it will look for config.toml in the directory where you run the command.
 
 ### 2. scan-and-fill: Fill Data Gaps
 
@@ -119,7 +119,7 @@ docker run --platform linux/amd64 -d \
   -v "$HOME/.config/gcloud/application_default_credentials.json":/.config/gcp/credentials.json:ro \
   -e GOOGLE_APPLICATION_CREDENTIALS=/.config/gcp/credentials.json \
   -v ${PWD}/config.toml:/config.toml \
-  stellar/ledger-exporter \
+  stellar/stellar-galexie \
   scan-and-fill --start <start_ledger> --end <end_ledger> [--config-file <config_file>]
 ```
 

@@ -1,4 +1,4 @@
-package ledgerexporter
+package galexie
 
 import (
 	"bytes"
@@ -37,16 +37,16 @@ const (
 	configTemplate            = "test/integration_config_template.toml"
 )
 
-func TestLedgerExporterTestSuite(t *testing.T) {
-	if os.Getenv("LEDGEREXPORTER_INTEGRATION_TESTS_ENABLED") != "true" {
-		t.Skip("skipping integration test: LEDGEREXPORTER_INTEGRATION_TESTS_ENABLED not true")
+func TestGalexieTestSuite(t *testing.T) {
+	if os.Getenv("GALEXIE_INTEGRATION_TESTS_ENABLED") != "true" {
+		t.Skip("skipping integration test: GALEXIE_INTEGRATION_TESTS_ENABLED not true")
 	}
 
-	ledgerExporterSuite := &LedgerExporterTestSuite{}
-	suite.Run(t, ledgerExporterSuite)
+	galexieSuite := &GalexieTestSuite{}
+	suite.Run(t, galexieSuite)
 }
 
-type LedgerExporterTestSuite struct {
+type GalexieTestSuite struct {
 	suite.Suite
 	tempConfigFile  string
 	ctx             context.Context
@@ -58,7 +58,7 @@ type LedgerExporterTestSuite struct {
 	config          Config
 }
 
-func (s *LedgerExporterTestSuite) TestScanAndFill() {
+func (s *GalexieTestSuite) TestScanAndFill() {
 	require := s.Require()
 
 	rootCmd := defineCommands()
@@ -83,7 +83,7 @@ func (s *LedgerExporterTestSuite) TestScanAndFill() {
 	require.NoError(err)
 }
 
-func (s *LedgerExporterTestSuite) TestAppend() {
+func (s *GalexieTestSuite) TestAppend() {
 	require := s.Require()
 
 	// first populate ledgers 4-5
@@ -113,7 +113,7 @@ func (s *LedgerExporterTestSuite) TestAppend() {
 	require.NoError(err)
 }
 
-func (s *LedgerExporterTestSuite) TestAppendUnbounded() {
+func (s *GalexieTestSuite) TestAppendUnbounded() {
 	require := s.Require()
 
 	rootCmd := defineCommands()
@@ -147,7 +147,7 @@ func (s *LedgerExporterTestSuite) TestAppendUnbounded() {
 	}, 180*time.Second, 50*time.Millisecond, "append unbounded did not work")
 }
 
-func (s *LedgerExporterTestSuite) SetupSuite() {
+func (s *GalexieTestSuite) SetupSuite() {
 	var err error
 	t := s.T()
 
@@ -160,19 +160,19 @@ func (s *LedgerExporterTestSuite) SetupSuite() {
 	}()
 	testTempDir := t.TempDir()
 
-	ledgerExporterConfigTemplate, err := toml.LoadFile(configTemplate)
+	galexieConfigTemplate, err := toml.LoadFile(configTemplate)
 	if err != nil {
 		t.Fatalf("unable to load config template file %v, %v", configTemplate, err)
 	}
 
-	// if LEDGEREXPORTER_INTEGRATION_TESTS_CAPTIVE_CORE_BIN not specified,
-	// ledgerexporter will attempt resolve core bin using 'stellar-core' from OS path
-	ledgerExporterConfigTemplate.Set("stellar_core_config.stellar_core_binary_path",
-		os.Getenv("LEDGEREXPORTER_INTEGRATION_TESTS_CAPTIVE_CORE_BIN"))
+	// if GALEXIE_INTEGRATION_TESTS_CAPTIVE_CORE_BIN not specified,
+	// galexie will attempt resolve core bin using 'stellar-core' from OS path
+	galexieConfigTemplate.Set("stellar_core_config.stellar_core_binary_path",
+		os.Getenv("GALEXIE_INTEGRATION_TESTS_CAPTIVE_CORE_BIN"))
 
-	ledgerExporterConfigTemplate.Set("stellar_core_config.storage_path", filepath.Join(testTempDir, "captive-core"))
+	galexieConfigTemplate.Set("stellar_core_config.storage_path", filepath.Join(testTempDir, "captive-core"))
 
-	tomlBytes, err := toml.Marshal(ledgerExporterConfigTemplate)
+	tomlBytes, err := toml.Marshal(galexieConfigTemplate)
 	if err != nil {
 		t.Fatalf("unable to parse config file toml %v, %v", configTemplate, err)
 	}
@@ -211,22 +211,22 @@ func (s *LedgerExporterTestSuite) SetupSuite() {
 	t.Logf("fake gcs server started at %v", s.gcsServer.URL())
 	t.Setenv("STORAGE_EMULATOR_HOST", s.gcsServer.URL())
 
-	quickstartImage := os.Getenv("LEDGEREXPORTER_INTEGRATION_TESTS_QUICKSTART_IMAGE")
+	quickstartImage := os.Getenv("GALEXIE_INTEGRATION_TESTS_QUICKSTART_IMAGE")
 	if quickstartImage == "" {
 		quickstartImage = "stellar/quickstart:testing"
 	}
 	pullQuickStartImage := true
-	if os.Getenv("LEDGEREXPORTER_INTEGRATION_TESTS_QUICKSTART_IMAGE_PULL") == "false" {
+	if os.Getenv("GALEXIE_INTEGRATION_TESTS_QUICKSTART_IMAGE_PULL") == "false" {
 		pullQuickStartImage = false
 	}
 
 	s.mustStartCore(t, quickstartImage, pullQuickStartImage)
-	s.mustWaitForCore(t, ledgerExporterConfigTemplate.GetArray("stellar_core_config.history_archive_urls").([]string),
-		ledgerExporterConfigTemplate.Get("stellar_core_config.network_passphrase").(string))
+	s.mustWaitForCore(t, galexieConfigTemplate.GetArray("stellar_core_config.history_archive_urls").([]string),
+		galexieConfigTemplate.Get("stellar_core_config.network_passphrase").(string))
 	s.finishedSetup = true
 }
 
-func (s *LedgerExporterTestSuite) TearDownSuite() {
+func (s *GalexieTestSuite) TearDownSuite() {
 	if s.coreContainerID != "" {
 		s.T().Logf("Stopping the quickstart container %v", s.coreContainerID)
 		containerLogs, err := s.dockerCli.ContainerLogs(s.ctx, s.coreContainerID, container.LogsOptions{ShowStdout: true, ShowStderr: true})
@@ -251,7 +251,7 @@ func (s *LedgerExporterTestSuite) TearDownSuite() {
 	s.ctxStop()
 }
 
-func (s *LedgerExporterTestSuite) mustStartCore(t *testing.T, quickstartImage string, pullImage bool) {
+func (s *GalexieTestSuite) mustStartCore(t *testing.T, quickstartImage string, pullImage bool) {
 	var err error
 	s.dockerCli, err = client.NewClientWithOpts(client.WithAPIVersionNegotiation())
 	if err != nil {
@@ -308,7 +308,7 @@ func (s *LedgerExporterTestSuite) mustStartCore(t *testing.T, quickstartImage st
 	t.Logf("Started quickstart container %v", s.coreContainerID)
 }
 
-func (s *LedgerExporterTestSuite) mustWaitForCore(t *testing.T, archiveUrls []string, passphrase string) {
+func (s *GalexieTestSuite) mustWaitForCore(t *testing.T, archiveUrls []string, passphrase string) {
 	t.Log("Waiting for core to be up...")
 	startTime := time.Now()
 	infoTime := startTime

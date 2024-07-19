@@ -1,4 +1,4 @@
-name: LedgerExporter
+name: Galexie
 
 on:
   push:
@@ -6,18 +6,17 @@ on:
   pull_request:
 
 jobs:
-  ledger-exporter:
-    name: Test Ledger Exporter
+  galexie:
+    name: Test
     runs-on: ubuntu-latest
     env:
       CAPTIVE_CORE_DEBIAN_PKG_VERSION: 21.1.0-1921.b3aeb14cc.focal
-      LEDGEREXPORTER_INTEGRATION_TESTS_ENABLED: "true"
-      LEDGEREXPORTER_INTEGRATION_TESTS_CAPTIVE_CORE_BIN: /usr/bin/stellar-core
-      # this pins to a version of quickstart:testing that has the same version of core
-      # as specified on LEDGEREXPORTER_INTEGRATION_TESTS_CAPTIVE_CORE_BIN
+      GALEXIE_INTEGRATION_TESTS_ENABLED: "true"
+      GALEXIE_INTEGRATION_TESTS_CAPTIVE_CORE_BIN: /usr/bin/stellar-core
+      # this pins to a version of quickstart:testing that has the same version as GALEXIE_INTEGRATION_TESTS_CAPTIVE_CORE_BIN
       # this is the multi-arch index sha, get it by 'docker buildx imagetools inspect stellar/quickstart:testing'
-      LEDGEREXPORTER_INTEGRATION_TESTS_QUICKSTART_IMAGE: docker.io/stellar/quickstart:testing@sha256:5c8186f53cc98571749054dd782dce33b0aca2d1a622a7610362f7c15b79b1bf
-      LEDGEREXPORTER_INTEGRATION_TESTS_QUICKSTART_IMAGE_PULL: "false"
+      GALEXIE_INTEGRATION_TESTS_QUICKSTART_IMAGE: docker.io/stellar/quickstart:testing@sha256:5c8186f53cc98571749054dd782dce33b0aca2d1a622a7610362f7c15b79b1bf
+      GALEXIE_INTEGRATION_TESTS_QUICKSTART_IMAGE_PULL: "false"
     steps:
       - name: Install captive core
         run: |
@@ -35,12 +34,12 @@ jobs:
       - name: Pull Quickstart image
         shell: bash
         run: |
-          docker pull "$LEDGEREXPORTER_INTEGRATION_TESTS_QUICKSTART_IMAGE"
+          docker pull "$GALEXIE_INTEGRATION_TESTS_QUICKSTART_IMAGE"
 
       - uses: actions/checkout@v3
         with:
           # For pull requests, build and test the PR head not a merge of the PR with the destination.
           ref:  ${{ github.event.pull_request.head.sha || github.ref }}
           
-      - name: Run Ledger Exporter test
-        run: go test -v -race -run TestLedgerExporterTestSuite ./exp/services/ledgerexporter/... 
+      - name: Run test
+        run: go test -v -race -run TestGalexieTestSuite ./services/galexie/... 

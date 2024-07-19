@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"os"
 
-	exporter "github.com/stellar/go/exp/services/ledgerexporter/internal"
+	galexie "github.com/stellar/go/services/galexie/internal"
 )
 
 func main() {
-	err := exporter.Execute()
+	err := galexie.Execute()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

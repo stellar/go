@@ -1,4 +1,4 @@
-package ledgerexporter
+package galexie
 
 import (
 	"context"
@@ -15,7 +15,7 @@ type UploadQueue struct {
 // NewUploadQueue constructs a new UploadQueue
 func NewUploadQueue(size int, prometheusRegistry *prometheus.Registry) UploadQueue {
 	queueLengthMetric := prometheus.NewGauge(prometheus.GaugeOpts{
-		Namespace: "ledger_exporter",
+		Namespace: nameSpace,
 		Subsystem: "upload_queue",
 		Name:      "length",
 		Help:      "The number of objects queued for upload",

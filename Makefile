@@ -34,8 +34,8 @@ friendbot:
 horizon:
 	$(MAKE) -C services/horizon/ binary-build
 
-ledger-exporter:
-	$(MAKE) -C exp/services/ledgerexporter/ docker-build
+galexie:
+	$(MAKE) -C services/galexie/ docker-build
 
 webauth:
 	$(MAKE) -C exp/services/webauth/ docker-build

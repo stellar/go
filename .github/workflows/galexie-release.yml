@@ -1,26 +1,26 @@
-name: Ledger Exporter release
+name: Galexie Release 
 
 on:
   push:
-    tags: ['ledgerexporter-v*']
+    tags: ['galexie-v*']
 
 jobs:
 
   publish-docker:
-    name: Test and push the Ledger Exporter images
+    name: Test and push docker image
     runs-on: ubuntu-latest
     env:
-      LEDGEREXPORTER_INTEGRATION_TESTS_ENABLED: "true"
-      LEDGEREXPORTER_INTEGRATION_TESTS_CAPTIVE_CORE_BIN: /usr/bin/stellar-core
+      GALEXIE_INTEGRATION_TESTS_ENABLED: "true"
+      GALEXIE_INTEGRATION_TESTS_CAPTIVE_CORE_BIN: /usr/bin/stellar-core
       # this pins to a version of quickstart:testing that has the same version as STELLAR_CORE_VERSION
       # this is the multi-arch index sha, get it by 'docker buildx imagetools inspect stellar/quickstart:testing'
-      LEDGEREXPORTER_INTEGRATION_TESTS_QUICKSTART_IMAGE: docker.io/stellar/quickstart:testing@sha256:03c6679f838a92b1eda4cd3a9e2bdee4c3586e278a138a0acf36a9bc99a0041f
-      LEDGEREXPORTER_INTEGRATION_TESTS_QUICKSTART_IMAGE_PULL: "false"
+      GALEXIE_INTEGRATION_TESTS_QUICKSTART_IMAGE: docker.io/stellar/quickstart:testing@sha256:03c6679f838a92b1eda4cd3a9e2bdee4c3586e278a138a0acf36a9bc99a0041f
+      GALEXIE_INTEGRATION_TESTS_QUICKSTART_IMAGE_PULL: "false"
       STELLAR_CORE_VERSION: 21.1.0-1921.b3aeb14cc.focal
     steps:
       - name: Set VERSION
         run: |
-          echo "VERSION=${GITHUB_REF_NAME#ledgerexporter-v}" >> $GITHUB_ENV
+          echo "VERSION=${GITHUB_REF_NAME#galexie-v}" >> $GITHUB_ENV
 
       - uses: actions/checkout@v3
         with:
@@ -28,7 +28,7 @@ jobs:
       - name: Pull Quickstart image
         shell: bash
         run: |
-          docker pull "$LEDGEREXPORTER_INTEGRATION_TESTS_QUICKSTART_IMAGE"
+          docker pull "$GALEXIE_INTEGRATION_TESTS_QUICKSTART_IMAGE"
       - name: Install captive core
         run: |
           # Workaround for https://github.com/actions/virtual-environments/issues/5245,
@@ -42,11 +42,11 @@ jobs:
           sudo apt-get update && sudo apt-get install -y stellar-core="$STELLAR_CORE_VERSION"
           echo "Using stellar core version $(stellar-core version)"
 
-      - name: Run Ledger Exporter test
-        run: go test -v -race -run TestLedgerExporterTestSuite ./exp/services/ledgerexporter/...
+      - name: Run tests 
+        run: go test -v -race -run TestGalexieTestSuite ./exp/services/galexie/...
 
-      - name: Build Ledger Exporter docker
-        run: make -C exp/services/ledgerexporter docker-build
+      - name: Build docker
+        run: make -C exp/services/galexie docker-build
 
       # Push images
       - name: Login to DockerHub
@@ -56,4 +56,4 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Push to DockerHub
-        run: make -C exp/services/ledgerexporter docker-push
+        run: make -C exp/services/galexie docker-push
