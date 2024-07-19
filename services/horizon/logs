@@ -1,0 +1,14 @@
+2024/07/09 13:57:34 The usage of the flag --captive-core-use-db has been deprecated. Setting it to false to achieve in-memory functionality on captive core will be removed in future releases. We recommend removing usage of this flag now in preparation.
+2024/07/09 13:57:34 Checking DB migrations...
+2024/07/09 13:57:34 Preparing captive core...
+[36mINFO[0m[2024-07-09T13:57:34.223-07:00] creating GCS client for bucket: sdf-ledger-close-meta, prefix: ledgers/testnet  [36mpid[0m=41901
+[36mINFO[0m[2024-07-09T13:57:34.481-07:00] Ingestion system initial state                [36mcurrent_state[0m="reingestHistoryRange(fromLedger=381310, toLedger=392310, force=false)" [36mpid[0m=41901 [36mservice[0m=ingest
+[36mINFO[0m[2024-07-09T13:57:34.492-07:00] Preparing ledger backend to retrieve range    [36mfrom[0m=381310 [36mpid[0m=41901 [36mservice[0m=ingest [36mto[0m=392310
+[36mINFO[0m[2024-07-09T13:57:34.492-07:00] Range ready                                   [36mduration[0m=0.000145375 [36mfrom[0m=381310 [36mpid[0m=41901 [36mservice[0m=ingest [36mto[0m=392310
+[36mINFO[0m[2024-07-09T13:57:34.604-07:00] File retrieved successfully: ledgers/testnet/FFFB1DFF--320000-383999/FFFA2E7D--381314.xdr.zstd  [36mpid[0m=41901
+[36mINFO[0m[2024-07-09T13:57:34.604-07:00] File retrieved successfully: ledgers/testnet/FFFB1DFF--320000-383999/FFFA2E7E--381313.xdr.zstd  [36mpid[0m=41901
+[36mINFO[0m[2024-07-09T13:57:34.628-07:00] File retrieved successfully: ledgers/testnet/FFFB1DFF--320000-383999/FFFA2E80--381311.xdr.zstd  [36mpid[0m=41901
+[36mINFO[0m[2024-07-09T13:57:34.634-07:00] File retrieved successfully: ledgers/testnet/FFFB1DFF--320000-383999/FFFA2E7F--381312.xdr.zstd  [36mpid[0m=41901
+[36mINFO[0m[2024-07-09T13:57:34.645-07:00] File retrieved successfully: ledgers/testnet/FFFB1DFF--320000-383999/FFFA2E81--381310.xdr.zstd  [36mpid[0m=41901
+[36mINFO[0m[2024-07-09T13:57:34.660-07:00] File retrieved successfully: ledgers/testnet/FFFB1DFF--320000-383999/FFFA2E7C--381315.xdr.zstd  [36mpid[0m=41901
+^C
