@@ -118,7 +118,7 @@ func checkReadOnly(t testing.TB, DSN string) {
 	require.NoError(t, err)
 	defer conn.Close()
 
-	tx, err := conn.BeginTx(context.Background(), &sql.TxOptions{Isolation: sql.LevelSerializable})
+	tx, err := conn.BeginTx(context.Background(), &sql.TxOptions{})
 	require.NoError(t, err)
 	defer tx.Rollback()
 
