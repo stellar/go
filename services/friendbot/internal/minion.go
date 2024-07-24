@@ -146,6 +146,42 @@ func (minion *Minion) makeTx(destAddress string, exists bool) ([32]byte, string,
 	}
 }
 
+func (minion *Minion) makeCreateTx(destAddress string) ([32]byte, string, error) {
+	createAccountOp := txnbuild.CreateAccount{
+		Destination:   destAddress,
+		SourceAccount: minion.BotAccount.GetAccountID(),
+		Amount:        minion.StartingBalance,
+	}
+	tx, err := txnbuild.NewTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount:        minion.Account,
+			IncrementSequenceNum: true,
+			Operations:           []txnbuild.Operation{&createAccountOp},
+			BaseFee:              minion.BaseFee,
+			Preconditions:        txnbuild.Preconditions{TimeBounds: txnbuild.NewInfiniteTimeout()},
+		},
+	)
+	if err != nil {
+		return [32]byte{}, "", errors.Wrap(err, "unable to build tx")
+	}
+
+	tx, err = tx.Sign(minion.Network, minion.Keypair, minion.BotKeypair)
+	if err != nil {
+		return [32]byte{}, "", errors.Wrap(err, "unable to sign tx")
+	}
+
+	txe, err := tx.Base64()
+	if err != nil {
+		return [32]byte{}, "", errors.Wrap(err, "unable to serialize")
+	}
+
+	txh, err := tx.Hash(minion.Network)
+	if err != nil {
+		return [32]byte{}, "", errors.Wrap(err, "unable to hash")
+	}
+	return txh, txe, err
+}
+
 func (minion *Minion) makePaymentTx(destAddress string) ([32]byte, string, error) {
 	createAccountOp := txnbuild.Payment{
 		SourceAccount: minion.BotAccount.GetAccountID(),
@@ -185,42 +221,6 @@ func (minion *Minion) makePaymentTx(destAddress string) ([32]byte, string, error
 	_, err = minion.Account.IncrementSequenceNumber()
 	if err != nil {
 		return [32]byte{}, "", errors.Wrap(err, "incrementing minion seq")
-	}
-	return txh, txe, err
-}
-
-func (minion *Minion) makeCreateTx(destAddress string) ([32]byte, string, error) {
-	createAccountOp := txnbuild.CreateAccount{
-		Destination:   destAddress,
-		SourceAccount: minion.BotAccount.GetAccountID(),
-		Amount:        minion.StartingBalance,
-	}
-	tx, err := txnbuild.NewTransaction(
-		txnbuild.TransactionParams{
-			SourceAccount:        minion.Account,
-			IncrementSequenceNum: true,
-			Operations:           []txnbuild.Operation{&createAccountOp},
-			BaseFee:              minion.BaseFee,
-			Preconditions:        txnbuild.Preconditions{TimeBounds: txnbuild.NewInfiniteTimeout()},
-		},
-	)
-	if err != nil {
-		return [32]byte{}, "", errors.Wrap(err, "unable to build tx")
-	}
-
-	tx, err = tx.Sign(minion.Network, minion.Keypair, minion.BotKeypair)
-	if err != nil {
-		return [32]byte{}, "", errors.Wrap(err, "unable to sign tx")
-	}
-
-	txe, err := tx.Base64()
-	if err != nil {
-		return [32]byte{}, "", errors.Wrap(err, "unable to serialize")
-	}
-
-	txh, err := tx.Hash(minion.Network)
-	if err != nil {
-		return [32]byte{}, "", errors.Wrap(err, "unable to hash")
 	}
 	return txh, txe, err
 }
