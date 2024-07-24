@@ -190,25 +190,6 @@ func TestFriendbot_Pay_accountExistsAlreadyFunded(t *testing.T) {
 	fb := &Bot{Minions: []Minion{minion}}
 
 	recipientAddress := "GDJIN6W6PLTPKLLM57UW65ZH4BITUXUMYQHIMAZFYXF45PZVAWDBI77Z"
-	txSuccess, err := fb.Pay(recipientAddress)
-	if !assert.NoError(t, err) {
-		return
-	}
-	expectedTxn := "AAAAAgAAAAD4Az3jKU6lbzq/L5HG9/GzBT+FYusOz71oyYMbZkP+GAAAAGQAAAAAAAAAAgAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAABAAAAAPXQ8gjyrVHa47a6JDPkVHwPPDKxNRE2QBcamA4JvlOGAAAAAQAAAADShvreeub1LWzv6W93J+BROl6MxA6GAyXFy86/NQWGFAAAAAAAAAAXSHboAAAAAAAAAAACZkP+GAAAAEBAwm/hWuu/ZHHQWRD9oF/cnSwQyTZpHQoTlPlVSFH4g12HR2nbzOI9wC5Z5bt0ueXny4UNFS5QhUvnzdb2FMsDCb5ThgAAAED1HzWPW6lKBxBi6MTSwM/POytPSfL87taiarpTIk5naoqXPLpM0YBBaf5uH8de5Id1KSCP/g8tdeCxvrT053kJ"
-	assert.Equal(t, expectedTxn, txSuccess.EnvelopeXdr)
-
-	// Don't assert on tx values below, since the completion order is unknown.
-	var wg sync.WaitGroup
-	wg.Add(2)
-	go func() {
-		_, err := fb.Pay(recipientAddress)
-		assert.NoError(t, err)
-		wg.Done()
-	}()
-	go func() {
-		_, err := fb.Pay(recipientAddress)
-		assert.NoError(t, err)
-		wg.Done()
-	}()
-	wg.Wait()
+	_, err = fb.Pay(recipientAddress)
+	assert.ErrorIs(t, err, ErrAccountFunded)
 }

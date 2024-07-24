@@ -15,6 +15,8 @@ const createAccountAlreadyExistXDR = "AAAAAAAAAGT/////AAAAAQAAAAAAAAAA/////AAAAA
 
 var ErrAccountExists error = errors.New(fmt.Sprintf("createAccountAlreadyExist (%s)", createAccountAlreadyExistXDR))
 
+var ErrAccountFunded error = errors.New("account already funded to starting balance")
+
 // Minion contains a Stellar channel account and Go channels to communicate with friendbot.
 type Minion struct {
 	Account         Account
@@ -164,8 +166,8 @@ func (minion *Minion) checkBalance(balance string) error {
 	if err != nil {
 		return errors.Wrap(err, "cannot parse starting balance")
 	}
-	if bal > starting {
-		return errors.New("account already funded up to the starting balance")
+	if bal >= starting {
+		return ErrAccountFunded
 	}
 	return nil
 }
