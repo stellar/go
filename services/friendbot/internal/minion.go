@@ -217,10 +217,5 @@ func (minion *Minion) makePaymentTx(destAddress string) ([32]byte, string, error
 		return [32]byte{}, "", errors.Wrap(err, "unable to hash")
 	}
 
-	// Increment the in-memory sequence number, since the tx will be submitted.
-	_, err = minion.Account.IncrementSequenceNumber()
-	if err != nil {
-		return [32]byte{}, "", errors.Wrap(err, "incrementing minion seq")
-	}
 	return txh, txe, err
 }
