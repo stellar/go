@@ -217,7 +217,7 @@ func (minion *Minion) makeCreateTx(destAddress string) ([32]byte, string, error)
 }
 
 func (minion *Minion) makePaymentTx(destAddress string) ([32]byte, string, error) {
-	createAccountOp := txnbuild.Payment{
+	paymentOp := txnbuild.Payment{
 		SourceAccount: minion.BotAccount.GetAccountID(),
 		Destination:   destAddress,
 		Asset:         txnbuild.NativeAsset{},
@@ -227,7 +227,7 @@ func (minion *Minion) makePaymentTx(destAddress string) ([32]byte, string, error
 		txnbuild.TransactionParams{
 			SourceAccount:        minion.Account,
 			IncrementSequenceNum: true,
-			Operations:           []txnbuild.Operation{&createAccountOp},
+			Operations:           []txnbuild.Operation{&paymentOp},
 			BaseFee:              minion.BaseFee,
 			Preconditions:        txnbuild.Preconditions{TimeBounds: txnbuild.NewInfiniteTimeout()},
 		},
