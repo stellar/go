@@ -28,6 +28,7 @@ type Minion struct {
 	// Mockable functions
 	SubmitTransaction    func(minion *Minion, hclient horizonclient.ClientInterface, tx string) (*hProtocol.Transaction, error)
 	CheckSequenceRefresh func(minion *Minion, hclient horizonclient.ClientInterface) error
+	CheckAccountExists   func(minion *Minion, hclient horizonclient.ClientInterface, destAddress string) (bool, error)
 
 	// Uninitialized.
 	forceRefreshSequence bool
@@ -44,11 +45,27 @@ func (minion *Minion) Run(destAddress string, resultChan chan SubmitResult) {
 		}
 		return
 	}
-	txHash, txStr, err := minion.makeTx(destAddress)
+	exists, err := minion.CheckAccountExists(minion, minion.Horizon, destAddress)
+	if err != nil {
+		resultChan <- SubmitResult{
+			maybeTransactionSuccess: nil,
+			maybeErr:                errors.Wrap(err, "checking account exists"),
+		}
+		return
+	}
+	txHash, txStr, err := minion.makeTx(destAddress, exists)
 	if err != nil {
 		resultChan <- SubmitResult{
 			maybeTransactionSuccess: nil,
 			maybeErr:                errors.Wrap(err, "making payment tx"),
+		}
+		return
+	}
+	_, err = minion.Account.IncrementSequenceNumber()
+	if err != nil {
+		resultChan <- SubmitResult{
+			maybeTransactionSuccess: nil,
+			maybeErr:                errors.Wrap(err, "incrementing submitters sequence number"),
 		}
 		return
 	}
@@ -96,6 +113,22 @@ func CheckSequenceRefresh(minion *Minion, hclient horizonclient.ClientInterface)
 	return nil
 }
 
+// CheckAccountExists checks if the specified address exists as a Stellar account.
+// This should also be passed to the minion.
+func CheckAccountExists(minion *Minion, hclient horizonclient.ClientInterface, address string) (bool, error) {
+	accountRequest := horizonclient.AccountRequest{AccountID: address}
+	_, err := hclient.AccountDetail(accountRequest)
+	switch e := err.(type) {
+	case nil:
+		return true, nil
+	case *horizonclient.Error:
+		if e.Response.StatusCode == 404 {
+			return false, nil
+		}
+	}
+	return false, err
+}
+
 func (minion *Minion) checkHandleBadSequence(err *horizonclient.Error) {
 	resCode, e := err.ResultCodes()
 	isTxBadSeqCode := e == nil && resCode.TransactionCode == "tx_bad_seq"
@@ -105,10 +138,19 @@ func (minion *Minion) checkHandleBadSequence(err *horizonclient.Error) {
 	minion.forceRefreshSequence = true
 }
 
-func (minion *Minion) makeTx(destAddress string) ([32]byte, string, error) {
-	createAccountOp := txnbuild.CreateAccount{
-		Destination:   destAddress,
+func (minion *Minion) makeTx(destAddress string, exists bool) ([32]byte, string, error) {
+	if exists {
+		return minion.makePaymentTx(destAddress)
+	} else {
+		return minion.makeCreateTx(destAddress)
+	}
+}
+
+func (minion *Minion) makePaymentTx(destAddress string) ([32]byte, string, error) {
+	createAccountOp := txnbuild.Payment{
 		SourceAccount: minion.BotAccount.GetAccountID(),
+		Destination:   destAddress,
+		Asset:         txnbuild.NativeAsset{},
 		Amount:        minion.StartingBalance,
 	}
 	tx, err := txnbuild.NewTransaction(
@@ -143,6 +185,42 @@ func (minion *Minion) makeTx(destAddress string) ([32]byte, string, error) {
 	_, err = minion.Account.IncrementSequenceNumber()
 	if err != nil {
 		return [32]byte{}, "", errors.Wrap(err, "incrementing minion seq")
+	}
+	return txh, txe, err
+}
+
+func (minion *Minion) makeCreateTx(destAddress string) ([32]byte, string, error) {
+	createAccountOp := txnbuild.CreateAccount{
+		Destination:   destAddress,
+		SourceAccount: minion.BotAccount.GetAccountID(),
+		Amount:        minion.StartingBalance,
+	}
+	tx, err := txnbuild.NewTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount:        minion.Account,
+			IncrementSequenceNum: true,
+			Operations:           []txnbuild.Operation{&createAccountOp},
+			BaseFee:              minion.BaseFee,
+			Preconditions:        txnbuild.Preconditions{TimeBounds: txnbuild.NewInfiniteTimeout()},
+		},
+	)
+	if err != nil {
+		return [32]byte{}, "", errors.Wrap(err, "unable to build tx")
+	}
+
+	tx, err = tx.Sign(minion.Network, minion.Keypair, minion.BotKeypair)
+	if err != nil {
+		return [32]byte{}, "", errors.Wrap(err, "unable to sign tx")
+	}
+
+	txe, err := tx.Base64()
+	if err != nil {
+		return [32]byte{}, "", errors.Wrap(err, "unable to serialize")
+	}
+
+	txh, err := tx.Hash(minion.Network)
+	if err != nil {
+		return [32]byte{}, "", errors.Wrap(err, "unable to hash")
 	}
 	return txh, txe, err
 }
