@@ -3,6 +3,7 @@ package internal
 import (
 	"fmt"
 
+	"github.com/stellar/go/amount"
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
 	hProtocol "github.com/stellar/go/protocols/horizon"
@@ -28,7 +29,7 @@ type Minion struct {
 	// Mockable functions
 	SubmitTransaction    func(minion *Minion, hclient horizonclient.ClientInterface, tx string) (*hProtocol.Transaction, error)
 	CheckSequenceRefresh func(minion *Minion, hclient horizonclient.ClientInterface) error
-	CheckAccountExists   func(minion *Minion, hclient horizonclient.ClientInterface, destAddress string) (bool, error)
+	CheckAccountExists   func(minion *Minion, hclient horizonclient.ClientInterface, destAddress string) (bool, string, error)
 
 	// Uninitialized.
 	forceRefreshSequence bool
@@ -45,11 +46,19 @@ func (minion *Minion) Run(destAddress string, resultChan chan SubmitResult) {
 		}
 		return
 	}
-	exists, err := minion.CheckAccountExists(minion, minion.Horizon, destAddress)
+	exists, balance, err := minion.CheckAccountExists(minion, minion.Horizon, destAddress)
 	if err != nil {
 		resultChan <- SubmitResult{
 			maybeTransactionSuccess: nil,
 			maybeErr:                errors.Wrap(err, "checking account exists"),
+		}
+		return
+	}
+	err = minion.checkBalance(balance)
+	if err != nil {
+		resultChan <- SubmitResult{
+			maybeTransactionSuccess: nil,
+			maybeErr:                errors.Wrap(err, "account already funded"),
 		}
 		return
 	}
@@ -114,19 +123,27 @@ func CheckSequenceRefresh(minion *Minion, hclient horizonclient.ClientInterface)
 }
 
 // CheckAccountExists checks if the specified address exists as a Stellar account.
+// And returns the current native balance of the account also.
 // This should also be passed to the minion.
-func CheckAccountExists(minion *Minion, hclient horizonclient.ClientInterface, address string) (bool, error) {
+func CheckAccountExists(minion *Minion, hclient horizonclient.ClientInterface, address string) (bool, string, error) {
 	accountRequest := horizonclient.AccountRequest{AccountID: address}
-	_, err := hclient.AccountDetail(accountRequest)
+	accountDetails, err := hclient.AccountDetail(accountRequest)
 	switch e := err.(type) {
 	case nil:
-		return true, nil
+		balance := "0"
+		for _, b := range accountDetails.Balances {
+			if b.Type == "native" {
+				balance = b.Balance
+				break
+			}
+		}
+		return true, balance, nil
 	case *horizonclient.Error:
 		if e.Response.StatusCode == 404 {
-			return false, nil
+			return false, "0", nil
 		}
 	}
-	return false, err
+	return false, "0", err
 }
 
 func (minion *Minion) checkHandleBadSequence(err *horizonclient.Error) {
@@ -136,6 +153,21 @@ func (minion *Minion) checkHandleBadSequence(err *horizonclient.Error) {
 		return
 	}
 	minion.forceRefreshSequence = true
+}
+
+func (minion *Minion) checkBalance(balance string) error {
+	bal, err := amount.ParseInt64(balance)
+	if err != nil {
+		return errors.Wrap(err, "cannot parse account balance")
+	}
+	starting, err := amount.ParseInt64(minion.StartingBalance)
+	if err != nil {
+		return errors.Wrap(err, "cannot parse starting balance")
+	}
+	if bal > starting {
+		return errors.New("account already funded up to the starting balance")
+	}
+	return nil
 }
 
 func (minion *Minion) makeTx(destAddress string, exists bool) ([32]byte, string, error) {

@@ -24,8 +24,8 @@ func TestMinion_NoChannelErrors(t *testing.T) {
 		return errors.New("could not refresh sequence")
 	}
 
-	mockCheckAccountExists := func(minion *Minion, hclient horizonclient.ClientInterface, destAddress string) (bool, error) {
-		return false, nil
+	mockCheckAccountExists := func(minion *Minion, hclient horizonclient.ClientInterface, destAddress string) (bool, string, error) {
+		return false, "0", nil
 	}
 
 	// Public key: GD25B4QI6KWVDWXDW25CIM7EKR6A6PBSWE2RCNSAC4NJQDQJXZJYMMKR
@@ -94,8 +94,8 @@ func TestMinion_CorrectNumberOfTxSubmissions(t *testing.T) {
 		return nil
 	}
 
-	mockCheckAccountExists := func(minion *Minion, hclient horizonclient.ClientInterface, destAddress string) (bool, error) {
-		return false, nil
+	mockCheckAccountExists := func(minion *Minion, hclient horizonclient.ClientInterface, destAddress string) (bool, string, error) {
+		return false, "0", nil
 	}
 
 	// Public key: GD25B4QI6KWVDWXDW25CIM7EKR6A6PBSWE2RCNSAC4NJQDQJXZJYMMKR
