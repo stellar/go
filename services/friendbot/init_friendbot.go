@@ -67,6 +67,7 @@ func initFriendbot(
 
 func createMinionAccounts(botAccount internal.Account, botKeypair *keypair.Full, networkPassphrase, newAccountBalance, minionBalance string,
 	numMinions, minionBatchSize, submitTxRetriesAllowed int, baseFee int64, hclient horizonclient.ClientInterface) ([]internal.Minion, error) {
+
 	var minions []internal.Minion
 	numRemainingMinions := numMinions
 	// Allow retries to account for testnet congestion
