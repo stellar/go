@@ -972,9 +972,9 @@ type tableObjectFieldPair struct {
 }
 
 type LookupTableReapResult struct {
-	Offset      int64
-	RowsDeleted int64
-	Duration    time.Duration
+	Offset      int64         `json:"offset"`
+	RowsDeleted int64         `json:"rowsDeleted"`
+	Duration    time.Duration `json:"duration"`
 }
 
 // ReapLookupTables removes rows from lookup tables like history_claimable_balances
