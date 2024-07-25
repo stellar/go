@@ -100,18 +100,10 @@ func TestConstructReapLookupTablesQuery(t *testing.T) {
 
 	assert.Equal(t,
 		"DELETE FROM history_accounts WHERE id IN ("+
-			"SELECT e1.id FROM ("+
-			"SELECT id FROM history_accounts WHERE id >= 0 ORDER BY id LIMIT 10) e1 "+
-			"LEFT JOIN LATERAL ( "+
-			"SELECT 1 as row FROM history_transaction_participants WHERE history_transaction_participants.history_account_id = e1.id LIMIT 1"+
-			") e2 ON true LEFT JOIN LATERAL ( "+
-			"SELECT 1 as row FROM history_effects WHERE history_effects.history_account_id = e1.id LIMIT 1"+
-			") e3 ON true LEFT JOIN LATERAL ( "+
-			"SELECT 1 as row FROM history_operation_participants WHERE history_operation_participants.history_account_id = e1.id LIMIT 1"+
-			") e4 ON true LEFT JOIN LATERAL ( "+
-			"SELECT 1 as row FROM history_trades WHERE history_trades.base_account_id = e1.id LIMIT 1"+
-			") e5 ON true LEFT JOIN LATERAL ( "+
-			"SELECT 1 as row FROM history_trades WHERE history_trades.counter_account_id = e1.id LIMIT 1"+
-			") e6 ON true "+
-			"WHERE e2.row IS NULL AND e3.row IS NULL AND e4.row IS NULL AND e5.row IS NULL AND e6.row IS NULL);", query)
+			"WITH ha_batch AS (SELECT id FROM history_accounts WHERE id >= 0 ORDER BY id limit 10) SELECT e1.id as id FROM ha_batch e1 "+
+			"WHERE NOT EXISTS ( SELECT 1 as row FROM history_transaction_participants WHERE history_transaction_participants.history_account_id = id LIMIT 1) "+
+			"AND NOT EXISTS ( SELECT 1 as row FROM history_effects WHERE history_effects.history_account_id = id LIMIT 1) "+
+			"AND NOT EXISTS ( SELECT 1 as row FROM history_operation_participants WHERE history_operation_participants.history_account_id = id LIMIT 1) "+
+			"AND NOT EXISTS ( SELECT 1 as row FROM history_trades WHERE history_trades.base_account_id = id LIMIT 1) "+
+			"AND NOT EXISTS ( SELECT 1 as row FROM history_trades WHERE history_trades.counter_account_id = id LIMIT 1)", query)
 }

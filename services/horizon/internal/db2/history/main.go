@@ -1094,24 +1094,17 @@ func (q Q) ReapLookupTables(ctx context.Context, offsets map[string]int64) (
 // constructReapLookupTablesQuery creates a query like (using history_claimable_balances
 // as an example):
 //
-// delete from history_claimable_balances where id in
+// delete from history_claimable_balances where id in (
 //
-//	(SELECT e1.id FROM (
-//			SELECT id FROM history_claimable_balances
+//		WITH ha_batch AS (
+//			SELECT   id
+//			FROM     history_claimable_balances
 //			WHERE id >= 1000
-//			ORDER BY id LIMIT 1000
-//		) e1 LEFT JOIN LATERAL (
-//			SELECT 1 AS row
-//			FROM history_transaction_claimable_balances
-//			where history_transaction_claimable_balances.history_claimable_balance_id = e1.id
-//			LIMIT 1
-//		) e2 ON true LEFT JOIN LATERAL (
-//			SELECT 1 AS row
-//			FROM history_operation_claimable_balances
-//			where history_operation_claimable_balances.history_claimable_balance_id = e1.id
-//			LIMIT 1
-//		) e3 ON true
-//	WHERE e2.row IS NULL AND e3.row IS NULL);
+//			ORDER BY id limit 1000
+//		) SELECT e1.id as id FROM ha_batch e1
+//		WHERE NOT EXISTS (SELECT 1 FROM history_transaction_claimable_balances WHERE history_transaction_claimable_balances.history_claimable_balance_id = id limit 1)
+//		AND NOT EXISTS (SELECT 1 FROM history_operation_claimable_balances WHERE history_operation_claimable_balances.history_claimable_balance_id = id limit 1)
+//	 )
 //
 // In short it checks the 1000 rows omitting 1000 row of history_claimable_balances
 // and counts occurrences of each row in corresponding history tables.
@@ -1124,31 +1117,28 @@ func (q Q) ReapLookupTables(ctx context.Context, offsets map[string]int64) (
 // when it reaches the table size so eventually all orphaned rows are
 // deleted.
 func constructReapLookupTablesQuery(table string, historyTables []tableObjectFieldPair, batchSize, offset int64) string {
-	index := 2
-	var joins []string
 	var conditions []string
 
 	for _, historyTable := range historyTables {
-		joins = append(
-			joins,
+		conditions = append(
+			conditions,
 			fmt.Sprintf(
-				` LEFT JOIN LATERAL ( SELECT 1 as row FROM %s WHERE %s.%s = e1.id LIMIT 1) e%d ON true`,
+				"NOT EXISTS ( SELECT 1 as row FROM %s WHERE %s.%s = id LIMIT 1)",
 				historyTable.name,
 				historyTable.name, historyTable.objectField,
-				index,
 			),
 		)
-		conditions = append(conditions, fmt.Sprintf("e%d.row IS NULL", index))
-		index++
 	}
 
 	return fmt.Sprintf(
-		"DELETE FROM %s WHERE id IN (SELECT e1.id FROM (SELECT id FROM %s WHERE id >= %d ORDER BY id LIMIT %d) e1",
+		"DELETE FROM %s WHERE id IN ("+
+			"WITH ha_batch AS (SELECT id FROM %s WHERE id >= %d ORDER BY id limit %d) "+
+			"SELECT e1.id as id FROM ha_batch e1 WHERE ",
 		table,
 		table,
 		offset,
 		batchSize,
-	) + strings.Join(joins, "") + fmt.Sprintf(" WHERE %s);", strings.Join(conditions, " AND "))
+	) + strings.Join(conditions, " AND ") + ")"
 }
 
 // DeleteRangeAll deletes a range of rows from all history tables between
