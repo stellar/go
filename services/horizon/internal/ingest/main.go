@@ -253,7 +253,6 @@ type system struct {
 
 	runStateVerificationOnLedger func(uint32) bool
 
-	reapOffsetByTable map[string]int64
 	maxLedgerPerFlush uint32
 
 	reaper *Reaper
@@ -369,7 +368,6 @@ func NewSystem(config Config) (System, error) {
 			config.ReapConfig,
 			config.HistorySession,
 		),
-		reapOffsetByTable: map[string]int64{},
 	}
 
 	system.initMetrics()
@@ -843,7 +841,7 @@ func (s *system) maybeReapLookupTables(lastIngestedLedger uint32) {
 	defer cancel()
 
 	reapStart := time.Now()
-	results, err := s.historyQ.ReapLookupTables(ctx, s.reapOffsetByTable)
+	results, err := s.historyQ.ReapLookupTables(ctx)
 	if err != nil {
 		log.WithError(err).Warn("Error reaping lookup tables")
 		return
@@ -860,7 +858,6 @@ func (s *system) maybeReapLookupTables(lastIngestedLedger uint32) {
 	for table, result := range results {
 		totalDeleted += result.RowsDeleted
 		reapLog = reapLog.WithField(table, result)
-		s.reapOffsetByTable[table] = result.Offset
 		s.Metrics().RowsReapedByLookupTable.With(prometheus.Labels{"table": table}).Observe(float64(result.RowsDeleted))
 		s.Metrics().ReapDurationByLookupTable.With(prometheus.Labels{"table": table}).Observe(result.Duration.Seconds())
 	}

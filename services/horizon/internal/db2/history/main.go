@@ -282,7 +282,7 @@ type IngestionQ interface {
 	NewTradeBatchInsertBuilder() TradeBatchInsertBuilder
 	RebuildTradeAggregationTimes(ctx context.Context, from, to strtime.Millis, roundingSlippageFilter int) error
 	RebuildTradeAggregationBuckets(ctx context.Context, fromLedger, toLedger uint32, roundingSlippageFilter int) error
-	ReapLookupTables(ctx context.Context, offsets map[string]int64) (map[string]LookupTableReapResult, error)
+	ReapLookupTables(ctx context.Context) (map[string]LookupTableReapResult, error)
 	CreateAssets(ctx context.Context, assets []xdr.Asset, batchSize int) (map[string]Asset, error)
 	QTransactions
 	QTrustLines
@@ -981,7 +981,7 @@ type LookupTableReapResult struct {
 // which aren't used (orphaned), i.e. history entries for them were reaped.
 // This method must be executed inside ingestion transaction. Otherwise it may
 // create invalid state in lookup and history tables.
-func (q Q) ReapLookupTables(ctx context.Context, offsets map[string]int64) (
+func (q *Q) ReapLookupTables(ctx context.Context) (
 	map[string]LookupTableReapResult,
 	error,
 ) {
@@ -989,72 +989,15 @@ func (q Q) ReapLookupTables(ctx context.Context, offsets map[string]int64) (
 		return nil, errors.New("cannot be called outside of an ingestion transaction")
 	}
 
+	offsets, err := q.getLookupTableReapOffsets(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("could not obtain offsets: %w", err)
+	}
+
 	const batchSize = 1000
 
 	results := map[string]LookupTableReapResult{}
-	for table, historyTables := range map[string][]tableObjectFieldPair{
-		"history_accounts": {
-			{
-				name:        "history_transaction_participants",
-				objectField: "history_account_id",
-			},
-
-			{
-				name:        "history_effects",
-				objectField: "history_account_id",
-			},
-			{
-				name:        "history_operation_participants",
-				objectField: "history_account_id",
-			},
-			{
-				name:        "history_trades",
-				objectField: "base_account_id",
-			},
-			{
-				name:        "history_trades",
-				objectField: "counter_account_id",
-			},
-		},
-		"history_assets": {
-			{
-				name:        "history_trades",
-				objectField: "base_asset_id",
-			},
-			{
-				name:        "history_trades",
-				objectField: "counter_asset_id",
-			},
-			{
-				name:        "history_trades_60000",
-				objectField: "base_asset_id",
-			},
-			{
-				name:        "history_trades_60000",
-				objectField: "counter_asset_id",
-			},
-		},
-		"history_claimable_balances": {
-			{
-				name:        "history_transaction_claimable_balances",
-				objectField: "history_claimable_balance_id",
-			},
-			{
-				name:        "history_operation_claimable_balances",
-				objectField: "history_claimable_balance_id",
-			},
-		},
-		"history_liquidity_pools": {
-			{
-				name:        "history_transaction_liquidity_pools",
-				objectField: "history_liquidity_pool_id",
-			},
-			{
-				name:        "history_operation_liquidity_pools",
-				objectField: "history_liquidity_pool_id",
-			},
-		},
-	} {
+	for table, historyTables := range historyLookupTables {
 		startTime := time.Now()
 		query := constructReapLookupTablesQuery(table, historyTables, batchSize, offsets[table])
 
@@ -1077,6 +1020,10 @@ func (q Q) ReapLookupTables(ctx context.Context, offsets map[string]int64) (
 			return nil, errors.Wrapf(err, "error running query: %s", query)
 		}
 
+		if err = q.updateLookupTableReapOffset(ctx, table, newOffset); err != nil {
+			return nil, fmt.Errorf("error updating offset: %w", err)
+		}
+
 		rows, err := res.RowsAffected()
 		if err != nil {
 			return nil, errors.Wrapf(err, "error running RowsAffected after query: %s", query)
@@ -1089,6 +1036,70 @@ func (q Q) ReapLookupTables(ctx context.Context, offsets map[string]int64) (
 		}
 	}
 	return results, nil
+}
+
+var historyLookupTables = map[string][]tableObjectFieldPair{
+	"history_accounts": {
+		{
+			name:        "history_transaction_participants",
+			objectField: "history_account_id",
+		},
+
+		{
+			name:        "history_effects",
+			objectField: "history_account_id",
+		},
+		{
+			name:        "history_operation_participants",
+			objectField: "history_account_id",
+		},
+		{
+			name:        "history_trades",
+			objectField: "base_account_id",
+		},
+		{
+			name:        "history_trades",
+			objectField: "counter_account_id",
+		},
+	},
+	"history_assets": {
+		{
+			name:        "history_trades",
+			objectField: "base_asset_id",
+		},
+		{
+			name:        "history_trades",
+			objectField: "counter_asset_id",
+		},
+		{
+			name:        "history_trades_60000",
+			objectField: "base_asset_id",
+		},
+		{
+			name:        "history_trades_60000",
+			objectField: "counter_asset_id",
+		},
+	},
+	"history_claimable_balances": {
+		{
+			name:        "history_transaction_claimable_balances",
+			objectField: "history_claimable_balance_id",
+		},
+		{
+			name:        "history_operation_claimable_balances",
+			objectField: "history_claimable_balance_id",
+		},
+	},
+	"history_liquidity_pools": {
+		{
+			name:        "history_transaction_liquidity_pools",
+			objectField: "history_liquidity_pool_id",
+		},
+		{
+			name:        "history_operation_liquidity_pools",
+			objectField: "history_liquidity_pool_id",
+		},
+	},
 }
 
 // constructReapLookupTablesQuery creates a query like (using history_claimable_balances

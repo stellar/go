@@ -52,7 +52,7 @@ func TestReapLookupTables(t *testing.T) {
 	err = q.Begin(tt.Ctx)
 	tt.Require.NoError(err)
 
-	results, err := q.ReapLookupTables(tt.Ctx, nil)
+	results, err := q.ReapLookupTables(tt.Ctx)
 	tt.Require.NoError(err)
 
 	err = q.Commit()
