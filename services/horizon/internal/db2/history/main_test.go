@@ -72,28 +72,7 @@ func TestElderLedger(t *testing.T) {
 func TestConstructReapLookupTablesQuery(t *testing.T) {
 	query := constructReapLookupTablesQuery(
 		"history_accounts",
-		[]tableObjectFieldPair{
-			{
-				name:        "history_transaction_participants",
-				objectField: "history_account_id",
-			},
-			{
-				name:        "history_effects",
-				objectField: "history_account_id",
-			},
-			{
-				name:        "history_operation_participants",
-				objectField: "history_account_id",
-			},
-			{
-				name:        "history_trades",
-				objectField: "base_account_id",
-			},
-			{
-				name:        "history_trades",
-				objectField: "counter_account_id",
-			},
-		},
+		historyLookupTables["history_accounts"],
 		10,
 		0,
 	)
@@ -105,5 +84,5 @@ func TestConstructReapLookupTablesQuery(t *testing.T) {
 			"AND NOT EXISTS ( SELECT 1 as row FROM history_effects WHERE history_effects.history_account_id = id LIMIT 1) "+
 			"AND NOT EXISTS ( SELECT 1 as row FROM history_operation_participants WHERE history_operation_participants.history_account_id = id LIMIT 1) "+
 			"AND NOT EXISTS ( SELECT 1 as row FROM history_trades WHERE history_trades.base_account_id = id LIMIT 1) "+
-			"AND NOT EXISTS ( SELECT 1 as row FROM history_trades WHERE history_trades.counter_account_id = id LIMIT 1)", query)
+			"AND NOT EXISTS ( SELECT 1 as row FROM history_trades WHERE history_trades.counter_account_id = id LIMIT 1))", query)
 }
