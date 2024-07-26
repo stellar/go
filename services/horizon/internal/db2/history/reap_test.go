@@ -30,21 +30,18 @@ func TestReapLookupTables(t *testing.T) {
 		prevLiquidityPools, curLiquidityPools       int
 	)
 
-	// Prev
-	{
-		err := db.GetRaw(tt.Ctx, &prevLedgers, `SELECT COUNT(*) FROM history_ledgers`)
-		tt.Require.NoError(err)
-		err = db.GetRaw(tt.Ctx, &prevAccounts, `SELECT COUNT(*) FROM history_accounts`)
-		tt.Require.NoError(err)
-		err = db.GetRaw(tt.Ctx, &prevAssets, `SELECT COUNT(*) FROM history_assets`)
-		tt.Require.NoError(err)
-		err = db.GetRaw(tt.Ctx, &prevClaimableBalances, `SELECT COUNT(*) FROM history_claimable_balances`)
-		tt.Require.NoError(err)
-		err = db.GetRaw(tt.Ctx, &prevLiquidityPools, `SELECT COUNT(*) FROM history_liquidity_pools`)
-		tt.Require.NoError(err)
-	}
+	err := db.GetRaw(tt.Ctx, &prevLedgers, `SELECT COUNT(*) FROM history_ledgers`)
+	tt.Require.NoError(err)
+	err = db.GetRaw(tt.Ctx, &prevAccounts, `SELECT COUNT(*) FROM history_accounts`)
+	tt.Require.NoError(err)
+	err = db.GetRaw(tt.Ctx, &prevAssets, `SELECT COUNT(*) FROM history_assets`)
+	tt.Require.NoError(err)
+	err = db.GetRaw(tt.Ctx, &prevClaimableBalances, `SELECT COUNT(*) FROM history_claimable_balances`)
+	tt.Require.NoError(err)
+	err = db.GetRaw(tt.Ctx, &prevLiquidityPools, `SELECT COUNT(*) FROM history_liquidity_pools`)
+	tt.Require.NoError(err)
 
-	err := reaper.DeleteUnretainedHistory(tt.Ctx)
+	err = reaper.DeleteUnretainedHistory(tt.Ctx)
 	tt.Require.NoError(err)
 
 	q := &history.Q{tt.HorizonSession()}
@@ -58,19 +55,16 @@ func TestReapLookupTables(t *testing.T) {
 	err = q.Commit()
 	tt.Require.NoError(err)
 
-	// cur
-	{
-		err := db.GetRaw(tt.Ctx, &curLedgers, `SELECT COUNT(*) FROM history_ledgers`)
-		tt.Require.NoError(err)
-		err = db.GetRaw(tt.Ctx, &curAccounts, `SELECT COUNT(*) FROM history_accounts`)
-		tt.Require.NoError(err)
-		err = db.GetRaw(tt.Ctx, &curAssets, `SELECT COUNT(*) FROM history_assets`)
-		tt.Require.NoError(err)
-		err = db.GetRaw(tt.Ctx, &curClaimableBalances, `SELECT COUNT(*) FROM history_claimable_balances`)
-		tt.Require.NoError(err)
-		err = db.GetRaw(tt.Ctx, &curLiquidityPools, `SELECT COUNT(*) FROM history_liquidity_pools`)
-		tt.Require.NoError(err)
-	}
+	err = db.GetRaw(tt.Ctx, &curLedgers, `SELECT COUNT(*) FROM history_ledgers`)
+	tt.Require.NoError(err)
+	err = db.GetRaw(tt.Ctx, &curAccounts, `SELECT COUNT(*) FROM history_accounts`)
+	tt.Require.NoError(err)
+	err = db.GetRaw(tt.Ctx, &curAssets, `SELECT COUNT(*) FROM history_assets`)
+	tt.Require.NoError(err)
+	err = db.GetRaw(tt.Ctx, &curClaimableBalances, `SELECT COUNT(*) FROM history_claimable_balances`)
+	tt.Require.NoError(err)
+	err = db.GetRaw(tt.Ctx, &curLiquidityPools, `SELECT COUNT(*) FROM history_liquidity_pools`)
+	tt.Require.NoError(err)
 
 	tt.Assert.Equal(61, prevLedgers, "prevLedgers")
 	tt.Assert.Equal(1, curLedgers, "curLedgers")
