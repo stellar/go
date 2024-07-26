@@ -857,7 +857,9 @@ func (s *system) maybeReapLookupTables(lastIngestedLedger uint32) {
 	reapLog := log
 	for table, result := range results {
 		totalDeleted += result.RowsDeleted
-		reapLog = reapLog.WithField(table, result)
+		reapLog = reapLog.WithField(table+"_offset", result.Offset)
+		reapLog = reapLog.WithField(table+"_duration", result.Duration)
+		reapLog = reapLog.WithField(table+"_rows_deleted", result.RowsDeleted)
 		s.Metrics().RowsReapedByLookupTable.With(prometheus.Labels{"table": table}).Observe(float64(result.RowsDeleted))
 		s.Metrics().ReapDurationByLookupTable.With(prometheus.Labels{"table": table}).Observe(result.Duration.Seconds())
 	}
