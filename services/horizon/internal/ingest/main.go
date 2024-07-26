@@ -73,12 +73,13 @@ const (
 	//  * Reaping (requires 2 connections, the extra connection is used for holding the advisory lock)
 	MaxDBConnections = 5
 
-	defaultCoreCursorName           = "HORIZON"
 	stateVerificationErrorThreshold = 3
 
 	// 100 ledgers per flush has shown in stress tests
 	// to be best point on performance curve, default to that.
 	MaxLedgersPerFlush uint32 = 100
+
+	reapLookupTablesBatchSize = 1000
 )
 
 var log = logpkg.DefaultLogger.WithField("service", "ingest")
@@ -841,7 +842,7 @@ func (s *system) maybeReapLookupTables(lastIngestedLedger uint32) {
 	defer cancel()
 
 	reapStart := time.Now()
-	results, err := s.historyQ.ReapLookupTables(ctx)
+	results, err := s.historyQ.ReapLookupTables(ctx, reapLookupTablesBatchSize)
 	if err != nil {
 		log.WithError(err).Warn("Error reaping lookup tables")
 		return

@@ -282,7 +282,7 @@ type IngestionQ interface {
 	NewTradeBatchInsertBuilder() TradeBatchInsertBuilder
 	RebuildTradeAggregationTimes(ctx context.Context, from, to strtime.Millis, roundingSlippageFilter int) error
 	RebuildTradeAggregationBuckets(ctx context.Context, fromLedger, toLedger uint32, roundingSlippageFilter int) error
-	ReapLookupTables(ctx context.Context) (map[string]LookupTableReapResult, error)
+	ReapLookupTables(ctx context.Context, batchSize int) (map[string]LookupTableReapResult, error)
 	CreateAssets(ctx context.Context, assets []xdr.Asset, batchSize int) (map[string]Asset, error)
 	QTransactions
 	QTrustLines
@@ -981,7 +981,7 @@ type LookupTableReapResult struct {
 // which aren't used (orphaned), i.e. history entries for them were reaped.
 // This method must be executed inside ingestion transaction. Otherwise it may
 // create invalid state in lookup and history tables.
-func (q *Q) ReapLookupTables(ctx context.Context) (
+func (q *Q) ReapLookupTables(ctx context.Context, batchSize int) (
 	map[string]LookupTableReapResult,
 	error,
 ) {
@@ -993,8 +993,6 @@ func (q *Q) ReapLookupTables(ctx context.Context) (
 	if err != nil {
 		return nil, fmt.Errorf("could not obtain offsets: %w", err)
 	}
-
-	const batchSize = 1000
 
 	results := map[string]LookupTableReapResult{}
 	for table, historyTables := range historyLookupTables {
@@ -1127,7 +1125,7 @@ var historyLookupTables = map[string][]tableObjectFieldPair{
 // possible that rows will be skipped from deletion. But offset is reset
 // when it reaches the table size so eventually all orphaned rows are
 // deleted.
-func constructReapLookupTablesQuery(table string, historyTables []tableObjectFieldPair, batchSize, offset int64) string {
+func constructReapLookupTablesQuery(table string, historyTables []tableObjectFieldPair, batchSize int, offset int64) string {
 	var conditions []string
 
 	for _, historyTable := range historyTables {
