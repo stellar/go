@@ -225,12 +225,17 @@ func (q *Q) getLookupTableReapOffsets(ctx context.Context) (map[string]int64, er
 			"key": keys,
 		})
 	err := q.Select(ctx, &pairs, query)
+	if err != nil {
+		return nil, err
+	}
 	for _, pair := range pairs {
 		table := strings.TrimSuffix(pair.Key, lookupTableReapOffsetSuffix)
 		if _, ok := historyLookupTables[table]; !ok {
 			return nil, fmt.Errorf("invalid key: %s", pair.Key)
 		}
-		offset, err := strconv.ParseInt(pair.Value, 10, 64)
+
+		var offset int64
+		offset, err = strconv.ParseInt(pair.Value, 10, 64)
 		if err != nil {
 			return nil, fmt.Errorf("invalid offset: %s", pair.Value)
 		}
