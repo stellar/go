@@ -120,7 +120,7 @@ func (c *compactingChangeReader) Close() error {
 }
 
 // NewCompactingChangeReader wraps a given ChangeReader and returns a ChangeReader
-// which compacts all the the Changes extracted from the input.
+// which compacts all the Changes extracted from the input.
 func NewCompactingChangeReader(input ChangeReader) ChangeReader {
 	return &compactingChangeReader{
 		input: input,

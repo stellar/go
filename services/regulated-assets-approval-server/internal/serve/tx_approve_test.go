@@ -233,7 +233,7 @@ func TestTxApproveHandler_handleActionRequiredResponseIfNeeded(t *testing.T) {
 		db:           conn,
 	}
 
-	// payments up to the the threshold won't trigger "action_required"
+	// payments up to the threshold won't trigger "action_required"
 	clientKP := keypair.MustRandom()
 	paymentOp := &txnbuild.Payment{
 		Amount: amount.StringFromInt64(kycThreshold),
