@@ -3,9 +3,12 @@ package history
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"strconv"
+	"strings"
 
 	sq "github.com/Masterminds/squirrel"
+
 	"github.com/stellar/go/support/errors"
 )
 
@@ -18,6 +21,7 @@ const (
 	stateInvalid                    = "exp_state_invalid"
 	offerCompactionSequence         = "offer_compaction_sequence"
 	liquidityPoolCompactionSequence = "liquidity_pool_compaction_sequence"
+	lookupTableReapOffsetSuffix     = "_reap_offset"
 )
 
 // GetLastLedgerIngestNonBlocking works like GetLastLedgerIngest but
@@ -201,6 +205,47 @@ func (q *Q) getValueFromStore(ctx context.Context, key string, forUpdate bool) (
 	}
 
 	return value, nil
+}
+
+type KeyValuePair struct {
+	Key   string `db:"key"`
+	Value string `db:"value"`
+}
+
+func (q *Q) getLookupTableReapOffsets(ctx context.Context) (map[string]int64, error) {
+	keys := make([]string, 0, len(historyLookupTables))
+	for table := range historyLookupTables {
+		keys = append(keys, table+lookupTableReapOffsetSuffix)
+	}
+	offsets := map[string]int64{}
+	var pairs []KeyValuePair
+	query := sq.Select("key", "value").
+		From("key_value_store").
+		Where(map[string]interface{}{
+			"key": keys,
+		})
+	err := q.Select(ctx, &pairs, query)
+	if err != nil {
+		return nil, err
+	}
+	for _, pair := range pairs {
+		table := strings.TrimSuffix(pair.Key, lookupTableReapOffsetSuffix)
+		if _, ok := historyLookupTables[table]; !ok {
+			return nil, fmt.Errorf("invalid key: %s", pair.Key)
+		}
+
+		var offset int64
+		offset, err = strconv.ParseInt(pair.Value, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("invalid offset: %s", pair.Value)
+		}
+		offsets[table] = offset
+	}
+	return offsets, err
+}
+
+func (q *Q) updateLookupTableReapOffset(ctx context.Context, table string, offset int64) error {
+	return q.updateValueInStore(ctx, table+lookupTableReapOffsetSuffix, strconv.FormatInt(offset, 10))
 }
 
 // updateValueInStore updates a value for a given key in KV store

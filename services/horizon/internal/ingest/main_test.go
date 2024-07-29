@@ -562,8 +562,8 @@ func (m *mockDBQ) NewTradeBatchInsertBuilder() history.TradeBatchInsertBuilder {
 	return args.Get(0).(history.TradeBatchInsertBuilder)
 }
 
-func (m *mockDBQ) ReapLookupTables(ctx context.Context, offsets map[string]int64) (map[string]history.LookupTableReapResult, error) {
-	args := m.Called(ctx, offsets)
+func (m *mockDBQ) ReapLookupTables(ctx context.Context, batchSize int) (map[string]history.LookupTableReapResult, error) {
+	args := m.Called(ctx, batchSize)
 	var r1 map[string]history.LookupTableReapResult
 	if args.Get(0) != nil {
 		r1 = args.Get(0).(map[string]history.LookupTableReapResult)
