@@ -308,6 +308,7 @@ type IngestionQ interface {
 	GetNextLedgerSequence(context.Context, uint32) (uint32, bool, error)
 	TryStateVerificationLock(context.Context) (bool, error)
 	TryReaperLock(context.Context) (bool, error)
+	TryLookupTableReaperLock(ctx context.Context) (bool, error)
 	ElderLedger(context.Context, interface{}) error
 }
 
