@@ -325,6 +325,10 @@ func (r *lookupTableReaper) deleteOrphanedRows(ctx context.Context) error {
 		deleteStartTime := time.Now()
 		var rowsDeleted int64
 		rowsDeleted, err = r.historyQ.ReapLookupTable(ctx, table, ids, offset)
+		if err != nil {
+			log.WithField("table", table).WithError(err).Warn("Error deleting orphaned rows")
+			return err
+		}
 		deleteDuration := time.Since(deleteStartTime)
 		totalDeleteDuration += deleteDuration
 
