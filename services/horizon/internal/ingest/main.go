@@ -413,7 +413,7 @@ func (s *system) initMetrics() {
 		Namespace: "horizon", Subsystem: "ingest", Name: "reap_lookup_tables_duration_seconds",
 		Help:       "reap lookup tables durations, sliding window = 10m",
 		Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
-	}, []string{"table"})
+	}, []string{"table", "type"})
 
 	s.metrics.RowsReapedByLookupTable = prometheus.NewSummaryVec(prometheus.SummaryOpts{
 		Namespace: "horizon", Subsystem: "ingest", Name: "reap_lookup_tables_rows_reaped",
@@ -822,55 +822,57 @@ func (s *system) maybeReapLookupTables(lastIngestedLedger uint32) {
 		return
 	}
 
-	err = s.historyQ.Begin(s.ctx)
-	if err != nil {
-		log.WithError(err).Error("Error starting a transaction")
-		return
-	}
-	defer s.historyQ.Rollback()
+	s.wg.Add(1)
+	go func() {
+		defer s.wg.Done()
 
-	// If so block ingestion in the cluster to reap tables
-	_, err = s.historyQ.GetLastLedgerIngest(s.ctx)
-	if err != nil {
-		log.WithError(err).Error(getLastIngestedErrMsg)
-		return
-	}
+		reapStart := time.Now()
+		var totalQueryDuration, totalDeleteDuration time.Duration
+		var totalDeleted int64
+		for _, table := range []string{
+			"history_accounts", "history_claimable_balances",
+			"history_assets", "history_liquidity_pools",
+		} {
+			startTime := time.Now()
+			ids, offset, err := s.historyQ.FindLookupTableRowsToReap(s.ctx, table, reapLookupTablesBatchSize)
+			if err != nil {
+				log.WithField("table", table).WithError(err).Warn("Error finding orphaned rows")
+				return
+			}
+			queryDuration := time.Since(startTime)
+			totalQueryDuration += queryDuration
 
-	// Make sure reaping will not take more than 5s, which is average ledger
-	// closing time.
-	ctx, cancel := context.WithTimeout(s.ctx, 5*time.Second)
-	defer cancel()
+			deleteStartTime := time.Now()
+			var rowsDeleted int64
+			rowsDeleted, err = s.historyQ.ReapLookupTable(s.ctx, table, ids, offset)
+			deleteDuration := time.Since(deleteStartTime)
+			totalDeleteDuration += deleteDuration
 
-	reapStart := time.Now()
-	results, err := s.historyQ.ReapLookupTables(ctx, reapLookupTablesBatchSize)
-	if err != nil {
-		log.WithError(err).Warn("Error reaping lookup tables")
-		return
-	}
+			s.Metrics().RowsReapedByLookupTable.With(prometheus.Labels{"table": table}).
+				Observe(float64(rowsDeleted))
+			s.Metrics().ReapDurationByLookupTable.With(prometheus.Labels{"table": table, "type": "query"}).
+				Observe(float64(queryDuration))
+			s.Metrics().ReapDurationByLookupTable.With(prometheus.Labels{"table": table, "type": "delete"}).
+				Observe(float64(deleteDuration))
+			s.Metrics().ReapDurationByLookupTable.With(prometheus.Labels{"table": table, "type": "total"}).
+				Observe(float64(queryDuration + deleteDuration))
 
-	err = s.historyQ.Commit()
-	if err != nil {
-		log.WithError(err).Error("Error committing a transaction")
-		return
-	}
+			log.WithField("table", table).
+				WithField("offset", offset).
+				WithField(table+"rows_deleted", rowsDeleted).
+				WithField("query_duration", queryDuration.Seconds()).
+				WithField("delete_duration", deleteDuration.Seconds())
+		}
 
-	totalDeleted := int64(0)
-	reapLog := log
-	for table, result := range results {
-		totalDeleted += result.RowsDeleted
-		reapLog = reapLog.WithField(table+"_offset", result.Offset)
-		reapLog = reapLog.WithField(table+"_duration", result.Duration)
-		reapLog = reapLog.WithField(table+"_rows_deleted", result.RowsDeleted)
-		s.Metrics().RowsReapedByLookupTable.With(prometheus.Labels{"table": table}).Observe(float64(result.RowsDeleted))
-		s.Metrics().ReapDurationByLookupTable.With(prometheus.Labels{"table": table}).Observe(result.Duration.Seconds())
-	}
-
-	if totalDeleted > 0 {
-		reapLog.Info("Reaper deleted rows from lookup tables")
-	}
-
-	s.Metrics().RowsReapedByLookupTable.With(prometheus.Labels{"table": "total"}).Observe(float64(totalDeleted))
-	s.Metrics().ReapDurationByLookupTable.With(prometheus.Labels{"table": "total"}).Observe(time.Since(reapStart).Seconds())
+		s.Metrics().RowsReapedByLookupTable.With(prometheus.Labels{"table": "total"}).
+			Observe(float64(totalDeleted))
+		s.Metrics().ReapDurationByLookupTable.With(prometheus.Labels{"table": "total", "type": "query"}).
+			Observe(float64(totalQueryDuration))
+		s.Metrics().ReapDurationByLookupTable.With(prometheus.Labels{"table": "total", "type": "delete"}).
+			Observe(float64(totalDeleteDuration))
+		s.Metrics().ReapDurationByLookupTable.With(prometheus.Labels{"table": "total", "type": "total"}).
+			Observe(time.Since(reapStart).Seconds())
+	}()
 }
 
 func (s *system) incrementStateVerificationErrors() int {

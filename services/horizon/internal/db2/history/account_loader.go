@@ -85,6 +85,23 @@ func (a *AccountLoader) GetNow(address string) (int64, error) {
 	}
 }
 
+func (a *AccountLoader) lookupKeysForKeyShare(ctx context.Context, q *Q, addresses []string) error {
+	var accounts []Account
+
+	err := q.Select(ctx, &accounts, selectAccount.Where(map[string]interface{}{
+		"ha.address": addresses, // ha.address IN (...)
+	}).OrderBy("ha.id asc").Suffix("FOR KEY SHARE"))
+	if err != nil {
+		return errors.Wrap(err, "could not select accounts")
+	}
+
+	for _, account := range accounts {
+		a.ids[account.Address] = account.ID
+	}
+
+	return nil
+}
+
 func (a *AccountLoader) lookupKeys(ctx context.Context, q *Q, addresses []string) error {
 	for i := 0; i < len(addresses); i += loaderLookupBatchSize {
 		end := ordered.Min(len(addresses), i+loaderLookupBatchSize)
@@ -123,7 +140,7 @@ func (a *AccountLoader) Exec(ctx context.Context, session db.SessionInterface) e
 		addresses = append(addresses, address)
 	}
 
-	if err := a.lookupKeys(ctx, q, addresses); err != nil {
+	if err := a.lookupKeysForKeyShare(ctx, q, addresses); err != nil {
 		return err
 	}
 	a.stats.Total += len(addresses)

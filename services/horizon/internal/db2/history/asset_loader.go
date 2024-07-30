@@ -101,6 +101,36 @@ func (a *AssetLoader) GetNow(asset AssetKey) (int64, error) {
 	}
 }
 
+func (a *AssetLoader) lookupKeysForKeyShare(ctx context.Context, q *Q, keys []AssetKey) error {
+	args := make([]interface{}, 0, 3*len(keys))
+	placeHolders := make([]string, 0, len(keys))
+	for _, key := range keys {
+		args = append(args, key.Code, key.Type, key.Issuer)
+		placeHolders = append(placeHolders, "(?, ?, ?)")
+	}
+
+	var rows []Asset
+	rawSQL := fmt.Sprintf(
+		"SELECT * FROM  history_assets WHERE (asset_code, asset_type, asset_issuer) in (%s) "+
+			"ORDER BY id asc FOR KEY SHARE",
+		strings.Join(placeHolders, ", "),
+	)
+	err := q.SelectRaw(ctx, &rows, rawSQL, args...)
+	if err != nil {
+		return errors.Wrap(err, "could not select assets")
+	}
+
+	for _, row := range rows {
+		a.ids[AssetKey{
+			Type:   row.Type,
+			Code:   row.Code,
+			Issuer: row.Issuer,
+		}] = row.ID
+	}
+
+	return nil
+}
+
 func (a *AssetLoader) lookupKeys(ctx context.Context, q *Q, keys []AssetKey) error {
 	var rows []Asset
 	for i := 0; i < len(keys); i += loaderLookupBatchSize {
@@ -146,7 +176,7 @@ func (a *AssetLoader) Exec(ctx context.Context, session db.SessionInterface) err
 		keys = append(keys, key)
 	}
 
-	if err := a.lookupKeys(ctx, q, keys); err != nil {
+	if err := a.lookupKeysForKeyShare(ctx, q, keys); err != nil {
 		return err
 	}
 	a.stats.Total += len(keys)

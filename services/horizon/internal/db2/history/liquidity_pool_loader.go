@@ -78,6 +78,23 @@ func (a *LiquidityPoolLoader) GetNow(id string) (int64, error) {
 	}
 }
 
+func (a *LiquidityPoolLoader) lookupKeysForKeyShare(ctx context.Context, q *Q, ids []string) error {
+	var lps []HistoryLiquidityPool
+
+	err := q.Select(ctx, &lps, selectHistoryLiquidityPool.Where(map[string]interface{}{
+		"hlp.liquidity_pool_id": ids, // hlp.liquidity_pool_id IN (...)
+	}).OrderBy("hlp.id asc").Suffix("FOR KEY SHARE"))
+	if err != nil {
+		return errors.Wrap(err, "could not select liquidity pools")
+	}
+
+	for _, lp := range lps {
+		a.ids[lp.PoolID] = lp.InternalID
+	}
+
+	return nil
+}
+
 func (a *LiquidityPoolLoader) lookupKeys(ctx context.Context, q *Q, ids []string) error {
 	for i := 0; i < len(ids); i += loaderLookupBatchSize {
 		end := ordered.Min(len(ids), i+loaderLookupBatchSize)
@@ -108,7 +125,7 @@ func (a *LiquidityPoolLoader) Exec(ctx context.Context, session db.SessionInterf
 		ids = append(ids, id)
 	}
 
-	if err := a.lookupKeys(ctx, q, ids); err != nil {
+	if err := a.lookupKeysForKeyShare(ctx, q, ids); err != nil {
 		return err
 	}
 	a.stats.Total += len(ids)

@@ -78,6 +78,23 @@ func (a *ClaimableBalanceLoader) getNow(id string) (int64, error) {
 	}
 }
 
+func (a *ClaimableBalanceLoader) lookupKeysForKeyShare(ctx context.Context, q *Q, ids []string) error {
+	var cbs []HistoryClaimableBalance
+
+	err := q.Select(ctx, &cbs, selectHistoryClaimableBalance.Where(map[string]interface{}{
+		"hcb.claimable_balance_id": ids, // hcb.claimable_balance_id IN (...)
+	}).OrderBy("hcb.id asc").Suffix("FOR KEY SHARE"))
+	if err != nil {
+		return errors.Wrap(err, "could not select claimable balances")
+	}
+
+	for _, cb := range cbs {
+		a.ids[cb.BalanceID] = cb.InternalID
+	}
+
+	return nil
+}
+
 func (a *ClaimableBalanceLoader) lookupKeys(ctx context.Context, q *Q, ids []string) error {
 	for i := 0; i < len(ids); i += loaderLookupBatchSize {
 		end := ordered.Min(len(ids), i+loaderLookupBatchSize)
@@ -108,7 +125,7 @@ func (a *ClaimableBalanceLoader) Exec(ctx context.Context, session db.SessionInt
 		ids = append(ids, id)
 	}
 
-	if err := a.lookupKeys(ctx, q, ids); err != nil {
+	if err := a.lookupKeysForKeyShare(ctx, q, ids); err != nil {
 		return err
 	}
 	a.stats.Total += len(ids)
