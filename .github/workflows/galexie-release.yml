@@ -43,10 +43,10 @@ jobs:
           echo "Using stellar core version $(stellar-core version)"
 
       - name: Run tests 
-        run: go test -v -race -run TestGalexieTestSuite ./exp/services/galexie/...
+        run: go test -v -race -run TestGalexieTestSuite ./services/galexie/...
 
       - name: Build docker
-        run: make -C exp/services/galexie docker-build
+        run: make -C services/galexie docker-build
 
       # Push images
       - name: Login to DockerHub
@@ -56,4 +56,4 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Push to DockerHub
-        run: make -C exp/services/galexie docker-push
+        run: make -C services/galexie docker-push
