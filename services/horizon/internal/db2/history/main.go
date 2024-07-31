@@ -9,6 +9,7 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -1120,11 +1121,10 @@ var historyLookupTables = map[string][]tableObjectFieldPair{
 // when it reaches the table size so eventually all orphaned rows are
 // deleted.
 func (q *Q) deleteLookupTableRows(ctx context.Context, table string, ids []int64) (int64, error) {
-	deleteQuery, args := constructDeleteLookupTableRowsQuery(table, ids)
+	deleteQuery := constructDeleteLookupTableRowsQuery(table, ids)
 	result, err := q.ExecRaw(
 		context.WithValue(ctx, &db.QueryTypeContextKey, db.DeleteQueryType),
 		deleteQuery,
-		args,
 	)
 	if err != nil {
 		return 0, fmt.Errorf("error running query: %w", err)
@@ -1137,7 +1137,7 @@ func (q *Q) deleteLookupTableRows(ctx context.Context, table string, ids []int64
 	return deletedCount, nil
 }
 
-func constructDeleteLookupTableRowsQuery(table string, ids []int64) (string, []interface{}) {
+func constructDeleteLookupTableRowsQuery(table string, ids []int64) string {
 	var conditions []string
 	for _, referencedTable := range historyLookupTables[table] {
 		conditions = append(
@@ -1150,9 +1150,15 @@ func constructDeleteLookupTableRowsQuery(table string, ids []int64) (string, []i
 		)
 	}
 
-	innerQuery, args := sq.Select("id").From(table).Where(map[string]interface{}{
-		"id": ids,
-	}).OrderBy("id asc").Suffix("FOR UPDATE").MustSql()
+	stringIds := make([]string, len(ids))
+	for i, id := range ids {
+		stringIds[i] = strconv.FormatInt(id, 10)
+	}
+	innerQuery := fmt.Sprintf(
+		"SELECT id FROM %s WHERE id IN (%s) ORDER BY id asc FOR UPDATE",
+		table,
+		strings.Join(stringIds, ", "),
+	)
 
 	deleteQuery := fmt.Sprintf(
 		"DELETE FROM %s WHERE id IN ("+
@@ -1160,7 +1166,7 @@ func constructDeleteLookupTableRowsQuery(table string, ids []int64) (string, []i
 			"SELECT e1.id as id FROM ha_batch e1 WHERE ",
 		table, innerQuery,
 	) + strings.Join(conditions, " AND ") + ")"
-	return deleteQuery, args
+	return deleteQuery
 }
 
 func constructFindReapLookupTablesQuery(table string, batchSize int, offset int64) string {

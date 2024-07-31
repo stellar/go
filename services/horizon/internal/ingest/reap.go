@@ -316,7 +316,7 @@ func (r *lookupTableReaper) deleteOrphanedRows(ctx context.Context) error {
 		startTime := time.Now()
 		ids, offset, err := r.historyQ.FindLookupTableRowsToReap(ctx, table, reapLookupTablesBatchSize)
 		if err != nil {
-			log.WithField("table", table).WithError(err).Warn("Error finding orphaned rows")
+			r.logger.WithField("table", table).WithError(err).Warn("Error finding orphaned rows")
 			return err
 		}
 		queryDuration := time.Since(startTime)
@@ -326,7 +326,7 @@ func (r *lookupTableReaper) deleteOrphanedRows(ctx context.Context) error {
 		var rowsDeleted int64
 		rowsDeleted, err = r.historyQ.ReapLookupTable(ctx, table, ids, offset)
 		if err != nil {
-			log.WithField("table", table).WithError(err).Warn("Error deleting orphaned rows")
+			r.logger.WithField("table", table).WithError(err).Warn("Error deleting orphaned rows")
 			return err
 		}
 		deleteDuration := time.Since(deleteStartTime)
@@ -341,7 +341,7 @@ func (r *lookupTableReaper) deleteOrphanedRows(ctx context.Context) error {
 		r.reapDurationByLookupTable.With(prometheus.Labels{"table": table, "type": "total"}).
 			Observe(float64((queryDuration + deleteDuration).Seconds()))
 
-		log.WithField("table", table).
+		r.logger.WithField("table", table).
 			WithField("offset", offset).
 			WithField(table+"rows_deleted", rowsDeleted).
 			WithField("query_duration", queryDuration.Seconds()).
