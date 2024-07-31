@@ -335,11 +335,11 @@ func (r *lookupTableReaper) deleteOrphanedRows(ctx context.Context) error {
 		r.rowsReapedByLookupTable.With(prometheus.Labels{"table": table}).
 			Observe(float64(rowsDeleted))
 		r.reapDurationByLookupTable.With(prometheus.Labels{"table": table, "type": "query"}).
-			Observe(float64(queryDuration))
+			Observe(float64(queryDuration.Seconds()))
 		r.reapDurationByLookupTable.With(prometheus.Labels{"table": table, "type": "delete"}).
-			Observe(float64(deleteDuration))
+			Observe(float64(deleteDuration.Seconds()))
 		r.reapDurationByLookupTable.With(prometheus.Labels{"table": table, "type": "total"}).
-			Observe(float64(queryDuration + deleteDuration))
+			Observe(float64((queryDuration + deleteDuration).Seconds()))
 
 		log.WithField("table", table).
 			WithField("offset", offset).
@@ -351,9 +351,9 @@ func (r *lookupTableReaper) deleteOrphanedRows(ctx context.Context) error {
 	r.rowsReapedByLookupTable.With(prometheus.Labels{"table": "total"}).
 		Observe(float64(totalDeleted))
 	r.reapDurationByLookupTable.With(prometheus.Labels{"table": "total", "type": "query"}).
-		Observe(float64(totalQueryDuration))
+		Observe(float64(totalQueryDuration.Seconds()))
 	r.reapDurationByLookupTable.With(prometheus.Labels{"table": "total", "type": "delete"}).
-		Observe(float64(totalDeleteDuration))
+		Observe(float64(totalDeleteDuration.Seconds()))
 	r.reapDurationByLookupTable.With(prometheus.Labels{"table": "total", "type": "total"}).
 		Observe(time.Since(reapStart).Seconds())
 	return nil
