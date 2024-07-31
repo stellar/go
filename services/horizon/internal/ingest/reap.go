@@ -345,7 +345,8 @@ func (r *lookupTableReaper) deleteOrphanedRows(ctx context.Context) error {
 			WithField("offset", offset).
 			WithField(table+"rows_deleted", rowsDeleted).
 			WithField("query_duration", queryDuration.Seconds()).
-			WithField("delete_duration", deleteDuration.Seconds())
+			WithField("delete_duration", deleteDuration.Seconds()).
+			Info("Reaper deleted rows from lookup tables")
 	}
 
 	r.rowsReapedByLookupTable.With(prometheus.Labels{"table": "total"}).
