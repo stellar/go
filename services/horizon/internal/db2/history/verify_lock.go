@@ -15,7 +15,8 @@ const (
 	// reaperLockId is the objid for the advisory lock acquired during
 	// reaping. The value is arbitrary. The only requirement is that
 	// all ingesting nodes use the same value which is why it's hard coded here.
-	reaperLockId = 944670730
+	reaperLockId            = 944670730
+	lookupTableReaperLockId = 329518896
 )
 
 // TryStateVerificationLock attempts to acquire the state verification lock
@@ -32,6 +33,10 @@ func (q *Q) TryStateVerificationLock(ctx context.Context) (bool, error) {
 // lock could not be acquired because it is held by another node.
 func (q *Q) TryReaperLock(ctx context.Context) (bool, error) {
 	return q.tryAdvisoryLock(ctx, reaperLockId)
+}
+
+func (q *Q) TryLookupTableReaperLock(ctx context.Context) (bool, error) {
+	return q.tryAdvisoryLock(ctx, lookupTableReaperLockId)
 }
 
 func (q *Q) tryAdvisoryLock(ctx context.Context, lockId int) (bool, error) {
