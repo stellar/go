@@ -224,6 +224,7 @@ func (i *Test) runComposeCommand(args ...string) {
 		cmdline = append([]string{"-f", integrationSorobanRPCYaml}, cmdline...)
 	}
 	cmdline = append([]string{"-f", integrationYaml}, cmdline...)
+	//lint:ignore SA1005 commands with spaces!
 	cmd := exec.Command("docker compose", cmdline...)
 	coreImageOverride := ""
 	if i.config.CoreDockerImage != "" {
