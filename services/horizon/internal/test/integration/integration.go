@@ -224,7 +224,7 @@ func (i *Test) runComposeCommand(args ...string) {
 		cmdline = append([]string{"-f", integrationSorobanRPCYaml}, cmdline...)
 	}
 	cmdline = append([]string{"-f", integrationYaml}, cmdline...)
-	cmd := exec.Command("docker-compose", cmdline...)
+	cmd := exec.Command("docker compose", cmdline...)
 	coreImageOverride := ""
 	if i.config.CoreDockerImage != "" {
 		coreImageOverride = i.config.CoreDockerImage
