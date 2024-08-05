@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/go-chi/chi"
 	"github.com/stretchr/testify/assert"
@@ -288,6 +289,63 @@ func TestGetPageQuery(t *testing.T) {
 	r = makeTestActionRequest("/?limit=0", nil)
 	_, err = GetPageQuery(ledgerState, r)
 	tt.Assert.Error(err)
+}
+
+func TestGetPageQueryCursorDefaultTOID(t *testing.T) {
+	ascReq := makeTestActionRequest("/foo-bar/blah?limit=2", testURLParams())
+	descReq := makeTestActionRequest("/foo-bar/blah?limit=2&order=desc", testURLParams())
+
+	ledgerState := &ledger.State{}
+	ledgerState.SetHorizonStatus(ledger.HorizonStatus{
+		HistoryLatest:         7000,
+		HistoryLatestClosedAt: time.Now(),
+		HistoryElder:          300,
+		ExpHistoryLatest:      7000,
+	})
+
+	pq, err := GetPageQuery(ledgerState, ascReq, DefaultTOID)
+	assert.NoError(t, err)
+	assert.Equal(t, toid.AfterLedger(299).String(), pq.Cursor)
+	assert.Equal(t, uint64(2), pq.Limit)
+	assert.Equal(t, "asc", pq.Order)
+
+	pq, err = GetPageQuery(ledgerState, descReq, DefaultTOID)
+	assert.NoError(t, err)
+	assert.Equal(t, "", pq.Cursor)
+	assert.Equal(t, uint64(2), pq.Limit)
+	assert.Equal(t, "desc", pq.Order)
+
+	pq, err = GetPageQuery(ledgerState, ascReq)
+	assert.NoError(t, err)
+	assert.Empty(t, pq.Cursor)
+	assert.Equal(t, uint64(2), pq.Limit)
+	assert.Equal(t, "asc", pq.Order)
+
+	pq, err = GetPageQuery(ledgerState, descReq)
+	assert.NoError(t, err)
+	assert.Empty(t, pq.Cursor)
+	assert.Equal(t, "", pq.Cursor)
+	assert.Equal(t, "desc", pq.Order)
+
+	ledgerState.SetHorizonStatus(ledger.HorizonStatus{
+		HistoryLatest:         7000,
+		HistoryLatestClosedAt: time.Now(),
+		HistoryElder:          0,
+		ExpHistoryLatest:      7000,
+	})
+
+	pq, err = GetPageQuery(ledgerState, ascReq, DefaultTOID)
+	assert.NoError(t, err)
+	assert.Equal(t, toid.AfterLedger(0).String(), pq.Cursor)
+	assert.Equal(t, uint64(2), pq.Limit)
+	assert.Equal(t, "asc", pq.Order)
+
+	pq, err = GetPageQuery(ledgerState, descReq, DefaultTOID)
+	assert.NoError(t, err)
+	assert.Equal(t, "", pq.Cursor)
+	assert.Equal(t, uint64(2), pq.Limit)
+	assert.Equal(t, "desc", pq.Order)
+
 }
 
 func TestGetString(t *testing.T) {

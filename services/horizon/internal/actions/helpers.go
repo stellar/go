@@ -21,6 +21,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/ledger"
 	hProblem "github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/support/ordered"
 	"github.com/stellar/go/support/render/problem"
 	"github.com/stellar/go/toid"
 	"github.com/stellar/go/xdr"
@@ -44,6 +45,8 @@ type Opt int
 const (
 	// DisableCursorValidation disables cursor validation in GetPageQuery
 	DisableCursorValidation Opt = iota
+	// DefaultTOID sets a default cursor value in GetPageQuery based on the ledger state
+	DefaultTOID Opt = iota
 )
 
 // HeaderWriter is an interface for setting HTTP response headers
@@ -182,9 +185,13 @@ func getLimit(r *http.Request, name string, def uint64, max uint64) (uint64, err
 // using the results from a call to GetPagingParams()
 func GetPageQuery(ledgerState *ledger.State, r *http.Request, opts ...Opt) (db2.PageQuery, error) {
 	disableCursorValidation := false
+	defaultTOID := false
 	for _, opt := range opts {
 		if opt == DisableCursorValidation {
 			disableCursorValidation = true
+		}
+		if opt == DefaultTOID {
+			defaultTOID = true
 		}
 	}
 
@@ -213,6 +220,13 @@ func GetPageQuery(ledgerState *ledger.State, r *http.Request, opts ...Opt) (db2.
 		}
 
 		return db2.PageQuery{}, err
+	}
+	if cursor == "" && defaultTOID {
+		if pageQuery.Order == db2.OrderAscending {
+			pageQuery.Cursor = toid.AfterLedger(
+				ordered.Max(0, ledgerState.CurrentStatus().HistoryElder-1),
+			).String()
+		}
 	}
 
 	return pageQuery, nil

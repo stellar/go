@@ -17,7 +17,7 @@ type GetLedgersHandler struct {
 }
 
 func (handler GetLedgersHandler) GetResourcePage(w HeaderWriter, r *http.Request) ([]hal.Pageable, error) {
-	pq, err := GetPageQuery(handler.LedgerState, r)
+	pq, err := GetPageQuery(handler.LedgerState, r, DefaultTOID)
 	if err != nil {
 		return nil, err
 	}

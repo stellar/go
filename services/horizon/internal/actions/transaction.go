@@ -98,7 +98,7 @@ type GetTransactionsHandler struct {
 func (handler GetTransactionsHandler) GetResourcePage(w HeaderWriter, r *http.Request) ([]hal.Pageable, error) {
 	ctx := r.Context()
 
-	pq, err := GetPageQuery(handler.LedgerState, r)
+	pq, err := GetPageQuery(handler.LedgerState, r, DefaultTOID)
 	if err != nil {
 		return nil, err
 	}
