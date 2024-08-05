@@ -185,10 +185,12 @@ func TestInvokeHostFnDetailsInPaymentOperations(t *testing.T) {
 func TestGetOperationsWithoutFilter(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
-	tt.Scenario("base")
 
 	q := &history.Q{tt.HorizonSession()}
-	handler := GetOperationsHandler{}
+	handler := GetOperationsHandler{
+		LedgerState: &ledger.State{},
+	}
+	handler.LedgerState.SetStatus(tt.Scenario("base"))
 
 	records, err := handler.GetResourcePage(
 		httptest.NewRecorder(),
@@ -203,10 +205,12 @@ func TestGetOperationsWithoutFilter(t *testing.T) {
 func TestGetOperationsExclusiveFilters(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
-	tt.Scenario("base")
 
 	q := &history.Q{tt.HorizonSession()}
-	handler := GetOperationsHandler{}
+	handler := GetOperationsHandler{
+		LedgerState: &ledger.State{},
+	}
+	handler.LedgerState.SetStatus(tt.Scenario("base"))
 
 	testCases := []struct {
 		desc  string
@@ -262,10 +266,12 @@ func TestGetOperationsByLiquidityPool(t *testing.T) {
 func TestGetOperationsFilterByAccountID(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
-	tt.Scenario("base")
 
 	q := &history.Q{tt.HorizonSession()}
-	handler := GetOperationsHandler{}
+	handler := GetOperationsHandler{
+		LedgerState: &ledger.State{},
+	}
+	handler.LedgerState.SetStatus(tt.Scenario("base"))
 
 	testCases := []struct {
 		accountID string
@@ -303,10 +309,12 @@ func TestGetOperationsFilterByAccountID(t *testing.T) {
 func TestGetOperationsFilterByTxID(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
-	tt.Scenario("base")
 
 	q := &history.Q{tt.HorizonSession()}
-	handler := GetOperationsHandler{}
+	handler := GetOperationsHandler{
+		LedgerState: &ledger.State{},
+	}
+	handler.LedgerState.SetStatus(tt.Scenario("base"))
 
 	testCases := []struct {
 		desc          string
@@ -377,10 +385,12 @@ func TestGetOperationsFilterByTxID(t *testing.T) {
 func TestGetOperationsIncludeFailed(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
-	tt.Scenario("failed_transactions")
 
 	q := &history.Q{tt.HorizonSession()}
-	handler := GetOperationsHandler{}
+	handler := GetOperationsHandler{
+		LedgerState: &ledger.State{},
+	}
+	handler.LedgerState.SetStatus(tt.Scenario("failed_transactions"))
 
 	records, err := handler.GetResourcePage(
 		httptest.NewRecorder(),
@@ -507,10 +517,12 @@ func TestGetOperationsIncludeFailed(t *testing.T) {
 func TestGetOperationsFilterByLedgerID(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
-	tt.Scenario("base")
 
 	q := &history.Q{tt.HorizonSession()}
-	handler := GetOperationsHandler{}
+	handler := GetOperationsHandler{
+		LedgerState: &ledger.State{},
+	}
+	handler.LedgerState.SetStatus(tt.Scenario("base"))
 
 	testCases := []struct {
 		ledgerID    string
@@ -578,12 +590,13 @@ func TestGetOperationsFilterByLedgerID(t *testing.T) {
 func TestGetOperationsOnlyPayments(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
-	tt.Scenario("base")
 
 	q := &history.Q{tt.HorizonSession()}
 	handler := GetOperationsHandler{
+		LedgerState:  &ledger.State{},
 		OnlyPayments: true,
 	}
+	handler.LedgerState.SetStatus(tt.Scenario("base"))
 
 	records, err := handler.GetResourcePage(
 		httptest.NewRecorder(),
@@ -627,7 +640,7 @@ func TestGetOperationsOnlyPayments(t *testing.T) {
 	tt.Assert.NoError(err)
 	tt.Assert.Len(records, 1)
 
-	tt.Scenario("pathed_payment")
+	handler.LedgerState.SetStatus(tt.Scenario("pathed_payment"))
 
 	records, err = handler.GetResourcePage(
 		httptest.NewRecorder(),
@@ -658,10 +671,12 @@ func TestGetOperationsOnlyPayments(t *testing.T) {
 func TestOperation_CreatedAt(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
-	tt.Scenario("base")
 
 	q := &history.Q{tt.HorizonSession()}
-	handler := GetOperationsHandler{}
+	handler := GetOperationsHandler{
+		LedgerState: &ledger.State{},
+	}
+	handler.LedgerState.SetStatus(tt.Scenario("base"))
 
 	records, err := handler.GetResourcePage(
 		httptest.NewRecorder(),
@@ -683,12 +698,12 @@ func TestOperation_CreatedAt(t *testing.T) {
 func TestGetOperationsPagination(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
-	tt.Scenario("base")
 
 	q := &history.Q{tt.HorizonSession()}
 	handler := GetOperationsHandler{
 		LedgerState: &ledger.State{},
 	}
+	handler.LedgerState.SetStatus(tt.Scenario("base"))
 
 	records, err := handler.GetResourcePage(
 		httptest.NewRecorder(),
@@ -742,10 +757,12 @@ func TestGetOperationsPagination(t *testing.T) {
 func TestGetOperations_IncludeTransactions(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
-	tt.Scenario("failed_transactions")
 
 	q := &history.Q{tt.HorizonSession()}
-	handler := GetOperationsHandler{}
+	handler := GetOperationsHandler{
+		LedgerState: &ledger.State{},
+	}
+	handler.LedgerState.SetStatus(tt.Scenario("failed_transactions"))
 
 	_, err := handler.GetResourcePage(
 		httptest.NewRecorder(),
@@ -835,11 +852,12 @@ func TestGetOperation(t *testing.T) {
 func TestOperation_IncludeTransaction(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
-	tt.Scenario("kahuna")
 
 	handler := GetOperationByIDHandler{
 		LedgerState: &ledger.State{},
 	}
+	handler.LedgerState.SetStatus(tt.Scenario("kahuna"))
+
 	record, err := handler.GetResource(
 		httptest.NewRecorder(),
 		makeRequest(
