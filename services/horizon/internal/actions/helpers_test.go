@@ -311,7 +311,7 @@ func TestGetPageQueryCursorDefaultTOID(t *testing.T) {
 
 	pq, err = GetPageQuery(ledgerState, descReq, DefaultTOID)
 	assert.NoError(t, err)
-	assert.Equal(t, toid.AfterLedger(7000+defaultLedgerCursorBuffer).String(), pq.Cursor)
+	assert.Equal(t, "", pq.Cursor)
 	assert.Equal(t, uint64(2), pq.Limit)
 	assert.Equal(t, "desc", pq.Order)
 
@@ -324,7 +324,7 @@ func TestGetPageQueryCursorDefaultTOID(t *testing.T) {
 	pq, err = GetPageQuery(ledgerState, descReq)
 	assert.NoError(t, err)
 	assert.Empty(t, pq.Cursor)
-	assert.Equal(t, uint64(2), pq.Limit)
+	assert.Equal(t, "", pq.Cursor)
 	assert.Equal(t, "desc", pq.Order)
 
 	ledgerState.SetHorizonStatus(ledger.HorizonStatus{
@@ -342,7 +342,7 @@ func TestGetPageQueryCursorDefaultTOID(t *testing.T) {
 
 	pq, err = GetPageQuery(ledgerState, descReq, DefaultTOID)
 	assert.NoError(t, err)
-	assert.Equal(t, toid.AfterLedger(7000+defaultLedgerCursorBuffer).String(), pq.Cursor)
+	assert.Equal(t, "", pq.Cursor)
 	assert.Equal(t, uint64(2), pq.Limit)
 	assert.Equal(t, "desc", pq.Order)
 

@@ -47,8 +47,6 @@ const (
 	DisableCursorValidation Opt = iota
 	// DefaultTOID sets a default cursor value in GetPageQuery based on the ledger state
 	DefaultTOID Opt = iota
-
-	defaultLedgerCursorBuffer = 100
 )
 
 // HeaderWriter is an interface for setting HTTP response headers
@@ -228,14 +226,6 @@ func GetPageQuery(ledgerState *ledger.State, r *http.Request, opts ...Opt) (db2.
 			pageQuery.Cursor = toid.AfterLedger(
 				ordered.Max(0, ledgerState.CurrentStatus().HistoryElder-1),
 			).String()
-		} else if pageQuery.Order == db2.OrderDescending {
-			pageQuery.Cursor = toid.AfterLedger(
-				// add an extra amount to the latest ledger in case the
-				// ledger state is out of date
-				ledgerState.CurrentStatus().HistoryLatest + defaultLedgerCursorBuffer,
-			).String()
-		} else {
-			return db2.PageQuery{}, problem.BadRequest
 		}
 	}
 
