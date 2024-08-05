@@ -336,7 +336,7 @@ func TestGetPageQueryCursorDefaultTOID(t *testing.T) {
 
 	pq, err = GetPageQuery(ledgerState, ascReq, DefaultTOID)
 	assert.NoError(t, err)
-	assert.Equal(t, toid.AfterLedger(1).String(), pq.Cursor)
+	assert.Equal(t, toid.AfterLedger(0).String(), pq.Cursor)
 	assert.Equal(t, uint64(2), pq.Limit)
 	assert.Equal(t, "asc", pq.Order)
 
