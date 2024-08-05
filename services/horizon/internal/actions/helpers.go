@@ -226,7 +226,7 @@ func GetPageQuery(ledgerState *ledger.State, r *http.Request, opts ...Opt) (db2.
 	if cursor == "" && defaultTOID {
 		if pageQuery.Order == db2.OrderAscending {
 			pageQuery.Cursor = toid.AfterLedger(
-				ordered.Max(1, ledgerState.CurrentStatus().HistoryElder-1),
+				ordered.Max(0, ledgerState.CurrentStatus().HistoryElder-1),
 			).String()
 		} else if pageQuery.Order == db2.OrderDescending {
 			pageQuery.Cursor = toid.AfterLedger(
