@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/guregu/null"
+	"github.com/stretchr/testify/assert"
+
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/protocols/horizon/operations"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
@@ -19,7 +21,6 @@ import (
 	supportProblem "github.com/stellar/go/support/render/problem"
 	"github.com/stellar/go/toid"
 	"github.com/stellar/go/xdr"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestInvokeHostFnDetailsInPaymentOperations(t *testing.T) {
@@ -28,8 +29,14 @@ func TestInvokeHostFnDetailsInPaymentOperations(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 
 	q := &history.Q{tt.HorizonSession()}
-	handler := GetOperationsHandler{OnlyPayments: true}
-
+	handler := GetOperationsHandler{OnlyPayments: true,
+		LedgerState: &ledger.State{},
+	}
+	handler.LedgerState.SetHorizonStatus(ledger.HorizonStatus{
+		HistoryLatest:    56,
+		HistoryElder:     56,
+		ExpHistoryLatest: 56,
+	})
 	txIndex := int32(1)
 	sequence := int32(56)
 	txID := toid.New(sequence, txIndex, 0).ToInt64()
