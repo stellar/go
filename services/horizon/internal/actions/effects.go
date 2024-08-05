@@ -51,7 +51,7 @@ type GetEffectsHandler struct {
 }
 
 func (handler GetEffectsHandler) GetResourcePage(w HeaderWriter, r *http.Request) ([]hal.Pageable, error) {
-	pq, err := GetPageQuery(handler.LedgerState, r)
+	pq, err := GetPageQuery(handler.LedgerState, r, DefaultTOID)
 	if err != nil {
 		return nil, err
 	}
