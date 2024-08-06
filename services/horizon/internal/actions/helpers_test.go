@@ -346,6 +346,25 @@ func TestGetPageQueryCursorDefaultTOID(t *testing.T) {
 	assert.Equal(t, uint64(2), pq.Limit)
 	assert.Equal(t, "desc", pq.Order)
 
+	ledgerState.SetHorizonStatus(ledger.HorizonStatus{
+		HistoryLatest:         7000,
+		HistoryLatestClosedAt: time.Now(),
+		HistoryElder:          0,
+		ExpHistoryLatest:      7000,
+	})
+
+	pq, err = GetPageQuery(ledgerState, ascReq, DefaultTOID)
+	assert.NoError(t, err)
+	assert.Equal(t, toid.AfterLedger(0).String(), pq.Cursor)
+	assert.Equal(t, uint64(2), pq.Limit)
+	assert.Equal(t, "asc", pq.Order)
+
+	pq, err = GetPageQuery(ledgerState, descReq, DefaultTOID)
+	assert.NoError(t, err)
+	assert.Equal(t, "", pq.Cursor)
+	assert.Equal(t, uint64(2), pq.Limit)
+	assert.Equal(t, "desc", pq.Order)
+
 }
 
 func TestGetString(t *testing.T) {
