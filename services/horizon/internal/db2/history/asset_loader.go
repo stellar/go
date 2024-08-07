@@ -9,8 +9,6 @@ import (
 
 	"github.com/stellar/go/support/collections/set"
 	"github.com/stellar/go/support/db"
-	"github.com/stellar/go/support/errors"
-	"github.com/stellar/go/support/ordered"
 	"github.com/stellar/go/xdr"
 )
 
@@ -101,37 +99,6 @@ func (a *AssetLoader) GetNow(asset AssetKey) (int64, error) {
 	}
 }
 
-func (a *AssetLoader) lookupKeys(ctx context.Context, q *Q, keys []AssetKey) error {
-	var rows []Asset
-	for i := 0; i < len(keys); i += loaderLookupBatchSize {
-		end := ordered.Min(len(keys), i+loaderLookupBatchSize)
-		subset := keys[i:end]
-		args := make([]interface{}, 0, 3*len(subset))
-		placeHolders := make([]string, 0, len(subset))
-		for _, key := range subset {
-			args = append(args, key.Code, key.Type, key.Issuer)
-			placeHolders = append(placeHolders, "(?, ?, ?)")
-		}
-		rawSQL := fmt.Sprintf(
-			"SELECT * FROM  history_assets WHERE (asset_code, asset_type, asset_issuer) in (%s)",
-			strings.Join(placeHolders, ", "),
-		)
-		err := q.SelectRaw(ctx, &rows, rawSQL, args...)
-		if err != nil {
-			return errors.Wrap(err, "could not select assets")
-		}
-
-		for _, row := range rows {
-			a.ids[AssetKey{
-				Type:   row.Type,
-				Code:   row.Code,
-				Issuer: row.Issuer,
-			}] = row.ID
-		}
-	}
-	return nil
-}
-
 // Exec will look up all the history asset ids for the assets registered in the loader.
 // If there are no history asset ids for a given set of assets, Exec will insert rows
 // into the history_assets table.
@@ -146,35 +113,21 @@ func (a *AssetLoader) Exec(ctx context.Context, session db.SessionInterface) err
 		keys = append(keys, key)
 	}
 
-	if err := a.lookupKeys(ctx, q, keys); err != nil {
-		return err
-	}
-	a.stats.Total += len(keys)
-
-	assetTypes := make([]string, 0, len(a.set)-len(a.ids))
-	assetCodes := make([]string, 0, len(a.set)-len(a.ids))
-	assetIssuers := make([]string, 0, len(a.set)-len(a.ids))
+	assetTypes := make([]string, 0, len(keys))
+	assetCodes := make([]string, 0, len(keys))
+	assetIssuers := make([]string, 0, len(keys))
 	// sort entries before inserting rows to prevent deadlocks on acquiring a ShareLock
 	// https://github.com/stellar/go/issues/2370
 	sort.Slice(keys, func(i, j int) bool {
 		return keys[i].String() < keys[j].String()
 	})
-	insert := 0
 	for _, key := range keys {
-		if _, ok := a.ids[key]; ok {
-			continue
-		}
 		assetTypes = append(assetTypes, key.Type)
 		assetCodes = append(assetCodes, key.Code)
 		assetIssuers = append(assetIssuers, key.Issuer)
-		keys[insert] = key
-		insert++
 	}
-	if insert == 0 {
-		return nil
-	}
-	keys = keys[:insert]
 
+	var rows []Asset
 	err := bulkInsert(
 		ctx,
 		q,
@@ -197,13 +150,21 @@ func (a *AssetLoader) Exec(ctx context.Context, session db.SessionInterface) err
 				objects: assetTypes,
 			},
 		},
+		&rows,
 	)
 	if err != nil {
 		return err
 	}
-	a.stats.Inserted += insert
+	for _, row := range rows {
+		a.ids[AssetKey{
+			Type:   row.Type,
+			Code:   row.Code,
+			Issuer: row.Issuer,
+		}] = row.ID
+	}
+	a.stats.Total += len(keys)
 
-	return a.lookupKeys(ctx, q, keys)
+	return nil
 }
 
 // Stats returns the number of assets registered in the loader and the number of assets

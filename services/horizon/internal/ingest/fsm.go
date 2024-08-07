@@ -616,12 +616,6 @@ func (r resumeState) addLoaderStatsMetric(s *system, loaderSTats map[string]hist
 				"stat": "total_queried",
 			}).
 			Observe(float64(stats.Total))
-		s.Metrics().LoadersStatsSummary.
-			With(prometheus.Labels{
-				"name": loaderName,
-				"stat": "total_inserted",
-			}).
-			Observe(float64(stats.Inserted))
 	}
 }
 

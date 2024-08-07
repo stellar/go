@@ -8,8 +8,6 @@ import (
 
 	"github.com/stellar/go/support/collections/set"
 	"github.com/stellar/go/support/db"
-	"github.com/stellar/go/support/errors"
-	"github.com/stellar/go/support/ordered"
 )
 
 // FutureLiquidityPoolID represents a future history liquidity pool.
@@ -78,22 +76,6 @@ func (a *LiquidityPoolLoader) GetNow(id string) (int64, error) {
 	}
 }
 
-func (a *LiquidityPoolLoader) lookupKeys(ctx context.Context, q *Q, ids []string) error {
-	for i := 0; i < len(ids); i += loaderLookupBatchSize {
-		end := ordered.Min(len(ids), i+loaderLookupBatchSize)
-
-		lps, err := q.LiquidityPoolsByIDs(ctx, ids[i:end])
-		if err != nil {
-			return errors.Wrap(err, "could not select accounts")
-		}
-
-		for _, lp := range lps {
-			a.ids[lp.PoolID] = lp.InternalID
-		}
-	}
-	return nil
-}
-
 // Exec will look up all the internal history ids for the liquidity pools registered in the loader.
 // If there are no internal history ids for a given set of liquidity pools, Exec will insert rows
 // into the history_liquidity_pools table.
@@ -108,27 +90,10 @@ func (a *LiquidityPoolLoader) Exec(ctx context.Context, session db.SessionInterf
 		ids = append(ids, id)
 	}
 
-	if err := a.lookupKeys(ctx, q, ids); err != nil {
-		return err
-	}
-	a.stats.Total += len(ids)
-
-	insert := 0
-	for _, id := range ids {
-		if _, ok := a.ids[id]; ok {
-			continue
-		}
-		ids[insert] = id
-		insert++
-	}
-	if insert == 0 {
-		return nil
-	}
-	ids = ids[:insert]
 	// sort entries before inserting rows to prevent deadlocks on acquiring a ShareLock
 	// https://github.com/stellar/go/issues/2370
 	sort.Strings(ids)
-
+	var rows []HistoryLiquidityPool
 	err := bulkInsert(
 		ctx,
 		q,
@@ -141,13 +106,17 @@ func (a *LiquidityPoolLoader) Exec(ctx context.Context, session db.SessionInterf
 				objects: ids,
 			},
 		},
+		&rows,
 	)
 	if err != nil {
 		return err
 	}
-	a.stats.Inserted += insert
+	for _, row := range rows {
+		a.ids[row.PoolID] = row.InternalID
+	}
+	a.stats.Total += len(ids)
 
-	return a.lookupKeys(ctx, q, ids)
+	return nil
 }
 
 // Stats returns the number of liquidity pools registered in the loader and the number of liquidity pools
