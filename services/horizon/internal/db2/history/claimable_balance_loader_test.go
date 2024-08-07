@@ -71,7 +71,7 @@ func TestClaimableBalanceLoader(t *testing.T) {
 	loader = NewClaimableBalanceLoader()
 	for _, id := range ids {
 		future := loader.GetFuture(id)
-		_, err := future.Value()
+		_, err = future.Value()
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), `invalid claimable balance loader state,`)
 	}

@@ -63,7 +63,7 @@ func TestLiquidityPoolLoader(t *testing.T) {
 	loader = NewLiquidityPoolLoader()
 	for _, id := range ids {
 		future := loader.GetFuture(id)
-		_, err := future.Value()
+		_, err = future.Value()
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), `invalid liquidity pool loader state,`)
 	}
