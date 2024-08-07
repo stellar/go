@@ -98,7 +98,6 @@ func (a *ClaimableBalanceLoader) Exec(ctx context.Context, session db.SessionInt
 		ctx,
 		q,
 		"history_claimable_balances",
-		[]string{"claimable_balance_id"},
 		[]bulkInsertField{
 			{
 				name:    "claimable_balance_id",

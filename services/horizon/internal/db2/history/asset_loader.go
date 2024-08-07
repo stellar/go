@@ -132,7 +132,6 @@ func (a *AssetLoader) Exec(ctx context.Context, session db.SessionInterface) err
 		ctx,
 		q,
 		"history_assets",
-		[]string{"asset_code", "asset_type", "asset_issuer"},
 		[]bulkInsertField{
 			{
 				name:    "asset_code",
@@ -140,14 +139,14 @@ func (a *AssetLoader) Exec(ctx context.Context, session db.SessionInterface) err
 				objects: assetCodes,
 			},
 			{
-				name:    "asset_issuer",
-				dbType:  "character varying(56)",
-				objects: assetIssuers,
-			},
-			{
 				name:    "asset_type",
 				dbType:  "character varying(64)",
 				objects: assetTypes,
+			},
+			{
+				name:    "asset_issuer",
+				dbType:  "character varying(56)",
+				objects: assetIssuers,
 			},
 		},
 		&rows,
