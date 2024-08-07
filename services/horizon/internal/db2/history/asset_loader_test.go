@@ -110,7 +110,7 @@ func TestAssetLoader(t *testing.T) {
 	loader = NewAssetLoader()
 	for _, key := range keys {
 		future := loader.GetFuture(key)
-		_, err := future.Value()
+		_, err = future.Value()
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), `invalid asset loader state,`)
 	}

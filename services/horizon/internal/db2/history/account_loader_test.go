@@ -59,7 +59,7 @@ func TestAccountLoader(t *testing.T) {
 	loader = NewAccountLoader()
 	for _, address := range addresses {
 		future := loader.GetFuture(address)
-		_, err := future.Value()
+		_, err = future.Value()
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), `invalid account loader state,`)
 	}
