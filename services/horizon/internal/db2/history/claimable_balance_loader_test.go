@@ -66,4 +66,28 @@ func TestClaimableBalanceLoader(t *testing.T) {
 	_, err = futureCb.Value()
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), `was not found`)
+
+	// check that loader works when all the values are already present in the db
+	loader = NewClaimableBalanceLoader()
+	for _, id := range ids {
+		future := loader.GetFuture(id)
+		_, err := future.Value()
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), `invalid claimable balance loader state,`)
+	}
+
+	assert.NoError(t, loader.Exec(context.Background(), session))
+	assert.Equal(t, LoaderStats{
+		Total: 100,
+	}, loader.Stats())
+
+	for _, id := range ids {
+		internalID, err := loader.getNow(id)
+		assert.NoError(t, err)
+		var cb HistoryClaimableBalance
+		cb, err = q.ClaimableBalanceByID(context.Background(), id)
+		assert.NoError(t, err)
+		assert.Equal(t, cb.BalanceID, id)
+		assert.Equal(t, cb.InternalID, internalID)
+	}
 }

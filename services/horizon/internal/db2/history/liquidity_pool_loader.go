@@ -98,7 +98,6 @@ func (a *LiquidityPoolLoader) Exec(ctx context.Context, session db.SessionInterf
 		ctx,
 		q,
 		"history_liquidity_pools",
-		[]string{"liquidity_pool_id"},
 		[]bulkInsertField{
 			{
 				name:    "liquidity_pool_id",

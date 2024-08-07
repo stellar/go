@@ -110,7 +110,6 @@ func (a *AccountLoader) Exec(ctx context.Context, session db.SessionInterface) e
 		ctx,
 		q,
 		"history_accounts",
-		[]string{"address"},
 		[]bulkInsertField{
 			{
 				name:    "address",
@@ -146,7 +145,7 @@ type bulkInsertField struct {
 	objects []string
 }
 
-func bulkInsert(ctx context.Context, q *Q, table string, conflictFields []string, fields []bulkInsertField, response interface{}) error {
+func bulkInsert(ctx context.Context, q *Q, table string, fields []bulkInsertField, response interface{}) error {
 	unnestPart := make([]string, 0, len(fields))
 	insertFieldsPart := make([]string, 0, len(fields))
 	pqArrays := make([]interface{}, 0, len(fields))
@@ -166,19 +165,20 @@ func bulkInsert(ctx context.Context, q *Q, table string, conflictFields []string
 		)
 	}
 
+	columns := strings.Join(insertFieldsPart, ",")
 	sql := `
 	WITH rows AS
 		(SELECT ` + strings.Join(unnestPart, ",") + `),
 	inserted_rows AS (
 		INSERT INTO ` + table + `
-			(` + strings.Join(insertFieldsPart, ",") + `)
+			(` + columns + `)
 		SELECT * FROM rows
-		ON CONFLICT (` + strings.Join(conflictFields, ",") + `) DO NOTHING
+		ON CONFLICT (` + columns + `) DO NOTHING
 		RETURNING *
 	)
 	SELECT * FROM inserted_rows
 	UNION ALL
-	SELECT * FROM ` + table + ` WHERE (` + strings.Join(conflictFields, ",") + `) IN 
+	SELECT * FROM ` + table + ` WHERE (` + columns + `) IN 
 	(SELECT * FROM rows)`
 
 	return q.SelectRaw(

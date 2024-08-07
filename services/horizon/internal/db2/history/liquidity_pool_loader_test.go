@@ -58,4 +58,29 @@ func TestLiquidityPoolLoader(t *testing.T) {
 	_, err = loader.GetNow("not present")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), `was not found`)
+
+	// check that loader works when all the values are already present in the db
+	loader = NewLiquidityPoolLoader()
+	for _, id := range ids {
+		future := loader.GetFuture(id)
+		_, err := future.Value()
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), `invalid liquidity pool loader state,`)
+	}
+
+	assert.NoError(t, loader.Exec(context.Background(), session))
+	assert.Equal(t, LoaderStats{
+		Total: 100,
+	}, loader.Stats())
+
+	for _, id := range ids {
+		var internalID int64
+		internalID, err = loader.GetNow(id)
+		assert.NoError(t, err)
+		var lp HistoryLiquidityPool
+		lp, err = q.LiquidityPoolByID(context.Background(), id)
+		assert.NoError(t, err)
+		assert.Equal(t, lp.PoolID, id)
+		assert.Equal(t, lp.InternalID, internalID)
+	}
 }
