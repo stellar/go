@@ -34,8 +34,7 @@ func TestAccountLoader(t *testing.T) {
 	err := loader.Exec(context.Background(), session)
 	assert.NoError(t, err)
 	assert.Equal(t, LoaderStats{
-		Total:    100,
-		Inserted: 100,
+		Total: 100,
 	}, loader.Stats())
 	assert.Panics(t, func() {
 		loader.GetFuture(keypair.MustRandom().Address())
@@ -55,4 +54,29 @@ func TestAccountLoader(t *testing.T) {
 	_, err = loader.GetNow("not present")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), `was not found`)
+
+	// check that loader works when all the values are already present in the db
+	loader = NewAccountLoader()
+	for _, address := range addresses {
+		future := loader.GetFuture(address)
+		_, err = future.Value()
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), `invalid account loader state,`)
+	}
+
+	assert.NoError(t, loader.Exec(context.Background(), session))
+	assert.Equal(t, LoaderStats{
+		Total: 100,
+	}, loader.Stats())
+
+	for _, address := range addresses {
+		var internalId int64
+		internalId, err = loader.GetNow(address)
+		assert.NoError(t, err)
+		var account Account
+		assert.NoError(t, q.AccountByAddress(context.Background(), &account, address))
+		assert.Equal(t, account.ID, internalId)
+		assert.Equal(t, account.Address, address)
+	}
+
 }

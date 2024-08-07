@@ -12,7 +12,6 @@ import (
 	"github.com/stellar/go/support/collections/set"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
-	"github.com/stellar/go/support/ordered"
 )
 
 // FutureAccountID represents a future history account.
@@ -23,8 +22,6 @@ type FutureAccountID struct {
 	address string
 	loader  *AccountLoader
 }
-
-const loaderLookupBatchSize = 50000
 
 // Value implements the database/sql/driver Valuer interface.
 func (a FutureAccountID) Value() (driver.Value, error) {
@@ -85,28 +82,10 @@ func (a *AccountLoader) GetNow(address string) (int64, error) {
 	}
 }
 
-func (a *AccountLoader) lookupKeys(ctx context.Context, q *Q, addresses []string) error {
-	for i := 0; i < len(addresses); i += loaderLookupBatchSize {
-		end := ordered.Min(len(addresses), i+loaderLookupBatchSize)
-
-		var accounts []Account
-		if err := q.AccountsByAddresses(ctx, &accounts, addresses[i:end]); err != nil {
-			return errors.Wrap(err, "could not select accounts")
-		}
-
-		for _, account := range accounts {
-			a.ids[account.Address] = account.ID
-		}
-	}
-	return nil
-}
-
 // LoaderStats describes the result of executing a history lookup id loader
 type LoaderStats struct {
 	// Total is the number of elements registered to the loader
 	Total int
-	// Inserted is the number of elements inserted into the lookup table
-	Inserted int
 }
 
 // Exec will look up all the history account ids for the addresses registered in the loader.
@@ -122,33 +101,15 @@ func (a *AccountLoader) Exec(ctx context.Context, session db.SessionInterface) e
 	for address := range a.set {
 		addresses = append(addresses, address)
 	}
-
-	if err := a.lookupKeys(ctx, q, addresses); err != nil {
-		return err
-	}
-	a.stats.Total += len(addresses)
-
-	insert := 0
-	for _, address := range addresses {
-		if _, ok := a.ids[address]; ok {
-			continue
-		}
-		addresses[insert] = address
-		insert++
-	}
-	if insert == 0 {
-		return nil
-	}
-	addresses = addresses[:insert]
 	// sort entries before inserting rows to prevent deadlocks on acquiring a ShareLock
 	// https://github.com/stellar/go/issues/2370
 	sort.Strings(addresses)
 
+	var accounts []Account
 	err := bulkInsert(
 		ctx,
 		q,
 		"history_accounts",
-		[]string{"address"},
 		[]bulkInsertField{
 			{
 				name:    "address",
@@ -156,13 +117,16 @@ func (a *AccountLoader) Exec(ctx context.Context, session db.SessionInterface) e
 				objects: addresses,
 			},
 		},
+		&accounts,
 	)
 	if err != nil {
 		return err
 	}
-	a.stats.Inserted += insert
-
-	return a.lookupKeys(ctx, q, addresses)
+	for _, account := range accounts {
+		a.ids[account.Address] = account.ID
+	}
+	a.stats.Total += len(accounts)
+	return nil
 }
 
 // Stats returns the number of addresses registered in the loader and the number of addresses
@@ -181,7 +145,7 @@ type bulkInsertField struct {
 	objects []string
 }
 
-func bulkInsert(ctx context.Context, q *Q, table string, conflictFields []string, fields []bulkInsertField) error {
+func bulkInsert(ctx context.Context, q *Q, table string, fields []bulkInsertField, response interface{}) error {
 	unnestPart := make([]string, 0, len(fields))
 	insertFieldsPart := make([]string, 0, len(fields))
 	pqArrays := make([]interface{}, 0, len(fields))
@@ -201,20 +165,28 @@ func bulkInsert(ctx context.Context, q *Q, table string, conflictFields []string
 		)
 	}
 
+	columns := strings.Join(insertFieldsPart, ",")
 	sql := `
-	WITH r AS
-		(SELECT ` + strings.Join(unnestPart, ",") + `)
-	INSERT INTO ` + table + `
-		(` + strings.Join(insertFieldsPart, ",") + `)
-	SELECT * from r
-	ON CONFLICT (` + strings.Join(conflictFields, ",") + `) DO NOTHING`
+	WITH rows AS
+		(SELECT ` + strings.Join(unnestPart, ",") + `),
+	inserted_rows AS (
+		INSERT INTO ` + table + `
+			(` + columns + `)
+		SELECT * FROM rows
+		ON CONFLICT (` + columns + `) DO NOTHING
+		RETURNING *
+	)
+	SELECT * FROM inserted_rows
+	UNION ALL
+	SELECT * FROM ` + table + ` WHERE (` + columns + `) IN 
+	(SELECT * FROM rows)`
 
-	_, err := q.ExecRaw(
-		context.WithValue(ctx, &db.QueryTypeContextKey, db.UpsertQueryType),
+	return q.SelectRaw(
+		ctx,
+		response,
 		sql,
 		pqArrays...,
 	)
-	return err
 }
 
 // AccountLoaderStub is a stub wrapper around AccountLoader which allows
