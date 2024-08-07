@@ -8,8 +8,6 @@ import (
 
 	"github.com/stellar/go/support/collections/set"
 	"github.com/stellar/go/support/db"
-	"github.com/stellar/go/support/errors"
-	"github.com/stellar/go/support/ordered"
 )
 
 // FutureClaimableBalanceID represents a future history claimable balance.
@@ -78,22 +76,6 @@ func (a *ClaimableBalanceLoader) getNow(id string) (int64, error) {
 	}
 }
 
-func (a *ClaimableBalanceLoader) lookupKeys(ctx context.Context, q *Q, ids []string) error {
-	for i := 0; i < len(ids); i += loaderLookupBatchSize {
-		end := ordered.Min(len(ids), i+loaderLookupBatchSize)
-
-		cbs, err := q.ClaimableBalancesByIDs(ctx, ids[i:end])
-		if err != nil {
-			return errors.Wrap(err, "could not select claimable balances")
-		}
-
-		for _, cb := range cbs {
-			a.ids[cb.BalanceID] = cb.InternalID
-		}
-	}
-	return nil
-}
-
 // Exec will look up all the internal history ids for the claimable balances registered in the loader.
 // If there are no internal ids for a given set of claimable balances, Exec will insert rows
 // into the history_claimable_balances table.
@@ -108,27 +90,10 @@ func (a *ClaimableBalanceLoader) Exec(ctx context.Context, session db.SessionInt
 		ids = append(ids, id)
 	}
 
-	if err := a.lookupKeys(ctx, q, ids); err != nil {
-		return err
-	}
-	a.stats.Total += len(ids)
-
-	insert := 0
-	for _, id := range ids {
-		if _, ok := a.ids[id]; ok {
-			continue
-		}
-		ids[insert] = id
-		insert++
-	}
-	if insert == 0 {
-		return nil
-	}
-	ids = ids[:insert]
 	// sort entries before inserting rows to prevent deadlocks on acquiring a ShareLock
 	// https://github.com/stellar/go/issues/2370
 	sort.Strings(ids)
-
+	var rows []HistoryClaimableBalance
 	err := bulkInsert(
 		ctx,
 		q,
@@ -141,13 +106,16 @@ func (a *ClaimableBalanceLoader) Exec(ctx context.Context, session db.SessionInt
 				objects: ids,
 			},
 		},
+		&rows,
 	)
 	if err != nil {
 		return err
 	}
-	a.stats.Inserted += insert
-
-	return a.lookupKeys(ctx, q, ids)
+	for _, row := range rows {
+		a.ids[row.BalanceID] = row.InternalID
+	}
+	a.stats.Total += len(ids)
+	return nil
 }
 
 // Stats returns the number of claimable balances registered in the loader and the number of claimable balances
