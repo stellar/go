@@ -106,11 +106,11 @@ func (a *AccountLoader) Exec(ctx context.Context, session db.SessionInterface) e
 	sort.Strings(addresses)
 
 	var accounts []Account
-	err := bulkInsert(
+	err := bulkGetOrCreate(
 		ctx,
 		q,
 		"history_accounts",
-		[]bulkInsertField{
+		[]columnValues{
 			{
 				name:    "address",
 				dbType:  "character varying(64)",
@@ -139,13 +139,13 @@ func (a *AccountLoader) Name() string {
 	return "AccountLoader"
 }
 
-type bulkInsertField struct {
+type columnValues struct {
 	name    string
 	dbType  string
 	objects []string
 }
 
-func bulkInsert(ctx context.Context, q *Q, table string, fields []bulkInsertField, response interface{}) error {
+func bulkGetOrCreate(ctx context.Context, q *Q, table string, fields []columnValues, response interface{}) error {
 	unnestPart := make([]string, 0, len(fields))
 	insertFieldsPart := make([]string, 0, len(fields))
 	pqArrays := make([]interface{}, 0, len(fields))

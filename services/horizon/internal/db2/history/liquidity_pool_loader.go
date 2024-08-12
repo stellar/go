@@ -94,11 +94,11 @@ func (a *LiquidityPoolLoader) Exec(ctx context.Context, session db.SessionInterf
 	// https://github.com/stellar/go/issues/2370
 	sort.Strings(ids)
 	var rows []HistoryLiquidityPool
-	err := bulkInsert(
+	err := bulkGetOrCreate(
 		ctx,
 		q,
 		"history_liquidity_pools",
-		[]bulkInsertField{
+		[]columnValues{
 			{
 				name:    "liquidity_pool_id",
 				dbType:  "text",

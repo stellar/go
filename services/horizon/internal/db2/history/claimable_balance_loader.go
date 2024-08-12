@@ -94,11 +94,11 @@ func (a *ClaimableBalanceLoader) Exec(ctx context.Context, session db.SessionInt
 	// https://github.com/stellar/go/issues/2370
 	sort.Strings(ids)
 	var rows []HistoryClaimableBalance
-	err := bulkInsert(
+	err := bulkGetOrCreate(
 		ctx,
 		q,
 		"history_claimable_balances",
-		[]bulkInsertField{
+		[]columnValues{
 			{
 				name:    "claimable_balance_id",
 				dbType:  "text",

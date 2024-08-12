@@ -128,11 +128,11 @@ func (a *AssetLoader) Exec(ctx context.Context, session db.SessionInterface) err
 	}
 
 	var rows []Asset
-	err := bulkInsert(
+	err := bulkGetOrCreate(
 		ctx,
 		q,
 		"history_assets",
-		[]bulkInsertField{
+		[]columnValues{
 			{
 				name:    "asset_code",
 				dbType:  "character varying(12)",
