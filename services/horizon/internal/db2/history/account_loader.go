@@ -328,8 +328,9 @@ func bulkGet(ctx context.Context, q *Q, table string, fields []columnValues, res
 			pq.Array(field.objects),
 		)
 	}
+	lockSuffix := "ORDER BY id ASC FOR KEY SHARE"
 	sql := `SELECT * FROM ` + table + ` WHERE (` + strings.Join(columns, ",") + `) IN 
-	(SELECT ` + strings.Join(unnestPart, ",") + `)`
+	(SELECT ` + strings.Join(unnestPart, ",") + `) ` + lockSuffix
 
 	return q.SelectRaw(
 		ctx,
