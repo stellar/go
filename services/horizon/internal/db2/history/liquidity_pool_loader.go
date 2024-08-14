@@ -76,11 +76,6 @@ func (a *LiquidityPoolLoader) GetNow(id string) (int64, error) {
 	}
 }
 
-type historyLiquidityPoolGetOrCreate struct {
-	HistoryLiquidityPool
-	Inserted bool `db:"inserted"`
-}
-
 // Exec will look up all the internal history ids for the liquidity pools registered in the loader.
 // If there are no internal history ids for a given set of liquidity pools, Exec will insert rows
 // into the history_liquidity_pools table.
@@ -98,8 +93,8 @@ func (a *LiquidityPoolLoader) Exec(ctx context.Context, session db.SessionInterf
 	// sort entries before inserting rows to prevent deadlocks on acquiring a ShareLock
 	// https://github.com/stellar/go/issues/2370
 	sort.Strings(ids)
-	var rows []historyLiquidityPoolGetOrCreate
-	err := bulkGetOrCreate(
+	var rows []HistoryLiquidityPool
+	err := bulkInsert(
 		ctx,
 		q,
 		"history_liquidity_pools",
@@ -117,12 +112,40 @@ func (a *LiquidityPoolLoader) Exec(ctx context.Context, session db.SessionInterf
 	}
 	for _, row := range rows {
 		a.ids[row.PoolID] = row.InternalID
-		if row.Inserted {
-			a.stats.Inserted++
-		}
+		a.stats.Inserted++
 	}
-	a.stats.Total += len(ids)
+	a.stats.Total += len(rows)
 
+	remaining := make([]string, 0, len(ids))
+	for _, id := range ids {
+		if _, ok := a.ids[id]; ok {
+			continue
+		}
+		remaining = append(remaining, id)
+	}
+	if len(remaining) > 0 {
+		var remainingRows []HistoryLiquidityPool
+		err = bulkGet(
+			ctx,
+			q,
+			"history_liquidity_pools",
+			[]columnValues{
+				{
+					name:    "liquidity_pool_id",
+					dbType:  "text",
+					objects: remaining,
+				},
+			},
+			&remainingRows,
+		)
+		if err != nil {
+			return err
+		}
+		for _, row := range remainingRows {
+			a.ids[row.PoolID] = row.InternalID
+		}
+		a.stats.Total += len(remainingRows)
+	}
 	return nil
 }
 

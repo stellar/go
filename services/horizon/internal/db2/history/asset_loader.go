@@ -99,11 +99,6 @@ func (a *AssetLoader) GetNow(asset AssetKey) (int64, error) {
 	}
 }
 
-type assetGetOrCreate struct {
-	Asset
-	Inserted bool `db:"inserted"`
-}
-
 // Exec will look up all the history asset ids for the assets registered in the loader.
 // If there are no history asset ids for a given set of assets, Exec will insert rows
 // into the history_assets table.
@@ -132,8 +127,8 @@ func (a *AssetLoader) Exec(ctx context.Context, session db.SessionInterface) err
 		assetIssuers = append(assetIssuers, key.Issuer)
 	}
 
-	var rows []assetGetOrCreate
-	err := bulkGetOrCreate(
+	var rows []Asset
+	err := bulkInsert(
 		ctx,
 		q,
 		"history_assets",
@@ -165,12 +160,63 @@ func (a *AssetLoader) Exec(ctx context.Context, session db.SessionInterface) err
 			Code:   row.Code,
 			Issuer: row.Issuer,
 		}] = row.ID
-		if row.Inserted {
-			a.stats.Inserted++
-		}
+		a.stats.Inserted++
 	}
-	a.stats.Total += len(keys)
+	a.stats.Total += len(rows)
 
+	remaining := make([]AssetKey, 0, len(keys))
+	for _, key := range keys {
+		if _, ok := a.ids[key]; ok {
+			continue
+		}
+		remaining = append(remaining, key)
+	}
+	if len(remaining) > 0 {
+		assetTypes = make([]string, 0, len(remaining))
+		assetCodes = make([]string, 0, len(remaining))
+		assetIssuers = make([]string, 0, len(remaining))
+		for _, key := range remaining {
+			assetTypes = append(assetTypes, key.Type)
+			assetCodes = append(assetCodes, key.Code)
+			assetIssuers = append(assetIssuers, key.Issuer)
+		}
+
+		var remainingRows []Asset
+		err = bulkGet(
+			ctx,
+			q,
+			"history_assets",
+			[]columnValues{
+				{
+					name:    "asset_code",
+					dbType:  "character varying(12)",
+					objects: assetCodes,
+				},
+				{
+					name:    "asset_type",
+					dbType:  "character varying(64)",
+					objects: assetTypes,
+				},
+				{
+					name:    "asset_issuer",
+					dbType:  "character varying(56)",
+					objects: assetIssuers,
+				},
+			},
+			&remainingRows,
+		)
+		if err != nil {
+			return err
+		}
+		for _, row := range remainingRows {
+			a.ids[AssetKey{
+				Type:   row.Type,
+				Code:   row.Code,
+				Issuer: row.Issuer,
+			}] = row.ID
+		}
+		a.stats.Total += len(remainingRows)
+	}
 	return nil
 }
 

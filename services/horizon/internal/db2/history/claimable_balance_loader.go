@@ -76,11 +76,6 @@ func (a *ClaimableBalanceLoader) getNow(id string) (int64, error) {
 	}
 }
 
-type historyClaimableBalanceGetOrCreate struct {
-	HistoryClaimableBalance
-	Inserted bool `db:"inserted"`
-}
-
 // Exec will look up all the internal history ids for the claimable balances registered in the loader.
 // If there are no internal ids for a given set of claimable balances, Exec will insert rows
 // into the history_claimable_balances table.
@@ -98,8 +93,8 @@ func (a *ClaimableBalanceLoader) Exec(ctx context.Context, session db.SessionInt
 	// sort entries before inserting rows to prevent deadlocks on acquiring a ShareLock
 	// https://github.com/stellar/go/issues/2370
 	sort.Strings(ids)
-	var rows []historyClaimableBalanceGetOrCreate
-	err := bulkGetOrCreate(
+	var rows []HistoryClaimableBalance
+	err := bulkInsert(
 		ctx,
 		q,
 		"history_claimable_balances",
@@ -117,11 +112,40 @@ func (a *ClaimableBalanceLoader) Exec(ctx context.Context, session db.SessionInt
 	}
 	for _, row := range rows {
 		a.ids[row.BalanceID] = row.InternalID
-		if row.Inserted {
-			a.stats.Inserted++
-		}
+		a.stats.Inserted++
 	}
-	a.stats.Total += len(ids)
+	a.stats.Total += len(rows)
+
+	remaining := make([]string, 0, len(ids))
+	for _, id := range ids {
+		if _, ok := a.ids[id]; ok {
+			continue
+		}
+		remaining = append(remaining, id)
+	}
+	if len(remaining) > 0 {
+		var remainingRows []HistoryClaimableBalance
+		err = bulkGet(
+			ctx,
+			q,
+			"history_claimable_balances",
+			[]columnValues{
+				{
+					name:    "claimable_balance_id",
+					dbType:  "text",
+					objects: remaining,
+				},
+			},
+			&remainingRows,
+		)
+		if err != nil {
+			return err
+		}
+		for _, row := range remainingRows {
+			a.ids[row.BalanceID] = row.InternalID
+		}
+		a.stats.Total += len(remainingRows)
+	}
 	return nil
 }
 

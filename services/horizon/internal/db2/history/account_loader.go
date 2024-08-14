@@ -90,11 +90,6 @@ type LoaderStats struct {
 	Inserted int
 }
 
-type accountGetOrCreate struct {
-	Account
-	Inserted bool `db:"inserted"`
-}
-
 // Exec will look up all the history account ids for the addresses registered in the loader.
 // If there are no history account ids for a given set of addresses, Exec will insert rows
 // into the history_accounts table to establish a mapping between address and history account id.
@@ -112,8 +107,8 @@ func (a *AccountLoader) Exec(ctx context.Context, session db.SessionInterface) e
 	// https://github.com/stellar/go/issues/2370
 	sort.Strings(addresses)
 
-	var accounts []accountGetOrCreate
-	err := bulkGetOrCreate(
+	var accounts []Account
+	err := bulkInsert(
 		ctx,
 		q,
 		"history_accounts",
@@ -131,11 +126,41 @@ func (a *AccountLoader) Exec(ctx context.Context, session db.SessionInterface) e
 	}
 	for _, account := range accounts {
 		a.ids[account.Address] = account.ID
-		if account.Inserted {
-			a.stats.Inserted++
-		}
+		a.stats.Inserted++
 	}
 	a.stats.Total += len(accounts)
+
+	remaining := make([]string, 0, len(addresses))
+	for _, address := range addresses {
+		if _, ok := a.ids[address]; ok {
+			continue
+		}
+		remaining = append(remaining, address)
+	}
+	if len(remaining) > 0 {
+		var remainingAccounts []Account
+		err = bulkGet(
+			ctx,
+			q,
+			"history_accounts",
+			[]columnValues{
+				{
+					name:    "address",
+					dbType:  "character varying(64)",
+					objects: remaining,
+				},
+			},
+			&remainingAccounts,
+		)
+		if err != nil {
+			return err
+		}
+		for _, account := range remainingAccounts {
+			a.ids[account.Address] = account.ID
+		}
+		a.stats.Total += len(remainingAccounts)
+	}
+
 	return nil
 }
 
@@ -155,12 +180,12 @@ type columnValues struct {
 	objects []string
 }
 
-func bulkGetOrCreate(ctx context.Context, q *Q, table string, fields []columnValues, response interface{}) error {
+func bulkInsert(ctx context.Context, q *Q, table string, fields []columnValues, response interface{}) error {
 	unnestPart := make([]string, 0, len(fields))
 	insertFieldsPart := make([]string, 0, len(fields))
 	pqArrays := make([]interface{}, 0, len(fields))
 
-	// In the code below we are building the bulk insert part of the query which looks like:
+	// In the code below we are building the bulk insert query which looks like:
 	//
 	// WITH rows AS
 	//		(SELECT
@@ -175,7 +200,7 @@ func bulkGetOrCreate(ctx context.Context, q *Q, table string, fields []columnVal
 	//		field2,
 	//		...
 	//	)
-	//	SELECT * FROM rows ON CONFLICT (field1, field2, ...) DO NOTHING
+	//	SELECT * FROM rows ON CONFLICT (field1, field2, ...) DO NOTHING RETURNING *
 	//
 	// Using unnest allows to get around the maximum limit of 65,535 query parameters,
 	// see https://www.postgresql.org/docs/12/limits.html and
@@ -199,25 +224,60 @@ func bulkGetOrCreate(ctx context.Context, q *Q, table string, fields []columnVal
 	}
 	columns := strings.Join(insertFieldsPart, ",")
 
-	// We can combine the inserted rows with a query to find pre-existing rows
-	// using a UNION ALL clause. Note that the query to fetch pre-existing rows
-	// will not see the effects of the inserted_rows CTE because of the snapshot
-	// isolation semantics of postgres CTEs (see
-	// https://www.postgresql.org/docs/12/queries-with.html ).
 	sql := `
 	WITH rows AS
-		(SELECT ` + strings.Join(unnestPart, ",") + `),
-	inserted_rows AS (
-		INSERT INTO ` + table + `
-			(` + columns + `)
-		SELECT * FROM rows
-		ON CONFLICT (` + columns + `) DO NOTHING
-		RETURNING *
+		(SELECT ` + strings.Join(unnestPart, ",") + `)
+	INSERT INTO ` + table + `
+		(` + columns + `)
+	SELECT * FROM rows
+	ON CONFLICT (` + columns + `) DO NOTHING
+	RETURNING *`
+
+	return q.SelectRaw(
+		ctx,
+		response,
+		sql,
+		pqArrays...,
 	)
-	SELECT *, true as inserted FROM inserted_rows
-	UNION ALL
-	SELECT *, false as inserted FROM ` + table + ` WHERE (` + columns + `) IN 
-	(SELECT * FROM rows)`
+}
+
+func bulkGet(ctx context.Context, q *Q, table string, fields []columnValues, response interface{}) error {
+	unnestPart := make([]string, 0, len(fields))
+	columns := make([]string, 0, len(fields))
+	pqArrays := make([]interface{}, 0, len(fields))
+
+	// In the code below we are building the bulk get query which looks like:
+	//
+	//	SELECT * FROM table WHERE (field1, field2, ...) IN
+	//		(SELECT
+	//			/* unnestPart */
+	//			unnest(?::type1[]), /* field1 */
+	//			unnest(?::type2[]), /* field2 */
+	//			...
+	//		)
+	//
+	// Using unnest allows to get around the maximum limit of 65,535 query parameters,
+	// see https://www.postgresql.org/docs/12/limits.html and
+	// https://klotzandrew.com/blog/postgres-passing-65535-parameter-limit/
+	//
+	// Without using unnest we would have to use multiple select statements to obtain
+	// all the rows for large datasets.
+	for _, field := range fields {
+		unnestPart = append(
+			unnestPart,
+			fmt.Sprintf("unnest(?::%s[]) /* %s */", field.dbType, field.name),
+		)
+		columns = append(
+			columns,
+			field.name,
+		)
+		pqArrays = append(
+			pqArrays,
+			pq.Array(field.objects),
+		)
+	}
+	sql := `SELECT * FROM ` + table + ` WHERE (` + strings.Join(columns, ",") + `) IN 
+	(SELECT ` + strings.Join(unnestPart, ",") + `)`
 
 	return q.SelectRaw(
 		ctx,
