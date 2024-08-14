@@ -160,6 +160,29 @@ func bulkGetOrCreate(ctx context.Context, q *Q, table string, fields []columnVal
 	insertFieldsPart := make([]string, 0, len(fields))
 	pqArrays := make([]interface{}, 0, len(fields))
 
+	// In the code below we are building the bulk insert part of the query which looks like:
+	//
+	// WITH rows AS
+	//		(SELECT
+	//			/* unnestPart */
+	//			unnest(?::type1[]), /* field1 */
+	//			unnest(?::type2[]), /* field2 */
+	//			...
+	//		)
+	//	INSERT INTO table (
+	//		/* insertFieldsPart */
+	//		field1,
+	//		field2,
+	//		...
+	//	)
+	//	SELECT * FROM rows ON CONFLICT (field1, field2, ...) DO NOTHING
+	//
+	// Using unnest allows to get around the maximum limit of 65,535 query parameters,
+	// see https://www.postgresql.org/docs/12/limits.html and
+	// https://klotzandrew.com/blog/postgres-passing-65535-parameter-limit/
+	//
+	// Without using unnest we would have to use multiple insert statements to insert
+	// all the rows for large datasets.
 	for _, field := range fields {
 		unnestPart = append(
 			unnestPart,
@@ -174,8 +197,13 @@ func bulkGetOrCreate(ctx context.Context, q *Q, table string, fields []columnVal
 			pq.Array(field.objects),
 		)
 	}
-
 	columns := strings.Join(insertFieldsPart, ",")
+
+	// We can combine the inserted rows with a query to find pre-existing rows
+	// using a UNION ALL clause. Note that the query to fetch pre-existing rows
+	// will not see the effects of the inserted_rows CTE because of the snapshot
+	// isolation semantics of postgres CTEs (see
+	// https://www.postgresql.org/docs/12/queries-with.html ).
 	sql := `
 	WITH rows AS
 		(SELECT ` + strings.Join(unnestPart, ",") + `),
