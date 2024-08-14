@@ -99,6 +99,11 @@ func (a *AssetLoader) GetNow(asset AssetKey) (int64, error) {
 	}
 }
 
+type assetGetOrCreate struct {
+	Asset
+	Inserted bool `db:"inserted"`
+}
+
 // Exec will look up all the history asset ids for the assets registered in the loader.
 // If there are no history asset ids for a given set of assets, Exec will insert rows
 // into the history_assets table.
@@ -127,7 +132,7 @@ func (a *AssetLoader) Exec(ctx context.Context, session db.SessionInterface) err
 		assetIssuers = append(assetIssuers, key.Issuer)
 	}
 
-	var rows []Asset
+	var rows []assetGetOrCreate
 	err := bulkGetOrCreate(
 		ctx,
 		q,
@@ -160,6 +165,9 @@ func (a *AssetLoader) Exec(ctx context.Context, session db.SessionInterface) err
 			Code:   row.Code,
 			Issuer: row.Issuer,
 		}] = row.ID
+		if row.Inserted {
+			a.stats.Inserted++
+		}
 	}
 	a.stats.Total += len(keys)
 

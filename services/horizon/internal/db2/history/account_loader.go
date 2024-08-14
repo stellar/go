@@ -86,6 +86,13 @@ func (a *AccountLoader) GetNow(address string) (int64, error) {
 type LoaderStats struct {
 	// Total is the number of elements registered to the loader
 	Total int
+	// Inserted is the number of elements inserted into the lookup table
+	Inserted int
+}
+
+type accountGetOrCreate struct {
+	Account
+	Inserted bool `db:"inserted"`
 }
 
 // Exec will look up all the history account ids for the addresses registered in the loader.
@@ -105,7 +112,7 @@ func (a *AccountLoader) Exec(ctx context.Context, session db.SessionInterface) e
 	// https://github.com/stellar/go/issues/2370
 	sort.Strings(addresses)
 
-	var accounts []Account
+	var accounts []accountGetOrCreate
 	err := bulkGetOrCreate(
 		ctx,
 		q,
@@ -124,6 +131,9 @@ func (a *AccountLoader) Exec(ctx context.Context, session db.SessionInterface) e
 	}
 	for _, account := range accounts {
 		a.ids[account.Address] = account.ID
+		if account.Inserted {
+			a.stats.Inserted++
+		}
 	}
 	a.stats.Total += len(accounts)
 	return nil
@@ -176,9 +186,9 @@ func bulkGetOrCreate(ctx context.Context, q *Q, table string, fields []columnVal
 		ON CONFLICT (` + columns + `) DO NOTHING
 		RETURNING *
 	)
-	SELECT * FROM inserted_rows
+	SELECT *, true as inserted FROM inserted_rows
 	UNION ALL
-	SELECT * FROM ` + table + ` WHERE (` + columns + `) IN 
+	SELECT *, false as inserted FROM ` + table + ` WHERE (` + columns + `) IN 
 	(SELECT * FROM rows)`
 
 	return q.SelectRaw(

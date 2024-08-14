@@ -37,7 +37,8 @@ func TestLiquidityPoolLoader(t *testing.T) {
 	err := loader.Exec(context.Background(), session)
 	assert.NoError(t, err)
 	assert.Equal(t, LoaderStats{
-		Total: 100,
+		Total:    100,
+		Inserted: 100,
 	}, loader.Stats())
 	assert.Panics(t, func() {
 		loader.GetFuture("not-present")
@@ -70,7 +71,8 @@ func TestLiquidityPoolLoader(t *testing.T) {
 
 	assert.NoError(t, loader.Exec(context.Background(), session))
 	assert.Equal(t, LoaderStats{
-		Total: 100,
+		Total:    100,
+		Inserted: 0,
 	}, loader.Stats())
 
 	for _, id := range ids {
