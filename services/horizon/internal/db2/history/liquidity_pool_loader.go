@@ -6,26 +6,6 @@ import (
 	"github.com/stellar/go/support/collections/set"
 )
 
-type historyLPSchema struct{}
-
-func (historyLPSchema) table() string {
-	return "history_liquidity_pools"
-}
-
-func (historyLPSchema) columns(keys []string) []columnValues {
-	return []columnValues{
-		{
-			name:    "liquidity_pool_id",
-			dbType:  "text",
-			objects: keys,
-		},
-	}
-}
-
-func (historyLPSchema) extract(row HistoryLiquidityPool) (string, int64) {
-	return row.PoolID, row.InternalID
-}
-
 // FutureLiquidityPoolID represents a future history liquidity pool.
 // A FutureLiquidityPoolID is created by an LiquidityPoolLoader and
 // the liquidity pool id is available after calling Exec() on
@@ -46,8 +26,20 @@ func NewLiquidityPoolLoader() *LiquidityPoolLoader {
 		ids:    map[string]int64{},
 		stats:  LoaderStats{},
 		name:   "LiquidityPoolLoader",
-		schema: historyLPSchema{},
-		less:   cmp.Less[string],
+		table:  "history_liquidity_pools",
+		columnsForKeys: func(keys []string) []columnValues {
+			return []columnValues{
+				{
+					name:    "liquidity_pool_id",
+					dbType:  "text",
+					objects: keys,
+				},
+			}
+		},
+		mappingFromRow: func(row HistoryLiquidityPool) (string, int64) {
+			return row.PoolID, row.InternalID
+		},
+		less: cmp.Less[string],
 	}
 }
 

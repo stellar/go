@@ -25,26 +25,6 @@ type LoaderStats struct {
 	Inserted int
 }
 
-type historyAccountSchema struct{}
-
-func (historyAccountSchema) table() string {
-	return "history_accounts"
-}
-
-func (historyAccountSchema) columns(addresses []string) []columnValues {
-	return []columnValues{
-		{
-			name:    "address",
-			dbType:  "character varying(64)",
-			objects: addresses,
-		},
-	}
-}
-
-func (historyAccountSchema) extract(account Account) (string, int64) {
-	return account.Address, account.ID
-}
-
 // FutureAccountID represents a future history account.
 // A FutureAccountID is created by an AccountLoader and
 // the account id is available after calling Exec() on
@@ -65,25 +45,33 @@ func NewAccountLoader() *AccountLoader {
 		ids:    map[string]int64{},
 		stats:  LoaderStats{},
 		name:   "AccountLoader",
-		schema: historyAccountSchema{},
-		less:   cmp.Less[string],
+		table:  "history_accounts",
+		columnsForKeys: func(addresses []string) []columnValues {
+			return []columnValues{
+				{
+					name:    "address",
+					dbType:  "character varying(64)",
+					objects: addresses,
+				},
+			}
+		},
+		mappingFromRow: func(account Account) (string, int64) {
+			return account.Address, account.ID
+		},
+		less: cmp.Less[string],
 	}
 }
 
-type schema[K comparable, T any] interface {
-	table() string
-	columns(keys []K) []columnValues
-	extract(T) (K, int64)
-}
-
 type loader[K comparable, T any] struct {
-	sealed bool
-	set    set.Set[K]
-	ids    map[K]int64
-	stats  LoaderStats
-	name   string
-	schema schema[K, T]
-	less   func(K, K) bool
+	sealed         bool
+	set            set.Set[K]
+	ids            map[K]int64
+	stats          LoaderStats
+	name           string
+	table          string
+	columnsForKeys func([]K) []columnValues
+	mappingFromRow func(T) (K, int64)
+	less           func(K, K) bool
 }
 
 type future[K comparable, T any] struct {
@@ -189,7 +177,7 @@ func (l *loader[K, T]) filter(keys []K) []K {
 
 func (l *loader[K, T]) updateMap(rows []T) {
 	for _, row := range rows {
-		key, id := l.schema.extract(row)
+		key, id := l.mappingFromRow(row)
 		l.ids[key] = id
 	}
 }
@@ -204,8 +192,8 @@ func (l *loader[K, T]) insert(ctx context.Context, q *Q, keys []K) (int, error) 
 	err := bulkInsert(
 		ctx,
 		q,
-		l.schema.table(),
-		l.schema.columns(keys),
+		l.table,
+		l.columnsForKeys(keys),
 		&rows,
 	)
 	if err != nil {
@@ -226,8 +214,8 @@ func (l *loader[K, T]) query(ctx context.Context, q *Q, keys []K) (int, error) {
 	err := bulkGet(
 		ctx,
 		q,
-		l.schema.table(),
-		l.schema.columns(keys),
+		l.table,
+		l.columnsForKeys(keys),
 		&rows,
 	)
 	if err != nil {

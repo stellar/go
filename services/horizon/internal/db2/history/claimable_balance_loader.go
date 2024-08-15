@@ -6,26 +6,6 @@ import (
 	"github.com/stellar/go/support/collections/set"
 )
 
-type historyCBSchema struct{}
-
-func (historyCBSchema) table() string {
-	return "history_claimable_balances"
-}
-
-func (historyCBSchema) columns(keys []string) []columnValues {
-	return []columnValues{
-		{
-			name:    "claimable_balance_id",
-			dbType:  "text",
-			objects: keys,
-		},
-	}
-}
-
-func (historyCBSchema) extract(row HistoryClaimableBalance) (string, int64) {
-	return row.BalanceID, row.InternalID
-}
-
 // FutureClaimableBalanceID represents a future history claimable balance.
 // A FutureClaimableBalanceID is created by a ClaimableBalanceLoader and
 // the claimable balance id is available after calling Exec() on
@@ -46,7 +26,19 @@ func NewClaimableBalanceLoader() *ClaimableBalanceLoader {
 		ids:    map[string]int64{},
 		stats:  LoaderStats{},
 		name:   "ClaimableBalanceLoader",
-		schema: historyCBSchema{},
-		less:   cmp.Less[string],
+		table:  "history_claimable_balances",
+		columnsForKeys: func(keys []string) []columnValues {
+			return []columnValues{
+				{
+					name:    "claimable_balance_id",
+					dbType:  "text",
+					objects: keys,
+				},
+			}
+		},
+		mappingFromRow: func(row HistoryClaimableBalance) (string, int64) {
+			return row.BalanceID, row.InternalID
+		},
+		less: cmp.Less[string],
 	}
 }

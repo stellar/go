@@ -29,49 +29,6 @@ func AssetKeyFromXDR(asset xdr.Asset) AssetKey {
 	}
 }
 
-type historyAssetSchema struct{}
-
-func (historyAssetSchema) table() string {
-	return "history_assets"
-}
-
-func (historyAssetSchema) columns(keys []AssetKey) []columnValues {
-	assetTypes := make([]string, 0, len(keys))
-	assetCodes := make([]string, 0, len(keys))
-	assetIssuers := make([]string, 0, len(keys))
-	for _, key := range keys {
-		assetTypes = append(assetTypes, key.Type)
-		assetCodes = append(assetCodes, key.Code)
-		assetIssuers = append(assetIssuers, key.Issuer)
-	}
-
-	return []columnValues{
-		{
-			name:    "asset_code",
-			dbType:  "character varying(12)",
-			objects: assetCodes,
-		},
-		{
-			name:    "asset_type",
-			dbType:  "character varying(64)",
-			objects: assetTypes,
-		},
-		{
-			name:    "asset_issuer",
-			dbType:  "character varying(56)",
-			objects: assetIssuers,
-		},
-	}
-}
-
-func (historyAssetSchema) extract(asset Asset) (AssetKey, int64) {
-	return AssetKey{
-		Type:   asset.Type,
-		Code:   asset.Code,
-		Issuer: asset.Issuer,
-	}, asset.ID
-}
-
 // FutureAssetID represents a future history asset.
 // A FutureAssetID is created by an AssetLoader and
 // the asset id is available after calling Exec() on
@@ -92,7 +49,42 @@ func NewAssetLoader() *AssetLoader {
 		ids:    map[AssetKey]int64{},
 		stats:  LoaderStats{},
 		name:   "AssetLoader",
-		schema: historyAssetSchema{},
+		table:  "history_assets",
+		columnsForKeys: func(keys []AssetKey) []columnValues {
+			assetTypes := make([]string, 0, len(keys))
+			assetCodes := make([]string, 0, len(keys))
+			assetIssuers := make([]string, 0, len(keys))
+			for _, key := range keys {
+				assetTypes = append(assetTypes, key.Type)
+				assetCodes = append(assetCodes, key.Code)
+				assetIssuers = append(assetIssuers, key.Issuer)
+			}
+
+			return []columnValues{
+				{
+					name:    "asset_code",
+					dbType:  "character varying(12)",
+					objects: assetCodes,
+				},
+				{
+					name:    "asset_type",
+					dbType:  "character varying(64)",
+					objects: assetTypes,
+				},
+				{
+					name:    "asset_issuer",
+					dbType:  "character varying(56)",
+					objects: assetIssuers,
+				},
+			}
+		},
+		mappingFromRow: func(asset Asset) (AssetKey, int64) {
+			return AssetKey{
+				Type:   asset.Type,
+				Code:   asset.Code,
+				Issuer: asset.Issuer,
+			}, asset.ID
+		},
 		less: func(a AssetKey, b AssetKey) bool {
 			return a.String() < b.String()
 		},
