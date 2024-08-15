@@ -76,7 +76,8 @@ func TestClaimableBalanceLoader(t *testing.T) {
 			Type: xdr.ClaimableBalanceIdTypeClaimableBalanceIdTypeV0,
 			V0:   &xdr.Hash{byte(i)},
 		}
-		id, err := xdr.MarshalHex(balanceID)
+		var id string
+		id, err = xdr.MarshalHex(balanceID)
 		tt.Assert.NoError(err)
 		ids = append(ids, id)
 	}

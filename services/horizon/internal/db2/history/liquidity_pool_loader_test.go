@@ -65,7 +65,8 @@ func TestLiquidityPoolLoader(t *testing.T) {
 	loader = NewLiquidityPoolLoader()
 	for i := 100; i < 110; i++ {
 		poolID := xdr.PoolId{byte(i)}
-		id, err := xdr.MarshalHex(poolID)
+		var id string
+		id, err = xdr.MarshalHex(poolID)
 		tt.Assert.NoError(err)
 		ids = append(ids, id)
 	}
