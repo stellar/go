@@ -134,17 +134,17 @@ func (l *loader[K, T]) Exec(ctx context.Context, session db.SessionInterface) er
 		return l.less(keys[i], keys[j])
 	})
 
+	if count, err := l.query(ctx, q, keys); err != nil {
+		return err
+	} else {
+		l.stats.Total += count
+	}
+
 	if count, err := l.insert(ctx, q, keys); err != nil {
 		return err
 	} else {
 		l.stats.Total += count
 		l.stats.Inserted += count
-	}
-
-	if count, err := l.query(ctx, q, keys); err != nil {
-		return err
-	} else {
-		l.stats.Total += count
 	}
 
 	return nil
