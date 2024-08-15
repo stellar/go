@@ -71,7 +71,7 @@ func TestAssetLoader(t *testing.T) {
 		future := loader.GetFuture(key)
 		_, err := future.Value()
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), `invalid asset loader state,`)
+		assert.Contains(t, err.Error(), `invalid loader state,`)
 		duplicateFuture := loader.GetFuture(key)
 		assert.Equal(t, future, duplicateFuture)
 	}
@@ -107,13 +107,13 @@ func TestAssetLoader(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), `was not found`)
 
-	// check that loader works when all the values are already present in the db
+	// check that Loader works when all the values are already present in the db
 	loader = NewAssetLoader()
 	for _, key := range keys {
 		future := loader.GetFuture(key)
 		_, err = future.Value()
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), `invalid asset loader state,`)
+		assert.Contains(t, err.Error(), `invalid loader state,`)
 	}
 	assert.NoError(t, loader.Exec(context.Background(), session))
 	assert.Equal(t, LoaderStats{

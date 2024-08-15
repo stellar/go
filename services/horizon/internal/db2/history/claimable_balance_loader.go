@@ -1,39 +1,42 @@
 package history
 
 import (
-	"context"
-	"database/sql/driver"
-	"fmt"
-	"sort"
+	"cmp"
 
 	"github.com/stellar/go/support/collections/set"
-	"github.com/stellar/go/support/db"
 )
+
+type historyCBSchema struct{}
+
+func (historyCBSchema) table() string {
+	return "history_claimable_balances"
+}
+
+func (historyCBSchema) columns(keys []string) []columnValues {
+	return []columnValues{
+		{
+			name:    "claimable_balance_id",
+			dbType:  "text",
+			objects: keys,
+		},
+	}
+}
+
+func (historyCBSchema) extract(row HistoryClaimableBalance) (string, int64) {
+	return row.BalanceID, row.InternalID
+}
 
 // FutureClaimableBalanceID represents a future history claimable balance.
 // A FutureClaimableBalanceID is created by a ClaimableBalanceLoader and
 // the claimable balance id is available after calling Exec() on
 // the ClaimableBalanceLoader.
-type FutureClaimableBalanceID struct {
-	id     string
-	loader *ClaimableBalanceLoader
-}
-
-// Value implements the database/sql/driver Valuer interface.
-func (a FutureClaimableBalanceID) Value() (driver.Value, error) {
-	return a.loader.getNow(a.id)
-}
+type FutureClaimableBalanceID = future[string, HistoryClaimableBalance]
 
 // ClaimableBalanceLoader will map claimable balance ids to their internal
 // history ids. If there is no existing mapping for a given claimable balance id,
 // the ClaimableBalanceLoader will insert into the history_claimable_balances table to
 // establish a mapping.
-type ClaimableBalanceLoader struct {
-	sealed bool
-	set    set.Set[string]
-	ids    map[string]int64
-	stats  LoaderStats
-}
+type ClaimableBalanceLoader = loader[string, HistoryClaimableBalance]
 
 // NewClaimableBalanceLoader will construct a new ClaimableBalanceLoader instance.
 func NewClaimableBalanceLoader() *ClaimableBalanceLoader {
@@ -42,119 +45,8 @@ func NewClaimableBalanceLoader() *ClaimableBalanceLoader {
 		set:    set.Set[string]{},
 		ids:    map[string]int64{},
 		stats:  LoaderStats{},
+		name:   "ClaimableBalanceLoader",
+		schema: historyCBSchema{},
+		less:   cmp.Less[string],
 	}
-}
-
-// GetFuture registers the given claimable balance into the loader and
-// returns a FutureClaimableBalanceID which will hold the internal history id for
-// the claimable balance after Exec() is called.
-func (a *ClaimableBalanceLoader) GetFuture(id string) FutureClaimableBalanceID {
-	if a.sealed {
-		panic(errSealed)
-	}
-
-	a.set.Add(id)
-	return FutureClaimableBalanceID{
-		id:     id,
-		loader: a,
-	}
-}
-
-// getNow returns the internal history id for the given claimable balance.
-// getNow should only be called on values which were registered by
-// GetFuture() calls. Also, Exec() must be called before any getNow
-// call can succeed.
-func (a *ClaimableBalanceLoader) getNow(id string) (int64, error) {
-	if !a.sealed {
-		return 0, fmt.Errorf(`invalid claimable balance loader state, 
-		Exec was not called yet to properly seal and resolve %v id`, id)
-	}
-	if internalID, ok := a.ids[id]; !ok {
-		return 0, fmt.Errorf(`claimable balance loader id %q was not found`, id)
-	} else {
-		return internalID, nil
-	}
-}
-
-// Exec will look up all the internal history ids for the claimable balances registered in the loader.
-// If there are no internal ids for a given set of claimable balances, Exec will insert rows
-// into the history_claimable_balances table.
-func (a *ClaimableBalanceLoader) Exec(ctx context.Context, session db.SessionInterface) error {
-	a.sealed = true
-	if len(a.set) == 0 {
-		return nil
-	}
-	q := &Q{session}
-	ids := make([]string, 0, len(a.set))
-	for id := range a.set {
-		ids = append(ids, id)
-	}
-
-	// sort entries before inserting rows to prevent deadlocks on acquiring a ShareLock
-	// https://github.com/stellar/go/issues/2370
-	sort.Strings(ids)
-	var rows []HistoryClaimableBalance
-	err := bulkInsert(
-		ctx,
-		q,
-		"history_claimable_balances",
-		[]columnValues{
-			{
-				name:    "claimable_balance_id",
-				dbType:  "text",
-				objects: ids,
-			},
-		},
-		&rows,
-	)
-	if err != nil {
-		return err
-	}
-	for _, row := range rows {
-		a.ids[row.BalanceID] = row.InternalID
-		a.stats.Inserted++
-	}
-	a.stats.Total += len(rows)
-
-	remaining := make([]string, 0, len(ids))
-	for _, id := range ids {
-		if _, ok := a.ids[id]; ok {
-			continue
-		}
-		remaining = append(remaining, id)
-	}
-	if len(remaining) > 0 {
-		var remainingRows []HistoryClaimableBalance
-		err = bulkGet(
-			ctx,
-			q,
-			"history_claimable_balances",
-			[]columnValues{
-				{
-					name:    "claimable_balance_id",
-					dbType:  "text",
-					objects: remaining,
-				},
-			},
-			&remainingRows,
-		)
-		if err != nil {
-			return err
-		}
-		for _, row := range remainingRows {
-			a.ids[row.BalanceID] = row.InternalID
-		}
-		a.stats.Total += len(remainingRows)
-	}
-	return nil
-}
-
-// Stats returns the number of claimable balances registered in the loader and the number of claimable balances
-// inserted into the history_claimable_balances table.
-func (a *ClaimableBalanceLoader) Stats() LoaderStats {
-	return a.stats
-}
-
-func (a *ClaimableBalanceLoader) Name() string {
-	return "ClaimableBalanceLoader"
 }

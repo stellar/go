@@ -29,7 +29,7 @@ func TestLiquidityPoolLoader(t *testing.T) {
 		future := loader.GetFuture(id)
 		_, err := future.Value()
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), `invalid liquidity pool loader state,`)
+		assert.Contains(t, err.Error(), `invalid loader state,`)
 		duplicateFuture := loader.GetFuture(id)
 		assert.Equal(t, future, duplicateFuture)
 	}
@@ -60,13 +60,13 @@ func TestLiquidityPoolLoader(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), `was not found`)
 
-	// check that loader works when all the values are already present in the db
+	// check that Loader works when all the values are already present in the db
 	loader = NewLiquidityPoolLoader()
 	for _, id := range ids {
 		future := loader.GetFuture(id)
 		_, err = future.Value()
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), `invalid liquidity pool loader state,`)
+		assert.Contains(t, err.Error(), `invalid loader state,`)
 	}
 
 	assert.NoError(t, loader.Exec(context.Background(), session))
