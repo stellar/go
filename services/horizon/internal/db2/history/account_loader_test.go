@@ -56,8 +56,13 @@ func TestAccountLoader(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), `was not found`)
 
-	// check that Loader works when all the values are already present in the db
+	// check that Loader works when all the previous values are already
+	// present in the db and also add 10 more rows to insert
 	loader = NewAccountLoader()
+	for i := 0; i < 10; i++ {
+		addresses = append(addresses, keypair.MustRandom().Address())
+	}
+
 	for _, address := range addresses {
 		future := loader.GetFuture(address)
 		_, err = future.Value()
@@ -67,8 +72,8 @@ func TestAccountLoader(t *testing.T) {
 
 	assert.NoError(t, loader.Exec(context.Background(), session))
 	assert.Equal(t, LoaderStats{
-		Total:    100,
-		Inserted: 0,
+		Total:    110,
+		Inserted: 10,
 	}, loader.Stats())
 
 	for _, address := range addresses {

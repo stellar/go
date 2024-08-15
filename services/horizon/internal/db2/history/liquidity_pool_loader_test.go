@@ -60,8 +60,16 @@ func TestLiquidityPoolLoader(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), `was not found`)
 
-	// check that Loader works when all the values are already present in the db
+	// check that Loader works when all the previous values are already
+	// present in the db and also add 10 more rows to insert
 	loader = NewLiquidityPoolLoader()
+	for i := 100; i < 110; i++ {
+		poolID := xdr.PoolId{byte(i)}
+		id, err := xdr.MarshalHex(poolID)
+		tt.Assert.NoError(err)
+		ids = append(ids, id)
+	}
+
 	for _, id := range ids {
 		future := loader.GetFuture(id)
 		_, err = future.Value()
@@ -71,8 +79,8 @@ func TestLiquidityPoolLoader(t *testing.T) {
 
 	assert.NoError(t, loader.Exec(context.Background(), session))
 	assert.Equal(t, LoaderStats{
-		Total:    100,
-		Inserted: 0,
+		Total:    110,
+		Inserted: 10,
 	}, loader.Stats())
 
 	for _, id := range ids {

@@ -107,8 +107,32 @@ func TestAssetLoader(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), `was not found`)
 
-	// check that Loader works when all the values are already present in the db
+	// check that Loader works when all the previous values are already
+	// present in the db and also add 10 more rows to insert
 	loader = NewAssetLoader()
+	for i := 0; i < 10; i++ {
+		var key AssetKey
+		if i%2 == 0 {
+			code := [4]byte{0, 0, 0, 0}
+			copy(code[:], fmt.Sprintf("ab%d", i))
+			key = AssetKeyFromXDR(xdr.Asset{
+				Type: xdr.AssetTypeAssetTypeCreditAlphanum4,
+				AlphaNum4: &xdr.AlphaNum4{
+					AssetCode: code,
+					Issuer:    xdr.MustAddress(keypair.MustRandom().Address())}})
+		} else {
+			code := [12]byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+			copy(code[:], fmt.Sprintf("abcdef%d", i))
+			key = AssetKeyFromXDR(xdr.Asset{
+				Type: xdr.AssetTypeAssetTypeCreditAlphanum12,
+				AlphaNum12: &xdr.AlphaNum12{
+					AssetCode: code,
+					Issuer:    xdr.MustAddress(keypair.MustRandom().Address())}})
+
+		}
+		keys = append(keys, key)
+	}
+
 	for _, key := range keys {
 		future := loader.GetFuture(key)
 		_, err = future.Value()
@@ -117,8 +141,8 @@ func TestAssetLoader(t *testing.T) {
 	}
 	assert.NoError(t, loader.Exec(context.Background(), session))
 	assert.Equal(t, LoaderStats{
-		Total:    100,
-		Inserted: 0,
+		Total:    110,
+		Inserted: 10,
 	}, loader.Stats())
 
 	for _, key := range keys {
