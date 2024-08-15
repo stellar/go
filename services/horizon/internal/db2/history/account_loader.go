@@ -84,9 +84,9 @@ func (f future[K, T]) Value() (driver.Value, error) {
 	return f.loader.GetNow(f.key)
 }
 
-// GetFuture registers the given account address into the Loader and
-// returns a FutureAccountID which will hold the history account id for
-// the address after Exec() is called.
+// GetFuture registers the given key into the Loader and
+// returns a future which will hold the history id for
+// the key after Exec() is called.
 func (l *loader[K, T]) GetFuture(key K) future[K, T] {
 	if l.sealed {
 		panic(errSealed)
@@ -99,7 +99,7 @@ func (l *loader[K, T]) GetFuture(key K) future[K, T] {
 	}
 }
 
-// GetNow returns the history account id for the given address.
+// GetNow returns the history id for the given key.
 // GetNow should only be called on values which were registered by
 // GetFuture() calls. Also, Exec() must be called before any GetNow
 // call can succeed.
@@ -115,9 +115,9 @@ func (l *loader[K, T]) GetNow(key K) (int64, error) {
 	}
 }
 
-// Exec will look up all the history account ids for the addresses registered in the Loader.
-// If there are no history account ids for a given set of addresses, Exec will insert rows
-// into the history_accounts table to establish a mapping between address and history account id.
+// Exec will look up all the history ids for the keys registered in the Loader.
+// If there are no history ids for a given set of keys, Exec will insert rows
+// into the corresponding history table to establish a mapping between each key and its history id.
 func (l *loader[K, T]) Exec(ctx context.Context, session db.SessionInterface) error {
 	l.sealed = true
 	if len(l.set) == 0 {
@@ -150,8 +150,8 @@ func (l *loader[K, T]) Exec(ctx context.Context, session db.SessionInterface) er
 	return nil
 }
 
-// Stats returns the number of addresses registered in the Loader and the number of addresses
-// inserted into the history_accounts table.
+// Stats returns the number of addresses registered in the Loader and the number of rows
+// inserted into the history table.
 func (l *loader[K, T]) Stats() LoaderStats {
 	return l.stats
 }
