@@ -23,9 +23,9 @@ From a high level, the ingestion library is broken down into a few modular compo
 
                 [ Ledger Backend ]
                         |
-                        |
-                     Captive  
-                      Core 
+                    |---+---|
+                 Captive Buffered
+                  Core   Storage
 ```
 
 This is described in a little more detail in [`doc.go`](./doc.go), its accompanying examples, the documentation within this package, and the rest of this tutorial.

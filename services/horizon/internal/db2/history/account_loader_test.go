@@ -26,7 +26,7 @@ func TestAccountLoader(t *testing.T) {
 		future := loader.GetFuture(address)
 		_, err := future.Value()
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), `invalid account loader state,`)
+		assert.Contains(t, err.Error(), `invalid loader state,`)
 		duplicateFuture := loader.GetFuture(address)
 		assert.Equal(t, future, duplicateFuture)
 	}
@@ -55,4 +55,35 @@ func TestAccountLoader(t *testing.T) {
 	_, err = loader.GetNow("not present")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), `was not found`)
+
+	// check that Loader works when all the previous values are already
+	// present in the db and also add 10 more rows to insert
+	loader = NewAccountLoader()
+	for i := 0; i < 10; i++ {
+		addresses = append(addresses, keypair.MustRandom().Address())
+	}
+
+	for _, address := range addresses {
+		future := loader.GetFuture(address)
+		_, err = future.Value()
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), `invalid loader state,`)
+	}
+
+	assert.NoError(t, loader.Exec(context.Background(), session))
+	assert.Equal(t, LoaderStats{
+		Total:    110,
+		Inserted: 10,
+	}, loader.Stats())
+
+	for _, address := range addresses {
+		var internalId int64
+		internalId, err = loader.GetNow(address)
+		assert.NoError(t, err)
+		var account Account
+		assert.NoError(t, q.AccountByAddress(context.Background(), &account, address))
+		assert.Equal(t, account.ID, internalId)
+		assert.Equal(t, account.Address, address)
+	}
+
 }

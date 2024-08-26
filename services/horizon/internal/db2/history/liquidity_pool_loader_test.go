@@ -29,7 +29,7 @@ func TestLiquidityPoolLoader(t *testing.T) {
 		future := loader.GetFuture(id)
 		_, err := future.Value()
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), `invalid liquidity pool loader state,`)
+		assert.Contains(t, err.Error(), `invalid loader state,`)
 		duplicateFuture := loader.GetFuture(id)
 		assert.Equal(t, future, duplicateFuture)
 	}
@@ -59,4 +59,39 @@ func TestLiquidityPoolLoader(t *testing.T) {
 	_, err = loader.GetNow("not present")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), `was not found`)
+
+	// check that Loader works when all the previous values are already
+	// present in the db and also add 10 more rows to insert
+	loader = NewLiquidityPoolLoader()
+	for i := 100; i < 110; i++ {
+		poolID := xdr.PoolId{byte(i)}
+		var id string
+		id, err = xdr.MarshalHex(poolID)
+		tt.Assert.NoError(err)
+		ids = append(ids, id)
+	}
+
+	for _, id := range ids {
+		future := loader.GetFuture(id)
+		_, err = future.Value()
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), `invalid loader state,`)
+	}
+
+	assert.NoError(t, loader.Exec(context.Background(), session))
+	assert.Equal(t, LoaderStats{
+		Total:    110,
+		Inserted: 10,
+	}, loader.Stats())
+
+	for _, id := range ids {
+		var internalID int64
+		internalID, err = loader.GetNow(id)
+		assert.NoError(t, err)
+		var lp HistoryLiquidityPool
+		lp, err = q.LiquidityPoolByID(context.Background(), id)
+		assert.NoError(t, err)
+		assert.Equal(t, lp.PoolID, id)
+		assert.Equal(t, lp.InternalID, internalID)
+	}
 }
