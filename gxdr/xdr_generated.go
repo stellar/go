@@ -813,6 +813,135 @@ const (
 	ENVELOPE_TYPE_SOROBAN_AUTHORIZATION EnvelopeType = 9
 )
 
+type BucketListType int32
+
+const (
+	LIVE         BucketListType = 0
+	HOT_ARCHIVE  BucketListType = 1
+	COLD_ARCHIVE BucketListType = 2
+)
+
+/* Entries used to define the bucket list */
+type BucketEntryType int32
+
+const (
+	// At-and-after protocol 11: bucket metadata, should come first.
+	METAENTRY BucketEntryType = -1
+	// Before protocol 11: created-or-updated;
+	LIVEENTRY BucketEntryType = 0
+	// At-and-after protocol 11: only updated.
+	DEADENTRY BucketEntryType = 1
+	// At-and-after protocol 11: only created.
+	INITENTRY BucketEntryType = 2
+)
+
+type HotArchiveBucketEntryType int32
+
+const (
+	// Bucket metadata, should come first.
+	HOT_ARCHIVE_METAENTRY HotArchiveBucketEntryType = -1
+	// Entry is Archived
+	HOT_ARCHIVE_ARCHIVED HotArchiveBucketEntryType = 0
+	// Entry was previously HOT_ARCHIVE_ARCHIVED, or HOT_ARCHIVE_DELETED, but
+	HOT_ARCHIVE_LIVE HotArchiveBucketEntryType = 1
+	// has been added back to the live BucketList.
+	// Does not need to be persisted.
+	HOT_ARCHIVE_DELETED HotArchiveBucketEntryType = 2
+)
+
+type ColdArchiveBucketEntryType int32
+
+const (
+	// Bucket metadata, should come first.
+	COLD_ARCHIVE_METAENTRY ColdArchiveBucketEntryType = -1
+	// Full LedgerEntry that was archived during the epoch
+	COLD_ARCHIVE_ARCHIVED_LEAF ColdArchiveBucketEntryType = 0
+	// LedgerKey that was deleted during the epoch
+	COLD_ARCHIVE_DELETED_LEAF ColdArchiveBucketEntryType = 1
+	// Dummy leaf representing low/high bound
+	COLD_ARCHIVE_BOUNDARY_LEAF ColdArchiveBucketEntryType = 2
+	// Intermediary Merkle hash entry
+	COLD_ARCHIVE_HASH ColdArchiveBucketEntryType = 3
+)
+
+type BucketMetadata struct {
+	// Indicates the protocol version used to create / merge this bucket.
+	LedgerVersion Uint32
+	Ext           XdrAnon_BucketMetadata_Ext
+}
+
+// reserved for future use
+type XdrAnon_BucketMetadata_Ext struct {
+	// The union discriminant V selects among the following arms:
+	//   0:
+	//      void
+	//   1:
+	//      BucketListType() *BucketListType
+	V  int32
+	_u interface{}
+}
+
+type BucketEntry struct {
+	// The union discriminant Type selects among the following arms:
+	//   LIVEENTRY, INITENTRY:
+	//      LiveEntry() *LedgerEntry
+	//   DEADENTRY:
+	//      DeadEntry() *LedgerKey
+	//   METAENTRY:
+	//      MetaEntry() *BucketMetadata
+	Type BucketEntryType
+	_u   interface{}
+}
+
+type HotArchiveBucketEntry struct {
+	// The union discriminant Type selects among the following arms:
+	//   HOT_ARCHIVE_ARCHIVED:
+	//      ArchivedEntry() *LedgerEntry
+	//   HOT_ARCHIVE_LIVE, HOT_ARCHIVE_DELETED:
+	//      Key() *LedgerKey
+	//   HOT_ARCHIVE_METAENTRY:
+	//      MetaEntry() *BucketMetadata
+	Type HotArchiveBucketEntryType
+	_u   interface{}
+}
+
+type ColdArchiveArchivedLeaf struct {
+	Index         Uint32
+	ArchivedEntry LedgerEntry
+}
+
+type ColdArchiveDeletedLeaf struct {
+	Index      Uint32
+	DeletedKey LedgerKey
+}
+
+type ColdArchiveBoundaryLeaf struct {
+	Index        Uint32
+	IsLowerBound bool
+}
+
+type ColdArchiveHashEntry struct {
+	Index Uint32
+	Level Uint32
+	Hash  Hash
+}
+
+type ColdArchiveBucketEntry struct {
+	// The union discriminant Type selects among the following arms:
+	//   COLD_ARCHIVE_METAENTRY:
+	//      MetaEntry() *BucketMetadata
+	//   COLD_ARCHIVE_ARCHIVED_LEAF:
+	//      ArchivedLeaf() *ColdArchiveArchivedLeaf
+	//   COLD_ARCHIVE_DELETED_LEAF:
+	//      DeletedLeaf() *ColdArchiveDeletedLeaf
+	//   COLD_ARCHIVE_BOUNDARY_LEAF:
+	//      BoundaryLeaf() *ColdArchiveBoundaryLeaf
+	//   COLD_ARCHIVE_HASH:
+	//      HashEntry() *ColdArchiveHashEntry
+	Type ColdArchiveBucketEntryType
+	_u   interface{}
+}
+
 type UpgradeType = []byte // bound 128
 
 type StellarValueType int32
@@ -971,47 +1100,6 @@ type LedgerUpgrade struct {
 
 type ConfigUpgradeSet struct {
 	UpdatedEntry []ConfigSettingEntry
-}
-
-/* Entries used to define the bucket list */
-type BucketEntryType int32
-
-const (
-	// At-and-after protocol 11: bucket metadata, should come first.
-	METAENTRY BucketEntryType = -1
-	// Before protocol 11: created-or-updated;
-	LIVEENTRY BucketEntryType = 0
-	// At-and-after protocol 11: only updated.
-	DEADENTRY BucketEntryType = 1
-	// At-and-after protocol 11: only created.
-	INITENTRY BucketEntryType = 2
-)
-
-type BucketMetadata struct {
-	// Indicates the protocol version used to create / merge this bucket.
-	LedgerVersion Uint32
-	Ext           XdrAnon_BucketMetadata_Ext
-}
-
-// reserved for future use
-type XdrAnon_BucketMetadata_Ext struct {
-	// The union discriminant V selects among the following arms:
-	//   0:
-	//      void
-	V  int32
-	_u interface{}
-}
-
-type BucketEntry struct {
-	// The union discriminant Type selects among the following arms:
-	//   LIVEENTRY, INITENTRY:
-	//      LiveEntry() *LedgerEntry
-	//   DEADENTRY:
-	//      DeadEntry() *LedgerKey
-	//   METAENTRY:
-	//      MetaEntry() *BucketMetadata
-	Type BucketEntryType
-	_u   interface{}
 }
 
 type TxSetComponentType int32
@@ -2217,6 +2305,7 @@ const (
 	HOST_FUNCTION_TYPE_INVOKE_CONTRACT      HostFunctionType = 0
 	HOST_FUNCTION_TYPE_CREATE_CONTRACT      HostFunctionType = 1
 	HOST_FUNCTION_TYPE_UPLOAD_CONTRACT_WASM HostFunctionType = 2
+	HOST_FUNCTION_TYPE_CREATE_CONTRACT_V2   HostFunctionType = 3
 )
 
 type ContractIDPreimageType int32
@@ -2245,6 +2334,13 @@ type CreateContractArgs struct {
 	Executable         ContractExecutable
 }
 
+type CreateContractArgsV2 struct {
+	ContractIDPreimage ContractIDPreimage
+	Executable         ContractExecutable
+	// Arguments of the contract's constructor.
+	ConstructorArgs []SCVal
+}
+
 type InvokeContractArgs struct {
 	ContractAddress SCAddress
 	FunctionName    SCSymbol
@@ -2259,6 +2355,8 @@ type HostFunction struct {
 	//      CreateContract() *CreateContractArgs
 	//   HOST_FUNCTION_TYPE_UPLOAD_CONTRACT_WASM:
 	//      Wasm() *[]byte
+	//   HOST_FUNCTION_TYPE_CREATE_CONTRACT_V2:
+	//      CreateContractV2() *CreateContractArgsV2
 	Type HostFunctionType
 	_u   interface{}
 }
@@ -2266,8 +2364,9 @@ type HostFunction struct {
 type SorobanAuthorizedFunctionType int32
 
 const (
-	SOROBAN_AUTHORIZED_FUNCTION_TYPE_CONTRACT_FN             SorobanAuthorizedFunctionType = 0
-	SOROBAN_AUTHORIZED_FUNCTION_TYPE_CREATE_CONTRACT_HOST_FN SorobanAuthorizedFunctionType = 1
+	SOROBAN_AUTHORIZED_FUNCTION_TYPE_CONTRACT_FN                SorobanAuthorizedFunctionType = 0
+	SOROBAN_AUTHORIZED_FUNCTION_TYPE_CREATE_CONTRACT_HOST_FN    SorobanAuthorizedFunctionType = 1
+	SOROBAN_AUTHORIZED_FUNCTION_TYPE_CREATE_CONTRACT_V2_HOST_FN SorobanAuthorizedFunctionType = 2
 )
 
 type SorobanAuthorizedFunction struct {
@@ -2276,6 +2375,8 @@ type SorobanAuthorizedFunction struct {
 	//      ContractFn() *InvokeContractArgs
 	//   SOROBAN_AUTHORIZED_FUNCTION_TYPE_CREATE_CONTRACT_HOST_FN:
 	//      CreateContractHostFn() *CreateContractArgs
+	//   SOROBAN_AUTHORIZED_FUNCTION_TYPE_CREATE_CONTRACT_V2_HOST_FN:
+	//      CreateContractV2HostFn() *CreateContractArgsV2
 	Type SorobanAuthorizedFunctionType
 	_u   interface{}
 }
@@ -2549,6 +2650,53 @@ type Preconditions struct {
 type LedgerFootprint struct {
 	ReadOnly  []LedgerKey
 	ReadWrite []LedgerKey
+}
+
+type ArchivalProofType int32
+
+const (
+	EXISTENCE    ArchivalProofType = 0
+	NONEXISTENCE ArchivalProofType = 1
+)
+
+type ArchivalProofNode struct {
+	Index Uint32
+	Hash  Hash
+}
+
+type ProofLevel = []ArchivalProofNode
+
+type NonexistenceProofBody struct {
+	EntriesToProve []ColdArchiveBucketEntry
+	// Vector of vectors, where proofLevels[level]
+	// contains all HashNodes that correspond with that level
+	ProofLevels []ProofLevel
+}
+
+type ExistenceProofBody struct {
+	KeysToProve []LedgerKey
+	// Bounds for each key being proved, where bound[n]
+	// corresponds to keysToProve[n]
+	LowBoundEntries  []ColdArchiveBucketEntry
+	HighBoundEntries []ColdArchiveBucketEntry
+	// Vector of vectors, where proofLevels[level]
+	// contains all HashNodes that correspond with that level
+	ProofLevels []ProofLevel
+}
+
+type ArchivalProof struct {
+	// AST Subtree for this proof
+	Epoch Uint32
+	Body  XdrAnon_ArchivalProof_Body
+}
+type XdrAnon_ArchivalProof_Body struct {
+	// The union discriminant T selects among the following arms:
+	//   EXISTENCE:
+	//      NonexistenceProof() *NonexistenceProofBody
+	//   NONEXISTENCE:
+	//      ExistenceProof() *ExistenceProofBody
+	T  ArchivalProofType
+	_u interface{}
 }
 
 // Resource limits for a Soroban transaction.
@@ -3829,6 +3977,34 @@ type HmacSha256Key struct {
 
 type HmacSha256Mac struct {
 	Mac [32]byte
+}
+
+type ShortHashSeed struct {
+	Seed [16]byte
+}
+
+type BinaryFuseFilterType int32
+
+const (
+	BINARY_FUSE_FILTER_8_BIT  BinaryFuseFilterType = 0
+	BINARY_FUSE_FILTER_16_BIT BinaryFuseFilterType = 1
+	BINARY_FUSE_FILTER_32_BIT BinaryFuseFilterType = 2
+)
+
+type SerializedBinaryFuseFilter struct {
+	Type BinaryFuseFilterType
+	// Seed used to hash input to filter
+	InputHashSeed ShortHashSeed
+	// Seed used for internal filter hash operations
+	FilterSeed         ShortHashSeed
+	SegmentLength      Uint32
+	SegementLengthMask Uint32
+	SegmentCount       Uint32
+	SegmentCountLength Uint32
+	// Length in terms of element count, not bytes
+	FingerprintLength Uint32
+	// Array of uint8_t, uint16_t, or uint32_t depending on filter type
+	Fingerprints []byte
 }
 
 type SCEnvMetaKind int32
@@ -9236,6 +9412,789 @@ type XdrType_EnvelopeType = *EnvelopeType
 
 func XDR_EnvelopeType(v *EnvelopeType) *EnvelopeType { return v }
 
+var _XdrNames_BucketListType = map[int32]string{
+	int32(LIVE):         "LIVE",
+	int32(HOT_ARCHIVE):  "HOT_ARCHIVE",
+	int32(COLD_ARCHIVE): "COLD_ARCHIVE",
+}
+var _XdrValues_BucketListType = map[string]int32{
+	"LIVE":         int32(LIVE),
+	"HOT_ARCHIVE":  int32(HOT_ARCHIVE),
+	"COLD_ARCHIVE": int32(COLD_ARCHIVE),
+}
+
+func (BucketListType) XdrEnumNames() map[int32]string {
+	return _XdrNames_BucketListType
+}
+func (v BucketListType) String() string {
+	if s, ok := _XdrNames_BucketListType[int32(v)]; ok {
+		return s
+	}
+	return fmt.Sprintf("BucketListType#%d", v)
+}
+func (v *BucketListType) Scan(ss fmt.ScanState, _ rune) error {
+	if tok, err := ss.Token(true, XdrSymChar); err != nil {
+		return err
+	} else {
+		stok := string(tok)
+		if val, ok := _XdrValues_BucketListType[stok]; ok {
+			*v = BucketListType(val)
+			return nil
+		} else if stok == "BucketListType" {
+			if n, err := fmt.Fscanf(ss, "#%d", (*int32)(v)); n == 1 && err == nil {
+				return nil
+			}
+		}
+		return XdrError(fmt.Sprintf("%s is not a valid BucketListType.", stok))
+	}
+}
+func (v BucketListType) GetU32() uint32                 { return uint32(v) }
+func (v *BucketListType) SetU32(n uint32)               { *v = BucketListType(n) }
+func (v *BucketListType) XdrPointer() interface{}       { return v }
+func (BucketListType) XdrTypeName() string              { return "BucketListType" }
+func (v BucketListType) XdrValue() interface{}          { return v }
+func (v *BucketListType) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+
+type XdrType_BucketListType = *BucketListType
+
+func XDR_BucketListType(v *BucketListType) *BucketListType { return v }
+
+var _XdrNames_BucketEntryType = map[int32]string{
+	int32(METAENTRY): "METAENTRY",
+	int32(LIVEENTRY): "LIVEENTRY",
+	int32(DEADENTRY): "DEADENTRY",
+	int32(INITENTRY): "INITENTRY",
+}
+var _XdrValues_BucketEntryType = map[string]int32{
+	"METAENTRY": int32(METAENTRY),
+	"LIVEENTRY": int32(LIVEENTRY),
+	"DEADENTRY": int32(DEADENTRY),
+	"INITENTRY": int32(INITENTRY),
+}
+
+func (BucketEntryType) XdrEnumNames() map[int32]string {
+	return _XdrNames_BucketEntryType
+}
+func (v BucketEntryType) String() string {
+	if s, ok := _XdrNames_BucketEntryType[int32(v)]; ok {
+		return s
+	}
+	return fmt.Sprintf("BucketEntryType#%d", v)
+}
+func (v *BucketEntryType) Scan(ss fmt.ScanState, _ rune) error {
+	if tok, err := ss.Token(true, XdrSymChar); err != nil {
+		return err
+	} else {
+		stok := string(tok)
+		if val, ok := _XdrValues_BucketEntryType[stok]; ok {
+			*v = BucketEntryType(val)
+			return nil
+		} else if stok == "BucketEntryType" {
+			if n, err := fmt.Fscanf(ss, "#%d", (*int32)(v)); n == 1 && err == nil {
+				return nil
+			}
+		}
+		return XdrError(fmt.Sprintf("%s is not a valid BucketEntryType.", stok))
+	}
+}
+func (v BucketEntryType) GetU32() uint32                 { return uint32(v) }
+func (v *BucketEntryType) SetU32(n uint32)               { *v = BucketEntryType(n) }
+func (v *BucketEntryType) XdrPointer() interface{}       { return v }
+func (BucketEntryType) XdrTypeName() string              { return "BucketEntryType" }
+func (v BucketEntryType) XdrValue() interface{}          { return v }
+func (v *BucketEntryType) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+
+type XdrType_BucketEntryType = *BucketEntryType
+
+func XDR_BucketEntryType(v *BucketEntryType) *BucketEntryType { return v }
+
+var _XdrComments_BucketEntryType = map[int32]string{
+	int32(METAENTRY): "At-and-after protocol 11: bucket metadata, should come first.",
+	int32(LIVEENTRY): "Before protocol 11: created-or-updated;",
+	int32(DEADENTRY): "At-and-after protocol 11: only updated.",
+	int32(INITENTRY): "At-and-after protocol 11: only created.",
+}
+
+func (e BucketEntryType) XdrEnumComments() map[int32]string {
+	return _XdrComments_BucketEntryType
+}
+
+var _XdrNames_HotArchiveBucketEntryType = map[int32]string{
+	int32(HOT_ARCHIVE_METAENTRY): "HOT_ARCHIVE_METAENTRY",
+	int32(HOT_ARCHIVE_ARCHIVED):  "HOT_ARCHIVE_ARCHIVED",
+	int32(HOT_ARCHIVE_LIVE):      "HOT_ARCHIVE_LIVE",
+	int32(HOT_ARCHIVE_DELETED):   "HOT_ARCHIVE_DELETED",
+}
+var _XdrValues_HotArchiveBucketEntryType = map[string]int32{
+	"HOT_ARCHIVE_METAENTRY": int32(HOT_ARCHIVE_METAENTRY),
+	"HOT_ARCHIVE_ARCHIVED":  int32(HOT_ARCHIVE_ARCHIVED),
+	"HOT_ARCHIVE_LIVE":      int32(HOT_ARCHIVE_LIVE),
+	"HOT_ARCHIVE_DELETED":   int32(HOT_ARCHIVE_DELETED),
+}
+
+func (HotArchiveBucketEntryType) XdrEnumNames() map[int32]string {
+	return _XdrNames_HotArchiveBucketEntryType
+}
+func (v HotArchiveBucketEntryType) String() string {
+	if s, ok := _XdrNames_HotArchiveBucketEntryType[int32(v)]; ok {
+		return s
+	}
+	return fmt.Sprintf("HotArchiveBucketEntryType#%d", v)
+}
+func (v *HotArchiveBucketEntryType) Scan(ss fmt.ScanState, _ rune) error {
+	if tok, err := ss.Token(true, XdrSymChar); err != nil {
+		return err
+	} else {
+		stok := string(tok)
+		if val, ok := _XdrValues_HotArchiveBucketEntryType[stok]; ok {
+			*v = HotArchiveBucketEntryType(val)
+			return nil
+		} else if stok == "HotArchiveBucketEntryType" {
+			if n, err := fmt.Fscanf(ss, "#%d", (*int32)(v)); n == 1 && err == nil {
+				return nil
+			}
+		}
+		return XdrError(fmt.Sprintf("%s is not a valid HotArchiveBucketEntryType.", stok))
+	}
+}
+func (v HotArchiveBucketEntryType) GetU32() uint32                 { return uint32(v) }
+func (v *HotArchiveBucketEntryType) SetU32(n uint32)               { *v = HotArchiveBucketEntryType(n) }
+func (v *HotArchiveBucketEntryType) XdrPointer() interface{}       { return v }
+func (HotArchiveBucketEntryType) XdrTypeName() string              { return "HotArchiveBucketEntryType" }
+func (v HotArchiveBucketEntryType) XdrValue() interface{}          { return v }
+func (v *HotArchiveBucketEntryType) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+
+type XdrType_HotArchiveBucketEntryType = *HotArchiveBucketEntryType
+
+func XDR_HotArchiveBucketEntryType(v *HotArchiveBucketEntryType) *HotArchiveBucketEntryType { return v }
+
+var _XdrComments_HotArchiveBucketEntryType = map[int32]string{
+	int32(HOT_ARCHIVE_METAENTRY): "Bucket metadata, should come first.",
+	int32(HOT_ARCHIVE_ARCHIVED):  "Entry is Archived",
+	int32(HOT_ARCHIVE_LIVE):      "Entry was previously HOT_ARCHIVE_ARCHIVED, or HOT_ARCHIVE_DELETED, but",
+	int32(HOT_ARCHIVE_DELETED):   "has been added back to the live BucketList. Does not need to be persisted.",
+}
+
+func (e HotArchiveBucketEntryType) XdrEnumComments() map[int32]string {
+	return _XdrComments_HotArchiveBucketEntryType
+}
+
+var _XdrNames_ColdArchiveBucketEntryType = map[int32]string{
+	int32(COLD_ARCHIVE_METAENTRY):     "COLD_ARCHIVE_METAENTRY",
+	int32(COLD_ARCHIVE_ARCHIVED_LEAF): "COLD_ARCHIVE_ARCHIVED_LEAF",
+	int32(COLD_ARCHIVE_DELETED_LEAF):  "COLD_ARCHIVE_DELETED_LEAF",
+	int32(COLD_ARCHIVE_BOUNDARY_LEAF): "COLD_ARCHIVE_BOUNDARY_LEAF",
+	int32(COLD_ARCHIVE_HASH):          "COLD_ARCHIVE_HASH",
+}
+var _XdrValues_ColdArchiveBucketEntryType = map[string]int32{
+	"COLD_ARCHIVE_METAENTRY":     int32(COLD_ARCHIVE_METAENTRY),
+	"COLD_ARCHIVE_ARCHIVED_LEAF": int32(COLD_ARCHIVE_ARCHIVED_LEAF),
+	"COLD_ARCHIVE_DELETED_LEAF":  int32(COLD_ARCHIVE_DELETED_LEAF),
+	"COLD_ARCHIVE_BOUNDARY_LEAF": int32(COLD_ARCHIVE_BOUNDARY_LEAF),
+	"COLD_ARCHIVE_HASH":          int32(COLD_ARCHIVE_HASH),
+}
+
+func (ColdArchiveBucketEntryType) XdrEnumNames() map[int32]string {
+	return _XdrNames_ColdArchiveBucketEntryType
+}
+func (v ColdArchiveBucketEntryType) String() string {
+	if s, ok := _XdrNames_ColdArchiveBucketEntryType[int32(v)]; ok {
+		return s
+	}
+	return fmt.Sprintf("ColdArchiveBucketEntryType#%d", v)
+}
+func (v *ColdArchiveBucketEntryType) Scan(ss fmt.ScanState, _ rune) error {
+	if tok, err := ss.Token(true, XdrSymChar); err != nil {
+		return err
+	} else {
+		stok := string(tok)
+		if val, ok := _XdrValues_ColdArchiveBucketEntryType[stok]; ok {
+			*v = ColdArchiveBucketEntryType(val)
+			return nil
+		} else if stok == "ColdArchiveBucketEntryType" {
+			if n, err := fmt.Fscanf(ss, "#%d", (*int32)(v)); n == 1 && err == nil {
+				return nil
+			}
+		}
+		return XdrError(fmt.Sprintf("%s is not a valid ColdArchiveBucketEntryType.", stok))
+	}
+}
+func (v ColdArchiveBucketEntryType) GetU32() uint32                 { return uint32(v) }
+func (v *ColdArchiveBucketEntryType) SetU32(n uint32)               { *v = ColdArchiveBucketEntryType(n) }
+func (v *ColdArchiveBucketEntryType) XdrPointer() interface{}       { return v }
+func (ColdArchiveBucketEntryType) XdrTypeName() string              { return "ColdArchiveBucketEntryType" }
+func (v ColdArchiveBucketEntryType) XdrValue() interface{}          { return v }
+func (v *ColdArchiveBucketEntryType) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+
+type XdrType_ColdArchiveBucketEntryType = *ColdArchiveBucketEntryType
+
+func XDR_ColdArchiveBucketEntryType(v *ColdArchiveBucketEntryType) *ColdArchiveBucketEntryType {
+	return v
+}
+
+var _XdrComments_ColdArchiveBucketEntryType = map[int32]string{
+	int32(COLD_ARCHIVE_METAENTRY):     "Bucket metadata, should come first.",
+	int32(COLD_ARCHIVE_ARCHIVED_LEAF): "Full LedgerEntry that was archived during the epoch",
+	int32(COLD_ARCHIVE_DELETED_LEAF):  "LedgerKey that was deleted during the epoch",
+	int32(COLD_ARCHIVE_BOUNDARY_LEAF): "Dummy leaf representing low/high bound",
+	int32(COLD_ARCHIVE_HASH):          "Intermediary Merkle hash entry",
+}
+
+func (e ColdArchiveBucketEntryType) XdrEnumComments() map[int32]string {
+	return _XdrComments_ColdArchiveBucketEntryType
+}
+
+var _XdrTags_XdrAnon_BucketMetadata_Ext = map[int32]bool{
+	XdrToI32(0): true,
+	XdrToI32(1): true,
+}
+
+func (_ XdrAnon_BucketMetadata_Ext) XdrValidTags() map[int32]bool {
+	return _XdrTags_XdrAnon_BucketMetadata_Ext
+}
+func (u *XdrAnon_BucketMetadata_Ext) BucketListType() *BucketListType {
+	switch u.V {
+	case 1:
+		if v, ok := u._u.(*BucketListType); ok {
+			return v
+		} else {
+			var zero BucketListType
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("XdrAnon_BucketMetadata_Ext.BucketListType accessed when V == %v", u.V)
+		return nil
+	}
+}
+func (u XdrAnon_BucketMetadata_Ext) XdrValid() bool {
+	switch u.V {
+	case 0, 1:
+		return true
+	}
+	return false
+}
+func (u *XdrAnon_BucketMetadata_Ext) XdrUnionTag() XdrNum32 {
+	return XDR_int32(&u.V)
+}
+func (u *XdrAnon_BucketMetadata_Ext) XdrUnionTagName() string {
+	return "V"
+}
+func (u *XdrAnon_BucketMetadata_Ext) XdrUnionBody() XdrType {
+	switch u.V {
+	case 0:
+		return nil
+	case 1:
+		return XDR_BucketListType(u.BucketListType())
+	}
+	return nil
+}
+func (u *XdrAnon_BucketMetadata_Ext) XdrUnionBodyName() string {
+	switch u.V {
+	case 0:
+		return ""
+	case 1:
+		return "BucketListType"
+	}
+	return ""
+}
+
+type XdrType_XdrAnon_BucketMetadata_Ext = *XdrAnon_BucketMetadata_Ext
+
+func (v *XdrAnon_BucketMetadata_Ext) XdrPointer() interface{}       { return v }
+func (XdrAnon_BucketMetadata_Ext) XdrTypeName() string              { return "XdrAnon_BucketMetadata_Ext" }
+func (v XdrAnon_BucketMetadata_Ext) XdrValue() interface{}          { return v }
+func (v *XdrAnon_BucketMetadata_Ext) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (u *XdrAnon_BucketMetadata_Ext) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	XDR_int32(&u.V).XdrMarshal(x, x.Sprintf("%sv", name))
+	switch u.V {
+	case 0:
+		return
+	case 1:
+		x.Marshal(x.Sprintf("%sbucketListType", name), XDR_BucketListType(u.BucketListType()))
+		return
+	}
+	XdrPanic("invalid V (%v) in XdrAnon_BucketMetadata_Ext", u.V)
+}
+func XDR_XdrAnon_BucketMetadata_Ext(v *XdrAnon_BucketMetadata_Ext) *XdrAnon_BucketMetadata_Ext {
+	return v
+}
+
+type XdrType_BucketMetadata = *BucketMetadata
+
+func (v *BucketMetadata) XdrPointer() interface{}       { return v }
+func (BucketMetadata) XdrTypeName() string              { return "BucketMetadata" }
+func (v BucketMetadata) XdrValue() interface{}          { return v }
+func (v *BucketMetadata) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *BucketMetadata) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	x.Marshal(x.Sprintf("%sledgerVersion", name), XDR_Uint32(&v.LedgerVersion))
+	x.Marshal(x.Sprintf("%sext", name), XDR_XdrAnon_BucketMetadata_Ext(&v.Ext))
+}
+func XDR_BucketMetadata(v *BucketMetadata) *BucketMetadata { return v }
+
+var _XdrTags_BucketEntry = map[int32]bool{
+	XdrToI32(LIVEENTRY): true,
+	XdrToI32(INITENTRY): true,
+	XdrToI32(DEADENTRY): true,
+	XdrToI32(METAENTRY): true,
+}
+
+func (_ BucketEntry) XdrValidTags() map[int32]bool {
+	return _XdrTags_BucketEntry
+}
+func (u *BucketEntry) LiveEntry() *LedgerEntry {
+	switch u.Type {
+	case LIVEENTRY, INITENTRY:
+		if v, ok := u._u.(*LedgerEntry); ok {
+			return v
+		} else {
+			var zero LedgerEntry
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("BucketEntry.LiveEntry accessed when Type == %v", u.Type)
+		return nil
+	}
+}
+func (u *BucketEntry) DeadEntry() *LedgerKey {
+	switch u.Type {
+	case DEADENTRY:
+		if v, ok := u._u.(*LedgerKey); ok {
+			return v
+		} else {
+			var zero LedgerKey
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("BucketEntry.DeadEntry accessed when Type == %v", u.Type)
+		return nil
+	}
+}
+func (u *BucketEntry) MetaEntry() *BucketMetadata {
+	switch u.Type {
+	case METAENTRY:
+		if v, ok := u._u.(*BucketMetadata); ok {
+			return v
+		} else {
+			var zero BucketMetadata
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("BucketEntry.MetaEntry accessed when Type == %v", u.Type)
+		return nil
+	}
+}
+func (u BucketEntry) XdrValid() bool {
+	switch u.Type {
+	case LIVEENTRY, INITENTRY, DEADENTRY, METAENTRY:
+		return true
+	}
+	return false
+}
+func (u *BucketEntry) XdrUnionTag() XdrNum32 {
+	return XDR_BucketEntryType(&u.Type)
+}
+func (u *BucketEntry) XdrUnionTagName() string {
+	return "Type"
+}
+func (u *BucketEntry) XdrUnionBody() XdrType {
+	switch u.Type {
+	case LIVEENTRY, INITENTRY:
+		return XDR_LedgerEntry(u.LiveEntry())
+	case DEADENTRY:
+		return XDR_LedgerKey(u.DeadEntry())
+	case METAENTRY:
+		return XDR_BucketMetadata(u.MetaEntry())
+	}
+	return nil
+}
+func (u *BucketEntry) XdrUnionBodyName() string {
+	switch u.Type {
+	case LIVEENTRY, INITENTRY:
+		return "LiveEntry"
+	case DEADENTRY:
+		return "DeadEntry"
+	case METAENTRY:
+		return "MetaEntry"
+	}
+	return ""
+}
+
+type XdrType_BucketEntry = *BucketEntry
+
+func (v *BucketEntry) XdrPointer() interface{}       { return v }
+func (BucketEntry) XdrTypeName() string              { return "BucketEntry" }
+func (v BucketEntry) XdrValue() interface{}          { return v }
+func (v *BucketEntry) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (u *BucketEntry) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	XDR_BucketEntryType(&u.Type).XdrMarshal(x, x.Sprintf("%stype", name))
+	switch u.Type {
+	case LIVEENTRY, INITENTRY:
+		x.Marshal(x.Sprintf("%sliveEntry", name), XDR_LedgerEntry(u.LiveEntry()))
+		return
+	case DEADENTRY:
+		x.Marshal(x.Sprintf("%sdeadEntry", name), XDR_LedgerKey(u.DeadEntry()))
+		return
+	case METAENTRY:
+		x.Marshal(x.Sprintf("%smetaEntry", name), XDR_BucketMetadata(u.MetaEntry()))
+		return
+	}
+	XdrPanic("invalid Type (%v) in BucketEntry", u.Type)
+}
+func XDR_BucketEntry(v *BucketEntry) *BucketEntry { return v }
+
+var _XdrTags_HotArchiveBucketEntry = map[int32]bool{
+	XdrToI32(HOT_ARCHIVE_ARCHIVED):  true,
+	XdrToI32(HOT_ARCHIVE_LIVE):      true,
+	XdrToI32(HOT_ARCHIVE_DELETED):   true,
+	XdrToI32(HOT_ARCHIVE_METAENTRY): true,
+}
+
+func (_ HotArchiveBucketEntry) XdrValidTags() map[int32]bool {
+	return _XdrTags_HotArchiveBucketEntry
+}
+func (u *HotArchiveBucketEntry) ArchivedEntry() *LedgerEntry {
+	switch u.Type {
+	case HOT_ARCHIVE_ARCHIVED:
+		if v, ok := u._u.(*LedgerEntry); ok {
+			return v
+		} else {
+			var zero LedgerEntry
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("HotArchiveBucketEntry.ArchivedEntry accessed when Type == %v", u.Type)
+		return nil
+	}
+}
+func (u *HotArchiveBucketEntry) Key() *LedgerKey {
+	switch u.Type {
+	case HOT_ARCHIVE_LIVE, HOT_ARCHIVE_DELETED:
+		if v, ok := u._u.(*LedgerKey); ok {
+			return v
+		} else {
+			var zero LedgerKey
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("HotArchiveBucketEntry.Key accessed when Type == %v", u.Type)
+		return nil
+	}
+}
+func (u *HotArchiveBucketEntry) MetaEntry() *BucketMetadata {
+	switch u.Type {
+	case HOT_ARCHIVE_METAENTRY:
+		if v, ok := u._u.(*BucketMetadata); ok {
+			return v
+		} else {
+			var zero BucketMetadata
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("HotArchiveBucketEntry.MetaEntry accessed when Type == %v", u.Type)
+		return nil
+	}
+}
+func (u HotArchiveBucketEntry) XdrValid() bool {
+	switch u.Type {
+	case HOT_ARCHIVE_ARCHIVED, HOT_ARCHIVE_LIVE, HOT_ARCHIVE_DELETED, HOT_ARCHIVE_METAENTRY:
+		return true
+	}
+	return false
+}
+func (u *HotArchiveBucketEntry) XdrUnionTag() XdrNum32 {
+	return XDR_HotArchiveBucketEntryType(&u.Type)
+}
+func (u *HotArchiveBucketEntry) XdrUnionTagName() string {
+	return "Type"
+}
+func (u *HotArchiveBucketEntry) XdrUnionBody() XdrType {
+	switch u.Type {
+	case HOT_ARCHIVE_ARCHIVED:
+		return XDR_LedgerEntry(u.ArchivedEntry())
+	case HOT_ARCHIVE_LIVE, HOT_ARCHIVE_DELETED:
+		return XDR_LedgerKey(u.Key())
+	case HOT_ARCHIVE_METAENTRY:
+		return XDR_BucketMetadata(u.MetaEntry())
+	}
+	return nil
+}
+func (u *HotArchiveBucketEntry) XdrUnionBodyName() string {
+	switch u.Type {
+	case HOT_ARCHIVE_ARCHIVED:
+		return "ArchivedEntry"
+	case HOT_ARCHIVE_LIVE, HOT_ARCHIVE_DELETED:
+		return "Key"
+	case HOT_ARCHIVE_METAENTRY:
+		return "MetaEntry"
+	}
+	return ""
+}
+
+type XdrType_HotArchiveBucketEntry = *HotArchiveBucketEntry
+
+func (v *HotArchiveBucketEntry) XdrPointer() interface{}       { return v }
+func (HotArchiveBucketEntry) XdrTypeName() string              { return "HotArchiveBucketEntry" }
+func (v HotArchiveBucketEntry) XdrValue() interface{}          { return v }
+func (v *HotArchiveBucketEntry) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (u *HotArchiveBucketEntry) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	XDR_HotArchiveBucketEntryType(&u.Type).XdrMarshal(x, x.Sprintf("%stype", name))
+	switch u.Type {
+	case HOT_ARCHIVE_ARCHIVED:
+		x.Marshal(x.Sprintf("%sarchivedEntry", name), XDR_LedgerEntry(u.ArchivedEntry()))
+		return
+	case HOT_ARCHIVE_LIVE, HOT_ARCHIVE_DELETED:
+		x.Marshal(x.Sprintf("%skey", name), XDR_LedgerKey(u.Key()))
+		return
+	case HOT_ARCHIVE_METAENTRY:
+		x.Marshal(x.Sprintf("%smetaEntry", name), XDR_BucketMetadata(u.MetaEntry()))
+		return
+	}
+	XdrPanic("invalid Type (%v) in HotArchiveBucketEntry", u.Type)
+}
+func XDR_HotArchiveBucketEntry(v *HotArchiveBucketEntry) *HotArchiveBucketEntry { return v }
+
+type XdrType_ColdArchiveArchivedLeaf = *ColdArchiveArchivedLeaf
+
+func (v *ColdArchiveArchivedLeaf) XdrPointer() interface{}       { return v }
+func (ColdArchiveArchivedLeaf) XdrTypeName() string              { return "ColdArchiveArchivedLeaf" }
+func (v ColdArchiveArchivedLeaf) XdrValue() interface{}          { return v }
+func (v *ColdArchiveArchivedLeaf) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *ColdArchiveArchivedLeaf) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	x.Marshal(x.Sprintf("%sindex", name), XDR_Uint32(&v.Index))
+	x.Marshal(x.Sprintf("%sarchivedEntry", name), XDR_LedgerEntry(&v.ArchivedEntry))
+}
+func XDR_ColdArchiveArchivedLeaf(v *ColdArchiveArchivedLeaf) *ColdArchiveArchivedLeaf { return v }
+
+type XdrType_ColdArchiveDeletedLeaf = *ColdArchiveDeletedLeaf
+
+func (v *ColdArchiveDeletedLeaf) XdrPointer() interface{}       { return v }
+func (ColdArchiveDeletedLeaf) XdrTypeName() string              { return "ColdArchiveDeletedLeaf" }
+func (v ColdArchiveDeletedLeaf) XdrValue() interface{}          { return v }
+func (v *ColdArchiveDeletedLeaf) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *ColdArchiveDeletedLeaf) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	x.Marshal(x.Sprintf("%sindex", name), XDR_Uint32(&v.Index))
+	x.Marshal(x.Sprintf("%sdeletedKey", name), XDR_LedgerKey(&v.DeletedKey))
+}
+func XDR_ColdArchiveDeletedLeaf(v *ColdArchiveDeletedLeaf) *ColdArchiveDeletedLeaf { return v }
+
+type XdrType_ColdArchiveBoundaryLeaf = *ColdArchiveBoundaryLeaf
+
+func (v *ColdArchiveBoundaryLeaf) XdrPointer() interface{}       { return v }
+func (ColdArchiveBoundaryLeaf) XdrTypeName() string              { return "ColdArchiveBoundaryLeaf" }
+func (v ColdArchiveBoundaryLeaf) XdrValue() interface{}          { return v }
+func (v *ColdArchiveBoundaryLeaf) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *ColdArchiveBoundaryLeaf) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	x.Marshal(x.Sprintf("%sindex", name), XDR_Uint32(&v.Index))
+	x.Marshal(x.Sprintf("%sisLowerBound", name), XDR_bool(&v.IsLowerBound))
+}
+func XDR_ColdArchiveBoundaryLeaf(v *ColdArchiveBoundaryLeaf) *ColdArchiveBoundaryLeaf { return v }
+
+type XdrType_ColdArchiveHashEntry = *ColdArchiveHashEntry
+
+func (v *ColdArchiveHashEntry) XdrPointer() interface{}       { return v }
+func (ColdArchiveHashEntry) XdrTypeName() string              { return "ColdArchiveHashEntry" }
+func (v ColdArchiveHashEntry) XdrValue() interface{}          { return v }
+func (v *ColdArchiveHashEntry) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *ColdArchiveHashEntry) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	x.Marshal(x.Sprintf("%sindex", name), XDR_Uint32(&v.Index))
+	x.Marshal(x.Sprintf("%slevel", name), XDR_Uint32(&v.Level))
+	x.Marshal(x.Sprintf("%shash", name), XDR_Hash(&v.Hash))
+}
+func XDR_ColdArchiveHashEntry(v *ColdArchiveHashEntry) *ColdArchiveHashEntry { return v }
+
+var _XdrTags_ColdArchiveBucketEntry = map[int32]bool{
+	XdrToI32(COLD_ARCHIVE_METAENTRY):     true,
+	XdrToI32(COLD_ARCHIVE_ARCHIVED_LEAF): true,
+	XdrToI32(COLD_ARCHIVE_DELETED_LEAF):  true,
+	XdrToI32(COLD_ARCHIVE_BOUNDARY_LEAF): true,
+	XdrToI32(COLD_ARCHIVE_HASH):          true,
+}
+
+func (_ ColdArchiveBucketEntry) XdrValidTags() map[int32]bool {
+	return _XdrTags_ColdArchiveBucketEntry
+}
+func (u *ColdArchiveBucketEntry) MetaEntry() *BucketMetadata {
+	switch u.Type {
+	case COLD_ARCHIVE_METAENTRY:
+		if v, ok := u._u.(*BucketMetadata); ok {
+			return v
+		} else {
+			var zero BucketMetadata
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("ColdArchiveBucketEntry.MetaEntry accessed when Type == %v", u.Type)
+		return nil
+	}
+}
+func (u *ColdArchiveBucketEntry) ArchivedLeaf() *ColdArchiveArchivedLeaf {
+	switch u.Type {
+	case COLD_ARCHIVE_ARCHIVED_LEAF:
+		if v, ok := u._u.(*ColdArchiveArchivedLeaf); ok {
+			return v
+		} else {
+			var zero ColdArchiveArchivedLeaf
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("ColdArchiveBucketEntry.ArchivedLeaf accessed when Type == %v", u.Type)
+		return nil
+	}
+}
+func (u *ColdArchiveBucketEntry) DeletedLeaf() *ColdArchiveDeletedLeaf {
+	switch u.Type {
+	case COLD_ARCHIVE_DELETED_LEAF:
+		if v, ok := u._u.(*ColdArchiveDeletedLeaf); ok {
+			return v
+		} else {
+			var zero ColdArchiveDeletedLeaf
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("ColdArchiveBucketEntry.DeletedLeaf accessed when Type == %v", u.Type)
+		return nil
+	}
+}
+func (u *ColdArchiveBucketEntry) BoundaryLeaf() *ColdArchiveBoundaryLeaf {
+	switch u.Type {
+	case COLD_ARCHIVE_BOUNDARY_LEAF:
+		if v, ok := u._u.(*ColdArchiveBoundaryLeaf); ok {
+			return v
+		} else {
+			var zero ColdArchiveBoundaryLeaf
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("ColdArchiveBucketEntry.BoundaryLeaf accessed when Type == %v", u.Type)
+		return nil
+	}
+}
+func (u *ColdArchiveBucketEntry) HashEntry() *ColdArchiveHashEntry {
+	switch u.Type {
+	case COLD_ARCHIVE_HASH:
+		if v, ok := u._u.(*ColdArchiveHashEntry); ok {
+			return v
+		} else {
+			var zero ColdArchiveHashEntry
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("ColdArchiveBucketEntry.HashEntry accessed when Type == %v", u.Type)
+		return nil
+	}
+}
+func (u ColdArchiveBucketEntry) XdrValid() bool {
+	switch u.Type {
+	case COLD_ARCHIVE_METAENTRY, COLD_ARCHIVE_ARCHIVED_LEAF, COLD_ARCHIVE_DELETED_LEAF, COLD_ARCHIVE_BOUNDARY_LEAF, COLD_ARCHIVE_HASH:
+		return true
+	}
+	return false
+}
+func (u *ColdArchiveBucketEntry) XdrUnionTag() XdrNum32 {
+	return XDR_ColdArchiveBucketEntryType(&u.Type)
+}
+func (u *ColdArchiveBucketEntry) XdrUnionTagName() string {
+	return "Type"
+}
+func (u *ColdArchiveBucketEntry) XdrUnionBody() XdrType {
+	switch u.Type {
+	case COLD_ARCHIVE_METAENTRY:
+		return XDR_BucketMetadata(u.MetaEntry())
+	case COLD_ARCHIVE_ARCHIVED_LEAF:
+		return XDR_ColdArchiveArchivedLeaf(u.ArchivedLeaf())
+	case COLD_ARCHIVE_DELETED_LEAF:
+		return XDR_ColdArchiveDeletedLeaf(u.DeletedLeaf())
+	case COLD_ARCHIVE_BOUNDARY_LEAF:
+		return XDR_ColdArchiveBoundaryLeaf(u.BoundaryLeaf())
+	case COLD_ARCHIVE_HASH:
+		return XDR_ColdArchiveHashEntry(u.HashEntry())
+	}
+	return nil
+}
+func (u *ColdArchiveBucketEntry) XdrUnionBodyName() string {
+	switch u.Type {
+	case COLD_ARCHIVE_METAENTRY:
+		return "MetaEntry"
+	case COLD_ARCHIVE_ARCHIVED_LEAF:
+		return "ArchivedLeaf"
+	case COLD_ARCHIVE_DELETED_LEAF:
+		return "DeletedLeaf"
+	case COLD_ARCHIVE_BOUNDARY_LEAF:
+		return "BoundaryLeaf"
+	case COLD_ARCHIVE_HASH:
+		return "HashEntry"
+	}
+	return ""
+}
+
+type XdrType_ColdArchiveBucketEntry = *ColdArchiveBucketEntry
+
+func (v *ColdArchiveBucketEntry) XdrPointer() interface{}       { return v }
+func (ColdArchiveBucketEntry) XdrTypeName() string              { return "ColdArchiveBucketEntry" }
+func (v ColdArchiveBucketEntry) XdrValue() interface{}          { return v }
+func (v *ColdArchiveBucketEntry) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (u *ColdArchiveBucketEntry) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	XDR_ColdArchiveBucketEntryType(&u.Type).XdrMarshal(x, x.Sprintf("%stype", name))
+	switch u.Type {
+	case COLD_ARCHIVE_METAENTRY:
+		x.Marshal(x.Sprintf("%smetaEntry", name), XDR_BucketMetadata(u.MetaEntry()))
+		return
+	case COLD_ARCHIVE_ARCHIVED_LEAF:
+		x.Marshal(x.Sprintf("%sarchivedLeaf", name), XDR_ColdArchiveArchivedLeaf(u.ArchivedLeaf()))
+		return
+	case COLD_ARCHIVE_DELETED_LEAF:
+		x.Marshal(x.Sprintf("%sdeletedLeaf", name), XDR_ColdArchiveDeletedLeaf(u.DeletedLeaf()))
+		return
+	case COLD_ARCHIVE_BOUNDARY_LEAF:
+		x.Marshal(x.Sprintf("%sboundaryLeaf", name), XDR_ColdArchiveBoundaryLeaf(u.BoundaryLeaf()))
+		return
+	case COLD_ARCHIVE_HASH:
+		x.Marshal(x.Sprintf("%shashEntry", name), XDR_ColdArchiveHashEntry(u.HashEntry()))
+		return
+	}
+	XdrPanic("invalid Type (%v) in ColdArchiveBucketEntry", u.Type)
+}
+func XDR_ColdArchiveBucketEntry(v *ColdArchiveBucketEntry) *ColdArchiveBucketEntry { return v }
+
 type XdrType_UpgradeType struct {
 	XdrVecOpaque
 }
@@ -10093,254 +11052,6 @@ func (v *ConfigUpgradeSet) XdrRecurse(x XDR, name string) {
 	x.Marshal(x.Sprintf("%supdatedEntry", name), (*_XdrVec_unbounded_ConfigSettingEntry)(&v.UpdatedEntry))
 }
 func XDR_ConfigUpgradeSet(v *ConfigUpgradeSet) *ConfigUpgradeSet { return v }
-
-var _XdrNames_BucketEntryType = map[int32]string{
-	int32(METAENTRY): "METAENTRY",
-	int32(LIVEENTRY): "LIVEENTRY",
-	int32(DEADENTRY): "DEADENTRY",
-	int32(INITENTRY): "INITENTRY",
-}
-var _XdrValues_BucketEntryType = map[string]int32{
-	"METAENTRY": int32(METAENTRY),
-	"LIVEENTRY": int32(LIVEENTRY),
-	"DEADENTRY": int32(DEADENTRY),
-	"INITENTRY": int32(INITENTRY),
-}
-
-func (BucketEntryType) XdrEnumNames() map[int32]string {
-	return _XdrNames_BucketEntryType
-}
-func (v BucketEntryType) String() string {
-	if s, ok := _XdrNames_BucketEntryType[int32(v)]; ok {
-		return s
-	}
-	return fmt.Sprintf("BucketEntryType#%d", v)
-}
-func (v *BucketEntryType) Scan(ss fmt.ScanState, _ rune) error {
-	if tok, err := ss.Token(true, XdrSymChar); err != nil {
-		return err
-	} else {
-		stok := string(tok)
-		if val, ok := _XdrValues_BucketEntryType[stok]; ok {
-			*v = BucketEntryType(val)
-			return nil
-		} else if stok == "BucketEntryType" {
-			if n, err := fmt.Fscanf(ss, "#%d", (*int32)(v)); n == 1 && err == nil {
-				return nil
-			}
-		}
-		return XdrError(fmt.Sprintf("%s is not a valid BucketEntryType.", stok))
-	}
-}
-func (v BucketEntryType) GetU32() uint32                 { return uint32(v) }
-func (v *BucketEntryType) SetU32(n uint32)               { *v = BucketEntryType(n) }
-func (v *BucketEntryType) XdrPointer() interface{}       { return v }
-func (BucketEntryType) XdrTypeName() string              { return "BucketEntryType" }
-func (v BucketEntryType) XdrValue() interface{}          { return v }
-func (v *BucketEntryType) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
-
-type XdrType_BucketEntryType = *BucketEntryType
-
-func XDR_BucketEntryType(v *BucketEntryType) *BucketEntryType { return v }
-
-var _XdrComments_BucketEntryType = map[int32]string{
-	int32(METAENTRY): "At-and-after protocol 11: bucket metadata, should come first.",
-	int32(LIVEENTRY): "Before protocol 11: created-or-updated;",
-	int32(DEADENTRY): "At-and-after protocol 11: only updated.",
-	int32(INITENTRY): "At-and-after protocol 11: only created.",
-}
-
-func (e BucketEntryType) XdrEnumComments() map[int32]string {
-	return _XdrComments_BucketEntryType
-}
-
-var _XdrTags_XdrAnon_BucketMetadata_Ext = map[int32]bool{
-	XdrToI32(0): true,
-}
-
-func (_ XdrAnon_BucketMetadata_Ext) XdrValidTags() map[int32]bool {
-	return _XdrTags_XdrAnon_BucketMetadata_Ext
-}
-func (u XdrAnon_BucketMetadata_Ext) XdrValid() bool {
-	switch u.V {
-	case 0:
-		return true
-	}
-	return false
-}
-func (u *XdrAnon_BucketMetadata_Ext) XdrUnionTag() XdrNum32 {
-	return XDR_int32(&u.V)
-}
-func (u *XdrAnon_BucketMetadata_Ext) XdrUnionTagName() string {
-	return "V"
-}
-func (u *XdrAnon_BucketMetadata_Ext) XdrUnionBody() XdrType {
-	switch u.V {
-	case 0:
-		return nil
-	}
-	return nil
-}
-func (u *XdrAnon_BucketMetadata_Ext) XdrUnionBodyName() string {
-	switch u.V {
-	case 0:
-		return ""
-	}
-	return ""
-}
-
-type XdrType_XdrAnon_BucketMetadata_Ext = *XdrAnon_BucketMetadata_Ext
-
-func (v *XdrAnon_BucketMetadata_Ext) XdrPointer() interface{}       { return v }
-func (XdrAnon_BucketMetadata_Ext) XdrTypeName() string              { return "XdrAnon_BucketMetadata_Ext" }
-func (v XdrAnon_BucketMetadata_Ext) XdrValue() interface{}          { return v }
-func (v *XdrAnon_BucketMetadata_Ext) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
-func (u *XdrAnon_BucketMetadata_Ext) XdrRecurse(x XDR, name string) {
-	if name != "" {
-		name = x.Sprintf("%s.", name)
-	}
-	XDR_int32(&u.V).XdrMarshal(x, x.Sprintf("%sv", name))
-	switch u.V {
-	case 0:
-		return
-	}
-	XdrPanic("invalid V (%v) in XdrAnon_BucketMetadata_Ext", u.V)
-}
-func XDR_XdrAnon_BucketMetadata_Ext(v *XdrAnon_BucketMetadata_Ext) *XdrAnon_BucketMetadata_Ext {
-	return v
-}
-
-type XdrType_BucketMetadata = *BucketMetadata
-
-func (v *BucketMetadata) XdrPointer() interface{}       { return v }
-func (BucketMetadata) XdrTypeName() string              { return "BucketMetadata" }
-func (v BucketMetadata) XdrValue() interface{}          { return v }
-func (v *BucketMetadata) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
-func (v *BucketMetadata) XdrRecurse(x XDR, name string) {
-	if name != "" {
-		name = x.Sprintf("%s.", name)
-	}
-	x.Marshal(x.Sprintf("%sledgerVersion", name), XDR_Uint32(&v.LedgerVersion))
-	x.Marshal(x.Sprintf("%sext", name), XDR_XdrAnon_BucketMetadata_Ext(&v.Ext))
-}
-func XDR_BucketMetadata(v *BucketMetadata) *BucketMetadata { return v }
-
-var _XdrTags_BucketEntry = map[int32]bool{
-	XdrToI32(LIVEENTRY): true,
-	XdrToI32(INITENTRY): true,
-	XdrToI32(DEADENTRY): true,
-	XdrToI32(METAENTRY): true,
-}
-
-func (_ BucketEntry) XdrValidTags() map[int32]bool {
-	return _XdrTags_BucketEntry
-}
-func (u *BucketEntry) LiveEntry() *LedgerEntry {
-	switch u.Type {
-	case LIVEENTRY, INITENTRY:
-		if v, ok := u._u.(*LedgerEntry); ok {
-			return v
-		} else {
-			var zero LedgerEntry
-			u._u = &zero
-			return &zero
-		}
-	default:
-		XdrPanic("BucketEntry.LiveEntry accessed when Type == %v", u.Type)
-		return nil
-	}
-}
-func (u *BucketEntry) DeadEntry() *LedgerKey {
-	switch u.Type {
-	case DEADENTRY:
-		if v, ok := u._u.(*LedgerKey); ok {
-			return v
-		} else {
-			var zero LedgerKey
-			u._u = &zero
-			return &zero
-		}
-	default:
-		XdrPanic("BucketEntry.DeadEntry accessed when Type == %v", u.Type)
-		return nil
-	}
-}
-func (u *BucketEntry) MetaEntry() *BucketMetadata {
-	switch u.Type {
-	case METAENTRY:
-		if v, ok := u._u.(*BucketMetadata); ok {
-			return v
-		} else {
-			var zero BucketMetadata
-			u._u = &zero
-			return &zero
-		}
-	default:
-		XdrPanic("BucketEntry.MetaEntry accessed when Type == %v", u.Type)
-		return nil
-	}
-}
-func (u BucketEntry) XdrValid() bool {
-	switch u.Type {
-	case LIVEENTRY, INITENTRY, DEADENTRY, METAENTRY:
-		return true
-	}
-	return false
-}
-func (u *BucketEntry) XdrUnionTag() XdrNum32 {
-	return XDR_BucketEntryType(&u.Type)
-}
-func (u *BucketEntry) XdrUnionTagName() string {
-	return "Type"
-}
-func (u *BucketEntry) XdrUnionBody() XdrType {
-	switch u.Type {
-	case LIVEENTRY, INITENTRY:
-		return XDR_LedgerEntry(u.LiveEntry())
-	case DEADENTRY:
-		return XDR_LedgerKey(u.DeadEntry())
-	case METAENTRY:
-		return XDR_BucketMetadata(u.MetaEntry())
-	}
-	return nil
-}
-func (u *BucketEntry) XdrUnionBodyName() string {
-	switch u.Type {
-	case LIVEENTRY, INITENTRY:
-		return "LiveEntry"
-	case DEADENTRY:
-		return "DeadEntry"
-	case METAENTRY:
-		return "MetaEntry"
-	}
-	return ""
-}
-
-type XdrType_BucketEntry = *BucketEntry
-
-func (v *BucketEntry) XdrPointer() interface{}       { return v }
-func (BucketEntry) XdrTypeName() string              { return "BucketEntry" }
-func (v BucketEntry) XdrValue() interface{}          { return v }
-func (v *BucketEntry) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
-func (u *BucketEntry) XdrRecurse(x XDR, name string) {
-	if name != "" {
-		name = x.Sprintf("%s.", name)
-	}
-	XDR_BucketEntryType(&u.Type).XdrMarshal(x, x.Sprintf("%stype", name))
-	switch u.Type {
-	case LIVEENTRY, INITENTRY:
-		x.Marshal(x.Sprintf("%sliveEntry", name), XDR_LedgerEntry(u.LiveEntry()))
-		return
-	case DEADENTRY:
-		x.Marshal(x.Sprintf("%sdeadEntry", name), XDR_LedgerKey(u.DeadEntry()))
-		return
-	case METAENTRY:
-		x.Marshal(x.Sprintf("%smetaEntry", name), XDR_BucketMetadata(u.MetaEntry()))
-		return
-	}
-	XdrPanic("invalid Type (%v) in BucketEntry", u.Type)
-}
-func XDR_BucketEntry(v *BucketEntry) *BucketEntry { return v }
 
 var _XdrNames_TxSetComponentType = map[int32]string{
 	int32(TXSET_COMP_TXS_MAYBE_DISCOUNTED_FEE): "TXSET_COMP_TXS_MAYBE_DISCOUNTED_FEE",
@@ -16346,11 +17057,13 @@ var _XdrNames_HostFunctionType = map[int32]string{
 	int32(HOST_FUNCTION_TYPE_INVOKE_CONTRACT):      "HOST_FUNCTION_TYPE_INVOKE_CONTRACT",
 	int32(HOST_FUNCTION_TYPE_CREATE_CONTRACT):      "HOST_FUNCTION_TYPE_CREATE_CONTRACT",
 	int32(HOST_FUNCTION_TYPE_UPLOAD_CONTRACT_WASM): "HOST_FUNCTION_TYPE_UPLOAD_CONTRACT_WASM",
+	int32(HOST_FUNCTION_TYPE_CREATE_CONTRACT_V2):   "HOST_FUNCTION_TYPE_CREATE_CONTRACT_V2",
 }
 var _XdrValues_HostFunctionType = map[string]int32{
 	"HOST_FUNCTION_TYPE_INVOKE_CONTRACT":      int32(HOST_FUNCTION_TYPE_INVOKE_CONTRACT),
 	"HOST_FUNCTION_TYPE_CREATE_CONTRACT":      int32(HOST_FUNCTION_TYPE_CREATE_CONTRACT),
 	"HOST_FUNCTION_TYPE_UPLOAD_CONTRACT_WASM": int32(HOST_FUNCTION_TYPE_UPLOAD_CONTRACT_WASM),
+	"HOST_FUNCTION_TYPE_CREATE_CONTRACT_V2":   int32(HOST_FUNCTION_TYPE_CREATE_CONTRACT_V2),
 }
 
 func (HostFunctionType) XdrEnumNames() map[int32]string {
@@ -16561,6 +17274,22 @@ func (v *CreateContractArgs) XdrRecurse(x XDR, name string) {
 }
 func XDR_CreateContractArgs(v *CreateContractArgs) *CreateContractArgs { return v }
 
+type XdrType_CreateContractArgsV2 = *CreateContractArgsV2
+
+func (v *CreateContractArgsV2) XdrPointer() interface{}       { return v }
+func (CreateContractArgsV2) XdrTypeName() string              { return "CreateContractArgsV2" }
+func (v CreateContractArgsV2) XdrValue() interface{}          { return v }
+func (v *CreateContractArgsV2) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *CreateContractArgsV2) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	x.Marshal(x.Sprintf("%scontractIDPreimage", name), XDR_ContractIDPreimage(&v.ContractIDPreimage))
+	x.Marshal(x.Sprintf("%sexecutable", name), XDR_ContractExecutable(&v.Executable))
+	x.Marshal(x.Sprintf("%sconstructorArgs", name), (*_XdrVec_unbounded_SCVal)(&v.ConstructorArgs))
+}
+func XDR_CreateContractArgsV2(v *CreateContractArgsV2) *CreateContractArgsV2 { return v }
+
 type XdrType_InvokeContractArgs = *InvokeContractArgs
 
 func (v *InvokeContractArgs) XdrPointer() interface{}       { return v }
@@ -16581,6 +17310,7 @@ var _XdrTags_HostFunction = map[int32]bool{
 	XdrToI32(HOST_FUNCTION_TYPE_INVOKE_CONTRACT):      true,
 	XdrToI32(HOST_FUNCTION_TYPE_CREATE_CONTRACT):      true,
 	XdrToI32(HOST_FUNCTION_TYPE_UPLOAD_CONTRACT_WASM): true,
+	XdrToI32(HOST_FUNCTION_TYPE_CREATE_CONTRACT_V2):   true,
 }
 
 func (_ HostFunction) XdrValidTags() map[int32]bool {
@@ -16631,9 +17361,24 @@ func (u *HostFunction) Wasm() *[]byte {
 		return nil
 	}
 }
+func (u *HostFunction) CreateContractV2() *CreateContractArgsV2 {
+	switch u.Type {
+	case HOST_FUNCTION_TYPE_CREATE_CONTRACT_V2:
+		if v, ok := u._u.(*CreateContractArgsV2); ok {
+			return v
+		} else {
+			var zero CreateContractArgsV2
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("HostFunction.CreateContractV2 accessed when Type == %v", u.Type)
+		return nil
+	}
+}
 func (u HostFunction) XdrValid() bool {
 	switch u.Type {
-	case HOST_FUNCTION_TYPE_INVOKE_CONTRACT, HOST_FUNCTION_TYPE_CREATE_CONTRACT, HOST_FUNCTION_TYPE_UPLOAD_CONTRACT_WASM:
+	case HOST_FUNCTION_TYPE_INVOKE_CONTRACT, HOST_FUNCTION_TYPE_CREATE_CONTRACT, HOST_FUNCTION_TYPE_UPLOAD_CONTRACT_WASM, HOST_FUNCTION_TYPE_CREATE_CONTRACT_V2:
 		return true
 	}
 	return false
@@ -16652,6 +17397,8 @@ func (u *HostFunction) XdrUnionBody() XdrType {
 		return XDR_CreateContractArgs(u.CreateContract())
 	case HOST_FUNCTION_TYPE_UPLOAD_CONTRACT_WASM:
 		return XdrVecOpaque{u.Wasm(), 0xffffffff}
+	case HOST_FUNCTION_TYPE_CREATE_CONTRACT_V2:
+		return XDR_CreateContractArgsV2(u.CreateContractV2())
 	}
 	return nil
 }
@@ -16663,6 +17410,8 @@ func (u *HostFunction) XdrUnionBodyName() string {
 		return "CreateContract"
 	case HOST_FUNCTION_TYPE_UPLOAD_CONTRACT_WASM:
 		return "Wasm"
+	case HOST_FUNCTION_TYPE_CREATE_CONTRACT_V2:
+		return "CreateContractV2"
 	}
 	return ""
 }
@@ -16688,18 +17437,23 @@ func (u *HostFunction) XdrRecurse(x XDR, name string) {
 	case HOST_FUNCTION_TYPE_UPLOAD_CONTRACT_WASM:
 		x.Marshal(x.Sprintf("%swasm", name), XdrVecOpaque{u.Wasm(), 0xffffffff})
 		return
+	case HOST_FUNCTION_TYPE_CREATE_CONTRACT_V2:
+		x.Marshal(x.Sprintf("%screateContractV2", name), XDR_CreateContractArgsV2(u.CreateContractV2()))
+		return
 	}
 	XdrPanic("invalid Type (%v) in HostFunction", u.Type)
 }
 func XDR_HostFunction(v *HostFunction) *HostFunction { return v }
 
 var _XdrNames_SorobanAuthorizedFunctionType = map[int32]string{
-	int32(SOROBAN_AUTHORIZED_FUNCTION_TYPE_CONTRACT_FN):             "SOROBAN_AUTHORIZED_FUNCTION_TYPE_CONTRACT_FN",
-	int32(SOROBAN_AUTHORIZED_FUNCTION_TYPE_CREATE_CONTRACT_HOST_FN): "SOROBAN_AUTHORIZED_FUNCTION_TYPE_CREATE_CONTRACT_HOST_FN",
+	int32(SOROBAN_AUTHORIZED_FUNCTION_TYPE_CONTRACT_FN):                "SOROBAN_AUTHORIZED_FUNCTION_TYPE_CONTRACT_FN",
+	int32(SOROBAN_AUTHORIZED_FUNCTION_TYPE_CREATE_CONTRACT_HOST_FN):    "SOROBAN_AUTHORIZED_FUNCTION_TYPE_CREATE_CONTRACT_HOST_FN",
+	int32(SOROBAN_AUTHORIZED_FUNCTION_TYPE_CREATE_CONTRACT_V2_HOST_FN): "SOROBAN_AUTHORIZED_FUNCTION_TYPE_CREATE_CONTRACT_V2_HOST_FN",
 }
 var _XdrValues_SorobanAuthorizedFunctionType = map[string]int32{
-	"SOROBAN_AUTHORIZED_FUNCTION_TYPE_CONTRACT_FN":             int32(SOROBAN_AUTHORIZED_FUNCTION_TYPE_CONTRACT_FN),
-	"SOROBAN_AUTHORIZED_FUNCTION_TYPE_CREATE_CONTRACT_HOST_FN": int32(SOROBAN_AUTHORIZED_FUNCTION_TYPE_CREATE_CONTRACT_HOST_FN),
+	"SOROBAN_AUTHORIZED_FUNCTION_TYPE_CONTRACT_FN":                int32(SOROBAN_AUTHORIZED_FUNCTION_TYPE_CONTRACT_FN),
+	"SOROBAN_AUTHORIZED_FUNCTION_TYPE_CREATE_CONTRACT_HOST_FN":    int32(SOROBAN_AUTHORIZED_FUNCTION_TYPE_CREATE_CONTRACT_HOST_FN),
+	"SOROBAN_AUTHORIZED_FUNCTION_TYPE_CREATE_CONTRACT_V2_HOST_FN": int32(SOROBAN_AUTHORIZED_FUNCTION_TYPE_CREATE_CONTRACT_V2_HOST_FN),
 }
 
 func (SorobanAuthorizedFunctionType) XdrEnumNames() map[int32]string {
@@ -16741,8 +17495,9 @@ func XDR_SorobanAuthorizedFunctionType(v *SorobanAuthorizedFunctionType) *Soroba
 }
 
 var _XdrTags_SorobanAuthorizedFunction = map[int32]bool{
-	XdrToI32(SOROBAN_AUTHORIZED_FUNCTION_TYPE_CONTRACT_FN):             true,
-	XdrToI32(SOROBAN_AUTHORIZED_FUNCTION_TYPE_CREATE_CONTRACT_HOST_FN): true,
+	XdrToI32(SOROBAN_AUTHORIZED_FUNCTION_TYPE_CONTRACT_FN):                true,
+	XdrToI32(SOROBAN_AUTHORIZED_FUNCTION_TYPE_CREATE_CONTRACT_HOST_FN):    true,
+	XdrToI32(SOROBAN_AUTHORIZED_FUNCTION_TYPE_CREATE_CONTRACT_V2_HOST_FN): true,
 }
 
 func (_ SorobanAuthorizedFunction) XdrValidTags() map[int32]bool {
@@ -16778,9 +17533,24 @@ func (u *SorobanAuthorizedFunction) CreateContractHostFn() *CreateContractArgs {
 		return nil
 	}
 }
+func (u *SorobanAuthorizedFunction) CreateContractV2HostFn() *CreateContractArgsV2 {
+	switch u.Type {
+	case SOROBAN_AUTHORIZED_FUNCTION_TYPE_CREATE_CONTRACT_V2_HOST_FN:
+		if v, ok := u._u.(*CreateContractArgsV2); ok {
+			return v
+		} else {
+			var zero CreateContractArgsV2
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("SorobanAuthorizedFunction.CreateContractV2HostFn accessed when Type == %v", u.Type)
+		return nil
+	}
+}
 func (u SorobanAuthorizedFunction) XdrValid() bool {
 	switch u.Type {
-	case SOROBAN_AUTHORIZED_FUNCTION_TYPE_CONTRACT_FN, SOROBAN_AUTHORIZED_FUNCTION_TYPE_CREATE_CONTRACT_HOST_FN:
+	case SOROBAN_AUTHORIZED_FUNCTION_TYPE_CONTRACT_FN, SOROBAN_AUTHORIZED_FUNCTION_TYPE_CREATE_CONTRACT_HOST_FN, SOROBAN_AUTHORIZED_FUNCTION_TYPE_CREATE_CONTRACT_V2_HOST_FN:
 		return true
 	}
 	return false
@@ -16797,6 +17567,8 @@ func (u *SorobanAuthorizedFunction) XdrUnionBody() XdrType {
 		return XDR_InvokeContractArgs(u.ContractFn())
 	case SOROBAN_AUTHORIZED_FUNCTION_TYPE_CREATE_CONTRACT_HOST_FN:
 		return XDR_CreateContractArgs(u.CreateContractHostFn())
+	case SOROBAN_AUTHORIZED_FUNCTION_TYPE_CREATE_CONTRACT_V2_HOST_FN:
+		return XDR_CreateContractArgsV2(u.CreateContractV2HostFn())
 	}
 	return nil
 }
@@ -16806,6 +17578,8 @@ func (u *SorobanAuthorizedFunction) XdrUnionBodyName() string {
 		return "ContractFn"
 	case SOROBAN_AUTHORIZED_FUNCTION_TYPE_CREATE_CONTRACT_HOST_FN:
 		return "CreateContractHostFn"
+	case SOROBAN_AUTHORIZED_FUNCTION_TYPE_CREATE_CONTRACT_V2_HOST_FN:
+		return "CreateContractV2HostFn"
 	}
 	return ""
 }
@@ -16827,6 +17601,9 @@ func (u *SorobanAuthorizedFunction) XdrRecurse(x XDR, name string) {
 		return
 	case SOROBAN_AUTHORIZED_FUNCTION_TYPE_CREATE_CONTRACT_HOST_FN:
 		x.Marshal(x.Sprintf("%screateContractHostFn", name), XDR_CreateContractArgs(u.CreateContractHostFn()))
+		return
+	case SOROBAN_AUTHORIZED_FUNCTION_TYPE_CREATE_CONTRACT_V2_HOST_FN:
+		x.Marshal(x.Sprintf("%screateContractV2HostFn", name), XDR_CreateContractArgsV2(u.CreateContractV2HostFn()))
 		return
 	}
 	XdrPanic("invalid Type (%v) in SorobanAuthorizedFunction", u.Type)
@@ -18820,6 +19597,397 @@ func (v *LedgerFootprint) XdrRecurse(x XDR, name string) {
 	x.Marshal(x.Sprintf("%sreadWrite", name), (*_XdrVec_unbounded_LedgerKey)(&v.ReadWrite))
 }
 func XDR_LedgerFootprint(v *LedgerFootprint) *LedgerFootprint { return v }
+
+var _XdrNames_ArchivalProofType = map[int32]string{
+	int32(EXISTENCE):    "EXISTENCE",
+	int32(NONEXISTENCE): "NONEXISTENCE",
+}
+var _XdrValues_ArchivalProofType = map[string]int32{
+	"EXISTENCE":    int32(EXISTENCE),
+	"NONEXISTENCE": int32(NONEXISTENCE),
+}
+
+func (ArchivalProofType) XdrEnumNames() map[int32]string {
+	return _XdrNames_ArchivalProofType
+}
+func (v ArchivalProofType) String() string {
+	if s, ok := _XdrNames_ArchivalProofType[int32(v)]; ok {
+		return s
+	}
+	return fmt.Sprintf("ArchivalProofType#%d", v)
+}
+func (v *ArchivalProofType) Scan(ss fmt.ScanState, _ rune) error {
+	if tok, err := ss.Token(true, XdrSymChar); err != nil {
+		return err
+	} else {
+		stok := string(tok)
+		if val, ok := _XdrValues_ArchivalProofType[stok]; ok {
+			*v = ArchivalProofType(val)
+			return nil
+		} else if stok == "ArchivalProofType" {
+			if n, err := fmt.Fscanf(ss, "#%d", (*int32)(v)); n == 1 && err == nil {
+				return nil
+			}
+		}
+		return XdrError(fmt.Sprintf("%s is not a valid ArchivalProofType.", stok))
+	}
+}
+func (v ArchivalProofType) GetU32() uint32                 { return uint32(v) }
+func (v *ArchivalProofType) SetU32(n uint32)               { *v = ArchivalProofType(n) }
+func (v *ArchivalProofType) XdrPointer() interface{}       { return v }
+func (ArchivalProofType) XdrTypeName() string              { return "ArchivalProofType" }
+func (v ArchivalProofType) XdrValue() interface{}          { return v }
+func (v *ArchivalProofType) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+
+type XdrType_ArchivalProofType = *ArchivalProofType
+
+func XDR_ArchivalProofType(v *ArchivalProofType) *ArchivalProofType { return v }
+
+type XdrType_ArchivalProofNode = *ArchivalProofNode
+
+func (v *ArchivalProofNode) XdrPointer() interface{}       { return v }
+func (ArchivalProofNode) XdrTypeName() string              { return "ArchivalProofNode" }
+func (v ArchivalProofNode) XdrValue() interface{}          { return v }
+func (v *ArchivalProofNode) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *ArchivalProofNode) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	x.Marshal(x.Sprintf("%sindex", name), XDR_Uint32(&v.Index))
+	x.Marshal(x.Sprintf("%shash", name), XDR_Hash(&v.Hash))
+}
+func XDR_ArchivalProofNode(v *ArchivalProofNode) *ArchivalProofNode { return v }
+
+type _XdrVec_unbounded_ArchivalProofNode []ArchivalProofNode
+
+func (_XdrVec_unbounded_ArchivalProofNode) XdrBound() uint32 {
+	const bound uint32 = 4294967295 // Force error if not const or doesn't fit
+	return bound
+}
+func (_XdrVec_unbounded_ArchivalProofNode) XdrCheckLen(length uint32) {
+	if length > uint32(4294967295) {
+		XdrPanic("_XdrVec_unbounded_ArchivalProofNode length %d exceeds bound 4294967295", length)
+	} else if int(length) < 0 {
+		XdrPanic("_XdrVec_unbounded_ArchivalProofNode length %d exceeds max int", length)
+	}
+}
+func (v _XdrVec_unbounded_ArchivalProofNode) GetVecLen() uint32 { return uint32(len(v)) }
+func (v *_XdrVec_unbounded_ArchivalProofNode) SetVecLen(length uint32) {
+	v.XdrCheckLen(length)
+	if int(length) <= cap(*v) {
+		if int(length) != len(*v) {
+			*v = (*v)[:int(length)]
+		}
+		return
+	}
+	newcap := 2 * cap(*v)
+	if newcap < int(length) { // also catches overflow where 2*cap < 0
+		newcap = int(length)
+	} else if bound := uint(4294967295); uint(newcap) > bound {
+		if int(bound) < 0 {
+			bound = ^uint(0) >> 1
+		}
+		newcap = int(bound)
+	}
+	nv := make([]ArchivalProofNode, int(length), newcap)
+	copy(nv, *v)
+	*v = nv
+}
+func (v *_XdrVec_unbounded_ArchivalProofNode) XdrMarshalN(x XDR, name string, n uint32) {
+	v.XdrCheckLen(n)
+	for i := 0; i < int(n); i++ {
+		if i >= len(*v) {
+			v.SetVecLen(uint32(i + 1))
+		}
+		XDR_ArchivalProofNode(&(*v)[i]).XdrMarshal(x, x.Sprintf("%s[%d]", name, i))
+	}
+	if int(n) < len(*v) {
+		*v = (*v)[:int(n)]
+	}
+}
+func (v *_XdrVec_unbounded_ArchivalProofNode) XdrRecurse(x XDR, name string) {
+	size := XdrSize{Size: uint32(len(*v)), Bound: 4294967295}
+	x.Marshal(name, &size)
+	v.XdrMarshalN(x, name, size.Size)
+}
+func (_XdrVec_unbounded_ArchivalProofNode) XdrTypeName() string { return "ArchivalProofNode<>" }
+func (v *_XdrVec_unbounded_ArchivalProofNode) XdrPointer() interface{} {
+	return (*[]ArchivalProofNode)(v)
+}
+func (v _XdrVec_unbounded_ArchivalProofNode) XdrValue() interface{}          { return ([]ArchivalProofNode)(v) }
+func (v *_XdrVec_unbounded_ArchivalProofNode) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+
+type XdrType_ProofLevel struct {
+	*_XdrVec_unbounded_ArchivalProofNode
+}
+
+func XDR_ProofLevel(v *ProofLevel) XdrType_ProofLevel {
+	return XdrType_ProofLevel{(*_XdrVec_unbounded_ArchivalProofNode)(v)}
+}
+func (XdrType_ProofLevel) XdrTypeName() string  { return "ProofLevel" }
+func (v XdrType_ProofLevel) XdrUnwrap() XdrType { return v._XdrVec_unbounded_ArchivalProofNode }
+
+type _XdrVec_unbounded_ColdArchiveBucketEntry []ColdArchiveBucketEntry
+
+func (_XdrVec_unbounded_ColdArchiveBucketEntry) XdrBound() uint32 {
+	const bound uint32 = 4294967295 // Force error if not const or doesn't fit
+	return bound
+}
+func (_XdrVec_unbounded_ColdArchiveBucketEntry) XdrCheckLen(length uint32) {
+	if length > uint32(4294967295) {
+		XdrPanic("_XdrVec_unbounded_ColdArchiveBucketEntry length %d exceeds bound 4294967295", length)
+	} else if int(length) < 0 {
+		XdrPanic("_XdrVec_unbounded_ColdArchiveBucketEntry length %d exceeds max int", length)
+	}
+}
+func (v _XdrVec_unbounded_ColdArchiveBucketEntry) GetVecLen() uint32 { return uint32(len(v)) }
+func (v *_XdrVec_unbounded_ColdArchiveBucketEntry) SetVecLen(length uint32) {
+	v.XdrCheckLen(length)
+	if int(length) <= cap(*v) {
+		if int(length) != len(*v) {
+			*v = (*v)[:int(length)]
+		}
+		return
+	}
+	newcap := 2 * cap(*v)
+	if newcap < int(length) { // also catches overflow where 2*cap < 0
+		newcap = int(length)
+	} else if bound := uint(4294967295); uint(newcap) > bound {
+		if int(bound) < 0 {
+			bound = ^uint(0) >> 1
+		}
+		newcap = int(bound)
+	}
+	nv := make([]ColdArchiveBucketEntry, int(length), newcap)
+	copy(nv, *v)
+	*v = nv
+}
+func (v *_XdrVec_unbounded_ColdArchiveBucketEntry) XdrMarshalN(x XDR, name string, n uint32) {
+	v.XdrCheckLen(n)
+	for i := 0; i < int(n); i++ {
+		if i >= len(*v) {
+			v.SetVecLen(uint32(i + 1))
+		}
+		XDR_ColdArchiveBucketEntry(&(*v)[i]).XdrMarshal(x, x.Sprintf("%s[%d]", name, i))
+	}
+	if int(n) < len(*v) {
+		*v = (*v)[:int(n)]
+	}
+}
+func (v *_XdrVec_unbounded_ColdArchiveBucketEntry) XdrRecurse(x XDR, name string) {
+	size := XdrSize{Size: uint32(len(*v)), Bound: 4294967295}
+	x.Marshal(name, &size)
+	v.XdrMarshalN(x, name, size.Size)
+}
+func (_XdrVec_unbounded_ColdArchiveBucketEntry) XdrTypeName() string {
+	return "ColdArchiveBucketEntry<>"
+}
+func (v *_XdrVec_unbounded_ColdArchiveBucketEntry) XdrPointer() interface{} {
+	return (*[]ColdArchiveBucketEntry)(v)
+}
+func (v _XdrVec_unbounded_ColdArchiveBucketEntry) XdrValue() interface{} {
+	return ([]ColdArchiveBucketEntry)(v)
+}
+func (v *_XdrVec_unbounded_ColdArchiveBucketEntry) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+
+type _XdrVec_unbounded_ProofLevel []ProofLevel
+
+func (_XdrVec_unbounded_ProofLevel) XdrBound() uint32 {
+	const bound uint32 = 4294967295 // Force error if not const or doesn't fit
+	return bound
+}
+func (_XdrVec_unbounded_ProofLevel) XdrCheckLen(length uint32) {
+	if length > uint32(4294967295) {
+		XdrPanic("_XdrVec_unbounded_ProofLevel length %d exceeds bound 4294967295", length)
+	} else if int(length) < 0 {
+		XdrPanic("_XdrVec_unbounded_ProofLevel length %d exceeds max int", length)
+	}
+}
+func (v _XdrVec_unbounded_ProofLevel) GetVecLen() uint32 { return uint32(len(v)) }
+func (v *_XdrVec_unbounded_ProofLevel) SetVecLen(length uint32) {
+	v.XdrCheckLen(length)
+	if int(length) <= cap(*v) {
+		if int(length) != len(*v) {
+			*v = (*v)[:int(length)]
+		}
+		return
+	}
+	newcap := 2 * cap(*v)
+	if newcap < int(length) { // also catches overflow where 2*cap < 0
+		newcap = int(length)
+	} else if bound := uint(4294967295); uint(newcap) > bound {
+		if int(bound) < 0 {
+			bound = ^uint(0) >> 1
+		}
+		newcap = int(bound)
+	}
+	nv := make([]ProofLevel, int(length), newcap)
+	copy(nv, *v)
+	*v = nv
+}
+func (v *_XdrVec_unbounded_ProofLevel) XdrMarshalN(x XDR, name string, n uint32) {
+	v.XdrCheckLen(n)
+	for i := 0; i < int(n); i++ {
+		if i >= len(*v) {
+			v.SetVecLen(uint32(i + 1))
+		}
+		XDR_ProofLevel(&(*v)[i]).XdrMarshal(x, x.Sprintf("%s[%d]", name, i))
+	}
+	if int(n) < len(*v) {
+		*v = (*v)[:int(n)]
+	}
+}
+func (v *_XdrVec_unbounded_ProofLevel) XdrRecurse(x XDR, name string) {
+	size := XdrSize{Size: uint32(len(*v)), Bound: 4294967295}
+	x.Marshal(name, &size)
+	v.XdrMarshalN(x, name, size.Size)
+}
+func (_XdrVec_unbounded_ProofLevel) XdrTypeName() string              { return "ProofLevel<>" }
+func (v *_XdrVec_unbounded_ProofLevel) XdrPointer() interface{}       { return (*[]ProofLevel)(v) }
+func (v _XdrVec_unbounded_ProofLevel) XdrValue() interface{}          { return ([]ProofLevel)(v) }
+func (v *_XdrVec_unbounded_ProofLevel) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+
+type XdrType_NonexistenceProofBody = *NonexistenceProofBody
+
+func (v *NonexistenceProofBody) XdrPointer() interface{}       { return v }
+func (NonexistenceProofBody) XdrTypeName() string              { return "NonexistenceProofBody" }
+func (v NonexistenceProofBody) XdrValue() interface{}          { return v }
+func (v *NonexistenceProofBody) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *NonexistenceProofBody) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	x.Marshal(x.Sprintf("%sentriesToProve", name), (*_XdrVec_unbounded_ColdArchiveBucketEntry)(&v.EntriesToProve))
+	x.Marshal(x.Sprintf("%sproofLevels", name), (*_XdrVec_unbounded_ProofLevel)(&v.ProofLevels))
+}
+func XDR_NonexistenceProofBody(v *NonexistenceProofBody) *NonexistenceProofBody { return v }
+
+type XdrType_ExistenceProofBody = *ExistenceProofBody
+
+func (v *ExistenceProofBody) XdrPointer() interface{}       { return v }
+func (ExistenceProofBody) XdrTypeName() string              { return "ExistenceProofBody" }
+func (v ExistenceProofBody) XdrValue() interface{}          { return v }
+func (v *ExistenceProofBody) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *ExistenceProofBody) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	x.Marshal(x.Sprintf("%skeysToProve", name), (*_XdrVec_unbounded_LedgerKey)(&v.KeysToProve))
+	x.Marshal(x.Sprintf("%slowBoundEntries", name), (*_XdrVec_unbounded_ColdArchiveBucketEntry)(&v.LowBoundEntries))
+	x.Marshal(x.Sprintf("%shighBoundEntries", name), (*_XdrVec_unbounded_ColdArchiveBucketEntry)(&v.HighBoundEntries))
+	x.Marshal(x.Sprintf("%sproofLevels", name), (*_XdrVec_unbounded_ProofLevel)(&v.ProofLevels))
+}
+func XDR_ExistenceProofBody(v *ExistenceProofBody) *ExistenceProofBody { return v }
+
+var _XdrTags_XdrAnon_ArchivalProof_Body = map[int32]bool{
+	XdrToI32(EXISTENCE):    true,
+	XdrToI32(NONEXISTENCE): true,
+}
+
+func (_ XdrAnon_ArchivalProof_Body) XdrValidTags() map[int32]bool {
+	return _XdrTags_XdrAnon_ArchivalProof_Body
+}
+func (u *XdrAnon_ArchivalProof_Body) NonexistenceProof() *NonexistenceProofBody {
+	switch u.T {
+	case EXISTENCE:
+		if v, ok := u._u.(*NonexistenceProofBody); ok {
+			return v
+		} else {
+			var zero NonexistenceProofBody
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("XdrAnon_ArchivalProof_Body.NonexistenceProof accessed when T == %v", u.T)
+		return nil
+	}
+}
+func (u *XdrAnon_ArchivalProof_Body) ExistenceProof() *ExistenceProofBody {
+	switch u.T {
+	case NONEXISTENCE:
+		if v, ok := u._u.(*ExistenceProofBody); ok {
+			return v
+		} else {
+			var zero ExistenceProofBody
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("XdrAnon_ArchivalProof_Body.ExistenceProof accessed when T == %v", u.T)
+		return nil
+	}
+}
+func (u XdrAnon_ArchivalProof_Body) XdrValid() bool {
+	switch u.T {
+	case EXISTENCE, NONEXISTENCE:
+		return true
+	}
+	return false
+}
+func (u *XdrAnon_ArchivalProof_Body) XdrUnionTag() XdrNum32 {
+	return XDR_ArchivalProofType(&u.T)
+}
+func (u *XdrAnon_ArchivalProof_Body) XdrUnionTagName() string {
+	return "T"
+}
+func (u *XdrAnon_ArchivalProof_Body) XdrUnionBody() XdrType {
+	switch u.T {
+	case EXISTENCE:
+		return XDR_NonexistenceProofBody(u.NonexistenceProof())
+	case NONEXISTENCE:
+		return XDR_ExistenceProofBody(u.ExistenceProof())
+	}
+	return nil
+}
+func (u *XdrAnon_ArchivalProof_Body) XdrUnionBodyName() string {
+	switch u.T {
+	case EXISTENCE:
+		return "NonexistenceProof"
+	case NONEXISTENCE:
+		return "ExistenceProof"
+	}
+	return ""
+}
+
+type XdrType_XdrAnon_ArchivalProof_Body = *XdrAnon_ArchivalProof_Body
+
+func (v *XdrAnon_ArchivalProof_Body) XdrPointer() interface{}       { return v }
+func (XdrAnon_ArchivalProof_Body) XdrTypeName() string              { return "XdrAnon_ArchivalProof_Body" }
+func (v XdrAnon_ArchivalProof_Body) XdrValue() interface{}          { return v }
+func (v *XdrAnon_ArchivalProof_Body) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (u *XdrAnon_ArchivalProof_Body) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	XDR_ArchivalProofType(&u.T).XdrMarshal(x, x.Sprintf("%st", name))
+	switch u.T {
+	case EXISTENCE:
+		x.Marshal(x.Sprintf("%snonexistenceProof", name), XDR_NonexistenceProofBody(u.NonexistenceProof()))
+		return
+	case NONEXISTENCE:
+		x.Marshal(x.Sprintf("%sexistenceProof", name), XDR_ExistenceProofBody(u.ExistenceProof()))
+		return
+	}
+	XdrPanic("invalid T (%v) in XdrAnon_ArchivalProof_Body", u.T)
+}
+func XDR_XdrAnon_ArchivalProof_Body(v *XdrAnon_ArchivalProof_Body) *XdrAnon_ArchivalProof_Body {
+	return v
+}
+
+type XdrType_ArchivalProof = *ArchivalProof
+
+func (v *ArchivalProof) XdrPointer() interface{}       { return v }
+func (ArchivalProof) XdrTypeName() string              { return "ArchivalProof" }
+func (v ArchivalProof) XdrValue() interface{}          { return v }
+func (v *ArchivalProof) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *ArchivalProof) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	x.Marshal(x.Sprintf("%sepoch", name), XDR_Uint32(&v.Epoch))
+	x.Marshal(x.Sprintf("%sbody", name), XDR_XdrAnon_ArchivalProof_Body(&v.Body))
+}
+func XDR_ArchivalProof(v *ArchivalProof) *ArchivalProof { return v }
 
 type XdrType_SorobanResources = *SorobanResources
 
@@ -25831,6 +26999,91 @@ func (v *HmacSha256Mac) XdrRecurse(x XDR, name string) {
 	x.Marshal(x.Sprintf("%smac", name), (*_XdrArray_32_opaque)(&v.Mac))
 }
 func XDR_HmacSha256Mac(v *HmacSha256Mac) *HmacSha256Mac { return v }
+
+type XdrType_ShortHashSeed = *ShortHashSeed
+
+func (v *ShortHashSeed) XdrPointer() interface{}       { return v }
+func (ShortHashSeed) XdrTypeName() string              { return "ShortHashSeed" }
+func (v ShortHashSeed) XdrValue() interface{}          { return v }
+func (v *ShortHashSeed) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *ShortHashSeed) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	x.Marshal(x.Sprintf("%sseed", name), (*_XdrArray_16_opaque)(&v.Seed))
+}
+func XDR_ShortHashSeed(v *ShortHashSeed) *ShortHashSeed { return v }
+
+var _XdrNames_BinaryFuseFilterType = map[int32]string{
+	int32(BINARY_FUSE_FILTER_8_BIT):  "BINARY_FUSE_FILTER_8_BIT",
+	int32(BINARY_FUSE_FILTER_16_BIT): "BINARY_FUSE_FILTER_16_BIT",
+	int32(BINARY_FUSE_FILTER_32_BIT): "BINARY_FUSE_FILTER_32_BIT",
+}
+var _XdrValues_BinaryFuseFilterType = map[string]int32{
+	"BINARY_FUSE_FILTER_8_BIT":  int32(BINARY_FUSE_FILTER_8_BIT),
+	"BINARY_FUSE_FILTER_16_BIT": int32(BINARY_FUSE_FILTER_16_BIT),
+	"BINARY_FUSE_FILTER_32_BIT": int32(BINARY_FUSE_FILTER_32_BIT),
+}
+
+func (BinaryFuseFilterType) XdrEnumNames() map[int32]string {
+	return _XdrNames_BinaryFuseFilterType
+}
+func (v BinaryFuseFilterType) String() string {
+	if s, ok := _XdrNames_BinaryFuseFilterType[int32(v)]; ok {
+		return s
+	}
+	return fmt.Sprintf("BinaryFuseFilterType#%d", v)
+}
+func (v *BinaryFuseFilterType) Scan(ss fmt.ScanState, _ rune) error {
+	if tok, err := ss.Token(true, XdrSymChar); err != nil {
+		return err
+	} else {
+		stok := string(tok)
+		if val, ok := _XdrValues_BinaryFuseFilterType[stok]; ok {
+			*v = BinaryFuseFilterType(val)
+			return nil
+		} else if stok == "BinaryFuseFilterType" {
+			if n, err := fmt.Fscanf(ss, "#%d", (*int32)(v)); n == 1 && err == nil {
+				return nil
+			}
+		}
+		return XdrError(fmt.Sprintf("%s is not a valid BinaryFuseFilterType.", stok))
+	}
+}
+func (v BinaryFuseFilterType) GetU32() uint32                 { return uint32(v) }
+func (v *BinaryFuseFilterType) SetU32(n uint32)               { *v = BinaryFuseFilterType(n) }
+func (v *BinaryFuseFilterType) XdrPointer() interface{}       { return v }
+func (BinaryFuseFilterType) XdrTypeName() string              { return "BinaryFuseFilterType" }
+func (v BinaryFuseFilterType) XdrValue() interface{}          { return v }
+func (v *BinaryFuseFilterType) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+
+type XdrType_BinaryFuseFilterType = *BinaryFuseFilterType
+
+func XDR_BinaryFuseFilterType(v *BinaryFuseFilterType) *BinaryFuseFilterType { return v }
+
+type XdrType_SerializedBinaryFuseFilter = *SerializedBinaryFuseFilter
+
+func (v *SerializedBinaryFuseFilter) XdrPointer() interface{}       { return v }
+func (SerializedBinaryFuseFilter) XdrTypeName() string              { return "SerializedBinaryFuseFilter" }
+func (v SerializedBinaryFuseFilter) XdrValue() interface{}          { return v }
+func (v *SerializedBinaryFuseFilter) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *SerializedBinaryFuseFilter) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	x.Marshal(x.Sprintf("%stype", name), XDR_BinaryFuseFilterType(&v.Type))
+	x.Marshal(x.Sprintf("%sinputHashSeed", name), XDR_ShortHashSeed(&v.InputHashSeed))
+	x.Marshal(x.Sprintf("%sfilterSeed", name), XDR_ShortHashSeed(&v.FilterSeed))
+	x.Marshal(x.Sprintf("%ssegmentLength", name), XDR_Uint32(&v.SegmentLength))
+	x.Marshal(x.Sprintf("%ssegementLengthMask", name), XDR_Uint32(&v.SegementLengthMask))
+	x.Marshal(x.Sprintf("%ssegmentCount", name), XDR_Uint32(&v.SegmentCount))
+	x.Marshal(x.Sprintf("%ssegmentCountLength", name), XDR_Uint32(&v.SegmentCountLength))
+	x.Marshal(x.Sprintf("%sfingerprintLength", name), XDR_Uint32(&v.FingerprintLength))
+	x.Marshal(x.Sprintf("%sfingerprints", name), XdrVecOpaque{&v.Fingerprints, 0xffffffff})
+}
+func XDR_SerializedBinaryFuseFilter(v *SerializedBinaryFuseFilter) *SerializedBinaryFuseFilter {
+	return v
+}
 
 var _XdrNames_SCEnvMetaKind = map[int32]string{
 	int32(SC_ENV_META_KIND_INTERFACE_VERSION): "SC_ENV_META_KIND_INTERFACE_VERSION",

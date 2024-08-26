@@ -40,11 +40,11 @@ var XdrFilesSHA256 = map[string]string{
 	"xdr/Stellar-contract.x":                "7f665e4103e146a88fcdabce879aaaacd3bf9283feb194cc47ff986264c1e315",
 	"xdr/Stellar-exporter.x":                "a00c83d02e8c8382e06f79a191f1fb5abd097a4bbcab8481c67467e3270e0529",
 	"xdr/Stellar-internal.x":                "227835866c1b2122d1eaf28839ba85ea7289d1cb681dda4ca619c2da3d71fe00",
-	"xdr/Stellar-ledger-entries.x":          "77dc7062ae6d0812136333e12e35b2294d7c2896a536be9c811eb0ed2abbbccb",
-	"xdr/Stellar-ledger.x":                  "46c1c55972750b97650ff00788a2be4764975b787ef51c8fa931c56e2028a3c4",
+	"xdr/Stellar-ledger-entries.x":          "03e8be938bace784410b0e837ed6496ff66dc0d1e70fc6e4f0d006566a344879",
+	"xdr/Stellar-ledger.x":                  "c2ac5bde5da28d4d02e2ea455f3bc5d5133adf271d374010cebe4e314c8504e8",
 	"xdr/Stellar-overlay.x":                 "8c73b7c3ad974e7fc4aa4fdf34f7ad50053406254efbd7406c96657cf41691d3",
-	"xdr/Stellar-transaction.x":             "0d2b35a331a540b48643925d0869857236eb2487c02d340ea32e365e784ea2b8",
-	"xdr/Stellar-types.x":                   "6e3b13f0d3e360b09fa5e2b0e55d43f4d974a769df66afb34e8aecbb329d3f15",
+	"xdr/Stellar-transaction.x":             "a938e583ab5d25237c51f355a47446215575b720150db89a1cecf13773249df1",
+	"xdr/Stellar-types.x":                   "253f515fc5e06bc938105e92a4c7f562251d4ebc178d39d6e6751e6b85fe1064",
 }
 
 var ErrMaxDecodingDepthReached = errors.New("maximum decoding depth reached")
@@ -11114,6 +11114,1801 @@ func (s EnvelopeType) xdrType() {}
 
 var _ xdrType = (*EnvelopeType)(nil)
 
+// BucketListType is an XDR Enum defines as:
+//
+//	enum BucketListType
+//	 {
+//	     LIVE = 0,
+//	     HOT_ARCHIVE = 1,
+//	     COLD_ARCHIVE = 2
+//	 };
+type BucketListType int32
+
+const (
+	BucketListTypeLive        BucketListType = 0
+	BucketListTypeHotArchive  BucketListType = 1
+	BucketListTypeColdArchive BucketListType = 2
+)
+
+var bucketListTypeMap = map[int32]string{
+	0: "BucketListTypeLive",
+	1: "BucketListTypeHotArchive",
+	2: "BucketListTypeColdArchive",
+}
+
+// ValidEnum validates a proposed value for this enum.  Implements
+// the Enum interface for BucketListType
+func (e BucketListType) ValidEnum(v int32) bool {
+	_, ok := bucketListTypeMap[v]
+	return ok
+}
+
+// String returns the name of `e`
+func (e BucketListType) String() string {
+	name, _ := bucketListTypeMap[int32(e)]
+	return name
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (e BucketListType) EncodeTo(enc *xdr.Encoder) error {
+	if _, ok := bucketListTypeMap[int32(e)]; !ok {
+		return fmt.Errorf("'%d' is not a valid BucketListType enum value", e)
+	}
+	_, err := enc.EncodeInt(int32(e))
+	return err
+}
+
+var _ decoderFrom = (*BucketListType)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (e *BucketListType) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, fmt.Errorf("decoding BucketListType: %w", ErrMaxDecodingDepthReached)
+	}
+	maxDepth -= 1
+	v, n, err := d.DecodeInt()
+	if err != nil {
+		return n, fmt.Errorf("decoding BucketListType: %w", err)
+	}
+	if _, ok := bucketListTypeMap[v]; !ok {
+		return n, fmt.Errorf("'%d' is not a valid BucketListType enum value", v)
+	}
+	*e = BucketListType(v)
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s BucketListType) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *BucketListType) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*BucketListType)(nil)
+	_ encoding.BinaryUnmarshaler = (*BucketListType)(nil)
+)
+
+// xdrType signals that this type represents XDR values defined by this package.
+func (s BucketListType) xdrType() {}
+
+var _ xdrType = (*BucketListType)(nil)
+
+// BucketEntryType is an XDR Enum defines as:
+//
+//	enum BucketEntryType
+//	 {
+//	     METAENTRY =
+//	         -1, // At-and-after protocol 11: bucket metadata, should come first.
+//	     LIVEENTRY = 0, // Before protocol 11: created-or-updated;
+//	                    // At-and-after protocol 11: only updated.
+//	     DEADENTRY = 1,
+//	     INITENTRY = 2 // At-and-after protocol 11: only created.
+//	 };
+type BucketEntryType int32
+
+const (
+	BucketEntryTypeMetaentry BucketEntryType = -1
+	BucketEntryTypeLiveentry BucketEntryType = 0
+	BucketEntryTypeDeadentry BucketEntryType = 1
+	BucketEntryTypeInitentry BucketEntryType = 2
+)
+
+var bucketEntryTypeMap = map[int32]string{
+	-1: "BucketEntryTypeMetaentry",
+	0:  "BucketEntryTypeLiveentry",
+	1:  "BucketEntryTypeDeadentry",
+	2:  "BucketEntryTypeInitentry",
+}
+
+// ValidEnum validates a proposed value for this enum.  Implements
+// the Enum interface for BucketEntryType
+func (e BucketEntryType) ValidEnum(v int32) bool {
+	_, ok := bucketEntryTypeMap[v]
+	return ok
+}
+
+// String returns the name of `e`
+func (e BucketEntryType) String() string {
+	name, _ := bucketEntryTypeMap[int32(e)]
+	return name
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (e BucketEntryType) EncodeTo(enc *xdr.Encoder) error {
+	if _, ok := bucketEntryTypeMap[int32(e)]; !ok {
+		return fmt.Errorf("'%d' is not a valid BucketEntryType enum value", e)
+	}
+	_, err := enc.EncodeInt(int32(e))
+	return err
+}
+
+var _ decoderFrom = (*BucketEntryType)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (e *BucketEntryType) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, fmt.Errorf("decoding BucketEntryType: %w", ErrMaxDecodingDepthReached)
+	}
+	maxDepth -= 1
+	v, n, err := d.DecodeInt()
+	if err != nil {
+		return n, fmt.Errorf("decoding BucketEntryType: %w", err)
+	}
+	if _, ok := bucketEntryTypeMap[v]; !ok {
+		return n, fmt.Errorf("'%d' is not a valid BucketEntryType enum value", v)
+	}
+	*e = BucketEntryType(v)
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s BucketEntryType) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *BucketEntryType) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*BucketEntryType)(nil)
+	_ encoding.BinaryUnmarshaler = (*BucketEntryType)(nil)
+)
+
+// xdrType signals that this type represents XDR values defined by this package.
+func (s BucketEntryType) xdrType() {}
+
+var _ xdrType = (*BucketEntryType)(nil)
+
+// HotArchiveBucketEntryType is an XDR Enum defines as:
+//
+//	enum HotArchiveBucketEntryType
+//	 {
+//	     HOT_ARCHIVE_METAENTRY = -1, // Bucket metadata, should come first.
+//	     HOT_ARCHIVE_ARCHIVED = 0,   // Entry is Archived
+//	     HOT_ARCHIVE_LIVE = 1,       // Entry was previously HOT_ARCHIVE_ARCHIVED, or HOT_ARCHIVE_DELETED, but
+//	                                 // has been added back to the live BucketList.
+//	                                 // Does not need to be persisted.
+//	     HOT_ARCHIVE_DELETED = 2     // Entry deleted (Note: must be persisted in archive)
+//	 };
+type HotArchiveBucketEntryType int32
+
+const (
+	HotArchiveBucketEntryTypeHotArchiveMetaentry HotArchiveBucketEntryType = -1
+	HotArchiveBucketEntryTypeHotArchiveArchived  HotArchiveBucketEntryType = 0
+	HotArchiveBucketEntryTypeHotArchiveLive      HotArchiveBucketEntryType = 1
+	HotArchiveBucketEntryTypeHotArchiveDeleted   HotArchiveBucketEntryType = 2
+)
+
+var hotArchiveBucketEntryTypeMap = map[int32]string{
+	-1: "HotArchiveBucketEntryTypeHotArchiveMetaentry",
+	0:  "HotArchiveBucketEntryTypeHotArchiveArchived",
+	1:  "HotArchiveBucketEntryTypeHotArchiveLive",
+	2:  "HotArchiveBucketEntryTypeHotArchiveDeleted",
+}
+
+// ValidEnum validates a proposed value for this enum.  Implements
+// the Enum interface for HotArchiveBucketEntryType
+func (e HotArchiveBucketEntryType) ValidEnum(v int32) bool {
+	_, ok := hotArchiveBucketEntryTypeMap[v]
+	return ok
+}
+
+// String returns the name of `e`
+func (e HotArchiveBucketEntryType) String() string {
+	name, _ := hotArchiveBucketEntryTypeMap[int32(e)]
+	return name
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (e HotArchiveBucketEntryType) EncodeTo(enc *xdr.Encoder) error {
+	if _, ok := hotArchiveBucketEntryTypeMap[int32(e)]; !ok {
+		return fmt.Errorf("'%d' is not a valid HotArchiveBucketEntryType enum value", e)
+	}
+	_, err := enc.EncodeInt(int32(e))
+	return err
+}
+
+var _ decoderFrom = (*HotArchiveBucketEntryType)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (e *HotArchiveBucketEntryType) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, fmt.Errorf("decoding HotArchiveBucketEntryType: %w", ErrMaxDecodingDepthReached)
+	}
+	maxDepth -= 1
+	v, n, err := d.DecodeInt()
+	if err != nil {
+		return n, fmt.Errorf("decoding HotArchiveBucketEntryType: %w", err)
+	}
+	if _, ok := hotArchiveBucketEntryTypeMap[v]; !ok {
+		return n, fmt.Errorf("'%d' is not a valid HotArchiveBucketEntryType enum value", v)
+	}
+	*e = HotArchiveBucketEntryType(v)
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s HotArchiveBucketEntryType) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *HotArchiveBucketEntryType) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*HotArchiveBucketEntryType)(nil)
+	_ encoding.BinaryUnmarshaler = (*HotArchiveBucketEntryType)(nil)
+)
+
+// xdrType signals that this type represents XDR values defined by this package.
+func (s HotArchiveBucketEntryType) xdrType() {}
+
+var _ xdrType = (*HotArchiveBucketEntryType)(nil)
+
+// ColdArchiveBucketEntryType is an XDR Enum defines as:
+//
+//	enum ColdArchiveBucketEntryType
+//	 {
+//	     COLD_ARCHIVE_METAENTRY     = -1,  // Bucket metadata, should come first.
+//	     COLD_ARCHIVE_ARCHIVED_LEAF = 0,   // Full LedgerEntry that was archived during the epoch
+//	     COLD_ARCHIVE_DELETED_LEAF  = 1,   // LedgerKey that was deleted during the epoch
+//	     COLD_ARCHIVE_BOUNDARY_LEAF = 2,   // Dummy leaf representing low/high bound
+//	     COLD_ARCHIVE_HASH          = 3    // Intermediary Merkle hash entry
+//	 };
+type ColdArchiveBucketEntryType int32
+
+const (
+	ColdArchiveBucketEntryTypeColdArchiveMetaentry    ColdArchiveBucketEntryType = -1
+	ColdArchiveBucketEntryTypeColdArchiveArchivedLeaf ColdArchiveBucketEntryType = 0
+	ColdArchiveBucketEntryTypeColdArchiveDeletedLeaf  ColdArchiveBucketEntryType = 1
+	ColdArchiveBucketEntryTypeColdArchiveBoundaryLeaf ColdArchiveBucketEntryType = 2
+	ColdArchiveBucketEntryTypeColdArchiveHash         ColdArchiveBucketEntryType = 3
+)
+
+var coldArchiveBucketEntryTypeMap = map[int32]string{
+	-1: "ColdArchiveBucketEntryTypeColdArchiveMetaentry",
+	0:  "ColdArchiveBucketEntryTypeColdArchiveArchivedLeaf",
+	1:  "ColdArchiveBucketEntryTypeColdArchiveDeletedLeaf",
+	2:  "ColdArchiveBucketEntryTypeColdArchiveBoundaryLeaf",
+	3:  "ColdArchiveBucketEntryTypeColdArchiveHash",
+}
+
+// ValidEnum validates a proposed value for this enum.  Implements
+// the Enum interface for ColdArchiveBucketEntryType
+func (e ColdArchiveBucketEntryType) ValidEnum(v int32) bool {
+	_, ok := coldArchiveBucketEntryTypeMap[v]
+	return ok
+}
+
+// String returns the name of `e`
+func (e ColdArchiveBucketEntryType) String() string {
+	name, _ := coldArchiveBucketEntryTypeMap[int32(e)]
+	return name
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (e ColdArchiveBucketEntryType) EncodeTo(enc *xdr.Encoder) error {
+	if _, ok := coldArchiveBucketEntryTypeMap[int32(e)]; !ok {
+		return fmt.Errorf("'%d' is not a valid ColdArchiveBucketEntryType enum value", e)
+	}
+	_, err := enc.EncodeInt(int32(e))
+	return err
+}
+
+var _ decoderFrom = (*ColdArchiveBucketEntryType)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (e *ColdArchiveBucketEntryType) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, fmt.Errorf("decoding ColdArchiveBucketEntryType: %w", ErrMaxDecodingDepthReached)
+	}
+	maxDepth -= 1
+	v, n, err := d.DecodeInt()
+	if err != nil {
+		return n, fmt.Errorf("decoding ColdArchiveBucketEntryType: %w", err)
+	}
+	if _, ok := coldArchiveBucketEntryTypeMap[v]; !ok {
+		return n, fmt.Errorf("'%d' is not a valid ColdArchiveBucketEntryType enum value", v)
+	}
+	*e = ColdArchiveBucketEntryType(v)
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s ColdArchiveBucketEntryType) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *ColdArchiveBucketEntryType) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*ColdArchiveBucketEntryType)(nil)
+	_ encoding.BinaryUnmarshaler = (*ColdArchiveBucketEntryType)(nil)
+)
+
+// xdrType signals that this type represents XDR values defined by this package.
+func (s ColdArchiveBucketEntryType) xdrType() {}
+
+var _ xdrType = (*ColdArchiveBucketEntryType)(nil)
+
+// BucketMetadataExt is an XDR NestedUnion defines as:
+//
+//	union switch (int v)
+//	     {
+//	     case 0:
+//	         void;
+//	     case 1:
+//	         BucketListType bucketListType;
+//	     }
+type BucketMetadataExt struct {
+	V              int32
+	BucketListType *BucketListType
+}
+
+// SwitchFieldName returns the field name in which this union's
+// discriminant is stored
+func (u BucketMetadataExt) SwitchFieldName() string {
+	return "V"
+}
+
+// ArmForSwitch returns which field name should be used for storing
+// the value for an instance of BucketMetadataExt
+func (u BucketMetadataExt) ArmForSwitch(sw int32) (string, bool) {
+	switch int32(sw) {
+	case 0:
+		return "", true
+	case 1:
+		return "BucketListType", true
+	}
+	return "-", false
+}
+
+// NewBucketMetadataExt creates a new  BucketMetadataExt.
+func NewBucketMetadataExt(v int32, value interface{}) (result BucketMetadataExt, err error) {
+	result.V = v
+	switch int32(v) {
+	case 0:
+		// void
+	case 1:
+		tv, ok := value.(BucketListType)
+		if !ok {
+			err = errors.New("invalid value, must be BucketListType")
+			return
+		}
+		result.BucketListType = &tv
+	}
+	return
+}
+
+// MustBucketListType retrieves the BucketListType value from the union,
+// panicing if the value is not set.
+func (u BucketMetadataExt) MustBucketListType() BucketListType {
+	val, ok := u.GetBucketListType()
+
+	if !ok {
+		panic("arm BucketListType is not set")
+	}
+
+	return val
+}
+
+// GetBucketListType retrieves the BucketListType value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u BucketMetadataExt) GetBucketListType() (result BucketListType, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.V))
+
+	if armName == "BucketListType" {
+		result = *u.BucketListType
+		ok = true
+	}
+
+	return
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (u BucketMetadataExt) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if _, err = e.EncodeInt(int32(u.V)); err != nil {
+		return err
+	}
+	switch int32(u.V) {
+	case 0:
+		// Void
+		return nil
+	case 1:
+		if err = (*u.BucketListType).EncodeTo(e); err != nil {
+			return err
+		}
+		return nil
+	}
+	return fmt.Errorf("V (int32) switch value '%d' is not valid for union BucketMetadataExt", u.V)
+}
+
+var _ decoderFrom = (*BucketMetadataExt)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (u *BucketMetadataExt) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, fmt.Errorf("decoding BucketMetadataExt: %w", ErrMaxDecodingDepthReached)
+	}
+	maxDepth -= 1
+	var err error
+	var n, nTmp int
+	u.V, nTmp, err = d.DecodeInt()
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Int: %w", err)
+	}
+	switch int32(u.V) {
+	case 0:
+		// Void
+		return n, nil
+	case 1:
+		u.BucketListType = new(BucketListType)
+		nTmp, err = (*u.BucketListType).DecodeFrom(d, maxDepth)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding BucketListType: %w", err)
+		}
+		return n, nil
+	}
+	return n, fmt.Errorf("union BucketMetadataExt has invalid V (int32) switch value '%d'", u.V)
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s BucketMetadataExt) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *BucketMetadataExt) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*BucketMetadataExt)(nil)
+	_ encoding.BinaryUnmarshaler = (*BucketMetadataExt)(nil)
+)
+
+// xdrType signals that this type represents XDR values defined by this package.
+func (s BucketMetadataExt) xdrType() {}
+
+var _ xdrType = (*BucketMetadataExt)(nil)
+
+// BucketMetadata is an XDR Struct defines as:
+//
+//	struct BucketMetadata
+//	 {
+//	     // Indicates the protocol version used to create / merge this bucket.
+//	     uint32 ledgerVersion;
+//
+//	     // reserved for future use
+//	     union switch (int v)
+//	     {
+//	     case 0:
+//	         void;
+//	     case 1:
+//	         BucketListType bucketListType;
+//	     }
+//	     ext;
+//	 };
+type BucketMetadata struct {
+	LedgerVersion Uint32
+	Ext           BucketMetadataExt
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s *BucketMetadata) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = s.LedgerVersion.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.Ext.EncodeTo(e); err != nil {
+		return err
+	}
+	return nil
+}
+
+var _ decoderFrom = (*BucketMetadata)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *BucketMetadata) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, fmt.Errorf("decoding BucketMetadata: %w", ErrMaxDecodingDepthReached)
+	}
+	maxDepth -= 1
+	var err error
+	var n, nTmp int
+	nTmp, err = s.LedgerVersion.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %w", err)
+	}
+	nTmp, err = s.Ext.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding BucketMetadataExt: %w", err)
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s BucketMetadata) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *BucketMetadata) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*BucketMetadata)(nil)
+	_ encoding.BinaryUnmarshaler = (*BucketMetadata)(nil)
+)
+
+// xdrType signals that this type represents XDR values defined by this package.
+func (s BucketMetadata) xdrType() {}
+
+var _ xdrType = (*BucketMetadata)(nil)
+
+// BucketEntry is an XDR Union defines as:
+//
+//	union BucketEntry switch (BucketEntryType type)
+//	 {
+//	 case LIVEENTRY:
+//	 case INITENTRY:
+//	     LedgerEntry liveEntry;
+//
+//	 case DEADENTRY:
+//	     LedgerKey deadEntry;
+//	 case METAENTRY:
+//	     BucketMetadata metaEntry;
+//	 };
+type BucketEntry struct {
+	Type      BucketEntryType
+	LiveEntry *LedgerEntry
+	DeadEntry *LedgerKey
+	MetaEntry *BucketMetadata
+}
+
+// SwitchFieldName returns the field name in which this union's
+// discriminant is stored
+func (u BucketEntry) SwitchFieldName() string {
+	return "Type"
+}
+
+// ArmForSwitch returns which field name should be used for storing
+// the value for an instance of BucketEntry
+func (u BucketEntry) ArmForSwitch(sw int32) (string, bool) {
+	switch BucketEntryType(sw) {
+	case BucketEntryTypeLiveentry:
+		return "LiveEntry", true
+	case BucketEntryTypeInitentry:
+		return "LiveEntry", true
+	case BucketEntryTypeDeadentry:
+		return "DeadEntry", true
+	case BucketEntryTypeMetaentry:
+		return "MetaEntry", true
+	}
+	return "-", false
+}
+
+// NewBucketEntry creates a new  BucketEntry.
+func NewBucketEntry(aType BucketEntryType, value interface{}) (result BucketEntry, err error) {
+	result.Type = aType
+	switch BucketEntryType(aType) {
+	case BucketEntryTypeLiveentry:
+		tv, ok := value.(LedgerEntry)
+		if !ok {
+			err = errors.New("invalid value, must be LedgerEntry")
+			return
+		}
+		result.LiveEntry = &tv
+	case BucketEntryTypeInitentry:
+		tv, ok := value.(LedgerEntry)
+		if !ok {
+			err = errors.New("invalid value, must be LedgerEntry")
+			return
+		}
+		result.LiveEntry = &tv
+	case BucketEntryTypeDeadentry:
+		tv, ok := value.(LedgerKey)
+		if !ok {
+			err = errors.New("invalid value, must be LedgerKey")
+			return
+		}
+		result.DeadEntry = &tv
+	case BucketEntryTypeMetaentry:
+		tv, ok := value.(BucketMetadata)
+		if !ok {
+			err = errors.New("invalid value, must be BucketMetadata")
+			return
+		}
+		result.MetaEntry = &tv
+	}
+	return
+}
+
+// MustLiveEntry retrieves the LiveEntry value from the union,
+// panicing if the value is not set.
+func (u BucketEntry) MustLiveEntry() LedgerEntry {
+	val, ok := u.GetLiveEntry()
+
+	if !ok {
+		panic("arm LiveEntry is not set")
+	}
+
+	return val
+}
+
+// GetLiveEntry retrieves the LiveEntry value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u BucketEntry) GetLiveEntry() (result LedgerEntry, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "LiveEntry" {
+		result = *u.LiveEntry
+		ok = true
+	}
+
+	return
+}
+
+// MustDeadEntry retrieves the DeadEntry value from the union,
+// panicing if the value is not set.
+func (u BucketEntry) MustDeadEntry() LedgerKey {
+	val, ok := u.GetDeadEntry()
+
+	if !ok {
+		panic("arm DeadEntry is not set")
+	}
+
+	return val
+}
+
+// GetDeadEntry retrieves the DeadEntry value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u BucketEntry) GetDeadEntry() (result LedgerKey, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "DeadEntry" {
+		result = *u.DeadEntry
+		ok = true
+	}
+
+	return
+}
+
+// MustMetaEntry retrieves the MetaEntry value from the union,
+// panicing if the value is not set.
+func (u BucketEntry) MustMetaEntry() BucketMetadata {
+	val, ok := u.GetMetaEntry()
+
+	if !ok {
+		panic("arm MetaEntry is not set")
+	}
+
+	return val
+}
+
+// GetMetaEntry retrieves the MetaEntry value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u BucketEntry) GetMetaEntry() (result BucketMetadata, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "MetaEntry" {
+		result = *u.MetaEntry
+		ok = true
+	}
+
+	return
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (u BucketEntry) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = u.Type.EncodeTo(e); err != nil {
+		return err
+	}
+	switch BucketEntryType(u.Type) {
+	case BucketEntryTypeLiveentry:
+		if err = (*u.LiveEntry).EncodeTo(e); err != nil {
+			return err
+		}
+		return nil
+	case BucketEntryTypeInitentry:
+		if err = (*u.LiveEntry).EncodeTo(e); err != nil {
+			return err
+		}
+		return nil
+	case BucketEntryTypeDeadentry:
+		if err = (*u.DeadEntry).EncodeTo(e); err != nil {
+			return err
+		}
+		return nil
+	case BucketEntryTypeMetaentry:
+		if err = (*u.MetaEntry).EncodeTo(e); err != nil {
+			return err
+		}
+		return nil
+	}
+	return fmt.Errorf("Type (BucketEntryType) switch value '%d' is not valid for union BucketEntry", u.Type)
+}
+
+var _ decoderFrom = (*BucketEntry)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (u *BucketEntry) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, fmt.Errorf("decoding BucketEntry: %w", ErrMaxDecodingDepthReached)
+	}
+	maxDepth -= 1
+	var err error
+	var n, nTmp int
+	nTmp, err = u.Type.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding BucketEntryType: %w", err)
+	}
+	switch BucketEntryType(u.Type) {
+	case BucketEntryTypeLiveentry:
+		u.LiveEntry = new(LedgerEntry)
+		nTmp, err = (*u.LiveEntry).DecodeFrom(d, maxDepth)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding LedgerEntry: %w", err)
+		}
+		return n, nil
+	case BucketEntryTypeInitentry:
+		u.LiveEntry = new(LedgerEntry)
+		nTmp, err = (*u.LiveEntry).DecodeFrom(d, maxDepth)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding LedgerEntry: %w", err)
+		}
+		return n, nil
+	case BucketEntryTypeDeadentry:
+		u.DeadEntry = new(LedgerKey)
+		nTmp, err = (*u.DeadEntry).DecodeFrom(d, maxDepth)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding LedgerKey: %w", err)
+		}
+		return n, nil
+	case BucketEntryTypeMetaentry:
+		u.MetaEntry = new(BucketMetadata)
+		nTmp, err = (*u.MetaEntry).DecodeFrom(d, maxDepth)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding BucketMetadata: %w", err)
+		}
+		return n, nil
+	}
+	return n, fmt.Errorf("union BucketEntry has invalid Type (BucketEntryType) switch value '%d'", u.Type)
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s BucketEntry) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *BucketEntry) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*BucketEntry)(nil)
+	_ encoding.BinaryUnmarshaler = (*BucketEntry)(nil)
+)
+
+// xdrType signals that this type represents XDR values defined by this package.
+func (s BucketEntry) xdrType() {}
+
+var _ xdrType = (*BucketEntry)(nil)
+
+// HotArchiveBucketEntry is an XDR Union defines as:
+//
+//	union HotArchiveBucketEntry switch (HotArchiveBucketEntryType type)
+//	 {
+//	 case HOT_ARCHIVE_ARCHIVED:
+//	     LedgerEntry archivedEntry;
+//
+//	 case HOT_ARCHIVE_LIVE:
+//	 case HOT_ARCHIVE_DELETED:
+//	     LedgerKey key;
+//	 case HOT_ARCHIVE_METAENTRY:
+//	     BucketMetadata metaEntry;
+//	 };
+type HotArchiveBucketEntry struct {
+	Type          HotArchiveBucketEntryType
+	ArchivedEntry *LedgerEntry
+	Key           *LedgerKey
+	MetaEntry     *BucketMetadata
+}
+
+// SwitchFieldName returns the field name in which this union's
+// discriminant is stored
+func (u HotArchiveBucketEntry) SwitchFieldName() string {
+	return "Type"
+}
+
+// ArmForSwitch returns which field name should be used for storing
+// the value for an instance of HotArchiveBucketEntry
+func (u HotArchiveBucketEntry) ArmForSwitch(sw int32) (string, bool) {
+	switch HotArchiveBucketEntryType(sw) {
+	case HotArchiveBucketEntryTypeHotArchiveArchived:
+		return "ArchivedEntry", true
+	case HotArchiveBucketEntryTypeHotArchiveLive:
+		return "Key", true
+	case HotArchiveBucketEntryTypeHotArchiveDeleted:
+		return "Key", true
+	case HotArchiveBucketEntryTypeHotArchiveMetaentry:
+		return "MetaEntry", true
+	}
+	return "-", false
+}
+
+// NewHotArchiveBucketEntry creates a new  HotArchiveBucketEntry.
+func NewHotArchiveBucketEntry(aType HotArchiveBucketEntryType, value interface{}) (result HotArchiveBucketEntry, err error) {
+	result.Type = aType
+	switch HotArchiveBucketEntryType(aType) {
+	case HotArchiveBucketEntryTypeHotArchiveArchived:
+		tv, ok := value.(LedgerEntry)
+		if !ok {
+			err = errors.New("invalid value, must be LedgerEntry")
+			return
+		}
+		result.ArchivedEntry = &tv
+	case HotArchiveBucketEntryTypeHotArchiveLive:
+		tv, ok := value.(LedgerKey)
+		if !ok {
+			err = errors.New("invalid value, must be LedgerKey")
+			return
+		}
+		result.Key = &tv
+	case HotArchiveBucketEntryTypeHotArchiveDeleted:
+		tv, ok := value.(LedgerKey)
+		if !ok {
+			err = errors.New("invalid value, must be LedgerKey")
+			return
+		}
+		result.Key = &tv
+	case HotArchiveBucketEntryTypeHotArchiveMetaentry:
+		tv, ok := value.(BucketMetadata)
+		if !ok {
+			err = errors.New("invalid value, must be BucketMetadata")
+			return
+		}
+		result.MetaEntry = &tv
+	}
+	return
+}
+
+// MustArchivedEntry retrieves the ArchivedEntry value from the union,
+// panicing if the value is not set.
+func (u HotArchiveBucketEntry) MustArchivedEntry() LedgerEntry {
+	val, ok := u.GetArchivedEntry()
+
+	if !ok {
+		panic("arm ArchivedEntry is not set")
+	}
+
+	return val
+}
+
+// GetArchivedEntry retrieves the ArchivedEntry value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u HotArchiveBucketEntry) GetArchivedEntry() (result LedgerEntry, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "ArchivedEntry" {
+		result = *u.ArchivedEntry
+		ok = true
+	}
+
+	return
+}
+
+// MustKey retrieves the Key value from the union,
+// panicing if the value is not set.
+func (u HotArchiveBucketEntry) MustKey() LedgerKey {
+	val, ok := u.GetKey()
+
+	if !ok {
+		panic("arm Key is not set")
+	}
+
+	return val
+}
+
+// GetKey retrieves the Key value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u HotArchiveBucketEntry) GetKey() (result LedgerKey, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "Key" {
+		result = *u.Key
+		ok = true
+	}
+
+	return
+}
+
+// MustMetaEntry retrieves the MetaEntry value from the union,
+// panicing if the value is not set.
+func (u HotArchiveBucketEntry) MustMetaEntry() BucketMetadata {
+	val, ok := u.GetMetaEntry()
+
+	if !ok {
+		panic("arm MetaEntry is not set")
+	}
+
+	return val
+}
+
+// GetMetaEntry retrieves the MetaEntry value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u HotArchiveBucketEntry) GetMetaEntry() (result BucketMetadata, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "MetaEntry" {
+		result = *u.MetaEntry
+		ok = true
+	}
+
+	return
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (u HotArchiveBucketEntry) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = u.Type.EncodeTo(e); err != nil {
+		return err
+	}
+	switch HotArchiveBucketEntryType(u.Type) {
+	case HotArchiveBucketEntryTypeHotArchiveArchived:
+		if err = (*u.ArchivedEntry).EncodeTo(e); err != nil {
+			return err
+		}
+		return nil
+	case HotArchiveBucketEntryTypeHotArchiveLive:
+		if err = (*u.Key).EncodeTo(e); err != nil {
+			return err
+		}
+		return nil
+	case HotArchiveBucketEntryTypeHotArchiveDeleted:
+		if err = (*u.Key).EncodeTo(e); err != nil {
+			return err
+		}
+		return nil
+	case HotArchiveBucketEntryTypeHotArchiveMetaentry:
+		if err = (*u.MetaEntry).EncodeTo(e); err != nil {
+			return err
+		}
+		return nil
+	}
+	return fmt.Errorf("Type (HotArchiveBucketEntryType) switch value '%d' is not valid for union HotArchiveBucketEntry", u.Type)
+}
+
+var _ decoderFrom = (*HotArchiveBucketEntry)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (u *HotArchiveBucketEntry) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, fmt.Errorf("decoding HotArchiveBucketEntry: %w", ErrMaxDecodingDepthReached)
+	}
+	maxDepth -= 1
+	var err error
+	var n, nTmp int
+	nTmp, err = u.Type.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding HotArchiveBucketEntryType: %w", err)
+	}
+	switch HotArchiveBucketEntryType(u.Type) {
+	case HotArchiveBucketEntryTypeHotArchiveArchived:
+		u.ArchivedEntry = new(LedgerEntry)
+		nTmp, err = (*u.ArchivedEntry).DecodeFrom(d, maxDepth)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding LedgerEntry: %w", err)
+		}
+		return n, nil
+	case HotArchiveBucketEntryTypeHotArchiveLive:
+		u.Key = new(LedgerKey)
+		nTmp, err = (*u.Key).DecodeFrom(d, maxDepth)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding LedgerKey: %w", err)
+		}
+		return n, nil
+	case HotArchiveBucketEntryTypeHotArchiveDeleted:
+		u.Key = new(LedgerKey)
+		nTmp, err = (*u.Key).DecodeFrom(d, maxDepth)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding LedgerKey: %w", err)
+		}
+		return n, nil
+	case HotArchiveBucketEntryTypeHotArchiveMetaentry:
+		u.MetaEntry = new(BucketMetadata)
+		nTmp, err = (*u.MetaEntry).DecodeFrom(d, maxDepth)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding BucketMetadata: %w", err)
+		}
+		return n, nil
+	}
+	return n, fmt.Errorf("union HotArchiveBucketEntry has invalid Type (HotArchiveBucketEntryType) switch value '%d'", u.Type)
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s HotArchiveBucketEntry) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *HotArchiveBucketEntry) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*HotArchiveBucketEntry)(nil)
+	_ encoding.BinaryUnmarshaler = (*HotArchiveBucketEntry)(nil)
+)
+
+// xdrType signals that this type represents XDR values defined by this package.
+func (s HotArchiveBucketEntry) xdrType() {}
+
+var _ xdrType = (*HotArchiveBucketEntry)(nil)
+
+// ColdArchiveArchivedLeaf is an XDR Struct defines as:
+//
+//	struct ColdArchiveArchivedLeaf
+//	 {
+//	     uint32 index;
+//	     LedgerEntry archivedEntry;
+//	 };
+type ColdArchiveArchivedLeaf struct {
+	Index         Uint32
+	ArchivedEntry LedgerEntry
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s *ColdArchiveArchivedLeaf) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = s.Index.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.ArchivedEntry.EncodeTo(e); err != nil {
+		return err
+	}
+	return nil
+}
+
+var _ decoderFrom = (*ColdArchiveArchivedLeaf)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *ColdArchiveArchivedLeaf) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, fmt.Errorf("decoding ColdArchiveArchivedLeaf: %w", ErrMaxDecodingDepthReached)
+	}
+	maxDepth -= 1
+	var err error
+	var n, nTmp int
+	nTmp, err = s.Index.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %w", err)
+	}
+	nTmp, err = s.ArchivedEntry.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding LedgerEntry: %w", err)
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s ColdArchiveArchivedLeaf) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *ColdArchiveArchivedLeaf) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*ColdArchiveArchivedLeaf)(nil)
+	_ encoding.BinaryUnmarshaler = (*ColdArchiveArchivedLeaf)(nil)
+)
+
+// xdrType signals that this type represents XDR values defined by this package.
+func (s ColdArchiveArchivedLeaf) xdrType() {}
+
+var _ xdrType = (*ColdArchiveArchivedLeaf)(nil)
+
+// ColdArchiveDeletedLeaf is an XDR Struct defines as:
+//
+//	struct ColdArchiveDeletedLeaf
+//	 {
+//	     uint32 index;
+//	     LedgerKey deletedKey;
+//	 };
+type ColdArchiveDeletedLeaf struct {
+	Index      Uint32
+	DeletedKey LedgerKey
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s *ColdArchiveDeletedLeaf) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = s.Index.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.DeletedKey.EncodeTo(e); err != nil {
+		return err
+	}
+	return nil
+}
+
+var _ decoderFrom = (*ColdArchiveDeletedLeaf)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *ColdArchiveDeletedLeaf) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, fmt.Errorf("decoding ColdArchiveDeletedLeaf: %w", ErrMaxDecodingDepthReached)
+	}
+	maxDepth -= 1
+	var err error
+	var n, nTmp int
+	nTmp, err = s.Index.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %w", err)
+	}
+	nTmp, err = s.DeletedKey.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding LedgerKey: %w", err)
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s ColdArchiveDeletedLeaf) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *ColdArchiveDeletedLeaf) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*ColdArchiveDeletedLeaf)(nil)
+	_ encoding.BinaryUnmarshaler = (*ColdArchiveDeletedLeaf)(nil)
+)
+
+// xdrType signals that this type represents XDR values defined by this package.
+func (s ColdArchiveDeletedLeaf) xdrType() {}
+
+var _ xdrType = (*ColdArchiveDeletedLeaf)(nil)
+
+// ColdArchiveBoundaryLeaf is an XDR Struct defines as:
+//
+//	struct ColdArchiveBoundaryLeaf
+//	 {
+//	     uint32 index;
+//	     bool isLowerBound;
+//	 };
+type ColdArchiveBoundaryLeaf struct {
+	Index        Uint32
+	IsLowerBound bool
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s *ColdArchiveBoundaryLeaf) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = s.Index.EncodeTo(e); err != nil {
+		return err
+	}
+	if _, err = e.EncodeBool(bool(s.IsLowerBound)); err != nil {
+		return err
+	}
+	return nil
+}
+
+var _ decoderFrom = (*ColdArchiveBoundaryLeaf)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *ColdArchiveBoundaryLeaf) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, fmt.Errorf("decoding ColdArchiveBoundaryLeaf: %w", ErrMaxDecodingDepthReached)
+	}
+	maxDepth -= 1
+	var err error
+	var n, nTmp int
+	nTmp, err = s.Index.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %w", err)
+	}
+	s.IsLowerBound, nTmp, err = d.DecodeBool()
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Bool: %w", err)
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s ColdArchiveBoundaryLeaf) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *ColdArchiveBoundaryLeaf) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*ColdArchiveBoundaryLeaf)(nil)
+	_ encoding.BinaryUnmarshaler = (*ColdArchiveBoundaryLeaf)(nil)
+)
+
+// xdrType signals that this type represents XDR values defined by this package.
+func (s ColdArchiveBoundaryLeaf) xdrType() {}
+
+var _ xdrType = (*ColdArchiveBoundaryLeaf)(nil)
+
+// ColdArchiveHashEntry is an XDR Struct defines as:
+//
+//	struct ColdArchiveHashEntry
+//	 {
+//	     uint32 index;
+//	     uint32 level;
+//	     Hash hash;
+//	 };
+type ColdArchiveHashEntry struct {
+	Index Uint32
+	Level Uint32
+	Hash  Hash
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s *ColdArchiveHashEntry) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = s.Index.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.Level.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.Hash.EncodeTo(e); err != nil {
+		return err
+	}
+	return nil
+}
+
+var _ decoderFrom = (*ColdArchiveHashEntry)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *ColdArchiveHashEntry) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, fmt.Errorf("decoding ColdArchiveHashEntry: %w", ErrMaxDecodingDepthReached)
+	}
+	maxDepth -= 1
+	var err error
+	var n, nTmp int
+	nTmp, err = s.Index.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %w", err)
+	}
+	nTmp, err = s.Level.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %w", err)
+	}
+	nTmp, err = s.Hash.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Hash: %w", err)
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s ColdArchiveHashEntry) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *ColdArchiveHashEntry) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*ColdArchiveHashEntry)(nil)
+	_ encoding.BinaryUnmarshaler = (*ColdArchiveHashEntry)(nil)
+)
+
+// xdrType signals that this type represents XDR values defined by this package.
+func (s ColdArchiveHashEntry) xdrType() {}
+
+var _ xdrType = (*ColdArchiveHashEntry)(nil)
+
+// ColdArchiveBucketEntry is an XDR Union defines as:
+//
+//	union ColdArchiveBucketEntry switch (ColdArchiveBucketEntryType type)
+//	 {
+//	 case COLD_ARCHIVE_METAENTRY:
+//	     BucketMetadata metaEntry;
+//	 case COLD_ARCHIVE_ARCHIVED_LEAF:
+//	     ColdArchiveArchivedLeaf archivedLeaf;
+//	 case COLD_ARCHIVE_DELETED_LEAF:
+//	     ColdArchiveDeletedLeaf deletedLeaf;
+//	 case COLD_ARCHIVE_BOUNDARY_LEAF:
+//	     ColdArchiveBoundaryLeaf boundaryLeaf;
+//	 case COLD_ARCHIVE_HASH:
+//	     ColdArchiveHashEntry hashEntry;
+//	 };
+type ColdArchiveBucketEntry struct {
+	Type         ColdArchiveBucketEntryType
+	MetaEntry    *BucketMetadata
+	ArchivedLeaf *ColdArchiveArchivedLeaf
+	DeletedLeaf  *ColdArchiveDeletedLeaf
+	BoundaryLeaf *ColdArchiveBoundaryLeaf
+	HashEntry    *ColdArchiveHashEntry
+}
+
+// SwitchFieldName returns the field name in which this union's
+// discriminant is stored
+func (u ColdArchiveBucketEntry) SwitchFieldName() string {
+	return "Type"
+}
+
+// ArmForSwitch returns which field name should be used for storing
+// the value for an instance of ColdArchiveBucketEntry
+func (u ColdArchiveBucketEntry) ArmForSwitch(sw int32) (string, bool) {
+	switch ColdArchiveBucketEntryType(sw) {
+	case ColdArchiveBucketEntryTypeColdArchiveMetaentry:
+		return "MetaEntry", true
+	case ColdArchiveBucketEntryTypeColdArchiveArchivedLeaf:
+		return "ArchivedLeaf", true
+	case ColdArchiveBucketEntryTypeColdArchiveDeletedLeaf:
+		return "DeletedLeaf", true
+	case ColdArchiveBucketEntryTypeColdArchiveBoundaryLeaf:
+		return "BoundaryLeaf", true
+	case ColdArchiveBucketEntryTypeColdArchiveHash:
+		return "HashEntry", true
+	}
+	return "-", false
+}
+
+// NewColdArchiveBucketEntry creates a new  ColdArchiveBucketEntry.
+func NewColdArchiveBucketEntry(aType ColdArchiveBucketEntryType, value interface{}) (result ColdArchiveBucketEntry, err error) {
+	result.Type = aType
+	switch ColdArchiveBucketEntryType(aType) {
+	case ColdArchiveBucketEntryTypeColdArchiveMetaentry:
+		tv, ok := value.(BucketMetadata)
+		if !ok {
+			err = errors.New("invalid value, must be BucketMetadata")
+			return
+		}
+		result.MetaEntry = &tv
+	case ColdArchiveBucketEntryTypeColdArchiveArchivedLeaf:
+		tv, ok := value.(ColdArchiveArchivedLeaf)
+		if !ok {
+			err = errors.New("invalid value, must be ColdArchiveArchivedLeaf")
+			return
+		}
+		result.ArchivedLeaf = &tv
+	case ColdArchiveBucketEntryTypeColdArchiveDeletedLeaf:
+		tv, ok := value.(ColdArchiveDeletedLeaf)
+		if !ok {
+			err = errors.New("invalid value, must be ColdArchiveDeletedLeaf")
+			return
+		}
+		result.DeletedLeaf = &tv
+	case ColdArchiveBucketEntryTypeColdArchiveBoundaryLeaf:
+		tv, ok := value.(ColdArchiveBoundaryLeaf)
+		if !ok {
+			err = errors.New("invalid value, must be ColdArchiveBoundaryLeaf")
+			return
+		}
+		result.BoundaryLeaf = &tv
+	case ColdArchiveBucketEntryTypeColdArchiveHash:
+		tv, ok := value.(ColdArchiveHashEntry)
+		if !ok {
+			err = errors.New("invalid value, must be ColdArchiveHashEntry")
+			return
+		}
+		result.HashEntry = &tv
+	}
+	return
+}
+
+// MustMetaEntry retrieves the MetaEntry value from the union,
+// panicing if the value is not set.
+func (u ColdArchiveBucketEntry) MustMetaEntry() BucketMetadata {
+	val, ok := u.GetMetaEntry()
+
+	if !ok {
+		panic("arm MetaEntry is not set")
+	}
+
+	return val
+}
+
+// GetMetaEntry retrieves the MetaEntry value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u ColdArchiveBucketEntry) GetMetaEntry() (result BucketMetadata, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "MetaEntry" {
+		result = *u.MetaEntry
+		ok = true
+	}
+
+	return
+}
+
+// MustArchivedLeaf retrieves the ArchivedLeaf value from the union,
+// panicing if the value is not set.
+func (u ColdArchiveBucketEntry) MustArchivedLeaf() ColdArchiveArchivedLeaf {
+	val, ok := u.GetArchivedLeaf()
+
+	if !ok {
+		panic("arm ArchivedLeaf is not set")
+	}
+
+	return val
+}
+
+// GetArchivedLeaf retrieves the ArchivedLeaf value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u ColdArchiveBucketEntry) GetArchivedLeaf() (result ColdArchiveArchivedLeaf, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "ArchivedLeaf" {
+		result = *u.ArchivedLeaf
+		ok = true
+	}
+
+	return
+}
+
+// MustDeletedLeaf retrieves the DeletedLeaf value from the union,
+// panicing if the value is not set.
+func (u ColdArchiveBucketEntry) MustDeletedLeaf() ColdArchiveDeletedLeaf {
+	val, ok := u.GetDeletedLeaf()
+
+	if !ok {
+		panic("arm DeletedLeaf is not set")
+	}
+
+	return val
+}
+
+// GetDeletedLeaf retrieves the DeletedLeaf value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u ColdArchiveBucketEntry) GetDeletedLeaf() (result ColdArchiveDeletedLeaf, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "DeletedLeaf" {
+		result = *u.DeletedLeaf
+		ok = true
+	}
+
+	return
+}
+
+// MustBoundaryLeaf retrieves the BoundaryLeaf value from the union,
+// panicing if the value is not set.
+func (u ColdArchiveBucketEntry) MustBoundaryLeaf() ColdArchiveBoundaryLeaf {
+	val, ok := u.GetBoundaryLeaf()
+
+	if !ok {
+		panic("arm BoundaryLeaf is not set")
+	}
+
+	return val
+}
+
+// GetBoundaryLeaf retrieves the BoundaryLeaf value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u ColdArchiveBucketEntry) GetBoundaryLeaf() (result ColdArchiveBoundaryLeaf, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "BoundaryLeaf" {
+		result = *u.BoundaryLeaf
+		ok = true
+	}
+
+	return
+}
+
+// MustHashEntry retrieves the HashEntry value from the union,
+// panicing if the value is not set.
+func (u ColdArchiveBucketEntry) MustHashEntry() ColdArchiveHashEntry {
+	val, ok := u.GetHashEntry()
+
+	if !ok {
+		panic("arm HashEntry is not set")
+	}
+
+	return val
+}
+
+// GetHashEntry retrieves the HashEntry value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u ColdArchiveBucketEntry) GetHashEntry() (result ColdArchiveHashEntry, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "HashEntry" {
+		result = *u.HashEntry
+		ok = true
+	}
+
+	return
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (u ColdArchiveBucketEntry) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = u.Type.EncodeTo(e); err != nil {
+		return err
+	}
+	switch ColdArchiveBucketEntryType(u.Type) {
+	case ColdArchiveBucketEntryTypeColdArchiveMetaentry:
+		if err = (*u.MetaEntry).EncodeTo(e); err != nil {
+			return err
+		}
+		return nil
+	case ColdArchiveBucketEntryTypeColdArchiveArchivedLeaf:
+		if err = (*u.ArchivedLeaf).EncodeTo(e); err != nil {
+			return err
+		}
+		return nil
+	case ColdArchiveBucketEntryTypeColdArchiveDeletedLeaf:
+		if err = (*u.DeletedLeaf).EncodeTo(e); err != nil {
+			return err
+		}
+		return nil
+	case ColdArchiveBucketEntryTypeColdArchiveBoundaryLeaf:
+		if err = (*u.BoundaryLeaf).EncodeTo(e); err != nil {
+			return err
+		}
+		return nil
+	case ColdArchiveBucketEntryTypeColdArchiveHash:
+		if err = (*u.HashEntry).EncodeTo(e); err != nil {
+			return err
+		}
+		return nil
+	}
+	return fmt.Errorf("Type (ColdArchiveBucketEntryType) switch value '%d' is not valid for union ColdArchiveBucketEntry", u.Type)
+}
+
+var _ decoderFrom = (*ColdArchiveBucketEntry)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (u *ColdArchiveBucketEntry) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, fmt.Errorf("decoding ColdArchiveBucketEntry: %w", ErrMaxDecodingDepthReached)
+	}
+	maxDepth -= 1
+	var err error
+	var n, nTmp int
+	nTmp, err = u.Type.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding ColdArchiveBucketEntryType: %w", err)
+	}
+	switch ColdArchiveBucketEntryType(u.Type) {
+	case ColdArchiveBucketEntryTypeColdArchiveMetaentry:
+		u.MetaEntry = new(BucketMetadata)
+		nTmp, err = (*u.MetaEntry).DecodeFrom(d, maxDepth)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding BucketMetadata: %w", err)
+		}
+		return n, nil
+	case ColdArchiveBucketEntryTypeColdArchiveArchivedLeaf:
+		u.ArchivedLeaf = new(ColdArchiveArchivedLeaf)
+		nTmp, err = (*u.ArchivedLeaf).DecodeFrom(d, maxDepth)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding ColdArchiveArchivedLeaf: %w", err)
+		}
+		return n, nil
+	case ColdArchiveBucketEntryTypeColdArchiveDeletedLeaf:
+		u.DeletedLeaf = new(ColdArchiveDeletedLeaf)
+		nTmp, err = (*u.DeletedLeaf).DecodeFrom(d, maxDepth)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding ColdArchiveDeletedLeaf: %w", err)
+		}
+		return n, nil
+	case ColdArchiveBucketEntryTypeColdArchiveBoundaryLeaf:
+		u.BoundaryLeaf = new(ColdArchiveBoundaryLeaf)
+		nTmp, err = (*u.BoundaryLeaf).DecodeFrom(d, maxDepth)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding ColdArchiveBoundaryLeaf: %w", err)
+		}
+		return n, nil
+	case ColdArchiveBucketEntryTypeColdArchiveHash:
+		u.HashEntry = new(ColdArchiveHashEntry)
+		nTmp, err = (*u.HashEntry).DecodeFrom(d, maxDepth)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding ColdArchiveHashEntry: %w", err)
+		}
+		return n, nil
+	}
+	return n, fmt.Errorf("union ColdArchiveBucketEntry has invalid Type (ColdArchiveBucketEntryType) switch value '%d'", u.Type)
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s ColdArchiveBucketEntry) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *ColdArchiveBucketEntry) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*ColdArchiveBucketEntry)(nil)
+	_ encoding.BinaryUnmarshaler = (*ColdArchiveBucketEntry)(nil)
+)
+
+// xdrType signals that this type represents XDR values defined by this package.
+func (s ColdArchiveBucketEntry) xdrType() {}
+
+var _ xdrType = (*ColdArchiveBucketEntry)(nil)
+
 // UpgradeType is an XDR Typedef defines as:
 //
 //	typedef opaque UpgradeType<128>;
@@ -12991,551 +14786,6 @@ var (
 func (s ConfigUpgradeSet) xdrType() {}
 
 var _ xdrType = (*ConfigUpgradeSet)(nil)
-
-// BucketEntryType is an XDR Enum defines as:
-//
-//	enum BucketEntryType
-//	 {
-//	     METAENTRY =
-//	         -1, // At-and-after protocol 11: bucket metadata, should come first.
-//	     LIVEENTRY = 0, // Before protocol 11: created-or-updated;
-//	                    // At-and-after protocol 11: only updated.
-//	     DEADENTRY = 1,
-//	     INITENTRY = 2 // At-and-after protocol 11: only created.
-//	 };
-type BucketEntryType int32
-
-const (
-	BucketEntryTypeMetaentry BucketEntryType = -1
-	BucketEntryTypeLiveentry BucketEntryType = 0
-	BucketEntryTypeDeadentry BucketEntryType = 1
-	BucketEntryTypeInitentry BucketEntryType = 2
-)
-
-var bucketEntryTypeMap = map[int32]string{
-	-1: "BucketEntryTypeMetaentry",
-	0:  "BucketEntryTypeLiveentry",
-	1:  "BucketEntryTypeDeadentry",
-	2:  "BucketEntryTypeInitentry",
-}
-
-// ValidEnum validates a proposed value for this enum.  Implements
-// the Enum interface for BucketEntryType
-func (e BucketEntryType) ValidEnum(v int32) bool {
-	_, ok := bucketEntryTypeMap[v]
-	return ok
-}
-
-// String returns the name of `e`
-func (e BucketEntryType) String() string {
-	name, _ := bucketEntryTypeMap[int32(e)]
-	return name
-}
-
-// EncodeTo encodes this value using the Encoder.
-func (e BucketEntryType) EncodeTo(enc *xdr.Encoder) error {
-	if _, ok := bucketEntryTypeMap[int32(e)]; !ok {
-		return fmt.Errorf("'%d' is not a valid BucketEntryType enum value", e)
-	}
-	_, err := enc.EncodeInt(int32(e))
-	return err
-}
-
-var _ decoderFrom = (*BucketEntryType)(nil)
-
-// DecodeFrom decodes this value using the Decoder.
-func (e *BucketEntryType) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
-	if maxDepth == 0 {
-		return 0, fmt.Errorf("decoding BucketEntryType: %w", ErrMaxDecodingDepthReached)
-	}
-	maxDepth -= 1
-	v, n, err := d.DecodeInt()
-	if err != nil {
-		return n, fmt.Errorf("decoding BucketEntryType: %w", err)
-	}
-	if _, ok := bucketEntryTypeMap[v]; !ok {
-		return n, fmt.Errorf("'%d' is not a valid BucketEntryType enum value", v)
-	}
-	*e = BucketEntryType(v)
-	return n, nil
-}
-
-// MarshalBinary implements encoding.BinaryMarshaler.
-func (s BucketEntryType) MarshalBinary() ([]byte, error) {
-	b := bytes.Buffer{}
-	e := xdr.NewEncoder(&b)
-	err := s.EncodeTo(e)
-	return b.Bytes(), err
-}
-
-// UnmarshalBinary implements encoding.BinaryUnmarshaler.
-func (s *BucketEntryType) UnmarshalBinary(inp []byte) error {
-	r := bytes.NewReader(inp)
-	o := xdr.DefaultDecodeOptions
-	o.MaxInputLen = len(inp)
-	d := xdr.NewDecoderWithOptions(r, o)
-	_, err := s.DecodeFrom(d, o.MaxDepth)
-	return err
-}
-
-var (
-	_ encoding.BinaryMarshaler   = (*BucketEntryType)(nil)
-	_ encoding.BinaryUnmarshaler = (*BucketEntryType)(nil)
-)
-
-// xdrType signals that this type represents XDR values defined by this package.
-func (s BucketEntryType) xdrType() {}
-
-var _ xdrType = (*BucketEntryType)(nil)
-
-// BucketMetadataExt is an XDR NestedUnion defines as:
-//
-//	union switch (int v)
-//	     {
-//	     case 0:
-//	         void;
-//	     }
-type BucketMetadataExt struct {
-	V int32
-}
-
-// SwitchFieldName returns the field name in which this union's
-// discriminant is stored
-func (u BucketMetadataExt) SwitchFieldName() string {
-	return "V"
-}
-
-// ArmForSwitch returns which field name should be used for storing
-// the value for an instance of BucketMetadataExt
-func (u BucketMetadataExt) ArmForSwitch(sw int32) (string, bool) {
-	switch int32(sw) {
-	case 0:
-		return "", true
-	}
-	return "-", false
-}
-
-// NewBucketMetadataExt creates a new  BucketMetadataExt.
-func NewBucketMetadataExt(v int32, value interface{}) (result BucketMetadataExt, err error) {
-	result.V = v
-	switch int32(v) {
-	case 0:
-		// void
-	}
-	return
-}
-
-// EncodeTo encodes this value using the Encoder.
-func (u BucketMetadataExt) EncodeTo(e *xdr.Encoder) error {
-	var err error
-	if _, err = e.EncodeInt(int32(u.V)); err != nil {
-		return err
-	}
-	switch int32(u.V) {
-	case 0:
-		// Void
-		return nil
-	}
-	return fmt.Errorf("V (int32) switch value '%d' is not valid for union BucketMetadataExt", u.V)
-}
-
-var _ decoderFrom = (*BucketMetadataExt)(nil)
-
-// DecodeFrom decodes this value using the Decoder.
-func (u *BucketMetadataExt) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
-	if maxDepth == 0 {
-		return 0, fmt.Errorf("decoding BucketMetadataExt: %w", ErrMaxDecodingDepthReached)
-	}
-	maxDepth -= 1
-	var err error
-	var n, nTmp int
-	u.V, nTmp, err = d.DecodeInt()
-	n += nTmp
-	if err != nil {
-		return n, fmt.Errorf("decoding Int: %w", err)
-	}
-	switch int32(u.V) {
-	case 0:
-		// Void
-		return n, nil
-	}
-	return n, fmt.Errorf("union BucketMetadataExt has invalid V (int32) switch value '%d'", u.V)
-}
-
-// MarshalBinary implements encoding.BinaryMarshaler.
-func (s BucketMetadataExt) MarshalBinary() ([]byte, error) {
-	b := bytes.Buffer{}
-	e := xdr.NewEncoder(&b)
-	err := s.EncodeTo(e)
-	return b.Bytes(), err
-}
-
-// UnmarshalBinary implements encoding.BinaryUnmarshaler.
-func (s *BucketMetadataExt) UnmarshalBinary(inp []byte) error {
-	r := bytes.NewReader(inp)
-	o := xdr.DefaultDecodeOptions
-	o.MaxInputLen = len(inp)
-	d := xdr.NewDecoderWithOptions(r, o)
-	_, err := s.DecodeFrom(d, o.MaxDepth)
-	return err
-}
-
-var (
-	_ encoding.BinaryMarshaler   = (*BucketMetadataExt)(nil)
-	_ encoding.BinaryUnmarshaler = (*BucketMetadataExt)(nil)
-)
-
-// xdrType signals that this type represents XDR values defined by this package.
-func (s BucketMetadataExt) xdrType() {}
-
-var _ xdrType = (*BucketMetadataExt)(nil)
-
-// BucketMetadata is an XDR Struct defines as:
-//
-//	struct BucketMetadata
-//	 {
-//	     // Indicates the protocol version used to create / merge this bucket.
-//	     uint32 ledgerVersion;
-//
-//	     // reserved for future use
-//	     union switch (int v)
-//	     {
-//	     case 0:
-//	         void;
-//	     }
-//	     ext;
-//	 };
-type BucketMetadata struct {
-	LedgerVersion Uint32
-	Ext           BucketMetadataExt
-}
-
-// EncodeTo encodes this value using the Encoder.
-func (s *BucketMetadata) EncodeTo(e *xdr.Encoder) error {
-	var err error
-	if err = s.LedgerVersion.EncodeTo(e); err != nil {
-		return err
-	}
-	if err = s.Ext.EncodeTo(e); err != nil {
-		return err
-	}
-	return nil
-}
-
-var _ decoderFrom = (*BucketMetadata)(nil)
-
-// DecodeFrom decodes this value using the Decoder.
-func (s *BucketMetadata) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
-	if maxDepth == 0 {
-		return 0, fmt.Errorf("decoding BucketMetadata: %w", ErrMaxDecodingDepthReached)
-	}
-	maxDepth -= 1
-	var err error
-	var n, nTmp int
-	nTmp, err = s.LedgerVersion.DecodeFrom(d, maxDepth)
-	n += nTmp
-	if err != nil {
-		return n, fmt.Errorf("decoding Uint32: %w", err)
-	}
-	nTmp, err = s.Ext.DecodeFrom(d, maxDepth)
-	n += nTmp
-	if err != nil {
-		return n, fmt.Errorf("decoding BucketMetadataExt: %w", err)
-	}
-	return n, nil
-}
-
-// MarshalBinary implements encoding.BinaryMarshaler.
-func (s BucketMetadata) MarshalBinary() ([]byte, error) {
-	b := bytes.Buffer{}
-	e := xdr.NewEncoder(&b)
-	err := s.EncodeTo(e)
-	return b.Bytes(), err
-}
-
-// UnmarshalBinary implements encoding.BinaryUnmarshaler.
-func (s *BucketMetadata) UnmarshalBinary(inp []byte) error {
-	r := bytes.NewReader(inp)
-	o := xdr.DefaultDecodeOptions
-	o.MaxInputLen = len(inp)
-	d := xdr.NewDecoderWithOptions(r, o)
-	_, err := s.DecodeFrom(d, o.MaxDepth)
-	return err
-}
-
-var (
-	_ encoding.BinaryMarshaler   = (*BucketMetadata)(nil)
-	_ encoding.BinaryUnmarshaler = (*BucketMetadata)(nil)
-)
-
-// xdrType signals that this type represents XDR values defined by this package.
-func (s BucketMetadata) xdrType() {}
-
-var _ xdrType = (*BucketMetadata)(nil)
-
-// BucketEntry is an XDR Union defines as:
-//
-//	union BucketEntry switch (BucketEntryType type)
-//	 {
-//	 case LIVEENTRY:
-//	 case INITENTRY:
-//	     LedgerEntry liveEntry;
-//
-//	 case DEADENTRY:
-//	     LedgerKey deadEntry;
-//	 case METAENTRY:
-//	     BucketMetadata metaEntry;
-//	 };
-type BucketEntry struct {
-	Type      BucketEntryType
-	LiveEntry *LedgerEntry
-	DeadEntry *LedgerKey
-	MetaEntry *BucketMetadata
-}
-
-// SwitchFieldName returns the field name in which this union's
-// discriminant is stored
-func (u BucketEntry) SwitchFieldName() string {
-	return "Type"
-}
-
-// ArmForSwitch returns which field name should be used for storing
-// the value for an instance of BucketEntry
-func (u BucketEntry) ArmForSwitch(sw int32) (string, bool) {
-	switch BucketEntryType(sw) {
-	case BucketEntryTypeLiveentry:
-		return "LiveEntry", true
-	case BucketEntryTypeInitentry:
-		return "LiveEntry", true
-	case BucketEntryTypeDeadentry:
-		return "DeadEntry", true
-	case BucketEntryTypeMetaentry:
-		return "MetaEntry", true
-	}
-	return "-", false
-}
-
-// NewBucketEntry creates a new  BucketEntry.
-func NewBucketEntry(aType BucketEntryType, value interface{}) (result BucketEntry, err error) {
-	result.Type = aType
-	switch BucketEntryType(aType) {
-	case BucketEntryTypeLiveentry:
-		tv, ok := value.(LedgerEntry)
-		if !ok {
-			err = errors.New("invalid value, must be LedgerEntry")
-			return
-		}
-		result.LiveEntry = &tv
-	case BucketEntryTypeInitentry:
-		tv, ok := value.(LedgerEntry)
-		if !ok {
-			err = errors.New("invalid value, must be LedgerEntry")
-			return
-		}
-		result.LiveEntry = &tv
-	case BucketEntryTypeDeadentry:
-		tv, ok := value.(LedgerKey)
-		if !ok {
-			err = errors.New("invalid value, must be LedgerKey")
-			return
-		}
-		result.DeadEntry = &tv
-	case BucketEntryTypeMetaentry:
-		tv, ok := value.(BucketMetadata)
-		if !ok {
-			err = errors.New("invalid value, must be BucketMetadata")
-			return
-		}
-		result.MetaEntry = &tv
-	}
-	return
-}
-
-// MustLiveEntry retrieves the LiveEntry value from the union,
-// panicing if the value is not set.
-func (u BucketEntry) MustLiveEntry() LedgerEntry {
-	val, ok := u.GetLiveEntry()
-
-	if !ok {
-		panic("arm LiveEntry is not set")
-	}
-
-	return val
-}
-
-// GetLiveEntry retrieves the LiveEntry value from the union,
-// returning ok if the union's switch indicated the value is valid.
-func (u BucketEntry) GetLiveEntry() (result LedgerEntry, ok bool) {
-	armName, _ := u.ArmForSwitch(int32(u.Type))
-
-	if armName == "LiveEntry" {
-		result = *u.LiveEntry
-		ok = true
-	}
-
-	return
-}
-
-// MustDeadEntry retrieves the DeadEntry value from the union,
-// panicing if the value is not set.
-func (u BucketEntry) MustDeadEntry() LedgerKey {
-	val, ok := u.GetDeadEntry()
-
-	if !ok {
-		panic("arm DeadEntry is not set")
-	}
-
-	return val
-}
-
-// GetDeadEntry retrieves the DeadEntry value from the union,
-// returning ok if the union's switch indicated the value is valid.
-func (u BucketEntry) GetDeadEntry() (result LedgerKey, ok bool) {
-	armName, _ := u.ArmForSwitch(int32(u.Type))
-
-	if armName == "DeadEntry" {
-		result = *u.DeadEntry
-		ok = true
-	}
-
-	return
-}
-
-// MustMetaEntry retrieves the MetaEntry value from the union,
-// panicing if the value is not set.
-func (u BucketEntry) MustMetaEntry() BucketMetadata {
-	val, ok := u.GetMetaEntry()
-
-	if !ok {
-		panic("arm MetaEntry is not set")
-	}
-
-	return val
-}
-
-// GetMetaEntry retrieves the MetaEntry value from the union,
-// returning ok if the union's switch indicated the value is valid.
-func (u BucketEntry) GetMetaEntry() (result BucketMetadata, ok bool) {
-	armName, _ := u.ArmForSwitch(int32(u.Type))
-
-	if armName == "MetaEntry" {
-		result = *u.MetaEntry
-		ok = true
-	}
-
-	return
-}
-
-// EncodeTo encodes this value using the Encoder.
-func (u BucketEntry) EncodeTo(e *xdr.Encoder) error {
-	var err error
-	if err = u.Type.EncodeTo(e); err != nil {
-		return err
-	}
-	switch BucketEntryType(u.Type) {
-	case BucketEntryTypeLiveentry:
-		if err = (*u.LiveEntry).EncodeTo(e); err != nil {
-			return err
-		}
-		return nil
-	case BucketEntryTypeInitentry:
-		if err = (*u.LiveEntry).EncodeTo(e); err != nil {
-			return err
-		}
-		return nil
-	case BucketEntryTypeDeadentry:
-		if err = (*u.DeadEntry).EncodeTo(e); err != nil {
-			return err
-		}
-		return nil
-	case BucketEntryTypeMetaentry:
-		if err = (*u.MetaEntry).EncodeTo(e); err != nil {
-			return err
-		}
-		return nil
-	}
-	return fmt.Errorf("Type (BucketEntryType) switch value '%d' is not valid for union BucketEntry", u.Type)
-}
-
-var _ decoderFrom = (*BucketEntry)(nil)
-
-// DecodeFrom decodes this value using the Decoder.
-func (u *BucketEntry) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
-	if maxDepth == 0 {
-		return 0, fmt.Errorf("decoding BucketEntry: %w", ErrMaxDecodingDepthReached)
-	}
-	maxDepth -= 1
-	var err error
-	var n, nTmp int
-	nTmp, err = u.Type.DecodeFrom(d, maxDepth)
-	n += nTmp
-	if err != nil {
-		return n, fmt.Errorf("decoding BucketEntryType: %w", err)
-	}
-	switch BucketEntryType(u.Type) {
-	case BucketEntryTypeLiveentry:
-		u.LiveEntry = new(LedgerEntry)
-		nTmp, err = (*u.LiveEntry).DecodeFrom(d, maxDepth)
-		n += nTmp
-		if err != nil {
-			return n, fmt.Errorf("decoding LedgerEntry: %w", err)
-		}
-		return n, nil
-	case BucketEntryTypeInitentry:
-		u.LiveEntry = new(LedgerEntry)
-		nTmp, err = (*u.LiveEntry).DecodeFrom(d, maxDepth)
-		n += nTmp
-		if err != nil {
-			return n, fmt.Errorf("decoding LedgerEntry: %w", err)
-		}
-		return n, nil
-	case BucketEntryTypeDeadentry:
-		u.DeadEntry = new(LedgerKey)
-		nTmp, err = (*u.DeadEntry).DecodeFrom(d, maxDepth)
-		n += nTmp
-		if err != nil {
-			return n, fmt.Errorf("decoding LedgerKey: %w", err)
-		}
-		return n, nil
-	case BucketEntryTypeMetaentry:
-		u.MetaEntry = new(BucketMetadata)
-		nTmp, err = (*u.MetaEntry).DecodeFrom(d, maxDepth)
-		n += nTmp
-		if err != nil {
-			return n, fmt.Errorf("decoding BucketMetadata: %w", err)
-		}
-		return n, nil
-	}
-	return n, fmt.Errorf("union BucketEntry has invalid Type (BucketEntryType) switch value '%d'", u.Type)
-}
-
-// MarshalBinary implements encoding.BinaryMarshaler.
-func (s BucketEntry) MarshalBinary() ([]byte, error) {
-	b := bytes.Buffer{}
-	e := xdr.NewEncoder(&b)
-	err := s.EncodeTo(e)
-	return b.Bytes(), err
-}
-
-// UnmarshalBinary implements encoding.BinaryUnmarshaler.
-func (s *BucketEntry) UnmarshalBinary(inp []byte) error {
-	r := bytes.NewReader(inp)
-	o := xdr.DefaultDecodeOptions
-	o.MaxInputLen = len(inp)
-	d := xdr.NewDecoderWithOptions(r, o)
-	_, err := s.DecodeFrom(d, o.MaxDepth)
-	return err
-}
-
-var (
-	_ encoding.BinaryMarshaler   = (*BucketEntry)(nil)
-	_ encoding.BinaryUnmarshaler = (*BucketEntry)(nil)
-)
-
-// xdrType signals that this type represents XDR values defined by this package.
-func (s BucketEntry) xdrType() {}
-
-var _ xdrType = (*BucketEntry)(nil)
 
 // TxSetComponentType is an XDR Enum defines as:
 //
@@ -27572,7 +28822,8 @@ var _ xdrType = (*LiquidityPoolWithdrawOp)(nil)
 //	 {
 //	     HOST_FUNCTION_TYPE_INVOKE_CONTRACT = 0,
 //	     HOST_FUNCTION_TYPE_CREATE_CONTRACT = 1,
-//	     HOST_FUNCTION_TYPE_UPLOAD_CONTRACT_WASM = 2
+//	     HOST_FUNCTION_TYPE_UPLOAD_CONTRACT_WASM = 2,
+//	     HOST_FUNCTION_TYPE_CREATE_CONTRACT_V2 = 3
 //	 };
 type HostFunctionType int32
 
@@ -27580,12 +28831,14 @@ const (
 	HostFunctionTypeHostFunctionTypeInvokeContract     HostFunctionType = 0
 	HostFunctionTypeHostFunctionTypeCreateContract     HostFunctionType = 1
 	HostFunctionTypeHostFunctionTypeUploadContractWasm HostFunctionType = 2
+	HostFunctionTypeHostFunctionTypeCreateContractV2   HostFunctionType = 3
 )
 
 var hostFunctionTypeMap = map[int32]string{
 	0: "HostFunctionTypeHostFunctionTypeInvokeContract",
 	1: "HostFunctionTypeHostFunctionTypeCreateContract",
 	2: "HostFunctionTypeHostFunctionTypeUploadContractWasm",
+	3: "HostFunctionTypeHostFunctionTypeCreateContractV2",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -28089,6 +29342,112 @@ func (s CreateContractArgs) xdrType() {}
 
 var _ xdrType = (*CreateContractArgs)(nil)
 
+// CreateContractArgsV2 is an XDR Struct defines as:
+//
+//	struct CreateContractArgsV2
+//	 {
+//	     ContractIDPreimage contractIDPreimage;
+//	     ContractExecutable executable;
+//	     // Arguments of the contract's constructor.
+//	     SCVal constructorArgs<>;
+//	 };
+type CreateContractArgsV2 struct {
+	ContractIdPreimage ContractIdPreimage
+	Executable         ContractExecutable
+	ConstructorArgs    []ScVal
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s *CreateContractArgsV2) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = s.ContractIdPreimage.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.Executable.EncodeTo(e); err != nil {
+		return err
+	}
+	if _, err = e.EncodeUint(uint32(len(s.ConstructorArgs))); err != nil {
+		return err
+	}
+	for i := 0; i < len(s.ConstructorArgs); i++ {
+		if err = s.ConstructorArgs[i].EncodeTo(e); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+var _ decoderFrom = (*CreateContractArgsV2)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *CreateContractArgsV2) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, fmt.Errorf("decoding CreateContractArgsV2: %w", ErrMaxDecodingDepthReached)
+	}
+	maxDepth -= 1
+	var err error
+	var n, nTmp int
+	nTmp, err = s.ContractIdPreimage.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding ContractIdPreimage: %w", err)
+	}
+	nTmp, err = s.Executable.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding ContractExecutable: %w", err)
+	}
+	var l uint32
+	l, nTmp, err = d.DecodeUint()
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding ScVal: %w", err)
+	}
+	s.ConstructorArgs = nil
+	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding ScVal: length (%d) exceeds remaining input length (%d)", l, il)
+		}
+		s.ConstructorArgs = make([]ScVal, l)
+		for i := uint32(0); i < l; i++ {
+			nTmp, err = s.ConstructorArgs[i].DecodeFrom(d, maxDepth)
+			n += nTmp
+			if err != nil {
+				return n, fmt.Errorf("decoding ScVal: %w", err)
+			}
+		}
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s CreateContractArgsV2) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *CreateContractArgsV2) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*CreateContractArgsV2)(nil)
+	_ encoding.BinaryUnmarshaler = (*CreateContractArgsV2)(nil)
+)
+
+// xdrType signals that this type represents XDR values defined by this package.
+func (s CreateContractArgsV2) xdrType() {}
+
+var _ xdrType = (*CreateContractArgsV2)(nil)
+
 // InvokeContractArgs is an XDR Struct defines as:
 //
 //	struct InvokeContractArgs {
@@ -28203,12 +29562,15 @@ var _ xdrType = (*InvokeContractArgs)(nil)
 //	     CreateContractArgs createContract;
 //	 case HOST_FUNCTION_TYPE_UPLOAD_CONTRACT_WASM:
 //	     opaque wasm<>;
+//	 case HOST_FUNCTION_TYPE_CREATE_CONTRACT_V2:
+//	     CreateContractArgsV2 createContractV2;
 //	 };
 type HostFunction struct {
-	Type           HostFunctionType
-	InvokeContract *InvokeContractArgs
-	CreateContract *CreateContractArgs
-	Wasm           *[]byte
+	Type             HostFunctionType
+	InvokeContract   *InvokeContractArgs
+	CreateContract   *CreateContractArgs
+	Wasm             *[]byte
+	CreateContractV2 *CreateContractArgsV2
 }
 
 // SwitchFieldName returns the field name in which this union's
@@ -28227,6 +29589,8 @@ func (u HostFunction) ArmForSwitch(sw int32) (string, bool) {
 		return "CreateContract", true
 	case HostFunctionTypeHostFunctionTypeUploadContractWasm:
 		return "Wasm", true
+	case HostFunctionTypeHostFunctionTypeCreateContractV2:
+		return "CreateContractV2", true
 	}
 	return "-", false
 }
@@ -28256,6 +29620,13 @@ func NewHostFunction(aType HostFunctionType, value interface{}) (result HostFunc
 			return
 		}
 		result.Wasm = &tv
+	case HostFunctionTypeHostFunctionTypeCreateContractV2:
+		tv, ok := value.(CreateContractArgsV2)
+		if !ok {
+			err = errors.New("invalid value, must be CreateContractArgsV2")
+			return
+		}
+		result.CreateContractV2 = &tv
 	}
 	return
 }
@@ -28335,6 +29706,31 @@ func (u HostFunction) GetWasm() (result []byte, ok bool) {
 	return
 }
 
+// MustCreateContractV2 retrieves the CreateContractV2 value from the union,
+// panicing if the value is not set.
+func (u HostFunction) MustCreateContractV2() CreateContractArgsV2 {
+	val, ok := u.GetCreateContractV2()
+
+	if !ok {
+		panic("arm CreateContractV2 is not set")
+	}
+
+	return val
+}
+
+// GetCreateContractV2 retrieves the CreateContractV2 value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u HostFunction) GetCreateContractV2() (result CreateContractArgsV2, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "CreateContractV2" {
+		result = *u.CreateContractV2
+		ok = true
+	}
+
+	return
+}
+
 // EncodeTo encodes this value using the Encoder.
 func (u HostFunction) EncodeTo(e *xdr.Encoder) error {
 	var err error
@@ -28354,6 +29750,11 @@ func (u HostFunction) EncodeTo(e *xdr.Encoder) error {
 		return nil
 	case HostFunctionTypeHostFunctionTypeUploadContractWasm:
 		if _, err = e.EncodeOpaque((*u.Wasm)[:]); err != nil {
+			return err
+		}
+		return nil
+	case HostFunctionTypeHostFunctionTypeCreateContractV2:
+		if err = (*u.CreateContractV2).EncodeTo(e); err != nil {
 			return err
 		}
 		return nil
@@ -28401,6 +29802,14 @@ func (u *HostFunction) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
 			return n, fmt.Errorf("decoding Wasm: %w", err)
 		}
 		return n, nil
+	case HostFunctionTypeHostFunctionTypeCreateContractV2:
+		u.CreateContractV2 = new(CreateContractArgsV2)
+		nTmp, err = (*u.CreateContractV2).DecodeFrom(d, maxDepth)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding CreateContractArgsV2: %w", err)
+		}
+		return n, nil
 	}
 	return n, fmt.Errorf("union HostFunction has invalid Type (HostFunctionType) switch value '%d'", u.Type)
 }
@@ -28438,18 +29847,21 @@ var _ xdrType = (*HostFunction)(nil)
 //	enum SorobanAuthorizedFunctionType
 //	 {
 //	     SOROBAN_AUTHORIZED_FUNCTION_TYPE_CONTRACT_FN = 0,
-//	     SOROBAN_AUTHORIZED_FUNCTION_TYPE_CREATE_CONTRACT_HOST_FN = 1
+//	     SOROBAN_AUTHORIZED_FUNCTION_TYPE_CREATE_CONTRACT_HOST_FN = 1,
+//	     SOROBAN_AUTHORIZED_FUNCTION_TYPE_CREATE_CONTRACT_V2_HOST_FN = 2
 //	 };
 type SorobanAuthorizedFunctionType int32
 
 const (
-	SorobanAuthorizedFunctionTypeSorobanAuthorizedFunctionTypeContractFn           SorobanAuthorizedFunctionType = 0
-	SorobanAuthorizedFunctionTypeSorobanAuthorizedFunctionTypeCreateContractHostFn SorobanAuthorizedFunctionType = 1
+	SorobanAuthorizedFunctionTypeSorobanAuthorizedFunctionTypeContractFn             SorobanAuthorizedFunctionType = 0
+	SorobanAuthorizedFunctionTypeSorobanAuthorizedFunctionTypeCreateContractHostFn   SorobanAuthorizedFunctionType = 1
+	SorobanAuthorizedFunctionTypeSorobanAuthorizedFunctionTypeCreateContractV2HostFn SorobanAuthorizedFunctionType = 2
 )
 
 var sorobanAuthorizedFunctionTypeMap = map[int32]string{
 	0: "SorobanAuthorizedFunctionTypeSorobanAuthorizedFunctionTypeContractFn",
 	1: "SorobanAuthorizedFunctionTypeSorobanAuthorizedFunctionTypeCreateContractHostFn",
+	2: "SorobanAuthorizedFunctionTypeSorobanAuthorizedFunctionTypeCreateContractV2HostFn",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -28527,13 +29939,20 @@ var _ xdrType = (*SorobanAuthorizedFunctionType)(nil)
 //	 {
 //	 case SOROBAN_AUTHORIZED_FUNCTION_TYPE_CONTRACT_FN:
 //	     InvokeContractArgs contractFn;
+//	 // This variant of auth payload for creating new contract instances is no
+//	 // longer accepted after protocol 22.
 //	 case SOROBAN_AUTHORIZED_FUNCTION_TYPE_CREATE_CONTRACT_HOST_FN:
 //	     CreateContractArgs createContractHostFn;
+//	 // This variant of auth payload for creating new contract instances
+//	 // is only accepted in and after protocol 22.
+//	 case SOROBAN_AUTHORIZED_FUNCTION_TYPE_CREATE_CONTRACT_V2_HOST_FN:
+//	     CreateContractArgsV2 createContractV2HostFn;
 //	 };
 type SorobanAuthorizedFunction struct {
-	Type                 SorobanAuthorizedFunctionType
-	ContractFn           *InvokeContractArgs
-	CreateContractHostFn *CreateContractArgs
+	Type                   SorobanAuthorizedFunctionType
+	ContractFn             *InvokeContractArgs
+	CreateContractHostFn   *CreateContractArgs
+	CreateContractV2HostFn *CreateContractArgsV2
 }
 
 // SwitchFieldName returns the field name in which this union's
@@ -28550,6 +29969,8 @@ func (u SorobanAuthorizedFunction) ArmForSwitch(sw int32) (string, bool) {
 		return "ContractFn", true
 	case SorobanAuthorizedFunctionTypeSorobanAuthorizedFunctionTypeCreateContractHostFn:
 		return "CreateContractHostFn", true
+	case SorobanAuthorizedFunctionTypeSorobanAuthorizedFunctionTypeCreateContractV2HostFn:
+		return "CreateContractV2HostFn", true
 	}
 	return "-", false
 }
@@ -28572,6 +29993,13 @@ func NewSorobanAuthorizedFunction(aType SorobanAuthorizedFunctionType, value int
 			return
 		}
 		result.CreateContractHostFn = &tv
+	case SorobanAuthorizedFunctionTypeSorobanAuthorizedFunctionTypeCreateContractV2HostFn:
+		tv, ok := value.(CreateContractArgsV2)
+		if !ok {
+			err = errors.New("invalid value, must be CreateContractArgsV2")
+			return
+		}
+		result.CreateContractV2HostFn = &tv
 	}
 	return
 }
@@ -28626,6 +30054,31 @@ func (u SorobanAuthorizedFunction) GetCreateContractHostFn() (result CreateContr
 	return
 }
 
+// MustCreateContractV2HostFn retrieves the CreateContractV2HostFn value from the union,
+// panicing if the value is not set.
+func (u SorobanAuthorizedFunction) MustCreateContractV2HostFn() CreateContractArgsV2 {
+	val, ok := u.GetCreateContractV2HostFn()
+
+	if !ok {
+		panic("arm CreateContractV2HostFn is not set")
+	}
+
+	return val
+}
+
+// GetCreateContractV2HostFn retrieves the CreateContractV2HostFn value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u SorobanAuthorizedFunction) GetCreateContractV2HostFn() (result CreateContractArgsV2, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "CreateContractV2HostFn" {
+		result = *u.CreateContractV2HostFn
+		ok = true
+	}
+
+	return
+}
+
 // EncodeTo encodes this value using the Encoder.
 func (u SorobanAuthorizedFunction) EncodeTo(e *xdr.Encoder) error {
 	var err error
@@ -28640,6 +30093,11 @@ func (u SorobanAuthorizedFunction) EncodeTo(e *xdr.Encoder) error {
 		return nil
 	case SorobanAuthorizedFunctionTypeSorobanAuthorizedFunctionTypeCreateContractHostFn:
 		if err = (*u.CreateContractHostFn).EncodeTo(e); err != nil {
+			return err
+		}
+		return nil
+	case SorobanAuthorizedFunctionTypeSorobanAuthorizedFunctionTypeCreateContractV2HostFn:
+		if err = (*u.CreateContractV2HostFn).EncodeTo(e); err != nil {
 			return err
 		}
 		return nil
@@ -28677,6 +30135,14 @@ func (u *SorobanAuthorizedFunction) DecodeFrom(d *xdr.Decoder, maxDepth uint) (i
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding CreateContractArgs: %w", err)
+		}
+		return n, nil
+	case SorobanAuthorizedFunctionTypeSorobanAuthorizedFunctionTypeCreateContractV2HostFn:
+		u.CreateContractV2HostFn = new(CreateContractArgsV2)
+		nTmp, err = (*u.CreateContractV2HostFn).DecodeFrom(d, maxDepth)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding CreateContractArgsV2: %w", err)
 		}
 		return n, nil
 	}
@@ -32799,6 +34265,816 @@ var (
 func (s LedgerFootprint) xdrType() {}
 
 var _ xdrType = (*LedgerFootprint)(nil)
+
+// ArchivalProofType is an XDR Enum defines as:
+//
+//	enum ArchivalProofType
+//	 {
+//	     EXISTENCE = 0,
+//	     NONEXISTENCE = 1
+//	 };
+type ArchivalProofType int32
+
+const (
+	ArchivalProofTypeExistence    ArchivalProofType = 0
+	ArchivalProofTypeNonexistence ArchivalProofType = 1
+)
+
+var archivalProofTypeMap = map[int32]string{
+	0: "ArchivalProofTypeExistence",
+	1: "ArchivalProofTypeNonexistence",
+}
+
+// ValidEnum validates a proposed value for this enum.  Implements
+// the Enum interface for ArchivalProofType
+func (e ArchivalProofType) ValidEnum(v int32) bool {
+	_, ok := archivalProofTypeMap[v]
+	return ok
+}
+
+// String returns the name of `e`
+func (e ArchivalProofType) String() string {
+	name, _ := archivalProofTypeMap[int32(e)]
+	return name
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (e ArchivalProofType) EncodeTo(enc *xdr.Encoder) error {
+	if _, ok := archivalProofTypeMap[int32(e)]; !ok {
+		return fmt.Errorf("'%d' is not a valid ArchivalProofType enum value", e)
+	}
+	_, err := enc.EncodeInt(int32(e))
+	return err
+}
+
+var _ decoderFrom = (*ArchivalProofType)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (e *ArchivalProofType) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, fmt.Errorf("decoding ArchivalProofType: %w", ErrMaxDecodingDepthReached)
+	}
+	maxDepth -= 1
+	v, n, err := d.DecodeInt()
+	if err != nil {
+		return n, fmt.Errorf("decoding ArchivalProofType: %w", err)
+	}
+	if _, ok := archivalProofTypeMap[v]; !ok {
+		return n, fmt.Errorf("'%d' is not a valid ArchivalProofType enum value", v)
+	}
+	*e = ArchivalProofType(v)
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s ArchivalProofType) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *ArchivalProofType) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*ArchivalProofType)(nil)
+	_ encoding.BinaryUnmarshaler = (*ArchivalProofType)(nil)
+)
+
+// xdrType signals that this type represents XDR values defined by this package.
+func (s ArchivalProofType) xdrType() {}
+
+var _ xdrType = (*ArchivalProofType)(nil)
+
+// ArchivalProofNode is an XDR Struct defines as:
+//
+//	struct ArchivalProofNode
+//	 {
+//	     uint32 index;
+//	     Hash hash;
+//	 };
+type ArchivalProofNode struct {
+	Index Uint32
+	Hash  Hash
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s *ArchivalProofNode) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = s.Index.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.Hash.EncodeTo(e); err != nil {
+		return err
+	}
+	return nil
+}
+
+var _ decoderFrom = (*ArchivalProofNode)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *ArchivalProofNode) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, fmt.Errorf("decoding ArchivalProofNode: %w", ErrMaxDecodingDepthReached)
+	}
+	maxDepth -= 1
+	var err error
+	var n, nTmp int
+	nTmp, err = s.Index.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %w", err)
+	}
+	nTmp, err = s.Hash.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Hash: %w", err)
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s ArchivalProofNode) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *ArchivalProofNode) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*ArchivalProofNode)(nil)
+	_ encoding.BinaryUnmarshaler = (*ArchivalProofNode)(nil)
+)
+
+// xdrType signals that this type represents XDR values defined by this package.
+func (s ArchivalProofNode) xdrType() {}
+
+var _ xdrType = (*ArchivalProofNode)(nil)
+
+// ProofLevel is an XDR Typedef defines as:
+//
+//	typedef ArchivalProofNode ProofLevel<>;
+type ProofLevel []ArchivalProofNode
+
+// EncodeTo encodes this value using the Encoder.
+func (s ProofLevel) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if _, err = e.EncodeUint(uint32(len(s))); err != nil {
+		return err
+	}
+	for i := 0; i < len(s); i++ {
+		if err = s[i].EncodeTo(e); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+var _ decoderFrom = (*ProofLevel)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *ProofLevel) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, fmt.Errorf("decoding ProofLevel: %w", ErrMaxDecodingDepthReached)
+	}
+	maxDepth -= 1
+	var err error
+	var n, nTmp int
+	var l uint32
+	l, nTmp, err = d.DecodeUint()
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding ArchivalProofNode: %w", err)
+	}
+	(*s) = nil
+	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding ArchivalProofNode: length (%d) exceeds remaining input length (%d)", l, il)
+		}
+		(*s) = make([]ArchivalProofNode, l)
+		for i := uint32(0); i < l; i++ {
+			nTmp, err = (*s)[i].DecodeFrom(d, maxDepth)
+			n += nTmp
+			if err != nil {
+				return n, fmt.Errorf("decoding ArchivalProofNode: %w", err)
+			}
+		}
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s ProofLevel) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *ProofLevel) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*ProofLevel)(nil)
+	_ encoding.BinaryUnmarshaler = (*ProofLevel)(nil)
+)
+
+// xdrType signals that this type represents XDR values defined by this package.
+func (s ProofLevel) xdrType() {}
+
+var _ xdrType = (*ProofLevel)(nil)
+
+// NonexistenceProofBody is an XDR Struct defines as:
+//
+//	struct NonexistenceProofBody
+//	 {
+//	     ColdArchiveBucketEntry entriesToProve<>;
+//
+//	     // Vector of vectors, where proofLevels[level]
+//	     // contains all HashNodes that correspond with that level
+//	     ProofLevel proofLevels<>;
+//	 };
+type NonexistenceProofBody struct {
+	EntriesToProve []ColdArchiveBucketEntry
+	ProofLevels    []ProofLevel
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s *NonexistenceProofBody) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if _, err = e.EncodeUint(uint32(len(s.EntriesToProve))); err != nil {
+		return err
+	}
+	for i := 0; i < len(s.EntriesToProve); i++ {
+		if err = s.EntriesToProve[i].EncodeTo(e); err != nil {
+			return err
+		}
+	}
+	if _, err = e.EncodeUint(uint32(len(s.ProofLevels))); err != nil {
+		return err
+	}
+	for i := 0; i < len(s.ProofLevels); i++ {
+		if err = s.ProofLevels[i].EncodeTo(e); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+var _ decoderFrom = (*NonexistenceProofBody)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *NonexistenceProofBody) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, fmt.Errorf("decoding NonexistenceProofBody: %w", ErrMaxDecodingDepthReached)
+	}
+	maxDepth -= 1
+	var err error
+	var n, nTmp int
+	var l uint32
+	l, nTmp, err = d.DecodeUint()
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding ColdArchiveBucketEntry: %w", err)
+	}
+	s.EntriesToProve = nil
+	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding ColdArchiveBucketEntry: length (%d) exceeds remaining input length (%d)", l, il)
+		}
+		s.EntriesToProve = make([]ColdArchiveBucketEntry, l)
+		for i := uint32(0); i < l; i++ {
+			nTmp, err = s.EntriesToProve[i].DecodeFrom(d, maxDepth)
+			n += nTmp
+			if err != nil {
+				return n, fmt.Errorf("decoding ColdArchiveBucketEntry: %w", err)
+			}
+		}
+	}
+	l, nTmp, err = d.DecodeUint()
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding ProofLevel: %w", err)
+	}
+	s.ProofLevels = nil
+	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding ProofLevel: length (%d) exceeds remaining input length (%d)", l, il)
+		}
+		s.ProofLevels = make([]ProofLevel, l)
+		for i := uint32(0); i < l; i++ {
+			nTmp, err = s.ProofLevels[i].DecodeFrom(d, maxDepth)
+			n += nTmp
+			if err != nil {
+				return n, fmt.Errorf("decoding ProofLevel: %w", err)
+			}
+		}
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s NonexistenceProofBody) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *NonexistenceProofBody) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*NonexistenceProofBody)(nil)
+	_ encoding.BinaryUnmarshaler = (*NonexistenceProofBody)(nil)
+)
+
+// xdrType signals that this type represents XDR values defined by this package.
+func (s NonexistenceProofBody) xdrType() {}
+
+var _ xdrType = (*NonexistenceProofBody)(nil)
+
+// ExistenceProofBody is an XDR Struct defines as:
+//
+//	struct ExistenceProofBody
+//	 {
+//	     LedgerKey keysToProve<>;
+//
+//	     // Bounds for each key being proved, where bound[n]
+//	     // corresponds to keysToProve[n]
+//	     ColdArchiveBucketEntry lowBoundEntries<>;
+//	     ColdArchiveBucketEntry highBoundEntries<>;
+//
+//	     // Vector of vectors, where proofLevels[level]
+//	     // contains all HashNodes that correspond with that level
+//	     ProofLevel proofLevels<>;
+//	 };
+type ExistenceProofBody struct {
+	KeysToProve      []LedgerKey
+	LowBoundEntries  []ColdArchiveBucketEntry
+	HighBoundEntries []ColdArchiveBucketEntry
+	ProofLevels      []ProofLevel
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s *ExistenceProofBody) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if _, err = e.EncodeUint(uint32(len(s.KeysToProve))); err != nil {
+		return err
+	}
+	for i := 0; i < len(s.KeysToProve); i++ {
+		if err = s.KeysToProve[i].EncodeTo(e); err != nil {
+			return err
+		}
+	}
+	if _, err = e.EncodeUint(uint32(len(s.LowBoundEntries))); err != nil {
+		return err
+	}
+	for i := 0; i < len(s.LowBoundEntries); i++ {
+		if err = s.LowBoundEntries[i].EncodeTo(e); err != nil {
+			return err
+		}
+	}
+	if _, err = e.EncodeUint(uint32(len(s.HighBoundEntries))); err != nil {
+		return err
+	}
+	for i := 0; i < len(s.HighBoundEntries); i++ {
+		if err = s.HighBoundEntries[i].EncodeTo(e); err != nil {
+			return err
+		}
+	}
+	if _, err = e.EncodeUint(uint32(len(s.ProofLevels))); err != nil {
+		return err
+	}
+	for i := 0; i < len(s.ProofLevels); i++ {
+		if err = s.ProofLevels[i].EncodeTo(e); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+var _ decoderFrom = (*ExistenceProofBody)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *ExistenceProofBody) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, fmt.Errorf("decoding ExistenceProofBody: %w", ErrMaxDecodingDepthReached)
+	}
+	maxDepth -= 1
+	var err error
+	var n, nTmp int
+	var l uint32
+	l, nTmp, err = d.DecodeUint()
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding LedgerKey: %w", err)
+	}
+	s.KeysToProve = nil
+	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding LedgerKey: length (%d) exceeds remaining input length (%d)", l, il)
+		}
+		s.KeysToProve = make([]LedgerKey, l)
+		for i := uint32(0); i < l; i++ {
+			nTmp, err = s.KeysToProve[i].DecodeFrom(d, maxDepth)
+			n += nTmp
+			if err != nil {
+				return n, fmt.Errorf("decoding LedgerKey: %w", err)
+			}
+		}
+	}
+	l, nTmp, err = d.DecodeUint()
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding ColdArchiveBucketEntry: %w", err)
+	}
+	s.LowBoundEntries = nil
+	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding ColdArchiveBucketEntry: length (%d) exceeds remaining input length (%d)", l, il)
+		}
+		s.LowBoundEntries = make([]ColdArchiveBucketEntry, l)
+		for i := uint32(0); i < l; i++ {
+			nTmp, err = s.LowBoundEntries[i].DecodeFrom(d, maxDepth)
+			n += nTmp
+			if err != nil {
+				return n, fmt.Errorf("decoding ColdArchiveBucketEntry: %w", err)
+			}
+		}
+	}
+	l, nTmp, err = d.DecodeUint()
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding ColdArchiveBucketEntry: %w", err)
+	}
+	s.HighBoundEntries = nil
+	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding ColdArchiveBucketEntry: length (%d) exceeds remaining input length (%d)", l, il)
+		}
+		s.HighBoundEntries = make([]ColdArchiveBucketEntry, l)
+		for i := uint32(0); i < l; i++ {
+			nTmp, err = s.HighBoundEntries[i].DecodeFrom(d, maxDepth)
+			n += nTmp
+			if err != nil {
+				return n, fmt.Errorf("decoding ColdArchiveBucketEntry: %w", err)
+			}
+		}
+	}
+	l, nTmp, err = d.DecodeUint()
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding ProofLevel: %w", err)
+	}
+	s.ProofLevels = nil
+	if l > 0 {
+		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
+			return n, fmt.Errorf("decoding ProofLevel: length (%d) exceeds remaining input length (%d)", l, il)
+		}
+		s.ProofLevels = make([]ProofLevel, l)
+		for i := uint32(0); i < l; i++ {
+			nTmp, err = s.ProofLevels[i].DecodeFrom(d, maxDepth)
+			n += nTmp
+			if err != nil {
+				return n, fmt.Errorf("decoding ProofLevel: %w", err)
+			}
+		}
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s ExistenceProofBody) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *ExistenceProofBody) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*ExistenceProofBody)(nil)
+	_ encoding.BinaryUnmarshaler = (*ExistenceProofBody)(nil)
+)
+
+// xdrType signals that this type represents XDR values defined by this package.
+func (s ExistenceProofBody) xdrType() {}
+
+var _ xdrType = (*ExistenceProofBody)(nil)
+
+// ArchivalProofBody is an XDR NestedUnion defines as:
+//
+//	union switch (ArchivalProofType t)
+//	     {
+//	     case EXISTENCE:
+//	         NonexistenceProofBody nonexistenceProof;
+//	     case NONEXISTENCE:
+//	         ExistenceProofBody existenceProof;
+//	     }
+type ArchivalProofBody struct {
+	T                 ArchivalProofType
+	NonexistenceProof *NonexistenceProofBody
+	ExistenceProof    *ExistenceProofBody
+}
+
+// SwitchFieldName returns the field name in which this union's
+// discriminant is stored
+func (u ArchivalProofBody) SwitchFieldName() string {
+	return "T"
+}
+
+// ArmForSwitch returns which field name should be used for storing
+// the value for an instance of ArchivalProofBody
+func (u ArchivalProofBody) ArmForSwitch(sw int32) (string, bool) {
+	switch ArchivalProofType(sw) {
+	case ArchivalProofTypeExistence:
+		return "NonexistenceProof", true
+	case ArchivalProofTypeNonexistence:
+		return "ExistenceProof", true
+	}
+	return "-", false
+}
+
+// NewArchivalProofBody creates a new  ArchivalProofBody.
+func NewArchivalProofBody(t ArchivalProofType, value interface{}) (result ArchivalProofBody, err error) {
+	result.T = t
+	switch ArchivalProofType(t) {
+	case ArchivalProofTypeExistence:
+		tv, ok := value.(NonexistenceProofBody)
+		if !ok {
+			err = errors.New("invalid value, must be NonexistenceProofBody")
+			return
+		}
+		result.NonexistenceProof = &tv
+	case ArchivalProofTypeNonexistence:
+		tv, ok := value.(ExistenceProofBody)
+		if !ok {
+			err = errors.New("invalid value, must be ExistenceProofBody")
+			return
+		}
+		result.ExistenceProof = &tv
+	}
+	return
+}
+
+// MustNonexistenceProof retrieves the NonexistenceProof value from the union,
+// panicing if the value is not set.
+func (u ArchivalProofBody) MustNonexistenceProof() NonexistenceProofBody {
+	val, ok := u.GetNonexistenceProof()
+
+	if !ok {
+		panic("arm NonexistenceProof is not set")
+	}
+
+	return val
+}
+
+// GetNonexistenceProof retrieves the NonexistenceProof value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u ArchivalProofBody) GetNonexistenceProof() (result NonexistenceProofBody, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.T))
+
+	if armName == "NonexistenceProof" {
+		result = *u.NonexistenceProof
+		ok = true
+	}
+
+	return
+}
+
+// MustExistenceProof retrieves the ExistenceProof value from the union,
+// panicing if the value is not set.
+func (u ArchivalProofBody) MustExistenceProof() ExistenceProofBody {
+	val, ok := u.GetExistenceProof()
+
+	if !ok {
+		panic("arm ExistenceProof is not set")
+	}
+
+	return val
+}
+
+// GetExistenceProof retrieves the ExistenceProof value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u ArchivalProofBody) GetExistenceProof() (result ExistenceProofBody, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.T))
+
+	if armName == "ExistenceProof" {
+		result = *u.ExistenceProof
+		ok = true
+	}
+
+	return
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (u ArchivalProofBody) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = u.T.EncodeTo(e); err != nil {
+		return err
+	}
+	switch ArchivalProofType(u.T) {
+	case ArchivalProofTypeExistence:
+		if err = (*u.NonexistenceProof).EncodeTo(e); err != nil {
+			return err
+		}
+		return nil
+	case ArchivalProofTypeNonexistence:
+		if err = (*u.ExistenceProof).EncodeTo(e); err != nil {
+			return err
+		}
+		return nil
+	}
+	return fmt.Errorf("T (ArchivalProofType) switch value '%d' is not valid for union ArchivalProofBody", u.T)
+}
+
+var _ decoderFrom = (*ArchivalProofBody)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (u *ArchivalProofBody) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, fmt.Errorf("decoding ArchivalProofBody: %w", ErrMaxDecodingDepthReached)
+	}
+	maxDepth -= 1
+	var err error
+	var n, nTmp int
+	nTmp, err = u.T.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding ArchivalProofType: %w", err)
+	}
+	switch ArchivalProofType(u.T) {
+	case ArchivalProofTypeExistence:
+		u.NonexistenceProof = new(NonexistenceProofBody)
+		nTmp, err = (*u.NonexistenceProof).DecodeFrom(d, maxDepth)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding NonexistenceProofBody: %w", err)
+		}
+		return n, nil
+	case ArchivalProofTypeNonexistence:
+		u.ExistenceProof = new(ExistenceProofBody)
+		nTmp, err = (*u.ExistenceProof).DecodeFrom(d, maxDepth)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding ExistenceProofBody: %w", err)
+		}
+		return n, nil
+	}
+	return n, fmt.Errorf("union ArchivalProofBody has invalid T (ArchivalProofType) switch value '%d'", u.T)
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s ArchivalProofBody) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *ArchivalProofBody) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*ArchivalProofBody)(nil)
+	_ encoding.BinaryUnmarshaler = (*ArchivalProofBody)(nil)
+)
+
+// xdrType signals that this type represents XDR values defined by this package.
+func (s ArchivalProofBody) xdrType() {}
+
+var _ xdrType = (*ArchivalProofBody)(nil)
+
+// ArchivalProof is an XDR Struct defines as:
+//
+//	struct ArchivalProof
+//	 {
+//	     uint32 epoch; // AST Subtree for this proof
+//
+//	     union switch (ArchivalProofType t)
+//	     {
+//	     case EXISTENCE:
+//	         NonexistenceProofBody nonexistenceProof;
+//	     case NONEXISTENCE:
+//	         ExistenceProofBody existenceProof;
+//	     } body;
+//	 };
+type ArchivalProof struct {
+	Epoch Uint32
+	Body  ArchivalProofBody
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s *ArchivalProof) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = s.Epoch.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.Body.EncodeTo(e); err != nil {
+		return err
+	}
+	return nil
+}
+
+var _ decoderFrom = (*ArchivalProof)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *ArchivalProof) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, fmt.Errorf("decoding ArchivalProof: %w", ErrMaxDecodingDepthReached)
+	}
+	maxDepth -= 1
+	var err error
+	var n, nTmp int
+	nTmp, err = s.Epoch.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %w", err)
+	}
+	nTmp, err = s.Body.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding ArchivalProofBody: %w", err)
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s ArchivalProof) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *ArchivalProof) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*ArchivalProof)(nil)
+	_ encoding.BinaryUnmarshaler = (*ArchivalProof)(nil)
+)
+
+// xdrType signals that this type represents XDR values defined by this package.
+func (s ArchivalProof) xdrType() {}
+
+var _ xdrType = (*ArchivalProof)(nil)
 
 // SorobanResources is an XDR Struct defines as:
 //
@@ -48934,6 +51210,313 @@ var (
 func (s HmacSha256Mac) xdrType() {}
 
 var _ xdrType = (*HmacSha256Mac)(nil)
+
+// ShortHashSeed is an XDR Struct defines as:
+//
+//	struct ShortHashSeed
+//	 {
+//	     opaque seed[16];
+//	 };
+type ShortHashSeed struct {
+	Seed [16]byte `xdrmaxsize:"16"`
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s *ShortHashSeed) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if _, err = e.EncodeFixedOpaque(s.Seed[:]); err != nil {
+		return err
+	}
+	return nil
+}
+
+var _ decoderFrom = (*ShortHashSeed)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *ShortHashSeed) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, fmt.Errorf("decoding ShortHashSeed: %w", ErrMaxDecodingDepthReached)
+	}
+	maxDepth -= 1
+	var err error
+	var n, nTmp int
+	nTmp, err = d.DecodeFixedOpaqueInplace(s.Seed[:])
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Seed: %w", err)
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s ShortHashSeed) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *ShortHashSeed) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*ShortHashSeed)(nil)
+	_ encoding.BinaryUnmarshaler = (*ShortHashSeed)(nil)
+)
+
+// xdrType signals that this type represents XDR values defined by this package.
+func (s ShortHashSeed) xdrType() {}
+
+var _ xdrType = (*ShortHashSeed)(nil)
+
+// BinaryFuseFilterType is an XDR Enum defines as:
+//
+//	enum BinaryFuseFilterType
+//	 {
+//	     BINARY_FUSE_FILTER_8_BIT = 0,
+//	     BINARY_FUSE_FILTER_16_BIT = 1,
+//	     BINARY_FUSE_FILTER_32_BIT = 2
+//	 };
+type BinaryFuseFilterType int32
+
+const (
+	BinaryFuseFilterTypeBinaryFuseFilter8Bit  BinaryFuseFilterType = 0
+	BinaryFuseFilterTypeBinaryFuseFilter16Bit BinaryFuseFilterType = 1
+	BinaryFuseFilterTypeBinaryFuseFilter32Bit BinaryFuseFilterType = 2
+)
+
+var binaryFuseFilterTypeMap = map[int32]string{
+	0: "BinaryFuseFilterTypeBinaryFuseFilter8Bit",
+	1: "BinaryFuseFilterTypeBinaryFuseFilter16Bit",
+	2: "BinaryFuseFilterTypeBinaryFuseFilter32Bit",
+}
+
+// ValidEnum validates a proposed value for this enum.  Implements
+// the Enum interface for BinaryFuseFilterType
+func (e BinaryFuseFilterType) ValidEnum(v int32) bool {
+	_, ok := binaryFuseFilterTypeMap[v]
+	return ok
+}
+
+// String returns the name of `e`
+func (e BinaryFuseFilterType) String() string {
+	name, _ := binaryFuseFilterTypeMap[int32(e)]
+	return name
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (e BinaryFuseFilterType) EncodeTo(enc *xdr.Encoder) error {
+	if _, ok := binaryFuseFilterTypeMap[int32(e)]; !ok {
+		return fmt.Errorf("'%d' is not a valid BinaryFuseFilterType enum value", e)
+	}
+	_, err := enc.EncodeInt(int32(e))
+	return err
+}
+
+var _ decoderFrom = (*BinaryFuseFilterType)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (e *BinaryFuseFilterType) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, fmt.Errorf("decoding BinaryFuseFilterType: %w", ErrMaxDecodingDepthReached)
+	}
+	maxDepth -= 1
+	v, n, err := d.DecodeInt()
+	if err != nil {
+		return n, fmt.Errorf("decoding BinaryFuseFilterType: %w", err)
+	}
+	if _, ok := binaryFuseFilterTypeMap[v]; !ok {
+		return n, fmt.Errorf("'%d' is not a valid BinaryFuseFilterType enum value", v)
+	}
+	*e = BinaryFuseFilterType(v)
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s BinaryFuseFilterType) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *BinaryFuseFilterType) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*BinaryFuseFilterType)(nil)
+	_ encoding.BinaryUnmarshaler = (*BinaryFuseFilterType)(nil)
+)
+
+// xdrType signals that this type represents XDR values defined by this package.
+func (s BinaryFuseFilterType) xdrType() {}
+
+var _ xdrType = (*BinaryFuseFilterType)(nil)
+
+// SerializedBinaryFuseFilter is an XDR Struct defines as:
+//
+//	struct SerializedBinaryFuseFilter
+//	 {
+//	     BinaryFuseFilterType type;
+//
+//	     // Seed used to hash input to filter
+//	     ShortHashSeed inputHashSeed;
+//
+//	     // Seed used for internal filter hash operations
+//	     ShortHashSeed filterSeed;
+//	     uint32 segmentLength;
+//	     uint32 segementLengthMask;
+//	     uint32 segmentCount;
+//	     uint32 segmentCountLength;
+//	     uint32 fingerprintLength; // Length in terms of element count, not bytes
+//
+//	     // Array of uint8_t, uint16_t, or uint32_t depending on filter type
+//	     opaque fingerprints<>;
+//	 };
+type SerializedBinaryFuseFilter struct {
+	Type               BinaryFuseFilterType
+	InputHashSeed      ShortHashSeed
+	FilterSeed         ShortHashSeed
+	SegmentLength      Uint32
+	SegementLengthMask Uint32
+	SegmentCount       Uint32
+	SegmentCountLength Uint32
+	FingerprintLength  Uint32
+	Fingerprints       []byte
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s *SerializedBinaryFuseFilter) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = s.Type.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.InputHashSeed.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.FilterSeed.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.SegmentLength.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.SegementLengthMask.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.SegmentCount.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.SegmentCountLength.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.FingerprintLength.EncodeTo(e); err != nil {
+		return err
+	}
+	if _, err = e.EncodeOpaque(s.Fingerprints[:]); err != nil {
+		return err
+	}
+	return nil
+}
+
+var _ decoderFrom = (*SerializedBinaryFuseFilter)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *SerializedBinaryFuseFilter) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, fmt.Errorf("decoding SerializedBinaryFuseFilter: %w", ErrMaxDecodingDepthReached)
+	}
+	maxDepth -= 1
+	var err error
+	var n, nTmp int
+	nTmp, err = s.Type.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding BinaryFuseFilterType: %w", err)
+	}
+	nTmp, err = s.InputHashSeed.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding ShortHashSeed: %w", err)
+	}
+	nTmp, err = s.FilterSeed.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding ShortHashSeed: %w", err)
+	}
+	nTmp, err = s.SegmentLength.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %w", err)
+	}
+	nTmp, err = s.SegementLengthMask.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %w", err)
+	}
+	nTmp, err = s.SegmentCount.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %w", err)
+	}
+	nTmp, err = s.SegmentCountLength.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %w", err)
+	}
+	nTmp, err = s.FingerprintLength.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %w", err)
+	}
+	s.Fingerprints, nTmp, err = d.DecodeOpaque(0)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Fingerprints: %w", err)
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s SerializedBinaryFuseFilter) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *SerializedBinaryFuseFilter) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*SerializedBinaryFuseFilter)(nil)
+	_ encoding.BinaryUnmarshaler = (*SerializedBinaryFuseFilter)(nil)
+)
+
+// xdrType signals that this type represents XDR values defined by this package.
+func (s SerializedBinaryFuseFilter) xdrType() {}
+
+var _ xdrType = (*SerializedBinaryFuseFilter)(nil)
 
 // ScEnvMetaKind is an XDR Enum defines as:
 //
