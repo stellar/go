@@ -505,7 +505,9 @@ func TestLedgerBufferBoundedObjectNotFound(t *testing.T) {
 	bsb.ledgerBuffer.wg.Wait()
 
 	_, err := bsb.GetLedger(ctx, 3)
-	assert.EqualError(t, err, "failed getting next ledger batch from queue: ledger object containing sequence 3 is missing: file does not exist")
+	assert.ErrorContains(t, err, "ledger object containing sequence 3 is missing")
+	assert.ErrorContains(t, err, objectName)
+	assert.ErrorContains(t, err, "file does not exist")
 }
 
 func TestLedgerBufferUnboundedObjectNotFound(t *testing.T) {
@@ -571,5 +573,8 @@ func TestLedgerBufferRetryLimit(t *testing.T) {
 	bsb.ledgerBuffer.wg.Wait()
 
 	_, err := bsb.GetLedger(context.Background(), 3)
-	assert.EqualError(t, err, "failed getting next ledger batch from queue: maximum retries exceeded for downloading object containing sequence 3: transient error")
+	assert.ErrorContains(t, err, "failed getting next ledger batch from queue")
+	assert.ErrorContains(t, err, "maximum retries exceeded for downloading object containing sequence 3")
+	assert.ErrorContains(t, err, objectName)
+	assert.ErrorContains(t, err, "transient error")
 }
