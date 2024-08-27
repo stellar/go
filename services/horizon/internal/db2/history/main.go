@@ -1012,6 +1012,18 @@ func (q *Q) ReapLookupTable(ctx context.Context, table string, ids []int64, newO
 	}
 	defer q.Rollback()
 
+	rowsDeleted, err := q.reapLookupTable(ctx, table, ids, newOffset)
+	if err != nil {
+		return 0, err
+	}
+
+	if err := q.Commit(); err != nil {
+		return 0, fmt.Errorf("could not commit transaction: %w", err)
+	}
+	return rowsDeleted, nil
+}
+
+func (q *Q) reapLookupTable(ctx context.Context, table string, ids []int64, newOffset int64) (int64, error) {
 	if err := q.updateLookupTableReapOffset(ctx, table, newOffset); err != nil {
 		return 0, fmt.Errorf("error updating offset: %w", err)
 	}
@@ -1023,10 +1035,6 @@ func (q *Q) ReapLookupTable(ctx context.Context, table string, ids []int64, newO
 		if err != nil {
 			return 0, fmt.Errorf("could not delete orphaned rows: %w", err)
 		}
-	}
-
-	if err := q.Commit(); err != nil {
-		return 0, fmt.Errorf("could not commit transaction: %w", err)
 	}
 	return rowsDeleted, nil
 }

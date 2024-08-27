@@ -17,11 +17,32 @@ import (
 
 var errSealed = errors.New("cannot register more entries to Loader after calling Exec()")
 
+// ConcurrencyMode is used to configure the level of thread-safety for a loader
 type ConcurrencyMode int
+
+func (cm ConcurrencyMode) String() string {
+	switch cm {
+	case ConcurrentInserts:
+		return "ConcurrentInserts"
+	case ConcurrentDeletes:
+		return "ConcurrentDeletes"
+	default:
+		return "unknown"
+	}
+}
 
 const (
 	_ ConcurrencyMode = iota
+	// ConcurrentInserts configures the loader to maintain safety when there are multiple loaders
+	// inserting into the same table concurrently. This ConcurrencyMode is suitable for parallel reingestion.
+	// Note while ConcurrentInserts is enabled it is not safe to have deletes occurring concurrently on the
+	// same table.
 	ConcurrentInserts
+	// ConcurrentDeletes configures the loader to maintain safety when there is another thread which is invoking
+	// reapLookupTable() to delete rows from the same table concurrently. This ConcurrencyMode is suitable for
+	// live ingestion when reaping of lookup tables is enabled.
+	// Note while ConcurrentDeletes is enabled it is not safe to have multiple threads inserting concurrently to the
+	// same table.
 	ConcurrentDeletes
 )
 
