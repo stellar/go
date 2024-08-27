@@ -1161,11 +1161,12 @@ func constructDeleteLookupTableRowsQuery(table string, ids []int64) string {
 	)
 
 	deleteQuery := fmt.Sprintf(
-		"DELETE FROM %s WHERE id IN ("+
-			"WITH ha_batch AS (%s) "+
-			"SELECT e1.id as id FROM ha_batch e1 WHERE ",
-		table, innerQuery,
-	) + strings.Join(conditions, " AND ") + ")"
+		"WITH ha_batch AS (%s) DELETE FROM %s WHERE id IN ("+
+			"SELECT e1.id as id FROM ha_batch e1 WHERE %s)",
+		innerQuery,
+		table,
+		strings.Join(conditions, " AND "),
+	)
 	return deleteQuery
 }
 
