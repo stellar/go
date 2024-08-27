@@ -19,7 +19,7 @@ type FutureLiquidityPoolID = future[string, HistoryLiquidityPool]
 type LiquidityPoolLoader = loader[string, HistoryLiquidityPool]
 
 // NewLiquidityPoolLoader will construct a new LiquidityPoolLoader instance.
-func NewLiquidityPoolLoader() *LiquidityPoolLoader {
+func NewLiquidityPoolLoader(concurrencyMode ConcurrencyMode) *LiquidityPoolLoader {
 	return &LiquidityPoolLoader{
 		sealed: false,
 		set:    set.Set[string]{},
@@ -39,7 +39,8 @@ func NewLiquidityPoolLoader() *LiquidityPoolLoader {
 		mappingFromRow: func(row HistoryLiquidityPool) (string, int64) {
 			return row.PoolID, row.InternalID
 		},
-		less: cmp.Less[string],
+		less:            cmp.Less[string],
+		concurrencyMode: concurrencyMode,
 	}
 }
 
@@ -51,7 +52,7 @@ type LiquidityPoolLoaderStub struct {
 
 // NewLiquidityPoolLoaderStub returns a new LiquidityPoolLoader instance
 func NewLiquidityPoolLoaderStub() LiquidityPoolLoaderStub {
-	return LiquidityPoolLoaderStub{Loader: NewLiquidityPoolLoader()}
+	return LiquidityPoolLoaderStub{Loader: NewLiquidityPoolLoader(ConcurrentInserts)}
 }
 
 // Insert updates the wrapped LiquidityPoolLoader so that the given liquidity pool

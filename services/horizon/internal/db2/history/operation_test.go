@@ -125,7 +125,7 @@ func TestOperationByLiquidityPool(t *testing.T) {
 
 	// Insert Liquidity Pool history
 	liquidityPoolID := "a2f38836a839de008cf1d782c81f45e1253cc5d3dad9110b872965484fec0a49"
-	lpLoader := NewLiquidityPoolLoader()
+	lpLoader := NewLiquidityPoolLoader(ConcurrentInserts)
 
 	lpOperationBuilder := q.NewOperationLiquidityPoolBatchInsertBuilder()
 	tt.Assert.NoError(lpOperationBuilder.Add(opID1, lpLoader.GetFuture(liquidityPoolID)))

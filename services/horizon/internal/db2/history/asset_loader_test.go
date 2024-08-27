@@ -9,6 +9,7 @@ import (
 
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/services/horizon/internal/test"
+	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/xdr"
 )
 
@@ -40,6 +41,12 @@ func TestAssetLoader(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	session := tt.HorizonSession()
 
+	testAssetLoader(t, session, ConcurrentInserts)
+	test.ResetHorizonDB(t, tt.HorizonDB)
+	testAssetLoader(t, session, ConcurrentDeletes)
+}
+
+func testAssetLoader(t *testing.T, session *db.Session, mode ConcurrencyMode) {
 	var keys []AssetKey
 	for i := 0; i < 100; i++ {
 		var key AssetKey
@@ -66,7 +73,7 @@ func TestAssetLoader(t *testing.T) {
 		keys = append(keys, key)
 	}
 
-	loader := NewAssetLoader()
+	loader := NewAssetLoader(mode)
 	for _, key := range keys {
 		future := loader.GetFuture(key)
 		_, err := future.Value()
@@ -109,7 +116,7 @@ func TestAssetLoader(t *testing.T) {
 
 	// check that Loader works when all the previous values are already
 	// present in the db and also add 10 more rows to insert
-	loader = NewAssetLoader()
+	loader = NewAssetLoader(mode)
 	for i := 0; i < 10; i++ {
 		var key AssetKey
 		if i%2 == 0 {

@@ -42,7 +42,7 @@ type FutureAssetID = future[AssetKey, Asset]
 type AssetLoader = loader[AssetKey, Asset]
 
 // NewAssetLoader will construct a new AssetLoader instance.
-func NewAssetLoader() *AssetLoader {
+func NewAssetLoader(concurrencyMode ConcurrencyMode) *AssetLoader {
 	return &AssetLoader{
 		sealed: false,
 		set:    set.Set[AssetKey]{},
@@ -88,6 +88,7 @@ func NewAssetLoader() *AssetLoader {
 		less: func(a AssetKey, b AssetKey) bool {
 			return a.String() < b.String()
 		},
+		concurrencyMode: concurrencyMode,
 	}
 }
 
@@ -99,7 +100,7 @@ type AssetLoaderStub struct {
 
 // NewAssetLoaderStub returns a new AssetLoaderStub instance
 func NewAssetLoaderStub() AssetLoaderStub {
-	return AssetLoaderStub{Loader: NewAssetLoader()}
+	return AssetLoaderStub{Loader: NewAssetLoader(ConcurrentInserts)}
 }
 
 // Insert updates the wrapped AssetLoaderStub so that the given asset

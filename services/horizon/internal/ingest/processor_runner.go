@@ -133,11 +133,11 @@ func buildChangeProcessor(
 	})
 }
 
-func (s *ProcessorRunner) buildTransactionProcessor(ledgersProcessor *processors.LedgersProcessor) (groupLoaders, *groupTransactionProcessors) {
-	accountLoader := history.NewAccountLoader()
-	assetLoader := history.NewAssetLoader()
-	lpLoader := history.NewLiquidityPoolLoader()
-	cbLoader := history.NewClaimableBalanceLoader()
+func (s *ProcessorRunner) buildTransactionProcessor(ledgersProcessor *processors.LedgersProcessor, concurrencyMode history.ConcurrencyMode) (groupLoaders, *groupTransactionProcessors) {
+	accountLoader := history.NewAccountLoader(concurrencyMode)
+	assetLoader := history.NewAssetLoader(concurrencyMode)
+	lpLoader := history.NewLiquidityPoolLoader(concurrencyMode)
+	cbLoader := history.NewClaimableBalanceLoader(concurrencyMode)
 
 	loaders := newGroupLoaders([]horizonLazyLoader{accountLoader, assetLoader, lpLoader, cbLoader})
 	statsLedgerTransactionProcessor := processors.NewStatsLedgerTransactionProcessor()
@@ -366,7 +366,7 @@ func (s *ProcessorRunner) streamLedger(ledger xdr.LedgerCloseMeta,
 	return nil
 }
 
-func (s *ProcessorRunner) runTransactionProcessorsOnLedger(registry nameRegistry, ledger xdr.LedgerCloseMeta) (
+func (s *ProcessorRunner) runTransactionProcessorsOnLedger(registry nameRegistry, ledger xdr.LedgerCloseMeta, concurrencyMode history.ConcurrencyMode) (
 	transactionStats processors.StatsLedgerTransactionProcessorResults,
 	transactionDurations runDurations,
 	tradeStats processors.TradeStats,
@@ -381,7 +381,7 @@ func (s *ProcessorRunner) runTransactionProcessorsOnLedger(registry nameRegistry
 	groupTransactionFilterers := s.buildTransactionFilterer()
 	// when in online mode, the submission result processor must always run (regardless of whether filter rules exist or not)
 	groupFilteredOutProcessors := s.buildFilteredOutProcessor()
-	loaders, groupTransactionProcessors := s.buildTransactionProcessor(ledgersProcessor)
+	loaders, groupTransactionProcessors := s.buildTransactionProcessor(ledgersProcessor, concurrencyMode)
 
 	if err = registerTransactionProcessors(
 		registry,
@@ -494,7 +494,7 @@ func (s *ProcessorRunner) RunTransactionProcessorsOnLedgers(ledgers []xdr.Ledger
 	groupTransactionFilterers := s.buildTransactionFilterer()
 	// intentionally skip filtered out processor
 	groupFilteredOutProcessors := newGroupTransactionProcessors(nil, nil, nil)
-	loaders, groupTransactionProcessors := s.buildTransactionProcessor(ledgersProcessor)
+	loaders, groupTransactionProcessors := s.buildTransactionProcessor(ledgersProcessor, history.ConcurrentInserts)
 
 	startTime := time.Now()
 	curHeap, sysHeap := getMemStats()
@@ -611,7 +611,7 @@ func (s *ProcessorRunner) RunAllProcessorsOnLedger(ledger xdr.LedgerCloseMeta) (
 		return
 	}
 
-	transactionStats, transactionDurations, tradeStats, loaderDurations, loaderStats, err := s.runTransactionProcessorsOnLedger(registry, ledger)
+	transactionStats, transactionDurations, tradeStats, loaderDurations, loaderStats, err := s.runTransactionProcessorsOnLedger(registry, ledger, history.ConcurrentDeletes)
 
 	stats.changeStats = changeStatsProcessor.GetResults()
 	stats.changeDurations = groupChangeProcessors.processorsRunDurations

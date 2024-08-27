@@ -248,7 +248,7 @@ func TestProcessorRunnerBuildTransactionProcessor(t *testing.T) {
 
 	ledgersProcessor := &processors.LedgersProcessor{}
 
-	_, processor := runner.buildTransactionProcessor(ledgersProcessor)
+	_, processor := runner.buildTransactionProcessor(ledgersProcessor, history.ConcurrentInserts)
 	assert.IsType(t, &groupTransactionProcessors{}, processor)
 	assert.IsType(t, &processors.StatsLedgerTransactionProcessor{}, processor.processors[0])
 	assert.IsType(t, &processors.EffectProcessor{}, processor.processors[1])

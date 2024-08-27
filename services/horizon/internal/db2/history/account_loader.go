@@ -17,6 +17,14 @@ import (
 
 var errSealed = errors.New("cannot register more entries to Loader after calling Exec()")
 
+type ConcurrencyMode int
+
+const (
+	_ ConcurrencyMode = iota
+	ConcurrentInserts
+	ConcurrentDeletes
+)
+
 // LoaderStats describes the result of executing a history lookup id Loader
 type LoaderStats struct {
 	// Total is the number of elements registered to the Loader
@@ -38,7 +46,7 @@ type FutureAccountID = future[string, Account]
 type AccountLoader = loader[string, Account]
 
 // NewAccountLoader will construct a new AccountLoader instance.
-func NewAccountLoader() *AccountLoader {
+func NewAccountLoader(concurrencyMode ConcurrencyMode) *AccountLoader {
 	return &AccountLoader{
 		sealed: false,
 		set:    set.Set[string]{},
@@ -58,20 +66,22 @@ func NewAccountLoader() *AccountLoader {
 		mappingFromRow: func(account Account) (string, int64) {
 			return account.Address, account.ID
 		},
-		less: cmp.Less[string],
+		less:            cmp.Less[string],
+		concurrencyMode: concurrencyMode,
 	}
 }
 
 type loader[K comparable, T any] struct {
-	sealed         bool
-	set            set.Set[K]
-	ids            map[K]int64
-	stats          LoaderStats
-	name           string
-	table          string
-	columnsForKeys func([]K) []columnValues
-	mappingFromRow func(T) (K, int64)
-	less           func(K, K) bool
+	sealed          bool
+	set             set.Set[K]
+	ids             map[K]int64
+	stats           LoaderStats
+	name            string
+	table           string
+	columnsForKeys  func([]K) []columnValues
+	mappingFromRow  func(T) (K, int64)
+	less            func(K, K) bool
+	concurrencyMode ConcurrencyMode
 }
 
 type future[K comparable, T any] struct {
@@ -134,17 +144,34 @@ func (l *loader[K, T]) Exec(ctx context.Context, session db.SessionInterface) er
 		return l.less(keys[i], keys[j])
 	})
 
-	if count, err := l.query(ctx, q, keys); err != nil {
-		return err
-	} else {
-		l.stats.Total += count
-	}
+	if l.concurrencyMode == ConcurrentInserts {
+		if count, err := l.insert(ctx, q, keys); err != nil {
+			return err
+		} else {
+			l.stats.Total += count
+			l.stats.Inserted += count
+		}
 
-	if count, err := l.insert(ctx, q, keys); err != nil {
-		return err
+		if count, err := l.query(ctx, q, keys, false); err != nil {
+			return err
+		} else {
+			l.stats.Total += count
+		}
+	} else if l.concurrencyMode == ConcurrentDeletes {
+		if count, err := l.query(ctx, q, keys, true); err != nil {
+			return err
+		} else {
+			l.stats.Total += count
+		}
+
+		if count, err := l.insert(ctx, q, keys); err != nil {
+			return err
+		} else {
+			l.stats.Total += count
+			l.stats.Inserted += count
+		}
 	} else {
-		l.stats.Total += count
-		l.stats.Inserted += count
+		return fmt.Errorf("concurrency mode %v is invalid", l.concurrencyMode)
 	}
 
 	return nil
@@ -204,10 +231,14 @@ func (l *loader[K, T]) insert(ctx context.Context, q *Q, keys []K) (int, error) 
 	return len(rows), nil
 }
 
-func (l *loader[K, T]) query(ctx context.Context, q *Q, keys []K) (int, error) {
+func (l *loader[K, T]) query(ctx context.Context, q *Q, keys []K, lockRows bool) (int, error) {
 	keys = l.filter(keys)
 	if len(keys) == 0 {
 		return 0, nil
+	}
+	var suffix string
+	if lockRows {
+		suffix = "ORDER BY id ASC FOR KEY SHARE"
 	}
 
 	var rows []T
@@ -217,6 +248,7 @@ func (l *loader[K, T]) query(ctx context.Context, q *Q, keys []K) (int, error) {
 		l.table,
 		l.columnsForKeys(keys),
 		&rows,
+		suffix,
 	)
 	if err != nil {
 		return 0, err
@@ -293,7 +325,7 @@ func bulkInsert(ctx context.Context, q *Q, table string, fields []columnValues, 
 	)
 }
 
-func bulkGet(ctx context.Context, q *Q, table string, fields []columnValues, response interface{}) error {
+func bulkGet(ctx context.Context, q *Q, table string, fields []columnValues, response interface{}, suffix string) error {
 	unnestPart := make([]string, 0, len(fields))
 	columns := make([]string, 0, len(fields))
 	pqArrays := make([]interface{}, 0, len(fields))
@@ -328,9 +360,8 @@ func bulkGet(ctx context.Context, q *Q, table string, fields []columnValues, res
 			pq.Array(field.objects),
 		)
 	}
-	lockSuffix := "ORDER BY id ASC FOR KEY SHARE"
 	sql := `SELECT * FROM ` + table + ` WHERE (` + strings.Join(columns, ",") + `) IN 
-	(SELECT ` + strings.Join(unnestPart, ",") + `) ` + lockSuffix
+	(SELECT ` + strings.Join(unnestPart, ",") + `) ` + suffix
 
 	return q.SelectRaw(
 		ctx,
@@ -348,7 +379,7 @@ type AccountLoaderStub struct {
 
 // NewAccountLoaderStub returns a new AccountLoaderStub instance
 func NewAccountLoaderStub() AccountLoaderStub {
-	return AccountLoaderStub{Loader: NewAccountLoader()}
+	return AccountLoaderStub{Loader: NewAccountLoader(ConcurrentInserts)}
 }
 
 // Insert updates the wrapped AccountLoader so that the given account
