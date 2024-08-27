@@ -71,7 +71,7 @@ func TestAssetLoader(t *testing.T) {
 		future := loader.GetFuture(key)
 		_, err := future.Value()
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), `invalid asset loader state,`)
+		assert.Contains(t, err.Error(), `invalid loader state,`)
 		duplicateFuture := loader.GetFuture(key)
 		assert.Equal(t, future, duplicateFuture)
 	}
@@ -106,4 +106,58 @@ func TestAssetLoader(t *testing.T) {
 	_, err = loader.GetNow(AssetKey{})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), `was not found`)
+
+	// check that Loader works when all the previous values are already
+	// present in the db and also add 10 more rows to insert
+	loader = NewAssetLoader()
+	for i := 0; i < 10; i++ {
+		var key AssetKey
+		if i%2 == 0 {
+			code := [4]byte{0, 0, 0, 0}
+			copy(code[:], fmt.Sprintf("ab%d", i))
+			key = AssetKeyFromXDR(xdr.Asset{
+				Type: xdr.AssetTypeAssetTypeCreditAlphanum4,
+				AlphaNum4: &xdr.AlphaNum4{
+					AssetCode: code,
+					Issuer:    xdr.MustAddress(keypair.MustRandom().Address())}})
+		} else {
+			code := [12]byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+			copy(code[:], fmt.Sprintf("abcdef%d", i))
+			key = AssetKeyFromXDR(xdr.Asset{
+				Type: xdr.AssetTypeAssetTypeCreditAlphanum12,
+				AlphaNum12: &xdr.AlphaNum12{
+					AssetCode: code,
+					Issuer:    xdr.MustAddress(keypair.MustRandom().Address())}})
+
+		}
+		keys = append(keys, key)
+	}
+
+	for _, key := range keys {
+		future := loader.GetFuture(key)
+		_, err = future.Value()
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), `invalid loader state,`)
+	}
+	assert.NoError(t, loader.Exec(context.Background(), session))
+	assert.Equal(t, LoaderStats{
+		Total:    110,
+		Inserted: 10,
+	}, loader.Stats())
+
+	for _, key := range keys {
+		var internalID int64
+		internalID, err = loader.GetNow(key)
+		assert.NoError(t, err)
+		var assetXDR xdr.Asset
+		if key.Type == "native" {
+			assetXDR = xdr.MustNewNativeAsset()
+		} else {
+			assetXDR = xdr.MustNewCreditAsset(key.Code, key.Issuer)
+		}
+		var assetID int64
+		assetID, err = q.GetAssetID(context.Background(), assetXDR)
+		assert.NoError(t, err)
+		assert.Equal(t, assetID, internalID)
+	}
 }
