@@ -582,7 +582,7 @@ type AsyncTransactionSubmissionResponse struct {
 	// ErrorResultXDR is present only if Status is equal to proto.TXStatusError.
 	// ErrorResultXDR is a TransactionResult xdr string which contains details on why
 	// the transaction could not be accepted by stellar-core.
-	ErrorResultXDR string `json:"errorResultXdr,omitempty"`
+	ErrorResultXDR string `json:"error_result_xdr,omitempty"`
 	// TxStatus represents the status of the transaction submission returned by stellar-core.
 	// It can be one of: proto.TXStatusPending, proto.TXStatusDuplicate,
 	// proto.TXStatusTryAgainLater, or proto.TXStatusError.
