@@ -221,18 +221,14 @@ func GetPageQuery(ledgerState *ledger.State, r *http.Request, opts ...Opt) (db2.
 
 		return db2.PageQuery{}, err
 	}
-	elderCursor := toid.AfterLedger(
-		ordered.Max(0, ledgerState.CurrentStatus().HistoryElder-1),
-	).String()
 
 	if defaultTOID && pageQuery.Order == db2.OrderAscending {
 		if cursor == "" || errors.Is(validateCursorWithinHistory(ledgerState, pageQuery), &hProblem.BeforeHistory) {
-			pageQuery.Cursor = elderCursor
+			pageQuery.Cursor = toid.AfterLedger(
+				ordered.Max(0, ledgerState.CurrentStatus().HistoryElder-1),
+			).String()
 		}
-	} else if defaultTOID && pageQuery.Order == db2.OrderDescending {
-		pageQuery.ElderCursor = elderCursor
 	}
-
 	return pageQuery, nil
 }
 

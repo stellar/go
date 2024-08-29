@@ -59,7 +59,7 @@ func (p PageQuery) ApplyTo(
 		return sql, err
 	}
 
-	return p.applyToUsingCursor(sql, col, cursor)
+	return p.ApplyToUsingCursor(sql, col, cursor)
 }
 
 // ApplyRawTo applies the raw PageQuery.Cursor cursor to the builder
@@ -67,12 +67,12 @@ func (p PageQuery) ApplyRawTo(
 	sql sq.SelectBuilder,
 	col string,
 ) (sq.SelectBuilder, error) {
-	return p.applyToUsingCursor(sql, col, p.Cursor)
+	return p.ApplyToUsingCursor(sql, col, p.Cursor)
 }
 
 // ApplyToUsingCursor returns a new SelectBuilder after applying the paging effects of
 // `p` to `sql`.  This method allows any type of cursor by a single column
-func (p PageQuery) applyToUsingCursor(
+func (p PageQuery) ApplyToUsingCursor(
 	sql sq.SelectBuilder,
 	col string,
 	cursor interface{},
@@ -81,23 +81,23 @@ func (p PageQuery) applyToUsingCursor(
 
 	switch p.Order {
 	case "asc":
-		if cursor != "" {
+		if cursor == "" {
 			sql = sql.
-				Where(fmt.Sprintf("%s > ?", col), cursor)
+				OrderBy(fmt.Sprintf("%s asc", col))
+		} else {
+			sql = sql.
+				Where(fmt.Sprintf("%s > ?", col), cursor).
+				OrderBy(fmt.Sprintf("%s asc", col))
 		}
-		sql = sql.
-			OrderBy(fmt.Sprintf("%s asc", col))
 	case "desc":
-		if cursor != "" {
+		if cursor == "" {
 			sql = sql.
-				Where(fmt.Sprintf("%s < ?", col), cursor)
-		}
-		if p.ElderCursor != "" {
+				OrderBy(fmt.Sprintf("%s desc", col))
+		} else {
 			sql = sql.
-				Where(fmt.Sprintf("%s > ?", col), p.ElderCursor)
+				Where(fmt.Sprintf("%s < ?", col), cursor).
+				OrderBy(fmt.Sprintf("%s desc", col))
 		}
-		sql = sql.
-			OrderBy(fmt.Sprintf("%s desc", col))
 	default:
 		return sql, errors.Errorf("invalid order: %s", p.Order)
 	}
