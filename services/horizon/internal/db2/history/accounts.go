@@ -144,7 +144,7 @@ func (q *Q) AccountsForAsset(ctx context.Context, asset xdr.Asset, page db2.Page
 			"trust_lines.asset_code":   code,
 		})
 
-	sql, err := page.ApplyToUsingCursor(sql, "trust_lines.account_id", page.Cursor)
+	sql, err := page.ApplyRawTo(sql, "trust_lines.account_id")
 	if err != nil {
 		return nil, errors.Wrap(err, "could not apply query to page")
 	}
@@ -168,7 +168,7 @@ func (q *Q) AccountsForLiquidityPool(ctx context.Context, poolID string, page db
 			"trust_lines.liquidity_pool_id": poolID,
 		})
 
-	sql, err := page.ApplyToUsingCursor(sql, "trust_lines.account_id", page.Cursor)
+	sql, err := page.ApplyRawTo(sql, "trust_lines.account_id")
 	if err != nil {
 		return nil, errors.Wrap(err, "could not apply query to page")
 	}
@@ -189,7 +189,7 @@ func selectBySponsor(table, sponsor string, page db2.PageQuery) (sq.SelectBuilde
 			"sponsor": sponsor,
 		})
 
-	sql, err := page.ApplyToUsingCursor(sql, "account_id", page.Cursor)
+	sql, err := page.ApplyRawTo(sql, "account_id")
 	if err != nil {
 		return sql, errors.Wrap(err, "could not apply query to page")
 	}
@@ -255,7 +255,7 @@ func (q *Q) AccountEntriesForSigner(ctx context.Context, signer string, page db2
 			"accounts_signers.signer": signer,
 		})
 
-	sql, err := page.ApplyToUsingCursor(sql, "accounts_signers.account_id", page.Cursor)
+	sql, err := page.ApplyRawTo(sql, "accounts_signers.account_id")
 	if err != nil {
 		return nil, errors.Wrap(err, "could not apply query to page")
 	}

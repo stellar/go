@@ -3,6 +3,7 @@ package actions
 import (
 	"context"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -20,7 +21,6 @@ import (
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/ledger"
 	hProblem "github.com/stellar/go/services/horizon/internal/render/problem"
-	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/ordered"
 	"github.com/stellar/go/support/render/problem"
 	"github.com/stellar/go/toid"
@@ -171,7 +171,7 @@ func getLimit(r *http.Request, name string, def uint64, max uint64) (uint64, err
 	if asI64 <= 0 {
 		err = errors.New("invalid limit: non-positive value provided")
 	} else if asI64 > int64(max) {
-		err = errors.Errorf("invalid limit: value provided that is over limit max of %d", max)
+		err = fmt.Errorf("invalid limit: value provided that is over limit max of %d", max)
 	}
 
 	if err != nil {
@@ -221,12 +221,16 @@ func GetPageQuery(ledgerState *ledger.State, r *http.Request, opts ...Opt) (db2.
 
 		return db2.PageQuery{}, err
 	}
-	if cursor == "" && defaultTOID {
-		if pageQuery.Order == db2.OrderAscending {
-			pageQuery.Cursor = toid.AfterLedger(
-				ordered.Max(0, ledgerState.CurrentStatus().HistoryElder-1),
-			).String()
+	elderCursor := toid.AfterLedger(
+		ordered.Max(0, ledgerState.CurrentStatus().HistoryElder-1),
+	).String()
+
+	if defaultTOID && pageQuery.Order == db2.OrderAscending {
+		if cursor == "" || errors.Is(validateCursorWithinHistory(ledgerState, pageQuery), &hProblem.BeforeHistory) {
+			pageQuery.Cursor = elderCursor
 		}
+	} else if defaultTOID && pageQuery.Order == db2.OrderDescending {
+		pageQuery.ElderCursor = elderCursor
 	}
 
 	return pageQuery, nil
@@ -596,7 +600,7 @@ func countNonEmpty(params ...interface{}) (int, error) {
 	for _, param := range params {
 		switch param := param.(type) {
 		default:
-			return 0, errors.Errorf("unexpected type %T", param)
+			return 0, fmt.Errorf("unexpected type %T", param)
 		case int32:
 			if param != 0 {
 				count++

@@ -5,7 +5,8 @@ package db2
 // PageQuery represents a portion of a Query struct concerned with paging
 // through a large dataset.
 type PageQuery struct {
-	Cursor string
-	Order  string
-	Limit  uint64
+	Cursor      string
+	Order       string
+	Limit       uint64
+	ElderCursor string
 }
