@@ -10,6 +10,8 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/prometheus/client_golang/prometheus"
+	dto "github.com/prometheus/client_model/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -234,6 +236,7 @@ func TestCaptivePrepareRange(t *testing.T) {
 			cancelCalled = true
 		}),
 	}
+	captiveBackend.registerMetrics(prometheus.NewRegistry(), "test")
 
 	err := captiveBackend.PrepareRange(ctx, BoundedRange(100, 200))
 	assert.NoError(t, err)
@@ -243,6 +246,8 @@ func TestCaptivePrepareRange(t *testing.T) {
 	assert.True(t, cancelCalled)
 	mockRunner.AssertExpectations(t)
 	mockArchive.AssertExpectations(t)
+
+	assert.Equal(t, uint64(0), getStartDurationMetric(captiveBackend).GetSampleCount())
 }
 
 func TestCaptivePrepareRangeCrash(t *testing.T) {
@@ -575,9 +580,12 @@ func TestCaptivePrepareRangeUnboundedRange_ErrRunFrom(t *testing.T) {
 			cancelCalled = true
 		}),
 	}
+	captiveBackend.registerMetrics(prometheus.NewRegistry(), "test")
 
 	err := captiveBackend.PrepareRange(ctx, UnboundedRange(128))
 	assert.EqualError(t, err, "error starting prepare range: opening subprocess: error running stellar-core: transient error")
+
+	assert.Equal(t, uint64(0), getStartDurationMetric(captiveBackend).GetSampleCount())
 
 	// make sure we can Close without errors
 	assert.NoError(t, captiveBackend.Close())
@@ -585,6 +593,15 @@ func TestCaptivePrepareRangeUnboundedRange_ErrRunFrom(t *testing.T) {
 
 	mockArchive.AssertExpectations(t)
 	mockRunner.AssertExpectations(t)
+}
+
+func getStartDurationMetric(captiveCore CaptiveStellarCore) *dto.Summary {
+	value := &dto.Metric{}
+	err := captiveCore.captiveCoreStartDuration.Write(value)
+	if err != nil {
+		panic(err)
+	}
+	return value.GetSummary()
 }
 
 func TestCaptivePrepareRangeUnboundedRange_ReuseSession(t *testing.T) {
@@ -624,13 +641,19 @@ func TestCaptivePrepareRangeUnboundedRange_ReuseSession(t *testing.T) {
 		},
 		checkpointManager: historyarchive.NewCheckpointManager(64),
 	}
+	captiveBackend.registerMetrics(prometheus.NewRegistry(), "test")
 
 	err := captiveBackend.PrepareRange(ctx, UnboundedRange(65))
 	assert.NoError(t, err)
 
+	assert.Equal(t, uint64(1), getStartDurationMetric(captiveBackend).GetSampleCount())
+	assert.Greater(t, getStartDurationMetric(captiveBackend).GetSampleSum(), float64(0))
+
 	captiveBackend.nextLedger = 64
 	err = captiveBackend.PrepareRange(ctx, UnboundedRange(65))
 	assert.NoError(t, err)
+
+	assert.Equal(t, uint64(1), getStartDurationMetric(captiveBackend).GetSampleCount())
 
 	mockArchive.AssertExpectations(t)
 	mockRunner.AssertExpectations(t)
