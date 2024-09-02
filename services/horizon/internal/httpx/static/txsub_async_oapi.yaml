@@ -32,7 +32,7 @@ paths:
                   hash: "6cbb7f714bd08cea7c30cab7818a35c510cbbfc0a6aa06172a1e94146ecf0165"
 
         '400':
-          description: Transaction is malformed; transaction submission exception; transaction submission failed; invalid submission status from core; ERROR status from core.
+          description: Transaction is malformed; ERROR status from core.
           content:
             application/json:
               schema:
@@ -55,7 +55,7 @@ paths:
                     errorResultXdr: "AAAAAAAAAGT////7AAAAAA=="
                     tx_status: "ERROR"
                     hash: "6cbb7f714bd08cea7c30cab7818a35c510cbbfc0a6aa06172a1e94146ecf0165"
-        '405':
+        '403':
           description: Transaction submission has been disabled for Horizon.
           content:
             application/json:
@@ -77,12 +77,11 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AsyncTransactionSubmissionResponse'
-              example: 
-                  errorResultXdr: ""
+              example:
                   tx_status: "DUPLICATE"
                   hash: "6cbb7f714bd08cea7c30cab7818a35c510cbbfc0a6aa06172a1e94146ecf0165"
         '500':
-          description: Transaction is a duplicate of a previously submitted transaction.
+          description: Transaction submission failure, exception or invalid status from core.
           content:
             application/json:
               schema:
@@ -108,6 +107,16 @@ paths:
                     extras:
                       envelope_xdr: ""
                       error: "Exception details here"
+                TransactionInvalidStatusExample:
+                  summary: Transaction Submission Invalid Status
+                  value:
+                    type: "transaction_submission_invalid_status"
+                    title: "Transaction Submission Invalid Status"
+                    status: 500
+                    detail: "Received invalid status from stellar-core. The `extras.error` field on this response contains further details.  Descriptions of each code can be found at: https://developers.stellar.org/api/errors/http-status-codes/horizon-specific/transaction-submission-async/transaction_submission_invalid_status"
+                    extras:
+                      envelope_xdr: ""
+                      error: "Error details here"
         '503':
           description: History DB is stale; core is unavailable for transaction submission.
           content:
