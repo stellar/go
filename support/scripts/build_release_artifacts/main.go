@@ -98,7 +98,7 @@ func binNamesForDir(dir string) []string {
 }
 
 func build(pkg, dest, version, buildOS, buildArch string) {
-	// Note: verison string should match other build pipelines to create
+	// Note: version string should match other build pipelines to create
 	// reproducible builds for Horizon (and other projects in the future).
 	rev := runOutput("git", "rev-parse", "HEAD")
 	versionString := version[1:] // Remove letter `v`
