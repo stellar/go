@@ -7,6 +7,8 @@ import (
 	"math/rand"
 	"sync"
 
+	"github.com/prometheus/client_golang/prometheus"
+
 	"github.com/stellar/go/support/log"
 )
 
@@ -67,6 +69,8 @@ type stellarCoreRunner struct {
 	toml        *CaptiveCoreToml
 	useDB       bool
 
+	captiveCoreNewDBCounter prometheus.Counter
+
 	log *log.Entry
 }
 
@@ -79,7 +83,7 @@ func createRandomHexString(n int) string {
 	return string(b)
 }
 
-func newStellarCoreRunner(config CaptiveCoreConfig) *stellarCoreRunner {
+func newStellarCoreRunner(config CaptiveCoreConfig, captiveCoreNewDBCounter prometheus.Counter) *stellarCoreRunner {
 	ctx, cancel := context.WithCancel(config.Context)
 
 	runner := &stellarCoreRunner{
@@ -91,7 +95,8 @@ func newStellarCoreRunner(config CaptiveCoreConfig) *stellarCoreRunner {
 		log:            config.Log,
 		toml:           config.Toml,
 
-		systemCaller: realSystemCaller{},
+		captiveCoreNewDBCounter: captiveCoreNewDBCounter,
+		systemCaller:            realSystemCaller{},
 	}
 
 	return runner
@@ -104,7 +109,7 @@ func (r *stellarCoreRunner) context() context.Context {
 
 // runFrom executes the run command with a starting ledger on the captive core subprocess
 func (r *stellarCoreRunner) runFrom(from uint32, hash string) error {
-	return r.startMetaStream(newRunFromStream(r, from, hash))
+	return r.startMetaStream(newRunFromStream(r, from, hash, r.captiveCoreNewDBCounter))
 }
 
 // catchup executes the catchup command on the captive core subprocess

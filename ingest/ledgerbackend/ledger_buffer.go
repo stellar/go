@@ -167,7 +167,7 @@ func (lb *ledgerBuffer) downloadLedgerObject(ctx context.Context, sequence uint3
 
 	reader, err := lb.dataStore.GetFile(ctx, objectKey)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "unable to retrieve file: %s", objectKey)
 	}
 
 	defer reader.Close()
