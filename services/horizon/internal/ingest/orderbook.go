@@ -315,7 +315,7 @@ func (o *OrderBookStream) verifyAllLiquidityPools(ctx context.Context, liquidity
 
 // Update will query the Horizon DB for offers which have been created, removed, or updated since the
 // last time Update() was called. Those changes will then be applied to the in memory order book graph.
-// After calling this function, the the in memory order book graph should be consistent with the
+// After calling this function, the in memory order book graph should be consistent with the
 // Horizon DB (assuming no error is returned).
 func (o *OrderBookStream) Update(ctx context.Context) error {
 	if err := o.historyQ.BeginTx(ctx, &sql.TxOptions{ReadOnly: true, Isolation: sql.LevelRepeatableRead}); err != nil {
