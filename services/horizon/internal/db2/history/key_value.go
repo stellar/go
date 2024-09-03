@@ -223,7 +223,7 @@ func (q *Q) getLookupTableReapOffset(ctx context.Context, table string) (int64, 
 	var offset int64
 	offset, err = strconv.ParseInt(text, 10, 64)
 	if err != nil {
-		return 0, fmt.Errorf("invalid offset: %s", text)
+		return 0, fmt.Errorf("invalid offset: %s for table %s", text, table)
 	}
 	return offset, nil
 }
