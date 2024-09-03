@@ -6,32 +6,36 @@ import (
 	"fmt"
 	"runtime"
 
+	"github.com/prometheus/client_golang/prometheus"
+
 	"github.com/stellar/go/protocols/stellarcore"
 	"github.com/stellar/go/support/log"
 )
 
 type runFromStream struct {
-	dir            workingDir
-	from           uint32
-	hash           string
-	coreCmdFactory coreCmdFactory
-	log            *log.Entry
-	useDB          bool
+	dir                     workingDir
+	from                    uint32
+	hash                    string
+	coreCmdFactory          coreCmdFactory
+	log                     *log.Entry
+	useDB                   bool
+	captiveCoreNewDBCounter prometheus.Counter
 }
 
-func newRunFromStream(r *stellarCoreRunner, from uint32, hash string) runFromStream {
+func newRunFromStream(r *stellarCoreRunner, from uint32, hash string, captiveCoreNewDBCounter prometheus.Counter) runFromStream {
 	// We only use ephemeral directories on windows because there is
 	// no way to terminate captive core gracefully on windows.
 	// Having an ephemeral directory ensures that it is wiped out
 	// whenever we terminate captive core
 	dir := newWorkingDir(r, runtime.GOOS == "windows")
 	return runFromStream{
-		dir:            dir,
-		from:           from,
-		hash:           hash,
-		coreCmdFactory: newCoreCmdFactory(r, dir),
-		log:            r.log,
-		useDB:          r.useDB,
+		dir:                     dir,
+		from:                    from,
+		hash:                    hash,
+		coreCmdFactory:          newCoreCmdFactory(r, dir),
+		log:                     r.log,
+		useDB:                   r.useDB,
+		captiveCoreNewDBCounter: captiveCoreNewDBCounter,
 	}
 }
 
@@ -79,6 +83,9 @@ func (s runFromStream) start(ctx context.Context) (cmd cmdI, captiveCorePipe pip
 		}
 
 		if createNewDB {
+			if s.captiveCoreNewDBCounter != nil {
+				s.captiveCoreNewDBCounter.Inc()
+			}
 			if err = s.dir.remove(); err != nil {
 				return nil, pipe{}, fmt.Errorf("error removing existing storage-dir contents: %w", err)
 			}
