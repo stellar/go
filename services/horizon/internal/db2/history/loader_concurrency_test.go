@@ -28,7 +28,6 @@ func TestLoaderConcurrentInserts(t *testing.T) {
 		{ConcurrentInserts, true},
 		{ConcurrentDeletes, false},
 	} {
-		t.Failed()
 		t.Run(fmt.Sprintf("%v", testCase.mode), func(t *testing.T) {
 			var addresses []string
 			for i := 0; i < 10; i++ {
@@ -60,6 +59,10 @@ func TestLoaderConcurrentInserts(t *testing.T) {
 				<-time.After(time.Second * 3)
 				assert.NoError(t, s1.Commit())
 			}()
+			// l2.Exec(context.Background(), s2) will block until s1
+			// is committed because s1 and s2 both attempt to insert common
+			// accounts and, since s1 executed first, s2 must wait until
+			// s1 terminates.
 			assert.NoError(t, l2.Exec(context.Background(), s2))
 			assert.NoError(t, s2.Commit())
 			wg.Wait()
@@ -75,8 +78,8 @@ func TestLoaderConcurrentInserts(t *testing.T) {
 					Inserted: 5,
 				}, l2.Stats())
 			} else {
-				assert.NotEqual(t, LoaderStats{
-					Total:    15,
+				assert.Equal(t, LoaderStats{
+					Total:    5,
 					Inserted: 5,
 				}, l2.Stats())
 				return
@@ -100,6 +103,9 @@ func TestLoaderConcurrentInserts(t *testing.T) {
 			for _, address := range addresses[10:] {
 				l2Id, err := l2.GetNow(address)
 				assert.NoError(t, err)
+
+				_, err = l1.GetNow(address)
+				assert.ErrorContains(t, err, "was not found")
 
 				var account Account
 				assert.NoError(t, q.AccountByAddress(context.Background(), &account, address))
@@ -178,6 +184,8 @@ func TestLoaderConcurrentDeletes(t *testing.T) {
 				assert.NoError(t, s1.Commit())
 			}()
 
+			// the reaper should block until s1 has been committed because s1 has locked
+			// the orphaned rows
 			deletedCount, err := q2.reapLookupTable(context.Background(), "history_accounts", ids, 1000)
 			assert.NoError(t, err)
 			assert.Equal(t, int64(len(addresses)), deletedCount)

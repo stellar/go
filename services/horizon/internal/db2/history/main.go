@@ -988,7 +988,14 @@ func (q *Q) FindLookupTableRowsToReap(ctx context.Context, table string, batchSi
 
 	// Find new offset before removing the rows
 	var newOffset int64
-	err = q.GetRaw(ctx, &newOffset, fmt.Sprintf("SELECT id FROM %s where id >= %d limit 1 offset %d", table, offset, batchSize))
+	err = q.GetRaw(
+		ctx,
+		&newOffset,
+		fmt.Sprintf(
+			"SELECT id FROM %s WHERE id >= %d ORDER BY id ASC LIMIT 1 OFFSET %d",
+			table, offset, batchSize,
+		),
+	)
 	if err != nil {
 		if q.NoRows(err) {
 			newOffset = 0
@@ -1103,31 +1110,6 @@ var historyLookupTables = map[string][]tableObjectFieldPair{
 	},
 }
 
-// constructReapLookupTablesQuery creates a query like (using history_claimable_balances
-// as an example):
-//
-// delete from history_claimable_balances where id in (
-//
-//		WITH ha_batch AS (
-//			SELECT   id
-//			FROM     history_claimable_balances
-//			WHERE id >= 1000
-//			ORDER BY id limit 1000
-//		) SELECT e1.id as id FROM ha_batch e1
-//		WHERE NOT EXISTS (SELECT 1 FROM history_transaction_claimable_balances WHERE history_transaction_claimable_balances.history_claimable_balance_id = id limit 1)
-//		AND NOT EXISTS (SELECT 1 FROM history_operation_claimable_balances WHERE history_operation_claimable_balances.history_claimable_balance_id = id limit 1)
-//	 )
-//
-// In short it checks the 1000 rows omitting 1000 row of history_claimable_balances
-// and counts occurrences of each row in corresponding history tables.
-// If there are no history rows for a given id, the row in
-// history_claimable_balances is removed.
-//
-// The offset param should be increased before each execution. Given that
-// some rows will be removed and some will be added by ingestion it's
-// possible that rows will be skipped from deletion. But offset is reset
-// when it reaches the table size so eventually all orphaned rows are
-// deleted.
 func (q *Q) deleteLookupTableRows(ctx context.Context, table string, ids []int64) (int64, error) {
 	deleteQuery := constructDeleteLookupTableRowsQuery(table, ids)
 	result, err := q.ExecRaw(
@@ -1135,7 +1117,7 @@ func (q *Q) deleteLookupTableRows(ctx context.Context, table string, ids []int64
 		deleteQuery,
 	)
 	if err != nil {
-		return 0, fmt.Errorf("error running query: %w", err)
+		return 0, fmt.Errorf("error running query %s : %w", deleteQuery, err)
 	}
 	var deletedCount int64
 	deletedCount, err = result.RowsAffected()
@@ -1145,6 +1127,29 @@ func (q *Q) deleteLookupTableRows(ctx context.Context, table string, ids []int64
 	return deletedCount, nil
 }
 
+// constructDeleteLookupTableRowsQuery creates a query like (using history_claimable_balances
+// as an example):
+//
+//	WITH ha_batch AS (
+//		SELECT   id
+//		FROM     history_claimable_balances
+//		WHERE IN ($1, $2, ...) ORDER BY id asc FOR UPDATE
+//	) DELETE FROM history_claimable_balances WHERE id IN (
+//		SELECT e1.id as id FROM ha_batch e1
+//		WHERE NOT EXISTS (SELECT 1 FROM history_transaction_claimable_balances WHERE history_transaction_claimable_balances.history_claimable_balance_id = id limit 1)
+//		AND NOT EXISTS (SELECT 1 FROM history_operation_claimable_balances WHERE history_operation_claimable_balances.history_claimable_balance_id = id limit 1)
+//	 )
+//
+// It checks each of the candidate rows provided in the top level IN clause
+// and counts occurrences of each row in corresponding history tables.
+// If there are no history rows for a given id, the row in
+// history_claimable_balances is removed.
+//
+// Note that the rows are locked using via SELECT FOR UPDATE. The reason
+// for that is to maintain safety when ingestion is running concurrently.
+// The ingestion loaders will also lock rows from the history lookup tables
+// via SELECT FOR KEY SHARE. This will ensure that the reaping transaction
+// will block until the ingestion transaction commits (or vice-versa).
 func constructDeleteLookupTableRowsQuery(table string, ids []int64) string {
 	var conditions []string
 	for _, referencedTable := range historyLookupTables[table] {

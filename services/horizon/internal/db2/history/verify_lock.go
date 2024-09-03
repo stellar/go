@@ -13,9 +13,12 @@ const (
 	// all ingesting nodes use the same value which is why it's hard coded here.`1
 	stateVerificationLockId = 73897213
 	// reaperLockId is the objid for the advisory lock acquired during
-	// reaping. The value is arbitrary. The only requirement is that
+	// reaping of history tables. The value is arbitrary. The only requirement is that
 	// all ingesting nodes use the same value which is why it's hard coded here.
-	reaperLockId            = 944670730
+	reaperLockId = 944670730
+	// lookupTableReaperLockId is the objid for the advisory lock acquired during
+	// reaping of lookup tables. The value is arbitrary. The only requirement is that
+	// all ingesting nodes use the same value which is why it's hard coded here.
 	lookupTableReaperLockId = 329518896
 )
 
