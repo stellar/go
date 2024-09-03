@@ -1025,7 +1025,7 @@ func (q *Q) ReapLookupTable(ctx context.Context, table string, ids []int64, newO
 
 func (q *Q) reapLookupTable(ctx context.Context, table string, ids []int64, newOffset int64) (int64, error) {
 	if err := q.updateLookupTableReapOffset(ctx, table, newOffset); err != nil {
-		return 0, fmt.Errorf("error updating offset: %w", err)
+		return 0, fmt.Errorf("error updating offset for table %s: %w ", table, err)
 	}
 
 	var rowsDeleted int64
