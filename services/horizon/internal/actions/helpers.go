@@ -45,8 +45,6 @@ type Opt int
 const (
 	// DisableCursorValidation disables cursor validation in GetPageQuery
 	DisableCursorValidation Opt = iota
-	// DefaultTOID sets a default cursor value in GetPageQuery based on the ledger state
-	DefaultTOID Opt = iota
 )
 
 // HeaderWriter is an interface for setting HTTP response headers
@@ -185,13 +183,9 @@ func getLimit(r *http.Request, name string, def uint64, max uint64) (uint64, err
 // using the results from a call to GetPagingParams()
 func GetPageQuery(ledgerState *ledger.State, r *http.Request, opts ...Opt) (db2.PageQuery, error) {
 	disableCursorValidation := false
-	defaultTOID := false
 	for _, opt := range opts {
 		if opt == DisableCursorValidation {
 			disableCursorValidation = true
-		}
-		if opt == DefaultTOID {
-			defaultTOID = true
 		}
 	}
 
@@ -222,13 +216,6 @@ func GetPageQuery(ledgerState *ledger.State, r *http.Request, opts ...Opt) (db2.
 		return db2.PageQuery{}, err
 	}
 
-	if defaultTOID && pageQuery.Order == db2.OrderAscending {
-		if cursor == "" || errors.Is(validateCursor(ledgerState, pageQuery), &hProblem.BeforeHistory) {
-			pageQuery.Cursor = toid.AfterLedger(
-				ordered.Max(0, ledgerState.CurrentStatus().HistoryElder-1),
-			).String()
-		}
-	}
 	return pageQuery, nil
 }
 
@@ -553,23 +540,37 @@ func validateAssetParams(aType, code, issuer, prefix string) error {
 	return nil
 }
 
-// validateCursorWithinHistory compares the requested page of data against the
+// validateAndAdjustCursor compares the requested page of data against the
 // ledger state of the history database.  In the event that the cursor is
 // guaranteed to return no results, we return a 410 GONE http response.
-func validateCursorWithinHistory(ledgerState *ledger.State, pq db2.PageQuery) error {
-	// an ascending query should never return a gone response:  An ascending query
-	// prior to known history should return results at the beginning of history,
-	// and an ascending query beyond the end of history should not error out but
-	// rather return an empty page (allowing code that tracks the procession of
-	// some resource more easily).
-	if pq.Order != "desc" {
-		return nil
-	}
+// For ascending queries, we adjust the cursor to ensure it starts at
+// the oldest available ledger.
+func validateAndAdjustCursor(ledgerState *ledger.State, pq *db2.PageQuery) error {
 
-	return validateCursor(ledgerState, pq)
+	if pq.Order == db2.OrderDescending {
+		return validateCursorWithinHistory(ledgerState, *pq)
+	} else if pq.Order == db2.OrderAscending {
+		// an ascending query should never return a gone response:  An ascending query
+		// prior to known history should return results at the beginning of history,
+		// and an ascending query beyond the end of history should not error out but
+		// rather return an empty page (allowing code that tracks the procession of
+		// some resource more easily).
+
+		// set/modify the cursor for ascending queries to start at the oldest available ledger if it
+		// precedes the oldest ledger. This avoids inefficient queries caused by index bloat from deleted rows
+		// that are removed as part of reaping to maintain the retention window.
+		if pq.Cursor == "" || errors.Is(validateCursorWithinHistory(ledgerState, *pq), &hProblem.BeforeHistory) {
+			pq.Cursor = toid.AfterLedger(
+				ordered.Max(0, ledgerState.CurrentStatus().HistoryElder-1),
+			).String()
+		}
+	}
+	return nil
 }
 
-func validateCursor(ledgerState *ledger.State, pq db2.PageQuery) error {
+// validateCursorWithinHistory checks if the cursor is within the known history range.
+// If the cursor is before the oldest available ledger, it returns BeforeHistory error.
+func validateCursorWithinHistory(ledgerState *ledger.State, pq db2.PageQuery) error {
 	var cursor int64
 	var err error
 

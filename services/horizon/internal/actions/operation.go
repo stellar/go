@@ -72,12 +72,12 @@ type GetOperationsHandler struct {
 func (handler GetOperationsHandler) GetResourcePage(w HeaderWriter, r *http.Request) ([]hal.Pageable, error) {
 	ctx := r.Context()
 
-	pq, err := GetPageQuery(handler.LedgerState, r, DefaultTOID)
+	pq, err := GetPageQuery(handler.LedgerState, r)
 	if err != nil {
 		return nil, err
 	}
 
-	err = validateCursorWithinHistory(handler.LedgerState, pq)
+	err = validateAndAdjustCursor(handler.LedgerState, &pq)
 	if err != nil {
 		return nil, err
 	}
