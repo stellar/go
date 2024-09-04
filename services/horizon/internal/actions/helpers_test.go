@@ -319,7 +319,7 @@ func TestPageQueryCursorDefaultOrder(t *testing.T) {
 	pq, err := GetPageQuery(ledgerState, req)
 	assert.NoError(t, err)
 	assert.Empty(t, pq.Cursor)
-	assert.Error(t, &hProblem.BeforeHistory, validateAndAdjustCursor(ledgerState, &pq))
+	assert.NoError(t, validateAndAdjustCursor(ledgerState, &pq))
 	assert.Equal(t, toid.AfterLedger(299).String(), pq.Cursor)
 	assert.Equal(t, uint64(2), pq.Limit)
 	assert.Equal(t, "asc", pq.Order)
@@ -331,7 +331,7 @@ func TestPageQueryCursorDefaultOrder(t *testing.T) {
 	pq, err = GetPageQuery(ledgerState, reqWithCursor)
 	assert.NoError(t, err)
 	assert.Equal(t, cursor, pq.Cursor)
-	assert.Error(t, &hProblem.BeforeHistory, validateAndAdjustCursor(ledgerState, &pq))
+	assert.NoError(t, validateAndAdjustCursor(ledgerState, &pq))
 	assert.Equal(t, toid.AfterLedger(299).String(), pq.Cursor)
 	assert.Equal(t, uint64(2), pq.Limit)
 	assert.Equal(t, "asc", pq.Order)
@@ -348,7 +348,7 @@ func TestPageQueryCursorDefaultOrder(t *testing.T) {
 	pq, err = GetPageQuery(ledgerState, req)
 	assert.NoError(t, err)
 	assert.Empty(t, pq.Cursor)
-	assert.Error(t, &hProblem.BeforeHistory, validateAndAdjustCursor(ledgerState, &pq))
+	assert.NoError(t, validateAndAdjustCursor(ledgerState, &pq))
 	assert.Equal(t, toid.AfterLedger(0).String(), pq.Cursor)
 	assert.Equal(t, uint64(2), pq.Limit)
 	assert.Equal(t, "asc", pq.Order)
@@ -357,7 +357,7 @@ func TestPageQueryCursorDefaultOrder(t *testing.T) {
 	pq, err = GetPageQuery(ledgerState, reqWithCursor)
 	assert.NoError(t, err)
 	assert.Equal(t, cursor, pq.Cursor)
-	assert.Error(t, &hProblem.BeforeHistory, validateAndAdjustCursor(ledgerState, &pq))
+	assert.NoError(t, validateAndAdjustCursor(ledgerState, &pq))
 	assert.Equal(t, cursor, pq.Cursor)
 	assert.Equal(t, uint64(2), pq.Limit)
 	assert.Equal(t, "asc", pq.Order)
@@ -372,7 +372,7 @@ func TestGetPageQueryWithoutCursor(t *testing.T) {
 		pq, err := GetPageQuery(ledgerState, req)
 		assert.NoError(t, err)
 		assert.Empty(t, pq.Cursor)
-		assert.Error(t, &hProblem.BeforeHistory, validateAndAdjustCursor(ledgerState, &pq))
+		assert.NoError(t, validateAndAdjustCursor(ledgerState, &pq))
 		assert.Equal(t, expectedCursor, pq.Cursor)
 		assert.Equal(t, limit, pq.Limit)
 		assert.Equal(t, order, pq.Order)
@@ -401,15 +401,20 @@ func TestGetPageQueryWithoutCursor(t *testing.T) {
 	validateCursor(2, "desc", "")
 }
 
-func TestPageQueryWithCursor(t *testing.T) {
+func TestGetPageQueryWithCursor(t *testing.T) {
 	ledgerState := &ledger.State{}
 
-	validateCursor := func(cursor string, limit uint64, order string, expectedCursor string) {
+	validateCursor := func(cursor string, limit uint64, order string, expectedCursor string, expectedError error) {
 		req := makeTestActionRequest(fmt.Sprintf("/foo-bar/blah?cursor=%s&limit=%d&order=%s", cursor, limit, order), testURLParams())
 		pq, err := GetPageQuery(ledgerState, req)
 		assert.NoError(t, err)
 		assert.Equal(t, cursor, pq.Cursor)
-		assert.Error(t, &hProblem.BeforeHistory, validateAndAdjustCursor(ledgerState, &pq))
+		err = validateAndAdjustCursor(ledgerState, &pq)
+		if expectedError != nil {
+			assert.EqualError(t, expectedError, err.Error())
+		} else {
+			assert.NoError(t, err)
+		}
 		assert.Equal(t, expectedCursor, pq.Cursor)
 		assert.Equal(t, limit, pq.Limit)
 		assert.Equal(t, order, pq.Order)
@@ -423,8 +428,13 @@ func TestPageQueryWithCursor(t *testing.T) {
 		ExpHistoryLatest:      7000,
 	})
 
-	validateCursor(toid.AfterLedger(200).String(), 2, "asc", toid.AfterLedger(200).String())
-	validateCursor(toid.AfterLedger(200).String(), 2, "desc", toid.AfterLedger(200).String())
+	validateCursor(toid.AfterLedger(0).String(), 2, "asc", toid.AfterLedger(0).String(), nil)
+	validateCursor(toid.AfterLedger(200).String(), 2, "asc", toid.AfterLedger(200).String(), nil)
+	validateCursor(toid.AfterLedger(7001).String(), 2, "asc", toid.AfterLedger(7001).String(), nil)
+
+	validateCursor(toid.AfterLedger(0).String(), 2, "desc", toid.AfterLedger(0).String(), nil)
+	validateCursor(toid.AfterLedger(200).String(), 2, "desc", toid.AfterLedger(200).String(), nil)
+	validateCursor(toid.AfterLedger(7001).String(), 2, "desc", toid.AfterLedger(7001).String(), nil)
 
 	// truncated history
 	ledgerState.SetHorizonStatus(ledger.HorizonStatus{
@@ -435,17 +445,21 @@ func TestPageQueryWithCursor(t *testing.T) {
 	})
 
 	// asc order
-	validateCursor(toid.AfterLedger(200).String(), 2, "asc", toid.AfterLedger(299).String())
-	validateCursor(toid.AfterLedger(298).String(), 2, "asc", toid.AfterLedger(299).String())
-	validateCursor(toid.AfterLedger(299).String(), 2, "asc", toid.AfterLedger(299).String())
-	validateCursor(toid.AfterLedger(300).String(), 2, "asc", toid.AfterLedger(300).String())
-	validateCursor(toid.AfterLedger(301).String(), 2, "asc", toid.AfterLedger(301).String())
+	validateCursor(toid.AfterLedger(0).String(), 2, "asc", toid.AfterLedger(299).String(), nil)
+	validateCursor(toid.AfterLedger(200).String(), 2, "asc", toid.AfterLedger(299).String(), nil)
+	validateCursor(toid.AfterLedger(298).String(), 2, "asc", toid.AfterLedger(299).String(), nil)
+	validateCursor(toid.AfterLedger(299).String(), 2, "asc", toid.AfterLedger(299).String(), nil)
+	validateCursor(toid.AfterLedger(300).String(), 2, "asc", toid.AfterLedger(300).String(), nil)
+	validateCursor(toid.AfterLedger(301).String(), 2, "asc", toid.AfterLedger(301).String(), nil)
+	validateCursor(toid.AfterLedger(7001).String(), 2, "asc", toid.AfterLedger(7001).String(), nil)
 
 	// desc order
-	validateCursor(toid.AfterLedger(298).String(), 2, "desc", toid.AfterLedger(298).String())
-	validateCursor(toid.AfterLedger(300).String(), 2, "desc", toid.AfterLedger(300).String())
-	validateCursor(toid.AfterLedger(320).String(), 2, "desc", toid.AfterLedger(320).String())
-
+	validateCursor(toid.AfterLedger(0).String(), 2, "desc", toid.AfterLedger(0).String(), hProblem.BeforeHistory)
+	validateCursor(toid.AfterLedger(200).String(), 2, "desc", toid.AfterLedger(200).String(), hProblem.BeforeHistory)
+	validateCursor(toid.AfterLedger(299).String(), 2, "desc", toid.AfterLedger(299).String(), hProblem.BeforeHistory)
+	validateCursor(toid.AfterLedger(300).String(), 2, "desc", toid.AfterLedger(300).String(), nil)
+	validateCursor(toid.AfterLedger(320).String(), 2, "desc", toid.AfterLedger(320).String(), nil)
+	validateCursor(toid.AfterLedger(7001).String(), 2, "desc", toid.AfterLedger(7001).String(), nil)
 }
 
 func TestGetString(t *testing.T) {
