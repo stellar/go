@@ -33,8 +33,8 @@ import (
 // XdrFilesSHA256 is the SHA256 hashes of source files.
 var XdrFilesSHA256 = map[string]string{
 	"xdr/Stellar-SCP.x":                     "8f32b04d008f8bc33b8843d075e69837231a673691ee41d8b821ca229a6e802a",
-	"xdr/Stellar-contract-config-setting.x": "393369678663cb0f9471a0b69e2a9cfa3ac93c4415fa40cec166e9a231ecbe0d",
-	"xdr/Stellar-contract-env-meta.x":       "928a30de814ee589bc1d2aadd8dd81c39f71b7e6f430f56974505ccb1f49654b",
+	"xdr/Stellar-contract-config-setting.x": "73c32b6f05b43e1c22318ace568d607a633687d1adbb35cb3d022164cf38dab3",
+	"xdr/Stellar-contract-env-meta.x":       "75a271414d852096fea3283c63b7f2a702f2905f78fc28eb60ec7d7bd366a780",
 	"xdr/Stellar-contract-meta.x":           "f01532c11ca044e19d9f9f16fe373e9af64835da473be556b9a807ee3319ae0d",
 	"xdr/Stellar-contract-spec.x":           "c7ffa21d2e91afb8e666b33524d307955426ff553a486d670c29217ed9888d49",
 	"xdr/Stellar-contract.x":                "7f665e4103e146a88fcdabce879aaaacd3bf9283feb194cc47ff986264c1e315",
@@ -43,7 +43,7 @@ var XdrFilesSHA256 = map[string]string{
 	"xdr/Stellar-ledger-entries.x":          "03e8be938bace784410b0e837ed6496ff66dc0d1e70fc6e4f0d006566a344879",
 	"xdr/Stellar-ledger.x":                  "c2ac5bde5da28d4d02e2ea455f3bc5d5133adf271d374010cebe4e314c8504e8",
 	"xdr/Stellar-overlay.x":                 "8c73b7c3ad974e7fc4aa4fdf34f7ad50053406254efbd7406c96657cf41691d3",
-	"xdr/Stellar-transaction.x":             "a938e583ab5d25237c51f355a47446215575b720150db89a1cecf13773249df1",
+	"xdr/Stellar-transaction.x":             "fdd854ea6ce450500c331a6613d714d9b2f00d2adc86210a8f709e8a9ef4c641",
 	"xdr/Stellar-types.x":                   "253f515fc5e06bc938105e92a4c7f562251d4ebc178d39d6e6751e6b85fe1064",
 }
 
@@ -29939,12 +29939,16 @@ var _ xdrType = (*SorobanAuthorizedFunctionType)(nil)
 //	 {
 //	 case SOROBAN_AUTHORIZED_FUNCTION_TYPE_CONTRACT_FN:
 //	     InvokeContractArgs contractFn;
-//	 // This variant of auth payload for creating new contract instances is no
-//	 // longer accepted after protocol 22.
+//	 // This variant of auth payload for creating new contract instances
+//	 // doesn't allow specifying the constructor arguments, creating contracts
+//	 // with constructors that take arguments is only possible by authorizing
+//	 // `SOROBAN_AUTHORIZED_FUNCTION_TYPE_CREATE_CONTRACT_V2_HOST_FN`
+//	 // (protocol 22+).
 //	 case SOROBAN_AUTHORIZED_FUNCTION_TYPE_CREATE_CONTRACT_HOST_FN:
 //	     CreateContractArgs createContractHostFn;
 //	 // This variant of auth payload for creating new contract instances
-//	 // is only accepted in and after protocol 22.
+//	 // is only accepted in and after protocol 22. It allows authorizing the
+//	 // contract constructor arguments.
 //	 case SOROBAN_AUTHORIZED_FUNCTION_TYPE_CREATE_CONTRACT_V2_HOST_FN:
 //	     CreateContractArgsV2 createContractV2HostFn;
 //	 };
@@ -51603,16 +51607,93 @@ func (s ScEnvMetaKind) xdrType() {}
 
 var _ xdrType = (*ScEnvMetaKind)(nil)
 
+// ScEnvMetaEntryInterfaceVersion is an XDR NestedStruct defines as:
+//
+//	struct {
+//	         uint32 protocol;
+//	         uint32 preRelease;
+//	     }
+type ScEnvMetaEntryInterfaceVersion struct {
+	Protocol   Uint32
+	PreRelease Uint32
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s *ScEnvMetaEntryInterfaceVersion) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = s.Protocol.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.PreRelease.EncodeTo(e); err != nil {
+		return err
+	}
+	return nil
+}
+
+var _ decoderFrom = (*ScEnvMetaEntryInterfaceVersion)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *ScEnvMetaEntryInterfaceVersion) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+	if maxDepth == 0 {
+		return 0, fmt.Errorf("decoding ScEnvMetaEntryInterfaceVersion: %w", ErrMaxDecodingDepthReached)
+	}
+	maxDepth -= 1
+	var err error
+	var n, nTmp int
+	nTmp, err = s.Protocol.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %w", err)
+	}
+	nTmp, err = s.PreRelease.DecodeFrom(d, maxDepth)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %w", err)
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s ScEnvMetaEntryInterfaceVersion) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *ScEnvMetaEntryInterfaceVersion) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	o := xdr.DefaultDecodeOptions
+	o.MaxInputLen = len(inp)
+	d := xdr.NewDecoderWithOptions(r, o)
+	_, err := s.DecodeFrom(d, o.MaxDepth)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*ScEnvMetaEntryInterfaceVersion)(nil)
+	_ encoding.BinaryUnmarshaler = (*ScEnvMetaEntryInterfaceVersion)(nil)
+)
+
+// xdrType signals that this type represents XDR values defined by this package.
+func (s ScEnvMetaEntryInterfaceVersion) xdrType() {}
+
+var _ xdrType = (*ScEnvMetaEntryInterfaceVersion)(nil)
+
 // ScEnvMetaEntry is an XDR Union defines as:
 //
 //	union SCEnvMetaEntry switch (SCEnvMetaKind kind)
 //	 {
 //	 case SC_ENV_META_KIND_INTERFACE_VERSION:
-//	     uint64 interfaceVersion;
+//	     struct {
+//	         uint32 protocol;
+//	         uint32 preRelease;
+//	     } interfaceVersion;
 //	 };
 type ScEnvMetaEntry struct {
 	Kind             ScEnvMetaKind
-	InterfaceVersion *Uint64
+	InterfaceVersion *ScEnvMetaEntryInterfaceVersion
 }
 
 // SwitchFieldName returns the field name in which this union's
@@ -51636,9 +51717,9 @@ func NewScEnvMetaEntry(kind ScEnvMetaKind, value interface{}) (result ScEnvMetaE
 	result.Kind = kind
 	switch ScEnvMetaKind(kind) {
 	case ScEnvMetaKindScEnvMetaKindInterfaceVersion:
-		tv, ok := value.(Uint64)
+		tv, ok := value.(ScEnvMetaEntryInterfaceVersion)
 		if !ok {
-			err = errors.New("invalid value, must be Uint64")
+			err = errors.New("invalid value, must be ScEnvMetaEntryInterfaceVersion")
 			return
 		}
 		result.InterfaceVersion = &tv
@@ -51648,7 +51729,7 @@ func NewScEnvMetaEntry(kind ScEnvMetaKind, value interface{}) (result ScEnvMetaE
 
 // MustInterfaceVersion retrieves the InterfaceVersion value from the union,
 // panicing if the value is not set.
-func (u ScEnvMetaEntry) MustInterfaceVersion() Uint64 {
+func (u ScEnvMetaEntry) MustInterfaceVersion() ScEnvMetaEntryInterfaceVersion {
 	val, ok := u.GetInterfaceVersion()
 
 	if !ok {
@@ -51660,7 +51741,7 @@ func (u ScEnvMetaEntry) MustInterfaceVersion() Uint64 {
 
 // GetInterfaceVersion retrieves the InterfaceVersion value from the union,
 // returning ok if the union's switch indicated the value is valid.
-func (u ScEnvMetaEntry) GetInterfaceVersion() (result Uint64, ok bool) {
+func (u ScEnvMetaEntry) GetInterfaceVersion() (result ScEnvMetaEntryInterfaceVersion, ok bool) {
 	armName, _ := u.ArmForSwitch(int32(u.Kind))
 
 	if armName == "InterfaceVersion" {
@@ -51704,11 +51785,11 @@ func (u *ScEnvMetaEntry) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) 
 	}
 	switch ScEnvMetaKind(u.Kind) {
 	case ScEnvMetaKindScEnvMetaKindInterfaceVersion:
-		u.InterfaceVersion = new(Uint64)
+		u.InterfaceVersion = new(ScEnvMetaEntryInterfaceVersion)
 		nTmp, err = (*u.InterfaceVersion).DecodeFrom(d, maxDepth)
 		n += nTmp
 		if err != nil {
-			return n, fmt.Errorf("decoding Uint64: %w", err)
+			return n, fmt.Errorf("decoding ScEnvMetaEntryInterfaceVersion: %w", err)
 		}
 		return n, nil
 	}
@@ -60011,7 +60092,54 @@ var _ xdrType = (*ConfigSettingContractBandwidthV0)(nil)
 //	     // point on a 256-bit elliptic curve
 //	     Sec1DecodePointUncompressed = 43,
 //	     // Cost of verifying an ECDSA Secp256r1 signature
-//	     VerifyEcdsaSecp256r1Sig = 44
+//	     VerifyEcdsaSecp256r1Sig = 44,
+//
+//	     // Cost of encoding a BLS12-381 Fp (base field element)
+//	     Bls12381EncodeFp = 45,
+//	     // Cost of decoding a BLS12-381 Fp (base field element)
+//	     Bls12381DecodeFp = 46,
+//	     // Cost of validating a G1 point lies on the curve and belongs to the correct subgroup
+//	     Bls12381G1Validate = 47,
+//	     // Cost of validating a G2 point lies on the curve and belongs to the correct subgroup
+//	     Bls12381G2Validate = 48,
+//	     // Cost of converting a BLS12-381 G1 point from projective to affine coordinates
+//	     Bls12381G1ProjectiveToAffine = 49,
+//	     // Cost of converting a BLS12-381 G2 point from projective to affine coordinates
+//	     Bls12381G2ProjectiveToAffine = 50,
+//	     // Cost of performing BLS12-381 G1 point addition
+//	     Bls12381G1Add = 51,
+//	     // Cost of performing BLS12-381 G1 scalar multiplication
+//	     Bls12381G1Mul = 52,
+//	     // Cost of performing BLS12-381 G1 multi-scalar multiplication (MSM)
+//	     Bls12381G1Msm = 53,
+//	     // Cost of mapping a BLS12-381 Fp field element to a G1 point
+//	     Bls12381MapFpToG1 = 54,
+//	     // Cost of hashing to a BLS12-381 G1 point
+//	     Bls12381HashToG1 = 55,
+//	     // Cost of performing BLS12-381 G2 point addition
+//	     Bls12381G2Add = 56,
+//	     // Cost of performing BLS12-381 G2 scalar multiplication
+//	     Bls12381G2Mul = 57,
+//	     // Cost of performing BLS12-381 G2 multi-scalar multiplication (MSM)
+//	     Bls12381G2Msm = 58,
+//	     // Cost of mapping a BLS12-381 Fp2 field element to a G2 point
+//	     Bls12381MapFp2ToG2 = 59,
+//	     // Cost of hashing to a BLS12-381 G2 point
+//	     Bls12381HashToG2 = 60,
+//	     // Cost of performing BLS12-381 pairing operation
+//	     Bls12381Pairing = 61,
+//	     // Cost of converting a BLS12-381 scalar element from U256
+//	     Bls12381FrFromU256 = 62,
+//	     // Cost of converting a BLS12-381 scalar element to U256
+//	     Bls12381FrToU256 = 63,
+//	     // Cost of performing BLS12-381 scalar element addition/subtraction
+//	     Bls12381FrAddSub = 64,
+//	     // Cost of performing BLS12-381 scalar element multiplication
+//	     Bls12381FrMul = 65,
+//	     // Cost of performing BLS12-381 scalar element exponentiation
+//	     Bls12381FrPow = 66,
+//	     // Cost of performing BLS12-381 scalar element inversion
+//	     Bls12381FrInv = 67
 //	 };
 type ContractCostType int32
 
@@ -60061,6 +60189,29 @@ const (
 	ContractCostTypeInstantiateWasmDataSegmentBytes ContractCostType = 42
 	ContractCostTypeSec1DecodePointUncompressed     ContractCostType = 43
 	ContractCostTypeVerifyEcdsaSecp256r1Sig         ContractCostType = 44
+	ContractCostTypeBls12381EncodeFp                ContractCostType = 45
+	ContractCostTypeBls12381DecodeFp                ContractCostType = 46
+	ContractCostTypeBls12381G1Validate              ContractCostType = 47
+	ContractCostTypeBls12381G2Validate              ContractCostType = 48
+	ContractCostTypeBls12381G1ProjectiveToAffine    ContractCostType = 49
+	ContractCostTypeBls12381G2ProjectiveToAffine    ContractCostType = 50
+	ContractCostTypeBls12381G1Add                   ContractCostType = 51
+	ContractCostTypeBls12381G1Mul                   ContractCostType = 52
+	ContractCostTypeBls12381G1Msm                   ContractCostType = 53
+	ContractCostTypeBls12381MapFpToG1               ContractCostType = 54
+	ContractCostTypeBls12381HashToG1                ContractCostType = 55
+	ContractCostTypeBls12381G2Add                   ContractCostType = 56
+	ContractCostTypeBls12381G2Mul                   ContractCostType = 57
+	ContractCostTypeBls12381G2Msm                   ContractCostType = 58
+	ContractCostTypeBls12381MapFp2ToG2              ContractCostType = 59
+	ContractCostTypeBls12381HashToG2                ContractCostType = 60
+	ContractCostTypeBls12381Pairing                 ContractCostType = 61
+	ContractCostTypeBls12381FrFromU256              ContractCostType = 62
+	ContractCostTypeBls12381FrToU256                ContractCostType = 63
+	ContractCostTypeBls12381FrAddSub                ContractCostType = 64
+	ContractCostTypeBls12381FrMul                   ContractCostType = 65
+	ContractCostTypeBls12381FrPow                   ContractCostType = 66
+	ContractCostTypeBls12381FrInv                   ContractCostType = 67
 )
 
 var contractCostTypeMap = map[int32]string{
@@ -60109,6 +60260,29 @@ var contractCostTypeMap = map[int32]string{
 	42: "ContractCostTypeInstantiateWasmDataSegmentBytes",
 	43: "ContractCostTypeSec1DecodePointUncompressed",
 	44: "ContractCostTypeVerifyEcdsaSecp256r1Sig",
+	45: "ContractCostTypeBls12381EncodeFp",
+	46: "ContractCostTypeBls12381DecodeFp",
+	47: "ContractCostTypeBls12381G1Validate",
+	48: "ContractCostTypeBls12381G2Validate",
+	49: "ContractCostTypeBls12381G1ProjectiveToAffine",
+	50: "ContractCostTypeBls12381G2ProjectiveToAffine",
+	51: "ContractCostTypeBls12381G1Add",
+	52: "ContractCostTypeBls12381G1Mul",
+	53: "ContractCostTypeBls12381G1Msm",
+	54: "ContractCostTypeBls12381MapFpToG1",
+	55: "ContractCostTypeBls12381HashToG1",
+	56: "ContractCostTypeBls12381G2Add",
+	57: "ContractCostTypeBls12381G2Mul",
+	58: "ContractCostTypeBls12381G2Msm",
+	59: "ContractCostTypeBls12381MapFp2ToG2",
+	60: "ContractCostTypeBls12381HashToG2",
+	61: "ContractCostTypeBls12381Pairing",
+	62: "ContractCostTypeBls12381FrFromU256",
+	63: "ContractCostTypeBls12381FrToU256",
+	64: "ContractCostTypeBls12381FrAddSub",
+	65: "ContractCostTypeBls12381FrMul",
+	66: "ContractCostTypeBls12381FrPow",
+	67: "ContractCostTypeBls12381FrInv",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
