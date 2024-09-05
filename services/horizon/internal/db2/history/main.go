@@ -1198,7 +1198,7 @@ func constructFindReapLookupTablesQuery(table string, batchSize int, offset int6
 	}
 
 	return fmt.Sprintf(
-		"WITH ha_batch AS (SELECT id FROM %s WHERE id >= %d ORDER BY id limit %d) "+
+		"WITH ha_batch AS (SELECT id FROM %s WHERE id >= %d ORDER BY id ASC limit %d) "+
 			"SELECT e1.id as id FROM ha_batch e1 WHERE ",
 		table,
 		offset,
