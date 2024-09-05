@@ -4016,9 +4016,13 @@ const (
 type SCEnvMetaEntry struct {
 	// The union discriminant Kind selects among the following arms:
 	//   SC_ENV_META_KIND_INTERFACE_VERSION:
-	//      InterfaceVersion() *Uint64
+	//      InterfaceVersion() *XdrAnon_SCEnvMetaEntry_InterfaceVersion
 	Kind SCEnvMetaKind
 	_u   interface{}
+}
+type XdrAnon_SCEnvMetaEntry_InterfaceVersion struct {
+	Protocol   Uint32
+	PreRelease Uint32
 }
 
 type SCMetaV0 struct {
@@ -4705,6 +4709,52 @@ const (
 	Sec1DecodePointUncompressed ContractCostType = 43
 	// Cost of verifying an ECDSA Secp256r1 signature
 	VerifyEcdsaSecp256r1Sig ContractCostType = 44
+	// Cost of encoding a BLS12-381 Fp (base field element)
+	Bls12381EncodeFp ContractCostType = 45
+	// Cost of decoding a BLS12-381 Fp (base field element)
+	Bls12381DecodeFp ContractCostType = 46
+	// Cost of validating a G1 point lies on the curve and belongs to the correct subgroup
+	Bls12381G1Validate ContractCostType = 47
+	// Cost of validating a G2 point lies on the curve and belongs to the correct subgroup
+	Bls12381G2Validate ContractCostType = 48
+	// Cost of converting a BLS12-381 G1 point from projective to affine coordinates
+	Bls12381G1ProjectiveToAffine ContractCostType = 49
+	// Cost of converting a BLS12-381 G2 point from projective to affine coordinates
+	Bls12381G2ProjectiveToAffine ContractCostType = 50
+	// Cost of performing BLS12-381 G1 point addition
+	Bls12381G1Add ContractCostType = 51
+	// Cost of performing BLS12-381 G1 scalar multiplication
+	Bls12381G1Mul ContractCostType = 52
+	// Cost of performing BLS12-381 G1 multi-scalar multiplication (MSM)
+	Bls12381G1Msm ContractCostType = 53
+	// Cost of mapping a BLS12-381 Fp field element to a G1 point
+	Bls12381MapFpToG1 ContractCostType = 54
+	// Cost of hashing to a BLS12-381 G1 point
+	Bls12381HashToG1 ContractCostType = 55
+	// Cost of performing BLS12-381 G2 point addition
+	Bls12381G2Add ContractCostType = 56
+	// Cost of performing BLS12-381 G2 scalar multiplication
+	Bls12381G2Mul ContractCostType = 57
+	// Cost of performing BLS12-381 G2 multi-scalar multiplication (MSM)
+	Bls12381G2Msm ContractCostType = 58
+	// Cost of mapping a BLS12-381 Fp2 field element to a G2 point
+	Bls12381MapFp2ToG2 ContractCostType = 59
+	// Cost of hashing to a BLS12-381 G2 point
+	Bls12381HashToG2 ContractCostType = 60
+	// Cost of performing BLS12-381 pairing operation
+	Bls12381Pairing ContractCostType = 61
+	// Cost of converting a BLS12-381 scalar element from U256
+	Bls12381FrFromU256 ContractCostType = 62
+	// Cost of converting a BLS12-381 scalar element to U256
+	Bls12381FrToU256 ContractCostType = 63
+	// Cost of performing BLS12-381 scalar element addition/subtraction
+	Bls12381FrAddSub ContractCostType = 64
+	// Cost of performing BLS12-381 scalar element multiplication
+	Bls12381FrMul ContractCostType = 65
+	// Cost of performing BLS12-381 scalar element exponentiation
+	Bls12381FrPow ContractCostType = 66
+	// Cost of performing BLS12-381 scalar element inversion
+	Bls12381FrInv ContractCostType = 67
 )
 
 type ContractCostParamEntry struct {
@@ -27128,6 +27178,25 @@ type XdrType_SCEnvMetaKind = *SCEnvMetaKind
 
 func XDR_SCEnvMetaKind(v *SCEnvMetaKind) *SCEnvMetaKind { return v }
 
+type XdrType_XdrAnon_SCEnvMetaEntry_InterfaceVersion = *XdrAnon_SCEnvMetaEntry_InterfaceVersion
+
+func (v *XdrAnon_SCEnvMetaEntry_InterfaceVersion) XdrPointer() interface{} { return v }
+func (XdrAnon_SCEnvMetaEntry_InterfaceVersion) XdrTypeName() string {
+	return "XdrAnon_SCEnvMetaEntry_InterfaceVersion"
+}
+func (v XdrAnon_SCEnvMetaEntry_InterfaceVersion) XdrValue() interface{}          { return v }
+func (v *XdrAnon_SCEnvMetaEntry_InterfaceVersion) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *XdrAnon_SCEnvMetaEntry_InterfaceVersion) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	x.Marshal(x.Sprintf("%sprotocol", name), XDR_Uint32(&v.Protocol))
+	x.Marshal(x.Sprintf("%spreRelease", name), XDR_Uint32(&v.PreRelease))
+}
+func XDR_XdrAnon_SCEnvMetaEntry_InterfaceVersion(v *XdrAnon_SCEnvMetaEntry_InterfaceVersion) *XdrAnon_SCEnvMetaEntry_InterfaceVersion {
+	return v
+}
+
 var _XdrTags_SCEnvMetaEntry = map[int32]bool{
 	XdrToI32(SC_ENV_META_KIND_INTERFACE_VERSION): true,
 }
@@ -27135,13 +27204,13 @@ var _XdrTags_SCEnvMetaEntry = map[int32]bool{
 func (_ SCEnvMetaEntry) XdrValidTags() map[int32]bool {
 	return _XdrTags_SCEnvMetaEntry
 }
-func (u *SCEnvMetaEntry) InterfaceVersion() *Uint64 {
+func (u *SCEnvMetaEntry) InterfaceVersion() *XdrAnon_SCEnvMetaEntry_InterfaceVersion {
 	switch u.Kind {
 	case SC_ENV_META_KIND_INTERFACE_VERSION:
-		if v, ok := u._u.(*Uint64); ok {
+		if v, ok := u._u.(*XdrAnon_SCEnvMetaEntry_InterfaceVersion); ok {
 			return v
 		} else {
-			var zero Uint64
+			var zero XdrAnon_SCEnvMetaEntry_InterfaceVersion
 			u._u = &zero
 			return &zero
 		}
@@ -27166,7 +27235,7 @@ func (u *SCEnvMetaEntry) XdrUnionTagName() string {
 func (u *SCEnvMetaEntry) XdrUnionBody() XdrType {
 	switch u.Kind {
 	case SC_ENV_META_KIND_INTERFACE_VERSION:
-		return XDR_Uint64(u.InterfaceVersion())
+		return XDR_XdrAnon_SCEnvMetaEntry_InterfaceVersion(u.InterfaceVersion())
 	}
 	return nil
 }
@@ -27191,7 +27260,7 @@ func (u *SCEnvMetaEntry) XdrRecurse(x XDR, name string) {
 	XDR_SCEnvMetaKind(&u.Kind).XdrMarshal(x, x.Sprintf("%skind", name))
 	switch u.Kind {
 	case SC_ENV_META_KIND_INTERFACE_VERSION:
-		x.Marshal(x.Sprintf("%sinterfaceVersion", name), XDR_Uint64(u.InterfaceVersion()))
+		x.Marshal(x.Sprintf("%sinterfaceVersion", name), XDR_XdrAnon_SCEnvMetaEntry_InterfaceVersion(u.InterfaceVersion()))
 		return
 	}
 	XdrPanic("invalid Kind (%v) in SCEnvMetaEntry", u.Kind)
@@ -30666,6 +30735,29 @@ var _XdrNames_ContractCostType = map[int32]string{
 	int32(InstantiateWasmDataSegmentBytes): "InstantiateWasmDataSegmentBytes",
 	int32(Sec1DecodePointUncompressed):     "Sec1DecodePointUncompressed",
 	int32(VerifyEcdsaSecp256r1Sig):         "VerifyEcdsaSecp256r1Sig",
+	int32(Bls12381EncodeFp):                "Bls12381EncodeFp",
+	int32(Bls12381DecodeFp):                "Bls12381DecodeFp",
+	int32(Bls12381G1Validate):              "Bls12381G1Validate",
+	int32(Bls12381G2Validate):              "Bls12381G2Validate",
+	int32(Bls12381G1ProjectiveToAffine):    "Bls12381G1ProjectiveToAffine",
+	int32(Bls12381G2ProjectiveToAffine):    "Bls12381G2ProjectiveToAffine",
+	int32(Bls12381G1Add):                   "Bls12381G1Add",
+	int32(Bls12381G1Mul):                   "Bls12381G1Mul",
+	int32(Bls12381G1Msm):                   "Bls12381G1Msm",
+	int32(Bls12381MapFpToG1):               "Bls12381MapFpToG1",
+	int32(Bls12381HashToG1):                "Bls12381HashToG1",
+	int32(Bls12381G2Add):                   "Bls12381G2Add",
+	int32(Bls12381G2Mul):                   "Bls12381G2Mul",
+	int32(Bls12381G2Msm):                   "Bls12381G2Msm",
+	int32(Bls12381MapFp2ToG2):              "Bls12381MapFp2ToG2",
+	int32(Bls12381HashToG2):                "Bls12381HashToG2",
+	int32(Bls12381Pairing):                 "Bls12381Pairing",
+	int32(Bls12381FrFromU256):              "Bls12381FrFromU256",
+	int32(Bls12381FrToU256):                "Bls12381FrToU256",
+	int32(Bls12381FrAddSub):                "Bls12381FrAddSub",
+	int32(Bls12381FrMul):                   "Bls12381FrMul",
+	int32(Bls12381FrPow):                   "Bls12381FrPow",
+	int32(Bls12381FrInv):                   "Bls12381FrInv",
 }
 var _XdrValues_ContractCostType = map[string]int32{
 	"WasmInsnExec":                    int32(WasmInsnExec),
@@ -30713,6 +30805,29 @@ var _XdrValues_ContractCostType = map[string]int32{
 	"InstantiateWasmDataSegmentBytes": int32(InstantiateWasmDataSegmentBytes),
 	"Sec1DecodePointUncompressed":     int32(Sec1DecodePointUncompressed),
 	"VerifyEcdsaSecp256r1Sig":         int32(VerifyEcdsaSecp256r1Sig),
+	"Bls12381EncodeFp":                int32(Bls12381EncodeFp),
+	"Bls12381DecodeFp":                int32(Bls12381DecodeFp),
+	"Bls12381G1Validate":              int32(Bls12381G1Validate),
+	"Bls12381G2Validate":              int32(Bls12381G2Validate),
+	"Bls12381G1ProjectiveToAffine":    int32(Bls12381G1ProjectiveToAffine),
+	"Bls12381G2ProjectiveToAffine":    int32(Bls12381G2ProjectiveToAffine),
+	"Bls12381G1Add":                   int32(Bls12381G1Add),
+	"Bls12381G1Mul":                   int32(Bls12381G1Mul),
+	"Bls12381G1Msm":                   int32(Bls12381G1Msm),
+	"Bls12381MapFpToG1":               int32(Bls12381MapFpToG1),
+	"Bls12381HashToG1":                int32(Bls12381HashToG1),
+	"Bls12381G2Add":                   int32(Bls12381G2Add),
+	"Bls12381G2Mul":                   int32(Bls12381G2Mul),
+	"Bls12381G2Msm":                   int32(Bls12381G2Msm),
+	"Bls12381MapFp2ToG2":              int32(Bls12381MapFp2ToG2),
+	"Bls12381HashToG2":                int32(Bls12381HashToG2),
+	"Bls12381Pairing":                 int32(Bls12381Pairing),
+	"Bls12381FrFromU256":              int32(Bls12381FrFromU256),
+	"Bls12381FrToU256":                int32(Bls12381FrToU256),
+	"Bls12381FrAddSub":                int32(Bls12381FrAddSub),
+	"Bls12381FrMul":                   int32(Bls12381FrMul),
+	"Bls12381FrPow":                   int32(Bls12381FrPow),
+	"Bls12381FrInv":                   int32(Bls12381FrInv),
 }
 
 func (ContractCostType) XdrEnumNames() map[int32]string {
@@ -30797,6 +30912,29 @@ var _XdrComments_ContractCostType = map[int32]string{
 	int32(InstantiateWasmDataSegmentBytes): "Cost of instantiating a known number of data segment bytes.",
 	int32(Sec1DecodePointUncompressed):     "Cost of decoding a bytes array representing an uncompressed SEC-1 encoded point on a 256-bit elliptic curve",
 	int32(VerifyEcdsaSecp256r1Sig):         "Cost of verifying an ECDSA Secp256r1 signature",
+	int32(Bls12381EncodeFp):                "Cost of encoding a BLS12-381 Fp (base field element)",
+	int32(Bls12381DecodeFp):                "Cost of decoding a BLS12-381 Fp (base field element)",
+	int32(Bls12381G1Validate):              "Cost of validating a G1 point lies on the curve and belongs to the correct subgroup",
+	int32(Bls12381G2Validate):              "Cost of validating a G2 point lies on the curve and belongs to the correct subgroup",
+	int32(Bls12381G1ProjectiveToAffine):    "Cost of converting a BLS12-381 G1 point from projective to affine coordinates",
+	int32(Bls12381G2ProjectiveToAffine):    "Cost of converting a BLS12-381 G2 point from projective to affine coordinates",
+	int32(Bls12381G1Add):                   "Cost of performing BLS12-381 G1 point addition",
+	int32(Bls12381G1Mul):                   "Cost of performing BLS12-381 G1 scalar multiplication",
+	int32(Bls12381G1Msm):                   "Cost of performing BLS12-381 G1 multi-scalar multiplication (MSM)",
+	int32(Bls12381MapFpToG1):               "Cost of mapping a BLS12-381 Fp field element to a G1 point",
+	int32(Bls12381HashToG1):                "Cost of hashing to a BLS12-381 G1 point",
+	int32(Bls12381G2Add):                   "Cost of performing BLS12-381 G2 point addition",
+	int32(Bls12381G2Mul):                   "Cost of performing BLS12-381 G2 scalar multiplication",
+	int32(Bls12381G2Msm):                   "Cost of performing BLS12-381 G2 multi-scalar multiplication (MSM)",
+	int32(Bls12381MapFp2ToG2):              "Cost of mapping a BLS12-381 Fp2 field element to a G2 point",
+	int32(Bls12381HashToG2):                "Cost of hashing to a BLS12-381 G2 point",
+	int32(Bls12381Pairing):                 "Cost of performing BLS12-381 pairing operation",
+	int32(Bls12381FrFromU256):              "Cost of converting a BLS12-381 scalar element from U256",
+	int32(Bls12381FrToU256):                "Cost of converting a BLS12-381 scalar element to U256",
+	int32(Bls12381FrAddSub):                "Cost of performing BLS12-381 scalar element addition/subtraction",
+	int32(Bls12381FrMul):                   "Cost of performing BLS12-381 scalar element multiplication",
+	int32(Bls12381FrPow):                   "Cost of performing BLS12-381 scalar element exponentiation",
+	int32(Bls12381FrInv):                   "Cost of performing BLS12-381 scalar element inversion",
 }
 
 func (e ContractCostType) XdrEnumComments() map[int32]string {
