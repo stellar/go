@@ -546,10 +546,9 @@ func validateAssetParams(aType, code, issuer, prefix string) error {
 // For ascending queries, we adjust the cursor to ensure it starts at
 // the oldest available ledger.
 func validateAndAdjustCursor(ledgerState *ledger.State, pq *db2.PageQuery) error {
+	err := validateCursorWithinHistory(ledgerState, *pq)
 
-	if pq.Order == db2.OrderDescending {
-		return validateCursorWithinHistory(ledgerState, *pq)
-	} else if pq.Order == db2.OrderAscending {
+	if pq.Order == db2.OrderAscending {
 		// an ascending query should never return a gone response:  An ascending query
 		// prior to known history should return results at the beginning of history,
 		// and an ascending query beyond the end of history should not error out but
@@ -559,13 +558,14 @@ func validateAndAdjustCursor(ledgerState *ledger.State, pq *db2.PageQuery) error
 		// set/modify the cursor for ascending queries to start at the oldest available ledger if it
 		// precedes the oldest ledger. This avoids inefficient queries caused by index bloat from deleted rows
 		// that are removed as part of reaping to maintain the retention window.
-		if pq.Cursor == "" || errors.Is(validateCursorWithinHistory(ledgerState, *pq), &hProblem.BeforeHistory) {
+		if pq.Cursor == "" || errors.Is(err, &hProblem.BeforeHistory) {
 			pq.Cursor = toid.AfterLedger(
 				ordered.Max(0, ledgerState.CurrentStatus().HistoryElder-1),
 			).String()
+			return nil
 		}
 	}
-	return nil
+	return err
 }
 
 // validateCursorWithinHistory checks if the cursor is within the known history range.

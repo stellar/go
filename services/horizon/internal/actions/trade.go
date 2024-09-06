@@ -287,10 +287,7 @@ func (handler GetTradeAggregationsHandler) GetResource(w HeaderWriter, r *http.R
 	if err != nil {
 		return nil, err
 	}
-	err = validateAndAdjustCursor(handler.LedgerState, &pq)
-	if err != nil {
-		return nil, err
-	}
+
 	qp := TradeAggregationsQuery{}
 	if err = getParams(&qp, r); err != nil {
 		return nil, err

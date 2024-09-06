@@ -401,15 +401,15 @@ func TestGetPageQueryWithoutCursor(t *testing.T) {
 	validateCursor(2, "desc", "")
 }
 
-func TestGetPageQueryWithCursor(t *testing.T) {
+func TestValidateAndAdjustCursor(t *testing.T) {
 	ledgerState := &ledger.State{}
 
 	validateCursor := func(cursor string, limit uint64, order string, expectedCursor string, expectedError error) {
-		req := makeTestActionRequest(fmt.Sprintf("/foo-bar/blah?cursor=%s&limit=%d&order=%s", cursor, limit, order), testURLParams())
-		pq, err := GetPageQuery(ledgerState, req)
-		assert.NoError(t, err)
-		assert.Equal(t, cursor, pq.Cursor)
-		err = validateAndAdjustCursor(ledgerState, &pq)
+		pq := db2.PageQuery{Cursor: cursor,
+			Limit: limit,
+			Order: order,
+		}
+		err := validateAndAdjustCursor(ledgerState, &pq)
 		if expectedError != nil {
 			assert.EqualError(t, expectedError, err.Error())
 		} else {
@@ -428,6 +428,10 @@ func TestGetPageQueryWithCursor(t *testing.T) {
 		ExpHistoryLatest:      7000,
 	})
 
+	// invalid cursor
+	validateCursor("blah", 2, "asc", "blah", problem.BadRequest)
+	validateCursor("blah", 2, "desc", "blah", problem.BadRequest)
+
 	validateCursor(toid.AfterLedger(0).String(), 2, "asc", toid.AfterLedger(0).String(), nil)
 	validateCursor(toid.AfterLedger(200).String(), 2, "asc", toid.AfterLedger(200).String(), nil)
 	validateCursor(toid.AfterLedger(7001).String(), 2, "asc", toid.AfterLedger(7001).String(), nil)
@@ -443,6 +447,10 @@ func TestGetPageQueryWithCursor(t *testing.T) {
 		HistoryElder:          300,
 		ExpHistoryLatest:      7000,
 	})
+
+	// invalid cursor
+	validateCursor("blah", 2, "asc", "blah", problem.BadRequest)
+	validateCursor("blah", 2, "desc", "blah", problem.BadRequest)
 
 	// asc order
 	validateCursor(toid.AfterLedger(0).String(), 2, "asc", toid.AfterLedger(299).String(), nil)
