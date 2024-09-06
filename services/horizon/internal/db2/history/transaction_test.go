@@ -79,7 +79,7 @@ func TestTransactionByLiquidityPool(t *testing.T) {
 
 	// Insert Liquidity Pool history
 	liquidityPoolID := "a2f38836a839de008cf1d782c81f45e1253cc5d3dad9110b872965484fec0a49"
-	lpLoader := NewLiquidityPoolLoader()
+	lpLoader := NewLiquidityPoolLoader(ConcurrentInserts)
 	lpTransactionBuilder := q.NewTransactionLiquidityPoolBatchInsertBuilder()
 	tt.Assert.NoError(lpTransactionBuilder.Add(txID, lpLoader.GetFuture(liquidityPoolID)))
 	tt.Assert.NoError(lpLoader.Exec(tt.Ctx, q))
@@ -940,15 +940,15 @@ func TestTransactionQueryBuilder(t *testing.T) {
 	tt.Assert.NoError(q.Begin(tt.Ctx))
 
 	address := "GBXGQJWVLWOYHFLVTKWV5FGHA3LNYY2JQKM7OAJAUEQFU6LPCSEFVXON"
-	accountLoader := NewAccountLoader()
+	accountLoader := NewAccountLoader(ConcurrentInserts)
 	accountLoader.GetFuture(address)
 
 	cbID := "00000000178826fbfe339e1f5c53417c6fedfe2c05e8bec14303143ec46b38981b09c3f9"
-	cbLoader := NewClaimableBalanceLoader()
+	cbLoader := NewClaimableBalanceLoader(ConcurrentInserts)
 	cbLoader.GetFuture(cbID)
 
 	lpID := "0000a8198b5e25994c1ca5b0556faeb27325ac746296944144e0a7406d501e8a"
-	lpLoader := NewLiquidityPoolLoader()
+	lpLoader := NewLiquidityPoolLoader(ConcurrentInserts)
 	lpLoader.GetFuture(lpID)
 
 	tt.Assert.NoError(accountLoader.Exec(tt.Ctx, q))

@@ -23,7 +23,7 @@ func TestEffectsForLiquidityPool(t *testing.T) {
 	// Insert Effect
 	address := "GAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSTVY"
 	muxedAddres := "MAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSAAAAAAAAAAE2LP26"
-	accountLoader := NewAccountLoader()
+	accountLoader := NewAccountLoader(ConcurrentInserts)
 
 	builder := q.NewEffectBatchInsertBuilder()
 	sequence := int32(56)
@@ -47,7 +47,7 @@ func TestEffectsForLiquidityPool(t *testing.T) {
 
 	// Insert Liquidity Pool history
 	liquidityPoolID := "abcde"
-	lpLoader := NewLiquidityPoolLoader()
+	lpLoader := NewLiquidityPoolLoader(ConcurrentInserts)
 
 	operationBuilder := q.NewOperationLiquidityPoolBatchInsertBuilder()
 	tt.Assert.NoError(operationBuilder.Add(opID, lpLoader.GetFuture(liquidityPoolID)))
@@ -78,7 +78,7 @@ func TestEffectsForTrustlinesSponsorshipEmptyAssetType(t *testing.T) {
 
 	address := "GAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSTVY"
 	muxedAddres := "MAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSAAAAAAAAAAE2LP26"
-	accountLoader := NewAccountLoader()
+	accountLoader := NewAccountLoader(ConcurrentInserts)
 
 	builder := q.NewEffectBatchInsertBuilder()
 	sequence := int32(56)

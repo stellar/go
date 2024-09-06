@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/stellar/go/services/horizon/internal/test"
+	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/xdr"
 )
 
@@ -16,6 +17,12 @@ func TestLiquidityPoolLoader(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	session := tt.HorizonSession()
 
+	testLPLoader(t, tt, session, ConcurrentInserts)
+	test.ResetHorizonDB(t, tt.HorizonDB)
+	testLPLoader(t, tt, session, ConcurrentDeletes)
+}
+
+func testLPLoader(t *testing.T, tt *test.T, session *db.Session, mode ConcurrencyMode) {
 	var ids []string
 	for i := 0; i < 100; i++ {
 		poolID := xdr.PoolId{byte(i)}
@@ -24,7 +31,7 @@ func TestLiquidityPoolLoader(t *testing.T) {
 		ids = append(ids, id)
 	}
 
-	loader := NewLiquidityPoolLoader()
+	loader := NewLiquidityPoolLoader(mode)
 	for _, id := range ids {
 		future := loader.GetFuture(id)
 		_, err := future.Value()
@@ -62,7 +69,7 @@ func TestLiquidityPoolLoader(t *testing.T) {
 
 	// check that Loader works when all the previous values are already
 	// present in the db and also add 10 more rows to insert
-	loader = NewLiquidityPoolLoader()
+	loader = NewLiquidityPoolLoader(mode)
 	for i := 100; i < 110; i++ {
 		poolID := xdr.PoolId{byte(i)}
 		var id string

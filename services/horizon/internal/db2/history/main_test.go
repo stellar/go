@@ -69,20 +69,34 @@ func TestElderLedger(t *testing.T) {
 	}
 }
 
-func TestConstructReapLookupTablesQuery(t *testing.T) {
-	query := constructReapLookupTablesQuery(
+func TestConstructDeleteLookupTableRowsQuery(t *testing.T) {
+	query := constructDeleteLookupTableRowsQuery(
 		"history_accounts",
-		historyLookupTables["history_accounts"],
-		10,
-		0,
+		[]int64{100, 20, 30},
 	)
 
 	assert.Equal(t,
-		"DELETE FROM history_accounts WHERE id IN ("+
-			"WITH ha_batch AS (SELECT id FROM history_accounts WHERE id >= 0 ORDER BY id limit 10) SELECT e1.id as id FROM ha_batch e1 "+
+		"WITH ha_batch AS (SELECT id FROM history_accounts WHERE id IN (100, 20, 30) ORDER BY id asc FOR UPDATE) "+
+			"DELETE FROM history_accounts WHERE id IN (SELECT e1.id as id FROM ha_batch e1 "+
 			"WHERE NOT EXISTS ( SELECT 1 as row FROM history_transaction_participants WHERE history_transaction_participants.history_account_id = id LIMIT 1) "+
 			"AND NOT EXISTS ( SELECT 1 as row FROM history_effects WHERE history_effects.history_account_id = id LIMIT 1) "+
 			"AND NOT EXISTS ( SELECT 1 as row FROM history_operation_participants WHERE history_operation_participants.history_account_id = id LIMIT 1) "+
 			"AND NOT EXISTS ( SELECT 1 as row FROM history_trades WHERE history_trades.base_account_id = id LIMIT 1) "+
 			"AND NOT EXISTS ( SELECT 1 as row FROM history_trades WHERE history_trades.counter_account_id = id LIMIT 1))", query)
+}
+
+func TestConstructReapLookupTablesQuery(t *testing.T) {
+	query := constructFindReapLookupTablesQuery(
+		"history_accounts",
+		10,
+		0,
+	)
+
+	assert.Equal(t,
+		"WITH ha_batch AS (SELECT id FROM history_accounts WHERE id >= 0 ORDER BY id ASC limit 10) SELECT e1.id as id FROM ha_batch e1 "+
+			"WHERE NOT EXISTS ( SELECT 1 as row FROM history_transaction_participants WHERE history_transaction_participants.history_account_id = id LIMIT 1) "+
+			"AND NOT EXISTS ( SELECT 1 as row FROM history_effects WHERE history_effects.history_account_id = id LIMIT 1) "+
+			"AND NOT EXISTS ( SELECT 1 as row FROM history_operation_participants WHERE history_operation_participants.history_account_id = id LIMIT 1) "+
+			"AND NOT EXISTS ( SELECT 1 as row FROM history_trades WHERE history_trades.base_account_id = id LIMIT 1) "+
+			"AND NOT EXISTS ( SELECT 1 as row FROM history_trades WHERE history_trades.counter_account_id = id LIMIT 1)", query)
 }

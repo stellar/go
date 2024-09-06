@@ -8,6 +8,7 @@ import (
 
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/services/horizon/internal/test"
+	"github.com/stellar/go/support/db"
 )
 
 func TestAccountLoader(t *testing.T) {
@@ -16,12 +17,18 @@ func TestAccountLoader(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	session := tt.HorizonSession()
 
+	testAccountLoader(t, session, ConcurrentInserts)
+	test.ResetHorizonDB(t, tt.HorizonDB)
+	testAccountLoader(t, session, ConcurrentDeletes)
+}
+
+func testAccountLoader(t *testing.T, session *db.Session, mode ConcurrencyMode) {
 	var addresses []string
 	for i := 0; i < 100; i++ {
 		addresses = append(addresses, keypair.MustRandom().Address())
 	}
 
-	loader := NewAccountLoader()
+	loader := NewAccountLoader(mode)
 	for _, address := range addresses {
 		future := loader.GetFuture(address)
 		_, err := future.Value()
@@ -58,7 +65,7 @@ func TestAccountLoader(t *testing.T) {
 
 	// check that Loader works when all the previous values are already
 	// present in the db and also add 10 more rows to insert
-	loader = NewAccountLoader()
+	loader = NewAccountLoader(mode)
 	for i := 0; i < 10; i++ {
 		addresses = append(addresses, keypair.MustRandom().Address())
 	}
@@ -85,5 +92,4 @@ func TestAccountLoader(t *testing.T) {
 		assert.Equal(t, account.ID, internalId)
 		assert.Equal(t, account.Address, address)
 	}
-
 }

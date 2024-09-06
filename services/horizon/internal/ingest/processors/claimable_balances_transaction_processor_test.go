@@ -44,7 +44,7 @@ func (s *ClaimableBalancesTransactionProcessorTestSuiteLedger) SetupTest() {
 			},
 		},
 	}
-	s.cbLoader = history.NewClaimableBalanceLoader()
+	s.cbLoader = history.NewClaimableBalanceLoader(history.ConcurrentInserts)
 
 	s.processor = NewClaimableBalancesTransactionProcessor(
 		s.cbLoader,
