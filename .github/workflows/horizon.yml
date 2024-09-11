@@ -35,7 +35,7 @@ jobs:
       HORIZON_INTEGRATION_TESTS_CAPTIVE_CORE_USE_DB: true
       PROTOCOL_21_CORE_DEBIAN_PKG_VERSION: 21.3.1-2007.4ede19620.focal
       PROTOCOL_21_CORE_DOCKER_IMG: stellar/stellar-core:21.3.1-2007.4ede19620.focal
-      PROTOCOL_21_SOROBAN_RPC_DOCKER_IMG: stellar/soroban-rpc:21.5.0
+      PROTOCOL_21_SOROBAN_RPC_DOCKER_IMG: stellar/stellar-rpc:21.5.0
       PGHOST: localhost
       PGPORT: 5432
       PGUSER: postgres

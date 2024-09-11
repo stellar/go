@@ -2,7 +2,7 @@ version: '3'
 services:
   soroban-rpc:
     platform: linux/amd64
-    image: ${SOROBAN_RPC_IMAGE:-stellar/soroban-rpc}
+    image: ${SOROBAN_RPC_IMAGE:-stellar/stellar-rpc}
     depends_on:
       - core
     restart: on-failure
