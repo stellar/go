@@ -150,6 +150,7 @@ func (c *Client) SetCursor(ctx context.Context, id string, cursor int32) (err er
 
 	return nil
 }
+
 func (c *Client) GetLedgerEntryRaw(ctx context.Context, ledgerSeq uint32, keys ...xdr.LedgerKey) (proto.GetLedgerEntryRawResponse, error) {
 	var resp proto.GetLedgerEntryRawResponse
 	return resp, c.makeLedgerKeyRequest(ctx, &resp, "getledgerentryraw", ledgerSeq, keys...)
@@ -296,7 +297,7 @@ func (c *Client) simpleGet(
 func (c *Client) rawPost(
 	ctx context.Context,
 	newPath string,
-	params string,
+	body string,
 ) (*http.Request, error) {
 	u, err := url.Parse(c.URL)
 	if err != nil {
@@ -311,7 +312,7 @@ func (c *Client) rawPost(
 		ctx,
 		http.MethodPost,
 		newURL,
-		bytes.NewBuffer([]byte(params)))
+		bytes.NewBuffer([]byte(body)))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create request")
 	}
@@ -329,11 +330,16 @@ func (c *Client) makeLedgerKeyRequest(
 	ledgerSeq uint32,
 	keys ...xdr.LedgerKey,
 ) error {
+	if len(keys) == 0 {
+		return errors.New("no keys specified in request")
+	}
+
 	q, err := buildMultiKeyRequest(keys...)
 	if err != nil {
 		return err
-	} else if ledgerSeq >= 2 { // optional param
-		q += fmt.Sprintf("ledgerSeq=%d", ledgerSeq)
+	}
+	if ledgerSeq >= 2 { // optional param
+		q += fmt.Sprintf("&ledgerSeq=%d", ledgerSeq)
 	}
 
 	var req *http.Request
@@ -361,28 +367,16 @@ func (c *Client) makeLedgerKeyRequest(
 // url.Values does not support multiple keys via Set(), so we have to build our
 // URL parameters manually.
 func buildMultiKeyRequest(keys ...xdr.LedgerKey) (string, error) {
-	// The average ledger key length, according to a simple
-	//
-	//     SELECT AVG(LENGTH(HEX(key))) / 2 FROM ledger_entries;
-	//
-	// on a pubnet RPC instance is ~57.6. We can use this to preallocate a
-	// string buffer for performance.
-	//
-	// We know that these endpoints will almost exclusively be used for
-	// ContractData and the like, so we could optimize the buffer further for
-	// that, but that data is harder to query since it'd involve parsing the XDR
-	// from the DB to check the key type.
-	q := strings.Builder{}
-	q.Grow(50 * len(keys))
+	stringKeys := make([]string, 0, len(keys))
 
 	for _, key := range keys {
 		keyB64, err := key.MarshalBinaryBase64()
 		if err != nil {
-			return q.String(), errors.Wrap(err, "failed to encode LedgerKey")
+			return "", errors.Wrap(err, "failed to encode LedgerKey")
 		}
-		q.WriteString("key=" + url.QueryEscape(keyB64) + "&")
+
+		stringKeys = append(stringKeys, "key="+url.QueryEscape(keyB64))
 	}
 
-	s, _ := strings.CutSuffix(q.String(), "&") // trim trailing &
-	return s, nil
+	return strings.Join(stringKeys, "&"), nil
 }
