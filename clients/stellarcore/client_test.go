@@ -112,16 +112,16 @@ func TestGetLedgerEntries(t *testing.T) {
 		"http://localhost:11626/getledgerentryraw",
 		func(r *http.Request) (*http.Response, error) {
 			// Ensure the request has the correct POST body
-			requestData, err := io.ReadAll(r.Body)
-			require.NoError(t, err)
+			requestData, ierr := io.ReadAll(r.Body)
+			require.NoError(t, ierr)
 
-			keyB64, err := key.MarshalBinaryBase64()
-			require.NoError(t, err)
+			keyB64, ierr := key.MarshalBinaryBase64()
+			require.NoError(t, ierr)
 			expected := fmt.Sprintf("key=%s&ledgerSeq=1234", url.QueryEscape(keyB64))
 			require.Equal(t, expected, string(requestData))
 
-			resp, err := httpmock.NewJsonResponse(http.StatusOK, &mockResp)
-			require.NoError(t, err)
+			resp, ierr := httpmock.NewJsonResponse(http.StatusOK, &mockResp)
+			require.NoError(t, ierr)
 			ce.Return(httpmock.ResponderFromResponse(resp))
 			return resp, nil
 		})
