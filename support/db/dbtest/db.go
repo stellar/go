@@ -131,6 +131,8 @@ func checkReadOnly(t testing.TB, DSN string) {
 			// Handle race condition by ignoring the error if it's a duplicate key violation or duplicate object error
 			if pqErr, ok := err.(*pq.Error); ok && (pqErr.Code == "23505" || pqErr.Code == "42710") {
 				return
+			} else if ok {
+				t.Logf("pq error code: %s", pqErr.Code)
 			}
 		}
 		require.NoError(t, err)
