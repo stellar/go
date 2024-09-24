@@ -2,9 +2,13 @@ package stellarcore
 
 import (
 	"context"
+	"fmt"
+	"io"
 	"net/http"
+	"net/url"
 	"testing"
 
+	"github.com/jarcoal/httpmock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -96,14 +100,31 @@ func TestGetLedgerEntries(t *testing.T) {
 		},
 	}
 
-	// happy path - fetch an entry
-	hmock.On("POST", "http://localhost:11626/getledgerentryraw").
-		ReturnJSON(http.StatusOK, &mockResp)
-
 	var key xdr.LedgerKey
 	acc, err := xdr.AddressToAccountId(keypair.MustRandom().Address())
 	require.NoError(t, err)
 	key.SetAccount(acc)
+
+	// happy path - fetch an entry
+	ce := hmock.On("POST", "http://localhost:11626/getledgerentryraw")
+	hmock.RegisterResponder(
+		"POST",
+		"http://localhost:11626/getledgerentryraw",
+		func(r *http.Request) (*http.Response, error) {
+			// Ensure the request has the correct POST body
+			requestData, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+
+			keyB64, err := key.MarshalBinaryBase64()
+			require.NoError(t, err)
+			expected := fmt.Sprintf("key=%s&ledgerSeq=1234", url.QueryEscape(keyB64))
+			require.Equal(t, expected, string(requestData))
+
+			resp, err := httpmock.NewJsonResponse(http.StatusOK, &mockResp)
+			require.NoError(t, err)
+			ce.Return(httpmock.ResponderFromResponse(resp))
+			return resp, nil
+		})
 
 	resp, err := c.GetLedgerEntryRaw(context.Background(), 1234, key)
 	require.NoError(t, err)
