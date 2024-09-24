@@ -33,7 +33,7 @@ import (
 // XdrFilesSHA256 is the SHA256 hashes of source files.
 var XdrFilesSHA256 = map[string]string{
 	"xdr/Stellar-SCP.x":                     "8f32b04d008f8bc33b8843d075e69837231a673691ee41d8b821ca229a6e802a",
-	"xdr/Stellar-contract-config-setting.x": "73c32b6f05b43e1c22318ace568d607a633687d1adbb35cb3d022164cf38dab3",
+	"xdr/Stellar-contract-config-setting.x": "f5487397dda4c27135f0f9e930042a186d1abdc9698163ca6a30efe1a03ee495",
 	"xdr/Stellar-contract-env-meta.x":       "75a271414d852096fea3283c63b7f2a702f2905f78fc28eb60ec7d7bd366a780",
 	"xdr/Stellar-contract-meta.x":           "f01532c11ca044e19d9f9f16fe373e9af64835da473be556b9a807ee3319ae0d",
 	"xdr/Stellar-contract-spec.x":           "c7ffa21d2e91afb8e666b33524d307955426ff553a486d670c29217ed9888d49",
@@ -60098,48 +60098,52 @@ var _ xdrType = (*ConfigSettingContractBandwidthV0)(nil)
 //	     Bls12381EncodeFp = 45,
 //	     // Cost of decoding a BLS12-381 Fp (base field element)
 //	     Bls12381DecodeFp = 46,
-//	     // Cost of validating a G1 point lies on the curve and belongs to the correct subgroup
-//	     Bls12381G1Validate = 47,
-//	     // Cost of validating a G2 point lies on the curve and belongs to the correct subgroup
-//	     Bls12381G2Validate = 48,
+//	     // Cost of checking a G1 point lies on the curve
+//	     Bls12381G1CheckPointOnCurve = 47,
+//	     // Cost of checking a G1 point belongs to the correct subgroup
+//	     Bls12381G1CheckPointInSubgroup = 48,
+//	     // Cost of checking a G2 point lies on the curve
+//	     Bls12381G2CheckPointOnCurve = 49,
+//	     // Cost of checking a G2 point belongs to the correct subgroup
+//	     Bls12381G2CheckPointInSubgroup = 50,
 //	     // Cost of converting a BLS12-381 G1 point from projective to affine coordinates
-//	     Bls12381G1ProjectiveToAffine = 49,
+//	     Bls12381G1ProjectiveToAffine = 51,
 //	     // Cost of converting a BLS12-381 G2 point from projective to affine coordinates
-//	     Bls12381G2ProjectiveToAffine = 50,
+//	     Bls12381G2ProjectiveToAffine = 52,
 //	     // Cost of performing BLS12-381 G1 point addition
-//	     Bls12381G1Add = 51,
+//	     Bls12381G1Add = 53,
 //	     // Cost of performing BLS12-381 G1 scalar multiplication
-//	     Bls12381G1Mul = 52,
+//	     Bls12381G1Mul = 54,
 //	     // Cost of performing BLS12-381 G1 multi-scalar multiplication (MSM)
-//	     Bls12381G1Msm = 53,
+//	     Bls12381G1Msm = 55,
 //	     // Cost of mapping a BLS12-381 Fp field element to a G1 point
-//	     Bls12381MapFpToG1 = 54,
+//	     Bls12381MapFpToG1 = 56,
 //	     // Cost of hashing to a BLS12-381 G1 point
-//	     Bls12381HashToG1 = 55,
+//	     Bls12381HashToG1 = 57,
 //	     // Cost of performing BLS12-381 G2 point addition
-//	     Bls12381G2Add = 56,
+//	     Bls12381G2Add = 58,
 //	     // Cost of performing BLS12-381 G2 scalar multiplication
-//	     Bls12381G2Mul = 57,
+//	     Bls12381G2Mul = 59,
 //	     // Cost of performing BLS12-381 G2 multi-scalar multiplication (MSM)
-//	     Bls12381G2Msm = 58,
+//	     Bls12381G2Msm = 60,
 //	     // Cost of mapping a BLS12-381 Fp2 field element to a G2 point
-//	     Bls12381MapFp2ToG2 = 59,
+//	     Bls12381MapFp2ToG2 = 61,
 //	     // Cost of hashing to a BLS12-381 G2 point
-//	     Bls12381HashToG2 = 60,
+//	     Bls12381HashToG2 = 62,
 //	     // Cost of performing BLS12-381 pairing operation
-//	     Bls12381Pairing = 61,
+//	     Bls12381Pairing = 63,
 //	     // Cost of converting a BLS12-381 scalar element from U256
-//	     Bls12381FrFromU256 = 62,
+//	     Bls12381FrFromU256 = 64,
 //	     // Cost of converting a BLS12-381 scalar element to U256
-//	     Bls12381FrToU256 = 63,
+//	     Bls12381FrToU256 = 65,
 //	     // Cost of performing BLS12-381 scalar element addition/subtraction
-//	     Bls12381FrAddSub = 64,
+//	     Bls12381FrAddSub = 66,
 //	     // Cost of performing BLS12-381 scalar element multiplication
-//	     Bls12381FrMul = 65,
+//	     Bls12381FrMul = 67,
 //	     // Cost of performing BLS12-381 scalar element exponentiation
-//	     Bls12381FrPow = 66,
+//	     Bls12381FrPow = 68,
 //	     // Cost of performing BLS12-381 scalar element inversion
-//	     Bls12381FrInv = 67
+//	     Bls12381FrInv = 69
 //	 };
 type ContractCostType int32
 
@@ -60191,27 +60195,29 @@ const (
 	ContractCostTypeVerifyEcdsaSecp256r1Sig         ContractCostType = 44
 	ContractCostTypeBls12381EncodeFp                ContractCostType = 45
 	ContractCostTypeBls12381DecodeFp                ContractCostType = 46
-	ContractCostTypeBls12381G1Validate              ContractCostType = 47
-	ContractCostTypeBls12381G2Validate              ContractCostType = 48
-	ContractCostTypeBls12381G1ProjectiveToAffine    ContractCostType = 49
-	ContractCostTypeBls12381G2ProjectiveToAffine    ContractCostType = 50
-	ContractCostTypeBls12381G1Add                   ContractCostType = 51
-	ContractCostTypeBls12381G1Mul                   ContractCostType = 52
-	ContractCostTypeBls12381G1Msm                   ContractCostType = 53
-	ContractCostTypeBls12381MapFpToG1               ContractCostType = 54
-	ContractCostTypeBls12381HashToG1                ContractCostType = 55
-	ContractCostTypeBls12381G2Add                   ContractCostType = 56
-	ContractCostTypeBls12381G2Mul                   ContractCostType = 57
-	ContractCostTypeBls12381G2Msm                   ContractCostType = 58
-	ContractCostTypeBls12381MapFp2ToG2              ContractCostType = 59
-	ContractCostTypeBls12381HashToG2                ContractCostType = 60
-	ContractCostTypeBls12381Pairing                 ContractCostType = 61
-	ContractCostTypeBls12381FrFromU256              ContractCostType = 62
-	ContractCostTypeBls12381FrToU256                ContractCostType = 63
-	ContractCostTypeBls12381FrAddSub                ContractCostType = 64
-	ContractCostTypeBls12381FrMul                   ContractCostType = 65
-	ContractCostTypeBls12381FrPow                   ContractCostType = 66
-	ContractCostTypeBls12381FrInv                   ContractCostType = 67
+	ContractCostTypeBls12381G1CheckPointOnCurve     ContractCostType = 47
+	ContractCostTypeBls12381G1CheckPointInSubgroup  ContractCostType = 48
+	ContractCostTypeBls12381G2CheckPointOnCurve     ContractCostType = 49
+	ContractCostTypeBls12381G2CheckPointInSubgroup  ContractCostType = 50
+	ContractCostTypeBls12381G1ProjectiveToAffine    ContractCostType = 51
+	ContractCostTypeBls12381G2ProjectiveToAffine    ContractCostType = 52
+	ContractCostTypeBls12381G1Add                   ContractCostType = 53
+	ContractCostTypeBls12381G1Mul                   ContractCostType = 54
+	ContractCostTypeBls12381G1Msm                   ContractCostType = 55
+	ContractCostTypeBls12381MapFpToG1               ContractCostType = 56
+	ContractCostTypeBls12381HashToG1                ContractCostType = 57
+	ContractCostTypeBls12381G2Add                   ContractCostType = 58
+	ContractCostTypeBls12381G2Mul                   ContractCostType = 59
+	ContractCostTypeBls12381G2Msm                   ContractCostType = 60
+	ContractCostTypeBls12381MapFp2ToG2              ContractCostType = 61
+	ContractCostTypeBls12381HashToG2                ContractCostType = 62
+	ContractCostTypeBls12381Pairing                 ContractCostType = 63
+	ContractCostTypeBls12381FrFromU256              ContractCostType = 64
+	ContractCostTypeBls12381FrToU256                ContractCostType = 65
+	ContractCostTypeBls12381FrAddSub                ContractCostType = 66
+	ContractCostTypeBls12381FrMul                   ContractCostType = 67
+	ContractCostTypeBls12381FrPow                   ContractCostType = 68
+	ContractCostTypeBls12381FrInv                   ContractCostType = 69
 )
 
 var contractCostTypeMap = map[int32]string{
@@ -60262,27 +60268,29 @@ var contractCostTypeMap = map[int32]string{
 	44: "ContractCostTypeVerifyEcdsaSecp256r1Sig",
 	45: "ContractCostTypeBls12381EncodeFp",
 	46: "ContractCostTypeBls12381DecodeFp",
-	47: "ContractCostTypeBls12381G1Validate",
-	48: "ContractCostTypeBls12381G2Validate",
-	49: "ContractCostTypeBls12381G1ProjectiveToAffine",
-	50: "ContractCostTypeBls12381G2ProjectiveToAffine",
-	51: "ContractCostTypeBls12381G1Add",
-	52: "ContractCostTypeBls12381G1Mul",
-	53: "ContractCostTypeBls12381G1Msm",
-	54: "ContractCostTypeBls12381MapFpToG1",
-	55: "ContractCostTypeBls12381HashToG1",
-	56: "ContractCostTypeBls12381G2Add",
-	57: "ContractCostTypeBls12381G2Mul",
-	58: "ContractCostTypeBls12381G2Msm",
-	59: "ContractCostTypeBls12381MapFp2ToG2",
-	60: "ContractCostTypeBls12381HashToG2",
-	61: "ContractCostTypeBls12381Pairing",
-	62: "ContractCostTypeBls12381FrFromU256",
-	63: "ContractCostTypeBls12381FrToU256",
-	64: "ContractCostTypeBls12381FrAddSub",
-	65: "ContractCostTypeBls12381FrMul",
-	66: "ContractCostTypeBls12381FrPow",
-	67: "ContractCostTypeBls12381FrInv",
+	47: "ContractCostTypeBls12381G1CheckPointOnCurve",
+	48: "ContractCostTypeBls12381G1CheckPointInSubgroup",
+	49: "ContractCostTypeBls12381G2CheckPointOnCurve",
+	50: "ContractCostTypeBls12381G2CheckPointInSubgroup",
+	51: "ContractCostTypeBls12381G1ProjectiveToAffine",
+	52: "ContractCostTypeBls12381G2ProjectiveToAffine",
+	53: "ContractCostTypeBls12381G1Add",
+	54: "ContractCostTypeBls12381G1Mul",
+	55: "ContractCostTypeBls12381G1Msm",
+	56: "ContractCostTypeBls12381MapFpToG1",
+	57: "ContractCostTypeBls12381HashToG1",
+	58: "ContractCostTypeBls12381G2Add",
+	59: "ContractCostTypeBls12381G2Mul",
+	60: "ContractCostTypeBls12381G2Msm",
+	61: "ContractCostTypeBls12381MapFp2ToG2",
+	62: "ContractCostTypeBls12381HashToG2",
+	63: "ContractCostTypeBls12381Pairing",
+	64: "ContractCostTypeBls12381FrFromU256",
+	65: "ContractCostTypeBls12381FrToU256",
+	66: "ContractCostTypeBls12381FrAddSub",
+	67: "ContractCostTypeBls12381FrMul",
+	68: "ContractCostTypeBls12381FrPow",
+	69: "ContractCostTypeBls12381FrInv",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements

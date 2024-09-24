@@ -4713,48 +4713,52 @@ const (
 	Bls12381EncodeFp ContractCostType = 45
 	// Cost of decoding a BLS12-381 Fp (base field element)
 	Bls12381DecodeFp ContractCostType = 46
-	// Cost of validating a G1 point lies on the curve and belongs to the correct subgroup
-	Bls12381G1Validate ContractCostType = 47
-	// Cost of validating a G2 point lies on the curve and belongs to the correct subgroup
-	Bls12381G2Validate ContractCostType = 48
+	// Cost of checking a G1 point lies on the curve
+	Bls12381G1CheckPointOnCurve ContractCostType = 47
+	// Cost of checking a G1 point belongs to the correct subgroup
+	Bls12381G1CheckPointInSubgroup ContractCostType = 48
+	// Cost of checking a G2 point lies on the curve
+	Bls12381G2CheckPointOnCurve ContractCostType = 49
+	// Cost of checking a G2 point belongs to the correct subgroup
+	Bls12381G2CheckPointInSubgroup ContractCostType = 50
 	// Cost of converting a BLS12-381 G1 point from projective to affine coordinates
-	Bls12381G1ProjectiveToAffine ContractCostType = 49
+	Bls12381G1ProjectiveToAffine ContractCostType = 51
 	// Cost of converting a BLS12-381 G2 point from projective to affine coordinates
-	Bls12381G2ProjectiveToAffine ContractCostType = 50
+	Bls12381G2ProjectiveToAffine ContractCostType = 52
 	// Cost of performing BLS12-381 G1 point addition
-	Bls12381G1Add ContractCostType = 51
+	Bls12381G1Add ContractCostType = 53
 	// Cost of performing BLS12-381 G1 scalar multiplication
-	Bls12381G1Mul ContractCostType = 52
+	Bls12381G1Mul ContractCostType = 54
 	// Cost of performing BLS12-381 G1 multi-scalar multiplication (MSM)
-	Bls12381G1Msm ContractCostType = 53
+	Bls12381G1Msm ContractCostType = 55
 	// Cost of mapping a BLS12-381 Fp field element to a G1 point
-	Bls12381MapFpToG1 ContractCostType = 54
+	Bls12381MapFpToG1 ContractCostType = 56
 	// Cost of hashing to a BLS12-381 G1 point
-	Bls12381HashToG1 ContractCostType = 55
+	Bls12381HashToG1 ContractCostType = 57
 	// Cost of performing BLS12-381 G2 point addition
-	Bls12381G2Add ContractCostType = 56
+	Bls12381G2Add ContractCostType = 58
 	// Cost of performing BLS12-381 G2 scalar multiplication
-	Bls12381G2Mul ContractCostType = 57
+	Bls12381G2Mul ContractCostType = 59
 	// Cost of performing BLS12-381 G2 multi-scalar multiplication (MSM)
-	Bls12381G2Msm ContractCostType = 58
+	Bls12381G2Msm ContractCostType = 60
 	// Cost of mapping a BLS12-381 Fp2 field element to a G2 point
-	Bls12381MapFp2ToG2 ContractCostType = 59
+	Bls12381MapFp2ToG2 ContractCostType = 61
 	// Cost of hashing to a BLS12-381 G2 point
-	Bls12381HashToG2 ContractCostType = 60
+	Bls12381HashToG2 ContractCostType = 62
 	// Cost of performing BLS12-381 pairing operation
-	Bls12381Pairing ContractCostType = 61
+	Bls12381Pairing ContractCostType = 63
 	// Cost of converting a BLS12-381 scalar element from U256
-	Bls12381FrFromU256 ContractCostType = 62
+	Bls12381FrFromU256 ContractCostType = 64
 	// Cost of converting a BLS12-381 scalar element to U256
-	Bls12381FrToU256 ContractCostType = 63
+	Bls12381FrToU256 ContractCostType = 65
 	// Cost of performing BLS12-381 scalar element addition/subtraction
-	Bls12381FrAddSub ContractCostType = 64
+	Bls12381FrAddSub ContractCostType = 66
 	// Cost of performing BLS12-381 scalar element multiplication
-	Bls12381FrMul ContractCostType = 65
+	Bls12381FrMul ContractCostType = 67
 	// Cost of performing BLS12-381 scalar element exponentiation
-	Bls12381FrPow ContractCostType = 66
+	Bls12381FrPow ContractCostType = 68
 	// Cost of performing BLS12-381 scalar element inversion
-	Bls12381FrInv ContractCostType = 67
+	Bls12381FrInv ContractCostType = 69
 )
 
 type ContractCostParamEntry struct {
@@ -30737,8 +30741,10 @@ var _XdrNames_ContractCostType = map[int32]string{
 	int32(VerifyEcdsaSecp256r1Sig):         "VerifyEcdsaSecp256r1Sig",
 	int32(Bls12381EncodeFp):                "Bls12381EncodeFp",
 	int32(Bls12381DecodeFp):                "Bls12381DecodeFp",
-	int32(Bls12381G1Validate):              "Bls12381G1Validate",
-	int32(Bls12381G2Validate):              "Bls12381G2Validate",
+	int32(Bls12381G1CheckPointOnCurve):     "Bls12381G1CheckPointOnCurve",
+	int32(Bls12381G1CheckPointInSubgroup):  "Bls12381G1CheckPointInSubgroup",
+	int32(Bls12381G2CheckPointOnCurve):     "Bls12381G2CheckPointOnCurve",
+	int32(Bls12381G2CheckPointInSubgroup):  "Bls12381G2CheckPointInSubgroup",
 	int32(Bls12381G1ProjectiveToAffine):    "Bls12381G1ProjectiveToAffine",
 	int32(Bls12381G2ProjectiveToAffine):    "Bls12381G2ProjectiveToAffine",
 	int32(Bls12381G1Add):                   "Bls12381G1Add",
@@ -30807,8 +30813,10 @@ var _XdrValues_ContractCostType = map[string]int32{
 	"VerifyEcdsaSecp256r1Sig":         int32(VerifyEcdsaSecp256r1Sig),
 	"Bls12381EncodeFp":                int32(Bls12381EncodeFp),
 	"Bls12381DecodeFp":                int32(Bls12381DecodeFp),
-	"Bls12381G1Validate":              int32(Bls12381G1Validate),
-	"Bls12381G2Validate":              int32(Bls12381G2Validate),
+	"Bls12381G1CheckPointOnCurve":     int32(Bls12381G1CheckPointOnCurve),
+	"Bls12381G1CheckPointInSubgroup":  int32(Bls12381G1CheckPointInSubgroup),
+	"Bls12381G2CheckPointOnCurve":     int32(Bls12381G2CheckPointOnCurve),
+	"Bls12381G2CheckPointInSubgroup":  int32(Bls12381G2CheckPointInSubgroup),
 	"Bls12381G1ProjectiveToAffine":    int32(Bls12381G1ProjectiveToAffine),
 	"Bls12381G2ProjectiveToAffine":    int32(Bls12381G2ProjectiveToAffine),
 	"Bls12381G1Add":                   int32(Bls12381G1Add),
@@ -30914,8 +30922,10 @@ var _XdrComments_ContractCostType = map[int32]string{
 	int32(VerifyEcdsaSecp256r1Sig):         "Cost of verifying an ECDSA Secp256r1 signature",
 	int32(Bls12381EncodeFp):                "Cost of encoding a BLS12-381 Fp (base field element)",
 	int32(Bls12381DecodeFp):                "Cost of decoding a BLS12-381 Fp (base field element)",
-	int32(Bls12381G1Validate):              "Cost of validating a G1 point lies on the curve and belongs to the correct subgroup",
-	int32(Bls12381G2Validate):              "Cost of validating a G2 point lies on the curve and belongs to the correct subgroup",
+	int32(Bls12381G1CheckPointOnCurve):     "Cost of checking a G1 point lies on the curve",
+	int32(Bls12381G1CheckPointInSubgroup):  "Cost of checking a G1 point belongs to the correct subgroup",
+	int32(Bls12381G2CheckPointOnCurve):     "Cost of checking a G2 point lies on the curve",
+	int32(Bls12381G2CheckPointInSubgroup):  "Cost of checking a G2 point belongs to the correct subgroup",
 	int32(Bls12381G1ProjectiveToAffine):    "Cost of converting a BLS12-381 G1 point from projective to affine coordinates",
 	int32(Bls12381G2ProjectiveToAffine):    "Cost of converting a BLS12-381 G2 point from projective to affine coordinates",
 	int32(Bls12381G1Add):                   "Cost of performing BLS12-381 G1 point addition",
