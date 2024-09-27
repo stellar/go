@@ -23,15 +23,17 @@ import (
 
 // shouldDiscardAsset maps the criteria for discarding an asset from the asset index
 func shouldDiscardAsset(asset hProtocol.AssetStat, shouldValidateTOML bool) bool {
-	if asset.Amount == "" {
+	amt, _ := AddStringsToSum(asset.Balances.AuthorizedToMaintainLiabilities + asset.Balances.Unauthorized + asset.Balances.Authorized)
+	amount := strconv.FormatFloat(amt, 'f', -1, 64)
+
+	if amount == "" {
 		return true
 	}
-	f, _ := strconv.ParseFloat(asset.Amount, 64)
-	if f == 0.0 {
+	if amt == 0.0 {
 		return true
 	}
 	// [StellarX Ticker]: assets need at least some adoption to show up
-	if asset.NumAccounts < 10 {
+	if asset.Accounts.Unauthorized+asset.Accounts.Authorized+asset.Accounts.AuthorizedToMaintainLiabilities < 10 {
 		return true
 	}
 	if asset.Code == "REMOVE" {
@@ -39,7 +41,7 @@ func shouldDiscardAsset(asset hProtocol.AssetStat, shouldValidateTOML bool) bool
 	}
 	// [StellarX Ticker]: assets with at least 100 accounts get a pass,
 	// even with toml issues
-	if asset.NumAccounts >= 100 {
+	if asset.Accounts.Unauthorized+asset.Accounts.Authorized+asset.Accounts.AuthorizedToMaintainLiabilities >= 100 {
 		return false
 	}
 
@@ -143,6 +145,20 @@ func isDomainVerified(orgURL string, tomlURL string, hasCurrency bool) bool {
 	}
 	return true
 }
+func AddStringsToSum(values ...string) (float64, error) {
+	var sum float64
+	for _, s := range values {
+		if s == "" {
+			continue // Treat empty string as zero
+		}
+		value, err := strconv.ParseFloat(s, 64)
+		if err != nil {
+			return 0, fmt.Errorf("failed to convert '%s': %w", s, err)
+		}
+		sum += value
+	}
+	return sum, nil
+}
 
 // makeTomlAsset aggregates Horizon Data with TOML Data
 func makeFinalAsset(
@@ -150,7 +166,7 @@ func makeFinalAsset(
 	issuer TOMLIssuer,
 	errors []error,
 ) (t FinalAsset, err error) {
-	amount, err := strconv.ParseFloat(asset.Amount, 64)
+	amount, err := AddStringsToSum(asset.Balances.Authorized + asset.Balances.Unauthorized + asset.Balances.Unauthorized)
 	if err != nil {
 		return
 	}
@@ -159,7 +175,7 @@ func makeFinalAsset(
 		Type:          asset.Type,
 		Code:          asset.Code,
 		Issuer:        asset.Issuer,
-		NumAccounts:   asset.NumAccounts,
+		NumAccounts:   asset.Accounts.Authorized + asset.Accounts.Unauthorized + asset.Accounts.AuthorizedToMaintainLiabilities,
 		AuthRequired:  asset.Flags.AuthRequired,
 		AuthRevocable: asset.Flags.AuthRevocable,
 		Amount:        amount,

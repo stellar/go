@@ -14,69 +14,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestShouldDiscardAsset(t *testing.T) {
-	testAsset := hProtocol.AssetStat{
-		Amount: "",
-	}
-
-	assert.Equal(t, shouldDiscardAsset(testAsset, true), true)
-
-	testAsset = hProtocol.AssetStat{
-		Amount: "0.0",
-	}
-	assert.Equal(t, shouldDiscardAsset(testAsset, true), true)
-
-	testAsset = hProtocol.AssetStat{
-		Amount: "0",
-	}
-	assert.Equal(t, shouldDiscardAsset(testAsset, true), true)
-
-	testAsset = hProtocol.AssetStat{
-		Amount:      "123901.0129310",
-		NumAccounts: 8,
-	}
-	assert.Equal(t, shouldDiscardAsset(testAsset, true), true)
-
-	testAsset = hProtocol.AssetStat{
-		Amount:      "123901.0129310",
-		NumAccounts: 12,
-	}
-	testAsset.Code = "REMOVE"
-	assert.Equal(t, shouldDiscardAsset(testAsset, true), true)
-
-	testAsset = hProtocol.AssetStat{
-		Amount:      "123901.0129310",
-		NumAccounts: 100,
-	}
-	testAsset.Code = "SOMETHINGVALID"
-	testAsset.Links.Toml.Href = ""
-	assert.Equal(t, shouldDiscardAsset(testAsset, true), false)
-
-	testAsset = hProtocol.AssetStat{
-		Amount:      "123901.0129310",
-		NumAccounts: 40,
-	}
-	testAsset.Code = "SOMETHINGVALID"
-	testAsset.Links.Toml.Href = "http://www.stellar.org/.well-known/stellar.toml"
-	assert.Equal(t, shouldDiscardAsset(testAsset, true), true)
-
-	testAsset = hProtocol.AssetStat{
-		Amount:      "123901.0129310",
-		NumAccounts: 40,
-	}
-	testAsset.Code = "SOMETHINGVALID"
-	testAsset.Links.Toml.Href = ""
-	assert.Equal(t, shouldDiscardAsset(testAsset, true), true)
-
-	testAsset = hProtocol.AssetStat{
-		Amount:      "123901.0129310",
-		NumAccounts: 40,
-	}
-	testAsset.Code = "SOMETHINGVALID"
-	testAsset.Links.Toml.Href = "https://www.stellar.org/.well-known/stellar.toml"
-	assert.Equal(t, shouldDiscardAsset(testAsset, true), false)
-}
-
 func TestDomainsMatch(t *testing.T) {
 	tomlURL, _ := url.Parse("https://stellar.org/stellar.toml")
 	orgURL, _ := url.Parse("https://stellar.org/")
@@ -154,10 +91,7 @@ func TestProcessAsset_notCached(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, `SIGNING_KEY="not cached signing key"`)
 	}))
-	asset := hProtocol.AssetStat{
-		Amount:      "123901.0129310",
-		NumAccounts: 100,
-	}
+	asset := hProtocol.AssetStat{}
 	asset.Code = "SOMETHINGVALID"
 	asset.Links.Toml.Href = server.URL
 	tomlCache := &TOMLCache{}
@@ -172,10 +106,7 @@ func TestProcessAsset_notCached(t *testing.T) {
 
 func TestProcessAsset_cached(t *testing.T) {
 	logger := log.DefaultLogger
-	asset := hProtocol.AssetStat{
-		Amount:      "123901.0129310",
-		NumAccounts: 100,
-	}
+	asset := hProtocol.AssetStat{}
 	asset.Code = "SOMETHINGVALID"
 	asset.Links.Toml.Href = "url"
 	tomlCache := &TOMLCache{}

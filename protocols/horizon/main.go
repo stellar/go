@@ -178,13 +178,13 @@ type AssetStat struct {
 	PT         string `json:"paging_token"`
 	ContractID string `json:"contract_id,omitempty"`
 	// Action needed in release: horizon-v3.0.0: deprecated field
-	NumAccounts          int32 `json:"num_accounts"`
+	//NumAccounts          int32 `json:"num_accounts"`
 	NumClaimableBalances int32 `json:"num_claimable_balances"`
 	NumLiquidityPools    int32 `json:"num_liquidity_pools"`
 	NumContracts         int32 `json:"num_contracts"`
 	NumArchivedContracts int32 `json:"num_archived_contracts"`
 	// Action needed in release: horizon-v3.0.0: deprecated field
-	Amount                  string            `json:"amount"`
+	// Amount                  string            `json:"amount"`
 	Accounts                AssetStatAccounts `json:"accounts"`
 	ClaimableBalancesAmount string            `json:"claimable_balances_amount"`
 	LiquidityPoolsAmount    string            `json:"liquidity_pools_amount"`

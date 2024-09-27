@@ -1104,9 +1104,7 @@ func assertAssetStats(itest *integration.Test, expected assetStats) {
 	asset := assets.Embedded.Records[0]
 	assert.Equal(itest.CurrentTest(), expected.code, asset.Code)
 	assert.Equal(itest.CurrentTest(), expected.issuer, asset.Issuer)
-	assert.Equal(itest.CurrentTest(), expected.numAccounts, asset.NumAccounts)
 	assert.Equal(itest.CurrentTest(), expected.numAccounts, asset.Accounts.Authorized)
-	assert.Equal(itest.CurrentTest(), expected.balanceAccounts, amount.MustParse(asset.Amount))
 	assert.Equal(itest.CurrentTest(), expected.numContracts, asset.NumContracts)
 	assert.Equal(itest.CurrentTest(), expected.numArchivedContracts, asset.NumArchivedContracts)
 	assert.Equal(itest.CurrentTest(), expected.balanceContracts.String(), parseBalance(itest, asset.ContractsAmount).String())

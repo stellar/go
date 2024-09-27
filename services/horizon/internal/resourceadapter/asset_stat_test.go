@@ -67,8 +67,6 @@ func TestPopulateExpAssetStat(t *testing.T) {
 	assert.Equal(t, "770000000000.0000000", res.LiquidityPoolsAmount)
 	assert.Equal(t, "90000000000.0000000", res.ContractsAmount)
 	assert.Equal(t, "70000000000.0000000", res.ArchivedContractsAmount)
-	assert.Equal(t, "10000000000000.0000000", res.Amount)
-	assert.Equal(t, int32(429), res.NumAccounts)
 	assert.Equal(t, horizon.AccountFlags{}, res.Flags)
 	assert.Equal(t, "https://xim.com/.well-known/stellar.toml", res.Links.Toml.Href)
 	assert.Equal(t, "", res.ContractID)
@@ -90,8 +88,6 @@ func TestPopulateExpAssetStat(t *testing.T) {
 	assert.Equal(t, "credit_alphanum4", res.Type)
 	assert.Equal(t, "XIM", res.Code)
 	assert.Equal(t, "GBZ35ZJRIKJGYH5PBKLKOZ5L6EXCNTO7BKIL7DAVVDFQ2ODJEEHHJXIM", res.Issuer)
-	assert.Equal(t, "10000000000000.0000000", res.Amount)
-	assert.Equal(t, int32(429), res.NumAccounts)
 	assert.Equal(
 		t,
 		horizon.AccountFlags{
