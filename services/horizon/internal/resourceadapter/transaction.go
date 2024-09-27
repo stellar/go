@@ -66,10 +66,6 @@ func PopulateTransaction(
 	dest.Preconditions = &protocol.TransactionPreconditions{}
 
 	if !row.TimeBounds.Null {
-		// Action needed in release: horizon-v3.0.0: remove ValidBefore and ValidAfter
-		dest.ValidBefore = timeString(row.TimeBounds.Upper)
-		dest.ValidAfter = timeString(row.TimeBounds.Lower)
-
 		dest.Preconditions.TimeBounds = &protocol.TransactionPreconditionsTimebounds{
 			MaxTime: timestampString(row.TimeBounds.Upper),
 			MinTime: timestampString(row.TimeBounds.Lower),

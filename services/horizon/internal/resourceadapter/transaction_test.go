@@ -223,8 +223,6 @@ func TestPopulateTransaction_Preconditions(t *testing.T) {
 	assert.NoError(t, PopulateTransaction(ctx, row.TransactionHash, &dest, row, false))
 	assert.NotEmpty(t, dest.ResultMetaXdr)
 	p := dest.Preconditions
-	assert.Equal(t, validAfter.Format(time.RFC3339), dest.ValidAfter)
-	assert.Equal(t, validBefore.Format(time.RFC3339), dest.ValidBefore)
 	assert.Equal(t, fmt.Sprint(validAfter.Unix()), p.TimeBounds.MinTime)
 	assert.Equal(t, fmt.Sprint(validBefore.Unix()), p.TimeBounds.MaxTime)
 	assert.Equal(t, minLedger, p.LedgerBounds.MinLedger)
