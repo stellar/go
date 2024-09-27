@@ -4,10 +4,8 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"strconv"
-	"time"
-
 	"github.com/guregu/null"
+	"strconv"
 
 	horizonContext "github.com/stellar/go/services/horizon/internal/context"
 	"github.com/stellar/go/xdr"
@@ -151,14 +149,6 @@ func memoBytes(envelopeXDR string) (string, error) {
 
 	memo := *parsedEnvelope.Memo().Text
 	return base64.StdEncoding.EncodeToString([]byte(memo)), nil
-}
-
-func timeString(in null.Int) string {
-	if !in.Valid {
-		return ""
-	}
-
-	return time.Unix(in.Int64, 0).UTC().Format(time.RFC3339)
 }
 
 func timestampString(in null.Int) string {
