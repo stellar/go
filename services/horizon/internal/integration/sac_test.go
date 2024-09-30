@@ -260,9 +260,7 @@ func TestExpirationAndRestoration(t *testing.T) {
 			LiquidityPools:                  "0",
 			Unauthorized:                    "0",
 		},
-		Amount:      "0",
-		NumAccounts: 0,
-		ContractID:  nil,
+		ContractID: nil,
 	}
 	syntheticAssetStat.SetContractID(storeContractID)
 	_, err := itest.HorizonIngest().HistoryQ().InsertAssetStat(

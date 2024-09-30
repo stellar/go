@@ -427,8 +427,6 @@ type ExpAssetStat struct {
 	AssetIssuer string               `db:"asset_issuer"`
 	Accounts    ExpAssetStatAccounts `db:"accounts"`
 	Balances    ExpAssetStatBalances `db:"balances"`
-	Amount      string               `db:"amount"`
-	NumAccounts int32                `db:"num_accounts"`
 	ContractID  *[]byte              `db:"contract_id"`
 	// make sure to update Equals() when adding new fields to ExpAssetStat
 }
@@ -481,9 +479,7 @@ func (e *ExpAssetStat) Equals(o ExpAssetStat) bool {
 		e.AssetCode == o.AssetCode &&
 		e.AssetIssuer == o.AssetIssuer &&
 		e.Accounts == o.Accounts &&
-		e.Balances == o.Balances &&
-		e.Amount == o.Amount &&
-		e.NumAccounts == o.NumAccounts
+		e.Balances == o.Balances
 }
 
 func (e *ExpAssetStat) GetContractID() ([32]byte, bool) {

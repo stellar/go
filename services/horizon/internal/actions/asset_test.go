@@ -139,8 +139,6 @@ func TestAssetStats(t *testing.T) {
 			ClaimableBalances:               "10",
 			LiquidityPools:                  "20",
 		},
-		Amount:      "1",
-		NumAccounts: 2,
 	}
 	usdAssetStatResponse := horizon.AssetStat{
 		Accounts: horizon.AssetStatAccounts{
@@ -185,8 +183,6 @@ func TestAssetStats(t *testing.T) {
 			ClaimableBalances:               "0",
 			LiquidityPools:                  "0",
 		},
-		Amount:      "23",
-		NumAccounts: 1,
 	}
 	etherAssetStatResponse := horizon.AssetStat{
 		Accounts: horizon.AssetStatAccounts{
@@ -230,8 +226,6 @@ func TestAssetStats(t *testing.T) {
 			ClaimableBalances:               "0",
 			LiquidityPools:                  "0",
 		},
-		Amount:      "1",
-		NumAccounts: 2,
 	}
 	otherUSDAssetStatResponse := horizon.AssetStat{
 		Accounts: horizon.AssetStatAccounts{
@@ -277,8 +271,6 @@ func TestAssetStats(t *testing.T) {
 			ClaimableBalances:               "0",
 			LiquidityPools:                  "0",
 		},
-		Amount:      "111",
-		NumAccounts: 3,
 	}
 	eurAssetStatResponse := horizon.AssetStat{
 		Accounts: horizon.AssetStatAccounts{
@@ -445,8 +437,6 @@ func TestAssetStatsIssuerDoesNotExist(t *testing.T) {
 			Unauthorized:                    "3",
 			ClaimableBalances:               "0",
 		},
-		Amount:      "1",
-		NumAccounts: 2,
 	}
 	numChanged, err := q.InsertAssetStat(tt.Ctx, usdAssetStat)
 	tt.Assert.NoError(err)

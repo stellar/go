@@ -31,8 +31,6 @@ func TestPopulateExpAssetStat(t *testing.T) {
 				ClaimableBalances:               "1200000000000000000",
 				LiquidityPools:                  "7700000000000000000",
 			},
-			Amount:      "100000000000000000000", // 10T
-			NumAccounts: 429,
 		},
 		Contracts: history.ContractStat{
 			ActiveBalance:   "900000000000000000",
