@@ -23,17 +23,16 @@ import (
 
 // shouldDiscardAsset maps the criteria for discarding an asset from the asset index
 func shouldDiscardAsset(asset hProtocol.AssetStat, shouldValidateTOML bool) bool {
-	amt, _ := AddStringsToSum(asset.Balances.AuthorizedToMaintainLiabilities + asset.Balances.Unauthorized + asset.Balances.Authorized)
-	amount := strconv.FormatFloat(amt, 'f', -1, 64)
 
-	if amount == "" {
+	if asset.Balances.Authorized == "" {
 		return true
 	}
-	if amt == 0.0 {
+	f, _ := strconv.ParseFloat(asset.Balances.Authorized, 64)
+	if f == 0.0 {
 		return true
 	}
 	// [StellarX Ticker]: assets need at least some adoption to show up
-	if asset.Accounts.Unauthorized+asset.Accounts.Authorized+asset.Accounts.AuthorizedToMaintainLiabilities < 10 {
+	if asset.Accounts.Authorized < 10 {
 		return true
 	}
 	if asset.Code == "REMOVE" {
@@ -41,7 +40,7 @@ func shouldDiscardAsset(asset hProtocol.AssetStat, shouldValidateTOML bool) bool
 	}
 	// [StellarX Ticker]: assets with at least 100 accounts get a pass,
 	// even with toml issues
-	if asset.Accounts.Unauthorized+asset.Accounts.Authorized+asset.Accounts.AuthorizedToMaintainLiabilities >= 100 {
+	if asset.Accounts.Authorized >= 100 {
 		return false
 	}
 

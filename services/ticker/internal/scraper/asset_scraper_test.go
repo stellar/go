@@ -14,6 +14,58 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestShouldDiscardAsset(t *testing.T) {
+	testAsset := hProtocol.AssetStat{}
+	assert.Equal(t, shouldDiscardAsset(testAsset, true), true)
+
+	testAsset = hProtocol.AssetStat{}
+	testAsset.Balances.Authorized = ""
+	assert.Equal(t, shouldDiscardAsset(testAsset, true), true)
+
+	testAsset = hProtocol.AssetStat{}
+	testAsset.Balances.Authorized = "0"
+	assert.Equal(t, shouldDiscardAsset(testAsset, true), true)
+
+	testAsset = hProtocol.AssetStat{}
+	testAsset.Balances.Authorized = "12345.67"
+	testAsset.Accounts.Authorized = 0
+	assert.Equal(t, shouldDiscardAsset(testAsset, true), true)
+
+	testAsset = hProtocol.AssetStat{}
+	testAsset.Balances.Authorized = "12345.67"
+	testAsset.Accounts.Authorized = 12
+	testAsset.Code = "REMOVE"
+	assert.Equal(t, shouldDiscardAsset(testAsset, true), true)
+
+	testAsset = hProtocol.AssetStat{}
+	testAsset.Balances.Authorized = "12345.67"
+	testAsset.Accounts.Authorized = 100
+	testAsset.Code = "SOMETHINGVALID"
+	testAsset.Links.Toml.Href = ""
+	assert.Equal(t, shouldDiscardAsset(testAsset, true), false)
+
+	testAsset = hProtocol.AssetStat{}
+	testAsset.Balances.Authorized = "12345.67"
+	testAsset.Accounts.Authorized = 40
+	testAsset.Code = "SOMETHINGVALID"
+	testAsset.Links.Toml.Href = "http://www.stellar.org/.well-known/stellar.toml"
+	assert.Equal(t, shouldDiscardAsset(testAsset, true), true)
+
+	testAsset = hProtocol.AssetStat{}
+	testAsset.Balances.Authorized = "12345.67"
+	testAsset.Accounts.Authorized = 40
+	testAsset.Code = "SOMETHINGVALID"
+	testAsset.Links.Toml.Href = ""
+	assert.Equal(t, shouldDiscardAsset(testAsset, true), true)
+
+	testAsset = hProtocol.AssetStat{}
+	testAsset.Balances.Authorized = "12345.67"
+	testAsset.Accounts.Authorized = 40
+	testAsset.Code = "SOMETHINGVALID"
+	testAsset.Links.Toml.Href = "https://www.stellar.org/.well-known/stellar.toml"
+	assert.Equal(t, shouldDiscardAsset(testAsset, true), false)
+}
+
 func TestDomainsMatch(t *testing.T) {
 	tomlURL, _ := url.Parse("https://stellar.org/stellar.toml")
 	orgURL, _ := url.Parse("https://stellar.org/")
