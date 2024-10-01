@@ -145,6 +145,8 @@ func TestProcessAsset_notCached(t *testing.T) {
 	}))
 	asset := hProtocol.AssetStat{}
 	asset.Code = "SOMETHINGVALID"
+	asset.Accounts.Authorized = 1
+	asset.Balances.Authorized = "123.4"
 	asset.Links.Toml.Href = server.URL
 	tomlCache := &TOMLCache{}
 	finalAsset, err := processAsset(logger, asset, tomlCache, true)
@@ -160,6 +162,8 @@ func TestProcessAsset_cached(t *testing.T) {
 	logger := log.DefaultLogger
 	asset := hProtocol.AssetStat{}
 	asset.Code = "SOMETHINGVALID"
+	asset.Accounts.Authorized = 1
+	asset.Balances.Authorized = "123.4"
 	asset.Links.Toml.Href = "url"
 	tomlCache := &TOMLCache{}
 	tomlCache.Set("url", TOMLIssuer{SigningKey: "signing key"})
