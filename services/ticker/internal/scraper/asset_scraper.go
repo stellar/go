@@ -144,20 +144,6 @@ func isDomainVerified(orgURL string, tomlURL string, hasCurrency bool) bool {
 	}
 	return true
 }
-func AddStringsToSum(values ...string) (float64, error) {
-	var sum float64
-	for _, s := range values {
-		if s == "" {
-			continue // Treat empty string as zero
-		}
-		value, err := strconv.ParseFloat(s, 64)
-		if err != nil {
-			return 0, fmt.Errorf("failed to convert '%s': %w", s, err)
-		}
-		sum += value
-	}
-	return sum, nil
-}
 
 // makeTomlAsset aggregates Horizon Data with TOML Data
 func makeFinalAsset(
@@ -165,7 +151,7 @@ func makeFinalAsset(
 	issuer TOMLIssuer,
 	errors []error,
 ) (t FinalAsset, err error) {
-	amount, err := AddStringsToSum(asset.Balances.Authorized + asset.Balances.Unauthorized + asset.Balances.Unauthorized)
+	amount, err := strconv.ParseFloat(asset.Balances.Authorized, 64)
 	if err != nil {
 		return
 	}
@@ -174,7 +160,7 @@ func makeFinalAsset(
 		Type:          asset.Type,
 		Code:          asset.Code,
 		Issuer:        asset.Issuer,
-		NumAccounts:   asset.Accounts.Authorized + asset.Accounts.Unauthorized + asset.Accounts.AuthorizedToMaintainLiabilities,
+		NumAccounts:   asset.Accounts.Authorized,
 		AuthRequired:  asset.Flags.AuthRequired,
 		AuthRevocable: asset.Flags.AuthRevocable,
 		Amount:        amount,
