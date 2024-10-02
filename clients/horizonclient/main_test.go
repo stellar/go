@@ -480,8 +480,6 @@ func TestAssetsRequest(t *testing.T) {
 		assert.Equal(t, record.Asset.Code, "ABC")
 		assert.Equal(t, record.Asset.Issuer, "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU")
 		assert.Equal(t, record.PT, "1")
-		assert.Equal(t, record.NumAccounts, int32(3))
-		assert.Equal(t, record.Amount, "105.0000000")
 		assert.Equal(t, record.Flags.AuthRevocable, false)
 		assert.Equal(t, record.Flags.AuthRequired, true)
 		assert.Equal(t, record.Flags.AuthImmutable, false)

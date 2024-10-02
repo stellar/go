@@ -109,8 +109,6 @@ func (value assetStatValue) ConvertToHistoryObject() history.ExpAssetStat {
 		AssetIssuer: value.assetIssuer,
 		Accounts:    value.accounts,
 		Balances:    balances,
-		Amount:      balances.Authorized,
-		NumAccounts: value.accounts.Authorized,
 	}
 }
 

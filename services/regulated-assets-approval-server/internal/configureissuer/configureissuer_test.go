@@ -45,6 +45,9 @@ func TestSetup_accountAlreadyConfigured(t *testing.T) {
 			HomeDomain: "domain.test.com",
 			Sequence:   10,
 		}, nil)
+
+	dummyAsset := horizon.AssetStat{}
+	dummyAsset.Asset.Code = "FOO"
 	horizonMock.
 		On("Assets", horizonclient.AssetRequest{
 			ForAssetCode:   opts.AssetCode,
@@ -53,9 +56,7 @@ func TestSetup_accountAlreadyConfigured(t *testing.T) {
 		}).
 		Return(horizon.AssetsPage{
 			Embedded: struct{ Records []horizon.AssetStat }{
-				Records: []horizon.AssetStat{
-					{Amount: "0.0000001"},
-				},
+				Records: []horizon.AssetStat{dummyAsset},
 			},
 		}, nil)
 

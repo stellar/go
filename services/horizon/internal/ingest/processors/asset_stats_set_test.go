@@ -109,8 +109,6 @@ func TestAddAssetStats(t *testing.T) {
 			ClaimableBalances:               "0",
 			LiquidityPools:                  "0",
 		},
-		Amount:      "1",
-		NumAccounts: 1,
 	}
 
 	assert.NoError(
@@ -150,9 +148,7 @@ func TestAddAssetStats(t *testing.T) {
 	)
 
 	eurAssetStat.Balances.Authorized = "25"
-	eurAssetStat.Amount = "25"
 	eurAssetStat.Accounts.Authorized++
-	eurAssetStat.NumAccounts++
 	assertAllEquals(t, set, []history.ExpAssetStat{eurAssetStat})
 
 	usd := "USD"
@@ -214,8 +210,6 @@ func TestAddAssetStats(t *testing.T) {
 				ClaimableBalances:               "0",
 				LiquidityPools:                  "0",
 			},
-			Amount:      "3",
-			NumAccounts: 1,
 		},
 		eurAssetStat,
 		{
@@ -232,8 +226,6 @@ func TestAddAssetStats(t *testing.T) {
 				ClaimableBalances:               "0",
 				LiquidityPools:                  "0",
 			},
-			Amount:      "10",
-			NumAccounts: 1,
 		},
 	}
 	assertAllEquals(t, set, expected)
@@ -270,8 +262,6 @@ func TestOverflowAssetStatSet(t *testing.T) {
 			ClaimableBalances:               "0",
 			LiquidityPools:                  "0",
 		},
-		Amount:      "9223372036854775807",
-		NumAccounts: 1,
 	}
 	if all[0] != eurAssetStat {
 		t.Fatalf("expected asset stat to be %v but got %v", eurAssetStat, all[0])
@@ -305,8 +295,6 @@ func TestOverflowAssetStatSet(t *testing.T) {
 			ClaimableBalances:               "0",
 			LiquidityPools:                  "0",
 		},
-		Amount:      "18446744073709551614",
-		NumAccounts: 2,
 	}
 	if all[0] != eurAssetStat {
 		t.Fatalf("expected asset stat to be %v but got %v", eurAssetStat, all[0])
