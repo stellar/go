@@ -5,6 +5,12 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Pending
 
+### Breaking Changes
+
+- Removed `num_accounts` and `amount` fields from Asset stats related endpoints, and `valid_before` and `valid_after` fields from transaction related endpoints.  Issue - [5438](https://github.com/stellar/go/issues/5438), PR - [5478](https://github.com/stellar/go/pull/5478)
+  - These fields have already been functionally deprecated as of release v2.1.0. As a part of this release, these fields are omitted from API Response
+  - Additionally, the `num_accounts` and `amount` columns have been dropped from `exp_asset_stats` table in Postgres.
+
 ### Added
 
 - Reingest from pre-computed tx meta on remote cloud storage. ([4911](https://github.com/stellar/go/issues/4911)), ([5374](https://github.com/stellar/go/pull/5374))
