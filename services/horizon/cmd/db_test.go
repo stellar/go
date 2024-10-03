@@ -45,6 +45,21 @@ func (s *DBCommandsTestSuite) BeforeTest(suiteName string, testName string) {
 	s.rootCmd = NewRootCmd()
 }
 
+func (s *DBCommandsTestSuite) TestInvalidParameterParallelJobSize() {
+	s.rootCmd.SetArgs([]string{
+		"db", "reingest", "range",
+		"--db-url", s.db.DSN,
+		"--network", "testnet",
+		"--parallel-workers", "2",
+		"--parallel-job-size", "10",
+		"--ledgerbackend", "datastore",
+		"--datastore-config", "../internal/ingest/testdata/config.storagebackend.toml",
+		"2",
+		"10"})
+
+	require.Equal(s.T(), "unknown flag: --parallel-job-size", s.rootCmd.Execute().Error())
+}
+
 func (s *DBCommandsTestSuite) TestDbReingestAndFillGapsCmds() {
 	tests := []struct {
 		name          string
