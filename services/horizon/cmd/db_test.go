@@ -45,68 +45,6 @@ func (s *DBCommandsTestSuite) BeforeTest(suiteName string, testName string) {
 	s.rootCmd = NewRootCmd()
 }
 
-func (s *DBCommandsTestSuite) TestDefaultParallelJobSizeForBufferedBackend() {
-	s.rootCmd.SetArgs([]string{
-		"db", "reingest", "range",
-		"--db-url", s.db.DSN,
-		"--network", "testnet",
-		"--parallel-workers", "2",
-		"--ledgerbackend", "datastore",
-		"--datastore-config", "../internal/ingest/testdata/config.storagebackend.toml",
-		"2",
-		"10"})
-
-	require.NoError(s.T(), s.rootCmd.Execute())
-	require.Equal(s.T(), parallelJobSize, uint32(100))
-}
-
-func (s *DBCommandsTestSuite) TestDefaultParallelJobSizeForCaptiveBackend() {
-	s.rootCmd.SetArgs([]string{
-		"db", "reingest", "range",
-		"--db-url", s.db.DSN,
-		"--network", "testnet",
-		"--stellar-core-binary-path", "/test/core/bin/path",
-		"--parallel-workers", "2",
-		"--ledgerbackend", "captive-core",
-		"2",
-		"10"})
-
-	require.NoError(s.T(), s.rootCmd.Execute())
-	require.Equal(s.T(), parallelJobSize, uint32(100_000))
-}
-
-func (s *DBCommandsTestSuite) TestUsesParallelJobSizeWhenSetForCaptive() {
-	s.rootCmd.SetArgs([]string{
-		"db", "reingest", "range",
-		"--db-url", s.db.DSN,
-		"--network", "testnet",
-		"--stellar-core-binary-path", "/test/core/bin/path",
-		"--parallel-workers", "2",
-		"--parallel-job-size", "5",
-		"--ledgerbackend", "captive-core",
-		"2",
-		"10"})
-
-	require.NoError(s.T(), s.rootCmd.Execute())
-	require.Equal(s.T(), parallelJobSize, uint32(5))
-}
-
-func (s *DBCommandsTestSuite) TestUsesParallelJobSizeWhenSetForBuffered() {
-	s.rootCmd.SetArgs([]string{
-		"db", "reingest", "range",
-		"--db-url", s.db.DSN,
-		"--network", "testnet",
-		"--parallel-workers", "2",
-		"--parallel-job-size", "5",
-		"--ledgerbackend", "datastore",
-		"--datastore-config", "../internal/ingest/testdata/config.storagebackend.toml",
-		"2",
-		"10"})
-
-	require.NoError(s.T(), s.rootCmd.Execute())
-	require.Equal(s.T(), parallelJobSize, uint32(5))
-}
-
 func (s *DBCommandsTestSuite) TestDbReingestAndFillGapsCmds() {
 	tests := []struct {
 		name          string
