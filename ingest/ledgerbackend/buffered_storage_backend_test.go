@@ -196,10 +196,10 @@ func TestNewLedgerBufferSizeLargerThanRangeSize(t *testing.T) {
 	assert.Eventually(t, func() bool { return len(ledgerBuffer.ledgerQueue) == 15 }, time.Second*1, time.Millisecond*50)
 	assert.NoError(t, err)
 
-	for i := uint32(0); i < endLedger; i++ {
+	for i := startLedger; i < endLedger; i++ {
 		lcm, err := ledgerBuffer.getFromLedgerQueue(context.Background())
 		assert.NoError(t, err)
-		assert.Equal(t, xdr.Uint32(startLedger+i), lcm.StartSequence)
+		assert.Equal(t, xdr.Uint32(i), lcm.StartSequence)
 	}
 	assert.Equal(t, ledgerRange, ledgerBuffer.ledgerRange)
 }
