@@ -76,7 +76,7 @@ func createMockdataStore(t *testing.T, start, end, partitionSize, count uint32) 
 			readCloser = createLCMBatchReader(i, i, count)
 			objectName = fmt.Sprintf("FFFFFFFF--0-%d/%08X--%d.xdr.zstd", partition, math.MaxUint32-i, i)
 		}
-		mockDataStore.On("GetFile", mock.Anything, objectName).Return(readCloser, nil)
+		mockDataStore.On("GetFile", mock.Anything, objectName).Return(readCloser, nil).Times(1)
 	}
 	mockDataStore.On("GetSchema").Return(datastore.DataStoreSchema{
 		LedgersPerFile:    count,
