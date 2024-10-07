@@ -19,6 +19,7 @@ import (
 
 const add_u64_contract = "soroban_add_u64.wasm"
 const increment_contract = "soroban_increment_contract.wasm"
+const constructor_contract = "soroban_constructor_contract.wasm"
 
 // Tests use precompiled wasm bin files that are added to the testdata directory.
 // Refer to ./services/horizon/internal/integration/contracts/README.md on how to recompile
@@ -94,7 +95,7 @@ func TestContractInvokeHostFunctionCreateContractByAddress(t *testing.T) {
 	itest.MustSubmitOperationsWithFee(&sourceAccount, itest.Master(), minFee+txnbuild.MinBaseFee, &preFlightOp)
 
 	// Create the contract
-	createContractOp := assembleCreateContractOp(t, itest.Master().Address(), add_u64_contract, "a1", itest.GetPassPhrase())
+	createContractOp := assembleCreateContractOp(t, itest.Master().Address(), add_u64_contract, "a1")
 	preFlightOp, minFee = itest.PreflightHostFunctions(&sourceAccount, *createContractOp)
 	tx, err := itest.SubmitOperationsWithFee(&sourceAccount, itest.Master(), minFee+txnbuild.MinBaseFee, &preFlightOp)
 	require.NoError(t, err)
@@ -126,6 +127,78 @@ func TestContractInvokeHostFunctionCreateContractByAddress(t *testing.T) {
 	assert.Equal(t, invokeHostFunctionOpJson.Salt, "110986164698320180327942133831752629430491002266485370052238869825166557303060")
 }
 
+func TestContractInvokeHostFunctionCreateConstructorContract(t *testing.T) {
+	if integration.GetCoreMaxSupportedProtocol() < 20 {
+		t.Skip("This test run does not support less than Protocol 20")
+	}
+
+	itest := integration.NewTest(t, integration.Config{
+		EnableSorobanRPC: true,
+	})
+
+	// establish which account will be contract owner, and load it's current seq
+	sourceAccount, err := itest.Client().AccountDetail(horizonclient.AccountRequest{
+		AccountID: itest.Master().Address(),
+	})
+	require.NoError(t, err)
+
+	// Install the contract
+	installContractOp := assembleInstallContractCodeOp(t, itest.Master().Address(), constructor_contract)
+	preFlightOp, minFee := itest.PreflightHostFunctions(&sourceAccount, *installContractOp)
+	itest.MustSubmitOperationsWithFee(&sourceAccount, itest.Master(), minFee+txnbuild.MinBaseFee, &preFlightOp)
+
+	// Create the contract
+	keySym := xdr.ScSymbol("constructorKey")
+	keyArg := xdr.ScVal{
+		Type: xdr.ScValTypeScvSymbol,
+		Sym:  &keySym,
+	}
+	createContractOp := assembleCreateContractConstructorOp(
+		t,
+		itest.Master().Address(),
+		constructor_contract,
+		"a1",
+		[]xdr.ScVal{
+			keyArg,
+		},
+	)
+	preFlightOp, minFee = itest.PreflightHostFunctions(&sourceAccount, *createContractOp)
+	tx, err := itest.SubmitOperationsWithFee(&sourceAccount, itest.Master(), minFee+txnbuild.MinBaseFee, &preFlightOp)
+	require.NoError(t, err)
+
+	clientTx, err := itest.Client().TransactionDetail(tx.Hash)
+	require.NoError(t, err)
+
+	assert.Equal(t, tx.Hash, clientTx.Hash)
+	var txResult xdr.TransactionResult
+	err = xdr.SafeUnmarshalBase64(clientTx.ResultXdr, &txResult)
+	require.NoError(t, err)
+
+	opResults, ok := txResult.OperationResults()
+	assert.True(t, ok)
+	assert.Equal(t, len(opResults), 1)
+	invokeHostFunctionResult, ok := opResults[0].MustTr().GetInvokeHostFunctionResult()
+	assert.True(t, ok)
+	assert.Equal(t, invokeHostFunctionResult.Code, xdr.InvokeHostFunctionResultCodeInvokeHostFunctionSuccess)
+
+	clientInvokeOp, err := itest.Client().Operations(horizonclient.OperationRequest{
+		ForTransaction: tx.Hash,
+	})
+	require.NoError(t, err)
+
+	invokeHostFunctionOpJson, ok := clientInvokeOp.Embedded.Records[0].(operations.InvokeHostFunction)
+	assert.True(t, ok)
+	assert.Equal(t, invokeHostFunctionOpJson.Function, "HostFunctionTypeHostFunctionTypeCreateContractV2")
+	assert.Equal(t, invokeHostFunctionOpJson.Address, sourceAccount.AccountID)
+	assert.Equal(t, invokeHostFunctionOpJson.Salt, "110986164698320180327942133831752629430491002266485370052238869825166557303060")
+	assert.Len(t, invokeHostFunctionOpJson.Parameters, 1)
+	serializedKey, err := xdr.MarshalBase64(keyArg)
+	assert.NoError(t, err)
+	assert.Equal(t, invokeHostFunctionOpJson.Parameters[0].Value, serializedKey)
+	assert.Equal(t, invokeHostFunctionOpJson.Parameters[0].Type, "Sym")
+	assert.Empty(t, invokeHostFunctionOpJson.AssetBalanceChanges)
+}
+
 func TestContractInvokeHostFunctionInvokeStatelessContractFn(t *testing.T) {
 	if integration.GetCoreMaxSupportedProtocol() < 20 {
 		t.Skip("This test run does not support less than Protocol 20")
@@ -147,7 +220,7 @@ func TestContractInvokeHostFunctionInvokeStatelessContractFn(t *testing.T) {
 	itest.MustSubmitOperationsWithFee(&sourceAccount, itest.Master(), minFee+txnbuild.MinBaseFee, &preFlightOp)
 
 	// Create the contract
-	createContractOp := assembleCreateContractOp(t, itest.Master().Address(), add_u64_contract, "a1", itest.GetPassPhrase())
+	createContractOp := assembleCreateContractOp(t, itest.Master().Address(), add_u64_contract, "a1")
 	preFlightOp, minFee = itest.PreflightHostFunctions(&sourceAccount, *createContractOp)
 	tx, err := itest.SubmitOperationsWithFee(&sourceAccount, itest.Master(), minFee+txnbuild.MinBaseFee, &preFlightOp)
 	require.NoError(t, err)
@@ -257,7 +330,7 @@ func TestContractInvokeHostFunctionInvokeStatefulContractFn(t *testing.T) {
 
 	// Create the contract
 
-	createContractOp := assembleCreateContractOp(t, itest.Master().Address(), increment_contract, "a1", itest.GetPassPhrase())
+	createContractOp := assembleCreateContractOp(t, itest.Master().Address(), increment_contract, "a1")
 	preFlightOp, minFee = itest.PreflightHostFunctions(&sourceAccount, *createContractOp)
 	tx, err := itest.SubmitOperationsWithFee(&sourceAccount, itest.Master(), minFee+txnbuild.MinBaseFee, &preFlightOp)
 	require.NoError(t, err)
@@ -342,7 +415,7 @@ func assembleInstallContractCodeOp(t *testing.T, sourceAccount string, wasmFileN
 	}
 }
 
-func assembleCreateContractOp(t *testing.T, sourceAccount string, wasmFileName string, contractSalt string, passPhrase string) *txnbuild.InvokeHostFunction {
+func assembleCreateContractOp(t *testing.T, sourceAccount string, wasmFileName string, contractSalt string) *txnbuild.InvokeHostFunction {
 	// Assemble the InvokeHostFunction CreateContract operation:
 	// CAP-0047 - https://github.com/stellar/stellar-protocol/blob/master/core/cap-0047.md#creating-a-contract-using-invokehostfunctionop
 
@@ -375,6 +448,43 @@ func assembleCreateContractOp(t *testing.T, sourceAccount string, wasmFileName s
 					Type:     xdr.ContractExecutableTypeContractExecutableWasm,
 					WasmHash: &contractHash,
 				},
+			},
+		},
+		SourceAccount: sourceAccount,
+	}
+}
+
+func assembleCreateContractConstructorOp(t *testing.T, sourceAccount string, wasmFileName string, contractSalt string, args []xdr.ScVal) *txnbuild.InvokeHostFunction {
+	contract, err := os.ReadFile(filepath.Join("testdata", wasmFileName))
+	require.NoError(t, err)
+
+	salt := sha256.Sum256([]byte(contractSalt))
+	t.Logf("Salt hash: %v", hex.EncodeToString(salt[:]))
+	saltParameter := xdr.Uint256(salt)
+
+	accountId := xdr.MustAddress(sourceAccount)
+	require.NoError(t, err)
+	contractHash := xdr.Hash(sha256.Sum256(contract))
+
+	return &txnbuild.InvokeHostFunction{
+		HostFunction: xdr.HostFunction{
+			Type: xdr.HostFunctionTypeHostFunctionTypeCreateContractV2,
+			CreateContractV2: &xdr.CreateContractArgsV2{
+				ContractIdPreimage: xdr.ContractIdPreimage{
+					Type: xdr.ContractIdPreimageTypeContractIdPreimageFromAddress,
+					FromAddress: &xdr.ContractIdPreimageFromAddress{
+						Address: xdr.ScAddress{
+							Type:      xdr.ScAddressTypeScAddressTypeAccount,
+							AccountId: &accountId,
+						},
+						Salt: saltParameter,
+					},
+				},
+				Executable: xdr.ContractExecutable{
+					Type:     xdr.ContractExecutableTypeContractExecutableWasm,
+					WasmHash: &contractHash,
+				},
+				ConstructorArgs: args,
 			},
 		},
 		SourceAccount: sourceAccount,
