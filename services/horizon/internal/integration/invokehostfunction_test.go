@@ -5,11 +5,14 @@ import (
 	"encoding/hex"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
+	"github.com/stellar/go/amount"
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/protocols/horizon/operations"
 	"github.com/stellar/go/services/horizon/internal/test/integration"
+	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stellar/go/xdr"
 
@@ -128,13 +131,18 @@ func TestContractInvokeHostFunctionCreateContractByAddress(t *testing.T) {
 }
 
 func TestContractInvokeHostFunctionCreateConstructorContract(t *testing.T) {
-	if integration.GetCoreMaxSupportedProtocol() < 20 {
-		t.Skip("This test run does not support less than Protocol 20")
+	if integration.GetCoreMaxSupportedProtocol() < 22 {
+		t.Skip("This test run does not support less than Protocol 22")
 	}
 
 	itest := integration.NewTest(t, integration.Config{
 		EnableSorobanRPC: true,
 	})
+
+	issuer := itest.Master().Address()
+	code := "USD"
+	asset := xdr.MustNewCreditAsset(code, issuer)
+	createSAC(itest, asset)
 
 	// establish which account will be contract owner, and load it's current seq
 	sourceAccount, err := itest.Client().AccountDetail(horizonclient.AccountRequest{
@@ -148,23 +156,28 @@ func TestContractInvokeHostFunctionCreateConstructorContract(t *testing.T) {
 	itest.MustSubmitOperationsWithFee(&sourceAccount, itest.Master(), minFee+txnbuild.MinBaseFee, &preFlightOp)
 
 	// Create the contract
-	keySym := xdr.ScSymbol("constructorKey")
-	keyArg := xdr.ScVal{
-		Type: xdr.ScValTypeScvSymbol,
-		Sym:  &keySym,
+	senderAddressArg := accountAddressParam(itest.Master().Address())
+	usdcAddress := contractIDParam(stellarAssetContractID(itest, asset))
+	usdcAddressArg := xdr.ScVal{
+		Type:    xdr.ScValTypeScvAddress,
+		Address: &usdcAddress,
 	}
+	amount := i128Param(0, uint64(amount.MustParse("10.0000000")))
 	createContractOp := assembleCreateContractConstructorOp(
 		t,
 		itest.Master().Address(),
 		constructor_contract,
 		"a1",
 		[]xdr.ScVal{
-			keyArg,
+			senderAddressArg,
+			usdcAddressArg,
+			amount,
 		},
 	)
 	preFlightOp, minFee = itest.PreflightHostFunctions(&sourceAccount, *createContractOp)
 	tx, err := itest.SubmitOperationsWithFee(&sourceAccount, itest.Master(), minFee+txnbuild.MinBaseFee, &preFlightOp)
 	require.NoError(t, err)
+	contractID := preFlightOp.Ext.SorobanData.Resources.Footprint.ReadWrite[0].MustContractData().Contract.ContractId
 
 	clientTx, err := itest.Client().TransactionDetail(tx.Hash)
 	require.NoError(t, err)
@@ -191,12 +204,29 @@ func TestContractInvokeHostFunctionCreateConstructorContract(t *testing.T) {
 	assert.Equal(t, invokeHostFunctionOpJson.Function, "HostFunctionTypeHostFunctionTypeCreateContractV2")
 	assert.Equal(t, invokeHostFunctionOpJson.Address, sourceAccount.AccountID)
 	assert.Equal(t, invokeHostFunctionOpJson.Salt, "110986164698320180327942133831752629430491002266485370052238869825166557303060")
-	assert.Len(t, invokeHostFunctionOpJson.Parameters, 1)
-	serializedKey, err := xdr.MarshalBase64(keyArg)
+
+	assert.Len(t, invokeHostFunctionOpJson.Parameters, 3)
+	serializedKey, err := xdr.MarshalBase64(senderAddressArg)
 	assert.NoError(t, err)
 	assert.Equal(t, invokeHostFunctionOpJson.Parameters[0].Value, serializedKey)
-	assert.Equal(t, invokeHostFunctionOpJson.Parameters[0].Type, "Sym")
-	assert.Empty(t, invokeHostFunctionOpJson.AssetBalanceChanges)
+	assert.Equal(t, invokeHostFunctionOpJson.Parameters[0].Type, "Address")
+	serializedKey, err = xdr.MarshalBase64(usdcAddressArg)
+	assert.NoError(t, err)
+	assert.Equal(t, invokeHostFunctionOpJson.Parameters[1].Value, serializedKey)
+	assert.Equal(t, invokeHostFunctionOpJson.Parameters[1].Type, "Address")
+	serializedKey, err = xdr.MarshalBase64(amount)
+	assert.NoError(t, err)
+	assert.Equal(t, invokeHostFunctionOpJson.Parameters[2].Value, serializedKey)
+	assert.Equal(t, invokeHostFunctionOpJson.Parameters[2].Type, "I128")
+
+	assert.Len(t, invokeHostFunctionOpJson.AssetBalanceChanges, 1)
+	assetBalanceChange := invokeHostFunctionOpJson.AssetBalanceChanges[0]
+	assert.Equal(itest.CurrentTest(), assetBalanceChange.Amount, "10.0000000")
+	assert.Equal(itest.CurrentTest(), assetBalanceChange.From, issuer)
+	assert.Equal(itest.CurrentTest(), assetBalanceChange.To, strkey.MustEncode(strkey.VersionByteContract, contractID[:]))
+	assert.Equal(itest.CurrentTest(), assetBalanceChange.Type, "transfer")
+	assert.Equal(itest.CurrentTest(), assetBalanceChange.Asset.Code, strings.TrimRight(asset.GetCode(), "\x00"))
+	assert.Equal(itest.CurrentTest(), assetBalanceChange.Asset.Issuer, asset.GetIssuer())
 }
 
 func TestContractInvokeHostFunctionInvokeStatelessContractFn(t *testing.T) {
