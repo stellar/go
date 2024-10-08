@@ -72,7 +72,7 @@ func (handler GetEffectsHandler) GetResourcePage(w HeaderWriter, r *http.Request
 		return nil, err
 	}
 
-	records, err := loadEffectRecords(r.Context(), historyQ, qp, pq)
+	records, err := loadEffectRecords(r.Context(), historyQ, qp, pq, handler.LedgerState.CurrentStatus().HistoryElder)
 	if err != nil {
 		return nil, errors.Wrap(err, "loading transaction records")
 	}
@@ -94,12 +94,12 @@ func (handler GetEffectsHandler) GetResourcePage(w HeaderWriter, r *http.Request
 	return result, nil
 }
 
-func loadEffectRecords(ctx context.Context, hq *history.Q, qp EffectsQuery, pq db2.PageQuery) ([]history.Effect, error) {
+func loadEffectRecords(ctx context.Context, hq *history.Q, qp EffectsQuery, pq db2.PageQuery, oldestLedger int32) ([]history.Effect, error) {
 	switch {
 	case qp.AccountID != "":
-		return hq.EffectsForAccount(ctx, qp.AccountID, pq)
+		return hq.EffectsForAccount(ctx, qp.AccountID, pq, oldestLedger)
 	case qp.LiquidityPoolID != "":
-		return hq.EffectsForLiquidityPool(ctx, qp.LiquidityPoolID, pq)
+		return hq.EffectsForLiquidityPool(ctx, qp.LiquidityPoolID, pq, oldestLedger)
 	case qp.OperationID > 0:
 		return hq.EffectsForOperation(ctx, int64(qp.OperationID), pq)
 	case qp.LedgerID > 0:
@@ -107,7 +107,7 @@ func loadEffectRecords(ctx context.Context, hq *history.Q, qp EffectsQuery, pq d
 	case qp.TxHash != "":
 		return hq.EffectsForTransaction(ctx, qp.TxHash, pq)
 	default:
-		return hq.Effects(ctx, pq)
+		return hq.Effects(ctx, pq, oldestLedger)
 	}
 }
 

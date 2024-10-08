@@ -119,7 +119,7 @@ func (handler GetTransactionsHandler) GetResourcePage(w HeaderWriter, r *http.Re
 		return nil, err
 	}
 
-	records, err := loadTransactionRecords(ctx, historyQ, qp, pq)
+	records, err := loadTransactionRecords(ctx, historyQ, qp, pq, handler.LedgerState.CurrentStatus().HistoryElder)
 	if err != nil {
 		return nil, errors.Wrap(err, "loading transaction records")
 	}
@@ -141,7 +141,7 @@ func (handler GetTransactionsHandler) GetResourcePage(w HeaderWriter, r *http.Re
 // loadTransactionRecords returns a slice of transaction records of an
 // account/ledger identified by accountID/ledgerID based on pq and
 // includeFailedTx.
-func loadTransactionRecords(ctx context.Context, hq *history.Q, qp TransactionsQuery, pq db2.PageQuery) ([]history.Transaction, error) {
+func loadTransactionRecords(ctx context.Context, hq *history.Q, qp TransactionsQuery, pq db2.PageQuery, oldestLedger int32) ([]history.Transaction, error) {
 	var records []history.Transaction
 
 	txs := hq.Transactions()
@@ -160,7 +160,7 @@ func loadTransactionRecords(ctx context.Context, hq *history.Q, qp TransactionsQ
 		txs.IncludeFailed()
 	}
 
-	err := txs.Page(pq).Select(ctx, &records)
+	err := txs.Page(pq, oldestLedger).Select(ctx, &records)
 	if err != nil {
 		return nil, errors.Wrap(err, "executing transaction records query")
 	}

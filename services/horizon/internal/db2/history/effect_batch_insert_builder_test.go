@@ -2,6 +2,7 @@ package history
 
 import (
 	"encoding/json"
+	"fmt"
 	"testing"
 
 	"github.com/guregu/null"
@@ -16,7 +17,7 @@ func TestAddEffect(t *testing.T) {
 	defer tt.Finish()
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
-	tt.Assert.NoError(q.Begin(tt.Ctx))
+	tt.Require.NoError(q.Begin(tt.Ctx))
 
 	address := "GAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSTVY"
 	muxedAddres := "MAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSAAAAAAAAAAE2LP26"
@@ -37,25 +38,42 @@ func TestAddEffect(t *testing.T) {
 		3,
 		details,
 	)
-	tt.Assert.NoError(err)
+	tt.Require.NoError(err)
 
-	tt.Assert.NoError(accountLoader.Exec(tt.Ctx, q))
-	tt.Assert.NoError(builder.Exec(tt.Ctx, q))
-	tt.Assert.NoError(q.Commit())
+	tt.Require.NoError(accountLoader.Exec(tt.Ctx, q))
+	tt.Require.NoError(builder.Exec(tt.Ctx, q))
+	tt.Require.NoError(q.Commit())
 
 	effects, err := q.Effects(tt.Ctx, db2.PageQuery{
 		Cursor: "0-0",
 		Order:  "asc",
 		Limit:  200,
-	})
+	}, 0)
 	tt.Require.NoError(err)
-	tt.Assert.Len(effects, 1)
+	tt.Require.Len(effects, 1)
 
 	effect := effects[0]
-	tt.Assert.Equal(address, effect.Account)
-	tt.Assert.Equal(muxedAddres, effect.AccountMuxed.String)
-	tt.Assert.Equal(int64(240518172673), effect.HistoryOperationID)
-	tt.Assert.Equal(int32(1), effect.Order)
-	tt.Assert.Equal(EffectType(3), effect.Type)
-	tt.Assert.Equal("{\"amount\": \"1000.0000000\", \"asset_type\": \"native\"}", effect.DetailsString.String)
+	tt.Require.Equal(address, effect.Account)
+	tt.Require.Equal(muxedAddres, effect.AccountMuxed.String)
+	tt.Require.Equal(int64(240518172673), effect.HistoryOperationID)
+	tt.Require.Equal(int32(1), effect.Order)
+	tt.Require.Equal(EffectType(3), effect.Type)
+	tt.Require.Equal("{\"amount\": \"1000.0000000\", \"asset_type\": \"native\"}", effect.DetailsString.String)
+
+	effects, err = q.Effects(tt.Ctx, db2.PageQuery{
+		Cursor: fmt.Sprintf("%d-0", toid.New(sequence+2, 0, 0).ToInt64()),
+		Order:  "desc",
+		Limit:  200,
+	}, sequence-3)
+	tt.Require.NoError(err)
+	tt.Require.Len(effects, 1)
+	tt.Require.Equal(effects[0], effect)
+
+	effects, err = q.Effects(tt.Ctx, db2.PageQuery{
+		Cursor: fmt.Sprintf("%d-0", toid.New(sequence+5, 0, 0).ToInt64()),
+		Order:  "desc",
+		Limit:  200,
+	}, sequence+2)
+	tt.Require.NoError(err)
+	tt.Require.Empty(effects)
 }

@@ -14,6 +14,8 @@ import (
 	"github.com/stellar/go/toid"
 )
 
+const genesisLedger = 2
+
 // UnmarshalDetails unmarshals the details of this effect into `dest`
 func (r *Effect) UnmarshalDetails(dest interface{}) error {
 	if !r.DetailsString.Valid {
@@ -70,7 +72,7 @@ func (r *Effect) PagingToken() string {
 }
 
 // Effects returns a page of effects without any filters besides the cursor
-func (q *Q) Effects(ctx context.Context, page db2.PageQuery) ([]Effect, error) {
+func (q *Q) Effects(ctx context.Context, page db2.PageQuery, oldestLedger int32) ([]Effect, error) {
 	op, idx, err := parseEffectsCursor(page)
 	if err != nil {
 		return nil, err
@@ -87,6 +89,9 @@ func (q *Q) Effects(ctx context.Context, page db2.PageQuery) ([]Effect, error) {
 			Where("(heff.history_operation_id, heff.order) > (?, ?)", op, idx).
 			OrderBy("heff.history_operation_id asc, heff.order asc")
 	case "desc":
+		if lowerBound := lowestLedgerBound(oldestLedger); lowerBound > 0 {
+			query = query.Where("heff.history_operation_id > ?", lowerBound)
+		}
 		query = query.
 			Where("(heff.history_operation_id, heff.order) < (?, ?)", op, idx).
 			OrderBy("heff.history_operation_id desc, heff.order desc")
@@ -101,14 +106,14 @@ func (q *Q) Effects(ctx context.Context, page db2.PageQuery) ([]Effect, error) {
 }
 
 // EffectsForAccount returns a page of effects for a given account
-func (q *Q) EffectsForAccount(ctx context.Context, aid string, page db2.PageQuery) ([]Effect, error) {
+func (q *Q) EffectsForAccount(ctx context.Context, aid string, page db2.PageQuery, oldestLedger int32) ([]Effect, error) {
 	var account Account
 	if err := q.AccountByAddress(ctx, &account, aid); err != nil {
 		return nil, err
 	}
 
 	query := selectEffect.Where("heff.history_account_id = ?", account.ID)
-	return q.selectEffectsPage(ctx, query, page)
+	return q.selectEffectsPage(ctx, query, page, oldestLedger)
 }
 
 // EffectsForLedger returns a page of effects for a given ledger sequence
@@ -125,7 +130,7 @@ func (q *Q) EffectsForLedger(ctx context.Context, seq int32, page db2.PageQuery)
 		start.ToInt64(),
 		end.ToInt64(),
 	)
-	return q.selectEffectsPage(ctx, query, page)
+	return q.selectEffectsPage(ctx, query, page, 0)
 }
 
 // EffectsForOperation returns a page of effects for a given operation id.
@@ -138,11 +143,11 @@ func (q *Q) EffectsForOperation(ctx context.Context, id int64, page db2.PageQuer
 		start.ToInt64(),
 		end.ToInt64(),
 	)
-	return q.selectEffectsPage(ctx, query, page)
+	return q.selectEffectsPage(ctx, query, page, 0)
 }
 
 // EffectsForLiquidityPool returns a page of effects for a given liquidity pool.
-func (q *Q) EffectsForLiquidityPool(ctx context.Context, id string, page db2.PageQuery) ([]Effect, error) {
+func (q *Q) EffectsForLiquidityPool(ctx context.Context, id string, page db2.PageQuery, oldestLedger int32) ([]Effect, error) {
 	op, _, err := page.CursorInt64Pair(db2.DefaultPairSep)
 	if err != nil {
 		return nil, err
@@ -173,6 +178,7 @@ func (q *Q) EffectsForLiquidityPool(ctx context.Context, id string, page db2.Pag
 			"heff.history_operation_id": liquidityPoolOperationIDs,
 		}),
 		page,
+		oldestLedger,
 	)
 }
 
@@ -194,6 +200,7 @@ func (q *Q) EffectsForTransaction(ctx context.Context, hash string, page db2.Pag
 			end.ToInt64(),
 		),
 		page,
+		0,
 	)
 }
 
@@ -209,7 +216,14 @@ func parseEffectsCursor(page db2.PageQuery) (int64, int64, error) {
 	return op, idx, nil
 }
 
-func (q *Q) selectEffectsPage(ctx context.Context, query sq.SelectBuilder, page db2.PageQuery) ([]Effect, error) {
+func lowestLedgerBound(oldestLedger int32) int64 {
+	if oldestLedger <= genesisLedger {
+		return 0
+	}
+	return toid.AfterLedger(oldestLedger - 1).ToInt64()
+}
+
+func (q *Q) selectEffectsPage(ctx context.Context, query sq.SelectBuilder, page db2.PageQuery, oldestLedger int32) ([]Effect, error) {
 	op, idx, err := parseEffectsCursor(page)
 	if err != nil {
 		return nil, err
@@ -230,6 +244,9 @@ func (q *Q) selectEffectsPage(ctx context.Context, query sq.SelectBuilder, page 
 				))`, op, op, op, idx).
 			OrderBy("heff.history_operation_id asc, heff.order asc")
 	case "desc":
+		if lowerBound := lowestLedgerBound(oldestLedger); lowerBound > 0 {
+			query = query.Where("heff.history_operation_id > ?", lowerBound)
+		}
 		query = query.
 			Where(`(
 					 heff.history_operation_id <= ?

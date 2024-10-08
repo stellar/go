@@ -790,6 +790,7 @@ type OperationsQ struct {
 	opIdCol             string
 	includeFailed       bool
 	includeTransactions bool
+	boundedIdQuery      bool
 }
 
 // Q is a helper struct on which to hang common_trades queries against a history
@@ -878,11 +879,12 @@ func (t *Transaction) HasPreconditions() bool {
 // TransactionsQ is a helper struct to aid in configuring queries that loads
 // slices of transaction structs.
 type TransactionsQ struct {
-	Err           error
-	parent        *Q
-	sql           sq.SelectBuilder
-	includeFailed bool
-	txIdCol       string
+	Err            error
+	parent         *Q
+	sql            sq.SelectBuilder
+	includeFailed  bool
+	txIdCol        string
+	boundedIdQuery bool
 }
 
 // TrustLine is row of data from the `trust_lines` table from horizon DB

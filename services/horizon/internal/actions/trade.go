@@ -189,19 +189,20 @@ func (handler GetTradesHandler) GetResourcePage(w HeaderWriter, r *http.Request)
 		return nil, err
 	}
 
+	oldestLedger := handler.LedgerState.CurrentStatus().HistoryElder
 	if baseAsset != nil {
 		counterAsset, err = qp.Counter()
 		if err != nil {
 			return nil, err
 		}
 
-		records, err = historyQ.GetTradesForAssets(ctx, pq, qp.AccountID, qp.TradeType, *baseAsset, *counterAsset)
+		records, err = historyQ.GetTradesForAssets(ctx, pq, oldestLedger, qp.AccountID, qp.TradeType, *baseAsset, *counterAsset)
 	} else if qp.OfferID != 0 {
-		records, err = historyQ.GetTradesForOffer(ctx, pq, int64(qp.OfferID))
+		records, err = historyQ.GetTradesForOffer(ctx, pq, oldestLedger, int64(qp.OfferID))
 	} else if qp.PoolID != "" {
-		records, err = historyQ.GetTradesForLiquidityPool(ctx, pq, qp.PoolID)
+		records, err = historyQ.GetTradesForLiquidityPool(ctx, pq, oldestLedger, qp.PoolID)
 	} else {
-		records, err = historyQ.GetTrades(ctx, pq, qp.AccountID, qp.TradeType)
+		records, err = historyQ.GetTrades(ctx, pq, oldestLedger, qp.AccountID, qp.TradeType)
 	}
 	if err != nil {
 		return nil, err
