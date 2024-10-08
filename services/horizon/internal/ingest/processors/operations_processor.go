@@ -550,7 +550,7 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 		op := operation.operation.Body.MustClaimClaimableBalanceOp()
 		balanceID, err := xdr.MarshalHex(op.BalanceId)
 		if err != nil {
-			panic(fmt.Errorf("Invalid balanceId in op: %d", operation.index))
+			return nil, fmt.Errorf("Invalid balanceId in op: %d", operation.index)
 		}
 		details["balance_id"] = balanceID
 		addAccountAndMuxedAccountDetails(details, *source, "claimant")
@@ -585,7 +585,7 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 		op := operation.operation.Body.MustClawbackClaimableBalanceOp()
 		balanceID, err := xdr.MarshalHex(op.BalanceId)
 		if err != nil {
-			panic(fmt.Errorf("Invalid balanceId in op: %d", operation.index))
+			return nil, fmt.Errorf("Invalid balanceId in op: %d", operation.index)
 		}
 		details["balance_id"] = balanceID
 	case xdr.OperationTypeSetTrustLineFlags:
@@ -691,7 +691,7 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 				fromAddress := args.ContractIdPreimage.MustFromAddress()
 				address, err := fromAddress.Address.String()
 				if err != nil {
-					panic(fmt.Errorf("error obtaining address for: %s", args.ContractIdPreimage.Type))
+					return nil, fmt.Errorf("error obtaining address for: %s", args.ContractIdPreimage.Type)
 				}
 				details["from"] = "address"
 				details["address"] = address
@@ -700,7 +700,7 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 				details["from"] = "asset"
 				details["asset"] = args.ContractIdPreimage.MustFromAsset().StringCanonical()
 			default:
-				panic(fmt.Errorf("unknown contract id type: %s", args.ContractIdPreimage.Type))
+				return nil, fmt.Errorf("unknown contract id type: %s", args.ContractIdPreimage.Type)
 			}
 		case xdr.HostFunctionTypeHostFunctionTypeCreateContractV2:
 			args := op.HostFunction.MustCreateContractV2()
@@ -709,7 +709,7 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 				fromAddress := args.ContractIdPreimage.MustFromAddress()
 				address, err := fromAddress.Address.String()
 				if err != nil {
-					panic(fmt.Errorf("error obtaining address for: %s", args.ContractIdPreimage.Type))
+					return nil, fmt.Errorf("error obtaining address for: %s", args.ContractIdPreimage.Type)
 				}
 				details["from"] = "address"
 				details["address"] = address
@@ -718,7 +718,7 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 				details["from"] = "asset"
 				details["asset"] = args.ContractIdPreimage.MustFromAsset().StringCanonical()
 			default:
-				panic(fmt.Errorf("unknown contract id type: %s", args.ContractIdPreimage.Type))
+				return nil, fmt.Errorf("unknown contract id type: %s", args.ContractIdPreimage.Type)
 			}
 
 			details["parameters"] = extractFunctionArgs(args.ConstructorArgs)
@@ -730,14 +730,14 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 			}
 		case xdr.HostFunctionTypeHostFunctionTypeUploadContractWasm:
 		default:
-			panic(fmt.Errorf("unknown host function type: %s", op.HostFunction.Type))
+			return nil, fmt.Errorf("unknown host function type: %s", op.HostFunction.Type)
 		}
 	case xdr.OperationTypeExtendFootprintTtl:
 		op := operation.operation.Body.MustExtendFootprintTtlOp()
 		details["extend_to"] = op.ExtendTo
 	case xdr.OperationTypeRestoreFootprint:
 	default:
-		panic(fmt.Errorf("unknown operation type: %s", operation.OperationType()))
+		return nil, fmt.Errorf("unknown operation type: %s", operation.OperationType())
 	}
 
 	sponsor, err := operation.getSponsor()

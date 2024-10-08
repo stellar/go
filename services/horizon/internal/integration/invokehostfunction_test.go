@@ -144,16 +144,10 @@ func TestContractInvokeHostFunctionCreateConstructorContract(t *testing.T) {
 	asset := xdr.MustNewCreditAsset(code, issuer)
 	createSAC(itest, asset)
 
-	// establish which account will be contract owner, and load it's current seq
-	sourceAccount, err := itest.Client().AccountDetail(horizonclient.AccountRequest{
-		AccountID: itest.Master().Address(),
-	})
-	require.NoError(t, err)
-
 	// Install the contract
 	installContractOp := assembleInstallContractCodeOp(t, itest.Master().Address(), constructor_contract)
-	preFlightOp, minFee := itest.PreflightHostFunctions(&sourceAccount, *installContractOp)
-	itest.MustSubmitOperationsWithFee(&sourceAccount, itest.Master(), minFee+txnbuild.MinBaseFee, &preFlightOp)
+	preFlightOp, minFee := itest.PreflightHostFunctions(itest.MasterAccount(), *installContractOp)
+	itest.MustSubmitOperationsWithFee(itest.MasterAccount(), itest.Master(), minFee+txnbuild.MinBaseFee, &preFlightOp)
 
 	// Create the contract
 	senderAddressArg := accountAddressParam(itest.Master().Address())
@@ -174,8 +168,8 @@ func TestContractInvokeHostFunctionCreateConstructorContract(t *testing.T) {
 			amount,
 		},
 	)
-	preFlightOp, minFee = itest.PreflightHostFunctions(&sourceAccount, *createContractOp)
-	tx, err := itest.SubmitOperationsWithFee(&sourceAccount, itest.Master(), minFee+txnbuild.MinBaseFee, &preFlightOp)
+	preFlightOp, minFee = itest.PreflightHostFunctions(itest.MasterAccount(), *createContractOp)
+	tx, err := itest.SubmitOperationsWithFee(itest.MasterAccount(), itest.Master(), minFee+txnbuild.MinBaseFee, &preFlightOp)
 	require.NoError(t, err)
 	contractID := preFlightOp.Ext.SorobanData.Resources.Footprint.ReadWrite[0].MustContractData().Contract.ContractId
 
@@ -202,7 +196,7 @@ func TestContractInvokeHostFunctionCreateConstructorContract(t *testing.T) {
 	invokeHostFunctionOpJson, ok := clientInvokeOp.Embedded.Records[0].(operations.InvokeHostFunction)
 	assert.True(t, ok)
 	assert.Equal(t, invokeHostFunctionOpJson.Function, "HostFunctionTypeHostFunctionTypeCreateContractV2")
-	assert.Equal(t, invokeHostFunctionOpJson.Address, sourceAccount.AccountID)
+	assert.Equal(t, invokeHostFunctionOpJson.Address, itest.Master().Address())
 	assert.Equal(t, invokeHostFunctionOpJson.Salt, "110986164698320180327942133831752629430491002266485370052238869825166557303060")
 
 	assert.Len(t, invokeHostFunctionOpJson.Parameters, 3)
