@@ -174,7 +174,7 @@ func (q *OperationsQ) ForClaimableBalance(ctx context.Context, cbID string) *Ope
 	return q
 }
 
-// ForLiquidityPools filters the query to only operations pertaining to a
+// ForLiquidityPool filters the query to only operations pertaining to a
 // liquidity pool, specified by the liquidity pool id as an hex-encoded string.
 func (q *OperationsQ) ForLiquidityPool(ctx context.Context, lpID string) *OperationsQ {
 	var hLP HistoryLiquidityPool
