@@ -1421,13 +1421,7 @@ func mustCreateAndInstallContract(itest *integration.Test, signer *keypair.Full,
 	_, _, createContractOp := assertInvokeHostFnSucceeds(
 		itest,
 		signer,
-		assembleCreateContractOp(
-			itest.CurrentTest(),
-			itest.Master().Address(),
-			wasmFileName,
-			contractSalt,
-			itest.GetPassPhrase(),
-		),
+		assembleCreateContractOp(itest.CurrentTest(), itest.Master().Address(), wasmFileName, contractSalt),
 	)
 
 	keys := append(
