@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this
 file. This project adheres to [Semantic Versioning](http://semver.org/).
+## Pending
+
+### Breaking Changes
+
+- `--parallel-job-size` configuration parameter for the `stellar-horizon db reingest` command has been removed.
+  Job size will be automatically determined based on the number of workers (configuration parameter --parallel-workers), distributing
+  the range equally among them. The minimum job size will remain 64 ledgers and the start and end ledger range will be rounded to
+  the nearest checkpoint.([5484](https://github.com/stellar/go/pull/5484))
 
 ## 2.32.0
 

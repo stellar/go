@@ -42,7 +42,6 @@ var (
 	dbDetectGapsCmd          *cobra.Command
 	reingestForce            bool
 	parallelWorkers          uint
-	parallelJobSize          uint32
 	retries                  uint
 	retryBackoffSeconds      uint
 	ledgerBackendStr         string
@@ -119,14 +118,6 @@ func ingestRangeCmdOpts() support.ConfigOptions {
 			Usage:       "[optional] if this flag is set to > 1, horizon will parallelize reingestion using the supplied number of workers",
 		},
 		{
-			Name:        "parallel-job-size",
-			ConfigKey:   &parallelJobSize,
-			OptType:     types.Uint32,
-			Required:    false,
-			FlagDefault: uint32(100000),
-			Usage:       "[optional] parallel workers will run jobs processing ledger batches of the supplied size",
-		},
-		{
 			Name:        "retries",
 			ConfigKey:   &retries,
 			OptType:     types.Uint,
@@ -186,9 +177,6 @@ func runDBReingestRange(ledgerRanges []history.LedgerRange, reingestForce bool, 
 	}
 
 	maxLedgersPerFlush := ingest.MaxLedgersPerFlush
-	if parallelJobSize < maxLedgersPerFlush {
-		maxLedgersPerFlush = parallelJobSize
-	}
 
 	ingestConfig := ingest.Config{
 		NetworkPassphrase:           config.NetworkPassphrase,
@@ -219,10 +207,7 @@ func runDBReingestRange(ledgerRanges []history.LedgerRange, reingestForce bool, 
 			return systemErr
 		}
 
-		return system.ReingestRange(
-			ledgerRanges,
-			parallelJobSize,
-		)
+		return system.ReingestRange(ledgerRanges)
 	}
 
 	system, systemErr := ingest.NewSystem(ingestConfig)
@@ -485,11 +470,6 @@ func DefineDBCommands(rootCmd *cobra.Command, horizonConfig *horizon.Config, hor
 			if ledgerBackendType == ingest.BufferedStorageBackend {
 				if storageBackendConfig, err = loadStorageBackendConfig(storageBackendConfigPath); err != nil {
 					return err
-				}
-				// when using buffered storage, performance observations have noted optimal parallel batch size
-				// of 100, apply that as default if the flag was absent.
-				if !viper.IsSet("parallel-job-size") {
-					parallelJobSize = 100
 				}
 				options.NoCaptiveCore = true
 			}

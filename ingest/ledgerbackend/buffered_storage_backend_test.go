@@ -160,6 +160,50 @@ func TestNewLedgerBuffer(t *testing.T) {
 	assert.Equal(t, ledgerRange, ledgerBuffer.ledgerRange)
 }
 
+func TestNewLedgerBufferSizeLessThanRangeSize(t *testing.T) {
+	startLedger := uint32(10)
+	endLedger := uint32(30)
+	bsb := createBufferedStorageBackendForTesting()
+	bsb.config.NumWorkers = 2
+	bsb.config.BufferSize = 10
+	ledgerRange := BoundedRange(startLedger, endLedger)
+	mockDataStore := createMockdataStore(t, startLedger, endLedger, partitionSize, ledgerPerFileCount)
+	bsb.dataStore = mockDataStore
+
+	ledgerBuffer, err := bsb.newLedgerBuffer(ledgerRange)
+	assert.Eventually(t, func() bool { return len(ledgerBuffer.ledgerQueue) == 10 }, time.Second*1, time.Millisecond*50)
+	assert.NoError(t, err)
+
+	for i := startLedger; i < endLedger; i++ {
+		lcm, err := ledgerBuffer.getFromLedgerQueue(context.Background())
+		assert.NoError(t, err)
+		assert.Equal(t, xdr.Uint32(i), lcm.StartSequence)
+	}
+	assert.Equal(t, ledgerRange, ledgerBuffer.ledgerRange)
+}
+
+func TestNewLedgerBufferSizeLargerThanRangeSize(t *testing.T) {
+	startLedger := uint32(1)
+	endLedger := uint32(15)
+	bsb := createBufferedStorageBackendForTesting()
+	bsb.config.NumWorkers = 2
+	bsb.config.BufferSize = 100
+	ledgerRange := BoundedRange(startLedger, endLedger)
+	mockDataStore := createMockdataStore(t, startLedger, endLedger, partitionSize, ledgerPerFileCount)
+	bsb.dataStore = mockDataStore
+
+	ledgerBuffer, err := bsb.newLedgerBuffer(ledgerRange)
+	assert.Eventually(t, func() bool { return len(ledgerBuffer.ledgerQueue) == 15 }, time.Second*1, time.Millisecond*50)
+	assert.NoError(t, err)
+
+	for i := startLedger; i < endLedger; i++ {
+		lcm, err := ledgerBuffer.getFromLedgerQueue(context.Background())
+		assert.NoError(t, err)
+		assert.Equal(t, xdr.Uint32(i), lcm.StartSequence)
+	}
+	assert.Equal(t, ledgerRange, ledgerBuffer.ledgerRange)
+}
+
 func TestBSBGetLatestLedgerSequence(t *testing.T) {
 	startLedger := uint32(3)
 	endLedger := uint32(5)

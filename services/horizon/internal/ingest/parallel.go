@@ -113,12 +113,10 @@ func enqueueReingestTasks(ledgerRanges []history.LedgerRange, batchSize uint32, 
 	return lowestLedger
 }
 
-func calculateParallelLedgerBatchSize(rangeSize uint32, batchSizeSuggestion uint32, workerCount uint) uint32 {
-	batchSize := batchSizeSuggestion
-	if batchSize == 0 || rangeSize/batchSize < uint32(workerCount) {
-		// let's try to make use of all the workers
-		batchSize = rangeSize / uint32(workerCount)
-	}
+func calculateParallelLedgerBatchSize(rangeSize uint32, workerCount uint) uint32 {
+	// let's try to make use of all the workers
+	batchSize := rangeSize / uint32(workerCount)
+
 	// Use a minimum batch size to make it worth it in terms of overhead
 	if batchSize < minBatchSize {
 		batchSize = minBatchSize
@@ -136,9 +134,9 @@ func totalRangeSize(ledgerRanges []history.LedgerRange) uint32 {
 	return sum
 }
 
-func (ps *ParallelSystems) ReingestRange(ledgerRanges []history.LedgerRange, batchSizeSuggestion uint32) error {
+func (ps *ParallelSystems) ReingestRange(ledgerRanges []history.LedgerRange) error {
 	var (
-		batchSize        = calculateParallelLedgerBatchSize(totalRangeSize(ledgerRanges), batchSizeSuggestion, ps.workerCount)
+		batchSize        = calculateParallelLedgerBatchSize(totalRangeSize(ledgerRanges), ps.workerCount)
 		reingestJobQueue = make(chan history.LedgerRange)
 		wg               sync.WaitGroup
 
