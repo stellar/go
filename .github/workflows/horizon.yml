@@ -36,9 +36,9 @@ jobs:
       PROTOCOL_21_CORE_DEBIAN_PKG_VERSION: 21.3.1-2007.4ede19620.focal
       PROTOCOL_21_CORE_DOCKER_IMG: stellar/stellar-core:21.3.1-2007.4ede19620.focal
       PROTOCOL_21_SOROBAN_RPC_DOCKER_IMG: stellar/soroban-rpc:21.4.1
-      PROTOCOL_22_CORE_DEBIAN_PKG_VERSION: 22.0.0-2088.rc1.2d8d764cd.focal
-      PROTOCOL_22_CORE_DOCKER_IMG: stellar/stellar-core:22.0.0-2088.rc1.2d8d764cd.focal
-      PROTOCOL_22_SOROBAN_RPC_DOCKER_IMG: stellar/soroban-rpc:22.0.0-rc1-98
+      PROTOCOL_22_CORE_DEBIAN_PKG_VERSION: 22.0.0-2095.rc2.1bccbc921.focal
+      PROTOCOL_22_CORE_DOCKER_IMG: stellar/stellar-core:22.0.0-2095.rc2.1bccbc921.focal
+      PROTOCOL_22_SOROBAN_RPC_DOCKER_IMG: stellar/soroban-rpc:22.0.0-rc2-99
       PGHOST: localhost
       PGPORT: 5432
       PGUSER: postgres
