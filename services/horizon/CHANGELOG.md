@@ -5,7 +5,7 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## 22.0.0-rc
 
-**This release adds support for Protocol 20**
+**This release adds support for Protocol 22**
 
 ### Breaking Changes
 
