@@ -7,11 +7,11 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"math/big"
+	"strings"
 	"testing"
 
 	"github.com/guregu/null"
-	"math/big"
-	"strings"
 
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/protocols/horizon/base"
@@ -62,7 +62,7 @@ func TestEffectsProcessorTestSuiteLedger(t *testing.T) {
 
 func (s *EffectsProcessorTestSuiteLedger) SetupTest() {
 	s.ctx = context.Background()
-	s.accountLoader = history.NewAccountLoader()
+	s.accountLoader = history.NewAccountLoader(history.ConcurrentInserts)
 	s.mockBatchInsertBuilder = &history.MockEffectBatchInsertBuilder{}
 
 	s.lcm = xdr.LedgerCloseMeta{
@@ -446,7 +446,7 @@ func TestEffectsCoversAllOperationTypes(t *testing.T) {
 				}
 				assert.True(t, err2 != nil || err == nil, s)
 			}()
-			err = operation.ingestEffects(history.NewAccountLoader(), &history.MockEffectBatchInsertBuilder{})
+			err = operation.ingestEffects(history.NewAccountLoader(history.ConcurrentInserts), &history.MockEffectBatchInsertBuilder{})
 		}()
 	}
 
@@ -468,7 +468,7 @@ func TestEffectsCoversAllOperationTypes(t *testing.T) {
 		ledgerSequence: 1,
 	}
 	// calling effects should error due to the unknown operation
-	err := operation.ingestEffects(history.NewAccountLoader(), &history.MockEffectBatchInsertBuilder{})
+	err := operation.ingestEffects(history.NewAccountLoader(history.ConcurrentInserts), &history.MockEffectBatchInsertBuilder{})
 	assert.Contains(t, err.Error(), "Unknown operation type")
 }
 
@@ -2558,7 +2558,7 @@ type effect struct {
 }
 
 func assertIngestEffects(t *testing.T, operation transactionOperationWrapper, expected []effect) {
-	accountLoader := history.NewAccountLoader()
+	accountLoader := history.NewAccountLoader(history.ConcurrentInserts)
 	mockBatchInsertBuilder := &history.MockEffectBatchInsertBuilder{}
 
 	for _, expectedEffect := range expected {

@@ -2,14 +2,20 @@
 
 All notable changes to this project will be documented in this
 file. This project adheres to [Semantic Versioning](http://semver.org/).
-
 ## Pending
 
 ### Breaking Changes
 
+- `--parallel-job-size` configuration parameter for the `stellar-horizon db reingest` command has been removed.
+  Job size will be automatically determined based on the number of workers (configuration parameter --parallel-workers), distributing
+  the range equally among them. The minimum job size will remain 64 ledgers and the start and end ledger range will be rounded to
+  the nearest checkpoint.([5484](https://github.com/stellar/go/pull/5484))
+
 - Removed `num_accounts` and `amount` fields from Asset stats related endpoints, and `valid_before` and `valid_after` fields from transaction related endpoints.  Issue - [5438](https://github.com/stellar/go/issues/5438), PR - [5478](https://github.com/stellar/go/pull/5478)
   - These fields have already been functionally deprecated as of release v2.1.0. As a part of this release, these fields are omitted from API Response
   - Additionally, the `num_accounts` and `amount` columns have been dropped from `exp_asset_stats` table in Postgres.
+
+## 2.32.0
 
 ### Added
 
@@ -17,8 +23,13 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
   - Configure horizon reingestion to obtain ledger tx meta in pre-computed files from a Google Cloud Storage(GCS) location. 
   - Using this option will no longer require a captive core binary be present and it no longer runs a captive core sub-process, instead obtaining the tx meta from the GCS backend.
   - Horizon supports this new feature with two new parameters `ledgerbackend` and `datastore-config` on the `reingest` command. Refer to [Reingestion README](./internal/ingest/README.md#reingestion).
+- Add metrics for reaping of history lookup tables ([5385](https://github.com/stellar/go/pull/5385)).
+- Add `--reap-lookup-tables` (defaults to true) which will disable reaping of history lookup tables when set to false. ([5366](https://github.com/stellar/go/pull/5366)).
 
 
+### Fixed
+- Fix ingestion duration metric so it includes time spent reaping history lookup tables ([5361](https://github.com/stellar/go/pull/5361)).
+- Optimize query for reaping history lookup tables ([5393](https://github.com/stellar/go/pull/5393)).
 
 ## 2.31.0
 

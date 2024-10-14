@@ -112,9 +112,11 @@ type CaptiveStellarCore struct {
 	lastLedger         *uint32 // end of current segment if offline, nil if online
 	previousLedgerHash *string
 
-	config             CaptiveCoreConfig
-	stellarCoreClient  *stellarcore.Client
-	captiveCoreVersion string // Updates when captive-core restarts
+	config                   CaptiveCoreConfig
+	captiveCoreStartDuration prometheus.Summary
+	captiveCoreNewDBCounter  prometheus.Counter
+	stellarCoreClient        *stellarcore.Client
+	captiveCoreVersion       string // Updates when captive-core restarts
 }
 
 // CaptiveCoreConfig contains all the parameters required to create a CaptiveStellarCore instance
@@ -230,7 +232,7 @@ func NewCaptive(config CaptiveCoreConfig) (*CaptiveStellarCore, error) {
 
 	c.stellarCoreRunnerFactory = func() stellarCoreRunnerInterface {
 		c.setCoreVersion()
-		return newStellarCoreRunner(config)
+		return newStellarCoreRunner(config, c.captiveCoreNewDBCounter)
 	}
 
 	if config.Toml != nil && config.Toml.HTTPPort != 0 {
@@ -315,7 +317,27 @@ func (c *CaptiveStellarCore) registerMetrics(registry *prometheus.Registry, name
 			return float64(latest)
 		},
 	)
-	registry.MustRegister(coreSynced, supportedProtocolVersion, latestLedger)
+	c.captiveCoreStartDuration = prometheus.NewSummary(prometheus.SummaryOpts{
+		Namespace:  namespace,
+		Subsystem:  "ingest",
+		Name:       "captive_stellar_core_start_duration_seconds",
+		Help:       "duration of start up time when running captive core on an unbounded range, sliding window = 10m",
+		Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
+	})
+	c.captiveCoreNewDBCounter = prometheus.NewCounter(prometheus.CounterOpts{
+		Namespace: namespace,
+		Subsystem: "ingest",
+		Name:      "captive_stellar_core_new_db",
+		Help:      "counter for the number of times we start up captive core with a new buckets db, sliding window = 10m",
+	})
+
+	registry.MustRegister(
+		coreSynced,
+		supportedProtocolVersion,
+		latestLedger,
+		c.captiveCoreStartDuration,
+		c.captiveCoreNewDBCounter,
+	)
 }
 
 func (c *CaptiveStellarCore) getLatestCheckpointSequence() (uint32, error) {
@@ -521,18 +543,26 @@ func (c *CaptiveStellarCore) startPreparingRange(ctx context.Context, ledgerRang
 // Please note that using a BoundedRange, currently, requires a full-trust on
 // history archive. This issue is being fixed in Stellar-Core.
 func (c *CaptiveStellarCore) PrepareRange(ctx context.Context, ledgerRange Range) error {
+	startTime := time.Now()
 	if alreadyPrepared, err := c.startPreparingRange(ctx, ledgerRange); err != nil {
 		return errors.Wrap(err, "error starting prepare range")
 	} else if alreadyPrepared {
 		return nil
 	}
 
+	var reportedStartTime bool
 	// the prepared range might be below ledgerRange.from so we
 	// need to seek ahead until we reach ledgerRange.from
 	for seq := c.prepared.from; seq <= ledgerRange.from; seq++ {
 		_, err := c.GetLedger(ctx, seq)
 		if err != nil {
 			return errors.Wrapf(err, "Error fast-forwarding to %d", ledgerRange.from)
+		}
+		if !reportedStartTime {
+			reportedStartTime = true
+			if c.captiveCoreStartDuration != nil && !ledgerRange.bounded {
+				c.captiveCoreStartDuration.Observe(time.Since(startTime).Seconds())
+			}
 		}
 	}
 

@@ -15,7 +15,7 @@ func TestAddOperationParticipants(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	accountLoader := NewAccountLoader()
+	accountLoader := NewAccountLoader(ConcurrentInserts)
 	address := keypair.MustRandom().Address()
 	tt.Assert.NoError(q.Begin(tt.Ctx))
 	builder := q.NewOperationParticipantBatchInsertBuilder()

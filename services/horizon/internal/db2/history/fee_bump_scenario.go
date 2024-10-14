@@ -288,7 +288,7 @@ func FeeBumpScenario(tt *test.T, q *Q, successful bool) FeeBumpFixture {
 	details, err = json.Marshal(map[string]interface{}{"new_seq": 98})
 	tt.Assert.NoError(err)
 
-	accountLoader := NewAccountLoader()
+	accountLoader := NewAccountLoader(ConcurrentInserts)
 
 	err = effectBuilder.Add(
 		accountLoader.GetFuture(account.Address()),

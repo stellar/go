@@ -19,7 +19,7 @@ type FutureClaimableBalanceID = future[string, HistoryClaimableBalance]
 type ClaimableBalanceLoader = loader[string, HistoryClaimableBalance]
 
 // NewClaimableBalanceLoader will construct a new ClaimableBalanceLoader instance.
-func NewClaimableBalanceLoader() *ClaimableBalanceLoader {
+func NewClaimableBalanceLoader(concurrencyMode ConcurrencyMode) *ClaimableBalanceLoader {
 	return &ClaimableBalanceLoader{
 		sealed: false,
 		set:    set.Set[string]{},
@@ -39,6 +39,7 @@ func NewClaimableBalanceLoader() *ClaimableBalanceLoader {
 		mappingFromRow: func(row HistoryClaimableBalance) (string, int64) {
 			return row.BalanceID, row.InternalID
 		},
-		less: cmp.Less[string],
+		less:            cmp.Less[string],
+		concurrencyMode: concurrencyMode,
 	}
 }

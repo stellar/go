@@ -13,6 +13,8 @@ import (
 	"github.com/stellar/go/support/collections/heap"
 	"github.com/stellar/go/support/compressxdr"
 	"github.com/stellar/go/support/datastore"
+	"github.com/stellar/go/support/ordered"
+
 	"github.com/stellar/go/xdr"
 )
 
@@ -53,6 +55,10 @@ func (bsb *BufferedStorageBackend) newLedgerBuffer(ledgerRange Range) (*ledgerBu
 
 	less := func(a, b ledgerBatchObject) bool {
 		return a.startLedger < b.startLedger
+	}
+	// ensure BufferSize does not exceed the total range
+	if ledgerRange.bounded {
+		bsb.config.BufferSize = uint32(ordered.Min(int(bsb.config.BufferSize), int(ledgerRange.to-ledgerRange.from)+1))
 	}
 	pq := heap.New(less, int(bsb.config.BufferSize))
 
@@ -167,7 +173,7 @@ func (lb *ledgerBuffer) downloadLedgerObject(ctx context.Context, sequence uint3
 
 	reader, err := lb.dataStore.GetFile(ctx, objectKey)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "unable to retrieve file: %s", objectKey)
 	}
 
 	defer reader.Close()

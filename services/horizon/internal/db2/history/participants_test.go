@@ -35,7 +35,7 @@ func TestTransactionParticipantsBatch(t *testing.T) {
 	q := &Q{tt.HorizonSession()}
 
 	batch := q.NewTransactionParticipantsBatchInsertBuilder()
-	accountLoader := NewAccountLoader()
+	accountLoader := NewAccountLoader(ConcurrentInserts)
 
 	transactionID := int64(1)
 	otherTransactionID := int64(2)

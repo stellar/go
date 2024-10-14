@@ -9,6 +9,7 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -282,7 +283,8 @@ type IngestionQ interface {
 	NewTradeBatchInsertBuilder() TradeBatchInsertBuilder
 	RebuildTradeAggregationTimes(ctx context.Context, from, to strtime.Millis, roundingSlippageFilter int) error
 	RebuildTradeAggregationBuckets(ctx context.Context, fromLedger, toLedger uint32, roundingSlippageFilter int) error
-	ReapLookupTables(ctx context.Context, batchSize int) (map[string]LookupTableReapResult, error)
+	ReapLookupTable(ctx context.Context, table string, ids []int64, newOffset int64) (int64, error)
+	FindLookupTableRowsToReap(ctx context.Context, table string, batchSize int) ([]int64, int64, error)
 	CreateAssets(ctx context.Context, assets []xdr.Asset, batchSize int) (map[string]Asset, error)
 	QTransactions
 	QTrustLines
@@ -307,6 +309,7 @@ type IngestionQ interface {
 	GetNextLedgerSequence(context.Context, uint32) (uint32, bool, error)
 	TryStateVerificationLock(context.Context) (bool, error)
 	TryReaperLock(context.Context) (bool, error)
+	TryLookupTableReaperLock(ctx context.Context) (bool, error)
 	ElderLedger(context.Context, interface{}) error
 }
 
@@ -783,6 +786,7 @@ type OperationsQ struct {
 	opIdCol             string
 	includeFailed       bool
 	includeTransactions bool
+	boundedIdQuery      bool
 }
 
 // Q is a helper struct on which to hang common_trades queries against a history
@@ -871,11 +875,12 @@ func (t *Transaction) HasPreconditions() bool {
 // TransactionsQ is a helper struct to aid in configuring queries that loads
 // slices of transaction structs.
 type TransactionsQ struct {
-	Err           error
-	parent        *Q
-	sql           sq.SelectBuilder
-	includeFailed bool
-	txIdCol       string
+	Err            error
+	parent         *Q
+	sql            sq.SelectBuilder
+	includeFailed  bool
+	txIdCol        string
+	boundedIdQuery bool
 }
 
 // TrustLine is row of data from the `trust_lines` table from horizon DB
@@ -973,63 +978,70 @@ type LookupTableReapResult struct {
 	Duration    time.Duration
 }
 
-// ReapLookupTables removes rows from lookup tables like history_claimable_balances
-// which aren't used (orphaned), i.e. history entries for them were reaped.
-// This method must be executed inside ingestion transaction. Otherwise it may
-// create invalid state in lookup and history tables.
-func (q *Q) ReapLookupTables(ctx context.Context, batchSize int) (
-	map[string]LookupTableReapResult,
-	error,
-) {
-	if q.GetTx() == nil {
-		return nil, errors.New("cannot be called outside of an ingestion transaction")
-	}
-
-	offsets, err := q.getLookupTableReapOffsets(ctx)
+func (q *Q) FindLookupTableRowsToReap(ctx context.Context, table string, batchSize int) ([]int64, int64, error) {
+	offset, err := q.getLookupTableReapOffset(ctx, table)
 	if err != nil {
-		return nil, fmt.Errorf("could not obtain offsets: %w", err)
+		return nil, 0, fmt.Errorf("could not obtain offsets: %w", err)
 	}
 
-	results := map[string]LookupTableReapResult{}
-	for table, historyTables := range historyLookupTables {
-		startTime := time.Now()
-		query := constructReapLookupTablesQuery(table, historyTables, batchSize, offsets[table])
-
-		// Find new offset before removing the rows
-		var newOffset int64
-		err := q.GetRaw(ctx, &newOffset, fmt.Sprintf("SELECT id FROM %s where id >= %d limit 1 offset %d", table, offsets[table], batchSize))
-		if err != nil {
-			if q.NoRows(err) {
-				newOffset = 0
-			} else {
-				return nil, err
-			}
-		}
-
-		res, err := q.ExecRaw(
-			context.WithValue(ctx, &db.QueryTypeContextKey, db.DeleteQueryType),
-			query,
-		)
-		if err != nil {
-			return nil, errors.Wrapf(err, "error running query: %s", query)
-		}
-
-		if err = q.updateLookupTableReapOffset(ctx, table, newOffset); err != nil {
-			return nil, fmt.Errorf("error updating offset: %w", err)
-		}
-
-		rows, err := res.RowsAffected()
-		if err != nil {
-			return nil, errors.Wrapf(err, "error running RowsAffected after query: %s", query)
-		}
-
-		results[table] = LookupTableReapResult{
-			Offset:      newOffset,
-			RowsDeleted: rows,
-			Duration:    time.Since(startTime),
+	// Find new offset before removing the rows
+	var newOffset int64
+	err = q.GetRaw(
+		ctx,
+		&newOffset,
+		fmt.Sprintf(
+			"SELECT id FROM %s WHERE id >= %d ORDER BY id ASC LIMIT 1 OFFSET %d",
+			table, offset, batchSize,
+		),
+	)
+	if err != nil {
+		if q.NoRows(err) {
+			newOffset = 0
+		} else {
+			return nil, 0, err
 		}
 	}
-	return results, nil
+
+	var ids []int64
+	err = q.SelectRaw(ctx, &ids, constructFindReapLookupTablesQuery(table, batchSize, offset))
+	if err != nil {
+		return nil, 0, fmt.Errorf("could not query orphaned rows: %w", err)
+	}
+
+	return ids, newOffset, nil
+}
+
+func (q *Q) ReapLookupTable(ctx context.Context, table string, ids []int64, newOffset int64) (int64, error) {
+	if err := q.Begin(ctx); err != nil {
+		return 0, fmt.Errorf("could not start transaction: %w", err)
+	}
+	defer q.Rollback()
+
+	rowsDeleted, err := q.reapLookupTable(ctx, table, ids, newOffset)
+	if err != nil {
+		return 0, err
+	}
+
+	if err := q.Commit(); err != nil {
+		return 0, fmt.Errorf("could not commit transaction: %w", err)
+	}
+	return rowsDeleted, nil
+}
+
+func (q *Q) reapLookupTable(ctx context.Context, table string, ids []int64, newOffset int64) (int64, error) {
+	if err := q.updateLookupTableReapOffset(ctx, table, newOffset); err != nil {
+		return 0, fmt.Errorf("error updating offset for table %s: %w ", table, err)
+	}
+
+	var rowsDeleted int64
+	if len(ids) > 0 {
+		var err error
+		rowsDeleted, err = q.deleteLookupTableRows(ctx, table, ids)
+		if err != nil {
+			return 0, fmt.Errorf("could not delete orphaned rows: %w", err)
+		}
+	}
+	return rowsDeleted, nil
 }
 
 var historyLookupTables = map[string][]tableObjectFieldPair{
@@ -1096,54 +1108,100 @@ var historyLookupTables = map[string][]tableObjectFieldPair{
 	},
 }
 
-// constructReapLookupTablesQuery creates a query like (using history_claimable_balances
+func (q *Q) deleteLookupTableRows(ctx context.Context, table string, ids []int64) (int64, error) {
+	deleteQuery := constructDeleteLookupTableRowsQuery(table, ids)
+	result, err := q.ExecRaw(
+		context.WithValue(ctx, &db.QueryTypeContextKey, db.DeleteQueryType),
+		deleteQuery,
+	)
+	if err != nil {
+		return 0, fmt.Errorf("error running query %s : %w", deleteQuery, err)
+	}
+	var deletedCount int64
+	deletedCount, err = result.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("error getting deleted count: %w", err)
+	}
+	return deletedCount, nil
+}
+
+// constructDeleteLookupTableRowsQuery creates a query like (using history_claimable_balances
 // as an example):
 //
-// delete from history_claimable_balances where id in (
-//
-//		WITH ha_batch AS (
-//			SELECT   id
-//			FROM     history_claimable_balances
-//			WHERE id >= 1000
-//			ORDER BY id limit 1000
-//		) SELECT e1.id as id FROM ha_batch e1
+//	WITH ha_batch AS (
+//		SELECT   id
+//		FROM     history_claimable_balances
+//		WHERE IN ($1, $2, ...) ORDER BY id asc FOR UPDATE
+//	) DELETE FROM history_claimable_balances WHERE id IN (
+//		SELECT e1.id as id FROM ha_batch e1
 //		WHERE NOT EXISTS (SELECT 1 FROM history_transaction_claimable_balances WHERE history_transaction_claimable_balances.history_claimable_balance_id = id limit 1)
 //		AND NOT EXISTS (SELECT 1 FROM history_operation_claimable_balances WHERE history_operation_claimable_balances.history_claimable_balance_id = id limit 1)
 //	 )
 //
-// In short it checks the 1000 rows omitting 1000 row of history_claimable_balances
+// It checks each of the candidate rows provided in the top level IN clause
 // and counts occurrences of each row in corresponding history tables.
 // If there are no history rows for a given id, the row in
 // history_claimable_balances is removed.
 //
-// The offset param should be increased before each execution. Given that
-// some rows will be removed and some will be added by ingestion it's
-// possible that rows will be skipped from deletion. But offset is reset
-// when it reaches the table size so eventually all orphaned rows are
-// deleted.
-func constructReapLookupTablesQuery(table string, historyTables []tableObjectFieldPair, batchSize int, offset int64) string {
+// Note that the rows are locked using via SELECT FOR UPDATE. The reason
+// for that is to maintain safety when ingestion is running concurrently.
+// The ingestion loaders will also lock rows from the history lookup tables
+// via SELECT FOR KEY SHARE. This will ensure that the reaping transaction
+// will block until the ingestion transaction commits (or vice-versa).
+func constructDeleteLookupTableRowsQuery(table string, ids []int64) string {
 	var conditions []string
-
-	for _, historyTable := range historyTables {
+	for _, referencedTable := range historyLookupTables[table] {
 		conditions = append(
 			conditions,
 			fmt.Sprintf(
 				"NOT EXISTS ( SELECT 1 as row FROM %s WHERE %s.%s = id LIMIT 1)",
-				historyTable.name,
-				historyTable.name, historyTable.objectField,
+				referencedTable.name,
+				referencedTable.name, referencedTable.objectField,
+			),
+		)
+	}
+
+	stringIds := make([]string, len(ids))
+	for i, id := range ids {
+		stringIds[i] = strconv.FormatInt(id, 10)
+	}
+	innerQuery := fmt.Sprintf(
+		"SELECT id FROM %s WHERE id IN (%s) ORDER BY id asc FOR UPDATE",
+		table,
+		strings.Join(stringIds, ", "),
+	)
+
+	deleteQuery := fmt.Sprintf(
+		"WITH ha_batch AS (%s) DELETE FROM %s WHERE id IN ("+
+			"SELECT e1.id as id FROM ha_batch e1 WHERE %s)",
+		innerQuery,
+		table,
+		strings.Join(conditions, " AND "),
+	)
+	return deleteQuery
+}
+
+func constructFindReapLookupTablesQuery(table string, batchSize int, offset int64) string {
+	var conditions []string
+
+	for _, referencedTable := range historyLookupTables[table] {
+		conditions = append(
+			conditions,
+			fmt.Sprintf(
+				"NOT EXISTS ( SELECT 1 as row FROM %s WHERE %s.%s = id LIMIT 1)",
+				referencedTable.name,
+				referencedTable.name, referencedTable.objectField,
 			),
 		)
 	}
 
 	return fmt.Sprintf(
-		"DELETE FROM %s WHERE id IN ("+
-			"WITH ha_batch AS (SELECT id FROM %s WHERE id >= %d ORDER BY id limit %d) "+
+		"WITH ha_batch AS (SELECT id FROM %s WHERE id >= %d ORDER BY id ASC limit %d) "+
 			"SELECT e1.id as id FROM ha_batch e1 WHERE ",
-		table,
 		table,
 		offset,
 		batchSize,
-	) + strings.Join(conditions, " AND ") + ")"
+	) + strings.Join(conditions, " AND ")
 }
 
 // DeleteRangeAll deletes a range of rows from all history tables between

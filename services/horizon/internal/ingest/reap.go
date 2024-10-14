@@ -16,6 +16,8 @@ import (
 	"github.com/stellar/go/toid"
 )
 
+const reapLookupTablesBatchSize = 1000
+
 // Reaper represents the history reaping subsystem of horizon.
 type Reaper struct {
 	historyQ  history.IngestionQ
@@ -242,4 +244,118 @@ func (r *Reaper) deleteBatch(ctx context.Context, batchStartSeq, batchEndSeq uin
 	r.rowsInBatchDeleted.Observe(float64(count))
 	r.deleteBatchDuration.Observe(elapsedSeconds)
 	return count, nil
+}
+
+type lookupTableReaper struct {
+	historyQ  history.IngestionQ
+	reapLockQ history.IngestionQ
+	pending   atomic.Bool
+	logger    *logpkg.Entry
+
+	reapDurationByLookupTable *prometheus.SummaryVec
+	rowsReapedByLookupTable   *prometheus.SummaryVec
+}
+
+func newLookupTableReaper(dbSession db.SessionInterface) *lookupTableReaper {
+	return &lookupTableReaper{
+		historyQ:  &history.Q{dbSession.Clone()},
+		reapLockQ: &history.Q{dbSession.Clone()},
+		pending:   atomic.Bool{},
+		logger:    log.WithField("subservice", "lookuptable-reaper"),
+		reapDurationByLookupTable: prometheus.NewSummaryVec(prometheus.SummaryOpts{
+			Namespace: "horizon", Subsystem: "ingest", Name: "reap_lookup_tables_duration_seconds",
+			Help:       "reap lookup tables durations, sliding window = 10m",
+			Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
+		}, []string{"table", "type"}),
+		rowsReapedByLookupTable: prometheus.NewSummaryVec(prometheus.SummaryOpts{
+			Namespace: "horizon", Subsystem: "ingest", Name: "reap_lookup_tables_rows_reaped",
+			Help:       "rows deleted during lookup tables reap, sliding window = 10m",
+			Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
+		}, []string{"table"}),
+	}
+}
+
+func (r *lookupTableReaper) RegisterMetrics(registry *prometheus.Registry) {
+	registry.MustRegister(
+		r.reapDurationByLookupTable,
+		r.rowsReapedByLookupTable,
+	)
+}
+
+func (r *lookupTableReaper) deleteOrphanedRows(ctx context.Context) error {
+	// check if reap is already in progress on this horizon node
+	if !r.pending.CompareAndSwap(false, true) {
+		r.logger.Infof("existing reap already in progress, skipping request to start a new one")
+		return nil
+	}
+	defer r.pending.Store(false)
+
+	if err := r.reapLockQ.Begin(ctx); err != nil {
+		return errors.Wrap(err, "error while starting reaper lock transaction")
+	}
+	defer func() {
+		if err := r.reapLockQ.Rollback(); err != nil {
+			r.logger.WithField("error", err).Error("failed to release reaper lock")
+		}
+	}()
+	// check if reap is already in progress on another horizon node
+	if acquired, err := r.reapLockQ.TryLookupTableReaperLock(ctx); err != nil {
+		return errors.Wrap(err, "error while acquiring reaper database lock")
+	} else if !acquired {
+		r.logger.Info("reap already in progress on another node")
+		return nil
+	}
+
+	reapStart := time.Now()
+	var totalQueryDuration, totalDeleteDuration time.Duration
+	var totalDeleted int64
+	for _, table := range []string{
+		"history_accounts", "history_claimable_balances",
+		"history_assets", "history_liquidity_pools",
+	} {
+		startTime := time.Now()
+		ids, offset, err := r.historyQ.FindLookupTableRowsToReap(ctx, table, reapLookupTablesBatchSize)
+		if err != nil {
+			r.logger.WithField("table", table).WithError(err).Warn("Error finding orphaned rows")
+			return err
+		}
+		queryDuration := time.Since(startTime)
+		totalQueryDuration += queryDuration
+
+		deleteStartTime := time.Now()
+		var rowsDeleted int64
+		rowsDeleted, err = r.historyQ.ReapLookupTable(ctx, table, ids, offset)
+		if err != nil {
+			r.logger.WithField("table", table).WithError(err).Warn("Error deleting orphaned rows")
+			return err
+		}
+		deleteDuration := time.Since(deleteStartTime)
+		totalDeleteDuration += deleteDuration
+
+		r.rowsReapedByLookupTable.With(prometheus.Labels{"table": table}).
+			Observe(float64(rowsDeleted))
+		r.reapDurationByLookupTable.With(prometheus.Labels{"table": table, "type": "query"}).
+			Observe(float64(queryDuration.Seconds()))
+		r.reapDurationByLookupTable.With(prometheus.Labels{"table": table, "type": "delete"}).
+			Observe(float64(deleteDuration.Seconds()))
+		r.reapDurationByLookupTable.With(prometheus.Labels{"table": table, "type": "total"}).
+			Observe(float64((queryDuration + deleteDuration).Seconds()))
+
+		r.logger.WithField("table", table).
+			WithField("offset", offset).
+			WithField("rows_deleted", rowsDeleted).
+			WithField("query_duration", queryDuration.Seconds()).
+			WithField("delete_duration", deleteDuration.Seconds()).
+			Info("Reaper deleted rows from lookup tables")
+	}
+
+	r.rowsReapedByLookupTable.With(prometheus.Labels{"table": "total"}).
+		Observe(float64(totalDeleted))
+	r.reapDurationByLookupTable.With(prometheus.Labels{"table": "total", "type": "query"}).
+		Observe(float64(totalQueryDuration.Seconds()))
+	r.reapDurationByLookupTable.With(prometheus.Labels{"table": "total", "type": "delete"}).
+		Observe(float64(totalDeleteDuration.Seconds()))
+	r.reapDurationByLookupTable.With(prometheus.Labels{"table": "total", "type": "total"}).
+		Observe(time.Since(reapStart).Seconds())
+	return nil
 }

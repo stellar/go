@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"fmt"
 	"strconv"
-	"strings"
 
 	sq "github.com/Masterminds/squirrel"
 
@@ -207,41 +206,26 @@ func (q *Q) getValueFromStore(ctx context.Context, key string, forUpdate bool) (
 	return value, nil
 }
 
-type KeyValuePair struct {
-	Key   string `db:"key"`
-	Value string `db:"value"`
-}
-
-func (q *Q) getLookupTableReapOffsets(ctx context.Context) (map[string]int64, error) {
-	keys := make([]string, 0, len(historyLookupTables))
-	for table := range historyLookupTables {
-		keys = append(keys, table+lookupTableReapOffsetSuffix)
-	}
-	offsets := map[string]int64{}
-	var pairs []KeyValuePair
-	query := sq.Select("key", "value").
+func (q *Q) getLookupTableReapOffset(ctx context.Context, table string) (int64, error) {
+	query := sq.Select("value").
 		From("key_value_store").
 		Where(map[string]interface{}{
-			"key": keys,
+			"key": table + lookupTableReapOffsetSuffix,
 		})
-	err := q.Select(ctx, &pairs, query)
+	var text string
+	err := q.Get(ctx, &text, query)
 	if err != nil {
-		return nil, err
-	}
-	for _, pair := range pairs {
-		table := strings.TrimSuffix(pair.Key, lookupTableReapOffsetSuffix)
-		if _, ok := historyLookupTables[table]; !ok {
-			return nil, fmt.Errorf("invalid key: %s", pair.Key)
+		if errors.Cause(err) == sql.ErrNoRows {
+			return 0, nil
 		}
-
-		var offset int64
-		offset, err = strconv.ParseInt(pair.Value, 10, 64)
-		if err != nil {
-			return nil, fmt.Errorf("invalid offset: %s", pair.Value)
-		}
-		offsets[table] = offset
+		return 0, err
 	}
-	return offsets, err
+	var offset int64
+	offset, err = strconv.ParseInt(text, 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("invalid offset: %s for table %s", text, table)
+	}
+	return offset, nil
 }
 
 func (q *Q) updateLookupTableReapOffset(ctx context.Context, table string, offset int64) error {

@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/stellar/go/services/horizon/internal/test"
+	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/xdr"
 )
 
@@ -17,6 +18,12 @@ func TestClaimableBalanceLoader(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	session := tt.HorizonSession()
 
+	testCBLoader(t, tt, session, ConcurrentInserts)
+	test.ResetHorizonDB(t, tt.HorizonDB)
+	testCBLoader(t, tt, session, ConcurrentDeletes)
+}
+
+func testCBLoader(t *testing.T, tt *test.T, session *db.Session, mode ConcurrencyMode) {
 	var ids []string
 	for i := 0; i < 100; i++ {
 		balanceID := xdr.ClaimableBalanceId{
@@ -28,7 +35,7 @@ func TestClaimableBalanceLoader(t *testing.T) {
 		ids = append(ids, id)
 	}
 
-	loader := NewClaimableBalanceLoader()
+	loader := NewClaimableBalanceLoader(mode)
 	var futures []FutureClaimableBalanceID
 	for _, id := range ids {
 		future := loader.GetFuture(id)
@@ -70,7 +77,7 @@ func TestClaimableBalanceLoader(t *testing.T) {
 
 	// check that Loader works when all the previous values are already
 	// present in the db and also add 10 more rows to insert
-	loader = NewClaimableBalanceLoader()
+	loader = NewClaimableBalanceLoader(mode)
 	for i := 100; i < 110; i++ {
 		balanceID := xdr.ClaimableBalanceId{
 			Type: xdr.ClaimableBalanceIdTypeClaimableBalanceIdTypeV0,

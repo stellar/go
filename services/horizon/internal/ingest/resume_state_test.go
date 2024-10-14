@@ -402,10 +402,6 @@ func (s *ResumeTestTestSuite) TestReapingObjectsDisabled() {
 }
 
 func (s *ResumeTestTestSuite) TestErrorReapingObjectsIgnored() {
-	s.system.config.ReapLookupTables = true
-	defer func() {
-		s.system.config.ReapLookupTables = false
-	}()
 	s.historyQ.On("Begin", s.ctx).Return(nil).Once()
 	s.historyQ.On("GetLastLedgerIngest", s.ctx).Return(uint32(100), nil).Once()
 	s.historyQ.On("GetIngestVersion", s.ctx).Return(CurrentVersion, nil).Once()
@@ -425,12 +421,6 @@ func (s *ResumeTestTestSuite) TestErrorReapingObjectsIgnored() {
 
 	s.historyQ.On("GetExpStateInvalid", s.ctx).Return(false, nil).Once()
 	s.historyQ.On("RebuildTradeAggregationBuckets", s.ctx, uint32(101), uint32(101), 0).Return(nil).Once()
-	// Reap lookup tables:
-	s.ledgerBackend.On("GetLatestLedgerSequence", s.ctx).Return(uint32(101), nil)
-	s.historyQ.On("Begin", s.ctx).Return(nil).Once()
-	s.historyQ.On("GetLastLedgerIngest", s.ctx).Return(uint32(100), nil).Once()
-	s.historyQ.On("ReapLookupTables", mock.AnythingOfType("*context.timerCtx"), mock.Anything).Return(nil, nil, errors.New("error reaping objects")).Once()
-	s.historyQ.On("Rollback").Return(nil).Once()
 	mockStats := &historyarchive.MockArchiveStats{}
 	mockStats.On("GetBackendName").Return("name")
 	mockStats.On("GetDownloads").Return(uint32(0))

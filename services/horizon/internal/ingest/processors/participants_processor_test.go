@@ -86,7 +86,7 @@ func (s *ParticipantsProcessorTestSuiteLedger) SetupTest() {
 	s.thirdTx.Envelope.V1.Tx.SourceAccount = aid.ToMuxedAccount()
 	s.thirdTxID = toid.New(int32(sequence), 3, 0).ToInt64()
 
-	s.accountLoader = history.NewAccountLoader()
+	s.accountLoader = history.NewAccountLoader(history.ConcurrentInserts)
 	s.addressToFuture = map[string]history.FutureAccountID{}
 	for _, address := range s.addresses {
 		s.addressToFuture[address] = s.accountLoader.GetFuture(address)

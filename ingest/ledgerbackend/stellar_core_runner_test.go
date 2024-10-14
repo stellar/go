@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+	dto "github.com/prometheus/client_model/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
@@ -26,7 +28,7 @@ func TestCloseOffline(t *testing.T) {
 		Context:            context.Background(),
 		Toml:               captiveCoreToml,
 		StoragePath:        "/tmp/captive-core",
-	})
+	}, nil)
 
 	cmdMock := simpleCommandMock()
 	cmdMock.On("Wait").Return(nil)
@@ -68,7 +70,7 @@ func TestCloseOnline(t *testing.T) {
 		Context:            context.Background(),
 		Toml:               captiveCoreToml,
 		StoragePath:        "/tmp/captive-core",
-	})
+	}, nil)
 
 	cmdMock := simpleCommandMock()
 	cmdMock.On("Wait").Return(nil)
@@ -112,7 +114,7 @@ func TestCloseOnlineWithError(t *testing.T) {
 		Context:            context.Background(),
 		Toml:               captiveCoreToml,
 		StoragePath:        "/tmp/captive-core",
-	})
+	}, nil)
 
 	cmdMock := simpleCommandMock()
 	cmdMock.On("Wait").Return(errors.New("wait error"))
@@ -166,7 +168,7 @@ func TestCloseConcurrency(t *testing.T) {
 		Context:            context.Background(),
 		Toml:               captiveCoreToml,
 		StoragePath:        "/tmp/captive-core",
-	})
+	}, nil)
 
 	cmdMock := simpleCommandMock()
 	cmdMock.On("Wait").Return(errors.New("wait error")).WaitUntil(time.After(time.Millisecond * 300))
@@ -223,7 +225,7 @@ func TestRunFromUseDBLedgersMatch(t *testing.T) {
 		Toml:               captiveCoreToml,
 		StoragePath:        "/tmp/captive-core",
 		UseDB:              true,
-	})
+	}, createNewDBCounter())
 
 	cmdMock := simpleCommandMock()
 	cmdMock.On("Wait").Return(nil)
@@ -263,6 +265,8 @@ func TestRunFromUseDBLedgersMatch(t *testing.T) {
 
 	assert.NoError(t, runner.runFrom(100, "hash"))
 	assert.NoError(t, runner.close())
+
+	assert.Equal(t, float64(0), getNewDBCounterMetric(runner))
 }
 
 func TestRunFromUseDBLedgersBehind(t *testing.T) {
@@ -279,7 +283,7 @@ func TestRunFromUseDBLedgersBehind(t *testing.T) {
 		Toml:               captiveCoreToml,
 		StoragePath:        "/tmp/captive-core",
 		UseDB:              true,
-	})
+	}, createNewDBCounter())
 
 	newDBCmdMock := simpleCommandMock()
 	newDBCmdMock.On("Run").Return(nil)
@@ -325,6 +329,23 @@ func TestRunFromUseDBLedgersBehind(t *testing.T) {
 
 	assert.NoError(t, runner.runFrom(100, "hash"))
 	assert.NoError(t, runner.close())
+
+	assert.Equal(t, float64(0), getNewDBCounterMetric(runner))
+}
+
+func createNewDBCounter() prometheus.Counter {
+	return prometheus.NewCounter(prometheus.CounterOpts{
+		Namespace: "test", Subsystem: "captive_core", Name: "new_db_counter",
+	})
+}
+
+func getNewDBCounterMetric(runner *stellarCoreRunner) float64 {
+	value := &dto.Metric{}
+	err := runner.captiveCoreNewDBCounter.Write(value)
+	if err != nil {
+		panic(err)
+	}
+	return value.GetCounter().GetValue()
 }
 
 func TestRunFromUseDBLedgersInFront(t *testing.T) {
@@ -341,7 +362,7 @@ func TestRunFromUseDBLedgersInFront(t *testing.T) {
 		Toml:               captiveCoreToml,
 		StoragePath:        "/tmp/captive-core",
 		UseDB:              true,
-	})
+	}, createNewDBCounter())
 
 	newDBCmdMock := simpleCommandMock()
 	newDBCmdMock.On("Run").Return(nil)
@@ -405,4 +426,5 @@ func TestRunFromUseDBLedgersInFront(t *testing.T) {
 
 	assert.NoError(t, runner.runFrom(100, "hash"))
 	assert.NoError(t, runner.close())
+	assert.Equal(t, float64(1), getNewDBCounterMetric(runner))
 }
