@@ -550,7 +550,7 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 		op := operation.operation.Body.MustClaimClaimableBalanceOp()
 		balanceID, err := xdr.MarshalHex(op.BalanceId)
 		if err != nil {
-			panic(fmt.Errorf("Invalid balanceId in op: %d", operation.index))
+			return nil, fmt.Errorf("Invalid balanceId in op: %d", operation.index)
 		}
 		details["balance_id"] = balanceID
 		addAccountAndMuxedAccountDetails(details, *source, "claimant")
@@ -585,7 +585,7 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 		op := operation.operation.Body.MustClawbackClaimableBalanceOp()
 		balanceID, err := xdr.MarshalHex(op.BalanceId)
 		if err != nil {
-			panic(fmt.Errorf("Invalid balanceId in op: %d", operation.index))
+			return nil, fmt.Errorf("Invalid balanceId in op: %d", operation.index)
 		}
 		details["balance_id"] = balanceID
 	case xdr.OperationTypeSetTrustLineFlags:
@@ -676,22 +676,7 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 			args = append(args, xdr.ScVal{Type: xdr.ScValTypeScvAddress, Address: &invokeArgs.ContractAddress})
 			args = append(args, xdr.ScVal{Type: xdr.ScValTypeScvSymbol, Sym: &invokeArgs.FunctionName})
 			args = append(args, invokeArgs.Args...)
-			params := make([]map[string]string, 0, len(args))
-
-			for _, param := range args {
-				serializedParam := map[string]string{}
-				serializedParam["value"] = "n/a"
-				serializedParam["type"] = "n/a"
-
-				if scValTypeName, ok := param.ArmForSwitch(int32(param.Type)); ok {
-					serializedParam["type"] = scValTypeName
-					if raw, err := param.MarshalBinary(); err == nil {
-						serializedParam["value"] = base64.StdEncoding.EncodeToString(raw)
-					}
-				}
-				params = append(params, serializedParam)
-			}
-			details["parameters"] = params
+			details["parameters"] = extractFunctionArgs(args)
 
 			if balanceChanges, err := operation.parseAssetBalanceChangesFromContractEvents(); err != nil {
 				return nil, err
@@ -706,7 +691,7 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 				fromAddress := args.ContractIdPreimage.MustFromAddress()
 				address, err := fromAddress.Address.String()
 				if err != nil {
-					panic(fmt.Errorf("error obtaining address for: %s", args.ContractIdPreimage.Type))
+					return nil, fmt.Errorf("error obtaining address for: %s", args.ContractIdPreimage.Type)
 				}
 				details["from"] = "address"
 				details["address"] = address
@@ -715,18 +700,44 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 				details["from"] = "asset"
 				details["asset"] = args.ContractIdPreimage.MustFromAsset().StringCanonical()
 			default:
-				panic(fmt.Errorf("unknown contract id type: %s", args.ContractIdPreimage.Type))
+				return nil, fmt.Errorf("unknown contract id type: %s", args.ContractIdPreimage.Type)
+			}
+		case xdr.HostFunctionTypeHostFunctionTypeCreateContractV2:
+			args := op.HostFunction.MustCreateContractV2()
+			switch args.ContractIdPreimage.Type {
+			case xdr.ContractIdPreimageTypeContractIdPreimageFromAddress:
+				fromAddress := args.ContractIdPreimage.MustFromAddress()
+				address, err := fromAddress.Address.String()
+				if err != nil {
+					return nil, fmt.Errorf("error obtaining address for: %s", args.ContractIdPreimage.Type)
+				}
+				details["from"] = "address"
+				details["address"] = address
+				details["salt"] = fromAddress.Salt.String()
+			case xdr.ContractIdPreimageTypeContractIdPreimageFromAsset:
+				details["from"] = "asset"
+				details["asset"] = args.ContractIdPreimage.MustFromAsset().StringCanonical()
+			default:
+				return nil, fmt.Errorf("unknown contract id type: %s", args.ContractIdPreimage.Type)
+			}
+
+			details["parameters"] = extractFunctionArgs(args.ConstructorArgs)
+
+			if balanceChanges, err := operation.parseAssetBalanceChangesFromContractEvents(); err != nil {
+				return nil, err
+			} else {
+				details["asset_balance_changes"] = balanceChanges
 			}
 		case xdr.HostFunctionTypeHostFunctionTypeUploadContractWasm:
 		default:
-			panic(fmt.Errorf("unknown host function type: %s", op.HostFunction.Type))
+			return nil, fmt.Errorf("unknown host function type: %s", op.HostFunction.Type)
 		}
 	case xdr.OperationTypeExtendFootprintTtl:
 		op := operation.operation.Body.MustExtendFootprintTtlOp()
 		details["extend_to"] = op.ExtendTo
 	case xdr.OperationTypeRestoreFootprint:
 	default:
-		panic(fmt.Errorf("unknown operation type: %s", operation.OperationType()))
+		return nil, fmt.Errorf("unknown operation type: %s", operation.OperationType())
 	}
 
 	sponsor, err := operation.getSponsor()
@@ -738,6 +749,24 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 	}
 
 	return details, nil
+}
+
+func extractFunctionArgs(args []xdr.ScVal) []map[string]string {
+	params := make([]map[string]string, 0, len(args))
+	for _, param := range args {
+		serializedParam := map[string]string{}
+		serializedParam["value"] = "n/a"
+		serializedParam["type"] = "n/a"
+
+		if scValTypeName, ok := param.ArmForSwitch(int32(param.Type)); ok {
+			serializedParam["type"] = scValTypeName
+			if raw, err := param.MarshalBinary(); err == nil {
+				serializedParam["value"] = base64.StdEncoding.EncodeToString(raw)
+			}
+		}
+		params = append(params, serializedParam)
+	}
+	return params
 }
 
 // Searches an operation for SAC events that are of a type which represent
