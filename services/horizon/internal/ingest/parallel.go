@@ -8,6 +8,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
 	logpkg "github.com/stellar/go/support/log"
+	"github.com/stellar/go/support/ordered"
 )
 
 type rangeError struct {
@@ -122,12 +123,12 @@ func (ps *ParallelSystems) calculateParallelLedgerBatchSize(rangeSize uint32) ui
 
 	// ensure the batch size meets min threshold
 	if ps.minBatchSize > 0 {
-		batchSize = max(batchSize, uint32(ps.minBatchSize))
+		batchSize = ordered.Max(batchSize, uint32(ps.minBatchSize))
 	}
 
 	// ensure the batch size does not exceed max threshold
 	if ps.maxBatchSize > 0 {
-		batchSize = min(batchSize, uint32(ps.maxBatchSize))
+		batchSize = ordered.Min(batchSize, uint32(ps.maxBatchSize))
 	}
 
 	// round down to the nearest multiple of HistoryCheckpointLedgerInterval
