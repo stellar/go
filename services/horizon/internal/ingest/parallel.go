@@ -8,11 +8,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
 	logpkg "github.com/stellar/go/support/log"
-)
-
-const (
-	historyCheckpointLedgerInterval = 64
-	minBatchSize                    = historyCheckpointLedgerInterval
+	"github.com/stellar/go/support/ordered"
 )
 
 type rangeError struct {
@@ -27,23 +23,32 @@ func (e rangeError) Error() string {
 type ParallelSystems struct {
 	config        Config
 	workerCount   uint
+	minBatchSize  uint
+	maxBatchSize  uint
 	systemFactory func(Config) (System, error)
 }
 
-func NewParallelSystems(config Config, workerCount uint) (*ParallelSystems, error) {
+func NewParallelSystems(config Config, workerCount uint, minBatchSize, maxBatchSize uint) (*ParallelSystems, error) {
 	// Leaving this because used in tests, will update after a code review.
-	return newParallelSystems(config, workerCount, NewSystem)
+	return newParallelSystems(config, workerCount, minBatchSize, maxBatchSize, NewSystem)
 }
 
 // private version of NewParallel systems, allowing to inject a mock system
-func newParallelSystems(config Config, workerCount uint, systemFactory func(Config) (System, error)) (*ParallelSystems, error) {
+func newParallelSystems(config Config, workerCount uint, minBatchSize, maxBatchSize uint, systemFactory func(Config) (System, error)) (*ParallelSystems, error) {
 	if workerCount < 1 {
 		return nil, errors.New("workerCount must be > 0")
 	}
-
+	if minBatchSize != 0 && minBatchSize < HistoryCheckpointLedgerInterval {
+		return nil, fmt.Errorf("minBatchSize must be at least the %d", HistoryCheckpointLedgerInterval)
+	}
+	if minBatchSize != 0 && maxBatchSize != 0 && maxBatchSize < minBatchSize {
+		return nil, errors.New("maxBatchSize cannot be less than minBatchSize")
+	}
 	return &ParallelSystems{
 		config:        config,
 		workerCount:   workerCount,
+		maxBatchSize:  maxBatchSize,
+		minBatchSize:  minBatchSize,
 		systemFactory: systemFactory,
 	}, nil
 }
@@ -112,20 +117,27 @@ func enqueueReingestTasks(ledgerRanges []history.LedgerRange, batchSize uint32, 
 	}
 	return lowestLedger
 }
+func (ps *ParallelSystems) calculateParallelLedgerBatchSize(rangeSize uint32) uint32 {
+	// calculate the initial batch size based on available workers
+	batchSize := rangeSize / uint32(ps.workerCount)
 
-func calculateParallelLedgerBatchSize(rangeSize uint32, batchSizeSuggestion uint32, workerCount uint) uint32 {
-	batchSize := batchSizeSuggestion
-	if batchSize == 0 || rangeSize/batchSize < uint32(workerCount) {
-		// let's try to make use of all the workers
-		batchSize = rangeSize / uint32(workerCount)
-	}
-	// Use a minimum batch size to make it worth it in terms of overhead
-	if batchSize < minBatchSize {
-		batchSize = minBatchSize
+	// ensure the batch size meets min threshold
+	if ps.minBatchSize > 0 {
+		batchSize = ordered.Max(batchSize, uint32(ps.minBatchSize))
 	}
 
-	// Also, round the batch size to the closest, lower or equal 64 multiple
-	return (batchSize / historyCheckpointLedgerInterval) * historyCheckpointLedgerInterval
+	// ensure the batch size does not exceed max threshold
+	if ps.maxBatchSize > 0 {
+		batchSize = ordered.Min(batchSize, uint32(ps.maxBatchSize))
+	}
+
+	// round down to the nearest multiple of HistoryCheckpointLedgerInterval
+	if batchSize > uint32(HistoryCheckpointLedgerInterval) {
+		return batchSize / uint32(HistoryCheckpointLedgerInterval) * uint32(HistoryCheckpointLedgerInterval)
+	}
+
+	//  HistoryCheckpointLedgerInterval is the minimum batch size.
+	return uint32(HistoryCheckpointLedgerInterval)
 }
 
 func totalRangeSize(ledgerRanges []history.LedgerRange) uint32 {
@@ -136,9 +148,9 @@ func totalRangeSize(ledgerRanges []history.LedgerRange) uint32 {
 	return sum
 }
 
-func (ps *ParallelSystems) ReingestRange(ledgerRanges []history.LedgerRange, batchSizeSuggestion uint32) error {
+func (ps *ParallelSystems) ReingestRange(ledgerRanges []history.LedgerRange) error {
 	var (
-		batchSize        = calculateParallelLedgerBatchSize(totalRangeSize(ledgerRanges), batchSizeSuggestion, ps.workerCount)
+		batchSize        = ps.calculateParallelLedgerBatchSize(totalRangeSize(ledgerRanges))
 		reingestJobQueue = make(chan history.LedgerRange)
 		wg               sync.WaitGroup
 
