@@ -169,7 +169,7 @@ func ingestRangeCmdOpts() support.ConfigOptions {
 var dbReingestRangeCmdOpts = ingestRangeCmdOpts()
 var dbFillGapsCmdOpts = ingestRangeCmdOpts()
 
-func runDBReingestRange(ledgerRanges []history.LedgerRange, reingestForce bool, parallelWorkers uint, config horizon.Config, storageBackendConfig ingest.StorageBackendConfig) error {
+func runDBReingestRange(ledgerRanges []history.LedgerRange, reingestForce bool, parallelWorkers uint, minBatchSize, maxBatchSize uint, config horizon.Config, storageBackendConfig ingest.StorageBackendConfig) error {
 	var err error
 
 	if reingestForce && parallelWorkers > 1 {
@@ -202,7 +202,7 @@ func runDBReingestRange(ledgerRanges []history.LedgerRange, reingestForce bool, 
 	}
 
 	if parallelWorkers > 1 {
-		system, systemErr := ingest.NewParallelSystems(ingestConfig, parallelWorkers)
+		system, systemErr := ingest.NewParallelSystems(ingestConfig, parallelWorkers, minBatchSize, maxBatchSize)
 		if systemErr != nil {
 			return systemErr
 		}
@@ -464,6 +464,7 @@ func DefineDBCommands(rootCmd *cobra.Command, horizonConfig *horizon.Config, hor
 				}
 			}
 
+			maxBatchSize := ingest.MaxCaptiveCoreBackendBatchSize
 			var err error
 			var storageBackendConfig ingest.StorageBackendConfig
 			options := horizon.ApplyOptions{RequireCaptiveCoreFullConfig: false}
@@ -472,6 +473,7 @@ func DefineDBCommands(rootCmd *cobra.Command, horizonConfig *horizon.Config, hor
 					return err
 				}
 				options.NoCaptiveCore = true
+				maxBatchSize = ingest.MaxBufferedStorageBackendBatchSize
 			}
 
 			if err = horizon.ApplyFlags(horizonConfig, horizonFlags, options); err != nil {
@@ -481,6 +483,8 @@ func DefineDBCommands(rootCmd *cobra.Command, horizonConfig *horizon.Config, hor
 				[]history.LedgerRange{{StartSequence: argsUInt32[0], EndSequence: argsUInt32[1]}},
 				reingestForce,
 				parallelWorkers,
+				ingest.MinBatchSize,
+				maxBatchSize,
 				*horizonConfig,
 				storageBackendConfig,
 			)
@@ -521,6 +525,7 @@ func DefineDBCommands(rootCmd *cobra.Command, horizonConfig *horizon.Config, hor
 				withRange = true
 			}
 
+			maxBatchSize := ingest.MaxCaptiveCoreBackendBatchSize
 			var err error
 			var storageBackendConfig ingest.StorageBackendConfig
 			options := horizon.ApplyOptions{RequireCaptiveCoreFullConfig: false}
@@ -529,6 +534,7 @@ func DefineDBCommands(rootCmd *cobra.Command, horizonConfig *horizon.Config, hor
 					return err
 				}
 				options.NoCaptiveCore = true
+				maxBatchSize = ingest.MaxBufferedStorageBackendBatchSize
 			}
 
 			if err = horizon.ApplyFlags(horizonConfig, horizonFlags, options); err != nil {
@@ -549,7 +555,7 @@ func DefineDBCommands(rootCmd *cobra.Command, horizonConfig *horizon.Config, hor
 				hlog.Infof("found gaps %v", gaps)
 			}
 
-			return runDBReingestRangeFn(gaps, reingestForce, parallelWorkers, *horizonConfig, storageBackendConfig)
+			return runDBReingestRangeFn(gaps, reingestForce, parallelWorkers, ingest.MinBatchSize, maxBatchSize, *horizonConfig, storageBackendConfig)
 		},
 	}
 

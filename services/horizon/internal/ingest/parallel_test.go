@@ -1,6 +1,8 @@
 package ingest
 
 import (
+	"fmt"
+	"math"
 	"math/rand"
 	"sort"
 	"sync"
@@ -15,13 +17,88 @@ import (
 )
 
 func TestCalculateParallelLedgerBatchSize(t *testing.T) {
-	assert.Equal(t, uint32(6656), calculateParallelLedgerBatchSize(20096, 3))
-	assert.Equal(t, uint32(4992), calculateParallelLedgerBatchSize(20096, 4))
-	assert.Equal(t, uint32(4992), calculateParallelLedgerBatchSize(20096, 4))
-	assert.Equal(t, uint32(64), calculateParallelLedgerBatchSize(64, 4))
-	assert.Equal(t, uint32(64), calculateParallelLedgerBatchSize(64, 4))
-	assert.Equal(t, uint32(64), calculateParallelLedgerBatchSize(2, 4))
-	assert.Equal(t, uint32(20096), calculateParallelLedgerBatchSize(20096, 1))
+	config := Config{}
+	result := &mockSystem{}
+	factory := func(c Config) (System, error) {
+		return result, nil
+	}
+
+	// worker count 0
+	system, err := newParallelSystems(config, 0, MinBatchSize, MaxCaptiveCoreBackendBatchSize, factory)
+	assert.EqualError(t, err, "workerCount must be > 0")
+
+	// worker count 1, range smaller than HistoryCheckpointLedgerInterval
+	system, err = newParallelSystems(config, 1, 50, 200, factory)
+	assert.EqualError(t, err, fmt.Sprintf("minBatchSize must be at least the %d", HistoryCheckpointLedgerInterval))
+
+	// worker count 1, max batch size smaller than min batch size
+	system, err = newParallelSystems(config, 1, 5000, 200, factory)
+	assert.EqualError(t, err, "maxBatchSize cannot be less than minBatchSize")
+
+	// worker count 1, captive core batch size
+	system, _ = newParallelSystems(config, 1, MinBatchSize, MaxCaptiveCoreBackendBatchSize, factory)
+	assert.Equal(t, uint32(MaxCaptiveCoreBackendBatchSize), system.calculateParallelLedgerBatchSize(uint32(MaxCaptiveCoreBackendBatchSize)+10))
+	assert.Equal(t, uint32(MinBatchSize), system.calculateParallelLedgerBatchSize(0))
+	assert.Equal(t, uint32(10048), system.calculateParallelLedgerBatchSize(10048)) // exact multiple
+	assert.Equal(t, uint32(10048), system.calculateParallelLedgerBatchSize(10090)) // round down
+
+	// worker count 1, buffered storage batch size
+	system, _ = newParallelSystems(config, 1, MinBatchSize, MaxBufferedStorageBackendBatchSize, factory)
+	assert.Equal(t, uint32(MaxBufferedStorageBackendBatchSize), system.calculateParallelLedgerBatchSize(uint32(MaxBufferedStorageBackendBatchSize)+10))
+	assert.Equal(t, uint32(MinBatchSize), system.calculateParallelLedgerBatchSize(0))
+	assert.Equal(t, uint32(10048), system.calculateParallelLedgerBatchSize(10048)) // exact multiple
+	assert.Equal(t, uint32(10048), system.calculateParallelLedgerBatchSize(10090)) // round down
+
+	// worker count 1, no min/max batch size
+	system, _ = newParallelSystems(config, 1, 0, 0, factory)
+	assert.Equal(t, uint32(20096), system.calculateParallelLedgerBatchSize(20096)) // exact multiple
+	assert.Equal(t, uint32(20032), system.calculateParallelLedgerBatchSize(20090)) // round down
+
+	// worker count 1, min/max batch size
+	system, _ = newParallelSystems(config, 1, 64, 20000, factory)
+	assert.Equal(t, uint32(19968), system.calculateParallelLedgerBatchSize(20096)) // round down
+	system, _ = newParallelSystems(config, 1, 64, 30000, factory)
+	assert.Equal(t, uint32(20096), system.calculateParallelLedgerBatchSize(20096)) // exact multiple
+
+	// Tests for worker count 2
+
+	// no min/max batch size
+	system, _ = newParallelSystems(config, 2, 0, 0, factory)
+	assert.Equal(t, uint32(64), system.calculateParallelLedgerBatchSize(60))  // range smaller than 64
+	assert.Equal(t, uint32(64), system.calculateParallelLedgerBatchSize(128)) // exact multiple
+	assert.Equal(t, uint32(10048), system.calculateParallelLedgerBatchSize(20096))
+
+	// range larger than max batch size
+	system, _ = newParallelSystems(config, 2, 64, 10000, factory)
+	assert.Equal(t, uint32(9984), system.calculateParallelLedgerBatchSize(20096)) // round down
+
+	// range smaller than min batch size
+	system, _ = newParallelSystems(config, 2, 64, 0, factory)
+	assert.Equal(t, uint32(64), system.calculateParallelLedgerBatchSize(50))       // min batch size
+	assert.Equal(t, uint32(10048), system.calculateParallelLedgerBatchSize(20096)) // exact multiple
+	assert.Equal(t, uint32(64), system.calculateParallelLedgerBatchSize(100))      // min batch size
+
+	// batch size equal to min
+	system, _ = newParallelSystems(config, 2, 100, 0, factory)
+	assert.Equal(t, uint32(64), system.calculateParallelLedgerBatchSize(100)) // round down
+
+	// equal min/max batch size
+	system, _ = newParallelSystems(config, 2, 5000, 5000, factory)
+	assert.Equal(t, uint32(4992), system.calculateParallelLedgerBatchSize(20096)) // round down
+
+	// worker count 3
+	system, _ = newParallelSystems(config, 3, 64, 7000, factory)
+	assert.Equal(t, uint32(6656), system.calculateParallelLedgerBatchSize(20096))
+
+	// worker count 4
+	system, _ = newParallelSystems(config, 4, 64, 20000, factory)
+	assert.Equal(t, uint32(4992), system.calculateParallelLedgerBatchSize(20096)) //round down
+	assert.Equal(t, uint32(64), system.calculateParallelLedgerBatchSize(64))
+	assert.Equal(t, uint32(64), system.calculateParallelLedgerBatchSize(2))
+
+	// max possible workers
+	system, _ = newParallelSystems(config, math.MaxUint32, 0, 0, factory)
+	assert.Equal(t, uint32(64), system.calculateParallelLedgerBatchSize(math.MaxUint32))
 }
 
 func TestParallelReingestRange(t *testing.T) {
@@ -43,7 +120,7 @@ func TestParallelReingestRange(t *testing.T) {
 	factory := func(c Config) (System, error) {
 		return result, nil
 	}
-	system, err := newParallelSystems(config, 3, factory)
+	system, err := newParallelSystems(config, 3, MinBatchSize, MaxCaptiveCoreBackendBatchSize, factory)
 	assert.NoError(t, err)
 	err = system.ReingestRange([]history.LedgerRange{{1, 2050}})
 	assert.NoError(t, err)
@@ -57,7 +134,7 @@ func TestParallelReingestRange(t *testing.T) {
 	assert.Equal(t, expected, rangesCalled)
 
 	rangesCalled = nil
-	system, err = newParallelSystems(config, 1, factory)
+	system, err = newParallelSystems(config, 1, 0, 0, factory)
 	assert.NoError(t, err)
 	result.On("RebuildTradeAggregationBuckets", uint32(1), uint32(1024)).Return(nil).Once()
 	err = system.ReingestRange([]history.LedgerRange{{1, 1024}})
@@ -80,7 +157,7 @@ func TestParallelReingestRangeError(t *testing.T) {
 	factory := func(c Config) (System, error) {
 		return result, nil
 	}
-	system, err := newParallelSystems(config, 3, factory)
+	system, err := newParallelSystems(config, 3, MinBatchSize, MaxCaptiveCoreBackendBatchSize, factory)
 	assert.NoError(t, err)
 	err = system.ReingestRange([]history.LedgerRange{{1, 2050}})
 	result.AssertExpectations(t)
@@ -110,7 +187,7 @@ func TestParallelReingestRangeErrorInEarlierJob(t *testing.T) {
 	factory := func(c Config) (System, error) {
 		return result, nil
 	}
-	system, err := newParallelSystems(config, 3, factory)
+	system, err := newParallelSystems(config, 3, 0, 0, factory)
 	assert.NoError(t, err)
 	err = system.ReingestRange([]history.LedgerRange{{1, 2050}})
 	result.AssertExpectations(t)

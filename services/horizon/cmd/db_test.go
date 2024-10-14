@@ -25,7 +25,7 @@ type DBCommandsTestSuite struct {
 }
 
 func (s *DBCommandsTestSuite) SetupSuite() {
-	runDBReingestRangeFn = func([]history.LedgerRange, bool, uint,
+	runDBReingestRangeFn = func([]history.LedgerRange, bool, uint, uint, uint,
 		horizon.Config, ingest.StorageBackendConfig) error {
 		return nil
 	}

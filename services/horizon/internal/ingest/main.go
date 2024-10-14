@@ -100,6 +100,16 @@ func (s LedgerBackendType) String() string {
 	return ""
 }
 
+const (
+	HistoryCheckpointLedgerInterval uint = 64
+	// MinBatchSize is the minimum batch size for reingestion
+	MinBatchSize uint = HistoryCheckpointLedgerInterval
+	// MaxBufferedStorageBackendBatchSize is the maximum batch size for Buffered Storage reingestion
+	MaxBufferedStorageBackendBatchSize uint = 200 * HistoryCheckpointLedgerInterval
+	// MaxCaptiveCoreBackendBatchSize is the maximum batch size for Captive Core reingestion
+	MaxCaptiveCoreBackendBatchSize uint = 20_000 * HistoryCheckpointLedgerInterval
+)
+
 type StorageBackendConfig struct {
 	DataStoreConfig              datastore.DataStoreConfig                  `toml:"datastore_config"`
 	BufferedStorageBackendConfig ledgerbackend.BufferedStorageBackendConfig `toml:"buffered_storage_backend_config"`
