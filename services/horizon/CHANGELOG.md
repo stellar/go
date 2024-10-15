@@ -32,7 +32,9 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 - Improved performance of requests which query the lower boundary of horizon's history when running a horizon instance with the `--history-retention-count` flag. ([5410](https://github.com/stellar/go/pull/5410), [5448](https://github.com/stellar/go/pull/5448), [5465](https://github.com/stellar/go/pull/5465))
 
-- Improve performance of ingestion when running horizon with the `--history-retention-count` flag by executing reaping of history lookup tables concurrently with ingestion ([5405](https://github.com/stellar/go/pull/5405)).
+- Improve performance of ingestion when running horizon with the `--history-retention-count` flag by executing reaping of history lookup tables concurrently with ingestion. ([5405](https://github.com/stellar/go/pull/5405))
+
+- Improve performance of ingestion when consuming ledgers via the BufferedStorageBackend. ([5494](https://github.com/stellar/go/pull/5494))
 
 ## 2.32.0
 
