@@ -3,7 +3,15 @@
 All notable changes to this project will be documented in this
 file. This project adheres to [Semantic Versioning](http://semver.org/).
 
-## 22.0.0-rc
+## 22.0.0-rc2
+
+
+### Deprecations
+
+- The `errorResultXdr` field from the response of the async transaction submission endpoint has been temporarily reinstated. However it will be removed in the v23 release. ([5496](https://github.com/stellar/go/pull/5496))
+- The `num_archived_contracts` and `archived_contracts_amount` fields from the `/assets` response have been deprecated and will be removed in the v23 Horizon release. ([5496](https://github.com/stellar/go/pull/5496))
+
+## 22.0.0-rc1
 
 **This release adds support for Protocol 22**
 

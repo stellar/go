@@ -87,9 +87,10 @@ func TestAsyncTxSub_SubmissionError(t *testing.T) {
 	txResp, err := itest.AsyncSubmitTransaction(master, txParams)
 	assert.NoError(t, err)
 	assert.Equal(t, txResp, horizon.AsyncTransactionSubmissionResponse{
-		ErrorResultXDR: "AAAAAAAAAGT////7AAAAAA==",
-		TxStatus:       "ERROR",
-		Hash:           "0684df00f20efd5876f1b8d17bc6d3a68d8b85c06bb41e448815ecaa6307a251",
+		ErrorResultXDR:           "AAAAAAAAAGT////7AAAAAA==",
+		DeprecatedErrorResultXDR: "AAAAAAAAAGT////7AAAAAA==",
+		TxStatus:                 "ERROR",
+		Hash:                     "0684df00f20efd5876f1b8d17bc6d3a68d8b85c06bb41e448815ecaa6307a251",
 	})
 }
 

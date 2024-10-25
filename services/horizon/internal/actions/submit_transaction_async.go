@@ -115,6 +115,8 @@ func (handler AsyncSubmitTransactionHandler) GetResource(_ HeaderWriter, r *http
 
 		if resp.Status == proto.TXStatusError {
 			response.ErrorResultXDR = resp.Error
+			// Action needed in release: horizon-v23.0.0: remove deprecated field
+			response.DeprecatedErrorResultXDR = resp.Error
 		}
 
 		return response, nil
