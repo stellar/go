@@ -10,13 +10,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/support/compressxdr"
 	"github.com/stellar/go/support/datastore"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
 
 func TestDefaultBSBConfigs(t *testing.T) {
@@ -208,9 +209,6 @@ func TestBSBProducerCallerCancelsCtx(t *testing.T) {
 	})
 
 	mockDataStore.On("GetFile", mock.Anything, "FFFFFFFD--2.xdr.zstd").
-		Run(func(args mock.Arguments) {
-			cancel()
-		}).
 		Return(makeSingleLCMBatch(2), nil)
 	// this second attempt needs to be mocked, ledger buffer queues this 'next' sequence task automatically
 	// in getFromLedgerQueue after it receives "FFFFFFFD--2.xdr.zstd", the ctx is not checked then or in
@@ -218,6 +216,7 @@ func TestBSBProducerCallerCancelsCtx(t *testing.T) {
 	mockDataStore.On("GetFile", mock.Anything, "FFFFFFFC--3.xdr.zstd").Return(makeSingleLCMBatch(3), nil)
 
 	appCallback := func(lcm xdr.LedgerCloseMeta) error {
+		cancel()
 		return nil
 	}
 
