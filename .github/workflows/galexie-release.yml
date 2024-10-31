@@ -14,9 +14,9 @@ jobs:
       GALEXIE_INTEGRATION_TESTS_CAPTIVE_CORE_BIN: /usr/bin/stellar-core
       # this pins to a version of quickstart:testing that has the same version as STELLAR_CORE_VERSION
       # this is the multi-arch index sha, get it by 'docker buildx imagetools inspect stellar/quickstart:testing'
-      GALEXIE_INTEGRATION_TESTS_QUICKSTART_IMAGE: docker.io/stellar/quickstart:testing@sha256:03c6679f838a92b1eda4cd3a9e2bdee4c3586e278a138a0acf36a9bc99a0041f
+      GALEXIE_INTEGRATION_TESTS_QUICKSTART_IMAGE: docker.io/stellar/quickstart:testing@sha256:5333ec87069efd7bb61f6654a801dc093bf0aad91f43a5ba84806d3efe4a6322
       GALEXIE_INTEGRATION_TESTS_QUICKSTART_IMAGE_PULL: "false"
-      STELLAR_CORE_VERSION: 21.3.1-2007.4ede19620.focal
+      STELLAR_CORE_VERSION: 22.0.0-2126.rc3.92923c2db.focal
     steps:
       - name: Set VERSION
         run: |
