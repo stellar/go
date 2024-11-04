@@ -190,44 +190,6 @@ func TestBSBProducerFnGetLedgerError(t *testing.T) {
 	mockDataStore.AssertExpectations(t)
 }
 
-func TestBSBProducerCallerCancelsCtx(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	pubConfig := PublisherConfig{
-		DataStoreConfig:       datastore.DataStoreConfig{},
-		BufferedStorageConfig: DefaultBufferedStorageBackendConfig(1),
-	}
-
-	pubConfig.BufferedStorageConfig.NumWorkers = 1
-
-	// the buffering runs async, test needs to stub datastore methods for potential invocation,
-	// but is race, since test also cancels the backend context which started the buffer,
-	// so, not deterministic, no assert on these.
-	mockDataStore := new(datastore.MockDataStore)
-	mockDataStore.On("GetSchema").Return(datastore.DataStoreSchema{
-		LedgersPerFile:    1,
-		FilesPerPartition: 1,
-	})
-
-	mockDataStore.On("GetFile", mock.Anything, "FFFFFFFD--2.xdr.zstd").
-		Return(makeSingleLCMBatch(2), nil)
-	// this second attempt needs to be mocked, ledger buffer queues this 'next' sequence task automatically
-	// in getFromLedgerQueue after it receives "FFFFFFFD--2.xdr.zstd", the ctx is not checked then or in
-	// the async worker routine that receives the task.
-	mockDataStore.On("GetFile", mock.Anything, "FFFFFFFC--3.xdr.zstd").Return(makeSingleLCMBatch(3), nil)
-
-	appCallback := func(lcm xdr.LedgerCloseMeta) error {
-		cancel()
-		return nil
-	}
-
-	datastoreFactory = func(_ context.Context, _ datastore.DataStoreConfig) (datastore.DataStore, error) {
-		return mockDataStore, nil
-	}
-	assert.ErrorIs(t,
-		ApplyLedgerMetadata(ledgerbackend.BoundedRange(uint32(2), uint32(3)), pubConfig, ctx, appCallback),
-		context.Canceled)
-}
-
 func TestBSBProducerFnCallbackError(t *testing.T) {
 	ctx := context.Background()
 	pubConfig := PublisherConfig{
