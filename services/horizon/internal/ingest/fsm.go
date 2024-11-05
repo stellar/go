@@ -299,9 +299,7 @@ func (b buildState) run(s *system) (transition, error) {
 		return nextFailState, errors.New("unexpected checkpointLedger value")
 	}
 
-	// We don't need to prepare range for genesis checkpoint because we don't
-	// perform protocol version and bucket list hash checks.
-	// We can also skip preparing range if `skipChecks` is `true` because we
+	// We can skip preparing range if `skipChecks` is `true` because we
 	// won't need bucket list hash and protocol version.
 	var protocolVersion uint32
 	var bucketListHash xdr.Hash
