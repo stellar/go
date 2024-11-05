@@ -7,8 +7,6 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/guregu/null"
-	"github.com/guregu/null/zero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
@@ -19,51 +17,6 @@ import (
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/xdr"
 )
-
-func TestProcessorRunnerRunHistoryArchiveIngestionGenesis(t *testing.T) {
-	ctx := context.Background()
-
-	mockSession := &db.MockSession{}
-
-	q := &mockDBQ{}
-
-	batchBuilders := mockChangeProcessorBatchBuilders(q, ctx, true)
-	defer mock.AssertExpectationsForObjects(t, batchBuilders...)
-
-	assert.IsType(t, &history.MockAccountSignersBatchInsertBuilder{}, batchBuilders[0])
-	batchBuilders[0].(*history.MockAccountSignersBatchInsertBuilder).On("Add", history.AccountSigner{
-		Account: "GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7",
-		Signer:  "GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7",
-		Weight:  1,
-		Sponsor: null.String{},
-	}).Return(nil).Once()
-
-	assert.IsType(t, &history.MockAccountsBatchInsertBuilder{}, batchBuilders[1])
-	batchBuilders[1].(*history.MockAccountsBatchInsertBuilder).On("Add", history.AccountEntry{
-		LastModifiedLedger: 1,
-		AccountID:          "GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7",
-		Balance:            int64(1000000000000000000),
-		SequenceNumber:     0,
-		SequenceTime:       zero.IntFrom(0),
-		MasterWeight:       1,
-	}).Return(nil).Once()
-
-	q.MockQAssetStats.On("InsertAssetStats", ctx, []history.ExpAssetStat{}, 100000).
-		Return(nil)
-
-	runner := ProcessorRunner{
-		ctx: ctx,
-		config: Config{
-			NetworkPassphrase: network.PublicNetworkPassphrase,
-		},
-		historyQ: q,
-		filters:  &MockFilters{},
-		session:  mockSession,
-	}
-
-	_, err := runner.RunGenesisStateIngestion()
-	assert.NoError(t, err)
-}
 
 func TestProcessorRunnerRunHistoryArchiveIngestionHistoryArchive(t *testing.T) {
 	ctx := context.Background()
@@ -79,7 +32,6 @@ func TestProcessorRunnerRunHistoryArchiveIngestionHistoryArchive(t *testing.T) {
 	defer mock.AssertExpectationsForObjects(t, historyAdapter)
 
 	m := &ingest.MockChangeReader{}
-	m.On("Read").Return(ingest.GenesisChange(network.PublicNetworkPassphrase), nil).Once()
 	m.On("Read").Return(ingest.Change{}, io.EOF).Once()
 	m.On("Close").Return(nil).Once()
 	bucketListHash := xdr.Hash([32]byte{0, 1, 2})

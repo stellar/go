@@ -84,14 +84,12 @@ var (
 	DbFillGapsCmd             = "fill-gaps"
 	DbReingestCmd             = "reingest"
 	IngestTriggerStateRebuild = "trigger-state-rebuild"
-	IngestInitGenesisStateCmd = "init-genesis-state"
 	IngestBuildStateCmd       = "build-state"
 	IngestStressTestCmd       = "stress-test"
 	IngestVerifyRangeCmd      = "verify-range"
 
 	ApiServerCommands = []string{HorizonCmd, ServeCmd}
 	IngestionCommands = append(ApiServerCommands,
-		IngestInitGenesisStateCmd,
 		IngestBuildStateCmd,
 		IngestStressTestCmd,
 		IngestVerifyRangeCmd,

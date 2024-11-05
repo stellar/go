@@ -308,7 +308,7 @@ func (b buildState) run(s *system) (transition, error) {
 	// won't need bucket list hash and protocol version.
 	var protocolVersion uint32
 	var bucketListHash xdr.Hash
-	if b.checkpointLedger != 1 && !b.skipChecks {
+	if !b.skipChecks {
 		err := s.maybePrepareRange(s.ctx, b.checkpointLedger)
 		if err != nil {
 			return nextFailState, err
@@ -381,16 +381,13 @@ func (b buildState) run(s *system) (transition, error) {
 	startTime := time.Now()
 
 	var stats ingest.StatsChangeProcessorResults
-	if b.checkpointLedger == 1 {
-		stats, err = s.runner.RunGenesisStateIngestion()
-	} else {
-		stats, err = s.runner.RunHistoryArchiveIngestion(
-			b.checkpointLedger,
-			b.skipChecks,
-			protocolVersion,
-			bucketListHash,
-		)
-	}
+
+	stats, err = s.runner.RunHistoryArchiveIngestion(
+		b.checkpointLedger,
+		b.skipChecks,
+		protocolVersion,
+		bucketListHash,
+	)
 
 	if err != nil {
 		return nextFailState, errors.Wrap(err, "Error ingesting history archive")

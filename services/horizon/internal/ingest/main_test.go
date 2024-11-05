@@ -642,11 +642,6 @@ func (m *mockProcessorsRunner) DisableMemoryStatsLogging() {
 	m.Called()
 }
 
-func (m *mockProcessorsRunner) RunGenesisStateIngestion() (ingest.StatsChangeProcessorResults, error) {
-	args := m.Called()
-	return args.Get(0).(ingest.StatsChangeProcessorResults), args.Error(1)
-}
-
 func (m *mockProcessorsRunner) RunHistoryArchiveIngestion(
 	checkpointLedger uint32,
 	skipChecks bool,
@@ -718,11 +713,6 @@ func (m *mockSystem) BuildState(sequence uint32, skipChecks bool) error {
 
 func (m *mockSystem) ReingestRange(ledgerRanges []history.LedgerRange, force bool, rebuildTradeAgg bool) error {
 	args := m.Called(ledgerRanges, force, rebuildTradeAgg)
-	return args.Error(0)
-}
-
-func (m *mockSystem) BuildGenesisState() error {
-	args := m.Called()
 	return args.Error(0)
 }
 
