@@ -225,7 +225,6 @@ type System interface {
 	VerifyRange(fromLedger, toLedger uint32, verifyState bool) error
 	BuildState(sequence uint32, skipChecks bool) error
 	ReingestRange(ledgerRanges []history.LedgerRange, force bool, rebuildTradeAgg bool) error
-	BuildGenesisState() error
 	Shutdown()
 	GetCurrentState() State
 	RebuildTradeAggregationBuckets(fromLedger, toLedger uint32) error
@@ -673,15 +672,6 @@ func (s *system) ReingestRange(ledgerRanges []history.LedgerRange, force bool, r
 
 func (s *system) RebuildTradeAggregationBuckets(fromLedger, toLedger uint32) error {
 	return s.historyQ.RebuildTradeAggregationBuckets(s.ctx, fromLedger, toLedger, s.config.RoundingSlippageFilter)
-}
-
-// BuildGenesisState runs the ingestion pipeline on genesis ledger. Transitions
-// to stopState when done.
-func (s *system) BuildGenesisState() error {
-	return s.runStateMachine(buildState{
-		checkpointLedger: 1,
-		stop:             true,
-	})
 }
 
 func (s *system) runStateMachine(cur stateMachineNode) error {
