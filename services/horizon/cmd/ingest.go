@@ -292,7 +292,7 @@ var ingestBuildStateCmd = &cobra.Command{
 		}
 
 		mngr := historyarchive.NewCheckpointManager(globalConfig.CheckpointFrequency)
-		if !mngr.IsCheckpoint(ingestBuildStateSequence) && ingestBuildStateSequence != 1 {
+		if !mngr.IsCheckpoint(ingestBuildStateSequence) {
 			return fmt.Errorf("`--sequence` must be a checkpoint ledger")
 		}
 

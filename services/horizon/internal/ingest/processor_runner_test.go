@@ -3,6 +3,7 @@ package ingest
 import (
 	"context"
 	"fmt"
+	"github.com/stellar/go/amount"
 	"io"
 	"reflect"
 	"testing"
@@ -29,13 +30,32 @@ func TestProcessorRunnerRunHistoryArchiveIngestionHistoryArchive(t *testing.T) {
 	q := &mockDBQ{}
 	defer mock.AssertExpectationsForObjects(t, q)
 	historyAdapter := &mockHistoryArchiveAdapter{}
-	defer mock.AssertExpectationsForObjects(t, historyAdapter)
+	defer mock.AssertExpectationsForObjects(t, historyAdapter) // this will fail
 
 	m := &ingest.MockChangeReader{}
-	m.On("Read").Return(ingest.Change{}, io.EOF).Once()
 	m.On("Close").Return(nil).Once()
 	bucketListHash := xdr.Hash([32]byte{0, 1, 2})
 	m.On("VerifyBucketList", bucketListHash).Return(nil).Once()
+
+	changeEntry := ingest.Change{
+		Type: xdr.LedgerEntryTypeAccount,
+		Post: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: 1,
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeAccount,
+				Account: &xdr.AccountEntry{
+					// Master account address from Ledger 1
+					AccountId: xdr.MustAddress("GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7"),
+					// 100B
+					Balance:    amount.MustParse("100000000000"),
+					SeqNum:     0,
+					Thresholds: xdr.Thresholds{1, 0, 0, 0},
+				},
+			},
+		},
+	}
+	m.On("Read").Return(changeEntry, nil).Once()
+	m.On("Read").Return(ingest.Change{}, io.EOF).Once()
 
 	historyAdapter.
 		On("GetState", ctx, uint32(63)).
@@ -45,10 +65,23 @@ func TestProcessorRunnerRunHistoryArchiveIngestionHistoryArchive(t *testing.T) {
 		).Once()
 
 	batchBuilders := mockChangeProcessorBatchBuilders(q, ctx, true)
-	defer mock.AssertExpectationsForObjects(t, batchBuilders...)
+	defer mock.AssertExpectationsForObjects(t, batchBuilders...) // currently failing
+
+	assert.IsType(t, &history.MockAccountsBatchInsertBuilder{}, batchBuilders[1])
+	batchBuilders[1].(*history.MockAccountsBatchInsertBuilder).On("Add", history.AccountEntry{
+		LastModifiedLedger: 1,
+		AccountID:          "GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7",
+		Balance:            int64(1000000000000000000),
+		SequenceNumber:     0,
+		MasterWeight:       1,
+	}).Return(nil).Once()
 
 	assert.IsType(t, &history.MockAccountSignersBatchInsertBuilder{}, batchBuilders[0])
-	assert.IsType(t, &history.MockAccountsBatchInsertBuilder{}, batchBuilders[1])
+	batchBuilders[0].(*history.MockAccountSignersBatchInsertBuilder).On("Add", history.AccountSigner{
+		Account: "GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7",
+		Signer:  "GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7",
+		Weight:  1,
+	}).Return(nil).Once()
 
 	q.MockQAssetStats.On("InsertAssetStats", ctx, []history.ExpAssetStat{}, 100000).
 		Return(nil)

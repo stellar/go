@@ -301,9 +301,6 @@ func (b buildState) run(s *system) (transition, error) {
 
 	// We don't need to prepare range for genesis checkpoint because we don't
 	// perform protocol version and bucket list hash checks.
-	// In the long term we should probably create artificial xdr.LedgerCloseMeta
-	// for ledger #1 instead of using `ingest.GenesisChange` reader in
-	// ProcessorRunner.RunHistoryArchiveIngestion().
 	// We can also skip preparing range if `skipChecks` is `true` because we
 	// won't need bucket list hash and protocol version.
 	var protocolVersion uint32
