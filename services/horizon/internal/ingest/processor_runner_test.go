@@ -30,7 +30,7 @@ func TestProcessorRunnerRunHistoryArchiveIngestionHistoryArchive(t *testing.T) {
 	q := &mockDBQ{}
 	defer mock.AssertExpectationsForObjects(t, q)
 	historyAdapter := &mockHistoryArchiveAdapter{}
-	defer mock.AssertExpectationsForObjects(t, historyAdapter) // this will fail
+	defer mock.AssertExpectationsForObjects(t, historyAdapter)
 
 	m := &ingest.MockChangeReader{}
 	m.On("Close").Return(nil).Once()
@@ -65,7 +65,14 @@ func TestProcessorRunnerRunHistoryArchiveIngestionHistoryArchive(t *testing.T) {
 		).Once()
 
 	batchBuilders := mockChangeProcessorBatchBuilders(q, ctx, true)
-	defer mock.AssertExpectationsForObjects(t, batchBuilders...) // currently failing
+	defer mock.AssertExpectationsForObjects(t, batchBuilders...)
+
+	assert.IsType(t, &history.MockAccountSignersBatchInsertBuilder{}, batchBuilders[0])
+	batchBuilders[0].(*history.MockAccountSignersBatchInsertBuilder).On("Add", history.AccountSigner{
+		Account: "GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7",
+		Signer:  "GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7",
+		Weight:  1,
+	}).Return(nil).Once()
 
 	assert.IsType(t, &history.MockAccountsBatchInsertBuilder{}, batchBuilders[1])
 	batchBuilders[1].(*history.MockAccountsBatchInsertBuilder).On("Add", history.AccountEntry{
@@ -74,13 +81,6 @@ func TestProcessorRunnerRunHistoryArchiveIngestionHistoryArchive(t *testing.T) {
 		Balance:            int64(1000000000000000000),
 		SequenceNumber:     0,
 		MasterWeight:       1,
-	}).Return(nil).Once()
-
-	assert.IsType(t, &history.MockAccountSignersBatchInsertBuilder{}, batchBuilders[0])
-	batchBuilders[0].(*history.MockAccountSignersBatchInsertBuilder).On("Add", history.AccountSigner{
-		Account: "GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7",
-		Signer:  "GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7",
-		Weight:  1,
 	}).Return(nil).Once()
 
 	q.MockQAssetStats.On("InsertAssetStats", ctx, []history.ExpAssetStat{}, 100000).
