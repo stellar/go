@@ -69,7 +69,6 @@ type ProcessorRunnerInterface interface {
 	SetHistoryAdapter(historyAdapter historyArchiveAdapterInterface)
 	EnableMemoryStatsLogging()
 	DisableMemoryStatsLogging()
-	RunGenesisStateIngestion() (ingest.StatsChangeProcessorResults, error)
 	RunHistoryArchiveIngestion(
 		checkpointLedger uint32,
 		skipChecks bool,
@@ -192,10 +191,6 @@ func (s *ProcessorRunner) checkIfProtocolVersionSupported(ledgerProtocolVersion 
 	return nil
 }
 
-func (s *ProcessorRunner) RunGenesisStateIngestion() (ingest.StatsChangeProcessorResults, error) {
-	return s.RunHistoryArchiveIngestion(1, false, 0, xdr.Hash{})
-}
-
 func (s *ProcessorRunner) RunHistoryArchiveIngestion(
 	checkpointLedger uint32,
 	skipChecks bool,
@@ -218,43 +213,37 @@ func (s *ProcessorRunner) RunHistoryArchiveIngestion(
 		return ingest.StatsChangeProcessorResults{}, err
 	}
 
-	if checkpointLedger == 1 {
-		if err := changeProcessor.ProcessChange(s.ctx, ingest.GenesisChange(s.config.NetworkPassphrase)); err != nil {
-			return changeStats.GetResults(), errors.Wrap(err, "Error ingesting genesis ledger")
+	if !skipChecks {
+		if err := s.checkIfProtocolVersionSupported(ledgerProtocolVersion); err != nil {
+			return changeStats.GetResults(), errors.Wrap(err, "Error while checking for supported protocol version")
 		}
-	} else {
-		if !skipChecks {
-			if err := s.checkIfProtocolVersionSupported(ledgerProtocolVersion); err != nil {
-				return changeStats.GetResults(), errors.Wrap(err, "Error while checking for supported protocol version")
-			}
+	}
+
+	changeReader, err := s.historyAdapter.GetState(s.ctx, checkpointLedger)
+	if err != nil {
+		return changeStats.GetResults(), errors.Wrap(err, "Error creating HAS reader")
+	}
+
+	if !skipChecks {
+		if err = changeReader.VerifyBucketList(bucketListHash); err != nil {
+			return changeStats.GetResults(), errors.Wrap(err, "Error validating bucket list from HAS")
 		}
+	}
 
-		changeReader, err := s.historyAdapter.GetState(s.ctx, checkpointLedger)
-		if err != nil {
-			return changeStats.GetResults(), errors.Wrap(err, "Error creating HAS reader")
-		}
+	defer changeReader.Close()
 
-		if !skipChecks {
-			if err = changeReader.VerifyBucketList(bucketListHash); err != nil {
-				return changeStats.GetResults(), errors.Wrap(err, "Error validating bucket list from HAS")
-			}
-		}
+	log.WithField("sequence", checkpointLedger).
+		Info("Processing entries from History Archive Snapshot")
 
-		defer changeReader.Close()
-
-		log.WithField("sequence", checkpointLedger).
-			Info("Processing entries from History Archive Snapshot")
-
-		err = streamChanges(s.ctx, changeProcessor, checkpointLedger, newloggingChangeReader(
-			changeReader,
-			"historyArchive",
-			checkpointLedger,
-			logFrequency,
-			s.logMemoryStats,
-		))
-		if err != nil {
-			return changeStats.GetResults(), errors.Wrap(err, "Error streaming changes from HAS")
-		}
+	err = streamChanges(s.ctx, changeProcessor, checkpointLedger, newloggingChangeReader(
+		changeReader,
+		"historyArchive",
+		checkpointLedger,
+		logFrequency,
+		s.logMemoryStats,
+	))
+	if err != nil {
+		return changeStats.GetResults(), errors.Wrap(err, "Error streaming changes from HAS")
 	}
 
 	if err := changeProcessor.Commit(s.ctx); err != nil {
