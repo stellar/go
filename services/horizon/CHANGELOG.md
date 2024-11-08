@@ -2,14 +2,47 @@
 
 All notable changes to this project will be documented in this
 file. This project adheres to [Semantic Versioning](http://semver.org/).
-## Pending
+
+## 22.0.0-rc2
+
+
+### Deprecations
+
+- The `errorResultXdr` field from the response of the async transaction submission endpoint has been temporarily reinstated. However it will be removed in the v23 release. ([5496](https://github.com/stellar/go/pull/5496))
+- The `num_archived_contracts` and `archived_contracts_amount` fields from the `/assets` response have been deprecated and will be removed in the v23 Horizon release. ([5496](https://github.com/stellar/go/pull/5496))
+
+## 22.0.0-rc1
+
+**This release adds support for Protocol 22**
 
 ### Breaking Changes
 
 - `--parallel-job-size` configuration parameter for the `stellar-horizon db reingest` command has been removed.
   Job size will be automatically determined based on the number of workers (configuration parameter --parallel-workers), distributing
   the range equally among them. The minimum job size will remain 64 ledgers and the start and end ledger range will be rounded to
-  the nearest checkpoint.([5484](https://github.com/stellar/go/pull/5484))
+  the nearest checkpoint. ([5484](https://github.com/stellar/go/pull/5484))
+
+- Removed `num_accounts` and `amount` fields from Asset stats related endpoints, and `valid_before` and `valid_after` fields from transaction related endpoints.  Issue - [5438](https://github.com/stellar/go/issues/5438), PR - [5478](https://github.com/stellar/go/pull/5478)
+  - These fields have already been functionally deprecated as of release v2.1.0. As a part of this release, these fields are omitted from API Response
+  - Additionally, the `num_accounts` and `amount` columns have been dropped from `exp_asset_stats` table in Postgres.
+
+- Renamed `errorResultXdr` field to `error_result_xdr` in the response of the async transaction submission endpoint, `POST /transactions_async`. ([5445](https://github.com/stellar/go/pull/5445))
+
+### Added
+
+- Added response for new constructor functionality (introduced in protocol 22) in invoke host function operation ([5488](https://github.com/stellar/go/pull/5488)).
+
+- Add metrics which give insight into how long it takes for ingestion to startup ([5449](https://github.com/stellar/go/pull/5449)).
+
+### Fixed
+
+- Fixed the `error` field nested in the `extras` field in the response of the async transaction submission endpoint `POST /transactions_async`. ([5440](https://github.com/stellar/go/issues/5440))
+
+- Improved performance of requests which query the lower boundary of horizon's history when running a horizon instance with the `--history-retention-count` flag. ([5410](https://github.com/stellar/go/pull/5410), [5448](https://github.com/stellar/go/pull/5448), [5465](https://github.com/stellar/go/pull/5465))
+
+- Improve performance of ingestion when running horizon with the `--history-retention-count` flag by executing reaping of history lookup tables concurrently with ingestion. ([5405](https://github.com/stellar/go/pull/5405))
+
+- Improve performance of ingestion when consuming ledgers via the BufferedStorageBackend. ([5494](https://github.com/stellar/go/pull/5494))
 
 ## 2.32.0
 

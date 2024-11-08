@@ -260,9 +260,7 @@ func TestExpirationAndRestoration(t *testing.T) {
 			LiquidityPools:                  "0",
 			Unauthorized:                    "0",
 		},
-		Amount:      "0",
-		NumAccounts: 0,
-		ContractID:  nil,
+		ContractID: nil,
 	}
 	syntheticAssetStat.SetContractID(storeContractID)
 	_, err := itest.HorizonIngest().HistoryQ().InsertAssetStat(
@@ -1104,9 +1102,7 @@ func assertAssetStats(itest *integration.Test, expected assetStats) {
 	asset := assets.Embedded.Records[0]
 	assert.Equal(itest.CurrentTest(), expected.code, asset.Code)
 	assert.Equal(itest.CurrentTest(), expected.issuer, asset.Issuer)
-	assert.Equal(itest.CurrentTest(), expected.numAccounts, asset.NumAccounts)
 	assert.Equal(itest.CurrentTest(), expected.numAccounts, asset.Accounts.Authorized)
-	assert.Equal(itest.CurrentTest(), expected.balanceAccounts, amount.MustParse(asset.Amount))
 	assert.Equal(itest.CurrentTest(), expected.numContracts, asset.NumContracts)
 	assert.Equal(itest.CurrentTest(), expected.numArchivedContracts, asset.NumArchivedContracts)
 	assert.Equal(itest.CurrentTest(), expected.balanceContracts.String(), parseBalance(itest, asset.ContractsAmount).String())
@@ -1425,13 +1421,7 @@ func mustCreateAndInstallContract(itest *integration.Test, signer *keypair.Full,
 	_, _, createContractOp := assertInvokeHostFnSucceeds(
 		itest,
 		signer,
-		assembleCreateContractOp(
-			itest.CurrentTest(),
-			itest.Master().Address(),
-			wasmFileName,
-			contractSalt,
-			itest.GetPassPhrase(),
-		),
+		assembleCreateContractOp(itest.CurrentTest(), itest.Master().Address(), wasmFileName, contractSalt),
 	)
 
 	keys := append(

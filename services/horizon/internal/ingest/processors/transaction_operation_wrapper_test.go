@@ -2282,9 +2282,6 @@ func TestDetailsCoversAllOperationTypes(t *testing.T) {
 		operation:      op,
 		ledgerSequence: 1,
 	}
-	// calling Details should panic with unknown operation type
-	f := func() {
-		operation.Details()
-	}
-	assert.PanicsWithError(t, "unknown operation type: ", f)
+	_, err := operation.Details()
+	assert.ErrorContains(t, err, "unknown operation type: ")
 }

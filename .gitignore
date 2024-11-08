@@ -5,7 +5,7 @@
 /services/horizon/captive-core
 /services/horizon/horizon
 /services/horizon/stellar-horizon
-/bucket-cache
+**bucket-cache/
 .vscode
 .idea
 debug

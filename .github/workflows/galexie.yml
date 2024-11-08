@@ -10,12 +10,12 @@ jobs:
     name: Test
     runs-on: ubuntu-latest
     env:
-      CAPTIVE_CORE_DEBIAN_PKG_VERSION: 21.3.1-2007.4ede19620.focal
+      CAPTIVE_CORE_DEBIAN_PKG_VERSION: 22.0.0-2138.721fd0a65.focal
       GALEXIE_INTEGRATION_TESTS_ENABLED: "true"
       GALEXIE_INTEGRATION_TESTS_CAPTIVE_CORE_BIN: /usr/bin/stellar-core
       # this pins to a version of quickstart:testing that has the same version as GALEXIE_INTEGRATION_TESTS_CAPTIVE_CORE_BIN
       # this is the multi-arch index sha, get it by 'docker buildx imagetools inspect stellar/quickstart:testing'
-      GALEXIE_INTEGRATION_TESTS_QUICKSTART_IMAGE: docker.io/stellar/quickstart:testing@sha256:5c8186f53cc98571749054dd782dce33b0aca2d1a622a7610362f7c15b79b1bf
+      GALEXIE_INTEGRATION_TESTS_QUICKSTART_IMAGE: docker.io/stellar/quickstart:testing@sha256:5333ec87069efd7bb61f6654a801dc093bf0aad91f43a5ba84806d3efe4a6322
       GALEXIE_INTEGRATION_TESTS_QUICKSTART_IMAGE_PULL: "false"
     steps:
       - name: Install captive core
