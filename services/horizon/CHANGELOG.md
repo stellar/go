@@ -3,6 +3,11 @@
 All notable changes to this project will be documented in this
 file. This project adheres to [Semantic Versioning](http://semver.org/).
 
+## 22.0.1
+
+### Fixed
+- Fix the issue where the skip-txmeta flag is not being applied in `/transactions/{tx-id}` endpoint ([5523](https://github.com/stellar/go/pull/5523)).
+
 ## 22.0.0-rc2
 
 
