@@ -2,6 +2,7 @@ package ingest
 
 import (
 	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/toid"
 	"github.com/stellar/go/xdr"
 )
 
@@ -14,9 +15,10 @@ type LedgerTransaction struct {
 	// you know what you are doing.
 	// Use LedgerTransaction.GetChanges() for higher level access to ledger
 	// entry changes.
-	FeeChanges    xdr.LedgerEntryChanges
-	UnsafeMeta    xdr.TransactionMeta
-	LedgerVersion uint32
+	FeeChanges      xdr.LedgerEntryChanges
+	UnsafeMeta      xdr.TransactionMeta
+	LedgerVersion   uint32
+	LedgerCloseMeta xdr.LedgerCloseMeta
 }
 
 func (t *LedgerTransaction) txInternalError() bool {
@@ -154,4 +156,28 @@ func operationChanges(ops []xdr.OperationMeta, index uint32) []Change {
 // GetDiagnosticEvents returns all contract events emitted by a given operation.
 func (t *LedgerTransaction) GetDiagnosticEvents() ([]xdr.DiagnosticEvent, error) {
 	return t.UnsafeMeta.GetDiagnosticEvents()
+}
+
+func (t *LedgerTransaction) GetOperations() []LedgerOperation {
+	var ledgerOperations []LedgerOperation
+
+	for i, operation := range t.Envelope.Operations() {
+		ledgerOperation := LedgerOperation{
+			Operation:       operation,
+			OperationIndex:  int32(i),
+			Transaction:     *t,
+			LedgerCloseMeta: t.LedgerCloseMeta,
+		}
+		ledgerOperations = append(ledgerOperations, ledgerOperation)
+	}
+
+	return ledgerOperations
+}
+
+func (t *LedgerTransaction) TransactionID() int64 {
+	return toid.New(int32(t.LedgerCloseMeta.LedgerSequence()), int32(t.Index), 0).ToInt64()
+}
+
+func (t *LedgerTransaction) TransactionHash() string {
+	return t.Result.TransactionHash.HexString()
 }

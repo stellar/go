@@ -17,3 +17,7 @@ func (s Hash) Equals(o Hash) bool {
 	}
 	return true
 }
+
+func (h Hash) String() string {
+	return HashToHexString(h)
+}

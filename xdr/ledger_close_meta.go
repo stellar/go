@@ -1,7 +1,9 @@
 package xdr
 
 import (
+	"encoding/base64"
 	"fmt"
+	"time"
 )
 
 func (l LedgerCloseMeta) LedgerHeaderHistoryEntry() LedgerHeaderHistoryEntry {
@@ -155,4 +157,156 @@ func (l LedgerCloseMeta) EvictedPersistentLedgerEntries() ([]LedgerEntry, error)
 	default:
 		panic(fmt.Sprintf("Unsupported LedgerCloseMeta.V: %d", l.V))
 	}
+}
+
+func (l LedgerCloseMeta) LedgerID() int64 {
+	return NewID(int32(l.LedgerSequence()), 0, 0).ToInt64()
+}
+
+func (l LedgerCloseMeta) LedgerClosedAt() time.Time {
+	return time.Unix(l.LedgerCloseTime(), 0).UTC()
+}
+
+func (l LedgerCloseMeta) TotalCoins() int64 {
+	return int64(l.LedgerHeaderHistoryEntry().Header.TotalCoins)
+}
+
+func (l LedgerCloseMeta) FeePool() int64 {
+	return int64(l.LedgerHeaderHistoryEntry().Header.FeePool)
+}
+
+func (l LedgerCloseMeta) BaseFee() uint32 {
+	return uint32(l.LedgerHeaderHistoryEntry().Header.BaseFee)
+}
+
+func (l LedgerCloseMeta) BaseReserve() uint32 {
+	return uint32(l.LedgerHeaderHistoryEntry().Header.BaseReserve)
+}
+
+func (l LedgerCloseMeta) MaxTxSetSize() uint32 {
+	return uint32(l.LedgerHeaderHistoryEntry().Header.MaxTxSetSize)
+}
+
+func (l LedgerCloseMeta) SorobanFeeWrite1Kb() (int64, bool) {
+	lcmV1, ok := l.GetV1()
+	if ok {
+		extV1 := lcmV1.Ext.MustV1()
+		return int64(extV1.SorobanFeeWrite1Kb), true
+	}
+
+	return 0, false
+}
+
+func (l LedgerCloseMeta) TotalByteSizeOfBucketList() (uint64, bool) {
+	lcmV1, ok := l.GetV1()
+	if ok {
+		return uint64(lcmV1.TotalByteSizeOfBucketList), true
+	}
+
+	return 0, false
+}
+
+func (l LedgerCloseMeta) NodeID() (string, bool) {
+	LedgerCloseValueSignature, ok := l.LedgerHeaderHistoryEntry().Header.ScpValue.Ext.GetLcValueSignature()
+	if ok {
+		nodeID, ok := GetAddress(LedgerCloseValueSignature.NodeId)
+		if ok {
+			return nodeID, true
+		}
+	}
+
+	return "", false
+}
+
+func (l LedgerCloseMeta) Signature() (string, bool) {
+	LedgerCloseValueSignature, ok := l.LedgerHeaderHistoryEntry().Header.ScpValue.Ext.GetLcValueSignature()
+	if ok {
+		return base64.StdEncoding.EncodeToString(LedgerCloseValueSignature.Signature), true
+	}
+
+	return "", false
+}
+
+func (l LedgerCloseMeta) TransactionProcessing() []TransactionResultMeta {
+	switch l.V {
+	case 0:
+		return l.MustV0().TxProcessing
+	case 1:
+		return l.MustV1().TxProcessing
+
+	default:
+		panic(fmt.Sprintf("Unsupported LedgerCloseMeta.V: %d", l.V))
+	}
+}
+
+func (l LedgerCloseMeta) CountSuccessfulTransactions() int {
+	var successfulTransactionCount int
+	results := l.TransactionProcessing()
+
+	for _, result := range results {
+		if result.Result.Successful() {
+			successfulTransactionCount++
+		}
+	}
+
+	return successfulTransactionCount
+}
+
+func (l LedgerCloseMeta) CountFailedTransactions() int {
+	var failedTransactionCount int
+	results := l.TransactionProcessing()
+
+	for _, result := range results {
+		if !result.Result.Successful() {
+			failedTransactionCount++
+		}
+	}
+
+	return failedTransactionCount
+}
+
+func (l LedgerCloseMeta) CountOperations() (operationCount int) {
+	transactions := l.TransactionEnvelopes()
+
+	for _, transaction := range transactions {
+		operations := transaction.Operations()
+		numberOfOps := len(operations)
+		operationCount += numberOfOps
+	}
+
+	return
+}
+
+func (l LedgerCloseMeta) CountSuccessfulOperations() (operationCount int) {
+	results := l.TransactionProcessing()
+
+	for _, result := range results {
+		if result.Result.Successful() {
+			operationResults, ok := result.Result.OperationResults()
+			if !ok {
+				panic("could not get []OperationResult")
+			}
+
+			operationCount += len(operationResults)
+		}
+	}
+
+	return
+}
+
+func (l LedgerCloseMeta) CountFailedOperations() (operationCount int) {
+	results := l.TransactionProcessing()
+
+	for _, result := range results {
+		if !result.Result.Successful() {
+			operationResults, ok := result.Result.OperationResults()
+			if !ok {
+				panic("could not get []OperationResult")
+			}
+
+			operationCount += len(operationResults)
+		}
+	}
+
+	return
 }

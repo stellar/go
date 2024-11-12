@@ -113,3 +113,50 @@ func (account *AccountEntry) SeqLedger() Uint32 {
 	}
 	return 0
 }
+
+func (account *AccountEntry) AccountID() string {
+	return account.AccountId.Address()
+}
+
+func (account *AccountEntry) BalanceFloat() float64 {
+	return ConvertStroopValueToReal(account.Balance)
+}
+
+func (account *AccountEntry) BuyingLiabilities() float64 {
+	var buyingLiabilities float64
+	accountExtensionInfo, V1Found := account.Ext.GetV1()
+	if V1Found {
+		return ConvertStroopValueToReal(accountExtensionInfo.Liabilities.Buying)
+	}
+	return buyingLiabilities
+}
+
+func (account *AccountEntry) SellingLiabilities() float64 {
+	var sellingLiabilities float64
+	accountExtensionInfo, V1Found := account.Ext.GetV1()
+	if V1Found {
+		return ConvertStroopValueToReal(accountExtensionInfo.Liabilities.Selling)
+	}
+	return sellingLiabilities
+}
+
+func (account *AccountEntry) SequenceNumber() int64 {
+	return int64(account.SeqNum)
+}
+
+func (account *AccountEntry) SequenceLedger() int64 {
+	return int64(account.SeqLedger())
+}
+
+func (account *AccountEntry) SequenceTime() int64 {
+	return int64(account.SeqTime())
+}
+
+func (account *AccountEntry) InflationDestination() string {
+	var inflationDest string
+	inflationDestAccountID := account.InflationDest
+	if inflationDestAccountID != nil {
+		return inflationDestAccountID.Address()
+	}
+	return inflationDest
+}

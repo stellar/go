@@ -252,3 +252,15 @@ func (c Change) AccountChangedExceptSigners() (bool, error) {
 
 	return !bytes.Equal(preBinary, postBinary), nil
 }
+
+// ExtractEntryFromChange gets the most recent state of an entry from an ingestion change, as well as if the entry was deleted
+func (c Change) ExtractEntryFromChange() (xdr.LedgerEntry, xdr.LedgerEntryChangeType, bool, error) {
+	switch changeType := c.LedgerEntryChangeType(); changeType {
+	case xdr.LedgerEntryChangeTypeLedgerEntryCreated, xdr.LedgerEntryChangeTypeLedgerEntryUpdated:
+		return *c.Post, changeType, false, nil
+	case xdr.LedgerEntryChangeTypeLedgerEntryRemoved:
+		return *c.Pre, changeType, true, nil
+	default:
+		return xdr.LedgerEntry{}, changeType, false, fmt.Errorf("unable to extract ledger entry type from change")
+	}
+}
