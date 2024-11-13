@@ -3,7 +3,7 @@
 Galexie is a tool to export Stellar network transaction data to cloud storage in a way that is easy to access.
 
 ## Prerequisites
-This document assumes that you have installed and can run Galexie, and that you have familiarity with its CLI and configuration. If not, please refer to the [Installation Guide](./README.md).
+This document assumes that you have installed and can run Galexie, and that you have familiarity with its CLI and configuration. If not, please refer to the [Admin Guide](https://developers.stellar.org/docs/data/galexie/admin_guide).
 
 ## Goal
 The goal of Galexie is to build an easy-to-use tool to export Stellar network ledger data to a configurable remote data store, such as cloud blob storage.
