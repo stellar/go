@@ -7,6 +7,7 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 - Fix the issue where the skip-txmeta flag is not being applied in `/transactions/{tx-id}` endpoint ([5523](https://github.com/stellar/go/pull/5523)).
+- Fix `horizon_ingest_reap_lookup_tables_duration_seconds` metric which reports the total number of lookup table rows which were reaped ([5528](https://github.com/stellar/go/pull/5528)).
 
 ## 22.0.0-rc2
 

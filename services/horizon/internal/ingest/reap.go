@@ -331,6 +331,7 @@ func (r *lookupTableReaper) deleteOrphanedRows(ctx context.Context) error {
 		}
 		deleteDuration := time.Since(deleteStartTime)
 		totalDeleteDuration += deleteDuration
+		totalDeleted += rowsDeleted
 
 		r.rowsReapedByLookupTable.With(prometheus.Labels{"table": table}).
 			Observe(float64(rowsDeleted))
