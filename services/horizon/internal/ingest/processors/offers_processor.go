@@ -41,18 +41,18 @@ func (p *OffersProcessor) ProcessChange(ctx context.Context, change ingest.Chang
 		return nil
 	}
 
-	switch ev := (*event).(type) {
+	switch ev := event.(type) {
 	case offers.OfferCreatedEvent:
-		row := p.eventToRow(ev.OfferEventData)
+		row := p.offerEventToRow(ev.OfferEventData)
 		err := p.insertBatchBuilder.Add(row)
 		if err != nil {
 			return errors.New("Error adding to OffersBatchInsertBuilder")
 		}
 	case offers.OfferFillEvent:
-		row := p.eventToRow(ev.OfferEventData)
+		row := p.offerEventToRow(ev.OfferEventData)
 		p.batchUpdateOffers = append(p.batchUpdateOffers, row)
 	case offers.OfferClosedEvent:
-		row := p.eventToRow(ev.OfferEventData)
+		row := p.offerEventToRow(ev.OfferEventData)
 		row.Deleted = true
 		row.LastModifiedLedger = p.sequence
 		p.batchUpdateOffers = append(p.batchUpdateOffers, row)
@@ -70,7 +70,7 @@ func (p *OffersProcessor) ProcessChange(ctx context.Context, change ingest.Chang
 
 }
 
-func (p *OffersProcessor) eventToRow(event offers.OfferEventData) history.Offer {
+func (p *OffersProcessor) offerEventToRow(event offers.OfferEventData) history.Offer {
 	flags := int32(0)
 	if event.IsPassive {
 		flags = 1
@@ -81,6 +81,7 @@ func (p *OffersProcessor) eventToRow(event offers.OfferEventData) history.Offer 
 		OfferID:            event.OfferID,
 		SellingAsset:       event.SellingAsset,
 		BuyingAsset:        event.BuyingAsset,
+		Amount:             event.RemainingAmount,
 		Pricen:             event.PriceN,
 		Priced:             event.PriceD,
 		Price:              float64(event.PriceN) / float64(event.PriceD),

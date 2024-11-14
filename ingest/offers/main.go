@@ -14,7 +14,7 @@ const (
 	EventTypeOfferClosed  = "OfferClosed"
 )
 
-// Base struct with common fields for all offer events
+// Base struct with common fields for all offer events.
 type OfferEventData struct {
 	SellerId string
 	OfferID  int64
@@ -22,7 +22,7 @@ type OfferEventData struct {
 	BuyingAsset  xdr.Asset
 	SellingAsset xdr.Asset
 
-	RemainingAmount int64
+	RemainingAmount int64 // Remaining amount that still needs to be filled for this offer
 	PriceN          int32
 	PriceD          int32
 
@@ -114,7 +114,7 @@ func populateOfferData(e *xdr.LedgerEntry) OfferEventData {
 	}
 }
 
-func ProcessOffer(change ingest.Change) *OfferEvent {
+func ProcessOffer(change ingest.Change) OfferEvent {
 	if change.Type != xdr.LedgerEntryTypeOffer {
 		return nil
 	}
@@ -131,7 +131,6 @@ func ProcessOffer(change ingest.Change) *OfferEvent {
 		// Order Fill
 		o = populateOfferData(change.Post)
 		fillAmt := int64(change.Pre.Data.MustOffer().Amount - change.Post.Data.MustOffer().Amount)
-		o.RemainingAmount = fillAmt
 		event = OfferFillEvent{OfferEventData: o, FillAmount: fillAmt}
 		//TODO: populate MatchingOrders field in OfferFillEvent
 
@@ -142,6 +141,6 @@ func ProcessOffer(change ingest.Change) *OfferEvent {
 		event = OfferClosedEvent{OfferEventData: o}
 		//TODO: populate CloseReason field in OfferClosedEvent
 	}
-	return &event
+	return event
 
 }
