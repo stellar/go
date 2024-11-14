@@ -41,7 +41,7 @@ func (p *OffersProcessor) ProcessChange(ctx context.Context, change ingest.Chang
 		return nil
 	}
 
-	switch ev := event.(type) {
+	switch ev := (*event).(type) {
 	case offers.OfferCreatedEvent:
 		row := p.eventToRow(ev.OfferEventData)
 		err := p.insertBatchBuilder.Add(row)

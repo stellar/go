@@ -114,7 +114,7 @@ func populateOfferData(e *xdr.LedgerEntry) OfferEventData {
 	}
 }
 
-func ProcessOffer(change ingest.Change) OfferEvent {
+func ProcessOffer(change ingest.Change) *OfferEvent {
 	if change.Type != xdr.LedgerEntryTypeOffer {
 		return nil
 	}
@@ -142,6 +142,6 @@ func ProcessOffer(change ingest.Change) OfferEvent {
 		event = OfferClosedEvent{OfferEventData: o}
 		//TODO: populate CloseReason field in OfferClosedEvent
 	}
-	return event
+	return &event
 
 }
