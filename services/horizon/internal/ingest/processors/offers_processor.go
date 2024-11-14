@@ -2,7 +2,6 @@ package processors
 
 import (
 	"context"
-	"fmt"
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/ingest/offers"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
@@ -76,9 +75,6 @@ func (p *OffersProcessor) eventToRow(event offers.OfferEventData) history.Offer 
 	if event.IsPassive {
 		flags = 1
 	}
-	fmt.Println("************")
-	fmt.Printf("%v", event)
-	fmt.Println("************")
 
 	return history.Offer{
 		SellerID:           event.SellerId,
@@ -87,7 +83,7 @@ func (p *OffersProcessor) eventToRow(event offers.OfferEventData) history.Offer 
 		BuyingAsset:        event.BuyingAsset,
 		Pricen:             event.PriceN,
 		Priced:             event.PriceD,
-		Price:              float64(event.PriceN / event.PriceD),
+		Price:              float64(event.PriceN) / float64(event.PriceD),
 		Flags:              flags,
 		LastModifiedLedger: event.LastModifiedLedger,
 		Sponsor:            event.Sponsor,
