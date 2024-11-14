@@ -44,29 +44,21 @@ func createBufferedStorageBackendConfigForTesting() BufferedStorageBackendConfig
 	param := make(map[string]string)
 	param["destination_bucket_path"] = "testURL"
 
-	ledgerBatchConfig := datastore.DataStoreSchema{
-		LedgersPerFile:    1,
-		FilesPerPartition: 64000,
-	}
-
-	dataStore := new(datastore.MockDataStore)
-
 	return BufferedStorageBackendConfig{
-		LedgerBatchConfig: ledgerBatchConfig,
-		DataStore:         dataStore,
-		BufferSize:        100,
-		NumWorkers:        5,
-		RetryLimit:        3,
-		RetryWait:         time.Microsecond,
+		BufferSize: 100,
+		NumWorkers: 5,
+		RetryLimit: 3,
+		RetryWait:  time.Microsecond,
 	}
 }
 
 func createBufferedStorageBackendForTesting() BufferedStorageBackend {
 	config := createBufferedStorageBackendConfigForTesting()
 
+	dataStore := new(datastore.MockDataStore)
 	return BufferedStorageBackend{
 		config:    config,
-		dataStore: config.DataStore,
+		dataStore: dataStore,
 	}
 }
 
@@ -84,8 +76,12 @@ func createMockdataStore(t *testing.T, start, end, partitionSize, count uint32) 
 			readCloser = createLCMBatchReader(i, i, count)
 			objectName = fmt.Sprintf("FFFFFFFF--0-%d/%08X--%d.xdr.zstd", partition, math.MaxUint32-i, i)
 		}
-		mockDataStore.On("GetFile", mock.Anything, objectName).Return(readCloser, nil)
+		mockDataStore.On("GetFile", mock.Anything, objectName).Return(readCloser, nil).Times(1)
 	}
+	mockDataStore.On("GetSchema").Return(datastore.DataStoreSchema{
+		LedgersPerFile:    count,
+		FilesPerPartition: partitionSize,
+	})
 
 	t.Cleanup(func() {
 		mockDataStore.AssertExpectations(t)
@@ -126,15 +122,18 @@ func createLCMBatchReader(start, end, count uint32) io.ReadCloser {
 }
 
 func TestNewBufferedStorageBackend(t *testing.T) {
-	ctx := context.Background()
 	config := createBufferedStorageBackendConfigForTesting()
-
-	bsb, err := NewBufferedStorageBackend(ctx, config)
+	mockDataStore := new(datastore.MockDataStore)
+	mockDataStore.On("GetSchema").Return(datastore.DataStoreSchema{
+		LedgersPerFile:    uint32(1),
+		FilesPerPartition: partitionSize,
+	})
+	bsb, err := NewBufferedStorageBackend(config, mockDataStore)
 	assert.NoError(t, err)
 
-	assert.Equal(t, bsb.dataStore, config.DataStore)
-	assert.Equal(t, uint32(1), bsb.config.LedgerBatchConfig.LedgersPerFile)
-	assert.Equal(t, uint32(64000), bsb.config.LedgerBatchConfig.FilesPerPartition)
+	assert.Equal(t, bsb.dataStore, mockDataStore)
+	assert.Equal(t, uint32(1), bsb.dataStore.GetSchema().LedgersPerFile)
+	assert.Equal(t, uint32(64000), bsb.dataStore.GetSchema().FilesPerPartition)
 	assert.Equal(t, uint32(100), bsb.config.BufferSize)
 	assert.Equal(t, uint32(5), bsb.config.NumWorkers)
 	assert.Equal(t, uint32(3), bsb.config.RetryLimit)
@@ -158,6 +157,50 @@ func TestNewLedgerBuffer(t *testing.T) {
 	latestSeq, err := ledgerBuffer.getLatestLedgerSequence()
 	assert.NoError(t, err)
 	assert.Equal(t, uint32(7), latestSeq)
+	assert.Equal(t, ledgerRange, ledgerBuffer.ledgerRange)
+}
+
+func TestNewLedgerBufferSizeLessThanRangeSize(t *testing.T) {
+	startLedger := uint32(10)
+	endLedger := uint32(30)
+	bsb := createBufferedStorageBackendForTesting()
+	bsb.config.NumWorkers = 2
+	bsb.config.BufferSize = 10
+	ledgerRange := BoundedRange(startLedger, endLedger)
+	mockDataStore := createMockdataStore(t, startLedger, endLedger, partitionSize, ledgerPerFileCount)
+	bsb.dataStore = mockDataStore
+
+	ledgerBuffer, err := bsb.newLedgerBuffer(ledgerRange)
+	assert.Eventually(t, func() bool { return len(ledgerBuffer.ledgerQueue) == 10 }, time.Second*1, time.Millisecond*50)
+	assert.NoError(t, err)
+
+	for i := startLedger; i < endLedger; i++ {
+		lcm, err := ledgerBuffer.getFromLedgerQueue(context.Background())
+		assert.NoError(t, err)
+		assert.Equal(t, xdr.Uint32(i), lcm.StartSequence)
+	}
+	assert.Equal(t, ledgerRange, ledgerBuffer.ledgerRange)
+}
+
+func TestNewLedgerBufferSizeLargerThanRangeSize(t *testing.T) {
+	startLedger := uint32(1)
+	endLedger := uint32(15)
+	bsb := createBufferedStorageBackendForTesting()
+	bsb.config.NumWorkers = 2
+	bsb.config.BufferSize = 100
+	ledgerRange := BoundedRange(startLedger, endLedger)
+	mockDataStore := createMockdataStore(t, startLedger, endLedger, partitionSize, ledgerPerFileCount)
+	bsb.dataStore = mockDataStore
+
+	ledgerBuffer, err := bsb.newLedgerBuffer(ledgerRange)
+	assert.Eventually(t, func() bool { return len(ledgerBuffer.ledgerQueue) == 15 }, time.Second*1, time.Millisecond*50)
+	assert.NoError(t, err)
+
+	for i := startLedger; i < endLedger; i++ {
+		lcm, err := ledgerBuffer.getFromLedgerQueue(context.Background())
+		assert.NoError(t, err)
+		assert.Equal(t, xdr.Uint32(i), lcm.StartSequence)
+	}
 	assert.Equal(t, ledgerRange, ledgerBuffer.ledgerRange)
 }
 
@@ -210,12 +253,14 @@ func TestCloudStorageGetLedger_MultipleLedgerPerFile(t *testing.T) {
 	lcmArray := createLCMForTesting(startLedger, endLedger)
 	bsb := createBufferedStorageBackendForTesting()
 	ctx := context.Background()
-	bsb.config.LedgerBatchConfig.LedgersPerFile = uint32(2)
 	ledgerRange := BoundedRange(startLedger, endLedger)
 
 	mockDataStore := createMockdataStore(t, startLedger, endLedger, partitionSize, 2)
 	bsb.dataStore = mockDataStore
-
+	mockDataStore.On("GetSchema").Return(datastore.DataStoreSchema{
+		LedgersPerFile:    uint32(2),
+		FilesPerPartition: partitionSize,
+	})
 	assert.NoError(t, bsb.PrepareRange(ctx, ledgerRange))
 	assert.Eventually(t, func() bool { return len(bsb.ledgerBuffer.ledgerQueue) == 2 }, time.Second*5, time.Millisecond*50)
 
@@ -451,6 +496,10 @@ func TestLedgerBufferClose(t *testing.T) {
 
 	mockDataStore := new(datastore.MockDataStore)
 	partition := ledgerPerFileCount*partitionSize - 1
+	mockDataStore.On("GetSchema").Return(datastore.DataStoreSchema{
+		LedgersPerFile:    ledgerPerFileCount,
+		FilesPerPartition: partitionSize,
+	})
 
 	objectName := fmt.Sprintf("FFFFFFFF--0-%d/%08X--%d.xdr.zstd", partition, math.MaxUint32-3, 3)
 	afterPrepareRange := make(chan struct{})
@@ -483,7 +532,10 @@ func TestLedgerBufferBoundedObjectNotFound(t *testing.T) {
 
 	mockDataStore := new(datastore.MockDataStore)
 	partition := ledgerPerFileCount*partitionSize - 1
-
+	mockDataStore.On("GetSchema").Return(datastore.DataStoreSchema{
+		LedgersPerFile:    ledgerPerFileCount,
+		FilesPerPartition: partitionSize,
+	})
 	objectName := fmt.Sprintf("FFFFFFFF--0-%d/%08X--%d.xdr.zstd", partition, math.MaxUint32-3, 3)
 	mockDataStore.On("GetFile", mock.Anything, objectName).Return(io.NopCloser(&bytes.Buffer{}), os.ErrNotExist).Once()
 	t.Cleanup(func() {
@@ -497,7 +549,9 @@ func TestLedgerBufferBoundedObjectNotFound(t *testing.T) {
 	bsb.ledgerBuffer.wg.Wait()
 
 	_, err := bsb.GetLedger(ctx, 3)
-	assert.EqualError(t, err, "failed getting next ledger batch from queue: ledger object containing sequence 3 is missing: file does not exist")
+	assert.ErrorContains(t, err, "ledger object containing sequence 3 is missing")
+	assert.ErrorContains(t, err, objectName)
+	assert.ErrorContains(t, err, "file does not exist")
 }
 
 func TestLedgerBufferUnboundedObjectNotFound(t *testing.T) {
@@ -509,7 +563,10 @@ func TestLedgerBufferUnboundedObjectNotFound(t *testing.T) {
 
 	mockDataStore := new(datastore.MockDataStore)
 	partition := ledgerPerFileCount*partitionSize - 1
-
+	mockDataStore.On("GetSchema").Return(datastore.DataStoreSchema{
+		LedgersPerFile:    ledgerPerFileCount,
+		FilesPerPartition: partitionSize,
+	})
 	objectName := fmt.Sprintf("FFFFFFFF--0-%d/%08X--%d.xdr.zstd", partition, math.MaxUint32-3, 3)
 	iteration := &atomic.Int32{}
 	cancelAfter := int32(bsb.config.RetryLimit) + 2
@@ -551,11 +608,17 @@ func TestLedgerBufferRetryLimit(t *testing.T) {
 	})
 
 	bsb.dataStore = mockDataStore
-
+	mockDataStore.On("GetSchema").Return(datastore.DataStoreSchema{
+		LedgersPerFile:    ledgerPerFileCount,
+		FilesPerPartition: partitionSize,
+	})
 	assert.NoError(t, bsb.PrepareRange(context.Background(), ledgerRange))
 
 	bsb.ledgerBuffer.wg.Wait()
 
 	_, err := bsb.GetLedger(context.Background(), 3)
-	assert.EqualError(t, err, "failed getting next ledger batch from queue: maximum retries exceeded for downloading object containing sequence 3: transient error")
+	assert.ErrorContains(t, err, "failed getting next ledger batch from queue")
+	assert.ErrorContains(t, err, "maximum retries exceeded for downloading object containing sequence 3")
+	assert.ErrorContains(t, err, objectName)
+	assert.ErrorContains(t, err, "transient error")
 }

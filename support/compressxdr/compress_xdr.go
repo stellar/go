@@ -3,7 +3,7 @@ package compressxdr
 import (
 	"io"
 
-	xdr3 "github.com/stellar/go-xdr/xdr3"
+	"github.com/stellar/go/xdr"
 )
 
 func NewXDREncoder(compressor Compressor, xdrPayload interface{}) XDREncoder {
@@ -29,7 +29,7 @@ func (e XDREncoder) WriteTo(w io.Writer) (int64, error) {
 	}
 	defer zw.Close()
 
-	n, err := xdr3.Marshal(zw, e.XdrPayload)
+	n, err := xdr.Marshal(zw, e.XdrPayload)
 	return int64(n), err
 }
 
@@ -47,6 +47,6 @@ func (d XDRDecoder) ReadFrom(r io.Reader) (int64, error) {
 	}
 	defer zr.Close()
 
-	n, err := xdr3.Unmarshal(zr, d.XdrPayload)
+	n, err := xdr.Unmarshal(zr, d.XdrPayload)
 	return int64(n), err
 }

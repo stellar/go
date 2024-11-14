@@ -69,7 +69,6 @@ type ProcessorRunnerInterface interface {
 	SetHistoryAdapter(historyAdapter historyArchiveAdapterInterface)
 	EnableMemoryStatsLogging()
 	DisableMemoryStatsLogging()
-	RunGenesisStateIngestion() (ingest.StatsChangeProcessorResults, error)
 	RunHistoryArchiveIngestion(
 		checkpointLedger uint32,
 		skipChecks bool,
@@ -133,11 +132,11 @@ func buildChangeProcessor(
 	})
 }
 
-func (s *ProcessorRunner) buildTransactionProcessor(ledgersProcessor *processors.LedgersProcessor) (groupLoaders, *groupTransactionProcessors) {
-	accountLoader := history.NewAccountLoader()
-	assetLoader := history.NewAssetLoader()
-	lpLoader := history.NewLiquidityPoolLoader()
-	cbLoader := history.NewClaimableBalanceLoader()
+func (s *ProcessorRunner) buildTransactionProcessor(ledgersProcessor *processors.LedgersProcessor, concurrencyMode history.ConcurrencyMode) (groupLoaders, *groupTransactionProcessors) {
+	accountLoader := history.NewAccountLoader(concurrencyMode)
+	assetLoader := history.NewAssetLoader(concurrencyMode)
+	lpLoader := history.NewLiquidityPoolLoader(concurrencyMode)
+	cbLoader := history.NewClaimableBalanceLoader(concurrencyMode)
 
 	loaders := newGroupLoaders([]horizonLazyLoader{accountLoader, assetLoader, lpLoader, cbLoader})
 	statsLedgerTransactionProcessor := processors.NewStatsLedgerTransactionProcessor()
@@ -192,10 +191,6 @@ func (s *ProcessorRunner) checkIfProtocolVersionSupported(ledgerProtocolVersion 
 	return nil
 }
 
-func (s *ProcessorRunner) RunGenesisStateIngestion() (ingest.StatsChangeProcessorResults, error) {
-	return s.RunHistoryArchiveIngestion(1, false, 0, xdr.Hash{})
-}
-
 func (s *ProcessorRunner) RunHistoryArchiveIngestion(
 	checkpointLedger uint32,
 	skipChecks bool,
@@ -218,43 +213,37 @@ func (s *ProcessorRunner) RunHistoryArchiveIngestion(
 		return ingest.StatsChangeProcessorResults{}, err
 	}
 
-	if checkpointLedger == 1 {
-		if err := changeProcessor.ProcessChange(s.ctx, ingest.GenesisChange(s.config.NetworkPassphrase)); err != nil {
-			return changeStats.GetResults(), errors.Wrap(err, "Error ingesting genesis ledger")
+	if !skipChecks {
+		if err := s.checkIfProtocolVersionSupported(ledgerProtocolVersion); err != nil {
+			return changeStats.GetResults(), errors.Wrap(err, "Error while checking for supported protocol version")
 		}
-	} else {
-		if !skipChecks {
-			if err := s.checkIfProtocolVersionSupported(ledgerProtocolVersion); err != nil {
-				return changeStats.GetResults(), errors.Wrap(err, "Error while checking for supported protocol version")
-			}
+	}
+
+	changeReader, err := s.historyAdapter.GetState(s.ctx, checkpointLedger)
+	if err != nil {
+		return changeStats.GetResults(), errors.Wrap(err, "Error creating HAS reader")
+	}
+
+	if !skipChecks {
+		if err = changeReader.VerifyBucketList(bucketListHash); err != nil {
+			return changeStats.GetResults(), errors.Wrap(err, "Error validating bucket list from HAS")
 		}
+	}
 
-		changeReader, err := s.historyAdapter.GetState(s.ctx, checkpointLedger)
-		if err != nil {
-			return changeStats.GetResults(), errors.Wrap(err, "Error creating HAS reader")
-		}
+	defer changeReader.Close()
 
-		if !skipChecks {
-			if err = changeReader.VerifyBucketList(bucketListHash); err != nil {
-				return changeStats.GetResults(), errors.Wrap(err, "Error validating bucket list from HAS")
-			}
-		}
+	log.WithField("sequence", checkpointLedger).
+		Info("Processing entries from History Archive Snapshot")
 
-		defer changeReader.Close()
-
-		log.WithField("sequence", checkpointLedger).
-			Info("Processing entries from History Archive Snapshot")
-
-		err = streamChanges(s.ctx, changeProcessor, checkpointLedger, newloggingChangeReader(
-			changeReader,
-			"historyArchive",
-			checkpointLedger,
-			logFrequency,
-			s.logMemoryStats,
-		))
-		if err != nil {
-			return changeStats.GetResults(), errors.Wrap(err, "Error streaming changes from HAS")
-		}
+	err = streamChanges(s.ctx, changeProcessor, checkpointLedger, newloggingChangeReader(
+		changeReader,
+		"historyArchive",
+		checkpointLedger,
+		logFrequency,
+		s.logMemoryStats,
+	))
+	if err != nil {
+		return changeStats.GetResults(), errors.Wrap(err, "Error streaming changes from HAS")
 	}
 
 	if err := changeProcessor.Commit(s.ctx); err != nil {
@@ -366,7 +355,7 @@ func (s *ProcessorRunner) streamLedger(ledger xdr.LedgerCloseMeta,
 	return nil
 }
 
-func (s *ProcessorRunner) runTransactionProcessorsOnLedger(registry nameRegistry, ledger xdr.LedgerCloseMeta) (
+func (s *ProcessorRunner) runTransactionProcessorsOnLedger(registry nameRegistry, ledger xdr.LedgerCloseMeta, concurrencyMode history.ConcurrencyMode) (
 	transactionStats processors.StatsLedgerTransactionProcessorResults,
 	transactionDurations runDurations,
 	tradeStats processors.TradeStats,
@@ -381,7 +370,7 @@ func (s *ProcessorRunner) runTransactionProcessorsOnLedger(registry nameRegistry
 	groupTransactionFilterers := s.buildTransactionFilterer()
 	// when in online mode, the submission result processor must always run (regardless of whether filter rules exist or not)
 	groupFilteredOutProcessors := s.buildFilteredOutProcessor()
-	loaders, groupTransactionProcessors := s.buildTransactionProcessor(ledgersProcessor)
+	loaders, groupTransactionProcessors := s.buildTransactionProcessor(ledgersProcessor, concurrencyMode)
 
 	if err = registerTransactionProcessors(
 		registry,
@@ -494,7 +483,7 @@ func (s *ProcessorRunner) RunTransactionProcessorsOnLedgers(ledgers []xdr.Ledger
 	groupTransactionFilterers := s.buildTransactionFilterer()
 	// intentionally skip filtered out processor
 	groupFilteredOutProcessors := newGroupTransactionProcessors(nil, nil, nil)
-	loaders, groupTransactionProcessors := s.buildTransactionProcessor(ledgersProcessor)
+	loaders, groupTransactionProcessors := s.buildTransactionProcessor(ledgersProcessor, history.ConcurrentInserts)
 
 	startTime := time.Now()
 	curHeap, sysHeap := getMemStats()
@@ -611,7 +600,7 @@ func (s *ProcessorRunner) RunAllProcessorsOnLedger(ledger xdr.LedgerCloseMeta) (
 		return
 	}
 
-	transactionStats, transactionDurations, tradeStats, loaderDurations, loaderStats, err := s.runTransactionProcessorsOnLedger(registry, ledger)
+	transactionStats, transactionDurations, tradeStats, loaderDurations, loaderStats, err := s.runTransactionProcessorsOnLedger(registry, ledger, history.ConcurrentDeletes)
 
 	stats.changeStats = changeStatsProcessor.GetResults()
 	stats.changeDurations = groupChangeProcessors.processorsRunDurations

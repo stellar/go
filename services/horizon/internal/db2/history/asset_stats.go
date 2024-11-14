@@ -20,8 +20,6 @@ func assetStatToMap(assetStat ExpAssetStat) map[string]interface{} {
 		"asset_issuer": assetStat.AssetIssuer,
 		"accounts":     assetStat.Accounts,
 		"balances":     assetStat.Balances,
-		"amount":       assetStat.Amount,
-		"num_accounts": assetStat.NumAccounts,
 		"contract_id":  assetStat.ContractID,
 	}
 }

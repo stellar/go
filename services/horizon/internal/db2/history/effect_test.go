@@ -23,7 +23,7 @@ func TestEffectsForLiquidityPool(t *testing.T) {
 	// Insert Effect
 	address := "GAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSTVY"
 	muxedAddres := "MAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSAAAAAAAAAAE2LP26"
-	accountLoader := NewAccountLoader()
+	accountLoader := NewAccountLoader(ConcurrentInserts)
 
 	builder := q.NewEffectBatchInsertBuilder()
 	sequence := int32(56)
@@ -47,7 +47,7 @@ func TestEffectsForLiquidityPool(t *testing.T) {
 
 	// Insert Liquidity Pool history
 	liquidityPoolID := "abcde"
-	lpLoader := NewLiquidityPoolLoader()
+	lpLoader := NewLiquidityPoolLoader(ConcurrentInserts)
 
 	operationBuilder := q.NewOperationLiquidityPoolBatchInsertBuilder()
 	tt.Assert.NoError(operationBuilder.Add(opID, lpLoader.GetFuture(liquidityPoolID)))
@@ -56,17 +56,34 @@ func TestEffectsForLiquidityPool(t *testing.T) {
 
 	tt.Assert.NoError(q.Commit())
 
-	var result []Effect
-	result, err = q.EffectsForLiquidityPool(tt.Ctx, liquidityPoolID, db2.PageQuery{
+	var effects []Effect
+	effects, err = q.EffectsForLiquidityPool(tt.Ctx, liquidityPoolID, db2.PageQuery{
 		Cursor: "0-0",
 		Order:  "asc",
 		Limit:  10,
-	})
+	}, 0)
 	tt.Assert.NoError(err)
 
-	tt.Assert.Len(result, 1)
-	tt.Assert.Equal(result[0].Account, address)
+	tt.Assert.Len(effects, 1)
+	effect := effects[0]
+	tt.Assert.Equal(effect.Account, address)
 
+	effects, err = q.EffectsForLiquidityPool(tt.Ctx, liquidityPoolID, db2.PageQuery{
+		Cursor: fmt.Sprintf("%d-0", toid.New(sequence+2, 0, 0).ToInt64()),
+		Order:  "desc",
+		Limit:  200,
+	}, sequence-3)
+	tt.Require.NoError(err)
+	tt.Require.Len(effects, 1)
+	tt.Require.Equal(effects[0], effect)
+
+	effects, err = q.EffectsForLiquidityPool(tt.Ctx, liquidityPoolID, db2.PageQuery{
+		Cursor: fmt.Sprintf("%d-0", toid.New(sequence+5, 0, 0).ToInt64()),
+		Order:  "desc",
+		Limit:  200,
+	}, sequence+2)
+	tt.Require.NoError(err)
+	tt.Require.Empty(effects)
 }
 
 func TestEffectsForTrustlinesSponsorshipEmptyAssetType(t *testing.T) {
@@ -78,7 +95,7 @@ func TestEffectsForTrustlinesSponsorshipEmptyAssetType(t *testing.T) {
 
 	address := "GAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSTVY"
 	muxedAddres := "MAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSAAAAAAAAAAE2LP26"
-	accountLoader := NewAccountLoader()
+	accountLoader := NewAccountLoader(ConcurrentInserts)
 
 	builder := q.NewEffectBatchInsertBuilder()
 	sequence := int32(56)
@@ -160,7 +177,7 @@ func TestEffectsForTrustlinesSponsorshipEmptyAssetType(t *testing.T) {
 		Cursor: "0-0",
 		Order:  "asc",
 		Limit:  200,
-	})
+	}, 0)
 	tt.Require.NoError(err)
 	tt.Require.Len(results, len(tests))
 

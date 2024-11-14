@@ -9,6 +9,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+
 	"github.com/stellar/go/historyarchive"
 	horizon "github.com/stellar/go/services/horizon/internal"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
@@ -94,7 +95,7 @@ var ingestVerifyRangeCmd = &cobra.Command{
 			co.SetValue()
 		}
 
-		if err := horizon.ApplyFlags(globalConfig, globalFlags, horizon.ApplyOptions{RequireCaptiveCoreFullConfig: false, AlwaysIngest: true}); err != nil {
+		if err := horizon.ApplyFlags(globalConfig, globalFlags, horizon.ApplyOptions{RequireCaptiveCoreFullConfig: false}); err != nil {
 			return err
 		}
 
@@ -189,7 +190,7 @@ var ingestStressTestCmd = &cobra.Command{
 			co.SetValue()
 		}
 
-		if err := horizon.ApplyFlags(globalConfig, globalFlags, horizon.ApplyOptions{RequireCaptiveCoreFullConfig: false, AlwaysIngest: true}); err != nil {
+		if err := horizon.ApplyFlags(globalConfig, globalFlags, horizon.ApplyOptions{RequireCaptiveCoreFullConfig: false}); err != nil {
 			return err
 		}
 
@@ -239,7 +240,7 @@ var ingestTriggerStateRebuildCmd = &cobra.Command{
 	Short: "updates a database to trigger state rebuild, state will be rebuilt by a running Horizon instance, DO NOT RUN production DB, some endpoints will be unavailable until state is rebuilt",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := context.Background()
-		if err := horizon.ApplyFlags(globalConfig, globalFlags, horizon.ApplyOptions{RequireCaptiveCoreFullConfig: false, AlwaysIngest: true}); err != nil {
+		if err := horizon.ApplyFlags(globalConfig, globalFlags, horizon.ApplyOptions{RequireCaptiveCoreFullConfig: false}); err != nil {
 			return err
 		}
 
@@ -258,56 +259,6 @@ var ingestTriggerStateRebuildCmd = &cobra.Command{
 	},
 }
 
-var ingestInitGenesisStateCmd = &cobra.Command{
-	Use:   "init-genesis-state",
-	Short: "ingests genesis state (ledger 1)",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		ctx := context.Background()
-		if err := horizon.ApplyFlags(globalConfig, globalFlags, horizon.ApplyOptions{RequireCaptiveCoreFullConfig: false, AlwaysIngest: true}); err != nil {
-			return err
-		}
-
-		horizonSession, err := db.Open("postgres", globalConfig.DatabaseURL)
-		if err != nil {
-			return fmt.Errorf("cannot open Horizon DB: %v", err)
-		}
-
-		historyQ := &history.Q{SessionInterface: horizonSession}
-
-		lastIngestedLedger, err := historyQ.GetLastLedgerIngestNonBlocking(ctx)
-		if err != nil {
-			return fmt.Errorf("cannot get last ledger value: %v", err)
-		}
-
-		if lastIngestedLedger != 0 {
-			return fmt.Errorf("cannot run on non-empty DB")
-		}
-
-		ingestConfig := ingest.Config{
-			NetworkPassphrase:      globalConfig.NetworkPassphrase,
-			HistorySession:         horizonSession,
-			HistoryArchiveURLs:     globalConfig.HistoryArchiveURLs,
-			CheckpointFrequency:    globalConfig.CheckpointFrequency,
-			RoundingSlippageFilter: globalConfig.RoundingSlippageFilter,
-			CaptiveCoreBinaryPath:  globalConfig.CaptiveCoreBinaryPath,
-			CaptiveCoreConfigUseDB: globalConfig.CaptiveCoreConfigUseDB,
-		}
-
-		system, err := ingest.NewSystem(ingestConfig)
-		if err != nil {
-			return err
-		}
-
-		err = system.BuildGenesisState()
-		if err != nil {
-			return err
-		}
-
-		log.Info("Genesis ledger stat successfully ingested!")
-		return nil
-	},
-}
-
 var ingestBuildStateCmd = &cobra.Command{
 	Use:   "build-state",
 	Short: "builds state at a given checkpoint. warning! requires clean DB.",
@@ -320,7 +271,7 @@ var ingestBuildStateCmd = &cobra.Command{
 			co.SetValue()
 		}
 
-		if err := horizon.ApplyFlags(globalConfig, globalFlags, horizon.ApplyOptions{RequireCaptiveCoreFullConfig: false, AlwaysIngest: true}); err != nil {
+		if err := horizon.ApplyFlags(globalConfig, globalFlags, horizon.ApplyOptions{RequireCaptiveCoreFullConfig: false}); err != nil {
 			return err
 		}
 
@@ -341,7 +292,7 @@ var ingestBuildStateCmd = &cobra.Command{
 		}
 
 		mngr := historyarchive.NewCheckpointManager(globalConfig.CheckpointFrequency)
-		if !mngr.IsCheckpoint(ingestBuildStateSequence) && ingestBuildStateSequence != 1 {
+		if !mngr.IsCheckpoint(ingestBuildStateSequence) {
 			return fmt.Errorf("`--sequence` must be a checkpoint ledger")
 		}
 
@@ -405,7 +356,6 @@ func init() {
 		ingestVerifyRangeCmd,
 		ingestStressTestCmd,
 		ingestTriggerStateRebuildCmd,
-		ingestInitGenesisStateCmd,
 		ingestBuildStateCmd,
 	)
 }

@@ -462,6 +462,11 @@ func (m *mockDBQ) TryReaperLock(ctx context.Context) (bool, error) {
 	return args.Get(0).(bool), args.Error(1)
 }
 
+func (m *mockDBQ) TryLookupTableReaperLock(ctx context.Context) (bool, error) {
+	args := m.Called(ctx)
+	return args.Get(0).(bool), args.Error(1)
+}
+
 func (m *mockDBQ) GetNextLedgerSequence(ctx context.Context, start uint32) (uint32, bool, error) {
 	args := m.Called(ctx, start)
 	return args.Get(0).(uint32), args.Get(1).(bool), args.Error(2)
@@ -562,16 +567,14 @@ func (m *mockDBQ) NewTradeBatchInsertBuilder() history.TradeBatchInsertBuilder {
 	return args.Get(0).(history.TradeBatchInsertBuilder)
 }
 
-func (m *mockDBQ) ReapLookupTables(ctx context.Context, offsets map[string]int64) (map[string]int64, map[string]int64, error) {
-	args := m.Called(ctx, offsets)
-	var r1, r2 map[string]int64
-	if args.Get(0) != nil {
-		r1 = args.Get(0).(map[string]int64)
-	}
-	if args.Get(1) != nil {
-		r1 = args.Get(1).(map[string]int64)
-	}
-	return r1, r2, args.Error(2)
+func (m *mockDBQ) FindLookupTableRowsToReap(ctx context.Context, table string, batchSize int) ([]int64, int64, error) {
+	args := m.Called(ctx, table, batchSize)
+	return args.Get(0).([]int64), args.Get(1).(int64), args.Error(2)
+}
+
+func (m *mockDBQ) ReapLookupTable(ctx context.Context, table string, ids []int64, offset int64) (int64, error) {
+	args := m.Called(ctx, table, ids, offset)
+	return args.Get(0).(int64), args.Error(1)
 }
 
 func (m *mockDBQ) RebuildTradeAggregationTimes(ctx context.Context, from, to strtime.Millis, roundingSlippageFilter int) error {
@@ -637,11 +640,6 @@ func (m *mockProcessorsRunner) EnableMemoryStatsLogging() {
 
 func (m *mockProcessorsRunner) DisableMemoryStatsLogging() {
 	m.Called()
-}
-
-func (m *mockProcessorsRunner) RunGenesisStateIngestion() (ingest.StatsChangeProcessorResults, error) {
-	args := m.Called()
-	return args.Get(0).(ingest.StatsChangeProcessorResults), args.Error(1)
 }
 
 func (m *mockProcessorsRunner) RunHistoryArchiveIngestion(
@@ -715,11 +713,6 @@ func (m *mockSystem) BuildState(sequence uint32, skipChecks bool) error {
 
 func (m *mockSystem) ReingestRange(ledgerRanges []history.LedgerRange, force bool, rebuildTradeAgg bool) error {
 	args := m.Called(ledgerRanges, force, rebuildTradeAgg)
-	return args.Error(0)
-}
-
-func (m *mockSystem) BuildGenesisState() error {
-	args := m.Called()
 	return args.Error(0)
 }
 

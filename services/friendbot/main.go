@@ -34,7 +34,6 @@ type Config struct {
 }
 
 func main() {
-
 	rootCmd := &cobra.Command{
 		Use:   "friendbot",
 		Short: "friendbot for the Stellar Test Network",
@@ -114,4 +113,8 @@ func registerProblems() {
 	accountExistsProblem := problem.BadRequest
 	accountExistsProblem.Detail = internal.ErrAccountExists.Error()
 	problem.RegisterError(internal.ErrAccountExists, accountExistsProblem)
+
+	accountFundedProblem := problem.BadRequest
+	accountFundedProblem.Detail = internal.ErrAccountFunded.Error()
+	problem.RegisterError(internal.ErrAccountFunded, accountFundedProblem)
 }

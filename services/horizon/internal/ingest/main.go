@@ -20,6 +20,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/ingest/filters"
 	apkg "github.com/stellar/go/support/app"
+	"github.com/stellar/go/support/datastore"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 	logpkg "github.com/stellar/go/support/log"
@@ -30,7 +31,7 @@ import (
 const (
 	// MaxSupportedProtocolVersion defines the maximum supported version of
 	// the Stellar protocol.
-	MaxSupportedProtocolVersion uint32 = 21
+	MaxSupportedProtocolVersion uint32 = 22
 
 	// CurrentVersion reflects the latest version of the ingestion
 	// algorithm. This value is stored in KV store and is used to decide
@@ -69,10 +70,10 @@ const (
 	//  * Ledger ingestion,
 	//  * State verifications,
 	//  * Metrics updates.
-	//  * Reaping (requires 2 connections, the extra connection is used for holding the advisory lock)
-	MaxDBConnections = 5
+	//  * Reaping of history (requires 2 connections, the extra connection is used for holding the advisory lock)
+	//  * Reaping of lookup tables (requires 2 connections, the extra connection is used for holding the advisory lock)
+	MaxDBConnections = 7
 
-	defaultCoreCursorName           = "HORIZON"
 	stateVerificationErrorThreshold = 3
 
 	// 100 ledgers per flush has shown in stress tests
@@ -81,6 +82,38 @@ const (
 )
 
 var log = logpkg.DefaultLogger.WithField("service", "ingest")
+
+type LedgerBackendType uint
+
+const (
+	CaptiveCoreBackend LedgerBackendType = iota
+	BufferedStorageBackend
+)
+
+func (s LedgerBackendType) String() string {
+	switch s {
+	case CaptiveCoreBackend:
+		return "captive-core"
+	case BufferedStorageBackend:
+		return "datastore"
+	}
+	return ""
+}
+
+const (
+	HistoryCheckpointLedgerInterval uint = 64
+	// MinBatchSize is the minimum batch size for reingestion
+	MinBatchSize uint = HistoryCheckpointLedgerInterval
+	// MaxBufferedStorageBackendBatchSize is the maximum batch size for Buffered Storage reingestion
+	MaxBufferedStorageBackendBatchSize uint = 200 * HistoryCheckpointLedgerInterval
+	// MaxCaptiveCoreBackendBatchSize is the maximum batch size for Captive Core reingestion
+	MaxCaptiveCoreBackendBatchSize uint = 20_000 * HistoryCheckpointLedgerInterval
+)
+
+type StorageBackendConfig struct {
+	DataStoreConfig              datastore.DataStoreConfig                  `toml:"datastore_config"`
+	BufferedStorageBackendConfig ledgerbackend.BufferedStorageBackendConfig `toml:"buffered_storage_backend_config"`
+}
 
 type Config struct {
 	StellarCoreURL         string
@@ -115,6 +148,9 @@ type Config struct {
 	CoreBuildVersionFn    ledgerbackend.CoreBuildVersionFunc
 
 	ReapConfig ReapConfig
+
+	LedgerBackendType    LedgerBackendType
+	StorageBackendConfig StorageBackendConfig
 }
 
 const (
@@ -144,10 +180,6 @@ type Metrics struct {
 	// LedgerIngestionTradeAggregationDuration exposes timing metrics about the rate and
 	// duration of rebuilding trade aggregation buckets.
 	LedgerIngestionTradeAggregationDuration prometheus.Summary
-
-	// LedgerIngestionReapLookupTablesDuration exposes timing metrics about the rate and
-	// duration of reaping lookup tables.
-	LedgerIngestionReapLookupTablesDuration prometheus.Summary
 
 	// StateVerifyDuration exposes timing metrics about the rate and
 	// duration of state verification.
@@ -193,7 +225,6 @@ type System interface {
 	VerifyRange(fromLedger, toLedger uint32, verifyState bool) error
 	BuildState(sequence uint32, skipChecks bool) error
 	ReingestRange(ledgerRanges []history.LedgerRange, force bool, rebuildTradeAgg bool) error
-	BuildGenesisState() error
 	Shutdown()
 	GetCurrentState() State
 	RebuildTradeAggregationBuckets(fromLedger, toLedger uint32) error
@@ -228,10 +259,10 @@ type system struct {
 
 	runStateVerificationOnLedger func(uint32) bool
 
-	reapOffsets       map[string]int64
 	maxLedgerPerFlush uint32
 
-	reaper *Reaper
+	reaper            *Reaper
+	lookupTableReaper *lookupTableReaper
 
 	currentStateMutex sync.Mutex
 	currentState      State
@@ -262,29 +293,46 @@ func NewSystem(config Config) (System, error) {
 		cancel()
 		return nil, errors.Wrap(err, "error creating history archive")
 	}
+	var ledgerBackend ledgerbackend.LedgerBackend
 
-	// the only ingest option is local captive core config
-	logger := log.WithField("subservice", "stellar-core")
-	ledgerBackend, err := ledgerbackend.NewCaptive(
-		ledgerbackend.CaptiveCoreConfig{
-			BinaryPath:            config.CaptiveCoreBinaryPath,
-			StoragePath:           config.CaptiveCoreStoragePath,
-			UseDB:                 config.CaptiveCoreConfigUseDB,
-			Toml:                  config.CaptiveCoreToml,
-			NetworkPassphrase:     config.NetworkPassphrase,
-			HistoryArchiveURLs:    config.HistoryArchiveURLs,
-			CheckpointFrequency:   config.CheckpointFrequency,
-			LedgerHashStore:       ledgerbackend.NewHorizonDBLedgerHashStore(config.HistorySession),
-			Log:                   logger,
-			Context:               ctx,
-			UserAgent:             fmt.Sprintf("captivecore horizon/%s golang/%s", apkg.Version(), runtime.Version()),
-			CoreProtocolVersionFn: config.CoreProtocolVersionFn,
-			CoreBuildVersionFn:    config.CoreBuildVersionFn,
-		},
-	)
-	if err != nil {
-		cancel()
-		return nil, errors.Wrap(err, "error creating captive core backend")
+	if config.LedgerBackendType == BufferedStorageBackend {
+		// Ingest from datastore
+		var dataStore datastore.DataStore
+		dataStore, err = datastore.NewDataStore(context.Background(), config.StorageBackendConfig.DataStoreConfig)
+		if err != nil {
+			cancel()
+			return nil, fmt.Errorf("failed to create datastore: %w", err)
+		}
+		ledgerBackend, err = ledgerbackend.NewBufferedStorageBackend(config.StorageBackendConfig.BufferedStorageBackendConfig, dataStore)
+		if err != nil {
+			cancel()
+			return nil, fmt.Errorf("failed to create buffered storage backend: %w", err)
+		}
+	} else {
+		// Ingest from local captive core
+
+		logger := log.WithField("subservice", "stellar-core")
+		ledgerBackend, err = ledgerbackend.NewCaptive(
+			ledgerbackend.CaptiveCoreConfig{
+				BinaryPath:            config.CaptiveCoreBinaryPath,
+				StoragePath:           config.CaptiveCoreStoragePath,
+				UseDB:                 config.CaptiveCoreConfigUseDB,
+				Toml:                  config.CaptiveCoreToml,
+				NetworkPassphrase:     config.NetworkPassphrase,
+				HistoryArchiveURLs:    config.HistoryArchiveURLs,
+				CheckpointFrequency:   config.CheckpointFrequency,
+				LedgerHashStore:       ledgerbackend.NewHorizonDBLedgerHashStore(config.HistorySession),
+				Log:                   logger,
+				Context:               ctx,
+				UserAgent:             fmt.Sprintf("captivecore horizon/%s golang/%s", apkg.Version(), runtime.Version()),
+				CoreProtocolVersionFn: config.CoreProtocolVersionFn,
+				CoreBuildVersionFn:    config.CoreBuildVersionFn,
+			},
+		)
+		if err != nil {
+			cancel()
+			return nil, errors.Wrap(err, "error creating captive core backend")
+		}
 	}
 
 	historyQ := &history.Q{config.HistorySession.Clone()}
@@ -327,6 +375,7 @@ func NewSystem(config Config) (System, error) {
 			config.ReapConfig,
 			config.HistorySession,
 		),
+		lookupTableReaper: newLookupTableReaper(config.HistorySession),
 	}
 
 	system.initMetrics()
@@ -364,12 +413,6 @@ func (s *system) initMetrics() {
 	s.metrics.LedgerIngestionTradeAggregationDuration = prometheus.NewSummary(prometheus.SummaryOpts{
 		Namespace: "horizon", Subsystem: "ingest", Name: "ledger_ingestion_trade_aggregation_duration_seconds",
 		Help:       "ledger ingestion trade aggregation rebuild durations, sliding window = 10m",
-		Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
-	})
-
-	s.metrics.LedgerIngestionReapLookupTablesDuration = prometheus.NewSummary(prometheus.SummaryOpts{
-		Namespace: "horizon", Subsystem: "ingest", Name: "ledger_ingestion_reap_lookup_tables_duration_seconds",
-		Help:       "ledger ingestion reap lookup tables durations, sliding window = 10m",
 		Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
 	})
 
@@ -490,7 +533,6 @@ func (s *system) RegisterMetrics(registry *prometheus.Registry) {
 	registry.MustRegister(s.metrics.LocalLatestLedger)
 	registry.MustRegister(s.metrics.LedgerIngestionDuration)
 	registry.MustRegister(s.metrics.LedgerIngestionTradeAggregationDuration)
-	registry.MustRegister(s.metrics.LedgerIngestionReapLookupTablesDuration)
 	registry.MustRegister(s.metrics.StateVerifyDuration)
 	registry.MustRegister(s.metrics.StateInvalidGauge)
 	registry.MustRegister(s.metrics.LedgerStatsCounter)
@@ -503,6 +545,7 @@ func (s *system) RegisterMetrics(registry *prometheus.Registry) {
 	registry.MustRegister(s.metrics.IngestionErrorCounter)
 	s.ledgerBackend = ledgerbackend.WithMetrics(s.ledgerBackend, registry, "horizon")
 	s.reaper.RegisterMetrics(registry)
+	s.lookupTableReaper.RegisterMetrics(registry)
 }
 
 // Run starts ingestion system. Ingestion system supports distributed ingestion
@@ -629,15 +672,6 @@ func (s *system) ReingestRange(ledgerRanges []history.LedgerRange, force bool, r
 
 func (s *system) RebuildTradeAggregationBuckets(fromLedger, toLedger uint32) error {
 	return s.historyQ.RebuildTradeAggregationBuckets(s.ctx, fromLedger, toLedger, s.config.RoundingSlippageFilter)
-}
-
-// BuildGenesisState runs the ingestion pipeline on genesis ledger. Transitions
-// to stopState when done.
-func (s *system) BuildGenesisState() error {
-	return s.runStateMachine(buildState{
-		checkpointLedger: 1,
-		stop:             true,
-	})
 }
 
 func (s *system) runStateMachine(cur stateMachineNode) error {
@@ -773,52 +807,11 @@ func (s *system) maybeReapLookupTables(lastIngestedLedger uint32) {
 		return
 	}
 
-	err = s.historyQ.Begin(s.ctx)
-	if err != nil {
-		log.WithError(err).Error("Error starting a transaction")
-		return
-	}
-	defer s.historyQ.Rollback()
-
-	// If so block ingestion in the cluster to reap tables
-	_, err = s.historyQ.GetLastLedgerIngest(s.ctx)
-	if err != nil {
-		log.WithError(err).Error(getLastIngestedErrMsg)
-		return
-	}
-
-	// Make sure reaping will not take more than 5s, which is average ledger
-	// closing time.
-	ctx, cancel := context.WithTimeout(s.ctx, 5*time.Second)
-	defer cancel()
-
-	reapStart := time.Now()
-	deletedCount, newOffsets, err := s.historyQ.ReapLookupTables(ctx, s.reapOffsets)
-	if err != nil {
-		log.WithError(err).Warn("Error reaping lookup tables")
-		return
-	}
-
-	err = s.historyQ.Commit()
-	if err != nil {
-		log.WithError(err).Error("Error committing a transaction")
-		return
-	}
-
-	totalDeleted := int64(0)
-	reapLog := log
-	for table, c := range deletedCount {
-		totalDeleted += c
-		reapLog = reapLog.WithField(table, c)
-	}
-
-	if totalDeleted > 0 {
-		reapLog.Info("Reaper deleted rows from lookup tables")
-	}
-
-	s.reapOffsets = newOffsets
-	reapDuration := time.Since(reapStart).Seconds()
-	s.Metrics().LedgerIngestionReapLookupTablesDuration.Observe(float64(reapDuration))
+	s.wg.Add(1)
+	go func() {
+		defer s.wg.Done()
+		s.lookupTableReaper.deleteOrphanedRows(s.ctx)
+	}()
 }
 
 func (s *system) incrementStateVerificationErrors() int {

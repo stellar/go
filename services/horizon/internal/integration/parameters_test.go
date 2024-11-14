@@ -16,6 +16,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/stellar/go/network"
 	"github.com/stellar/go/services/horizon/internal/paths"
 	"github.com/stellar/go/services/horizon/internal/simplepath"
 
@@ -75,13 +76,10 @@ func TestBucketDirDisallowed(t *testing.T) {
 		horizon.StellarCoreBinaryPathName: os.Getenv("CAPTIVE_CORE_BIN"),
 	}
 	test := integration.NewTest(t, *testConfig)
-	err := test.StartHorizon()
+	err := test.StartHorizon(true)
 	assert.Equal(t, err.Error(), integration.HorizonInitErrStr+": error generating captive core configuration:"+
 		" invalid captive core toml file: could not unmarshal captive core toml: setting BUCKET_DIR_PATH is disallowed"+
 		" for Captive Core, use CAPTIVE_CORE_STORAGE_PATH instead")
-	time.Sleep(1 * time.Second)
-	test.StopHorizon()
-	test.Shutdown()
 }
 
 func TestEnvironmentPreserved(t *testing.T) {
@@ -109,9 +107,9 @@ func TestEnvironmentPreserved(t *testing.T) {
 	}
 	test := integration.NewTest(t, *testConfig)
 
-	err = test.StartHorizon()
+	err = test.StartHorizon(true)
 	assert.NoError(t, err)
-	test.WaitForHorizon()
+	test.WaitForHorizonIngest()
 
 	envValue := os.Getenv("STELLAR_CORE_URL")
 	assert.Equal(t, StellarCoreURL, envValue)
@@ -126,8 +124,7 @@ func TestEnvironmentPreserved(t *testing.T) {
 // using NETWORK environment variables, history archive urls or network passphrase
 // parameters are also set.
 func TestInvalidNetworkParameters(t *testing.T) {
-	var captiveCoreConfigErrMsg = integration.HorizonInitErrStr + ": error generating captive " +
-		"core configuration: invalid config: %s parameter not allowed with the %s parameter"
+	var captiveCoreConfigErrMsg = integration.HorizonInitErrStr + ": invalid config: %s parameter not allowed with the %s parameter"
 	testCases := []struct {
 		name         string
 		errMsg       string
@@ -160,12 +157,11 @@ func TestInvalidNetworkParameters(t *testing.T) {
 			testConfig.SkipCoreContainerCreation = true
 			testConfig.HorizonIngestParameters = localParams
 			test := integration.NewTest(t, *testConfig)
-			err := test.StartHorizon()
+			err := test.StartHorizon(true)
 			// Adding sleep as a workaround for the race condition in the ingestion system.
 			// https://github.com/stellar/go/issues/5005
 			time.Sleep(2 * time.Second)
 			assert.Equal(t, testCase.errMsg, err.Error())
-			test.Shutdown()
 		})
 	}
 }
@@ -186,13 +182,13 @@ func TestNetworkParameter(t *testing.T) {
 	}{
 		{
 			networkValue:       horizon.StellarTestnet,
-			networkPassphrase:  horizon.TestnetConf.NetworkPassphrase,
-			historyArchiveURLs: horizon.TestnetConf.HistoryArchiveURLs,
+			networkPassphrase:  network.TestNetworkPassphrase,
+			historyArchiveURLs: network.TestNetworkhistoryArchiveURLs,
 		},
 		{
 			networkValue:       horizon.StellarPubnet,
-			networkPassphrase:  horizon.PubnetConf.NetworkPassphrase,
-			historyArchiveURLs: horizon.PubnetConf.HistoryArchiveURLs,
+			networkPassphrase:  network.PublicNetworkPassphrase,
+			historyArchiveURLs: network.PublicNetworkhistoryArchiveURLs,
 		},
 	}
 	for _, tt := range testCases {
@@ -204,15 +200,13 @@ func TestNetworkParameter(t *testing.T) {
 			testConfig.SkipCoreContainerCreation = true
 			testConfig.HorizonIngestParameters = localParams
 			test := integration.NewTest(t, *testConfig)
-			err := test.StartHorizon()
+			err := test.StartHorizon(true)
 			// Adding sleep as a workaround for the race condition in the ingestion system.
 			// https://github.com/stellar/go/issues/5005
 			time.Sleep(2 * time.Second)
 			assert.NoError(t, err)
 			assert.Equal(t, test.GetHorizonIngestConfig().HistoryArchiveURLs, tt.historyArchiveURLs)
 			assert.Equal(t, test.GetHorizonIngestConfig().NetworkPassphrase, tt.networkPassphrase)
-
-			test.Shutdown()
 		})
 	}
 }
@@ -247,12 +241,11 @@ func TestNetworkEnvironmentVariable(t *testing.T) {
 			testConfig.HorizonIngestParameters = networkParamArgs
 			testConfig.HorizonEnvironment = map[string]string{"NETWORK": networkValue}
 			test := integration.NewTest(t, *testConfig)
-			err := test.StartHorizon()
-			// Adding sleep here as a workaround for the race condition in the ingestion system.
-			// More details can be found at https://github.com/stellar/go/issues/5005
+			err := test.StartHorizon(true)
+			// Adding sleep as a workaround for the race condition in the ingestion system.
+			// https://github.com/stellar/go/issues/5005
 			time.Sleep(2 * time.Second)
 			assert.NoError(t, err)
-			test.Shutdown()
 		})
 	}
 }
@@ -270,9 +263,9 @@ func TestCaptiveCoreConfigFilesystemState(t *testing.T) {
 	testConfig.HorizonIngestParameters = localParams
 	test := integration.NewTest(t, *testConfig)
 
-	err := test.StartHorizon()
+	err := test.StartHorizon(true)
 	assert.NoError(t, err)
-	test.WaitForHorizon()
+	test.WaitForHorizonIngest()
 
 	t.Run("disk state", func(t *testing.T) {
 		validateCaptiveCoreDiskState(test, storagePath)
@@ -286,9 +279,9 @@ func TestCaptiveCoreConfigFilesystemState(t *testing.T) {
 func TestMaxAssetsForPathRequests(t *testing.T) {
 	t.Run("default", func(t *testing.T) {
 		test := integration.NewTest(t, *integration.GetTestConfig())
-		err := test.StartHorizon()
+		err := test.StartHorizon(true)
 		assert.NoError(t, err)
-		test.WaitForHorizon()
+		test.WaitForHorizonIngest()
 		assert.Equal(t, test.HorizonIngest().Config().MaxAssetsPerPathRequest, 15)
 		test.Shutdown()
 	})
@@ -296,20 +289,19 @@ func TestMaxAssetsForPathRequests(t *testing.T) {
 		testConfig := integration.GetTestConfig()
 		testConfig.HorizonIngestParameters = map[string]string{"max-assets-per-path-request": "2"}
 		test := integration.NewTest(t, *testConfig)
-		err := test.StartHorizon()
+		err := test.StartHorizon(true)
 		assert.NoError(t, err)
-		test.WaitForHorizon()
+		test.WaitForHorizonIngest()
 		assert.Equal(t, test.HorizonIngest().Config().MaxAssetsPerPathRequest, 2)
-		test.Shutdown()
 	})
 }
 
 func TestMaxPathFindingRequests(t *testing.T) {
 	t.Run("default", func(t *testing.T) {
 		test := integration.NewTest(t, *integration.GetTestConfig())
-		err := test.StartHorizon()
+		err := test.StartHorizon(true)
 		assert.NoError(t, err)
-		test.WaitForHorizon()
+		test.WaitForHorizonIngest()
 		assert.Equal(t, test.HorizonIngest().Config().MaxPathFindingRequests, uint(0))
 		_, ok := test.HorizonIngest().Paths().(simplepath.InMemoryFinder)
 		assert.True(t, ok)
@@ -319,37 +311,34 @@ func TestMaxPathFindingRequests(t *testing.T) {
 		testConfig := integration.GetTestConfig()
 		testConfig.HorizonIngestParameters = map[string]string{"max-path-finding-requests": "5"}
 		test := integration.NewTest(t, *testConfig)
-		err := test.StartHorizon()
+		err := test.StartHorizon(true)
 		assert.NoError(t, err)
-		test.WaitForHorizon()
+		test.WaitForHorizonIngest()
 		assert.Equal(t, test.HorizonIngest().Config().MaxPathFindingRequests, uint(5))
 		finder, ok := test.HorizonIngest().Paths().(*paths.RateLimitedFinder)
 		assert.True(t, ok)
 		assert.Equal(t, finder.Limit(), 5)
-		test.Shutdown()
 	})
 }
 
 func TestDisablePathFinding(t *testing.T) {
 	t.Run("default", func(t *testing.T) {
 		test := integration.NewTest(t, *integration.GetTestConfig())
-		err := test.StartHorizon()
+		err := test.StartHorizon(true)
 		assert.NoError(t, err)
-		test.WaitForHorizon()
+		test.WaitForHorizonIngest()
 		assert.Equal(t, test.HorizonIngest().Config().MaxPathFindingRequests, uint(0))
 		_, ok := test.HorizonIngest().Paths().(simplepath.InMemoryFinder)
 		assert.True(t, ok)
-		test.Shutdown()
 	})
 	t.Run("set to true", func(t *testing.T) {
 		testConfig := integration.GetTestConfig()
 		testConfig.HorizonIngestParameters = map[string]string{"disable-path-finding": "true"}
 		test := integration.NewTest(t, *testConfig)
-		err := test.StartHorizon()
+		err := test.StartHorizon(true)
 		assert.NoError(t, err)
-		test.WaitForHorizon()
+		test.WaitForHorizonIngest()
 		assert.Nil(t, test.HorizonIngest().Paths())
-		test.Shutdown()
 	})
 }
 
@@ -364,9 +353,8 @@ func TestDisableTxSub(t *testing.T) {
 		testConfig.HorizonIngestParameters = localParams
 		testConfig.SkipCoreContainerCreation = true
 		test := integration.NewTest(t, *testConfig)
-		err := test.StartHorizon()
+		err := test.StartHorizon(true)
 		assert.ErrorContains(t, err, "cannot initialize Horizon: flag --stellar-core-url cannot be empty")
-		test.Shutdown()
 	})
 	t.Run("horizon starts successfully when DISABLE_TX_SUB=false, INGEST=false and stellar-core-url is provided", func(t *testing.T) {
 		localParams := integration.MergeMaps(networkParamArgs, map[string]string{
@@ -379,9 +367,8 @@ func TestDisableTxSub(t *testing.T) {
 		testConfig.HorizonIngestParameters = localParams
 		testConfig.SkipCoreContainerCreation = true
 		test := integration.NewTest(t, *testConfig)
-		err := test.StartHorizon()
+		err := test.StartHorizon(true)
 		assert.NoError(t, err)
-		test.Shutdown()
 	})
 	t.Run("horizon starts successfully when DISABLE_TX_SUB=true and INGEST=true", func(t *testing.T) {
 		testConfig := integration.GetTestConfig()
@@ -390,10 +377,9 @@ func TestDisableTxSub(t *testing.T) {
 			"ingest":         "true",
 		}
 		test := integration.NewTest(t, *testConfig)
-		err := test.StartHorizon()
+		err := test.StartHorizon(true)
 		assert.NoError(t, err)
-		test.WaitForHorizon()
-		test.Shutdown()
+		test.WaitForHorizonIngest()
 	})
 	t.Run("do not require stellar-core-url when both DISABLE_TX_SUB=true and INGEST=false", func(t *testing.T) {
 		localParams := integration.MergeMaps(networkParamArgs, map[string]string{
@@ -405,9 +391,8 @@ func TestDisableTxSub(t *testing.T) {
 		testConfig.HorizonIngestParameters = localParams
 		testConfig.SkipCoreContainerCreation = true
 		test := integration.NewTest(t, *testConfig)
-		err := test.StartHorizon()
+		err := test.StartHorizon(true)
 		assert.NoError(t, err)
-		test.Shutdown()
 	})
 }
 
@@ -421,9 +406,9 @@ func TestDeprecatedOutputs(t *testing.T) {
 		testConfig := integration.GetTestConfig()
 		testConfig.HorizonIngestParameters = map[string]string{"exp-enable-ingestion-filtering": "false"}
 		test := integration.NewTest(t, *testConfig)
-		err := test.StartHorizon()
+		err := test.StartHorizon(true)
 		assert.NoError(t, err)
-		test.WaitForHorizon()
+		test.WaitForHorizonIngest()
 
 		// Use a wait group to wait for the goroutine to finish before proceeding
 		var wg sync.WaitGroup
@@ -507,9 +492,9 @@ func TestDeprecatedOutputs(t *testing.T) {
 		testConfig := integration.GetTestConfig()
 		testConfig.HorizonIngestParameters = map[string]string{"captive-core-use-db": "true"}
 		test := integration.NewTest(t, *testConfig)
-		err := test.StartHorizon()
+		err := test.StartHorizon(true)
 		assert.NoError(t, err)
-		test.WaitForHorizon()
+		test.WaitForHorizonIngest()
 
 		// Use a wait group to wait for the goroutine to finish before proceeding
 		var wg sync.WaitGroup

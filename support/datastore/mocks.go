@@ -29,7 +29,11 @@ func (m *MockDataStore) GetFileMetadata(ctx context.Context, path string) (map[s
 
 func (m *MockDataStore) GetFile(ctx context.Context, path string) (io.ReadCloser, error) {
 	args := m.Called(ctx, path)
-	return args.Get(0).(io.ReadCloser), args.Error(1)
+	closer := (io.ReadCloser)(nil)
+	if args.Get(0) != nil {
+		closer = args.Get(0).(io.ReadCloser)
+	}
+	return closer, args.Error(1)
 }
 
 func (m *MockDataStore) PutFile(ctx context.Context, path string, in io.WriterTo, metadata map[string]string) error {
@@ -45,6 +49,11 @@ func (m *MockDataStore) PutFileIfNotExists(ctx context.Context, path string, in 
 func (m *MockDataStore) Close() error {
 	args := m.Called()
 	return args.Error(0)
+}
+
+func (m *MockDataStore) GetSchema() DataStoreSchema {
+	args := m.Called()
+	return args.Get(0).(DataStoreSchema)
 }
 
 type MockResumableManager struct {

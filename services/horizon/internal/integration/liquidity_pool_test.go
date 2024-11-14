@@ -156,8 +156,6 @@ func TestLiquidityPoolHappyPath(t *testing.T) {
 	tt.Equal("credit_alphanum4", stat.Asset.Type)
 	tt.Equal("USD", stat.Asset.Code)
 	tt.Equal(master.Address(), stat.Asset.Issuer)
-	tt.Equal(int32(2), stat.NumAccounts)
-	tt.Equal("225.0000000", stat.Amount)
 	tt.Equal(int32(1), stat.NumLiquidityPools)
 	tt.Equal("775.0000000", stat.LiquidityPoolsAmount)
 

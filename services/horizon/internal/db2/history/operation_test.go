@@ -125,7 +125,7 @@ func TestOperationByLiquidityPool(t *testing.T) {
 
 	// Insert Liquidity Pool history
 	liquidityPoolID := "a2f38836a839de008cf1d782c81f45e1253cc5d3dad9110b872965484fec0a49"
-	lpLoader := NewLiquidityPoolLoader()
+	lpLoader := NewLiquidityPoolLoader(ConcurrentInserts)
 
 	lpOperationBuilder := q.NewOperationLiquidityPoolBatchInsertBuilder()
 	tt.Assert.NoError(lpOperationBuilder.Add(opID1, lpLoader.GetFuture(liquidityPoolID)))
@@ -141,7 +141,7 @@ func TestOperationByLiquidityPool(t *testing.T) {
 		Order:  "asc",
 		Limit:  2,
 	}
-	ops, _, err := q.Operations().ForLiquidityPool(tt.Ctx, liquidityPoolID).Page(pq).Fetch(tt.Ctx)
+	ops, _, err := q.Operations().ForLiquidityPool(tt.Ctx, liquidityPoolID).Page(pq, 0).Fetch(tt.Ctx)
 	tt.Assert.NoError(err)
 	tt.Assert.Len(ops, 2)
 	tt.Assert.Equal(ops[0].ID, opID1)
@@ -149,7 +149,7 @@ func TestOperationByLiquidityPool(t *testing.T) {
 
 	// Check descending order
 	pq.Order = "desc"
-	ops, _, err = q.Operations().ForLiquidityPool(tt.Ctx, liquidityPoolID).Page(pq).Fetch(tt.Ctx)
+	ops, _, err = q.Operations().ForLiquidityPool(tt.Ctx, liquidityPoolID).Page(pq, 0).Fetch(tt.Ctx)
 	tt.Assert.NoError(err)
 	tt.Assert.Len(ops, 2)
 	tt.Assert.Equal(ops[0].ID, opID2)
@@ -162,23 +162,119 @@ func TestOperationQueryBuilder(t *testing.T) {
 	defer tt.Finish()
 	q := &Q{tt.HorizonSession()}
 
-	opsQ := q.Operations().ForAccount(tt.Ctx, "GBXGQJWVLWOYHFLVTKWV5FGHA3LNYY2JQKM7OAJAUEQFU6LPCSEFVXON").Page(db2.PageQuery{Cursor: "8589938689", Order: "asc", Limit: 10})
-	tt.Assert.NoError(opsQ.Err)
-	got, _, err := opsQ.sql.ToSql()
-	tt.Assert.NoError(err)
-
-	// Operations for account queries will use hopp.history_operation_id in their predicates.
-	want := "SELECT hop.id, hop.transaction_id, hop.application_order, hop.type, hop.details, hop.source_account, hop.source_account_muxed, COALESCE(hop.is_payment, false) as is_payment, ht.transaction_hash, ht.tx_result, COALESCE(ht.successful, true) as transaction_successful FROM history_operations hop LEFT JOIN history_transactions ht ON ht.id = hop.transaction_id JOIN history_operation_participants hopp ON hopp.history_operation_id = hop.id WHERE hopp.history_account_id = ? AND hopp.history_operation_id > ? ORDER BY hopp.history_operation_id asc LIMIT 10"
-	tt.Assert.EqualValues(want, got)
-
-	opsQ = q.Operations().ForLedger(tt.Ctx, 2).Page(db2.PageQuery{Cursor: "8589938689", Order: "asc", Limit: 10})
-	tt.Assert.NoError(opsQ.Err)
-	got, _, err = opsQ.sql.ToSql()
-	tt.Assert.NoError(err)
-
-	// Other operation queries will use hop.id in their predicates.
-	want = "SELECT hop.id, hop.transaction_id, hop.application_order, hop.type, hop.details, hop.source_account, hop.source_account_muxed, COALESCE(hop.is_payment, false) as is_payment, ht.transaction_hash, ht.tx_result, COALESCE(ht.successful, true) as transaction_successful FROM history_operations hop LEFT JOIN history_transactions ht ON ht.id = hop.transaction_id WHERE hop.id >= ? AND hop.id < ? AND hop.id > ? ORDER BY hop.id asc LIMIT 10"
-	tt.Assert.EqualValues(want, got)
+	for _, testCase := range []struct {
+		q            *OperationsQ
+		expectedSQL  string
+		expectedArgs []interface{}
+	}{
+		{
+			q.Operations().ForAccount(tt.Ctx, "GBXGQJWVLWOYHFLVTKWV5FGHA3LNYY2JQKM7OAJAUEQFU6LPCSEFVXON").
+				Page(db2.PageQuery{Cursor: "8589938689", Order: "asc", Limit: 10}, 50),
+			"SELECT " +
+				"hop.id, hop.transaction_id, hop.application_order, hop.type, hop.details, hop.source_account, " +
+				"hop.source_account_muxed, COALESCE(hop.is_payment, false) as is_payment, ht.transaction_hash, " +
+				"ht.tx_result, COALESCE(ht.successful, true) as transaction_successful " +
+				"FROM history_operations hop " +
+				"LEFT JOIN history_transactions ht ON ht.id = hop.transaction_id " +
+				"JOIN history_operation_participants hopp ON hopp.history_operation_id = hop.id " +
+				"WHERE hopp.history_account_id = ? AND " +
+				"hopp.history_operation_id > ? " +
+				"ORDER BY hopp.history_operation_id asc LIMIT 10",
+			[]interface{}{
+				int64(2),
+				int64(8589938689),
+			},
+		},
+		{
+			q.Operations().ForAccount(tt.Ctx, "GBXGQJWVLWOYHFLVTKWV5FGHA3LNYY2JQKM7OAJAUEQFU6LPCSEFVXON").
+				Page(db2.PageQuery{Cursor: "8589938689", Order: "desc", Limit: 10}, 50),
+			"SELECT " +
+				"hop.id, hop.transaction_id, hop.application_order, hop.type, hop.details, hop.source_account, " +
+				"hop.source_account_muxed, COALESCE(hop.is_payment, false) as is_payment, ht.transaction_hash, " +
+				"ht.tx_result, COALESCE(ht.successful, true) as transaction_successful " +
+				"FROM history_operations hop " +
+				"LEFT JOIN history_transactions ht ON ht.id = hop.transaction_id " +
+				"JOIN history_operation_participants hopp ON hopp.history_operation_id = hop.id " +
+				"WHERE hopp.history_account_id = ? AND " +
+				"hopp.history_operation_id > ? AND " +
+				"hopp.history_operation_id < ? " +
+				"ORDER BY hopp.history_operation_id desc LIMIT 10",
+			[]interface{}{
+				int64(2),
+				int64(214748364799),
+				int64(8589938689),
+			},
+		},
+		{
+			q.Operations().ForAccount(tt.Ctx, "GBXGQJWVLWOYHFLVTKWV5FGHA3LNYY2JQKM7OAJAUEQFU6LPCSEFVXON").
+				Page(db2.PageQuery{Cursor: "8589938689", Order: "desc", Limit: 10}, 0),
+			"SELECT " +
+				"hop.id, hop.transaction_id, hop.application_order, hop.type, hop.details, hop.source_account, " +
+				"hop.source_account_muxed, COALESCE(hop.is_payment, false) as is_payment, ht.transaction_hash, " +
+				"ht.tx_result, COALESCE(ht.successful, true) as transaction_successful " +
+				"FROM history_operations hop " +
+				"LEFT JOIN history_transactions ht ON ht.id = hop.transaction_id " +
+				"JOIN history_operation_participants hopp ON hopp.history_operation_id = hop.id " +
+				"WHERE hopp.history_account_id = ? AND " +
+				"hopp.history_operation_id < ? " +
+				"ORDER BY hopp.history_operation_id desc LIMIT 10",
+			[]interface{}{
+				int64(2),
+				int64(8589938689),
+			},
+		},
+		{
+			q.Operations().ForLedger(tt.Ctx, 2).
+				Page(db2.PageQuery{Cursor: "8589938689", Order: "asc", Limit: 10}, 50),
+			"SELECT " +
+				"hop.id, hop.transaction_id, hop.application_order, hop.type, hop.details, hop.source_account, " +
+				"hop.source_account_muxed, COALESCE(hop.is_payment, false) as is_payment, ht.transaction_hash, " +
+				"ht.tx_result, COALESCE(ht.successful, true) as transaction_successful FROM history_operations " +
+				"hop LEFT JOIN history_transactions ht ON ht.id = hop.transaction_id " +
+				"WHERE hop.id >= ? AND hop.id < ? AND hop.id > ? ORDER BY hop.id asc LIMIT 10",
+			[]interface{}{
+				int64(8589934592),
+				int64(12884901888),
+				int64(8589938689),
+			},
+		},
+		{
+			q.Operations().ForLedger(tt.Ctx, 2).
+				Page(db2.PageQuery{Cursor: "8589938689", Order: "desc", Limit: 10}, 50),
+			"SELECT " +
+				"hop.id, hop.transaction_id, hop.application_order, hop.type, hop.details, hop.source_account, " +
+				"hop.source_account_muxed, COALESCE(hop.is_payment, false) as is_payment, ht.transaction_hash, " +
+				"ht.tx_result, COALESCE(ht.successful, true) as transaction_successful FROM history_operations " +
+				"hop LEFT JOIN history_transactions ht ON ht.id = hop.transaction_id " +
+				"WHERE hop.id >= ? AND hop.id < ? AND hop.id < ? ORDER BY hop.id desc LIMIT 10",
+			[]interface{}{
+				int64(8589934592),
+				int64(12884901888),
+				int64(8589938689),
+			},
+		},
+		{
+			q.Operations().ForLedger(tt.Ctx, 2).
+				Page(db2.PageQuery{Cursor: "8589938689", Order: "desc", Limit: 10}, 0),
+			"SELECT " +
+				"hop.id, hop.transaction_id, hop.application_order, hop.type, hop.details, hop.source_account, " +
+				"hop.source_account_muxed, COALESCE(hop.is_payment, false) as is_payment, ht.transaction_hash, " +
+				"ht.tx_result, COALESCE(ht.successful, true) as transaction_successful FROM history_operations " +
+				"hop LEFT JOIN history_transactions ht ON ht.id = hop.transaction_id " +
+				"WHERE hop.id >= ? AND hop.id < ? AND hop.id < ? ORDER BY hop.id desc LIMIT 10",
+			[]interface{}{
+				int64(8589934592),
+				int64(12884901888),
+				int64(8589938689),
+			},
+		},
+	} {
+		tt.Assert.NoError(testCase.q.Err)
+		got, args, err := testCase.q.sql.ToSql()
+		tt.Assert.NoError(err)
+		tt.Assert.Equal(got, testCase.expectedSQL)
+		tt.Assert.Equal(args, testCase.expectedArgs)
+	}
 }
 
 // TestOperationSuccessfulOnly tests if default query returns operations in

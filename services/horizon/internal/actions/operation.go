@@ -77,7 +77,7 @@ func (handler GetOperationsHandler) GetResourcePage(w HeaderWriter, r *http.Requ
 		return nil, err
 	}
 
-	err = validateCursorWithinHistory(handler.LedgerState, pq)
+	err = validateAndAdjustCursor(handler.LedgerState, &pq)
 	if err != nil {
 		return nil, err
 	}
@@ -122,7 +122,7 @@ func (handler GetOperationsHandler) GetResourcePage(w HeaderWriter, r *http.Requ
 		query.OnlyPayments()
 	}
 
-	ops, txs, err := query.Page(pq).Fetch(ctx)
+	ops, txs, err := query.Page(pq, handler.LedgerState.CurrentStatus().HistoryElder).Fetch(ctx)
 	if err != nil {
 		return nil, err
 	}

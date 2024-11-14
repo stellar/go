@@ -72,11 +72,15 @@ func (q *Q) LedgerCapacityUsageStats(ctx context.Context, currentSeq int32, dest
 }
 
 // Page specifies the paging constraints for the query being built by `q`.
-func (q *LedgersQ) Page(page db2.PageQuery) *LedgersQ {
+func (q *LedgersQ) Page(page db2.PageQuery, oldestLedger int32) *LedgersQ {
 	if q.Err != nil {
 		return q
 	}
 
+	if lowerBound := lowestLedgerBound(oldestLedger); lowerBound > 0 && page.Order == "desc" {
+		q.sql = q.sql.
+			Where("hl.id > ?", lowerBound)
+	}
 	q.sql, q.Err = page.ApplyTo(q.sql, "hl.id")
 	return q
 }

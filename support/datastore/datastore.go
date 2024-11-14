@@ -21,6 +21,7 @@ type DataStore interface {
 	PutFileIfNotExists(ctx context.Context, path string, in io.WriterTo, metaData map[string]string) (bool, error)
 	Exists(ctx context.Context, path string) (bool, error)
 	Size(ctx context.Context, path string) (int64, error)
+	GetSchema() DataStoreSchema
 	Close() error
 }
 
@@ -32,7 +33,7 @@ func NewDataStore(ctx context.Context, datastoreConfig DataStoreConfig) (DataSto
 		if !ok {
 			return nil, errors.Errorf("Invalid GCS config, no destination_bucket_path")
 		}
-		return NewGCSDataStore(ctx, destinationBucketPath)
+		return NewGCSDataStore(ctx, destinationBucketPath, datastoreConfig.Schema)
 	default:
 		return nil, errors.Errorf("Invalid datastore type %v, not supported", datastoreConfig.Type)
 	}

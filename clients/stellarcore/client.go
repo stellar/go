@@ -1,11 +1,11 @@
 package stellarcore
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"path"
@@ -21,7 +21,7 @@ import (
 // Client represents a client that is capable of communicating with a
 // stellar-core server using HTTP
 type Client struct {
-	// HTTP is the client to use when communicating with stellar-core.  If nil,
+	// HTTP is the client to use when communicating with stellar-core. If nil,
 	// http.DefaultClient will be used.
 	HTTP HTTP
 
@@ -36,7 +36,7 @@ type Client struct {
 // in case an error was encountered during either the draining or closing of the
 // stream, that error would be returned.
 func drainReponse(hresp *http.Response, close bool, err *error) (outerror error) {
-	_, err2 := io.Copy(ioutil.Discard, hresp.Body)
+	_, err2 := io.Copy(io.Discard, hresp.Body)
 	if err2 != nil {
 		if err != nil && *err == nil {
 			*err = errors.Wrap(err2, "unable to read excess data from response")
@@ -75,52 +75,10 @@ func (c *Client) Upgrade(ctx context.Context, version int) (err error) {
 	}
 	defer drainReponse(hresp, true, &err) //nolint:errcheck
 
-	if !(hresp.StatusCode >= 200 && hresp.StatusCode < 300) {
-		err = errors.New("http request failed with non-200 status code")
-		return
+	if hresp.StatusCode < 200 || hresp.StatusCode >= 300 {
+		return errors.New("http request failed with non-200 status code")
 	}
 	return nil
-}
-
-// GetLedgerEntry submits a request to the stellar core instance to get the latest
-// state of a given ledger entry.
-func (c *Client) GetLedgerEntry(ctx context.Context, ledgerKey xdr.LedgerKey) (proto.GetLedgerEntryResponse, error) {
-	b64, err := xdr.MarshalBase64(ledgerKey)
-	if err != nil {
-		return proto.GetLedgerEntryResponse{}, errors.Wrap(err, "failed to marshal ledger key")
-	}
-	q := url.Values{}
-	q.Set("key", b64)
-
-	req, err := c.simpleGet(ctx, "getledgerentry", q)
-	if err != nil {
-		return proto.GetLedgerEntryResponse{}, errors.Wrap(err, "failed to create request")
-	}
-
-	hresp, err := c.http().Do(req)
-	if err != nil {
-		return proto.GetLedgerEntryResponse{}, errors.Wrap(err, "http request errored")
-	}
-	defer hresp.Body.Close()
-
-	if !(hresp.StatusCode >= 200 && hresp.StatusCode < 300) {
-		if drainReponse(hresp, false, &err) != nil {
-			return proto.GetLedgerEntryResponse{}, err
-		}
-		return proto.GetLedgerEntryResponse{}, errors.New("http request failed with non-200 status code")
-	}
-
-	responseBytes, err := io.ReadAll(hresp.Body)
-	if err != nil {
-		return proto.GetLedgerEntryResponse{}, errors.Wrap(err, "could not read response")
-	}
-
-	var response proto.GetLedgerEntryResponse
-	if err = json.Unmarshal(responseBytes, &response); err != nil {
-		return proto.GetLedgerEntryResponse{}, errors.Wrap(err, "json decode failed: "+string(responseBytes))
-	}
-
-	return response, nil
 }
 
 // Info calls the `info` command on the connected stellar core and returns the
@@ -180,7 +138,7 @@ func (c *Client) SetCursor(ctx context.Context, id string, cursor int32) (err er
 	}
 
 	var raw []byte
-	raw, err = ioutil.ReadAll(hresp.Body)
+	raw, err = io.ReadAll(hresp.Body)
 	if err != nil {
 		return err
 	}
@@ -193,9 +151,13 @@ func (c *Client) SetCursor(ctx context.Context, id string, cursor int32) (err er
 	return nil
 }
 
+func (c *Client) GetLedgerEntryRaw(ctx context.Context, ledgerSeq uint32, keys ...xdr.LedgerKey) (proto.GetLedgerEntryRawResponse, error) {
+	var resp proto.GetLedgerEntryRawResponse
+	return resp, c.makeLedgerKeyRequest(ctx, &resp, "getledgerentryraw", ledgerSeq, keys...)
+}
+
 // SubmitTransaction calls the `tx` command on the connected stellar core with the provided envelope
 func (c *Client) SubmitTransaction(ctx context.Context, envelope string) (resp *proto.TXResponse, err error) {
-
 	q := url.Values{}
 	q.Set("blob", envelope)
 
@@ -214,13 +176,12 @@ func (c *Client) SubmitTransaction(ctx context.Context, envelope string) (resp *
 	}
 	defer drainReponse(hresp, true, &err) //nolint:errcheck
 
-	if !(hresp.StatusCode >= 200 && hresp.StatusCode < 300) {
+	if hresp.StatusCode < 200 || hresp.StatusCode >= 300 {
 		err = errors.New("http request failed with non-200 status code")
 		return
 	}
 
 	err = json.NewDecoder(hresp.Body).Decode(&resp)
-
 	if err != nil {
 		err = errors.Wrap(err, "json decode failed")
 		return
@@ -232,7 +193,6 @@ func (c *Client) SubmitTransaction(ctx context.Context, envelope string) (resp *
 // WaitForNetworkSync continually polls the connected stellar-core until it
 // receives a response that indicated the node has synced with the network
 func (c *Client) WaitForNetworkSync(ctx context.Context) error {
-
 	for {
 		info, err := c.Info(ctx)
 
@@ -256,7 +216,6 @@ func (c *Client) WaitForNetworkSync(ctx context.Context) error {
 
 // ManualClose closes a ledger when Core is running in `MANUAL_CLOSE` mode
 func (c *Client) ManualClose(ctx context.Context) (err error) {
-
 	q := url.Values{}
 
 	var req *http.Request
@@ -274,7 +233,7 @@ func (c *Client) ManualClose(ctx context.Context) (err error) {
 	}
 	defer drainReponse(hresp, true, &err) //nolint:errcheck
 
-	if !(hresp.StatusCode >= 200 && hresp.StatusCode < 300) {
+	if hresp.StatusCode < 200 || hresp.StatusCode >= 300 {
 		err = errors.New("http request failed with non-200 status code")
 		return
 	}
@@ -312,7 +271,6 @@ func (c *Client) simpleGet(
 	newPath string,
 	query url.Values,
 ) (*http.Request, error) {
-
 	u, err := url.Parse(c.URL)
 	if err != nil {
 		return nil, errors.Wrap(err, "unparseable url")
@@ -331,4 +289,94 @@ func (c *Client) simpleGet(
 	}
 
 	return req, nil
+}
+
+// rawPost returns a new POST request to the connected stellar-core using the
+// provided path and the params values encoded as the request body to construct
+// the result.
+func (c *Client) rawPost(
+	ctx context.Context,
+	newPath string,
+	body string,
+) (*http.Request, error) {
+	u, err := url.Parse(c.URL)
+	if err != nil {
+		return nil, errors.Wrap(err, "unparseable url")
+	}
+
+	u.Path = path.Join(u.Path, newPath)
+	newURL := u.String()
+
+	var req *http.Request
+	req, err = http.NewRequestWithContext(
+		ctx,
+		http.MethodPost,
+		newURL,
+		bytes.NewBuffer([]byte(body)))
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create request")
+	}
+
+	return req, nil
+}
+
+// makeLedgerKeyRequest is a generic method to perform a request in the form
+// `key=...&key=...&ledgerSeq=...` which is useful because several Stellar Core
+// endpoints all use this request format. Be sure to pass `target` by reference.
+func (c *Client) makeLedgerKeyRequest(
+	ctx context.Context,
+	target interface{},
+	endpoint string,
+	ledgerSeq uint32,
+	keys ...xdr.LedgerKey,
+) error {
+	if len(keys) == 0 {
+		return errors.New("no keys specified in request")
+	}
+
+	q, err := buildMultiKeyRequest(keys...)
+	if err != nil {
+		return err
+	}
+	if ledgerSeq >= 2 { // optional param
+		q += fmt.Sprintf("&ledgerSeq=%d", ledgerSeq)
+	}
+
+	var req *http.Request
+	req, err = c.rawPost(ctx, endpoint, q)
+	if err != nil {
+		return err
+	}
+
+	var hresp *http.Response
+	hresp, err = c.http().Do(req)
+	if err != nil {
+		return errors.Wrap(err, "http request errored")
+	}
+	defer drainReponse(hresp, true, &err) //nolint:errcheck
+
+	if hresp.StatusCode < 200 || hresp.StatusCode >= 300 {
+		return fmt.Errorf("http request failed with non-200 status code (%d)", hresp.StatusCode)
+	}
+
+	// wrap returns nil if the inner error is nil
+	return errors.Wrap(json.NewDecoder(hresp.Body).Decode(&target), "json decode failed")
+}
+
+// buildMultiKeyRequest is a workaround helper because, unfortunately,
+// url.Values does not support multiple keys via Set(), so we have to build our
+// URL parameters manually.
+func buildMultiKeyRequest(keys ...xdr.LedgerKey) (string, error) {
+	stringKeys := make([]string, 0, len(keys))
+
+	for _, key := range keys {
+		keyB64, err := key.MarshalBinaryBase64()
+		if err != nil {
+			return "", errors.Wrap(err, "failed to encode LedgerKey")
+		}
+
+		stringKeys = append(stringKeys, "key="+url.QueryEscape(keyB64))
+	}
+
+	return strings.Join(stringKeys, "&"), nil
 }

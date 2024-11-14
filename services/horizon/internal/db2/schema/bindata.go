@@ -64,6 +64,7 @@
 // migrations/65_drop_payment_index.sql (260B)
 // migrations/66_contract_asset_stats.sql (583B)
 // migrations/67_remove_unused_indexes.sql (2.897kB)
+// migrations/68_remove_deprecated_fields_from_exp_asset_stats.sql (471B)
 // migrations/6_create_assets_table.sql (366B)
 // migrations/7_modify_trades_table.sql (2.303kB)
 // migrations/8_add_aggregators.sql (907B)
@@ -1417,6 +1418,26 @@ func migrations67_remove_unused_indexesSql() (*asset, error) {
 	return a, nil
 }
 
+var _migrations68_remove_deprecated_fields_from_exp_asset_statsSql = []byte("\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff\xa4\xd0\x4d\x4b\xc4\x30\x18\x04\xe0\x7b\x7e\xc5\xdc\xaa\x48\xa1\xf7\xa2\x10\x9b\xa8\xc5\x98\x4a\x7c\x23\xde\x42\xa8\x45\x0a\xf6\x03\x93\xaa\x3f\x5f\xdc\x0f\xe8\xb2\x4b\x77\x61\xaf\x81\x79\x66\xf2\xa6\x29\xae\xba\xf6\xe3\xcb\xc7\x06\x76\x64\x8c\x2b\x92\x06\xc4\x6f\x95\x44\xf3\x3b\x3a\x1f\x42\x13\x5d\x88\x3e\x06\x08\x53\x3d\xa3\xa8\xf4\x0b\x19\x5e\x6a\xc2\xb7\xff\x6c\xdf\x5d\x3f\x75\xce\xd7\xf5\x30\xf5\x31\xe4\x8b\x00\x03\xb0\x45\x94\x7d\xd2\x38\x23\xea\xbb\xff\x54\xce\xd8\xfc\x03\x62\xf8\xe9\x8f\x2a\x5c\x88\x43\xfd\x28\x35\xc9\x7b\x69\xa0\x2b\x82\xb6\x4a\x41\xc8\x3b\x6e\x15\x21\x3b\x61\xda\x0c\x5d\x2f\x03\xc9\x37\xda\xb7\x92\x64\x19\xdb\x40\x0b\x27\x46\xf1\x20\x8b\x47\x5c\xec\xbc\xdd\x5c\x23\xbb\x5c\xb5\xbd\x72\x55\x8a\x9c\xfd\x05\x00\x00\xff\xff\x7f\x2b\x3e\x4a\xd7\x01\x00\x00")
+
+func migrations68_remove_deprecated_fields_from_exp_asset_statsSqlBytes() ([]byte, error) {
+	return bindataRead(
+		_migrations68_remove_deprecated_fields_from_exp_asset_statsSql,
+		"migrations/68_remove_deprecated_fields_from_exp_asset_stats.sql",
+	)
+}
+
+func migrations68_remove_deprecated_fields_from_exp_asset_statsSql() (*asset, error) {
+	bytes, err := migrations68_remove_deprecated_fields_from_exp_asset_statsSqlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "migrations/68_remove_deprecated_fields_from_exp_asset_stats.sql", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0x8, 0x9f, 0xc8, 0xbb, 0xb3, 0x73, 0xf7, 0x7a, 0x22, 0x14, 0x5f, 0x5a, 0x8a, 0x35, 0x6, 0xf1, 0x92, 0x45, 0xd, 0xe5, 0x75, 0x9, 0x7f, 0xab, 0xec, 0xa8, 0x35, 0xdc, 0xcf, 0x7b, 0x96, 0xde}}
+	return a, nil
+}
+
 var _migrations6_create_assets_tableSql = []byte("\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff\x6c\x90\x3d\x4f\xc3\x30\x18\x84\x77\xff\x8a\x1b\x1d\x91\x0e\x20\xe8\x92\xc9\x34\x16\x58\x18\xa7\xb8\x31\xa2\x53\xe5\x26\x16\x78\x80\x54\xb6\x11\xca\xbf\x47\xaa\x28\xf9\x50\xe6\x7b\xf4\xbc\xef\xdd\x6a\x85\xab\x4f\xff\x1e\x6c\x72\x30\x27\xb2\xd1\x9c\xd5\x1c\x35\xbb\x97\x1c\x1f\x3e\xa6\x2e\xf4\x07\x1b\xa3\x4b\x11\x94\x00\x80\x6f\xb1\xe3\x5a\x30\x89\xad\x16\xcf\x4c\xef\xf1\xc4\xf7\xc8\xcf\xd9\x19\x3c\xa4\xfe\xe4\xf0\xca\xf4\xe6\x91\x69\xba\xbe\xcd\xa0\xaa\x1a\xca\x48\x39\x86\x9a\xae\x1d\xa0\xeb\x9b\x65\xc8\xc7\xf8\xed\xc2\x3f\x76\xb7\x9e\x63\x46\x89\x17\xc3\xe9\xa0\xcc\x47\x3f\xe4\x13\x4b\x46\xb2\x82\x5c\xfa\x09\x55\xf2\xb7\xbf\xf8\xd8\x5f\xee\x54\x6a\x5e\xd9\xec\x84\x7a\xc0\x31\x05\xe7\x40\x27\xb6\x82\x90\xf1\x74\x65\xf7\xf3\x45\x4a\x5d\x6d\x97\xa7\x6b\x6c\x6c\x6c\xeb\x8a\xdf\x00\x00\x00\xff\xff\xfb\x53\x3e\x81\x6e\x01\x00\x00")
 
 func migrations6_create_assets_tableSqlBytes() ([]byte, error) {
@@ -1672,6 +1693,7 @@ var _bindata = map[string]func() (*asset, error){
 	"migrations/65_drop_payment_index.sql":                               migrations65_drop_payment_indexSql,
 	"migrations/66_contract_asset_stats.sql":                             migrations66_contract_asset_statsSql,
 	"migrations/67_remove_unused_indexes.sql":                            migrations67_remove_unused_indexesSql,
+	"migrations/68_remove_deprecated_fields_from_exp_asset_stats.sql":    migrations68_remove_deprecated_fields_from_exp_asset_statsSql,
 	"migrations/6_create_assets_table.sql":                               migrations6_create_assets_tableSql,
 	"migrations/7_modify_trades_table.sql":                               migrations7_modify_trades_tableSql,
 	"migrations/8_add_aggregators.sql":                                   migrations8_add_aggregatorsSql,
@@ -1787,6 +1809,7 @@ var _bintree = &bintree{nil, map[string]*bintree{
 		"65_drop_payment_index.sql":                               {migrations65_drop_payment_indexSql, map[string]*bintree{}},
 		"66_contract_asset_stats.sql":                             {migrations66_contract_asset_statsSql, map[string]*bintree{}},
 		"67_remove_unused_indexes.sql":                            {migrations67_remove_unused_indexesSql, map[string]*bintree{}},
+		"68_remove_deprecated_fields_from_exp_asset_stats.sql":    {migrations68_remove_deprecated_fields_from_exp_asset_statsSql, map[string]*bintree{}},
 		"6_create_assets_table.sql":                               {migrations6_create_assets_tableSql, map[string]*bintree{}},
 		"7_modify_trades_table.sql":                               {migrations7_modify_trades_tableSql, map[string]*bintree{}},
 		"8_add_aggregators.sql":                                   {migrations8_add_aggregatorsSql, map[string]*bintree{}},

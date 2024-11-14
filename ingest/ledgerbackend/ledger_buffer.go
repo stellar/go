@@ -13,6 +13,8 @@ import (
 	"github.com/stellar/go/support/collections/heap"
 	"github.com/stellar/go/support/compressxdr"
 	"github.com/stellar/go/support/datastore"
+	"github.com/stellar/go/support/ordered"
+
 	"github.com/stellar/go/xdr"
 )
 
@@ -53,6 +55,10 @@ func (bsb *BufferedStorageBackend) newLedgerBuffer(ledgerRange Range) (*ledgerBu
 
 	less := func(a, b ledgerBatchObject) bool {
 		return a.startLedger < b.startLedger
+	}
+	// ensure BufferSize does not exceed the total range
+	if ledgerRange.bounded {
+		bsb.config.BufferSize = uint32(ordered.Min(int(bsb.config.BufferSize), int(ledgerRange.to-ledgerRange.from)+1))
 	}
 	pq := heap.New(less, int(bsb.config.BufferSize))
 
@@ -95,7 +101,7 @@ func (lb *ledgerBuffer) pushTaskQueue() {
 		return
 	}
 	lb.taskQueue <- lb.nextTaskLedger
-	lb.nextTaskLedger += lb.config.LedgerBatchConfig.LedgersPerFile
+	lb.nextTaskLedger += lb.dataStore.GetSchema().LedgersPerFile
 }
 
 // sleepWithContext returns true upon sleeping without interruption from the context
@@ -163,11 +169,11 @@ func (lb *ledgerBuffer) worker(ctx context.Context) {
 }
 
 func (lb *ledgerBuffer) downloadLedgerObject(ctx context.Context, sequence uint32) ([]byte, error) {
-	objectKey := lb.config.LedgerBatchConfig.GetObjectKeyFromSequenceNumber(sequence)
+	objectKey := lb.dataStore.GetSchema().GetObjectKeyFromSequenceNumber(sequence)
 
 	reader, err := lb.dataStore.GetFile(ctx, objectKey)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "unable to retrieve file: %s", objectKey)
 	}
 
 	defer reader.Close()
@@ -198,7 +204,7 @@ func (lb *ledgerBuffer) storeObject(ledgerObject []byte, sequence uint32) {
 	for lb.ledgerPriorityQueue.Len() > 0 && lb.currentLedger == uint32(lb.ledgerPriorityQueue.Peek().startLedger) {
 		item := lb.ledgerPriorityQueue.Pop()
 		lb.ledgerQueue <- item.payload
-		lb.currentLedger += lb.config.LedgerBatchConfig.LedgersPerFile
+		lb.currentLedger += lb.dataStore.GetSchema().LedgersPerFile
 	}
 }
 

@@ -210,6 +210,7 @@ func (q *OperationsQ) ForLedger(ctx context.Context, seq int32) *OperationsQ {
 		start.ToInt64(),
 		end.ToInt64(),
 	)
+	q.boundedIdQuery = true
 
 	return q
 }
@@ -231,6 +232,7 @@ func (q *OperationsQ) ForTransaction(ctx context.Context, hash string) *Operatio
 		start.ToInt64(),
 		end.ToInt64(),
 	)
+	q.boundedIdQuery = true
 
 	return q
 }
@@ -266,11 +268,15 @@ func (q *OperationsQ) IncludeTransactions() *OperationsQ {
 }
 
 // Page specifies the paging constraints for the query being built by `q`.
-func (q *OperationsQ) Page(page db2.PageQuery) *OperationsQ {
+func (q *OperationsQ) Page(page db2.PageQuery, oldestLedger int32) *OperationsQ {
 	if q.Err != nil {
 		return q
 	}
 
+	if lowerBound := lowestLedgerBound(oldestLedger); !q.boundedIdQuery && lowerBound > 0 && page.Order == "desc" {
+		q.sql = q.sql.
+			Where(q.opIdCol+" > ?", lowerBound)
+	}
 	q.sql, q.Err = page.ApplyTo(q.sql, q.opIdCol)
 	return q
 }

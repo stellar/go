@@ -13,7 +13,7 @@ jobs:
         os: [ubuntu-20.04, ubuntu-22.04]
         go: ["1.21", "1.22"]
         pg: [12, 16]
-        protocol-version: [21]
+        protocol-version: [21, 22]
     runs-on: ${{ matrix.os }}
     services:
       postgres:
@@ -33,9 +33,12 @@ jobs:
       HORIZON_INTEGRATION_TESTS_ENABLED: true
       HORIZON_INTEGRATION_TESTS_CORE_MAX_SUPPORTED_PROTOCOL: ${{ matrix.protocol-version }}
       HORIZON_INTEGRATION_TESTS_CAPTIVE_CORE_USE_DB: true
-      PROTOCOL_21_CORE_DEBIAN_PKG_VERSION: 21.0.0-1872.c6f474133.focal
-      PROTOCOL_21_CORE_DOCKER_IMG: stellar/stellar-core:21
-      PROTOCOL_21_SOROBAN_RPC_DOCKER_IMG: stellar/soroban-rpc:21.0.0-rc2-73
+      PROTOCOL_21_CORE_DEBIAN_PKG_VERSION: 21.3.1-2007.4ede19620.focal
+      PROTOCOL_21_CORE_DOCKER_IMG: stellar/stellar-core:21.3.1-2007.4ede19620.focal
+      PROTOCOL_21_SOROBAN_RPC_DOCKER_IMG: stellar/soroban-rpc:21.5.1
+      PROTOCOL_22_CORE_DEBIAN_PKG_VERSION: 22.0.0-2138.721fd0a65.focal
+      PROTOCOL_22_CORE_DOCKER_IMG: stellar/stellar-core:22.0.0-2138.721fd0a65.focal
+      PROTOCOL_22_SOROBAN_RPC_DOCKER_IMG: stellar/soroban-rpc:22.0.0-rc3-101
       PGHOST: localhost
       PGPORT: 5432
       PGUSER: postgres
@@ -98,7 +101,7 @@ jobs:
       - name: Calculate the source hash
         id: calculate_source_hash
         run: |
-          combined_hash=$(echo "horizon-hash-${{ hashFiles('./horizon') }}-${{ hashFiles('./clients/horizonclient/**') }}-${{ hashFiles('./protocols/horizon/**') }}-${{ hashFiles('./txnbuild/**') }}-${{ hashFiles('./ingest/**') }}-${{ hashFiles('./xdr/**') }}-${{ hashFiles('./services/**') }}-${{ env.PROTOCOL_21_CORE_DOCKER_IMG }}-${{ env.PREFIX }}" | sha256sum | cut -d ' ' -f 1)
+          combined_hash=$(echo "horizon-hash-${{ hashFiles('./horizon') }}-${{ hashFiles('./clients/horizonclient/**') }}-${{ hashFiles('./protocols/horizon/**') }}-${{ hashFiles('./txnbuild/**') }}-${{ hashFiles('./ingest/**') }}-${{ hashFiles('./xdr/**') }}-${{ hashFiles('./services/**') }}-${{ env.PROTOCOL_21_CORE_DOCKER_IMG }}-${{ env.PROTOCOL_21_RPC_DOCKER_IMG }}-${{ env.PROTOCOL_21_CORE_DEBIAN_PKG_VERSION }}-${{ env.PREFIX }}" | sha256sum | cut -d ' ' -f 1)
           echo "COMBINED_SOURCE_HASH=$combined_hash" >> "$GITHUB_ENV"
 
       - name: Restore Horizon binary and integration tests source hash to cache
@@ -123,7 +126,7 @@ jobs:
     name: Test (and push) verify-range image
     runs-on: ubuntu-22.04
     env:
-      STELLAR_CORE_VERSION: 21.0.0-1872.c6f474133.focal
+      STELLAR_CORE_VERSION: 21.3.1-2007.4ede19620.focal
       CAPTIVE_CORE_STORAGE_PATH: /tmp
     steps:
       - uses: actions/checkout@v3

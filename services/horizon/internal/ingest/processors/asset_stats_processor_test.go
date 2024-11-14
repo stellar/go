@@ -74,8 +74,6 @@ func (s *AssetStatsProcessorTestSuiteState) TestCreateTrustLine() {
 				ClaimableBalances:               "0",
 				LiquidityPools:                  "0",
 			},
-			Amount:      "0",
-			NumAccounts: 1,
 		},
 	}).Return(nil).Once()
 }
@@ -141,8 +139,6 @@ func (s *AssetStatsProcessorTestSuiteState) TestCreateTrustLineWithClawback() {
 				ClaimableBalances:               "0",
 				LiquidityPools:                  "0",
 			},
-			Amount:      "0",
-			NumAccounts: 1,
 		},
 	}).Return(nil).Once()
 }
@@ -179,8 +175,6 @@ func (s *AssetStatsProcessorTestSuiteState) TestCreateTrustLineUnauthorized() {
 				ClaimableBalances:               "0",
 				LiquidityPools:                  "0",
 			},
-			Amount:      "0",
-			NumAccounts: 0,
 		},
 	}).Return(nil).Once()
 }
@@ -320,8 +314,6 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestInsertClaimableBalance() {
 			ClaimableBalances:               "24",
 			LiquidityPools:                  "0",
 		},
-		Amount:      "0",
-		NumAccounts: 0,
 	}).Return(int64(1), nil).Once()
 
 	s.mockQ.On("GetAssetStat", s.ctx,
@@ -343,8 +335,6 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestInsertClaimableBalance() {
 			ClaimableBalances:               "46",
 			LiquidityPools:                  "0",
 		},
-		Amount:      "0",
-		NumAccounts: 0,
 	}).Return(int64(1), nil).Once()
 
 	s.mockQ.On("RemoveContractAssetBalances", s.ctx, []xdr.Hash(nil)).
@@ -487,8 +477,6 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestInsertTrustLine() {
 			ClaimableBalances:               "0",
 			LiquidityPools:                  "0",
 		},
-		Amount:      "10",
-		NumAccounts: 1,
 	}).Return(int64(1), nil).Once()
 
 	s.mockQ.On("GetAssetStat", s.ctx,
@@ -510,8 +498,6 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestInsertTrustLine() {
 			ClaimableBalances:               "0",
 			LiquidityPools:                  "0",
 		},
-		Amount:      "0",
-		NumAccounts: 0,
 	}).Return(int64(1), nil).Once()
 
 	s.mockQ.On("RemoveContractAssetBalances", s.ctx, []xdr.Hash(nil)).
@@ -599,8 +585,6 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestInsertContractID() {
 			ClaimableBalances:               "0",
 			LiquidityPools:                  "0",
 		},
-		Amount:      "0",
-		NumAccounts: 1,
 	}
 	eurAssetStat.SetContractID(eurID)
 	s.mockQ.On("InsertAssetStat", s.ctx, mock.MatchedBy(func(assetStat history.ExpAssetStat) bool {
@@ -625,8 +609,6 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestInsertContractID() {
 			ClaimableBalances:               "0",
 			LiquidityPools:                  "0",
 		},
-		Amount:      "0",
-		NumAccounts: 0,
 	}
 	usdAssetStat.SetContractID(usdID)
 	s.mockQ.On("InsertAssetStat", s.ctx, mock.MatchedBy(func(assetStat history.ExpAssetStat) bool {
@@ -932,8 +914,6 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestInsertContractIDWithBalance() {
 			ClaimableBalances:               "0",
 			LiquidityPools:                  "0",
 		},
-		Amount:      "0",
-		NumAccounts: 1,
 	}
 	eurAssetStat.SetContractID(eurID)
 	s.mockQ.On("InsertAssetStat", s.ctx, mock.MatchedBy(func(assetStat history.ExpAssetStat) bool {
@@ -974,8 +954,6 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestInsertContractIDWithBalance() {
 			ClaimableBalances:               "0",
 			LiquidityPools:                  "0",
 		},
-		Amount:      "0",
-		NumAccounts: 0,
 	}
 	usdAssetStat.SetContractID(usdID)
 	s.mockQ.On("InsertAssetStat", s.ctx, mock.MatchedBy(func(assetStat history.ExpAssetStat) bool {
@@ -1097,8 +1075,6 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestInsertClaimableBalanceAndTrustl
 			ClaimableBalances:               "12",
 			LiquidityPools:                  "100",
 		},
-		Amount:      "9",
-		NumAccounts: 1,
 	}).Return(int64(1), nil).Once()
 
 	s.mockQ.On("RemoveContractAssetBalances", s.ctx, []xdr.Hash(nil)).
@@ -1148,8 +1124,6 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateContractID() {
 			ClaimableBalances:               "0",
 			LiquidityPools:                  "0",
 		},
-		Amount:      "100",
-		NumAccounts: 1,
 	}, nil).Once()
 
 	eurAssetStat := history.ExpAssetStat{
@@ -1164,8 +1138,6 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateContractID() {
 			ClaimableBalances:               "0",
 			LiquidityPools:                  "0",
 		},
-		Amount:      "100",
-		NumAccounts: 1,
 	}
 	eurAssetStat.SetContractID(eurID)
 	s.mockQ.On("UpdateAssetStat", s.ctx, mock.MatchedBy(func(assetStat history.ExpAssetStat) bool {
@@ -1309,8 +1281,6 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateContractIDWithBalance() {
 			ClaimableBalances:               "0",
 			LiquidityPools:                  "0",
 		},
-		Amount:      "100",
-		NumAccounts: 1,
 	}, nil).Once()
 
 	eurAssetStat := history.ExpAssetStat{
@@ -1327,8 +1297,6 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateContractIDWithBalance() {
 			ClaimableBalances:               "0",
 			LiquidityPools:                  "0",
 		},
-		Amount:      "100",
-		NumAccounts: 1,
 	}
 	eurAssetStat.SetContractID(eurID)
 	s.mockQ.On("UpdateAssetStat", s.ctx, mock.MatchedBy(func(assetStat history.ExpAssetStat) bool {
@@ -1406,8 +1374,6 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateContractIDError() {
 			ClaimableBalances:               "0",
 			LiquidityPools:                  "0",
 		},
-		Amount:      "100",
-		NumAccounts: 1,
 	}
 	eurAssetStat.SetContractID(usdID)
 	s.mockQ.On("GetAssetStat", s.ctx,
@@ -1485,8 +1451,6 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateTrustlineAndContractIDErr
 			ClaimableBalances:               "0",
 			LiquidityPools:                  "0",
 		},
-		Amount:      "100",
-		NumAccounts: 1,
 	}
 	eurAssetStat.SetContractID(usdID)
 	s.mockQ.On("GetAssetStat", s.ctx,
@@ -1588,8 +1552,6 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateTrustlineAndRemoveContrac
 			ClaimableBalances:               "0",
 			LiquidityPools:                  "0",
 		},
-		Amount:      "100",
-		NumAccounts: 1,
 	}
 	s.mockQ.On("GetAssetStat", s.ctx,
 		xdr.AssetTypeAssetTypeCreditAlphanum4,
@@ -1654,8 +1616,6 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateTrustLine() {
 			ClaimableBalances:               "0",
 			LiquidityPools:                  "0",
 		},
-		Amount:      "100",
-		NumAccounts: 1,
 	}, nil).Once()
 	s.mockQ.On("UpdateAssetStat", s.ctx, history.ExpAssetStat{
 		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
@@ -1669,8 +1629,6 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateTrustLine() {
 			ClaimableBalances:               "0",
 			LiquidityPools:                  "0",
 		},
-		Amount:      "110",
-		NumAccounts: 1,
 	}).Return(int64(1), nil).Once()
 
 	s.mockQ.On("RemoveContractAssetBalances", s.ctx, []xdr.Hash(nil)).
@@ -1805,8 +1763,6 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateTrustLineAuthorization() 
 			ClaimableBalances:               "0",
 			LiquidityPools:                  "0",
 		},
-		Amount:      "0",
-		NumAccounts: 0,
 	}, nil).Once()
 	s.mockQ.On("UpdateAssetStat", s.ctx, history.ExpAssetStat{
 		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
@@ -1822,8 +1778,6 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateTrustLineAuthorization() 
 			ClaimableBalances:               "0",
 			LiquidityPools:                  "0",
 		},
-		Amount:      "10",
-		NumAccounts: 1,
 	}).Return(int64(1), nil).Once()
 
 	s.mockQ.On("GetAssetStat", s.ctx,
@@ -1844,8 +1798,6 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateTrustLineAuthorization() 
 			ClaimableBalances:               "0",
 			LiquidityPools:                  "0",
 		},
-		Amount:      "100",
-		NumAccounts: 1,
 	}, nil).Once()
 	s.mockQ.On("UpdateAssetStat", s.ctx, history.ExpAssetStat{
 		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
@@ -1861,8 +1813,6 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateTrustLineAuthorization() 
 			ClaimableBalances:               "0",
 			LiquidityPools:                  "0",
 		},
-		Amount:      "0",
-		NumAccounts: 0,
 	}).Return(int64(1), nil).Once()
 
 	s.mockQ.On("GetAssetStat", s.ctx,
@@ -1883,8 +1833,6 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateTrustLineAuthorization() 
 			ClaimableBalances:               "0",
 			LiquidityPools:                  "0",
 		},
-		Amount:      "100",
-		NumAccounts: 1,
 	}, nil).Once()
 	s.mockQ.On("UpdateAssetStat", s.ctx, history.ExpAssetStat{
 		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
@@ -1900,8 +1848,6 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateTrustLineAuthorization() 
 			ClaimableBalances:               "0",
 			LiquidityPools:                  "0",
 		},
-		Amount:      "0",
-		NumAccounts: 0,
 	}).Return(int64(1), nil).Once()
 
 	s.mockQ.On("RemoveContractAssetBalances", s.ctx, []xdr.Hash(nil)).
@@ -1978,8 +1924,6 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveClaimableBalance() {
 			ClaimableBalances:               "12",
 			LiquidityPools:                  "0",
 		},
-		Amount:      "0",
-		NumAccounts: 0,
 	}, nil).Once()
 	s.mockQ.On("RemoveAssetStat", s.ctx,
 		xdr.AssetTypeAssetTypeCreditAlphanum4,
@@ -2006,8 +1950,6 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveClaimableBalance() {
 			ClaimableBalances:               "21",
 			LiquidityPools:                  "0",
 		},
-		Amount:      "0",
-		NumAccounts: 0,
 	}, nil).Once()
 	s.mockQ.On("UpdateAssetStat", s.ctx, history.ExpAssetStat{
 		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
@@ -2021,8 +1963,6 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveClaimableBalance() {
 			ClaimableBalances:               "0",
 			LiquidityPools:                  "0",
 		},
-		Amount:      "0",
-		NumAccounts: 0,
 	}).Return(int64(1), nil).Once()
 
 	s.mockQ.On("RemoveContractAssetBalances", s.ctx, []xdr.Hash(nil)).
@@ -2094,8 +2034,6 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveTrustLine() {
 			ClaimableBalances:               "0",
 			LiquidityPools:                  "0",
 		},
-		Amount:      "0",
-		NumAccounts: 1,
 	}, nil).Once()
 	s.mockQ.On("RemoveAssetStat", s.ctx,
 		xdr.AssetTypeAssetTypeCreditAlphanum4,
@@ -2121,8 +2059,6 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveTrustLine() {
 			ClaimableBalances:               "0",
 			LiquidityPools:                  "0",
 		},
-		Amount:      "0",
-		NumAccounts: 0,
 	}, nil).Once()
 	s.mockQ.On("RemoveAssetStat", s.ctx,
 		xdr.AssetTypeAssetTypeCreditAlphanum4,
@@ -2173,8 +2109,6 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveContractID() {
 			ClaimableBalances:               "0",
 			LiquidityPools:                  "0",
 		},
-		Amount:      "100",
-		NumAccounts: 1,
 	}
 	eurAssetStat.SetContractID(eurID)
 	s.mockQ.On("GetAssetStatByContract", s.ctx, xdr.Hash(eurID)).
@@ -2260,8 +2194,6 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateTrustlineAndRemoveContrac
 			ClaimableBalances:               "0",
 			LiquidityPools:                  "0",
 		},
-		Amount:      "100",
-		NumAccounts: 1,
 	}
 	eurAssetStat.SetContractID(eurID)
 	s.mockQ.On("GetAssetStat", s.ctx,
@@ -2282,8 +2214,6 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateTrustlineAndRemoveContrac
 			ClaimableBalances:               "0",
 			LiquidityPools:                  "0",
 		},
-		Amount:      "110",
-		NumAccounts: 1,
 	}
 	s.mockQ.On("UpdateAssetStat", s.ctx, mock.MatchedBy(func(assetStat history.ExpAssetStat) bool {
 		return eurAssetStat.Equals(assetStat)
@@ -2332,8 +2262,6 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveContractIDFromZeroRow() {
 			ClaimableBalances:               "0",
 			LiquidityPools:                  "0",
 		},
-		Amount:      "0",
-		NumAccounts: 0,
 	}
 	eurAssetStat.SetContractID(eurID)
 	s.mockQ.On("GetAssetStatByContract", s.ctx, xdr.Hash(eurID)).
@@ -2432,8 +2360,6 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveContractIDAndBalanceZeroR
 			ClaimableBalances:               "0",
 			LiquidityPools:                  "0",
 		},
-		Amount:      "0",
-		NumAccounts: 0,
 	}
 	eurAssetStat.SetContractID(eurID)
 	s.mockQ.On("GetAssetStatByContract", s.ctx, xdr.Hash(eurID)).
@@ -2524,8 +2450,6 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveContractIDAndRow() {
 			ClaimableBalances:               "0",
 			LiquidityPools:                  "0",
 		},
-		Amount:      "0",
-		NumAccounts: 1,
 	}
 	eurAssetStat.SetContractID(eurID)
 	s.mockQ.On("GetAssetStat", s.ctx,
@@ -2621,8 +2545,6 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestProcessUpgradeChange() {
 			ClaimableBalances:               "0",
 			LiquidityPools:                  "0",
 		},
-		Amount:      "10",
-		NumAccounts: 1,
 	}).Return(int64(1), nil).Once()
 
 	s.mockQ.On("RemoveContractAssetBalances", s.ctx, []xdr.Hash(nil)).

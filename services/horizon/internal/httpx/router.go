@@ -295,7 +295,7 @@ func (r *Router) addRoutes(config *RouterConfig, rateLimiter *throttled.HTTPRate
 	r.Route("/transactions", func(r chi.Router) {
 		r.With(historyMiddleware).Method(http.MethodGet, "/", streamableHistoryPageHandler(ledgerState, actions.GetTransactionsHandler{LedgerState: ledgerState, SkipTxMeta: config.SkipTxMeta}, streamHandler))
 		r.Route("/{tx_id}", func(r chi.Router) {
-			r.With(historyMiddleware).Method(http.MethodGet, "/", ObjectActionHandler{actions.GetTransactionByHashHandler{}})
+			r.With(historyMiddleware).Method(http.MethodGet, "/", ObjectActionHandler{actions.GetTransactionByHashHandler{SkipTxMeta: config.SkipTxMeta}})
 			r.With(historyMiddleware).Method(http.MethodGet, "/effects", streamableHistoryPageHandler(ledgerState, actions.GetEffectsHandler{LedgerState: ledgerState}, streamHandler))
 			r.With(historyMiddleware).Method(http.MethodGet, "/operations", streamableHistoryPageHandler(ledgerState, actions.GetOperationsHandler{
 				LedgerState:  ledgerState,

@@ -2,13 +2,20 @@ package stellarcore
 
 import (
 	"context"
+	"fmt"
+	"io"
 	"net/http"
+	"net/url"
 	"testing"
 
+	"github.com/jarcoal/httpmock"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
+	"github.com/stellar/go/keypair"
 	proto "github.com/stellar/go/protocols/stellarcore"
 	"github.com/stellar/go/support/http/httptest"
+	"github.com/stellar/go/xdr"
 )
 
 func TestSubmitTransaction(t *testing.T) {
@@ -74,4 +81,57 @@ func TestManualClose_NotAvailable(t *testing.T) {
 	err := c.ManualClose(context.Background())
 
 	assert.EqualError(t, err, "exception in response: Set MANUAL_CLOSE=true")
+}
+
+func TestGetLedgerEntries(t *testing.T) {
+	hmock := httptest.NewClient()
+	c := &Client{HTTP: hmock, URL: "http://localhost:11626"}
+
+	// build a fake response body
+	mockResp := proto.GetLedgerEntryRawResponse{
+		Ledger: 1215, // checkpoint align on expected request
+		Entries: []proto.RawLedgerEntryResponse{
+			{
+				Entry: "pretend this is XDR lol",
+			},
+			{
+				Entry: "pretend this is another XDR lol",
+			},
+		},
+	}
+
+	var key xdr.LedgerKey
+	acc, err := xdr.AddressToAccountId(keypair.MustRandom().Address())
+	require.NoError(t, err)
+	key.SetAccount(acc)
+
+	// happy path - fetch an entry
+	ce := hmock.On("POST", "http://localhost:11626/getledgerentryraw")
+	hmock.RegisterResponder(
+		"POST",
+		"http://localhost:11626/getledgerentryraw",
+		func(r *http.Request) (*http.Response, error) {
+			// Ensure the request has the correct POST body
+			requestData, ierr := io.ReadAll(r.Body)
+			require.NoError(t, ierr)
+
+			keyB64, ierr := key.MarshalBinaryBase64()
+			require.NoError(t, ierr)
+			expected := fmt.Sprintf("key=%s&ledgerSeq=1234", url.QueryEscape(keyB64))
+			require.Equal(t, expected, string(requestData))
+
+			resp, ierr := httpmock.NewJsonResponse(http.StatusOK, &mockResp)
+			require.NoError(t, ierr)
+			ce.Return(httpmock.ResponderFromResponse(resp))
+			return resp, nil
+		})
+
+	resp, err := c.GetLedgerEntryRaw(context.Background(), 1234, key)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+
+	require.EqualValues(t, 1215, resp.Ledger)
+	require.Len(t, resp.Entries, 2)
+	require.Equal(t, "pretend this is XDR lol", resp.Entries[0].Entry)
+	require.Equal(t, "pretend this is another XDR lol", resp.Entries[1].Entry)
 }

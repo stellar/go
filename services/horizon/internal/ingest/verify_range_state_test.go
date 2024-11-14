@@ -568,7 +568,6 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 					LiquidityPools:                  "450",
 					Unauthorized:                    "0",
 				},
-				Amount: "0",
 			},
 		},
 	}, nil).Once()
@@ -651,8 +650,6 @@ func (s *VerifyRangeStateTestSuite) TestVerifyFailsWhenAssetStatsMismatch() {
 				AuthorizedToMaintainLiabilities: "0",
 				Unauthorized:                    "123",
 			},
-			Amount:      "0",
-			NumAccounts: 0,
 		},
 	}
 

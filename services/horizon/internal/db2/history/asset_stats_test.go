@@ -40,8 +40,6 @@ func TestAssetStatContracts(t *testing.T) {
 				LiquidityPools:                  "0",
 				Unauthorized:                    "0",
 			},
-			Amount:      "0",
-			NumAccounts: 0,
 		},
 		{
 			AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum12,
@@ -59,8 +57,6 @@ func TestAssetStatContracts(t *testing.T) {
 				ClaimableBalances:               "4",
 				LiquidityPools:                  "5",
 			},
-			Amount:      "23",
-			NumAccounts: 1,
 		},
 		{
 			AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
@@ -78,8 +74,6 @@ func TestAssetStatContracts(t *testing.T) {
 				ClaimableBalances:               "4",
 				LiquidityPools:                  "5",
 			},
-			Amount:      "1",
-			NumAccounts: 2,
 		},
 	}
 	var contractID [32]byte
@@ -219,8 +213,6 @@ func TestInsertAssetStats(t *testing.T) {
 				ClaimableBalances:               "4",
 				LiquidityPools:                  "5",
 			},
-			Amount:      "1",
-			NumAccounts: 2,
 		},
 		{
 			AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum12,
@@ -238,8 +230,6 @@ func TestInsertAssetStats(t *testing.T) {
 				ClaimableBalances:               "4",
 				LiquidityPools:                  "5",
 			},
-			Amount:      "23",
-			NumAccounts: 1,
 		},
 	}
 	tt.Assert.NoError(q.InsertAssetStats(tt.Ctx, assetStats))
@@ -276,8 +266,6 @@ func TestInsertAssetStat(t *testing.T) {
 				ClaimableBalances:               "4",
 				LiquidityPools:                  "5",
 			},
-			Amount:      "1",
-			NumAccounts: 2,
 		},
 		{
 			AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum12,
@@ -295,8 +283,6 @@ func TestInsertAssetStat(t *testing.T) {
 				ClaimableBalances:               "4",
 				LiquidityPools:                  "5",
 			},
-			Amount:      "23",
-			NumAccounts: 1,
 		},
 	}
 
@@ -333,8 +319,6 @@ func TestInsertAssetStatAlreadyExistsError(t *testing.T) {
 			ClaimableBalances:               "4",
 			LiquidityPools:                  "5",
 		},
-		Amount:      "1",
-		NumAccounts: 2,
 	}
 
 	numChanged, err := q.InsertAssetStat(tt.Ctx, assetStat)
@@ -344,18 +328,6 @@ func TestInsertAssetStatAlreadyExistsError(t *testing.T) {
 	numChanged, err = q.InsertAssetStat(tt.Ctx, assetStat)
 	tt.Assert.Error(err)
 	tt.Assert.Equal(numChanged, int64(0))
-
-	assetStat.NumAccounts = 4
-	assetStat.Amount = "3"
-	numChanged, err = q.InsertAssetStat(tt.Ctx, assetStat)
-	tt.Assert.Error(err)
-	tt.Assert.Equal(numChanged, int64(0))
-
-	assetStat.NumAccounts = 2
-	assetStat.Amount = "1"
-	got, err := q.GetAssetStat(tt.Ctx, assetStat.AssetType, assetStat.AssetCode, assetStat.AssetIssuer)
-	tt.Assert.NoError(err)
-	tt.Assert.Equal(got, assetStat)
 }
 
 func TestUpdateAssetStatDoesNotExistsError(t *testing.T) {
@@ -380,8 +352,6 @@ func TestUpdateAssetStatDoesNotExistsError(t *testing.T) {
 			ClaimableBalances:               "4",
 			LiquidityPools:                  "5",
 		},
-		Amount:      "1",
-		NumAccounts: 2,
 	}
 
 	numChanged, err := q.UpdateAssetStat(tt.Ctx, assetStat)
@@ -415,8 +385,6 @@ func TestUpdateStat(t *testing.T) {
 			ClaimableBalances:               "4",
 			LiquidityPools:                  "5",
 		},
-		Amount:      "1",
-		NumAccounts: 2,
 	}
 
 	numChanged, err := q.InsertAssetStat(tt.Ctx, assetStat)
@@ -427,8 +395,6 @@ func TestUpdateStat(t *testing.T) {
 	tt.Assert.NoError(err)
 	tt.Assert.Equal(got, assetStat)
 
-	assetStat.NumAccounts = 50
-	assetStat.Amount = "23"
 	assetStat.SetContractID([32]byte{23})
 
 	numChanged, err = q.UpdateAssetStat(tt.Ctx, assetStat)
@@ -462,8 +428,6 @@ func TestGetAssetStatDoesNotExist(t *testing.T) {
 			ClaimableBalances:               "4",
 			LiquidityPools:                  "5",
 		},
-		Amount:      "1",
-		NumAccounts: 2,
 	}
 
 	_, err := q.GetAssetStat(tt.Ctx, assetStat.AssetType, assetStat.AssetCode, assetStat.AssetIssuer)
@@ -493,8 +457,6 @@ func TestRemoveAssetStat(t *testing.T) {
 			ClaimableBalances:               "4",
 			LiquidityPools:                  "5",
 		},
-		Amount:      "1",
-		NumAccounts: 2,
 	}
 
 	numChanged, err := q.RemoveAssetStat(tt.Ctx,
@@ -628,8 +590,6 @@ func TestGetAssetStatsFiltersAndCursor(t *testing.T) {
 				ClaimableBalances:               "0",
 				LiquidityPools:                  "0",
 			},
-			Amount:      "1",
-			NumAccounts: 2,
 		},
 		Contracts: zero,
 	}
@@ -650,8 +610,6 @@ func TestGetAssetStatsFiltersAndCursor(t *testing.T) {
 				ClaimableBalances:               "0",
 				LiquidityPools:                  "0",
 			},
-			Amount:      "23",
-			NumAccounts: 1,
 		},
 		Contracts: zero,
 	}
@@ -672,8 +630,6 @@ func TestGetAssetStatsFiltersAndCursor(t *testing.T) {
 				ClaimableBalances:               "0",
 				LiquidityPools:                  "0",
 			},
-			Amount:      "1",
-			NumAccounts: 2,
 		},
 		Contracts: zero,
 	}
@@ -694,8 +650,6 @@ func TestGetAssetStatsFiltersAndCursor(t *testing.T) {
 				ClaimableBalances:               "1",
 				LiquidityPools:                  "2",
 			},
-			Amount:      "111",
-			NumAccounts: 3,
 		},
 		Contracts: ContractStat{
 			ActiveBalance:   "120",

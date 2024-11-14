@@ -305,8 +305,6 @@ func IncludeContractIDsInAssetStats(
 			AssetIssuer: assetIssuer,
 			Accounts:    history.ExpAssetStatAccounts{},
 			Balances:    newAssetStatBalance().ConvertToHistoryObject(),
-			Amount:      "0",
-			NumAccounts: 0,
 		}
 		row.SetContractID(contractID)
 		assetStatsDeltas = append(assetStatsDeltas, row)
@@ -456,8 +454,6 @@ func (p *AssetStatsProcessor) updateAssetStats(
 					AssetIssuer: delta.AssetIssuer,
 					Accounts:    statAccounts,
 					Balances:    statBalances.ConvertToHistoryObject(),
-					Amount:      statBalances.Authorized.String(),
-					NumAccounts: statAccounts.Authorized,
 					ContractID:  delta.ContractID,
 				})
 				if err != nil {
@@ -549,8 +545,6 @@ func (p *AssetStatsProcessor) updateContractID(
 				AssetIssuer: assetIssuer,
 				Accounts:    history.ExpAssetStatAccounts{},
 				Balances:    newAssetStatBalance().ConvertToHistoryObject(),
-				Amount:      "0",
-				NumAccounts: 0,
 			}
 			row.SetContractID(contractID)
 

@@ -139,8 +139,6 @@ func TestAssetStats(t *testing.T) {
 			ClaimableBalances:               "10",
 			LiquidityPools:                  "20",
 		},
-		Amount:      "1",
-		NumAccounts: 2,
 	}
 	usdAssetStatResponse := horizon.AssetStat{
 		Accounts: horizon.AssetStatAccounts{
@@ -157,8 +155,6 @@ func TestAssetStats(t *testing.T) {
 		},
 		ClaimableBalancesAmount: "0.0000010",
 		LiquidityPoolsAmount:    "0.0000020",
-		Amount:                  "0.0000001",
-		NumAccounts:             usdAssetStat.NumAccounts,
 		ContractsAmount:         "0.0000000",
 		ArchivedContractsAmount: "0.0000000",
 		Asset: base.Asset{
@@ -187,8 +183,6 @@ func TestAssetStats(t *testing.T) {
 			ClaimableBalances:               "0",
 			LiquidityPools:                  "0",
 		},
-		Amount:      "23",
-		NumAccounts: 1,
 	}
 	etherAssetStatResponse := horizon.AssetStat{
 		Accounts: horizon.AssetStatAccounts{
@@ -206,8 +200,6 @@ func TestAssetStats(t *testing.T) {
 		LiquidityPoolsAmount:    "0.0000000",
 		ContractsAmount:         "0.0000000",
 		ArchivedContractsAmount: "0.0000000",
-		Amount:                  "0.0000023",
-		NumAccounts:             etherAssetStat.NumAccounts,
 		Asset: base.Asset{
 			Type:   "credit_alphanum4",
 			Code:   etherAssetStat.AssetCode,
@@ -234,8 +226,6 @@ func TestAssetStats(t *testing.T) {
 			ClaimableBalances:               "0",
 			LiquidityPools:                  "0",
 		},
-		Amount:      "1",
-		NumAccounts: 2,
 	}
 	otherUSDAssetStatResponse := horizon.AssetStat{
 		Accounts: horizon.AssetStatAccounts{
@@ -251,10 +241,8 @@ func TestAssetStats(t *testing.T) {
 		},
 		ClaimableBalancesAmount: "0.0000000",
 		LiquidityPoolsAmount:    "0.0000000",
-		Amount:                  "0.0000001",
 		ContractsAmount:         "0.0000000",
 		ArchivedContractsAmount: "0.0000000",
-		NumAccounts:             otherUSDAssetStat.NumAccounts,
 		Asset: base.Asset{
 			Type:   "credit_alphanum4",
 			Code:   otherUSDAssetStat.AssetCode,
@@ -283,8 +271,6 @@ func TestAssetStats(t *testing.T) {
 			ClaimableBalances:               "0",
 			LiquidityPools:                  "0",
 		},
-		Amount:      "111",
-		NumAccounts: 3,
 	}
 	eurAssetStatResponse := horizon.AssetStat{
 		Accounts: horizon.AssetStatAccounts{
@@ -300,10 +286,8 @@ func TestAssetStats(t *testing.T) {
 		},
 		ClaimableBalancesAmount: "0.0000000",
 		LiquidityPoolsAmount:    "0.0000000",
-		Amount:                  "0.0000111",
 		ContractsAmount:         "0.0000000",
 		ArchivedContractsAmount: "0.0000000",
-		NumAccounts:             eurAssetStat.NumAccounts,
 		Asset: base.Asset{
 			Type:   "credit_alphanum4",
 			Code:   eurAssetStat.AssetCode,
@@ -453,8 +437,6 @@ func TestAssetStatsIssuerDoesNotExist(t *testing.T) {
 			Unauthorized:                    "3",
 			ClaimableBalances:               "0",
 		},
-		Amount:      "1",
-		NumAccounts: 2,
 	}
 	numChanged, err := q.InsertAssetStat(tt.Ctx, usdAssetStat)
 	tt.Assert.NoError(err)
@@ -478,10 +460,8 @@ func TestAssetStatsIssuerDoesNotExist(t *testing.T) {
 		},
 		ClaimableBalancesAmount: "0.0000000",
 		LiquidityPoolsAmount:    "0.0000000",
-		Amount:                  "0.0000001",
 		ContractsAmount:         "0.0000000",
 		ArchivedContractsAmount: "0.0000000",
-		NumAccounts:             usdAssetStat.NumAccounts,
 		Asset: base.Asset{
 			Type:   "credit_alphanum4",
 			Code:   usdAssetStat.AssetCode,

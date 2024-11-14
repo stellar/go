@@ -216,27 +216,6 @@ func (s *BuildStateTestSuite) TestRunHistoryArchiveIngestionReturnsError() {
 	s.Assert().Equal(transition{node: startState{}, sleepDuration: defaultSleep}, next)
 }
 
-func (s *BuildStateTestSuite) TestRunHistoryArchiveIngestionGenesisReturnsError() {
-	// Recreate mock in this single test to remove assertions.
-	*s.ledgerBackend = ledgerbackend.MockDatabaseBackend{}
-
-	s.historyQ.On("GetLastLedgerIngest", s.ctx).Return(uint32(0), nil).Once()
-	s.historyQ.On("GetIngestVersion", s.ctx).Return(CurrentVersion, nil).Once()
-	s.historyQ.On("UpdateLastLedgerIngest", s.ctx, uint32(0)).Return(nil).Once()
-	s.historyQ.On("UpdateExpStateInvalid", s.ctx, false).Return(nil).Once()
-	s.historyQ.On("TruncateIngestStateTables", s.ctx).Return(nil).Once()
-
-	s.runner.
-		On("RunGenesisStateIngestion").
-		Return(ingest.StatsChangeProcessorResults{}, errors.New("my error")).
-		Once()
-	next, err := buildState{checkpointLedger: 1}.run(s.system)
-
-	s.Assert().Error(err)
-	s.Assert().EqualError(err, "Error ingesting history archive: my error")
-	s.Assert().Equal(transition{node: startState{}, sleepDuration: defaultSleep}, next)
-}
-
 func (s *BuildStateTestSuite) TestUpdateLastLedgerIngestAfterIngestReturnsError() {
 	s.mockCommonHistoryQ()
 	s.runner.

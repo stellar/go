@@ -299,16 +299,11 @@ func (b buildState) run(s *system) (transition, error) {
 		return nextFailState, errors.New("unexpected checkpointLedger value")
 	}
 
-	// We don't need to prepare range for genesis checkpoint because we don't
-	// perform protocol version and bucket list hash checks.
-	// In the long term we should probably create artificial xdr.LedgerCloseMeta
-	// for ledger #1 instead of using `ingest.GenesisChange` reader in
-	// ProcessorRunner.RunHistoryArchiveIngestion().
-	// We can also skip preparing range if `skipChecks` is `true` because we
+	// We can skip preparing range if `skipChecks` is `true` because we
 	// won't need bucket list hash and protocol version.
 	var protocolVersion uint32
 	var bucketListHash xdr.Hash
-	if b.checkpointLedger != 1 && !b.skipChecks {
+	if !b.skipChecks {
 		err := s.maybePrepareRange(s.ctx, b.checkpointLedger)
 		if err != nil {
 			return nextFailState, err
@@ -381,16 +376,13 @@ func (b buildState) run(s *system) (transition, error) {
 	startTime := time.Now()
 
 	var stats ingest.StatsChangeProcessorResults
-	if b.checkpointLedger == 1 {
-		stats, err = s.runner.RunGenesisStateIngestion()
-	} else {
-		stats, err = s.runner.RunHistoryArchiveIngestion(
-			b.checkpointLedger,
-			b.skipChecks,
-			protocolVersion,
-			bucketListHash,
-		)
-	}
+
+	stats, err = s.runner.RunHistoryArchiveIngestion(
+		b.checkpointLedger,
+		b.skipChecks,
+		protocolVersion,
+		bucketListHash,
+	)
 
 	if err != nil {
 		return nextFailState, errors.Wrap(err, "Error ingesting history archive")

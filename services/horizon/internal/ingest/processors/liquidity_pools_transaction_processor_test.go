@@ -44,7 +44,7 @@ func (s *LiquidityPoolsTransactionProcessorTestSuiteLedger) SetupTest() {
 			},
 		},
 	}
-	s.lpLoader = history.NewLiquidityPoolLoader()
+	s.lpLoader = history.NewLiquidityPoolLoader(history.ConcurrentInserts)
 
 	s.processor = NewLiquidityPoolsTransactionProcessor(
 		s.lpLoader,
