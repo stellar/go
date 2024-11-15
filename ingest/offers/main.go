@@ -31,7 +31,6 @@ type OfferEventData struct {
 
 type OfferEvent interface {
 	OfferEventType() string
-	GetOfferData() OfferEventData
 }
 
 type OfferCreatedEvent struct {
@@ -47,8 +46,7 @@ func (e OfferCreatedEvent) OfferEventType() string { return EventTypeOfferCreate
 
 type OfferFillEvent struct {
 	OfferEventData
-	FillAmount     int64
-	MatchingOrders []OfferFill
+	FillAmount int64 // How much amount of the order was filled from last time
 }
 
 func (e OfferFillEvent) OfferEventType() string { return EventTypeOfferFill }
@@ -59,41 +57,6 @@ type OfferClosedEvent struct {
 }
 
 func (e OfferClosedEvent) OfferEventType() string { return EventTypeOfferClosed }
-
-type OfferFillInfo struct {
-	AssetSold    xdr.Asset
-	AmountSold   int64
-	AssetBought  xdr.Asset
-	AmountBought int64
-}
-
-type OfferFill interface {
-	OfferClaimantType() string
-}
-
-type LiquidityPoolClaimant struct {
-	PoolId xdr.PoolId
-	*OfferFillInfo
-}
-
-type OrderBookClaimant struct {
-	SellerId xdr.AccountId
-	OfferId  int64
-	*OfferFillInfo
-}
-
-const (
-	OrderBookClaimantType     = "OrderBookClaimant"
-	LiquidityPoolClaimantType = "LiquidityPoolClaimant"
-)
-
-func (o *LiquidityPoolClaimant) OfferClaimantType() string {
-	return LiquidityPoolClaimantType
-}
-
-func (o *OrderBookClaimant) OfferClaimantType() string {
-	return OrderBookClaimantType
-}
 
 func populateOfferData(e *xdr.LedgerEntry) OfferEventData {
 	offer := e.Data.MustOffer()
@@ -140,6 +103,6 @@ func ProcessOffer(change ingest.Change) OfferEvent {
 		event = OfferClosedEvent{OfferEventData: o}
 		//TODO: populate CloseReason field in OfferClosedEvent
 	}
-	return event
 
+	return event
 }
