@@ -12,7 +12,6 @@ type HTTP interface {
 }
 
 type APIClient struct {
-	BaseURL   string
-	AuthToken string
-	HTTP      HTTP
+	BaseURL string
+	HTTP    HTTP
 }

@@ -22,7 +22,7 @@ func Test_url(t *testing.T) {
 	assert.Equal(t, "https://stellar.org/federation?acct=2382376&federation_type=bank_account&swift=BOPBPHMM&type=forward", furl)
 }
 
-func Test_getRequest(t *testing.T) {
+func Test_callAPI(t *testing.T) {
 	friendbotFundResponse := `{"key": "value"}`
 
 	hmock := httptest.NewClient()
@@ -41,10 +41,18 @@ func Test_getRequest(t *testing.T) {
 	qstr.Add("swift", "BOPBPHMM")
 	qstr.Add("acct", "2382376")
 
-	result, err := c.getRequest("federation", qstr)
+	req, err := c.createRequestBody("federation", qstr)
 	if err != nil {
 		t.Fatal(err)
 	}
+	setAuthHeaders(req, "api_key", map[string]interface{}{"api_key": "test_api_key"})
+	assert.Equal(t, "test_api_key", req.Header.Get("Authorization"))
+
+	result, err := c.callAPI(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	expected := map[string]interface{}{"key": "value"}
 	assert.Equal(t, expected, result)
 }
