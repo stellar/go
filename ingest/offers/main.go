@@ -16,16 +16,14 @@ const (
 
 // Base struct with common fields for all offer events.
 type OfferEventData struct {
-	SellerId string
-	OfferID  int64
-
-	BuyingAsset  xdr.Asset
-	SellingAsset xdr.Asset
-
-	RemainingAmount int64 // Remaining amount that still needs to be filled for this offer
-	PriceN          int32
-	PriceD          int32
-
+	SellerId           string
+	OfferID            int64
+	BuyingAsset        xdr.Asset
+	SellingAsset       xdr.Asset
+	RemainingAmount    int64 // Remaining amount that still needs to be filled for this offer
+	PriceN             int32
+	PriceD             int32
+	Flags              int32
 	IsPassive          bool
 	LastModifiedLedger uint32
 	Sponsor            null.String
@@ -108,7 +106,8 @@ func populateOfferData(e *xdr.LedgerEntry) OfferEventData {
 		RemainingAmount:    int64(offer.Amount),
 		PriceN:             int32(offer.Price.N),
 		PriceD:             int32(offer.Price.D),
-		IsPassive:          (offer.Flags & 0x1) != 0,
+		Flags:              int32(offer.Flags),
+		IsPassive:          int32(offer.Flags) == int32(xdr.OfferEntryFlagsPassiveFlag),
 		LastModifiedLedger: uint32(e.LastModifiedLedgerSeq),
 		Sponsor:            utils.LedgerEntrySponsorToNullString(*e),
 	}

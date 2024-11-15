@@ -70,24 +70,19 @@ func (p *OffersProcessor) ProcessChange(ctx context.Context, change ingest.Chang
 
 }
 
-func (p *OffersProcessor) offerEventToRow(event offers.OfferEventData) history.Offer {
-	flags := int32(0)
-	if event.IsPassive {
-		flags = 1
-	}
-
+func (p *OffersProcessor) offerEventToRow(e offers.OfferEventData) history.Offer {
 	return history.Offer{
-		SellerID:           event.SellerId,
-		OfferID:            event.OfferID,
-		SellingAsset:       event.SellingAsset,
-		BuyingAsset:        event.BuyingAsset,
-		Amount:             event.RemainingAmount,
-		Pricen:             event.PriceN,
-		Priced:             event.PriceD,
-		Price:              float64(event.PriceN) / float64(event.PriceD),
-		Flags:              flags,
-		LastModifiedLedger: event.LastModifiedLedger,
-		Sponsor:            event.Sponsor,
+		SellerID:           e.SellerId,
+		OfferID:            e.OfferID,
+		SellingAsset:       e.SellingAsset,
+		BuyingAsset:        e.BuyingAsset,
+		Amount:             e.RemainingAmount,
+		Pricen:             e.PriceN,
+		Priced:             e.PriceD,
+		Price:              float64(e.PriceN) / float64(e.PriceD),
+		Flags:              e.Flags,
+		LastModifiedLedger: e.LastModifiedLedger,
+		Sponsor:            e.Sponsor,
 	}
 }
 
