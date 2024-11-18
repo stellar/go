@@ -12,6 +12,15 @@ type HTTP interface {
 }
 
 type APIClient struct {
-	BaseURL string
-	HTTP    HTTP
+	BaseURL     string
+	HTTP        HTTP
+	authType    string
+	authHeaders map[string]interface{}
+}
+
+type RequestParams struct {
+	RequestType string
+	Endpoint    string
+	QueryParams url.Values
+	Headers     map[string]interface{}
 }
