@@ -39,7 +39,7 @@ func (c *APIClient) CallAPI(reqParams RequestParams) (interface{}, error) {
 		return nil, errors.Wrap(err, "http request creation failed")
 	}
 
-	SetAuthHeaders(reqBody, c.authType, c.authHeaders)
+	SetAuthHeaders(reqBody, c.AuthType, c.AuthHeaders)
 	SetHeaders(reqBody, reqParams.Headers)
 	client := c.HTTP
 	if client == nil {
@@ -74,7 +74,7 @@ func (c *APIClient) CallAPI(reqParams RequestParams) (interface{}, error) {
 				fmt.Printf("Received retryable status %d. Retrying in %v...\n", resp.StatusCode, backoffDuration)
 				time.Sleep(backoffDuration)
 			} else {
-				return nil, fmt.Errorf("Maximum retries reached after receiving status %d", resp.StatusCode)
+				return nil, fmt.Errorf("maximum retries reached after receiving status %d", resp.StatusCode)
 			}
 		} else {
 			return nil, fmt.Errorf("API request failed with status %d", resp.StatusCode)

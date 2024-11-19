@@ -14,8 +14,8 @@ type HTTP interface {
 type APIClient struct {
 	BaseURL     string
 	HTTP        HTTP
-	authType    string
-	authHeaders map[string]interface{}
+	AuthType    string
+	AuthHeaders map[string]interface{}
 }
 
 type RequestParams struct {

@@ -6,14 +6,14 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_CreateRequestBody_ValidURL(t *testing.T) {
+func TestCreateRequestBodyValidURL(t *testing.T) {
 	// Valid case
 	req, err := CreateRequestBody("GET", "http://stellar.org")
 	assert.NotNil(t, req)
 	assert.NoError(t, err)
 }
 
-func Test_CreateRequestBody_InvalidURL(t *testing.T) {
+func TestCreateRequestBodyInvalidURL(t *testing.T) {
 	invalidURL := "://invalid-url"
 	req, err := CreateRequestBody("GET", invalidURL)
 	assert.Nil(t, req)
@@ -21,7 +21,7 @@ func Test_CreateRequestBody_InvalidURL(t *testing.T) {
 	assert.Contains(t, err.Error(), "http GET request creation failed")
 }
 
-func Test_SetHeaders_ValidHeaders(t *testing.T) {
+func TestSetHeadersValidHeaders(t *testing.T) {
 	req, err := CreateRequestBody("GET", "http://stellar.org")
 	assert.NoError(t, err)
 
@@ -34,7 +34,7 @@ func Test_SetHeaders_ValidHeaders(t *testing.T) {
 	assert.Equal(t, "GoClient/1.0", req.Header.Get("User-Agent"))
 }
 
-func Test_SetHeaders_InvalidHeaders(t *testing.T) {
+func TestSetHeadersInvalidHeaders(t *testing.T) {
 	req, err := CreateRequestBody("GET", "http://stellar.org")
 	assert.NoError(t, err)
 
@@ -51,15 +51,15 @@ func Test_SetHeaders_InvalidHeaders(t *testing.T) {
 	assert.Equal(t, "Bearer token123", req.Header.Get("Authorization")) // Set correctly
 }
 
-type SetAuthHeadersTestCase struct {
+type setAuthHeadersTestCase struct {
 	authType       string
 	args           map[string]interface{}
 	expectedHeader string
 	expectedError  string
 }
 
-func Test_SetAuthHeaders(t *testing.T) {
-	testCases := []SetAuthHeadersTestCase{
+func TestSetAuthHeaders(t *testing.T) {
+	testCases := []setAuthHeadersTestCase{
 		{
 			authType: "basic",
 			args: map[string]interface{}{

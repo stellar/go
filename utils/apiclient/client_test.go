@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_GetURL(t *testing.T) {
+func TestGetURL(t *testing.T) {
 	c := &APIClient{
 		BaseURL: "https://stellar.org",
 	}
@@ -23,13 +23,12 @@ func Test_GetURL(t *testing.T) {
 	assert.Equal(t, "https://stellar.org/federation?acct=2382376&federation_type=bank_account&swift=BOPBPHMM&type=forward", furl)
 }
 
-func Test_CallAPI(t *testing.T) {
+func TestCallAPI(t *testing.T) {
 	testCases := []struct {
 		name          string
 		mockResponses []httptest.ResponseData
 		expected      interface{}
 		expectedError string
-		retries       bool
 	}{
 		{
 			name: "status 200 - Success",
@@ -38,7 +37,6 @@ func Test_CallAPI(t *testing.T) {
 			},
 			expected:      map[string]interface{}{"data": "Okay Response"},
 			expectedError: "",
-			retries:       false,
 		},
 		{
 			name: "success with retries - status 429 and 503 then 200",
@@ -50,7 +48,6 @@ func Test_CallAPI(t *testing.T) {
 			},
 			expected:      map[string]interface{}{"data": "Third Response"},
 			expectedError: "",
-			retries:       true,
 		},
 		{
 			name: "failure - status 500",
@@ -59,7 +56,6 @@ func Test_CallAPI(t *testing.T) {
 			},
 			expected:      nil,
 			expectedError: "API request failed with status 500",
-			retries:       false,
 		},
 		{
 			name: "failure - status 401",
@@ -68,7 +64,6 @@ func Test_CallAPI(t *testing.T) {
 			},
 			expected:      nil,
 			expectedError: "API request failed with status 401",
-			retries:       false,
 		},
 	}
 
