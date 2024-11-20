@@ -16,10 +16,20 @@ import (
 // If an entry is created: Pre is nil and Post is not nil.
 // If an entry is updated: Pre is not nil and Post is not nil.
 // If an entry is removed: Pre is not nil and Post is nil.
+// If this change is caused by a operation in a transaction, include the operation information. Wont work when changes are compacted
 type Change struct {
-	Type xdr.LedgerEntryType
-	Pre  *xdr.LedgerEntry
-	Post *xdr.LedgerEntry
+	Type              xdr.LedgerEntryType
+	Pre               *xdr.LedgerEntry
+	Post              *xdr.LedgerEntry
+	isOperationChange bool
+	operationInfo     *OperationInfo
+}
+
+type OperationInfo struct {
+	operationIdx    uint32
+	operation       *xdr.Operation
+	operationResult *xdr.OperationResultTr
+	txEnvelope      *xdr.TransactionEnvelope
 }
 
 // String returns a best effort string representation of the change.

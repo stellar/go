@@ -42,6 +42,7 @@ func (t *LedgerTransaction) GetChanges() ([]Change, error) {
 		return changes, errors.New("TransactionMeta.V=0 not supported")
 	case 1:
 		v1Meta := t.UnsafeMeta.MustV1()
+		// The var `txChanges` reflect the ledgerEntryChanges that are changed because of the transaction as a whole
 		txChanges := GetChangesFromLedgerEntryChanges(v1Meta.TxChanges)
 		changes = append(changes, txChanges...)
 
@@ -50,34 +51,54 @@ func (t *LedgerTransaction) GetChanges() ([]Change, error) {
 			return changes, nil
 		}
 
-		for _, operationMeta := range v1Meta.Operations {
+		// These changes reflect the ledgerEntry changes that were caused by the operations in the transaction
+		// Populate the operationInfo for these changes in the `Change` struct
+
+		// TODO: Refactor this to use LedgerTransaction.GetOperationChanges
+		for opIdx, operationMeta := range v1Meta.Operations {
 			opChanges := GetChangesFromLedgerEntryChanges(
 				operationMeta.Changes,
 			)
+			for _, change := range opChanges {
+				op, found := t.GetOperation(uint32(opIdx))
+				if !found {
+					return []Change{}, errors.New("could not find operation")
+				}
+				results, _ := t.Result.OperationResults()
+				operationResult := results[opIdx].MustTr()
+				operationInfo := OperationInfo{
+					operationIdx:    uint32(opIdx),
+					operation:       &op,
+					operationResult: &operationResult,
+					txEnvelope:      &t.Envelope,
+				}
+				change.operationInfo = &operationInfo
+				change.isOperationChange = true
+			}
 			changes = append(changes, opChanges...)
 		}
 	case 2, 3:
 		var (
-			beforeChanges, afterChanges xdr.LedgerEntryChanges
-			operationMeta               []xdr.OperationMeta
+			txBeforeChanges, txAfterChanges xdr.LedgerEntryChanges
+			operationMeta                   []xdr.OperationMeta
 		)
 
 		switch t.UnsafeMeta.V {
 		case 2:
 			v2Meta := t.UnsafeMeta.MustV2()
-			beforeChanges = v2Meta.TxChangesBefore
-			afterChanges = v2Meta.TxChangesAfter
+			txBeforeChanges = v2Meta.TxChangesBefore
+			txAfterChanges = v2Meta.TxChangesAfter
 			operationMeta = v2Meta.Operations
 		case 3:
 			v3Meta := t.UnsafeMeta.MustV3()
-			beforeChanges = v3Meta.TxChangesBefore
-			afterChanges = v3Meta.TxChangesAfter
+			txBeforeChanges = v3Meta.TxChangesBefore
+			txAfterChanges = v3Meta.TxChangesAfter
 			operationMeta = v3Meta.Operations
 		default:
 			panic("Invalid meta version, expected 2 or 3")
 		}
 
-		txChangesBefore := GetChangesFromLedgerEntryChanges(beforeChanges)
+		txChangesBefore := GetChangesFromLedgerEntryChanges(txBeforeChanges)
 		changes = append(changes, txChangesBefore...)
 
 		// Ignore operations meta and txChangesAfter if txInternalError
@@ -86,14 +107,31 @@ func (t *LedgerTransaction) GetChanges() ([]Change, error) {
 			return changes, nil
 		}
 
-		for _, operationMeta := range operationMeta {
+		// TODO: Refactor this to use LedgerTransaction.GetOperationChanges
+		for opIdx, operationMetaChanges := range operationMeta {
 			opChanges := GetChangesFromLedgerEntryChanges(
-				operationMeta.Changes,
+				operationMetaChanges.Changes,
 			)
+			for _, change := range opChanges {
+				op, found := t.GetOperation(uint32(opIdx))
+				if !found {
+					return []Change{}, errors.New("could not find operation")
+				}
+				results, _ := t.Result.OperationResults()
+				operationResult := results[opIdx].MustTr()
+				operationInfo := OperationInfo{
+					operationIdx:    uint32(opIdx),
+					operation:       &op,
+					operationResult: &operationResult,
+					txEnvelope:      &t.Envelope,
+				}
+				change.operationInfo = &operationInfo
+				change.isOperationChange = true
+			}
 			changes = append(changes, opChanges...)
 		}
 
-		txChangesAfter := GetChangesFromLedgerEntryChanges(afterChanges)
+		txChangesAfter := GetChangesFromLedgerEntryChanges(txAfterChanges)
 		changes = append(changes, txChangesAfter...)
 	default:
 		return changes, errors.New("Unsupported TransactionMeta version")
@@ -137,18 +175,39 @@ func (t *LedgerTransaction) GetOperationChanges(operationIndex uint32) ([]Change
 		return changes, errors.New("Unsupported TransactionMeta version")
 	}
 
-	return operationChanges(operationMeta, operationIndex), nil
+	changes, err := t.operationChanges(operationMeta, operationIndex)
+	if err != nil {
+		return []Change{}, err
+	}
+	return changes, nil
 }
 
-func operationChanges(ops []xdr.OperationMeta, index uint32) []Change {
+func (t *LedgerTransaction) operationChanges(ops []xdr.OperationMeta, index uint32) ([]Change, error) {
 	if int(index) >= len(ops) {
-		return []Change{}
+		return []Change{}, errors.New("operation index out of range")
 	}
 
 	operationMeta := ops[index]
-	return GetChangesFromLedgerEntryChanges(
+	changes := GetChangesFromLedgerEntryChanges(
 		operationMeta.Changes,
 	)
+	for _, change := range changes {
+		op, found := t.GetOperation(index)
+		if !found {
+			return []Change{}, errors.New("could not find operation")
+		}
+		results, _ := t.Result.OperationResults()
+		operationResult := results[index].MustTr()
+		operationInfo := OperationInfo{
+			operationIdx:    index,
+			operation:       &op,
+			operationResult: &operationResult,
+			txEnvelope:      &t.Envelope,
+		}
+		change.operationInfo = &operationInfo
+		change.isOperationChange = true
+	}
+	return changes, nil
 }
 
 // GetDiagnosticEvents returns all contract events emitted by a given operation.
