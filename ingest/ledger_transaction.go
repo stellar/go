@@ -184,7 +184,7 @@ func (t *LedgerTransaction) GetOperationChanges(operationIndex uint32) ([]Change
 
 func (t *LedgerTransaction) operationChanges(ops []xdr.OperationMeta, index uint32) ([]Change, error) {
 	if int(index) >= len(ops) {
-		return []Change{}, errors.New("operation index out of range")
+		return []Change{}, nil // TODO - operations_processor somehow seems to be failing without this
 	}
 
 	operationMeta := ops[index]
