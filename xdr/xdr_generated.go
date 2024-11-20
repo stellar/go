@@ -37251,12 +37251,12 @@ var _ xdrType = (*ClaimOfferAtomV0)(nil)
 //	     int64 amountBought;
 //	 };
 type ClaimOfferAtom struct {
-	SellerId     AccountId
-	OfferId      Int64
-	AssetSold    Asset
-	AmountSold   Int64
-	AssetBought  Asset
-	AmountBought Int64
+	SellerId     AccountId // Tamirs accountId
+	OfferId      Int64     //--> Offer resting Id of resting offer
+	AssetSold    Asset     //--> BTC ??
+	AmountSold   Int64     //--> 2 ??
+	AssetBought  Asset     //--> XLM ??
+	AmountBought Int64     //--> 200?
 }
 
 // EncodeTo encodes this value using the Encoder.
@@ -39858,7 +39858,7 @@ var _ xdrType = (*ManageOfferSuccessResultOffer)(nil)
 //	     offer;
 //	 };
 type ManageOfferSuccessResult struct {
-	OffersClaimed []ClaimAtom
+	OffersClaimed []ClaimAtom // only have maker info
 	Offer         ManageOfferSuccessResultOffer
 }
 

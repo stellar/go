@@ -16,11 +16,48 @@ import (
 // If an entry is created: Pre is nil and Post is not nil.
 // If an entry is updated: Pre is not nil and Post is not nil.
 // If an entry is removed: Pre is not nil and Post is nil.
-type Change struct {
-	Type xdr.LedgerEntryType
-	Pre  *xdr.LedgerEntry
-	Post *xdr.LedgerEntry
+
+type ChangeCauser struct {
+	operation       *xdr.Operation
+	opertaion       int
+	operationresult *xdr.OperationResult
 }
+type Change struct {
+	Type                              xdr.LedgerEntryType
+	Pre                               *xdr.LedgerEntry
+	Post                              *xdr.LedgerEntry
+	operationDeetthatCausedThisChange *ChangeCauser
+}
+
+/*
+
+	This Change struct above....
+I wanna populate it with the OPERATAION that prompted this change....
+
+For my taker order of 2 BTC
+
+======= ALL THESE# ENTRIES CORRESPOND TO AN OFFER THAT IS FULLY FILLED IMMEDIATELY
+
+Change  Entry # 1{
+Offer
+pre = nil
+post = O, amt = 2
+}
+
+Change Entry #2 {
+
+Offer
+Pre != nil. amt = 2
+Post != nil, amt = 0
+}
+
+Change Entry # 3 {
+Offer
+pre != nil, amt = 0
+post = nil, indicating eviction
+}
+
+*/
 
 // String returns a best effort string representation of the change.
 // If the Pre or Post xdr is invalid, the field will be omitted from the string.

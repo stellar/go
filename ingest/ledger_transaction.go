@@ -59,7 +59,7 @@ func (t *LedgerTransaction) GetChanges() ([]Change, error) {
 	case 2, 3:
 		var (
 			beforeChanges, afterChanges xdr.LedgerEntryChanges
-			operationMeta               []xdr.OperationMeta
+			operationMetaChanges        []xdr.OperationMeta
 		)
 
 		switch t.UnsafeMeta.V {
@@ -67,12 +67,12 @@ func (t *LedgerTransaction) GetChanges() ([]Change, error) {
 			v2Meta := t.UnsafeMeta.MustV2()
 			beforeChanges = v2Meta.TxChangesBefore
 			afterChanges = v2Meta.TxChangesAfter
-			operationMeta = v2Meta.Operations
+			operationMetaChanges = v2Meta.Operations
 		case 3:
 			v3Meta := t.UnsafeMeta.MustV3()
 			beforeChanges = v3Meta.TxChangesBefore
 			afterChanges = v3Meta.TxChangesAfter
-			operationMeta = v3Meta.Operations
+			operationMetaChanges = v3Meta.Operations
 		default:
 			panic("Invalid meta version, expected 2 or 3")
 		}
@@ -86,10 +86,14 @@ func (t *LedgerTransaction) GetChanges() ([]Change, error) {
 			return changes, nil
 		}
 
-		for _, operationMeta := range operationMeta {
+		for index, operationMeta := range operationMetaChanges {
+			operation, _ := t.GetOperation(index)
 			opChanges := GetChangesFromLedgerEntryChanges(
 				operationMeta.Changes,
-			)
+			) ChangeP{}, 2 Cahnge{}
+			for _, change := range opChanges {
+				change.operationThatCausedThis = &operation
+			}
 			changes = append(changes, opChanges...)
 		}
 

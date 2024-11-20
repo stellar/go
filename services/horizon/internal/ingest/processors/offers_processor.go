@@ -2,6 +2,7 @@ package processors
 
 import (
 	"context"
+	"fmt"
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/ingest/offers"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
@@ -37,8 +38,26 @@ func (p *OffersProcessor) reset() {
 
 func (p *OffersProcessor) ProcessChange(ctx context.Context, change ingest.Change) error {
 	event := offers.ProcessOffer(change)
+
+	xx := offers.ProcessOffer(change)
+
+	switch xx.OfferEventType() {
+	case offers.OfferCreatedEventType:
+		ev := (event).(offers.OfferCreatedEvent)
+		fmt.Println(ev)
+
+	case offers.OfferUpdatedEventType:
+	case offers.OfferClosedEventType:
+
+	}
+
 	if event == nil {
 		return nil
+	}
+
+	switch evv := event.(type) {
+	case offers.OfferCreatedEvent:
+
 	}
 
 	switch ev := event.(type) {
@@ -120,3 +139,129 @@ func (p *OffersProcessor) Commit(ctx context.Context) error {
 
 	return nil
 }
+
+/*
+
+	I want to model offers and traders together,coz, in my mind, they are the same, in that, a trade is just an orderFillEvent
+
+	OfferCreated --> a event emitted when a new ManageBuy/Sell operation is done
+
+	OfferFillEvent --> an event emitted when there is a fill, will have a fillInfo
+						FillInfo wil have info about restingOrder or LiquidityPool
+
+	OfferUpdateEvent --> if an existing ogffer is updated by user interaction
+
+	OfferCancelEvent --> when an offer is cancelled either by user interaction OR by system itself - for e.g revocatin of issing asset accounts
+											trustline
+
+
+	OFferCloseEvent --> this is to indicate that there will be no event for that offer anymore.
+						CloseReason == offer fully filled OR offer cancelled coz of manaul cancellation or offer cancelled coz of system
+
+
+
+10 BTC already being on orderbook -- offerId-123
+I create a MangeBuy to buy 2 BTC.
+
+
+In the operationMeta, there will be a changeEntry for OfferId=123, pre=10, post = 8
+But there will be no entry for the new operation
+
+1  Sell BTC
+
+OfferId=12345
+
+
+10 Buy BTC
+
+OfferId=12345 ceases to exist
+
+
+Tx = 1, Sell 2 BTC
+
+ChangeEntry after tx-1:
+prestate=null
+postState=OferId=456-Tx1
+
+
+------------------------
+Tx = 2, Buy 20 BTC
+preState = offerId=456-Tx1,
+postState=null
+
+preState=Null
+postState=OfferId-789-Tx-2, amount = 18
+
+
+extint sate -- soemone sells 10 BTC
+somene else is selling 5 BTC
+OfferId=123
+
+1 txhas 1 operationto buy 15 BTC - MAngeBuy.made by Karthik
+
+operationMeta will have 1 changeEntry
+OfferId=123, pre=10, post=8
+opfferId=46. pre=5, post=0
+
+What I am saying is - there will be no offerEntry created with an offerId = Karthiks' offer, coz
+when the operation was applied, Karthik as a taker was fully filled.
+
+
+-- a NEW Offer filled fully in a same ledger -- OfferCreated, OfferFill, OfferClose
+
+-- a new offer is partiallu filled in same ledger -- OfferCreated, OfferFill
+
+-- a existing offer is updated (price/quantity is changed), but no activity happens for that offer other than that ---
+		OfferUpdated
+
+-- a existing offer is updated (price/quantity is changed), and coz of that it is partially or fully filled
+	partiallyfilled -- OfferUpdated, OfferFill
+	fullyfilled - Offerupdated, OfferFill, OfferClose
+
+-- offer is cancelled by user
+	OfferCancel, OfferClose
+
+-- offer is cancelled by system:
+	OfferCancel, OfferClose
+
+
+*/
+
+/*
+
+	func processAllEventsInLedger(lcm xdr.LcM) []OfferEvents {
+
+	changeReder = non-compatcint_change_reasder
+	var []offerEvents
+	for change in changes:
+		if changeType = Offer
+			add 1 or more events to Offer
+
+	return offerEvents
+}
+
+}
+
+*/
+
+/*
+
+
+	Exisint offer 10  BTC
+
+	New offer to buy 2 BTC - ManageBuyOperation
+
+	There will be no change entry for the new offer, if it is filled
+
+	Buy the resing offer just changed from 10 to 8. Change Entry - pre== 10  BTC, post = 8 BTC
+		within this changes operation meta, there will be a claimAtom
+
+
+
+
+
+
+
+
+
+*/

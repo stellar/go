@@ -29,8 +29,16 @@ type OfferEventData struct {
 	Sponsor            null.String
 }
 
+type OfferEventType int
+
+const (
+	OfferCreatedEventType OfferEventType = iota
+	OfferUpdatedEventType
+	OfferClosedEventType
+)
+
 type OfferEvent interface {
-	OfferEventType() string
+	OfferEventType() OfferEventType
 }
 
 type OfferCreatedEvent struct {
@@ -42,21 +50,21 @@ func (e OfferEventData) GetOfferData() OfferEventData {
 	return e
 }
 
-func (e OfferCreatedEvent) OfferEventType() string { return EventTypeOfferCreated }
+func (e OfferCreatedEvent) OfferEventType() OfferEventType { return OfferCreatedEventType }
 
 type OfferFillEvent struct {
 	OfferEventData
 	FillAmount int64 // How much amount of the order was filled from last time
 }
 
-func (e OfferFillEvent) OfferEventType() string { return EventTypeOfferFill }
+func (e OfferFillEvent) OfferEventType() OfferEventType { return OfferUpdatedEventType }
 
 type OfferClosedEvent struct {
 	OfferEventData
 	CloseReason string
 }
 
-func (e OfferClosedEvent) OfferEventType() string { return EventTypeOfferClosed }
+func (e OfferClosedEvent) OfferEventType() OfferEventType { return OfferClosedEventType }
 
 func populateOfferData(e *xdr.LedgerEntry) OfferEventData {
 	offer := e.Data.MustOffer()
