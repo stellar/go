@@ -54,7 +54,11 @@ func (t *LedgerTransaction) GetChanges() ([]Change, error) {
 		// These changes reflect the ledgerEntry changes that were caused by the operations in the transaction
 		// Populate the operationInfo for these changes in the `Change` struct
 
-		for opIdx, _ := range v1Meta.Operations {
+		operationMeta := v1Meta.Operations
+		//	operationMeta is a list of lists.
+		//	Each element in operationMeta is a list of ledgerEntryChanges
+		//	caused by the operation at that index of the element
+		for opIdx, _ := range operationMeta {
 			opChanges := t.operationChanges(v1Meta.Operations, uint32(opIdx))
 			changes = append(changes, opChanges...)
 		}
@@ -88,6 +92,9 @@ func (t *LedgerTransaction) GetChanges() ([]Change, error) {
 			return changes, nil
 		}
 
+		//	operationMeta is a list of lists.
+		//	Each element in operationMeta is a list of ledgerEntryChanges
+		//	caused by the operation at that index of the element
 		for opIdx, _ := range operationMeta {
 			opChanges := t.operationChanges(operationMeta, uint32(opIdx))
 			changes = append(changes, opChanges...)
