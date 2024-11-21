@@ -54,10 +54,11 @@ import (
 //     and won't be used when the change is compacted.
 //
 //   - Tx: A reference to the LedgerTransaction that caused the change.
+//     Contains information about Transaction, Hash, TxResultPair etc
 //
 //   - Lcm: The LedgerCloseMeta that precipitated the change.
 //     This is useful only when the Change is caused by an upgrade or by an eviction, i.e. outside a Transaction
-//     For changes caused by transaction or operations, look at the LedgerTransaction entity within Change
+//     For changes caused by transaction or operations, look at the Tx field
 //
 //   - LedgerUpgrade: Information about the upgrade, if the change occurred as part of an upgrade.
 type Change struct {

@@ -41,7 +41,6 @@ func (t *LedgerTransaction) getTransactionChanges(ledgerEntryChanges xdr.LedgerE
 	for _, change := range changes {
 		change.Reason = Transaction
 		change.Tx = t
-		change.Lcm = t.Lcm
 	}
 	return changes
 }
@@ -174,7 +173,6 @@ func (t *LedgerTransaction) operationChanges(ops []xdr.OperationMeta, index uint
 		change.Reason = Operation
 		change.Tx = t
 		change.OperationIdx = index
-		change.Lcm = t.Lcm
 	}
 	return changes
 }
