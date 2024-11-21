@@ -185,9 +185,10 @@ func (r *LedgerChangeReader) Read() (Change, error) {
 			entry := entries[i]
 			// when a ledger entry is evicted it is removed from the ledger
 			changes[i] = Change{
-				Type: entry.Data.Type,
-				Pre:  &entry,
-				Post: nil,
+				Type:   entry.Data.Type,
+				Pre:    &entry,
+				Post:   nil,
+				reason: Eviction,
 			}
 		}
 		sortChanges(changes)
@@ -200,6 +201,9 @@ func (r *LedgerChangeReader) Read() (Change, error) {
 			changes := GetChangesFromLedgerEntryChanges(
 				r.LedgerTransactionReader.lcm.UpgradesProcessing()[r.upgradeIndex].Changes,
 			)
+			for _, change := range changes {
+				change.reason = ProtocolUpgrade // Is there any other information that we can add here?
+			}
 			r.pending = append(r.pending, changes...)
 			r.upgradeIndex++
 			return r.Read()
