@@ -13,18 +13,62 @@ import (
 // It also provides some helper functions to quickly check if a given
 // change has occurred in an entry.
 //
-// If an entry is created: Pre is nil and Post is not nil.
-// If an entry is updated: Pre is not nil and Post is not nil.
-// If an entry is removed: Pre is not nil and Post is nil.
-// If this change is caused by a operation in a transaction, include the operation information. Wont work when changes are compacted
+// Change represents a modification to a ledger entry, capturing both the before and after states
+// of the entry along with the context that explains what caused the change. It is primarily used to
+// track changes during transactions and/or operations within a transaction
+// and can be helpful in identifying the specific cause of changes to the LedgerEntry state. (https://github.com/stellar/go/issues/5535
+//
+// Behavior:
+//
+//   - **Created entries**: Pre is nil, and Post is not nil.
+//
+//   - **Updated entries**: Both Pre and Post are non-nil.
+//
+//   - **Removed entries**: Pre is not nil, and Post is nil.
+//
+//     A `Change` can be caused primarily by either a transaction or by an operation within a transaction:
+//
+//   - **Operations**:
+//     Each successful operation can cause multiple ledger entry changes.
+//     For example, a path payment operation may affect the source and destination account entries,
+//     as well as potentially modify offers and/or liquidity pools.
+//
+//   - **Transactions**:
+//     Some ledger changes, such as those involving fees or account balances, may be caused by
+//     the transaction itself and may not be tied to a specific operation within a transaction.
+//     For instance, fees for all operations in a transaction are debited from the source account,
+//     triggering ledger changes without operation-specific details.
+//
+// Fields:
+//
+//   - Type: The type of the ledger entry being changed
+//
+//   - Pre: The state of the ledger entry before the change. This will be nil if the entry was created.
+//
+//   - Post: The state of the ledger entry after the change. This will be nil if the entry was removed.
+//
+//   - Reason: The reason for the ledger entry change, represented by LedgerEntryChangeReason.
+//
+//   - OperationIdx: The index of the operation in the transaction that caused the change.
+//     This field is relevant when the change is due to an operation within a transaction
+//     and won't be used when the change is compacted.
+//
+//   - Tx: A reference to the LedgerTransaction that caused the change.
+//
+//   - Lcm: The LedgerCloseMeta that precipitated the change.
+//     This is useful only when the Change is caused by an upgrade or by an eviction, i.e. outside a Transaction
+//     For changes caused by transaction or operations, look at the LedgerTransaction entity within Change
+//
+//   - LedgerUpgrade: Information about the upgrade, if the change occurred as part of an upgrade.
 type Change struct {
-	Type         xdr.LedgerEntryType
-	Pre          *xdr.LedgerEntry
-	Post         *xdr.LedgerEntry
-	Reason       LedgerEntryChangeReason
-	operationIdx uint32
-	tx           *LedgerTransaction
-	lcm          *xdr.LedgerCloseMeta
+	Type          xdr.LedgerEntryType
+	Pre           *xdr.LedgerEntry
+	Post          *xdr.LedgerEntry
+	Reason        LedgerEntryChangeReason
+	OperationIdx  uint32
+	Tx            *LedgerTransaction
+	Lcm           *xdr.LedgerCloseMeta
+	LedgerUpgrade *xdr.LedgerUpgrade
 }
 
 type LedgerEntryChangeReason uint16
@@ -34,19 +78,9 @@ const (
 	Operation
 	Transaction
 	FeeChange
-	ProtocolUpgrade
+	Upgrade
 	Eviction
 )
-
-type TransactionEnvelopeAndResult struct {
-	Envelope *xdr.TransactionEnvelope
-	Result   *xdr.TransactionResultPair
-}
-
-type OperationInfo struct {
-	operationIdx uint32
-	operation    *xdr.Operation
-}
 
 // String returns a best effort string representation of the change.
 // If the Pre or Post xdr is invalid, the field will be omitted from the string.

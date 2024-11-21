@@ -175,6 +175,7 @@ func (r *LedgerChangeReader) Read() (Change, error) {
 			r.pending = append(r.pending, metaChanges...)
 		}
 		return r.Read()
+
 	case evictionChangesState:
 		entries, err := r.lcm.EvictedPersistentLedgerEntries()
 		if err != nil {
@@ -189,22 +190,25 @@ func (r *LedgerChangeReader) Read() (Change, error) {
 				Pre:    &entry,
 				Post:   nil,
 				Reason: Eviction,
-				lcm:    &r.lcm,
+				Lcm:    &r.lcm,
 			}
 		}
 		sortChanges(changes)
 		r.pending = append(r.pending, changes...)
 		r.state++
 		return r.Read()
+
 	case upgradeChangesState:
 		// Get upgrade changes
 		if r.upgradeIndex < len(r.LedgerTransactionReader.lcm.UpgradesProcessing()) {
 			changes := GetChangesFromLedgerEntryChanges(
 				r.LedgerTransactionReader.lcm.UpgradesProcessing()[r.upgradeIndex].Changes,
 			)
+			ledgerUpgrades := r.LedgerTransactionReader.lcm.UpgradesProcessing()
 			for _, change := range changes {
-				change.Reason = ProtocolUpgrade // Is there any other information that we can add here?
-				change.lcm = &r.lcm
+				change.Reason = Upgrade
+				change.Lcm = &r.lcm
+				change.LedgerUpgrade = &ledgerUpgrades[r.upgradeIndex].Upgrade
 			}
 			r.pending = append(r.pending, changes...)
 			r.upgradeIndex++

@@ -30,8 +30,7 @@ func (t *LedgerTransaction) GetFeeChanges() []Change {
 	changes := GetChangesFromLedgerEntryChanges(t.FeeChanges)
 	for _, change := range changes {
 		change.Reason = FeeChange
-		change.tx = t
-		change.lcm = t.lcm
+		change.Tx = t
 	}
 	return changes
 }
@@ -45,8 +44,8 @@ func (t *LedgerTransaction) getTransactionChanges(ledgerEntryChanges xdr.LedgerE
 	changes := GetChangesFromLedgerEntryChanges(ledgerEntryChanges)
 	for _, change := range changes {
 		change.Reason = Transaction
-		change.tx = t
-		change.lcm = t.lcm
+		change.Tx = t
+		change.Lcm = t.lcm
 	}
 	return changes
 }
@@ -173,9 +172,9 @@ func (t *LedgerTransaction) operationChanges(ops []xdr.OperationMeta, index uint
 
 	for _, change := range changes {
 		change.Reason = Operation
-		change.tx = t
-		change.operationIdx = index
-		change.lcm = t.lcm
+		change.Tx = t
+		change.OperationIdx = index
+		change.Lcm = t.lcm
 	}
 	return changes
 }

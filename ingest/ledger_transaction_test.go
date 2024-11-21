@@ -336,7 +336,7 @@ func TestFeeMetaAndOperationsChangesSeparate(t *testing.T) {
 	assert.Equal(t, operationChanges[0].Pre.Data.MustAccount().Balance, xdr.Int64(300))
 	assert.Equal(t, operationChanges[0].Post.Data.MustAccount().Balance, xdr.Int64(400))
 
-	// Ignore operation meta if tx result is txInternalError
+	// Ignore operation meta if Tx result is txInternalError
 	// https://github.com/stellar/go/issues/2111
 	tx.Result.Result.Result.Code = xdr.TransactionResultCodeTxInternalError
 	metaChanges, err = tx.GetChanges()
