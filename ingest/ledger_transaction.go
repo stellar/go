@@ -54,27 +54,8 @@ func (t *LedgerTransaction) GetChanges() ([]Change, error) {
 		// These changes reflect the ledgerEntry changes that were caused by the operations in the transaction
 		// Populate the operationInfo for these changes in the `Change` struct
 
-		// TODO: Refactor this to use LedgerTransaction.GetOperationChanges
-		for opIdx, operationMeta := range v1Meta.Operations {
-			opChanges := GetChangesFromLedgerEntryChanges(
-				operationMeta.Changes,
-			)
-			for _, change := range opChanges {
-				op, found := t.GetOperation(uint32(opIdx))
-				if !found {
-					continue
-				}
-				results, _ := t.Result.OperationResults()
-				operationResult := results[opIdx].MustTr()
-				operationInfo := OperationInfo{
-					operationIdx:    uint32(opIdx),
-					operation:       &op,
-					operationResult: &operationResult,
-					txEnvelope:      &t.Envelope,
-				}
-				change.operationInfo = &operationInfo
-				change.isOperationChange = true
-			}
+		for opIdx, _ := range v1Meta.Operations {
+			opChanges := t.operationChanges(v1Meta.Operations, uint32(opIdx))
 			changes = append(changes, opChanges...)
 		}
 	case 2, 3:
@@ -107,27 +88,8 @@ func (t *LedgerTransaction) GetChanges() ([]Change, error) {
 			return changes, nil
 		}
 
-		// TODO: Refactor this to use LedgerTransaction.GetOperationChanges
-		for opIdx, operationMetaChanges := range operationMeta {
-			opChanges := GetChangesFromLedgerEntryChanges(
-				operationMetaChanges.Changes,
-			)
-			for _, change := range opChanges {
-				op, found := t.GetOperation(uint32(opIdx))
-				if !found {
-					continue
-				}
-				results, _ := t.Result.OperationResults()
-				operationResult := results[opIdx].MustTr()
-				operationInfo := OperationInfo{
-					operationIdx:    uint32(opIdx),
-					operation:       &op,
-					operationResult: &operationResult,
-					txEnvelope:      &t.Envelope,
-				}
-				change.operationInfo = &operationInfo
-				change.isOperationChange = true
-			}
+		for opIdx, _ := range operationMeta {
+			opChanges := t.operationChanges(operationMeta, uint32(opIdx))
 			changes = append(changes, opChanges...)
 		}
 
@@ -152,15 +114,13 @@ func (t *LedgerTransaction) GetOperation(index uint32) (xdr.Operation, bool) {
 // GetOperationChanges returns a developer friendly representation of LedgerEntryChanges.
 // It contains only operation changes.
 func (t *LedgerTransaction) GetOperationChanges(operationIndex uint32) ([]Change, error) {
-	changes := []Change{}
-
 	if t.UnsafeMeta.V == 0 {
-		return changes, errors.New("TransactionMeta.V=0 not supported")
+		return []Change{}, errors.New("TransactionMeta.V=0 not supported")
 	}
 
 	// Ignore operations meta if txInternalError https://github.com/stellar/go/issues/2111
 	if t.txInternalError() && t.LedgerVersion <= 12 {
-		return changes, nil
+		return []Change{}, nil
 	}
 
 	var operationMeta []xdr.OperationMeta
@@ -172,19 +132,15 @@ func (t *LedgerTransaction) GetOperationChanges(operationIndex uint32) ([]Change
 	case 3:
 		operationMeta = t.UnsafeMeta.MustV3().Operations
 	default:
-		return changes, errors.New("Unsupported TransactionMeta version")
+		return []Change{}, errors.New("Unsupported TransactionMeta version")
 	}
 
-	changes, err := t.operationChanges(operationMeta, operationIndex)
-	if err != nil {
-		return []Change{}, err
-	}
-	return changes, nil
+	return t.operationChanges(operationMeta, operationIndex), nil
 }
 
-func (t *LedgerTransaction) operationChanges(ops []xdr.OperationMeta, index uint32) ([]Change, error) {
+func (t *LedgerTransaction) operationChanges(ops []xdr.OperationMeta, index uint32) []Change {
 	if int(index) >= len(ops) {
-		return []Change{}, nil // TODO - operations_processor somehow seems to be failing without this
+		return []Change{} // TODO - operations_processor somehow seems to be failing without this
 	}
 
 	operationMeta := ops[index]
@@ -196,7 +152,10 @@ func (t *LedgerTransaction) operationChanges(ops []xdr.OperationMeta, index uint
 		if !found {
 			continue
 		}
-		results, _ := t.Result.OperationResults()
+		results, ok := t.Result.OperationResults()
+		if !ok || len(results) == 0 { // This shouldnt happen.
+			continue
+		}
 		operationResult := results[index].MustTr()
 		operationInfo := OperationInfo{
 			operationIdx:    index,
@@ -207,7 +166,7 @@ func (t *LedgerTransaction) operationChanges(ops []xdr.OperationMeta, index uint
 		change.operationInfo = &operationInfo
 		change.isOperationChange = true
 	}
-	return changes, nil
+	return changes
 }
 
 // GetDiagnosticEvents returns all contract events emitted by a given operation.
