@@ -17,6 +17,7 @@ type LedgerTransaction struct {
 	FeeChanges    xdr.LedgerEntryChanges
 	UnsafeMeta    xdr.TransactionMeta
 	LedgerVersion uint32
+	lcm           *xdr.LedgerCloseMeta // This is read-only and not to be modified by downstream functions
 }
 
 func (t *LedgerTransaction) txInternalError() bool {
@@ -27,10 +28,10 @@ func (t *LedgerTransaction) txInternalError() bool {
 // connected to fees.
 func (t *LedgerTransaction) GetFeeChanges() []Change {
 	changes := GetChangesFromLedgerEntryChanges(t.FeeChanges)
-	txData := &TransactionEnvelopeAndResult{Envelope: &t.Envelope, Result: &t.Result}
 	for _, change := range changes {
-		change.reason = FeeChange
-		change.TransactionData = txData
+		change.Reason = FeeChange
+		change.tx = t
+		change.lcm = t.lcm
 	}
 	return changes
 }
@@ -42,10 +43,10 @@ func (t *LedgerTransaction) GetFeeChanges() []Change {
 
 func (t *LedgerTransaction) getTransactionChanges(ledgerEntryChanges xdr.LedgerEntryChanges) []Change {
 	changes := GetChangesFromLedgerEntryChanges(ledgerEntryChanges)
-	txData := &TransactionEnvelopeAndResult{Envelope: &t.Envelope, Result: &t.Result}
 	for _, change := range changes {
-		change.reason = Transaction
-		change.TransactionData = txData
+		change.Reason = Transaction
+		change.tx = t
+		change.lcm = t.lcm
 	}
 	return changes
 }
@@ -169,24 +170,14 @@ func (t *LedgerTransaction) operationChanges(ops []xdr.OperationMeta, index uint
 
 	operationMeta := ops[index]
 	changes := GetChangesFromLedgerEntryChanges(operationMeta.Changes)
-	op, found := t.GetOperation(index)
-	operationInfo := &OperationInfo{
-		operationIdx: index,
-		operation:    &op,
-	}
-	txData := &TransactionEnvelopeAndResult{Envelope: &t.Envelope, Result: &t.Result}
 
-	res := make([]Change, 0, len(changes))
 	for _, change := range changes {
-		if !found {
-			continue
-		}
-		change.operationInfo = operationInfo
-		change.reason = Operation
-		change.TransactionData = txData
-		res = append(res, change)
+		change.Reason = Operation
+		change.tx = t
+		change.operationIdx = index
+		change.lcm = t.lcm
 	}
-	return res
+	return changes
 }
 
 // GetDiagnosticEvents returns all contract events emitted by a given operation.

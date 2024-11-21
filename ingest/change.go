@@ -18,12 +18,13 @@ import (
 // If an entry is removed: Pre is not nil and Post is nil.
 // If this change is caused by a operation in a transaction, include the operation information. Wont work when changes are compacted
 type Change struct {
-	Type            xdr.LedgerEntryType
-	Pre             *xdr.LedgerEntry
-	Post            *xdr.LedgerEntry
-	reason          LedgerEntryChangeReason
-	TransactionData *TransactionEnvelopeAndResult
-	operationInfo   *OperationInfo
+	Type         xdr.LedgerEntryType
+	Pre          *xdr.LedgerEntry
+	Post         *xdr.LedgerEntry
+	Reason       LedgerEntryChangeReason
+	operationIdx uint32
+	tx           *LedgerTransaction
+	lcm          *xdr.LedgerCloseMeta
 }
 
 type LedgerEntryChangeReason uint16
