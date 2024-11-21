@@ -62,7 +62,7 @@ func (t *LedgerTransaction) GetChanges() ([]Change, error) {
 			for _, change := range opChanges {
 				op, found := t.GetOperation(uint32(opIdx))
 				if !found {
-					return []Change{}, errors.New("could not find operation")
+					continue
 				}
 				results, _ := t.Result.OperationResults()
 				operationResult := results[opIdx].MustTr()
@@ -115,7 +115,7 @@ func (t *LedgerTransaction) GetChanges() ([]Change, error) {
 			for _, change := range opChanges {
 				op, found := t.GetOperation(uint32(opIdx))
 				if !found {
-					return []Change{}, errors.New("could not find operation")
+					continue
 				}
 				results, _ := t.Result.OperationResults()
 				operationResult := results[opIdx].MustTr()
@@ -194,7 +194,7 @@ func (t *LedgerTransaction) operationChanges(ops []xdr.OperationMeta, index uint
 	for _, change := range changes {
 		op, found := t.GetOperation(index)
 		if !found {
-			return []Change{}, errors.New("could not find operation")
+			continue
 		}
 		results, _ := t.Result.OperationResults()
 		operationResult := results[index].MustTr()
