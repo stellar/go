@@ -36,11 +36,6 @@ func (t *LedgerTransaction) GetFeeChanges() []Change {
 	return changes
 }
 
-// GetChanges returns a developer friendly representation of LedgerEntryChanges.
-// It contains transaction changes and operation changes in that order. If the
-// transaction failed with TxInternalError, operations and txChangesAfter are
-// omitted. It doesn't support legacy TransactionMeta.V=0.
-
 func (t *LedgerTransaction) getTransactionChanges(ledgerEntryChanges xdr.LedgerEntryChanges) []Change {
 	changes := GetChangesFromLedgerEntryChanges(ledgerEntryChanges)
 	for _, change := range changes {
@@ -51,6 +46,10 @@ func (t *LedgerTransaction) getTransactionChanges(ledgerEntryChanges xdr.LedgerE
 	return changes
 }
 
+// GetChanges returns a developer friendly representation of LedgerEntryChanges.
+// It contains transaction changes and operation changes in that order. If the
+// transaction failed with TxInternalError, operations and txChangesAfter are
+// omitted. It doesn't support legacy TransactionMeta.V=0.
 func (t *LedgerTransaction) GetChanges() ([]Change, error) {
 	var changes []Change
 
