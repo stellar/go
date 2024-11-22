@@ -25,7 +25,7 @@ func TestRun_setupDefault(t *testing.T) {
 
 	assert.Equal(t, defaultShutdownGracePeriod, srv.Timeout)
 	assert.Equal(t, defaultReadTimeout, srv.ReadTimeout)
-	assert.Equal(t, time.Duration(0), srv.WriteTimeout)
+	assert.Equal(t, defaultWriteTimeout, srv.WriteTimeout)
 	assert.Equal(t, time.Duration(0), srv.IdleTimeout)
 	assert.Equal(t, defaultListenAddr, srv.Server.Addr)
 	assert.Equal(t, time.Duration(0), srv.TCPKeepAlive)
