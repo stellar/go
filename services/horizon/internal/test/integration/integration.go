@@ -4,6 +4,7 @@ package integration
 import (
 	"context"
 	"fmt"
+	"github.com/stellar/go/ingest/ledgerbackend"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -41,13 +42,29 @@ import (
 
 const (
 	StandaloneNetworkPassphrase = "Standalone Network ; February 2017"
-	stellarCorePostgresPassword = "mysecretpassword"
-	horizonDefaultPort          = "8000"
-	adminPort                   = 6060
-	stellarCorePort             = 11626
-	stellarCorePostgresPort     = 5641
-	historyArchivePort          = 1570
-	sorobanRPCPort              = 8080
+	HorizonDefaultPort          = "8000"
+	AdminPort                   = 6060
+	StellarCorePort             = 11626
+	HistoryArchivePort          = 1570
+	SorobanRPCPort              = 8080
+	HistoryArchiveUrl           = "http://localhost:1570"
+)
+
+const (
+	SimpleCaptiveCoreToml = `
+		PEER_PORT=11725
+		ARTIFICIALLY_ACCELERATE_TIME_FOR_TESTING=true
+
+		UNSAFE_QUORUM=true
+		FAILURE_SAFETY=0
+
+		[[VALIDATORS]]
+		NAME="local_core"
+		HOME_DOMAIN="core.local"
+		PUBLIC_KEY="GD5KD2KEZJIGTC63IGW6UMUSMVUVG5IHG64HUTFWCHVZH2N2IBOQN7PS"
+		ADDRESS="localhost"
+		QUALITY="MEDIUM"`
+	StellarCoreURL = "http://localhost:11626"
 )
 
 const HorizonInitErrStr = "cannot initialize Horizon"
@@ -163,7 +180,7 @@ func NewTest(t *testing.T, config Config) *Test {
 	}
 
 	i.prepareShutdownHandlers()
-	i.coreClient = &stellarcore.Client{URL: "http://localhost:" + strconv.Itoa(stellarCorePort)}
+	i.coreClient = &stellarcore.Client{URL: "http://localhost:" + strconv.Itoa(StellarCorePort)}
 	if !config.SkipCoreContainerCreation {
 		i.waitForCore()
 		if i.config.EnableSorobanRPC {
@@ -436,12 +453,12 @@ func (i *Test) getDefaultArgs() map[string]string {
 	//       Compose YAML file itself rather than hardcoding it.
 	return map[string]string{
 		"ingest":               "false",
-		"history-archive-urls": fmt.Sprintf("http://%s:%d", "localhost", historyArchivePort),
+		"history-archive-urls": HistoryArchiveUrl,
 		"db-url":               i.testDB.RO_DSN,
 		"stellar-core-url":     i.coreClient.URL,
 		"network-passphrase":   i.passPhrase,
 		"apply-migrations":     "true",
-		"port":                 horizonDefaultPort,
+		"port":                 HorizonDefaultPort,
 		// due to ARTIFICIALLY_ACCELERATE_TIME_FOR_TESTING
 		"checkpoint-frequency": "8",
 		"per-hour-rate-limit":  "0",  // disable rate limiting
@@ -537,7 +554,7 @@ func (i *Test) setupHorizonAdminClient(ingestArgs map[string]string) error {
 
 func (i *Test) setupHorizonClient(webArgs map[string]string) {
 	hostname := "localhost"
-	horizonPort := horizonDefaultPort
+	horizonPort := HorizonDefaultPort
 	if port, ok := webArgs["port"]; ok {
 		horizonPort = port
 	}
@@ -545,6 +562,27 @@ func (i *Test) setupHorizonClient(webArgs map[string]string) {
 	i.horizonClient = &sdk.Client{
 		HorizonURL: fmt.Sprintf("http://%s:%s", hostname, horizonPort),
 	}
+}
+
+func (i *Test) CreateDefaultCaptiveCoreConfig() (*ledgerbackend.CaptiveCoreConfig, error) {
+	captiveCoreConfig := ledgerbackend.CaptiveCoreConfig{
+		BinaryPath:          os.Getenv("HORIZON_INTEGRATION_TESTS_CAPTIVE_CORE_BIN"),
+		HistoryArchiveURLs:  []string{HistoryArchiveUrl},
+		NetworkPassphrase:   StandaloneNetworkPassphrase,
+		CheckpointFrequency: 8, // This is required for accelerated archive creation for integration test
+	}
+
+	tomlParams := ledgerbackend.CaptiveCoreTomlParams{
+		NetworkPassphrase:  StandaloneNetworkPassphrase,
+		HistoryArchiveURLs: []string{HistoryArchiveUrl},
+	}
+	toml, err := ledgerbackend.NewCaptiveCoreTomlFromData([]byte(SimpleCaptiveCoreToml), tomlParams)
+	if err != nil {
+		return nil, err
+	}
+
+	captiveCoreConfig.Toml = toml
+	return &captiveCoreConfig, nil
 }
 
 const maxWaitForCoreStartup = 30 * time.Second
@@ -604,7 +642,7 @@ func (i *Test) waitForSorobanRPC() {
 	for time.Since(start) < sorobanRPCInitTime {
 		ctx, cancel := context.WithTimeout(context.Background(), sorobanRPCHealthCheckInterval)
 		// TODO: soroban-tools should be exporting a proper Go client
-		ch := jhttp.NewChannel("http://localhost:"+strconv.Itoa(sorobanRPCPort), nil)
+		ch := jhttp.NewChannel("http://localhost:"+strconv.Itoa(SorobanRPCPort), nil)
 		sorobanRPCClient := jrpc2.NewClient(ch, nil)
 		callTime := time.Now()
 		_, err := sorobanRPCClient.Call(ctx, "getHealth", nil)
@@ -675,7 +713,7 @@ func (i *Test) simulateTransaction(
 	i.syncWithSorobanRPC(uint32(root.HorizonSequence))
 
 	// TODO: soroban-tools should be exporting a proper Go client
-	ch := jhttp.NewChannel("http://localhost:"+strconv.Itoa(sorobanRPCPort), nil)
+	ch := jhttp.NewChannel("http://localhost:"+strconv.Itoa(SorobanRPCPort), nil)
 	sorobanRPCClient := jrpc2.NewClient(ch, nil)
 	txParams := GetBaseTransactionParamsWithFee(sourceAccount, txnbuild.MinBaseFee, op)
 	txParams.IncrementSequenceNum = false
@@ -702,7 +740,7 @@ func (i *Test) syncWithSorobanRPC(ledgerToWaitFor uint32) {
 		result := struct {
 			Sequence uint32 `json:"sequence"`
 		}{}
-		ch := jhttp.NewChannel("http://localhost:"+strconv.Itoa(sorobanRPCPort), nil)
+		ch := jhttp.NewChannel("http://localhost:"+strconv.Itoa(SorobanRPCPort), nil)
 		sorobanRPCClient := jrpc2.NewClient(ch, nil)
 		err := sorobanRPCClient.CallResult(context.Background(), "getLatestLedger", nil, &result)
 		assert.NoError(i.t, err)
@@ -715,7 +753,7 @@ func (i *Test) syncWithSorobanRPC(ledgerToWaitFor uint32) {
 }
 
 func (i *Test) WaitUntilLedgerEntryTTL(ledgerKey xdr.LedgerKey) {
-	ch := jhttp.NewChannel("http://localhost:"+strconv.Itoa(sorobanRPCPort), nil)
+	ch := jhttp.NewChannel("http://localhost:"+strconv.Itoa(SorobanRPCPort), nil)
 	client := jrpc2.NewClient(ch, nil)
 
 	keyB64, err := xdr.MarshalBase64(ledgerKey)
@@ -933,7 +971,7 @@ func (i *Test) StopHorizon() {
 
 // AdminPort returns Horizon admin port.
 func (i *Test) AdminPort() int {
-	return adminPort
+	return AdminPort
 }
 
 // Metrics URL returns Horizon metrics URL.

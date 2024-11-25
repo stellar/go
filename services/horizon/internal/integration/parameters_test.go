@@ -41,32 +41,10 @@ var networkParamArgs = map[string]string{
 	horizon.NetworkPassphraseFlagName:   "",
 }
 
-const (
-	SimpleCaptiveCoreToml = `
-		PEER_PORT=11725
-		ARTIFICIALLY_ACCELERATE_TIME_FOR_TESTING=true
-
-		UNSAFE_QUORUM=true
-		FAILURE_SAFETY=0
-
-		[[VALIDATORS]]
-		NAME="local_core"
-		HOME_DOMAIN="core.local"
-		PUBLIC_KEY="GD5KD2KEZJIGTC63IGW6UMUSMVUVG5IHG64HUTFWCHVZH2N2IBOQN7PS"
-		ADDRESS="localhost"
-		QUALITY="MEDIUM"`
-
-	StellarCoreURL = "http://localhost:11626"
-)
-
-var (
-	CaptiveCoreConfigErrMsg = "error generating captive core configuration: invalid config: "
-)
-
 // Ensures that BUCKET_DIR_PATH is not an allowed value for Captive Core.
 func TestBucketDirDisallowed(t *testing.T) {
 	config := `BUCKET_DIR_PATH="/tmp"
-		` + SimpleCaptiveCoreToml
+		` + integration.SimpleCaptiveCoreToml
 
 	confName, _, cleanup := createCaptiveCoreConfig(config)
 	defer cleanup()
@@ -103,7 +81,7 @@ func TestEnvironmentPreserved(t *testing.T) {
 
 	testConfig := integration.GetTestConfig()
 	testConfig.HorizonEnvironment = map[string]string{
-		"STELLAR_CORE_URL": StellarCoreURL,
+		"STELLAR_CORE_URL": integration.StellarCoreURL,
 	}
 	test := integration.NewTest(t, *testConfig)
 
@@ -112,7 +90,7 @@ func TestEnvironmentPreserved(t *testing.T) {
 	test.WaitForHorizonIngest()
 
 	envValue := os.Getenv("STELLAR_CORE_URL")
-	assert.Equal(t, StellarCoreURL, envValue)
+	assert.Equal(t, integration.StellarCoreURL, envValue)
 
 	test.Shutdown()
 
@@ -252,7 +230,7 @@ func TestNetworkEnvironmentVariable(t *testing.T) {
 
 // Ensures that the filesystem ends up in the correct state with Captive Core.
 func TestCaptiveCoreConfigFilesystemState(t *testing.T) {
-	confName, storagePath, cleanup := createCaptiveCoreConfig(SimpleCaptiveCoreToml)
+	confName, storagePath, cleanup := createCaptiveCoreConfig(integration.SimpleCaptiveCoreToml)
 	defer cleanup()
 
 	localParams := integration.MergeMaps(defaultCaptiveCoreParameters, map[string]string{
