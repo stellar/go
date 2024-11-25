@@ -68,7 +68,7 @@ func TestBucketDirDisallowed(t *testing.T) {
 	config := `BUCKET_DIR_PATH="/tmp"
 		` + SimpleCaptiveCoreToml
 
-	confName, _, cleanup := CreateCaptiveCoreConfig(config)
+	confName, _, cleanup := createCaptiveCoreConfig(config)
 	defer cleanup()
 	testConfig := integration.GetTestConfig()
 	testConfig.HorizonIngestParameters = map[string]string{
@@ -252,7 +252,7 @@ func TestNetworkEnvironmentVariable(t *testing.T) {
 
 // Ensures that the filesystem ends up in the correct state with Captive Core.
 func TestCaptiveCoreConfigFilesystemState(t *testing.T) {
-	confName, storagePath, cleanup := CreateCaptiveCoreConfig(SimpleCaptiveCoreToml)
+	confName, storagePath, cleanup := createCaptiveCoreConfig(SimpleCaptiveCoreToml)
 	defer cleanup()
 
 	localParams := integration.MergeMaps(defaultCaptiveCoreParameters, map[string]string{
@@ -672,10 +672,10 @@ func validateCaptiveCoreDiskState(itest *integration.Test, rootDir string) {
 	tt.FileExists(coreConf)
 }
 
-// CreateCaptiveCoreConfig will create a temporary TOML config with the
+// createCaptiveCoreConfig will create a temporary TOML config with the
 // specified contents as well as a temporary storage directory. You should
 // `defer` the returned function to clean these up when you're done.
-func CreateCaptiveCoreConfig(contents string) (string, string, func()) {
+func createCaptiveCoreConfig(contents string) (string, string, func()) {
 	tomlFile, err := ioutil.TempFile("", "captive-core-test-*.toml")
 	defer tomlFile.Close()
 	if err != nil {

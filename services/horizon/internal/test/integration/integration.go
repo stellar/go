@@ -362,8 +362,8 @@ func (i *Test) StartHorizon(startIngestProcess bool) error {
 
 	// To facilitate custom runs of Horizon, we merge a default set of
 	// parameters with the tester-supplied ones (if any).
-	mergedWebArgs := MergeMaps(i.GetDefaultWebArgs(), i.config.HorizonWebParameters)
-	mergedIngestArgs := MergeMaps(i.GetDefaultIngestArgs(), i.config.HorizonIngestParameters)
+	mergedWebArgs := MergeMaps(i.getDefaultWebArgs(), i.config.HorizonWebParameters)
+	mergedIngestArgs := MergeMaps(i.getDefaultIngestArgs(), i.config.HorizonIngestParameters)
 
 	// Set up Horizon clients
 	i.setupHorizonClient(mergedWebArgs)
@@ -431,7 +431,7 @@ func (i *Test) StartHorizon(startIngestProcess bool) error {
 	return nil
 }
 
-func (i *Test) GetDefaultArgs() map[string]string {
+func (i *Test) getDefaultArgs() map[string]string {
 	// TODO: Ideally, we'd be pulling host/port information from the Docker
 	//       Compose YAML file itself rather than hardcoding it.
 	return map[string]string{
@@ -449,12 +449,12 @@ func (i *Test) GetDefaultArgs() map[string]string {
 	}
 }
 
-func (i *Test) GetDefaultWebArgs() map[string]string {
-	return MergeMaps(i.GetDefaultArgs(), map[string]string{"admin-port": "0"})
+func (i *Test) getDefaultWebArgs() map[string]string {
+	return MergeMaps(i.getDefaultArgs(), map[string]string{"admin-port": "0"})
 }
 
-func (i *Test) GetDefaultIngestArgs() map[string]string {
-	return MergeMaps(i.GetDefaultArgs(), map[string]string{
+func (i *Test) getDefaultIngestArgs() map[string]string {
+	return MergeMaps(i.getDefaultArgs(), map[string]string{
 		"admin-port":                strconv.Itoa(i.AdminPort()),
 		"port":                      "8001",
 		"db-url":                    i.testDB.DSN,
@@ -871,10 +871,7 @@ func (i *Test) WaitForHorizonIngest() {
 
 		if root.HorizonSequence < 3 ||
 			int(root.HorizonSequence) != int(root.IngestSequence) {
-			//jcart, _ := json.MarshalIndent(root, "", "\t")
-
-			i.t.Logf("Horizon ingesting...")
-			//i.t.Logf(string(jcart))
+			i.t.Logf("Horizon ingesting... %v", root)
 			continue
 		}
 
