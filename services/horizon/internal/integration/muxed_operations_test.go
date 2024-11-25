@@ -1,7 +1,14 @@
 package integration
 
 import (
+	"context"
+	"fmt"
+	"github.com/stellar/go/ingest"
+	"github.com/stellar/go/ingest/ledgerbackend"
+	"io"
+	"os"
 	"testing"
+	"time"
 
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
@@ -131,4 +138,74 @@ func TestMuxedOperations(t *testing.T) {
 			assert.True(t, oneSet, "at least one of account_muxed_id, seller_muxed_id must be set")
 		}
 	}
+
+	time.Sleep(time.Second * 5)
+
+	captiveCoreConfig := ledgerbackend.CaptiveCoreConfig{}
+	captiveCoreConfig.BinaryPath = os.Getenv("HORIZON_INTEGRATION_TESTS_CAPTIVE_CORE_BIN")
+	captiveCoreConfig.HistoryArchiveURLs = []string{itest.GetDefaultArgs()["history-archive-urls"]}
+	captiveCoreConfig.NetworkPassphrase = integration.StandaloneNetworkPassphrase
+	captiveCoreConfig.CheckpointFrequency = 8
+	confName, _, cleanup := CreateCaptiveCoreConfig(SimpleCaptiveCoreToml)
+	kk := ledgerbackend.CaptiveCoreTomlParams{
+		NetworkPassphrase:  captiveCoreConfig.NetworkPassphrase,
+		HistoryArchiveURLs: captiveCoreConfig.HistoryArchiveURLs,
+	}
+
+	captiveCoreToml, _ := ledgerbackend.NewCaptiveCoreTomlFromFile(confName, kk)
+	captiveCoreConfig.Toml = captiveCoreToml
+	defer cleanup()
+
+	var captiveCore *ledgerbackend.CaptiveStellarCore
+	captiveCore, err = ledgerbackend.NewCaptive(captiveCoreConfig)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cc := context.Background()
+	err = captiveCore.PrepareRange(cc, ledgerbackend.BoundedRange(uint32(txResp.Ledger), uint32(txResp.Ledger)))
+	defer captiveCore.Close()
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ll, _ := captiveCore.GetLedger(cc, uint32(txResp.Ledger))
+
+	var successfulTransactions, failedTransactions int
+	var operationsInSuccessful, operationsInFailed int
+
+	txReader, _ := ingest.NewLedgerTransactionReaderFromLedgerCloseMeta(
+		captiveCoreConfig.NetworkPassphrase, ll,
+	)
+	//panicIf(err)
+	defer txReader.Close()
+
+	// Read each transaction within the ledger, extract its operations, and
+	// accumulate the statistics we're interested in.
+	for {
+		ltx, err := txReader.Read()
+		if err == io.EOF {
+			break
+		}
+		//panicIf(err)
+
+		envelope := ltx.Envelope
+		operationCount := len(envelope.Operations())
+		if ltx.Result.Successful() {
+			successfulTransactions++
+			operationsInSuccessful += operationCount
+		} else {
+			failedTransactions++
+			operationsInFailed += operationCount
+		}
+	}
+
+	fmt.Println("\nDone. Results:")
+	fmt.Printf("  - total transactions: %d\n", successfulTransactions+failedTransactions)
+	fmt.Printf("  - succeeded / failed: %d / %d\n", successfulTransactions, failedTransactions)
+	fmt.Printf("  - total operations:   %d\n", operationsInSuccessful+operationsInFailed)
+	fmt.Printf("  - succeeded / failed: %d / %d\n", operationsInSuccessful, operationsInFailed)
+
+	t.Logf("----------- This is %v, %v", ll.LedgerSequence(), ll.TransactionHash(0))
+
 }

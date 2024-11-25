@@ -215,10 +215,6 @@ func (e TransactionEnvelope) Preconditions() Preconditions {
 // Note for fee bump transactions, Operations() returns the operations
 // of the inner transaction
 func (e TransactionEnvelope) Operations() []Operation {
-	// This is not expected to happen.
-	if (e == TransactionEnvelope{}) {
-		return []Operation{}
-	}
 	switch e.Type {
 	case EnvelopeTypeEnvelopeTypeTxFeeBump:
 		return e.FeeBump.Tx.InnerTx.V1.Tx.Operations

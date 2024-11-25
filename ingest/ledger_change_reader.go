@@ -190,7 +190,7 @@ func (r *LedgerChangeReader) Read() (Change, error) {
 				Pre:    &entry,
 				Post:   nil,
 				Reason: Eviction,
-				Lcm:    &r.lcm,
+				Ledger: &r.lcm,
 			}
 		}
 		sortChanges(changes)
@@ -207,7 +207,7 @@ func (r *LedgerChangeReader) Read() (Change, error) {
 			ledgerUpgrades := r.LedgerTransactionReader.lcm.UpgradesProcessing()
 			for _, change := range changes {
 				change.Reason = Upgrade
-				change.Lcm = &r.lcm
+				change.Ledger = &r.lcm
 				change.LedgerUpgrade = &ledgerUpgrades[r.upgradeIndex].Upgrade
 			}
 			r.pending = append(r.pending, changes...)

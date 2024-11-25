@@ -68,7 +68,7 @@ type Change struct {
 	Reason         LedgerEntryChangeReason
 	OperationIndex uint32
 	Transaction    *LedgerTransaction
-	LEdger         *xdr.LedgerCloseMeta
+	Ledger         *xdr.LedgerCloseMeta
 	LedgerUpgrade  *xdr.LedgerUpgrade
 }
 
