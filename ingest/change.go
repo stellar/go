@@ -62,14 +62,14 @@ import (
 //
 //   - LedgerUpgrade: Information about the upgrade, if the change occurred as part of an upgrade.
 type Change struct {
-	Type          xdr.LedgerEntryType
-	Pre           *xdr.LedgerEntry
-	Post          *xdr.LedgerEntry
-	Reason        LedgerEntryChangeReason
-	OperationIdx  uint32
-	Tx            *LedgerTransaction
-	Lcm           *xdr.LedgerCloseMeta
-	LedgerUpgrade *xdr.LedgerUpgrade
+	Type           xdr.LedgerEntryType
+	Pre            *xdr.LedgerEntry
+	Post           *xdr.LedgerEntry
+	Reason         LedgerEntryChangeReason
+	OperationIndex uint32
+	Transaction    *LedgerTransaction
+	LEdger         *xdr.LedgerCloseMeta
+	LedgerUpgrade  *xdr.LedgerUpgrade
 }
 
 type LedgerEntryChangeReason uint16

@@ -17,8 +17,8 @@ type LedgerTransaction struct {
 	FeeChanges    xdr.LedgerEntryChanges
 	UnsafeMeta    xdr.TransactionMeta
 	LedgerVersion uint32
-	Lcm           *xdr.LedgerCloseMeta // This is read-only and not to be modified by downstream functions
-	Hash          *xdr.Hash
+	Ledger        xdr.LedgerCloseMeta // This is read-only and not to be modified by downstream functions
+	Hash          xdr.Hash
 }
 
 func (t *LedgerTransaction) txInternalError() bool {
@@ -31,7 +31,7 @@ func (t *LedgerTransaction) GetFeeChanges() []Change {
 	changes := GetChangesFromLedgerEntryChanges(t.FeeChanges)
 	for _, change := range changes {
 		change.Reason = FeeChange
-		change.Tx = t
+		change.Transaction = t
 	}
 	return changes
 }
@@ -40,7 +40,7 @@ func (t *LedgerTransaction) getTransactionChanges(ledgerEntryChanges xdr.LedgerE
 	changes := GetChangesFromLedgerEntryChanges(ledgerEntryChanges)
 	for _, change := range changes {
 		change.Reason = Transaction
-		change.Tx = t
+		change.Transaction = t
 	}
 	return changes
 }
@@ -171,8 +171,8 @@ func (t *LedgerTransaction) operationChanges(ops []xdr.OperationMeta, index uint
 
 	for _, change := range changes {
 		change.Reason = Operation
-		change.Tx = t
-		change.OperationIdx = index
+		change.Transaction = t
+		change.OperationIndex = index
 	}
 	return changes
 }
