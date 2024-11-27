@@ -29,18 +29,18 @@ func (t *LedgerTransaction) txInternalError() bool {
 // connected to fees.
 func (t *LedgerTransaction) GetFeeChanges() []Change {
 	changes := GetChangesFromLedgerEntryChanges(t.FeeChanges)
-	for _, change := range changes {
-		change.Reason = FeeChange
-		change.Transaction = t
+	for i := range changes {
+		changes[i].Reason = FeeChange
+		changes[i].Transaction = t
 	}
 	return changes
 }
 
 func (t *LedgerTransaction) getTransactionChanges(ledgerEntryChanges xdr.LedgerEntryChanges) []Change {
 	changes := GetChangesFromLedgerEntryChanges(ledgerEntryChanges)
-	for _, change := range changes {
-		change.Reason = Transaction
-		change.Transaction = t
+	for i := range changes {
+		changes[i].Reason = Transaction
+		changes[i].Transaction = t
 	}
 	return changes
 }
@@ -169,10 +169,10 @@ func (t *LedgerTransaction) operationChanges(ops []xdr.OperationMeta, index uint
 	operationMeta := ops[index]
 	changes := GetChangesFromLedgerEntryChanges(operationMeta.Changes)
 
-	for _, change := range changes {
-		change.Reason = Operation
-		change.Transaction = t
-		change.OperationIndex = index
+	for i := range changes {
+		changes[i].Reason = Operation
+		changes[i].Transaction = t
+		changes[i].OperationIndex = index
 	}
 	return changes
 }
