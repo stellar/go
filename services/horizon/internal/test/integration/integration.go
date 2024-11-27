@@ -564,7 +564,7 @@ func (i *Test) setupHorizonClient(webArgs map[string]string) {
 	}
 }
 
-func (i *Test) CreateDefaultCaptiveCoreConfig() (*ledgerbackend.CaptiveCoreConfig, error) {
+func createDefaultCaptiveCoreConfig() (*ledgerbackend.CaptiveCoreConfig, error) {
 	captiveCoreConfig := ledgerbackend.CaptiveCoreConfig{
 		BinaryPath:          os.Getenv("HORIZON_INTEGRATION_TESTS_CAPTIVE_CORE_BIN"),
 		HistoryArchiveURLs:  []string{HistoryArchiveUrl},
@@ -583,6 +583,15 @@ func (i *Test) CreateDefaultCaptiveCoreConfig() (*ledgerbackend.CaptiveCoreConfi
 
 	captiveCoreConfig.Toml = toml
 	return &captiveCoreConfig, nil
+}
+
+func (i *Test) GetDefaultCaptiveCoreInstance() (*ledgerbackend.CaptiveStellarCore, error) {
+	ccConfig, err := createDefaultCaptiveCoreConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	return ledgerbackend.NewCaptive(*ccConfig)
 }
 
 const maxWaitForCoreStartup = 30 * time.Second
@@ -858,7 +867,7 @@ func (i *Test) RestoreFootprint(
 }
 
 // UpgradeProtocol arms Core with upgrade and blocks until protocol is upgraded.
-func (i *Test) UpgradeProtocol(version uint32) {
+func (i *Test) UpgradeProtocol(version uint32) int {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	err := i.coreClient.Upgrade(ctx, int(version))
 	cancel()
@@ -876,14 +885,17 @@ func (i *Test) UpgradeProtocol(version uint32) {
 			continue
 		}
 
+		ledgerSeq := info.Info.Ledger.Num
 		if info.Info.Ledger.Version == int(version) {
-			i.t.Logf("Protocol upgraded to: %d", info.Info.Ledger.Version)
-			return
+			i.t.Logf("Protocol upgraded to: %d, in ledger sequence number: %v, hash: %v",
+				info.Info.Ledger.Version, ledgerSeq, info.Info.Ledger.Hash)
+			return ledgerSeq
 		}
 		time.Sleep(time.Second)
 	}
 
 	i.t.Fatalf("could not upgrade protocol in 10s")
+	return -1
 }
 
 func (i *Test) WaitForHorizonWeb() {
