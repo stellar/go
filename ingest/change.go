@@ -76,13 +76,13 @@ type Change struct {
 type LedgerEntryChangeReason uint16
 
 const (
-	//LedgerEntryChangeReasonUnknown indicates an unknown or unsupported change reason
+	// LedgerEntryChangeReasonUnknown indicates an unknown or unsupported change reason
 	LedgerEntryChangeReasonUnknown LedgerEntryChangeReason = iota
 
-	//LedgerEntryChangeReasonOperation indicates a change caused by an operation in a transaction
+	// LedgerEntryChangeReasonOperation indicates a change caused by an operation in a transaction
 	LedgerEntryChangeReasonOperation
 
-	//LedgerEntryChangeReasonTransaction indicates a change caused by the transaction itself
+	// LedgerEntryChangeReasonTransaction indicates a change caused by the transaction itself
 	LedgerEntryChangeReasonTransaction
 
 	// LedgerEntryChangeReasonFee indicates a change related to transaction fees.
