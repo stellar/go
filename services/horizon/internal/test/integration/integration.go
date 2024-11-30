@@ -48,22 +48,31 @@ const (
 	HistoryArchivePort          = 1570
 	SorobanRPCPort              = 8080
 	HistoryArchiveUrl           = "http://localhost:1570"
+	CheckpointFrequency         = 8
 )
 
 const (
 	SimpleCaptiveCoreToml = `
 		PEER_PORT=11725
 		ARTIFICIALLY_ACCELERATE_TIME_FOR_TESTING=true
-
+		NETWORK_PASSPHRASE = "Standalone Network ; February 2017"
 		UNSAFE_QUORUM=true
 		FAILURE_SAFETY=0
+		RUN_STANDALONE=false
+
+		# Lower the TTL of persistent ledger entries
+		# so that ledger entry extension/restoring becomes testeable
+		# These 2 settings need to be present in both places - stellar-core-integration-tests.cfg and here
+		TESTING_MINIMUM_PERSISTENT_ENTRY_LIFETIME=10
+		TESTING_SOROBAN_HIGH_LIMIT_OVERRIDE=true
 
 		[[VALIDATORS]]
 		NAME="local_core"
 		HOME_DOMAIN="core.local"
 		PUBLIC_KEY="GD5KD2KEZJIGTC63IGW6UMUSMVUVG5IHG64HUTFWCHVZH2N2IBOQN7PS"
 		ADDRESS="localhost"
-		QUALITY="MEDIUM"`
+		QUALITY="MEDIUM"
+`
 	StellarCoreURL = "http://localhost:11626"
 )
 
@@ -73,8 +82,10 @@ type Config struct {
 	ProtocolVersion           uint32
 	EnableSorobanRPC          bool
 	SkipCoreContainerCreation bool
+	SkipCoreContainerDeletion bool // This flag is helpful to debug
 	CoreDockerImage           string
 	SorobanRPCDockerImage     string
+	SkipProtocolUpgrade       bool
 
 	// Weird naming here because bools default to false, but we want to start
 	// Horizon by default.
@@ -117,13 +128,18 @@ type Test struct {
 	horizonAdminClient *sdk.AdminClient
 	coreClient         *stellarcore.Client
 
-	webNode       *horizon.App
-	ingestNode    *horizon.App
-	appStopped    *sync.WaitGroup
-	shutdownOnce  sync.Once
-	shutdownCalls []func()
-	masterKey     *keypair.Full
-	passPhrase    string
+	webNode          *horizon.App
+	ingestNode       *horizon.App
+	appStopped       *sync.WaitGroup
+	shutdownOnce     sync.Once
+	shutdownCalls    []func()
+	masterKey        *keypair.Full
+	passPhrase       string
+	coreUpgradeState *CoreUpgradeState
+}
+
+type CoreUpgradeState struct {
+	upgradeLedgerSeq uint32
 }
 
 // GetTestConfig returns the default test Config required to run NewTest.
@@ -294,8 +310,13 @@ func (i *Test) prepareShutdownHandlers() {
 				i.ingestNode.Close()
 			}
 			if !i.config.SkipCoreContainerCreation {
-				i.runComposeCommand("rm", "-fvs", "core")
-				i.runComposeCommand("rm", "-fvs", "core-postgres")
+				if !i.config.SkipCoreContainerDeletion {
+					i.t.Log("Removing core docker containers...")
+					i.runComposeCommand("rm", "-fvs", "core")
+					i.runComposeCommand("rm", "-fvs", "core-postgres")
+				} else {
+					i.t.Log("Skip core docker container removal for debugging...")
+				}
 				if i.config.EnableSorobanRPC {
 					i.runComposeCommand("logs", "soroban-rpc")
 					i.runComposeCommand("rm", "-fvs", "soroban-rpc")
@@ -358,6 +379,7 @@ func (i *Test) Shutdown() {
 // StartHorizon initializes and starts the Horizon client-facing API server.
 // When startIngestProcess=true, start a second process for ingest server
 func (i *Test) StartHorizon(startIngestProcess bool) error {
+	i.t.Logf("Starting horizon.....")
 	i.testDB = dbtest.Postgres(i.t)
 	i.shutdownCalls = append(i.shutdownCalls, func() {
 		if i.appStopped == nil {
@@ -460,7 +482,7 @@ func (i *Test) getDefaultArgs() map[string]string {
 		"apply-migrations":     "true",
 		"port":                 HorizonDefaultPort,
 		// due to ARTIFICIALLY_ACCELERATE_TIME_FOR_TESTING
-		"checkpoint-frequency": "8",
+		"checkpoint-frequency": strconv.Itoa(CheckpointFrequency),
 		"per-hour-rate-limit":  "0",  // disable rate limiting
 		"max-db-connections":   "50", // the postgres container supports 100 connections, be conservative
 	}
@@ -564,39 +586,89 @@ func (i *Test) setupHorizonClient(webArgs map[string]string) {
 	}
 }
 
-func createDefaultCaptiveCoreConfig() (*ledgerbackend.CaptiveCoreConfig, error) {
+// CreateCaptiveCoreConfig will create a temporary TOML config with the
+// specified contents as well as a temporary storage directory. You should
+// `defer` the returned function to clean these up when you're done.
+func CreateCaptiveCoreConfig(contents string) (string, string, func()) {
+	tomlFile, err := ioutil.TempFile("", "captive-core-test-*.toml")
+	defer tomlFile.Close()
+	if err != nil {
+		panic(err)
+	}
+
+	_, err = tomlFile.WriteString(contents)
+	if err != nil {
+		panic(err)
+	}
+
+	storagePath, err := os.MkdirTemp("", "captive-core-test-*-storage")
+	if err != nil {
+		panic(err)
+	}
+
+	filename := tomlFile.Name()
+	return filename, storagePath, func() {
+		os.Remove(filename)
+		os.RemoveAll(storagePath)
+	}
+}
+
+func (i *Test) CreateCaptiveCoreConfig() (*ledgerbackend.CaptiveCoreConfig, func(), error) {
+
+	confName, storagePath, cleanupFn := CreateCaptiveCoreConfig(SimpleCaptiveCoreToml)
+	i.t.Logf("Creating Captive Core config files, ConfName: %v, storagePath: %v", confName, storagePath)
+
 	captiveCoreConfig := ledgerbackend.CaptiveCoreConfig{
 		BinaryPath:          os.Getenv("HORIZON_INTEGRATION_TESTS_CAPTIVE_CORE_BIN"),
 		HistoryArchiveURLs:  []string{HistoryArchiveUrl},
 		NetworkPassphrase:   StandaloneNetworkPassphrase,
-		CheckpointFrequency: 8, // This is required for accelerated archive creation for integration test
+		CheckpointFrequency: CheckpointFrequency, // This is required for accelerated archive creation for integration test
+		UseDB:               true,
+		StoragePath:         storagePath,
 	}
 
 	tomlParams := ledgerbackend.CaptiveCoreTomlParams{
 		NetworkPassphrase:  StandaloneNetworkPassphrase,
 		HistoryArchiveURLs: []string{HistoryArchiveUrl},
+		UseDB:              true,
 	}
+
 	toml, err := ledgerbackend.NewCaptiveCoreTomlFromData([]byte(SimpleCaptiveCoreToml), tomlParams)
 	if err != nil {
-		return nil, err
+		return nil, func() {}, err
 	}
 
 	captiveCoreConfig.Toml = toml
-	return &captiveCoreConfig, nil
-}
-
-func (i *Test) GetDefaultCaptiveCoreInstance() (*ledgerbackend.CaptiveStellarCore, error) {
-	ccConfig, err := createDefaultCaptiveCoreConfig()
-	if err != nil {
-		return nil, err
-	}
-
-	return ledgerbackend.NewCaptive(*ccConfig)
+	return &captiveCoreConfig, cleanupFn, nil
 }
 
 const maxWaitForCoreStartup = 30 * time.Second
 const maxWaitForCoreUpgrade = 5 * time.Second
 const coreStartupPingInterval = time.Second
+
+// Wait for protocol upgrade
+func (i *Test) waitCoreForProtocolUpgrade(protocolVersion uint32) {
+	i.UpgradeProtocol(protocolVersion)
+
+	startTime := time.Now()
+	for time.Since(startTime) < maxWaitForCoreUpgrade {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		infoTime := time.Now()
+		info, err := i.coreClient.Info(ctx)
+		cancel()
+		if err != nil || !info.IsSynced() {
+			i.t.Logf("Core is still not synced: %v %v", err, info)
+			// sleep up to a second between consecutive calls.
+			if durationSince := time.Since(infoTime); durationSince < coreStartupPingInterval {
+				time.Sleep(coreStartupPingInterval - durationSince)
+			}
+			continue
+		}
+		i.t.Log("Core is up.")
+		return
+	}
+	i.t.Fatalf("Core could not sync after %v + %v", maxWaitForCoreStartup, maxWaitForCoreUpgrade)
+}
 
 // Wait for core to be up and manually close the first ledger
 func (i *Test) waitForCore() {
@@ -618,26 +690,11 @@ func (i *Test) waitForCore() {
 		break
 	}
 
-	i.UpgradeProtocol(i.config.ProtocolVersion)
-
-	startTime = time.Now()
-	for time.Since(startTime) < maxWaitForCoreUpgrade {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-		infoTime := time.Now()
-		info, err := i.coreClient.Info(ctx)
-		cancel()
-		if err != nil || !info.IsSynced() {
-			i.t.Logf("Core is still not synced: %v %v", err, info)
-			// sleep up to a second between consecutive calls.
-			if durationSince := time.Since(infoTime); durationSince < coreStartupPingInterval {
-				time.Sleep(coreStartupPingInterval - durationSince)
-			}
-			continue
-		}
-		i.t.Log("Core is up.")
-		return
+	if !i.config.SkipProtocolUpgrade {
+		i.waitCoreForProtocolUpgrade(i.config.ProtocolVersion)
+	} else {
+		i.t.Log("Core is up. Protocol Upgrade skipped. Please manually upgrade protocol version, if needed...")
 	}
-	i.t.Fatalf("Core could not sync after %v + %v", maxWaitForCoreStartup, maxWaitForCoreUpgrade)
 }
 
 const sorobanRPCInitTime = 20 * time.Second
@@ -867,7 +924,8 @@ func (i *Test) RestoreFootprint(
 }
 
 // UpgradeProtocol arms Core with upgrade and blocks until protocol is upgraded.
-func (i *Test) UpgradeProtocol(version uint32) int {
+func (i *Test) UpgradeProtocol(version uint32) {
+	i.t.Logf("Attempting Core Protocol upgade to version: %v", version)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	err := i.coreClient.Upgrade(ctx, int(version))
 	cancel()
@@ -889,13 +947,22 @@ func (i *Test) UpgradeProtocol(version uint32) int {
 		if info.Info.Ledger.Version == int(version) {
 			i.t.Logf("Protocol upgraded to: %d, in ledger sequence number: %v, hash: %v",
 				info.Info.Ledger.Version, ledgerSeq, info.Info.Ledger.Hash)
-			return ledgerSeq
+			i.coreUpgradeState = &CoreUpgradeState{
+				upgradeLedgerSeq: uint32(ledgerSeq),
+			}
+			return
 		}
 		time.Sleep(time.Second)
 	}
 
 	i.t.Fatalf("could not upgrade protocol in 10s")
-	return -1
+}
+
+func (i *Test) GetUpgradeLedgerSeq() (uint32, error) {
+	if i.coreUpgradeState == nil {
+		return 0, errors.Errorf("Core has not been upgraded yet")
+	}
+	return i.coreUpgradeState.upgradeLedgerSeq, nil
 }
 
 func (i *Test) WaitForHorizonWeb() {
