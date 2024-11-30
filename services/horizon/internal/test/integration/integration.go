@@ -591,10 +591,10 @@ func (i *Test) setupHorizonClient(webArgs map[string]string) {
 // `defer` the returned function to clean these up when you're done.
 func CreateCaptiveCoreConfig(contents string) (string, string, func()) {
 	tomlFile, err := ioutil.TempFile("", "captive-core-test-*.toml")
-	defer tomlFile.Close()
 	if err != nil {
 		panic(err)
 	}
+	defer tomlFile.Close()
 
 	_, err = tomlFile.WriteString(contents)
 	if err != nil {
