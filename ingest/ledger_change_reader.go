@@ -189,7 +189,7 @@ func (r *LedgerChangeReader) Read() (Change, error) {
 				Type:   entry.Data.Type,
 				Pre:    &entry,
 				Post:   nil,
-				Reason: Eviction,
+				Reason: LedgerEntryChangeReasonEviction,
 				Ledger: &r.lcm,
 			}
 		}
@@ -206,7 +206,7 @@ func (r *LedgerChangeReader) Read() (Change, error) {
 			)
 			ledgerUpgrades := r.LedgerTransactionReader.lcm.UpgradesProcessing()
 			for i := range changes {
-				changes[i].Reason = Upgrade
+				changes[i].Reason = LedgerEntryChangeReasonUpgrade
 				changes[i].Ledger = &r.lcm
 				changes[i].LedgerUpgrade = &ledgerUpgrades[r.upgradeIndex].Upgrade
 			}

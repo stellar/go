@@ -30,7 +30,7 @@ func (t *LedgerTransaction) txInternalError() bool {
 func (t *LedgerTransaction) GetFeeChanges() []Change {
 	changes := GetChangesFromLedgerEntryChanges(t.FeeChanges)
 	for i := range changes {
-		changes[i].Reason = FeeChange
+		changes[i].Reason = LedgerEntryChangeReasonFee
 		changes[i].Transaction = t
 	}
 	return changes
@@ -39,7 +39,7 @@ func (t *LedgerTransaction) GetFeeChanges() []Change {
 func (t *LedgerTransaction) getTransactionChanges(ledgerEntryChanges xdr.LedgerEntryChanges) []Change {
 	changes := GetChangesFromLedgerEntryChanges(ledgerEntryChanges)
 	for i := range changes {
-		changes[i].Reason = Transaction
+		changes[i].Reason = LedgerEntryChangeReasonTransaction
 		changes[i].Transaction = t
 	}
 	return changes
@@ -163,14 +163,14 @@ func (t *LedgerTransaction) GetOperationChanges(operationIndex uint32) ([]Change
 
 func (t *LedgerTransaction) operationChanges(ops []xdr.OperationMeta, index uint32) []Change {
 	if int(index) >= len(ops) {
-		return []Change{} // TODO - operations_processor somehow seems to be failing without this
+		return []Change{}
 	}
 
 	operationMeta := ops[index]
 	changes := GetChangesFromLedgerEntryChanges(operationMeta.Changes)
 
 	for i := range changes {
-		changes[i].Reason = Operation
+		changes[i].Reason = LedgerEntryChangeReasonOperation
 		changes[i].Transaction = t
 		changes[i].OperationIndex = index
 	}
