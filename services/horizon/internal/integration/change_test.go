@@ -61,9 +61,7 @@ func TestOneTxOneOperationChanges(t *testing.T) {
 		Amount:        "900",
 	}
 	txResp, err := itest.SubmitMultiSigOperations(itest.MasterAccount(), []*keypair.Full{master, keyA}, &operation)
-	if err != nil {
-		t.Fatalf("failed to submit transaction: %v", err)
-	}
+	tt.NoError(err)
 	ledgerSeq := uint32(txResp.Ledger)
 
 	archive, err := integration.GetHistoryArchive()
@@ -94,17 +92,16 @@ func TestOneTxOneOperationChanges(t *testing.T) {
 	tt.Equal(
 		ledgerKey(reasonToChangeMap[ingest.LedgerEntryChangeReasonTransaction][0]).MustAccount().AccountId.Address(),
 		master.Address())
-	tt.True(containsAccount(t, reasonToChangeMap[ingest.LedgerEntryChangeReasonOperation], keyA.Address()))
-	tt.True(containsAccount(t, reasonToChangeMap[ingest.LedgerEntryChangeReasonOperation], keyB.Address()))
-	tt.False(containsAccount(t, reasonToChangeMap[ingest.LedgerEntryChangeReasonOperation], master.Address()))
+	tt.True(containsAccount(reasonToChangeMap[ingest.LedgerEntryChangeReasonOperation], keyA.Address()))
+	tt.True(containsAccount(reasonToChangeMap[ingest.LedgerEntryChangeReasonOperation], keyB.Address()))
+	// MasterAccount shouldnt show up in operation level changes
+	tt.False(containsAccount(reasonToChangeMap[ingest.LedgerEntryChangeReasonOperation], master.Address()))
 }
 
 // Helper function to check if a specific XX exists in the list
-func containsAccount(t *testing.T, slice []ingest.Change, target string) bool {
-	t.Logf("Target: %v", target)
+func containsAccount(slice []ingest.Change, target string) bool {
 	for _, change := range slice {
 		addr := ledgerKey(change).MustAccount().AccountId.Address()
-		t.Logf("Comparing address: %v with target: %v", addr, target)
 		if addr == target {
 			return true
 		}
@@ -114,14 +111,10 @@ func containsAccount(t *testing.T, slice []ingest.Change, target string) bool {
 
 func ledgerKey(c ingest.Change) xdr.LedgerKey {
 	var l xdr.LedgerKey
-	var err error
 	if c.Pre != nil {
-		l, err = c.Pre.LedgerKey()
+		l, _ = c.Pre.LedgerKey()
 	}
-	l, err = c.Post.LedgerKey()
-	if err != nil {
-		panic(err)
-	}
+	l, _ = c.Post.LedgerKey()
 	return l
 }
 
