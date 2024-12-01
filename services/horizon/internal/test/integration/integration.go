@@ -4,6 +4,7 @@ package integration
 import (
 	"context"
 	"fmt"
+	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"io/ioutil"
 	"os"
@@ -1491,4 +1492,13 @@ func GetCoreMaxSupportedProtocol() uint32 {
 
 func (i *Test) GetEffectiveProtocolVersion() uint32 {
 	return i.config.ProtocolVersion
+}
+
+func GetHistoryArchive() (*historyarchive.Archive, error) {
+	return historyarchive.Connect(
+		HistoryArchiveUrl,
+		historyarchive.ArchiveOptions{
+			NetworkPassphrase:   StandaloneNetworkPassphrase,
+			CheckpointFrequency: CheckpointFrequency,
+		})
 }

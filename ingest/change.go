@@ -52,7 +52,7 @@ type Change struct {
 	Reason LedgerEntryChangeReason
 
 	// The index of the operation within the transaction that caused the change.
-	// This field is relevant only when the Reason is of type LedgerEntryChangeReasonOperation
+	// This field is relevant only when the Reason is LedgerEntryChangeReasonOperation
 	// This field cannot be relied upon when the compactingChangeReader is used.
 	OperationIndex uint32
 
@@ -64,11 +64,13 @@ type Change struct {
 
 	// The LedgerCloseMeta that precipitated the change.
 	// This is useful only when the Change is caused by an upgrade or by an eviction, i.e. outside a transaction
+	// This field is populated only when the Reason is one of:
+	// LedgerEntryChangeReasonUpgrade or LedgerEntryChangeReasonEviction
 	// For changes caused by transaction or operations, look at the Transaction field
 	Ledger *xdr.LedgerCloseMeta
 
 	// Information about the upgrade, if the change occurred as part of an upgrade
-	// This field is relevant only when the Reason is of type LedgerEntryChangeReasonUpgrade
+	// This field is relevant only when the Reason is LedgerEntryChangeReasonUpgrade
 	LedgerUpgrade *xdr.LedgerUpgrade
 }
 
