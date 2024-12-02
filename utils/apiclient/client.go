@@ -21,8 +21,8 @@ func isRetryableStatusCode(statusCode int) bool {
 	return statusCode == http.StatusTooManyRequests || statusCode == http.StatusServiceUnavailable
 }
 
-func (c *APIClient) GetURL(endpoint string, qstr url.Values) string {
-	return fmt.Sprintf("%s/%s?%s", c.BaseURL, endpoint, qstr.Encode())
+func (c *APIClient) GetURL(endpoint string, queryParams url.Values) string {
+	return fmt.Sprintf("%s/%s?%s", c.BaseURL, endpoint, queryParams.Encode())
 }
 
 func (c *APIClient) CallAPI(reqParams RequestParams) (interface{}, error) {

@@ -14,12 +14,12 @@ func TestGetURL(t *testing.T) {
 		BaseURL: "https://stellar.org",
 	}
 
-	qstr := url.Values{}
-	qstr.Add("type", "forward")
-	qstr.Add("federation_type", "bank_account")
-	qstr.Add("swift", "BOPBPHMM")
-	qstr.Add("acct", "2382376")
-	furl := c.GetURL("federation", qstr)
+	queryParams := url.Values{}
+	queryParams.Add("type", "forward")
+	queryParams.Add("federation_type", "bank_account")
+	queryParams.Add("swift", "BOPBPHMM")
+	queryParams.Add("acct", "2382376")
+	furl := c.GetURL("federation", queryParams)
 	assert.Equal(t, "https://stellar.org/federation?acct=2382376&federation_type=bank_account&swift=BOPBPHMM&type=forward", furl)
 }
 
@@ -80,13 +80,13 @@ func TestCallAPI(t *testing.T) {
 				HTTP:    hmock,
 			}
 
-			qstr := url.Values{}
-			qstr.Add("acct", "2382376")
+			queryParams := url.Values{}
+			queryParams.Add("acct", "2382376")
 
 			reqParams := RequestParams{
 				RequestType: "GET",
 				Endpoint:    "federation",
-				QueryParams: qstr,
+				QueryParams: queryParams,
 			}
 
 			result, err := c.CallAPI(reqParams)
