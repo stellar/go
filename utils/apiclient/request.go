@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/pkg/errors"
+	"github.com/stellar/go/support/log"
 )
 
 func CreateRequestBody(requestType string, url string) (*http.Request, error) {
@@ -20,7 +21,7 @@ func SetHeaders(req *http.Request, args map[string]interface{}) {
 	for key, value := range args {
 		strValue, ok := value.(string)
 		if !ok {
-			fmt.Printf("Skipping non-string value for header %s\n", key)
+			log.Debugf("Skipping non-string value for header %s\n", key)
 			continue
 		}
 

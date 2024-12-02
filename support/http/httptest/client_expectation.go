@@ -105,7 +105,7 @@ func (ce *ClientExpectation) ReturnMultipleResults(responseSets []ResponseData) 
 		ce.URL,
 		func(req *http.Request) (*http.Response, error) {
 			if responseIndex >= len(allResponses) {
-				panic(fmt.Sprintf("no responses available"))
+				panic(fmt.Errorf("no responses available"))
 			}
 
 			resp := allResponses[responseIndex]

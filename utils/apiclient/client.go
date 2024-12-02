@@ -9,11 +9,12 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/stellar/go/support/log"
 )
 
 const (
-	maxRetries     = 5
-	initialBackoff = 1 * time.Second
+	defaultMaxRetries         = 5
+	defaultInitialBackoffTime = 1 * time.Second
 )
 
 func isRetryableStatusCode(statusCode int) bool {
@@ -33,6 +34,18 @@ func (c *APIClient) CallAPI(reqParams RequestParams) (interface{}, error) {
 		reqParams.Headers = map[string]interface{}{}
 	}
 
+	if c.MaxRetries == 0 {
+		c.MaxRetries = defaultMaxRetries
+	}
+
+	if c.InitialBackoffTime == 0 {
+		c.InitialBackoffTime = defaultInitialBackoffTime
+	}
+
+	if reqParams.Endpoint == "" {
+		return nil, fmt.Errorf("Please set endpoint to query")
+	}
+
 	url := c.GetURL(reqParams.Endpoint, reqParams.QueryParams)
 	reqBody, err := CreateRequestBody(reqParams.RequestType, url)
 	if err != nil {
@@ -49,7 +62,7 @@ func (c *APIClient) CallAPI(reqParams RequestParams) (interface{}, error) {
 	var result interface{}
 	retries := 0
 
-	for retries <= maxRetries {
+	for retries <= c.MaxRetries {
 		resp, err := client.Do(reqBody)
 		if err != nil {
 			return nil, errors.Wrap(err, "http request failed")
@@ -59,19 +72,19 @@ func (c *APIClient) CallAPI(reqParams RequestParams) (interface{}, error) {
 		if resp.StatusCode == http.StatusOK {
 			body, err := ioutil.ReadAll(resp.Body)
 			if err != nil {
-				return nil, fmt.Errorf("failed to read response body: %w", err)
+				return nil, errors.Wrap(err, "failed to read response body")
 			}
 
 			if err := json.Unmarshal(body, &result); err != nil {
-				return nil, fmt.Errorf("failed to unmarshal JSON: %w", err)
+				return nil, errors.Wrap(err, "failed to unmarshal JSON")
 			}
 
 			return result, nil
 		} else if isRetryableStatusCode(resp.StatusCode) {
 			retries++
-			backoffDuration := initialBackoff * time.Duration(1<<retries)
-			if retries <= maxRetries {
-				fmt.Printf("Received retryable status %d. Retrying in %v...\n", resp.StatusCode, backoffDuration)
+			backoffDuration := c.InitialBackoffTime * time.Duration(1<<retries)
+			if retries <= c.MaxRetries {
+				log.Debugf("Received retryable status %d. Retrying in %v...\n", resp.StatusCode, backoffDuration)
 				time.Sleep(backoffDuration)
 			} else {
 				return nil, fmt.Errorf("maximum retries reached after receiving status %d", resp.StatusCode)

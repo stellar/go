@@ -3,6 +3,7 @@ package apiclient
 import (
 	"net/http"
 	"net/url"
+	"time"
 )
 
 type HTTP interface {
@@ -12,10 +13,12 @@ type HTTP interface {
 }
 
 type APIClient struct {
-	BaseURL     string
-	HTTP        HTTP
-	AuthType    string
-	AuthHeaders map[string]interface{}
+	BaseURL            string
+	HTTP               HTTP
+	AuthType           string
+	AuthHeaders        map[string]interface{}
+	MaxRetries         int
+	InitialBackoffTime time.Duration
 }
 
 type RequestParams struct {

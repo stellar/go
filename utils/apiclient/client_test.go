@@ -23,13 +23,15 @@ func TestGetURL(t *testing.T) {
 	assert.Equal(t, "https://stellar.org/federation?acct=2382376&federation_type=bank_account&swift=BOPBPHMM&type=forward", furl)
 }
 
+type testCase struct {
+	name          string
+	mockResponses []httptest.ResponseData
+	expected      interface{}
+	expectedError string
+}
+
 func TestCallAPI(t *testing.T) {
-	testCases := []struct {
-		name          string
-		mockResponses []httptest.ResponseData
-		expected      interface{}
-		expectedError string
-	}{
+	testCases := []testCase{
 		{
 			name: "status 200 - Success",
 			mockResponses: []httptest.ResponseData{
@@ -90,14 +92,9 @@ func TestCallAPI(t *testing.T) {
 			result, err := c.CallAPI(reqParams)
 
 			if tc.expectedError != "" {
-				if err == nil {
-					t.Fatalf("expected error %q, got nil", tc.expectedError)
-				}
-				if err.Error() != tc.expectedError {
-					t.Fatalf("expected error %q, got %q", tc.expectedError, err.Error())
-				}
-			} else if err != nil {
-				t.Fatal(err)
+				assert.EqualError(t, err, tc.expectedError)
+			} else {
+				assert.NoError(t, err)
 			}
 
 			if tc.expected != nil {
