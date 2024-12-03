@@ -614,9 +614,9 @@ func CreateCaptiveCoreConfig(contents string) (string, string, func()) {
 	}
 }
 
-func (i *Test) CreateCaptiveCoreConfig() (*ledgerbackend.CaptiveCoreConfig, func(), error) {
-
+func (i *Test) CreateCaptiveCoreConfig() (*ledgerbackend.CaptiveCoreConfig, error) {
 	confName, storagePath, cleanupFn := CreateCaptiveCoreConfig(SimpleCaptiveCoreToml)
+	i.t.Cleanup(cleanupFn)
 	i.t.Logf("Creating Captive Core config files, ConfName: %v, storagePath: %v", confName, storagePath)
 
 	captiveCoreConfig := ledgerbackend.CaptiveCoreConfig{
@@ -636,11 +636,11 @@ func (i *Test) CreateCaptiveCoreConfig() (*ledgerbackend.CaptiveCoreConfig, func
 
 	toml, err := ledgerbackend.NewCaptiveCoreTomlFromData([]byte(SimpleCaptiveCoreToml), tomlParams)
 	if err != nil {
-		return nil, func() {}, err
+		return nil, err
 	}
 
 	captiveCoreConfig.Toml = toml
-	return &captiveCoreConfig, cleanupFn, nil
+	return &captiveCoreConfig, nil
 }
 
 const maxWaitForCoreStartup = 30 * time.Second

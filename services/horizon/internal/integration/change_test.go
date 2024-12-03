@@ -147,11 +147,10 @@ func getChangesFromLedger(itest *integration.Test, ledger xdr.LedgerCloseMeta) [
 func getLedgers(itest *integration.Test, startingLedger uint32, endLedger uint32) map[uint32]xdr.LedgerCloseMeta {
 	t := itest.CurrentTest()
 
-	ccConfig, cleanupFn, err := itest.CreateCaptiveCoreConfig()
+	ccConfig, err := itest.CreateCaptiveCoreConfig()
 	if err != nil {
 		t.Fatalf("unable to create captive core config: %v", err)
 	}
-	defer cleanupFn()
 
 	captiveCore, err := ledgerbackend.NewCaptive(*ccConfig)
 	if err != nil {
@@ -200,17 +199,20 @@ func waitForLedgerInArchive(t *testing.T, waitTime time.Duration, ledgerSeq uint
 	}
 
 	var latestCheckpoint uint32
-	var f = func() bool {
-		has, requestErr := archive.GetRootHAS()
-		if requestErr != nil {
-			t.Logf("Request to fetch checkpoint failed: %v", requestErr)
-			return false
-		}
-		latestCheckpoint = has.CurrentLedger
-		return latestCheckpoint >= ledgerSeq
-	}
 
-	assert.Eventually(t, f, waitTime, 1*time.Second)
+	assert.Eventually(t,
+		func() bool {
+			has, requestErr := archive.GetRootHAS()
+			if requestErr != nil {
+				t.Logf("Request to fetch checkpoint failed: %v", requestErr)
+				return false
+			}
+			latestCheckpoint = has.CurrentLedger
+			return latestCheckpoint >= ledgerSeq
+
+		},
+		waitTime,
+		1*time.Second)
 }
 
 func getExactUpgradedLedgerSeq(ledgerMap map[uint32]xdr.LedgerCloseMeta, version uint32) uint32 {
