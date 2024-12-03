@@ -72,11 +72,17 @@ func TestOneTxOneOperationChanges(t *testing.T) {
 	tt.Equal(1, reasonCntMap[ingest.LedgerEntryChangeReasonFee])
 
 	reasonToChangeMap := changeReasonToChangeMap(changes)
-	// Assert Transaction Hash and Ledger Sequence are accurate in all changes
+	// Assert Transaction Hash and Ledger Sequence within Transaction are accurate in all changes
 	for _, change := range changes {
 		tt.Equal(change.Transaction.Hash.HexString(), txResp.Hash)
 		tt.Equal(change.Transaction.Ledger.LedgerSequence(), ledgerSeq)
+		tt.Empty(change.Ledger)
+		tt.Empty(change.LedgerUpgrade)
 	}
+
+	feeRelatedChange := reasonToChangeMap[ingest.LedgerEntryChangeReasonFee][0]
+	txRelatedChange := reasonToChangeMap[ingest.LedgerEntryChangeReasonTransaction][0]
+	operationChanges := reasonToChangeMap[ingest.LedgerEntryChangeReasonOperation]
 
 	accountFromEntry := func(e *xdr.LedgerEntry) xdr.AccountEntry {
 		return e.Data.MustAccount()
@@ -92,46 +98,29 @@ func TestOneTxOneOperationChanges(t *testing.T) {
 		return ingest.Change{}
 	}
 
-	feeRelatedChange := reasonToChangeMap[ingest.LedgerEntryChangeReasonFee][0]
-	txRelatedChange := reasonToChangeMap[ingest.LedgerEntryChangeReasonTransaction][0]
-	operationChanges := reasonToChangeMap[ingest.LedgerEntryChangeReasonOperation]
+	containsAccount := func(changes []ingest.Change, target string) bool {
+		for _, change := range changes {
+			addr := change.Pre.Data.MustAccount().AccountId.Address()
+			if addr == target {
+				return true
+			}
+		}
+		return false
+	}
 
 	tt.Equal(accountFromEntry(feeRelatedChange.Pre).AccountId.Address(), master.Address())
 	tt.Equal(accountFromEntry(txRelatedChange.Pre).AccountId.Address(), master.Address())
 	tt.True(containsAccount(operationChanges, srcAcc.Address()))
 	tt.True(containsAccount(operationChanges, destAcc.Address()))
-	// MasterAccount shouldnt show up in operation level changes
+	// MasterAccount shouldn't show up in operation level changes
 	tt.False(containsAccount(operationChanges, master.Address()))
-
 	tt.True(accountFromEntry(feeRelatedChange.Pre).Balance > accountFromEntry(feeRelatedChange.Post).Balance)
-	tt.True(accountFromEntry(txRelatedChange.Pre).SeqNum < accountFromEntry(txRelatedChange.Post).SeqNum)
+	tt.True(accountFromEntry(txRelatedChange.Post).SeqNum == accountFromEntry(txRelatedChange.Pre).SeqNum+1)
 
 	srcAccChange := changeForAccount(operationChanges, srcAcc.Address())
 	destAccChange := changeForAccount(operationChanges, destAcc.Address())
-
-	tt.True(accountFromEntry(srcAccChange.Pre).Balance < accountFromEntry(srcAccChange.Post).Balance)
-	tt.True(accountFromEntry(destAccChange.Pre).Balance > accountFromEntry(destAccChange.Post).Balance)
-
-}
-
-// Helper function to check if a specific XX exists in the list
-func containsAccount(slice []ingest.Change, target string) bool {
-	for _, change := range slice {
-		addr := ledgerKey(change).MustAccount().AccountId.Address()
-		if addr == target {
-			return true
-		}
-	}
-	return false
-}
-
-func ledgerKey(c ingest.Change) xdr.LedgerKey {
-	var l xdr.LedgerKey
-	if c.Pre != nil {
-		l, _ = c.Pre.LedgerKey()
-	}
-	l, _ = c.Post.LedgerKey()
-	return l
+	tt.True(accountFromEntry(srcAccChange.Pre).Balance > accountFromEntry(srcAccChange.Post).Balance)
+	tt.True(accountFromEntry(destAccChange.Pre).Balance < accountFromEntry(destAccChange.Post).Balance)
 }
 
 func getChangesFromLedger(itest *integration.Test, ledger xdr.LedgerCloseMeta) []ingest.Change {
