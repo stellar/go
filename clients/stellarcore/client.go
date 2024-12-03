@@ -156,6 +156,21 @@ func (c *Client) GetLedgerEntryRaw(ctx context.Context, ledgerSeq uint32, keys .
 	return resp, c.makeLedgerKeyRequest(ctx, &resp, "getledgerentryraw", ledgerSeq, keys...)
 }
 
+func (c *Client) GetLedgerEntries(ctx context.Context, ledgerSeq uint32, keys ...xdr.LedgerKey) (*proto.GetLedgerEntriesResponse, error) {
+	var resp *proto.GetLedgerEntriesResponse
+	return resp, c.makeLedgerKeyRequest(ctx, resp, "getledgerentries", ledgerSeq, keys...)
+}
+
+func (c *Client) GetInvocationProof(ctx context.Context, ledgerSeq uint32, keys ...xdr.LedgerKey) (*proto.ProofResponse, error) {
+	var resp *proto.ProofResponse
+	return resp, c.makeLedgerKeyRequest(ctx, resp, "getinvocationproof", ledgerSeq, keys...)
+}
+
+func (c *Client) GetRestorationProof(ctx context.Context, ledgerSeq uint32, keys ...xdr.LedgerKey) (*proto.ProofResponse, error) {
+	var resp *proto.ProofResponse
+	return resp, c.makeLedgerKeyRequest(ctx, resp, "getrestorationproof", ledgerSeq, keys...)
+}
+
 // SubmitTransaction calls the `tx` command on the connected stellar core with the provided envelope
 func (c *Client) SubmitTransaction(ctx context.Context, envelope string) (resp *proto.TXResponse, err error) {
 	q := url.Values{}
