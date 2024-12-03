@@ -2,7 +2,6 @@ package integration
 
 import (
 	"context"
-	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/keypair"
@@ -11,26 +10,24 @@ import (
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
 	"io"
+	"sort"
 	"testing"
 	"time"
 )
 
 func TestProtocolUpgradeChanges(t *testing.T) {
 	tt := assert.New(t)
-	itest := integration.NewTest(t, integration.Config{SkipHorizonStart: true, SkipProtocolUpgrade: true})
-	archive, err := integration.GetHistoryArchive()
-	tt.NoError(err)
+	itest := integration.NewTest(t, integration.Config{SkipHorizonStart: true})
 
-	// Manually invoke command to upgrade protocol
-	itest.UpgradeProtocol(itest.Config().ProtocolVersion)
-	upgradedLedgerSeq, _ := itest.GetUpgradeLedgerSeq()
+	upgradedLedgerAppx, _ := itest.GetUpgradedLedgerSeqAppx()
+	waitForLedgerInArchive(t, 15*time.Second, upgradedLedgerAppx)
 
-	publishedNextCheckpoint := publishedNextCheckpoint(archive, upgradedLedgerSeq, t)
-	// Ensure that a checkpoint has been created with the ledgerNumber you want in it
-	tt.Eventually(publishedNextCheckpoint, 15*time.Second, time.Second)
+	ledgerSeqToLedgers := getLedgers(itest, 2, upgradedLedgerAppx)
 
+	// It is important to find the "exact" ledger which is representative of protocol upgrade
+	// and the one before it, to check for upgrade related changes
+	upgradedLedgerSeq := getExactUpgradedLedgerSeq(ledgerSeqToLedgers, itest.Config().ProtocolVersion)
 	prevLedgerToUpgrade := upgradedLedgerSeq - 1
-	ledgerSeqToLedgers := getLedgersFromArchive(itest, prevLedgerToUpgrade, upgradedLedgerSeq)
 
 	prevLedgerChanges := getChangesFromLedger(itest, ledgerSeqToLedgers[prevLedgerToUpgrade])
 	prevLedgerChangeMap := changeReasonCountMap(prevLedgerChanges)
@@ -52,26 +49,21 @@ func TestOneTxOneOperationChanges(t *testing.T) {
 
 	master := itest.Master()
 	keys, _ := itest.CreateAccounts(2, "1000")
-	keyA, keyB := keys[0], keys[1]
+	srcAcc, destAcc := keys[0], keys[1]
 
 	operation := txnbuild.Payment{
-		SourceAccount: keyA.Address(),
-		Destination:   keyB.Address(),
+		SourceAccount: srcAcc.Address(),
+		Destination:   destAcc.Address(),
 		Asset:         txnbuild.NativeAsset{},
 		Amount:        "900",
 	}
-	txResp, err := itest.SubmitMultiSigOperations(itest.MasterAccount(), []*keypair.Full{master, keyA}, &operation)
+	txResp, err := itest.SubmitMultiSigOperations(itest.MasterAccount(), []*keypair.Full{master, srcAcc}, &operation)
 	tt.NoError(err)
+
 	ledgerSeq := uint32(txResp.Ledger)
+	waitForLedgerInArchive(t, 15*time.Second, ledgerSeq)
 
-	archive, err := integration.GetHistoryArchive()
-	tt.NoError(err)
-
-	publishedNextCheckpoint := publishedNextCheckpoint(archive, ledgerSeq, t)
-	// Ensure that a checkpoint has been created with the ledgerNumber you want in it
-	tt.Eventually(publishedNextCheckpoint, 15*time.Second, time.Second)
-
-	ledger := getLedgersFromArchive(itest, ledgerSeq, ledgerSeq)[ledgerSeq]
+	ledger := getLedgers(itest, ledgerSeq, ledgerSeq)[ledgerSeq]
 	changes := getChangesFromLedger(itest, ledger)
 
 	reasonCntMap := changeReasonCountMap(changes)
@@ -86,16 +78,40 @@ func TestOneTxOneOperationChanges(t *testing.T) {
 		tt.Equal(change.Transaction.Ledger.LedgerSequence(), ledgerSeq)
 	}
 
-	tt.Equal(
-		ledgerKey(reasonToChangeMap[ingest.LedgerEntryChangeReasonFee][0]).MustAccount().AccountId.Address(),
-		master.Address())
-	tt.Equal(
-		ledgerKey(reasonToChangeMap[ingest.LedgerEntryChangeReasonTransaction][0]).MustAccount().AccountId.Address(),
-		master.Address())
-	tt.True(containsAccount(reasonToChangeMap[ingest.LedgerEntryChangeReasonOperation], keyA.Address()))
-	tt.True(containsAccount(reasonToChangeMap[ingest.LedgerEntryChangeReasonOperation], keyB.Address()))
+	accountFromEntry := func(e *xdr.LedgerEntry) xdr.AccountEntry {
+		return e.Data.MustAccount()
+	}
+
+	changeForAccount := func(changes []ingest.Change, target string) ingest.Change {
+		for _, change := range changes {
+			acc := change.Pre.Data.MustAccount()
+			if acc.AccountId.Address() == target {
+				return change
+			}
+		}
+		return ingest.Change{}
+	}
+
+	feeRelatedChange := reasonToChangeMap[ingest.LedgerEntryChangeReasonFee][0]
+	txRelatedChange := reasonToChangeMap[ingest.LedgerEntryChangeReasonTransaction][0]
+	operationChanges := reasonToChangeMap[ingest.LedgerEntryChangeReasonOperation]
+
+	tt.Equal(accountFromEntry(feeRelatedChange.Pre).AccountId.Address(), master.Address())
+	tt.Equal(accountFromEntry(txRelatedChange.Pre).AccountId.Address(), master.Address())
+	tt.True(containsAccount(operationChanges, srcAcc.Address()))
+	tt.True(containsAccount(operationChanges, destAcc.Address()))
 	// MasterAccount shouldnt show up in operation level changes
-	tt.False(containsAccount(reasonToChangeMap[ingest.LedgerEntryChangeReasonOperation], master.Address()))
+	tt.False(containsAccount(operationChanges, master.Address()))
+
+	tt.True(accountFromEntry(feeRelatedChange.Pre).Balance > accountFromEntry(feeRelatedChange.Post).Balance)
+	tt.True(accountFromEntry(txRelatedChange.Pre).SeqNum < accountFromEntry(txRelatedChange.Post).SeqNum)
+
+	srcAccChange := changeForAccount(operationChanges, srcAcc.Address())
+	destAccChange := changeForAccount(operationChanges, destAcc.Address())
+
+	tt.True(accountFromEntry(srcAccChange.Pre).Balance < accountFromEntry(srcAccChange.Post).Balance)
+	tt.True(accountFromEntry(destAccChange.Pre).Balance > accountFromEntry(destAccChange.Post).Balance)
+
 }
 
 // Helper function to check if a specific XX exists in the list
@@ -139,7 +155,7 @@ func getChangesFromLedger(itest *integration.Test, ledger xdr.LedgerCloseMeta) [
 	return changes
 }
 
-func getLedgersFromArchive(itest *integration.Test, startingLedger uint32, endLedger uint32) map[uint32]xdr.LedgerCloseMeta {
+func getLedgers(itest *integration.Test, startingLedger uint32, endLedger uint32) map[uint32]xdr.LedgerCloseMeta {
 	t := itest.CurrentTest()
 
 	ccConfig, cleanupFn, err := itest.CreateCaptiveCoreConfig()
@@ -180,9 +196,22 @@ func changeReasonCountMap(changes []ingest.Change) map[ingest.LedgerEntryChangeR
 	return changeMap
 }
 
-func publishedNextCheckpoint(archive *historyarchive.Archive, ledgerSeq uint32, t *testing.T) func() bool {
-	return func() bool {
-		var latestCheckpoint uint32
+func changeReasonToChangeMap(changes []ingest.Change) map[ingest.LedgerEntryChangeReason][]ingest.Change {
+	changeMap := make(map[ingest.LedgerEntryChangeReason][]ingest.Change)
+	for _, change := range changes {
+		changeMap[change.Reason] = append(changeMap[change.Reason], change)
+	}
+	return changeMap
+}
+
+func waitForLedgerInArchive(t *testing.T, waitTime time.Duration, ledgerSeq uint32) {
+	archive, err := integration.GetHistoryArchive()
+	if err != nil {
+		t.Fatalf("could not get history archive: %v", err)
+	}
+
+	var latestCheckpoint uint32
+	var f = func() bool {
 		has, requestErr := archive.GetRootHAS()
 		if requestErr != nil {
 			t.Logf("Request to fetch checkpoint failed: %v", requestErr)
@@ -191,12 +220,21 @@ func publishedNextCheckpoint(archive *historyarchive.Archive, ledgerSeq uint32, 
 		latestCheckpoint = has.CurrentLedger
 		return latestCheckpoint >= ledgerSeq
 	}
+
+	assert.Eventually(t, f, waitTime, 1*time.Second)
 }
 
-func changeReasonToChangeMap(changes []ingest.Change) map[ingest.LedgerEntryChangeReason][]ingest.Change {
-	changeMap := make(map[ingest.LedgerEntryChangeReason][]ingest.Change)
-	for _, change := range changes {
-		changeMap[change.Reason] = append(changeMap[change.Reason], change)
+func getExactUpgradedLedgerSeq(ledgerMap map[uint32]xdr.LedgerCloseMeta, version uint32) uint32 {
+	keys := make([]int, 0, len(ledgerMap))
+	for key, _ := range ledgerMap {
+		keys = append(keys, int(key))
 	}
-	return changeMap
+	sort.Ints(keys)
+
+	for _, key := range keys {
+		if ledgerMap[uint32(key)].ProtocolVersion() == version {
+			return uint32(key)
+		}
+	}
+	return 0
 }

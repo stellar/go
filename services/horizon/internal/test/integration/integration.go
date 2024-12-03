@@ -140,7 +140,7 @@ type Test struct {
 }
 
 type CoreUpgradeState struct {
-	upgradeLedgerSeq uint32
+	maxUpgradeLedger uint32
 }
 
 // GetTestConfig returns the default test Config required to run NewTest.
@@ -647,30 +647,6 @@ const maxWaitForCoreStartup = 30 * time.Second
 const maxWaitForCoreUpgrade = 5 * time.Second
 const coreStartupPingInterval = time.Second
 
-// Wait for protocol upgrade
-func (i *Test) waitCoreForProtocolUpgrade(protocolVersion uint32) {
-	i.UpgradeProtocol(protocolVersion)
-
-	startTime := time.Now()
-	for time.Since(startTime) < maxWaitForCoreUpgrade {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-		infoTime := time.Now()
-		info, err := i.coreClient.Info(ctx)
-		cancel()
-		if err != nil || !info.IsSynced() {
-			i.t.Logf("Core is still not synced: %v %v", err, info)
-			// sleep up to a second between consecutive calls.
-			if durationSince := time.Since(infoTime); durationSince < coreStartupPingInterval {
-				time.Sleep(coreStartupPingInterval - durationSince)
-			}
-			continue
-		}
-		i.t.Log("Core is up.")
-		return
-	}
-	i.t.Fatalf("Core could not sync after %v + %v", maxWaitForCoreStartup, maxWaitForCoreUpgrade)
-}
-
 // Wait for core to be up and manually close the first ledger
 func (i *Test) waitForCore() {
 	i.t.Log("Waiting for core to be up...")
@@ -691,11 +667,26 @@ func (i *Test) waitForCore() {
 		break
 	}
 
-	if !i.config.SkipProtocolUpgrade {
-		i.waitCoreForProtocolUpgrade(i.config.ProtocolVersion)
-	} else {
-		i.t.Log("Core is up. Protocol Upgrade skipped. Please manually upgrade protocol version, if needed...")
+	i.UpgradeProtocol(i.config.ProtocolVersion)
+
+	startTime = time.Now()
+	for time.Since(startTime) < maxWaitForCoreUpgrade {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		infoTime := time.Now()
+		info, err := i.coreClient.Info(ctx)
+		cancel()
+		if err != nil || !info.IsSynced() {
+			i.t.Logf("Core is still not synced: %v %v", err, info)
+			// sleep up to a second between consecutive calls.
+			if durationSince := time.Since(infoTime); durationSince < coreStartupPingInterval {
+				time.Sleep(coreStartupPingInterval - durationSince)
+			}
+			continue
+		}
+		i.t.Log("Core is up.")
+		return
 	}
+	i.t.Fatalf("Core could not sync after %v + %v", maxWaitForCoreStartup, maxWaitForCoreUpgrade)
 }
 
 const sorobanRPCInitTime = 20 * time.Second
@@ -948,22 +939,16 @@ func (i *Test) UpgradeProtocol(version uint32) {
 		if info.Info.Ledger.Version == int(version) {
 			i.t.Logf("Protocol upgraded to: %d, in ledger sequence number: %v, hash: %v",
 				info.Info.Ledger.Version, ledgerSeq, info.Info.Ledger.Hash)
-			i.coreUpgradeState = &CoreUpgradeState{
-				upgradeLedgerSeq: uint32(ledgerSeq),
-			}
+			// Mark the fact that the core has been upgraded as of this ledger sequence
+			// It could have been earlier than this, but certainly no later.
+			// The core upgrade could have happened in any ledger since the coreClient.Upgrade was issued
+			i.coreUpgradeState = &CoreUpgradeState{maxUpgradeLedger: uint32(ledgerSeq)}
 			return
 		}
 		time.Sleep(time.Second)
 	}
 
 	i.t.Fatalf("could not upgrade protocol in 10s")
-}
-
-func (i *Test) GetUpgradeLedgerSeq() (uint32, error) {
-	if i.coreUpgradeState == nil {
-		return 0, errors.Errorf("Core has not been upgraded yet")
-	}
-	return i.coreUpgradeState.upgradeLedgerSeq, nil
 }
 
 func (i *Test) WaitForHorizonWeb() {
@@ -1501,4 +1486,12 @@ func GetHistoryArchive() (*historyarchive.Archive, error) {
 			NetworkPassphrase:   StandaloneNetworkPassphrase,
 			CheckpointFrequency: CheckpointFrequency,
 		})
+}
+
+// This is approximate becuase the upgrade could have happened at a leger before this as well.
+func (i *Test) GetUpgradedLedgerSeqAppx() (uint32, error) {
+	if i.coreUpgradeState == nil {
+		return 0, errors.Errorf("Core has not been upgraded yet")
+	}
+	return i.coreUpgradeState.maxUpgradeLedger, nil
 }
