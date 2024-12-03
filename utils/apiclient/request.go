@@ -5,14 +5,13 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/pkg/errors"
 	"github.com/stellar/go/support/log"
 )
 
 func CreateRequestBody(requestType string, url string) (*http.Request, error) {
 	req, err := http.NewRequest(requestType, url, nil)
 	if err != nil {
-		return nil, errors.Wrap(err, "http GET request creation failed")
+		return nil, fmt.Errorf("http GET request creation failed: %w", err)
 	}
 	return req, nil
 }

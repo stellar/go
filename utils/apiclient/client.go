@@ -8,7 +8,6 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/stellar/go/support/log"
 )
 
@@ -49,7 +48,7 @@ func (c *APIClient) CallAPI(reqParams RequestParams) (interface{}, error) {
 	url := c.GetURL(reqParams.Endpoint, reqParams.QueryParams)
 	reqBody, err := CreateRequestBody(reqParams.RequestType, url)
 	if err != nil {
-		return nil, errors.Wrap(err, "http request creation failed")
+		return nil, fmt.Errorf("http request creation failed")
 	}
 
 	SetAuthHeaders(reqBody, c.AuthType, c.AuthHeaders)
@@ -65,18 +64,18 @@ func (c *APIClient) CallAPI(reqParams RequestParams) (interface{}, error) {
 	for retries <= c.MaxRetries {
 		resp, err := client.Do(reqBody)
 		if err != nil {
-			return nil, errors.Wrap(err, "http request failed")
+			return nil, fmt.Errorf("http request failed: %w", err)
 		}
 		defer resp.Body.Close()
 
 		if resp.StatusCode == http.StatusOK {
 			body, err := ioutil.ReadAll(resp.Body)
 			if err != nil {
-				return nil, errors.Wrap(err, "failed to read response body")
+				return nil, fmt.Errorf("failed to read response body: %w", err)
 			}
 
 			if err := json.Unmarshal(body, &result); err != nil {
-				return nil, errors.Wrap(err, "failed to unmarshal JSON")
+				return nil, fmt.Errorf("failed to unmarshal JSON: %w", err)
 			}
 
 			return result, nil
