@@ -94,6 +94,8 @@ func (reader *LedgerTransactionReader) Read() (LedgerTransaction, error) {
 		UnsafeMeta:    reader.lcm.TxApplyProcessing(i),
 		FeeChanges:    reader.lcm.FeeProcessing(i),
 		LedgerVersion: uint32(reader.lcm.LedgerHeaderHistoryEntry().Header.LedgerVersion),
+		Ledger:        reader.lcm,
+		Hash:          hash,
 	}, nil
 }
 

@@ -4,6 +4,8 @@ package integration
 import (
 	"context"
 	"fmt"
+	"github.com/stellar/go/historyarchive"
+	"github.com/stellar/go/ingest/ledgerbackend"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -41,13 +43,38 @@ import (
 
 const (
 	StandaloneNetworkPassphrase = "Standalone Network ; February 2017"
-	stellarCorePostgresPassword = "mysecretpassword"
-	horizonDefaultPort          = "8000"
-	adminPort                   = 6060
-	stellarCorePort             = 11626
-	stellarCorePostgresPort     = 5641
-	historyArchivePort          = 1570
-	sorobanRPCPort              = 8080
+	HorizonDefaultPort          = "8000"
+	AdminPort                   = 6060
+	StellarCorePort             = 11626
+	HistoryArchivePort          = 1570
+	SorobanRPCPort              = 8080
+	HistoryArchiveUrl           = "http://localhost:1570"
+	CheckpointFrequency         = 8
+)
+
+const (
+	SimpleCaptiveCoreToml = `
+		PEER_PORT=11725
+		ARTIFICIALLY_ACCELERATE_TIME_FOR_TESTING=true
+		NETWORK_PASSPHRASE = "Standalone Network ; February 2017"
+		UNSAFE_QUORUM=true
+		FAILURE_SAFETY=0
+		RUN_STANDALONE=false
+
+		# Lower the TTL of persistent ledger entries
+		# so that ledger entry extension/restoring becomes testeable
+		# These 2 settings need to be present in both places - stellar-core-integration-tests.cfg and here
+		TESTING_MINIMUM_PERSISTENT_ENTRY_LIFETIME=10
+		TESTING_SOROBAN_HIGH_LIMIT_OVERRIDE=true
+
+		[[VALIDATORS]]
+		NAME="local_core"
+		HOME_DOMAIN="core.local"
+		PUBLIC_KEY="GD5KD2KEZJIGTC63IGW6UMUSMVUVG5IHG64HUTFWCHVZH2N2IBOQN7PS"
+		ADDRESS="localhost"
+		QUALITY="MEDIUM"
+`
+	StellarCoreURL = "http://localhost:11626"
 )
 
 const HorizonInitErrStr = "cannot initialize Horizon"
@@ -56,8 +83,10 @@ type Config struct {
 	ProtocolVersion           uint32
 	EnableSorobanRPC          bool
 	SkipCoreContainerCreation bool
+	SkipCoreContainerDeletion bool // This flag is helpful to debug
 	CoreDockerImage           string
 	SorobanRPCDockerImage     string
+	SkipProtocolUpgrade       bool
 
 	// Weird naming here because bools default to false, but we want to start
 	// Horizon by default.
@@ -100,13 +129,18 @@ type Test struct {
 	horizonAdminClient *sdk.AdminClient
 	coreClient         *stellarcore.Client
 
-	webNode       *horizon.App
-	ingestNode    *horizon.App
-	appStopped    *sync.WaitGroup
-	shutdownOnce  sync.Once
-	shutdownCalls []func()
-	masterKey     *keypair.Full
-	passPhrase    string
+	webNode          *horizon.App
+	ingestNode       *horizon.App
+	appStopped       *sync.WaitGroup
+	shutdownOnce     sync.Once
+	shutdownCalls    []func()
+	masterKey        *keypair.Full
+	passPhrase       string
+	coreUpgradeState *CoreUpgradeState
+}
+
+type CoreUpgradeState struct {
+	maxUpgradeLedger uint32
 }
 
 // GetTestConfig returns the default test Config required to run NewTest.
@@ -163,7 +197,7 @@ func NewTest(t *testing.T, config Config) *Test {
 	}
 
 	i.prepareShutdownHandlers()
-	i.coreClient = &stellarcore.Client{URL: "http://localhost:" + strconv.Itoa(stellarCorePort)}
+	i.coreClient = &stellarcore.Client{URL: "http://localhost:" + strconv.Itoa(StellarCorePort)}
 	if !config.SkipCoreContainerCreation {
 		i.waitForCore()
 		if i.config.EnableSorobanRPC {
@@ -277,8 +311,13 @@ func (i *Test) prepareShutdownHandlers() {
 				i.ingestNode.Close()
 			}
 			if !i.config.SkipCoreContainerCreation {
-				i.runComposeCommand("rm", "-fvs", "core")
-				i.runComposeCommand("rm", "-fvs", "core-postgres")
+				if !i.config.SkipCoreContainerDeletion {
+					i.t.Log("Removing core docker containers...")
+					i.runComposeCommand("rm", "-fvs", "core")
+					i.runComposeCommand("rm", "-fvs", "core-postgres")
+				} else {
+					i.t.Log("Skip core docker container removal for debugging...")
+				}
 				if i.config.EnableSorobanRPC {
 					i.runComposeCommand("logs", "soroban-rpc")
 					i.runComposeCommand("rm", "-fvs", "soroban-rpc")
@@ -341,6 +380,7 @@ func (i *Test) Shutdown() {
 // StartHorizon initializes and starts the Horizon client-facing API server.
 // When startIngestProcess=true, start a second process for ingest server
 func (i *Test) StartHorizon(startIngestProcess bool) error {
+	i.t.Logf("Starting horizon.....")
 	i.testDB = dbtest.Postgres(i.t)
 	i.shutdownCalls = append(i.shutdownCalls, func() {
 		if i.appStopped == nil {
@@ -436,14 +476,14 @@ func (i *Test) getDefaultArgs() map[string]string {
 	//       Compose YAML file itself rather than hardcoding it.
 	return map[string]string{
 		"ingest":               "false",
-		"history-archive-urls": fmt.Sprintf("http://%s:%d", "localhost", historyArchivePort),
+		"history-archive-urls": HistoryArchiveUrl,
 		"db-url":               i.testDB.RO_DSN,
 		"stellar-core-url":     i.coreClient.URL,
 		"network-passphrase":   i.passPhrase,
 		"apply-migrations":     "true",
-		"port":                 horizonDefaultPort,
+		"port":                 HorizonDefaultPort,
 		// due to ARTIFICIALLY_ACCELERATE_TIME_FOR_TESTING
-		"checkpoint-frequency": "8",
+		"checkpoint-frequency": strconv.Itoa(CheckpointFrequency),
 		"per-hour-rate-limit":  "0",  // disable rate limiting
 		"max-db-connections":   "50", // the postgres container supports 100 connections, be conservative
 	}
@@ -537,7 +577,7 @@ func (i *Test) setupHorizonAdminClient(ingestArgs map[string]string) error {
 
 func (i *Test) setupHorizonClient(webArgs map[string]string) {
 	hostname := "localhost"
-	horizonPort := horizonDefaultPort
+	horizonPort := HorizonDefaultPort
 	if port, ok := webArgs["port"]; ok {
 		horizonPort = port
 	}
@@ -545,6 +585,62 @@ func (i *Test) setupHorizonClient(webArgs map[string]string) {
 	i.horizonClient = &sdk.Client{
 		HorizonURL: fmt.Sprintf("http://%s:%s", hostname, horizonPort),
 	}
+}
+
+// CreateCaptiveCoreConfig will create a temporary TOML config with the
+// specified contents as well as a temporary storage directory. You should
+// `defer` the returned function to clean these up when you're done.
+func CreateCaptiveCoreConfig(contents string) (string, string, func()) {
+	tomlFile, err := ioutil.TempFile("", "captive-core-test-*.toml")
+	if err != nil {
+		panic(err)
+	}
+	defer tomlFile.Close()
+
+	_, err = tomlFile.WriteString(contents)
+	if err != nil {
+		panic(err)
+	}
+
+	storagePath, err := os.MkdirTemp("", "captive-core-test-*-storage")
+	if err != nil {
+		panic(err)
+	}
+
+	filename := tomlFile.Name()
+	return filename, storagePath, func() {
+		os.Remove(filename)
+		os.RemoveAll(storagePath)
+	}
+}
+
+func (i *Test) CreateCaptiveCoreConfig() (*ledgerbackend.CaptiveCoreConfig, error) {
+	confName, storagePath, cleanupFn := CreateCaptiveCoreConfig(SimpleCaptiveCoreToml)
+	i.t.Cleanup(cleanupFn)
+	i.t.Logf("Creating Captive Core config files, ConfName: %v, storagePath: %v", confName, storagePath)
+
+	captiveCoreConfig := ledgerbackend.CaptiveCoreConfig{
+		BinaryPath:          i.coreConfig.binaryPath,
+		HistoryArchiveURLs:  []string{HistoryArchiveUrl},
+		NetworkPassphrase:   StandaloneNetworkPassphrase,
+		CheckpointFrequency: CheckpointFrequency, // This is required for accelerated archive creation for integration test
+		UseDB:               true,
+		StoragePath:         storagePath,
+	}
+
+	tomlParams := ledgerbackend.CaptiveCoreTomlParams{
+		NetworkPassphrase:  StandaloneNetworkPassphrase,
+		HistoryArchiveURLs: []string{HistoryArchiveUrl},
+		UseDB:              true,
+	}
+
+	toml, err := ledgerbackend.NewCaptiveCoreTomlFromData([]byte(SimpleCaptiveCoreToml), tomlParams)
+	if err != nil {
+		return nil, err
+	}
+
+	captiveCoreConfig.Toml = toml
+	return &captiveCoreConfig, nil
 }
 
 const maxWaitForCoreStartup = 30 * time.Second
@@ -604,7 +700,7 @@ func (i *Test) waitForSorobanRPC() {
 	for time.Since(start) < sorobanRPCInitTime {
 		ctx, cancel := context.WithTimeout(context.Background(), sorobanRPCHealthCheckInterval)
 		// TODO: soroban-tools should be exporting a proper Go client
-		ch := jhttp.NewChannel("http://localhost:"+strconv.Itoa(sorobanRPCPort), nil)
+		ch := jhttp.NewChannel("http://localhost:"+strconv.Itoa(SorobanRPCPort), nil)
 		sorobanRPCClient := jrpc2.NewClient(ch, nil)
 		callTime := time.Now()
 		_, err := sorobanRPCClient.Call(ctx, "getHealth", nil)
@@ -675,7 +771,7 @@ func (i *Test) simulateTransaction(
 	i.syncWithSorobanRPC(uint32(root.HorizonSequence))
 
 	// TODO: soroban-tools should be exporting a proper Go client
-	ch := jhttp.NewChannel("http://localhost:"+strconv.Itoa(sorobanRPCPort), nil)
+	ch := jhttp.NewChannel("http://localhost:"+strconv.Itoa(SorobanRPCPort), nil)
 	sorobanRPCClient := jrpc2.NewClient(ch, nil)
 	txParams := GetBaseTransactionParamsWithFee(sourceAccount, txnbuild.MinBaseFee, op)
 	txParams.IncrementSequenceNum = false
@@ -702,7 +798,7 @@ func (i *Test) syncWithSorobanRPC(ledgerToWaitFor uint32) {
 		result := struct {
 			Sequence uint32 `json:"sequence"`
 		}{}
-		ch := jhttp.NewChannel("http://localhost:"+strconv.Itoa(sorobanRPCPort), nil)
+		ch := jhttp.NewChannel("http://localhost:"+strconv.Itoa(SorobanRPCPort), nil)
 		sorobanRPCClient := jrpc2.NewClient(ch, nil)
 		err := sorobanRPCClient.CallResult(context.Background(), "getLatestLedger", nil, &result)
 		assert.NoError(i.t, err)
@@ -715,7 +811,7 @@ func (i *Test) syncWithSorobanRPC(ledgerToWaitFor uint32) {
 }
 
 func (i *Test) WaitUntilLedgerEntryTTL(ledgerKey xdr.LedgerKey) {
-	ch := jhttp.NewChannel("http://localhost:"+strconv.Itoa(sorobanRPCPort), nil)
+	ch := jhttp.NewChannel("http://localhost:"+strconv.Itoa(SorobanRPCPort), nil)
 	client := jrpc2.NewClient(ch, nil)
 
 	keyB64, err := xdr.MarshalBase64(ledgerKey)
@@ -821,6 +917,7 @@ func (i *Test) RestoreFootprint(
 
 // UpgradeProtocol arms Core with upgrade and blocks until protocol is upgraded.
 func (i *Test) UpgradeProtocol(version uint32) {
+	i.t.Logf("Attempting Core Protocol upgade to version: %v", version)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	err := i.coreClient.Upgrade(ctx, int(version))
 	cancel()
@@ -838,8 +935,14 @@ func (i *Test) UpgradeProtocol(version uint32) {
 			continue
 		}
 
+		ledgerSeq := info.Info.Ledger.Num
 		if info.Info.Ledger.Version == int(version) {
-			i.t.Logf("Protocol upgraded to: %d", info.Info.Ledger.Version)
+			i.t.Logf("Protocol upgraded to: %d, in ledger sequence number: %v, hash: %v",
+				info.Info.Ledger.Version, ledgerSeq, info.Info.Ledger.Hash)
+			// Mark the fact that the core has been upgraded as of this ledger sequence
+			// It could have been earlier than this, but certainly no later.
+			// The core upgrade could have happened in any ledger since the coreClient.Upgrade was issued
+			i.coreUpgradeState = &CoreUpgradeState{maxUpgradeLedger: uint32(ledgerSeq)}
 			return
 		}
 		time.Sleep(time.Second)
@@ -933,7 +1036,7 @@ func (i *Test) StopHorizon() {
 
 // AdminPort returns Horizon admin port.
 func (i *Test) AdminPort() int {
-	return adminPort
+	return AdminPort
 }
 
 // Metrics URL returns Horizon metrics URL.
@@ -1374,4 +1477,21 @@ func GetCoreMaxSupportedProtocol() uint32 {
 
 func (i *Test) GetEffectiveProtocolVersion() uint32 {
 	return i.config.ProtocolVersion
+}
+
+func GetHistoryArchive() (*historyarchive.Archive, error) {
+	return historyarchive.Connect(
+		HistoryArchiveUrl,
+		historyarchive.ArchiveOptions{
+			NetworkPassphrase:   StandaloneNetworkPassphrase,
+			CheckpointFrequency: CheckpointFrequency,
+		})
+}
+
+// This is approximate becuase the upgrade could have happened at a leger before this as well.
+func (i *Test) GetUpgradedLedgerSeqAppx() (uint32, error) {
+	if i.coreUpgradeState == nil {
+		return 0, errors.Errorf("Core has not been upgraded yet")
+	}
+	return i.coreUpgradeState.maxUpgradeLedger, nil
 }
