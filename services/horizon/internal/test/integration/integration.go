@@ -620,7 +620,7 @@ func (i *Test) CreateCaptiveCoreConfig() (*ledgerbackend.CaptiveCoreConfig, func
 	i.t.Logf("Creating Captive Core config files, ConfName: %v, storagePath: %v", confName, storagePath)
 
 	captiveCoreConfig := ledgerbackend.CaptiveCoreConfig{
-		BinaryPath:          os.Getenv("HORIZON_INTEGRATION_TESTS_CAPTIVE_CORE_BIN"),
+		BinaryPath:          i.coreConfig.binaryPath,
 		HistoryArchiveURLs:  []string{HistoryArchiveUrl},
 		NetworkPassphrase:   StandaloneNetworkPassphrase,
 		CheckpointFrequency: CheckpointFrequency, // This is required for accelerated archive creation for integration test

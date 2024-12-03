@@ -226,7 +226,7 @@ func waitForLedgerInArchive(t *testing.T, waitTime time.Duration, ledgerSeq uint
 
 func getExactUpgradedLedgerSeq(ledgerMap map[uint32]xdr.LedgerCloseMeta, version uint32) uint32 {
 	keys := make([]int, 0, len(ledgerMap))
-	for key, _ := range ledgerMap {
+	for key := range ledgerMap {
 		keys = append(keys, int(key))
 	}
 	sort.Ints(keys)
