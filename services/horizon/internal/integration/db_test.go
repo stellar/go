@@ -15,7 +15,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/stellar/go/clients/horizonclient"
-	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/keypair"
 	hProtocol "github.com/stellar/go/protocols/horizon"
 	horizoncmd "github.com/stellar/go/services/horizon/cmd"
@@ -507,12 +506,7 @@ func TestReingestDB(t *testing.T) {
 	// cannot ingest past the most recent checkpoint ledger when using captive
 	// core
 	toLedger := uint32(reachedLedger)
-	archive, err := historyarchive.Connect(
-		horizonConfig.HistoryArchiveURLs[0],
-		historyarchive.ArchiveOptions{
-			NetworkPassphrase:   horizonConfig.NetworkPassphrase,
-			CheckpointFrequency: horizonConfig.CheckpointFrequency,
-		})
+	archive, err := integration.GetHistoryArchive()
 	tt.NoError(err)
 
 	// make sure a full checkpoint has elapsed otherwise there will be nothing to reingest
@@ -635,12 +629,7 @@ func TestReingestDBWithFilterRules(t *testing.T) {
 	itest, _ := initializeDBIntegrationTest(t)
 	tt := assert.New(t)
 
-	archive, err := historyarchive.Connect(
-		itest.GetHorizonIngestConfig().HistoryArchiveURLs[0],
-		historyarchive.ArchiveOptions{
-			NetworkPassphrase:   itest.GetHorizonIngestConfig().NetworkPassphrase,
-			CheckpointFrequency: itest.GetHorizonIngestConfig().CheckpointFrequency,
-		})
+	archive, err := integration.GetHistoryArchive()
 	tt.NoError(err)
 
 	// make sure one full checkpoint has elapsed before making ledger entries
@@ -879,12 +868,7 @@ func TestFillGaps(t *testing.T) {
 	// cap reachedLedger to the nearest checkpoint ledger because reingest range cannot ingest past the most
 	// recent checkpoint ledger when using captive core
 	toLedger := uint32(reachedLedger)
-	archive, err := historyarchive.Connect(
-		horizonConfig.HistoryArchiveURLs[0],
-		historyarchive.ArchiveOptions{
-			NetworkPassphrase:   horizonConfig.NetworkPassphrase,
-			CheckpointFrequency: horizonConfig.CheckpointFrequency,
-		})
+	archive, err := integration.GetHistoryArchive()
 	tt.NoError(err)
 
 	t.Run("validate parallel range", func(t *testing.T) {

@@ -175,6 +175,7 @@ func (r *LedgerChangeReader) Read() (Change, error) {
 			r.pending = append(r.pending, metaChanges...)
 		}
 		return r.Read()
+
 	case evictionChangesState:
 		entries, err := r.lcm.EvictedPersistentLedgerEntries()
 		if err != nil {
@@ -185,21 +186,30 @@ func (r *LedgerChangeReader) Read() (Change, error) {
 			entry := entries[i]
 			// when a ledger entry is evicted it is removed from the ledger
 			changes[i] = Change{
-				Type: entry.Data.Type,
-				Pre:  &entry,
-				Post: nil,
+				Type:   entry.Data.Type,
+				Pre:    &entry,
+				Post:   nil,
+				Reason: LedgerEntryChangeReasonEviction,
+				Ledger: &r.lcm,
 			}
 		}
 		sortChanges(changes)
 		r.pending = append(r.pending, changes...)
 		r.state++
 		return r.Read()
+
 	case upgradeChangesState:
 		// Get upgrade changes
 		if r.upgradeIndex < len(r.LedgerTransactionReader.lcm.UpgradesProcessing()) {
 			changes := GetChangesFromLedgerEntryChanges(
 				r.LedgerTransactionReader.lcm.UpgradesProcessing()[r.upgradeIndex].Changes,
 			)
+			ledgerUpgrades := r.LedgerTransactionReader.lcm.UpgradesProcessing()
+			for i := range changes {
+				changes[i].Reason = LedgerEntryChangeReasonUpgrade
+				changes[i].Ledger = &r.lcm
+				changes[i].LedgerUpgrade = &ledgerUpgrades[r.upgradeIndex].Upgrade
+			}
 			r.pending = append(r.pending, changes...)
 			r.upgradeIndex++
 			return r.Read()

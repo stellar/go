@@ -41,24 +41,6 @@ var networkParamArgs = map[string]string{
 	horizon.NetworkPassphraseFlagName:   "",
 }
 
-const (
-	SimpleCaptiveCoreToml = `
-		PEER_PORT=11725
-		ARTIFICIALLY_ACCELERATE_TIME_FOR_TESTING=true
-
-		UNSAFE_QUORUM=true
-		FAILURE_SAFETY=0
-
-		[[VALIDATORS]]
-		NAME="local_core"
-		HOME_DOMAIN="core.local"
-		PUBLIC_KEY="GD5KD2KEZJIGTC63IGW6UMUSMVUVG5IHG64HUTFWCHVZH2N2IBOQN7PS"
-		ADDRESS="localhost"
-		QUALITY="MEDIUM"`
-
-	StellarCoreURL = "http://localhost:11626"
-)
-
 var (
 	CaptiveCoreConfigErrMsg = "error generating captive core configuration: invalid config: "
 )
@@ -66,9 +48,9 @@ var (
 // Ensures that BUCKET_DIR_PATH is not an allowed value for Captive Core.
 func TestBucketDirDisallowed(t *testing.T) {
 	config := `BUCKET_DIR_PATH="/tmp"
-		` + SimpleCaptiveCoreToml
+		` + integration.SimpleCaptiveCoreToml
 
-	confName, _, cleanup := createCaptiveCoreConfig(config)
+	confName, _, cleanup := integration.CreateCaptiveCoreConfig(config)
 	defer cleanup()
 	testConfig := integration.GetTestConfig()
 	testConfig.HorizonIngestParameters = map[string]string{
@@ -103,7 +85,7 @@ func TestEnvironmentPreserved(t *testing.T) {
 
 	testConfig := integration.GetTestConfig()
 	testConfig.HorizonEnvironment = map[string]string{
-		"STELLAR_CORE_URL": StellarCoreURL,
+		"STELLAR_CORE_URL": integration.StellarCoreURL,
 	}
 	test := integration.NewTest(t, *testConfig)
 
@@ -112,7 +94,7 @@ func TestEnvironmentPreserved(t *testing.T) {
 	test.WaitForHorizonIngest()
 
 	envValue := os.Getenv("STELLAR_CORE_URL")
-	assert.Equal(t, StellarCoreURL, envValue)
+	assert.Equal(t, integration.StellarCoreURL, envValue)
 
 	test.Shutdown()
 
@@ -252,7 +234,7 @@ func TestNetworkEnvironmentVariable(t *testing.T) {
 
 // Ensures that the filesystem ends up in the correct state with Captive Core.
 func TestCaptiveCoreConfigFilesystemState(t *testing.T) {
-	confName, storagePath, cleanup := createCaptiveCoreConfig(SimpleCaptiveCoreToml)
+	confName, storagePath, cleanup := integration.CreateCaptiveCoreConfig(integration.SimpleCaptiveCoreToml)
 	defer cleanup()
 
 	localParams := integration.MergeMaps(defaultCaptiveCoreParameters, map[string]string{
@@ -670,31 +652,4 @@ func validateCaptiveCoreDiskState(itest *integration.Test, rootDir string) {
 	tt.DirExists(rootDir)
 	tt.DirExists(storageDir)
 	tt.FileExists(coreConf)
-}
-
-// createCaptiveCoreConfig will create a temporary TOML config with the
-// specified contents as well as a temporary storage directory. You should
-// `defer` the returned function to clean these up when you're done.
-func createCaptiveCoreConfig(contents string) (string, string, func()) {
-	tomlFile, err := ioutil.TempFile("", "captive-core-test-*.toml")
-	defer tomlFile.Close()
-	if err != nil {
-		panic(err)
-	}
-
-	_, err = tomlFile.WriteString(contents)
-	if err != nil {
-		panic(err)
-	}
-
-	storagePath, err := os.MkdirTemp("", "captive-core-test-*-storage")
-	if err != nil {
-		panic(err)
-	}
-
-	filename := tomlFile.Name()
-	return filename, storagePath, func() {
-		os.Remove(filename)
-		os.RemoveAll(storagePath)
-	}
 }
