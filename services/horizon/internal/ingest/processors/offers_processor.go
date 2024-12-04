@@ -2,11 +2,10 @@ package processors
 
 import (
 	"context"
-
 	"github.com/stellar/go/ingest"
+	"github.com/stellar/go/ingest/offers"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
-	"github.com/stellar/go/xdr"
 )
 
 // The offers processor can be configured to trim the offers table
@@ -37,31 +36,30 @@ func (p *OffersProcessor) reset() {
 }
 
 func (p *OffersProcessor) ProcessChange(ctx context.Context, change ingest.Change) error {
-	if change.Type != xdr.LedgerEntryTypeOffer {
+	event := offers.ProcessOffer(change)
+	if event == nil {
 		return nil
 	}
 
-	switch {
-	case change.Pre == nil && change.Post != nil:
-		// Created
-		err := p.insertBatchBuilder.Add(p.ledgerEntryToRow(change.Post))
+	switch ev := event.(type) {
+	case offers.OfferCreatedEvent:
+		row := p.offerEventToRow(ev.OfferEventData)
+		err := p.insertBatchBuilder.Add(row)
 		if err != nil {
 			return errors.New("Error adding to OffersBatchInsertBuilder")
 		}
-	case change.Pre != nil && change.Post != nil:
-		// Updated
-		row := p.ledgerEntryToRow(change.Post)
+	case offers.OfferFillEvent:
+		row := p.offerEventToRow(ev.OfferEventData)
 		p.batchUpdateOffers = append(p.batchUpdateOffers, row)
-	case change.Pre != nil && change.Post == nil:
-		// Removed
-		row := p.ledgerEntryToRow(change.Pre)
+	case offers.OfferClosedEvent:
+		row := p.offerEventToRow(ev.OfferEventData)
 		row.Deleted = true
 		row.LastModifiedLedger = p.sequence
 		p.batchUpdateOffers = append(p.batchUpdateOffers, row)
 	default:
-		return errors.New("Invalid io.Change: change.Pre == nil && change.Post == nil")
-	}
+		return errors.New("Unknown offer event")
 
+	}
 	if p.insertBatchBuilder.Len()+len(p.batchUpdateOffers) > maxBatchSize {
 		if err := p.flushCache(ctx); err != nil {
 			return errors.Wrap(err, "error in Commit")
@@ -69,22 +67,22 @@ func (p *OffersProcessor) ProcessChange(ctx context.Context, change ingest.Chang
 	}
 
 	return nil
+
 }
 
-func (p *OffersProcessor) ledgerEntryToRow(entry *xdr.LedgerEntry) history.Offer {
-	offer := entry.Data.MustOffer()
+func (p *OffersProcessor) offerEventToRow(e offers.OfferEventData) history.Offer {
 	return history.Offer{
-		SellerID:           offer.SellerId.Address(),
-		OfferID:            int64(offer.OfferId),
-		SellingAsset:       offer.Selling,
-		BuyingAsset:        offer.Buying,
-		Amount:             int64(offer.Amount),
-		Pricen:             int32(offer.Price.N),
-		Priced:             int32(offer.Price.D),
-		Price:              float64(offer.Price.N) / float64(offer.Price.D),
-		Flags:              int32(offer.Flags),
-		LastModifiedLedger: uint32(entry.LastModifiedLedgerSeq),
-		Sponsor:            ledgerEntrySponsorToNullString(*entry),
+		SellerID:           e.SellerId,
+		OfferID:            e.OfferID,
+		SellingAsset:       e.SellingAsset,
+		BuyingAsset:        e.BuyingAsset,
+		Amount:             e.RemainingAmount,
+		Pricen:             e.PriceN,
+		Priced:             e.PriceD,
+		Price:              float64(e.PriceN) / float64(e.PriceD),
+		Flags:              e.Flags,
+		LastModifiedLedger: e.LastModifiedLedger,
+		Sponsor:            e.Sponsor,
 	}
 }
 
