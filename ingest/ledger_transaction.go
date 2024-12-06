@@ -17,6 +17,8 @@ type LedgerTransaction struct {
 	FeeChanges    xdr.LedgerEntryChanges
 	UnsafeMeta    xdr.TransactionMeta
 	LedgerVersion uint32
+	Ledger        xdr.LedgerCloseMeta // This is read-only and not to be modified by downstream functions
+	Hash          xdr.Hash
 }
 
 func (t *LedgerTransaction) txInternalError() bool {
@@ -26,7 +28,21 @@ func (t *LedgerTransaction) txInternalError() bool {
 // GetFeeChanges returns a developer friendly representation of LedgerEntryChanges
 // connected to fees.
 func (t *LedgerTransaction) GetFeeChanges() []Change {
-	return GetChangesFromLedgerEntryChanges(t.FeeChanges)
+	changes := GetChangesFromLedgerEntryChanges(t.FeeChanges)
+	for i := range changes {
+		changes[i].Reason = LedgerEntryChangeReasonFee
+		changes[i].Transaction = t
+	}
+	return changes
+}
+
+func (t *LedgerTransaction) getTransactionChanges(ledgerEntryChanges xdr.LedgerEntryChanges) []Change {
+	changes := GetChangesFromLedgerEntryChanges(ledgerEntryChanges)
+	for i := range changes {
+		changes[i].Reason = LedgerEntryChangeReasonTransaction
+		changes[i].Transaction = t
+	}
+	return changes
 }
 
 // GetChanges returns a developer friendly representation of LedgerEntryChanges.
@@ -42,7 +58,8 @@ func (t *LedgerTransaction) GetChanges() ([]Change, error) {
 		return changes, errors.New("TransactionMeta.V=0 not supported")
 	case 1:
 		v1Meta := t.UnsafeMeta.MustV1()
-		txChanges := GetChangesFromLedgerEntryChanges(v1Meta.TxChanges)
+		// The var `txChanges` reflect the ledgerEntryChanges that are changed because of the transaction as a whole
+		txChanges := t.getTransactionChanges(v1Meta.TxChanges)
 		changes = append(changes, txChanges...)
 
 		// Ignore operations meta if txInternalError https://github.com/stellar/go/issues/2111
@@ -50,34 +67,39 @@ func (t *LedgerTransaction) GetChanges() ([]Change, error) {
 			return changes, nil
 		}
 
-		for _, operationMeta := range v1Meta.Operations {
-			opChanges := GetChangesFromLedgerEntryChanges(
-				operationMeta.Changes,
-			)
+		// These changes reflect the ledgerEntry changes that were caused by the operations in the transaction
+		// Populate the operationInfo for these changes in the `Change` struct
+
+		operationMeta := v1Meta.Operations
+		//	operationMeta is a list of lists.
+		//	Each element in operationMeta is a list of ledgerEntryChanges
+		//	caused by the operation at that index of the element
+		for opIdx := range operationMeta {
+			opChanges := t.operationChanges(v1Meta.Operations, uint32(opIdx))
 			changes = append(changes, opChanges...)
 		}
 	case 2, 3:
 		var (
-			beforeChanges, afterChanges xdr.LedgerEntryChanges
-			operationMeta               []xdr.OperationMeta
+			txBeforeChanges, txAfterChanges xdr.LedgerEntryChanges
+			operationMeta                   []xdr.OperationMeta
 		)
 
 		switch t.UnsafeMeta.V {
 		case 2:
 			v2Meta := t.UnsafeMeta.MustV2()
-			beforeChanges = v2Meta.TxChangesBefore
-			afterChanges = v2Meta.TxChangesAfter
+			txBeforeChanges = v2Meta.TxChangesBefore
+			txAfterChanges = v2Meta.TxChangesAfter
 			operationMeta = v2Meta.Operations
 		case 3:
 			v3Meta := t.UnsafeMeta.MustV3()
-			beforeChanges = v3Meta.TxChangesBefore
-			afterChanges = v3Meta.TxChangesAfter
+			txBeforeChanges = v3Meta.TxChangesBefore
+			txAfterChanges = v3Meta.TxChangesAfter
 			operationMeta = v3Meta.Operations
 		default:
 			panic("Invalid meta version, expected 2 or 3")
 		}
 
-		txChangesBefore := GetChangesFromLedgerEntryChanges(beforeChanges)
+		txChangesBefore := t.getTransactionChanges(txBeforeChanges)
 		changes = append(changes, txChangesBefore...)
 
 		// Ignore operations meta and txChangesAfter if txInternalError
@@ -86,14 +108,15 @@ func (t *LedgerTransaction) GetChanges() ([]Change, error) {
 			return changes, nil
 		}
 
-		for _, operationMeta := range operationMeta {
-			opChanges := GetChangesFromLedgerEntryChanges(
-				operationMeta.Changes,
-			)
+		//	operationMeta is a list of lists.
+		//	Each element in operationMeta is a list of ledgerEntryChanges
+		//	caused by the operation at that index of the element
+		for opIdx := range operationMeta {
+			opChanges := t.operationChanges(operationMeta, uint32(opIdx))
 			changes = append(changes, opChanges...)
 		}
 
-		txChangesAfter := GetChangesFromLedgerEntryChanges(afterChanges)
+		txChangesAfter := t.getTransactionChanges(txAfterChanges)
 		changes = append(changes, txChangesAfter...)
 	default:
 		return changes, errors.New("Unsupported TransactionMeta version")
@@ -114,15 +137,13 @@ func (t *LedgerTransaction) GetOperation(index uint32) (xdr.Operation, bool) {
 // GetOperationChanges returns a developer friendly representation of LedgerEntryChanges.
 // It contains only operation changes.
 func (t *LedgerTransaction) GetOperationChanges(operationIndex uint32) ([]Change, error) {
-	changes := []Change{}
-
 	if t.UnsafeMeta.V == 0 {
-		return changes, errors.New("TransactionMeta.V=0 not supported")
+		return []Change{}, errors.New("TransactionMeta.V=0 not supported")
 	}
 
 	// Ignore operations meta if txInternalError https://github.com/stellar/go/issues/2111
 	if t.txInternalError() && t.LedgerVersion <= 12 {
-		return changes, nil
+		return []Change{}, nil
 	}
 
 	var operationMeta []xdr.OperationMeta
@@ -134,21 +155,26 @@ func (t *LedgerTransaction) GetOperationChanges(operationIndex uint32) ([]Change
 	case 3:
 		operationMeta = t.UnsafeMeta.MustV3().Operations
 	default:
-		return changes, errors.New("Unsupported TransactionMeta version")
+		return []Change{}, errors.New("Unsupported TransactionMeta version")
 	}
 
-	return operationChanges(operationMeta, operationIndex), nil
+	return t.operationChanges(operationMeta, operationIndex), nil
 }
 
-func operationChanges(ops []xdr.OperationMeta, index uint32) []Change {
+func (t *LedgerTransaction) operationChanges(ops []xdr.OperationMeta, index uint32) []Change {
 	if int(index) >= len(ops) {
 		return []Change{}
 	}
 
 	operationMeta := ops[index]
-	return GetChangesFromLedgerEntryChanges(
-		operationMeta.Changes,
-	)
+	changes := GetChangesFromLedgerEntryChanges(operationMeta.Changes)
+
+	for i := range changes {
+		changes[i].Reason = LedgerEntryChangeReasonOperation
+		changes[i].Transaction = t
+		changes[i].OperationIndex = index
+	}
+	return changes
 }
 
 // GetDiagnosticEvents returns all contract events emitted by a given operation.

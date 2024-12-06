@@ -13,14 +13,89 @@ import (
 // It also provides some helper functions to quickly check if a given
 // change has occurred in an entry.
 //
-// If an entry is created: Pre is nil and Post is not nil.
-// If an entry is updated: Pre is not nil and Post is not nil.
-// If an entry is removed: Pre is not nil and Post is nil.
+// Change represents a modification to a ledger entry, capturing both the before and after states
+// of the entry along with the context that explains what caused the change. It is primarily used to
+// track changes during transactions and/or operations within a transaction
+// and can be helpful in identifying the specific cause of changes to the LedgerEntry state. (https://github.com/stellar/go/issues/5535
+//
+// Behavior:
+//
+//   - **Created entries**: Pre is nil, and Post is not nil.
+//
+//   - **Updated entries**: Both Pre and Post are non-nil.
+//
+//   - **Removed entries**: Pre is not nil, and Post is nil.
+//
+//     A `Change` can be caused primarily by either a transaction or by an operation within a transaction:
+//
+//   - **Operations**:
+//     Each successful operation can cause multiple ledger entry changes.
+//     For example, a path payment operation may affect the source and destination account entries,
+//     as well as potentially modify offers and/or liquidity pools.
+//
+//   - **Transactions**:
+//     Some ledger changes, such as those involving fees or account balances, may be caused by
+//     the transaction itself and may not be tied to a specific operation within a transaction.
+//     For instance, fees for all operations in a transaction are debited from the source account,
+//     triggering ledger changes without operation-specific details.
 type Change struct {
+	// The type of the ledger entry being changed.
 	Type xdr.LedgerEntryType
-	Pre  *xdr.LedgerEntry
+
+	// The state of the LedgerEntry before the change. This will be nil if the entry was created.
+	Pre *xdr.LedgerEntry
+
+	// The state of the LedgerEntry after the change. This will be nil if the entry was removed.
 	Post *xdr.LedgerEntry
+
+	// Specifies why the change occurred, represented as a LedgerEntryChangeReason
+	Reason LedgerEntryChangeReason
+
+	// The index of the operation within the transaction that caused the change.
+	// This field is relevant only when the Reason is LedgerEntryChangeReasonOperation
+	// This field cannot be relied upon when the compactingChangeReader is used.
+	OperationIndex uint32
+
+	// The LedgerTransaction responsible for the change.
+	// It contains details such as transaction hash, envelope, result pair, and fees.
+	// This field is populated only when the Reason is one of:
+	// LedgerEntryChangeReasonTransaction, LedgerEntryChangeReasonOperation or LedgerEntryChangeReasonFee
+	Transaction *LedgerTransaction
+
+	// The LedgerCloseMeta that precipitated the change.
+	// This is useful only when the Change is caused by an upgrade or by an eviction, i.e. outside a transaction
+	// This field is populated only when the Reason is one of:
+	// LedgerEntryChangeReasonUpgrade or LedgerEntryChangeReasonEviction
+	// For changes caused by transaction or operations, look at the Transaction field
+	Ledger *xdr.LedgerCloseMeta
+
+	// Information about the upgrade, if the change occurred as part of an upgrade
+	// This field is relevant only when the Reason is LedgerEntryChangeReasonUpgrade
+	LedgerUpgrade *xdr.LedgerUpgrade
 }
+
+// LedgerEntryChangeReason represents the reason for a ledger entry change.
+type LedgerEntryChangeReason uint16
+
+const (
+	// LedgerEntryChangeReasonUnknown indicates an unknown or unsupported change reason
+	LedgerEntryChangeReasonUnknown LedgerEntryChangeReason = iota
+
+	// LedgerEntryChangeReasonOperation indicates a change caused by an operation in a transaction
+	LedgerEntryChangeReasonOperation
+
+	// LedgerEntryChangeReasonTransaction indicates a change caused by the transaction itself
+	LedgerEntryChangeReasonTransaction
+
+	// LedgerEntryChangeReasonFee indicates a change related to transaction fees.
+	LedgerEntryChangeReasonFee
+
+	// LedgerEntryChangeReasonUpgrade indicates a change caused by a ledger upgrade.
+	LedgerEntryChangeReasonUpgrade
+
+	// LedgerEntryChangeReasonEviction indicates a change caused by entry eviction.
+	LedgerEntryChangeReasonEviction
+)
 
 // String returns a best effort string representation of the change.
 // If the Pre or Post xdr is invalid, the field will be omitted from the string.
