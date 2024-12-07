@@ -131,6 +131,20 @@ func (l LedgerCloseMeta) UpgradesProcessing() []UpgradeEntryMeta {
 	}
 }
 
+func (l LedgerCloseMeta) HasUpgradeChanges() bool {
+	return len(l.UpgradesProcessing()) != 0
+}
+
+func (l LedgerCloseMeta) IsFirstLedgerAfterProtocolUpgrade() bool {
+	upgradeMeta := l.UpgradesProcessing()
+	for _, upgrade := range upgradeMeta {
+		if upgrade.Upgrade.Type == LedgerUpgradeTypeLedgerUpgradeVersion {
+			return true
+		}
+	}
+	return false
+}
+
 // EvictedTemporaryLedgerKeys returns a slice of ledger keys for
 // temporary ledger entries that have been evicted in this ledger.
 func (l LedgerCloseMeta) EvictedTemporaryLedgerKeys() ([]LedgerKey, error) {
