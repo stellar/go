@@ -33,7 +33,7 @@ func ProcessTradesFromLedger(ledger xdr.LedgerCloseMeta, networkPassPhrase strin
 		tradeEvents = append(tradeEvents, tradesFromChange...)
 	}
 
-	return []TradeEvent{}, nil
+	return tradeEvents, nil
 }
 
 func processTradesFromChange(change ingest.Change) ([]TradeEvent, error) {
