@@ -56,12 +56,55 @@ func drainReponse(hresp *http.Response, close bool, err *error) (outerror error)
 }
 
 // Upgrade upgrades the protocol version running on the stellar core instance
+//
+// Deprecated: use UpgradeProtocol instead
 func (c *Client) Upgrade(ctx context.Context, version int) (err error) {
-	queryParams := url.Values{}
-	queryParams.Add("mode", "set")
-	queryParams.Add("upgradetime", "1970-01-01T00:00:00Z")
-	queryParams.Add("protocolversion", strconv.Itoa(version))
+	return c.UpgradeProtocol(ctx, version, time.Unix(int64(0), 0))
+}
 
+// UpgradeProtocol upgrades the protocol version running on the stellar core instance
+func (c *Client) UpgradeProtocol(ctx context.Context, protocolVersion int, at time.Time) (err error) {
+	queryParams := url.Values{}
+	queryParams.Add("protocolversion", strconv.Itoa(protocolVersion))
+	return c.setUpgradesAt(ctx, at, queryParams)
+}
+
+// UpgradeSorobanConfig upgrades the Soroban configuration to that indicated by the supplied ConfigUpgradeSetKey at the specified time
+func (c *Client) UpgradeSorobanConfig(ctx context.Context, configKey xdr.ConfigUpgradeSetKey, at time.Time) error {
+	keyB64, err := xdr.MarshalBase64(configKey)
+	if err != nil {
+		return err
+	}
+	queryParams := url.Values{}
+	queryParams.Add("configupgradesetkey", keyB64)
+	return c.setUpgradesAt(ctx, at, queryParams)
+}
+
+// UpgradeTxSetSize upgrades the maximum number of transactions per ledger
+func (c *Client) UpgradeTxSetSize(ctx context.Context, maxTxSetSize uint32, at time.Time) error {
+	queryParams := url.Values{}
+	queryParams.Add("maxtxsetsize", strconv.FormatUint(uint64(maxTxSetSize), 10))
+	return c.setUpgradesAt(ctx, at, queryParams)
+}
+
+// UpgradeSorobanTxSetSize upgrades the maximum number of transactions per ledger
+func (c *Client) UpgradeSorobanTxSetSize(ctx context.Context, maxTxSetSize uint32, at time.Time) error {
+	queryParams := url.Values{}
+	queryParams.Add("maxsorobantxsetsize", strconv.FormatUint(uint64(maxTxSetSize), 10))
+	return c.setUpgradesAt(ctx, at, queryParams)
+}
+
+func (c *Client) setUpgradesAt(ctx context.Context, at time.Time, extraQueryParams url.Values) (err error) {
+	finalQueryParams := url.Values{}
+	for k, v := range extraQueryParams {
+		finalQueryParams[k] = v
+	}
+	finalQueryParams.Add("mode", "set")
+	finalQueryParams.Add("upgradetime", at.Format("2006-01-02T15:04:05Z"))
+	return c.upgrades(ctx, finalQueryParams)
+}
+
+func (c *Client) upgrades(ctx context.Context, queryParams url.Values) (err error) {
 	var req *http.Request
 	req, err = c.simpleGet(ctx, "upgrades", queryParams)
 	if err != nil {
