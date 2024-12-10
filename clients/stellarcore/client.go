@@ -8,11 +8,13 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os/exec"
 	"path"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/stellar/go/keypair"
 	proto "github.com/stellar/go/protocols/stellarcore"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
@@ -78,6 +80,56 @@ func (c *Client) UpgradeSorobanConfig(ctx context.Context, configKey xdr.ConfigU
 	queryParams := url.Values{}
 	queryParams.Add("configupgradesetkey", keyB64)
 	return c.setUpgradesAt(ctx, at, queryParams)
+}
+
+type GenSorobanConfig struct {
+	BaseSeqNum        uint32
+	NetworkPassphrase string
+	// TODO: Should we ask core to sign the tx or should we do it ourselves?
+	SigningKey keypair.Full
+	// looks for `stellar-core` in the system PATH if empty
+	StellarCorePath string
+}
+
+func GenSorobanConfigUpgradeTxAndKey(
+	config GenSorobanConfig, upgradeConfig xdr.ConfigUpgradeSet) ([]xdr.TransactionEnvelope, xdr.ConfigUpgradeSetKey, error) {
+	upgradeConfigB64, err := xdr.MarshalBase64(upgradeConfig)
+	if err != nil {
+		return nil, xdr.ConfigUpgradeSetKey{}, err
+	}
+	corePath := config.StellarCorePath
+	if corePath == "" {
+		corePath = "stellar-core"
+	}
+	cmd := exec.Command(corePath, "get-settings-upgrade-txs",
+		config.SigningKey.Address(),
+		strconv.FormatUint(uint64(config.BaseSeqNum), 10),
+		config.NetworkPassphrase,
+		"--xdr", upgradeConfigB64,
+		"--signtxs")
+	inputStr := config.SigningKey.Seed()
+	cmd.Stdin = strings.NewReader(inputStr)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, xdr.ConfigUpgradeSetKey{}, err
+	}
+	fields := strings.Fields(string(out))
+	if len(fields) < 4 {
+		return nil, xdr.ConfigUpgradeSetKey{}, fmt.Errorf("get-settings-upgrade-txs: unexpected output: %q", string(out))
+	}
+	txsB64 := fields[0:3]
+	keyB64 := fields[3]
+
+	txs := make([]xdr.TransactionEnvelope, len(txsB64))
+	for i, txB64 := range txsB64 {
+		err := xdr.SafeUnmarshalBase64(txB64, &txs[i])
+		if err != nil {
+			return nil, xdr.ConfigUpgradeSetKey{}, err
+		}
+	}
+	var key xdr.ConfigUpgradeSetKey
+	err = xdr.SafeUnmarshalBase64(keyB64, &key)
+	return txs, key, err
 }
 
 // UpgradeTxSetSize upgrades the maximum number of transactions per ledger
