@@ -86,7 +86,7 @@ type GenSorobanConfig struct {
 	BaseSeqNum        uint32
 	NetworkPassphrase string
 	// TODO: Should we ask core to sign the tx or should we do it ourselves?
-	SigningKey keypair.Full
+	SigningKey *keypair.Full
 	// looks for `stellar-core` in the system PATH if empty
 	StellarCorePath string
 }
@@ -113,12 +113,12 @@ func GenSorobanConfigUpgradeTxAndKey(
 	if err != nil {
 		return nil, xdr.ConfigUpgradeSetKey{}, err
 	}
-	fields := strings.Fields(string(out))
-	if len(fields) < 4 {
+	lines := strings.Split(string(out), "\n")
+	if len(lines) < 9 {
 		return nil, xdr.ConfigUpgradeSetKey{}, fmt.Errorf("get-settings-upgrade-txs: unexpected output: %q", string(out))
 	}
-	txsB64 := fields[0:3]
-	keyB64 := fields[3]
+	txsB64 := []string{lines[0], lines[2], lines[4], lines[6]}
+	keyB64 := lines[8]
 
 	txs := make([]xdr.TransactionEnvelope, len(txsB64))
 	for i, txB64 := range txsB64 {
