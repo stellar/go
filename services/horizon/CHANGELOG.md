@@ -3,7 +3,7 @@
 All notable changes to this project will be documented in this
 file. This project adheres to [Semantic Versioning](http://semver.org/).
 
-## Pending
+## 22.0.2
 
 ### Fixed
 - Fix liquidity pool bug which resulted in invalid paths being included in the `/paths/strict-receive` response ([5541](https://github.com/stellar/go/pull/5541)).
