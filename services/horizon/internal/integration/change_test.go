@@ -2,6 +2,7 @@ package integration
 
 import (
 	"context"
+	"encoding/json"
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/keypair"
@@ -121,6 +122,82 @@ func TestOneTxOneOperationChanges(t *testing.T) {
 	destAccChange := changeForAccount(operationChanges, destAcc.Address())
 	tt.True(accountFromEntry(srcAccChange.Pre).Balance > accountFromEntry(srcAccChange.Post).Balance)
 	tt.True(accountFromEntry(destAccChange.Pre).Balance < accountFromEntry(destAccChange.Post).Balance)
+}
+
+func TestSomething(t *testing.T) {
+	//tt := assert.New(t)
+	itest := integration.NewTest(t, integration.Config{})
+	master := itest.Master()
+	keys, accounts := itest.CreateAccounts(3, "1000")
+	keyA, keyB := keys[0], keys[1]
+	accountA, accountB := accounts[0], accounts[1]
+
+	// Some random asset
+	xyzAsset := txnbuild.CreditAsset{Code: "XYZ", Issuer: itest.Master().Address()}
+	itest.MustEstablishTrustline(keyA, accountA, xyzAsset)
+
+	itest.MustEstablishTrustline(keyB, accountB, xyzAsset)
+
+	t.Logf("*****")
+	paymentOperation := txnbuild.Payment{
+		Destination: keyA.Address(),
+		Asset:       xyzAsset,
+		Amount:      "2000",
+	}
+	txResp := itest.MustSubmitOperations(itest.MasterAccount(), itest.Master(), &paymentOperation)
+	data, _ := json.MarshalIndent(txResp, "", "  ")
+
+	t.Logf("Acc A: %v, Acc B: %v", keyA.Address(), keyB.Address())
+
+	sellOfferOperationFromA := txnbuild.ManageSellOffer{
+		Selling:       xyzAsset,
+		Buying:        txnbuild.NativeAsset{},
+		Amount:        "50",
+		Price:         xdr.Price{N: 1, D: 1},
+		SourceAccount: keyA.Address(),
+	}
+	txResp = itest.MustSubmitMultiSigOperations(itest.MasterAccount(), []*keypair.Full{master, keyA}, &sellOfferOperationFromA)
+	data, _ = json.MarshalIndent(txResp, "", "  ")
+	t.Logf("Transaction Sell Offer: %v", string(data))
+	t.Logf("Tx response meta xdr Sell Offer: %v", txResp.ResultMetaXdr)
+	t.Logf("*****")
+
+	sellOfferLedgerSeq := uint32(txResp.Ledger)
+
+	buyOfferOperationFromB := txnbuild.ManageBuyOffer{
+		Buying:        xyzAsset,
+		Selling:       txnbuild.NativeAsset{},
+		Amount:        "66",
+		Price:         xdr.Price{N: 1, D: 1},
+		SourceAccount: keyB.Address(),
+	}
+
+	txResp = itest.MustSubmitMultiSigOperations(itest.MasterAccount(), []*keypair.Full{master, keyB}, &buyOfferOperationFromB)
+	data, _ = json.MarshalIndent(txResp, "", "  ")
+	t.Logf("Transaction Buy Offer: %v", string(data))
+	t.Logf("Tx response meta xdr Buy Offer: %v", txResp.ResultMetaXdr)
+	t.Logf("*****")
+
+	buyOfferLedgerSeq := uint32(txResp.Ledger)
+
+	t.Logf("Sell Offer Ledger:%v, Buy Offer Ledger: %v", sellOfferLedgerSeq, buyOfferLedgerSeq)
+
+	waitForLedgerInArchive(t, 15*time.Second, buyOfferLedgerSeq)
+
+	ledgerMap := getLedgers(itest, sellOfferLedgerSeq, buyOfferLedgerSeq)
+	for ledgerSeq, ledger := range ledgerMap {
+		t.Logf("LedgerSeq:::::::::::::::::::::: %v", ledgerSeq)
+		changes := getChangesFromLedger(itest, ledger)
+		for _, change := range changes {
+			if change.Reason != ingest.LedgerEntryChangeReasonOperation {
+				continue
+			}
+			typ := change.Type.String()
+			pre, _ := change.Pre.MarshalBinaryBase64()
+			post, _ := change.Post.MarshalBinaryBase64()
+			t.Logf("ledger: %v, Change - type - %v, pre: %v, post: %v", ledgerSeq, typ, pre, post)
+		}
+	}
 }
 
 func getChangesFromLedger(itest *integration.Test, ledger xdr.LedgerCloseMeta) []ingest.Change {

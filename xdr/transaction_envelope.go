@@ -1,5 +1,7 @@
 package xdr
 
+import "encoding/base64"
+
 // IsFeeBump returns true if the transaction envelope is a fee bump transaction
 func (e TransactionEnvelope) IsFeeBump() bool {
 	return e.Type == EnvelopeTypeEnvelopeTypeTxFeeBump
@@ -241,4 +243,16 @@ func (e TransactionEnvelope) Memo() Memo {
 	default:
 		panic("unsupported transaction type: " + e.Type.String())
 	}
+}
+
+func (e *TransactionEnvelope) MarshalBinaryBase64() (string, error) {
+	if e == nil {
+		return "nil", nil
+	}
+	b, err := e.MarshalBinary()
+	if err != nil {
+		return "", err
+	}
+
+	return base64.StdEncoding.EncodeToString(b), nil
 }
