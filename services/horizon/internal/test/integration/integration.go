@@ -4,8 +4,6 @@ package integration
 import (
 	"context"
 	"fmt"
-	"github.com/stellar/go/historyarchive"
-	"github.com/stellar/go/ingest/ledgerbackend"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -17,6 +15,9 @@ import (
 	"syscall"
 	"testing"
 	"time"
+
+	"github.com/stellar/go/historyarchive"
+	"github.com/stellar/go/ingest/ledgerbackend"
 
 	"github.com/stellar/go/services/horizon/internal/test"
 
@@ -620,7 +621,7 @@ func (i *Test) CreateCaptiveCoreConfig() (*ledgerbackend.CaptiveCoreConfig, erro
 	i.t.Logf("Creating Captive Core config files, ConfName: %v, storagePath: %v", confName, storagePath)
 
 	captiveCoreConfig := ledgerbackend.CaptiveCoreConfig{
-		BinaryPath:          i.coreConfig.binaryPath,
+		BinaryPath:          i.CoreBinaryPath(),
 		HistoryArchiveURLs:  []string{HistoryArchiveUrl},
 		NetworkPassphrase:   StandaloneNetworkPassphrase,
 		CheckpointFrequency: CheckpointFrequency, // This is required for accelerated archive creation for integration test
@@ -689,7 +690,7 @@ func (i *Test) waitForCore() {
 	i.t.Fatalf("Core could not sync after %v + %v", maxWaitForCoreStartup, maxWaitForCoreUpgrade)
 }
 
-const sorobanRPCInitTime = 20 * time.Second
+const sorobanRPCInitTime = 60 * 6 * time.Second
 const sorobanRPCHealthCheckInterval = time.Second
 
 // Wait for SorobanRPC to be up
@@ -996,6 +997,15 @@ func (i *Test) Config() Config {
 // CoreClient returns a stellar core client connected to the Stellar Core instance.
 func (i *Test) CoreClient() *stellarcore.Client {
 	return i.coreClient
+}
+
+func (i *Test) CoreBinaryPath() string {
+	if i.coreConfig.binaryPath != "" {
+		return i.coreConfig.binaryPath
+	}
+	corePath, err := exec.LookPath("stellar-core")
+	require.NoError(i.t, err)
+	return corePath
 }
 
 // Client returns horizon.Client connected to started Horizon instance.
