@@ -122,7 +122,7 @@ func GenSorobanConfigUpgradeTxAndKey(
 
 	txs := make([]xdr.TransactionEnvelope, len(txsB64))
 	for i, txB64 := range txsB64 {
-		err := xdr.SafeUnmarshalBase64(txB64, &txs[i])
+		err = xdr.SafeUnmarshalBase64(txB64, &txs[i])
 		if err != nil {
 			return nil, xdr.ConfigUpgradeSetKey{}, err
 		}
