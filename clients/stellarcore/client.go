@@ -85,8 +85,7 @@ func (c *Client) UpgradeSorobanConfig(ctx context.Context, configKey xdr.ConfigU
 type GenSorobanConfig struct {
 	BaseSeqNum        uint32
 	NetworkPassphrase string
-	// TODO: Should we ask core to sign the tx or should we do it ourselves?
-	SigningKey *keypair.Full
+	SigningKey        *keypair.Full
 	// looks for `stellar-core` in the system PATH if empty
 	StellarCorePath string
 }
