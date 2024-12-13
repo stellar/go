@@ -109,7 +109,7 @@ func GenSorobanConfigUpgradeTxAndKey(
 		"--signtxs")
 	inputStr := config.SigningKey.Seed()
 	cmd.Stdin = strings.NewReader(inputStr)
-	out, err := cmd.CombinedOutput()
+	out, err := cmd.Output()
 	if err != nil {
 		return nil, xdr.ConfigUpgradeSetKey{}, err
 	}
