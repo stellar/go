@@ -8,11 +8,13 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os/exec"
 	"path"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/stellar/go/keypair"
 	proto "github.com/stellar/go/protocols/stellarcore"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
@@ -56,12 +58,104 @@ func drainReponse(hresp *http.Response, close bool, err *error) (outerror error)
 }
 
 // Upgrade upgrades the protocol version running on the stellar core instance
+//
+// Deprecated: use UpgradeProtocol instead
 func (c *Client) Upgrade(ctx context.Context, version int) (err error) {
-	queryParams := url.Values{}
-	queryParams.Add("mode", "set")
-	queryParams.Add("upgradetime", "1970-01-01T00:00:00Z")
-	queryParams.Add("protocolversion", strconv.Itoa(version))
+	return c.UpgradeProtocol(ctx, version, time.Unix(int64(0), 0))
+}
 
+// UpgradeProtocol upgrades the protocol version running on the stellar core instance
+func (c *Client) UpgradeProtocol(ctx context.Context, protocolVersion int, at time.Time) (err error) {
+	queryParams := url.Values{}
+	queryParams.Add("protocolversion", strconv.Itoa(protocolVersion))
+	return c.setUpgradesAt(ctx, at, queryParams)
+}
+
+// UpgradeSorobanConfig upgrades the Soroban configuration to that indicated by the supplied ConfigUpgradeSetKey at the specified time
+func (c *Client) UpgradeSorobanConfig(ctx context.Context, configKey xdr.ConfigUpgradeSetKey, at time.Time) error {
+	keyB64, err := xdr.MarshalBase64(configKey)
+	if err != nil {
+		return err
+	}
+	queryParams := url.Values{}
+	queryParams.Add("configupgradesetkey", keyB64)
+	return c.setUpgradesAt(ctx, at, queryParams)
+}
+
+type GenSorobanConfig struct {
+	BaseSeqNum        uint32
+	NetworkPassphrase string
+	SigningKey        *keypair.Full
+	// looks for `stellar-core` in the system PATH if empty
+	StellarCorePath string
+}
+
+func GenSorobanConfigUpgradeTxAndKey(
+	config GenSorobanConfig, upgradeConfig xdr.ConfigUpgradeSet) ([]xdr.TransactionEnvelope, xdr.ConfigUpgradeSetKey, error) {
+	upgradeConfigB64, err := xdr.MarshalBase64(upgradeConfig)
+	if err != nil {
+		return nil, xdr.ConfigUpgradeSetKey{}, err
+	}
+	corePath := config.StellarCorePath
+	if corePath == "" {
+		corePath = "stellar-core"
+	}
+	cmd := exec.Command(corePath, "get-settings-upgrade-txs",
+		config.SigningKey.Address(),
+		strconv.FormatUint(uint64(config.BaseSeqNum), 10),
+		config.NetworkPassphrase,
+		"--xdr", upgradeConfigB64,
+		"--signtxs")
+	inputStr := config.SigningKey.Seed()
+	cmd.Stdin = strings.NewReader(inputStr)
+	out, err := cmd.Output()
+	if err != nil {
+		return nil, xdr.ConfigUpgradeSetKey{}, err
+	}
+	lines := strings.Split(string(out), "\n")
+	if len(lines) < 9 {
+		return nil, xdr.ConfigUpgradeSetKey{}, fmt.Errorf("get-settings-upgrade-txs: unexpected output: %q", string(out))
+	}
+	txsB64 := []string{lines[0], lines[2], lines[4], lines[6]}
+	keyB64 := lines[8]
+
+	txs := make([]xdr.TransactionEnvelope, len(txsB64))
+	for i, txB64 := range txsB64 {
+		err = xdr.SafeUnmarshalBase64(txB64, &txs[i])
+		if err != nil {
+			return nil, xdr.ConfigUpgradeSetKey{}, err
+		}
+	}
+	var key xdr.ConfigUpgradeSetKey
+	err = xdr.SafeUnmarshalBase64(keyB64, &key)
+	return txs, key, err
+}
+
+// UpgradeTxSetSize upgrades the maximum number of transactions per ledger
+func (c *Client) UpgradeTxSetSize(ctx context.Context, maxTxSetSize uint32, at time.Time) error {
+	queryParams := url.Values{}
+	queryParams.Add("maxtxsetsize", strconv.FormatUint(uint64(maxTxSetSize), 10))
+	return c.setUpgradesAt(ctx, at, queryParams)
+}
+
+// UpgradeSorobanTxSetSize upgrades the maximum number of transactions per ledger
+func (c *Client) UpgradeSorobanTxSetSize(ctx context.Context, maxTxSetSize uint32, at time.Time) error {
+	queryParams := url.Values{}
+	queryParams.Add("maxsorobantxsetsize", strconv.FormatUint(uint64(maxTxSetSize), 10))
+	return c.setUpgradesAt(ctx, at, queryParams)
+}
+
+func (c *Client) setUpgradesAt(ctx context.Context, at time.Time, extraQueryParams url.Values) (err error) {
+	finalQueryParams := url.Values{}
+	for k, v := range extraQueryParams {
+		finalQueryParams[k] = v
+	}
+	finalQueryParams.Add("mode", "set")
+	finalQueryParams.Add("upgradetime", at.Format("2006-01-02T15:04:05Z"))
+	return c.upgrades(ctx, finalQueryParams)
+}
+
+func (c *Client) upgrades(ctx context.Context, queryParams url.Values) (err error) {
 	var req *http.Request
 	req, err = c.simpleGet(ctx, "upgrades", queryParams)
 	if err != nil {
