@@ -1,6 +1,9 @@
 package xdr
 
-import "fmt"
+import (
+	"encoding/base64"
+	"fmt"
+)
 
 // LedgerKey implements the `Keyer` interface
 func (entry *LedgerEntry) LedgerKey() (LedgerKey, error) {
@@ -182,4 +185,18 @@ func (data *LedgerEntryData) LedgerKey() (LedgerKey, error) {
 	}
 
 	return key, nil
+}
+
+// MarshalBinaryBase64 marshals XDR into a binary form and then encodes it
+// using base64.
+func (e *LedgerEntry) MarshalBinaryBase64() (string, error) {
+	if e == nil {
+		return "nil", nil
+	}
+	b, err := e.MarshalBinary()
+	if err != nil {
+		return "", err
+	}
+
+	return base64.StdEncoding.EncodeToString(b), nil
 }
