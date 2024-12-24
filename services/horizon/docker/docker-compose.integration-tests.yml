@@ -17,7 +17,7 @@ services:
     entrypoint: /usr/bin/env
     command: /start standalone
     volumes:
-      - ${CORE_CONFIG_FILE:-stellar-core.cfg}:/stellar-core.cfg
+      - ${CORE_CONFIG_FILE}:/stellar-core.cfg
       - ./core-start.sh:/start
   soroban-rpc:
     platform: linux/amd64
@@ -33,4 +33,4 @@ services:
       - CHECKPOINT_FREQUENCY=8
       - LOG_LEVEL=debug
     volumes:
-      - ${CAPTIVE_CORE_CONFIG_FILE:-stellar-core.cfg}:/captive-core.cfg
+      - ${CAPTIVE_CORE_CONFIG_FILE}:/captive-core.cfg
