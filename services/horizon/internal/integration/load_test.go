@@ -67,7 +67,7 @@ func TestLoad(t *testing.T) {
 	require.NoError(t, err)
 
 	for _, transaction := range upgradeTransactions {
-		b64, err := xdr.MarshalBase64(transaction)
+		var b64, err = xdr.MarshalBase64(transaction)
 		require.NoError(t, err)
 		response, err := itest.Client().SubmitTransactionXDR(b64)
 		require.NoError(t, err)
@@ -86,7 +86,7 @@ func TestLoad(t *testing.T) {
 	var accountLedgers []uint32
 	for i := 0; i < 2*transactionsPerLedger; i += maxAccountsPerTransaction {
 		keys, curAccounts := itest.CreateAccounts(maxAccountsPerTransaction, "10000000")
-		account, err := itest.Client().AccountDetail(horizonclient.AccountRequest{AccountID: curAccounts[0].GetAccountID()})
+		var account, err = itest.Client().AccountDetail(horizonclient.AccountRequest{AccountID: curAccounts[0].GetAccountID()})
 		require.NoError(t, err)
 		accountLedgers = append(accountLedgers, account.LastModifiedLedger)
 
@@ -116,7 +116,7 @@ func TestLoad(t *testing.T) {
 		preFlightOp.Ext.SorobanData.Resources.Instructions *= 10
 		preFlightOp.Ext.SorobanData.ResourceFee *= 10
 		minFee *= 10
-		sequenceNumber, err := accounts[i].GetSequenceNumber()
+		var sequenceNumber, err = accounts[i].GetSequenceNumber()
 		require.NoError(t, err)
 		transactions = append(transactions, sorobanTransaction{
 			op:             &preFlightOp,
