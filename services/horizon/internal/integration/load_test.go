@@ -165,7 +165,7 @@ func TestLoad(t *testing.T) {
 			end = ledgerSeq
 		}
 	}
-	waitForLedgerInArchive(t, 15*time.Second, uint32(end))
+	waitForLedgerInArchive(t, 6*time.Minute, uint32(end))
 	allLedgers := getLedgers(itest, uint32(start), uint32(end))
 
 	var sortedLegers []xdr.LedgerCloseMeta
