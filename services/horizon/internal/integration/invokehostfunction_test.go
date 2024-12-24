@@ -137,6 +137,7 @@ func TestContractInvokeHostFunctionCreateConstructorContract(t *testing.T) {
 
 	itest := integration.NewTest(t, integration.Config{
 		EnableSorobanRPC: true,
+		QuickExpiration:  true,
 	})
 
 	issuer := itest.Master().Address()
