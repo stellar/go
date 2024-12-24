@@ -71,7 +71,8 @@ func TestLoad(t *testing.T) {
 		var b64 string
 		b64, err = xdr.MarshalBase64(transaction)
 		require.NoError(t, err)
-		response, err := itest.Client().SubmitTransactionXDR(b64)
+		var response horizon.Transaction
+		response, err = itest.Client().SubmitTransactionXDR(b64)
 		require.NoError(t, err)
 		require.True(t, response.Successful)
 	}
@@ -210,7 +211,8 @@ func TestLoad(t *testing.T) {
 		if change.Type != xdr.LedgerEntryTypeAccount {
 			continue
 		}
-		ledgerKey, err := change.LedgerKey()
+		var ledgerKey xdr.LedgerKey
+		ledgerKey, err = change.LedgerKey()
 		require.NoError(t, err)
 		require.True(t, accountSet[ledgerKey.MustAccount().AccountId.Address()])
 	}
@@ -230,7 +232,8 @@ func extractChanges(t *testing.T, ledgers []xdr.LedgerCloseMeta) []ingest.Change
 		reader, err := ingest.NewLedgerChangeReaderFromLedgerCloseMeta(integration.StandaloneNetworkPassphrase, ledger)
 		require.NoError(t, err)
 		for {
-			change, err := reader.Read()
+			var change ingest.Change
+			change, err = reader.Read()
 			if err == io.EOF {
 				break
 			}
@@ -247,7 +250,8 @@ func extractTransactions(t *testing.T, ledgers []xdr.LedgerCloseMeta) []ingest.L
 		txReader, err := ingest.NewLedgerTransactionReaderFromLedgerCloseMeta(integration.StandaloneNetworkPassphrase, ledger)
 		require.NoError(t, err)
 		for {
-			tx, err := txReader.Read()
+			var tx ingest.LedgerTransaction
+			tx, err = txReader.Read()
 			if err == io.EOF {
 				break
 			}
