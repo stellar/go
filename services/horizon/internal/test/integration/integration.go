@@ -14,6 +14,7 @@ import (
 	"sync"
 	"syscall"
 	"testing"
+	"text/template"
 	"time"
 
 	"github.com/stellar/go/historyarchive"
@@ -54,27 +55,6 @@ const (
 )
 
 const (
-	SimpleCaptiveCoreToml = `
-		PEER_PORT=11725
-		ARTIFICIALLY_ACCELERATE_TIME_FOR_TESTING=true
-		NETWORK_PASSPHRASE = "Standalone Network ; February 2017"
-		UNSAFE_QUORUM=true
-		FAILURE_SAFETY=0
-		RUN_STANDALONE=false
-
-		# Lower the TTL of persistent ledger entries
-		# so that ledger entry extension/restoring becomes testeable
-		# These 2 settings need to be present in both places - stellar-core-integration-tests.cfg and here
-		TESTING_MINIMUM_PERSISTENT_ENTRY_LIFETIME=10
-		TESTING_SOROBAN_HIGH_LIMIT_OVERRIDE=true
-
-		[[VALIDATORS]]
-		NAME="local_core"
-		HOME_DOMAIN="core.local"
-		PUBLIC_KEY="GD5KD2KEZJIGTC63IGW6UMUSMVUVG5IHG64HUTFWCHVZH2N2IBOQN7PS"
-		ADDRESS="localhost"
-		QUALITY="MEDIUM"
-`
 	StellarCoreURL = "http://localhost:11626"
 )
 
@@ -88,6 +68,7 @@ type Config struct {
 	CoreDockerImage           string
 	SorobanRPCDockerImage     string
 	SkipProtocolUpgrade       bool
+	QuickExpiration           bool
 
 	// Weird naming here because bools default to false, but we want to start
 	// Horizon by default.
@@ -111,13 +92,14 @@ type CaptiveConfig struct {
 	binaryPath  string
 	configPath  string
 	storagePath string
-	useDB       bool
 }
 
 type Test struct {
 	t *testing.T
 
-	composePath string
+	composePath       string
+	validatorConfPath string
+	rpcCoreConfPath   string
 
 	config              Config
 	coreConfig          CaptiveConfig
@@ -176,6 +158,16 @@ func NewTest(t *testing.T, config Config) *Test {
 			config.ProtocolVersion = maxSupportedCoreProtocolFromEnv
 		}
 	}
+	validatorParams := validatorCoreConfigTemplatePrams{
+		Accelerate:                            CheckpointFrequency < historyarchive.DefaultCheckpointFrequency,
+		NetworkPassphrase:                     StandaloneNetworkPassphrase,
+		TestingMinimumPersistentEntryLifetime: 65536,
+		TestingSorobanHighLimitOverride:       false,
+	}
+	if config.QuickExpiration {
+		validatorParams.TestingSorobanHighLimitOverride = true
+		validatorParams.TestingMinimumPersistentEntryLifetime = 10
+	}
 	var i *Test
 	if !config.SkipCoreContainerCreation {
 		composePath := findDockerComposePath()
@@ -186,9 +178,13 @@ func NewTest(t *testing.T, config Config) *Test {
 			passPhrase:  StandaloneNetworkPassphrase,
 			environment: test.NewEnvironmentManager(),
 		}
-		i.configureCaptiveCore()
+		i.validatorConfPath = i.createCoreValidatorConf(validatorParams)
+		i.rpcCoreConfPath = i.createCaptiveCoreConf(captiveCoreConfigTemplatePrams{
+			validatorCoreConfigTemplatePrams: validatorParams,
+			ValidatorAddress:                 "core",
+		})
 		// Only run Stellar Core container and its dependencies.
-		i.runComposeCommand("up", "--detach", "--quiet-pull", "--no-color", "core")
+		i.startCoreValidator()
 	} else {
 		i = &Test{
 			t:           t,
@@ -196,13 +192,14 @@ func NewTest(t *testing.T, config Config) *Test {
 			environment: test.NewEnvironmentManager(),
 		}
 	}
+	i.configureCaptiveCore(validatorParams)
 
 	i.prepareShutdownHandlers()
 	i.coreClient = &stellarcore.Client{URL: "http://localhost:" + strconv.Itoa(StellarCorePort)}
 	if !config.SkipCoreContainerCreation {
 		i.waitForCore()
 		if i.config.EnableSorobanRPC {
-			i.runComposeCommand("up", "--detach", "--quiet-pull", "--no-color", "soroban-rpc")
+			i.startRPC()
 			i.waitForSorobanRPC()
 		}
 	}
@@ -218,12 +215,13 @@ func NewTest(t *testing.T, config Config) *Test {
 	return i
 }
 
-func (i *Test) configureCaptiveCore() {
-	composePath := findDockerComposePath()
+func (i *Test) configureCaptiveCore(validatorParams validatorCoreConfigTemplatePrams) {
 	i.coreConfig.binaryPath = os.Getenv("HORIZON_INTEGRATION_TESTS_CAPTIVE_CORE_BIN")
-	i.coreConfig.configPath = filepath.Join(composePath, "captive-core-integration-tests.cfg")
+	i.coreConfig.configPath = i.createCaptiveCoreConf(captiveCoreConfigTemplatePrams{
+		validatorCoreConfigTemplatePrams: validatorParams,
+		ValidatorAddress:                 "localhost",
+	})
 	i.coreConfig.storagePath = i.CurrentTest().TempDir()
-	i.coreConfig.useDB = true
 
 	if value := i.getIngestParameter(
 		horizon.StellarCoreBinaryPathName,
@@ -249,44 +247,57 @@ func (i *Test) getIngestParameter(argName, envName string) string {
 	return ""
 }
 
+func (i *Test) createCoreValidatorConf(params validatorCoreConfigTemplatePrams) string {
+	tomlFile, err := os.CreateTemp("", "stellar-core-integration-test-*.toml")
+	require.NoError(i.t, err)
+
+	tmpl, err := template.New("core-validator").Parse(validatorCoreConfigTemplate)
+	require.NoError(i.t, err)
+	err = tmpl.Execute(tomlFile, params)
+	require.NoError(i.t, err)
+
+	require.NoError(i.t, tomlFile.Close())
+
+	i.t.Cleanup(func() {
+		require.NoError(i.t, os.Remove(tomlFile.Name()))
+	})
+	return tomlFile.Name()
+}
+
+func (i *Test) createCaptiveCoreConf(params captiveCoreConfigTemplatePrams) string {
+	tomlFile, err := os.CreateTemp("", "captive-core-integration-test-*.toml")
+	require.NoError(i.t, err)
+
+	tmpl, err := template.New("captive-core").Parse(captiveCoreConfigTemplate)
+	require.NoError(i.t, err)
+	err = tmpl.Execute(tomlFile, params)
+	require.NoError(i.t, err)
+
+	require.NoError(i.t, tomlFile.Close())
+
+	i.t.Cleanup(func() {
+		require.NoError(i.t, os.Remove(tomlFile.Name()))
+	})
+	return tomlFile.Name()
+}
+
 // Runs a docker-compose command applied to the above configs
-func (i *Test) runComposeCommand(args ...string) {
-	integrationYaml := filepath.Join(i.composePath, "docker-compose.integration-tests.yml")
-	integrationSorobanRPCYaml := filepath.Join(i.composePath, "docker-compose.integration-tests.soroban-rpc.yml")
-
-	cmdline := args
-	if i.config.EnableSorobanRPC {
-		cmdline = append([]string{"-f", integrationSorobanRPCYaml}, cmdline...)
-	}
-	cmdline = append([]string{"-f", integrationYaml}, cmdline...)
-	cmdline = append([]string{"compose"}, cmdline...)
+func (i *Test) runComposeCommand(envVars []string, args ...string) {
+	cmdline := append(
+		[]string{
+			"compose",
+			"-f",
+			filepath.Join(i.composePath, "docker-compose.integration-tests.yml"),
+		},
+		args...,
+	)
 	cmd := exec.Command("docker", cmdline...)
-	coreImageOverride := ""
-	if i.config.CoreDockerImage != "" {
-		coreImageOverride = i.config.CoreDockerImage
-	} else if img := os.Getenv("HORIZON_INTEGRATION_TESTS_DOCKER_IMG"); img != "" {
-		coreImageOverride = img
-	}
 
-	cmd.Env = os.Environ()
-	if coreImageOverride != "" {
-		cmd.Env = append(
-			cmd.Environ(),
-			fmt.Sprintf("CORE_IMAGE=%s", coreImageOverride),
-		)
-	}
-	sorobanRPCOverride := ""
-	if i.config.SorobanRPCDockerImage != "" {
-		sorobanRPCOverride = i.config.CoreDockerImage
-	} else if img := os.Getenv("HORIZON_INTEGRATION_TESTS_SOROBAN_RPC_DOCKER_IMG"); img != "" {
-		sorobanRPCOverride = img
-	}
-	if sorobanRPCOverride != "" {
-		cmd.Env = append(
-			cmd.Environ(),
-			fmt.Sprintf("SOROBAN_RPC_IMAGE=%s", sorobanRPCOverride),
-		)
-	}
+	cmd.Env = append(
+		envVars,
+		fmt.Sprintf("CAPTIVE_CORE_CONFIG_FILE=%s", i.rpcCoreConfPath),
+		fmt.Sprintf("CORE_CONFIG_FILE=%s", i.validatorConfPath),
+	)
 
 	i.t.Log("Running", cmd.Args)
 	out, innerErr := cmd.Output()
@@ -302,6 +313,57 @@ func (i *Test) runComposeCommand(args ...string) {
 	}
 }
 
+func (i *Test) startCoreValidator() {
+	var envVars []string
+	var coreImageOverride string
+
+	if i.config.CoreDockerImage != "" {
+		coreImageOverride = i.config.CoreDockerImage
+	} else if img := os.Getenv("HORIZON_INTEGRATION_TESTS_DOCKER_IMG"); img != "" {
+		coreImageOverride = img
+	}
+	if coreImageOverride != "" {
+		envVars = append(
+			envVars,
+			fmt.Sprintf("CORE_IMAGE=%s", coreImageOverride),
+		)
+	}
+
+	i.runComposeCommand(envVars, "up", "--detach", "--quiet-pull", "--no-color", "core")
+}
+
+func (i *Test) startRPC() {
+	var envVars []string
+	var sorobanRPCOverride string
+
+	if i.config.SorobanRPCDockerImage != "" {
+		sorobanRPCOverride = i.config.CoreDockerImage
+	} else if img := os.Getenv("HORIZON_INTEGRATION_TESTS_SOROBAN_RPC_DOCKER_IMG"); img != "" {
+		sorobanRPCOverride = img
+	}
+	if sorobanRPCOverride != "" {
+		envVars = append(
+			envVars,
+			fmt.Sprintf("SOROBAN_RPC_IMAGE=%s", sorobanRPCOverride),
+		)
+	}
+
+	i.runComposeCommand(envVars, "up", "--detach", "--quiet-pull", "--no-color", "soroban-rpc")
+}
+
+func (i *Test) removeContainers(containers ...string) {
+	i.runComposeCommand(
+		nil,
+		append(
+			[]string{
+				"rm",
+				"-fvs",
+			},
+			containers...,
+		)...,
+	)
+}
+
 func (i *Test) prepareShutdownHandlers() {
 	i.shutdownCalls = append(i.shutdownCalls,
 		func() {
@@ -314,14 +376,13 @@ func (i *Test) prepareShutdownHandlers() {
 			if !i.config.SkipCoreContainerCreation {
 				if !i.config.SkipCoreContainerDeletion {
 					i.t.Log("Removing core docker containers...")
-					i.runComposeCommand("rm", "-fvs", "core")
-					i.runComposeCommand("rm", "-fvs", "core-postgres")
+					i.removeContainers("core")
 				} else {
 					i.t.Log("Skip core docker container removal for debugging...")
 				}
 				if i.config.EnableSorobanRPC {
-					i.runComposeCommand("logs", "soroban-rpc")
-					i.runComposeCommand("rm", "-fvs", "soroban-rpc")
+					i.runComposeCommand(nil, "logs", "soroban-rpc")
+					i.removeContainers("soroban-rpc")
 				}
 			}
 		},
@@ -588,45 +649,14 @@ func (i *Test) setupHorizonClient(webArgs map[string]string) {
 	}
 }
 
-// CreateCaptiveCoreConfig will create a temporary TOML config with the
-// specified contents as well as a temporary storage directory. You should
-// `defer` the returned function to clean these up when you're done.
-func CreateCaptiveCoreConfig(contents string) (string, string, func()) {
-	tomlFile, err := ioutil.TempFile("", "captive-core-test-*.toml")
-	if err != nil {
-		panic(err)
-	}
-	defer tomlFile.Close()
-
-	_, err = tomlFile.WriteString(contents)
-	if err != nil {
-		panic(err)
-	}
-
-	storagePath, err := os.MkdirTemp("", "captive-core-test-*-storage")
-	if err != nil {
-		panic(err)
-	}
-
-	filename := tomlFile.Name()
-	return filename, storagePath, func() {
-		os.Remove(filename)
-		os.RemoveAll(storagePath)
-	}
-}
-
 func (i *Test) CreateCaptiveCoreConfig() (*ledgerbackend.CaptiveCoreConfig, error) {
-	confName, storagePath, cleanupFn := CreateCaptiveCoreConfig(SimpleCaptiveCoreToml)
-	i.t.Cleanup(cleanupFn)
-	i.t.Logf("Creating Captive Core config files, ConfName: %v, storagePath: %v", confName, storagePath)
-
 	captiveCoreConfig := ledgerbackend.CaptiveCoreConfig{
 		BinaryPath:          i.CoreBinaryPath(),
 		HistoryArchiveURLs:  []string{HistoryArchiveUrl},
 		NetworkPassphrase:   StandaloneNetworkPassphrase,
 		CheckpointFrequency: CheckpointFrequency, // This is required for accelerated archive creation for integration test
 		UseDB:               true,
-		StoragePath:         storagePath,
+		StoragePath:         i.CurrentTest().TempDir(),
 	}
 
 	tomlParams := ledgerbackend.CaptiveCoreTomlParams{
@@ -635,7 +665,7 @@ func (i *Test) CreateCaptiveCoreConfig() (*ledgerbackend.CaptiveCoreConfig, erro
 		UseDB:              true,
 	}
 
-	toml, err := ledgerbackend.NewCaptiveCoreTomlFromData([]byte(SimpleCaptiveCoreToml), tomlParams)
+	toml, err := ledgerbackend.NewCaptiveCoreTomlFromFile(i.coreConfig.configPath, tomlParams)
 	if err != nil {
 		return nil, err
 	}
@@ -1006,6 +1036,10 @@ func (i *Test) CoreBinaryPath() string {
 	corePath, err := exec.LookPath("stellar-core")
 	require.NoError(i.t, err)
 	return corePath
+}
+
+func (i *Test) CaptiveCoreStoragePath() string {
+	return i.coreConfig.storagePath
 }
 
 // Client returns horizon.Client connected to started Horizon instance.

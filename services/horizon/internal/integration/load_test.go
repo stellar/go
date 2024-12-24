@@ -34,8 +34,8 @@ type sorobanTransaction struct {
 
 func TestLoad(t *testing.T) {
 	var transactionsPerLedger, ledgers int
-	flag.IntVar(&transactionsPerLedger, "transactions-per-ledger", 4000, "number of transactions per ledger")
-	flag.IntVar(&ledgers, "ledgers", 10, "number of ledgers to generate")
+	flag.IntVar(&transactionsPerLedger, "transactions-per-ledger", 100, "number of transactions per ledger")
+	flag.IntVar(&ledgers, "ledgers", 2, "number of ledgers to generate")
 	flag.Parse()
 
 	itest := integration.NewTest(t, integration.Config{

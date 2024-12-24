@@ -42,6 +42,7 @@ func TestContractMintToAccount(t *testing.T) {
 	itest := integration.NewTest(t, integration.Config{
 		HorizonEnvironment: map[string]string{"INGEST_DISABLE_STATE_VERIFICATION": "true", "CONNECTION_TIMEOUT": "360000"},
 		EnableSorobanRPC:   true,
+		QuickExpiration:    true,
 	})
 
 	issuer := itest.Master().Address()
@@ -145,6 +146,7 @@ func TestContractMintToContract(t *testing.T) {
 
 	itest := integration.NewTest(t, integration.Config{
 		EnableSorobanRPC: true,
+		QuickExpiration:  true,
 	})
 
 	issuer := itest.Master().Address()
@@ -230,6 +232,7 @@ func TestExpirationAndRestoration(t *testing.T) {
 			// want state verification to detect this
 			"ingest-disable-state-verification": "true",
 		},
+		QuickExpiration: true,
 	})
 
 	issuer := itest.Master().Address()
@@ -502,6 +505,7 @@ func TestContractTransferBetweenAccounts(t *testing.T) {
 
 	itest := integration.NewTest(t, integration.Config{
 		EnableSorobanRPC: true,
+		QuickExpiration:  true,
 	})
 
 	issuer := itest.Master().Address()
@@ -576,6 +580,7 @@ func TestContractTransferBetweenAccountAndContract(t *testing.T) {
 
 	itest := integration.NewTest(t, integration.Config{
 		EnableSorobanRPC: true,
+		QuickExpiration:  true,
 	})
 
 	issuer := itest.Master().Address()
@@ -696,6 +701,7 @@ func TestContractTransferBetweenContracts(t *testing.T) {
 
 	itest := integration.NewTest(t, integration.Config{
 		EnableSorobanRPC: true,
+		QuickExpiration:  true,
 	})
 
 	issuer := itest.Master().Address()
@@ -777,6 +783,7 @@ func TestContractBurnFromAccount(t *testing.T) {
 
 	itest := integration.NewTest(t, integration.Config{
 		EnableSorobanRPC: true,
+		QuickExpiration:  true,
 	})
 
 	issuer := itest.Master().Address()
@@ -852,6 +859,7 @@ func TestContractBurnFromContract(t *testing.T) {
 
 	itest := integration.NewTest(t, integration.Config{
 		EnableSorobanRPC: true,
+		QuickExpiration:  true,
 	})
 
 	issuer := itest.Master().Address()
@@ -919,6 +927,7 @@ func TestContractClawbackFromAccount(t *testing.T) {
 
 	itest := integration.NewTest(t, integration.Config{
 		EnableSorobanRPC: true,
+		QuickExpiration:  true,
 	})
 
 	// Give the master account the revocable flag (needed to set the clawback flag)
@@ -996,6 +1005,7 @@ func TestContractClawbackFromContract(t *testing.T) {
 
 	itest := integration.NewTest(t, integration.Config{
 		EnableSorobanRPC: true,
+		QuickExpiration:  true,
 	})
 
 	// Give the master account the revocable flag (needed to set the clawback flag)

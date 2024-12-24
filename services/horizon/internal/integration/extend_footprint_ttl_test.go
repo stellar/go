@@ -18,6 +18,7 @@ func TestExtendFootprintTtl(t *testing.T) {
 
 	itest := integration.NewTest(t, integration.Config{
 		EnableSorobanRPC: true,
+		QuickExpiration:  true,
 	})
 
 	// establish which account will be contract owner, and load it's current seq
