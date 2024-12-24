@@ -39,6 +39,10 @@ func TestLoad(t *testing.T) {
 	flag.IntVar(&ledgers, "ledgers", 2, "number of ledgers to generate")
 	flag.Parse()
 
+	if integration.GetCoreMaxSupportedProtocol() < 22 {
+		t.Skip("This test run does not support less than Protocol 22")
+	}
+
 	itest := integration.NewTest(t, integration.Config{
 		EnableSorobanRPC: true,
 	})
