@@ -63,8 +63,8 @@ const HorizonInitErrStr = "cannot initialize Horizon"
 type Config struct {
 	ProtocolVersion           uint32
 	EnableSorobanRPC          bool
+	LogContainers             bool
 	SkipCoreContainerCreation bool
-	SkipCoreContainerDeletion bool // This flag is helpful to debug
 	CoreDockerImage           string
 	SorobanRPCDockerImage     string
 	SkipProtocolUpgrade       bool
@@ -374,14 +374,14 @@ func (i *Test) prepareShutdownHandlers() {
 				i.ingestNode.Close()
 			}
 			if !i.config.SkipCoreContainerCreation {
-				if !i.config.SkipCoreContainerDeletion {
-					i.t.Log("Removing core docker containers...")
-					i.removeContainers("core")
-				} else {
-					i.t.Log("Skip core docker container removal for debugging...")
+				if i.config.LogContainers {
+					i.runComposeCommand(nil, "logs", "core")
 				}
+				i.removeContainers("core")
 				if i.config.EnableSorobanRPC {
-					i.runComposeCommand(nil, "logs", "soroban-rpc")
+					if i.config.LogContainers {
+						i.runComposeCommand(nil, "logs", "soroban-rpc")
+					}
 					i.removeContainers("soroban-rpc")
 				}
 			}

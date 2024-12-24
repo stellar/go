@@ -166,6 +166,7 @@ func TestLoad(t *testing.T) {
 			end = ledgerSeq
 		}
 	}
+	t.Logf("waiting for ledgers [%v, %v] to be in history archive", start, end)
 	waitForLedgerInArchive(t, 6*time.Minute, uint32(end))
 	allLedgers := getLedgers(itest, uint32(start), uint32(end))
 
