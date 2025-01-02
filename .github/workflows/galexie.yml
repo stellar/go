@@ -8,7 +8,7 @@ on:
 jobs:
   galexie:
     name: Test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     env:
       CAPTIVE_CORE_DEBIAN_PKG_VERSION: 22.0.0-2138.721fd0a65.focal
       GALEXIE_INTEGRATION_TESTS_ENABLED: "true"
