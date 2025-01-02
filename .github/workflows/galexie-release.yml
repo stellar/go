@@ -8,7 +8,7 @@ jobs:
 
   publish-docker:
     name: Test and push docker image
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     env:
       GALEXIE_INTEGRATION_TESTS_ENABLED: "true"
       GALEXIE_INTEGRATION_TESTS_CAPTIVE_CORE_BIN: /usr/bin/stellar-core
