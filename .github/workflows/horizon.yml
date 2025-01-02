@@ -13,7 +13,7 @@ jobs:
         os: [ubuntu-20.04, ubuntu-22.04]
         go: ["1.21", "1.22"]
         pg: [12, 16]
-        protocol-version: [21, 22]
+        protocol-version: [22]
     runs-on: ${{ matrix.os }}
     services:
       postgres:
