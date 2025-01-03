@@ -139,6 +139,7 @@ func TestAsyncTxSub_TransactionMalformed(t *testing.T) {
 		HorizonEnvironment: map[string]string{
 			"MAX_HTTP_REQUEST_SIZE": "1800",
 		},
+		QuickExpiration: true,
 	})
 	master := itest.Master()
 

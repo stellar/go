@@ -7,6 +7,7 @@ members = [
     "add_u64",
     "store",
     "constructor",
+    "bulk",
 ]
 
 [profile.release-with-logs]
