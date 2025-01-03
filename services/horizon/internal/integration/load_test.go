@@ -15,6 +15,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/stellar/go/amount"
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/clients/stellarcore"
 	"github.com/stellar/go/ingest"
@@ -34,8 +35,9 @@ type sorobanTransaction struct {
 }
 
 func TestLoad(t *testing.T) {
-	var transactionsPerLedger, ledgers int
+	var transactionsPerLedger, ledgers, transfersPerTx int
 	flag.IntVar(&transactionsPerLedger, "transactions-per-ledger", 100, "number of transactions per ledger")
+	flag.IntVar(&transfersPerTx, "transfers-per-tx", 10, "number of asset transfers for each transaction")
 	flag.IntVar(&ledgers, "ledgers", 2, "number of ledgers to generate")
 	flag.Parse()
 
@@ -88,6 +90,13 @@ func TestLoad(t *testing.T) {
 	xlm := xdr.MustNewNativeAsset()
 	createSAC(itest, xlm)
 
+	bulkContractID, _ := mustCreateAndInstallContract(
+		itest,
+		itest.Master(),
+		"a1",
+		"soroban_bulk.wasm",
+	)
+
 	var signers []*keypair.Full
 	var accounts []txnbuild.Account
 	var accountLedgers []uint32
@@ -105,19 +114,31 @@ func TestLoad(t *testing.T) {
 	signers = signers[:transactionsPerLedger]
 	accounts = accounts[:transactionsPerLedger]
 	var transactions []sorobanTransaction
+	var bulkAmounts xdr.ScVec
+	for i := 0; i < transfersPerTx; i++ {
+		bulkAmounts = append(bulkAmounts, i128Param(0, uint64(amount.MustParse("1"))))
+	}
+
 	for i := range signers {
 		var op *txnbuild.InvokeHostFunction
 		sender := accounts[i].GetAccountID()
-		var recipient xdr.ScVal
+
+		var bulkRecipients xdr.ScVec
 		if i%2 == 0 {
-			recipient = accountAddressParam(recipients[i].Address())
+			for j := i; j < i+transfersPerTx; j++ {
+				recipient := accountAddressParam(recipients[j%len(recipients)].Address())
+				bulkRecipients = append(bulkRecipients, recipient)
+			}
 		} else if i%2 == 1 {
-			var contractID xdr.Hash
-			_, err = rand.Read(contractID[:])
-			require.NoError(t, err)
-			recipient = contractAddressParam(contractID)
+			for j := 0; j < transfersPerTx; j++ {
+				var contractID xdr.Hash
+				_, err = rand.Read(contractID[:])
+				require.NoError(t, err)
+				bulkRecipients = append(bulkRecipients, contractAddressParam(contractID))
+			}
 		}
-		op = transfer(itest, sender, xlm, "1", recipient)
+
+		op = bulkTransfer(itest, bulkContractID, sender, xlm, &bulkRecipients, &bulkAmounts)
 		preFlightOp, minFee := itest.PreflightHostFunctions(accounts[i], *op)
 		preFlightOp.Ext.SorobanData.Resources.ReadBytes *= 10
 		preFlightOp.Ext.SorobanData.Resources.WriteBytes *= 10
@@ -228,6 +249,32 @@ func TestLoad(t *testing.T) {
 	require.Equal(t, len(orignalTransactions), len(mergedTransactions))
 	for i, original := range orignalTransactions {
 		requireTransactionsMatch(t, original, mergedTransactions[i])
+	}
+}
+
+func bulkTransfer(
+	itest *integration.Test,
+	bulkContractID xdr.Hash,
+	sender string,
+	asset xdr.Asset,
+	recipients *xdr.ScVec,
+	amounts *xdr.ScVec,
+) *txnbuild.InvokeHostFunction {
+	return &txnbuild.InvokeHostFunction{
+		HostFunction: xdr.HostFunction{
+			Type: xdr.HostFunctionTypeHostFunctionTypeInvokeContract,
+			InvokeContract: &xdr.InvokeContractArgs{
+				ContractAddress: contractIDParam(bulkContractID),
+				FunctionName:    "bulk_transfer",
+				Args: xdr.ScVec{
+					accountAddressParam(sender),
+					contractAddressParam(stellarAssetContractID(itest, asset)),
+					xdr.ScVal{Type: xdr.ScValTypeScvVec, Vec: &recipients},
+					xdr.ScVal{Type: xdr.ScValTypeScvVec, Vec: &amounts},
+				},
+			},
+		},
+		SourceAccount: sender,
 	}
 }
 
