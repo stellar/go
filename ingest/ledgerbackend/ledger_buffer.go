@@ -96,8 +96,8 @@ func (bsb *BufferedStorageBackend) newLedgerBuffer(ledgerRange Range) (*ledgerBu
 }
 
 func (lb *ledgerBuffer) pushTaskQueue() {
-	// In bounded mode, don't queue past the end ledger
-	if lb.nextTaskLedger > lb.ledgerRange.to && lb.ledgerRange.bounded {
+	// In bounded mode, don't queue past the end boundary ledger for the specified range.
+	if lb.ledgerRange.bounded && lb.nextTaskLedger > lb.dataStore.GetSchema().GetSequenceNumberEndBoundary(lb.ledgerRange.to) {
 		return
 	}
 	lb.taskQueue <- lb.nextTaskLedger
