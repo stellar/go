@@ -124,7 +124,7 @@ func TestValidCaptiveCorePreconfiguredNetwork(t *testing.T) {
 	require.Equal(t, ccConfig.HistoryArchiveURLs, network.PublicNetworkhistoryArchiveURLs)
 	require.Empty(t, ccConfig.Toml.HistoryEntries)
 	require.Len(t, ccConfig.Toml.Validators, 23)
-	require.Equal(t, ccConfig.Toml.Validators[0].Name, "Boötes")
+	require.Equal(t, ccConfig.Toml.Validators[0].Name, "bootes")
 }
 
 func TestValidCaptiveCoreManualNetwork(t *testing.T) {
@@ -187,7 +187,7 @@ func TestValidCaptiveCoreOverridenArchiveUrls(t *testing.T) {
 	require.Equal(t, ccConfig.HistoryArchiveURLs, []string{"http://testarchive"})
 	require.Empty(t, ccConfig.Toml.HistoryEntries)
 	require.Len(t, ccConfig.Toml.Validators, 23)
-	require.Equal(t, ccConfig.Toml.Validators[0].Name, "Boötes")
+	require.Equal(t, ccConfig.Toml.Validators[0].Name, "bootes")
 }
 
 func TestInvalidCaptiveCoreTomlPath(t *testing.T) {
