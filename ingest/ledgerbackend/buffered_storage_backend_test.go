@@ -65,6 +65,14 @@ func createBufferedStorageBackendForTesting() BufferedStorageBackend {
 func createMockdataStore(t *testing.T, start, end, partitionSize, count uint32) *datastore.MockDataStore {
 	mockDataStore := new(datastore.MockDataStore)
 	partition := count*partitionSize - 1
+
+	schema := datastore.DataStoreSchema{
+		LedgersPerFile:    count,
+		FilesPerPartition: partitionSize,
+	}
+
+	start = schema.GetSequenceNumberStartBoundary(start)
+	end = schema.GetSequenceNumberEndBoundary(end)
 	for i := start; i <= end; i = i + count {
 		var objectName string
 		var readCloser io.ReadCloser
@@ -78,10 +86,7 @@ func createMockdataStore(t *testing.T, start, end, partitionSize, count uint32) 
 		}
 		mockDataStore.On("GetFile", mock.Anything, objectName).Return(readCloser, nil).Times(1)
 	}
-	mockDataStore.On("GetSchema").Return(datastore.DataStoreSchema{
-		LedgersPerFile:    count,
-		FilesPerPartition: partitionSize,
-	})
+	mockDataStore.On("GetSchema").Return(schema)
 
 	t.Cleanup(func() {
 		mockDataStore.AssertExpectations(t)
@@ -248,31 +253,24 @@ func TestBSBGetLedger_SingleLedgerPerFile(t *testing.T) {
 }
 
 func TestCloudStorageGetLedger_MultipleLedgerPerFile(t *testing.T) {
-	startLedger := uint32(2)
-	endLedger := uint32(5)
+	startLedger := uint32(6)
+	endLedger := uint32(17)
 	lcmArray := createLCMForTesting(startLedger, endLedger)
 	bsb := createBufferedStorageBackendForTesting()
 	ctx := context.Background()
 	ledgerRange := BoundedRange(startLedger, endLedger)
 
-	mockDataStore := createMockdataStore(t, startLedger, endLedger, partitionSize, 2)
+	mockDataStore := createMockdataStore(t, startLedger, endLedger, partitionSize, 4)
 	bsb.dataStore = mockDataStore
-	mockDataStore.On("GetSchema").Return(datastore.DataStoreSchema{
-		LedgersPerFile:    uint32(2),
-		FilesPerPartition: partitionSize,
-	})
-	assert.NoError(t, bsb.PrepareRange(ctx, ledgerRange))
-	assert.Eventually(t, func() bool { return len(bsb.ledgerBuffer.ledgerQueue) == 2 }, time.Second*5, time.Millisecond*50)
 
-	lcm, err := bsb.GetLedger(ctx, uint32(2))
-	assert.NoError(t, err)
-	assert.Equal(t, lcmArray[0], lcm)
-	lcm, err = bsb.GetLedger(ctx, uint32(3))
-	assert.NoError(t, err)
-	assert.Equal(t, lcmArray[1], lcm)
-	lcm, err = bsb.GetLedger(ctx, uint32(4))
-	assert.NoError(t, err)
-	assert.Equal(t, lcmArray[2], lcm)
+	assert.NoError(t, bsb.PrepareRange(ctx, ledgerRange))
+	assert.Eventually(t, func() bool { return len(bsb.ledgerBuffer.ledgerQueue) == 4 }, time.Second*5, time.Millisecond*50)
+
+	for i := 0; i <= int(endLedger-startLedger); i++ {
+		lcm, err := bsb.GetLedger(ctx, startLedger+uint32(i))
+		assert.NoError(t, err)
+		assert.Equal(t, lcmArray[i], lcm)
+	}
 }
 
 func TestBSBGetLedger_ErrorPreceedingLedger(t *testing.T) {
