@@ -49,7 +49,7 @@ const (
 	AdminPort                   = 6060
 	StellarCorePort             = 11626
 	HistoryArchivePort          = 1570
-	SorobanRPCPort              = 8080
+	StellarRPCPort              = 8080
 	HistoryArchiveUrl           = "http://localhost:1570"
 	CheckpointFrequency         = 8
 )
@@ -62,11 +62,11 @@ const HorizonInitErrStr = "cannot initialize Horizon"
 
 type Config struct {
 	ProtocolVersion           uint32
-	EnableSorobanRPC          bool
+	EnableStellarRPC          bool
 	LogContainers             bool
 	SkipCoreContainerCreation bool
 	CoreDockerImage           string
-	SorobanRPCDockerImage     string
+	StellarRPCDockerImage     string
 	SkipProtocolUpgrade       bool
 	QuickExpiration           bool
 
@@ -198,9 +198,9 @@ func NewTest(t *testing.T, config Config) *Test {
 	i.coreClient = &stellarcore.Client{URL: "http://localhost:" + strconv.Itoa(StellarCorePort)}
 	if !config.SkipCoreContainerCreation {
 		i.waitForCore()
-		if i.config.EnableSorobanRPC {
+		if i.config.EnableStellarRPC {
 			i.startRPC()
-			i.waitForSorobanRPC()
+			i.waitForStellarRPC()
 		}
 	}
 
@@ -334,21 +334,21 @@ func (i *Test) startCoreValidator() {
 
 func (i *Test) startRPC() {
 	var envVars []string
-	var sorobanRPCOverride string
+	var stellarRPCOverride string
 
-	if i.config.SorobanRPCDockerImage != "" {
-		sorobanRPCOverride = i.config.CoreDockerImage
-	} else if img := os.Getenv("HORIZON_INTEGRATION_TESTS_SOROBAN_RPC_DOCKER_IMG"); img != "" {
-		sorobanRPCOverride = img
+	if i.config.StellarRPCDockerImage != "" {
+		stellarRPCOverride = i.config.CoreDockerImage
+	} else if img := os.Getenv("HORIZON_INTEGRATION_TESTS_STELLAR_RPC_DOCKER_IMG"); img != "" {
+		stellarRPCOverride = img
 	}
-	if sorobanRPCOverride != "" {
+	if stellarRPCOverride != "" {
 		envVars = append(
 			envVars,
-			fmt.Sprintf("SOROBAN_RPC_IMAGE=%s", sorobanRPCOverride),
+			fmt.Sprintf("STELLAR_RPC_IMAGE=%s", stellarRPCOverride),
 		)
 	}
 
-	i.runComposeCommand(envVars, "up", "--detach", "--quiet-pull", "--no-color", "soroban-rpc")
+	i.runComposeCommand(envVars, "up", "--detach", "--quiet-pull", "--no-color", "stellar-rpc")
 }
 
 func (i *Test) removeContainers(containers ...string) {
@@ -378,11 +378,11 @@ func (i *Test) prepareShutdownHandlers() {
 					i.runComposeCommand(nil, "logs", "core")
 				}
 				i.removeContainers("core")
-				if i.config.EnableSorobanRPC {
+				if i.config.EnableStellarRPC {
 					if i.config.LogContainers {
-						i.runComposeCommand(nil, "logs", "soroban-rpc")
+						i.runComposeCommand(nil, "logs", "stellar-rpc")
 					}
-					i.removeContainers("soroban-rpc")
+					i.removeContainers("stellar-rpc")
 				}
 			}
 		},
@@ -720,35 +720,35 @@ func (i *Test) waitForCore() {
 	i.t.Fatalf("Core could not sync after %v + %v", maxWaitForCoreStartup, maxWaitForCoreUpgrade)
 }
 
-const sorobanRPCInitTime = 60 * 6 * time.Second
-const sorobanRPCHealthCheckInterval = time.Second
+const stellarRPCInitTime = 60 * 6 * time.Second
+const stellarRPCHealthCheckInterval = time.Second
 
-// Wait for SorobanRPC to be up
-func (i *Test) waitForSorobanRPC() {
-	i.t.Log("Waiting for Soroban RPC to be up...")
+// Wait for stellar rpc to be up
+func (i *Test) waitForStellarRPC() {
+	i.t.Log("Waiting for Stellar RPC to be up...")
 
 	start := time.Now()
-	for time.Since(start) < sorobanRPCInitTime {
-		ctx, cancel := context.WithTimeout(context.Background(), sorobanRPCHealthCheckInterval)
+	for time.Since(start) < stellarRPCInitTime {
+		ctx, cancel := context.WithTimeout(context.Background(), stellarRPCHealthCheckInterval)
 		// TODO: soroban-tools should be exporting a proper Go client
-		ch := jhttp.NewChannel("http://localhost:"+strconv.Itoa(SorobanRPCPort), nil)
-		sorobanRPCClient := jrpc2.NewClient(ch, nil)
+		ch := jhttp.NewChannel("http://localhost:"+strconv.Itoa(StellarRPCPort), nil)
+		stellarRPCClient := jrpc2.NewClient(ch, nil)
 		callTime := time.Now()
-		_, err := sorobanRPCClient.Call(ctx, "getHealth", nil)
+		_, err := stellarRPCClient.Call(ctx, "getHealth", nil)
 		cancel()
 		if err != nil {
-			i.t.Logf("SorobanRPC is unhealthy: %v", err)
+			i.t.Logf("stellar rpc is unhealthy: %v", err)
 			// sleep up to a second between consecutive calls.
-			if durationSince := time.Since(callTime); durationSince < sorobanRPCHealthCheckInterval {
-				time.Sleep(sorobanRPCHealthCheckInterval - durationSince)
+			if durationSince := time.Since(callTime); durationSince < stellarRPCHealthCheckInterval {
+				time.Sleep(stellarRPCHealthCheckInterval - durationSince)
 			}
 			continue
 		}
-		i.t.Log("SorobanRPC is up.")
+		i.t.Log("stellar rpc is up.")
 		return
 	}
 
-	i.t.Fatalf("SorobanRPC unhealthy after %v", time.Since(start))
+	i.t.Fatalf("stellar rpc unhealthy after %v", time.Since(start))
 }
 
 type RPCSimulateHostFunctionResult struct {
@@ -796,14 +796,14 @@ func (i *Test) PreflightHostFunctions(
 func (i *Test) simulateTransaction(
 	sourceAccount txnbuild.Account, op txnbuild.Operation,
 ) (RPCSimulateTxResponse, xdr.SorobanTransactionData) {
-	// Before preflighting, make sure soroban-rpc is in sync with Horizon
+	// Before preflighting, make sure stellar-rpc is in sync with Horizon
 	root, err := i.horizonClient.Root()
 	assert.NoError(i.t, err)
-	i.syncWithSorobanRPC(uint32(root.HorizonSequence))
+	i.syncWithStellarRPC(uint32(root.HorizonSequence))
 
 	// TODO: soroban-tools should be exporting a proper Go client
-	ch := jhttp.NewChannel("http://localhost:"+strconv.Itoa(SorobanRPCPort), nil)
-	sorobanRPCClient := jrpc2.NewClient(ch, nil)
+	ch := jhttp.NewChannel("http://localhost:"+strconv.Itoa(StellarRPCPort), nil)
+	stellarRPCClient := jrpc2.NewClient(ch, nil)
 	txParams := GetBaseTransactionParamsWithFee(sourceAccount, txnbuild.MinBaseFee, op)
 	txParams.IncrementSequenceNum = false
 	tx, err := txnbuild.NewTransaction(txParams)
@@ -812,7 +812,7 @@ func (i *Test) simulateTransaction(
 	assert.NoError(i.t, err)
 	result := RPCSimulateTxResponse{}
 	fmt.Printf("Preflight TX:\n\n%v \n\n", base64)
-	err = sorobanRPCClient.CallResult(context.Background(), "simulateTransaction", struct {
+	err = stellarRPCClient.CallResult(context.Background(), "simulateTransaction", struct {
 		Transaction string `json:"transaction"`
 	}{base64}, &result)
 	assert.NoError(i.t, err)
@@ -824,25 +824,25 @@ func (i *Test) simulateTransaction(
 	return result, transactionData
 }
 
-func (i *Test) syncWithSorobanRPC(ledgerToWaitFor uint32) {
+func (i *Test) syncWithStellarRPC(ledgerToWaitFor uint32) {
 	for j := 0; j < 20; j++ {
 		result := struct {
 			Sequence uint32 `json:"sequence"`
 		}{}
-		ch := jhttp.NewChannel("http://localhost:"+strconv.Itoa(SorobanRPCPort), nil)
-		sorobanRPCClient := jrpc2.NewClient(ch, nil)
-		err := sorobanRPCClient.CallResult(context.Background(), "getLatestLedger", nil, &result)
+		ch := jhttp.NewChannel("http://localhost:"+strconv.Itoa(StellarRPCPort), nil)
+		stellarRPCClient := jrpc2.NewClient(ch, nil)
+		err := stellarRPCClient.CallResult(context.Background(), "getLatestLedger", nil, &result)
 		assert.NoError(i.t, err)
 		if result.Sequence >= ledgerToWaitFor {
 			return
 		}
 		time.Sleep(500 * time.Millisecond)
 	}
-	i.t.Fatal("Time out waiting for soroban-rpc to sync")
+	i.t.Fatal("Time out waiting for stellar-rpc to sync")
 }
 
 func (i *Test) WaitUntilLedgerEntryTTL(ledgerKey xdr.LedgerKey) {
-	ch := jhttp.NewChannel("http://localhost:"+strconv.Itoa(SorobanRPCPort), nil)
+	ch := jhttp.NewChannel("http://localhost:"+strconv.Itoa(StellarRPCPort), nil)
 	client := jrpc2.NewClient(ch, nil)
 
 	keyB64, err := xdr.MarshalBase64(ledgerKey)
@@ -873,7 +873,7 @@ func (i *Test) WaitUntilLedgerEntryTTL(ledgerKey xdr.LedgerKey) {
 			}
 			i.t.Log("waiting for ledger entry to ttl at ledger", liveUntilLedgerSeq)
 		} else {
-			i.t.Log("waiting for soroban-rpc to ingest the ledger entries")
+			i.t.Log("waiting for stellar-rpc to ingest the ledger entries")
 		}
 		time.Sleep(time.Second)
 	}

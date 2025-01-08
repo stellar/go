@@ -17,7 +17,7 @@ func TestExtendFootprintTtl(t *testing.T) {
 	}
 
 	itest := integration.NewTest(t, integration.Config{
-		EnableSorobanRPC: true,
+		EnableStellarRPC: true,
 		QuickExpiration:  true,
 	})
 

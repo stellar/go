@@ -46,7 +46,7 @@ func TestLoad(t *testing.T) {
 	}
 
 	itest := integration.NewTest(t, integration.Config{
-		EnableSorobanRPC: true,
+		EnableStellarRPC: true,
 	})
 
 	maxAccountsPerTransaction := 100

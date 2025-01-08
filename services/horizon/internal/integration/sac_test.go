@@ -41,7 +41,7 @@ func TestContractMintToAccount(t *testing.T) {
 
 	itest := integration.NewTest(t, integration.Config{
 		HorizonEnvironment: map[string]string{"INGEST_DISABLE_STATE_VERIFICATION": "true", "CONNECTION_TIMEOUT": "360000"},
-		EnableSorobanRPC:   true,
+		EnableStellarRPC:   true,
 		QuickExpiration:    true,
 	})
 
@@ -145,7 +145,7 @@ func TestContractMintToContract(t *testing.T) {
 	}
 
 	itest := integration.NewTest(t, integration.Config{
-		EnableSorobanRPC: true,
+		EnableStellarRPC: true,
 		QuickExpiration:  true,
 	})
 
@@ -225,7 +225,7 @@ func TestExpirationAndRestoration(t *testing.T) {
 	}
 
 	itest := integration.NewTest(t, integration.Config{
-		EnableSorobanRPC: true,
+		EnableStellarRPC: true,
 		HorizonIngestParameters: map[string]string{
 			// disable state verification because we will insert
 			// a fake asset contract in the horizon db and we don't
@@ -504,7 +504,7 @@ func TestContractTransferBetweenAccounts(t *testing.T) {
 	}
 
 	itest := integration.NewTest(t, integration.Config{
-		EnableSorobanRPC: true,
+		EnableStellarRPC: true,
 		QuickExpiration:  true,
 	})
 
@@ -579,7 +579,7 @@ func TestContractTransferBetweenAccountAndContract(t *testing.T) {
 	}
 
 	itest := integration.NewTest(t, integration.Config{
-		EnableSorobanRPC: true,
+		EnableStellarRPC: true,
 		QuickExpiration:  true,
 	})
 
@@ -700,7 +700,7 @@ func TestContractTransferBetweenContracts(t *testing.T) {
 	}
 
 	itest := integration.NewTest(t, integration.Config{
-		EnableSorobanRPC: true,
+		EnableStellarRPC: true,
 		QuickExpiration:  true,
 	})
 
@@ -782,7 +782,7 @@ func TestContractBurnFromAccount(t *testing.T) {
 	}
 
 	itest := integration.NewTest(t, integration.Config{
-		EnableSorobanRPC: true,
+		EnableStellarRPC: true,
 		QuickExpiration:  true,
 	})
 
@@ -858,7 +858,7 @@ func TestContractBurnFromContract(t *testing.T) {
 	}
 
 	itest := integration.NewTest(t, integration.Config{
-		EnableSorobanRPC: true,
+		EnableStellarRPC: true,
 		QuickExpiration:  true,
 	})
 
@@ -926,7 +926,7 @@ func TestContractClawbackFromAccount(t *testing.T) {
 	}
 
 	itest := integration.NewTest(t, integration.Config{
-		EnableSorobanRPC: true,
+		EnableStellarRPC: true,
 		QuickExpiration:  true,
 	})
 
@@ -1004,7 +1004,7 @@ func TestContractClawbackFromContract(t *testing.T) {
 	}
 
 	itest := integration.NewTest(t, integration.Config{
-		EnableSorobanRPC: true,
+		EnableStellarRPC: true,
 		QuickExpiration:  true,
 	})
 

@@ -19,9 +19,9 @@ services:
     volumes:
       - ${CORE_CONFIG_FILE}:/stellar-core.cfg
       - ./core-start.sh:/start
-  soroban-rpc:
+  stellar-rpc:
     platform: linux/amd64
-    image: ${SOROBAN_RPC_IMAGE:-stellar/soroban-rpc}
+    image: ${STELLAR_RPC_IMAGE:-stellar/stellar-rpc}
     restart: on-failure
     ports:
       - "8080:8080"
