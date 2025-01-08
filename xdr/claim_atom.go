@@ -19,6 +19,17 @@ func (a ClaimAtom) OfferId() Int64 {
 	}
 }
 
+func (a ClaimAtom) LiquidityPoolId() PoolId {
+	switch a.Type {
+	case ClaimAtomTypeClaimAtomTypeLiquidityPool:
+		return a.LiquidityPool.LiquidityPoolId
+	case ClaimAtomTypeClaimAtomTypeV0, ClaimAtomTypeClaimAtomTypeOrderBook:
+		panic(errors.New("orderbooks don't have LiquidityPoolId"))
+	default:
+		panic(fmt.Errorf("Unknown ClaimAtom type: %v", a.Type))
+	}
+}
+
 func (a ClaimAtom) SellerId() AccountId {
 	switch a.Type {
 	case ClaimAtomTypeClaimAtomTypeV0:

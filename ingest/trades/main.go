@@ -16,20 +16,12 @@ type TradeEvent interface {
 	GetTradeEventType() TradeEventType // Method to retrieve the type of the trade event
 }
 
-type OfferBase struct {
-	Selling xdr.Asset // Asset being sold
-	Buying  xdr.Asset // Asset being bought
-	Amount  xdr.Int64 // Total amount of the selling asset
-	Price   xdr.Price // Price of the offer
-	Flags   uint32    // Flags for the offer (e.g., passive, sell offers)
-}
-
 type OfferCreatedEvent struct {
-	SellerId         xdr.AccountId // Account ID of the seller
-	OfferId          xdr.Int64     // ID of the created offer
-	OfferState       OfferBase     // Initial state of the offer
-	CreatedLedgerSeq uint32        // Ledger sequence where the offer was created
-	Fills            []FillInfo    // List of fills that occurred during the creation
+	SellerId         xdr.AccountId  // Account ID of the seller
+	OfferId          xdr.Int64      // ID of the created offer
+	OfferState       xdr.OfferEntry // Initial state of the offer
+	CreatedLedgerSeq uint32         // Ledger sequence where the offer was created
+	Fills            []FillInfo     // List of fills that occurred during the creation
 }
 
 func (e OfferCreatedEvent) GetTradeEventType() TradeEventType {
@@ -37,24 +29,36 @@ func (e OfferCreatedEvent) GetTradeEventType() TradeEventType {
 }
 
 type OfferUpdatedEvent struct {
-	SellerId             xdr.AccountId // Account ID of the seller
-	OfferId              xdr.Int64     // ID of the updated offer
-	PrevUpdatedLedgerSeq uint32        // Ledger sequence of the previous update
-	PreviousOfferState   OfferBase     // Previous state of the offer
-	UpdatedOfferState    OfferBase     // Updated state of the offer
-	UpdatedLedgerSeq     uint32        // Ledger sequence where the offer was updated
-	Fills                []FillInfo    // List of fills that occurred during the update
+	SellerId             xdr.AccountId  // Account ID of the seller
+	OfferId              xdr.Int64      // ID of the updated offer
+	PrevUpdatedLedgerSeq uint32         // Ledger sequence of the previous update
+	PreviousOfferState   xdr.OfferEntry // Previous state of the offer
+	UpdatedOfferState    xdr.OfferEntry // Updated state of the offer
+	UpdatedLedgerSeq     uint32         // Ledger sequence where the offer was updated
+	Fills                []FillInfo     // List of fills that occurred during the update
 }
 
 func (e OfferUpdatedEvent) GetTradeEventType() TradeEventType {
 	return TradeEventTypeOfferUpdated
 }
 
+type OfferCloseReason uint32
+
+const (
+	OfferCloseReasonUnknown OfferCloseReason = iota
+	OfferCloseReasonOfferCancelled
+	OfferCloseReasonOfferFullyFilled
+	OfferCloseReasonUpgrade
+)
+
 type OfferClosedEvent struct {
-	SellerId        xdr.AccountId // Account ID of the seller
-	OfferId         xdr.Int64     // ID of the closed offer
-	LastOfferState  OfferBase     // Last state of the offer before closing
-	ClosedLedgerSeq uint32        // Ledger sequence where the offer was closed
+	SellerId             xdr.AccountId  // Account ID of the seller
+	OfferId              xdr.Int64      // ID of the closed offer
+	PrevUpdatedLedgerSeq uint32         // Ledger sequence of the previous update
+	PreviousOfferState   xdr.OfferEntry // Last state of the offer before closing
+	Fills                []FillInfo     // You could still have fills as a part of the offer being evicted
+	ClosedLedgerSeq      uint32         // Ledger sequence where the offer was closed
+	CloseReason          OfferCloseReason
 }
 
 func (e OfferClosedEvent) GetTradeEventType() TradeEventType {
@@ -77,6 +81,7 @@ const (
 	FillSourceOperationTypeManageSell
 	FillSourceOperationTypePathPaymentStrictSend
 	FillSourceOperationTypePathPaymentStrictReceive
+	FillSourceOperationTypePassiveSellOffer
 )
 
 type FillSource struct {
