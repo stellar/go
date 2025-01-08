@@ -27,11 +27,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var defaultCaptiveCoreParameters = map[string]string{
-	horizon.StellarCoreBinaryPathName: os.Getenv("CAPTIVE_CORE_BIN"),
-	horizon.StellarCoreURLFlagName:    "",
-}
-
 var networkParamArgs = map[string]string{
 	horizon.CaptiveCoreConfigPathName:   "",
 	horizon.CaptiveCoreHTTPPortFlagName: "",
@@ -39,29 +34,6 @@ var networkParamArgs = map[string]string{
 	horizon.StellarCoreURLFlagName:      "",
 	horizon.HistoryArchiveURLsFlagName:  "",
 	horizon.NetworkPassphraseFlagName:   "",
-}
-
-var (
-	CaptiveCoreConfigErrMsg = "error generating captive core configuration: invalid config: "
-)
-
-// Ensures that BUCKET_DIR_PATH is not an allowed value for Captive Core.
-func TestBucketDirDisallowed(t *testing.T) {
-	config := `BUCKET_DIR_PATH="/tmp"
-		` + integration.SimpleCaptiveCoreToml
-
-	confName, _, cleanup := integration.CreateCaptiveCoreConfig(config)
-	defer cleanup()
-	testConfig := integration.GetTestConfig()
-	testConfig.HorizonIngestParameters = map[string]string{
-		horizon.CaptiveCoreConfigPathName: confName,
-		horizon.StellarCoreBinaryPathName: os.Getenv("CAPTIVE_CORE_BIN"),
-	}
-	test := integration.NewTest(t, *testConfig)
-	err := test.StartHorizon(true)
-	assert.Equal(t, err.Error(), integration.HorizonInitErrStr+": error generating captive core configuration:"+
-		" invalid captive core toml file: could not unmarshal captive core toml: setting BUCKET_DIR_PATH is disallowed"+
-		" for Captive Core, use CAPTIVE_CORE_STORAGE_PATH instead")
 }
 
 func TestEnvironmentPreserved(t *testing.T) {
@@ -234,28 +206,9 @@ func TestNetworkEnvironmentVariable(t *testing.T) {
 
 // Ensures that the filesystem ends up in the correct state with Captive Core.
 func TestCaptiveCoreConfigFilesystemState(t *testing.T) {
-	confName, storagePath, cleanup := integration.CreateCaptiveCoreConfig(integration.SimpleCaptiveCoreToml)
-	defer cleanup()
-
-	localParams := integration.MergeMaps(defaultCaptiveCoreParameters, map[string]string{
-		"captive-core-storage-path":       storagePath,
-		horizon.CaptiveCoreConfigPathName: confName,
-	})
-	testConfig := integration.GetTestConfig()
-	testConfig.HorizonIngestParameters = localParams
-	test := integration.NewTest(t, *testConfig)
-
-	err := test.StartHorizon(true)
-	assert.NoError(t, err)
-	test.WaitForHorizonIngest()
-
-	t.Run("disk state", func(t *testing.T) {
-		validateCaptiveCoreDiskState(test, storagePath)
-	})
-
-	t.Run("no bucket dir", func(t *testing.T) {
-		validateNoBucketDirPath(test, storagePath)
-	})
+	test := integration.NewTest(t, integration.Config{})
+	validateCaptiveCoreDiskState(test, test.CaptiveCoreStoragePath())
+	validateNoBucketDirPath(test, test.CaptiveCoreStoragePath())
 }
 
 func TestMaxAssetsForPathRequests(t *testing.T) {
