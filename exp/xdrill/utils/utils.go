@@ -126,3 +126,54 @@ func PanicOnError(err error) {
 		panic(err)
 	}
 }
+
+// GetAccountAddressFromMuxedAccount takes in a muxed account and returns the address of the account
+func GetAccountAddressFromMuxedAccount(account xdr.MuxedAccount) (string, error) {
+	providedID := account.ToAccountId()
+	pointerToID := &providedID
+	return pointerToID.GetAddress()
+}
+
+func GetAccountBalanceFromLedgerEntryChanges(changes xdr.LedgerEntryChanges, sourceAccountAddress string) (int64, int64) {
+	var accountBalanceStart int64
+	var accountBalanceEnd int64
+
+	for _, change := range changes {
+		switch change.Type {
+		case xdr.LedgerEntryChangeTypeLedgerEntryUpdated:
+			accountEntry, ok := change.Updated.Data.GetAccount()
+			if !ok {
+				continue
+			}
+
+			if accountEntry.AccountId.Address() == sourceAccountAddress {
+				accountBalanceEnd = int64(accountEntry.Balance)
+			}
+		case xdr.LedgerEntryChangeTypeLedgerEntryState:
+			accountEntry, ok := change.State.Data.GetAccount()
+			if !ok {
+				continue
+			}
+
+			if accountEntry.AccountId.Address() == sourceAccountAddress {
+				accountBalanceStart = int64(accountEntry.Balance)
+			}
+		}
+	}
+
+	return accountBalanceStart, accountBalanceEnd
+}
+
+func GetTxSigners(xdrSignatures []xdr.DecoratedSignature) ([]string, error) {
+	signers := make([]string, len(xdrSignatures))
+
+	for i, sig := range xdrSignatures {
+		signerAccount, err := strkey.Encode(strkey.VersionByteAccountID, sig.Signature)
+		if err != nil {
+			return nil, err
+		}
+		signers[i] = signerAccount
+	}
+
+	return signers, nil
+}
