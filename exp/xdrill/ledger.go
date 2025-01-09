@@ -61,50 +61,56 @@ func (l Ledger) LedgerVersion() uint32 {
 	return uint32(l.ledger.LedgerHeaderHistoryEntry().Header.LedgerVersion)
 }
 
-func (l Ledger) SorobanFeeWrite1Kb() (int64, bool) {
+func (l Ledger) SorobanFeeWrite1Kb() *int64 {
 	lcmV1, ok := l.ledger.GetV1()
 	if !ok {
-		return 0, false
+		return nil
 	}
 
 	extV1, ok := lcmV1.Ext.GetV1()
 	if !ok {
-		return 0, false
+		return nil
 	}
 
-	return int64(extV1.SorobanFeeWrite1Kb), true
+	result := int64(extV1.SorobanFeeWrite1Kb)
+
+	return &result
 }
 
-func (l Ledger) TotalByteSizeOfBucketList() (uint64, bool) {
+func (l Ledger) TotalByteSizeOfBucketList() *uint64 {
 	lcmV1, ok := l.ledger.GetV1()
 	if !ok {
-		return 0, false
+		return nil
 	}
 
-	return uint64(lcmV1.TotalByteSizeOfBucketList), true
+	result := uint64(lcmV1.TotalByteSizeOfBucketList)
+
+	return &result
 }
 
-func (l Ledger) NodeID() (string, bool) {
+func (l Ledger) NodeID() *string {
 	LedgerCloseValueSignature, ok := l.ledger.LedgerHeaderHistoryEntry().Header.ScpValue.Ext.GetLcValueSignature()
 	if !ok {
-		return "", false
+		return nil
 
 	}
 	nodeID, ok := utils.GetAddress(LedgerCloseValueSignature.NodeId)
 	if !ok {
-		return "", false
+		return nil
 	}
 
-	return nodeID, true
+	return &nodeID
 }
 
-func (l Ledger) Signature() (string, bool) {
+func (l Ledger) Signature() *string {
 	LedgerCloseValueSignature, ok := l.ledger.LedgerHeaderHistoryEntry().Header.ScpValue.Ext.GetLcValueSignature()
 	if !ok {
-		return "", false
+		return nil
 	}
 
-	return base64.StdEncoding.EncodeToString(LedgerCloseValueSignature.Signature), true
+	result := base64.StdEncoding.EncodeToString(LedgerCloseValueSignature.Signature)
+
+	return &result
 }
 
 // Add docstring to larger, more complicated functions
@@ -112,12 +118,7 @@ func (l Ledger) TransactionCounts() (successTxCount, failedTxCount int32, ok boo
 	var results []xdr.TransactionResultMeta
 
 	transactions := getTransactionSet(l)
-	switch l.ledger.V {
-	case 0:
-		results = l.ledger.V0.TxProcessing
-	case 1:
-		results = l.ledger.V1.TxProcessing
-	}
+	results = l.ledger.TxProcessing()
 	txCount := len(transactions)
 	if txCount != len(results) {
 		return 0, 0, false
@@ -139,12 +140,7 @@ func (l Ledger) OperationCounts() (operationCount, txSetOperationCount int32, ok
 	var results []xdr.TransactionResultMeta
 
 	transactions := getTransactionSet(l)
-	switch l.ledger.V {
-	case 0:
-		results = l.ledger.V0.TxProcessing
-	case 1:
-		results = l.ledger.V1.TxProcessing
-	}
+	results = l.ledger.TxProcessing()
 
 	txCount := len(transactions)
 	if txCount != len(results) {

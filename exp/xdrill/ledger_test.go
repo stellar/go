@@ -29,25 +29,17 @@ func TestLedger(t *testing.T) {
 
 	var ok bool
 
-	var freeWrite int64
-	freeWrite, ok = ledger.SorobanFeeWrite1Kb()
-	assert.Equal(t, true, ok)
-	assert.Equal(t, int64(12), freeWrite)
+	freeWrite := ledger.SorobanFeeWrite1Kb()
+	assert.Equal(t, int64(12), *freeWrite)
 
-	var bucketSize uint64
-	bucketSize, ok = ledger.TotalByteSizeOfBucketList()
-	assert.Equal(t, true, ok)
-	assert.Equal(t, uint64(56), bucketSize)
+	bucketSize := ledger.TotalByteSizeOfBucketList()
+	assert.Equal(t, uint64(56), *bucketSize)
 
-	var nodeID string
-	nodeID, ok = ledger.NodeID()
-	assert.Equal(t, true, ok)
-	assert.Equal(t, "GARAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA76O", nodeID)
+	nodeID := ledger.NodeID()
+	assert.Equal(t, "GARAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA76O", *nodeID)
 
-	var signature string
-	signature, ok = ledger.Signature()
-	assert.Equal(t, true, ok)
-	assert.Equal(t, "", signature)
+	signature := ledger.Signature()
+	assert.Equal(t, "9g==", *signature)
 
 	var success int32
 	var failed int32
@@ -92,6 +84,7 @@ func ledgerTestInput() (lcm *xdr.LedgerCloseMeta) {
 									Type:    0,
 									Ed25519: &xdr.Uint256{34},
 								},
+								Signature: []byte{0xf6},
 							},
 						},
 						CloseTime: 1594584547,
