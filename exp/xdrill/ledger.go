@@ -10,11 +10,11 @@ import (
 )
 
 type Ledger struct {
-	ledger *xdr.LedgerCloseMeta
+	Ledger *xdr.LedgerCloseMeta
 }
 
 func (l Ledger) Sequence() uint32 {
-	return uint32(l.ledger.LedgerHeaderHistoryEntry().Header.LedgerSeq)
+	return uint32(l.Ledger.LedgerHeaderHistoryEntry().Header.LedgerSeq)
 }
 
 func (l Ledger) ID() int64 {
@@ -22,15 +22,15 @@ func (l Ledger) ID() int64 {
 }
 
 func (l Ledger) Hash() string {
-	return utils.HashToHexString(l.ledger.LedgerHeaderHistoryEntry().Hash)
+	return utils.HashToHexString(l.Ledger.LedgerHeaderHistoryEntry().Hash)
 }
 
 func (l Ledger) PreviousHash() string {
-	return utils.HashToHexString(l.ledger.PreviousLedgerHash())
+	return utils.HashToHexString(l.Ledger.PreviousLedgerHash())
 }
 
 func (l Ledger) CloseTime() int64 {
-	return l.ledger.LedgerCloseTime()
+	return l.Ledger.LedgerCloseTime()
 }
 
 func (l Ledger) ClosedAt() time.Time {
@@ -38,31 +38,31 @@ func (l Ledger) ClosedAt() time.Time {
 }
 
 func (l Ledger) TotalCoins() int64 {
-	return int64(l.ledger.LedgerHeaderHistoryEntry().Header.TotalCoins)
+	return int64(l.Ledger.LedgerHeaderHistoryEntry().Header.TotalCoins)
 }
 
 func (l Ledger) FeePool() int64 {
-	return int64(l.ledger.LedgerHeaderHistoryEntry().Header.FeePool)
+	return int64(l.Ledger.LedgerHeaderHistoryEntry().Header.FeePool)
 }
 
 func (l Ledger) BaseFee() uint32 {
-	return uint32(l.ledger.LedgerHeaderHistoryEntry().Header.BaseFee)
+	return uint32(l.Ledger.LedgerHeaderHistoryEntry().Header.BaseFee)
 }
 
 func (l Ledger) BaseReserve() uint32 {
-	return uint32(l.ledger.LedgerHeaderHistoryEntry().Header.BaseReserve)
+	return uint32(l.Ledger.LedgerHeaderHistoryEntry().Header.BaseReserve)
 }
 
 func (l Ledger) MaxTxSetSize() uint32 {
-	return uint32(l.ledger.LedgerHeaderHistoryEntry().Header.MaxTxSetSize)
+	return uint32(l.Ledger.LedgerHeaderHistoryEntry().Header.MaxTxSetSize)
 }
 
 func (l Ledger) LedgerVersion() uint32 {
-	return uint32(l.ledger.LedgerHeaderHistoryEntry().Header.LedgerVersion)
+	return uint32(l.Ledger.LedgerHeaderHistoryEntry().Header.LedgerVersion)
 }
 
 func (l Ledger) SorobanFeeWrite1Kb() *int64 {
-	lcmV1, ok := l.ledger.GetV1()
+	lcmV1, ok := l.Ledger.GetV1()
 	if !ok {
 		return nil
 	}
@@ -78,7 +78,7 @@ func (l Ledger) SorobanFeeWrite1Kb() *int64 {
 }
 
 func (l Ledger) TotalByteSizeOfBucketList() *uint64 {
-	lcmV1, ok := l.ledger.GetV1()
+	lcmV1, ok := l.Ledger.GetV1()
 	if !ok {
 		return nil
 	}
@@ -89,7 +89,7 @@ func (l Ledger) TotalByteSizeOfBucketList() *uint64 {
 }
 
 func (l Ledger) NodeID() *string {
-	LedgerCloseValueSignature, ok := l.ledger.LedgerHeaderHistoryEntry().Header.ScpValue.Ext.GetLcValueSignature()
+	LedgerCloseValueSignature, ok := l.Ledger.LedgerHeaderHistoryEntry().Header.ScpValue.Ext.GetLcValueSignature()
 	if !ok {
 		return nil
 
@@ -103,7 +103,7 @@ func (l Ledger) NodeID() *string {
 }
 
 func (l Ledger) Signature() *string {
-	LedgerCloseValueSignature, ok := l.ledger.LedgerHeaderHistoryEntry().Header.ScpValue.Ext.GetLcValueSignature()
+	LedgerCloseValueSignature, ok := l.Ledger.LedgerHeaderHistoryEntry().Header.ScpValue.Ext.GetLcValueSignature()
 	if !ok {
 		return nil
 	}
@@ -118,7 +118,7 @@ func (l Ledger) TransactionCounts() (successTxCount, failedTxCount int32, ok boo
 	var results []xdr.TransactionResultMeta
 
 	transactions := getTransactionSet(l)
-	results = l.ledger.TxProcessing()
+	results = l.Ledger.TxProcessing()
 	txCount := len(transactions)
 	if txCount != len(results) {
 		return 0, 0, false
@@ -140,7 +140,7 @@ func (l Ledger) OperationCounts() (operationCount, txSetOperationCount int32, ok
 	var results []xdr.TransactionResultMeta
 
 	transactions := getTransactionSet(l)
-	results = l.ledger.TxProcessing()
+	results = l.Ledger.TxProcessing()
 
 	txCount := len(transactions)
 	if txCount != len(results) {
@@ -168,18 +168,18 @@ func (l Ledger) OperationCounts() (operationCount, txSetOperationCount int32, ok
 }
 
 func getTransactionSet(l Ledger) (transactionProcessing []xdr.TransactionEnvelope) {
-	switch l.ledger.V {
+	switch l.Ledger.V {
 	case 0:
-		return l.ledger.V0.TxSet.Txs
+		return l.Ledger.V0.TxSet.Txs
 	case 1:
-		switch l.ledger.V1.TxSet.V {
+		switch l.Ledger.V1.TxSet.V {
 		case 0:
-			return getTransactionPhase(l.ledger.V1.TxSet.V1TxSet.Phases)
+			return getTransactionPhase(l.Ledger.V1.TxSet.V1TxSet.Phases)
 		default:
-			panic(fmt.Sprintf("unsupported LedgerCloseMeta.V1.TxSet.V: %d", l.ledger.V1.TxSet.V))
+			panic(fmt.Sprintf("unsupported LedgerCloseMeta.V1.TxSet.V: %d", l.Ledger.V1.TxSet.V))
 		}
 	default:
-		panic(fmt.Sprintf("unsupported LedgerCloseMeta.V: %d", l.ledger.V))
+		panic(fmt.Sprintf("unsupported LedgerCloseMeta.V: %d", l.Ledger.V))
 	}
 }
 

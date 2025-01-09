@@ -11,7 +11,7 @@ import (
 
 func TestLedger(t *testing.T) {
 	ledger := Ledger{
-		ledger: ledgerTestInput(),
+		Ledger: ledgerTestInput(),
 	}
 
 	assert.Equal(t, uint32(30578981), ledger.Sequence())
