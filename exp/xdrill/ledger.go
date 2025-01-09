@@ -6,8 +6,6 @@ import (
 	"time"
 
 	"github.com/stellar/go/exp/xdrill/utils"
-	"github.com/stellar/go/keypair"
-	"github.com/stellar/go/txnbuild"
 	"github.com/stellar/go/xdr"
 )
 
@@ -211,38 +209,4 @@ func getTransactionPhase(transactionPhase []xdr.TransactionPhase) (transactionEn
 	}
 
 	return transactionSlice
-}
-
-func CreateSampleTx(sequence int64, operationCount int) xdr.TransactionEnvelope {
-	kp, err := keypair.Random()
-	PanicOnError(err)
-
-	operations := []txnbuild.Operation{}
-	operationType := &txnbuild.BumpSequence{
-		BumpTo: 0,
-	}
-	for i := 0; i < operationCount; i++ {
-		operations = append(operations, operationType)
-	}
-
-	sourceAccount := txnbuild.NewSimpleAccount(kp.Address(), int64(0))
-	tx, err := txnbuild.NewTransaction(
-		txnbuild.TransactionParams{
-			SourceAccount: &sourceAccount,
-			Operations:    operations,
-			BaseFee:       txnbuild.MinBaseFee,
-			Preconditions: txnbuild.Preconditions{TimeBounds: txnbuild.NewInfiniteTimeout()},
-		},
-	)
-	PanicOnError(err)
-
-	env := tx.ToXDR()
-	return env
-}
-
-// PanicOnError is a function that panics if the provided error is not nil
-func PanicOnError(err error) {
-	if err != nil {
-		panic(err)
-	}
 }

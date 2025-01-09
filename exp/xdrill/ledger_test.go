@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stellar/go/exp/xdrill/utils"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
 )
@@ -109,8 +110,8 @@ func ledgerTestInput() (lcm *xdr.LedgerCloseMeta) {
 									Type: 0,
 									TxsMaybeDiscountedFee: &xdr.TxSetComponentTxsMaybeDiscountedFee{
 										Txs: []xdr.TransactionEnvelope{
-											CreateSampleTx(0, 3),
-											CreateSampleTx(1, 10),
+											utils.CreateSampleTx(0, 3),
+											utils.CreateSampleTx(1, 10),
 										},
 									},
 								},

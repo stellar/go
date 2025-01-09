@@ -3,7 +3,9 @@ package utils
 import (
 	"encoding/hex"
 
+	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/strkey"
+	"github.com/stellar/go/txnbuild"
 	"github.com/stellar/go/xdr"
 )
 
@@ -88,5 +90,39 @@ func GetAddress(nodeID xdr.NodeId) (string, bool) {
 		return encodedAddress, true
 	default:
 		return "", false
+	}
+}
+
+func CreateSampleTx(sequence int64, operationCount int) xdr.TransactionEnvelope {
+	kp, err := keypair.Random()
+	PanicOnError(err)
+
+	operations := []txnbuild.Operation{}
+	operationType := &txnbuild.BumpSequence{
+		BumpTo: 0,
+	}
+	for i := 0; i < operationCount; i++ {
+		operations = append(operations, operationType)
+	}
+
+	sourceAccount := txnbuild.NewSimpleAccount(kp.Address(), int64(0))
+	tx, err := txnbuild.NewTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount: &sourceAccount,
+			Operations:    operations,
+			BaseFee:       txnbuild.MinBaseFee,
+			Preconditions: txnbuild.Preconditions{TimeBounds: txnbuild.NewInfiniteTimeout()},
+		},
+	)
+	PanicOnError(err)
+
+	env := tx.ToXDR()
+	return env
+}
+
+// PanicOnError is a function that panics if the provided error is not nil
+func PanicOnError(err error) {
+	if err != nil {
+		panic(err)
 	}
 }
