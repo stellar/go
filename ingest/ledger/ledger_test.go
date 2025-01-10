@@ -11,9 +11,7 @@ import (
 )
 
 func TestLedger(t *testing.T) {
-	ledger := Ledger{
-		Ledger: ledgerTestInput(),
-	}
+	ledger := ledgerTestInput()
 
 	assert.Equal(t, uint32(30578981), Sequence(ledger))
 	assert.Equal(t, int64(131335723340005376), ID(ledger))
@@ -46,18 +44,17 @@ func TestLedger(t *testing.T) {
 
 	var signature string
 	signature, ok = Signature(ledger)
-	signature, ok = Signature(ledger)
 	assert.Equal(t, true, ok)
 	assert.Equal(t, "9g==", signature)
 
 	var success int32
 	var failed int32
-	success, failed, ok = ledger.TransactionCounts()
+	success, failed, ok = TransactionCounts(ledger)
 	assert.Equal(t, true, ok)
 	assert.Equal(t, int32(1), success)
 	assert.Equal(t, int32(1), failed)
 
-	success, failed, ok = ledger.OperationCounts()
+	success, failed, ok = OperationCounts(ledger)
 	assert.Equal(t, true, ok)
 	assert.Equal(t, int32(1), success)
 	assert.Equal(t, int32(13), failed)
