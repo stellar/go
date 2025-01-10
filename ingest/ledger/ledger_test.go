@@ -15,7 +15,6 @@ func TestLedger(t *testing.T) {
 		Ledger: ledgerTestInput(),
 	}
 
-<<<<<<< HEAD
 	assert.Equal(t, uint32(30578981), Sequence(ledger))
 	assert.Equal(t, int64(131335723340005376), ID(ledger))
 	assert.Equal(t, "26932dc4d84b5fabe9ae744cb43ce4c6daccf98c86a991b2a14945b1adac4d59", Hash(ledger))
@@ -29,72 +28,25 @@ func TestLedger(t *testing.T) {
 	assert.Equal(t, uint32(1000), MaxTxSetSize(ledger))
 	assert.Equal(t, uint32(13), LedgerVersion(ledger))
 
-<<<<<<< HEAD
 	var ok bool
 	var freeWrite int64
 	freeWrite, ok = SorobanFeeWrite1Kb(ledger)
-=======
-	assert.Equal(t, uint32(30578981), ledger.Sequence())
-	assert.Equal(t, int64(131335723340005376), ledger.ID())
-	assert.Equal(t, "26932dc4d84b5fabe9ae744cb43ce4c6daccf98c86a991b2a14945b1adac4d59", ledger.Hash())
-	assert.Equal(t, "f63c15d0eaf48afbd751a4c4dfade54a3448053c47c5a71d622668ae0cc2a208", ledger.PreviousHash())
-	assert.Equal(t, int64(1594584547), ledger.CloseTime())
-	assert.Equal(t, time.Time(time.Date(2020, time.July, 12, 20, 9, 7, 0, time.UTC)), ledger.ClosedAt())
-	assert.Equal(t, int64(1054439020873472865), ledger.TotalCoins())
-	assert.Equal(t, int64(18153766209161), ledger.FeePool())
-	assert.Equal(t, uint32(100), ledger.BaseFee())
-	assert.Equal(t, uint32(5000000), ledger.BaseReserve())
-	assert.Equal(t, uint32(1000), ledger.MaxTxSetSize())
-	assert.Equal(t, uint32(13), ledger.LedgerVersion())
-
-	var ok bool
-	var freeWrite int64
-	freeWrite, ok = ledger.SorobanFeeWrite1Kb()
->>>>>>> b5feb2c8 (Move xdrill ledger functions to ingest as subpackage)
-=======
-	var ok bool
-	var freeWrite int64
-	freeWrite, ok = SorobanFeeWrite1Kb(ledger)
->>>>>>> origin/5550/xdrill-transactions
 	assert.Equal(t, true, ok)
 	assert.Equal(t, int64(12), freeWrite)
 
 	var bucketSize uint64
-<<<<<<< HEAD
-<<<<<<< HEAD
 	bucketSize, ok = TotalByteSizeOfBucketList(ledger)
-=======
-	bucketSize, ok = ledger.TotalByteSizeOfBucketList()
->>>>>>> b5feb2c8 (Move xdrill ledger functions to ingest as subpackage)
-=======
-	bucketSize, ok = TotalByteSizeOfBucketList(ledger)
->>>>>>> origin/5550/xdrill-transactions
 	assert.Equal(t, true, ok)
 	assert.Equal(t, uint64(56), bucketSize)
 
 	var nodeID string
-<<<<<<< HEAD
-<<<<<<< HEAD
 	nodeID, ok = NodeID(ledger)
-=======
-	nodeID, ok = ledger.NodeID()
->>>>>>> b5feb2c8 (Move xdrill ledger functions to ingest as subpackage)
-=======
-	nodeID, ok = NodeID(ledger)
->>>>>>> origin/5550/xdrill-transactions
 	assert.Equal(t, true, ok)
 	assert.Equal(t, "GARAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA76O", nodeID)
 
 	var signature string
-<<<<<<< HEAD
-<<<<<<< HEAD
 	signature, ok = Signature(ledger)
-=======
-	signature, ok = ledger.Signature()
->>>>>>> b5feb2c8 (Move xdrill ledger functions to ingest as subpackage)
-=======
 	signature, ok = Signature(ledger)
->>>>>>> origin/5550/xdrill-transactions
 	assert.Equal(t, true, ok)
 	assert.Equal(t, "9g==", signature)
 
