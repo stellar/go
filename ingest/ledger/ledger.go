@@ -9,6 +9,9 @@ import (
 )
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> origin/5550/xdrill-transactions
 func Sequence(l xdr.LedgerCloseMeta) uint32 {
 	return uint32(l.LedgerHeaderHistoryEntry().Header.LedgerSeq)
 }
@@ -59,6 +62,7 @@ func LedgerVersion(l xdr.LedgerCloseMeta) uint32 {
 
 func SorobanFeeWrite1Kb(l xdr.LedgerCloseMeta) (int64, bool) {
 	lcmV1, ok := l.GetV1()
+<<<<<<< HEAD
 =======
 type Ledger struct {
 	Ledger xdr.LedgerCloseMeta
@@ -115,6 +119,8 @@ func (l Ledger) LedgerVersion() uint32 {
 func (l Ledger) SorobanFeeWrite1Kb() (int64, bool) {
 	lcmV1, ok := l.Ledger.GetV1()
 >>>>>>> b5feb2c8 (Move xdrill ledger functions to ingest as subpackage)
+=======
+>>>>>>> origin/5550/xdrill-transactions
 	if !ok {
 		return 0, false
 	}
@@ -128,12 +134,17 @@ func (l Ledger) SorobanFeeWrite1Kb() (int64, bool) {
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 func TotalByteSizeOfBucketList(l xdr.LedgerCloseMeta) (uint64, bool) {
 	lcmV1, ok := l.GetV1()
 =======
 func (l Ledger) TotalByteSizeOfBucketList() (uint64, bool) {
 	lcmV1, ok := l.Ledger.GetV1()
 >>>>>>> b5feb2c8 (Move xdrill ledger functions to ingest as subpackage)
+=======
+func TotalByteSizeOfBucketList(l xdr.LedgerCloseMeta) (uint64, bool) {
+	lcmV1, ok := l.GetV1()
+>>>>>>> origin/5550/xdrill-transactions
 	if !ok {
 		return 0, false
 	}
@@ -142,12 +153,17 @@ func (l Ledger) TotalByteSizeOfBucketList() (uint64, bool) {
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 func NodeID(l xdr.LedgerCloseMeta) (string, bool) {
 	LedgerCloseValueSignature, ok := l.LedgerHeaderHistoryEntry().Header.ScpValue.Ext.GetLcValueSignature()
 =======
 func (l Ledger) NodeID() (string, bool) {
 	LedgerCloseValueSignature, ok := l.Ledger.LedgerHeaderHistoryEntry().Header.ScpValue.Ext.GetLcValueSignature()
 >>>>>>> b5feb2c8 (Move xdrill ledger functions to ingest as subpackage)
+=======
+func NodeID(l xdr.LedgerCloseMeta) (string, bool) {
+	LedgerCloseValueSignature, ok := l.LedgerHeaderHistoryEntry().Header.ScpValue.Ext.GetLcValueSignature()
+>>>>>>> origin/5550/xdrill-transactions
 	if !ok {
 		return "", false
 
@@ -156,12 +172,17 @@ func (l Ledger) NodeID() (string, bool) {
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 func Signature(l xdr.LedgerCloseMeta) (string, bool) {
 	LedgerCloseValueSignature, ok := l.LedgerHeaderHistoryEntry().Header.ScpValue.Ext.GetLcValueSignature()
 =======
 func (l Ledger) Signature() (string, bool) {
 	LedgerCloseValueSignature, ok := l.Ledger.LedgerHeaderHistoryEntry().Header.ScpValue.Ext.GetLcValueSignature()
 >>>>>>> b5feb2c8 (Move xdrill ledger functions to ingest as subpackage)
+=======
+func Signature(l xdr.LedgerCloseMeta) (string, bool) {
+	LedgerCloseValueSignature, ok := l.LedgerHeaderHistoryEntry().Header.ScpValue.Ext.GetLcValueSignature()
+>>>>>>> origin/5550/xdrill-transactions
 	if !ok {
 		return "", false
 	}
@@ -171,11 +192,15 @@ func (l Ledger) Signature() (string, bool) {
 
 // Add docstring to larger, more complicated functions
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> origin/5550/xdrill-transactions
 func TransactionCounts(l xdr.LedgerCloseMeta) (successTxCount, failedTxCount int32, ok bool) {
 	var results []xdr.TransactionResultMeta
 
 	transactions := l.TransactionEnvelopes()
 	results = l.TxProcessing()
+<<<<<<< HEAD
 =======
 func (l Ledger) TransactionCounts() (successTxCount, failedTxCount int32, ok bool) {
 	var results []xdr.TransactionResultMeta
@@ -183,6 +208,8 @@ func (l Ledger) TransactionCounts() (successTxCount, failedTxCount int32, ok boo
 	transactions := l.Ledger.TransactionEnvelopes()
 	results = l.Ledger.TxProcessing()
 >>>>>>> b5feb2c8 (Move xdrill ledger functions to ingest as subpackage)
+=======
+>>>>>>> origin/5550/xdrill-transactions
 	txCount := len(transactions)
 	if txCount != len(results) {
 		return 0, 0, false
@@ -201,11 +228,15 @@ func (l Ledger) TransactionCounts() (successTxCount, failedTxCount int32, ok boo
 
 // Add docstring to larger, more complicated functions
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> origin/5550/xdrill-transactions
 func OperationCounts(l xdr.LedgerCloseMeta) (operationCount, txSetOperationCount int32, ok bool) {
 	var results []xdr.TransactionResultMeta
 
 	transactions := l.TransactionEnvelopes()
 	results = l.TxProcessing()
+<<<<<<< HEAD
 =======
 func (l Ledger) OperationCounts() (operationCount, txSetOperationCount int32, ok bool) {
 	var results []xdr.TransactionResultMeta
@@ -213,6 +244,8 @@ func (l Ledger) OperationCounts() (operationCount, txSetOperationCount int32, ok
 	transactions := l.Ledger.TransactionEnvelopes()
 	results = l.Ledger.TxProcessing()
 >>>>>>> b5feb2c8 (Move xdrill ledger functions to ingest as subpackage)
+=======
+>>>>>>> origin/5550/xdrill-transactions
 
 	for i, result := range results {
 		operations := transactions[i].Operations()
