@@ -1,4 +1,4 @@
-package xdrill
+package ledger
 
 import (
 	"testing"
@@ -10,53 +10,50 @@ import (
 )
 
 func TestLedger(t *testing.T) {
-	ledger := Ledger{
-		Ledger: ledgerTestInput(),
-	}
+	ledger := ledgerTestInput()
 
-	assert.Equal(t, uint32(30578981), ledger.Sequence())
-	assert.Equal(t, int64(131335723340005376), ledger.ID())
-	assert.Equal(t, "26932dc4d84b5fabe9ae744cb43ce4c6daccf98c86a991b2a14945b1adac4d59", ledger.Hash())
-	assert.Equal(t, "f63c15d0eaf48afbd751a4c4dfade54a3448053c47c5a71d622668ae0cc2a208", ledger.PreviousHash())
-	assert.Equal(t, int64(1594584547), ledger.CloseTime())
-	assert.Equal(t, time.Time(time.Date(2020, time.July, 12, 20, 9, 7, 0, time.UTC)), ledger.ClosedAt())
-	assert.Equal(t, int64(1054439020873472865), ledger.TotalCoins())
-	assert.Equal(t, int64(18153766209161), ledger.FeePool())
-	assert.Equal(t, uint32(100), ledger.BaseFee())
-	assert.Equal(t, uint32(5000000), ledger.BaseReserve())
-	assert.Equal(t, uint32(1000), ledger.MaxTxSetSize())
-	assert.Equal(t, uint32(13), ledger.LedgerVersion())
+	assert.Equal(t, uint32(30578981), Sequence(ledger))
+	assert.Equal(t, int64(131335723340005376), ID(ledger))
+	assert.Equal(t, "26932dc4d84b5fabe9ae744cb43ce4c6daccf98c86a991b2a14945b1adac4d59", Hash(ledger))
+	assert.Equal(t, "f63c15d0eaf48afbd751a4c4dfade54a3448053c47c5a71d622668ae0cc2a208", PreviousHash(ledger))
+	assert.Equal(t, int64(1594584547), CloseTime(ledger))
+	assert.Equal(t, time.Time(time.Date(2020, time.July, 12, 20, 9, 7, 0, time.UTC)), ClosedAt(ledger))
+	assert.Equal(t, int64(1054439020873472865), TotalCoins(ledger))
+	assert.Equal(t, int64(18153766209161), FeePool(ledger))
+	assert.Equal(t, uint32(100), BaseFee(ledger))
+	assert.Equal(t, uint32(5000000), BaseReserve(ledger))
+	assert.Equal(t, uint32(1000), MaxTxSetSize(ledger))
+	assert.Equal(t, uint32(13), LedgerVersion(ledger))
 
-	var ok bool
-
-	freeWrite := ledger.SorobanFeeWrite1Kb()
+	freeWrite := SorobanFeeWrite1Kb(ledger)
 	assert.Equal(t, int64(12), *freeWrite)
 
-	bucketSize := ledger.TotalByteSizeOfBucketList()
+	bucketSize := TotalByteSizeOfBucketList(ledger)
 	assert.Equal(t, uint64(56), *bucketSize)
 
-	nodeID := ledger.NodeID()
+	nodeID := NodeID(ledger)
 	assert.Equal(t, "GARAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA76O", *nodeID)
 
-	signature := ledger.Signature()
+	signature := Signature(ledger)
 	assert.Equal(t, "9g==", *signature)
 
+	var ok bool
 	var success int32
 	var failed int32
-	success, failed, ok = ledger.TransactionCounts()
+	success, failed, ok = TransactionCounts(ledger)
 	assert.Equal(t, true, ok)
 	assert.Equal(t, int32(1), success)
 	assert.Equal(t, int32(1), failed)
 
-	success, failed, ok = ledger.OperationCounts()
+	success, failed, ok = OperationCounts(ledger)
 	assert.Equal(t, true, ok)
 	assert.Equal(t, int32(1), success)
 	assert.Equal(t, int32(13), failed)
 
 }
 
-func ledgerTestInput() (lcm *xdr.LedgerCloseMeta) {
-	lcm = &xdr.LedgerCloseMeta{
+func ledgerTestInput() (lcm xdr.LedgerCloseMeta) {
+	lcm = xdr.LedgerCloseMeta{
 		V: 1,
 		V1: &xdr.LedgerCloseMetaV1{
 			Ext: xdr.LedgerCloseMetaExt{

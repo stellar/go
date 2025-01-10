@@ -1,4 +1,4 @@
-package xdrill
+package ledger
 
 import (
 	"encoding/base64"
@@ -9,60 +9,56 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-type Ledger struct {
-	Ledger *xdr.LedgerCloseMeta
+func Sequence(l xdr.LedgerCloseMeta) uint32 {
+	return uint32(l.LedgerHeaderHistoryEntry().Header.LedgerSeq)
 }
 
-func (l Ledger) Sequence() uint32 {
-	return uint32(l.Ledger.LedgerHeaderHistoryEntry().Header.LedgerSeq)
+func ID(l xdr.LedgerCloseMeta) int64 {
+	return utils.NewID(int32(l.LedgerSequence()), 0, 0).ToInt64()
 }
 
-func (l Ledger) ID() int64 {
-	return utils.NewID(int32(l.Sequence()), 0, 0).ToInt64()
+func Hash(l xdr.LedgerCloseMeta) string {
+	return utils.HashToHexString(l.LedgerHeaderHistoryEntry().Hash)
 }
 
-func (l Ledger) Hash() string {
-	return utils.HashToHexString(l.Ledger.LedgerHeaderHistoryEntry().Hash)
+func PreviousHash(l xdr.LedgerCloseMeta) string {
+	return utils.HashToHexString(l.PreviousLedgerHash())
 }
 
-func (l Ledger) PreviousHash() string {
-	return utils.HashToHexString(l.Ledger.PreviousLedgerHash())
+func CloseTime(l xdr.LedgerCloseMeta) int64 {
+	return l.LedgerCloseTime()
 }
 
-func (l Ledger) CloseTime() int64 {
-	return l.Ledger.LedgerCloseTime()
+func ClosedAt(l xdr.LedgerCloseMeta) time.Time {
+	return time.Unix(l.LedgerCloseTime(), 0).UTC()
 }
 
-func (l Ledger) ClosedAt() time.Time {
-	return time.Unix(l.CloseTime(), 0).UTC()
+func TotalCoins(l xdr.LedgerCloseMeta) int64 {
+	return int64(l.LedgerHeaderHistoryEntry().Header.TotalCoins)
 }
 
-func (l Ledger) TotalCoins() int64 {
-	return int64(l.Ledger.LedgerHeaderHistoryEntry().Header.TotalCoins)
+func FeePool(l xdr.LedgerCloseMeta) int64 {
+	return int64(l.LedgerHeaderHistoryEntry().Header.FeePool)
 }
 
-func (l Ledger) FeePool() int64 {
-	return int64(l.Ledger.LedgerHeaderHistoryEntry().Header.FeePool)
+func BaseFee(l xdr.LedgerCloseMeta) uint32 {
+	return uint32(l.LedgerHeaderHistoryEntry().Header.BaseFee)
 }
 
-func (l Ledger) BaseFee() uint32 {
-	return uint32(l.Ledger.LedgerHeaderHistoryEntry().Header.BaseFee)
+func BaseReserve(l xdr.LedgerCloseMeta) uint32 {
+	return uint32(l.LedgerHeaderHistoryEntry().Header.BaseReserve)
 }
 
-func (l Ledger) BaseReserve() uint32 {
-	return uint32(l.Ledger.LedgerHeaderHistoryEntry().Header.BaseReserve)
+func MaxTxSetSize(l xdr.LedgerCloseMeta) uint32 {
+	return uint32(l.LedgerHeaderHistoryEntry().Header.MaxTxSetSize)
 }
 
-func (l Ledger) MaxTxSetSize() uint32 {
-	return uint32(l.Ledger.LedgerHeaderHistoryEntry().Header.MaxTxSetSize)
+func LedgerVersion(l xdr.LedgerCloseMeta) uint32 {
+	return uint32(l.LedgerHeaderHistoryEntry().Header.LedgerVersion)
 }
 
-func (l Ledger) LedgerVersion() uint32 {
-	return uint32(l.Ledger.LedgerHeaderHistoryEntry().Header.LedgerVersion)
-}
-
-func (l Ledger) SorobanFeeWrite1Kb() *int64 {
-	lcmV1, ok := l.Ledger.GetV1()
+func SorobanFeeWrite1Kb(l xdr.LedgerCloseMeta) *int64 {
+	lcmV1, ok := l.GetV1()
 	if !ok {
 		return nil
 	}
@@ -77,8 +73,8 @@ func (l Ledger) SorobanFeeWrite1Kb() *int64 {
 	return &result
 }
 
-func (l Ledger) TotalByteSizeOfBucketList() *uint64 {
-	lcmV1, ok := l.Ledger.GetV1()
+func TotalByteSizeOfBucketList(l xdr.LedgerCloseMeta) *uint64 {
+	lcmV1, ok := l.GetV1()
 	if !ok {
 		return nil
 	}
@@ -88,8 +84,8 @@ func (l Ledger) TotalByteSizeOfBucketList() *uint64 {
 	return &result
 }
 
-func (l Ledger) NodeID() *string {
-	LedgerCloseValueSignature, ok := l.Ledger.LedgerHeaderHistoryEntry().Header.ScpValue.Ext.GetLcValueSignature()
+func NodeID(l xdr.LedgerCloseMeta) *string {
+	LedgerCloseValueSignature, ok := l.LedgerHeaderHistoryEntry().Header.ScpValue.Ext.GetLcValueSignature()
 	if !ok {
 		return nil
 
@@ -102,8 +98,8 @@ func (l Ledger) NodeID() *string {
 	return &nodeID
 }
 
-func (l Ledger) Signature() *string {
-	LedgerCloseValueSignature, ok := l.Ledger.LedgerHeaderHistoryEntry().Header.ScpValue.Ext.GetLcValueSignature()
+func Signature(l xdr.LedgerCloseMeta) *string {
+	LedgerCloseValueSignature, ok := l.LedgerHeaderHistoryEntry().Header.ScpValue.Ext.GetLcValueSignature()
 	if !ok {
 		return nil
 	}
@@ -114,11 +110,11 @@ func (l Ledger) Signature() *string {
 }
 
 // Add docstring to larger, more complicated functions
-func (l Ledger) TransactionCounts() (successTxCount, failedTxCount int32, ok bool) {
+func TransactionCounts(l xdr.LedgerCloseMeta) (successTxCount, failedTxCount int32, ok bool) {
 	var results []xdr.TransactionResultMeta
 
 	transactions := getTransactionSet(l)
-	results = l.Ledger.TxProcessing()
+	results = l.TxProcessing()
 	txCount := len(transactions)
 	if txCount != len(results) {
 		return 0, 0, false
@@ -136,11 +132,11 @@ func (l Ledger) TransactionCounts() (successTxCount, failedTxCount int32, ok boo
 }
 
 // Add docstring to larger, more complicated functions
-func (l Ledger) OperationCounts() (operationCount, txSetOperationCount int32, ok bool) {
+func OperationCounts(l xdr.LedgerCloseMeta) (operationCount, txSetOperationCount int32, ok bool) {
 	var results []xdr.TransactionResultMeta
 
 	transactions := getTransactionSet(l)
-	results = l.Ledger.TxProcessing()
+	results = l.TxProcessing()
 
 	txCount := len(transactions)
 	if txCount != len(results) {
@@ -167,19 +163,19 @@ func (l Ledger) OperationCounts() (operationCount, txSetOperationCount int32, ok
 	return operationCount, txSetOperationCount, true
 }
 
-func getTransactionSet(l Ledger) (transactionProcessing []xdr.TransactionEnvelope) {
-	switch l.Ledger.V {
+func getTransactionSet(l xdr.LedgerCloseMeta) (transactionProcessing []xdr.TransactionEnvelope) {
+	switch l.V {
 	case 0:
-		return l.Ledger.V0.TxSet.Txs
+		return l.V0.TxSet.Txs
 	case 1:
-		switch l.Ledger.V1.TxSet.V {
+		switch l.V1.TxSet.V {
 		case 0:
-			return getTransactionPhase(l.Ledger.V1.TxSet.V1TxSet.Phases)
+			return getTransactionPhase(l.V1.TxSet.V1TxSet.Phases)
 		default:
-			panic(fmt.Sprintf("unsupported LedgerCloseMeta.V1.TxSet.V: %d", l.Ledger.V1.TxSet.V))
+			panic(fmt.Sprintf("unsupported LedgerCloseMeta.V1.TxSet.V: %d", l.V1.TxSet.V))
 		}
 	default:
-		panic(fmt.Sprintf("unsupported LedgerCloseMeta.V: %d", l.Ledger.V))
+		panic(fmt.Sprintf("unsupported LedgerCloseMeta.V: %d", l.V))
 	}
 }
 
