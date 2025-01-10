@@ -8,60 +8,56 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-type Ledger struct {
-	Ledger xdr.LedgerCloseMeta
+func Sequence(l xdr.LedgerCloseMeta) uint32 {
+	return uint32(l.LedgerHeaderHistoryEntry().Header.LedgerSeq)
 }
 
-func (l Ledger) Sequence() uint32 {
-	return uint32(l.Ledger.LedgerHeaderHistoryEntry().Header.LedgerSeq)
+func ID(l xdr.LedgerCloseMeta) int64 {
+	return toid.New(int32(l.LedgerSequence()), 0, 0).ToInt64()
 }
 
-func (l Ledger) ID() int64 {
-	return toid.New(int32(l.Ledger.LedgerSequence()), 0, 0).ToInt64()
+func Hash(l xdr.LedgerCloseMeta) string {
+	return l.LedgerHeaderHistoryEntry().Hash.HexString()
 }
 
-func (l Ledger) Hash() string {
-	return l.Ledger.LedgerHeaderHistoryEntry().Hash.HexString()
+func PreviousHash(l xdr.LedgerCloseMeta) string {
+	return l.PreviousLedgerHash().HexString()
 }
 
-func (l Ledger) PreviousHash() string {
-	return l.Ledger.PreviousLedgerHash().HexString()
+func CloseTime(l xdr.LedgerCloseMeta) int64 {
+	return l.LedgerCloseTime()
 }
 
-func (l Ledger) CloseTime() int64 {
-	return l.Ledger.LedgerCloseTime()
+func ClosedAt(l xdr.LedgerCloseMeta) time.Time {
+	return time.Unix(l.LedgerCloseTime(), 0).UTC()
 }
 
-func (l Ledger) ClosedAt() time.Time {
-	return time.Unix(l.Ledger.LedgerCloseTime(), 0).UTC()
+func TotalCoins(l xdr.LedgerCloseMeta) int64 {
+	return int64(l.LedgerHeaderHistoryEntry().Header.TotalCoins)
 }
 
-func (l Ledger) TotalCoins() int64 {
-	return int64(l.Ledger.LedgerHeaderHistoryEntry().Header.TotalCoins)
+func FeePool(l xdr.LedgerCloseMeta) int64 {
+	return int64(l.LedgerHeaderHistoryEntry().Header.FeePool)
 }
 
-func (l Ledger) FeePool() int64 {
-	return int64(l.Ledger.LedgerHeaderHistoryEntry().Header.FeePool)
+func BaseFee(l xdr.LedgerCloseMeta) uint32 {
+	return uint32(l.LedgerHeaderHistoryEntry().Header.BaseFee)
 }
 
-func (l Ledger) BaseFee() uint32 {
-	return uint32(l.Ledger.LedgerHeaderHistoryEntry().Header.BaseFee)
+func BaseReserve(l xdr.LedgerCloseMeta) uint32 {
+	return uint32(l.LedgerHeaderHistoryEntry().Header.BaseReserve)
 }
 
-func (l Ledger) BaseReserve() uint32 {
-	return uint32(l.Ledger.LedgerHeaderHistoryEntry().Header.BaseReserve)
+func MaxTxSetSize(l xdr.LedgerCloseMeta) uint32 {
+	return uint32(l.LedgerHeaderHistoryEntry().Header.MaxTxSetSize)
 }
 
-func (l Ledger) MaxTxSetSize() uint32 {
-	return uint32(l.Ledger.LedgerHeaderHistoryEntry().Header.MaxTxSetSize)
+func LedgerVersion(l xdr.LedgerCloseMeta) uint32 {
+	return uint32(l.LedgerHeaderHistoryEntry().Header.LedgerVersion)
 }
 
-func (l Ledger) LedgerVersion() uint32 {
-	return uint32(l.Ledger.LedgerHeaderHistoryEntry().Header.LedgerVersion)
-}
-
-func (l Ledger) SorobanFeeWrite1Kb() (int64, bool) {
-	lcmV1, ok := l.Ledger.GetV1()
+func SorobanFeeWrite1Kb(l xdr.LedgerCloseMeta) (int64, bool) {
+	lcmV1, ok := l.GetV1()
 	if !ok {
 		return 0, false
 	}
@@ -74,8 +70,8 @@ func (l Ledger) SorobanFeeWrite1Kb() (int64, bool) {
 	return int64(extV1.SorobanFeeWrite1Kb), true
 }
 
-func (l Ledger) TotalByteSizeOfBucketList() (uint64, bool) {
-	lcmV1, ok := l.Ledger.GetV1()
+func TotalByteSizeOfBucketList(l xdr.LedgerCloseMeta) (uint64, bool) {
+	lcmV1, ok := l.GetV1()
 	if !ok {
 		return 0, false
 	}
@@ -83,8 +79,8 @@ func (l Ledger) TotalByteSizeOfBucketList() (uint64, bool) {
 	return uint64(lcmV1.TotalByteSizeOfBucketList), true
 }
 
-func (l Ledger) NodeID() (string, bool) {
-	LedgerCloseValueSignature, ok := l.Ledger.LedgerHeaderHistoryEntry().Header.ScpValue.Ext.GetLcValueSignature()
+func NodeID(l xdr.LedgerCloseMeta) (string, bool) {
+	LedgerCloseValueSignature, ok := l.LedgerHeaderHistoryEntry().Header.ScpValue.Ext.GetLcValueSignature()
 	if !ok {
 		return "", false
 
@@ -92,8 +88,8 @@ func (l Ledger) NodeID() (string, bool) {
 	return LedgerCloseValueSignature.NodeId.GetAddress()
 }
 
-func (l Ledger) Signature() (string, bool) {
-	LedgerCloseValueSignature, ok := l.Ledger.LedgerHeaderHistoryEntry().Header.ScpValue.Ext.GetLcValueSignature()
+func Signature(l xdr.LedgerCloseMeta) (string, bool) {
+	LedgerCloseValueSignature, ok := l.LedgerHeaderHistoryEntry().Header.ScpValue.Ext.GetLcValueSignature()
 	if !ok {
 		return "", false
 	}
@@ -102,11 +98,11 @@ func (l Ledger) Signature() (string, bool) {
 }
 
 // Add docstring to larger, more complicated functions
-func (l Ledger) TransactionCounts() (successTxCount, failedTxCount int32, ok bool) {
+func TransactionCounts(l xdr.LedgerCloseMeta) (successTxCount, failedTxCount int32, ok bool) {
 	var results []xdr.TransactionResultMeta
 
-	transactions := l.Ledger.TransactionEnvelopes()
-	results = l.Ledger.TxProcessing()
+	transactions := l.TransactionEnvelopes()
+	results = l.TxProcessing()
 	txCount := len(transactions)
 	if txCount != len(results) {
 		return 0, 0, false
@@ -124,11 +120,11 @@ func (l Ledger) TransactionCounts() (successTxCount, failedTxCount int32, ok boo
 }
 
 // Add docstring to larger, more complicated functions
-func (l Ledger) OperationCounts() (operationCount, txSetOperationCount int32, ok bool) {
+func OperationCounts(l xdr.LedgerCloseMeta) (operationCount, txSetOperationCount int32, ok bool) {
 	var results []xdr.TransactionResultMeta
 
-	transactions := l.Ledger.TransactionEnvelopes()
-	results = l.Ledger.TxProcessing()
+	transactions := l.TransactionEnvelopes()
+	results = l.TxProcessing()
 
 	for i, result := range results {
 		operations := transactions[i].Operations()
