@@ -24,15 +24,8 @@ func TestDefaultBSBConfigs(t *testing.T) {
 	smallConfig := ledgerbackend.BufferedStorageBackendConfig{
 		RetryLimit: 5,
 		RetryWait:  30 * time.Second,
-		BufferSize: 500,
-		NumWorkers: 5,
-	}
-
-	mediumConfig := ledgerbackend.BufferedStorageBackendConfig{
-		RetryLimit: 5,
-		RetryWait:  30 * time.Second,
-		BufferSize: 10,
-		NumWorkers: 5,
+		BufferSize: 100,
+		NumWorkers: 10,
 	}
 
 	largeConfig := ledgerbackend.BufferedStorageBackendConfig{
@@ -43,10 +36,8 @@ func TestDefaultBSBConfigs(t *testing.T) {
 	}
 
 	assert.Equal(t, DefaultBufferedStorageBackendConfig(1), smallConfig)
-	assert.Equal(t, DefaultBufferedStorageBackendConfig(2), mediumConfig)
-	assert.Equal(t, DefaultBufferedStorageBackendConfig(100), mediumConfig)
-	assert.Equal(t, DefaultBufferedStorageBackendConfig(101), largeConfig)
-	assert.Equal(t, DefaultBufferedStorageBackendConfig(1000), largeConfig)
+	assert.Equal(t, DefaultBufferedStorageBackendConfig(64), largeConfig)
+	assert.Equal(t, DefaultBufferedStorageBackendConfig(512), largeConfig)
 }
 
 func TestBSBProducerFn(t *testing.T) {
