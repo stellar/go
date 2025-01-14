@@ -33,12 +33,9 @@ jobs:
       HORIZON_INTEGRATION_TESTS_ENABLED: true
       HORIZON_INTEGRATION_TESTS_CORE_MAX_SUPPORTED_PROTOCOL: ${{ matrix.protocol-version }}
       HORIZON_INTEGRATION_TESTS_CAPTIVE_CORE_USE_DB: true
-      PROTOCOL_21_CORE_DEBIAN_PKG_VERSION: 21.3.1-2007.4ede19620.focal
-      PROTOCOL_21_CORE_DOCKER_IMG: stellar/stellar-core:21.3.1-2007.4ede19620.focal
-      PROTOCOL_21_SOROBAN_RPC_DOCKER_IMG: stellar/soroban-rpc:21.5.1
       PROTOCOL_22_CORE_DEBIAN_PKG_VERSION: 22.1.0-2194.0241e79f7.focal
       PROTOCOL_22_CORE_DOCKER_IMG: stellar/stellar-core:22.1.0-2194.0241e79f7.focal
-      PROTOCOL_22_SOROBAN_RPC_DOCKER_IMG: stellar/soroban-rpc:22.0.0-rc3-101
+      PROTOCOL_22_STELLAR_RPC_DOCKER_IMG: stellar/stellar-rpc:22.1.1
       PGHOST: localhost
       PGPORT: 5432
       PGUSER: postgres
@@ -73,11 +70,11 @@ jobs:
           docker pull "$PROTOCOL_${{ matrix.protocol-version }}_CORE_DOCKER_IMG"
           echo HORIZON_INTEGRATION_TESTS_DOCKER_IMG="$PROTOCOL_${{ matrix.protocol-version }}_CORE_DOCKER_IMG" >> $GITHUB_ENV
 
-      - name: Pull and set Soroban RPC image
+      - name: Pull and set Stellar RPC image
         shell: bash
         run: |
-          docker pull "$PROTOCOL_${{ matrix.protocol-version }}_SOROBAN_RPC_DOCKER_IMG"
-          echo HORIZON_INTEGRATION_TESTS_SOROBAN_RPC_DOCKER_IMG="$PROTOCOL_${{ matrix.protocol-version }}_SOROBAN_RPC_DOCKER_IMG" >> $GITHUB_ENV
+          docker pull "$PROTOCOL_${{ matrix.protocol-version }}_STELLAR_RPC_DOCKER_IMG"
+          echo HORIZON_INTEGRATION_TESTS_STELLAR_RPC_DOCKER_IMG="$PROTOCOL_${{ matrix.protocol-version }}_STELLAR_RPC_DOCKER_IMG" >> $GITHUB_ENV
 
       - name: Install core
         run: |

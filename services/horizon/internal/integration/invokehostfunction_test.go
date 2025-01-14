@@ -34,7 +34,7 @@ func TestContractInvokeHostFunctionInstallContract(t *testing.T) {
 	}
 
 	itest := integration.NewTest(t, integration.Config{
-		EnableSorobanRPC: true,
+		EnableStellarRPC: true,
 	})
 
 	// establish which account will be contract owner, and load it's current seq
@@ -83,7 +83,7 @@ func TestContractInvokeHostFunctionCreateContractByAddress(t *testing.T) {
 	}
 
 	itest := integration.NewTest(t, integration.Config{
-		EnableSorobanRPC: true,
+		EnableStellarRPC: true,
 	})
 
 	// establish which account will be contract owner, and load it's current seq
@@ -136,7 +136,8 @@ func TestContractInvokeHostFunctionCreateConstructorContract(t *testing.T) {
 	}
 
 	itest := integration.NewTest(t, integration.Config{
-		EnableSorobanRPC: true,
+		EnableStellarRPC: true,
+		QuickExpiration:  true,
 	})
 
 	issuer := itest.Master().Address()
@@ -229,7 +230,7 @@ func TestContractInvokeHostFunctionInvokeStatelessContractFn(t *testing.T) {
 	}
 
 	itest := integration.NewTest(t, integration.Config{
-		EnableSorobanRPC: true,
+		EnableStellarRPC: true,
 	})
 
 	// establish which account will be contract owner
@@ -337,7 +338,7 @@ func TestContractInvokeHostFunctionInvokeStatefulContractFn(t *testing.T) {
 	}
 
 	itest := integration.NewTest(t, integration.Config{
-		EnableSorobanRPC: true,
+		EnableStellarRPC: true,
 	})
 
 	// establish which account will be contract owner
