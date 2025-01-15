@@ -34,13 +34,9 @@ func DefaultBufferedStorageBackendConfig(ledgersPerFile uint32) ledgerbackend.Bu
 	}
 
 	switch {
-	case ledgersPerFile < 2:
-		config.BufferSize = 500
-		config.NumWorkers = 5
-		return config
-	case ledgersPerFile < 101:
-		config.BufferSize = 10
-		config.NumWorkers = 5
+	case ledgersPerFile < 64:
+		config.BufferSize = 100
+		config.NumWorkers = 10
 		return config
 	default:
 		config.BufferSize = 10
