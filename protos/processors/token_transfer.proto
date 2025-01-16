@@ -1,0 +1,145 @@
+syntax = "proto3";
+
+package processors.token_transfer;
+
+
+option go_package = "github.com/stellar/go/protos/processors;processors";
+
+
+// Enum for TransferType
+enum TransferType {
+    TRANSFER_TYPE_UNSPECIFIED = 0;
+    CREDIT = 1;
+    DEBIT = 2;
+}
+
+// Enum for TransferReason
+enum TransferReason {
+    REASON_UNSPECIFIED = 0;
+    TRANSACTION_FEE = 1;
+    CLASSIC_OPERATION = 2;
+    SMART_CONTRACT_EVENT = 3;
+}
+
+// TokenTransferDetails represents the specific details for each type of transfer event
+message TokenTransferDetails {
+    oneof details {
+        TransactionFeeDetails transaction_fee = 1;
+        CreateAccountDetails create_account = 2;
+        SimplePaymentDetails simple_payment = 3;
+        AccountMergeDetails account_merge = 4;
+        ClawbackDetails clawback = 5;
+        CreateClaimableBalanceDetails create_claimable_balance = 6;
+        ClaimClaimableBalanceDetails claim_claimable_balance = 7;
+        ClawbackClaimableBalanceDetails clawback_claimable_balance = 8;
+        LiquidityPoolDepositDetails liquidity_pool_deposit = 9;
+        LiquidityPoolWithdrawDetails liquidity_pool_withdraw = 10;
+        ManageOfferDetails manage_offer = 11;
+        PathPaymentDetails path_payment = 12;
+        SmartContractEventDetails smart_contract_event = 13;
+    }
+}
+
+// Main TokenTransferEvent message
+message TokenTransferEvent {
+    string entity_id = 1;              // Account, Trustline, or Smart Contract ID
+    string asset = 2;                 // Asset in the transfer (e.g., XLM, custom tokens)
+    double amount = 3;                // Positive quantity transferred
+    TransferType transfer_type = 4;   // Credit or Debit
+    TransferReason reason = 5;        // Transaction Fee, Classic Operation, Smart Contract Event
+    TokenTransferDetails details = 6; // Specific details about the transfer
+}
+
+// Details for transaction fees
+message TransactionFeeDetails {
+    string source_account = 1; // Account paying the fee
+    string txhash = 2;         // Transaction hash
+}
+
+// Details for CreateAccount operation
+message CreateAccountDetails {
+    string source_account = 1;
+    string destination_account = 2;
+    double starting_balance = 3; // Starting balance of the new account
+}
+
+// Details for Simple Payment operation
+message SimplePaymentDetails {
+    string source_account = 1;
+    string destination_account = 2;
+}
+
+// Details for Account Merge operation
+message AccountMergeDetails {
+    string source_account = 1;
+    string destination_account = 2;
+}
+
+// Details for Clawback operation
+message ClawbackDetails {
+    string source_account = 1;
+    string destination_account = 2;
+    double amount = 3;
+}
+
+// Details for Create Claimable Balance operation
+message CreateClaimableBalanceDetails {
+    string source_account = 1;
+    repeated string destination_accounts = 2; // Multiple potential claimants
+}
+
+// Details for Claim Claimable Balance operation
+message ClaimClaimableBalanceDetails {
+    string account = 1;      // Account claiming the balance
+    string balance_id = 2;   // ID of the claimable balance
+}
+
+// Details for Clawback Claimable Balance operation
+message ClawbackClaimableBalanceDetails {
+    string source_account = 1;
+    string balance_id = 2;   // ID of the clawed back balance
+}
+
+// Details for Liquidity Pool Deposit operation
+message LiquidityPoolDepositDetails {
+    string source_account = 1;
+    string liquidity_pool_id = 2;
+    double amount_deposited = 3;
+}
+
+// Details for Liquidity Pool Withdraw operation
+message LiquidityPoolWithdrawDetails {
+    string source_account = 1;
+    string liquidity_pool_id = 2;
+    double amount_withdrawn = 3;
+}
+
+// Details for Manage Offer operation
+message ManageOfferDetails {
+    string source_account = 1;
+    string offer_id = 2;
+    string asset_sold = 3;
+    string asset_bought = 4;
+    double amount_sold = 5;
+    double amount_bought = 6;
+}
+
+// Details for Path Payment operation (Strict Send and Receive)
+message PathPaymentDetails {
+    string source_account = 1;
+    string destination_account = 2;
+    string asset_sent = 3;
+    double amount_sent = 4;
+    string asset_received = 5;
+    double amount_received = 6;
+}
+
+// Details for Smart Contract events
+message SmartContractEventDetails {
+    string contract_id = 1;
+    string event_type = 2; // Transfer, Mint, Burn, Clawback
+    string source_account = 3;
+    string destination_account = 4; // Optional for events like Mint/Burn
+    double amount = 5;
+}
+
