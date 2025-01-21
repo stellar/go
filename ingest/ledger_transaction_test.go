@@ -837,8 +837,8 @@ func TestTransactionHelperFunctions(t *testing.T) {
 	assert.Equal(t, "MemoTypeMemoText", transaction.MemoType())
 
 	var timeBounds string
-	timeBounds, err = transaction.TimeBounds()
-	assert.Equal(t, nil, err)
+	timeBounds, ok = transaction.TimeBounds()
+	assert.Equal(t, true, ok)
 	assert.Equal(t, "[1,10)", timeBounds)
 
 	var ledgerBounds string
@@ -890,6 +890,11 @@ func TestTransactionHelperFunctions(t *testing.T) {
 	sorobanInclusionFeeCharged, ok = transaction.SorobanInclusionFeeCharged()
 	assert.Equal(t, true, ok)
 	assert.Equal(t, int64(-1234), sorobanInclusionFeeCharged)
+
+	var inclusionFee int64
+	inclusionFee, ok = transaction.InclusionFeeCharged()
+	assert.Equal(t, true, ok)
+	assert.Equal(t, int64(-1234), inclusionFee)
 
 	var sorobanResourceFeeRefund int64
 	sorobanResourceFeeRefund, ok = transaction.SorobanResourceFeeRefund()

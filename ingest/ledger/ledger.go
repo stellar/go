@@ -2,18 +2,14 @@ package ledger
 
 import (
 	"encoding/base64"
+	"fmt"
 	"time"
 
-	"github.com/stellar/go/toid"
 	"github.com/stellar/go/xdr"
 )
 
 func Sequence(l xdr.LedgerCloseMeta) uint32 {
 	return uint32(l.LedgerHeaderHistoryEntry().Header.LedgerSeq)
-}
-
-func ID(l xdr.LedgerCloseMeta) int64 {
-	return toid.New(int32(l.LedgerSequence()), 0, 0).ToInt64()
 }
 
 func Hash(l xdr.LedgerCloseMeta) string {
@@ -79,10 +75,10 @@ func TotalByteSizeOfBucketList(l xdr.LedgerCloseMeta) (uint64, bool) {
 	return uint64(lcmV1.TotalByteSizeOfBucketList), true
 }
 
-func NodeID(l xdr.LedgerCloseMeta) (string, bool) {
+func NodeID(l xdr.LedgerCloseMeta) (string, error) {
 	LedgerCloseValueSignature, ok := l.LedgerHeaderHistoryEntry().Header.ScpValue.Ext.GetLcValueSignature()
 	if !ok {
-		return "", false
+		return "", fmt.Errorf("could not get LedgerCloseValueSignature")
 
 	}
 	return LedgerCloseValueSignature.NodeId.GetAddress()
@@ -97,15 +93,17 @@ func Signature(l xdr.LedgerCloseMeta) (string, bool) {
 	return base64.StdEncoding.EncodeToString(LedgerCloseValueSignature.Signature), true
 }
 
-// Add docstring to larger, more complicated functions
-func TransactionCounts(l xdr.LedgerCloseMeta) (successTxCount, failedTxCount int32, ok bool) {
-	var results []xdr.TransactionResultMeta
-
+// TransactionCounts calculates and returns the number of successful and failed transactions
+func TransactionCounts(l xdr.LedgerCloseMeta) (successTxCount, failedTxCount uint32) {
 	transactions := l.TransactionEnvelopes()
-	results = l.TxProcessing()
+	results, err := l.TxProcessing()
+	if err != nil {
+		panic(err)
+	}
+
 	txCount := len(transactions)
 	if txCount != len(results) {
-		return 0, 0, false
+		panic("transaction count and number of TransactionResultMeta not equal")
 	}
 
 	for i := 0; i < txCount; i++ {
@@ -116,31 +114,32 @@ func TransactionCounts(l xdr.LedgerCloseMeta) (successTxCount, failedTxCount int
 		}
 	}
 
-	return successTxCount, failedTxCount, true
+	return successTxCount, failedTxCount
 }
 
-// Add docstring to larger, more complicated functions
-func OperationCounts(l xdr.LedgerCloseMeta) (operationCount, txSetOperationCount int32, ok bool) {
-	var results []xdr.TransactionResultMeta
-
+// OperationCounts calculates and returns the number of successful operations and the total operations within
+// a LedgerCloseMeta
+func OperationCounts(l xdr.LedgerCloseMeta) (successfulOperationCount, totalOperationCount uint32) {
 	transactions := l.TransactionEnvelopes()
-	results = l.TxProcessing()
+	results, err := l.TxProcessing()
+	if err != nil {
+		panic(err)
+	}
 
 	for i, result := range results {
-		operations := transactions[i].Operations()
-		numberOfOps := int32(len(operations))
-		txSetOperationCount += numberOfOps
+		operations := transactions[i].OperationsCount()
+		totalOperationCount += operations
 
 		// for successful transactions, the operation count is based on the operations results slice
 		if result.Result.Successful() {
 			operationResults, ok := result.Result.OperationResults()
 			if !ok {
-				return 0, 0, false
+				panic("could not get OperationResults")
 			}
 
-			operationCount += int32(len(operationResults))
+			successfulOperationCount += uint32(len(operationResults))
 		}
 	}
 
-	return operationCount, txSetOperationCount, true
+	return successfulOperationCount, totalOperationCount
 }

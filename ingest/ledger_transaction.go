@@ -239,7 +239,7 @@ func (t *LedgerTransaction) FeeCharged() (int64, bool) {
 }
 
 func (t *LedgerTransaction) OperationCount() uint32 {
-	return uint32(len(t.Envelope.Operations()))
+	return t.Envelope.OperationsCount()
 }
 
 func (t *LedgerTransaction) Memo() string {
@@ -266,21 +266,17 @@ func (t *LedgerTransaction) MemoType() string {
 	return memoObject.Type.String()
 }
 
-func (t *LedgerTransaction) TimeBounds() (string, error) {
+func (t *LedgerTransaction) TimeBounds() (string, bool) {
 	timeBounds := t.Envelope.TimeBounds()
 	if timeBounds == nil {
-		return "", nil
-	}
-
-	if timeBounds.MaxTime < timeBounds.MinTime && timeBounds.MaxTime != 0 {
-		return "", fmt.Errorf("the max time is earlier than the min time")
+		return "", false
 	}
 
 	if timeBounds.MaxTime == 0 {
-		return fmt.Sprintf("[%d,)", timeBounds.MinTime), nil
+		return fmt.Sprintf("[%d,)", timeBounds.MinTime), true
 	}
 
-	return fmt.Sprintf("[%d,%d)", timeBounds.MinTime, timeBounds.MaxTime), nil
+	return fmt.Sprintf("[%d,%d)", timeBounds.MinTime, timeBounds.MaxTime), true
 }
 
 func (t *LedgerTransaction) LedgerBounds() (string, bool) {
@@ -406,6 +402,21 @@ func (t *LedgerTransaction) SorobanInclusionFeeCharged() (int64, bool) {
 	initialFeeCharged := accountBalanceStart - accountBalanceEnd
 
 	return initialFeeCharged - resourceFee, true
+}
+
+func (t *LedgerTransaction) InclusionFeeCharged() (int64, bool) {
+	inclusionFee, ok := t.SorobanInclusionFeeCharged()
+	if ok {
+		return inclusionFee, ok
+	}
+
+	// Inclusion fee for classic is just the base 100 stroops + surge pricing if surging
+	inclusionFee, ok = t.FeeCharged()
+	if !ok {
+		return 0, false
+	}
+
+	return inclusionFee, true
 }
 
 func getAccountBalanceFromLedgerEntryChanges(changes xdr.LedgerEntryChanges, sourceAccountAddress string) (int64, int64) {

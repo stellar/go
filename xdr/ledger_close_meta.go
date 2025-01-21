@@ -158,13 +158,13 @@ func (l LedgerCloseMeta) EvictedPersistentLedgerEntries() ([]LedgerEntry, error)
 }
 
 // TxProcessing returns the TransactionResultMeta in this ledger
-func (l LedgerCloseMeta) TxProcessing() []TransactionResultMeta {
+func (l LedgerCloseMeta) TxProcessing() ([]TransactionResultMeta, error) {
 	switch l.V {
 	case 0:
-		return l.MustV0().TxProcessing
+		return l.MustV0().TxProcessing, nil
 	case 1:
-		return l.MustV1().TxProcessing
+		return l.MustV1().TxProcessing, nil
 	default:
-		panic(fmt.Sprintf("Unsupported LedgerCloseMeta.V: %d", l.V))
+		return []TransactionResultMeta{}, fmt.Errorf("Unsupported LedgerCloseMeta.V: %d", l.V)
 	}
 }
