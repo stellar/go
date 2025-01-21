@@ -93,8 +93,8 @@ func Signature(l xdr.LedgerCloseMeta) (string, bool) {
 	return base64.StdEncoding.EncodeToString(LedgerCloseValueSignature.Signature), true
 }
 
-// TransactionCounts calculates and returns the number of successful and failed transactions
-func TransactionCounts(l xdr.LedgerCloseMeta) (successTxCount, failedTxCount uint32) {
+// TransactionCounts calculates and returns the number of successful and total transactions
+func TransactionCounts(l xdr.LedgerCloseMeta) (successTxCount, totalTxCount uint32) {
 	transactions := l.TransactionEnvelopes()
 	results, err := l.TxProcessing()
 	if err != nil {
@@ -109,12 +109,10 @@ func TransactionCounts(l xdr.LedgerCloseMeta) (successTxCount, failedTxCount uin
 	for i := 0; i < txCount; i++ {
 		if results[i].Result.Successful() {
 			successTxCount++
-		} else {
-			failedTxCount++
 		}
 	}
 
-	return successTxCount, failedTxCount
+	return successTxCount, uint32(txCount)
 }
 
 // OperationCounts calculates and returns the number of successful operations and the total operations within
