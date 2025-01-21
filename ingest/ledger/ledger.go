@@ -127,7 +127,7 @@ func OperationCounts(l xdr.LedgerCloseMeta) (successfulOperationCount, totalOper
 	}
 
 	for i, result := range results {
-		operations := uint32(len(transactions[i].Operations()))
+		operations := transactions[i].OperationsCount()
 		totalOperationCount += operations
 
 		// for successful transactions, the operation count is based on the operations results slice
