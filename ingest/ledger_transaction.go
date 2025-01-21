@@ -404,7 +404,7 @@ func (t *LedgerTransaction) SorobanInclusionFeeCharged() (int64, bool) {
 	return initialFeeCharged - resourceFee, true
 }
 
-func (t *LedgerTransaction) InclusionFee() (int64, bool) {
+func (t *LedgerTransaction) InclusionFeeCharged() (int64, bool) {
 	inclusionFee, ok := t.SorobanInclusionFeeCharged()
 	if ok {
 		return inclusionFee, ok
