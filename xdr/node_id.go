@@ -1,22 +1,26 @@
 package xdr
 
-import "github.com/stellar/go/strkey"
+import (
+	"fmt"
 
-func (n NodeId) GetAddress() (string, bool) {
+	"github.com/stellar/go/strkey"
+)
+
+func (n NodeId) GetAddress() (string, error) {
 	switch n.Type {
 	case PublicKeyTypePublicKeyTypeEd25519:
 		ed, ok := n.GetEd25519()
 		if !ok {
-			return "", false
+			return "", fmt.Errorf("could not get NodeID.Ed25519")
 		}
 		raw := make([]byte, 32)
 		copy(raw, ed[:])
 		encodedAddress, err := strkey.Encode(strkey.VersionByteAccountID, raw)
 		if err != nil {
-			return "", false
+			return "", err
 		}
-		return encodedAddress, true
+		return encodedAddress, nil
 	default:
-		return "", false
+		return "", fmt.Errorf("unknown NodeId.PublicKeyType")
 	}
 }

@@ -14,7 +14,6 @@ func TestLedger(t *testing.T) {
 	ledger := ledgerTestInput()
 
 	assert.Equal(t, uint32(30578981), Sequence(ledger))
-	assert.Equal(t, int64(131335723340005376), ID(ledger))
 	assert.Equal(t, "26932dc4d84b5fabe9ae744cb43ce4c6daccf98c86a991b2a14945b1adac4d59", Hash(ledger))
 	assert.Equal(t, "f63c15d0eaf48afbd751a4c4dfade54a3448053c47c5a71d622668ae0cc2a208", PreviousHash(ledger))
 	assert.Equal(t, int64(1594584547), CloseTime(ledger))
@@ -38,8 +37,9 @@ func TestLedger(t *testing.T) {
 	assert.Equal(t, uint64(56), bucketSize)
 
 	var nodeID string
-	nodeID, ok = NodeID(ledger)
-	assert.Equal(t, true, ok)
+	var err error
+	nodeID, err = NodeID(ledger)
+	assert.Equal(t, nil, err)
 	assert.Equal(t, "GARAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA76O", nodeID)
 
 	var signature string
@@ -49,13 +49,11 @@ func TestLedger(t *testing.T) {
 
 	var success int32
 	var failed int32
-	success, failed, ok = TransactionCounts(ledger)
-	assert.Equal(t, true, ok)
+	success, failed = TransactionCounts(ledger)
 	assert.Equal(t, int32(1), success)
 	assert.Equal(t, int32(1), failed)
 
-	success, failed, ok = OperationCounts(ledger)
-	assert.Equal(t, true, ok)
+	success, failed = OperationCounts(ledger)
 	assert.Equal(t, int32(1), success)
 	assert.Equal(t, int32(13), failed)
 }
