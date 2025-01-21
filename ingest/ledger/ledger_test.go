@@ -47,8 +47,8 @@ func TestLedger(t *testing.T) {
 	assert.Equal(t, true, ok)
 	assert.Equal(t, "9g==", signature)
 
-	var success int32
-	var failed int32
+	var success uint32
+	var failed uint32
 	success, failed = TransactionCounts(ledger)
 	assert.Equal(t, int32(1), success)
 	assert.Equal(t, int32(1), failed)

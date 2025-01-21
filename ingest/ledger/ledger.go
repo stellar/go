@@ -94,7 +94,7 @@ func Signature(l xdr.LedgerCloseMeta) (string, bool) {
 }
 
 // TransactionCounts calculates and returns the number of successful and failed transactions
-func TransactionCounts(l xdr.LedgerCloseMeta) (successTxCount, failedTxCount int32) {
+func TransactionCounts(l xdr.LedgerCloseMeta) (successTxCount, failedTxCount uint32) {
 	transactions := l.TransactionEnvelopes()
 	results, err := l.TxProcessing()
 	if err != nil {
@@ -119,7 +119,7 @@ func TransactionCounts(l xdr.LedgerCloseMeta) (successTxCount, failedTxCount int
 
 // OperationCounts calculates and returns the number of successful operations and the total operations within
 // a LedgerCloseMeta
-func OperationCounts(l xdr.LedgerCloseMeta) (successfulOperationCount, totalOperationCount int32) {
+func OperationCounts(l xdr.LedgerCloseMeta) (successfulOperationCount, totalOperationCount uint32) {
 	transactions := l.TransactionEnvelopes()
 	results, err := l.TxProcessing()
 	if err != nil {
@@ -127,9 +127,8 @@ func OperationCounts(l xdr.LedgerCloseMeta) (successfulOperationCount, totalOper
 	}
 
 	for i, result := range results {
-		operations := transactions[i].Operations()
-		numberOfOps := int32(len(operations))
-		totalOperationCount += numberOfOps
+		operations := uint32(len(transactions[i].Operations()))
+		totalOperationCount += operations
 
 		// for successful transactions, the operation count is based on the operations results slice
 		if result.Result.Successful() {
@@ -138,7 +137,7 @@ func OperationCounts(l xdr.LedgerCloseMeta) (successfulOperationCount, totalOper
 				panic("could not get OperationResults")
 			}
 
-			successfulOperationCount += int32(len(operationResults))
+			successfulOperationCount += uint32(len(operationResults))
 		}
 	}
 
