@@ -8,6 +8,34 @@ import (
 )
 
 func TestOperation(t *testing.T) {
+	o := LedgerOperation{
+		OperationIndex:    int32(0),
+		Operation:         operationTestInput()[1],
+		Transaction:       transactionTestInput(),
+		NetworkPassphrase: "",
+	}
+
+	assert.Equal(t, "GAISEMYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABCAK", o.SourceAccount())
+	assert.Equal(t, int32(1), o.Type())
+	assert.Equal(t, "OperationTypePayment", o.TypeString())
+	assert.Equal(t, int64(131335723340009473), o.ID())
+
+	var ok bool
+	var sourceAccountMuxed string
+	sourceAccountMuxed, ok = o.SourceAccountMuxed()
+	assert.Equal(t, true, ok)
+	assert.Equal(t, "MAISEMYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPMJ2I", sourceAccountMuxed)
+
+	assert.Equal(t, "OperationResultCodeOpInner", o.OperationResultCode())
+
+	var err error
+	var operationTraceCode string
+	operationTraceCode, err = o.OperationTraceCode()
+	assert.Equal(t, nil, err)
+	assert.Equal(t, "PathPaymentStrictReceiveResultCodePathPaymentStrictReceiveSuccess", operationTraceCode)
+}
+
+func TestOperationDetails(t *testing.T) {
 	testOutput := resultTestOutput()
 	for i, op := range operationTestInput() {
 		ledgerOperation := LedgerOperation{
@@ -143,7 +171,17 @@ func transactionTestInput() *LedgerTransaction {
 				Result: xdr.TransactionResultResult{
 					Code: 0,
 					Results: &[]xdr.OperationResult{
-						{},
+						{
+							Code: 0,
+							Tr: &xdr.OperationResultTr{
+								Type: 2,
+								PathPaymentStrictReceiveResult: &xdr.PathPaymentStrictReceiveResult{
+									Code:     0,
+									Success:  &xdr.PathPaymentStrictReceiveResultSuccess{},
+									NoIssuer: &xdr.Asset{},
+								},
+							},
+						},
 						{},
 						{},
 						{
@@ -1086,9 +1124,13 @@ func resultTestOutput() []testOutput {
 				"asset_id":   int64(-5706705804583548011),
 				"asset_type": "native",
 				"from":       "GBT4YAEGJQ5YSFUMNKX6BPBUOCPNAIOFAVZOF6MIME2CECBMEIUXFZZN",
-				"path": []Path{Path{AssetCode: "USDT",
-					AssetIssuer: "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
-					AssetType:   "credit_alphanum4"}},
+				"path": []Path{
+					{
+						AssetCode:   "USDT",
+						AssetIssuer: "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
+						AssetType:   "credit_alphanum4",
+					},
+				},
 				"source_amount":     float64(0),
 				"source_asset_id":   int64(-5706705804583548011),
 				"source_asset_type": "native",
@@ -1103,8 +1145,10 @@ func resultTestOutput() []testOutput {
 				"buying_asset_type": "native",
 				"offer_id":          int64(0),
 				"price":             0.514092,
-				"price_r": Price{Numerator: 128523,
-					Denominator: 250000},
+				"price_r": Price{
+					Numerator:   128523,
+					Denominator: 250000,
+				},
 				"selling_asset_code":   "USDT",
 				"selling_asset_id":     int64(-8205667356306085451),
 				"selling_asset_issuer": "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
@@ -1119,8 +1163,10 @@ func resultTestOutput() []testOutput {
 				"buying_asset_issuer": "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
 				"buying_asset_type":   "credit_alphanum4",
 				"price":               0.0791606,
-				"price_r": Price{Numerator: 99583200,
-					Denominator: 1257990000},
+				"price_r": Price{
+					Numerator:   99583200,
+					Denominator: 1257990000,
+				},
 				"selling_asset_id":   int64(-5706705804583548011),
 				"selling_asset_type": "native"},
 		},
@@ -1211,8 +1257,10 @@ func resultTestOutput() []testOutput {
 				"buying_asset_type": "native",
 				"offer_id":          int64(100),
 				"price":             0.3496823,
-				"price_r": Price{Numerator: 635863285,
-					Denominator: 1818402817},
+				"price_r": Price{
+					Numerator:   635863285,
+					Denominator: 1818402817,
+				},
 				"selling_asset_code":   "USDT",
 				"selling_asset_id":     int64(-8205667356306085451),
 				"selling_asset_issuer": "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
@@ -1228,9 +1276,13 @@ func resultTestOutput() []testOutput {
 				"from":            "GAISEMYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABCAK",
 				"from_muxed":      "MAISEMYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPMJ2I",
 				"from_muxed_id":   uint64(123),
-				"path": []Path{{AssetCode: "USDT",
-					AssetIssuer: "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
-					AssetType:   "credit_alphanum4"}},
+				"path": []Path{
+					{
+						AssetCode:   "USDT",
+						AssetIssuer: "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
+						AssetType:   "credit_alphanum4",
+					},
+				},
 				"source_amount":     0.1598182,
 				"source_asset_id":   int64(-5706705804583548011),
 				"source_asset_type": "native",
@@ -1241,19 +1293,27 @@ func resultTestOutput() []testOutput {
 			result: map[string]interface{}{
 				"amount": 123456.789,
 				"asset":  "USDT:GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
-				"claimants": []Claimant{{Destination: "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
-					Predicate: xdr.ClaimPredicate{Type: 0,
-						AndPredicates: (*[]xdr.ClaimPredicate)(nil),
-						OrPredicates:  (*[]xdr.ClaimPredicate)(nil),
-						NotPredicate:  (**xdr.ClaimPredicate)(nil),
-						AbsBefore:     (*xdr.Int64)(nil),
-						RelBefore:     (*xdr.Int64)(nil)}}}},
+				"claimants": []Claimant{
+					{
+						Destination: "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
+						Predicate: xdr.ClaimPredicate{
+							Type:          0,
+							AndPredicates: (*[]xdr.ClaimPredicate)(nil),
+							OrPredicates:  (*[]xdr.ClaimPredicate)(nil),
+							NotPredicate:  (**xdr.ClaimPredicate)(nil),
+							AbsBefore:     (*xdr.Int64)(nil),
+							RelBefore:     (*xdr.Int64)(nil),
+						},
+					},
+				},
+			},
 		},
 		{
 			err: nil,
 			result: map[string]interface{}{
 				"balance_id": "000000000102030405060708090000000000000000000000000000000000000000000000",
-				"claimant":   "GBT4YAEGJQ5YSFUMNKX6BPBUOCPNAIOFAVZOF6MIME2CECBMEIUXFZZN"},
+				"claimant":   "GBT4YAEGJQ5YSFUMNKX6BPBUOCPNAIOFAVZOF6MIME2CECBMEIUXFZZN",
+			},
 		},
 		{
 			err: nil,
@@ -1265,39 +1325,46 @@ func resultTestOutput() []testOutput {
 			err: nil,
 			result: map[string]interface{}{
 				"signer_account_id": "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
-				"signer_key":        "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF"},
+				"signer_key":        "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF",
+			},
 		},
 		{
 			err: nil,
 			result: map[string]interface{}{
-				"account_id": "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA"},
+				"account_id": "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
+			},
 		},
 		{
 			err: nil,
 			result: map[string]interface{}{
-				"claimable_balance_id": "000000000102030405060708090000000000000000000000000000000000000000000000"},
+				"claimable_balance_id": "000000000102030405060708090000000000000000000000000000000000000000000000",
+			},
 		},
 		{
 			err: nil,
 			result: map[string]interface{}{
 				"data_account_id": "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
-				"data_name":       "test"},
+				"data_name":       "test",
+			},
 		},
 		{
 			err: nil,
 			result: map[string]interface{}{
-				"offer_id": int64(100)},
+				"offer_id": int64(100),
+			},
 		},
 		{
 			err: nil,
 			result: map[string]interface{}{
 				"trustline_account_id": "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
-				"trustline_asset":      "USTT:GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA"},
+				"trustline_asset":      "USTT:GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
+			},
 		},
 		{
 			err: nil,
 			result: map[string]interface{}{
-				"liquidity_pool_id": "0102030405060708090000000000000000000000000000000000000000000000"},
+				"liquidity_pool_id": "0102030405060708090000000000000000000000000000000000000000000000",
+			},
 		},
 		{
 			err: nil,
@@ -1307,12 +1374,14 @@ func resultTestOutput() []testOutput {
 				"asset_id":     int64(-8205667356306085451),
 				"asset_issuer": "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
 				"asset_type":   "credit_alphanum4",
-				"from":         "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA"},
+				"from":         "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
+			},
 		},
 		{
 			err: nil,
 			result: map[string]interface{}{
-				"balance_id": "000000000102030405060708090000000000000000000000000000000000000000000000"},
+				"balance_id": "000000000102030405060708090000000000000000000000000000000000000000000000",
+			},
 		},
 		{
 			err: nil,
@@ -1325,7 +1394,9 @@ func resultTestOutput() []testOutput {
 				"clear_flags_s": []string{"authorized", "authorized_to_maintain_liabilities"},
 				"set_flags":     []int32{4},
 				"set_flags_s":   []string{"clawback_enabled"},
-				"trustor":       "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA"}},
+				"trustor":       "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
+			},
+		},
 		{
 			err: nil,
 			result: map[string]interface{}{
