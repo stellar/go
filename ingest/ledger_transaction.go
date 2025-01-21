@@ -266,21 +266,17 @@ func (t *LedgerTransaction) MemoType() string {
 	return memoObject.Type.String()
 }
 
-func (t *LedgerTransaction) TimeBounds() (string, error) {
+func (t *LedgerTransaction) TimeBounds() (string, bool) {
 	timeBounds := t.Envelope.TimeBounds()
 	if timeBounds == nil {
-		return "", nil
-	}
-
-	if timeBounds.MaxTime < timeBounds.MinTime && timeBounds.MaxTime != 0 {
-		return "", fmt.Errorf("the max time is earlier than the min time")
+		return "", false
 	}
 
 	if timeBounds.MaxTime == 0 {
-		return fmt.Sprintf("[%d,)", timeBounds.MinTime), nil
+		return fmt.Sprintf("[%d,)", timeBounds.MinTime), true
 	}
 
-	return fmt.Sprintf("[%d,%d)", timeBounds.MinTime, timeBounds.MaxTime), nil
+	return fmt.Sprintf("[%d,%d)", timeBounds.MinTime, timeBounds.MaxTime), true
 }
 
 func (t *LedgerTransaction) LedgerBounds() (string, bool) {

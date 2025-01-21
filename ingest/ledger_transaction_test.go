@@ -837,8 +837,8 @@ func TestTransactionHelperFunctions(t *testing.T) {
 	assert.Equal(t, "MemoTypeMemoText", transaction.MemoType())
 
 	var timeBounds string
-	timeBounds, err = transaction.TimeBounds()
-	assert.Equal(t, nil, err)
+	timeBounds, ok = transaction.TimeBounds()
+	assert.Equal(t, true, ok)
 	assert.Equal(t, "[1,10)", timeBounds)
 
 	var ledgerBounds string
