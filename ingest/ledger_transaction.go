@@ -239,7 +239,7 @@ func (t *LedgerTransaction) FeeCharged() (int64, bool) {
 }
 
 func (t *LedgerTransaction) OperationCount() uint32 {
-	return uint32(len(t.Envelope.Operations()))
+	return t.Envelope.OperationsCount()
 }
 
 func (t *LedgerTransaction) Memo() string {
