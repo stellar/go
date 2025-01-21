@@ -48,14 +48,14 @@ func TestLedger(t *testing.T) {
 	assert.Equal(t, "9g==", signature)
 
 	var success uint32
-	var failed uint32
-	success, failed = TransactionCounts(ledger)
+	var total uint32
+	success, total = TransactionCounts(ledger)
 	assert.Equal(t, uint32(1), success)
-	assert.Equal(t, uint32(1), failed)
+	assert.Equal(t, uint32(2), total)
 
-	success, failed = OperationCounts(ledger)
+	success, total = OperationCounts(ledger)
 	assert.Equal(t, uint32(1), success)
-	assert.Equal(t, uint32(13), failed)
+	assert.Equal(t, uint32(13), total)
 }
 
 func ledgerTestInput() (lcm xdr.LedgerCloseMeta) {
