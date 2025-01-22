@@ -252,7 +252,7 @@ func (c *Client) GetLedgerEntryRaw(ctx context.Context, ledgerSeq uint32, keys .
 
 func (c *Client) GetLedgerEntries(ctx context.Context, ledgerSeq uint32, keys ...xdr.LedgerKey) (*proto.GetLedgerEntryResponse, error) {
 	var resp *proto.GetLedgerEntryResponse
-	return resp, c.makeLedgerKeyRequest(ctx, resp, "getledgerentry", ledgerSeq, keys...)
+	return resp, c.makeLedgerKeyRequest(ctx, &resp, "getledgerentry", ledgerSeq, keys...)
 }
 
 // SubmitTransaction calls the `tx` command on the connected stellar core with the provided envelope

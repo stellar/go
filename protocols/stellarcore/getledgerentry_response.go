@@ -17,11 +17,11 @@ const (
 
 // GetLedgerEntryResponse is the structure of Stellar Core's /getledgerentry
 type GetLedgerEntryResponse struct {
-	Ledger  uint32                     `json:"ledger"`
-	Entries []RawLedgerEntriesResponse `json:"entries"`
+	Ledger  uint32                `json:"ledger"`
+	Entries []LedgerEntryResponse `json:"entries"`
 }
 
-type RawLedgerEntriesResponse struct {
+type LedgerEntryResponse struct {
 	Entry string `json:"e"`             // base64-encoded xdr.LedgerEntry, or xdr.LedgerKey if state == new
 	State string `json:"state"`         // one of the above states
 	Ttl   uint32 `json:"ttl,omitempty"` // optionally, a Soroban entry's `liveUntilLedgerSeq`
