@@ -1,20 +1,28 @@
 package stellarcore
 
 const (
-	LedgerEntryStateLive              = "live"
-	LedgerEntryStateNewProofless      = "new_entry_no_proof"
-	LedgerEntryStateNewProof          = "new_entry_proof"
-	LedgerEntryStateArchivedProofless = "archived_no_proof"
-	LedgerEntryStateArchivedProof     = "archived_proof"
+	// Indicates that the entry is live in the current state
+	LedgerEntryStateLive = "live"
+	// Indicates that the entry is proven to be brand new and will live in the
+	// current state when created. In this case, the `Entry` field will be an
+	// xdr.LedgerKey matching the one requested rather than an xdr.LedgerEntry.
+	LedgerEntryStateNew = "new"
+	// Indicates that the entry has been archived due to its TTL but still lives
+	// in the live state
+	LedgerEntryStateArchived = "archived"
+	// Indicates that the entry has been evicted from the live state and now
+	// lives in the "hot archive" state.
+	LedgerEntryStateEvicted = "evicted"
 )
 
-// GetLedgerEntriesResponse is the structure of Stellar Core's /getledgerentry
-type GetLedgerEntriesResponse struct {
+// GetLedgerEntryResponse is the structure of Stellar Core's /getledgerentry
+type GetLedgerEntryResponse struct {
 	Ledger  uint32                     `json:"ledger"`
 	Entries []RawLedgerEntriesResponse `json:"entries"`
+	Ttl     uint32                     `json:"ttl,omitempty"`
 }
 
 type RawLedgerEntriesResponse struct {
-	Entry string `json:"le"`    // base64-encoded xdr.LedgerEntry
+	Entry string `json:"e"`     // base64-encoded xdr.LedgerEntry, or xdr.LedgerKey if state == new
 	State string `json:"state"` // one of the above states
 }

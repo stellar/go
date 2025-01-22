@@ -156,19 +156,9 @@ func (c *Client) GetLedgerEntryRaw(ctx context.Context, ledgerSeq uint32, keys .
 	return resp, c.makeLedgerKeyRequest(ctx, &resp, "getledgerentryraw", ledgerSeq, keys...)
 }
 
-func (c *Client) GetLedgerEntries(ctx context.Context, ledgerSeq uint32, keys ...xdr.LedgerKey) (*proto.GetLedgerEntriesResponse, error) {
-	var resp *proto.GetLedgerEntriesResponse
-	return resp, c.makeLedgerKeyRequest(ctx, resp, "getledgerentries", ledgerSeq, keys...)
-}
-
-func (c *Client) GetInvocationProof(ctx context.Context, ledgerSeq uint32, keys ...xdr.LedgerKey) (*proto.ProofResponse, error) {
-	var resp *proto.ProofResponse
-	return resp, c.makeLedgerKeyRequest(ctx, resp, "getinvocationproof", ledgerSeq, keys...)
-}
-
-func (c *Client) GetRestorationProof(ctx context.Context, ledgerSeq uint32, keys ...xdr.LedgerKey) (*proto.ProofResponse, error) {
-	var resp *proto.ProofResponse
-	return resp, c.makeLedgerKeyRequest(ctx, resp, "getrestorationproof", ledgerSeq, keys...)
+func (c *Client) GetLedgerEntries(ctx context.Context, ledgerSeq uint32, keys ...xdr.LedgerKey) (*proto.GetLedgerEntryResponse, error) {
+	var resp *proto.GetLedgerEntryResponse
+	return resp, c.makeLedgerKeyRequest(ctx, resp, "getledgerentry", ledgerSeq, keys...)
 }
 
 // SubmitTransaction calls the `tx` command on the connected stellar core with the provided envelope
@@ -347,6 +337,14 @@ func (c *Client) makeLedgerKeyRequest(
 ) error {
 	if len(keys) == 0 {
 		return errors.New("no keys specified in request")
+	}
+
+	for _, key := range keys {
+		// We could just filter them out, but this indicates improper usage so
+		// an error makes more sense.
+		if key.Type == xdr.LedgerEntryTypeTtl {
+			return errors.New("TTL ledger keys are not allowed")
+		}
 	}
 
 	q, err := buildMultiKeyRequest(keys...)
