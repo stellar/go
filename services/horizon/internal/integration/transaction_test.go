@@ -15,7 +15,7 @@ import (
 func TestP19MetaTransaction(t *testing.T) {
 	itest := integration.NewTest(t, integration.Config{
 		ProtocolVersion:  19,
-		EnableSorobanRPC: false,
+		EnableStellarRPC: false,
 	})
 
 	masterAccount, err := itest.Client().AccountDetail(horizonclient.AccountRequest{
@@ -46,7 +46,7 @@ func TestP19MetaDisabledTransaction(t *testing.T) {
 	itest := integration.NewTest(t, integration.Config{
 		ProtocolVersion:    19,
 		HorizonEnvironment: map[string]string{"SKIP_TXMETA": "TRUE"},
-		EnableSorobanRPC:   false,
+		EnableStellarRPC:   false,
 	})
 
 	masterAccount, err := itest.Client().AccountDetail(horizonclient.AccountRequest{
@@ -72,7 +72,7 @@ func TestP20MetaTransaction(t *testing.T) {
 	}
 
 	itest := integration.NewTest(t, integration.Config{
-		EnableSorobanRPC: true,
+		EnableStellarRPC: true,
 	})
 
 	// establish which account will be contract owner, and load it's current seq
@@ -102,7 +102,7 @@ func TestP20MetaDisabledTransaction(t *testing.T) {
 
 	itest := integration.NewTest(t, integration.Config{
 		HorizonEnvironment: map[string]string{"SKIP_TXMETA": "TRUE"},
-		EnableSorobanRPC:   true,
+		EnableStellarRPC:   true,
 	})
 
 	// establish which account will be contract owner, and load it's current seq

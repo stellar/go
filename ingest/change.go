@@ -119,7 +119,7 @@ func (c Change) String() string {
 	)
 }
 
-func (c Change) ledgerKey() (xdr.LedgerKey, error) {
+func (c Change) LedgerKey() (xdr.LedgerKey, error) {
 	if c.Pre != nil {
 		return c.Pre.LedgerKey()
 	}
@@ -182,7 +182,7 @@ type sortableChanges struct {
 func newSortableChanges(changes []Change) sortableChanges {
 	ledgerKeys := make([][]byte, len(changes))
 	for i, c := range changes {
-		lk, err := c.ledgerKey()
+		lk, err := c.LedgerKey()
 		if err != nil {
 			panic(err)
 		}

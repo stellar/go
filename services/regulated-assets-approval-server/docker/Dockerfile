@@ -1,4 +1,4 @@
-FROM golang:1.22-bullseye as build
+FROM golang:1.23-bullseye as build
 
 ADD . /src/regulated-assets-approval-server
 WORKDIR /src/regulated-assets-approval-server

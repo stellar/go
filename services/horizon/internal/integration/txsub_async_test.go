@@ -135,10 +135,11 @@ func TestAsyncTxSub_SubmissionTryAgainLater(t *testing.T) {
 
 func TestAsyncTxSub_TransactionMalformed(t *testing.T) {
 	itest := integration.NewTest(t, integration.Config{
-		EnableSorobanRPC: true,
+		EnableStellarRPC: true,
 		HorizonEnvironment: map[string]string{
 			"MAX_HTTP_REQUEST_SIZE": "1800",
 		},
+		QuickExpiration: true,
 	})
 	master := itest.Master()
 

@@ -60,10 +60,11 @@ func TestTxSubLimitsBodySize(t *testing.T) {
 	}
 
 	itest := integration.NewTest(t, integration.Config{
-		EnableSorobanRPC: true,
+		EnableStellarRPC: true,
 		HorizonEnvironment: map[string]string{
 			"MAX_HTTP_REQUEST_SIZE": "1800",
 		},
+		QuickExpiration: true,
 	})
 
 	// establish which account will be contract owner, and load it's current seq
