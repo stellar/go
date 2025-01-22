@@ -303,7 +303,7 @@ func (c *CaptiveCoreToml) unmarshal(data []byte, strict bool) error {
 		return err
 	} else if err = toml.NewDecoder(bytes.NewReader(withoutPlaceHolders)).Strict(strict).Decode(&body); err != nil {
 		if message := err.Error(); strings.HasPrefix(message, "undecoded keys") {
-			return fmt.Errorf(strings.Replace(
+			return errors.New(strings.Replace(
 				message,
 				"undecoded keys",
 				"these fields are not supported by captive core",

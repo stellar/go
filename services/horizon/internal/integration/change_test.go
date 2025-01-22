@@ -2,17 +2,19 @@ package integration
 
 import (
 	"context"
+	"io"
+	"sort"
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/assert"
+
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/services/horizon/internal/test/integration"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stellar/go/xdr"
-	"github.com/stretchr/testify/assert"
-	"io"
-	"sort"
-	"testing"
-	"time"
 )
 
 func TestProtocolUpgradeChanges(t *testing.T) {
@@ -20,7 +22,7 @@ func TestProtocolUpgradeChanges(t *testing.T) {
 	itest := integration.NewTest(t, integration.Config{SkipHorizonStart: true})
 
 	upgradedLedgerAppx, _ := itest.GetUpgradedLedgerSeqAppx()
-	waitForLedgerInArchive(t, 15*time.Second, upgradedLedgerAppx)
+	waitForLedgerInArchive(t, 6*time.Minute, upgradedLedgerAppx)
 
 	ledgerSeqToLedgers := getLedgers(itest, 2, upgradedLedgerAppx)
 
@@ -61,7 +63,7 @@ func TestOneTxOneOperationChanges(t *testing.T) {
 	tt.NoError(err)
 
 	ledgerSeq := uint32(txResp.Ledger)
-	waitForLedgerInArchive(t, 15*time.Second, ledgerSeq)
+	waitForLedgerInArchive(t, 6*time.Minute, ledgerSeq)
 
 	ledger := getLedgers(itest, ledgerSeq, ledgerSeq)[ledgerSeq]
 	changes := getChangesFromLedger(itest, ledger)

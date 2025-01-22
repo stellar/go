@@ -6,6 +6,8 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
+	"os/exec"
 	"testing"
 
 	"github.com/jarcoal/httpmock"
@@ -13,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/stellar/go/keypair"
+	"github.com/stellar/go/network"
 	proto "github.com/stellar/go/protocols/stellarcore"
 	"github.com/stellar/go/support/http/httptest"
 	"github.com/stellar/go/xdr"
@@ -134,4 +137,40 @@ func TestGetLedgerEntries(t *testing.T) {
 	require.Len(t, resp.Entries, 2)
 	require.Equal(t, "pretend this is XDR lol", resp.Entries[0].Entry)
 	require.Equal(t, "pretend this is another XDR lol", resp.Entries[1].Entry)
+}
+
+func TestGenSorobanConfigUpgradeTxAndKey(t *testing.T) {
+	coreBinary := os.Getenv("STELLAR_CORE_BINARY_PATH")
+	if coreBinary == "" {
+		var err error
+		coreBinary, err = exec.LookPath("stellar-core")
+		if err != nil {
+			t.Skip("couldn't find stellar core binary")
+		}
+	}
+	key, err := keypair.ParseFull("SB6VZS57IY25334Y6F6SPGFUNESWS7D2OSJHKDPIZ354BK3FN5GBTS6V")
+	require.NoError(t, err)
+	funcConfig := GenSorobanConfig{
+		BaseSeqNum:        1,
+		NetworkPassphrase: network.TestNetworkPassphrase,
+		SigningKey:        key,
+		StellarCorePath:   coreBinary,
+	}
+	config := xdr.ConfigUpgradeSet{
+		UpdatedEntry: []xdr.ConfigSettingEntry{
+			{
+				ConfigSettingId: xdr.ConfigSettingIdConfigSettingContractComputeV0,
+				ContractCompute: &xdr.ConfigSettingContractComputeV0{
+					LedgerMaxInstructions:           1000,
+					TxMaxInstructions:               100,
+					FeeRatePerInstructionsIncrement: 1000,
+					TxMemoryLimit:                   10,
+				},
+			},
+		},
+	}
+
+	txs, _, err := GenSorobanConfigUpgradeTxAndKey(funcConfig, config)
+	require.NoError(t, err)
+	require.Len(t, txs, 4)
 }
