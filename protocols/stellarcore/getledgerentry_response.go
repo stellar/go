@@ -19,10 +19,10 @@ const (
 type GetLedgerEntryResponse struct {
 	Ledger  uint32                     `json:"ledger"`
 	Entries []RawLedgerEntriesResponse `json:"entries"`
-	Ttl     uint32                     `json:"ttl,omitempty"`
 }
 
 type RawLedgerEntriesResponse struct {
-	Entry string `json:"e"`     // base64-encoded xdr.LedgerEntry, or xdr.LedgerKey if state == new
-	State string `json:"state"` // one of the above states
+	Entry string `json:"e"`             // base64-encoded xdr.LedgerEntry, or xdr.LedgerKey if state == new
+	State string `json:"state"`         // one of the above states
+	Ttl   uint32 `json:"ttl,omitempty"` // optionally, a Soroban entry's `liveUntilLedgerSeq`
 }
