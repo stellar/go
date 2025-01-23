@@ -3,12 +3,16 @@
 package processors
 
 import (
+	"math/big"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 
+	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/protocols/horizon/base"
+	"github.com/stellar/go/strkey"
+	"github.com/stellar/go/support/contractevents"
 
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
@@ -1104,7 +1108,7 @@ func TestOperationParticipants(t *testing.T) {
 		xdr.MustAddress("GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD"),
 		xdr.MustAddress("GACAR2AEYEKITE2LKI5RMXF5MIVZ6Q7XILROGDT22O7JX4DSWFS7FDDP"),
 	}
-	participantsMap, err := operationsParticipants(transaction, sequence)
+	participantsMap, err := operationsParticipants(transaction, sequence, networkPassphrase)
 	tt.NoError(err)
 	tt.Len(participantsMap, 1)
 	for k, v := range participantsMap {
@@ -2284,4 +2288,111 @@ func TestDetailsCoversAllOperationTypes(t *testing.T) {
 	}
 	_, err := operation.Details()
 	assert.ErrorContains(t, err, "unknown operation type: ")
+}
+
+func TestTestInvokeHostFnOperationParticipants(t *testing.T) {
+	sourceAddress := "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY"
+	source := xdr.MustMuxedAddress(sourceAddress)
+
+	randomIssuer := keypair.MustRandom()
+	randomAsset := xdr.MustNewCreditAsset("TESTING", randomIssuer.Address())
+	passphrase := "passphrase"
+	randomAccount := keypair.MustRandom().Address()
+
+	burnEvtAcc := keypair.MustRandom().Address()
+	mintEvtAcc := keypair.MustRandom().Address()
+	clawbkEvtAcc := keypair.MustRandom().Address()
+	transferEvtFromAcc := keypair.MustRandom().Address()
+	transferEvtToAcc := keypair.MustRandom().Address()
+
+	transferContractEvent := contractevents.GenerateEvent(contractevents.EventTypeTransfer, transferEvtFromAcc, transferEvtToAcc, "", randomAsset, big.NewInt(10000000), passphrase)
+	mintContractEvent := contractevents.GenerateEvent(contractevents.EventTypeMint, "", mintEvtAcc, randomAccount, randomAsset, big.NewInt(10000000), passphrase)
+	burnContractEvent := contractevents.GenerateEvent(contractevents.EventTypeBurn, burnEvtAcc, "", randomAccount, randomAsset, big.NewInt(10000000), passphrase)
+	clawbackContractEvent := contractevents.GenerateEvent(contractevents.EventTypeClawback, clawbkEvtAcc, "", randomAccount, randomAsset, big.NewInt(10000000), passphrase)
+
+	tx1 := ingest.LedgerTransaction{
+		UnsafeMeta: xdr.TransactionMeta{
+			V: 3,
+			V3: &xdr.TransactionMetaV3{
+				SorobanMeta: &xdr.SorobanTransactionMeta{
+					Events: []xdr.ContractEvent{
+						transferContractEvent,
+						burnContractEvent,
+						mintContractEvent,
+						clawbackContractEvent,
+					},
+				},
+			},
+		},
+	}
+
+	wrapper1 := transactionOperationWrapper{
+		transaction: tx1,
+		operation: xdr.Operation{
+			SourceAccount: &source,
+			Body: xdr.OperationBody{
+				Type: xdr.OperationTypeInvokeHostFunction,
+			},
+		},
+		network: passphrase,
+	}
+
+	participants, err := wrapper1.Participants()
+	assert.NoError(t, err)
+	assert.ElementsMatch(t,
+		[]xdr.AccountId{
+			xdr.MustAddress(source.Address()),
+			xdr.MustAddress(mintEvtAcc),
+			xdr.MustAddress(burnEvtAcc),
+			xdr.MustAddress(clawbkEvtAcc),
+			xdr.MustAddress(transferEvtFromAcc),
+			xdr.MustAddress(transferEvtToAcc),
+		},
+		participants,
+	)
+
+	contractId := [32]byte{}
+	zeroContractStrKey, err := strkey.Encode(strkey.VersionByteContract, contractId[:])
+	assert.NoError(t, err)
+
+	transferContractEvent = contractevents.GenerateEvent(contractevents.EventTypeTransfer, zeroContractStrKey, zeroContractStrKey, "", randomAsset, big.NewInt(10000000), passphrase)
+	mintContractEvent = contractevents.GenerateEvent(contractevents.EventTypeMint, "", zeroContractStrKey, randomAccount, randomAsset, big.NewInt(10000000), passphrase)
+	burnContractEvent = contractevents.GenerateEvent(contractevents.EventTypeBurn, zeroContractStrKey, "", randomAccount, randomAsset, big.NewInt(10000000), passphrase)
+	clawbackContractEvent = contractevents.GenerateEvent(contractevents.EventTypeClawback, zeroContractStrKey, "", randomAccount, randomAsset, big.NewInt(10000000), passphrase)
+
+	tx2 := ingest.LedgerTransaction{
+		UnsafeMeta: xdr.TransactionMeta{
+			V: 3,
+			V3: &xdr.TransactionMetaV3{
+				SorobanMeta: &xdr.SorobanTransactionMeta{
+					Events: []xdr.ContractEvent{
+						transferContractEvent,
+						burnContractEvent,
+						mintContractEvent,
+						clawbackContractEvent,
+					},
+				},
+			},
+		},
+	}
+
+	wrapper2 := transactionOperationWrapper{
+		transaction: tx2,
+		operation: xdr.Operation{
+			SourceAccount: &source,
+			Body: xdr.OperationBody{
+				Type: xdr.OperationTypeInvokeHostFunction,
+			},
+		},
+		network: passphrase,
+	}
+
+	participants, err = wrapper2.Participants()
+	assert.NoError(t, err)
+	assert.ElementsMatch(t,
+		[]xdr.AccountId{
+			xdr.MustAddress(source.Address()),
+		},
+		participants,
+	)
 }
