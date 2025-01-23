@@ -71,10 +71,13 @@ func (o *LedgerOperation) OperationResultCode() string {
 
 func (o *LedgerOperation) OperationTraceCode() (string, error) {
 	var operationTraceCode string
+	var operationResults []xdr.OperationResult
+	var ok bool
 
-	operationResults, ok := o.Transaction.Result.Result.OperationResults()
+	operationResults, ok = o.Transaction.Result.Result.OperationResults()
 	if ok {
-		operationResultTr, ok := operationResults[o.OperationIndex].GetTr()
+		var operationResultTr xdr.OperationResultTr
+		operationResultTr, ok = operationResults[o.OperationIndex].GetTr()
 		if ok {
 			operationTraceCode, err := operationResultTr.MapOperationResultTr()
 			if err != nil {
@@ -245,7 +248,7 @@ func (o *LedgerOperation) CreateAccountDetails() (map[string]interface{}, error)
 		return details, err
 	}
 	details["account"] = op.Destination.Address()
-	details["starting_balance"] = o.ConvertStroopValueToReal(op.StartingBalance)
+	details["starting_balance"] = int64(op.StartingBalance)
 
 	return details, nil
 }
@@ -282,34 +285,12 @@ func (o *LedgerOperation) PaymentDetails() (map[string]interface{}, error) {
 	if err := o.addAccountAndMuxedAccountDetails(details, op.Destination, "to"); err != nil {
 		return details, err
 	}
-	details["amount"] = o.ConvertStroopValueToReal(op.Amount)
-	if err := o.addAssetDetailsToOperationDetails(details, op.Asset, ""); err != nil {
+	details["amount"] = int64(op.Amount)
+	if err := o.addAssetDetails(details, op.Asset, ""); err != nil {
 		return details, err
 	}
 
 	return details, nil
-}
-
-func (o *LedgerOperation) addAssetDetailsToOperationDetails(result map[string]interface{}, asset xdr.Asset, prefix string) error {
-	var assetType, code, issuer string
-	err := asset.Extract(&assetType, &code, &issuer)
-	if err != nil {
-		return err
-	}
-
-	prefix = o.FormatPrefix(prefix)
-	result[prefix+"asset_type"] = assetType
-
-	if asset.Type == xdr.AssetTypeAssetTypeNative {
-		result[prefix+"asset_id"] = int64(-5706705804583548011)
-		return nil
-	}
-
-	result[prefix+"asset_code"] = code
-	result[prefix+"asset_issuer"] = issuer
-	result[prefix+"asset_id"] = o.FarmHashAsset(code, issuer, assetType)
-
-	return nil
 }
 
 func (o *LedgerOperation) PathPaymentStrictReceiveDetails() (map[string]interface{}, error) {
@@ -325,13 +306,13 @@ func (o *LedgerOperation) PathPaymentStrictReceiveDetails() (map[string]interfac
 	if err := o.addAccountAndMuxedAccountDetails(details, op.Destination, "to"); err != nil {
 		return details, err
 	}
-	details["amount"] = o.ConvertStroopValueToReal(op.DestAmount)
+	details["amount"] = int64(op.DestAmount)
 	details["source_amount"] = amount.String(0)
-	details["source_max"] = o.ConvertStroopValueToReal(op.SendMax)
-	if err := o.addAssetDetailsToOperationDetails(details, op.DestAsset, ""); err != nil {
+	details["source_max"] = int64(op.SendMax)
+	if err := o.addAssetDetails(details, op.DestAsset, ""); err != nil {
 		return details, err
 	}
-	if err := o.addAssetDetailsToOperationDetails(details, op.SendAsset, "source"); err != nil {
+	if err := o.addAssetDetails(details, op.SendAsset, "source"); err != nil {
 		return details, err
 	}
 
@@ -349,7 +330,7 @@ func (o *LedgerOperation) PathPaymentStrictReceiveDetails() (map[string]interfac
 		if !ok {
 			return details, fmt.Errorf("could not access PathPaymentStrictReceive result info for this operation (index %d)", o.OperationIndex)
 		}
-		details["source_amount"] = o.ConvertStroopValueToReal(result.SendAmount())
+		details["source_amount"] = int64(result.SendAmount())
 	}
 
 	details["path"] = o.TransformPath(op.Path)
@@ -370,12 +351,12 @@ func (o *LedgerOperation) PathPaymentStrictSendDetails() (map[string]interface{}
 		return details, err
 	}
 	details["amount"] = float64(0)
-	details["source_amount"] = o.ConvertStroopValueToReal(op.SendAmount)
+	details["source_amount"] = int64(op.SendAmount)
 	details["destination_min"] = amount.String(op.DestMin)
-	if err := o.addAssetDetailsToOperationDetails(details, op.DestAsset, ""); err != nil {
+	if err := o.addAssetDetails(details, op.DestAsset, ""); err != nil {
 		return details, err
 	}
-	if err := o.addAssetDetailsToOperationDetails(details, op.SendAsset, "source"); err != nil {
+	if err := o.addAssetDetails(details, op.SendAsset, "source"); err != nil {
 		return details, err
 	}
 
@@ -393,7 +374,7 @@ func (o *LedgerOperation) PathPaymentStrictSendDetails() (map[string]interface{}
 		if !ok {
 			return details, fmt.Errorf("could not access GetPathPaymentStrictSendResult result info for this operation (index %d)", o.OperationIndex)
 		}
-		details["amount"] = o.ConvertStroopValueToReal(result.DestAmount())
+		details["amount"] = int64(result.DestAmount())
 	}
 
 	details["path"] = o.TransformPath(op.Path)
@@ -408,15 +389,15 @@ func (o *LedgerOperation) ManageBuyOfferDetails() (map[string]interface{}, error
 	}
 
 	details["offer_id"] = int64(op.OfferId)
-	details["amount"] = o.ConvertStroopValueToReal(op.BuyAmount)
+	details["amount"] = int64(op.BuyAmount)
 	if err := o.addPriceDetails(details, op.Price, ""); err != nil {
 		return details, err
 	}
 
-	if err := o.addAssetDetailsToOperationDetails(details, op.Buying, "buying"); err != nil {
+	if err := o.addAssetDetails(details, op.Buying, "buying"); err != nil {
 		return details, err
 	}
-	if err := o.addAssetDetailsToOperationDetails(details, op.Selling, "selling"); err != nil {
+	if err := o.addAssetDetails(details, op.Selling, "selling"); err != nil {
 		return details, err
 	}
 
@@ -445,15 +426,15 @@ func (o *LedgerOperation) ManageSellOfferDetails() (map[string]interface{}, erro
 	}
 
 	details["offer_id"] = int64(op.OfferId)
-	details["amount"] = o.ConvertStroopValueToReal(op.Amount)
+	details["amount"] = int64(op.Amount)
 	if err := o.addPriceDetails(details, op.Price, ""); err != nil {
 		return details, err
 	}
 
-	if err := o.addAssetDetailsToOperationDetails(details, op.Buying, "buying"); err != nil {
+	if err := o.addAssetDetails(details, op.Buying, "buying"); err != nil {
 		return details, err
 	}
-	if err := o.addAssetDetailsToOperationDetails(details, op.Selling, "selling"); err != nil {
+	if err := o.addAssetDetails(details, op.Selling, "selling"); err != nil {
 		return details, err
 	}
 
@@ -466,15 +447,15 @@ func (o *LedgerOperation) CreatePassiveSellOfferDetails() (map[string]interface{
 		return details, fmt.Errorf("could not access CreatePassiveSellOffer info for this operation (index %d)", o.OperationIndex)
 	}
 
-	details["amount"] = o.ConvertStroopValueToReal(op.Amount)
+	details["amount"] = int64(op.Amount)
 	if err := o.addPriceDetails(details, op.Price, ""); err != nil {
 		return details, err
 	}
 
-	if err := o.addAssetDetailsToOperationDetails(details, op.Buying, "buying"); err != nil {
+	if err := o.addAssetDetails(details, op.Buying, "buying"); err != nil {
 		return details, err
 	}
-	if err := o.addAssetDetailsToOperationDetails(details, op.Selling, "selling"); err != nil {
+	if err := o.addAssetDetails(details, op.Selling, "selling"); err != nil {
 		return details, err
 	}
 
@@ -568,7 +549,7 @@ func (o *LedgerOperation) ChangeTrustDetails() (map[string]interface{}, error) {
 			return details, err
 		}
 	} else {
-		if err := o.addAssetDetailsToOperationDetails(details, op.Line.ToAsset(), ""); err != nil {
+		if err := o.addAssetDetails(details, op.Line.ToAsset(), ""); err != nil {
 			return details, err
 		}
 		details["trustee"] = details["asset_issuer"]
@@ -578,7 +559,7 @@ func (o *LedgerOperation) ChangeTrustDetails() (map[string]interface{}, error) {
 		return details, err
 	}
 
-	details["limit"] = o.ConvertStroopValueToReal(op.Limit)
+	details["limit"] = int64(op.Limit)
 
 	return details, nil
 }
@@ -606,7 +587,7 @@ func (o *LedgerOperation) AllowTrustDetails() (map[string]interface{}, error) {
 		return details, fmt.Errorf("could not access AllowTrust info for this operation (index %d)", o.OperationIndex)
 	}
 
-	if err := o.addAssetDetailsToOperationDetails(details, op.Asset.ToAsset(o.sourceAccountXDR().ToAccountId()), ""); err != nil {
+	if err := o.addAssetDetails(details, op.Asset.ToAsset(o.sourceAccountXDR().ToAccountId()), ""); err != nil {
 		return details, err
 	}
 	if err := o.addAccountAndMuxedAccountDetails(details, o.sourceAccountXDR(), "trustee"); err != nil {
@@ -686,7 +667,12 @@ func (o *LedgerOperation) CreateClaimableBalanceDetails() (map[string]interface{
 	}
 
 	details["asset"] = op.Asset.StringCanonical()
-	details["amount"] = o.ConvertStroopValueToReal(op.Amount)
+	err := o.addAssetDetails(details, op.Asset, "")
+	if err != nil {
+		return details, err
+	}
+
+	details["amount"] = int64(op.Amount)
 	details["claimants"] = o.TransformClaimants(op.Claimants)
 
 	return details, nil
@@ -813,13 +799,13 @@ func (o *LedgerOperation) ClawbackDetails() (map[string]interface{}, error) {
 		return details, fmt.Errorf("could not access Clawback info for this operation (index %d)", o.OperationIndex)
 	}
 
-	if err := o.addAssetDetailsToOperationDetails(details, op.Asset, ""); err != nil {
+	if err := o.addAssetDetails(details, op.Asset, ""); err != nil {
 		return details, err
 	}
 	if err := o.addAccountAndMuxedAccountDetails(details, op.From, "from"); err != nil {
 		return details, err
 	}
-	details["amount"] = o.ConvertStroopValueToReal(op.Amount)
+	details["amount"] = int64(op.Amount)
 
 	return details, nil
 }
@@ -846,7 +832,7 @@ func (o *LedgerOperation) SetTrustLineFlagsDetails() (map[string]interface{}, er
 	}
 
 	details["trustor"] = op.Trustor.Address()
-	if err := o.addAssetDetailsToOperationDetails(details, op.Asset, ""); err != nil {
+	if err := o.addAssetDetails(details, op.Asset, ""); err != nil {
 		return details, err
 	}
 	if op.SetFlags > 0 {
@@ -912,10 +898,10 @@ func (o *LedgerOperation) LiquidityPoolDepositDetails() (map[string]interface{},
 	}
 
 	// Process ReserveA Details
-	if err := o.addAssetDetailsToOperationDetails(details, assetA, "reserve_a"); err != nil {
+	if err := o.addAssetDetails(details, assetA, "reserve_a"); err != nil {
 		return details, err
 	}
-	details["reserve_a_max_amount"] = o.ConvertStroopValueToReal(op.MaxAmountA)
+	details["reserve_a_max_amount"] = int64(op.MaxAmountA)
 	depositA, err := strconv.ParseFloat(amount.String(depositedA), 64)
 	if err != nil {
 		return details, err
@@ -923,10 +909,10 @@ func (o *LedgerOperation) LiquidityPoolDepositDetails() (map[string]interface{},
 	details["reserve_a_deposit_amount"] = depositA
 
 	//Process ReserveB Details
-	if err := o.addAssetDetailsToOperationDetails(details, assetB, "reserve_b"); err != nil {
+	if err := o.addAssetDetails(details, assetB, "reserve_b"); err != nil {
 		return details, err
 	}
-	details["reserve_b_max_amount"] = o.ConvertStroopValueToReal(op.MaxAmountB)
+	details["reserve_b_max_amount"] = int64(op.MaxAmountB)
 	depositB, err := strconv.ParseFloat(amount.String(depositedB), 64)
 	if err != nil {
 		return details, err
@@ -1022,20 +1008,20 @@ func (o *LedgerOperation) LiquidityPoolWithdrawDetails() (map[string]interface{}
 		receivedA, receivedB = -delta.ReserveA, -delta.ReserveB
 	}
 	// Process AssetA Details
-	if err := o.addAssetDetailsToOperationDetails(details, assetA, "reserve_a"); err != nil {
+	if err := o.addAssetDetails(details, assetA, "reserve_a"); err != nil {
 		return details, err
 	}
-	details["reserve_a_min_amount"] = o.ConvertStroopValueToReal(op.MinAmountA)
-	details["reserve_a_withdraw_amount"] = o.ConvertStroopValueToReal(receivedA)
+	details["reserve_a_min_amount"] = int64(op.MinAmountA)
+	details["reserve_a_withdraw_amount"] = int64(receivedA)
 
 	// Process AssetB Details
-	if err := o.addAssetDetailsToOperationDetails(details, assetB, "reserve_b"); err != nil {
+	if err := o.addAssetDetails(details, assetB, "reserve_b"); err != nil {
 		return details, err
 	}
-	details["reserve_b_min_amount"] = o.ConvertStroopValueToReal(op.MinAmountB)
-	details["reserve_b_withdraw_amount"] = o.ConvertStroopValueToReal(receivedB)
+	details["reserve_b_min_amount"] = int64(op.MinAmountB)
+	details["reserve_b_withdraw_amount"] = int64(receivedB)
 
-	details["shares"] = o.ConvertStroopValueToReal(op.Amount)
+	details["shares"] = int64(op.Amount)
 
 	return details, nil
 }
@@ -1074,11 +1060,12 @@ func (o *LedgerOperation) InvokeHostFunctionDetails() (map[string]interface{}, e
 
 		details["parameters"], details["parameters_decoded"] = o.serializeParameters(args)
 
-		if balanceChanges, err := o.parseAssetBalanceChangesFromContractEvents(); err != nil {
+		balanceChanges, err := o.parseAssetBalanceChangesFromContractEvents()
+		if err != nil {
 			return nil, err
-		} else {
-			details["asset_balance_changes"] = balanceChanges
 		}
+
+		details["asset_balance_changes"] = balanceChanges
 
 	case xdr.HostFunctionTypeHostFunctionTypeCreateContract:
 		args := op.HostFunction.MustCreateContract()
@@ -1098,7 +1085,11 @@ func (o *LedgerOperation) InvokeHostFunctionDetails() (map[string]interface{}, e
 			details["contract_code_hash"] = contractCodeHash
 		}
 
-		preimageTypeMap := o.switchContractIdPreimageType(args.ContractIdPreimage)
+		preimageTypeMap, err := o.switchContractIdPreimageType(args.ContractIdPreimage)
+		if err != nil {
+			return details, nil
+		}
+
 		for key, val := range preimageTypeMap {
 			if _, ok := preimageTypeMap[key]; ok {
 				details[key] = val
@@ -1137,7 +1128,11 @@ func (o *LedgerOperation) InvokeHostFunctionDetails() (map[string]interface{}, e
 		constructorArgs := args.ConstructorArgs
 		details["parameters"], details["parameters_decoded"] = o.serializeParameters(constructorArgs)
 
-		preimageTypeMap := o.switchContractIdPreimageType(args.ContractIdPreimage)
+		preimageTypeMap, err := o.switchContractIdPreimageType(args.ContractIdPreimage)
+		if err != nil {
+			return details, nil
+		}
+
 		for key, val := range preimageTypeMap {
 			if _, ok := preimageTypeMap[key]; ok {
 				details[key] = val
@@ -1180,7 +1175,7 @@ func (o *LedgerOperation) RestoreFootprintDetails() (map[string]interface{}, err
 	details := map[string]interface{}{}
 	_, ok := o.Operation.Body.GetRestoreFootprintOp()
 	if !ok {
-		return details, fmt.Errorf("could not access InvokeHostFunction info for this operation (index %d)", o.OperationIndex)
+		return details, fmt.Errorf("could not access RestoreFootprint info for this operation (index %d)", o.OperationIndex)
 	}
 
 	details["type"] = "restore_footprint"
@@ -1311,18 +1306,23 @@ func (o *LedgerOperation) addAssetDetails(result map[string]interface{}, a xdr.A
 		err = fmt.Errorf("xdr.Asset.Extract error: %w", err)
 		return err
 	}
+
+	prefix = o.FormatPrefix(prefix)
 	result[prefix+"asset_type"] = assetType
 
 	if a.Type == xdr.AssetTypeAssetTypeNative {
+		result[prefix+"asset_id"] = int64(-5706705804583548011)
 		return nil
 	}
 
 	result[prefix+"asset_code"] = code
 	result[prefix+"asset_issuer"] = issuer
+	result[prefix+"asset_id"] = o.FarmHashAsset(code, issuer, assetType)
+
 	return nil
 }
 
-func (o *LedgerOperation) switchContractIdPreimageType(contractIdPreimage xdr.ContractIdPreimage) map[string]interface{} {
+func (o *LedgerOperation) switchContractIdPreimageType(contractIdPreimage xdr.ContractIdPreimage) (map[string]interface{}, error) {
 	details := map[string]interface{}{}
 
 	switch contractIdPreimage.Type {
@@ -1330,21 +1330,25 @@ func (o *LedgerOperation) switchContractIdPreimageType(contractIdPreimage xdr.Co
 		fromAddress := contractIdPreimage.MustFromAddress()
 		address, err := fromAddress.Address.String()
 		if err != nil {
-			panic(fmt.Errorf("error obtaining address for: %s", contractIdPreimage.Type))
+			return details, err
 		}
 		details["from"] = "address"
 		details["address"] = address
 	case xdr.ContractIdPreimageTypeContractIdPreimageFromAsset:
 		details["from"] = "asset"
 		details["asset"] = contractIdPreimage.MustFromAsset().StringCanonical()
+		err := o.addAssetDetails(details, contractIdPreimage.MustFromAsset(), "")
+		if err != nil {
+			return details, err
+		}
 	default:
 		panic(fmt.Errorf("unknown contract id type: %s", contractIdPreimage.Type))
 	}
 
-	return details
+	return details, nil
 }
 
-func (o *LedgerOperation) ConvertStroopValueToReal(input xdr.Int64) float64 {
+func (o *LedgerOperation) ConvertStroopValueToReal(input int64) float64 {
 	output, _ := big.NewRat(int64(input), int64(10000000)).Float64()
 	return output
 }

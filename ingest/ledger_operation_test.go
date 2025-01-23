@@ -1091,12 +1091,12 @@ func resultTestOutput() []testOutput {
 				"funder":           "GAISEMYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABCAK",
 				"funder_muxed":     "MAISEMYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPMJ2I",
 				"funder_muxed_id":  uint64(123),
-				"starting_balance": 2.5},
+				"starting_balance": int64(25000000)},
 		},
 		{
 			err: nil,
 			result: map[string]interface{}{
-				"amount":        float64(35),
+				"amount":        int64(350000000),
 				"asset_code":    "USDT",
 				"asset_id":      int64(-8205667356306085451),
 				"asset_issuer":  "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
@@ -1109,7 +1109,7 @@ func resultTestOutput() []testOutput {
 		{
 			err: nil,
 			result: map[string]interface{}{
-				"amount":        float64(35),
+				"amount":        int64(350000000),
 				"asset_id":      int64(-5706705804583548011),
 				"asset_type":    "native",
 				"from":          "GAISEMYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABCAK",
@@ -1120,7 +1120,7 @@ func resultTestOutput() []testOutput {
 		{
 			err: nil,
 			result: map[string]interface{}{
-				"amount":     895.14959,
+				"amount":     int64(8951495900),
 				"asset_id":   int64(-5706705804583548011),
 				"asset_type": "native",
 				"from":       "GBT4YAEGJQ5YSFUMNKX6BPBUOCPNAIOFAVZOF6MIME2CECBMEIUXFZZN",
@@ -1131,16 +1131,16 @@ func resultTestOutput() []testOutput {
 						AssetType:   "credit_alphanum4",
 					},
 				},
-				"source_amount":     float64(0),
+				"source_amount":     int64(0),
 				"source_asset_id":   int64(-5706705804583548011),
 				"source_asset_type": "native",
-				"source_max":        895.14959,
+				"source_max":        int64(8951495900),
 				"to":                "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA"},
 		},
 		{
 			err: nil,
 			result: map[string]interface{}{
-				"amount":            float64(76.586),
+				"amount":            int64(765860000),
 				"buying_asset_id":   int64(-5706705804583548011),
 				"buying_asset_type": "native",
 				"offer_id":          int64(0),
@@ -1157,7 +1157,7 @@ func resultTestOutput() []testOutput {
 		{
 			err: nil,
 			result: map[string]interface{}{
-				"amount":              float64(63.1595),
+				"amount":              int64(631595000),
 				"buying_asset_code":   "USDT",
 				"buying_asset_id":     int64(-8205667356306085451),
 				"buying_asset_issuer": "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
@@ -1195,7 +1195,7 @@ func resultTestOutput() []testOutput {
 				"asset_id":         int64(6690054458235693884),
 				"asset_issuer":     "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
 				"asset_type":       "credit_alphanum4",
-				"limit":            5e+10,
+				"limit":            int64(500000000000000000),
 				"trustee":          "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
 				"trustor":          "GAISEMYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABCAK",
 				"trustor_muxed":    "MAISEMYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPMJ2I",
@@ -1205,7 +1205,7 @@ func resultTestOutput() []testOutput {
 			err: nil,
 			result: map[string]interface{}{
 				"asset_type":        "liquidity_pool_shares",
-				"limit":             5e+10,
+				"limit":             int64(500000000000000000),
 				"liquidity_pool_id": "1c261d6c75930204a73b480c3020ab525e9be48ce93de6194cf69fb06f07452d",
 				"trustor":           "GAISEMYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABCAK",
 				"trustor_muxed":     "MAISEMYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPMJ2I",
@@ -1252,7 +1252,7 @@ func resultTestOutput() []testOutput {
 		{
 			err: nil,
 			result: map[string]interface{}{
-				"amount":            float64(765.4501001),
+				"amount":            int64(7654501001),
 				"buying_asset_id":   int64(-5706705804583548011),
 				"buying_asset_type": "native",
 				"offer_id":          int64(100),
@@ -1269,7 +1269,7 @@ func resultTestOutput() []testOutput {
 		{
 			err: nil,
 			result: map[string]interface{}{
-				"amount":          float64(64),
+				"amount":          int64(640000000),
 				"asset_id":        int64(-5706705804583548011),
 				"asset_type":      "native",
 				"destination_min": "428.0460538",
@@ -1283,7 +1283,7 @@ func resultTestOutput() []testOutput {
 						AssetType:   "credit_alphanum4",
 					},
 				},
-				"source_amount":     0.1598182,
+				"source_amount":     int64(1598182),
 				"source_asset_id":   int64(-5706705804583548011),
 				"source_asset_type": "native",
 				"to":                "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA"},
@@ -1291,8 +1291,12 @@ func resultTestOutput() []testOutput {
 		{
 			err: nil,
 			result: map[string]interface{}{
-				"amount": 123456.789,
-				"asset":  "USDT:GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
+				"amount":       int64(1234567890000),
+				"asset":        "USDT:GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
+				"asset_code":   "USDT",
+				"asset_id":     int64(-8205667356306085451),
+				"asset_issuer": "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
+				"asset_type":   "credit_alphanum4",
 				"claimants": []Claimant{
 					{
 						Destination: "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
@@ -1369,7 +1373,7 @@ func resultTestOutput() []testOutput {
 		{
 			err: nil,
 			result: map[string]interface{}{
-				"amount":       0.1598182,
+				"amount":       int64(1598182),
 				"asset_code":   "USDT",
 				"asset_id":     int64(-8205667356306085451),
 				"asset_issuer": "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
@@ -1410,13 +1414,13 @@ func resultTestOutput() []testOutput {
 				"reserve_a_asset_issuer":   "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
 				"reserve_a_asset_type":     "credit_alphanum4",
 				"reserve_a_deposit_amount": 1e-07,
-				"reserve_a_max_amount":     0.0001,
+				"reserve_a_max_amount":     int64(1000),
 				"reserve_b_asset_code":     "USDT",
 				"reserve_b_asset_id":       int64(-8205667356306085451),
 				"reserve_b_asset_issuer":   "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
 				"reserve_b_asset_type":     "credit_alphanum4",
 				"reserve_b_deposit_amount": 1e-07,
-				"reserve_b_max_amount":     1e-05,
+				"reserve_b_max_amount":     int64(100),
 				"shares_received":          1e-07,
 			},
 		},
@@ -1428,15 +1432,15 @@ func resultTestOutput() []testOutput {
 				"reserve_a_asset_id":        int64(-8205667356306085451),
 				"reserve_a_asset_issuer":    "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
 				"reserve_a_asset_type":      "credit_alphanum4",
-				"reserve_a_min_amount":      1e-07,
-				"reserve_a_withdraw_amount": -1e-07,
+				"reserve_a_min_amount":      int64(1),
+				"reserve_a_withdraw_amount": int64(-1),
 				"reserve_b_asset_code":      "USDT",
 				"reserve_b_asset_id":        int64(-8205667356306085451),
 				"reserve_b_asset_issuer":    "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
 				"reserve_b_asset_type":      "credit_alphanum4",
-				"reserve_b_min_amount":      1e-07,
-				"reserve_b_withdraw_amount": -1e-07,
-				"shares":                    4e-07,
+				"reserve_b_min_amount":      int64(1),
+				"reserve_b_withdraw_amount": int64(-1),
+				"shares":                    int64(4),
 			},
 		},
 		{
@@ -1484,6 +1488,10 @@ func resultTestOutput() []testOutput {
 			err: nil,
 			result: map[string]interface{}{
 				"asset":           "USDT:GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
+				"asset_code":      "USDT",
+				"asset_id":        int64(-8205667356306085451),
+				"asset_issuer":    "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
+				"asset_type":      "credit_alphanum4",
 				"contract_id":     "CAJDIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABT4W",
 				"from":            "asset",
 				"function":        "HostFunctionTypeHostFunctionTypeCreateContract",
@@ -1495,6 +1503,10 @@ func resultTestOutput() []testOutput {
 			err: nil,
 			result: map[string]interface{}{
 				"asset":           "USDT:GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
+				"asset_code":      "USDT",
+				"asset_id":        int64(-8205667356306085451),
+				"asset_issuer":    "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
+				"asset_type":      "credit_alphanum4",
 				"contract_id":     "CAJDIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABT4W",
 				"from":            "asset",
 				"function":        "HostFunctionTypeHostFunctionTypeCreateContractV2",
