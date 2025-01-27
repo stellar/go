@@ -18,7 +18,7 @@ XDRS = $(DOWNLOADABLE_XDRS) xdr/Stellar-exporter.x
 
 
 XDRGEN_COMMIT=e2cac557162d99b12ae73b846cf3d5bfe16636de
-XDR_COMMIT=529d5176f24c73eeccfa5eba481d4e89c19b1181
+XDR_COMMIT=9a174be684d999db0de3ba9cb29c4c3a7e1cb169
 
 .PHONY: xdr xdr-clean xdr-update
 

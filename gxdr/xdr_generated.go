@@ -1110,6 +1110,15 @@ const (
 	TXSET_COMP_TXS_MAYBE_DISCOUNTED_FEE TxSetComponentType = 0
 )
 
+type TxExecutionThread = []TransactionEnvelope
+
+type ParallelTxExecutionStage = []TxExecutionThread
+
+type ParallelTxsComponent struct {
+	BaseFee         *Int64
+	ExecutionStages []ParallelTxExecutionStage
+}
+
 type TxSetComponent struct {
 	// The union discriminant Type selects among the following arms:
 	//   TXSET_COMP_TXS_MAYBE_DISCOUNTED_FEE:
@@ -1126,6 +1135,8 @@ type TransactionPhase struct {
 	// The union discriminant V selects among the following arms:
 	//   0:
 	//      V0Components() *[]TxSetComponent
+	//   1:
+	//      ParallelTxsComponent() *ParallelTxsComponent
 	V  int32
 	_u interface{}
 }
@@ -1241,6 +1252,8 @@ const (
 	LEDGER_ENTRY_REMOVED LedgerEntryChangeType = 2
 	// value of the entry
 	LEDGER_ENTRY_STATE LedgerEntryChangeType = 3
+	// archived entry was restored in the ledger
+	LEDGER_ENTRY_RESTORED LedgerEntryChangeType = 4
 )
 
 type LedgerEntryChange struct {
@@ -1253,6 +1266,8 @@ type LedgerEntryChange struct {
 	//      Removed() *LedgerKey
 	//   LEDGER_ENTRY_STATE:
 	//      State() *LedgerEntry
+	//   LEDGER_ENTRY_RESTORED:
+	//      Restored() *LedgerEntry
 	Type LedgerEntryChangeType
 	_u   interface{}
 }
@@ -1311,8 +1326,6 @@ type DiagnosticEvent struct {
 	InSuccessfulContractCall bool
 	Event                    ContractEvent
 }
-
-type DiagnosticEvents = []DiagnosticEvent
 
 type SorobanTransactionMetaExtV1 struct {
 	Ext ExtensionPoint
@@ -1426,12 +1439,24 @@ type LedgerCloseMetaExtV1 struct {
 	SorobanFeeWrite1KB Int64
 }
 
+type LedgerCloseMetaExtV2 struct {
+	Ext                  ExtensionPoint
+	SorobanFeeWrite1KB   Int64
+	CurrentArchivalEpoch Uint32
+	// The last epoch currently stored by validators
+	// Any entry restored from an epoch older than this will
+	// require a proof.
+	LastArchivalEpochPersisted Uint32
+}
+
 type LedgerCloseMetaExt struct {
 	// The union discriminant V selects among the following arms:
 	//   0:
 	//      void
 	//   1:
 	//      V1() *LedgerCloseMetaExtV1
+	//   2:
+	//      V2() *LedgerCloseMetaExtV2
 	V  int32
 	_u interface{}
 }
@@ -1451,9 +1476,11 @@ type LedgerCloseMetaV1 struct {
 	// Size in bytes of BucketList, to support downstream
 	// systems calculating storage fees correctly.
 	TotalByteSizeOfBucketList Uint64
-	// Temp keys that are being evicted at this ledger.
+	// Temp keys and all TTL keys that are being evicted at this ledger.
+	// Note that this can contain TTL keys for both persistent and temporary
+	// entries, but the name is kept for legacy reasons.
 	EvictedTemporaryLedgerKeys []LedgerKey
-	// Archived restorable ledger entries that are being
+	// Archived persistent ledger entries that are being
 	// evicted at this ledger.
 	EvictedPersistentLedgerEntries []LedgerEntry
 }
@@ -2666,14 +2693,14 @@ type ArchivalProofNode struct {
 
 type ProofLevel = []ArchivalProofNode
 
-type NonexistenceProofBody struct {
+type ExistenceProofBody struct {
 	EntriesToProve []ColdArchiveBucketEntry
 	// Vector of vectors, where proofLevels[level]
 	// contains all HashNodes that correspond with that level
 	ProofLevels []ProofLevel
 }
 
-type ExistenceProofBody struct {
+type NonexistenceProofBody struct {
 	KeysToProve []LedgerKey
 	// Bounds for each key being proved, where bound[n]
 	// corresponds to keysToProve[n]
@@ -2691,9 +2718,9 @@ type ArchivalProof struct {
 }
 type XdrAnon_ArchivalProof_Body struct {
 	// The union discriminant T selects among the following arms:
-	//   EXISTENCE:
-	//      NonexistenceProof() *NonexistenceProofBody
 	//   NONEXISTENCE:
+	//      NonexistenceProof() *NonexistenceProofBody
+	//   EXISTENCE:
 	//      ExistenceProof() *ExistenceProofBody
 	T  ArchivalProofType
 	_u interface{}
@@ -2714,7 +2741,7 @@ type SorobanResources struct {
 
 // The transaction extension for Soroban.
 type SorobanTransactionData struct {
-	Ext       ExtensionPoint
+	Ext       XdrAnon_SorobanTransactionData_Ext
 	Resources SorobanResources
 	// Amount of the transaction `fee` allocated to the Soroban resource fees.
 	// The fraction of `resourceFee` corresponding to `resources` specified
@@ -2726,6 +2753,15 @@ type SorobanTransactionData struct {
 	// The `inclusionFee` used for prioritization of the transaction is defined
 	// as `tx.fee - resourceFee`.
 	ResourceFee Int64
+}
+type XdrAnon_SorobanTransactionData_Ext struct {
+	// The union discriminant V selects among the following arms:
+	//   0:
+	//      void
+	//   1:
+	//      Proofs() *[]ArchivalProof
+	V  int32
+	_u interface{}
 }
 
 // TransactionV0 is a transaction with the AccountID discriminant stripped off,
@@ -3625,6 +3661,7 @@ const (
 	INVOKE_HOST_FUNCTION_RESOURCE_LIMIT_EXCEEDED     InvokeHostFunctionResultCode = -3
 	INVOKE_HOST_FUNCTION_ENTRY_ARCHIVED              InvokeHostFunctionResultCode = -4
 	INVOKE_HOST_FUNCTION_INSUFFICIENT_REFUNDABLE_FEE InvokeHostFunctionResultCode = -5
+	INVOKE_HOST_FUNCTION_INVALID_CREATION_PROOF      InvokeHostFunctionResultCode = -6
 )
 
 type InvokeHostFunctionResult struct {
@@ -3667,6 +3704,7 @@ const (
 	RESTORE_FOOTPRINT_MALFORMED                   RestoreFootprintResultCode = -1
 	RESTORE_FOOTPRINT_RESOURCE_LIMIT_EXCEEDED     RestoreFootprintResultCode = -2
 	RESTORE_FOOTPRINT_INSUFFICIENT_REFUNDABLE_FEE RestoreFootprintResultCode = -3
+	RESTORE_FOOTPRINT_INVALID_PROOF               RestoreFootprintResultCode = -4
 )
 
 type RestoreFootprintResult struct {
@@ -4549,6 +4587,17 @@ type ConfigSettingContractComputeV0 struct {
 	TxMemoryLimit Uint32
 }
 
+// Settings for running the contract transactions in parallel.
+type ConfigSettingContractParallelComputeV0 struct {
+	// Maximum number of threads that can be used to apply a
+	// transaction set to close the ledger.
+	// This doesn't limit or defined the actual number of
+	// threads used and instead only defines the minimum number
+	// of physical threads that a tier-1 validator has to support
+	// in order to not fall out of sync with the network.
+	LedgerMaxParallelThreads Uint32
+}
+
 // Ledger access settings for contracts.
 type ConfigSettingContractLedgerCostV0 struct {
 	// Maximum number of ledger entry read operations per ledger
@@ -4816,6 +4865,7 @@ const (
 	CONFIG_SETTING_CONTRACT_EXECUTION_LANES              ConfigSettingID = 11
 	CONFIG_SETTING_BUCKETLIST_SIZE_WINDOW                ConfigSettingID = 12
 	CONFIG_SETTING_EVICTION_ITERATOR                     ConfigSettingID = 13
+	CONFIG_SETTING_CONTRACT_PARALLEL_COMPUTE_V0          ConfigSettingID = 14
 )
 
 type ConfigSettingEntry struct {
@@ -4848,6 +4898,8 @@ type ConfigSettingEntry struct {
 	//      BucketListSizeWindow() *[]Uint64
 	//   CONFIG_SETTING_EVICTION_ITERATOR:
 	//      EvictionIterator() *EvictionIterator
+	//   CONFIG_SETTING_CONTRACT_PARALLEL_COMPUTE_V0:
+	//      ContractParallelCompute() *ConfigSettingContractParallelComputeV0
 	ConfigSettingID ConfigSettingID
 	_u              interface{}
 }
@@ -11158,6 +11210,150 @@ func (e TxSetComponentType) XdrEnumComments() map[int32]string {
 	return _XdrComments_TxSetComponentType
 }
 
+type _XdrVec_unbounded_TransactionEnvelope []TransactionEnvelope
+
+func (_XdrVec_unbounded_TransactionEnvelope) XdrBound() uint32 {
+	const bound uint32 = 4294967295 // Force error if not const or doesn't fit
+	return bound
+}
+func (_XdrVec_unbounded_TransactionEnvelope) XdrCheckLen(length uint32) {
+	if length > uint32(4294967295) {
+		XdrPanic("_XdrVec_unbounded_TransactionEnvelope length %d exceeds bound 4294967295", length)
+	} else if int(length) < 0 {
+		XdrPanic("_XdrVec_unbounded_TransactionEnvelope length %d exceeds max int", length)
+	}
+}
+func (v _XdrVec_unbounded_TransactionEnvelope) GetVecLen() uint32 { return uint32(len(v)) }
+func (v *_XdrVec_unbounded_TransactionEnvelope) SetVecLen(length uint32) {
+	v.XdrCheckLen(length)
+	if int(length) <= cap(*v) {
+		if int(length) != len(*v) {
+			*v = (*v)[:int(length)]
+		}
+		return
+	}
+	newcap := 2 * cap(*v)
+	if newcap < int(length) { // also catches overflow where 2*cap < 0
+		newcap = int(length)
+	} else if bound := uint(4294967295); uint(newcap) > bound {
+		if int(bound) < 0 {
+			bound = ^uint(0) >> 1
+		}
+		newcap = int(bound)
+	}
+	nv := make([]TransactionEnvelope, int(length), newcap)
+	copy(nv, *v)
+	*v = nv
+}
+func (v *_XdrVec_unbounded_TransactionEnvelope) XdrMarshalN(x XDR, name string, n uint32) {
+	v.XdrCheckLen(n)
+	for i := 0; i < int(n); i++ {
+		if i >= len(*v) {
+			v.SetVecLen(uint32(i + 1))
+		}
+		XDR_TransactionEnvelope(&(*v)[i]).XdrMarshal(x, x.Sprintf("%s[%d]", name, i))
+	}
+	if int(n) < len(*v) {
+		*v = (*v)[:int(n)]
+	}
+}
+func (v *_XdrVec_unbounded_TransactionEnvelope) XdrRecurse(x XDR, name string) {
+	size := XdrSize{Size: uint32(len(*v)), Bound: 4294967295}
+	x.Marshal(name, &size)
+	v.XdrMarshalN(x, name, size.Size)
+}
+func (_XdrVec_unbounded_TransactionEnvelope) XdrTypeName() string { return "TransactionEnvelope<>" }
+func (v *_XdrVec_unbounded_TransactionEnvelope) XdrPointer() interface{} {
+	return (*[]TransactionEnvelope)(v)
+}
+func (v _XdrVec_unbounded_TransactionEnvelope) XdrValue() interface{} {
+	return ([]TransactionEnvelope)(v)
+}
+func (v *_XdrVec_unbounded_TransactionEnvelope) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+
+type XdrType_TxExecutionThread struct {
+	*_XdrVec_unbounded_TransactionEnvelope
+}
+
+func XDR_TxExecutionThread(v *TxExecutionThread) XdrType_TxExecutionThread {
+	return XdrType_TxExecutionThread{(*_XdrVec_unbounded_TransactionEnvelope)(v)}
+}
+func (XdrType_TxExecutionThread) XdrTypeName() string { return "TxExecutionThread" }
+func (v XdrType_TxExecutionThread) XdrUnwrap() XdrType {
+	return v._XdrVec_unbounded_TransactionEnvelope
+}
+
+type _XdrVec_unbounded_TxExecutionThread []TxExecutionThread
+
+func (_XdrVec_unbounded_TxExecutionThread) XdrBound() uint32 {
+	const bound uint32 = 4294967295 // Force error if not const or doesn't fit
+	return bound
+}
+func (_XdrVec_unbounded_TxExecutionThread) XdrCheckLen(length uint32) {
+	if length > uint32(4294967295) {
+		XdrPanic("_XdrVec_unbounded_TxExecutionThread length %d exceeds bound 4294967295", length)
+	} else if int(length) < 0 {
+		XdrPanic("_XdrVec_unbounded_TxExecutionThread length %d exceeds max int", length)
+	}
+}
+func (v _XdrVec_unbounded_TxExecutionThread) GetVecLen() uint32 { return uint32(len(v)) }
+func (v *_XdrVec_unbounded_TxExecutionThread) SetVecLen(length uint32) {
+	v.XdrCheckLen(length)
+	if int(length) <= cap(*v) {
+		if int(length) != len(*v) {
+			*v = (*v)[:int(length)]
+		}
+		return
+	}
+	newcap := 2 * cap(*v)
+	if newcap < int(length) { // also catches overflow where 2*cap < 0
+		newcap = int(length)
+	} else if bound := uint(4294967295); uint(newcap) > bound {
+		if int(bound) < 0 {
+			bound = ^uint(0) >> 1
+		}
+		newcap = int(bound)
+	}
+	nv := make([]TxExecutionThread, int(length), newcap)
+	copy(nv, *v)
+	*v = nv
+}
+func (v *_XdrVec_unbounded_TxExecutionThread) XdrMarshalN(x XDR, name string, n uint32) {
+	v.XdrCheckLen(n)
+	for i := 0; i < int(n); i++ {
+		if i >= len(*v) {
+			v.SetVecLen(uint32(i + 1))
+		}
+		XDR_TxExecutionThread(&(*v)[i]).XdrMarshal(x, x.Sprintf("%s[%d]", name, i))
+	}
+	if int(n) < len(*v) {
+		*v = (*v)[:int(n)]
+	}
+}
+func (v *_XdrVec_unbounded_TxExecutionThread) XdrRecurse(x XDR, name string) {
+	size := XdrSize{Size: uint32(len(*v)), Bound: 4294967295}
+	x.Marshal(name, &size)
+	v.XdrMarshalN(x, name, size.Size)
+}
+func (_XdrVec_unbounded_TxExecutionThread) XdrTypeName() string { return "TxExecutionThread<>" }
+func (v *_XdrVec_unbounded_TxExecutionThread) XdrPointer() interface{} {
+	return (*[]TxExecutionThread)(v)
+}
+func (v _XdrVec_unbounded_TxExecutionThread) XdrValue() interface{}          { return ([]TxExecutionThread)(v) }
+func (v *_XdrVec_unbounded_TxExecutionThread) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+
+type XdrType_ParallelTxExecutionStage struct {
+	*_XdrVec_unbounded_TxExecutionThread
+}
+
+func XDR_ParallelTxExecutionStage(v *ParallelTxExecutionStage) XdrType_ParallelTxExecutionStage {
+	return XdrType_ParallelTxExecutionStage{(*_XdrVec_unbounded_TxExecutionThread)(v)}
+}
+func (XdrType_ParallelTxExecutionStage) XdrTypeName() string { return "ParallelTxExecutionStage" }
+func (v XdrType_ParallelTxExecutionStage) XdrUnwrap() XdrType {
+	return v._XdrVec_unbounded_TxExecutionThread
+}
+
 type _XdrPtr_Int64 struct {
 	p **Int64
 }
@@ -11231,21 +11427,21 @@ func (_XdrPtr_Int64) XdrTypeName() string       { return "Int64*" }
 func (v _XdrPtr_Int64) XdrPointer() interface{} { return v.p }
 func (v _XdrPtr_Int64) XdrValue() interface{}   { return *v.p }
 
-type _XdrVec_unbounded_TransactionEnvelope []TransactionEnvelope
+type _XdrVec_unbounded_ParallelTxExecutionStage []ParallelTxExecutionStage
 
-func (_XdrVec_unbounded_TransactionEnvelope) XdrBound() uint32 {
+func (_XdrVec_unbounded_ParallelTxExecutionStage) XdrBound() uint32 {
 	const bound uint32 = 4294967295 // Force error if not const or doesn't fit
 	return bound
 }
-func (_XdrVec_unbounded_TransactionEnvelope) XdrCheckLen(length uint32) {
+func (_XdrVec_unbounded_ParallelTxExecutionStage) XdrCheckLen(length uint32) {
 	if length > uint32(4294967295) {
-		XdrPanic("_XdrVec_unbounded_TransactionEnvelope length %d exceeds bound 4294967295", length)
+		XdrPanic("_XdrVec_unbounded_ParallelTxExecutionStage length %d exceeds bound 4294967295", length)
 	} else if int(length) < 0 {
-		XdrPanic("_XdrVec_unbounded_TransactionEnvelope length %d exceeds max int", length)
+		XdrPanic("_XdrVec_unbounded_ParallelTxExecutionStage length %d exceeds max int", length)
 	}
 }
-func (v _XdrVec_unbounded_TransactionEnvelope) GetVecLen() uint32 { return uint32(len(v)) }
-func (v *_XdrVec_unbounded_TransactionEnvelope) SetVecLen(length uint32) {
+func (v _XdrVec_unbounded_ParallelTxExecutionStage) GetVecLen() uint32 { return uint32(len(v)) }
+func (v *_XdrVec_unbounded_ParallelTxExecutionStage) SetVecLen(length uint32) {
 	v.XdrCheckLen(length)
 	if int(length) <= cap(*v) {
 		if int(length) != len(*v) {
@@ -11262,35 +11458,54 @@ func (v *_XdrVec_unbounded_TransactionEnvelope) SetVecLen(length uint32) {
 		}
 		newcap = int(bound)
 	}
-	nv := make([]TransactionEnvelope, int(length), newcap)
+	nv := make([]ParallelTxExecutionStage, int(length), newcap)
 	copy(nv, *v)
 	*v = nv
 }
-func (v *_XdrVec_unbounded_TransactionEnvelope) XdrMarshalN(x XDR, name string, n uint32) {
+func (v *_XdrVec_unbounded_ParallelTxExecutionStage) XdrMarshalN(x XDR, name string, n uint32) {
 	v.XdrCheckLen(n)
 	for i := 0; i < int(n); i++ {
 		if i >= len(*v) {
 			v.SetVecLen(uint32(i + 1))
 		}
-		XDR_TransactionEnvelope(&(*v)[i]).XdrMarshal(x, x.Sprintf("%s[%d]", name, i))
+		XDR_ParallelTxExecutionStage(&(*v)[i]).XdrMarshal(x, x.Sprintf("%s[%d]", name, i))
 	}
 	if int(n) < len(*v) {
 		*v = (*v)[:int(n)]
 	}
 }
-func (v *_XdrVec_unbounded_TransactionEnvelope) XdrRecurse(x XDR, name string) {
+func (v *_XdrVec_unbounded_ParallelTxExecutionStage) XdrRecurse(x XDR, name string) {
 	size := XdrSize{Size: uint32(len(*v)), Bound: 4294967295}
 	x.Marshal(name, &size)
 	v.XdrMarshalN(x, name, size.Size)
 }
-func (_XdrVec_unbounded_TransactionEnvelope) XdrTypeName() string { return "TransactionEnvelope<>" }
-func (v *_XdrVec_unbounded_TransactionEnvelope) XdrPointer() interface{} {
-	return (*[]TransactionEnvelope)(v)
+func (_XdrVec_unbounded_ParallelTxExecutionStage) XdrTypeName() string {
+	return "ParallelTxExecutionStage<>"
 }
-func (v _XdrVec_unbounded_TransactionEnvelope) XdrValue() interface{} {
-	return ([]TransactionEnvelope)(v)
+func (v *_XdrVec_unbounded_ParallelTxExecutionStage) XdrPointer() interface{} {
+	return (*[]ParallelTxExecutionStage)(v)
 }
-func (v *_XdrVec_unbounded_TransactionEnvelope) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v _XdrVec_unbounded_ParallelTxExecutionStage) XdrValue() interface{} {
+	return ([]ParallelTxExecutionStage)(v)
+}
+func (v *_XdrVec_unbounded_ParallelTxExecutionStage) XdrMarshal(x XDR, name string) {
+	x.Marshal(name, v)
+}
+
+type XdrType_ParallelTxsComponent = *ParallelTxsComponent
+
+func (v *ParallelTxsComponent) XdrPointer() interface{}       { return v }
+func (ParallelTxsComponent) XdrTypeName() string              { return "ParallelTxsComponent" }
+func (v ParallelTxsComponent) XdrValue() interface{}          { return v }
+func (v *ParallelTxsComponent) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *ParallelTxsComponent) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	x.Marshal(x.Sprintf("%sbaseFee", name), _XdrPtr_Int64{&v.BaseFee})
+	x.Marshal(x.Sprintf("%sexecutionStages", name), (*_XdrVec_unbounded_ParallelTxExecutionStage)(&v.ExecutionStages))
+}
+func XDR_ParallelTxsComponent(v *ParallelTxsComponent) *ParallelTxsComponent { return v }
 
 type XdrType_XdrAnon_TxSetComponent_TxsMaybeDiscountedFee = *XdrAnon_TxSetComponent_TxsMaybeDiscountedFee
 
@@ -11442,6 +11657,7 @@ func (v *_XdrVec_unbounded_TxSetComponent) XdrMarshal(x XDR, name string) { x.Ma
 
 var _XdrTags_TransactionPhase = map[int32]bool{
 	XdrToI32(0): true,
+	XdrToI32(1): true,
 }
 
 func (_ TransactionPhase) XdrValidTags() map[int32]bool {
@@ -11462,9 +11678,24 @@ func (u *TransactionPhase) V0Components() *[]TxSetComponent {
 		return nil
 	}
 }
+func (u *TransactionPhase) ParallelTxsComponent() *ParallelTxsComponent {
+	switch u.V {
+	case 1:
+		if v, ok := u._u.(*ParallelTxsComponent); ok {
+			return v
+		} else {
+			var zero ParallelTxsComponent
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("TransactionPhase.ParallelTxsComponent accessed when V == %v", u.V)
+		return nil
+	}
+}
 func (u TransactionPhase) XdrValid() bool {
 	switch u.V {
-	case 0:
+	case 0, 1:
 		return true
 	}
 	return false
@@ -11479,6 +11710,8 @@ func (u *TransactionPhase) XdrUnionBody() XdrType {
 	switch u.V {
 	case 0:
 		return (*_XdrVec_unbounded_TxSetComponent)(u.V0Components())
+	case 1:
+		return XDR_ParallelTxsComponent(u.ParallelTxsComponent())
 	}
 	return nil
 }
@@ -11486,6 +11719,8 @@ func (u *TransactionPhase) XdrUnionBodyName() string {
 	switch u.V {
 	case 0:
 		return "V0Components"
+	case 1:
+		return "ParallelTxsComponent"
 	}
 	return ""
 }
@@ -11504,6 +11739,9 @@ func (u *TransactionPhase) XdrRecurse(x XDR, name string) {
 	switch u.V {
 	case 0:
 		x.Marshal(x.Sprintf("%sv0Components", name), (*_XdrVec_unbounded_TxSetComponent)(u.V0Components()))
+		return
+	case 1:
+		x.Marshal(x.Sprintf("%sparallelTxsComponent", name), XDR_ParallelTxsComponent(u.ParallelTxsComponent()))
 		return
 	}
 	XdrPanic("invalid V (%v) in TransactionPhase", u.V)
@@ -12176,16 +12414,18 @@ func (u *SCPHistoryEntry) XdrRecurse(x XDR, name string) {
 func XDR_SCPHistoryEntry(v *SCPHistoryEntry) *SCPHistoryEntry { return v }
 
 var _XdrNames_LedgerEntryChangeType = map[int32]string{
-	int32(LEDGER_ENTRY_CREATED): "LEDGER_ENTRY_CREATED",
-	int32(LEDGER_ENTRY_UPDATED): "LEDGER_ENTRY_UPDATED",
-	int32(LEDGER_ENTRY_REMOVED): "LEDGER_ENTRY_REMOVED",
-	int32(LEDGER_ENTRY_STATE):   "LEDGER_ENTRY_STATE",
+	int32(LEDGER_ENTRY_CREATED):  "LEDGER_ENTRY_CREATED",
+	int32(LEDGER_ENTRY_UPDATED):  "LEDGER_ENTRY_UPDATED",
+	int32(LEDGER_ENTRY_REMOVED):  "LEDGER_ENTRY_REMOVED",
+	int32(LEDGER_ENTRY_STATE):    "LEDGER_ENTRY_STATE",
+	int32(LEDGER_ENTRY_RESTORED): "LEDGER_ENTRY_RESTORED",
 }
 var _XdrValues_LedgerEntryChangeType = map[string]int32{
-	"LEDGER_ENTRY_CREATED": int32(LEDGER_ENTRY_CREATED),
-	"LEDGER_ENTRY_UPDATED": int32(LEDGER_ENTRY_UPDATED),
-	"LEDGER_ENTRY_REMOVED": int32(LEDGER_ENTRY_REMOVED),
-	"LEDGER_ENTRY_STATE":   int32(LEDGER_ENTRY_STATE),
+	"LEDGER_ENTRY_CREATED":  int32(LEDGER_ENTRY_CREATED),
+	"LEDGER_ENTRY_UPDATED":  int32(LEDGER_ENTRY_UPDATED),
+	"LEDGER_ENTRY_REMOVED":  int32(LEDGER_ENTRY_REMOVED),
+	"LEDGER_ENTRY_STATE":    int32(LEDGER_ENTRY_STATE),
+	"LEDGER_ENTRY_RESTORED": int32(LEDGER_ENTRY_RESTORED),
 }
 
 func (LedgerEntryChangeType) XdrEnumNames() map[int32]string {
@@ -12225,10 +12465,11 @@ type XdrType_LedgerEntryChangeType = *LedgerEntryChangeType
 func XDR_LedgerEntryChangeType(v *LedgerEntryChangeType) *LedgerEntryChangeType { return v }
 
 var _XdrComments_LedgerEntryChangeType = map[int32]string{
-	int32(LEDGER_ENTRY_CREATED): "entry was added to the ledger",
-	int32(LEDGER_ENTRY_UPDATED): "entry was modified in the ledger",
-	int32(LEDGER_ENTRY_REMOVED): "entry was removed from the ledger",
-	int32(LEDGER_ENTRY_STATE):   "value of the entry",
+	int32(LEDGER_ENTRY_CREATED):  "entry was added to the ledger",
+	int32(LEDGER_ENTRY_UPDATED):  "entry was modified in the ledger",
+	int32(LEDGER_ENTRY_REMOVED):  "entry was removed from the ledger",
+	int32(LEDGER_ENTRY_STATE):    "value of the entry",
+	int32(LEDGER_ENTRY_RESTORED): "archived entry was restored in the ledger",
 }
 
 func (e LedgerEntryChangeType) XdrEnumComments() map[int32]string {
@@ -12236,10 +12477,11 @@ func (e LedgerEntryChangeType) XdrEnumComments() map[int32]string {
 }
 
 var _XdrTags_LedgerEntryChange = map[int32]bool{
-	XdrToI32(LEDGER_ENTRY_CREATED): true,
-	XdrToI32(LEDGER_ENTRY_UPDATED): true,
-	XdrToI32(LEDGER_ENTRY_REMOVED): true,
-	XdrToI32(LEDGER_ENTRY_STATE):   true,
+	XdrToI32(LEDGER_ENTRY_CREATED):  true,
+	XdrToI32(LEDGER_ENTRY_UPDATED):  true,
+	XdrToI32(LEDGER_ENTRY_REMOVED):  true,
+	XdrToI32(LEDGER_ENTRY_STATE):    true,
+	XdrToI32(LEDGER_ENTRY_RESTORED): true,
 }
 
 func (_ LedgerEntryChange) XdrValidTags() map[int32]bool {
@@ -12305,9 +12547,24 @@ func (u *LedgerEntryChange) State() *LedgerEntry {
 		return nil
 	}
 }
+func (u *LedgerEntryChange) Restored() *LedgerEntry {
+	switch u.Type {
+	case LEDGER_ENTRY_RESTORED:
+		if v, ok := u._u.(*LedgerEntry); ok {
+			return v
+		} else {
+			var zero LedgerEntry
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("LedgerEntryChange.Restored accessed when Type == %v", u.Type)
+		return nil
+	}
+}
 func (u LedgerEntryChange) XdrValid() bool {
 	switch u.Type {
-	case LEDGER_ENTRY_CREATED, LEDGER_ENTRY_UPDATED, LEDGER_ENTRY_REMOVED, LEDGER_ENTRY_STATE:
+	case LEDGER_ENTRY_CREATED, LEDGER_ENTRY_UPDATED, LEDGER_ENTRY_REMOVED, LEDGER_ENTRY_STATE, LEDGER_ENTRY_RESTORED:
 		return true
 	}
 	return false
@@ -12328,6 +12585,8 @@ func (u *LedgerEntryChange) XdrUnionBody() XdrType {
 		return XDR_LedgerKey(u.Removed())
 	case LEDGER_ENTRY_STATE:
 		return XDR_LedgerEntry(u.State())
+	case LEDGER_ENTRY_RESTORED:
+		return XDR_LedgerEntry(u.Restored())
 	}
 	return nil
 }
@@ -12341,6 +12600,8 @@ func (u *LedgerEntryChange) XdrUnionBodyName() string {
 		return "Removed"
 	case LEDGER_ENTRY_STATE:
 		return "State"
+	case LEDGER_ENTRY_RESTORED:
+		return "Restored"
 	}
 	return ""
 }
@@ -12368,6 +12629,9 @@ func (u *LedgerEntryChange) XdrRecurse(x XDR, name string) {
 		return
 	case LEDGER_ENTRY_STATE:
 		x.Marshal(x.Sprintf("%sstate", name), XDR_LedgerEntry(u.State()))
+		return
+	case LEDGER_ENTRY_RESTORED:
+		x.Marshal(x.Sprintf("%srestored", name), XDR_LedgerEntry(u.Restored()))
 		return
 	}
 	XdrPanic("invalid Type (%v) in LedgerEntryChange", u.Type)
@@ -12843,73 +13107,6 @@ func (v *DiagnosticEvent) XdrRecurse(x XDR, name string) {
 }
 func XDR_DiagnosticEvent(v *DiagnosticEvent) *DiagnosticEvent { return v }
 
-type _XdrVec_unbounded_DiagnosticEvent []DiagnosticEvent
-
-func (_XdrVec_unbounded_DiagnosticEvent) XdrBound() uint32 {
-	const bound uint32 = 4294967295 // Force error if not const or doesn't fit
-	return bound
-}
-func (_XdrVec_unbounded_DiagnosticEvent) XdrCheckLen(length uint32) {
-	if length > uint32(4294967295) {
-		XdrPanic("_XdrVec_unbounded_DiagnosticEvent length %d exceeds bound 4294967295", length)
-	} else if int(length) < 0 {
-		XdrPanic("_XdrVec_unbounded_DiagnosticEvent length %d exceeds max int", length)
-	}
-}
-func (v _XdrVec_unbounded_DiagnosticEvent) GetVecLen() uint32 { return uint32(len(v)) }
-func (v *_XdrVec_unbounded_DiagnosticEvent) SetVecLen(length uint32) {
-	v.XdrCheckLen(length)
-	if int(length) <= cap(*v) {
-		if int(length) != len(*v) {
-			*v = (*v)[:int(length)]
-		}
-		return
-	}
-	newcap := 2 * cap(*v)
-	if newcap < int(length) { // also catches overflow where 2*cap < 0
-		newcap = int(length)
-	} else if bound := uint(4294967295); uint(newcap) > bound {
-		if int(bound) < 0 {
-			bound = ^uint(0) >> 1
-		}
-		newcap = int(bound)
-	}
-	nv := make([]DiagnosticEvent, int(length), newcap)
-	copy(nv, *v)
-	*v = nv
-}
-func (v *_XdrVec_unbounded_DiagnosticEvent) XdrMarshalN(x XDR, name string, n uint32) {
-	v.XdrCheckLen(n)
-	for i := 0; i < int(n); i++ {
-		if i >= len(*v) {
-			v.SetVecLen(uint32(i + 1))
-		}
-		XDR_DiagnosticEvent(&(*v)[i]).XdrMarshal(x, x.Sprintf("%s[%d]", name, i))
-	}
-	if int(n) < len(*v) {
-		*v = (*v)[:int(n)]
-	}
-}
-func (v *_XdrVec_unbounded_DiagnosticEvent) XdrRecurse(x XDR, name string) {
-	size := XdrSize{Size: uint32(len(*v)), Bound: 4294967295}
-	x.Marshal(name, &size)
-	v.XdrMarshalN(x, name, size.Size)
-}
-func (_XdrVec_unbounded_DiagnosticEvent) XdrTypeName() string              { return "DiagnosticEvent<>" }
-func (v *_XdrVec_unbounded_DiagnosticEvent) XdrPointer() interface{}       { return (*[]DiagnosticEvent)(v) }
-func (v _XdrVec_unbounded_DiagnosticEvent) XdrValue() interface{}          { return ([]DiagnosticEvent)(v) }
-func (v *_XdrVec_unbounded_DiagnosticEvent) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
-
-type XdrType_DiagnosticEvents struct {
-	*_XdrVec_unbounded_DiagnosticEvent
-}
-
-func XDR_DiagnosticEvents(v *DiagnosticEvents) XdrType_DiagnosticEvents {
-	return XdrType_DiagnosticEvents{(*_XdrVec_unbounded_DiagnosticEvent)(v)}
-}
-func (XdrType_DiagnosticEvents) XdrTypeName() string  { return "DiagnosticEvents" }
-func (v XdrType_DiagnosticEvents) XdrUnwrap() XdrType { return v._XdrVec_unbounded_DiagnosticEvent }
-
 type XdrType_SorobanTransactionMetaExtV1 = *SorobanTransactionMetaExtV1
 
 func (v *SorobanTransactionMetaExtV1) XdrPointer() interface{}       { return v }
@@ -13062,6 +13259,63 @@ func (_XdrVec_unbounded_ContractEvent) XdrTypeName() string              { retur
 func (v *_XdrVec_unbounded_ContractEvent) XdrPointer() interface{}       { return (*[]ContractEvent)(v) }
 func (v _XdrVec_unbounded_ContractEvent) XdrValue() interface{}          { return ([]ContractEvent)(v) }
 func (v *_XdrVec_unbounded_ContractEvent) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+
+type _XdrVec_unbounded_DiagnosticEvent []DiagnosticEvent
+
+func (_XdrVec_unbounded_DiagnosticEvent) XdrBound() uint32 {
+	const bound uint32 = 4294967295 // Force error if not const or doesn't fit
+	return bound
+}
+func (_XdrVec_unbounded_DiagnosticEvent) XdrCheckLen(length uint32) {
+	if length > uint32(4294967295) {
+		XdrPanic("_XdrVec_unbounded_DiagnosticEvent length %d exceeds bound 4294967295", length)
+	} else if int(length) < 0 {
+		XdrPanic("_XdrVec_unbounded_DiagnosticEvent length %d exceeds max int", length)
+	}
+}
+func (v _XdrVec_unbounded_DiagnosticEvent) GetVecLen() uint32 { return uint32(len(v)) }
+func (v *_XdrVec_unbounded_DiagnosticEvent) SetVecLen(length uint32) {
+	v.XdrCheckLen(length)
+	if int(length) <= cap(*v) {
+		if int(length) != len(*v) {
+			*v = (*v)[:int(length)]
+		}
+		return
+	}
+	newcap := 2 * cap(*v)
+	if newcap < int(length) { // also catches overflow where 2*cap < 0
+		newcap = int(length)
+	} else if bound := uint(4294967295); uint(newcap) > bound {
+		if int(bound) < 0 {
+			bound = ^uint(0) >> 1
+		}
+		newcap = int(bound)
+	}
+	nv := make([]DiagnosticEvent, int(length), newcap)
+	copy(nv, *v)
+	*v = nv
+}
+func (v *_XdrVec_unbounded_DiagnosticEvent) XdrMarshalN(x XDR, name string, n uint32) {
+	v.XdrCheckLen(n)
+	for i := 0; i < int(n); i++ {
+		if i >= len(*v) {
+			v.SetVecLen(uint32(i + 1))
+		}
+		XDR_DiagnosticEvent(&(*v)[i]).XdrMarshal(x, x.Sprintf("%s[%d]", name, i))
+	}
+	if int(n) < len(*v) {
+		*v = (*v)[:int(n)]
+	}
+}
+func (v *_XdrVec_unbounded_DiagnosticEvent) XdrRecurse(x XDR, name string) {
+	size := XdrSize{Size: uint32(len(*v)), Bound: 4294967295}
+	x.Marshal(name, &size)
+	v.XdrMarshalN(x, name, size.Size)
+}
+func (_XdrVec_unbounded_DiagnosticEvent) XdrTypeName() string              { return "DiagnosticEvent<>" }
+func (v *_XdrVec_unbounded_DiagnosticEvent) XdrPointer() interface{}       { return (*[]DiagnosticEvent)(v) }
+func (v _XdrVec_unbounded_DiagnosticEvent) XdrValue() interface{}          { return ([]DiagnosticEvent)(v) }
+func (v *_XdrVec_unbounded_DiagnosticEvent) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
 
 type XdrType_SorobanTransactionMeta = *SorobanTransactionMeta
 
@@ -13570,9 +13824,27 @@ func (v *LedgerCloseMetaExtV1) XdrRecurse(x XDR, name string) {
 }
 func XDR_LedgerCloseMetaExtV1(v *LedgerCloseMetaExtV1) *LedgerCloseMetaExtV1 { return v }
 
+type XdrType_LedgerCloseMetaExtV2 = *LedgerCloseMetaExtV2
+
+func (v *LedgerCloseMetaExtV2) XdrPointer() interface{}       { return v }
+func (LedgerCloseMetaExtV2) XdrTypeName() string              { return "LedgerCloseMetaExtV2" }
+func (v LedgerCloseMetaExtV2) XdrValue() interface{}          { return v }
+func (v *LedgerCloseMetaExtV2) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *LedgerCloseMetaExtV2) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	x.Marshal(x.Sprintf("%sext", name), XDR_ExtensionPoint(&v.Ext))
+	x.Marshal(x.Sprintf("%ssorobanFeeWrite1KB", name), XDR_Int64(&v.SorobanFeeWrite1KB))
+	x.Marshal(x.Sprintf("%scurrentArchivalEpoch", name), XDR_Uint32(&v.CurrentArchivalEpoch))
+	x.Marshal(x.Sprintf("%slastArchivalEpochPersisted", name), XDR_Uint32(&v.LastArchivalEpochPersisted))
+}
+func XDR_LedgerCloseMetaExtV2(v *LedgerCloseMetaExtV2) *LedgerCloseMetaExtV2 { return v }
+
 var _XdrTags_LedgerCloseMetaExt = map[int32]bool{
 	XdrToI32(0): true,
 	XdrToI32(1): true,
+	XdrToI32(2): true,
 }
 
 func (_ LedgerCloseMetaExt) XdrValidTags() map[int32]bool {
@@ -13593,9 +13865,24 @@ func (u *LedgerCloseMetaExt) V1() *LedgerCloseMetaExtV1 {
 		return nil
 	}
 }
+func (u *LedgerCloseMetaExt) V2() *LedgerCloseMetaExtV2 {
+	switch u.V {
+	case 2:
+		if v, ok := u._u.(*LedgerCloseMetaExtV2); ok {
+			return v
+		} else {
+			var zero LedgerCloseMetaExtV2
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("LedgerCloseMetaExt.V2 accessed when V == %v", u.V)
+		return nil
+	}
+}
 func (u LedgerCloseMetaExt) XdrValid() bool {
 	switch u.V {
-	case 0, 1:
+	case 0, 1, 2:
 		return true
 	}
 	return false
@@ -13612,6 +13899,8 @@ func (u *LedgerCloseMetaExt) XdrUnionBody() XdrType {
 		return nil
 	case 1:
 		return XDR_LedgerCloseMetaExtV1(u.V1())
+	case 2:
+		return XDR_LedgerCloseMetaExtV2(u.V2())
 	}
 	return nil
 }
@@ -13621,6 +13910,8 @@ func (u *LedgerCloseMetaExt) XdrUnionBodyName() string {
 		return ""
 	case 1:
 		return "V1"
+	case 2:
+		return "V2"
 	}
 	return ""
 }
@@ -13641,6 +13932,9 @@ func (u *LedgerCloseMetaExt) XdrRecurse(x XDR, name string) {
 		return
 	case 1:
 		x.Marshal(x.Sprintf("%sv1", name), XDR_LedgerCloseMetaExtV1(u.V1()))
+		return
+	case 2:
+		x.Marshal(x.Sprintf("%sv2", name), XDR_LedgerCloseMetaExtV2(u.V2()))
 		return
 	}
 	XdrPanic("invalid V (%v) in LedgerCloseMetaExt", u.V)
@@ -19901,21 +20195,6 @@ func (v *_XdrVec_unbounded_ProofLevel) XdrPointer() interface{}       { return (
 func (v _XdrVec_unbounded_ProofLevel) XdrValue() interface{}          { return ([]ProofLevel)(v) }
 func (v *_XdrVec_unbounded_ProofLevel) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
 
-type XdrType_NonexistenceProofBody = *NonexistenceProofBody
-
-func (v *NonexistenceProofBody) XdrPointer() interface{}       { return v }
-func (NonexistenceProofBody) XdrTypeName() string              { return "NonexistenceProofBody" }
-func (v NonexistenceProofBody) XdrValue() interface{}          { return v }
-func (v *NonexistenceProofBody) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
-func (v *NonexistenceProofBody) XdrRecurse(x XDR, name string) {
-	if name != "" {
-		name = x.Sprintf("%s.", name)
-	}
-	x.Marshal(x.Sprintf("%sentriesToProve", name), (*_XdrVec_unbounded_ColdArchiveBucketEntry)(&v.EntriesToProve))
-	x.Marshal(x.Sprintf("%sproofLevels", name), (*_XdrVec_unbounded_ProofLevel)(&v.ProofLevels))
-}
-func XDR_NonexistenceProofBody(v *NonexistenceProofBody) *NonexistenceProofBody { return v }
-
 type XdrType_ExistenceProofBody = *ExistenceProofBody
 
 func (v *ExistenceProofBody) XdrPointer() interface{}       { return v }
@@ -19926,16 +20205,31 @@ func (v *ExistenceProofBody) XdrRecurse(x XDR, name string) {
 	if name != "" {
 		name = x.Sprintf("%s.", name)
 	}
+	x.Marshal(x.Sprintf("%sentriesToProve", name), (*_XdrVec_unbounded_ColdArchiveBucketEntry)(&v.EntriesToProve))
+	x.Marshal(x.Sprintf("%sproofLevels", name), (*_XdrVec_unbounded_ProofLevel)(&v.ProofLevels))
+}
+func XDR_ExistenceProofBody(v *ExistenceProofBody) *ExistenceProofBody { return v }
+
+type XdrType_NonexistenceProofBody = *NonexistenceProofBody
+
+func (v *NonexistenceProofBody) XdrPointer() interface{}       { return v }
+func (NonexistenceProofBody) XdrTypeName() string              { return "NonexistenceProofBody" }
+func (v NonexistenceProofBody) XdrValue() interface{}          { return v }
+func (v *NonexistenceProofBody) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *NonexistenceProofBody) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
 	x.Marshal(x.Sprintf("%skeysToProve", name), (*_XdrVec_unbounded_LedgerKey)(&v.KeysToProve))
 	x.Marshal(x.Sprintf("%slowBoundEntries", name), (*_XdrVec_unbounded_ColdArchiveBucketEntry)(&v.LowBoundEntries))
 	x.Marshal(x.Sprintf("%shighBoundEntries", name), (*_XdrVec_unbounded_ColdArchiveBucketEntry)(&v.HighBoundEntries))
 	x.Marshal(x.Sprintf("%sproofLevels", name), (*_XdrVec_unbounded_ProofLevel)(&v.ProofLevels))
 }
-func XDR_ExistenceProofBody(v *ExistenceProofBody) *ExistenceProofBody { return v }
+func XDR_NonexistenceProofBody(v *NonexistenceProofBody) *NonexistenceProofBody { return v }
 
 var _XdrTags_XdrAnon_ArchivalProof_Body = map[int32]bool{
-	XdrToI32(EXISTENCE):    true,
 	XdrToI32(NONEXISTENCE): true,
+	XdrToI32(EXISTENCE):    true,
 }
 
 func (_ XdrAnon_ArchivalProof_Body) XdrValidTags() map[int32]bool {
@@ -19943,7 +20237,7 @@ func (_ XdrAnon_ArchivalProof_Body) XdrValidTags() map[int32]bool {
 }
 func (u *XdrAnon_ArchivalProof_Body) NonexistenceProof() *NonexistenceProofBody {
 	switch u.T {
-	case EXISTENCE:
+	case NONEXISTENCE:
 		if v, ok := u._u.(*NonexistenceProofBody); ok {
 			return v
 		} else {
@@ -19958,7 +20252,7 @@ func (u *XdrAnon_ArchivalProof_Body) NonexistenceProof() *NonexistenceProofBody 
 }
 func (u *XdrAnon_ArchivalProof_Body) ExistenceProof() *ExistenceProofBody {
 	switch u.T {
-	case NONEXISTENCE:
+	case EXISTENCE:
 		if v, ok := u._u.(*ExistenceProofBody); ok {
 			return v
 		} else {
@@ -19973,7 +20267,7 @@ func (u *XdrAnon_ArchivalProof_Body) ExistenceProof() *ExistenceProofBody {
 }
 func (u XdrAnon_ArchivalProof_Body) XdrValid() bool {
 	switch u.T {
-	case EXISTENCE, NONEXISTENCE:
+	case NONEXISTENCE, EXISTENCE:
 		return true
 	}
 	return false
@@ -19986,18 +20280,18 @@ func (u *XdrAnon_ArchivalProof_Body) XdrUnionTagName() string {
 }
 func (u *XdrAnon_ArchivalProof_Body) XdrUnionBody() XdrType {
 	switch u.T {
-	case EXISTENCE:
-		return XDR_NonexistenceProofBody(u.NonexistenceProof())
 	case NONEXISTENCE:
+		return XDR_NonexistenceProofBody(u.NonexistenceProof())
+	case EXISTENCE:
 		return XDR_ExistenceProofBody(u.ExistenceProof())
 	}
 	return nil
 }
 func (u *XdrAnon_ArchivalProof_Body) XdrUnionBodyName() string {
 	switch u.T {
-	case EXISTENCE:
-		return "NonexistenceProof"
 	case NONEXISTENCE:
+		return "NonexistenceProof"
+	case EXISTENCE:
 		return "ExistenceProof"
 	}
 	return ""
@@ -20015,10 +20309,10 @@ func (u *XdrAnon_ArchivalProof_Body) XdrRecurse(x XDR, name string) {
 	}
 	XDR_ArchivalProofType(&u.T).XdrMarshal(x, x.Sprintf("%st", name))
 	switch u.T {
-	case EXISTENCE:
+	case NONEXISTENCE:
 		x.Marshal(x.Sprintf("%snonexistenceProof", name), XDR_NonexistenceProofBody(u.NonexistenceProof()))
 		return
-	case NONEXISTENCE:
+	case EXISTENCE:
 		x.Marshal(x.Sprintf("%sexistenceProof", name), XDR_ExistenceProofBody(u.ExistenceProof()))
 		return
 	}
@@ -20060,6 +20354,144 @@ func (v *SorobanResources) XdrRecurse(x XDR, name string) {
 }
 func XDR_SorobanResources(v *SorobanResources) *SorobanResources { return v }
 
+type _XdrVec_unbounded_ArchivalProof []ArchivalProof
+
+func (_XdrVec_unbounded_ArchivalProof) XdrBound() uint32 {
+	const bound uint32 = 4294967295 // Force error if not const or doesn't fit
+	return bound
+}
+func (_XdrVec_unbounded_ArchivalProof) XdrCheckLen(length uint32) {
+	if length > uint32(4294967295) {
+		XdrPanic("_XdrVec_unbounded_ArchivalProof length %d exceeds bound 4294967295", length)
+	} else if int(length) < 0 {
+		XdrPanic("_XdrVec_unbounded_ArchivalProof length %d exceeds max int", length)
+	}
+}
+func (v _XdrVec_unbounded_ArchivalProof) GetVecLen() uint32 { return uint32(len(v)) }
+func (v *_XdrVec_unbounded_ArchivalProof) SetVecLen(length uint32) {
+	v.XdrCheckLen(length)
+	if int(length) <= cap(*v) {
+		if int(length) != len(*v) {
+			*v = (*v)[:int(length)]
+		}
+		return
+	}
+	newcap := 2 * cap(*v)
+	if newcap < int(length) { // also catches overflow where 2*cap < 0
+		newcap = int(length)
+	} else if bound := uint(4294967295); uint(newcap) > bound {
+		if int(bound) < 0 {
+			bound = ^uint(0) >> 1
+		}
+		newcap = int(bound)
+	}
+	nv := make([]ArchivalProof, int(length), newcap)
+	copy(nv, *v)
+	*v = nv
+}
+func (v *_XdrVec_unbounded_ArchivalProof) XdrMarshalN(x XDR, name string, n uint32) {
+	v.XdrCheckLen(n)
+	for i := 0; i < int(n); i++ {
+		if i >= len(*v) {
+			v.SetVecLen(uint32(i + 1))
+		}
+		XDR_ArchivalProof(&(*v)[i]).XdrMarshal(x, x.Sprintf("%s[%d]", name, i))
+	}
+	if int(n) < len(*v) {
+		*v = (*v)[:int(n)]
+	}
+}
+func (v *_XdrVec_unbounded_ArchivalProof) XdrRecurse(x XDR, name string) {
+	size := XdrSize{Size: uint32(len(*v)), Bound: 4294967295}
+	x.Marshal(name, &size)
+	v.XdrMarshalN(x, name, size.Size)
+}
+func (_XdrVec_unbounded_ArchivalProof) XdrTypeName() string              { return "ArchivalProof<>" }
+func (v *_XdrVec_unbounded_ArchivalProof) XdrPointer() interface{}       { return (*[]ArchivalProof)(v) }
+func (v _XdrVec_unbounded_ArchivalProof) XdrValue() interface{}          { return ([]ArchivalProof)(v) }
+func (v *_XdrVec_unbounded_ArchivalProof) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+
+var _XdrTags_XdrAnon_SorobanTransactionData_Ext = map[int32]bool{
+	XdrToI32(0): true,
+	XdrToI32(1): true,
+}
+
+func (_ XdrAnon_SorobanTransactionData_Ext) XdrValidTags() map[int32]bool {
+	return _XdrTags_XdrAnon_SorobanTransactionData_Ext
+}
+func (u *XdrAnon_SorobanTransactionData_Ext) Proofs() *[]ArchivalProof {
+	switch u.V {
+	case 1:
+		if v, ok := u._u.(*[]ArchivalProof); ok {
+			return v
+		} else {
+			var zero []ArchivalProof
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("XdrAnon_SorobanTransactionData_Ext.Proofs accessed when V == %v", u.V)
+		return nil
+	}
+}
+func (u XdrAnon_SorobanTransactionData_Ext) XdrValid() bool {
+	switch u.V {
+	case 0, 1:
+		return true
+	}
+	return false
+}
+func (u *XdrAnon_SorobanTransactionData_Ext) XdrUnionTag() XdrNum32 {
+	return XDR_int32(&u.V)
+}
+func (u *XdrAnon_SorobanTransactionData_Ext) XdrUnionTagName() string {
+	return "V"
+}
+func (u *XdrAnon_SorobanTransactionData_Ext) XdrUnionBody() XdrType {
+	switch u.V {
+	case 0:
+		return nil
+	case 1:
+		return (*_XdrVec_unbounded_ArchivalProof)(u.Proofs())
+	}
+	return nil
+}
+func (u *XdrAnon_SorobanTransactionData_Ext) XdrUnionBodyName() string {
+	switch u.V {
+	case 0:
+		return ""
+	case 1:
+		return "Proofs"
+	}
+	return ""
+}
+
+type XdrType_XdrAnon_SorobanTransactionData_Ext = *XdrAnon_SorobanTransactionData_Ext
+
+func (v *XdrAnon_SorobanTransactionData_Ext) XdrPointer() interface{} { return v }
+func (XdrAnon_SorobanTransactionData_Ext) XdrTypeName() string {
+	return "XdrAnon_SorobanTransactionData_Ext"
+}
+func (v XdrAnon_SorobanTransactionData_Ext) XdrValue() interface{}          { return v }
+func (v *XdrAnon_SorobanTransactionData_Ext) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (u *XdrAnon_SorobanTransactionData_Ext) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	XDR_int32(&u.V).XdrMarshal(x, x.Sprintf("%sv", name))
+	switch u.V {
+	case 0:
+		return
+	case 1:
+		x.Marshal(x.Sprintf("%sproofs", name), (*_XdrVec_unbounded_ArchivalProof)(u.Proofs()))
+		return
+	}
+	XdrPanic("invalid V (%v) in XdrAnon_SorobanTransactionData_Ext", u.V)
+}
+func XDR_XdrAnon_SorobanTransactionData_Ext(v *XdrAnon_SorobanTransactionData_Ext) *XdrAnon_SorobanTransactionData_Ext {
+	return v
+}
+
 type XdrType_SorobanTransactionData = *SorobanTransactionData
 
 func (v *SorobanTransactionData) XdrPointer() interface{}       { return v }
@@ -20070,7 +20502,7 @@ func (v *SorobanTransactionData) XdrRecurse(x XDR, name string) {
 	if name != "" {
 		name = x.Sprintf("%s.", name)
 	}
-	x.Marshal(x.Sprintf("%sext", name), XDR_ExtensionPoint(&v.Ext))
+	x.Marshal(x.Sprintf("%sext", name), XDR_XdrAnon_SorobanTransactionData_Ext(&v.Ext))
 	x.Marshal(x.Sprintf("%sresources", name), XDR_SorobanResources(&v.Resources))
 	x.Marshal(x.Sprintf("%sresourceFee", name), XDR_Int64(&v.ResourceFee))
 }
@@ -24677,6 +25109,7 @@ var _XdrNames_InvokeHostFunctionResultCode = map[int32]string{
 	int32(INVOKE_HOST_FUNCTION_RESOURCE_LIMIT_EXCEEDED):     "INVOKE_HOST_FUNCTION_RESOURCE_LIMIT_EXCEEDED",
 	int32(INVOKE_HOST_FUNCTION_ENTRY_ARCHIVED):              "INVOKE_HOST_FUNCTION_ENTRY_ARCHIVED",
 	int32(INVOKE_HOST_FUNCTION_INSUFFICIENT_REFUNDABLE_FEE): "INVOKE_HOST_FUNCTION_INSUFFICIENT_REFUNDABLE_FEE",
+	int32(INVOKE_HOST_FUNCTION_INVALID_CREATION_PROOF):      "INVOKE_HOST_FUNCTION_INVALID_CREATION_PROOF",
 }
 var _XdrValues_InvokeHostFunctionResultCode = map[string]int32{
 	"INVOKE_HOST_FUNCTION_SUCCESS":                     int32(INVOKE_HOST_FUNCTION_SUCCESS),
@@ -24685,6 +25118,7 @@ var _XdrValues_InvokeHostFunctionResultCode = map[string]int32{
 	"INVOKE_HOST_FUNCTION_RESOURCE_LIMIT_EXCEEDED":     int32(INVOKE_HOST_FUNCTION_RESOURCE_LIMIT_EXCEEDED),
 	"INVOKE_HOST_FUNCTION_ENTRY_ARCHIVED":              int32(INVOKE_HOST_FUNCTION_ENTRY_ARCHIVED),
 	"INVOKE_HOST_FUNCTION_INSUFFICIENT_REFUNDABLE_FEE": int32(INVOKE_HOST_FUNCTION_INSUFFICIENT_REFUNDABLE_FEE),
+	"INVOKE_HOST_FUNCTION_INVALID_CREATION_PROOF":      int32(INVOKE_HOST_FUNCTION_INVALID_CREATION_PROOF),
 }
 
 func (InvokeHostFunctionResultCode) XdrEnumNames() map[int32]string {
@@ -24945,12 +25379,14 @@ var _XdrNames_RestoreFootprintResultCode = map[int32]string{
 	int32(RESTORE_FOOTPRINT_MALFORMED):                   "RESTORE_FOOTPRINT_MALFORMED",
 	int32(RESTORE_FOOTPRINT_RESOURCE_LIMIT_EXCEEDED):     "RESTORE_FOOTPRINT_RESOURCE_LIMIT_EXCEEDED",
 	int32(RESTORE_FOOTPRINT_INSUFFICIENT_REFUNDABLE_FEE): "RESTORE_FOOTPRINT_INSUFFICIENT_REFUNDABLE_FEE",
+	int32(RESTORE_FOOTPRINT_INVALID_PROOF):               "RESTORE_FOOTPRINT_INVALID_PROOF",
 }
 var _XdrValues_RestoreFootprintResultCode = map[string]int32{
 	"RESTORE_FOOTPRINT_SUCCESS":                     int32(RESTORE_FOOTPRINT_SUCCESS),
 	"RESTORE_FOOTPRINT_MALFORMED":                   int32(RESTORE_FOOTPRINT_MALFORMED),
 	"RESTORE_FOOTPRINT_RESOURCE_LIMIT_EXCEEDED":     int32(RESTORE_FOOTPRINT_RESOURCE_LIMIT_EXCEEDED),
 	"RESTORE_FOOTPRINT_INSUFFICIENT_REFUNDABLE_FEE": int32(RESTORE_FOOTPRINT_INSUFFICIENT_REFUNDABLE_FEE),
+	"RESTORE_FOOTPRINT_INVALID_PROOF":               int32(RESTORE_FOOTPRINT_INVALID_PROOF),
 }
 
 func (RestoreFootprintResultCode) XdrEnumNames() map[int32]string {
@@ -30606,6 +31042,24 @@ func XDR_ConfigSettingContractComputeV0(v *ConfigSettingContractComputeV0) *Conf
 	return v
 }
 
+type XdrType_ConfigSettingContractParallelComputeV0 = *ConfigSettingContractParallelComputeV0
+
+func (v *ConfigSettingContractParallelComputeV0) XdrPointer() interface{} { return v }
+func (ConfigSettingContractParallelComputeV0) XdrTypeName() string {
+	return "ConfigSettingContractParallelComputeV0"
+}
+func (v ConfigSettingContractParallelComputeV0) XdrValue() interface{}          { return v }
+func (v *ConfigSettingContractParallelComputeV0) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *ConfigSettingContractParallelComputeV0) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	x.Marshal(x.Sprintf("%sledgerMaxParallelThreads", name), XDR_Uint32(&v.LedgerMaxParallelThreads))
+}
+func XDR_ConfigSettingContractParallelComputeV0(v *ConfigSettingContractParallelComputeV0) *ConfigSettingContractParallelComputeV0 {
+	return v
+}
+
 type XdrType_ConfigSettingContractLedgerCostV0 = *ConfigSettingContractLedgerCostV0
 
 func (v *ConfigSettingContractLedgerCostV0) XdrPointer() interface{} { return v }
@@ -31092,6 +31546,7 @@ var _XdrNames_ConfigSettingID = map[int32]string{
 	int32(CONFIG_SETTING_CONTRACT_EXECUTION_LANES):              "CONFIG_SETTING_CONTRACT_EXECUTION_LANES",
 	int32(CONFIG_SETTING_BUCKETLIST_SIZE_WINDOW):                "CONFIG_SETTING_BUCKETLIST_SIZE_WINDOW",
 	int32(CONFIG_SETTING_EVICTION_ITERATOR):                     "CONFIG_SETTING_EVICTION_ITERATOR",
+	int32(CONFIG_SETTING_CONTRACT_PARALLEL_COMPUTE_V0):          "CONFIG_SETTING_CONTRACT_PARALLEL_COMPUTE_V0",
 }
 var _XdrValues_ConfigSettingID = map[string]int32{
 	"CONFIG_SETTING_CONTRACT_MAX_SIZE_BYTES":               int32(CONFIG_SETTING_CONTRACT_MAX_SIZE_BYTES),
@@ -31108,6 +31563,7 @@ var _XdrValues_ConfigSettingID = map[string]int32{
 	"CONFIG_SETTING_CONTRACT_EXECUTION_LANES":              int32(CONFIG_SETTING_CONTRACT_EXECUTION_LANES),
 	"CONFIG_SETTING_BUCKETLIST_SIZE_WINDOW":                int32(CONFIG_SETTING_BUCKETLIST_SIZE_WINDOW),
 	"CONFIG_SETTING_EVICTION_ITERATOR":                     int32(CONFIG_SETTING_EVICTION_ITERATOR),
+	"CONFIG_SETTING_CONTRACT_PARALLEL_COMPUTE_V0":          int32(CONFIG_SETTING_CONTRACT_PARALLEL_COMPUTE_V0),
 }
 
 func (ConfigSettingID) XdrEnumNames() map[int32]string {
@@ -31218,6 +31674,7 @@ var _XdrTags_ConfigSettingEntry = map[int32]bool{
 	XdrToI32(CONFIG_SETTING_CONTRACT_EXECUTION_LANES):              true,
 	XdrToI32(CONFIG_SETTING_BUCKETLIST_SIZE_WINDOW):                true,
 	XdrToI32(CONFIG_SETTING_EVICTION_ITERATOR):                     true,
+	XdrToI32(CONFIG_SETTING_CONTRACT_PARALLEL_COMPUTE_V0):          true,
 }
 
 func (_ ConfigSettingEntry) XdrValidTags() map[int32]bool {
@@ -31433,9 +31890,24 @@ func (u *ConfigSettingEntry) EvictionIterator() *EvictionIterator {
 		return nil
 	}
 }
+func (u *ConfigSettingEntry) ContractParallelCompute() *ConfigSettingContractParallelComputeV0 {
+	switch u.ConfigSettingID {
+	case CONFIG_SETTING_CONTRACT_PARALLEL_COMPUTE_V0:
+		if v, ok := u._u.(*ConfigSettingContractParallelComputeV0); ok {
+			return v
+		} else {
+			var zero ConfigSettingContractParallelComputeV0
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("ConfigSettingEntry.ContractParallelCompute accessed when ConfigSettingID == %v", u.ConfigSettingID)
+		return nil
+	}
+}
 func (u ConfigSettingEntry) XdrValid() bool {
 	switch u.ConfigSettingID {
-	case CONFIG_SETTING_CONTRACT_MAX_SIZE_BYTES, CONFIG_SETTING_CONTRACT_COMPUTE_V0, CONFIG_SETTING_CONTRACT_LEDGER_COST_V0, CONFIG_SETTING_CONTRACT_HISTORICAL_DATA_V0, CONFIG_SETTING_CONTRACT_EVENTS_V0, CONFIG_SETTING_CONTRACT_BANDWIDTH_V0, CONFIG_SETTING_CONTRACT_COST_PARAMS_CPU_INSTRUCTIONS, CONFIG_SETTING_CONTRACT_COST_PARAMS_MEMORY_BYTES, CONFIG_SETTING_CONTRACT_DATA_KEY_SIZE_BYTES, CONFIG_SETTING_CONTRACT_DATA_ENTRY_SIZE_BYTES, CONFIG_SETTING_STATE_ARCHIVAL, CONFIG_SETTING_CONTRACT_EXECUTION_LANES, CONFIG_SETTING_BUCKETLIST_SIZE_WINDOW, CONFIG_SETTING_EVICTION_ITERATOR:
+	case CONFIG_SETTING_CONTRACT_MAX_SIZE_BYTES, CONFIG_SETTING_CONTRACT_COMPUTE_V0, CONFIG_SETTING_CONTRACT_LEDGER_COST_V0, CONFIG_SETTING_CONTRACT_HISTORICAL_DATA_V0, CONFIG_SETTING_CONTRACT_EVENTS_V0, CONFIG_SETTING_CONTRACT_BANDWIDTH_V0, CONFIG_SETTING_CONTRACT_COST_PARAMS_CPU_INSTRUCTIONS, CONFIG_SETTING_CONTRACT_COST_PARAMS_MEMORY_BYTES, CONFIG_SETTING_CONTRACT_DATA_KEY_SIZE_BYTES, CONFIG_SETTING_CONTRACT_DATA_ENTRY_SIZE_BYTES, CONFIG_SETTING_STATE_ARCHIVAL, CONFIG_SETTING_CONTRACT_EXECUTION_LANES, CONFIG_SETTING_BUCKETLIST_SIZE_WINDOW, CONFIG_SETTING_EVICTION_ITERATOR, CONFIG_SETTING_CONTRACT_PARALLEL_COMPUTE_V0:
 		return true
 	}
 	return false
@@ -31476,6 +31948,8 @@ func (u *ConfigSettingEntry) XdrUnionBody() XdrType {
 		return (*_XdrVec_unbounded_Uint64)(u.BucketListSizeWindow())
 	case CONFIG_SETTING_EVICTION_ITERATOR:
 		return XDR_EvictionIterator(u.EvictionIterator())
+	case CONFIG_SETTING_CONTRACT_PARALLEL_COMPUTE_V0:
+		return XDR_ConfigSettingContractParallelComputeV0(u.ContractParallelCompute())
 	}
 	return nil
 }
@@ -31509,6 +31983,8 @@ func (u *ConfigSettingEntry) XdrUnionBodyName() string {
 		return "BucketListSizeWindow"
 	case CONFIG_SETTING_EVICTION_ITERATOR:
 		return "EvictionIterator"
+	case CONFIG_SETTING_CONTRACT_PARALLEL_COMPUTE_V0:
+		return "ContractParallelCompute"
 	}
 	return ""
 }
@@ -31566,6 +32042,9 @@ func (u *ConfigSettingEntry) XdrRecurse(x XDR, name string) {
 		return
 	case CONFIG_SETTING_EVICTION_ITERATOR:
 		x.Marshal(x.Sprintf("%sevictionIterator", name), XDR_EvictionIterator(u.EvictionIterator()))
+		return
+	case CONFIG_SETTING_CONTRACT_PARALLEL_COMPUTE_V0:
+		x.Marshal(x.Sprintf("%scontractParallelCompute", name), XDR_ConfigSettingContractParallelComputeV0(u.ContractParallelCompute()))
 		return
 	}
 	XdrPanic("invalid ConfigSettingID (%v) in ConfigSettingEntry", u.ConfigSettingID)
