@@ -250,8 +250,8 @@ func (c *Client) GetLedgerEntryRaw(ctx context.Context, ledgerSeq uint32, keys .
 	return resp, c.makeLedgerKeyRequest(ctx, &resp, "getledgerentryraw", ledgerSeq, keys...)
 }
 
-func (c *Client) GetLedgerEntries(ctx context.Context, ledgerSeq uint32, keys ...xdr.LedgerKey) (*proto.GetLedgerEntryResponse, error) {
-	var resp *proto.GetLedgerEntryResponse
+func (c *Client) GetLedgerEntries(ctx context.Context, ledgerSeq uint32, keys ...xdr.LedgerKey) (proto.GetLedgerEntryResponse, error) {
+	var resp proto.GetLedgerEntryResponse
 	return resp, c.makeLedgerKeyRequest(ctx, &resp, "getledgerentry", ledgerSeq, keys...)
 }
 
