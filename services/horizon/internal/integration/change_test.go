@@ -124,6 +124,56 @@ func TestOneTxOneOperationChanges(t *testing.T) {
 	tt.True(accountFromEntry(destAccChange.Pre).Balance < accountFromEntry(destAccChange.Post).Balance)
 }
 
+func TestSomething2(t *testing.T) {
+	itest := integration.NewTest(t, integration.Config{})
+	master := itest.Master()
+	keys, accounts := itest.CreateAccounts(3, "1000")
+	keyA, keyB := keys[0], keys[1]
+	accountA, accountB := accounts[0], accounts[1]
+
+	t.Logf("Key A: %v, Key B: %v", keyA.Address(), keyB.Address())
+	t.Logf("Acc A: %v, Acc B: %v", accountA, accountB)
+
+	// Some random asset
+	xyzAsset := txnbuild.CreditAsset{Code: "XYZ", Issuer: master.Address()}
+	itest.MustEstablishTrustline(keyA, accountA, xyzAsset)
+	itest.MustEstablishTrustline(keyB, accountB, xyzAsset)
+
+	// Make it so that A has some amount of xyzAsset
+	paymentOperation := txnbuild.Payment{
+		Destination: keyA.Address(),
+		Asset:       xyzAsset,
+		Amount:      "2000",
+	}
+	txResp := itest.MustSubmitOperations(itest.MasterAccount(), master, &paymentOperation)
+
+	t.Logf("Payment operation response: %v", get_json_string(txResp))
+
+	txResp2 := itest.MustGetAccount(keyA)
+	t.Logf("Balances of acount A - %v,  %v", keyA.Address(), get_json_string(txResp2.Balances))
+
+	txResp2 = itest.MustGetAccount(keyB)
+	t.Logf("Balances of acount B - %v,  %v", keyB.Address(), get_json_string(txResp2.Balances))
+
+	t.Logf("Get Account for account A - %v response before offer generation: %v", keyA.Address(), get_json_string(txResp))
+
+	claim := itest.MustCreateClaimableBalance(
+		keyA, xyzAsset, "42",
+		txnbuild.NewClaimant(keyB.Address(), nil))
+	t.Logf("Details about claim: %v", get_json_string(claim))
+
+	txResp3 := itest.MustGetAccount(keyA)
+	t.Logf("Balance of account A -  %v, after creating claimabale balacne: %v", keyA.Address(), get_json_string(txResp3.Balances))
+	txResp4 := itest.MustGetAccount(keyB)
+	t.Logf("Balance of account B -  %v, after creating claimabale balacne: %v", keyA.Address(), get_json_string(txResp4.Balances))
+
+}
+
+func get_json_string(input interface{}) string {
+	data, _ := json.MarshalIndent(input, "", "  ")
+	return string(data)
+}
+
 func TestSomething(t *testing.T) {
 	//tt := assert.New(t)
 	itest := integration.NewTest(t, integration.Config{})
