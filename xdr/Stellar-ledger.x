@@ -164,12 +164,30 @@ enum TxSetComponentType
   TXSET_COMP_TXS_MAYBE_DISCOUNTED_FEE = 0
 };
 
-typedef TransactionEnvelope TxExecutionThread<>;
-typedef TxExecutionThread ParallelTxExecutionStage<>;
+// A collection of transactions that *may* have arbitrary read-write data
+// dependencies between each other, i.e. in a general case the transaction
+// execution order within a cluster may not be arbitrarily shuffled without
+// affecting the end result.
+typedef TransactionEnvelope DependentTxCluster<>;
+// A collection of clusters such that are *guaranteed* to not have read-write 
+// data dependencies in-between clusters, i.e. such that the cluster execution 
+// order can be arbitrarily shuffled without affecting the end result. Thus
+// clusters can be executed in parallel with respect to each other.
+typedef DependentTxCluster ParallelTxExecutionStage<>;
 
+// Transaction set component that contains transactions organized in a 
+// parallelism-friendly fashion.
+//
+// The component consists of several stages that have to be executed in 
+// sequential order, each stage consists of several clusters that can be 
+// executed in parallel, and the cluster itself consists of several 
+// transactions that have to be executed in sequential order in a general case.
 struct ParallelTxsComponent
 {
   int64* baseFee;
+  // A sequence of stages that *may* have arbitrary data dependencies between
+  // each other, i.e. in a general case the stage execution order may not be
+  // arbitrarily shuffled without affecting the end result.
   ParallelTxExecutionStage executionStages<>;
 };
 

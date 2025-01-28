@@ -87,14 +87,14 @@ struct PeerAddress
     uint32 numFailures;
 };
 
-// Next ID: 21
+// Next ID: 25
 enum MessageType
 {
     ERROR_MSG = 0,
     AUTH = 2,
     DONT_HAVE = 3,
+    // GET_PEERS (4) is deprecated
 
-    GET_PEERS = 4, // gets a list of peers this guy knows about
     PEERS = 5,
 
     GET_TX_SET = 6, // gets a particular txset by hash
@@ -344,8 +344,6 @@ case AUTH:
     Auth auth;
 case DONT_HAVE:
     DontHave dontHave;
-case GET_PEERS:
-    void;
 case PEERS:
     PeerAddress peers<100>;
 

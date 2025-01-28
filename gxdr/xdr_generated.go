@@ -1110,12 +1110,30 @@ const (
 	TXSET_COMP_TXS_MAYBE_DISCOUNTED_FEE TxSetComponentType = 0
 )
 
-type TxExecutionThread = []TransactionEnvelope
+// A collection of transactions that *may* have arbitrary read-write data
+// dependencies between each other, i.e. in a general case the transaction
+// execution order within a cluster may not be arbitrarily shuffled without
+// affecting the end result.
+type DependentTxCluster = []TransactionEnvelope
 
-type ParallelTxExecutionStage = []TxExecutionThread
+// A collection of clusters such that are *guaranteed* to not have read-write
+// data dependencies in-between clusters, i.e. such that the cluster execution
+// order can be arbitrarily shuffled without affecting the end result. Thus
+// clusters can be executed in parallel with respect to each other.
+type ParallelTxExecutionStage = []DependentTxCluster
 
+// Transaction set component that contains transactions organized in a
+// parallelism-friendly fashion.
+//
+// The component consists of several stages that have to be executed in
+// sequential order, each stage consists of several clusters that can be
+// executed in parallel, and the cluster itself consists of several
+// transactions that have to be executed in sequential order in a general case.
 type ParallelTxsComponent struct {
-	BaseFee         *Int64
+	BaseFee *Int64
+	// A sequence of stages that *may* have arbitrary data dependencies between
+	// each other, i.e. in a general case the stage execution order may not be
+	// arbitrarily shuffled without affecting the end result.
 	ExecutionStages []ParallelTxExecutionStage
 }
 
@@ -1577,15 +1595,13 @@ type XdrAnon_PeerAddress_Ip struct {
 	_u   interface{}
 }
 
-// Next ID: 21
+// Next ID: 25
 type MessageType int32
 
 const (
 	ERROR_MSG MessageType = 0
 	AUTH      MessageType = 2
 	DONT_HAVE MessageType = 3
-	// gets a list of peers this guy knows about
-	GET_PEERS MessageType = 4
 	PEERS     MessageType = 5
 	// gets a particular txset by hash
 	GET_TX_SET         MessageType = 6
@@ -1807,8 +1823,6 @@ type StellarMessage struct {
 	//      Auth() *Auth
 	//   DONT_HAVE:
 	//      DontHave() *DontHave
-	//   GET_PEERS:
-	//      void
 	//   PEERS:
 	//      Peers() *[]PeerAddress // bound 100
 	//   GET_TX_SET:
@@ -4589,13 +4603,11 @@ type ConfigSettingContractComputeV0 struct {
 
 // Settings for running the contract transactions in parallel.
 type ConfigSettingContractParallelComputeV0 struct {
-	// Maximum number of threads that can be used to apply a
-	// transaction set to close the ledger.
-	// This doesn't limit or defined the actual number of
-	// threads used and instead only defines the minimum number
-	// of physical threads that a tier-1 validator has to support
-	// in order to not fall out of sync with the network.
-	LedgerMaxParallelThreads Uint32
+	// Maximum number of clusters with dependent transactions allowed in a
+	// stage of parallel tx set component.
+	// This effectively sets the lower bound on the number of physical threads
+	// necessary to effectively apply transaction sets in parallel.
+	LedgerMaxDependentTxClusters Uint32
 }
 
 // Ledger access settings for contracts.
@@ -11271,33 +11283,33 @@ func (v _XdrVec_unbounded_TransactionEnvelope) XdrValue() interface{} {
 }
 func (v *_XdrVec_unbounded_TransactionEnvelope) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
 
-type XdrType_TxExecutionThread struct {
+type XdrType_DependentTxCluster struct {
 	*_XdrVec_unbounded_TransactionEnvelope
 }
 
-func XDR_TxExecutionThread(v *TxExecutionThread) XdrType_TxExecutionThread {
-	return XdrType_TxExecutionThread{(*_XdrVec_unbounded_TransactionEnvelope)(v)}
+func XDR_DependentTxCluster(v *DependentTxCluster) XdrType_DependentTxCluster {
+	return XdrType_DependentTxCluster{(*_XdrVec_unbounded_TransactionEnvelope)(v)}
 }
-func (XdrType_TxExecutionThread) XdrTypeName() string { return "TxExecutionThread" }
-func (v XdrType_TxExecutionThread) XdrUnwrap() XdrType {
+func (XdrType_DependentTxCluster) XdrTypeName() string { return "DependentTxCluster" }
+func (v XdrType_DependentTxCluster) XdrUnwrap() XdrType {
 	return v._XdrVec_unbounded_TransactionEnvelope
 }
 
-type _XdrVec_unbounded_TxExecutionThread []TxExecutionThread
+type _XdrVec_unbounded_DependentTxCluster []DependentTxCluster
 
-func (_XdrVec_unbounded_TxExecutionThread) XdrBound() uint32 {
+func (_XdrVec_unbounded_DependentTxCluster) XdrBound() uint32 {
 	const bound uint32 = 4294967295 // Force error if not const or doesn't fit
 	return bound
 }
-func (_XdrVec_unbounded_TxExecutionThread) XdrCheckLen(length uint32) {
+func (_XdrVec_unbounded_DependentTxCluster) XdrCheckLen(length uint32) {
 	if length > uint32(4294967295) {
-		XdrPanic("_XdrVec_unbounded_TxExecutionThread length %d exceeds bound 4294967295", length)
+		XdrPanic("_XdrVec_unbounded_DependentTxCluster length %d exceeds bound 4294967295", length)
 	} else if int(length) < 0 {
-		XdrPanic("_XdrVec_unbounded_TxExecutionThread length %d exceeds max int", length)
+		XdrPanic("_XdrVec_unbounded_DependentTxCluster length %d exceeds max int", length)
 	}
 }
-func (v _XdrVec_unbounded_TxExecutionThread) GetVecLen() uint32 { return uint32(len(v)) }
-func (v *_XdrVec_unbounded_TxExecutionThread) SetVecLen(length uint32) {
+func (v _XdrVec_unbounded_DependentTxCluster) GetVecLen() uint32 { return uint32(len(v)) }
+func (v *_XdrVec_unbounded_DependentTxCluster) SetVecLen(length uint32) {
 	v.XdrCheckLen(length)
 	if int(length) <= cap(*v) {
 		if int(length) != len(*v) {
@@ -11314,44 +11326,46 @@ func (v *_XdrVec_unbounded_TxExecutionThread) SetVecLen(length uint32) {
 		}
 		newcap = int(bound)
 	}
-	nv := make([]TxExecutionThread, int(length), newcap)
+	nv := make([]DependentTxCluster, int(length), newcap)
 	copy(nv, *v)
 	*v = nv
 }
-func (v *_XdrVec_unbounded_TxExecutionThread) XdrMarshalN(x XDR, name string, n uint32) {
+func (v *_XdrVec_unbounded_DependentTxCluster) XdrMarshalN(x XDR, name string, n uint32) {
 	v.XdrCheckLen(n)
 	for i := 0; i < int(n); i++ {
 		if i >= len(*v) {
 			v.SetVecLen(uint32(i + 1))
 		}
-		XDR_TxExecutionThread(&(*v)[i]).XdrMarshal(x, x.Sprintf("%s[%d]", name, i))
+		XDR_DependentTxCluster(&(*v)[i]).XdrMarshal(x, x.Sprintf("%s[%d]", name, i))
 	}
 	if int(n) < len(*v) {
 		*v = (*v)[:int(n)]
 	}
 }
-func (v *_XdrVec_unbounded_TxExecutionThread) XdrRecurse(x XDR, name string) {
+func (v *_XdrVec_unbounded_DependentTxCluster) XdrRecurse(x XDR, name string) {
 	size := XdrSize{Size: uint32(len(*v)), Bound: 4294967295}
 	x.Marshal(name, &size)
 	v.XdrMarshalN(x, name, size.Size)
 }
-func (_XdrVec_unbounded_TxExecutionThread) XdrTypeName() string { return "TxExecutionThread<>" }
-func (v *_XdrVec_unbounded_TxExecutionThread) XdrPointer() interface{} {
-	return (*[]TxExecutionThread)(v)
+func (_XdrVec_unbounded_DependentTxCluster) XdrTypeName() string { return "DependentTxCluster<>" }
+func (v *_XdrVec_unbounded_DependentTxCluster) XdrPointer() interface{} {
+	return (*[]DependentTxCluster)(v)
 }
-func (v _XdrVec_unbounded_TxExecutionThread) XdrValue() interface{}          { return ([]TxExecutionThread)(v) }
-func (v *_XdrVec_unbounded_TxExecutionThread) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v _XdrVec_unbounded_DependentTxCluster) XdrValue() interface{} {
+	return ([]DependentTxCluster)(v)
+}
+func (v *_XdrVec_unbounded_DependentTxCluster) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
 
 type XdrType_ParallelTxExecutionStage struct {
-	*_XdrVec_unbounded_TxExecutionThread
+	*_XdrVec_unbounded_DependentTxCluster
 }
 
 func XDR_ParallelTxExecutionStage(v *ParallelTxExecutionStage) XdrType_ParallelTxExecutionStage {
-	return XdrType_ParallelTxExecutionStage{(*_XdrVec_unbounded_TxExecutionThread)(v)}
+	return XdrType_ParallelTxExecutionStage{(*_XdrVec_unbounded_DependentTxCluster)(v)}
 }
 func (XdrType_ParallelTxExecutionStage) XdrTypeName() string { return "ParallelTxExecutionStage" }
 func (v XdrType_ParallelTxExecutionStage) XdrUnwrap() XdrType {
-	return v._XdrVec_unbounded_TxExecutionThread
+	return v._XdrVec_unbounded_DependentTxCluster
 }
 
 type _XdrPtr_Int64 struct {
@@ -14503,7 +14517,6 @@ var _XdrNames_MessageType = map[int32]string{
 	int32(ERROR_MSG):                           "ERROR_MSG",
 	int32(AUTH):                                "AUTH",
 	int32(DONT_HAVE):                           "DONT_HAVE",
-	int32(GET_PEERS):                           "GET_PEERS",
 	int32(PEERS):                               "PEERS",
 	int32(GET_TX_SET):                          "GET_TX_SET",
 	int32(TX_SET):                              "TX_SET",
@@ -14529,7 +14542,6 @@ var _XdrValues_MessageType = map[string]int32{
 	"ERROR_MSG":                           int32(ERROR_MSG),
 	"AUTH":                                int32(AUTH),
 	"DONT_HAVE":                           int32(DONT_HAVE),
-	"GET_PEERS":                           int32(GET_PEERS),
 	"PEERS":                               int32(PEERS),
 	"GET_TX_SET":                          int32(GET_TX_SET),
 	"TX_SET":                              int32(TX_SET),
@@ -14589,7 +14601,6 @@ type XdrType_MessageType = *MessageType
 func XDR_MessageType(v *MessageType) *MessageType { return v }
 
 var _XdrComments_MessageType = map[int32]string{
-	int32(GET_PEERS):         "gets a list of peers this guy knows about",
 	int32(GET_TX_SET):        "gets a particular txset by hash",
 	int32(TRANSACTION):       "pass on a tx you have heard about",
 	int32(GET_SCP_QUORUMSET): "SCP",
@@ -15478,7 +15489,6 @@ var _XdrTags_StellarMessage = map[int32]bool{
 	XdrToI32(HELLO):                               true,
 	XdrToI32(AUTH):                                true,
 	XdrToI32(DONT_HAVE):                           true,
-	XdrToI32(GET_PEERS):                           true,
 	XdrToI32(PEERS):                               true,
 	XdrToI32(GET_TX_SET):                          true,
 	XdrToI32(TX_SET):                              true,
@@ -15852,7 +15862,7 @@ func (u *StellarMessage) FloodDemand() *FloodDemand {
 }
 func (u StellarMessage) XdrValid() bool {
 	switch u.Type {
-	case ERROR_MSG, HELLO, AUTH, DONT_HAVE, GET_PEERS, PEERS, GET_TX_SET, TX_SET, GENERALIZED_TX_SET, TRANSACTION, SURVEY_REQUEST, SURVEY_RESPONSE, TIME_SLICED_SURVEY_REQUEST, TIME_SLICED_SURVEY_RESPONSE, TIME_SLICED_SURVEY_START_COLLECTING, TIME_SLICED_SURVEY_STOP_COLLECTING, GET_SCP_QUORUMSET, SCP_QUORUMSET, SCP_MESSAGE, GET_SCP_STATE, SEND_MORE, SEND_MORE_EXTENDED, FLOOD_ADVERT, FLOOD_DEMAND:
+	case ERROR_MSG, HELLO, AUTH, DONT_HAVE, PEERS, GET_TX_SET, TX_SET, GENERALIZED_TX_SET, TRANSACTION, SURVEY_REQUEST, SURVEY_RESPONSE, TIME_SLICED_SURVEY_REQUEST, TIME_SLICED_SURVEY_RESPONSE, TIME_SLICED_SURVEY_START_COLLECTING, TIME_SLICED_SURVEY_STOP_COLLECTING, GET_SCP_QUORUMSET, SCP_QUORUMSET, SCP_MESSAGE, GET_SCP_STATE, SEND_MORE, SEND_MORE_EXTENDED, FLOOD_ADVERT, FLOOD_DEMAND:
 		return true
 	}
 	return false
@@ -15873,8 +15883,6 @@ func (u *StellarMessage) XdrUnionBody() XdrType {
 		return XDR_Auth(u.Auth())
 	case DONT_HAVE:
 		return XDR_DontHave(u.DontHave())
-	case GET_PEERS:
-		return nil
 	case PEERS:
 		return (*_XdrVec_100_PeerAddress)(u.Peers())
 	case GET_TX_SET:
@@ -15926,8 +15934,6 @@ func (u *StellarMessage) XdrUnionBodyName() string {
 		return "Auth"
 	case DONT_HAVE:
 		return "DontHave"
-	case GET_PEERS:
-		return ""
 	case PEERS:
 		return "Peers"
 	case GET_TX_SET:
@@ -15993,8 +15999,6 @@ func (u *StellarMessage) XdrRecurse(x XDR, name string) {
 		return
 	case DONT_HAVE:
 		x.Marshal(x.Sprintf("%sdontHave", name), XDR_DontHave(u.DontHave()))
-		return
-	case GET_PEERS:
 		return
 	case PEERS:
 		x.Marshal(x.Sprintf("%speers", name), (*_XdrVec_100_PeerAddress)(u.Peers()))
@@ -31054,7 +31058,7 @@ func (v *ConfigSettingContractParallelComputeV0) XdrRecurse(x XDR, name string) 
 	if name != "" {
 		name = x.Sprintf("%s.", name)
 	}
-	x.Marshal(x.Sprintf("%sledgerMaxParallelThreads", name), XDR_Uint32(&v.LedgerMaxParallelThreads))
+	x.Marshal(x.Sprintf("%sledgerMaxDependentTxClusters", name), XDR_Uint32(&v.LedgerMaxDependentTxClusters))
 }
 func XDR_ConfigSettingContractParallelComputeV0(v *ConfigSettingContractParallelComputeV0) *ConfigSettingContractParallelComputeV0 {
 	return v

@@ -33,7 +33,7 @@ import (
 // XdrFilesSHA256 is the SHA256 hashes of source files.
 var XdrFilesSHA256 = map[string]string{
 	"xdr/Stellar-SCP.x":                     "8f32b04d008f8bc33b8843d075e69837231a673691ee41d8b821ca229a6e802a",
-	"xdr/Stellar-contract-config-setting.x": "c1fabe60eac9eaa4e60897d4e6476434fc5fbda81c5e4c2c65081fce9793bc49",
+	"xdr/Stellar-contract-config-setting.x": "907745b98a8c9d78bf409bb30641ad4f73d32be28da4719fcf6a5fe676ca33ef",
 	"xdr/Stellar-contract-env-meta.x":       "75a271414d852096fea3283c63b7f2a702f2905f78fc28eb60ec7d7bd366a780",
 	"xdr/Stellar-contract-meta.x":           "f01532c11ca044e19d9f9f16fe373e9af64835da473be556b9a807ee3319ae0d",
 	"xdr/Stellar-contract-spec.x":           "c7ffa21d2e91afb8e666b33524d307955426ff553a486d670c29217ed9888d49",
@@ -41,8 +41,8 @@ var XdrFilesSHA256 = map[string]string{
 	"xdr/Stellar-exporter.x":                "a00c83d02e8c8382e06f79a191f1fb5abd097a4bbcab8481c67467e3270e0529",
 	"xdr/Stellar-internal.x":                "227835866c1b2122d1eaf28839ba85ea7289d1cb681dda4ca619c2da3d71fe00",
 	"xdr/Stellar-ledger-entries.x":          "5dea4f695f01aeb57ad97b97646f3da7dcf5ec35748e5065b19de429fb762cbc",
-	"xdr/Stellar-ledger.x":                  "f1a71a10f83e9f010a35b00b6eb9c88ed373c1aa66b5a01d4dd32f661b504b10",
-	"xdr/Stellar-overlay.x":                 "8c73b7c3ad974e7fc4aa4fdf34f7ad50053406254efbd7406c96657cf41691d3",
+	"xdr/Stellar-ledger.x":                  "020bd2606a355880a1a53480df906a6a93d37d34bef30168aba5f04880b269d5",
+	"xdr/Stellar-overlay.x":                 "25d52fd28c91d2377796c6c1ee05b0731f47648751e2b5a33481d64ef4eb7322",
 	"xdr/Stellar-transaction.x":             "c48c3ed9267b2919bba9c424bdd138d25c3e96fd082afe35cd3184ef11dc86d5",
 	"xdr/Stellar-types.x":                   "afe02efc4e6767ed8909c3b4350c4045449b614ce487adcf7e9f816f309bf6f8",
 }
@@ -14874,13 +14874,13 @@ func (s TxSetComponentType) xdrType() {}
 
 var _ xdrType = (*TxSetComponentType)(nil)
 
-// TxExecutionThread is an XDR Typedef defines as:
+// DependentTxCluster is an XDR Typedef defines as:
 //
-//	typedef TransactionEnvelope TxExecutionThread<>;
-type TxExecutionThread []TransactionEnvelope
+//	typedef TransactionEnvelope DependentTxCluster<>;
+type DependentTxCluster []TransactionEnvelope
 
 // EncodeTo encodes this value using the Encoder.
-func (s TxExecutionThread) EncodeTo(e *xdr.Encoder) error {
+func (s DependentTxCluster) EncodeTo(e *xdr.Encoder) error {
 	var err error
 	if _, err = e.EncodeUint(uint32(len(s))); err != nil {
 		return err
@@ -14893,12 +14893,12 @@ func (s TxExecutionThread) EncodeTo(e *xdr.Encoder) error {
 	return nil
 }
 
-var _ decoderFrom = (*TxExecutionThread)(nil)
+var _ decoderFrom = (*DependentTxCluster)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *TxExecutionThread) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
+func (s *DependentTxCluster) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) {
 	if maxDepth == 0 {
-		return 0, fmt.Errorf("decoding TxExecutionThread: %w", ErrMaxDecodingDepthReached)
+		return 0, fmt.Errorf("decoding DependentTxCluster: %w", ErrMaxDecodingDepthReached)
 	}
 	maxDepth -= 1
 	var err error
@@ -14927,7 +14927,7 @@ func (s *TxExecutionThread) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, erro
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
-func (s TxExecutionThread) MarshalBinary() ([]byte, error) {
+func (s DependentTxCluster) MarshalBinary() ([]byte, error) {
 	b := bytes.Buffer{}
 	e := xdr.NewEncoder(&b)
 	err := s.EncodeTo(e)
@@ -14935,7 +14935,7 @@ func (s TxExecutionThread) MarshalBinary() ([]byte, error) {
 }
 
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
-func (s *TxExecutionThread) UnmarshalBinary(inp []byte) error {
+func (s *DependentTxCluster) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	o := xdr.DefaultDecodeOptions
 	o.MaxInputLen = len(inp)
@@ -14945,19 +14945,19 @@ func (s *TxExecutionThread) UnmarshalBinary(inp []byte) error {
 }
 
 var (
-	_ encoding.BinaryMarshaler   = (*TxExecutionThread)(nil)
-	_ encoding.BinaryUnmarshaler = (*TxExecutionThread)(nil)
+	_ encoding.BinaryMarshaler   = (*DependentTxCluster)(nil)
+	_ encoding.BinaryUnmarshaler = (*DependentTxCluster)(nil)
 )
 
 // xdrType signals that this type represents XDR values defined by this package.
-func (s TxExecutionThread) xdrType() {}
+func (s DependentTxCluster) xdrType() {}
 
-var _ xdrType = (*TxExecutionThread)(nil)
+var _ xdrType = (*DependentTxCluster)(nil)
 
 // ParallelTxExecutionStage is an XDR Typedef defines as:
 //
-//	typedef TxExecutionThread ParallelTxExecutionStage<>;
-type ParallelTxExecutionStage []TxExecutionThread
+//	typedef DependentTxCluster ParallelTxExecutionStage<>;
+type ParallelTxExecutionStage []DependentTxCluster
 
 // EncodeTo encodes this value using the Encoder.
 func (s ParallelTxExecutionStage) EncodeTo(e *xdr.Encoder) error {
@@ -14987,19 +14987,19 @@ func (s *ParallelTxExecutionStage) DecodeFrom(d *xdr.Decoder, maxDepth uint) (in
 	l, nTmp, err = d.DecodeUint()
 	n += nTmp
 	if err != nil {
-		return n, fmt.Errorf("decoding TxExecutionThread: %w", err)
+		return n, fmt.Errorf("decoding DependentTxCluster: %w", err)
 	}
 	(*s) = nil
 	if l > 0 {
 		if il, ok := d.InputLen(); ok && uint(il) < uint(l) {
-			return n, fmt.Errorf("decoding TxExecutionThread: length (%d) exceeds remaining input length (%d)", l, il)
+			return n, fmt.Errorf("decoding DependentTxCluster: length (%d) exceeds remaining input length (%d)", l, il)
 		}
-		(*s) = make([]TxExecutionThread, l)
+		(*s) = make([]DependentTxCluster, l)
 		for i := uint32(0); i < l; i++ {
 			nTmp, err = (*s)[i].DecodeFrom(d, maxDepth)
 			n += nTmp
 			if err != nil {
-				return n, fmt.Errorf("decoding TxExecutionThread: %w", err)
+				return n, fmt.Errorf("decoding DependentTxCluster: %w", err)
 			}
 		}
 	}
@@ -15039,6 +15039,9 @@ var _ xdrType = (*ParallelTxExecutionStage)(nil)
 //	struct ParallelTxsComponent
 //	 {
 //	   int64* baseFee;
+//	   // A sequence of stages that *may* have arbitrary data dependencies between
+//	   // each other, i.e. in a general case the stage execution order may not be
+//	   // arbitrarily shuffled without affecting the end result.
 //	   ParallelTxExecutionStage executionStages<>;
 //	 };
 type ParallelTxsComponent struct {
@@ -21486,8 +21489,8 @@ var _ xdrType = (*PeerAddress)(nil)
 //	     ERROR_MSG = 0,
 //	     AUTH = 2,
 //	     DONT_HAVE = 3,
+//	     // GET_PEERS (4) is deprecated
 //
-//	     GET_PEERS = 4, // gets a list of peers this guy knows about
 //	     PEERS = 5,
 //
 //	     GET_TX_SET = 6, // gets a particular txset by hash
@@ -21525,7 +21528,6 @@ const (
 	MessageTypeErrorMsg                        MessageType = 0
 	MessageTypeAuth                            MessageType = 2
 	MessageTypeDontHave                        MessageType = 3
-	MessageTypeGetPeers                        MessageType = 4
 	MessageTypePeers                           MessageType = 5
 	MessageTypeGetTxSet                        MessageType = 6
 	MessageTypeTxSet                           MessageType = 7
@@ -21552,7 +21554,6 @@ var messageTypeMap = map[int32]string{
 	0:  "MessageTypeErrorMsg",
 	2:  "MessageTypeAuth",
 	3:  "MessageTypeDontHave",
-	4:  "MessageTypeGetPeers",
 	5:  "MessageTypePeers",
 	6:  "MessageTypeGetTxSet",
 	7:  "MessageTypeTxSet",
@@ -24448,8 +24449,6 @@ var _ xdrType = (*FloodDemand)(nil)
 //	     Auth auth;
 //	 case DONT_HAVE:
 //	     DontHave dontHave;
-//	 case GET_PEERS:
-//	     void;
 //	 case PEERS:
 //	     PeerAddress peers<100>;
 //
@@ -24547,8 +24546,6 @@ func (u StellarMessage) ArmForSwitch(sw int32) (string, bool) {
 		return "Auth", true
 	case MessageTypeDontHave:
 		return "DontHave", true
-	case MessageTypeGetPeers:
-		return "", true
 	case MessageTypePeers:
 		return "Peers", true
 	case MessageTypeGetTxSet:
@@ -24623,8 +24620,6 @@ func NewStellarMessage(aType MessageType, value interface{}) (result StellarMess
 			return
 		}
 		result.DontHave = &tv
-	case MessageTypeGetPeers:
-		// void
 	case MessageTypePeers:
 		tv, ok := value.([]PeerAddress)
 		if !ok {
@@ -25364,9 +25359,6 @@ func (u StellarMessage) EncodeTo(e *xdr.Encoder) error {
 			return err
 		}
 		return nil
-	case MessageTypeGetPeers:
-		// Void
-		return nil
 	case MessageTypePeers:
 		if _, err = e.EncodeUint(uint32(len((*u.Peers)))); err != nil {
 			return err
@@ -25518,9 +25510,6 @@ func (u *StellarMessage) DecodeFrom(d *xdr.Decoder, maxDepth uint) (int, error) 
 		if err != nil {
 			return n, fmt.Errorf("decoding DontHave: %w", err)
 		}
-		return n, nil
-	case MessageTypeGetPeers:
-		// Void
 		return n, nil
 	case MessageTypePeers:
 		u.Peers = new([]PeerAddress)
@@ -60171,22 +60160,20 @@ var _ xdrType = (*ConfigSettingContractComputeV0)(nil)
 //
 //	struct ConfigSettingContractParallelComputeV0
 //	 {
-//	     // Maximum number of threads that can be used to apply a
-//	     // transaction set to close the ledger.
-//	     // This doesn't limit or defined the actual number of
-//	     // threads used and instead only defines the minimum number
-//	     // of physical threads that a tier-1 validator has to support
-//	     // in order to not fall out of sync with the network.
-//	     uint32 ledgerMaxParallelThreads;
+//	     // Maximum number of clusters with dependent transactions allowed in a
+//	     // stage of parallel tx set component.
+//	     // This effectively sets the lower bound on the number of physical threads
+//	     // necessary to effectively apply transaction sets in parallel.
+//	     uint32 ledgerMaxDependentTxClusters;
 //	 };
 type ConfigSettingContractParallelComputeV0 struct {
-	LedgerMaxParallelThreads Uint32
+	LedgerMaxDependentTxClusters Uint32
 }
 
 // EncodeTo encodes this value using the Encoder.
 func (s *ConfigSettingContractParallelComputeV0) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	if err = s.LedgerMaxParallelThreads.EncodeTo(e); err != nil {
+	if err = s.LedgerMaxDependentTxClusters.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -60202,7 +60189,7 @@ func (s *ConfigSettingContractParallelComputeV0) DecodeFrom(d *xdr.Decoder, maxD
 	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.LedgerMaxParallelThreads.DecodeFrom(d, maxDepth)
+	nTmp, err = s.LedgerMaxDependentTxClusters.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %w", err)
