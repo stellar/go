@@ -144,7 +144,7 @@ func TestInvokeHostFunctionRoundTrip(t *testing.T) {
 					WriteBytes:   0,
 				},
 				ResourceFee: 1,
-				Ext: xdr.ExtensionPoint{
+				Ext: xdr.SorobanTransactionDataExt{
 					V: 0,
 				},
 			},

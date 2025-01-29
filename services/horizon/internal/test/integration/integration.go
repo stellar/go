@@ -894,7 +894,7 @@ func (i *Test) PreflightExtendExpiration(
 		Ext: xdr.TransactionExt{
 			V: 1,
 			SorobanData: &xdr.SorobanTransactionData{
-				Ext: xdr.ExtensionPoint{},
+				Ext: xdr.SorobanTransactionDataExt{},
 				Resources: xdr.SorobanResources{
 					Footprint: xdr.LedgerFootprint{
 						ReadOnly:  ledgerKeys,
@@ -927,7 +927,7 @@ func (i *Test) RestoreFootprint(
 		Ext: xdr.TransactionExt{
 			V: 1,
 			SorobanData: &xdr.SorobanTransactionData{
-				Ext: xdr.ExtensionPoint{},
+				Ext: xdr.SorobanTransactionDataExt{},
 				Resources: xdr.SorobanResources{
 					Footprint: xdr.LedgerFootprint{
 						ReadWrite: []xdr.LedgerKey{ledgerKey},
