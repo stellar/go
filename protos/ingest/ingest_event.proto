@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+package protos.ingest;
+
+option go_package = "github.com/stellar/go/protos/ingest;ingest";
+
+message IngestEvent {
+  string id = 1;
+  string data = 2;
+}
