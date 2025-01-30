@@ -36,9 +36,11 @@ type sorobanTransaction struct {
 
 func TestLoad(t *testing.T) {
 	var transactionsPerLedger, ledgers, transfersPerTx int
+	var output bool
 	flag.IntVar(&transactionsPerLedger, "transactions-per-ledger", 100, "number of transactions per ledger")
 	flag.IntVar(&transfersPerTx, "transfers-per-tx", 10, "number of asset transfers for each transaction")
 	flag.IntVar(&ledgers, "ledgers", 2, "number of ledgers to generate")
+	flag.BoolVar(&output, "output", false, "overwrite the generated output files")
 	flag.Parse()
 
 	if integration.GetCoreMaxSupportedProtocol() < 22 {
@@ -205,12 +207,6 @@ func TestLoad(t *testing.T) {
 		return sortedLegers[i].LedgerSequence() < sortedLegers[j].LedgerSequence()
 	})
 
-	output, err := os.Create(filepath.Join("testdata", "load-test-ledgers.xdr"))
-	require.NoError(t, err)
-	_, err = xdr.Marshal(output, sortedLegers)
-	require.NoError(t, err)
-	require.NoError(t, output.Close())
-
 	ledgersForAccounts := getLedgers(itest, accountLedgers[0], accountLedgers[len(accountLedgers)-1])
 	var accountLedgerEntries []xdr.LedgerEntry
 	accountSet := map[string]bool{}
@@ -225,11 +221,9 @@ func TestLoad(t *testing.T) {
 	}
 	require.Len(t, accountLedgerEntries, 2*transactionsPerLedger)
 
-	output, err = os.Create(filepath.Join("testdata", "load-test-accounts.xdr"))
-	require.NoError(t, err)
-	_, err = xdr.Marshal(output, accountLedgerEntries)
-	require.NoError(t, err)
-	require.NoError(t, output.Close())
+	if output {
+		writeFile(t, filepath.Join("testdata", "load-test-accounts.xdr"), accountLedgerEntries)
+	}
 
 	merged := mergeLedgers(t, sortedLegers, transactionsPerLedger)
 	changes := extractChanges(t, sortedLegers)
@@ -250,6 +244,18 @@ func TestLoad(t *testing.T) {
 	for i, original := range orignalTransactions {
 		requireTransactionsMatch(t, original, mergedTransactions[i])
 	}
+
+	if output {
+		writeFile(t, filepath.Join("testdata", "load-test-ledgers.xdr"), merged)
+	}
+}
+
+func writeFile(t *testing.T, path string, data any) {
+	file, err := os.Create(path)
+	require.NoError(t, err)
+	_, err = xdr.Marshal(file, data)
+	require.NoError(t, err)
+	require.NoError(t, file.Close())
 }
 
 func bulkTransfer(
@@ -455,13 +461,12 @@ func mergeLedgers(t *testing.T, ledgers []xdr.LedgerCloseMeta, transactionsPerLe
 
 		if curCount == 0 {
 			cur = copyLedger(t, ledger)
-			cur.V1.TxProcessing = nil
 		} else {
 			cur.V1.TxSet.V1TxSet.Phases = append(cur.V1.TxSet.V1TxSet.Phases, ledger.V1.TxSet.V1TxSet.Phases...)
+			cur.V1.TxProcessing = append(cur.V1.TxProcessing, ledger.V1.TxProcessing...)
 		}
 
 		require.LessOrEqual(t, curCount+transactionCount, transactionsPerLedger)
-		cur.V1.TxProcessing = append(cur.V1.TxProcessing, ledger.V1.TxProcessing...)
 		curCount += transactionCount
 		if curCount == transactionsPerLedger {
 			merged = append(merged, cur)

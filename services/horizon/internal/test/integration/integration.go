@@ -649,7 +649,7 @@ func (i *Test) setupHorizonClient(webArgs map[string]string) {
 	}
 }
 
-func (i *Test) CreateCaptiveCoreConfig() (*ledgerbackend.CaptiveCoreConfig, error) {
+func (i *Test) CreateCaptiveCoreConfig() (ledgerbackend.CaptiveCoreConfig, error) {
 	captiveCoreConfig := ledgerbackend.CaptiveCoreConfig{
 		BinaryPath:          i.CoreBinaryPath(),
 		HistoryArchiveURLs:  []string{HistoryArchiveUrl},
@@ -667,11 +667,11 @@ func (i *Test) CreateCaptiveCoreConfig() (*ledgerbackend.CaptiveCoreConfig, erro
 
 	toml, err := ledgerbackend.NewCaptiveCoreTomlFromFile(i.coreConfig.configPath, tomlParams)
 	if err != nil {
-		return nil, err
+		return ledgerbackend.CaptiveCoreConfig{}, err
 	}
 
 	captiveCoreConfig.Toml = toml
-	return &captiveCoreConfig, nil
+	return captiveCoreConfig, nil
 }
 
 const maxWaitForCoreStartup = 30 * time.Second
