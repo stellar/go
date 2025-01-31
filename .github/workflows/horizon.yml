@@ -35,7 +35,7 @@ jobs:
       HORIZON_INTEGRATION_TESTS_CAPTIVE_CORE_USE_DB: true
       PROTOCOL_22_CORE_DEBIAN_PKG_VERSION: 22.1.0-2194.0241e79f7.focal
       PROTOCOL_22_CORE_DOCKER_IMG: stellar/stellar-core:22.1.0-2194.0241e79f7.focal
-      PROTOCOL_22_STELLAR_RPC_DOCKER_IMG: stellar/stellar-rpc:22.1.1
+      PROTOCOL_22_STELLAR_RPC_DOCKER_IMG: stellar/stellar-rpc:22.1.2
       PGHOST: localhost
       PGPORT: 5432
       PGUSER: postgres
