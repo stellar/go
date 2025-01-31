@@ -19,7 +19,6 @@ import (
 type ReplayBackend struct {
 	ledgerBackend          ledgerbackend.LedgerBackend
 	mergedLedgers          []xdr.LedgerCloseMeta
-	index                  int
 	generatedLedgers       []xdr.LedgerCloseMeta
 	generatedLedgerEntries []xdr.LedgerEntry
 	ledgerCloseTime        time.Duration
