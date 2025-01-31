@@ -3,7 +3,6 @@ package integration
 import (
 	"context"
 	"fmt"
-	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -41,27 +40,20 @@ func TestReplay(t *testing.T) {
 	require.NoError(t, err)
 	defer captiveCore.Close()
 
-	replayConfig := ledgerbackend.ReplayBackendConfig{
-		LedgersFilePath:       filepath.Join("testdata", "load-test-ledgers.xdr"),
-		LedgerEntriesFilePath: filepath.Join("testdata", "load-test-accounts.xdr"),
+	replayConfig := ingest.ReplayBackendConfig{
+		NetworkPassphrase:     integration.StandaloneNetworkPassphrase,
+		LedgersFilePath:       filepath.Join("testdata", "load-test-ledgers.xdr.zstd"),
+		LedgerEntriesFilePath: filepath.Join("testdata", "load-test-accounts.xdr.zstd"),
 		LedgerCloseDuration:   3 * time.Second / 2,
 	}
-	replayBackend, err := ledgerbackend.NewReplayBackend(replayConfig, captiveCore)
+	replayBackend, err := ingest.NewReplayBackend(replayConfig, captiveCore)
 	require.NoError(t, err)
 
 	var generatedLedgers []xdr.LedgerCloseMeta
 	var generatedLedgerEntries []xdr.LedgerEntry
 
-	ledgersFile, err := os.Open(replayConfig.LedgersFilePath)
-	require.NoError(t, err)
-	ledgerEntriesFile, err := os.Open(replayConfig.LedgerEntriesFilePath)
-	require.NoError(t, err)
-	_, err = xdr.Unmarshal(ledgersFile, &generatedLedgers)
-	require.NoError(t, err)
-	_, err = xdr.Unmarshal(ledgerEntriesFile, &generatedLedgerEntries)
-	require.NoError(t, err)
-	require.NoError(t, ledgersFile.Close())
-	require.NoError(t, ledgerEntriesFile.Close())
+	readFile(t, replayConfig.LedgersFilePath, &generatedLedgers)
+	readFile(t, replayConfig.LedgerEntriesFilePath, &generatedLedgerEntries)
 
 	startLedger := uint32(tx.Ledger - 1)
 	endLedger := startLedger + uint32(len(generatedLedgers))

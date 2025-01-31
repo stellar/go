@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/klauspost/compress/zstd"
 	"github.com/stretchr/testify/require"
 
 	"github.com/stellar/go/amount"
@@ -40,7 +41,7 @@ func TestLoad(t *testing.T) {
 	flag.IntVar(&transactionsPerLedger, "transactions-per-ledger", 100, "number of transactions per ledger")
 	flag.IntVar(&transfersPerTx, "transfers-per-tx", 10, "number of asset transfers for each transaction")
 	flag.IntVar(&ledgers, "ledgers", 2, "number of ledgers to generate")
-	flag.BoolVar(&output, "output", false, "overwrite the generated output files")
+	flag.BoolVar(&output, "output", true, "overwrite the generated output files")
 	flag.Parse()
 
 	if integration.GetCoreMaxSupportedProtocol() < 22 {
@@ -222,10 +223,10 @@ func TestLoad(t *testing.T) {
 	require.Len(t, accountLedgerEntries, 2*transactionsPerLedger)
 
 	if output {
-		writeFile(t, filepath.Join("testdata", "load-test-accounts.xdr"), accountLedgerEntries)
+		writeFile(t, filepath.Join("testdata", "load-test-accounts.xdr.zstd"), accountLedgerEntries)
 	}
 
-	merged := mergeLedgers(t, sortedLegers, transactionsPerLedger)
+	merged := merge(t, sortedLegers, transactionsPerLedger)
 	changes := extractChanges(t, sortedLegers)
 	for _, change := range changes {
 		if change.Type != xdr.LedgerEntryTypeAccount {
@@ -246,15 +247,29 @@ func TestLoad(t *testing.T) {
 	}
 
 	if output {
-		writeFile(t, filepath.Join("testdata", "load-test-ledgers.xdr"), merged)
+		writeFile(t, filepath.Join("testdata", "load-test-ledgers.xdr.zstd"), merged)
 	}
 }
 
 func writeFile(t *testing.T, path string, data any) {
 	file, err := os.Create(path)
 	require.NoError(t, err)
-	_, err = xdr.Marshal(file, data)
+	writer, err := zstd.NewWriter(file)
 	require.NoError(t, err)
+	_, err = xdr.Marshal(writer, data)
+	require.NoError(t, err)
+	require.NoError(t, writer.Close())
+	require.NoError(t, file.Close())
+}
+
+func readFile(t *testing.T, path string, data any) {
+	file, err := os.Open(path)
+	require.NoError(t, err)
+	reader, err := zstd.NewReader(file)
+	require.NoError(t, err)
+	_, err = xdr.Unmarshal(reader, data)
+	require.NoError(t, err)
+	reader.Close()
 	require.NoError(t, file.Close())
 }
 
@@ -338,6 +353,7 @@ func requireChangesAreEqual(t *testing.T, a, b []ingest.Change) {
 	aByLedgerKey := groupChangesByLedgerKey(t, a)
 	bByLedgerKey := groupChangesByLedgerKey(t, b)
 
+	require.Equal(t, len(aByLedgerKey), len(bByLedgerKey))
 	for key, aChanges := range aByLedgerKey {
 		bChanges := bByLedgerKey[key]
 		require.Equal(t, len(aChanges), len(bChanges))
@@ -443,7 +459,7 @@ func waitForTransactions(
 	}, time.Second*90, time.Millisecond*100)
 }
 
-func mergeLedgers(t *testing.T, ledgers []xdr.LedgerCloseMeta, transactionsPerLedger int) []xdr.LedgerCloseMeta {
+func merge(t *testing.T, ledgers []xdr.LedgerCloseMeta, transactionsPerLedger int) []xdr.LedgerCloseMeta {
 	var merged []xdr.LedgerCloseMeta
 	if len(ledgers) == 0 {
 		return merged
@@ -462,8 +478,7 @@ func mergeLedgers(t *testing.T, ledgers []xdr.LedgerCloseMeta, transactionsPerLe
 		if curCount == 0 {
 			cur = copyLedger(t, ledger)
 		} else {
-			cur.V1.TxSet.V1TxSet.Phases = append(cur.V1.TxSet.V1TxSet.Phases, ledger.V1.TxSet.V1TxSet.Phases...)
-			cur.V1.TxProcessing = append(cur.V1.TxProcessing, ledger.V1.TxProcessing...)
+			require.NoError(t, ingest.MergeLedgers(integration.StandaloneNetworkPassphrase, &cur, ledger))
 		}
 
 		require.LessOrEqual(t, curCount+transactionCount, transactionsPerLedger)
