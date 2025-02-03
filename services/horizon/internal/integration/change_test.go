@@ -156,11 +156,6 @@ func getLedgers(itest *integration.Test, startingLedger uint32, endLedger uint32
 	captiveCore, err := ledgerbackend.NewCaptive(ccConfig)
 	require.NoError(t, err)
 
-	if err != nil {
-		t.Fatalf("unable to create captive core: %v", err)
-	}
-	defer captiveCore.Close()
-
 	ctx := context.Background()
 	err = captiveCore.PrepareRange(ctx, ledgerbackend.BoundedRange(startingLedger, endLedger))
 	if err != nil {
@@ -176,6 +171,7 @@ func getLedgers(itest *integration.Test, startingLedger uint32, endLedger uint32
 		seqToLedgersMap[ledgerSeq] = ledger
 	}
 
+	require.NoError(t, captiveCore.Close())
 	return seqToLedgersMap
 }
 

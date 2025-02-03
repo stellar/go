@@ -21,10 +21,11 @@ type ReplayBackend struct {
 	mergedLedgers          []xdr.LedgerCloseMeta
 	generatedLedgers       []xdr.LedgerCloseMeta
 	generatedLedgerEntries []xdr.LedgerEntry
-	ledgerCloseTime        time.Duration
-	startTime              time.Time
-	startLedger            uint32
-	networkPassphrase      string
+	// ledgerCloseDuration is the time in between ledgers
+	ledgerCloseDuration time.Duration
+	startTime           time.Time
+	startLedger         uint32
+	networkPassphrase   string
 }
 
 type ReplayBackendConfig struct {
@@ -65,7 +66,7 @@ func NewReplayBackend(config ReplayBackendConfig, ledgerBackend ledgerbackend.Le
 	}
 	return &ReplayBackend{
 		ledgerBackend:          ledgerBackend,
-		ledgerCloseTime:        config.LedgerCloseDuration,
+		ledgerCloseDuration:    config.LedgerCloseDuration,
 		generatedLedgers:       generatedLedgers,
 		generatedLedgerEntries: generatedLedgerEntries,
 		networkPassphrase:      config.NetworkPassphrase,
@@ -117,6 +118,8 @@ func (r *ReplayBackend) PrepareRange(ctx context.Context, ledgerRange ledgerback
 		r.mergedLedgers = append(r.mergedLedgers, ledger)
 		r.generatedLedgers = r.generatedLedgers[1:]
 	}
+	// from this point, ledgers will be available at a rate of once
+	// every r.ledgerCloseDuration time has elapsed
 	r.startTime = time.Now()
 	r.startLedger = ledgerRange.From()
 	return nil
@@ -127,14 +130,25 @@ func (r *ReplayBackend) IsPrepared(ctx context.Context, ledgerRange ledgerbacken
 }
 
 func (r *ReplayBackend) GetLedger(ctx context.Context, sequence uint32) (xdr.LedgerCloseMeta, error) {
+	if r.startLedger == 0 {
+		return xdr.LedgerCloseMeta{}, fmt.Errorf("PrepareRange() must be called before GetLedger()")
+	}
 	if sequence < r.startLedger {
-		return xdr.LedgerCloseMeta{}, fmt.Errorf("sequence number %v out of range", sequence)
+		return xdr.LedgerCloseMeta{}, fmt.Errorf(
+			"sequence number %v is less than the lower bound of the prepared range: %v",
+			sequence,
+			r.startLedger,
+		)
 	}
 	i := int(sequence - r.startLedger)
 	if i >= len(r.mergedLedgers) {
-		return xdr.LedgerCloseMeta{}, fmt.Errorf("sequence number %v out of range", sequence)
+		return xdr.LedgerCloseMeta{}, fmt.Errorf(
+			"sequence number %v is greater than the latest ledger available",
+			sequence,
+		)
 	}
-	closeTime := r.startTime.Add(time.Duration(i+1) * r.ledgerCloseTime)
+	// the i'th ledger will only be available after (i+1) * r.ledgerCloseDuration time has elapsed
+	closeTime := r.startTime.Add(time.Duration(i+1) * r.ledgerCloseDuration)
 	time.Sleep(time.Until(closeTime))
 	return r.mergedLedgers[i], nil
 }
@@ -254,6 +268,9 @@ func MergeLedgers(networkPassphrase string, dst *xdr.LedgerCloseMeta, src xdr.Le
 		return err
 	}
 
+	// src is merged into dst by appending all the transactions from src into dst,
+	// appending all the upgrades from src into dst, and appending all the evictions
+	// from src into dst
 	dst.V1.TxSet.V1TxSet.Phases = append(dst.V1.TxSet.V1TxSet.Phases, src.V1.TxSet.V1TxSet.Phases...)
 	dst.V1.TxProcessing = append(dst.V1.TxProcessing, src.V1.TxProcessing...)
 	dst.V1.UpgradesProcessing = append(dst.V1.UpgradesProcessing, src.V1.UpgradesProcessing...)
@@ -265,6 +282,10 @@ func MergeLedgers(networkPassphrase string, dst *xdr.LedgerCloseMeta, src xdr.Le
 		return err
 	}
 
+	// a merge is valid if the ordered list of changes emitted by the merged ledger is equal to
+	// the list of changes emitted by dst concatenated by the list of changes emitted by src, or
+	// in other words:
+	// extractChanges(merge(dst, src)) == concat(extractChanges(dst), extractChanges(src))
 	if ok, err := changesAreEqual(combinedChangesByKey, mergedChangesByKey); err != nil {
 		return err
 	} else if !ok {
