@@ -632,7 +632,7 @@ func (t *LedgerTransaction) LedgerKeyHashFromTxEnvelope() []string {
 	}
 
 	for _, ledgerKey := range v1Envelope.Tx.Ext.SorobanData.Resources.Footprint.ReadOnly {
-		ledgerKeyBase64, err := ledgerKey.MarshalBinaryBase64()
+		ledgerKeyBase64, err := xdr.MarshalBase64(ledgerKey)
 		if err != nil {
 			panic(err)
 		}
@@ -642,7 +642,7 @@ func (t *LedgerTransaction) LedgerKeyHashFromTxEnvelope() []string {
 	}
 
 	for _, ledgerKey := range v1Envelope.Tx.Ext.SorobanData.Resources.Footprint.ReadWrite {
-		ledgerKeyBase64, err := ledgerKey.MarshalBinaryBase64()
+		ledgerKeyBase64, err := xdr.MarshalBase64(ledgerKey)
 		if err != nil {
 			panic(err)
 		}
@@ -688,7 +688,7 @@ func (t *LedgerTransaction) contractCodeFromContractData(ledgerKey xdr.LedgerKey
 		return "", false
 	}
 
-	codeHash, err := contractCode.Hash.MarshalBinaryBase64()
+	codeHash, err := xdr.MarshalBase64(contractCode.Hash)
 	if err != nil {
 		panic(err)
 	}
