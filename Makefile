@@ -83,22 +83,20 @@ CHECKSUM_FILE := .proto_checksums
 
 generate-proto:
 	@echo "Regenerating proto files..."
-	@mkdir -p $(PROTO_DIR) # Ensure the directory exists for checksum storage
+	@mkdir -p $(PROTO_DIR)
 	@touch $(CHECKSUM_FILE)
-	@for proto in $(PROTO_FILES); do \
-		gen_file="$${proto%.*}$(GEN_SUFFIX)"; \
-		current_checksum=$$(sha256sum "$${proto}" | awk '{print $$1}'); \
-		stored_checksum=$$(grep "$${proto}" $(CHECKSUM_FILE) | awk '{print $$2}'); \
-		if [ "$${current_checksum}" != "$${stored_checksum}" ] || [ ! -f "$${gen_file}" ]; then \
-			echo "Generating Go code for: $${proto}"; \
-			protoc --go_out=. --go_opt=paths=source_relative \
-			       --go-grpc_out=. --go-grpc_opt=paths=source_relative \
-			       "$${proto}"; \
-			grep -v "$${proto}" $(CHECKSUM_FILE) > $(CHECKSUM_FILE).tmp; \
-			mv $(CHECKSUM_FILE).tmp $(CHECKSUM_FILE); \
-			echo "$${proto} $${current_checksum}" >> $(CHECKSUM_FILE); \
-		fi; \
-	done
+	@current_checksum=$$(sha256sum $(PROTO_FILES) | sha256sum | awk '{print $$1}'); \
+	stored_checksum=$$(cat $(CHECKSUM_FILE)); \
+	if [ "$${current_checksum}" != "$${stored_checksum}" ]; then \
+		echo "Changes detected. Regenerating all proto files..."; \
+		protoc -I=$(PROTO_DIR) \
+		       --go_out=$(PROTO_DIR) --go_opt=paths=source_relative \
+		       --go-grpc_out=$(PROTO_DIR) --go-grpc_opt=paths=source_relative \
+		       $(PROTO_FILES); \
+		echo "$${current_checksum}" > $(CHECKSUM_FILE); \
+	else \
+		echo "No changes detected in proto files."; \
+	fi
 
 .PHONY: generate-proto
 

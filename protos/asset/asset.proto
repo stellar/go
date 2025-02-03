@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package asset;
+option go_package = "github.com/stellar/go/protos/asset;asset";
+
+// Asset message that can represent either a native asset or an issued asset
+message Asset {
+  oneof asset_type {
+    bool native = 1;                  // Native asset (XLM)
+    IssuedAsset issuedAsset = 2;      // Issued asset - via classic operations.
+  }
+}
+
+message IssuedAsset {
+  string assetCode = 1;               // Asset code (e.g., USD, BTC)
+  string issuer = 2;                  // Issuer account address
+}
+

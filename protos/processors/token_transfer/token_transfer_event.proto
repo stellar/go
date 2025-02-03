@@ -1,63 +1,51 @@
 syntax = "proto3";
 
 package token_transfer;
-option go_package = "github.com/stellar/go/protos/processors/token_tranfer;token_transfer";
+option go_package = "github.com/stellar/go/protos/processors/token_transfer;token_transfer";
 
 import "google/protobuf/timestamp.proto";
 
-// Address message with oneof for different address types
-message Address {
-  oneof address_type {
-    string smartContractAddress = 1; // Smart Contract address
-    string accountAddress = 2;       // Account address
-    string liquidityPoolHash = 3;   // Liquidity Pool hash
-    string claimableBalanceId = 4;  // Claimable Balance ID
-  }
-}
+import "address/address.proto";
+import "asset/asset.proto";
 
 // EventMeta message
 message EventMeta {
   uint32 ledgerSequence = 1;
   google.protobuf.Timestamp closedAt = 2;
-  /*
-   * operationIndex is optional. It wont be present in fee events.
-   * Additionally, operationIndex will always be 0 for smart contract transactions
-  */
-  optional uint32 operationIndex = 3;
-  string txHash = 4;                      // Stellar transaction hash
+  optional uint32 operationIndex = 3; // Optional for fee events or smart contract transactions
+  string txHash = 4;                  // Stellar transaction hash
 }
 
 message Transfer {
-  Address from = 1;
-  Address to = 2;
+  address.Address from = 1;
+  address.Address to = 2;
   string amount = 3;
 }
 
 message Mint {
-  Address to = 1;
+  address.Address to = 1;
   string amount = 2;
 }
 
 message Burn {
-  Address from = 1;
+  address.Address from = 1;
   string amount = 2;
 }
 
 message Clawback {
-  Address from = 1;
+  address.Address from = 1;
   string amount = 3;
 }
 
 message Fee {
-  Address from = 1;
+  address.Address from = 1;
   string amount = 2;
 }
 
-// TokenTransfer message
+// TokenTransferEvent message
 message TokenTransferEvent {
   EventMeta meta = 1;
-  // Asset might not always be presen so marking it as optional, especially in events emitted by SEP-41 custom token contracts
-  optional string asset = 2;
+  optional asset.Asset asset = 2; // Asset can be native or issued, marked optional for SEP-41 custom tokens
   oneof event {
     Transfer transfer = 3;
     Mint mint = 4;
@@ -66,3 +54,4 @@ message TokenTransferEvent {
     Fee fee = 7;
   }
 }
+

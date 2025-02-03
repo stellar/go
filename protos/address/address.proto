@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package address;
+option go_package = "github.com/stellar/go/protos/address;address";
+
+// Address message with oneof for different address types
+message Address {
+  oneof address_type {
+    string smartContractAddress = 1; // Smart Contract address
+    string accountAddress = 2;       // Account address
+    string liquidityPoolHash = 3;    // Liquidity Pool hash
+    string claimableBalanceId = 4;   // Claimable Balance ID
+  }
+}
+
