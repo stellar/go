@@ -61,10 +61,18 @@ func TestReplay(t *testing.T) {
 	require.NoError(t, replayBackend.PrepareRange(context.Background(), ledgerbackend.BoundedRange(startLedger, endLedger)))
 
 	_, err = replayBackend.GetLedger(context.Background(), startLedger-1)
-	require.EqualError(t, err, fmt.Sprintf("sequence number %v out of range", startLedger-1))
+	require.EqualError(t, err,
+		fmt.Sprintf(
+			"sequence number %v is less than the lower bound of the prepared range: %v",
+			startLedger-1,
+			startLedger,
+		),
+	)
 
 	_, err = replayBackend.GetLedger(context.Background(), endLedger+1)
-	require.EqualError(t, err, fmt.Sprintf("sequence number %v out of range", endLedger+1))
+	require.EqualError(t, err,
+		fmt.Sprintf("sequence number %v is greater than the latest ledger available", endLedger+1),
+	)
 
 	var ledgers []xdr.LedgerCloseMeta
 	for cur := startLedger; cur <= endLedger; cur++ {
