@@ -9,7 +9,7 @@ import (
 type RevokeSponsorshipDetail struct {
 	SignerAccountID  string          `json:"signer_account_id"`
 	SignerKey        string          `json:"signer_key"`
-	LedgerKeyDetails LedgerKeyDetail `json:"ledger_key_detail`
+	LedgerKeyDetails LedgerKeyDetail `json:"ledger_key_detail"`
 }
 
 func (o *LedgerOperation) RevokeSponsorshipDetails() (RevokeSponsorshipDetail, error) {

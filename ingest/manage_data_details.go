@@ -7,7 +7,7 @@ import (
 
 type ManageDataDetail struct {
 	Name  string `json:"name"`
-	Value string `json:value"`
+	Value string `json:"value"`
 }
 
 func (o *LedgerOperation) ManageDataDetails() (ManageDataDetail, error) {
