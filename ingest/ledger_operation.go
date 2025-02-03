@@ -69,13 +69,14 @@ func (o *LedgerOperation) OperationTraceCode() (string, error) {
 	var operationTraceCode string
 	var operationResults []xdr.OperationResult
 	var ok bool
+	var err error
 
 	operationResults, ok = o.Transaction.Result.Result.OperationResults()
 	if ok {
 		var operationResultTr xdr.OperationResultTr
 		operationResultTr, ok = operationResults[o.OperationIndex].GetTr()
 		if ok {
-			operationTraceCode, err := operationResultTr.MapOperationResultTr()
+			operationTraceCode, err = operationResultTr.MapOperationResultTr()
 			if err != nil {
 				return "", err
 			}

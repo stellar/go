@@ -45,10 +45,12 @@ func (o *LedgerOperation) LiquidityPoolWithdrawDetails() (LiquidityPoolWithdrawD
 	var (
 		assetA, assetB       xdr.Asset
 		receivedA, receivedB xdr.Int64
+		lp                   *xdr.LiquidityPoolEntry
+		delta                *LiquidityPoolDelta
 	)
 	if o.Transaction.Successful() {
 		// we will use the defaults (omitted asset and 0 amounts) if the transaction failed
-		lp, delta, err := o.getLiquidityPoolAndProductDelta(&op.LiquidityPoolId)
+		lp, delta, err = o.getLiquidityPoolAndProductDelta(&op.LiquidityPoolId)
 		if err != nil {
 			return LiquidityPoolWithdrawDetail{}, err
 		}
