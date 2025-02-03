@@ -106,6 +106,9 @@ type captiveCoreTomlValues struct {
 	EnableDiagnosticsForTxSubmission      *bool                `toml:"ENABLE_DIAGNOSTICS_FOR_TX_SUBMISSION,omitempty"`
 	EnableEmitSorobanTransactionMetaExtV1 *bool                `toml:"EMIT_SOROBAN_TRANSACTION_META_EXT_V1,omitempty"`
 	EnableEmitLedgerCloseMetaExtV1        *bool                `toml:"EMIT_LEDGER_CLOSE_META_EXT_V1,omitempty"`
+	HTTPQueryPort                         *uint                `toml:"HTTP_QUERY_PORT,omitempty"`
+	QueryThreadPoolSize                   *uint                `toml:"QUERY_THREADPOOL_SIZE,omitempty"`
+	QuerySnapshotLedgers                  *uint                `toml:"QUERY_SNAPSHOT_LEDGERS,omitempty"`
 }
 
 // QuorumSetIsConfigured returns true if there is a quorum set defined in the configuration.
@@ -321,6 +324,12 @@ func (c *CaptiveCoreToml) unmarshal(data []byte, strict bool) error {
 	return nil
 }
 
+type FastHTTPServerParams struct {
+	Port            uint16
+	ThreadPoolSize  uint16
+	SnapshotLedgers uint16
+}
+
 // CaptiveCoreTomlParams defines captive core configuration provided by Horizon flags.
 type CaptiveCoreTomlParams struct {
 	// NetworkPassphrase is the Stellar network passphrase used by captive core when connecting to the Stellar network.
@@ -346,6 +355,8 @@ type CaptiveCoreTomlParams struct {
 	EnforceSorobanDiagnosticEvents bool
 	// Enfore EnableSorobanTransactionMetaExtV1 when not disabled explicitly
 	EnforceSorobanTransactionMetaExtV1 bool
+	// Enable the Fast HTTP server with these parameters
+	FastHTTPServerParams *FastHTTPServerParams
 }
 
 // NewCaptiveCoreTomlFromFile constructs a new CaptiveCoreToml instance by merging configuration
@@ -497,6 +508,15 @@ func (c *CaptiveCoreToml) setDefaults(params CaptiveCoreTomlParams) {
 	}
 	if params.EnforceSorobanTransactionMetaExtV1 {
 		enforceOption(&c.EnableEmitSorobanTransactionMetaExtV1)
+	}
+
+	if params.FastHTTPServerParams != nil {
+		port := uint(params.FastHTTPServerParams.Port)
+		c.HTTPQueryPort = &port
+		ledgers := uint(params.FastHTTPServerParams.SnapshotLedgers)
+		c.QuerySnapshotLedgers = &ledgers
+		poolSize := uint(params.FastHTTPServerParams.ThreadPoolSize)
+		c.QueryThreadPoolSize = &poolSize
 	}
 }
 
