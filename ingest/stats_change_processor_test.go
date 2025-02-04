@@ -16,21 +16,31 @@ func TestStatsChangeProcessor(t *testing.T) {
 	for ledgerEntryType := range xdr.LedgerEntryTypeMap {
 		// Created
 		assert.NoError(t, processor.ProcessChange(ctx, Change{
-			Type: xdr.LedgerEntryType(ledgerEntryType),
-			Pre:  nil,
-			Post: &xdr.LedgerEntry{},
+			Type:       xdr.LedgerEntryType(ledgerEntryType),
+			Pre:        nil,
+			Post:       &xdr.LedgerEntry{},
+			ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryCreated,
 		}))
 		// Updated
 		assert.NoError(t, processor.ProcessChange(ctx, Change{
-			Type: xdr.LedgerEntryType(ledgerEntryType),
-			Pre:  &xdr.LedgerEntry{},
-			Post: &xdr.LedgerEntry{},
+			Type:       xdr.LedgerEntryType(ledgerEntryType),
+			Pre:        &xdr.LedgerEntry{},
+			Post:       &xdr.LedgerEntry{},
+			ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
 		}))
 		// Removed
 		assert.NoError(t, processor.ProcessChange(ctx, Change{
-			Type: xdr.LedgerEntryType(ledgerEntryType),
-			Pre:  &xdr.LedgerEntry{},
-			Post: nil,
+			Type:       xdr.LedgerEntryType(ledgerEntryType),
+			Pre:        &xdr.LedgerEntry{},
+			Post:       nil,
+			ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryRemoved,
+		}))
+		// Restored
+		assert.NoError(t, processor.ProcessChange(ctx, Change{
+			Type:       xdr.LedgerEntryType(ledgerEntryType),
+			Pre:        &xdr.LedgerEntry{},
+			Post:       &xdr.LedgerEntry{},
+			ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryRestored,
 		}))
 	}
 
@@ -69,5 +79,10 @@ func TestStatsChangeProcessor(t *testing.T) {
 	assert.Equal(t, int64(1), results.ConfigSettingsRemoved)
 	assert.Equal(t, int64(1), results.TtlRemoved)
 
-	assert.Equal(t, len(xdr.LedgerEntryTypeMap)*3, len(results.Map()))
+	assert.Equal(t, int64(1), results.ContractCodeRestored)
+	assert.Equal(t, int64(1), results.ContractDataRestored)
+	assert.Equal(t, int64(1), results.TtlRestored)
+
+	//+3 for 3 entry types that will have restored change type, ttl, contract code, contract data
+	assert.Equal(t, len(xdr.LedgerEntryTypeMap)*3+3, len(results.Map()))
 }

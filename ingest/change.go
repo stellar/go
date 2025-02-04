@@ -42,6 +42,8 @@ type Change struct {
 	// The type of the ledger entry being changed.
 	Type xdr.LedgerEntryType
 
+	ChangeType xdr.LedgerEntryChangeType
+
 	// The state of the LedgerEntry before the change. This will be nil if the entry was created.
 	Pre *xdr.LedgerEntry
 
@@ -144,25 +146,49 @@ func GetChangesFromLedgerEntryChanges(ledgerEntryChanges xdr.LedgerEntryChanges)
 		case xdr.LedgerEntryChangeTypeLedgerEntryCreated:
 			created := entryChange.MustCreated()
 			changes = append(changes, Change{
-				Type: created.Data.Type,
-				Pre:  nil,
-				Post: &created,
+				Type:       created.Data.Type,
+				Pre:        nil,
+				Post:       &created,
+				ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryCreated,
 			})
 		case xdr.LedgerEntryChangeTypeLedgerEntryUpdated:
 			state := ledgerEntryChanges[i-1].MustState()
 			updated := entryChange.MustUpdated()
 			changes = append(changes, Change{
-				Type: state.Data.Type,
-				Pre:  &state,
-				Post: &updated,
+				Type:       state.Data.Type,
+				Pre:        &state,
+				Post:       &updated,
+				ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
 			})
 		case xdr.LedgerEntryChangeTypeLedgerEntryRemoved:
 			state := ledgerEntryChanges[i-1].MustState()
 			changes = append(changes, Change{
-				Type: state.Data.Type,
-				Pre:  &state,
-				Post: nil,
+				Type:       state.Data.Type,
+				Pre:        &state,
+				Post:       nil,
+				ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryRemoved,
 			})
+		case xdr.LedgerEntryChangeTypeLedgerEntryRestored:
+			restored := entryChange.MustRestored()
+			if i > 0 {
+				if state, ok := ledgerEntryChanges[i-1].GetState(); ok {
+					changes = append(changes, Change{
+						Type:       restored.Data.Type,
+						Pre:        &state,
+						Post:       &restored,
+						ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryRestored,
+					})
+					continue
+				}
+			}
+
+			changes = append(changes, Change{
+				Type:       restored.Data.Type,
+				Pre:        nil,
+				Post:       &restored,
+				ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryRestored,
+			})
+
 		case xdr.LedgerEntryChangeTypeLedgerEntryState:
 			continue
 		default:
@@ -223,16 +249,7 @@ func sortChanges(changes []Change) {
 
 // LedgerEntryChangeType returns type in terms of LedgerEntryChangeType.
 func (c Change) LedgerEntryChangeType() xdr.LedgerEntryChangeType {
-	switch {
-	case c.Pre == nil && c.Post != nil:
-		return xdr.LedgerEntryChangeTypeLedgerEntryCreated
-	case c.Pre != nil && c.Post == nil:
-		return xdr.LedgerEntryChangeTypeLedgerEntryRemoved
-	case c.Pre != nil && c.Post != nil:
-		return xdr.LedgerEntryChangeTypeLedgerEntryUpdated
-	default:
-		panic("Invalid state of Change (Pre == nil && Post == nil)")
-	}
+	return c.ChangeType
 }
 
 // getLiquidityPool gets the most recent state of the LiquidityPool that exists or existed.
