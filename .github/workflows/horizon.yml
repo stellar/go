@@ -103,7 +103,7 @@ jobs:
 
       - name: Restore Horizon binary and integration tests source hash to cache
         id: horizon_binary_tests_hash
-        uses: actions/cache/restore@v3
+        uses: actions/cache/restore@v4
         with:
           path: ./empty
           lookup-only: true
@@ -114,7 +114,7 @@ jobs:
 
       - name: Save Horizon binary and integration tests source hash to cache
         if: ${{ success() && steps.horizon_binary_tests_hash.outputs.cache-hit != 'true' }}
-        uses: actions/cache/save@v3
+        uses: actions/cache/save@v4
         with:
           path: ./empty
           key: ${{ env.COMBINED_SOURCE_HASH }}
