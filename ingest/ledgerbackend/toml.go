@@ -324,7 +324,7 @@ func (c *CaptiveCoreToml) unmarshal(data []byte, strict bool) error {
 	return nil
 }
 
-type FastHTTPServerParams struct {
+type HTTPQueryServerParamOverrides struct {
 	Port            uint16
 	ThreadPoolSize  uint16
 	SnapshotLedgers uint16
@@ -355,8 +355,8 @@ type CaptiveCoreTomlParams struct {
 	EnforceSorobanDiagnosticEvents bool
 	// Enfore EnableSorobanTransactionMetaExtV1 when not disabled explicitly
 	EnforceSorobanTransactionMetaExtV1 bool
-	// Enable the Fast HTTP server with these parameters
-	FastHTTPServerParams *FastHTTPServerParams
+	// Override unset HTTP Query Server parameters with these values
+	HTTPQueryServerParamOverrides *HTTPQueryServerParamOverrides
 }
 
 // NewCaptiveCoreTomlFromFile constructs a new CaptiveCoreToml instance by merging configuration
@@ -510,13 +510,20 @@ func (c *CaptiveCoreToml) setDefaults(params CaptiveCoreTomlParams) {
 		enforceOption(&c.EnableEmitSorobanTransactionMetaExtV1)
 	}
 
-	if params.FastHTTPServerParams != nil {
-		port := uint(params.FastHTTPServerParams.Port)
-		c.HTTPQueryPort = &port
-		ledgers := uint(params.FastHTTPServerParams.SnapshotLedgers)
-		c.QuerySnapshotLedgers = &ledgers
-		poolSize := uint(params.FastHTTPServerParams.ThreadPoolSize)
-		c.QueryThreadPoolSize = &poolSize
+	if params.HTTPQueryServerParamOverrides != nil {
+		// override unset values
+		if c.HTTPQueryPort == nil {
+			port := uint(params.HTTPQueryServerParamOverrides.Port)
+			c.HTTPQueryPort = &port
+		}
+		if c.QuerySnapshotLedgers == nil {
+			ledgers := uint(params.HTTPQueryServerParamOverrides.SnapshotLedgers)
+			c.QuerySnapshotLedgers = &ledgers
+		}
+		if c.QueryThreadPoolSize == nil {
+			poolSize := uint(params.HTTPQueryServerParamOverrides.ThreadPoolSize)
+			c.QueryThreadPoolSize = &poolSize
+		}
 	}
 }
 
