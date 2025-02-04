@@ -488,7 +488,7 @@ func transactionTestInput() *LedgerTransaction {
 
 type testOutput struct {
 	err    error
-	result map[string]interface{}
+	result interface{}
 }
 
 func operationTestInput() []xdr.Operation {
@@ -1086,218 +1086,194 @@ func resultTestOutput() []testOutput {
 	output := []testOutput{
 		{
 			err: nil,
-			result: map[string]interface{}{
-				"account":          "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
-				"funder":           "GAISEMYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABCAK",
-				"funder_muxed":     "MAISEMYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPMJ2I",
-				"funder_muxed_id":  uint64(123),
-				"starting_balance": int64(25000000)},
+			result: CreateAccountDetail{
+				Account:         "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
+				Funder:          "GAISEMYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABCAK",
+				FunderMuxed:     "MAISEMYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPMJ2I",
+				FunderMuxedID:   uint64(123),
+				StartingBalance: int64(25000000)},
 		},
 		{
 			err: nil,
-			result: map[string]interface{}{
-				"amount":        int64(350000000),
-				"asset_code":    "USDT",
-				"asset_id":      int64(-8205667356306085451),
-				"asset_issuer":  "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
-				"asset_type":    "credit_alphanum4",
-				"from":          "GAISEMYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABCAK",
-				"from_muxed":    "MAISEMYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPMJ2I",
-				"from_muxed_id": uint64(123),
-				"to":            "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA"},
+			result: PaymentDetail{
+				Amount:      int64(350000000),
+				AssetCode:   "USDT",
+				AssetIssuer: "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
+				AssetType:   "credit_alphanum4",
+				From:        "GAISEMYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABCAK",
+				FromMuxed:   "MAISEMYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPMJ2I",
+				FromMuxedID: uint64(123),
+				To:          "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA"},
 		},
 		{
 			err: nil,
-			result: map[string]interface{}{
-				"amount":        int64(350000000),
-				"asset_id":      int64(-5706705804583548011),
-				"asset_type":    "native",
-				"from":          "GAISEMYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABCAK",
-				"from_muxed":    "MAISEMYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPMJ2I",
-				"from_muxed_id": uint64(123),
-				"to":            "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA"},
+			result: PaymentDetail{
+				Amount:      int64(350000000),
+				AssetType:   "native",
+				From:        "GAISEMYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABCAK",
+				FromMuxed:   "MAISEMYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPMJ2I",
+				FromMuxedID: uint64(123),
+				To:          "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA"},
 		},
 		{
 			err: nil,
-			result: map[string]interface{}{
-				"amount":     int64(8951495900),
-				"asset_id":   int64(-5706705804583548011),
-				"asset_type": "native",
-				"from":       "GBT4YAEGJQ5YSFUMNKX6BPBUOCPNAIOFAVZOF6MIME2CECBMEIUXFZZN",
-				"path": []Path{
+			result: PathPaymentStrictReceiveDetail{
+				Amount:    int64(8951495900),
+				AssetType: "native",
+				From:      "GBT4YAEGJQ5YSFUMNKX6BPBUOCPNAIOFAVZOF6MIME2CECBMEIUXFZZN",
+				Path: []Path{
 					{
 						AssetCode:   "USDT",
 						AssetIssuer: "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
 						AssetType:   "credit_alphanum4",
 					},
 				},
-				"source_amount":     int64(0),
-				"source_asset_id":   int64(-5706705804583548011),
-				"source_asset_type": "native",
-				"source_max":        int64(8951495900),
-				"to":                "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA"},
+				SourceAmount:    int64(0),
+				SourceAssetType: "native",
+				SourceMax:       int64(8951495900),
+				To:              "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA"},
 		},
 		{
 			err: nil,
-			result: map[string]interface{}{
-				"amount":            int64(765860000),
-				"buying_asset_id":   int64(-5706705804583548011),
-				"buying_asset_type": "native",
-				"offer_id":          int64(0),
-				"price":             0.514092,
-				"price_r": Price{
-					Numerator:   128523,
-					Denominator: 250000,
-				},
-				"selling_asset_code":   "USDT",
-				"selling_asset_id":     int64(-8205667356306085451),
-				"selling_asset_issuer": "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
-				"selling_asset_type":   "credit_alphanum4"},
+			result: ManageSellOffer{
+				Amount:             int64(765860000),
+				BuyingAssetType:    "native",
+				OfferID:            int64(0),
+				Price:              0.514092,
+				PriceN:             128523,
+				PriceD:             250000,
+				SellingAssetCode:   "USDT",
+				SellingAssetIssuer: "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
+				SellingAssetType:   "credit_alphanum4"},
 		},
 		{
 			err: nil,
-			result: map[string]interface{}{
-				"amount":              int64(631595000),
-				"buying_asset_code":   "USDT",
-				"buying_asset_id":     int64(-8205667356306085451),
-				"buying_asset_issuer": "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
-				"buying_asset_type":   "credit_alphanum4",
-				"price":               0.0791606,
-				"price_r": Price{
-					Numerator:   99583200,
-					Denominator: 1257990000,
-				},
-				"selling_asset_id":   int64(-5706705804583548011),
-				"selling_asset_type": "native"},
+			result: CreatePassiveSellOfferDetail{
+				Amount:            int64(631595000),
+				BuyingAssetCode:   "USDT",
+				BuyingAssetIssuer: "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
+				BuyingAssetType:   "credit_alphanum4",
+				Price:             0.0791606,
+				PriceN:            99583200,
+				PriceD:            1257990000,
+				SellingAssetType:  "native"},
 		},
 		{
 			err: nil,
-			result: map[string]interface{}{
-				"clear_flags": []int32{1,
-					2},
-				"clear_flags_s": []string{"auth_required",
-					"auth_revocable"},
-				"high_threshold":    uint32(5),
-				"home_domain":       "2019=DRA;n-test",
-				"inflation_dest":    "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
-				"low_threshold":     uint32(1),
-				"master_key_weight": uint32(3),
-				"med_threshold":     uint32(3),
-				"set_flags":         []int32{4},
-				"set_flags_s":       []string{"auth_immutable"},
-				"signer_key":        "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF",
-				"signer_weight":     uint32(1)},
+			result: SetOptionsDetails{
+				ClearFlags:           []int32{1, 2},
+				ClearFlagsString:     []string{"auth_required", "auth_revocable"},
+				HighThreshold:        uint32(5),
+				HomeDomain:           "2019=DRA;n-test",
+				InflationDestination: "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
+				LowThreshold:         uint32(1),
+				MasterKeyWeight:      uint32(3),
+				MediumThreshold:      uint32(3),
+				SetFlags:             []int32{4},
+				SetFlagsString:       []string{"auth_immutable"},
+				SignerKey:            "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF",
+				SignerWeight:         uint32(1)},
 		},
 		{
 			err: nil,
-			result: map[string]interface{}{
-				"asset_code":       "USSD",
-				"asset_id":         int64(6690054458235693884),
-				"asset_issuer":     "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
-				"asset_type":       "credit_alphanum4",
-				"limit":            int64(500000000000000000),
-				"trustee":          "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
-				"trustor":          "GAISEMYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABCAK",
-				"trustor_muxed":    "MAISEMYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPMJ2I",
-				"trustor_muxed_id": uint64(123)},
+			result: ChangeTrustDetail{
+				AssetCode:      "USSD",
+				AssetIssuer:    "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
+				AssetType:      "credit_alphanum4",
+				Limit:          int64(500000000000000000),
+				Trustee:        "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
+				Trustor:        "GAISEMYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABCAK",
+				TrustorMuxed:   "MAISEMYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPMJ2I",
+				TrustorMuxedID: uint64(123)},
 		},
 		{
 			err: nil,
-			result: map[string]interface{}{
-				"asset_type":        "liquidity_pool_shares",
-				"limit":             int64(500000000000000000),
-				"liquidity_pool_id": "1c261d6c75930204a73b480c3020ab525e9be48ce93de6194cf69fb06f07452d",
-				"trustor":           "GAISEMYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABCAK",
-				"trustor_muxed":     "MAISEMYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPMJ2I",
-				"trustor_muxed_id":  uint64(123)},
+			result: ChangeTrustDetail{
+				AssetType:       "liquidity_pool_shares",
+				Limit:           int64(500000000000000000),
+				LiquidityPoolID: "HCYdbHWTAgSnO0gMMCCrUl6b5IzpPeYZTPafsG8HRS0=",
+				Trustor:         "GAISEMYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABCAK",
+				TrustorMuxed:    "MAISEMYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPMJ2I",
+				TrustorMuxedID:  uint64(123)},
 		},
 		{
 			err: nil,
-			result: map[string]interface{}{
-				"asset_code":       "USDT",
-				"asset_id":         int64(8181787832768848499),
-				"asset_issuer":     "GAISEMYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABCAK",
-				"asset_type":       "credit_alphanum4",
-				"authorize":        true,
-				"trustee":          "GAISEMYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABCAK",
-				"trustee_muxed":    "MAISEMYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPMJ2I",
-				"trustee_muxed_id": uint64(123),
-				"trustor":          "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA"},
+			result: AllowTrustDetail{
+				AssetCode:      "USDT",
+				AssetIssuer:    "GAISEMYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABCAK",
+				AssetType:      "credit_alphanum4",
+				Authorize:      true,
+				Trustee:        "GAISEMYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABCAK",
+				TrusteeMuxed:   "MAISEMYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPMJ2I",
+				TrusteeMuxedID: uint64(123),
+				Trustor:        "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA"},
 		},
 		{
 			err: nil,
-			result: map[string]interface{}{
-				"account":          "GAISEMYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABCAK",
-				"account_muxed":    "MAISEMYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPMJ2I",
-				"account_muxed_id": uint64(123),
-				"into":             "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA"},
+			result: AccountMergeDetail{
+				Account:        "GAISEMYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABCAK",
+				AccountMuxed:   "MAISEMYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPMJ2I",
+				AccountMuxedID: uint64(123),
+				Into:           "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA"},
 		},
 		{
 			err:    nil,
-			result: map[string]interface{}{},
+			result: InflationDetail{},
 		},
 		{
 			err: nil,
-			result: map[string]interface{}{
-				"name":  "test",
-				"value": "dmFsdWU=",
+			result: ManageDataDetail{
+				Name:  "test",
+				Value: "dmFsdWU=",
 			},
 		},
 		{
 			err: nil,
-			result: map[string]interface{}{
-				"bump_to": "100",
+			result: BumpSequenceDetails{
+				BumpTo: int64(100),
 			},
 		},
 		{
 			err: nil,
-			result: map[string]interface{}{
-				"amount":            int64(7654501001),
-				"buying_asset_id":   int64(-5706705804583548011),
-				"buying_asset_type": "native",
-				"offer_id":          int64(100),
-				"price":             0.3496823,
-				"price_r": Price{
-					Numerator:   635863285,
-					Denominator: 1818402817,
-				},
-				"selling_asset_code":   "USDT",
-				"selling_asset_id":     int64(-8205667356306085451),
-				"selling_asset_issuer": "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
-				"selling_asset_type":   "credit_alphanum4"},
+			result: ManageBuyOffer{
+				Amount:             int64(7654501001),
+				BuyingAssetType:    "native",
+				OfferID:            int64(100),
+				Price:              0.3496823,
+				PriceN:             635863285,
+				PriceD:             1818402817,
+				SellingAssetCode:   "USDT",
+				SellingAssetIssuer: "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
+				SellingAssetType:   "credit_alphanum4"},
 		},
 		{
 			err: nil,
-			result: map[string]interface{}{
-				"amount":          int64(640000000),
-				"asset_id":        int64(-5706705804583548011),
-				"asset_type":      "native",
-				"destination_min": "428.0460538",
-				"from":            "GAISEMYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABCAK",
-				"from_muxed":      "MAISEMYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPMJ2I",
-				"from_muxed_id":   uint64(123),
-				"path": []Path{
+			result: PathPaymentStrictSendDetail{
+				Amount:         int64(640000000),
+				AssetType:      "native",
+				DestinationMin: 4280460538,
+				From:           "GAISEMYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABCAK",
+				FromMuxed:      "MAISEMYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPMJ2I",
+				FromMuxedID:    uint64(123),
+				Path: []Path{
 					{
 						AssetCode:   "USDT",
 						AssetIssuer: "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
 						AssetType:   "credit_alphanum4",
 					},
 				},
-				"source_amount":     int64(1598182),
-				"source_asset_id":   int64(-5706705804583548011),
-				"source_asset_type": "native",
-				"to":                "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA"},
+				SourceAmount:    int64(1598182),
+				SourceAssetType: "native",
+				To:              "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA"},
 		},
 		{
 			err: nil,
-			result: map[string]interface{}{
-				"amount":       int64(1234567890000),
-				"asset":        "USDT:GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
-				"asset_code":   "USDT",
-				"asset_id":     int64(-8205667356306085451),
-				"asset_issuer": "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
-				"asset_type":   "credit_alphanum4",
-				"claimants": []Claimant{
+			result: CreateClaimableBalanceDetail{
+				Amount:      int64(1234567890000),
+				AssetCode:   "USDT",
+				AssetIssuer: "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
+				AssetType:   "credit_alphanum4",
+				Claimants: []Claimant{
 					{
 						Destination: "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
 						Predicate: xdr.ClaimPredicate{
@@ -1314,143 +1290,153 @@ func resultTestOutput() []testOutput {
 		},
 		{
 			err: nil,
-			result: map[string]interface{}{
-				"balance_id": "000000000102030405060708090000000000000000000000000000000000000000000000",
-				"claimant":   "GBT4YAEGJQ5YSFUMNKX6BPBUOCPNAIOFAVZOF6MIME2CECBMEIUXFZZN",
+			result: ClaimClaimableBalanceDetail{
+				BalanceID: "AAAAAAECAwQFBgcICQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+				Claimant:  "GBT4YAEGJQ5YSFUMNKX6BPBUOCPNAIOFAVZOF6MIME2CECBMEIUXFZZN",
 			},
 		},
 		{
 			err: nil,
-			result: map[string]interface{}{
-				"sponsored_id": "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
+			result: BeginSponsoringFutureReservesDetail{
+				SponsoredID: "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
 			},
 		},
 		{
 			err: nil,
-			result: map[string]interface{}{
-				"signer_account_id": "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
-				"signer_key":        "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF",
+			result: RevokeSponsorshipDetail{
+				SignerAccountID: "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
+				SignerKey:       "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF",
 			},
 		},
 		{
 			err: nil,
-			result: map[string]interface{}{
-				"account_id": "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
+			result: RevokeSponsorshipDetail{
+				LedgerKeyDetails: LedgerKeyDetail{
+					AccountID: "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
+				},
 			},
 		},
 		{
 			err: nil,
-			result: map[string]interface{}{
-				"claimable_balance_id": "000000000102030405060708090000000000000000000000000000000000000000000000",
+			result: RevokeSponsorshipDetail{
+				LedgerKeyDetails: LedgerKeyDetail{
+					ClaimableBalanceID: "000000000102030405060708090000000000000000000000000000000000000000000000",
+				},
 			},
 		},
 		{
 			err: nil,
-			result: map[string]interface{}{
-				"data_account_id": "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
-				"data_name":       "test",
+			result: RevokeSponsorshipDetail{
+				LedgerKeyDetails: LedgerKeyDetail{
+					DataAccountID: "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
+					DataName:      "test",
+				},
 			},
 		},
 		{
 			err: nil,
-			result: map[string]interface{}{
-				"offer_id": int64(100),
+			result: RevokeSponsorshipDetail{
+				LedgerKeyDetails: LedgerKeyDetail{
+					OfferID: int64(100),
+				},
 			},
 		},
 		{
 			err: nil,
-			result: map[string]interface{}{
-				"trustline_account_id": "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
-				"trustline_asset":      "USTT:GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
+			result: RevokeSponsorshipDetail{
+				LedgerKeyDetails: LedgerKeyDetail{
+					TrustlineAccountID:   "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
+					TrustlineAssetCode:   "USTT",
+					TrustlineAssetIssuer: "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
+					TrustlineAssetType:   "credit_alphanum4",
+				},
 			},
 		},
 		{
 			err: nil,
-			result: map[string]interface{}{
-				"liquidity_pool_id": "0102030405060708090000000000000000000000000000000000000000000000",
+			result: RevokeSponsorshipDetail{
+				LedgerKeyDetails: LedgerKeyDetail{
+					LiquidityPoolID: "AQIDBAUGBwgJAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+				},
 			},
 		},
 		{
 			err: nil,
-			result: map[string]interface{}{
-				"amount":       int64(1598182),
-				"asset_code":   "USDT",
-				"asset_id":     int64(-8205667356306085451),
-				"asset_issuer": "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
-				"asset_type":   "credit_alphanum4",
-				"from":         "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
+			result: ClawbackDetail{
+				Amount:      int64(1598182),
+				AssetCode:   "USDT",
+				AssetIssuer: "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
+				AssetType:   "credit_alphanum4",
+				From:        "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
 			},
 		},
 		{
 			err: nil,
-			result: map[string]interface{}{
-				"balance_id": "000000000102030405060708090000000000000000000000000000000000000000000000",
+			result: ClawbackClaimableBalanceDetail{
+				BalanceID: "AAAAAAECAwQFBgcICQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
 			},
 		},
 		{
 			err: nil,
-			result: map[string]interface{}{
-				"asset_code":    "USDT",
-				"asset_id":      int64(-8205667356306085451),
-				"asset_issuer":  "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
-				"asset_type":    "credit_alphanum4",
-				"clear_flags":   []int32{1, 2},
-				"clear_flags_s": []string{"authorized", "authorized_to_maintain_liabilities"},
-				"set_flags":     []int32{4},
-				"set_flags_s":   []string{"clawback_enabled"},
-				"trustor":       "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
+			result: SetTrustlineFlagsDetail{
+				AssetCode:        "USDT",
+				AssetIssuer:      "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
+				AssetType:        "credit_alphanum4",
+				ClearFlags:       []int32{1, 2},
+				ClearFlagsString: []string{"authorized", "authorized_to_maintain_liabilities"},
+				SetFlags:         []int32{4},
+				SetFlagsString:   []string{"clawback_enabled"},
+				Trustor:          "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
 			},
 		},
 		{
 			err: nil,
-			result: map[string]interface{}{
-				"liquidity_pool_id":        "0102030405060708090000000000000000000000000000000000000000000000",
-				"max_price":                1e+06,
-				"max_price_r":              Price{Numerator: 1000000, Denominator: 1},
-				"min_price":                1e-06,
-				"min_price_r":              Price{Numerator: 1, Denominator: 1000000},
-				"reserve_a_asset_code":     "USDT",
-				"reserve_a_asset_id":       int64(-8205667356306085451),
-				"reserve_a_asset_issuer":   "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
-				"reserve_a_asset_type":     "credit_alphanum4",
-				"reserve_a_deposit_amount": 1e-07,
-				"reserve_a_max_amount":     int64(1000),
-				"reserve_b_asset_code":     "USDT",
-				"reserve_b_asset_id":       int64(-8205667356306085451),
-				"reserve_b_asset_issuer":   "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
-				"reserve_b_asset_type":     "credit_alphanum4",
-				"reserve_b_deposit_amount": 1e-07,
-				"reserve_b_max_amount":     int64(100),
-				"shares_received":          1e-07,
+			result: LiquidityPoolDepositDetail{
+				LiquidityPoolID:       "AQIDBAUGBwgJAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+				MaxPrice:              1e+06,
+				MaxPriceN:             1000000,
+				MaxPriceD:             1,
+				MinPrice:              1e-06,
+				MinPriceN:             1,
+				MinPriceD:             1000000,
+				ReserveAAssetCode:     "USDT",
+				ReserveAAssetIssuer:   "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
+				ReserveAAssetType:     "credit_alphanum4",
+				ReserveADepositAmount: int64(1),
+				ReserveAMaxAmount:     int64(1000),
+				ReserveBAssetCode:     "USDT",
+				ReserveBAssetIssuer:   "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
+				ReserveBAssetType:     "credit_alphanum4",
+				ReserveBDepositAmount: 1,
+				ReserveBMaxAmount:     int64(100),
+				SharesReceived:        1,
 			},
 		},
 		{
 			err: nil,
-			result: map[string]interface{}{
-				"liquidity_pool_id":         "0102030405060708090000000000000000000000000000000000000000000000",
-				"reserve_a_asset_code":      "USDT",
-				"reserve_a_asset_id":        int64(-8205667356306085451),
-				"reserve_a_asset_issuer":    "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
-				"reserve_a_asset_type":      "credit_alphanum4",
-				"reserve_a_min_amount":      int64(1),
-				"reserve_a_withdraw_amount": int64(-1),
-				"reserve_b_asset_code":      "USDT",
-				"reserve_b_asset_id":        int64(-8205667356306085451),
-				"reserve_b_asset_issuer":    "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
-				"reserve_b_asset_type":      "credit_alphanum4",
-				"reserve_b_min_amount":      int64(1),
-				"reserve_b_withdraw_amount": int64(-1),
-				"shares":                    int64(4),
+			result: LiquidityPoolWithdrawDetail{
+				LiquidityPoolID:        "AQIDBAUGBwgJAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+				ReserveAAssetCode:      "USDT",
+				ReserveAAssetIssuer:    "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
+				ReserveAAssetType:      "credit_alphanum4",
+				ReserveAMinAmount:      int64(1),
+				ReserveAWithdrawAmount: int64(-1),
+				ReserveBAssetCode:      "USDT",
+				ReserveBAssetIssuer:    "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
+				ReserveBAssetType:      "credit_alphanum4",
+				ReserveBMinAmount:      int64(1),
+				ReserveBWithdrawAmount: int64(-1),
+				Shares:                 int64(4),
 			},
 		},
 		{
 			err: nil,
-			result: map[string]interface{}{
-				"asset_balance_changes": []map[string]interface{}{},
-				"contract_id":           "CAJDIVTYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABR37",
-				"function":              "HostFunctionTypeHostFunctionTypeInvokeContract",
-				"ledger_key_hash":       []string{"AAAABgAAAAESNAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAA=="},
-				"parameters": []map[string]string{
+			result: InvokeHostFunctionDetail{
+				AssetBalanceChanges: []BalanceChangeDetail{},
+				ContractID:          "CAJDIVTYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABR37",
+				Function:            "HostFunctionTypeHostFunctionTypeInvokeContract",
+				LedgerKeyHash:       []string{"AAAABgAAAAESNAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAA=="},
+				Parameters: []map[string]string{
 					{
 						"type":  "Address",
 						"value": "AAAAEgAAAAESNFZ4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
@@ -1460,7 +1446,7 @@ func resultTestOutput() []testOutput {
 						"value": "AAAADwAAAAR0ZXN0",
 					},
 				},
-				"parameters_decoded": []map[string]string{
+				ParametersDecoded: []map[string]string{
 					{
 						"type":  "Address",
 						"value": "CAJDIVTYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABR37",
@@ -1470,85 +1456,81 @@ func resultTestOutput() []testOutput {
 						"value": "test",
 					},
 				},
-				"type": "invoke_contract",
+				Type: "invoke_contract",
 			},
 		},
 		{
 			err: nil,
-			result: map[string]interface{}{
-				"address":         "CAJDIVTYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABR37",
-				"contract_id":     "CAJDIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABT4W",
-				"from":            "address",
-				"function":        "HostFunctionTypeHostFunctionTypeCreateContract",
-				"ledger_key_hash": []string{"AAAABgAAAAESNAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAA=="},
-				"type":            "create_contract",
+			result: InvokeHostFunctionDetail{
+				Address:       "CAJDIVTYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABR37",
+				ContractID:    "CAJDIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABT4W",
+				From:          "address",
+				Function:      "HostFunctionTypeHostFunctionTypeCreateContract",
+				LedgerKeyHash: []string{"AAAABgAAAAESNAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAA=="},
+				Type:          "create_contract",
 			},
 		},
 		{
 			err: nil,
-			result: map[string]interface{}{
-				"asset":           "USDT:GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
-				"asset_code":      "USDT",
-				"asset_id":        int64(-8205667356306085451),
-				"asset_issuer":    "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
-				"asset_type":      "credit_alphanum4",
-				"contract_id":     "CAJDIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABT4W",
-				"from":            "asset",
-				"function":        "HostFunctionTypeHostFunctionTypeCreateContract",
-				"ledger_key_hash": []string{"AAAABgAAAAESNAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAA=="},
-				"type":            "create_contract",
+			result: InvokeHostFunctionDetail{
+				AssetCode:     "USDT",
+				AssetIssuer:   "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
+				AssetType:     "credit_alphanum4",
+				ContractID:    "CAJDIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABT4W",
+				From:          "asset",
+				Function:      "HostFunctionTypeHostFunctionTypeCreateContract",
+				LedgerKeyHash: []string{"AAAABgAAAAESNAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAA=="},
+				Type:          "create_contract",
 			},
 		},
 		{
 			err: nil,
-			result: map[string]interface{}{
-				"asset":           "USDT:GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
-				"asset_code":      "USDT",
-				"asset_id":        int64(-8205667356306085451),
-				"asset_issuer":    "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
-				"asset_type":      "credit_alphanum4",
-				"contract_id":     "CAJDIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABT4W",
-				"from":            "asset",
-				"function":        "HostFunctionTypeHostFunctionTypeCreateContractV2",
-				"ledger_key_hash": []string{"AAAABgAAAAESNAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAA=="},
-				"parameters": []map[string]string{
+			result: InvokeHostFunctionDetail{
+				AssetCode:     "USDT",
+				AssetIssuer:   "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
+				AssetType:     "credit_alphanum4",
+				ContractID:    "CAJDIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABT4W",
+				From:          "asset",
+				Function:      "HostFunctionTypeHostFunctionTypeCreateContractV2",
+				LedgerKeyHash: []string{"AAAABgAAAAESNAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAA=="},
+				Parameters: []map[string]string{
 					{
 						"type":  "B",
 						"value": "AAAAAAAAAAE=",
 					},
 				},
-				"parameters_decoded": []map[string]string{
+				ParametersDecoded: []map[string]string{
 					{
 						"type":  "B",
 						"value": "true",
 					},
 				},
-				"type": "create_contract_v2",
+				Type: "create_contract_v2",
 			},
 		},
 		{
 			err: nil,
-			result: map[string]interface{}{
-				"function":        "HostFunctionTypeHostFunctionTypeUploadContractWasm",
-				"ledger_key_hash": []string{"AAAABgAAAAESNAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAA=="},
-				"type":            "upload_wasm",
+			result: InvokeHostFunctionDetail{
+				Function:      "HostFunctionTypeHostFunctionTypeUploadContractWasm",
+				LedgerKeyHash: []string{"AAAABgAAAAESNAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAA=="},
+				Type:          "upload_wasm",
 			},
 		},
 		{
 			err: nil,
-			result: map[string]interface{}{
-				"extend_to":       int32(1234),
-				"ledger_key_hash": []string{"AAAABgAAAAESNAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAA=="},
-				"contract_id":     "CAJDIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABT4W",
-				"type":            "extend_footprint_ttl",
+			result: ExtendFootprintTtlDetail{
+				ExtendTo:      uint32(1234),
+				LedgerKeyHash: []string{"AAAABgAAAAESNAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAA=="},
+				ContractID:    "CAJDIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABT4W",
+				Type:          "extend_footprint_ttl",
 			},
 		},
 		{
 			err: nil,
-			result: map[string]interface{}{
-				"ledger_key_hash": []string{"AAAABgAAAAESNAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAA=="},
-				"contract_id":     "CAJDIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABT4W",
-				"type":            "restore_footprint",
+			result: RestoreFootprintDetail{
+				LedgerKeyHash: []string{"AAAABgAAAAESNAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAA=="},
+				ContractID:    "CAJDIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABT4W",
+				Type:          "restore_footprint",
 			},
 		},
 	}

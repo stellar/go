@@ -3,7 +3,7 @@ package ingest
 import "fmt"
 
 type BumpSequenceDetails struct {
-	BumpTo string `json:"bump_to"`
+	BumpTo int64 `json:"bump_to"`
 }
 
 func (o *LedgerOperation) BumpSequenceDetails() (BumpSequenceDetails, error) {
@@ -13,6 +13,6 @@ func (o *LedgerOperation) BumpSequenceDetails() (BumpSequenceDetails, error) {
 	}
 
 	return BumpSequenceDetails{
-		BumpTo: fmt.Sprintf("%d", op.BumpTo),
+		BumpTo: int64(op.BumpTo),
 	}, nil
 }

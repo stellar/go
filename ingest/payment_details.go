@@ -56,5 +56,9 @@ func (o *LedgerOperation) PaymentDetails() (PaymentDetail, error) {
 		return PaymentDetail{}, err
 	}
 
+	paymentDetail.AssetCode = assetCode
+	paymentDetail.AssetIssuer = assetIssuer
+	paymentDetail.AssetType = assetType
+
 	return paymentDetail, nil
 }

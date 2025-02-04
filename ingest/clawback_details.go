@@ -20,6 +20,7 @@ func (o *LedgerOperation) ClawbackDetails() (ClawbackDetail, error) {
 
 	clawbackDetail := ClawbackDetail{
 		Amount: int64(op.Amount),
+		From:   op.From.Address(),
 	}
 
 	var err error

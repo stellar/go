@@ -28,7 +28,7 @@ func (o *LedgerOperation) AllowTrustDetails() (AllowTrustDetail, error) {
 	allowTrustDetail := AllowTrustDetail{
 		Trustor:                        op.Trustor.Address(),
 		Trustee:                        o.SourceAccount(),
-		Authorize:                      xdr.TrustLineFlags(op.Authorize).IsAuthorizedToMaintainLiabilitiesFlag(),
+		Authorize:                      xdr.TrustLineFlags(op.Authorize).IsAuthorized(),
 		AuthorizeToMaintainLiabilities: xdr.TrustLineFlags(op.Authorize).IsAuthorizedToMaintainLiabilitiesFlag(),
 		ClawbackEnabled:                xdr.TrustLineFlags(op.Authorize).IsClawbackEnabledFlag(),
 	}

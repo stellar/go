@@ -81,7 +81,7 @@ func (o *LedgerOperation) LiquidityPoolWithdrawDetails() (LiquidityPoolWithdrawD
 	liquidityPoolWithdrawDetail.ReserveBAssetCode = assetBCode
 	liquidityPoolWithdrawDetail.ReserveBAssetIssuer = assetBIssuer
 	liquidityPoolWithdrawDetail.ReserveBAssetType = assetBType
-	liquidityPoolWithdrawDetail.ReserveAWithdrawAmount = int64(receivedB)
+	liquidityPoolWithdrawDetail.ReserveBWithdrawAmount = int64(receivedB)
 
 	return liquidityPoolWithdrawDetail, nil
 }
