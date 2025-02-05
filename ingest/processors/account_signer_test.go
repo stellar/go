@@ -31,8 +31,9 @@ func TestTransformAccountSigner(t *testing.T) {
 		{
 			inputStruct{
 				ingest.Change{
-					Type: xdr.LedgerEntryTypeOffer,
-					Pre:  nil,
+					ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryCreated,
+					Type:       xdr.LedgerEntryTypeOffer,
+					Pre:        nil,
 					Post: &xdr.LedgerEntry{
 						Data: xdr.LedgerEntryData{
 							Type: xdr.LedgerEntryTypeOffer,
@@ -122,9 +123,10 @@ func makeSignersTestInput() ingest.Change {
 		},
 	}
 	return ingest.Change{
-		Type: xdr.LedgerEntryTypeAccount,
-		Pre:  &ledgerEntry,
-		Post: nil,
+		ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryRemoved,
+		Type:       xdr.LedgerEntryTypeAccount,
+		Pre:        &ledgerEntry,
+		Post:       nil,
 	}
 }
 
