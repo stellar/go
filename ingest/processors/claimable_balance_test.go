@@ -5,9 +5,10 @@ import (
 	"time"
 
 	"github.com/guregu/null"
+	"github.com/stretchr/testify/assert"
+
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/xdr"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestTransformClaimableBalance(t *testing.T) {
@@ -97,9 +98,10 @@ func makeClaimableBalanceTestInput() ingest.Change {
 		},
 	}
 	return ingest.Change{
-		Type: xdr.LedgerEntryTypeClaimableBalance,
-		Pre:  &ledgerEntry,
-		Post: nil,
+		ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryRemoved,
+		Type:       xdr.LedgerEntryTypeClaimableBalance,
+		Pre:        &ledgerEntry,
+		Post:       nil,
 	}
 }
 

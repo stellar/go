@@ -28,7 +28,8 @@ func TestTransformOfferNormalized(t *testing.T) {
 	tests := []transformTest{
 		{
 			input: testInput{ingest.Change{
-				Type: xdr.LedgerEntryTypeOffer,
+				ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryRemoved,
+				Type:       xdr.LedgerEntryTypeOffer,
 				Pre: &xdr.LedgerEntry{
 					LastModifiedLedgerSeq: xdr.Uint32(100),
 					Data: xdr.LedgerEntryData{
