@@ -328,7 +328,8 @@ func (c *ChangeCompactor) addRestoredChange(change Change) error {
 			}
 		case xdr.LedgerEntryChangeTypeLedgerEntryRemoved:
 			return NewStateError(errors.Errorf(
-				"can't restore an entry that was previously removed (ledger key = %s)", ledgerKey,
+				"can't restore an entry that was previously removed (ledger key = %s)",
+				base64.StdEncoding.EncodeToString(ledgerKey),
 			))
 		default:
 			return errors.Errorf("Unknown LedgerEntryChangeType: %d", existingChange.LedgerEntryChangeType())

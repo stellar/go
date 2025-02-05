@@ -127,7 +127,7 @@ func (s *TestChangeCompactorExistingCreatedSuite) TestChangeRestoredEvicted() {
 			},
 		},
 	}
-	assert.Error(s.T(),
+	s.Assert().EqualError(
 		s.cache.AddChange(change),
 		"can't restore an entry that already exists (ledger key = AAAAAAAAAAC2LgFRDBZ3J52nLm30kq2iMgrO7dYzYAN3hvjtf1IHWg==)",
 	)
@@ -156,10 +156,10 @@ func (s *TestChangeCompactorExistingCreatedSuite) TestChangeRestoredArchived() {
 			},
 		},
 	}
-	assert.NoError(s.T(), s.cache.AddChange(change))
+	s.Assert().NoError(s.cache.AddChange(change))
 	changes := s.cache.GetChanges()
-	assert.Len(s.T(), changes, 1)
-	assert.Equal(s.T(), changes[0].LedgerEntryChangeType(), xdr.LedgerEntryChangeTypeLedgerEntryCreated)
+	s.Assert().Len(changes, 1)
+	s.Assert().Equal(changes[0].LedgerEntryChangeType(), xdr.LedgerEntryChangeTypeLedgerEntryCreated)
 }
 
 func TestLedgerEntryChangeCacheExistingUpdated(t *testing.T) {
@@ -276,6 +276,56 @@ func (s *TestChangeCompactorExistingUpdatedSuite) TestChangeRemoved() {
 	s.Assert().Equal(changes[0].LedgerEntryChangeType(), xdr.LedgerEntryChangeTypeLedgerEntryRemoved)
 }
 
+func (s *TestChangeCompactorExistingUpdatedSuite) TestChangeRestoredEvicted() {
+	change := Change{
+		ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryRestored,
+		Type:       xdr.LedgerEntryTypeAccount,
+		Pre:        nil,
+		Post: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: 11,
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeAccount,
+				Account: &xdr.AccountEntry{
+					AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+				},
+			},
+		},
+	}
+	s.Assert().EqualError(
+		s.cache.AddChange(change),
+		"can't restore an entry that already exists (ledger key = AAAAAAAAAAC2LgFRDBZ3J52nLm30kq2iMgrO7dYzYAN3hvjtf1IHWg==)",
+	)
+}
+
+func (s *TestChangeCompactorExistingUpdatedSuite) TestChangeRestoredArchived() {
+	change := Change{
+		ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryRestored,
+		Type:       xdr.LedgerEntryTypeAccount,
+		Pre: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: 11,
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeAccount,
+				Account: &xdr.AccountEntry{
+					AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+				},
+			},
+		},
+		Post: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: 12,
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeAccount,
+				Account: &xdr.AccountEntry{
+					AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+				},
+			},
+		},
+	}
+	s.Assert().NoError(s.cache.AddChange(change))
+	changes := s.cache.GetChanges()
+	s.Assert().Len(changes, 1)
+	s.Assert().Equal(changes[0].LedgerEntryChangeType(), xdr.LedgerEntryChangeTypeLedgerEntryRestored)
+}
+
 func TestChangeCompactorExistingRemoved(t *testing.T) {
 	suite.Run(t, new(TestChangeCompactorExistingRemovedSuite))
 }
@@ -380,6 +430,376 @@ func (s *TestChangeCompactorExistingRemovedSuite) TestChangeRemoved() {
 		s.cache.AddChange(change),
 		"can't remove an entry that was previously removed (ledger key = AAAAAAAAAAC2LgFRDBZ3J52nLm30kq2iMgrO7dYzYAN3hvjtf1IHWg==)",
 	)
+}
+
+func (s *TestChangeCompactorExistingRemovedSuite) TestChangeRestoredEvicted() {
+	change := Change{
+		ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryRestored,
+		Type:       xdr.LedgerEntryTypeAccount,
+		Pre:        nil,
+		Post: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: 11,
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeAccount,
+				Account: &xdr.AccountEntry{
+					AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+				},
+			},
+		},
+	}
+	s.Assert().NoError(s.cache.AddChange(change))
+	changes := s.cache.GetChanges()
+	s.Assert().Len(changes, 1)
+	s.Assert().Equal(changes[0].LedgerEntryChangeType(), xdr.LedgerEntryChangeTypeLedgerEntryRestored)
+	s.Assert().Equal(changes[0].Post.LastModifiedLedgerSeq, xdr.Uint32(11))
+
+}
+
+func (s *TestChangeCompactorExistingRemovedSuite) TestChangeRestoredArchived() {
+	change := Change{
+		ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryRestored,
+		Type:       xdr.LedgerEntryTypeAccount,
+		Pre: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: 11,
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeAccount,
+				Account: &xdr.AccountEntry{
+					AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+				},
+			},
+		},
+		Post: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: 12,
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeAccount,
+				Account: &xdr.AccountEntry{
+					AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+				},
+			},
+		},
+	}
+	s.Assert().EqualError(
+		s.cache.AddChange(change),
+		"can't restore an entry that was previously removed (ledger key = AAAAAAAAAAC2LgFRDBZ3J52nLm30kq2iMgrO7dYzYAN3hvjtf1IHWg==)",
+	)
+}
+
+func TestChangeCompactorExistingRestoredEvicted(t *testing.T) {
+	suite.Run(t, new(TestChangeCompactorExistingRestoredEvictedSuite))
+}
+
+// TestChangeCompactorExistingRestoredEvictedSuite tests transitions from existing
+// REMOVED state in the cache.
+type TestChangeCompactorExistingRestoredEvictedSuite struct {
+	suite.Suite
+	cache *ChangeCompactor
+}
+
+func (s *TestChangeCompactorExistingRestoredEvictedSuite) SetupTest() {
+	s.cache = NewChangeCompactor()
+
+	change := Change{
+		ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryRestored,
+		Type:       xdr.LedgerEntryTypeAccount,
+		Pre:        nil,
+		Post: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: 10,
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeAccount,
+				Account: &xdr.AccountEntry{
+					AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+				},
+			},
+		},
+	}
+	s.Assert().NoError(s.cache.AddChange(change))
+	changes := s.cache.GetChanges()
+	s.Assert().Len(changes, 1)
+	s.Assert().Equal(changes[0].LedgerEntryChangeType(), xdr.LedgerEntryChangeTypeLedgerEntryRestored)
+}
+
+func (s *TestChangeCompactorExistingRestoredEvictedSuite) TestChangeCreated() {
+	change := Change{
+		ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryCreated,
+		Type:       xdr.LedgerEntryTypeAccount,
+		Pre:        nil,
+		Post: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: 12,
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeAccount,
+				Account: &xdr.AccountEntry{
+					AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+				},
+			},
+		},
+	}
+	s.Assert().EqualError(
+		s.cache.AddChange(change),
+		"can't create an entry that already exists (ledger key = AAAAAAAAAAC2LgFRDBZ3J52nLm30kq2iMgrO7dYzYAN3hvjtf1IHWg==)",
+	)
+}
+
+func (s *TestChangeCompactorExistingRestoredEvictedSuite) TestChangeUpdated() {
+	change := Change{
+		ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
+		Type:       xdr.LedgerEntryTypeAccount,
+		Pre: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: 10,
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeAccount,
+				Account: &xdr.AccountEntry{
+					AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+				},
+			},
+		},
+		Post: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: 12,
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeAccount,
+				Account: &xdr.AccountEntry{
+					AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+				},
+			},
+		},
+	}
+	s.Assert().NoError(s.cache.AddChange(change))
+	changes := s.cache.GetChanges()
+	s.Assert().Len(changes, 1)
+	s.Assert().Equal(changes[0].LedgerEntryChangeType(), xdr.LedgerEntryChangeTypeLedgerEntryRestored)
+}
+
+func (s *TestChangeCompactorExistingRestoredEvictedSuite) TestChangeRemoved() {
+	change := Change{
+		ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryRemoved,
+		Type:       xdr.LedgerEntryTypeAccount,
+		Pre: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: 11,
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeAccount,
+				Account: &xdr.AccountEntry{
+					AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+				},
+			},
+		},
+		Post: nil,
+	}
+	//noop
+	s.Assert().NoError(s.cache.AddChange(change))
+	changes := s.cache.GetChanges()
+	s.Assert().Len(changes, 0)
+}
+
+func (s *TestChangeCompactorExistingRestoredEvictedSuite) TestChangeRestoredEvicted() {
+	change := Change{
+		ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryRestored,
+		Type:       xdr.LedgerEntryTypeAccount,
+		Pre:        nil,
+		Post: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: 11,
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeAccount,
+				Account: &xdr.AccountEntry{
+					AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+				},
+			},
+		},
+	}
+	s.Assert().EqualError(
+		s.cache.AddChange(change),
+		"can't restore an entry that already exists (ledger key = AAAAAAAAAAC2LgFRDBZ3J52nLm30kq2iMgrO7dYzYAN3hvjtf1IHWg==)",
+	)
+}
+
+func (s *TestChangeCompactorExistingRestoredEvictedSuite) TestChangeRestoredArchived() {
+	change := Change{
+		ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryRestored,
+		Type:       xdr.LedgerEntryTypeAccount,
+		Pre: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: 11,
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeAccount,
+				Account: &xdr.AccountEntry{
+					AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+				},
+			},
+		},
+		Post: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: 12,
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeAccount,
+				Account: &xdr.AccountEntry{
+					AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+				},
+			},
+		},
+	}
+	s.Assert().NoError(s.cache.AddChange(change))
+	changes := s.cache.GetChanges()
+	s.Assert().Len(changes, 1)
+	s.Assert().Equal(changes[0].LedgerEntryChangeType(), xdr.LedgerEntryChangeTypeLedgerEntryRestored)
+}
+
+func TestChangeCompactorExistingRestoredArchived(t *testing.T) {
+	suite.Run(t, new(TestChangeCompactorExistingRestoredArchivedSuite))
+}
+
+// TestChangeCompactorExistingRestoredArchivedSuite tests transitions from existing
+// REMOVED state in the cache.
+type TestChangeCompactorExistingRestoredArchivedSuite struct {
+	suite.Suite
+	cache *ChangeCompactor
+}
+
+func (s *TestChangeCompactorExistingRestoredArchivedSuite) SetupTest() {
+	s.cache = NewChangeCompactor()
+
+	change := Change{
+		ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryRestored,
+		Type:       xdr.LedgerEntryTypeAccount,
+		Pre: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: 10,
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeAccount,
+				Account: &xdr.AccountEntry{
+					AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+				},
+			},
+		},
+		Post: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: 11,
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeAccount,
+				Account: &xdr.AccountEntry{
+					AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+				},
+			},
+		},
+	}
+	s.Assert().NoError(s.cache.AddChange(change))
+	changes := s.cache.GetChanges()
+	s.Assert().Len(changes, 1)
+	s.Assert().Equal(changes[0].LedgerEntryChangeType(), xdr.LedgerEntryChangeTypeLedgerEntryRestored)
+}
+
+func (s *TestChangeCompactorExistingRestoredArchivedSuite) TestChangeCreated() {
+	change := Change{
+		ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryCreated,
+		Type:       xdr.LedgerEntryTypeAccount,
+		Pre:        nil,
+		Post: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: 12,
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeAccount,
+				Account: &xdr.AccountEntry{
+					AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+				},
+			},
+		},
+	}
+	s.Assert().EqualError(
+		s.cache.AddChange(change),
+		"can't create an entry that already exists (ledger key = AAAAAAAAAAC2LgFRDBZ3J52nLm30kq2iMgrO7dYzYAN3hvjtf1IHWg==)",
+	)
+}
+
+func (s *TestChangeCompactorExistingRestoredArchivedSuite) TestChangeUpdated() {
+	change := Change{
+		ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
+		Type:       xdr.LedgerEntryTypeAccount,
+		Pre: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: 10,
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeAccount,
+				Account: &xdr.AccountEntry{
+					AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+				},
+			},
+		},
+		Post: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: 12,
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeAccount,
+				Account: &xdr.AccountEntry{
+					AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+				},
+			},
+		},
+	}
+	s.Assert().NoError(s.cache.AddChange(change))
+	changes := s.cache.GetChanges()
+	s.Assert().Len(changes, 1)
+	s.Assert().Equal(changes[0].LedgerEntryChangeType(), xdr.LedgerEntryChangeTypeLedgerEntryRestored)
+}
+
+func (s *TestChangeCompactorExistingRestoredArchivedSuite) TestChangeRemoved() {
+	change := Change{
+		ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryRemoved,
+		Type:       xdr.LedgerEntryTypeAccount,
+		Pre: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: 11,
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeAccount,
+				Account: &xdr.AccountEntry{
+					AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+				},
+			},
+		},
+		Post: nil,
+	}
+	s.Assert().NoError(s.cache.AddChange(change))
+	changes := s.cache.GetChanges()
+	s.Assert().Len(changes, 1)
+	s.Assert().Equal(changes[0].LedgerEntryChangeType(), xdr.LedgerEntryChangeTypeLedgerEntryRemoved)
+}
+
+func (s *TestChangeCompactorExistingRestoredArchivedSuite) TestChangeRestoredEvicted() {
+	change := Change{
+		ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryRestored,
+		Type:       xdr.LedgerEntryTypeAccount,
+		Pre:        nil,
+		Post: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: 11,
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeAccount,
+				Account: &xdr.AccountEntry{
+					AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+				},
+			},
+		},
+	}
+	s.Assert().EqualError(
+		s.cache.AddChange(change),
+		"can't restore an entry that already exists (ledger key = AAAAAAAAAAC2LgFRDBZ3J52nLm30kq2iMgrO7dYzYAN3hvjtf1IHWg==)",
+	)
+}
+
+func (s *TestChangeCompactorExistingRestoredArchivedSuite) TestChangeRestoredArchived() {
+	change := Change{
+		ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryRestored,
+		Type:       xdr.LedgerEntryTypeAccount,
+		Pre: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: 11,
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeAccount,
+				Account: &xdr.AccountEntry{
+					AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+				},
+			},
+		},
+		Post: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: 12,
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeAccount,
+				Account: &xdr.AccountEntry{
+					AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+				},
+			},
+		},
+	}
+	s.Assert().NoError(s.cache.AddChange(change))
+	changes := s.cache.GetChanges()
+	s.Assert().Len(changes, 1)
+	s.Assert().Equal(changes[0].LedgerEntryChangeType(), xdr.LedgerEntryChangeTypeLedgerEntryRestored)
 }
 
 // TestChangeCompactorSquashMultiplePayments simulates sending multiple payments
