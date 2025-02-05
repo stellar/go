@@ -127,7 +127,7 @@ func (s *TestChangeCompactorExistingCreatedSuite) TestChangeRestoredEvicted() {
 			},
 		},
 	}
-	s.Assert().EqualError(
+	assert.Error(s.T(),
 		s.cache.AddChange(change),
 		"can't restore an entry that already exists (ledger key = AAAAAAAAAAC2LgFRDBZ3J52nLm30kq2iMgrO7dYzYAN3hvjtf1IHWg==)",
 	)
@@ -156,10 +156,10 @@ func (s *TestChangeCompactorExistingCreatedSuite) TestChangeRestoredArchived() {
 			},
 		},
 	}
-	s.Assert().NoError(s.cache.AddChange(change))
+	assert.NoError(s.T(), s.cache.AddChange(change))
 	changes := s.cache.GetChanges()
-	s.Assert().Len(changes, 1)
-	s.Assert().Equal(changes[0].LedgerEntryChangeType(), xdr.LedgerEntryChangeTypeLedgerEntryCreated)
+	assert.Len(s.T(), changes, 1)
+	assert.Equal(s.T(), changes[0].LedgerEntryChangeType(), xdr.LedgerEntryChangeTypeLedgerEntryCreated)
 }
 
 func TestLedgerEntryChangeCacheExistingUpdated(t *testing.T) {

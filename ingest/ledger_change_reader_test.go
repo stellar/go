@@ -685,7 +685,7 @@ func TestRestore(t *testing.T) {
 							Operations: []xdr.OperationMeta{
 								{
 									Changes: xdr.LedgerEntryChanges{
-										{
+										xdr.LedgerEntryChange{
 											Type: xdr.LedgerEntryChangeTypeLedgerEntryRestored,
 											Restored: &xdr.LedgerEntry{
 												Data: xdr.LedgerEntryData{
@@ -718,7 +718,7 @@ func TestRestore(t *testing.T) {
 							Operations: []xdr.OperationMeta{
 								{
 									Changes: xdr.LedgerEntryChanges{
-										{
+										xdr.LedgerEntryChange{
 											Type: xdr.LedgerEntryChangeTypeLedgerEntryRestored,
 											Restored: &xdr.LedgerEntry{
 												Data: xdr.LedgerEntryData{
@@ -744,7 +744,7 @@ func TestRestore(t *testing.T) {
 							Operations: []xdr.OperationMeta{
 								{
 									Changes: xdr.LedgerEntryChanges{
-										{
+										xdr.LedgerEntryChange{
 											Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
 											State: &xdr.LedgerEntry{
 												LastModifiedLedgerSeq: 1,
@@ -757,7 +757,7 @@ func TestRestore(t *testing.T) {
 												},
 											},
 										},
-										{
+										xdr.LedgerEntryChange{
 											Type: xdr.LedgerEntryChangeTypeLedgerEntryRestored,
 											Restored: &xdr.LedgerEntry{
 												Data: xdr.LedgerEntryData{
@@ -784,7 +784,7 @@ func TestRestore(t *testing.T) {
 							Operations: []xdr.OperationMeta{
 								{
 									Changes: xdr.LedgerEntryChanges{
-										{
+										xdr.LedgerEntryChange{
 											Type: xdr.LedgerEntryChangeTypeLedgerEntryCreated,
 											Created: &xdr.LedgerEntry{
 												Data: xdr.LedgerEntryData{
@@ -796,7 +796,7 @@ func TestRestore(t *testing.T) {
 												},
 											},
 										},
-										{
+										xdr.LedgerEntryChange{
 											Type: xdr.LedgerEntryChangeTypeLedgerEntryRestored,
 											Restored: &xdr.LedgerEntry{
 												Data: xdr.LedgerEntryData{
@@ -824,7 +824,8 @@ func TestRestore(t *testing.T) {
 
 	var changes []Change
 	for {
-		change, err := reader.Read()
+		var change Change
+		change, err = reader.Read()
 		if err == io.EOF {
 			break
 		}
