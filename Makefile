@@ -79,13 +79,13 @@ xdr-update: xdr-clean xdr
 PROTO_DIR := protos
 GEN_SUFFIX := .pb.go
 PROTO_FILES := $(shell find $(PROTO_DIR) -name "*.proto")
-CHECKSUM_FILE := .proto_checksums
+PROTO_CHECKSUM := .proto_checksums
 
 generate-proto:
 	@echo "Regenerating proto files..."
-	@touch $(CHECKSUM_FILE)
+	@touch $(PROTO_CHECKSUM)
 	@current_checksum=$$(sha256sum $(PROTO_FILES) | sha256sum | awk '{print $$1}'); \
-	stored_checksum=$$(cat $(CHECKSUM_FILE)); \
+	stored_checksum=$$(cat $(PROTO_CHECKSUM)); \
 	if [ "$${current_checksum}" != "$${stored_checksum}" ]; then \
     	echo "Changes detected. Regenerating all proto files..."; \
     	MAP_OPTS=$$(for file in $(PROTO_FILES); do \
@@ -99,14 +99,22 @@ generate-proto:
     	echo "  --go_out=ingest"; \
     	echo "  --go_opt=paths=source_relative"; \
     	echo "  --go_opt=$$MAP_OPTS"; \
-    	echo "  $(PROTO_FILES)"; \
+    	echo "Proto Files:  $(PROTO_FILES)"; \
     	protoc -I=$(PROTO_DIR) \
     	       --go_out=ingest --go_opt=paths=source_relative \
     	       --go_opt=$$MAP_OPTS \
     	       $(PROTO_FILES); \
-    	echo "$${current_checksum}" > $(CHECKSUM_FILE); \
+    	echo "$${current_checksum}" > $(PROTO_CHECKSUM); \
     else \
     	echo "No changes detected in proto files."; \
     fi
 
-.PHONY: generate-proto
+
+regenerate-proto: $(PROTO_CHECKSUM)
+	rm -f $(PROTO_CHECKSUM)
+	$(MAKE) generate-proto
+
+$(PROTO_CHECKSUM):
+	@touch $(PROTO_CHECKSUM)
+
+.PHONY: generate-proto regenerate-proto
