@@ -1,7 +1,7 @@
 syntax = "proto3";
 
 package address;
-option go_package = "github.com/stellar/go/protos/address;address";
+//option go_package = "github.com/stellar/go/protos/address;address";
 
 // Address message with oneof for different address types
 message Address {

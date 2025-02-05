@@ -4,8 +4,7 @@ import (
 	"fmt"
 )
 
-// String returns a human-readable representation of the Address.
-func (a *Address) Strings() string {
+func (a *Address) BetterString() string {
 	switch addr := a.AddressType.(type) {
 	case *Address_SmartContractAddress:
 		return fmt.Sprintf("Smart Contract Address: %s", addr.SmartContractAddress)

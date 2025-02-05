@@ -1,7 +1,7 @@
 syntax = "proto3";
 
 package asset;
-option go_package = "github.com/stellar/go/protos/asset;asset";
+//option go_package = "github.com/stellar/go/protos/asset;asset";
 
 // Asset message that can represent either a native asset or an issued asset
 message Asset {

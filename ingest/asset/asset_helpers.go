@@ -4,8 +4,7 @@ import (
 	"fmt"
 )
 
-// String returns a human-readable representation of the Asset.
-func (a *Asset) Strings() string {
+func (a *Asset) BetterString() string {
 	switch assetType := a.AssetType.(type) {
 	case *Asset_Native:
 		return "Native Asset (XLM)"
