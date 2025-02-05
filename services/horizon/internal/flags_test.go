@@ -197,8 +197,8 @@ func TestSetCaptiveCoreConfig(t *testing.T) {
 				CaptiveCoreBinaryPath: "/path/to/captive-core/binary",
 			},
 			errStr: fmt.Sprintf("invalid captive core toml file: invalid captive core toml: "+
-				"NETWORK_PASSPHRASE in captive core config file: %s does not match Horizon "+
-				"network-passphrase flag: %s", network.TestNetworkPassphrase, network.PublicNetworkPassphrase),
+				"NETWORK_PASSPHRASE in captive core config file: %s does not match passed configuration (%s)",
+				network.TestNetworkPassphrase, network.PublicNetworkPassphrase),
 		},
 		{
 			name:                     "no network specified; full captive-core-config not required",
