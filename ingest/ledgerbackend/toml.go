@@ -324,7 +324,7 @@ func (c *CaptiveCoreToml) unmarshal(data []byte, strict bool) error {
 	return nil
 }
 
-type HTTPQueryServerParamOverrides struct {
+type HTTPQueryServerParams struct {
 	Port            uint16
 	ThreadPoolSize  uint16
 	SnapshotLedgers uint16
@@ -355,8 +355,8 @@ type CaptiveCoreTomlParams struct {
 	EnforceSorobanDiagnosticEvents bool
 	// Enfore EnableSorobanTransactionMetaExtV1 when not disabled explicitly
 	EnforceSorobanTransactionMetaExtV1 bool
-	// Override unset HTTP Query Server parameters with these values
-	HTTPQueryServerParamOverrides *HTTPQueryServerParamOverrides
+	// Fast HTTP Query Server parameters
+	HTTPQueryServerParams *HTTPQueryServerParams
 }
 
 // NewCaptiveCoreTomlFromFile constructs a new CaptiveCoreToml instance by merging configuration
@@ -510,20 +510,16 @@ func (c *CaptiveCoreToml) setDefaults(params CaptiveCoreTomlParams) {
 		enforceOption(&c.EnableEmitSorobanTransactionMetaExtV1)
 	}
 
-	if params.HTTPQueryServerParamOverrides != nil {
-		// override unset values
-		if c.HTTPQueryPort == nil {
-			port := uint(params.HTTPQueryServerParamOverrides.Port)
-			c.HTTPQueryPort = &port
-		}
-		if c.QuerySnapshotLedgers == nil {
-			ledgers := uint(params.HTTPQueryServerParamOverrides.SnapshotLedgers)
-			c.QuerySnapshotLedgers = &ledgers
-		}
-		if c.QueryThreadPoolSize == nil {
-			poolSize := uint(params.HTTPQueryServerParamOverrides.ThreadPoolSize)
-			c.QueryThreadPoolSize = &poolSize
-		}
+	if params.HTTPQueryServerParams != nil {
+		port := uint(params.HTTPQueryServerParams.Port)
+		c.HTTPQueryPort = &port
+
+		ledgers := uint(params.HTTPQueryServerParams.SnapshotLedgers)
+		c.QuerySnapshotLedgers = &ledgers
+
+		poolSize := uint(params.HTTPQueryServerParams.ThreadPoolSize)
+		c.QueryThreadPoolSize = &poolSize
+
 	}
 }
 
@@ -543,7 +539,7 @@ func enforceOption(opt **bool) {
 func (c *CaptiveCoreToml) validate(params CaptiveCoreTomlParams) error {
 	if def := c.tree.Has("NETWORK_PASSPHRASE"); def && c.NetworkPassphrase != params.NetworkPassphrase {
 		return fmt.Errorf(
-			"NETWORK_PASSPHRASE in captive core config file: %s does not match Horizon network-passphrase flag: %s",
+			"NETWORK_PASSPHRASE in captive core config file: %s does not match passed configuration (%s)",
 			c.NetworkPassphrase,
 			params.NetworkPassphrase,
 		)
@@ -551,7 +547,7 @@ func (c *CaptiveCoreToml) validate(params CaptiveCoreTomlParams) error {
 
 	if def := c.tree.Has("HTTP_PORT"); def && params.HTTPPort != nil && c.HTTPPort != *params.HTTPPort {
 		return fmt.Errorf(
-			"HTTP_PORT in captive core config file: %d does not match Horizon captive-core-http-port flag: %d",
+			"HTTP_PORT in captive core config file: %d does not match passed configuration (%d)",
 			c.HTTPPort,
 			*params.HTTPPort,
 		)
@@ -559,7 +555,7 @@ func (c *CaptiveCoreToml) validate(params CaptiveCoreTomlParams) error {
 
 	if def := c.tree.Has("PEER_PORT"); def && params.PeerPort != nil && c.PeerPort != *params.PeerPort {
 		return fmt.Errorf(
-			"PEER_PORT in captive core config file: %d does not match Horizon captive-core-peer-port flag: %d",
+			"PEER_PORT in captive core config file: %d does not match passed configuration (%d)",
 			c.PeerPort,
 			*params.PeerPort,
 		)
@@ -567,9 +563,33 @@ func (c *CaptiveCoreToml) validate(params CaptiveCoreTomlParams) error {
 
 	if def := c.tree.Has("LOG_FILE_PATH"); def && params.LogPath != nil && c.LogFilePath != *params.LogPath {
 		return fmt.Errorf(
-			"LOG_FILE_PATH in captive core config file: %s does not match Horizon captive-core-log-path flag: %s",
+			"LOG_FILE_PATH in captive core config file: %s does not match passed configuration (%s)",
 			c.LogFilePath,
 			*params.LogPath,
+		)
+	}
+
+	if c.HTTPQueryPort != nil && params.HTTPQueryServerParams != nil && *c.HTTPQueryPort != uint(params.HTTPQueryServerParams.Port) {
+		return fmt.Errorf(
+			"HTTP_QUERY_PORT in captive core config file: %d does not match passed configuration (%d)",
+			c.PeerPort,
+			*params.PeerPort,
+		)
+	}
+
+	if c.QueryThreadPoolSize != nil && params.HTTPQueryServerParams != nil && *c.QueryThreadPoolSize != uint(params.HTTPQueryServerParams.ThreadPoolSize) {
+		return fmt.Errorf(
+			"QUERY_THREADPOOL_SIZE in captive core config file: %d does not match passed configuration (%d)",
+			c.PeerPort,
+			*params.PeerPort,
+		)
+	}
+
+	if c.QuerySnapshotLedgers != nil && params.HTTPQueryServerParams != nil && *c.QuerySnapshotLedgers != uint(params.HTTPQueryServerParams.SnapshotLedgers) {
+		return fmt.Errorf(
+			"QUERY_SNAPSHOT_LEDGERS in captive core config file: %d does not match passed configuration (%d)",
+			c.PeerPort,
+			*params.PeerPort,
 		)
 	}
 
