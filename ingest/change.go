@@ -149,7 +149,7 @@ func GetChangesFromLedgerEntryChanges(ledgerEntryChanges xdr.LedgerEntryChanges)
 				Type:       created.Data.Type,
 				Pre:        nil,
 				Post:       &created,
-				ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryCreated,
+				ChangeType: entryChange.Type,
 			})
 		case xdr.LedgerEntryChangeTypeLedgerEntryUpdated:
 			state := ledgerEntryChanges[i-1].MustState()
@@ -158,7 +158,7 @@ func GetChangesFromLedgerEntryChanges(ledgerEntryChanges xdr.LedgerEntryChanges)
 				Type:       state.Data.Type,
 				Pre:        &state,
 				Post:       &updated,
-				ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
+				ChangeType: entryChange.Type,
 			})
 		case xdr.LedgerEntryChangeTypeLedgerEntryRemoved:
 			state := ledgerEntryChanges[i-1].MustState()
@@ -166,7 +166,7 @@ func GetChangesFromLedgerEntryChanges(ledgerEntryChanges xdr.LedgerEntryChanges)
 				Type:       state.Data.Type,
 				Pre:        &state,
 				Post:       nil,
-				ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryRemoved,
+				ChangeType: entryChange.Type,
 			})
 		case xdr.LedgerEntryChangeTypeLedgerEntryRestored:
 			restored := entryChange.MustRestored()
@@ -176,19 +176,17 @@ func GetChangesFromLedgerEntryChanges(ledgerEntryChanges xdr.LedgerEntryChanges)
 						Type:       restored.Data.Type,
 						Pre:        &state,
 						Post:       &restored,
-						ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryRestored,
+						ChangeType: entryChange.Type,
 					})
 					continue
 				}
 			}
-
 			changes = append(changes, Change{
 				Type:       restored.Data.Type,
 				Pre:        nil,
 				Post:       &restored,
-				ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryRestored,
+				ChangeType: entryChange.Type,
 			})
-
 		case xdr.LedgerEntryChangeTypeLedgerEntryState:
 			continue
 		default:

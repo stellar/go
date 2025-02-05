@@ -83,6 +83,6 @@ func TestStatsChangeProcessor(t *testing.T) {
 	assert.Equal(t, int64(1), results.ContractDataRestored)
 	assert.Equal(t, int64(1), results.TtlRestored)
 
-	//+3 for 3 entry types that will have restored change type, ttl, contract code, contract data
+	// "+3" for the three entry types (Ttl, Contract Code, and Contract Data) that will have a "restored" change type.
 	assert.Equal(t, len(xdr.LedgerEntryTypeMap)*3+3, len(results.Map()))
 }

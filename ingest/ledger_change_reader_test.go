@@ -616,7 +616,7 @@ func createTransactionEnvelope() (xdr.TransactionEnvelope, error) {
 	}, nil
 }
 
-func TestRestore(t *testing.T) {
+func TestRestoreChangeType(t *testing.T) {
 	ctx := context.Background()
 	mock := &ledgerbackend.MockDatabaseBackend{}
 	seq := uint32(123)
