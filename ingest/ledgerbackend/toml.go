@@ -107,7 +107,7 @@ type captiveCoreTomlValues struct {
 	EnableEmitSorobanTransactionMetaExtV1 *bool                `toml:"EMIT_SOROBAN_TRANSACTION_META_EXT_V1,omitempty"`
 	EnableEmitLedgerCloseMetaExtV1        *bool                `toml:"EMIT_LEDGER_CLOSE_META_EXT_V1,omitempty"`
 	HTTPQueryPort                         *uint                `toml:"HTTP_QUERY_PORT,omitempty"`
-	QueryThreadPoolSize                   *uint                `toml:"QUERY_THREADPOOL_SIZE,omitempty"`
+	QueryThreadPoolSize                   *uint                `toml:"QUERY_THREAD_POOL_SIZE,omitempty"`
 	QuerySnapshotLedgers                  *uint                `toml:"QUERY_SNAPSHOT_LEDGERS,omitempty"`
 }
 
