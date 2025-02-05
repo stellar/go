@@ -569,28 +569,30 @@ func (c *CaptiveCoreToml) validate(params CaptiveCoreTomlParams) error {
 		)
 	}
 
-	if c.HTTPQueryPort != nil && params.HTTPQueryServerParams != nil && *c.HTTPQueryPort != uint(params.HTTPQueryServerParams.Port) {
-		return fmt.Errorf(
-			"HTTP_QUERY_PORT in captive core config file: %d does not match passed configuration (%d)",
-			c.PeerPort,
-			*params.PeerPort,
-		)
-	}
+	if params.HTTPQueryServerParams != nil {
+		if c.HTTPQueryPort != nil && *c.HTTPQueryPort != uint(params.HTTPQueryServerParams.Port) {
+			return fmt.Errorf(
+				"HTTP_QUERY_PORT in captive core config file: %d does not match passed configuration (%d)",
+				c.PeerPort,
+				*params.PeerPort,
+			)
+		}
 
-	if c.QueryThreadPoolSize != nil && params.HTTPQueryServerParams != nil && *c.QueryThreadPoolSize != uint(params.HTTPQueryServerParams.ThreadPoolSize) {
-		return fmt.Errorf(
-			"QUERY_THREADPOOL_SIZE in captive core config file: %d does not match passed configuration (%d)",
-			c.PeerPort,
-			*params.PeerPort,
-		)
-	}
+		if c.QueryThreadPoolSize != nil && *c.QueryThreadPoolSize != uint(params.HTTPQueryServerParams.ThreadPoolSize) {
+			return fmt.Errorf(
+				"QUERY_THREADPOOL_SIZE in captive core config file: %d does not match passed configuration (%d)",
+				c.PeerPort,
+				*params.PeerPort,
+			)
+		}
 
-	if c.QuerySnapshotLedgers != nil && params.HTTPQueryServerParams != nil && *c.QuerySnapshotLedgers != uint(params.HTTPQueryServerParams.SnapshotLedgers) {
-		return fmt.Errorf(
-			"QUERY_SNAPSHOT_LEDGERS in captive core config file: %d does not match passed configuration (%d)",
-			c.PeerPort,
-			*params.PeerPort,
-		)
+		if c.QuerySnapshotLedgers != nil && *c.QuerySnapshotLedgers != uint(params.HTTPQueryServerParams.SnapshotLedgers) {
+			return fmt.Errorf(
+				"QUERY_SNAPSHOT_LEDGERS in captive core config file: %d does not match passed configuration (%d)",
+				c.PeerPort,
+				*params.PeerPort,
+			)
+		}
 	}
 
 	if c.tree.Has("DEPRECATED_SQL_LEDGER_STATE") {
