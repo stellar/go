@@ -42,6 +42,7 @@ type Change struct {
 	// The type of the ledger entry being changed.
 	Type xdr.LedgerEntryType
 
+	// The specific type of change, such as Created, Updated, Removed or Restored.
 	ChangeType xdr.LedgerEntryChangeType
 
 	// The state of the LedgerEntry before the change. This will be nil if the entry was created.
