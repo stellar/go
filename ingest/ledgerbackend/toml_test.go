@@ -36,8 +36,7 @@ func TestCaptiveCoreTomlValidation(t *testing.T) {
 			peerPort:          newUint(12345),
 			logPath:           nil,
 			expectedError: "invalid captive core toml: NETWORK_PASSPHRASE in captive core config file: " +
-				"Public Global Stellar Network ; September 2015 does not match Horizon network-passphrase " +
-				"flag: bogus passphrase",
+				"Public Global Stellar Network ; September 2015 does not match passed configuration (bogus passphrase)",
 		},
 		{
 			name:              "mismatching HTTP_PORT",
@@ -47,7 +46,7 @@ func TestCaptiveCoreTomlValidation(t *testing.T) {
 			peerPort:          newUint(12345),
 			logPath:           nil,
 			expectedError: "invalid captive core toml: HTTP_PORT in captive core config file: 6789 " +
-				"does not match Horizon captive-core-http-port flag: 1161",
+				"does not match passed configuration (1161)",
 		},
 		{
 			name:              "mismatching PEER_PORT",
@@ -57,7 +56,7 @@ func TestCaptiveCoreTomlValidation(t *testing.T) {
 			peerPort:          newUint(2346),
 			logPath:           nil,
 			expectedError: "invalid captive core toml: PEER_PORT in captive core config file: 12345 " +
-				"does not match Horizon captive-core-peer-port flag: 2346",
+				"does not match passed configuration (2346)",
 		},
 		{
 			name:              "mismatching LOG_FILE_PATH",
@@ -67,7 +66,7 @@ func TestCaptiveCoreTomlValidation(t *testing.T) {
 			peerPort:          newUint(12345),
 			logPath:           newString("/my/test/path"),
 			expectedError: "invalid captive core toml: LOG_FILE_PATH in captive core config file:  " +
-				"does not match Horizon captive-core-log-path flag: /my/test/path",
+				"does not match passed configuration (/my/test/path)",
 		},
 		{
 			name:              "duplicate HOME_DOMAIN entry",
@@ -369,6 +368,14 @@ func TestGenerateConfig(t *testing.T) {
 			useDB:        true,
 			logPath:      nil,
 		},
+		{
+			name:         "Query parameters in appendix",
+			mode:         stellarCoreRunnerModeOnline,
+			appendPath:   filepath.Join("testdata", "sample-appendix-query-params.cfg"),
+			expectedPath: filepath.Join("testdata", "expected-query-params.cfg"),
+			useDB:        true,
+			logPath:      nil,
+		},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			var err error
@@ -532,4 +539,42 @@ func TestNonDBConfigDoesNotUpdateDatabase(t *testing.T) {
 	toml := CaptiveCoreToml{}
 	require.NoError(t, toml.unmarshal(configBytes, true))
 	assert.Equal(t, toml.Database, "")
+}
+
+func TestHTTPQueryParameters(t *testing.T) {
+	var err error
+	var captiveCoreToml *CaptiveCoreToml
+	httpPort := uint(8000)
+	peerPort := uint(8000)
+	logPath := "logPath"
+
+	params := CaptiveCoreTomlParams{
+		NetworkPassphrase:  "Public Global Stellar Network ; September 2015",
+		HistoryArchiveURLs: []string{"http://localhost:1170"},
+		HTTPPort:           &httpPort,
+		PeerPort:           &peerPort,
+		LogPath:            &logPath,
+		Strict:             false,
+		UseDB:              true,
+		HTTPQueryServerParams: &HTTPQueryServerParams{
+			Port:            100,
+			ThreadPoolSize:  200,
+			SnapshotLedgers: 300,
+		},
+	}
+
+	captiveCoreToml, err = NewCaptiveCoreToml(params)
+	assert.NoError(t, err)
+
+	configBytes, err := generateConfig(captiveCoreToml, stellarCoreRunnerModeOffline)
+
+	assert.NoError(t, err)
+	toml := CaptiveCoreToml{}
+	require.NoError(t, toml.unmarshal(configBytes, true))
+	require.NotNil(t, *toml.HTTPQueryPort)
+	assert.Equal(t, *toml.HTTPQueryPort, uint(100))
+	require.NotNil(t, *toml.QueryThreadPoolSize)
+	assert.Equal(t, *toml.QueryThreadPoolSize, uint(200))
+	require.NotNil(t, *toml.QuerySnapshotLedgers)
+	assert.Equal(t, *toml.QuerySnapshotLedgers, uint(300))
 }

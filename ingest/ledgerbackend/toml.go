@@ -106,6 +106,9 @@ type captiveCoreTomlValues struct {
 	EnableDiagnosticsForTxSubmission      *bool                `toml:"ENABLE_DIAGNOSTICS_FOR_TX_SUBMISSION,omitempty"`
 	EnableEmitSorobanTransactionMetaExtV1 *bool                `toml:"EMIT_SOROBAN_TRANSACTION_META_EXT_V1,omitempty"`
 	EnableEmitLedgerCloseMetaExtV1        *bool                `toml:"EMIT_LEDGER_CLOSE_META_EXT_V1,omitempty"`
+	HTTPQueryPort                         *uint                `toml:"HTTP_QUERY_PORT,omitempty"`
+	QueryThreadPoolSize                   *uint                `toml:"QUERY_THREAD_POOL_SIZE,omitempty"`
+	QuerySnapshotLedgers                  *uint                `toml:"QUERY_SNAPSHOT_LEDGERS,omitempty"`
 }
 
 // QuorumSetIsConfigured returns true if there is a quorum set defined in the configuration.
@@ -321,6 +324,12 @@ func (c *CaptiveCoreToml) unmarshal(data []byte, strict bool) error {
 	return nil
 }
 
+type HTTPQueryServerParams struct {
+	Port            uint16
+	ThreadPoolSize  uint16
+	SnapshotLedgers uint16
+}
+
 // CaptiveCoreTomlParams defines captive core configuration provided by Horizon flags.
 type CaptiveCoreTomlParams struct {
 	// NetworkPassphrase is the Stellar network passphrase used by captive core when connecting to the Stellar network.
@@ -346,6 +355,8 @@ type CaptiveCoreTomlParams struct {
 	EnforceSorobanDiagnosticEvents bool
 	// Enfore EnableSorobanTransactionMetaExtV1 when not disabled explicitly
 	EnforceSorobanTransactionMetaExtV1 bool
+	// Fast HTTP Query Server parameters
+	HTTPQueryServerParams *HTTPQueryServerParams
 }
 
 // NewCaptiveCoreTomlFromFile constructs a new CaptiveCoreToml instance by merging configuration
@@ -498,6 +509,18 @@ func (c *CaptiveCoreToml) setDefaults(params CaptiveCoreTomlParams) {
 	if params.EnforceSorobanTransactionMetaExtV1 {
 		enforceOption(&c.EnableEmitSorobanTransactionMetaExtV1)
 	}
+
+	if params.HTTPQueryServerParams != nil {
+		port := uint(params.HTTPQueryServerParams.Port)
+		c.HTTPQueryPort = &port
+
+		ledgers := uint(params.HTTPQueryServerParams.SnapshotLedgers)
+		c.QuerySnapshotLedgers = &ledgers
+
+		poolSize := uint(params.HTTPQueryServerParams.ThreadPoolSize)
+		c.QueryThreadPoolSize = &poolSize
+
+	}
 }
 
 func enforceOption(opt **bool) {
@@ -516,7 +539,7 @@ func enforceOption(opt **bool) {
 func (c *CaptiveCoreToml) validate(params CaptiveCoreTomlParams) error {
 	if def := c.tree.Has("NETWORK_PASSPHRASE"); def && c.NetworkPassphrase != params.NetworkPassphrase {
 		return fmt.Errorf(
-			"NETWORK_PASSPHRASE in captive core config file: %s does not match Horizon network-passphrase flag: %s",
+			"NETWORK_PASSPHRASE in captive core config file: %s does not match passed configuration (%s)",
 			c.NetworkPassphrase,
 			params.NetworkPassphrase,
 		)
@@ -524,7 +547,7 @@ func (c *CaptiveCoreToml) validate(params CaptiveCoreTomlParams) error {
 
 	if def := c.tree.Has("HTTP_PORT"); def && params.HTTPPort != nil && c.HTTPPort != *params.HTTPPort {
 		return fmt.Errorf(
-			"HTTP_PORT in captive core config file: %d does not match Horizon captive-core-http-port flag: %d",
+			"HTTP_PORT in captive core config file: %d does not match passed configuration (%d)",
 			c.HTTPPort,
 			*params.HTTPPort,
 		)
@@ -532,7 +555,7 @@ func (c *CaptiveCoreToml) validate(params CaptiveCoreTomlParams) error {
 
 	if def := c.tree.Has("PEER_PORT"); def && params.PeerPort != nil && c.PeerPort != *params.PeerPort {
 		return fmt.Errorf(
-			"PEER_PORT in captive core config file: %d does not match Horizon captive-core-peer-port flag: %d",
+			"PEER_PORT in captive core config file: %d does not match passed configuration (%d)",
 			c.PeerPort,
 			*params.PeerPort,
 		)
@@ -540,10 +563,36 @@ func (c *CaptiveCoreToml) validate(params CaptiveCoreTomlParams) error {
 
 	if def := c.tree.Has("LOG_FILE_PATH"); def && params.LogPath != nil && c.LogFilePath != *params.LogPath {
 		return fmt.Errorf(
-			"LOG_FILE_PATH in captive core config file: %s does not match Horizon captive-core-log-path flag: %s",
+			"LOG_FILE_PATH in captive core config file: %s does not match passed configuration (%s)",
 			c.LogFilePath,
 			*params.LogPath,
 		)
+	}
+
+	if params.HTTPQueryServerParams != nil {
+		if c.HTTPQueryPort != nil && *c.HTTPQueryPort != uint(params.HTTPQueryServerParams.Port) {
+			return fmt.Errorf(
+				"HTTP_QUERY_PORT in captive core config file: %d does not match passed configuration (%d)",
+				c.PeerPort,
+				*params.PeerPort,
+			)
+		}
+
+		if c.QueryThreadPoolSize != nil && *c.QueryThreadPoolSize != uint(params.HTTPQueryServerParams.ThreadPoolSize) {
+			return fmt.Errorf(
+				"QUERY_THREADPOOL_SIZE in captive core config file: %d does not match passed configuration (%d)",
+				c.PeerPort,
+				*params.PeerPort,
+			)
+		}
+
+		if c.QuerySnapshotLedgers != nil && *c.QuerySnapshotLedgers != uint(params.HTTPQueryServerParams.SnapshotLedgers) {
+			return fmt.Errorf(
+				"QUERY_SNAPSHOT_LEDGERS in captive core config file: %d does not match passed configuration (%d)",
+				c.PeerPort,
+				*params.PeerPort,
+			)
+		}
 	}
 
 	if c.tree.Has("DEPRECATED_SQL_LEDGER_STATE") {
