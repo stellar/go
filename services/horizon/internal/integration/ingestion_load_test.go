@@ -128,7 +128,8 @@ func TestLoadTestLedgerBackend(t *testing.T) {
 	var ledgers []xdr.LedgerCloseMeta
 	for cur := startLedger; cur <= endLedger; cur++ {
 		startTime := time.Now()
-		ledger, err := loadTestBackend.GetLedger(context.Background(), cur)
+		var ledger xdr.LedgerCloseMeta
+		ledger, err = loadTestBackend.GetLedger(context.Background(), cur)
 		duration := time.Since(startTime)
 		require.NoError(t, err)
 		ledgers = append(ledgers, ledger)

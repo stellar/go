@@ -154,7 +154,8 @@ func (r *LedgerBackend) PrepareRange(ctx context.Context, ledgerRange ledgerback
 
 	var latestLedgerSeq uint32
 	for cur = cur + 1; !ledgerRange.Bounded() || cur <= ledgerRange.To(); cur++ {
-		ledger, err := r.config.LedgerBackend.GetLedger(ctx, cur)
+		var ledger xdr.LedgerCloseMeta
+		ledger, err = r.config.LedgerBackend.GetLedger(ctx, cur)
 		if err != nil {
 			return err
 		}
