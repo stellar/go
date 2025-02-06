@@ -6,7 +6,7 @@ import (
 )
 
 type CreatePassiveSellOfferDetail struct {
-	Amount             int64   `json:"amount"`
+	Amount             int64   `json:"amount,string"`
 	PriceN             int32   `json:"price_n"`
 	PriceD             int32   `json:"price_d"`
 	Price              float64 `json:"price"`

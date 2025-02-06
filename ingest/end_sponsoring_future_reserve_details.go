@@ -3,7 +3,7 @@ package ingest
 type EndSponsoringFutureReserveDetail struct {
 	BeginSponsor        string `json:"begin_sponsor"`
 	BeginSponsorMuxed   string `json:"begin_sponsor_muxed"`
-	BeginSponsorMuxedID uint64 `json:"begin_sponsor_muxed_id"`
+	BeginSponsorMuxedID uint64 `json:"begin_sponsor_muxed_id,string"`
 }
 
 func (o *LedgerOperation) EndSponsoringFutureReserveDetails() (EndSponsoringFutureReserveDetail, error) {

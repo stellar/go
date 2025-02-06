@@ -13,7 +13,7 @@ type AllowTrustDetail struct {
 	Trustor                        string `json:"trustor"`
 	Trustee                        string `json:"trustee"`
 	TrusteeMuxed                   string `json:"trustee_muxed"`
-	TrusteeMuxedID                 uint64 `json:"trustee_muxed_id"`
+	TrusteeMuxedID                 uint64 `json:"trustee_muxed_id,string"`
 	Authorize                      bool   `json:"authorize"`
 	AuthorizeToMaintainLiabilities bool   `json:"authorize_to_maintain_liabilities"`
 	ClawbackEnabled                bool   `json:"clawback_enabled"`

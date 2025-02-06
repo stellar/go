@@ -8,7 +8,7 @@ type CreateClaimableBalanceDetail struct {
 	AssetCode   string     `json:"asset_code"`
 	AssetIssuer string     `json:"asset_issuer"`
 	AssetType   string     `json:"asset_type"`
-	Amount      int64      `json:"amount"`
+	Amount      int64      `json:"amount,string"`
 	Claimants   []Claimant `json:"claimants"`
 }
 

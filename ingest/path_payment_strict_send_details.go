@@ -7,19 +7,19 @@ import (
 type PathPaymentStrictSendDetail struct {
 	From              string `json:"from"`
 	FromMuxed         string `json:"from_muxed"`
-	FromMuxedID       uint64 `json:"from_muxed_id"`
+	FromMuxedID       uint64 `json:"from_muxed_id,string"`
 	To                string `json:"to"`
 	ToMuxed           string `json:"to_muxed"`
-	ToMuxedID         uint64 `json:"to_muxed_id"`
+	ToMuxedID         uint64 `json:"to_muxed_id,string"`
 	AssetCode         string `json:"asset_code"`
 	AssetIssuer       string `json:"asset_issuer"`
 	AssetType         string `json:"asset_type"`
-	Amount            int64  `json:"amount"`
+	Amount            int64  `json:"amount,string"`
 	SourceAssetCode   string `json:"source_asset_code"`
 	SourceAssetIssuer string `json:"source_asset_issuer"`
 	SourceAssetType   string `json:"source_asset_type"`
-	SourceAmount      int64  `json:"source_amount"`
-	DestinationMin    int64  `json:"destination_min"`
+	SourceAmount      int64  `json:"source_amount,string"`
+	DestinationMin    int64  `json:"destination_min,string"`
 	Path              []Path `json:"path"`
 }
 

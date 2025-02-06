@@ -6,10 +6,10 @@ import (
 
 type CreateAccountDetail struct {
 	Account         string `json:"account"`
-	StartingBalance int64  `json:"starting_balance"`
+	StartingBalance int64  `json:"starting_balance,string"`
 	Funder          string `json:"funder"`
 	FunderMuxed     string `json:"funder_muxed"`
-	FunderMuxedID   uint64 `json:"funder_muxed_id"`
+	FunderMuxedID   uint64 `json:"funder_muxed_id,string"`
 }
 
 func (o *LedgerOperation) CreateAccountDetails() (CreateAccountDetail, error) {

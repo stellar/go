@@ -12,20 +12,20 @@ type LiquidityPoolDepositDetail struct {
 	ReserveAAssetCode     string  `json:"reserve_a_asset_code"`
 	ReserveAAssetIssuer   string  `json:"reserve_a_asset_issuer"`
 	ReserveAAssetType     string  `json:"reserve_a_asset_type"`
-	ReserveAMaxAmount     int64   `json:"reserve_a_max_amount"`
-	ReserveADepositAmount int64   `json:"reserve_a_deposit_amount"`
+	ReserveAMaxAmount     int64   `json:"reserve_a_max_amount,string"`
+	ReserveADepositAmount int64   `json:"reserve_a_deposit_amount,string"`
 	ReserveBAssetCode     string  `json:"reserve_b_asset_code"`
 	ReserveBAssetIssuer   string  `json:"reserve_b_asset_issuer"`
 	ReserveBAssetType     string  `json:"reserve_b_asset_type"`
-	ReserveBMaxAmount     int64   `json:"reserve_b_max_amount"`
-	ReserveBDepositAmount int64   `json:"reserve_b_deposit_amount"`
+	ReserveBMaxAmount     int64   `json:"reserve_b_max_amount,string"`
+	ReserveBDepositAmount int64   `json:"reserve_b_deposit_amount,string"`
 	MinPriceN             int32   `json:"min_price_n"`
 	MinPriceD             int32   `json:"min_price_d"`
 	MinPrice              float64 `json:"min_price"`
 	MaxPriceN             int32   `json:"max_price_n"`
 	MaxPriceD             int32   `json:"max_price_d"`
 	MaxPrice              float64 `json:"max_price"`
-	SharesReceived        int64   `json:"shares_received"`
+	SharesReceived        int64   `json:"shares_received,string"`
 }
 
 func (o *LedgerOperation) LiquidityPoolDepositDetails() (LiquidityPoolDepositDetail, error) {

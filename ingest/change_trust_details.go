@@ -11,11 +11,11 @@ type ChangeTrustDetail struct {
 	AssetIssuer     string `json:"asset_issuer"`
 	AssetType       string `json:"asset_type"`
 	LiquidityPoolID string `json:"liquidity_pool_id"`
-	Limit           int64  `json:"limit"`
+	Limit           int64  `json:"limit,string"`
 	Trustee         string `json:"trustee"`
 	Trustor         string `json:"trustor"`
 	TrustorMuxed    string `json:"trustor_muxed"`
-	TrustorMuxedID  uint64 `json:"trustor_muxed_id"`
+	TrustorMuxedID  uint64 `json:"trustor_muxed_id,string"`
 }
 
 func (o *LedgerOperation) ChangeTrustDetails() (ChangeTrustDetail, error) {

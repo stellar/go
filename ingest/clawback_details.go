@@ -8,8 +8,8 @@ type ClawbackDetail struct {
 	AssetType   string `json:"asset_type"`
 	From        string `json:"from"`
 	FromMuxed   string `json:"from_muxed"`
-	FromMuxedID uint64 `json:"from_muxed_id"`
-	Amount      int64  `json:"amount"`
+	FromMuxedID uint64 `json:"from_muxed_id,string"`
+	Amount      int64  `json:"amount,string"`
 }
 
 func (o *LedgerOperation) ClawbackDetails() (ClawbackDetail, error) {

@@ -5,7 +5,7 @@ import "fmt"
 type AccountMergeDetail struct {
 	Account        string `json:"account"`
 	AccountMuxed   string `json:"account_muxed"`
-	AccountMuxedID uint64 `json:"account_muxed_id"`
+	AccountMuxedID uint64 `json:"account_muxed_id,string"`
 	Into           string `json:"into"`
 	IntoMuxed      string `json:"into_muxed"`
 	IntoMuxedID    uint64 `json:"into_muxed_id"`

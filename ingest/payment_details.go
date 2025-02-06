@@ -7,14 +7,14 @@ import (
 type PaymentDetail struct {
 	From        string `json:"from"`
 	FromMuxed   string `json:"from_muxed"`
-	FromMuxedID uint64 `json:"from_muxed_id"`
+	FromMuxedID uint64 `json:"from_muxed_id,string"`
 	To          string `json:"to"`
 	ToMuxed     string `json:"to_muxed"`
-	ToMuxedID   uint64 `json:"to_muxed_id"`
+	ToMuxedID   uint64 `json:"to_muxed_id,string"`
 	AssetCode   string `json:"asset_code"`
 	AssetIssuer string `json:"asset_issuer"`
 	AssetType   string `json:"asset_type"`
-	Amount      int64  `json:"amount"`
+	Amount      int64  `json:"amount,string"`
 }
 
 func (o *LedgerOperation) PaymentDetails() (PaymentDetail, error) {

@@ -6,8 +6,8 @@ import (
 )
 
 type ManageSellOffer struct {
-	OfferID            int64   `json:"offer_id"`
-	Amount             int64   `json:"amount"`
+	OfferID            int64   `json:"offer_id,string"`
+	Amount             int64   `json:"amount,string"`
 	PriceN             int32   `json:"price_n"`
 	PriceD             int32   `json:"price_d"`
 	Price              float64 `json:"price"`

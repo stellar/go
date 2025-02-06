@@ -11,14 +11,14 @@ type LiquidityPoolWithdrawDetail struct {
 	ReserveAAssetCode      string `json:"reserve_a_asset_code"`
 	ReserveAAssetIssuer    string `json:"reserve_a_asset_issuer"`
 	ReserveAAssetType      string `json:"reserve_a_asset_type"`
-	ReserveAMinAmount      int64  `json:"reserve_a_min_amount"`
-	ReserveAWithdrawAmount int64  `json:"reserve_a_withdraw_amount"`
+	ReserveAMinAmount      int64  `json:"reserve_a_min_amount,string"`
+	ReserveAWithdrawAmount int64  `json:"reserve_a_withdraw_amount,string"`
 	ReserveBAssetCode      string `json:"reserve_b_asset_code"`
 	ReserveBAssetIssuer    string `json:"reserve_b_asset_issuer"`
 	ReserveBAssetType      string `json:"reserve_b_asset_type"`
-	ReserveBMinAmount      int64  `json:"reserve_b_min_amount"`
-	ReserveBWithdrawAmount int64  `json:"reserve_b_withdraw_amount"`
-	Shares                 int64  `json:"shares"`
+	ReserveBMinAmount      int64  `json:"reserve_b_min_amount,string"`
+	ReserveBWithdrawAmount int64  `json:"reserve_b_withdraw_amount,string"`
+	Shares                 int64  `json:"shares,string"`
 }
 
 func (o *LedgerOperation) LiquidityPoolWithdrawDetails() (LiquidityPoolWithdrawDetail, error) {

@@ -10,7 +10,7 @@ type ClaimClaimableBalanceDetail struct {
 	BalanceID       string `json:"balance_id"`
 	Claimant        string `json:"claimant"`
 	ClaimantMuxed   string `json:"claimant_muxed"`
-	ClaimantMuxedID uint64 `json:"claimant_muxed_id"`
+	ClaimantMuxedID uint64 `json:"claimant_muxed_id,string"`
 }
 
 func (o *LedgerOperation) ClaimClaimableBalanceDetails() (ClaimClaimableBalanceDetail, error) {

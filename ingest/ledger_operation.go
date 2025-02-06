@@ -257,7 +257,7 @@ type LedgerKeyDetail struct {
 	ClaimableBalanceID       string `json:"claimable_balance_id"`
 	DataAccountID            string `json:"data_account_id"`
 	DataName                 string `json:"data_name"`
-	OfferID                  int64  `json:"offer_id"`
+	OfferID                  int64  `json:"offer_id,string"`
 	TrustlineAccountID       string `json:"trustline_account_id"`
 	TrustlineLiquidityPoolID string `json:"trustline_liquidity_pool_id"`
 	TrustlineAssetCode       string `json:"trustline_asset_code"`
