@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/ingest/ledgerbackend"
@@ -150,15 +151,10 @@ func getLedgers(itest *integration.Test, startingLedger uint32, endLedger uint32
 	t := itest.CurrentTest()
 
 	ccConfig, err := itest.CreateCaptiveCoreConfig()
-	if err != nil {
-		t.Fatalf("unable to create captive core config: %v", err)
-	}
+	require.NoError(t, err)
 
-	captiveCore, err := ledgerbackend.NewCaptive(*ccConfig)
-	if err != nil {
-		t.Fatalf("unable to create captive core: %v", err)
-	}
-	defer captiveCore.Close()
+	captiveCore, err := ledgerbackend.NewCaptive(ccConfig)
+	require.NoError(t, err)
 
 	ctx := context.Background()
 	err = captiveCore.PrepareRange(ctx, ledgerbackend.BoundedRange(startingLedger, endLedger))
@@ -175,6 +171,7 @@ func getLedgers(itest *integration.Test, startingLedger uint32, endLedger uint32
 		seqToLedgersMap[ledgerSeq] = ledger
 	}
 
+	require.NoError(t, captiveCore.Close())
 	return seqToLedgersMap
 }
 

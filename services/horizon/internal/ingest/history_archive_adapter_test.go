@@ -197,6 +197,6 @@ func getTestArchive() (historyarchive.ArchiveInterface, error) {
 		Return(int64(100), nil)
 	mockArchive.
 		On("GetXdrStreamForHash", mock.AnythingOfType("historyarchive.Hash")).
-		Return(historyarchive.CreateXdrStream(bucketEntry), nil)
+		Return(xdr.CreateXdrStream(bucketEntry), nil)
 	return mockArchive, nil
 }

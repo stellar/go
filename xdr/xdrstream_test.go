@@ -2,7 +2,7 @@
 // under the Apache License, Version 2.0. See the COPYING file at the root
 // of this distribution or at http://www.apache.org/licenses/LICENSE-2.0
 
-package historyarchive
+package xdr
 
 import (
 	"bytes"
@@ -10,20 +10,19 @@ import (
 	"io"
 	"testing"
 
-	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestXdrStreamHash(t *testing.T) {
-	bucketEntry := xdr.BucketEntry{
-		Type: xdr.BucketEntryTypeLiveentry,
-		LiveEntry: &xdr.LedgerEntry{
-			Data: xdr.LedgerEntryData{
-				Type: xdr.LedgerEntryTypeAccount,
-				Account: &xdr.AccountEntry{
-					AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
-					Balance:   xdr.Int64(200000000),
+	bucketEntry := BucketEntry{
+		Type: BucketEntryTypeLiveentry,
+		LiveEntry: &LedgerEntry{
+			Data: LedgerEntryData{
+				Type: LedgerEntryTypeAccount,
+				Account: &AccountEntry{
+					AccountId: MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+					Balance:   Int64(200000000),
 				},
 			},
 		},
@@ -34,13 +33,13 @@ func TestXdrStreamHash(t *testing.T) {
 	// - uint32 representing the number of bytes of a structure,
 	// - xdr-encoded `BucketEntry` above.
 	b := &bytes.Buffer{}
-	err := xdr.MarshalFramed(b, bucketEntry)
+	err := MarshalFramed(b, bucketEntry)
 	require.NoError(t, err)
 
 	expectedHash := sha256.Sum256(b.Bytes())
 	stream.SetExpectedHash(expectedHash)
 
-	var readBucketEntry xdr.BucketEntry
+	var readBucketEntry BucketEntry
 	err = stream.ReadOne(&readBucketEntry)
 	require.NoError(t, err)
 	assert.Equal(t, bucketEntry, readBucketEntry)
@@ -54,26 +53,26 @@ func TestXdrStreamHash(t *testing.T) {
 }
 
 func TestXdrStreamDiscard(t *testing.T) {
-	firstEntry := xdr.BucketEntry{
-		Type: xdr.BucketEntryTypeLiveentry,
-		LiveEntry: &xdr.LedgerEntry{
-			Data: xdr.LedgerEntryData{
-				Type: xdr.LedgerEntryTypeAccount,
-				Account: &xdr.AccountEntry{
-					AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
-					Balance:   xdr.Int64(200000000),
+	firstEntry := BucketEntry{
+		Type: BucketEntryTypeLiveentry,
+		LiveEntry: &LedgerEntry{
+			Data: LedgerEntryData{
+				Type: LedgerEntryTypeAccount,
+				Account: &AccountEntry{
+					AccountId: MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+					Balance:   Int64(200000000),
 				},
 			},
 		},
 	}
-	secondEntry := xdr.BucketEntry{
-		Type: xdr.BucketEntryTypeLiveentry,
-		LiveEntry: &xdr.LedgerEntry{
-			Data: xdr.LedgerEntryData{
-				Type: xdr.LedgerEntryTypeAccount,
-				Account: &xdr.AccountEntry{
-					AccountId: xdr.MustAddress("GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4"),
-					Balance:   xdr.Int64(100000000),
+	secondEntry := BucketEntry{
+		Type: BucketEntryTypeLiveentry,
+		LiveEntry: &LedgerEntry{
+			Data: LedgerEntryData{
+				Type: LedgerEntryTypeAccount,
+				Account: &AccountEntry{
+					AccountId: MustAddress("GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4"),
+					Balance:   Int64(100000000),
 				},
 			},
 		},
@@ -81,15 +80,15 @@ func TestXdrStreamDiscard(t *testing.T) {
 
 	fullStream := CreateXdrStream(firstEntry, secondEntry)
 	b := &bytes.Buffer{}
-	require.NoError(t, xdr.MarshalFramed(b, firstEntry))
-	require.NoError(t, xdr.MarshalFramed(b, secondEntry))
+	require.NoError(t, MarshalFramed(b, firstEntry))
+	require.NoError(t, MarshalFramed(b, secondEntry))
 	expectedHash := sha256.Sum256(b.Bytes())
 	fullStream.SetExpectedHash(expectedHash)
 
 	discardStream := CreateXdrStream(firstEntry, secondEntry)
 	discardStream.SetExpectedHash(expectedHash)
 
-	var readBucketEntry xdr.BucketEntry
+	var readBucketEntry BucketEntry
 	require.NoError(t, fullStream.ReadOne(&readBucketEntry))
 	assert.Equal(t, firstEntry, readBucketEntry)
 

@@ -67,7 +67,7 @@ func (s *SingleLedgerStateReaderTestSuite) SetupTest() {
 	s.Require().NoError(err)
 	s.Assert().Equal(ledgerSeq, s.reader.sequence)
 
-	// Disable hash validation. We trust historyarchive.XdrStream tests here.
+	// Disable hash validation. We trust historyarchive.Stream tests here.
 	s.reader.disableBucketListHashValidation = true
 }
 
@@ -630,7 +630,7 @@ func (s *ReadBucketEntryTestSuite) TestReadEntryRetryFailsToCreateNewStream() {
 		On("GetXdrStreamForHash", emptyHash).
 		Return(createInvalidXdrStream(nil), nil).Once()
 
-	var nilStream *historyarchive.XdrStream
+	var nilStream *xdr.Stream
 	s.mockArchive.
 		On("GetXdrStreamForHash", emptyHash).
 		Return(nilStream, errors.New("cannot create new stream")).Times(3)
@@ -649,7 +649,7 @@ func (s *ReadBucketEntryTestSuite) TestReadEntryRetrySucceedsAfterFailsToCreateN
 		On("GetXdrStreamForHash", emptyHash).
 		Return(createInvalidXdrStream(nil), nil).Once()
 
-	var nilStream *historyarchive.XdrStream
+	var nilStream *xdr.Stream
 	s.mockArchive.
 		On("GetXdrStreamForHash", emptyHash).
 		Return(nilStream, errors.New("cannot create new stream")).Once()
@@ -948,11 +948,11 @@ type errCloser struct {
 
 func (e errCloser) Close() error { return e.err }
 
-func createInvalidXdrStream(closeError error) *historyarchive.XdrStream {
+func createInvalidXdrStream(closeError error) *xdr.Stream {
 	b := &bytes.Buffer{}
 	writeInvalidFrame(b)
 
-	return historyarchive.NewXdrStream(errCloser{b, closeError})
+	return xdr.NewStream(errCloser{b, closeError})
 }
 
 func writeInvalidFrame(b *bytes.Buffer) {
@@ -965,7 +965,7 @@ func writeInvalidFrame(b *bytes.Buffer) {
 	b.Truncate(bufferSize + frameSize/2)
 }
 
-func createXdrStream(entries ...xdr.BucketEntry) *historyarchive.XdrStream {
+func createXdrStream(entries ...xdr.BucketEntry) *xdr.Stream {
 	b := &bytes.Buffer{}
 	for _, e := range entries {
 		err := xdr.MarshalFramed(b, e)
@@ -977,8 +977,8 @@ func createXdrStream(entries ...xdr.BucketEntry) *historyarchive.XdrStream {
 	return xdrStreamFromBuffer(b)
 }
 
-func xdrStreamFromBuffer(b *bytes.Buffer) *historyarchive.XdrStream {
-	return historyarchive.NewXdrStream(ioutil.NopCloser(b))
+func xdrStreamFromBuffer(b *bytes.Buffer) *xdr.Stream {
+	return xdr.NewStream(ioutil.NopCloser(b))
 }
 
 // getNextBucket is a helper that returns next bucket hash in the order of processing.
