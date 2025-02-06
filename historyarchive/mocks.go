@@ -1,8 +1,9 @@
 package historyarchive
 
 import (
-	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/mock"
+
+	"github.com/stellar/go/xdr"
 )
 
 // MockArchive is a mockable archive.
@@ -99,14 +100,14 @@ func (m *MockArchive) ListCategoryCheckpoints(cat string, pth string) (chan uint
 	return make(chan uint32), make(chan error)
 }
 
-func (m *MockArchive) GetXdrStreamForHash(hash Hash) (*XdrStream, error) {
+func (m *MockArchive) GetXdrStreamForHash(hash Hash) (*xdr.Stream, error) {
 	a := m.Called(hash)
-	return a.Get(0).(*XdrStream), a.Error(1)
+	return a.Get(0).(*xdr.Stream), a.Error(1)
 }
 
-func (m *MockArchive) GetXdrStream(pth string) (*XdrStream, error) {
+func (m *MockArchive) GetXdrStream(pth string) (*xdr.Stream, error) {
 	a := m.Called(pth)
-	return a.Get(0).(*XdrStream), a.Error(1)
+	return a.Get(0).(*xdr.Stream), a.Error(1)
 }
 
 func (m *MockArchive) GetStats() []ArchiveStats {

@@ -79,8 +79,8 @@ type ArchiveInterface interface {
 	ListAllBuckets() (chan string, chan error)
 	ListAllBucketHashes() (chan Hash, chan error)
 	ListCategoryCheckpoints(cat string, pth string) (chan uint32, chan error)
-	GetXdrStreamForHash(hash Hash) (*XdrStream, error)
-	GetXdrStream(pth string) (*XdrStream, error)
+	GetXdrStreamForHash(hash Hash) (*xdr.Stream, error)
+	GetXdrStream(pth string) (*xdr.Stream, error)
 	GetCheckpointManager() CheckpointManager
 	GetStats() []ArchiveStats
 }
@@ -391,11 +391,11 @@ func (a *Archive) GetBucketPathForHash(hash Hash) string {
 	)
 }
 
-func (a *Archive) GetXdrStreamForHash(hash Hash) (*XdrStream, error) {
+func (a *Archive) GetXdrStreamForHash(hash Hash) (*xdr.Stream, error) {
 	return a.GetXdrStream(a.GetBucketPathForHash(hash))
 }
 
-func (a *Archive) GetXdrStream(pth string) (*XdrStream, error) {
+func (a *Archive) GetXdrStream(pth string) (*xdr.Stream, error) {
 	if !strings.HasSuffix(pth, ".xdr.gz") {
 		return nil, errors.New("File has non-.xdr.gz suffix: " + pth)
 	}
@@ -403,7 +403,7 @@ func (a *Archive) GetXdrStream(pth string) (*XdrStream, error) {
 	if err != nil {
 		return nil, err
 	}
-	return NewXdrGzStream(rdr)
+	return xdr.NewGzStream(rdr)
 }
 
 func (a *Archive) cachedGet(pth string) (io.ReadCloser, error) {

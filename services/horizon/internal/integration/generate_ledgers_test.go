@@ -20,6 +20,7 @@ import (
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/clients/stellarcore"
 	"github.com/stellar/go/ingest"
+	"github.com/stellar/go/ingest/loadtest"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/protocols/horizon"
 	proto "github.com/stellar/go/protocols/stellarcore"
@@ -35,13 +36,13 @@ type sorobanTransaction struct {
 	sequenceNumber int64
 }
 
-func TestLoad(t *testing.T) {
+func TestGenerateLedgers(t *testing.T) {
 	var transactionsPerLedger, ledgers, transfersPerTx int
 	var output bool
 	flag.IntVar(&transactionsPerLedger, "transactions-per-ledger", 100, "number of transactions per ledger")
 	flag.IntVar(&transfersPerTx, "transfers-per-tx", 10, "number of asset transfers for each transaction")
 	flag.IntVar(&ledgers, "ledgers", 2, "number of ledgers to generate")
-	flag.BoolVar(&output, "output", true, "overwrite the generated output files")
+	flag.BoolVar(&output, "output", false, "overwrite the generated output files")
 	flag.Parse()
 
 	if integration.GetCoreMaxSupportedProtocol() < 22 {
@@ -251,26 +252,32 @@ func TestLoad(t *testing.T) {
 	}
 }
 
-func writeFile(t *testing.T, path string, data any) {
+func writeFile[T any](t *testing.T, path string, data []T) {
 	file, err := os.Create(path)
 	require.NoError(t, err)
 	writer, err := zstd.NewWriter(file)
 	require.NoError(t, err)
-	_, err = xdr.Marshal(writer, data)
-	require.NoError(t, err)
+	for _, entry := range data {
+		require.NoError(t, xdr.MarshalFramed(writer, entry))
+	}
 	require.NoError(t, writer.Close())
 	require.NoError(t, file.Close())
 }
 
-func readFile(t *testing.T, path string, data any) {
+func readFile[T xdr.DecoderFrom](t *testing.T, path string, constructor func() T, consume func(T)) {
 	file, err := os.Open(path)
 	require.NoError(t, err)
-	reader, err := zstd.NewReader(file)
+	stream, err := xdr.NewZstdStream(file)
 	require.NoError(t, err)
-	_, err = xdr.Unmarshal(reader, data)
-	require.NoError(t, err)
-	reader.Close()
-	require.NoError(t, file.Close())
+	for {
+		entry := constructor()
+		if err = stream.ReadOne(entry); err == io.EOF {
+			break
+		}
+		require.NoError(t, err)
+		consume(entry)
+	}
+	require.NoError(t, stream.Close())
 }
 
 func bulkTransfer(
@@ -385,11 +392,9 @@ func requireTransactionsMatch(t *testing.T, a, b ingest.LedgerTransaction) {
 }
 
 func requireXDREquals(t *testing.T, a, b encoding.BinaryMarshaler) {
-	serialized, err := a.MarshalBinary()
+	ok, err := xdr.Equals(a, b)
 	require.NoError(t, err)
-	otherSerialized, err := b.MarshalBinary()
-	require.NoError(t, err)
-	require.Equal(t, serialized, otherSerialized)
+	require.True(t, ok)
 }
 
 func txSubWorker(
@@ -478,7 +483,7 @@ func merge(t *testing.T, ledgers []xdr.LedgerCloseMeta, transactionsPerLedger in
 		if curCount == 0 {
 			cur = copyLedger(t, ledger)
 		} else {
-			require.NoError(t, ingest.MergeLedgers(integration.StandaloneNetworkPassphrase, &cur, ledger))
+			require.NoError(t, loadtest.MergeLedgers(integration.StandaloneNetworkPassphrase, &cur, ledger))
 		}
 
 		require.LessOrEqual(t, curCount+transactionCount, transactionsPerLedger)
