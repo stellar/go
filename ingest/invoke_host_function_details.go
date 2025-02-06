@@ -70,30 +70,13 @@ func (o *LedgerOperation) InvokeHostFunctionDetails() (InvokeHostFunctionDetail,
 		args := op.HostFunction.MustCreateContract()
 
 		invokeHostFunctionDetail.Type = "create_contract"
-		invokeHostFunctionDetail.LedgerKeyHash = o.Transaction.LedgerKeyHashFromTxEnvelope()
-
-		var contractID string
-		contractID, ok = o.Transaction.contractIdFromTxEnvelope()
-		if ok {
-			invokeHostFunctionDetail.ContractID = contractID
-		}
-
-		var contractCodeHash string
-		contractCodeHash, ok = o.Transaction.ContractCodeHashFromTxEnvelope()
-		if ok {
-			invokeHostFunctionDetail.ContractCodeHash = contractCodeHash
-		}
 
 		preImageDetails, err := switchContractIdPreimageType(args.ContractIdPreimage)
 		if err != nil {
 			return InvokeHostFunctionDetail{}, nil
 		}
 
-		invokeHostFunctionDetail.From = preImageDetails.From
-		invokeHostFunctionDetail.Address = preImageDetails.Address
-		invokeHostFunctionDetail.AssetCode = preImageDetails.AssetCode
-		invokeHostFunctionDetail.AssetIssuer = preImageDetails.AssetIssuer
-		invokeHostFunctionDetail.AssetType = preImageDetails.AssetType
+		o.getCreateContractDetails(&invokeHostFunctionDetail, preImageDetails)
 	case xdr.HostFunctionTypeHostFunctionTypeUploadContractWasm:
 		invokeHostFunctionDetail.Type = "upload_wasm"
 		invokeHostFunctionDetail.LedgerKeyHash = o.Transaction.LedgerKeyHashFromTxEnvelope()
@@ -107,38 +90,44 @@ func (o *LedgerOperation) InvokeHostFunctionDetails() (InvokeHostFunctionDetail,
 		args := op.HostFunction.MustCreateContractV2()
 
 		invokeHostFunctionDetail.Type = "create_contract_v2"
-		invokeHostFunctionDetail.LedgerKeyHash = o.Transaction.LedgerKeyHashFromTxEnvelope()
 
-		var contractID string
-		contractID, ok = o.Transaction.contractIdFromTxEnvelope()
-		if ok {
-			invokeHostFunctionDetail.ContractID = contractID
+		preImageDetails, err := switchContractIdPreimageType(args.ContractIdPreimage)
+		if err != nil {
+			return InvokeHostFunctionDetail{}, err
 		}
 
-		var contractCodeHash string
-		contractCodeHash, ok = o.Transaction.ContractCodeHashFromTxEnvelope()
-		if ok {
-			invokeHostFunctionDetail.ContractCodeHash = contractCodeHash
-		}
+		o.getCreateContractDetails(&invokeHostFunctionDetail, preImageDetails)
 
 		// ConstructorArgs is a list of ScVals
 		// This will initially be handled the same as InvokeContractParams until a different
 		// model is found necessary.
 		invokeHostFunctionDetail.Parameters, invokeHostFunctionDetail.ParametersDecoded = o.serializeParameters(args.ConstructorArgs)
-
-		preImageDetails, err := switchContractIdPreimageType(args.ContractIdPreimage)
-		if err != nil {
-			return InvokeHostFunctionDetail{}, nil
-		}
-
-		invokeHostFunctionDetail.From = preImageDetails.From
-		invokeHostFunctionDetail.Address = preImageDetails.Address
-		invokeHostFunctionDetail.AssetCode = preImageDetails.AssetCode
-		invokeHostFunctionDetail.AssetIssuer = preImageDetails.AssetIssuer
-		invokeHostFunctionDetail.AssetType = preImageDetails.AssetType
 	default:
 		return InvokeHostFunctionDetail{}, fmt.Errorf("unknown host function type: %s", op.HostFunction.Type)
 	}
 
 	return invokeHostFunctionDetail, nil
+}
+
+func (o *LedgerOperation) getCreateContractDetails(invokeHostFunctionDetail *InvokeHostFunctionDetail, preImageDetails PreImageDetails) {
+	var ok bool
+	invokeHostFunctionDetail.LedgerKeyHash = o.Transaction.LedgerKeyHashFromTxEnvelope()
+
+	var contractID string
+	contractID, ok = o.Transaction.contractIdFromTxEnvelope()
+	if ok {
+		invokeHostFunctionDetail.ContractID = contractID
+	}
+
+	var contractCodeHash string
+	contractCodeHash, ok = o.Transaction.ContractCodeHashFromTxEnvelope()
+	if ok {
+		invokeHostFunctionDetail.ContractCodeHash = contractCodeHash
+	}
+
+	invokeHostFunctionDetail.From = preImageDetails.From
+	invokeHostFunctionDetail.Address = preImageDetails.Address
+	invokeHostFunctionDetail.AssetCode = preImageDetails.AssetCode
+	invokeHostFunctionDetail.AssetIssuer = preImageDetails.AssetIssuer
+	invokeHostFunctionDetail.AssetType = preImageDetails.AssetType
 }
