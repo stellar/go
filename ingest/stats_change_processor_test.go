@@ -36,12 +36,24 @@ func TestStatsChangeProcessor(t *testing.T) {
 			ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryRemoved,
 		}))
 		// Restored
-		assert.NoError(t, processor.ProcessChange(ctx, Change{
-			Type:       xdr.LedgerEntryType(ledgerEntryType),
-			Pre:        &xdr.LedgerEntry{},
-			Post:       &xdr.LedgerEntry{},
-			ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryRestored,
-		}))
+		if xdr.LedgerEntryType(ledgerEntryType) == xdr.LedgerEntryTypeContractData ||
+			xdr.LedgerEntryType(ledgerEntryType) == xdr.LedgerEntryTypeContractCode ||
+			xdr.LedgerEntryType(ledgerEntryType) == xdr.LedgerEntryTypeTtl {
+			assert.NoError(t, processor.ProcessChange(ctx, Change{
+				Type:       xdr.LedgerEntryType(ledgerEntryType),
+				Pre:        &xdr.LedgerEntry{},
+				Post:       &xdr.LedgerEntry{},
+				ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryRestored,
+			}))
+		} else {
+			assert.Contains(t, processor.ProcessChange(ctx, Change{
+				Type:       xdr.LedgerEntryType(ledgerEntryType),
+				Pre:        &xdr.LedgerEntry{},
+				Post:       &xdr.LedgerEntry{},
+				ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryRestored,
+			}).Error(), "unsupported ledger entry change type")
+
+		}
 	}
 
 	results := processor.GetResults()
