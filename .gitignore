@@ -21,3 +21,4 @@ debug
 *.db
 *.conf
 *.lock
+.proto_checksums
