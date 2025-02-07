@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package address;
+
+// Address message with oneof for different address types
+message Address {
+  oneof address_type {
+    string contract = 1;          // Smart Contract address
+    string account = 2;           // Account address
+    string liquidityPool = 3;     // Liquidity Pool hash
+    string claimableBalance = 4;  // Claimable Balance ID
+  }
+}
