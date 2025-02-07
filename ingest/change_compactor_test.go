@@ -39,7 +39,7 @@ func (s *TestChangeCompactorExistingCreatedSuite) SetupTest() {
 	s.Assert().NoError(s.cache.AddChange(change))
 	changes := s.cache.GetChanges()
 	s.Assert().Len(changes, 1)
-	s.Assert().Equal(changes[0].LedgerEntryChangeType(), xdr.LedgerEntryChangeTypeLedgerEntryCreated)
+	s.Assert().Equal(changes[0].ChangeType, xdr.LedgerEntryChangeTypeLedgerEntryCreated)
 }
 
 func (s *TestChangeCompactorExistingCreatedSuite) TestChangeCreated() {
@@ -89,7 +89,7 @@ func (s *TestChangeCompactorExistingCreatedSuite) TestChangeUpdated() {
 	s.Assert().NoError(s.cache.AddChange(change))
 	changes := s.cache.GetChanges()
 	s.Assert().Len(changes, 1)
-	s.Assert().Equal(changes[0].LedgerEntryChangeType(), xdr.LedgerEntryChangeTypeLedgerEntryCreated)
+	s.Assert().Equal(changes[0].ChangeType, xdr.LedgerEntryChangeTypeLedgerEntryCreated)
 }
 
 func (s *TestChangeCompactorExistingCreatedSuite) TestChangeRemoved() {
@@ -159,7 +159,7 @@ func (s *TestChangeCompactorExistingCreatedSuite) TestChangeRestoredArchived() {
 	s.Assert().NoError(s.cache.AddChange(change))
 	changes := s.cache.GetChanges()
 	s.Assert().Len(changes, 1)
-	s.Assert().Equal(changes[0].LedgerEntryChangeType(), xdr.LedgerEntryChangeTypeLedgerEntryCreated)
+	s.Assert().Equal(changes[0].ChangeType, xdr.LedgerEntryChangeTypeLedgerEntryCreated)
 }
 
 func TestLedgerEntryChangeCacheExistingUpdated(t *testing.T) {
@@ -201,7 +201,7 @@ func (s *TestChangeCompactorExistingUpdatedSuite) SetupTest() {
 	s.Assert().NoError(s.cache.AddChange(change))
 	changes := s.cache.GetChanges()
 	s.Assert().Len(changes, 1)
-	s.Assert().Equal(changes[0].LedgerEntryChangeType(), xdr.LedgerEntryChangeTypeLedgerEntryUpdated)
+	s.Assert().Equal(changes[0].ChangeType, xdr.LedgerEntryChangeTypeLedgerEntryUpdated)
 }
 
 func (s *TestChangeCompactorExistingUpdatedSuite) TestChangeCreated() {
@@ -251,7 +251,7 @@ func (s *TestChangeCompactorExistingUpdatedSuite) TestChangeUpdated() {
 	s.Assert().NoError(s.cache.AddChange(change))
 	changes := s.cache.GetChanges()
 	s.Assert().Len(changes, 1)
-	s.Assert().Equal(changes[0].LedgerEntryChangeType(), xdr.LedgerEntryChangeTypeLedgerEntryUpdated)
+	s.Assert().Equal(changes[0].ChangeType, xdr.LedgerEntryChangeTypeLedgerEntryUpdated)
 	s.Assert().Equal(changes[0].Post.LastModifiedLedgerSeq, xdr.Uint32(12))
 }
 
@@ -273,7 +273,7 @@ func (s *TestChangeCompactorExistingUpdatedSuite) TestChangeRemoved() {
 	s.Assert().NoError(s.cache.AddChange(change))
 	changes := s.cache.GetChanges()
 	s.Assert().Len(changes, 1)
-	s.Assert().Equal(changes[0].LedgerEntryChangeType(), xdr.LedgerEntryChangeTypeLedgerEntryRemoved)
+	s.Assert().Equal(changes[0].ChangeType, xdr.LedgerEntryChangeTypeLedgerEntryRemoved)
 }
 
 func (s *TestChangeCompactorExistingUpdatedSuite) TestChangeRestoredEvicted() {
@@ -323,7 +323,7 @@ func (s *TestChangeCompactorExistingUpdatedSuite) TestChangeRestoredArchived() {
 	s.Assert().NoError(s.cache.AddChange(change))
 	changes := s.cache.GetChanges()
 	s.Assert().Len(changes, 1)
-	s.Assert().Equal(changes[0].LedgerEntryChangeType(), xdr.LedgerEntryChangeTypeLedgerEntryRestored)
+	s.Assert().Equal(changes[0].ChangeType, xdr.LedgerEntryChangeTypeLedgerEntryRestored)
 }
 
 func TestChangeCompactorExistingRemoved(t *testing.T) {
@@ -357,7 +357,7 @@ func (s *TestChangeCompactorExistingRemovedSuite) SetupTest() {
 	s.Assert().NoError(s.cache.AddChange(change))
 	changes := s.cache.GetChanges()
 	s.Assert().Len(changes, 1)
-	s.Assert().Equal(changes[0].LedgerEntryChangeType(), xdr.LedgerEntryChangeTypeLedgerEntryRemoved)
+	s.Assert().Equal(changes[0].ChangeType, xdr.LedgerEntryChangeTypeLedgerEntryRemoved)
 }
 
 func (s *TestChangeCompactorExistingRemovedSuite) TestChangeCreated() {
@@ -378,7 +378,7 @@ func (s *TestChangeCompactorExistingRemovedSuite) TestChangeCreated() {
 	s.Assert().NoError(s.cache.AddChange(change))
 	changes := s.cache.GetChanges()
 	s.Assert().Len(changes, 1)
-	s.Assert().Equal(changes[0].LedgerEntryChangeType(), xdr.LedgerEntryChangeTypeLedgerEntryUpdated)
+	s.Assert().Equal(changes[0].ChangeType, xdr.LedgerEntryChangeTypeLedgerEntryUpdated)
 	s.Assert().Equal(changes[0].Post.LastModifiedLedgerSeq, xdr.Uint32(12))
 }
 
@@ -450,7 +450,7 @@ func (s *TestChangeCompactorExistingRemovedSuite) TestChangeRestoredEvicted() {
 	s.Assert().NoError(s.cache.AddChange(change))
 	changes := s.cache.GetChanges()
 	s.Assert().Len(changes, 1)
-	s.Assert().Equal(changes[0].LedgerEntryChangeType(), xdr.LedgerEntryChangeTypeLedgerEntryRestored)
+	s.Assert().Equal(changes[0].ChangeType, xdr.LedgerEntryChangeTypeLedgerEntryRestored)
 	s.Assert().Equal(changes[0].Post.LastModifiedLedgerSeq, xdr.Uint32(11))
 
 }
@@ -515,7 +515,7 @@ func (s *TestChangeCompactorExistingRestoredEvictedSuite) SetupTest() {
 	s.Assert().NoError(s.cache.AddChange(change))
 	changes := s.cache.GetChanges()
 	s.Assert().Len(changes, 1)
-	s.Assert().Equal(changes[0].LedgerEntryChangeType(), xdr.LedgerEntryChangeTypeLedgerEntryRestored)
+	s.Assert().Equal(changes[0].ChangeType, xdr.LedgerEntryChangeTypeLedgerEntryRestored)
 }
 
 func (s *TestChangeCompactorExistingRestoredEvictedSuite) TestChangeCreated() {
@@ -565,7 +565,7 @@ func (s *TestChangeCompactorExistingRestoredEvictedSuite) TestChangeUpdated() {
 	s.Assert().NoError(s.cache.AddChange(change))
 	changes := s.cache.GetChanges()
 	s.Assert().Len(changes, 1)
-	s.Assert().Equal(changes[0].LedgerEntryChangeType(), xdr.LedgerEntryChangeTypeLedgerEntryRestored)
+	s.Assert().Equal(changes[0].ChangeType, xdr.LedgerEntryChangeTypeLedgerEntryRestored)
 }
 
 func (s *TestChangeCompactorExistingRestoredEvictedSuite) TestChangeRemoved() {
@@ -636,7 +636,7 @@ func (s *TestChangeCompactorExistingRestoredEvictedSuite) TestChangeRestoredArch
 	s.Assert().NoError(s.cache.AddChange(change))
 	changes := s.cache.GetChanges()
 	s.Assert().Len(changes, 1)
-	s.Assert().Equal(changes[0].LedgerEntryChangeType(), xdr.LedgerEntryChangeTypeLedgerEntryRestored)
+	s.Assert().Equal(changes[0].ChangeType, xdr.LedgerEntryChangeTypeLedgerEntryRestored)
 }
 
 func TestChangeCompactorExistingRestoredArchived(t *testing.T) {
@@ -678,7 +678,7 @@ func (s *TestChangeCompactorExistingRestoredArchivedSuite) SetupTest() {
 	s.Assert().NoError(s.cache.AddChange(change))
 	changes := s.cache.GetChanges()
 	s.Assert().Len(changes, 1)
-	s.Assert().Equal(changes[0].LedgerEntryChangeType(), xdr.LedgerEntryChangeTypeLedgerEntryRestored)
+	s.Assert().Equal(changes[0].ChangeType, xdr.LedgerEntryChangeTypeLedgerEntryRestored)
 }
 
 func (s *TestChangeCompactorExistingRestoredArchivedSuite) TestChangeCreated() {
@@ -728,7 +728,7 @@ func (s *TestChangeCompactorExistingRestoredArchivedSuite) TestChangeUpdated() {
 	s.Assert().NoError(s.cache.AddChange(change))
 	changes := s.cache.GetChanges()
 	s.Assert().Len(changes, 1)
-	s.Assert().Equal(changes[0].LedgerEntryChangeType(), xdr.LedgerEntryChangeTypeLedgerEntryRestored)
+	s.Assert().Equal(changes[0].ChangeType, xdr.LedgerEntryChangeTypeLedgerEntryRestored)
 }
 
 func (s *TestChangeCompactorExistingRestoredArchivedSuite) TestChangeRemoved() {
@@ -749,7 +749,7 @@ func (s *TestChangeCompactorExistingRestoredArchivedSuite) TestChangeRemoved() {
 	s.Assert().NoError(s.cache.AddChange(change))
 	changes := s.cache.GetChanges()
 	s.Assert().Len(changes, 1)
-	s.Assert().Equal(changes[0].LedgerEntryChangeType(), xdr.LedgerEntryChangeTypeLedgerEntryRemoved)
+	s.Assert().Equal(changes[0].ChangeType, xdr.LedgerEntryChangeTypeLedgerEntryRemoved)
 }
 
 func (s *TestChangeCompactorExistingRestoredArchivedSuite) TestChangeRestoredEvicted() {
@@ -799,7 +799,7 @@ func (s *TestChangeCompactorExistingRestoredArchivedSuite) TestChangeRestoredArc
 	s.Assert().NoError(s.cache.AddChange(change))
 	changes := s.cache.GetChanges()
 	s.Assert().Len(changes, 1)
-	s.Assert().Equal(changes[0].LedgerEntryChangeType(), xdr.LedgerEntryChangeTypeLedgerEntryRestored)
+	s.Assert().Equal(changes[0].ChangeType, xdr.LedgerEntryChangeTypeLedgerEntryRestored)
 }
 
 // TestChangeCompactorSquashMultiplePayments simulates sending multiple payments
@@ -868,7 +868,7 @@ func TestChangeCompactorSquashMultiplePayments(t *testing.T) {
 	changes := cache.GetChanges()
 	assert.Len(t, changes, 2)
 	for _, change := range changes {
-		assert.Equal(t, change.LedgerEntryChangeType(), xdr.LedgerEntryChangeTypeLedgerEntryUpdated)
+		assert.Equal(t, change.ChangeType, xdr.LedgerEntryChangeTypeLedgerEntryUpdated)
 		account := change.Post.Data.MustAccount()
 		switch account.AccountId.Address() {
 		case "GAJ2T6NQ6TDZRVRSNWM3JC7L3TG4H7UBCVK3GUHKP3TQ5NQ3LM4JGBTJ":

@@ -134,7 +134,7 @@ func (c *ChangeCompactor) addCreatedChange(change Change) error {
 		return nil
 	}
 
-	switch existingChange.LedgerEntryChangeType() {
+	switch existingChange.ChangeType {
 	case xdr.LedgerEntryChangeTypeLedgerEntryCreated:
 		fallthrough
 	case xdr.LedgerEntryChangeTypeLedgerEntryUpdated:
@@ -154,7 +154,7 @@ func (c *ChangeCompactor) addCreatedChange(change Change) error {
 			ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
 		}
 	default:
-		return errors.Errorf("Unknown LedgerEntryChangeType: %d", existingChange.LedgerEntryChangeType())
+		return errors.Errorf("Unknown LedgerEntryChangeType: %d", existingChange.ChangeType)
 	}
 
 	return nil
@@ -181,7 +181,7 @@ func (c *ChangeCompactor) addUpdatedChange(change Change) error {
 		return nil
 	}
 
-	switch existingChange.LedgerEntryChangeType() {
+	switch existingChange.ChangeType {
 	case xdr.LedgerEntryChangeTypeLedgerEntryCreated:
 		fallthrough
 	case xdr.LedgerEntryChangeTypeLedgerEntryUpdated:
@@ -201,7 +201,7 @@ func (c *ChangeCompactor) addUpdatedChange(change Change) error {
 			base64.StdEncoding.EncodeToString(ledgerKey),
 		))
 	default:
-		return errors.Errorf("Unknown LedgerEntryChangeType: %d", existingChange.LedgerEntryChangeType())
+		return errors.Errorf("Unknown LedgerEntryChangeType: %d", existingChange.ChangeType)
 	}
 
 	return nil
@@ -228,7 +228,7 @@ func (c *ChangeCompactor) addRemovedChange(change Change) error {
 		return nil
 	}
 
-	switch existingChange.LedgerEntryChangeType() {
+	switch existingChange.ChangeType {
 	case xdr.LedgerEntryChangeTypeLedgerEntryCreated:
 		// If existing type is created it means that this will be no op.
 		// Entry was created and is now removed in a single ledger.
@@ -259,7 +259,7 @@ func (c *ChangeCompactor) addRemovedChange(change Change) error {
 			}
 		}
 	default:
-		return errors.Errorf("Unknown LedgerEntryChangeType: %d", existingChange.LedgerEntryChangeType())
+		return errors.Errorf("Unknown LedgerEntryChangeType: %d", existingChange.ChangeType)
 	}
 
 	return nil
@@ -305,7 +305,7 @@ func (c *ChangeCompactor) addRestoredChange(change Change) error {
 				ChangeType: change.ChangeType,
 			}
 		default:
-			return errors.Errorf("Unknown LedgerEntryChangeType: %d", existingChange.LedgerEntryChangeType())
+			return errors.Errorf("Unknown LedgerEntryChangeType: %d", existingChange.ChangeType)
 		}
 	} else {
 		// If 'Pre' is not nil, it indicates that an item previously *archived* is being restored.
@@ -313,7 +313,7 @@ func (c *ChangeCompactor) addRestoredChange(change Change) error {
 		case xdr.LedgerEntryChangeTypeLedgerEntryCreated:
 			c.cache[ledgerKeyString] = Change{
 				Type:       key.Type,
-				Pre:        nil,
+				Pre:        change.Pre,
 				Post:       change.Post,
 				ChangeType: existingChange.ChangeType,
 			}
@@ -332,7 +332,7 @@ func (c *ChangeCompactor) addRestoredChange(change Change) error {
 				base64.StdEncoding.EncodeToString(ledgerKey),
 			))
 		default:
-			return errors.Errorf("Unknown LedgerEntryChangeType: %d", existingChange.LedgerEntryChangeType())
+			return errors.Errorf("Unknown LedgerEntryChangeType: %d", existingChange.ChangeType)
 		}
 	}
 	return nil

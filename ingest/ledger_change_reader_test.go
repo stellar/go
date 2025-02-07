@@ -840,7 +840,7 @@ func TestRestoreChangeType(t *testing.T) {
 	change := changes[0]
 	require.Nil(t, change.Pre)
 	require.NotNil(t, change.Post)
-	require.Equal(t, change.LedgerEntryChangeType(), xdr.LedgerEntryChangeTypeLedgerEntryRestored)
+	require.Equal(t, change.ChangeType, xdr.LedgerEntryChangeTypeLedgerEntryRestored)
 	key, err := change.Post.LedgerKey()
 	require.NoError(t, err)
 	require.Equal(t, key.Type, xdr.LedgerEntryTypeContractData)
@@ -849,7 +849,7 @@ func TestRestoreChangeType(t *testing.T) {
 	change = changes[1]
 	require.Nil(t, change.Pre)
 	require.NotNil(t, change.Post)
-	require.Equal(t, change.LedgerEntryChangeType(), xdr.LedgerEntryChangeTypeLedgerEntryRestored)
+	require.Equal(t, change.ChangeType, xdr.LedgerEntryChangeTypeLedgerEntryRestored)
 	key, err = change.Post.LedgerKey()
 	require.NoError(t, err)
 	require.Equal(t, key.Type, xdr.LedgerEntryTypeContractCode)
@@ -858,7 +858,7 @@ func TestRestoreChangeType(t *testing.T) {
 	change = changes[2]
 	require.NotNil(t, change.Pre)
 	require.NotNil(t, change.Post)
-	require.Equal(t, change.LedgerEntryChangeType(), xdr.LedgerEntryChangeTypeLedgerEntryRestored)
+	require.Equal(t, change.ChangeType, xdr.LedgerEntryChangeTypeLedgerEntryRestored)
 	key, err = change.Post.LedgerKey()
 	require.NoError(t, err)
 	require.Equal(t, key.Type, xdr.LedgerEntryTypeTtl)
@@ -867,7 +867,7 @@ func TestRestoreChangeType(t *testing.T) {
 	change = changes[4]
 	require.Nil(t, change.Pre)
 	require.NotNil(t, change.Post)
-	require.Equal(t, change.LedgerEntryChangeType(), xdr.LedgerEntryChangeTypeLedgerEntryRestored)
+	require.Equal(t, change.ChangeType, xdr.LedgerEntryChangeTypeLedgerEntryRestored)
 	key, err = change.Post.LedgerKey()
 	require.NoError(t, err)
 	require.Equal(t, key.Type, xdr.LedgerEntryTypeTtl)

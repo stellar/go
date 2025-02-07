@@ -171,6 +171,12 @@ func GetChangesFromLedgerEntryChanges(ledgerEntryChanges xdr.LedgerEntryChanges)
 			})
 		case xdr.LedgerEntryChangeTypeLedgerEntryRestored:
 			restored := entryChange.MustRestored()
+
+			// "restore" entries of type TTL can appear in two ways:
+			// - "restore" alone, meaning an evicted item is being restored.
+			// - "restore" with a preceding "state" entry, meaning an archived item is being restored.
+			// Both are restore types, but the way the "Pre" field is populated differs.
+			// For more details, see https://github.com/stellar/stellar-protocol/blob/master/core/cap-0062.md#meta
 			if i > 0 {
 				if state, ok := ledgerEntryChanges[i-1].GetState(); ok {
 					changes = append(changes, Change{
@@ -244,11 +250,6 @@ func (s sortableChanges) Swap(i, j int) {
 // by using a stable sorting algorithm.
 func sortChanges(changes []Change) {
 	sort.Stable(newSortableChanges(changes))
-}
-
-// LedgerEntryChangeType returns type in terms of LedgerEntryChangeType.
-func (c Change) LedgerEntryChangeType() xdr.LedgerEntryChangeType {
-	return c.ChangeType
 }
 
 // getLiquidityPool gets the most recent state of the LiquidityPool that exists or existed.

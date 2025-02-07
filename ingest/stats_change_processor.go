@@ -62,7 +62,7 @@ type StatsChangeProcessorResults struct {
 func (p *StatsChangeProcessor) ProcessChange(ctx context.Context, change Change) error {
 	switch change.Type {
 	case xdr.LedgerEntryTypeAccount:
-		switch change.LedgerEntryChangeType() {
+		switch change.ChangeType {
 		case xdr.LedgerEntryChangeTypeLedgerEntryCreated:
 			p.results.AccountsCreated++
 		case xdr.LedgerEntryChangeTypeLedgerEntryUpdated:
@@ -71,10 +71,10 @@ func (p *StatsChangeProcessor) ProcessChange(ctx context.Context, change Change)
 			p.results.AccountsRemoved++
 		default:
 			return fmt.Errorf("unsupported ledger entry change type %s for %s",
-				change.LedgerEntryChangeType(), change.Type.String())
+				change.ChangeType, change.Type.String())
 		}
 	case xdr.LedgerEntryTypeClaimableBalance:
-		switch change.LedgerEntryChangeType() {
+		switch change.ChangeType {
 		case xdr.LedgerEntryChangeTypeLedgerEntryCreated:
 			p.results.ClaimableBalancesCreated++
 		case xdr.LedgerEntryChangeTypeLedgerEntryUpdated:
@@ -83,10 +83,10 @@ func (p *StatsChangeProcessor) ProcessChange(ctx context.Context, change Change)
 			p.results.ClaimableBalancesRemoved++
 		default:
 			return fmt.Errorf("unsupported ledger entry change type %s for %s",
-				change.LedgerEntryChangeType(), change.Type.String())
+				change.ChangeType, change.Type.String())
 		}
 	case xdr.LedgerEntryTypeData:
-		switch change.LedgerEntryChangeType() {
+		switch change.ChangeType {
 		case xdr.LedgerEntryChangeTypeLedgerEntryCreated:
 			p.results.DataCreated++
 		case xdr.LedgerEntryChangeTypeLedgerEntryUpdated:
@@ -95,10 +95,10 @@ func (p *StatsChangeProcessor) ProcessChange(ctx context.Context, change Change)
 			p.results.DataRemoved++
 		default:
 			return fmt.Errorf("unsupported ledger entry change type %s for %s",
-				change.LedgerEntryChangeType(), change.Type.String())
+				change.ChangeType, change.Type.String())
 		}
 	case xdr.LedgerEntryTypeOffer:
-		switch change.LedgerEntryChangeType() {
+		switch change.ChangeType {
 		case xdr.LedgerEntryChangeTypeLedgerEntryCreated:
 			p.results.OffersCreated++
 		case xdr.LedgerEntryChangeTypeLedgerEntryUpdated:
@@ -107,10 +107,10 @@ func (p *StatsChangeProcessor) ProcessChange(ctx context.Context, change Change)
 			p.results.OffersRemoved++
 		default:
 			return fmt.Errorf("unsupported ledger entry change type %s for %s",
-				change.LedgerEntryChangeType(), change.Type.String())
+				change.ChangeType, change.Type.String())
 		}
 	case xdr.LedgerEntryTypeTrustline:
-		switch change.LedgerEntryChangeType() {
+		switch change.ChangeType {
 		case xdr.LedgerEntryChangeTypeLedgerEntryCreated:
 			p.results.TrustLinesCreated++
 		case xdr.LedgerEntryChangeTypeLedgerEntryUpdated:
@@ -119,10 +119,10 @@ func (p *StatsChangeProcessor) ProcessChange(ctx context.Context, change Change)
 			p.results.TrustLinesRemoved++
 		default:
 			return fmt.Errorf("unsupported ledger entry change type %s for %s",
-				change.LedgerEntryChangeType(), change.Type.String())
+				change.ChangeType, change.Type.String())
 		}
 	case xdr.LedgerEntryTypeLiquidityPool:
-		switch change.LedgerEntryChangeType() {
+		switch change.ChangeType {
 		case xdr.LedgerEntryChangeTypeLedgerEntryCreated:
 			p.results.LiquidityPoolsCreated++
 		case xdr.LedgerEntryChangeTypeLedgerEntryUpdated:
@@ -131,10 +131,10 @@ func (p *StatsChangeProcessor) ProcessChange(ctx context.Context, change Change)
 			p.results.LiquidityPoolsRemoved++
 		default:
 			return fmt.Errorf("unsupported ledger entry change type %s for %s",
-				change.LedgerEntryChangeType(), change.Type.String())
+				change.ChangeType, change.Type.String())
 		}
 	case xdr.LedgerEntryTypeContractData:
-		switch change.LedgerEntryChangeType() {
+		switch change.ChangeType {
 		case xdr.LedgerEntryChangeTypeLedgerEntryCreated:
 			p.results.ContractDataCreated++
 		case xdr.LedgerEntryChangeTypeLedgerEntryUpdated:
@@ -145,10 +145,10 @@ func (p *StatsChangeProcessor) ProcessChange(ctx context.Context, change Change)
 			p.results.ContractDataRestored++
 		default:
 			return fmt.Errorf("unsupported ledger entry change type %s for %s",
-				change.LedgerEntryChangeType(), change.Type.String())
+				change.ChangeType, change.Type.String())
 		}
 	case xdr.LedgerEntryTypeContractCode:
-		switch change.LedgerEntryChangeType() {
+		switch change.ChangeType {
 		case xdr.LedgerEntryChangeTypeLedgerEntryCreated:
 			p.results.ContractCodeCreated++
 		case xdr.LedgerEntryChangeTypeLedgerEntryUpdated:
@@ -159,10 +159,10 @@ func (p *StatsChangeProcessor) ProcessChange(ctx context.Context, change Change)
 			p.results.ContractCodeRestored++
 		default:
 			return fmt.Errorf("unsupported ledger entry change type %s for %s",
-				change.LedgerEntryChangeType(), change.Type.String())
+				change.ChangeType, change.Type.String())
 		}
 	case xdr.LedgerEntryTypeConfigSetting:
-		switch change.LedgerEntryChangeType() {
+		switch change.ChangeType {
 		case xdr.LedgerEntryChangeTypeLedgerEntryCreated:
 			p.results.ConfigSettingsCreated++
 		case xdr.LedgerEntryChangeTypeLedgerEntryUpdated:
@@ -171,10 +171,10 @@ func (p *StatsChangeProcessor) ProcessChange(ctx context.Context, change Change)
 			p.results.ConfigSettingsRemoved++
 		default:
 			return fmt.Errorf("unsupported ledger entry change type %s for %s",
-				change.LedgerEntryChangeType(), change.Type.String())
+				change.ChangeType, change.Type.String())
 		}
 	case xdr.LedgerEntryTypeTtl:
-		switch change.LedgerEntryChangeType() {
+		switch change.ChangeType {
 		case xdr.LedgerEntryChangeTypeLedgerEntryCreated:
 			p.results.TtlCreated++
 		case xdr.LedgerEntryChangeTypeLedgerEntryUpdated:
@@ -185,7 +185,7 @@ func (p *StatsChangeProcessor) ProcessChange(ctx context.Context, change Change)
 			p.results.TtlRestored++
 		default:
 			return fmt.Errorf("unsupported ledger entry change type %s for %s",
-				change.LedgerEntryChangeType(), change.Type.String())
+				change.ChangeType, change.Type.String())
 		}
 	default:
 		return fmt.Errorf("unsupported ledger entry type: %s", change.Type.String())
