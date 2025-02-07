@@ -405,7 +405,7 @@ func (s *CheckpointChangeReaderTestSuite) TestMalformedProtocol11BucketNoMeta() 
 	s.Assert().Equal("Error while reading from buckets: Read INITENTRY from version <11 bucket: 0@517bea4c6627a688a8ce501febd8c562e737e3d86b29689d9956217640f3c74b", err.Error())
 }
 
-// TestMalformedProtocol11Bucket ensures the checkpoint change reader asserts its reading from the live bucketlist
+// TestMalformedBucketListType ensures the checkpoint change reader asserts its reading from the live bucketlist
 func (s *CheckpointChangeReaderTestSuite) TestMalformedBucketListType() {
 	meta := metaEntry(23)
 	hotArchiveType := xdr.BucketListTypeHotArchive
