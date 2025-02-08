@@ -58,25 +58,11 @@ import (
 //     was evicted, it doesn't exist in the DB, so it's a noop so remove the entry from
 //     the cache.
 //
-//  4. If the change is RESTORED for an evicted entry (pre is nil), it checks if any
-//     change related to the given entry already exists in the cache. If not, it adds
-//     the RESTORED change. Otherwise, if existing change is
-//     a. CREATED: return an error because we can't restore and entry that already exists.
-//     b. UPDATED: return an error because we can't restore an entry that already exists.
-//     c. REMOVED: entry exists in the DB but was marked for removal; change the
-//     type to RESTORED and update the new value.
-//     d. RESTORED: return an error as the RESTORED change indicates the entry
-//     already exists.
-//
-//  5. If the change is RESTORED for an archived entry (pre and post not nil), it checks
-//     if any change related to the given entry already exists in the cache. If not,
-//     it adds the RESTORED change. Otherwise, if existing change is
-//     a. CREATED: it means that it doesn't exist in the DB so we need to update the
-//     entry but stay with CREATED type.
-//     b. UPDATED: update it with the new value and change the type to RESTORED.
-//     c. REMOVED: return an error because we can not RESTORE an entry that was already
-//     removed.
-//     d. RESTORED: update it with the new value.
+//  4. If the change is RESTORED it checks if any change related to the given entry
+//     already exists in the cache. If not, it adds the RESTORED change. Otherwise,
+//     returns an error since restoration is only possible for previously archived/evicted
+//     entries. If the entry was created, updated or removed within the same ledger, restoration
+//     is not possible.
 type ChangeCompactor struct {
 	// ledger key => Change
 	cache          map[string]Change
@@ -280,61 +266,13 @@ func (c *ChangeCompactor) addRestoredChange(change Change) error {
 
 	ledgerKeyString := string(ledgerKey)
 
-	existingChange, exist := c.cache[ledgerKeyString]
-	if !exist {
-		c.cache[ledgerKeyString] = change
-		return nil
+	if _, exist := c.cache[ledgerKeyString]; exist {
+		return NewStateError(errors.Errorf(
+			"can't restore an entry that already exists (ledger key = %s)",
+			base64.StdEncoding.EncodeToString(ledgerKey),
+		))
 	}
-	// If 'Pre' is nil, it indicates that an item previously *evicted* is being restored.
-	if change.Pre == nil {
-		switch existingChange.ChangeType {
-		case xdr.LedgerEntryChangeTypeLedgerEntryCreated:
-			fallthrough
-		case xdr.LedgerEntryChangeTypeLedgerEntryUpdated:
-			fallthrough
-		case xdr.LedgerEntryChangeTypeLedgerEntryRestored:
-			return NewStateError(errors.Errorf(
-				"can't restore an entry that already exists (ledger key = %s)",
-				base64.StdEncoding.EncodeToString(ledgerKey),
-			))
-		case xdr.LedgerEntryChangeTypeLedgerEntryRemoved:
-			c.cache[ledgerKeyString] = Change{
-				Type:       key.Type,
-				Pre:        existingChange.Pre,
-				Post:       change.Post,
-				ChangeType: change.ChangeType,
-			}
-		default:
-			return errors.Errorf("Unknown LedgerEntryChangeType: %d", existingChange.ChangeType)
-		}
-	} else {
-		// If 'Pre' is not nil, it indicates that an item previously *archived* is being restored.
-		switch existingChange.ChangeType {
-		case xdr.LedgerEntryChangeTypeLedgerEntryCreated:
-			c.cache[ledgerKeyString] = Change{
-				Type:       key.Type,
-				Pre:        change.Pre,
-				Post:       change.Post,
-				ChangeType: existingChange.ChangeType,
-			}
-		case xdr.LedgerEntryChangeTypeLedgerEntryUpdated:
-			fallthrough
-		case xdr.LedgerEntryChangeTypeLedgerEntryRestored:
-			c.cache[ledgerKeyString] = Change{
-				Type:       key.Type,
-				Pre:        existingChange.Pre,
-				Post:       change.Post,
-				ChangeType: change.ChangeType,
-			}
-		case xdr.LedgerEntryChangeTypeLedgerEntryRemoved:
-			return NewStateError(errors.Errorf(
-				"can't restore an entry that was previously removed (ledger key = %s)",
-				base64.StdEncoding.EncodeToString(ledgerKey),
-			))
-		default:
-			return errors.Errorf("Unknown LedgerEntryChangeType: %d", existingChange.ChangeType)
-		}
-	}
+	c.cache[ledgerKeyString] = change
 	return nil
 }
 

@@ -156,10 +156,10 @@ func (s *TestChangeCompactorExistingCreatedSuite) TestChangeRestoredArchived() {
 			},
 		},
 	}
-	s.Assert().NoError(s.cache.AddChange(change))
-	changes := s.cache.GetChanges()
-	s.Assert().Len(changes, 1)
-	s.Assert().Equal(changes[0].ChangeType, xdr.LedgerEntryChangeTypeLedgerEntryCreated)
+	s.Assert().EqualError(
+		s.cache.AddChange(change),
+		"can't restore an entry that already exists (ledger key = AAAAAAAAAAC2LgFRDBZ3J52nLm30kq2iMgrO7dYzYAN3hvjtf1IHWg==)",
+	)
 }
 
 func TestLedgerEntryChangeCacheExistingUpdated(t *testing.T) {
@@ -320,10 +320,10 @@ func (s *TestChangeCompactorExistingUpdatedSuite) TestChangeRestoredArchived() {
 			},
 		},
 	}
-	s.Assert().NoError(s.cache.AddChange(change))
-	changes := s.cache.GetChanges()
-	s.Assert().Len(changes, 1)
-	s.Assert().Equal(changes[0].ChangeType, xdr.LedgerEntryChangeTypeLedgerEntryRestored)
+	s.Assert().EqualError(
+		s.cache.AddChange(change),
+		"can't restore an entry that already exists (ledger key = AAAAAAAAAAC2LgFRDBZ3J52nLm30kq2iMgrO7dYzYAN3hvjtf1IHWg==)",
+	)
 }
 
 func TestChangeCompactorExistingRemoved(t *testing.T) {
@@ -447,11 +447,10 @@ func (s *TestChangeCompactorExistingRemovedSuite) TestChangeRestoredEvicted() {
 			},
 		},
 	}
-	s.Assert().NoError(s.cache.AddChange(change))
-	changes := s.cache.GetChanges()
-	s.Assert().Len(changes, 1)
-	s.Assert().Equal(changes[0].ChangeType, xdr.LedgerEntryChangeTypeLedgerEntryRestored)
-	s.Assert().Equal(changes[0].Post.LastModifiedLedgerSeq, xdr.Uint32(11))
+	s.Assert().EqualError(
+		s.cache.AddChange(change),
+		"can't restore an entry that already exists (ledger key = AAAAAAAAAAC2LgFRDBZ3J52nLm30kq2iMgrO7dYzYAN3hvjtf1IHWg==)",
+	)
 
 }
 
@@ -480,7 +479,7 @@ func (s *TestChangeCompactorExistingRemovedSuite) TestChangeRestoredArchived() {
 	}
 	s.Assert().EqualError(
 		s.cache.AddChange(change),
-		"can't restore an entry that was previously removed (ledger key = AAAAAAAAAAC2LgFRDBZ3J52nLm30kq2iMgrO7dYzYAN3hvjtf1IHWg==)",
+		"can't restore an entry that already exists (ledger key = AAAAAAAAAAC2LgFRDBZ3J52nLm30kq2iMgrO7dYzYAN3hvjtf1IHWg==)",
 	)
 }
 
@@ -633,10 +632,10 @@ func (s *TestChangeCompactorExistingRestoredEvictedSuite) TestChangeRestoredArch
 			},
 		},
 	}
-	s.Assert().NoError(s.cache.AddChange(change))
-	changes := s.cache.GetChanges()
-	s.Assert().Len(changes, 1)
-	s.Assert().Equal(changes[0].ChangeType, xdr.LedgerEntryChangeTypeLedgerEntryRestored)
+	s.Assert().EqualError(
+		s.cache.AddChange(change),
+		"can't restore an entry that already exists (ledger key = AAAAAAAAAAC2LgFRDBZ3J52nLm30kq2iMgrO7dYzYAN3hvjtf1IHWg==)",
+	)
 }
 
 func TestChangeCompactorExistingRestoredArchived(t *testing.T) {
@@ -796,10 +795,10 @@ func (s *TestChangeCompactorExistingRestoredArchivedSuite) TestChangeRestoredArc
 			},
 		},
 	}
-	s.Assert().NoError(s.cache.AddChange(change))
-	changes := s.cache.GetChanges()
-	s.Assert().Len(changes, 1)
-	s.Assert().Equal(changes[0].ChangeType, xdr.LedgerEntryChangeTypeLedgerEntryRestored)
+	s.Assert().EqualError(
+		s.cache.AddChange(change),
+		"can't restore an entry that already exists (ledger key = AAAAAAAAAAC2LgFRDBZ3J52nLm30kq2iMgrO7dYzYAN3hvjtf1IHWg==)",
+	)
 }
 
 // TestChangeCompactorSquashMultiplePayments simulates sending multiple payments
