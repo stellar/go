@@ -23,7 +23,7 @@ func TestProtocolUpgradeChanges(t *testing.T) {
 	itest := integration.NewTest(t, integration.Config{SkipHorizonStart: true})
 
 	upgradedLedgerAppx, _ := itest.GetUpgradedLedgerSeqAppx()
-	waitForLedgerInArchive(t, 6*time.Minute, upgradedLedgerAppx)
+	itest.WaitForLedgerInArchive(6*time.Minute, upgradedLedgerAppx)
 
 	ledgerSeqToLedgers := getLedgers(itest, 2, upgradedLedgerAppx)
 
@@ -64,7 +64,7 @@ func TestOneTxOneOperationChanges(t *testing.T) {
 	tt.NoError(err)
 
 	ledgerSeq := uint32(txResp.Ledger)
-	waitForLedgerInArchive(t, 6*time.Minute, ledgerSeq)
+	itest.WaitForLedgerInArchive(6*time.Minute, ledgerSeq)
 
 	ledger := getLedgers(itest, ledgerSeq, ledgerSeq)[ledgerSeq]
 	changes := getChangesFromLedger(itest, ledger)
@@ -189,29 +189,6 @@ func changeReasonToChangeMap(changes []ingest.Change) map[ingest.LedgerEntryChan
 		changeMap[change.Reason] = append(changeMap[change.Reason], change)
 	}
 	return changeMap
-}
-
-func waitForLedgerInArchive(t *testing.T, waitTime time.Duration, ledgerSeq uint32) {
-	archive, err := integration.GetHistoryArchive()
-	if err != nil {
-		t.Fatalf("could not get history archive: %v", err)
-	}
-
-	var latestCheckpoint uint32
-
-	assert.Eventually(t,
-		func() bool {
-			has, requestErr := archive.GetRootHAS()
-			if requestErr != nil {
-				t.Logf("Request to fetch checkpoint failed: %v", requestErr)
-				return false
-			}
-			latestCheckpoint = has.CurrentLedger
-			return latestCheckpoint >= ledgerSeq
-
-		},
-		waitTime,
-		1*time.Second)
 }
 
 func getExactUpgradedLedgerSeq(ledgerMap map[uint32]xdr.LedgerCloseMeta, version uint32) uint32 {

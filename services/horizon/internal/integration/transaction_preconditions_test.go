@@ -8,13 +8,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+
 	sdk "github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/network"
 	"github.com/stellar/go/services/horizon/internal/test/integration"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stellar/go/xdr"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestTransactionPreconditionsTimeBounds(t *testing.T) {
@@ -271,7 +272,7 @@ func TestTransactionWithoutPreconditions(t *testing.T) {
 
 	// Taken from txnbuild.concatSignatures
 	h, err := network.HashTransactionInEnvelope(envelope,
-		integration.StandaloneNetworkPassphrase)
+		itest.Config().NetworkPassphrase)
 	tt.NoError(err)
 
 	sig, err := master.SignDecorated(h[:])

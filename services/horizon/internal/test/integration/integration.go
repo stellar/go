@@ -69,6 +69,7 @@ type Config struct {
 	StellarRPCDockerImage     string
 	SkipProtocolUpgrade       bool
 	QuickExpiration           bool
+	NetworkPassphrase         string
 
 	// Weird naming here because bools default to false, but we want to start
 	// Horizon by default.
@@ -158,9 +159,12 @@ func NewTest(t *testing.T, config Config) *Test {
 			config.ProtocolVersion = maxSupportedCoreProtocolFromEnv
 		}
 	}
+	if config.NetworkPassphrase == "" {
+		config.NetworkPassphrase = StandaloneNetworkPassphrase
+	}
 	validatorParams := validatorCoreConfigTemplatePrams{
 		Accelerate:                            CheckpointFrequency < historyarchive.DefaultCheckpointFrequency,
-		NetworkPassphrase:                     StandaloneNetworkPassphrase,
+		NetworkPassphrase:                     config.NetworkPassphrase,
 		TestingMinimumPersistentEntryLifetime: 65536,
 		TestingSorobanHighLimitOverride:       false,
 	}
@@ -175,7 +179,7 @@ func NewTest(t *testing.T, config Config) *Test {
 			t:           t,
 			config:      config,
 			composePath: composePath,
-			passPhrase:  StandaloneNetworkPassphrase,
+			passPhrase:  config.NetworkPassphrase,
 			environment: test.NewEnvironmentManager(),
 		}
 		i.validatorConfPath = i.createCoreValidatorConf(validatorParams)
@@ -345,6 +349,7 @@ func (i *Test) startRPC() {
 		envVars = append(
 			envVars,
 			fmt.Sprintf("STELLAR_RPC_IMAGE=%s", stellarRPCOverride),
+			fmt.Sprintf("NETWORK_PASSPHRASE=%s", i.config.NetworkPassphrase),
 		)
 	}
 
@@ -653,14 +658,14 @@ func (i *Test) CreateCaptiveCoreConfig() (ledgerbackend.CaptiveCoreConfig, error
 	captiveCoreConfig := ledgerbackend.CaptiveCoreConfig{
 		BinaryPath:          i.CoreBinaryPath(),
 		HistoryArchiveURLs:  []string{HistoryArchiveUrl},
-		NetworkPassphrase:   StandaloneNetworkPassphrase,
+		NetworkPassphrase:   i.config.NetworkPassphrase,
 		CheckpointFrequency: CheckpointFrequency, // This is required for accelerated archive creation for integration test
 		UseDB:               true,
 		StoragePath:         i.CurrentTest().TempDir(),
 	}
 
 	tomlParams := ledgerbackend.CaptiveCoreTomlParams{
-		NetworkPassphrase:  StandaloneNetworkPassphrase,
+		NetworkPassphrase:  i.config.NetworkPassphrase,
 		HistoryArchiveURLs: []string{HistoryArchiveUrl},
 		UseDB:              true,
 	}
@@ -1523,11 +1528,11 @@ func (i *Test) GetEffectiveProtocolVersion() uint32 {
 	return i.config.ProtocolVersion
 }
 
-func GetHistoryArchive() (*historyarchive.Archive, error) {
+func (i *Test) GetHistoryArchive() (*historyarchive.Archive, error) {
 	return historyarchive.Connect(
 		HistoryArchiveUrl,
 		historyarchive.ArchiveOptions{
-			NetworkPassphrase:   StandaloneNetworkPassphrase,
+			NetworkPassphrase:   i.config.NetworkPassphrase,
 			CheckpointFrequency: CheckpointFrequency,
 		})
 }
@@ -1538,4 +1543,27 @@ func (i *Test) GetUpgradedLedgerSeqAppx() (uint32, error) {
 		return 0, errors.Errorf("Core has not been upgraded yet")
 	}
 	return i.coreUpgradeState.maxUpgradeLedger, nil
+}
+
+func (i *Test) WaitForLedgerInArchive(waitTime time.Duration, ledgerSeq uint32) {
+	archive, err := i.GetHistoryArchive()
+	if err != nil {
+		i.t.Fatalf("could not get history archive: %v", err)
+	}
+
+	var latestCheckpoint uint32
+
+	assert.Eventually(i.t,
+		func() bool {
+			has, requestErr := archive.GetRootHAS()
+			if requestErr != nil {
+				i.t.Logf("Request to fetch checkpoint failed: %v", requestErr)
+				return false
+			}
+			latestCheckpoint = has.CurrentLedger
+			return latestCheckpoint >= ledgerSeq
+
+		},
+		waitTime,
+		1*time.Second)
 }
