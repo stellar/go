@@ -29,6 +29,8 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
+const loadTestNetworkPassphrase = "load test network"
+
 type sorobanTransaction struct {
 	op             *txnbuild.InvokeHostFunction
 	fee            int64
@@ -39,10 +41,12 @@ type sorobanTransaction struct {
 func TestGenerateLedgers(t *testing.T) {
 	var transactionsPerLedger, ledgers, transfersPerTx int
 	var output bool
+	var networkPassphrase string
 	flag.IntVar(&transactionsPerLedger, "transactions-per-ledger", 100, "number of transactions per ledger")
 	flag.IntVar(&transfersPerTx, "transfers-per-tx", 10, "number of asset transfers for each transaction")
 	flag.IntVar(&ledgers, "ledgers", 2, "number of ledgers to generate")
 	flag.BoolVar(&output, "output", false, "overwrite the generated output files")
+	flag.StringVar(&networkPassphrase, "network-passphrase", loadTestNetworkPassphrase, "network passphrase")
 	flag.Parse()
 
 	if integration.GetCoreMaxSupportedProtocol() < 22 {
@@ -50,7 +54,8 @@ func TestGenerateLedgers(t *testing.T) {
 	}
 
 	itest := integration.NewTest(t, integration.Config{
-		EnableStellarRPC: true,
+		EnableStellarRPC:  true,
+		NetworkPassphrase: networkPassphrase,
 	})
 
 	maxAccountsPerTransaction := 100
@@ -71,7 +76,7 @@ func TestGenerateLedgers(t *testing.T) {
 
 	upgradeTransactions, upgradeKey, err := stellarcore.GenSorobanConfigUpgradeTxAndKey(stellarcore.GenSorobanConfig{
 		BaseSeqNum:        0,
-		NetworkPassphrase: integration.StandaloneNetworkPassphrase,
+		NetworkPassphrase: itest.Config().NetworkPassphrase,
 		SigningKey:        itest.Master(),
 		StellarCorePath:   itest.CoreBinaryPath(),
 	}, configSet)
@@ -196,7 +201,7 @@ func TestGenerateLedgers(t *testing.T) {
 		}
 	}
 	t.Logf("waiting for ledgers [%v, %v] to be in history archive", start, end)
-	waitForLedgerInArchive(t, 6*time.Minute, uint32(end))
+	itest.WaitForLedgerInArchive(6*time.Minute, uint32(end))
 	allLedgers := getLedgers(itest, uint32(start), uint32(end))
 
 	var sortedLegers []xdr.LedgerCloseMeta
@@ -213,7 +218,9 @@ func TestGenerateLedgers(t *testing.T) {
 	var accountLedgerEntries []xdr.LedgerEntry
 	accountSet := map[string]bool{}
 	for _, seq := range accountLedgers {
-		for _, change := range extractChanges(t, []xdr.LedgerCloseMeta{ledgersForAccounts[seq]}) {
+		for _, change := range extractChanges(
+			t, itest.Config().NetworkPassphrase, []xdr.LedgerCloseMeta{ledgersForAccounts[seq]},
+		) {
 			if change.Type == xdr.LedgerEntryTypeAccount && change.Post != nil && change.Pre == nil {
 				account := *change.Post
 				accountSet[account.Data.MustAccount().AccountId.Address()] = true
@@ -227,8 +234,8 @@ func TestGenerateLedgers(t *testing.T) {
 		writeFile(t, filepath.Join("testdata", "load-test-accounts.xdr.zstd"), accountLedgerEntries)
 	}
 
-	merged := merge(t, sortedLegers, transactionsPerLedger)
-	changes := extractChanges(t, sortedLegers)
+	merged := merge(t, itest.Config().NetworkPassphrase, sortedLegers, transactionsPerLedger)
+	changes := extractChanges(t, itest.Config().NetworkPassphrase, sortedLegers)
 	for _, change := range changes {
 		if change.Type != xdr.LedgerEntryTypeAccount {
 			continue
@@ -238,10 +245,10 @@ func TestGenerateLedgers(t *testing.T) {
 		require.NoError(t, err)
 		require.True(t, accountSet[ledgerKey.MustAccount().AccountId.Address()])
 	}
-	requireChangesAreEqual(t, changes, extractChanges(t, merged))
+	requireChangesAreEqual(t, changes, extractChanges(t, itest.Config().NetworkPassphrase, merged))
 
-	orignalTransactions := extractTransactions(t, sortedLegers)
-	mergedTransactions := extractTransactions(t, merged)
+	orignalTransactions := extractTransactions(t, itest.Config().NetworkPassphrase, sortedLegers)
+	mergedTransactions := extractTransactions(t, itest.Config().NetworkPassphrase, merged)
 	require.Equal(t, len(orignalTransactions), len(mergedTransactions))
 	for i, original := range orignalTransactions {
 		requireTransactionsMatch(t, original, mergedTransactions[i])
@@ -306,10 +313,10 @@ func bulkTransfer(
 	}
 }
 
-func extractChanges(t *testing.T, ledgers []xdr.LedgerCloseMeta) []ingest.Change {
+func extractChanges(t *testing.T, networkPassphrase string, ledgers []xdr.LedgerCloseMeta) []ingest.Change {
 	var changes []ingest.Change
 	for _, ledger := range ledgers {
-		reader, err := ingest.NewLedgerChangeReaderFromLedgerCloseMeta(integration.StandaloneNetworkPassphrase, ledger)
+		reader, err := ingest.NewLedgerChangeReaderFromLedgerCloseMeta(networkPassphrase, ledger)
 		require.NoError(t, err)
 		for {
 			var change ingest.Change
@@ -324,10 +331,10 @@ func extractChanges(t *testing.T, ledgers []xdr.LedgerCloseMeta) []ingest.Change
 	return changes
 }
 
-func extractTransactions(t *testing.T, ledgers []xdr.LedgerCloseMeta) []ingest.LedgerTransaction {
+func extractTransactions(t *testing.T, networkPassphrase string, ledgers []xdr.LedgerCloseMeta) []ingest.LedgerTransaction {
 	var transactions []ingest.LedgerTransaction
 	for _, ledger := range ledgers {
-		txReader, err := ingest.NewLedgerTransactionReaderFromLedgerCloseMeta(integration.StandaloneNetworkPassphrase, ledger)
+		txReader, err := ingest.NewLedgerTransactionReaderFromLedgerCloseMeta(networkPassphrase, ledger)
 		require.NoError(t, err)
 		for {
 			var tx ingest.LedgerTransaction
@@ -413,7 +420,7 @@ func txSubWorker(
 		tx, err := itest.CreateSignedTransactionFromOpsWithFee(&account, []*keypair.Full{tx.signer}, tx.fee, tx.op)
 		require.NoError(itest.CurrentTest(), err)
 
-		hash, err := tx.HashHex(integration.StandaloneNetworkPassphrase)
+		hash, err := tx.HashHex(itest.Config().NetworkPassphrase)
 		require.NoError(itest.CurrentTest(), err)
 		b64Tx, err := tx.Base64()
 		require.NoError(itest.CurrentTest(), err)
@@ -464,7 +471,7 @@ func waitForTransactions(
 	}, time.Second*90, time.Millisecond*100)
 }
 
-func merge(t *testing.T, ledgers []xdr.LedgerCloseMeta, transactionsPerLedger int) []xdr.LedgerCloseMeta {
+func merge(t *testing.T, networkPassphrase string, ledgers []xdr.LedgerCloseMeta, transactionsPerLedger int) []xdr.LedgerCloseMeta {
 	var merged []xdr.LedgerCloseMeta
 	if len(ledgers) == 0 {
 		return merged
@@ -483,7 +490,7 @@ func merge(t *testing.T, ledgers []xdr.LedgerCloseMeta, transactionsPerLedger in
 		if curCount == 0 {
 			cur = copyLedger(t, ledger)
 		} else {
-			require.NoError(t, loadtest.MergeLedgers(integration.StandaloneNetworkPassphrase, &cur, ledger))
+			require.NoError(t, loadtest.MergeLedgers(networkPassphrase, &cur, ledger))
 		}
 
 		require.LessOrEqual(t, curCount+transactionCount, transactionsPerLedger)

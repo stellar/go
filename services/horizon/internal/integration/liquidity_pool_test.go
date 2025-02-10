@@ -689,7 +689,7 @@ func TestLiquidityPoolFailedDepositAndWithdraw(t *testing.T) {
 	)
 	_, err = itest.Client().SubmitTransaction(tx)
 	tt.Error(err)
-	hash, err := tx.HashHex(integration.StandaloneNetworkPassphrase)
+	hash, err := tx.HashHex(itest.Config().NetworkPassphrase)
 	tt.NoError(err)
 	opsResponse, err := itest.Client().Operations(horizonclient.OperationRequest{
 		ForTransaction: hash,
@@ -723,7 +723,7 @@ func TestLiquidityPoolFailedDepositAndWithdraw(t *testing.T) {
 	_, err = itest.Client().SubmitTransaction(tx)
 	tt.Error(err)
 
-	hash, err = tx.HashHex(integration.StandaloneNetworkPassphrase)
+	hash, err = tx.HashHex(itest.Config().NetworkPassphrase)
 	tt.NoError(err)
 	opsResponse, err = itest.Client().Operations(horizonclient.OperationRequest{
 		ForTransaction: hash,
