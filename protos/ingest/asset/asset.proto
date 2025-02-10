@@ -14,4 +14,3 @@ message Asset {
     IssuedAsset issued_asset = 2;      // Issued asset - via classic operations.
   }
 }
-
