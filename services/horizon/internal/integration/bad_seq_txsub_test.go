@@ -4,10 +4,11 @@ import (
 	"math"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/services/horizon/internal/test/integration"
 	"github.com/stellar/go/txnbuild"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestNegativeSequenceTxSubmission(t *testing.T) {
@@ -60,7 +61,7 @@ func TestNegativeSequenceTxSubmission(t *testing.T) {
 	}
 	tx, err := txnbuild.NewTransaction(txParams)
 	tt.NoError(err)
-	tx, err = tx.Sign(integration.StandaloneNetworkPassphrase, master)
+	tx, err = tx.Sign(itest.Config().NetworkPassphrase, master)
 	tt.NoError(err)
 	txResp, err = itest.Client().SubmitTransaction(tx)
 	tt.Error(err)
@@ -103,7 +104,7 @@ func TestBadSeqTxSubmission(t *testing.T) {
 	}
 	tx, err := txnbuild.NewTransaction(txParams)
 	tt.NoError(err)
-	tx, err = tx.Sign(integration.StandaloneNetworkPassphrase, master)
+	tx, err = tx.Sign(itest.Config().NetworkPassphrase, master)
 	tt.NoError(err)
 	_, err = itest.Client().SubmitTransaction(tx)
 	tt.Error(err)

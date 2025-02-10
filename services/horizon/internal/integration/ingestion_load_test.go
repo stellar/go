@@ -18,7 +18,9 @@ import (
 )
 
 func TestLoadTestLedgerBackend(t *testing.T) {
-	itest := integration.NewTest(t, integration.Config{})
+	itest := integration.NewTest(t, integration.Config{
+		NetworkPassphrase: loadTestNetworkPassphrase,
+	})
 	senderKP, senderAccount := itest.CreateAccount("10000000")
 	recipientKP, _ := itest.CreateAccount("10000000")
 
@@ -41,7 +43,7 @@ func TestLoadTestLedgerBackend(t *testing.T) {
 	require.NoError(t, err)
 
 	replayConfig := loadtest.LedgerBackendConfig{
-		NetworkPassphrase:     integration.StandaloneNetworkPassphrase,
+		NetworkPassphrase:     itest.Config().NetworkPassphrase,
 		LedgersFilePath:       filepath.Join("testdata", "load-test-ledgers.xdr.zstd"),
 		LedgerEntriesFilePath: filepath.Join("testdata", "load-test-accounts.xdr.zstd"),
 		LedgerCloseDuration:   3 * time.Second / 2,
@@ -75,7 +77,7 @@ func TestLoadTestLedgerBackend(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, prepared)
 
-	waitForLedgerInArchive(t, 6*time.Minute, endLedger)
+	itest.WaitForLedgerInArchive(6*time.Minute, endLedger)
 	require.NoError(t, loadTestBackend.PrepareRange(context.Background(), ledgerbackend.BoundedRange(startLedger, endLedger)))
 
 	latest, err := loadTestBackend.GetLatestLedgerSequence(context.Background())
@@ -149,8 +151,10 @@ func TestLoadTestLedgerBackend(t *testing.T) {
 
 	originalLedgers := getLedgers(itest, startLedger, endLedger)
 
-	changes := extractChanges(t, ledgers[0:1])
-	expectedChanges := extractChanges(t, []xdr.LedgerCloseMeta{originalLedgers[startLedger]})
+	changes := extractChanges(t, itest.Config().NetworkPassphrase, ledgers[0:1])
+	expectedChanges := extractChanges(
+		t, itest.Config().NetworkPassphrase, []xdr.LedgerCloseMeta{originalLedgers[startLedger]},
+	)
 	for i := range generatedLedgerEntries {
 		expectedChanges = append(expectedChanges, ingest.Change{
 			Type:   generatedLedgerEntries[i].Data.Type,
@@ -162,8 +166,10 @@ func TestLoadTestLedgerBackend(t *testing.T) {
 
 	for cur := startLedger + 1; cur <= endLedger; cur++ {
 		i := int(cur - startLedger)
-		changes = extractChanges(t, ledgers[i:i+1])
-		expectedChanges = extractChanges(t, []xdr.LedgerCloseMeta{originalLedgers[cur], generatedLedgers[i-1]})
+		changes = extractChanges(t, itest.Config().NetworkPassphrase, ledgers[i:i+1])
+		expectedChanges = extractChanges(
+			t, itest.Config().NetworkPassphrase, []xdr.LedgerCloseMeta{originalLedgers[cur], generatedLedgers[i-1]},
+		)
 		requireChangesAreEqual(t, expectedChanges, changes)
 	}
 }
