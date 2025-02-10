@@ -91,17 +91,17 @@ generate-proto:
     	MAP_OPTS=$$(for file in $(PROTO_FILES); do \
     		rel_path=$$(echo $$file | sed 's|$(PROTO_DIR)/||'); \
     		pkg_path=$$(dirname $$rel_path); \
-    		go_pkg="github.com/stellar/go/ingest/$$pkg_path"; \
+    		go_pkg="github.com/stellar/go/$$pkg_path"; \
     		printf "M%s=%s," "$$rel_path" "$$go_pkg"; \
     	done); \
     	MAP_OPTS=$${MAP_OPTS%,}; \
     	echo "Running protoc with options:"; \
-    	echo "  --go_out=ingest"; \
+    	echo "  --go_out=."; \
     	echo "  --go_opt=paths=source_relative"; \
     	echo "  --go_opt=$$MAP_OPTS"; \
     	echo "Proto Files:  $(PROTO_FILES)"; \
     	protoc -I=$(PROTO_DIR) \
-    	       --go_out=ingest --go_opt=paths=source_relative \
+    	       --go_out=. --go_opt=paths=source_relative \
     	       --go_opt=$$MAP_OPTS \
     	       $(PROTO_FILES); \
     	echo "$${current_checksum}" > $(PROTO_CHECKSUM); \

@@ -2,8 +2,6 @@ syntax = "proto3";
 
 package address;
 
-
-
 enum AddressType {
   ADDRESS_TYPE_ACCOUNT = 0;
   ADDRESS_TYPE_CONTRACT = 1;

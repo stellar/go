@@ -3,18 +3,18 @@ syntax = "proto3";
 package token_transfer;
 
 import "google/protobuf/timestamp.proto";
-import "google/protobuf/wrappers.proto";
 
-import "address/address.proto";
-import "asset/asset.proto";
+// Import are relative to the top level directory -  `/protos`
+import "ingest/address/address.proto";
+import "ingest/asset/asset.proto";
 
 // EventMeta message
 message EventMeta {
-  uint32 ledgerSequence = 1;
-  google.protobuf.Timestamp closedAt = 2;
-  string txHash = 3;
-  google.protobuf.UInt32Value operationIndex = 4; // Optional for fee events or smart contract transactions
-  address.Address contractAddress = 5;
+  uint32 ledger_sequence = 1;
+  google.protobuf.Timestamp closed_at = 2;
+  string tx_hash = 3;
+  optional uint32 operation_index = 4;
+  address.Address contract_address = 5;
 }
 
 message Transfer {
