@@ -19,7 +19,7 @@ func NewEventMeta(ledgerSeq uint32, closedAt time.Time, txHash string, opIndex *
 		meta.OperationIndex = wrapperspb.UInt32(*opIndex)
 	}
 	if contractAddr != nil {
-		meta.ContractAddress = wrapperspb.String(*contractAddr)
+		meta.ContractAddress = address.NewContractAddress(*contractAddr)
 	}
 	return meta
 }

@@ -1,17 +1,20 @@
 package address
 
-func NewContractAddress(contract string) *Address {
-	return &Address{AddressType: &Address_Contract{Contract: contract}}
+func NewAccountAddress(addr string) *Address {
+	return &Address{AddressType: AddressType_ADDRESS_TYPE_ACCOUNT, StrKey: addr}
+}
+func NewContractAddress(addr string) *Address {
+	return &Address{AddressType: AddressType_ADDRESS_TYPE_CONTRACT, StrKey: addr}
 }
 
-func NewAccountAddress(account string) *Address {
-	return &Address{AddressType: &Address_Account{Account: account}}
+func NewLiquidityPoolAddress(addr string) *Address {
+	return &Address{AddressType: AddressType_ADDRESS_TYPE_LIQUIDITY_POOL, StrKey: addr}
 }
 
-func NewLiquidityPoolAddress(lpHash string) *Address {
-	return &Address{AddressType: &Address_LiquidityPool{LiquidityPool: lpHash}}
+func NewClaimableBalanceAddress(addr string) *Address {
+	return &Address{AddressType: AddressType_ADDRESS_TYPE_CLAIMABLE_BALANCE, StrKey: addr}
 }
 
-func NewClaimableBalanceAddress(claimableBalanceID string) *Address {
-	return &Address{AddressType: &Address_ClaimableBalance{ClaimableBalance: claimableBalanceID}}
+func NewMuxedAccountAddress(addr string) *Address {
+	return &Address{AddressType: AddressType_ADDRESS_TYPE_MUXED_ACCOUNT, StrKey: addr}
 }

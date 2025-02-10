@@ -14,7 +14,7 @@ message EventMeta {
   google.protobuf.Timestamp closedAt = 2;
   string txHash = 3;
   google.protobuf.UInt32Value operationIndex = 4; // Optional for fee events or smart contract transactions
-  google.protobuf.StringValue contractAddress = 5;
+  address.Address contractAddress = 5;
 }
 
 message Transfer {
@@ -43,7 +43,6 @@ message Fee {
   string amount = 2;
 }
 
-// TokenTransferEvent message
 message TokenTransferEvent {
   EventMeta meta = 1;
   asset.Asset asset = 2; // Asset can be native or issued. For custom tokens, it will be absent
