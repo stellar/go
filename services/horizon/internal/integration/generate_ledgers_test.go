@@ -45,7 +45,7 @@ func TestGenerateLedgers(t *testing.T) {
 	flag.IntVar(&transactionsPerLedger, "transactions-per-ledger", 100, "number of transactions per ledger")
 	flag.IntVar(&transfersPerTx, "transfers-per-tx", 10, "number of asset transfers for each transaction")
 	flag.IntVar(&ledgers, "ledgers", 2, "number of ledgers to generate")
-	flag.BoolVar(&output, "output", true, "overwrite the generated output files")
+	flag.BoolVar(&output, "output", false, "overwrite the generated output files")
 	flag.StringVar(&networkPassphrase, "network-passphrase", loadTestNetworkPassphrase, "network passphrase")
 	flag.Parse()
 
