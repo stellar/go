@@ -6,23 +6,7 @@ import (
 	"time"
 
 	"google.golang.org/protobuf/types/known/timestamppb"
-	"google.golang.org/protobuf/types/known/wrapperspb"
 )
-
-func NewEventMeta(ledgerSeq uint32, closedAt time.Time, txHash string, opIndex *uint32, contractAddr *string) *EventMeta {
-	meta := &EventMeta{
-		LedgerSequence: ledgerSeq,
-		ClosedAt:       timestamppb.New(closedAt),
-		TxHash:         txHash,
-	}
-	if opIndex != nil {
-		meta.OperationIndex = wrapperspb.UInt32(*opIndex)
-	}
-	if contractAddr != nil {
-		meta.ContractAddress = address.NewContractAddress(*contractAddr)
-	}
-	return meta
-}
 
 func NewTransferEvent(meta *EventMeta, from, to *address.Address, amount string, token *asset.Asset) *TokenTransferEvent {
 	return &TokenTransferEvent{
