@@ -38,16 +38,16 @@ func newTestEventMeta() *EventMeta {
 
 func TestEventSerialization(t *testing.T) {
 	tests := []struct {
-		// test name
-		name string
+		// test fixtureName
+		fixtureName string
 		// Setup the test fixture
-		create func() (*TokenTransferEvent, *EventMeta, *asset.Asset, *address.Address, string)
+		fixtureSetupFn func() (*TokenTransferEvent, *EventMeta, *asset.Asset, *address.Address, string)
 		// Function to assert to see if data matches
-		getEventData func(event *TokenTransferEvent) proto.Message
+		assertFn func(event *TokenTransferEvent) proto.Message
 	}{
 		{
-			name: "Transfer",
-			create: func() (*TokenTransferEvent, *EventMeta, *asset.Asset, *address.Address, string) {
+			fixtureName: "Transfer",
+			fixtureSetupFn: func() (*TokenTransferEvent, *EventMeta, *asset.Asset, *address.Address, string) {
 				from := newTestAddress()
 				to := newTestAddress()
 				amount := "1000"
@@ -56,13 +56,13 @@ func TestEventSerialization(t *testing.T) {
 				event := NewTransferEvent(meta, from, to, amount, token)
 				return event, meta, token, from, amount
 			},
-			getEventData: func(event *TokenTransferEvent) proto.Message {
+			assertFn: func(event *TokenTransferEvent) proto.Message {
 				return event.GetTransfer()
 			},
 		},
 		{
-			name: "Mint",
-			create: func() (*TokenTransferEvent, *EventMeta, *asset.Asset, *address.Address, string) {
+			fixtureName: "Mint",
+			fixtureSetupFn: func() (*TokenTransferEvent, *EventMeta, *asset.Asset, *address.Address, string) {
 				to := newTestAddress()
 				amount := "500"
 				meta := newTestEventMeta()
@@ -70,13 +70,13 @@ func TestEventSerialization(t *testing.T) {
 				event := NewMintEvent(meta, to, amount, token)
 				return event, meta, token, to, amount
 			},
-			getEventData: func(event *TokenTransferEvent) proto.Message {
+			assertFn: func(event *TokenTransferEvent) proto.Message {
 				return event.GetMint()
 			},
 		},
 		{
-			name: "Burn",
-			create: func() (*TokenTransferEvent, *EventMeta, *asset.Asset, *address.Address, string) {
+			fixtureName: "Burn",
+			fixtureSetupFn: func() (*TokenTransferEvent, *EventMeta, *asset.Asset, *address.Address, string) {
 				from := newTestAddress()
 				amount := "200"
 				meta := newTestEventMeta()
@@ -84,13 +84,13 @@ func TestEventSerialization(t *testing.T) {
 				event := NewBurnEvent(meta, from, amount, token)
 				return event, meta, token, from, amount
 			},
-			getEventData: func(event *TokenTransferEvent) proto.Message {
+			assertFn: func(event *TokenTransferEvent) proto.Message {
 				return event.GetBurn()
 			},
 		},
 		{
-			name: "Clawback",
-			create: func() (*TokenTransferEvent, *EventMeta, *asset.Asset, *address.Address, string) {
+			fixtureName: "Clawback",
+			fixtureSetupFn: func() (*TokenTransferEvent, *EventMeta, *asset.Asset, *address.Address, string) {
 				from := newTestAddress()
 				amount := "300"
 				meta := newTestEventMeta()
@@ -98,28 +98,28 @@ func TestEventSerialization(t *testing.T) {
 				event := NewClawbackEvent(meta, from, amount, token)
 				return event, meta, token, from, amount
 			},
-			getEventData: func(event *TokenTransferEvent) proto.Message {
+			assertFn: func(event *TokenTransferEvent) proto.Message {
 				return event.GetClawback()
 			},
 		},
 		{
-			name: "Fee",
-			create: func() (*TokenTransferEvent, *EventMeta, *asset.Asset, *address.Address, string) {
+			fixtureName: "Fee",
+			fixtureSetupFn: func() (*TokenTransferEvent, *EventMeta, *asset.Asset, *address.Address, string) {
 				from := newTestAddress()
 				amount := "50"
 				token := newTestAsset()
 				event := NewFeeEvent(12345, time.Now(), "abc123xyz", from, amount, token)
 				return event, nil, token, from, amount // No meta for Fee event
 			},
-			getEventData: func(event *TokenTransferEvent) proto.Message {
+			assertFn: func(event *TokenTransferEvent) proto.Message {
 				return event.GetFee()
 			},
 		},
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			event, _, _, _, _ := tt.create()
+		t.Run(tt.fixtureName, func(t *testing.T) {
+			event, _, _, _, _ := tt.fixtureSetupFn()
 
 			data, err := proto.Marshal(event)
 			assert.NoError(t, err)
@@ -133,7 +133,7 @@ func TestEventSerialization(t *testing.T) {
 			assert.True(t, proto.Equal(event.Asset, deserializedEvent.Asset))
 
 			// Event-specific assertions via the provided getter function
-			assert.True(t, proto.Equal(tt.getEventData(event), tt.getEventData(&deserializedEvent)))
+			assert.True(t, proto.Equal(tt.assertFn(event), tt.assertFn(&deserializedEvent)))
 		})
 	}
 }
