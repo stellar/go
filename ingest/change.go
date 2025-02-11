@@ -137,6 +137,7 @@ func (c Change) LedgerKey() (xdr.LedgerKey, error) {
 // - for create, pre is null and post is a new entry,
 // - for update, pre is previous state and post is the current state,
 // - for removed, pre is previous state and post is null.
+// - for restored, pre is null and post is a new/restored entry
 //
 // stellar-core source:
 // https://github.com/stellar/stellar-core/blob/e584b43/src/ledger/LedgerTxn.cpp#L582
@@ -153,8 +154,13 @@ func GetChangesFromLedgerEntryChanges(ledgerEntryChanges xdr.LedgerEntryChanges)
 				ChangeType: entryChange.Type,
 			})
 		case xdr.LedgerEntryChangeTypeLedgerEntryUpdated:
-			state := ledgerEntryChanges[i-1].MustState()
 			updated := entryChange.MustUpdated()
+			var state xdr.LedgerEntry
+			if _, ok := ledgerEntryChanges[i-1].GetState(); ok {
+				state = ledgerEntryChanges[i-1].MustState()
+			} else {
+				state = ledgerEntryChanges[i-1].MustRestored()
+			}
 			changes = append(changes, Change{
 				Type:       state.Data.Type,
 				Pre:        &state,
@@ -162,7 +168,12 @@ func GetChangesFromLedgerEntryChanges(ledgerEntryChanges xdr.LedgerEntryChanges)
 				ChangeType: entryChange.Type,
 			})
 		case xdr.LedgerEntryChangeTypeLedgerEntryRemoved:
-			state := ledgerEntryChanges[i-1].MustState()
+			var state xdr.LedgerEntry
+			if _, ok := ledgerEntryChanges[i-1].GetState(); ok {
+				state = ledgerEntryChanges[i-1].MustState()
+			} else {
+				state = ledgerEntryChanges[i-1].MustRestored()
+			}
 			changes = append(changes, Change{
 				Type:       state.Data.Type,
 				Pre:        &state,
@@ -171,23 +182,6 @@ func GetChangesFromLedgerEntryChanges(ledgerEntryChanges xdr.LedgerEntryChanges)
 			})
 		case xdr.LedgerEntryChangeTypeLedgerEntryRestored:
 			restored := entryChange.MustRestored()
-
-			// "restore" entries of type TTL can appear in two ways:
-			// - "restore" alone, meaning an evicted item is being restored.
-			// - "restore" with a preceding "state" entry, meaning an archived item is being restored.
-			// Both are restore types, but the way the "Pre" field is populated differs.
-			// For more details, see https://github.com/stellar/stellar-protocol/blob/master/core/cap-0062.md#meta
-			if i > 0 {
-				if state, ok := ledgerEntryChanges[i-1].GetState(); ok {
-					changes = append(changes, Change{
-						Type:       restored.Data.Type,
-						Pre:        &state,
-						Post:       &restored,
-						ChangeType: entryChange.Type,
-					})
-					continue
-				}
-			}
 			changes = append(changes, Change{
 				Type:       restored.Data.Type,
 				Pre:        nil,

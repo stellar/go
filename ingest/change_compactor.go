@@ -25,39 +25,39 @@ import (
 //
 //  1. If the change is CREATED it checks if any change connected to given entry
 //     is already in the cache. If not, it adds CREATED change. Otherwise, if
-//     existing change is
-//     a. CREATED: return an error because we can't add an entry that already exists.
-//     b. UPDATED: return an error because we can't add an entry that already exists.
-//     c. REMOVED: entry exists in the DB but was marked for removal; change the type
-//     to UPDATED and update the new value.
-//     d. RESTORED: return an error as the RESTORED change indicates the entry already
+//     existing change is:
+//     a. CREATED it returns error because we can't add an entry that already
 //     exists.
-//
+//     b. UPDATED it returns error because we can't add an entry that already
+//     exists.
+//     c. REMOVED it means that due to previous transitions we want to remove
+//     this from a DB what means that it already exists in a DB so we need to
+//     update the type of change to UPDATED.
+//     d. RESTORED it returns an error as the RESTORED change indicates the
+//     entry already exists.
 //  2. If the change is UPDATE it checks if any change connected to given entry
 //     is already in the cache. If not, it adds UPDATE change. Otherwise, if
-//     existing change is
-//     a. CREATED: We want to create this in a DB which means that it doesn't exist
-//     in a DB so we need to update the entry but stay with CREATED type.
-//     b. UPDATED: update it with the new value.
+//     existing change is:
+//     a. CREATED it means that due to previous transitions we want to create
+//     this in a DB what means that it doesn't exist in a DB so we need to
+//     update the entry but stay with CREATED type.
+//     b. UPDATED we simply update it with the new value.
 //     c. REMOVED it means that at this point in the ledger the entry is removed
 //     so updating it returns an error.
-//     d. RESTORED: update it with the new value but keep the type as RESTORED.
-//
-//  3. If the change is REMOVED, it checks if any change related to the given entry
-//     already exists in the cache. If not, it adds the `REMOVED` change. Otherwise,
-//     if existing change is
-//     a. CREATED: due to previous transitions we want to create
-//     this in a DB which means that it doesn't exist in a DB. If it was created and
-//     removed in the same ledger it's a noop so we remove the entry from the cache.
-//     b. UPDATED: update it to be a REMOVE change because the UPDATE change means
-//     the entry exists in a DB.
-//     c. REMOVED: return an error because we can't remove an entry that was already
-//     removed.
-//     d. RESTORED: if the item was previously restored from an archived state, it means
-//     it already exists in the DB, so change it to REMOVED type. If the restored item
-//     was evicted, it doesn't exist in the DB, so it's a noop so remove the entry from
-//     the cache.
-//
+//     d. RESTORED we update it with the new value but keep the change type as RESTORED.
+//  3. If the change is REMOVE it checks if any change connected to given entry
+//     is already in the cache. If not, it adds REMOVE change. Otherwise, if
+//     existing change is:
+//     a. CREATED it means that due to previous transitions we want to create
+//     this in a DB what means that it doesn't exist in a DB. If it was
+//     created and removed in the same ledger it's a noop so we remove entry
+//     from the cache.
+//     b. UPDATED we simply update it to be a REMOVE change because the UPDATE
+//     change means the entry exists in a DB.
+//     c. REMOVED it returns error because we can't remove an entry that was
+//     already removed.
+//     d. RESTORED it means the entry doesn't exist in the DB, so it's a noop
+//     so remove the entry from the cache.
 //  4. If the change is RESTORED it checks if any change related to the given entry
 //     already exists in the cache. If not, it adds the RESTORED change. Otherwise,
 //     returns an error since restoration is only possible for previously archived/evicted
@@ -65,15 +65,17 @@ import (
 //     is not possible.
 type ChangeCompactor struct {
 	// ledger key => Change
-	cache          map[string]Change
-	encodingBuffer *xdr.EncodingBuffer
+	cache                           map[string]Change
+	encodingBuffer                  *xdr.EncodingBuffer
+	emitExpiredEntriesRemovedChange bool
 }
 
 // NewChangeCompactor returns a new ChangeCompactor.
-func NewChangeCompactor() *ChangeCompactor {
+func NewChangeCompactor(emitExpiredEntriesRemovedChange bool) *ChangeCompactor {
 	return &ChangeCompactor{
-		cache:          make(map[string]Change),
-		encodingBuffer: xdr.NewEncodingBuffer(),
+		cache:                           make(map[string]Change),
+		encodingBuffer:                  xdr.NewEncodingBuffer(),
+		emitExpiredEntriesRemovedChange: emitExpiredEntriesRemovedChange,
 	}
 }
 
@@ -169,17 +171,21 @@ func (c *ChangeCompactor) addUpdatedChange(change Change) error {
 
 	switch existingChange.ChangeType {
 	case xdr.LedgerEntryChangeTypeLedgerEntryCreated:
-		fallthrough
-	case xdr.LedgerEntryChangeTypeLedgerEntryUpdated:
-		fallthrough
-	case xdr.LedgerEntryChangeTypeLedgerEntryRestored:
 		// If existing type is created it means that this entry does not
 		// exist in a DB so we update entry change.
 		c.cache[ledgerKeyString] = Change{
+			Type: key.Type,
+			Pre:  existingChange.Pre, // = nil
+			Post: change.Post,
+		}
+	case xdr.LedgerEntryChangeTypeLedgerEntryUpdated:
+		fallthrough
+	case xdr.LedgerEntryChangeTypeLedgerEntryRestored:
+		c.cache[ledgerKeyString] = Change{
 			Type:       key.Type,
-			Pre:        existingChange.Pre, // = nil for created type
+			Pre:        existingChange.Pre,
 			Post:       change.Post,
-			ChangeType: existingChange.ChangeType,
+			ChangeType: existingChange.ChangeType, //keep the existing change type
 		}
 	case xdr.LedgerEntryChangeTypeLedgerEntryRemoved:
 		return NewStateError(errors.Errorf(
@@ -232,17 +238,16 @@ func (c *ChangeCompactor) addRemovedChange(change Change) error {
 			base64.StdEncoding.EncodeToString(ledgerKey),
 		))
 	case xdr.LedgerEntryChangeTypeLedgerEntryRestored:
-		if existingChange.Pre == nil {
-			// Entry was created and removed in the same ledger; deleting it is effectively a noop.
-			delete(c.cache, ledgerKeyString)
-		} else {
-			// If the entry exists, we mark it as removed by setting Post to nil.
+		if c.emitExpiredEntriesRemovedChange {
 			c.cache[ledgerKeyString] = Change{
-				Type:       existingChange.Type,
-				Pre:        existingChange.Pre,
+				Type:       key.Type,
+				Pre:        change.Pre,
 				Post:       nil,
 				ChangeType: change.ChangeType,
 			}
+		} else {
+			// Entry was restored and removed in the same ledger; deleting it is effectively a noop.
+			delete(c.cache, ledgerKeyString)
 		}
 	default:
 		return errors.Errorf("Unknown LedgerEntryChangeType: %d", existingChange.ChangeType)

@@ -1,11 +1,14 @@
 package ingest
 
 import (
+	"encoding/base64"
+	"fmt"
 	"testing"
 
-	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/stellar/go/xdr"
 )
 
 func TestChangeCompactorExistingCreated(t *testing.T) {
@@ -20,12 +23,11 @@ type TestChangeCompactorExistingCreatedSuite struct {
 }
 
 func (s *TestChangeCompactorExistingCreatedSuite) SetupTest() {
-	s.cache = NewChangeCompactor()
+	s.cache = NewChangeCompactor(true)
 
 	change := Change{
-		ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryCreated,
-		Type:       xdr.LedgerEntryTypeAccount,
-		Pre:        nil,
+		Type: xdr.LedgerEntryTypeAccount,
+		Pre:  nil,
 		Post: &xdr.LedgerEntry{
 			LastModifiedLedgerSeq: 11,
 			Data: xdr.LedgerEntryData{
@@ -35,6 +37,7 @@ func (s *TestChangeCompactorExistingCreatedSuite) SetupTest() {
 				},
 			},
 		},
+		ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryCreated,
 	}
 	s.Assert().NoError(s.cache.AddChange(change))
 	changes := s.cache.GetChanges()
@@ -44,9 +47,8 @@ func (s *TestChangeCompactorExistingCreatedSuite) SetupTest() {
 
 func (s *TestChangeCompactorExistingCreatedSuite) TestChangeCreated() {
 	change := Change{
-		ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryCreated,
-		Type:       xdr.LedgerEntryTypeAccount,
-		Pre:        nil,
+		Type: xdr.LedgerEntryTypeAccount,
+		Pre:  nil,
 		Post: &xdr.LedgerEntry{
 			LastModifiedLedgerSeq: 12,
 			Data: xdr.LedgerEntryData{
@@ -56,6 +58,7 @@ func (s *TestChangeCompactorExistingCreatedSuite) TestChangeCreated() {
 				},
 			},
 		},
+		ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryCreated,
 	}
 	s.Assert().EqualError(
 		s.cache.AddChange(change),
@@ -65,8 +68,7 @@ func (s *TestChangeCompactorExistingCreatedSuite) TestChangeCreated() {
 
 func (s *TestChangeCompactorExistingCreatedSuite) TestChangeUpdated() {
 	change := Change{
-		ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
-		Type:       xdr.LedgerEntryTypeAccount,
+		Type: xdr.LedgerEntryTypeAccount,
 		Pre: &xdr.LedgerEntry{
 			LastModifiedLedgerSeq: 11,
 			Data: xdr.LedgerEntryData{
@@ -85,6 +87,7 @@ func (s *TestChangeCompactorExistingCreatedSuite) TestChangeUpdated() {
 				},
 			},
 		},
+		ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
 	}
 	s.Assert().NoError(s.cache.AddChange(change))
 	changes := s.cache.GetChanges()
@@ -94,8 +97,7 @@ func (s *TestChangeCompactorExistingCreatedSuite) TestChangeUpdated() {
 
 func (s *TestChangeCompactorExistingCreatedSuite) TestChangeRemoved() {
 	change := Change{
-		ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryRemoved,
-		Type:       xdr.LedgerEntryTypeAccount,
+		Type: xdr.LedgerEntryTypeAccount,
 		Pre: &xdr.LedgerEntry{
 			LastModifiedLedgerSeq: 11,
 			Data: xdr.LedgerEntryData{
@@ -105,18 +107,18 @@ func (s *TestChangeCompactorExistingCreatedSuite) TestChangeRemoved() {
 				},
 			},
 		},
-		Post: nil,
+		Post:       nil,
+		ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryRemoved,
 	}
 	s.Assert().NoError(s.cache.AddChange(change))
 	changes := s.cache.GetChanges()
 	s.Assert().Len(changes, 0)
 }
 
-func (s *TestChangeCompactorExistingCreatedSuite) TestChangeRestoredEvicted() {
+func (s *TestChangeCompactorExistingCreatedSuite) TestChangeRestored() {
 	change := Change{
-		ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryRestored,
-		Type:       xdr.LedgerEntryTypeAccount,
-		Pre:        nil,
+		Type: xdr.LedgerEntryTypeAccount,
+		Pre:  nil,
 		Post: &xdr.LedgerEntry{
 			LastModifiedLedgerSeq: 11,
 			Data: xdr.LedgerEntryData{
@@ -126,35 +128,7 @@ func (s *TestChangeCompactorExistingCreatedSuite) TestChangeRestoredEvicted() {
 				},
 			},
 		},
-	}
-	s.Assert().EqualError(
-		s.cache.AddChange(change),
-		"can't restore an entry that already exists (ledger key = AAAAAAAAAAC2LgFRDBZ3J52nLm30kq2iMgrO7dYzYAN3hvjtf1IHWg==)",
-	)
-}
-
-func (s *TestChangeCompactorExistingCreatedSuite) TestChangeRestoredArchived() {
-	change := Change{
 		ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryRestored,
-		Type:       xdr.LedgerEntryTypeAccount,
-		Pre: &xdr.LedgerEntry{
-			LastModifiedLedgerSeq: 11,
-			Data: xdr.LedgerEntryData{
-				Type: xdr.LedgerEntryTypeAccount,
-				Account: &xdr.AccountEntry{
-					AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
-				},
-			},
-		},
-		Post: &xdr.LedgerEntry{
-			LastModifiedLedgerSeq: 12,
-			Data: xdr.LedgerEntryData{
-				Type: xdr.LedgerEntryTypeAccount,
-				Account: &xdr.AccountEntry{
-					AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
-				},
-			},
-		},
 	}
 	s.Assert().EqualError(
 		s.cache.AddChange(change),
@@ -174,11 +148,10 @@ type TestChangeCompactorExistingUpdatedSuite struct {
 }
 
 func (s *TestChangeCompactorExistingUpdatedSuite) SetupTest() {
-	s.cache = NewChangeCompactor()
+	s.cache = NewChangeCompactor(true)
 
 	change := Change{
-		ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
-		Type:       xdr.LedgerEntryTypeAccount,
+		Type: xdr.LedgerEntryTypeAccount,
 		Pre: &xdr.LedgerEntry{
 			LastModifiedLedgerSeq: 10,
 			Data: xdr.LedgerEntryData{
@@ -197,6 +170,7 @@ func (s *TestChangeCompactorExistingUpdatedSuite) SetupTest() {
 				},
 			},
 		},
+		ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
 	}
 	s.Assert().NoError(s.cache.AddChange(change))
 	changes := s.cache.GetChanges()
@@ -206,9 +180,8 @@ func (s *TestChangeCompactorExistingUpdatedSuite) SetupTest() {
 
 func (s *TestChangeCompactorExistingUpdatedSuite) TestChangeCreated() {
 	change := Change{
-		ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryCreated,
-		Type:       xdr.LedgerEntryTypeAccount,
-		Pre:        nil,
+		Type: xdr.LedgerEntryTypeAccount,
+		Pre:  nil,
 		Post: &xdr.LedgerEntry{
 			LastModifiedLedgerSeq: 12,
 			Data: xdr.LedgerEntryData{
@@ -218,6 +191,7 @@ func (s *TestChangeCompactorExistingUpdatedSuite) TestChangeCreated() {
 				},
 			},
 		},
+		ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryCreated,
 	}
 	s.Assert().EqualError(
 		s.cache.AddChange(change),
@@ -227,8 +201,7 @@ func (s *TestChangeCompactorExistingUpdatedSuite) TestChangeCreated() {
 
 func (s *TestChangeCompactorExistingUpdatedSuite) TestChangeUpdated() {
 	change := Change{
-		ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
-		Type:       xdr.LedgerEntryTypeAccount,
+		Type: xdr.LedgerEntryTypeAccount,
 		Pre: &xdr.LedgerEntry{
 			LastModifiedLedgerSeq: 11,
 			Data: xdr.LedgerEntryData{
@@ -247,6 +220,7 @@ func (s *TestChangeCompactorExistingUpdatedSuite) TestChangeUpdated() {
 				},
 			},
 		},
+		ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
 	}
 	s.Assert().NoError(s.cache.AddChange(change))
 	changes := s.cache.GetChanges()
@@ -257,8 +231,7 @@ func (s *TestChangeCompactorExistingUpdatedSuite) TestChangeUpdated() {
 
 func (s *TestChangeCompactorExistingUpdatedSuite) TestChangeRemoved() {
 	change := Change{
-		ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryRemoved,
-		Type:       xdr.LedgerEntryTypeAccount,
+		Type: xdr.LedgerEntryTypeAccount,
 		Pre: &xdr.LedgerEntry{
 			LastModifiedLedgerSeq: 11,
 			Data: xdr.LedgerEntryData{
@@ -268,7 +241,8 @@ func (s *TestChangeCompactorExistingUpdatedSuite) TestChangeRemoved() {
 				},
 			},
 		},
-		Post: nil,
+		Post:       nil,
+		ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryRemoved,
 	}
 	s.Assert().NoError(s.cache.AddChange(change))
 	changes := s.cache.GetChanges()
@@ -276,11 +250,10 @@ func (s *TestChangeCompactorExistingUpdatedSuite) TestChangeRemoved() {
 	s.Assert().Equal(changes[0].ChangeType, xdr.LedgerEntryChangeTypeLedgerEntryRemoved)
 }
 
-func (s *TestChangeCompactorExistingUpdatedSuite) TestChangeRestoredEvicted() {
+func (s *TestChangeCompactorExistingUpdatedSuite) TestChangeRestored() {
 	change := Change{
-		ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryRestored,
-		Type:       xdr.LedgerEntryTypeAccount,
-		Pre:        nil,
+		Type: xdr.LedgerEntryTypeAccount,
+		Pre:  nil,
 		Post: &xdr.LedgerEntry{
 			LastModifiedLedgerSeq: 11,
 			Data: xdr.LedgerEntryData{
@@ -290,35 +263,7 @@ func (s *TestChangeCompactorExistingUpdatedSuite) TestChangeRestoredEvicted() {
 				},
 			},
 		},
-	}
-	s.Assert().EqualError(
-		s.cache.AddChange(change),
-		"can't restore an entry that already exists (ledger key = AAAAAAAAAAC2LgFRDBZ3J52nLm30kq2iMgrO7dYzYAN3hvjtf1IHWg==)",
-	)
-}
-
-func (s *TestChangeCompactorExistingUpdatedSuite) TestChangeRestoredArchived() {
-	change := Change{
 		ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryRestored,
-		Type:       xdr.LedgerEntryTypeAccount,
-		Pre: &xdr.LedgerEntry{
-			LastModifiedLedgerSeq: 11,
-			Data: xdr.LedgerEntryData{
-				Type: xdr.LedgerEntryTypeAccount,
-				Account: &xdr.AccountEntry{
-					AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
-				},
-			},
-		},
-		Post: &xdr.LedgerEntry{
-			LastModifiedLedgerSeq: 12,
-			Data: xdr.LedgerEntryData{
-				Type: xdr.LedgerEntryTypeAccount,
-				Account: &xdr.AccountEntry{
-					AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
-				},
-			},
-		},
 	}
 	s.Assert().EqualError(
 		s.cache.AddChange(change),
@@ -338,11 +283,10 @@ type TestChangeCompactorExistingRemovedSuite struct {
 }
 
 func (s *TestChangeCompactorExistingRemovedSuite) SetupTest() {
-	s.cache = NewChangeCompactor()
+	s.cache = NewChangeCompactor(true)
 
 	change := Change{
-		ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryRemoved,
-		Type:       xdr.LedgerEntryTypeAccount,
+		Type: xdr.LedgerEntryTypeAccount,
 		Pre: &xdr.LedgerEntry{
 			LastModifiedLedgerSeq: 10,
 			Data: xdr.LedgerEntryData{
@@ -352,7 +296,8 @@ func (s *TestChangeCompactorExistingRemovedSuite) SetupTest() {
 				},
 			},
 		},
-		Post: nil,
+		Post:       nil,
+		ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryRemoved,
 	}
 	s.Assert().NoError(s.cache.AddChange(change))
 	changes := s.cache.GetChanges()
@@ -362,9 +307,8 @@ func (s *TestChangeCompactorExistingRemovedSuite) SetupTest() {
 
 func (s *TestChangeCompactorExistingRemovedSuite) TestChangeCreated() {
 	change := Change{
-		ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryCreated,
-		Type:       xdr.LedgerEntryTypeAccount,
-		Pre:        nil,
+		Type: xdr.LedgerEntryTypeAccount,
+		Pre:  nil,
 		Post: &xdr.LedgerEntry{
 			LastModifiedLedgerSeq: 12,
 			Data: xdr.LedgerEntryData{
@@ -374,6 +318,7 @@ func (s *TestChangeCompactorExistingRemovedSuite) TestChangeCreated() {
 				},
 			},
 		},
+		ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryCreated,
 	}
 	s.Assert().NoError(s.cache.AddChange(change))
 	changes := s.cache.GetChanges()
@@ -384,8 +329,7 @@ func (s *TestChangeCompactorExistingRemovedSuite) TestChangeCreated() {
 
 func (s *TestChangeCompactorExistingRemovedSuite) TestChangeUpdated() {
 	change := Change{
-		ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
-		Type:       xdr.LedgerEntryTypeAccount,
+		Type: xdr.LedgerEntryTypeAccount,
 		Pre: &xdr.LedgerEntry{
 			LastModifiedLedgerSeq: 10,
 			Data: xdr.LedgerEntryData{
@@ -404,6 +348,7 @@ func (s *TestChangeCompactorExistingRemovedSuite) TestChangeUpdated() {
 				},
 			},
 		},
+		ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
 	}
 	s.Assert().EqualError(
 		s.cache.AddChange(change),
@@ -413,8 +358,7 @@ func (s *TestChangeCompactorExistingRemovedSuite) TestChangeUpdated() {
 
 func (s *TestChangeCompactorExistingRemovedSuite) TestChangeRemoved() {
 	change := Change{
-		ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryRemoved,
-		Type:       xdr.LedgerEntryTypeAccount,
+		Type: xdr.LedgerEntryTypeAccount,
 		Pre: &xdr.LedgerEntry{
 			LastModifiedLedgerSeq: 11,
 			Data: xdr.LedgerEntryData{
@@ -424,7 +368,8 @@ func (s *TestChangeCompactorExistingRemovedSuite) TestChangeRemoved() {
 				},
 			},
 		},
-		Post: nil,
+		Post:       nil,
+		ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryRemoved,
 	}
 	s.Assert().EqualError(
 		s.cache.AddChange(change),
@@ -432,11 +377,10 @@ func (s *TestChangeCompactorExistingRemovedSuite) TestChangeRemoved() {
 	)
 }
 
-func (s *TestChangeCompactorExistingRemovedSuite) TestChangeRestoredEvicted() {
+func (s *TestChangeCompactorExistingRemovedSuite) TestChangeRestored() {
 	change := Change{
-		ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryRestored,
-		Type:       xdr.LedgerEntryTypeAccount,
-		Pre:        nil,
+		Type: xdr.LedgerEntryTypeAccount,
+		Pre:  nil,
 		Post: &xdr.LedgerEntry{
 			LastModifiedLedgerSeq: 11,
 			Data: xdr.LedgerEntryData{
@@ -446,358 +390,140 @@ func (s *TestChangeCompactorExistingRemovedSuite) TestChangeRestoredEvicted() {
 				},
 			},
 		},
-	}
-	s.Assert().EqualError(
-		s.cache.AddChange(change),
-		"can't restore an entry that already exists (ledger key = AAAAAAAAAAC2LgFRDBZ3J52nLm30kq2iMgrO7dYzYAN3hvjtf1IHWg==)",
-	)
-
-}
-
-func (s *TestChangeCompactorExistingRemovedSuite) TestChangeRestoredArchived() {
-	change := Change{
 		ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryRestored,
-		Type:       xdr.LedgerEntryTypeAccount,
-		Pre: &xdr.LedgerEntry{
-			LastModifiedLedgerSeq: 11,
-			Data: xdr.LedgerEntryData{
-				Type: xdr.LedgerEntryTypeAccount,
-				Account: &xdr.AccountEntry{
-					AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
-				},
-			},
-		},
-		Post: &xdr.LedgerEntry{
-			LastModifiedLedgerSeq: 12,
-			Data: xdr.LedgerEntryData{
-				Type: xdr.LedgerEntryTypeAccount,
-				Account: &xdr.AccountEntry{
-					AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
-				},
-			},
-		},
 	}
 	s.Assert().EqualError(
 		s.cache.AddChange(change),
 		"can't restore an entry that already exists (ledger key = AAAAAAAAAAC2LgFRDBZ3J52nLm30kq2iMgrO7dYzYAN3hvjtf1IHWg==)",
 	)
+
 }
 
-func TestChangeCompactorExistingRestoredEvicted(t *testing.T) {
-	suite.Run(t, new(TestChangeCompactorExistingRestoredEvictedSuite))
+func TestChangeCompactorExistingRestored(t *testing.T) {
+	suite.Run(t, new(TestChangeCompactorExistingRestoredSuite))
 }
 
-// TestChangeCompactorExistingRestoredEvictedSuite tests transitions from existing
-// REMOVED state in the cache.
-type TestChangeCompactorExistingRestoredEvictedSuite struct {
+// TestChangeCompactorExistingRestoredSuite tests transitions from existing
+// RESTORED state in the cache.
+type TestChangeCompactorExistingRestoredSuite struct {
 	suite.Suite
-	cache *ChangeCompactor
+	cache             *ChangeCompactor
+	contractDataEntry xdr.LedgerEntry
 }
 
-func (s *TestChangeCompactorExistingRestoredEvictedSuite) SetupTest() {
-	s.cache = NewChangeCompactor()
-
-	change := Change{
-		ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryRestored,
-		Type:       xdr.LedgerEntryTypeAccount,
-		Pre:        nil,
-		Post: &xdr.LedgerEntry{
-			LastModifiedLedgerSeq: 10,
-			Data: xdr.LedgerEntryData{
-				Type: xdr.LedgerEntryTypeAccount,
-				Account: &xdr.AccountEntry{
-					AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+func (s *TestChangeCompactorExistingRestoredSuite) SetupWithEmitRemovalFlag(emitRemoval bool) {
+	s.cache = NewChangeCompactor(emitRemoval)
+	val := true
+	s.contractDataEntry = xdr.LedgerEntry{
+		LastModifiedLedgerSeq: 1,
+		Data: xdr.LedgerEntryData{
+			Type: xdr.LedgerEntryTypeContractData,
+			ContractData: &xdr.ContractDataEntry{
+				Contract: xdr.ScAddress{
+					Type:       xdr.ScAddressTypeScAddressTypeContract,
+					ContractId: &xdr.Hash{0xca, 0xfe},
 				},
+				Key:        xdr.ScVal{Type: xdr.ScValTypeScvBool, B: &val},
+				Durability: xdr.ContractDataDurabilityPersistent,
+				Val:        xdr.ScVal{Type: xdr.ScValTypeScvBool, B: &val},
 			},
 		},
 	}
-	s.Assert().NoError(s.cache.AddChange(change))
+
+	change := Change{
+		Type:       xdr.LedgerEntryTypeContractData,
+		Post:       &s.contractDataEntry,
+		ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryRestored,
+	}
+
+	s.Require().NoError(s.cache.AddChange(change))
 	changes := s.cache.GetChanges()
 	s.Assert().Len(changes, 1)
-	s.Assert().Equal(changes[0].ChangeType, xdr.LedgerEntryChangeTypeLedgerEntryRestored)
+	s.Assert().Equal(xdr.LedgerEntryChangeTypeLedgerEntryRestored, changes[0].ChangeType)
+	s.Assert().EqualValues(&s.contractDataEntry, changes[0].Post)
 }
 
-func (s *TestChangeCompactorExistingRestoredEvictedSuite) TestChangeCreated() {
+func (s *TestChangeCompactorExistingRestoredSuite) SetupTest() {
+	for _, flag := range []bool{true, false} {
+		s.Run(fmt.Sprintf("EmitExpiredEntriesRemovedChange_%v", flag), func() {
+			s.SetupWithEmitRemovalFlag(flag)
+		})
+	}
+}
+
+func (s *TestChangeCompactorExistingRestoredSuite) getLedgerKeyString(entry *xdr.LedgerEntry) string {
+	lk, err := entry.LedgerKey()
+	s.Require().NoError(err)
+	ledgerKey, err := xdr.NewEncodingBuffer().UnsafeMarshalBinary(lk)
+	s.Require().NoError(err)
+	return base64.StdEncoding.EncodeToString(ledgerKey)
+}
+
+func (s *TestChangeCompactorExistingRestoredSuite) TestChangeCreated() {
 	change := Change{
+		Type:       xdr.LedgerEntryTypeContractData,
+		Pre:        nil,
+		Post:       &s.contractDataEntry,
 		ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryCreated,
-		Type:       xdr.LedgerEntryTypeAccount,
-		Pre:        nil,
-		Post: &xdr.LedgerEntry{
-			LastModifiedLedgerSeq: 12,
-			Data: xdr.LedgerEntryData{
-				Type: xdr.LedgerEntryTypeAccount,
-				Account: &xdr.AccountEntry{
-					AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
-				},
-			},
-		},
 	}
 	s.Assert().EqualError(
 		s.cache.AddChange(change),
-		"can't create an entry that already exists (ledger key = AAAAAAAAAAC2LgFRDBZ3J52nLm30kq2iMgrO7dYzYAN3hvjtf1IHWg==)",
+		fmt.Sprintf("can't create an entry that already exists (ledger key = %s)",
+			s.getLedgerKeyString(&s.contractDataEntry),
+		),
 	)
 }
 
-func (s *TestChangeCompactorExistingRestoredEvictedSuite) TestChangeUpdated() {
+func (s *TestChangeCompactorExistingRestoredSuite) TestChangeUpdated() {
+	modified := s.contractDataEntry
+	modified.LastModifiedLedgerSeq = 2
 	change := Change{
+		Type:       xdr.LedgerEntryTypeContractData,
+		Pre:        &s.contractDataEntry,
+		Post:       &modified,
 		ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
-		Type:       xdr.LedgerEntryTypeAccount,
-		Pre: &xdr.LedgerEntry{
-			LastModifiedLedgerSeq: 10,
-			Data: xdr.LedgerEntryData{
-				Type: xdr.LedgerEntryTypeAccount,
-				Account: &xdr.AccountEntry{
-					AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
-				},
-			},
-		},
-		Post: &xdr.LedgerEntry{
-			LastModifiedLedgerSeq: 12,
-			Data: xdr.LedgerEntryData{
-				Type: xdr.LedgerEntryTypeAccount,
-				Account: &xdr.AccountEntry{
-					AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
-				},
-			},
-		},
 	}
+
 	s.Assert().NoError(s.cache.AddChange(change))
 	changes := s.cache.GetChanges()
 	s.Assert().Len(changes, 1)
-	s.Assert().Equal(changes[0].ChangeType, xdr.LedgerEntryChangeTypeLedgerEntryRestored)
+	s.Assert().Equal(xdr.LedgerEntryChangeTypeLedgerEntryRestored, changes[0].ChangeType)
+	s.Assert().EqualValues(&modified, changes[0].Post)
 }
 
-func (s *TestChangeCompactorExistingRestoredEvictedSuite) TestChangeRemoved() {
+func (s *TestChangeCompactorExistingRestoredSuite) TestChangeRemoved() {
 	change := Change{
+		Type:       xdr.LedgerEntryTypeContractData,
+		Pre:        &s.contractDataEntry,
+		Post:       nil,
 		ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryRemoved,
-		Type:       xdr.LedgerEntryTypeAccount,
-		Pre: &xdr.LedgerEntry{
-			LastModifiedLedgerSeq: 11,
-			Data: xdr.LedgerEntryData{
-				Type: xdr.LedgerEntryTypeAccount,
-				Account: &xdr.AccountEntry{
-					AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
-				},
-			},
-		},
-		Post: nil,
 	}
-	//noop
+
 	s.Assert().NoError(s.cache.AddChange(change))
 	changes := s.cache.GetChanges()
-	s.Assert().Len(changes, 0)
+
+	if s.cache.emitExpiredEntriesRemovedChange {
+		s.Assert().Len(changes, 1)
+		s.Assert().Equal(xdr.LedgerEntryChangeTypeLedgerEntryRemoved, changes[0].ChangeType)
+		s.Assert().EqualValues(&s.contractDataEntry, changes[0].Pre)
+	} else {
+		s.Assert().Len(changes, 0)
+	}
+
 }
 
-func (s *TestChangeCompactorExistingRestoredEvictedSuite) TestChangeRestoredEvicted() {
+func (s *TestChangeCompactorExistingRestoredSuite) TestChangeRestored() {
 	change := Change{
-		ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryRestored,
-		Type:       xdr.LedgerEntryTypeAccount,
+		Type:       xdr.LedgerEntryTypeContractData,
 		Pre:        nil,
-		Post: &xdr.LedgerEntry{
-			LastModifiedLedgerSeq: 11,
-			Data: xdr.LedgerEntryData{
-				Type: xdr.LedgerEntryTypeAccount,
-				Account: &xdr.AccountEntry{
-					AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
-				},
-			},
-		},
-	}
-	s.Assert().EqualError(
-		s.cache.AddChange(change),
-		"can't restore an entry that already exists (ledger key = AAAAAAAAAAC2LgFRDBZ3J52nLm30kq2iMgrO7dYzYAN3hvjtf1IHWg==)",
-	)
-}
-
-func (s *TestChangeCompactorExistingRestoredEvictedSuite) TestChangeRestoredArchived() {
-	change := Change{
+		Post:       &s.contractDataEntry,
 		ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryRestored,
-		Type:       xdr.LedgerEntryTypeAccount,
-		Pre: &xdr.LedgerEntry{
-			LastModifiedLedgerSeq: 11,
-			Data: xdr.LedgerEntryData{
-				Type: xdr.LedgerEntryTypeAccount,
-				Account: &xdr.AccountEntry{
-					AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
-				},
-			},
-		},
-		Post: &xdr.LedgerEntry{
-			LastModifiedLedgerSeq: 12,
-			Data: xdr.LedgerEntryData{
-				Type: xdr.LedgerEntryTypeAccount,
-				Account: &xdr.AccountEntry{
-					AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
-				},
-			},
-		},
 	}
 	s.Assert().EqualError(
 		s.cache.AddChange(change),
-		"can't restore an entry that already exists (ledger key = AAAAAAAAAAC2LgFRDBZ3J52nLm30kq2iMgrO7dYzYAN3hvjtf1IHWg==)",
-	)
-}
-
-func TestChangeCompactorExistingRestoredArchived(t *testing.T) {
-	suite.Run(t, new(TestChangeCompactorExistingRestoredArchivedSuite))
-}
-
-// TestChangeCompactorExistingRestoredArchivedSuite tests transitions from existing
-// REMOVED state in the cache.
-type TestChangeCompactorExistingRestoredArchivedSuite struct {
-	suite.Suite
-	cache *ChangeCompactor
-}
-
-func (s *TestChangeCompactorExistingRestoredArchivedSuite) SetupTest() {
-	s.cache = NewChangeCompactor()
-
-	change := Change{
-		ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryRestored,
-		Type:       xdr.LedgerEntryTypeAccount,
-		Pre: &xdr.LedgerEntry{
-			LastModifiedLedgerSeq: 10,
-			Data: xdr.LedgerEntryData{
-				Type: xdr.LedgerEntryTypeAccount,
-				Account: &xdr.AccountEntry{
-					AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
-				},
-			},
-		},
-		Post: &xdr.LedgerEntry{
-			LastModifiedLedgerSeq: 11,
-			Data: xdr.LedgerEntryData{
-				Type: xdr.LedgerEntryTypeAccount,
-				Account: &xdr.AccountEntry{
-					AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
-				},
-			},
-		},
-	}
-	s.Assert().NoError(s.cache.AddChange(change))
-	changes := s.cache.GetChanges()
-	s.Assert().Len(changes, 1)
-	s.Assert().Equal(changes[0].ChangeType, xdr.LedgerEntryChangeTypeLedgerEntryRestored)
-}
-
-func (s *TestChangeCompactorExistingRestoredArchivedSuite) TestChangeCreated() {
-	change := Change{
-		ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryCreated,
-		Type:       xdr.LedgerEntryTypeAccount,
-		Pre:        nil,
-		Post: &xdr.LedgerEntry{
-			LastModifiedLedgerSeq: 12,
-			Data: xdr.LedgerEntryData{
-				Type: xdr.LedgerEntryTypeAccount,
-				Account: &xdr.AccountEntry{
-					AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
-				},
-			},
-		},
-	}
-	s.Assert().EqualError(
-		s.cache.AddChange(change),
-		"can't create an entry that already exists (ledger key = AAAAAAAAAAC2LgFRDBZ3J52nLm30kq2iMgrO7dYzYAN3hvjtf1IHWg==)",
-	)
-}
-
-func (s *TestChangeCompactorExistingRestoredArchivedSuite) TestChangeUpdated() {
-	change := Change{
-		ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
-		Type:       xdr.LedgerEntryTypeAccount,
-		Pre: &xdr.LedgerEntry{
-			LastModifiedLedgerSeq: 10,
-			Data: xdr.LedgerEntryData{
-				Type: xdr.LedgerEntryTypeAccount,
-				Account: &xdr.AccountEntry{
-					AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
-				},
-			},
-		},
-		Post: &xdr.LedgerEntry{
-			LastModifiedLedgerSeq: 12,
-			Data: xdr.LedgerEntryData{
-				Type: xdr.LedgerEntryTypeAccount,
-				Account: &xdr.AccountEntry{
-					AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
-				},
-			},
-		},
-	}
-	s.Assert().NoError(s.cache.AddChange(change))
-	changes := s.cache.GetChanges()
-	s.Assert().Len(changes, 1)
-	s.Assert().Equal(changes[0].ChangeType, xdr.LedgerEntryChangeTypeLedgerEntryRestored)
-}
-
-func (s *TestChangeCompactorExistingRestoredArchivedSuite) TestChangeRemoved() {
-	change := Change{
-		ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryRemoved,
-		Type:       xdr.LedgerEntryTypeAccount,
-		Pre: &xdr.LedgerEntry{
-			LastModifiedLedgerSeq: 11,
-			Data: xdr.LedgerEntryData{
-				Type: xdr.LedgerEntryTypeAccount,
-				Account: &xdr.AccountEntry{
-					AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
-				},
-			},
-		},
-		Post: nil,
-	}
-	s.Assert().NoError(s.cache.AddChange(change))
-	changes := s.cache.GetChanges()
-	s.Assert().Len(changes, 1)
-	s.Assert().Equal(changes[0].ChangeType, xdr.LedgerEntryChangeTypeLedgerEntryRemoved)
-}
-
-func (s *TestChangeCompactorExistingRestoredArchivedSuite) TestChangeRestoredEvicted() {
-	change := Change{
-		ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryRestored,
-		Type:       xdr.LedgerEntryTypeAccount,
-		Pre:        nil,
-		Post: &xdr.LedgerEntry{
-			LastModifiedLedgerSeq: 11,
-			Data: xdr.LedgerEntryData{
-				Type: xdr.LedgerEntryTypeAccount,
-				Account: &xdr.AccountEntry{
-					AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
-				},
-			},
-		},
-	}
-	s.Assert().EqualError(
-		s.cache.AddChange(change),
-		"can't restore an entry that already exists (ledger key = AAAAAAAAAAC2LgFRDBZ3J52nLm30kq2iMgrO7dYzYAN3hvjtf1IHWg==)",
-	)
-}
-
-func (s *TestChangeCompactorExistingRestoredArchivedSuite) TestChangeRestoredArchived() {
-	change := Change{
-		ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryRestored,
-		Type:       xdr.LedgerEntryTypeAccount,
-		Pre: &xdr.LedgerEntry{
-			LastModifiedLedgerSeq: 11,
-			Data: xdr.LedgerEntryData{
-				Type: xdr.LedgerEntryTypeAccount,
-				Account: &xdr.AccountEntry{
-					AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
-				},
-			},
-		},
-		Post: &xdr.LedgerEntry{
-			LastModifiedLedgerSeq: 12,
-			Data: xdr.LedgerEntryData{
-				Type: xdr.LedgerEntryTypeAccount,
-				Account: &xdr.AccountEntry{
-					AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
-				},
-			},
-		},
-	}
-	s.Assert().EqualError(
-		s.cache.AddChange(change),
-		"can't restore an entry that already exists (ledger key = AAAAAAAAAAC2LgFRDBZ3J52nLm30kq2iMgrO7dYzYAN3hvjtf1IHWg==)",
+		fmt.Sprintf("can't restore an entry that already exists (ledger key = %s)",
+			s.getLedgerKeyString(&s.contractDataEntry),
+		),
 	)
 }
 
@@ -808,12 +534,11 @@ func (s *TestChangeCompactorExistingRestoredArchivedSuite) TestChangeRestoredArc
 // GAJ2T6NQ6TDZRVRSNWM3JC7L3TG4H7UBCVK3GUHKP3TQ5NQ3LM4JGBTJ sends money
 // GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML receives money
 func TestChangeCompactorSquashMultiplePayments(t *testing.T) {
-	cache := NewChangeCompactor()
+	cache := NewChangeCompactor(true)
 
 	for i := 1; i <= 1000; i++ {
 		change := Change{
-			ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
-			Type:       xdr.LedgerEntryTypeAccount,
+			Type: xdr.LedgerEntryTypeAccount,
 			Pre: &xdr.LedgerEntry{
 				LastModifiedLedgerSeq: 10,
 				Data: xdr.LedgerEntryData{
@@ -834,12 +559,12 @@ func TestChangeCompactorSquashMultiplePayments(t *testing.T) {
 					},
 				},
 			},
+			ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
 		}
 		assert.NoError(t, cache.AddChange(change))
 
 		change = Change{
-			ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
-			Type:       xdr.LedgerEntryTypeAccount,
+			Type: xdr.LedgerEntryTypeAccount,
 			Pre: &xdr.LedgerEntry{
 				LastModifiedLedgerSeq: 10,
 				Data: xdr.LedgerEntryData{
@@ -860,6 +585,7 @@ func TestChangeCompactorSquashMultiplePayments(t *testing.T) {
 					},
 				},
 			},
+			ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
 		}
 		assert.NoError(t, cache.AddChange(change))
 	}

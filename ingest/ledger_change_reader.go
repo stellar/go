@@ -77,13 +77,14 @@ func NewLedgerChangeReaderFromLedgerCloseMeta(networkPassphrase string, ledger x
 }
 
 type compactingChangeReader struct {
-	input     ChangeReader
-	changes   []Change
-	compacted bool
+	input                           ChangeReader
+	changes                         []Change
+	compacted                       bool
+	emitExpiredEntriesRemovedChange bool
 }
 
 func (c *compactingChangeReader) compact() error {
-	compactor := NewChangeCompactor()
+	compactor := NewChangeCompactor(c.emitExpiredEntriesRemovedChange)
 	for {
 		change, err := c.input.Read()
 		if err == io.EOF {
@@ -121,9 +122,10 @@ func (c *compactingChangeReader) Close() error {
 
 // NewCompactingChangeReader wraps a given ChangeReader and returns a ChangeReader
 // which compacts all the the Changes extracted from the input.
-func NewCompactingChangeReader(input ChangeReader) ChangeReader {
+func NewCompactingChangeReader(input ChangeReader, emitExpiredEntriesRemovedChange bool) ChangeReader {
 	return &compactingChangeReader{
-		input: input,
+		input:                           input,
+		emitExpiredEntriesRemovedChange: emitExpiredEntriesRemovedChange,
 	}
 }
 

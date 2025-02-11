@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/stellar/go/xdr"
 )
@@ -212,4 +213,207 @@ func TestSortChanges(t *testing.T) {
 			assertChangesAreEqual(t, testCase.input[i], testCase.expected[i])
 		}
 	}
+}
+
+func createContractDataEntry() xdr.ContractDataEntry {
+	scVal := true
+	contractDataEntry := xdr.ContractDataEntry{
+		Contract: xdr.ScAddress{
+			Type:       xdr.ScAddressTypeScAddressTypeContract,
+			ContractId: &xdr.Hash{0xca},
+		},
+		Key: xdr.ScVal{
+			Type: xdr.ScValTypeScvBool,
+			B:    &scVal,
+		},
+	}
+	return contractDataEntry
+}
+
+func TestRestoreRemove(t *testing.T) {
+	scVal := true
+	contractDataEntry := xdr.ContractDataEntry{
+		Contract: xdr.ScAddress{
+			Type:       xdr.ScAddressTypeScAddressTypeContract,
+			ContractId: &xdr.Hash{0xca},
+		},
+		Key: xdr.ScVal{
+			Type: xdr.ScValTypeScvBool,
+			B:    &scVal,
+		},
+	}
+	var ledgerEntry xdr.LedgerEntryData
+	ledgerEntry.SetContractData(&contractDataEntry)
+	ledgerKey, _ := ledgerEntry.LedgerKey()
+
+	ledgerEntries := xdr.LedgerEntryChanges{
+		xdr.LedgerEntryChange{
+			Type: xdr.LedgerEntryChangeTypeLedgerEntryRestored,
+			Restored: &xdr.LedgerEntry{
+				Data: xdr.LedgerEntryData{
+					Type:         xdr.LedgerEntryTypeContractData,
+					ContractData: &contractDataEntry,
+				},
+			},
+		},
+		xdr.LedgerEntryChange{
+			Type:    xdr.LedgerEntryChangeTypeLedgerEntryRemoved,
+			Removed: &ledgerKey,
+		},
+	}
+
+	changes := GetChangesFromLedgerEntryChanges(ledgerEntries)
+
+	change := changes[0]
+	require.Equal(t, change.ChangeType, xdr.LedgerEntryChangeTypeLedgerEntryRestored)
+	require.Equal(t, change.Type, xdr.LedgerEntryTypeContractData)
+	require.Nil(t, change.Pre)
+	require.Equal(t, &contractDataEntry, change.Post.Data.ContractData)
+
+	change = changes[1]
+	require.Equal(t, change.ChangeType, xdr.LedgerEntryChangeTypeLedgerEntryRemoved)
+	require.Equal(t, change.Type, xdr.LedgerEntryTypeContractData)
+	require.Equal(t, &contractDataEntry, change.Pre.Data.ContractData)
+	require.Nil(t, change.Post)
+}
+
+func TestRemoveWithState(t *testing.T) {
+	contractDataEntry := createContractDataEntry()
+	var ledgerEntry xdr.LedgerEntryData
+	ledgerEntry.SetContractData(&contractDataEntry)
+	ledgerKey, _ := ledgerEntry.LedgerKey()
+
+	ledgerEntries := xdr.LedgerEntryChanges{
+		xdr.LedgerEntryChange{
+			Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
+			State: &xdr.LedgerEntry{
+				Data: xdr.LedgerEntryData{
+					Type:         xdr.LedgerEntryTypeContractData,
+					ContractData: &contractDataEntry,
+				},
+			},
+		},
+		xdr.LedgerEntryChange{
+			Type:    xdr.LedgerEntryChangeTypeLedgerEntryRemoved,
+			Removed: &ledgerKey,
+		},
+	}
+
+	changes := GetChangesFromLedgerEntryChanges(ledgerEntries)
+	change := changes[0]
+	require.Equal(t, change.ChangeType, xdr.LedgerEntryChangeTypeLedgerEntryRemoved)
+	require.Equal(t, change.Type, xdr.LedgerEntryTypeContractData)
+	require.Equal(t, &contractDataEntry, change.Pre.Data.ContractData)
+	require.Nil(t, change.Post)
+}
+
+func TestRemoveWithoutState(t *testing.T) {
+	contractDataEntry := createContractDataEntry()
+	var ledgerEntry xdr.LedgerEntryData
+	ledgerEntry.SetContractData(&contractDataEntry)
+	ledgerKey, _ := ledgerEntry.LedgerKey()
+
+	ledgerEntries := xdr.LedgerEntryChanges{
+		xdr.LedgerEntryChange{
+			Type:    xdr.LedgerEntryChangeTypeLedgerEntryRemoved,
+			Removed: &ledgerKey,
+		},
+	}
+	f := func() {
+		GetChangesFromLedgerEntryChanges(ledgerEntries)
+	}
+	assert.Panics(t, f)
+}
+
+func TestRestoreUpdate(t *testing.T) {
+	contractDataEntry := createContractDataEntry()
+
+	ledgerEntries := xdr.LedgerEntryChanges{
+		xdr.LedgerEntryChange{
+			Type: xdr.LedgerEntryChangeTypeLedgerEntryRestored,
+			Restored: &xdr.LedgerEntry{
+				Data: xdr.LedgerEntryData{
+					Type:         xdr.LedgerEntryTypeContractData,
+					ContractData: &contractDataEntry,
+				},
+			},
+		},
+		xdr.LedgerEntryChange{
+			Type: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
+			Updated: &xdr.LedgerEntry{
+				Data: xdr.LedgerEntryData{
+					Type:         xdr.LedgerEntryTypeContractData,
+					ContractData: &contractDataEntry,
+				},
+			},
+		},
+	}
+
+	changes := GetChangesFromLedgerEntryChanges(ledgerEntries)
+
+	change := changes[0]
+	require.Equal(t, change.ChangeType, xdr.LedgerEntryChangeTypeLedgerEntryRestored)
+	require.Equal(t, change.Type, xdr.LedgerEntryTypeContractData)
+	require.Nil(t, change.Pre)
+	require.Equal(t, &contractDataEntry, change.Post.Data.ContractData)
+
+	change = changes[1]
+	require.Equal(t, change.ChangeType, xdr.LedgerEntryChangeTypeLedgerEntryUpdated)
+	require.Equal(t, change.Type, xdr.LedgerEntryTypeContractData)
+	require.Equal(t, &contractDataEntry, change.Pre.Data.ContractData)
+	require.Equal(t, &contractDataEntry, change.Post.Data.ContractData)
+}
+
+func TestRestoreWithState(t *testing.T) {
+	contractDataEntry := createContractDataEntry()
+
+	ledgerEntries := xdr.LedgerEntryChanges{
+		xdr.LedgerEntryChange{
+			Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
+			State: &xdr.LedgerEntry{
+				Data: xdr.LedgerEntryData{
+					Type:         xdr.LedgerEntryTypeContractData,
+					ContractData: &contractDataEntry,
+				},
+			},
+		},
+		xdr.LedgerEntryChange{
+			Type: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
+			Updated: &xdr.LedgerEntry{
+				Data: xdr.LedgerEntryData{
+					Type:         xdr.LedgerEntryTypeContractData,
+					ContractData: &contractDataEntry,
+				},
+			},
+		},
+	}
+
+	changes := GetChangesFromLedgerEntryChanges(ledgerEntries)
+
+	change := changes[0]
+	require.Equal(t, change.ChangeType, xdr.LedgerEntryChangeTypeLedgerEntryUpdated)
+	require.Equal(t, change.Type, xdr.LedgerEntryTypeContractData)
+	require.Equal(t, &contractDataEntry, change.Pre.Data.ContractData)
+	require.Equal(t, &contractDataEntry, change.Post.Data.ContractData)
+}
+
+func TestUpdateWithoutState(t *testing.T) {
+	contractDataEntry := createContractDataEntry()
+
+	ledgerEntries := xdr.LedgerEntryChanges{
+		xdr.LedgerEntryChange{
+			Type: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
+			Updated: &xdr.LedgerEntry{
+				Data: xdr.LedgerEntryData{
+					Type:         xdr.LedgerEntryTypeContractData,
+					ContractData: &contractDataEntry,
+				},
+			},
+		},
+	}
+
+	f := func() {
+		GetChangesFromLedgerEntryChanges(ledgerEntries)
+	}
+	assert.Panics(t, f)
 }
