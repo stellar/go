@@ -36,98 +36,104 @@ func newTestEventMeta() *EventMeta {
 	}
 }
 
-func TestNewTransferEvent_Serialization(t *testing.T) {
-	from := newTestAddress()
-	to := newTestAddress()
-	amount := "1000"
-	meta := newTestEventMeta()
-	token := newTestAsset()
-	event := NewTransferEvent(meta, from, to, amount, token)
+func TestEventSerialization(t *testing.T) {
+	tests := []struct {
+		// test name
+		name string
+		// Setup the test fixture
+		create func() (*TokenTransferEvent, *EventMeta, *asset.Asset, *address.Address, string)
+		// Function to assert to see if data matches
+		getEventData func(event *TokenTransferEvent) proto.Message
+	}{
+		{
+			name: "Transfer",
+			create: func() (*TokenTransferEvent, *EventMeta, *asset.Asset, *address.Address, string) {
+				from := newTestAddress()
+				to := newTestAddress()
+				amount := "1000"
+				meta := newTestEventMeta()
+				token := newTestAsset()
+				event := NewTransferEvent(meta, from, to, amount, token)
+				return event, meta, token, from, amount
+			},
+			getEventData: func(event *TokenTransferEvent) proto.Message {
+				return event.GetTransfer()
+			},
+		},
+		{
+			name: "Mint",
+			create: func() (*TokenTransferEvent, *EventMeta, *asset.Asset, *address.Address, string) {
+				to := newTestAddress()
+				amount := "500"
+				meta := newTestEventMeta()
+				token := newTestAsset()
+				event := NewMintEvent(meta, to, amount, token)
+				return event, meta, token, to, amount
+			},
+			getEventData: func(event *TokenTransferEvent) proto.Message {
+				return event.GetMint()
+			},
+		},
+		{
+			name: "Burn",
+			create: func() (*TokenTransferEvent, *EventMeta, *asset.Asset, *address.Address, string) {
+				from := newTestAddress()
+				amount := "200"
+				meta := newTestEventMeta()
+				token := newTestAsset()
+				event := NewBurnEvent(meta, from, amount, token)
+				return event, meta, token, from, amount
+			},
+			getEventData: func(event *TokenTransferEvent) proto.Message {
+				return event.GetBurn()
+			},
+		},
+		{
+			name: "Clawback",
+			create: func() (*TokenTransferEvent, *EventMeta, *asset.Asset, *address.Address, string) {
+				from := newTestAddress()
+				amount := "300"
+				meta := newTestEventMeta()
+				token := newTestAsset()
+				event := NewClawbackEvent(meta, from, amount, token)
+				return event, meta, token, from, amount
+			},
+			getEventData: func(event *TokenTransferEvent) proto.Message {
+				return event.GetClawback()
+			},
+		},
+		{
+			name: "Fee",
+			create: func() (*TokenTransferEvent, *EventMeta, *asset.Asset, *address.Address, string) {
+				from := newTestAddress()
+				amount := "50"
+				token := newTestAsset()
+				event := NewFeeEvent(12345, time.Now(), "abc123xyz", from, amount, token)
+				return event, nil, token, from, amount // No meta for Fee event
+			},
+			getEventData: func(event *TokenTransferEvent) proto.Message {
+				return event.GetFee()
+			},
+		},
+	}
 
-	data, err := proto.Marshal(event)
-	assert.NoError(t, err)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			event, _, _, _, _ := tt.create()
 
-	var deserializedEvent TokenTransferEvent
-	err = proto.Unmarshal(data, &deserializedEvent)
-	assert.NoError(t, err)
+			data, err := proto.Marshal(event)
+			assert.NoError(t, err)
 
-	assert.True(t, proto.Equal(event.Meta, deserializedEvent.Meta))
-	assert.True(t, proto.Equal(event.Asset, deserializedEvent.Asset))
-	assert.True(t, proto.Equal(event.GetTransfer(), deserializedEvent.GetTransfer()))
-}
+			var deserializedEvent TokenTransferEvent
+			err = proto.Unmarshal(data, &deserializedEvent)
+			assert.NoError(t, err)
 
-func TestNewMintEvent_Serialization(t *testing.T) {
-	to := newTestAddress()
-	amount := "500"
-	meta := newTestEventMeta()
-	token := newTestAsset()
-	event := NewMintEvent(meta, to, amount, token)
+			// Common assertions
+			assert.True(t, proto.Equal(event.Meta, deserializedEvent.Meta))
+			assert.True(t, proto.Equal(event.Asset, deserializedEvent.Asset))
 
-	data, err := proto.Marshal(event)
-	assert.NoError(t, err)
-
-	var deserializedEvent TokenTransferEvent
-	err = proto.Unmarshal(data, &deserializedEvent)
-	assert.NoError(t, err)
-
-	assert.True(t, proto.Equal(event.Meta, deserializedEvent.Meta))
-	assert.True(t, proto.Equal(event.Asset, deserializedEvent.Asset))
-	assert.True(t, proto.Equal(event.GetMint(), deserializedEvent.GetMint()))
-}
-
-func TestNewBurnEvent_Serialization(t *testing.T) {
-	from := newTestAddress()
-	amount := "200"
-	meta := newTestEventMeta()
-	token := newTestAsset()
-	event := NewBurnEvent(meta, from, amount, token)
-
-	// Serialize the event
-	data, err := proto.Marshal(event)
-	assert.NoError(t, err)
-
-	var deserializedEvent TokenTransferEvent
-	err = proto.Unmarshal(data, &deserializedEvent)
-	assert.NoError(t, err)
-
-	assert.True(t, proto.Equal(event.Meta, deserializedEvent.Meta))
-	assert.True(t, proto.Equal(event.Asset, deserializedEvent.Asset))
-	assert.True(t, proto.Equal(event.GetBurn(), deserializedEvent.GetBurn()))
-}
-
-func TestNewClawbackEvent_Serialization(t *testing.T) {
-	from := newTestAddress()
-	amount := "300"
-	meta := newTestEventMeta()
-	token := newTestAsset()
-	event := NewClawbackEvent(meta, from, amount, token)
-
-	data, err := proto.Marshal(event)
-	assert.NoError(t, err)
-
-	var deserializedEvent TokenTransferEvent
-	err = proto.Unmarshal(data, &deserializedEvent)
-	assert.NoError(t, err)
-
-	assert.True(t, proto.Equal(event.Meta, deserializedEvent.Meta))
-	assert.True(t, proto.Equal(event.Asset, deserializedEvent.Asset))
-	assert.True(t, proto.Equal(event.GetClawback(), deserializedEvent.GetClawback()))
-}
-
-func TestNewFeeEvent_Serialization(t *testing.T) {
-	from := newTestAddress()
-	amount := "50"
-	token := newTestAsset()
-	event := NewFeeEvent(12345, time.Now(), "abc123xyz", from, amount, token)
-
-	data, err := proto.Marshal(event)
-	assert.NoError(t, err)
-
-	var deserializedEvent TokenTransferEvent
-	err = proto.Unmarshal(data, &deserializedEvent)
-	assert.NoError(t, err)
-
-	assert.True(t, proto.Equal(event.Meta, deserializedEvent.Meta))
-	assert.True(t, proto.Equal(event.Asset, deserializedEvent.Asset))
-	assert.True(t, proto.Equal(event.GetFee(), deserializedEvent.GetFee()))
+			// Event-specific assertions via the provided getter function
+			assert.True(t, proto.Equal(tt.getEventData(event), tt.getEventData(&deserializedEvent)))
+		})
+	}
 }
