@@ -64,7 +64,7 @@ import (
 //     entry already exists in the cache. If not, it adds the RESTORED change.
 //     Otherwise, it returns an error because only expired entries can be
 //     restored. If the entry was created, updated or removed in the same
-//     ledger, it's not expired.
+//     ledger, the entry must be active and not archived.
 type ChangeCompactor struct {
 	// ledger key => Change
 	cache          map[string]Change
