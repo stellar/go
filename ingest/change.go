@@ -154,11 +154,13 @@ func GetChangesFromLedgerEntryChanges(ledgerEntryChanges xdr.LedgerEntryChanges)
 				ChangeType: entryChange.Type,
 			})
 		case xdr.LedgerEntryChangeTypeLedgerEntryUpdated:
+			// Update entries always have a previous state entry [state, updated]
+			// except for contract entries that are restored and updated within the same
+			// transaction, which appear as [restored, updated]
+			// For details, see https://github.com/stellar/stellar-protocol/blob/master/core/cap-0062.md
 			updated := entryChange.MustUpdated()
-			var state xdr.LedgerEntry
-			if _, ok := ledgerEntryChanges[i-1].GetState(); ok {
-				state = ledgerEntryChanges[i-1].MustState()
-			} else {
+			state, ok := ledgerEntryChanges[i-1].GetState()
+			if !ok {
 				state = ledgerEntryChanges[i-1].MustRestored()
 			}
 			changes = append(changes, Change{
@@ -168,10 +170,12 @@ func GetChangesFromLedgerEntryChanges(ledgerEntryChanges xdr.LedgerEntryChanges)
 				ChangeType: entryChange.Type,
 			})
 		case xdr.LedgerEntryChangeTypeLedgerEntryRemoved:
-			var state xdr.LedgerEntry
-			if _, ok := ledgerEntryChanges[i-1].GetState(); ok {
-				state = ledgerEntryChanges[i-1].MustState()
-			} else {
+			// Removed entries always have an associated state entry [state, updated]
+			// except for contract entries that are restored and removed within the same
+			// transaction, which appear as [restored, removed]
+			// For details, see https://github.com/stellar/stellar-protocol/blob/master/core/cap-0062.md
+			state, ok := ledgerEntryChanges[i-1].GetState()
+			if !ok {
 				state = ledgerEntryChanges[i-1].MustRestored()
 			}
 			changes = append(changes, Change{

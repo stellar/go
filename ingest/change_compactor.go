@@ -44,7 +44,8 @@ import (
 //     b. UPDATED we simply update it with the new value.
 //     c. REMOVED it means that at this point in the ledger the entry is removed
 //     so updating it returns an error.
-//     d. RESTORED we update it with the new value but keep the change type as RESTORED.
+//     d. RESTORED we update it with the new value but keep the change type as
+//     RESTORED.
 //  3. If the change is REMOVE it checks if any change connected to given entry
 //     is already in the cache. If not, it adds REMOVE change. Otherwise, if
 //     existing change is:
@@ -56,26 +57,42 @@ import (
 //     change means the entry exists in a DB.
 //     c. REMOVED it returns error because we can't remove an entry that was
 //     already removed.
-//     d. RESTORED it means the entry doesn't exist in the DB, so it's a noop
-//     so remove the entry from the cache.
-//  4. If the change is RESTORED it checks if any change related to the given entry
-//     already exists in the cache. If not, it adds the RESTORED change. Otherwise,
-//     returns an error since restoration is only possible for previously archived/evicted
-//     entries. If the entry was created, updated or removed within the same ledger, restoration
-//     is not possible.
+//     d. RESTORED depending on the change compactor's configuration, we may or
+//     may not emit a REMOVE change type for an entry that was restored earlier
+//     in the ledger.
+//  4. If the change is RESTORED it checks if any change related to the given
+//     entry already exists in the cache. If not, it adds the RESTORED change.
+//     Otherwise, it returns an error because only expired entries can be
+//     restored. If the entry was created, updated or removed in the same
+//     ledger, it's not expired.
 type ChangeCompactor struct {
 	// ledger key => Change
-	cache                           map[string]Change
-	encodingBuffer                  *xdr.EncodingBuffer
-	emitExpiredEntriesRemovedChange bool
+	cache          map[string]Change
+	encodingBuffer *xdr.EncodingBuffer
+	config         *ChangeCompactorConfig
+}
+
+type ChangeCompactorConfig struct {
+	// Determines whether the change compactor emits a REMOVED change when an expired entry
+	// is restored and then removed within the same ledger.
+	// If set to true, a REMOVED change is emitted; if false, REMOVED change is suppressed.
+	EmitExpiredEntryRemovedChange bool
+}
+
+func NewChangeCompactorDefaultConfig() *ChangeCompactorConfig {
+	return &ChangeCompactorConfig{
+		// By default, set it to true to enable the change compactor
+		// to emit REMOVED change for expired entries.
+		EmitExpiredEntryRemovedChange: true,
+	}
 }
 
 // NewChangeCompactor returns a new ChangeCompactor.
-func NewChangeCompactor(emitExpiredEntriesRemovedChange bool) *ChangeCompactor {
+func NewChangeCompactor(config *ChangeCompactorConfig) *ChangeCompactor {
 	return &ChangeCompactor{
-		cache:                           make(map[string]Change),
-		encodingBuffer:                  xdr.NewEncodingBuffer(),
-		emitExpiredEntriesRemovedChange: emitExpiredEntriesRemovedChange,
+		cache:          make(map[string]Change),
+		encodingBuffer: xdr.NewEncodingBuffer(),
+		config:         config,
 	}
 }
 
@@ -104,16 +121,10 @@ func (c *ChangeCompactor) AddChange(change Change) error {
 // addCreatedChange adds a change to the cache, but returns an error if create
 // change is unexpected.
 func (c *ChangeCompactor) addCreatedChange(change Change) error {
-	// safe, since we later cast to string (causing a copy)
-	key, err := change.Post.LedgerKey()
+	ledgerKey, err := c.getLedgerKey(change.Post)
 	if err != nil {
-		return errors.Wrap(err, "error getting ledger key for new entry")
+		return err
 	}
-	ledgerKey, err := c.encodingBuffer.UnsafeMarshalBinary(key)
-	if err != nil {
-		return errors.Wrap(err, "error marshaling ledger key for new entry")
-	}
-
 	ledgerKeyString := string(ledgerKey)
 
 	existingChange, exist := c.cache[ledgerKeyString]
@@ -136,7 +147,7 @@ func (c *ChangeCompactor) addCreatedChange(change Change) error {
 		// If existing type is removed it means that this entry does exist
 		// in a DB so we update entry change.
 		c.cache[ledgerKeyString] = Change{
-			Type:       key.Type,
+			Type:       change.Type,
 			Pre:        existingChange.Pre,
 			Post:       change.Post,
 			ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
@@ -148,19 +159,26 @@ func (c *ChangeCompactor) addCreatedChange(change Change) error {
 	return nil
 }
 
-// addUpdatedChange adds a change to the cache, but returns an error if update
-// change is unexpected.
-func (c *ChangeCompactor) addUpdatedChange(change Change) error {
+func (c *ChangeCompactor) getLedgerKey(ledgerEntry *xdr.LedgerEntry) ([]byte, error) {
 	// safe, since we later cast to string (causing a copy)
-	key, err := change.Post.LedgerKey()
+	key, err := ledgerEntry.LedgerKey()
 	if err != nil {
-		return errors.Wrap(err, "error getting ledger key for updated entry")
+		return nil, errors.Wrap(err, "error getting ledger key for new entry")
 	}
 	ledgerKey, err := c.encodingBuffer.UnsafeMarshalBinary(key)
 	if err != nil {
-		return errors.Wrap(err, "error marshaling ledger key for updated entry")
+		return nil, errors.Wrap(err, "error marshaling ledger key for new entry")
 	}
+	return ledgerKey, nil
+}
 
+// addUpdatedChange adds a change to the cache, but returns an error if update
+// change is unexpected.
+func (c *ChangeCompactor) addUpdatedChange(change Change) error {
+	ledgerKey, err := c.getLedgerKey(change.Post)
+	if err != nil {
+		return err
+	}
 	ledgerKeyString := string(ledgerKey)
 
 	existingChange, exist := c.cache[ledgerKeyString]
@@ -174,15 +192,16 @@ func (c *ChangeCompactor) addUpdatedChange(change Change) error {
 		// If existing type is created it means that this entry does not
 		// exist in a DB so we update entry change.
 		c.cache[ledgerKeyString] = Change{
-			Type: key.Type,
-			Pre:  existingChange.Pre, // = nil
-			Post: change.Post,
+			Type:       change.Type,
+			Pre:        existingChange.Pre, // = nil
+			Post:       change.Post,
+			ChangeType: existingChange.ChangeType,
 		}
 	case xdr.LedgerEntryChangeTypeLedgerEntryUpdated:
 		fallthrough
 	case xdr.LedgerEntryChangeTypeLedgerEntryRestored:
 		c.cache[ledgerKeyString] = Change{
-			Type:       key.Type,
+			Type:       change.Type,
 			Pre:        existingChange.Pre,
 			Post:       change.Post,
 			ChangeType: existingChange.ChangeType, //keep the existing change type
@@ -202,16 +221,10 @@ func (c *ChangeCompactor) addUpdatedChange(change Change) error {
 // addRemovedChange adds a change to the cache, but returns an error if remove
 // change is unexpected.
 func (c *ChangeCompactor) addRemovedChange(change Change) error {
-	// safe, since we later cast to string (causing a copy)
-	key, err := change.Pre.LedgerKey()
+	ledgerKey, err := c.getLedgerKey(change.Pre)
 	if err != nil {
-		return errors.Wrap(err, "error getting ledger key for removed entry")
+		return err
 	}
-	ledgerKey, err := c.encodingBuffer.UnsafeMarshalBinary(key)
-	if err != nil {
-		return errors.Wrap(err, "error marshaling ledger key for removed entry")
-	}
-
 	ledgerKeyString := string(ledgerKey)
 
 	existingChange, exist := c.cache[ledgerKeyString]
@@ -227,7 +240,7 @@ func (c *ChangeCompactor) addRemovedChange(change Change) error {
 		delete(c.cache, ledgerKeyString)
 	case xdr.LedgerEntryChangeTypeLedgerEntryUpdated:
 		c.cache[ledgerKeyString] = Change{
-			Type:       key.Type,
+			Type:       change.Type,
 			Pre:        existingChange.Pre,
 			Post:       nil,
 			ChangeType: change.ChangeType,
@@ -238,9 +251,9 @@ func (c *ChangeCompactor) addRemovedChange(change Change) error {
 			base64.StdEncoding.EncodeToString(ledgerKey),
 		))
 	case xdr.LedgerEntryChangeTypeLedgerEntryRestored:
-		if c.emitExpiredEntriesRemovedChange {
+		if c.config.EmitExpiredEntryRemovedChange {
 			c.cache[ledgerKeyString] = Change{
-				Type:       key.Type,
+				Type:       change.Type,
 				Pre:        change.Pre,
 				Post:       nil,
 				ChangeType: change.ChangeType,
@@ -259,16 +272,10 @@ func (c *ChangeCompactor) addRemovedChange(change Change) error {
 // addRestoredChange adds a change to the cache, but returns an error if the restore
 // change is unexpected.
 func (c *ChangeCompactor) addRestoredChange(change Change) error {
-	// safe, since we later cast to string (causing a copy)
-	key, err := change.Post.LedgerKey()
+	ledgerKey, err := c.getLedgerKey(change.Post)
 	if err != nil {
-		return errors.Wrap(err, "error getting ledger key for updated entry")
+		return err
 	}
-	ledgerKey, err := c.encodingBuffer.UnsafeMarshalBinary(key)
-	if err != nil {
-		return errors.Wrap(err, "error marshaling ledger key for updated entry")
-	}
-
 	ledgerKeyString := string(ledgerKey)
 
 	if _, exist := c.cache[ledgerKeyString]; exist {

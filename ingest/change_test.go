@@ -215,9 +215,9 @@ func TestSortChanges(t *testing.T) {
 	}
 }
 
-func createContractDataEntry() xdr.ContractDataEntry {
+func createContractDataEntry() *xdr.ContractDataEntry {
 	scVal := true
-	contractDataEntry := xdr.ContractDataEntry{
+	return &xdr.ContractDataEntry{
 		Contract: xdr.ScAddress{
 			Type:       xdr.ScAddressTypeScAddressTypeContract,
 			ContractId: &xdr.Hash{0xca},
@@ -227,24 +227,10 @@ func createContractDataEntry() xdr.ContractDataEntry {
 			B:    &scVal,
 		},
 	}
-	return contractDataEntry
 }
 
-func TestRestoreRemove(t *testing.T) {
-	scVal := true
-	contractDataEntry := xdr.ContractDataEntry{
-		Contract: xdr.ScAddress{
-			Type:       xdr.ScAddressTypeScAddressTypeContract,
-			ContractId: &xdr.Hash{0xca},
-		},
-		Key: xdr.ScVal{
-			Type: xdr.ScValTypeScvBool,
-			B:    &scVal,
-		},
-	}
-	var ledgerEntry xdr.LedgerEntryData
-	ledgerEntry.SetContractData(&contractDataEntry)
-	ledgerKey, _ := ledgerEntry.LedgerKey()
+func TestRestoreChange(t *testing.T) {
+	contractDataEntry := createContractDataEntry()
 
 	ledgerEntries := xdr.LedgerEntryChanges{
 		xdr.LedgerEntryChange{
@@ -252,7 +238,58 @@ func TestRestoreRemove(t *testing.T) {
 			Restored: &xdr.LedgerEntry{
 				Data: xdr.LedgerEntryData{
 					Type:         xdr.LedgerEntryTypeContractData,
-					ContractData: &contractDataEntry,
+					ContractData: contractDataEntry,
+				},
+			},
+		},
+	}
+
+	changes := GetChangesFromLedgerEntryChanges(ledgerEntries)
+
+	change := changes[0]
+	require.Equal(t, change.ChangeType, xdr.LedgerEntryChangeTypeLedgerEntryRestored)
+	require.Equal(t, change.Type, xdr.LedgerEntryTypeContractData)
+	require.Nil(t, change.Pre)
+	require.Equal(t, contractDataEntry, change.Post.Data.ContractData)
+}
+
+func TestInvalidRestoreChange(t *testing.T) {
+	contractDataEntry := createContractDataEntry()
+
+	ledgerEntries := xdr.LedgerEntryChanges{
+		xdr.LedgerEntryChange{
+			Type: xdr.LedgerEntryChangeTypeLedgerEntryRestored,
+			// Created instead of Restored
+			Created: &xdr.LedgerEntry{
+				Data: xdr.LedgerEntryData{
+					Type:         xdr.LedgerEntryTypeContractData,
+					ContractData: contractDataEntry,
+				},
+			},
+		},
+	}
+
+	f := func() {
+		GetChangesFromLedgerEntryChanges(ledgerEntries)
+	}
+	require.Panics(t, f)
+}
+
+func TestRemoveChangeWithRestore(t *testing.T) {
+	contractDataEntry := createContractDataEntry()
+
+	var ledgerEntry xdr.LedgerEntryData
+	ledgerEntry.SetContractData(contractDataEntry)
+	ledgerKey, err := ledgerEntry.LedgerKey()
+	require.NoError(t, err)
+
+	ledgerEntries := xdr.LedgerEntryChanges{
+		xdr.LedgerEntryChange{
+			Type: xdr.LedgerEntryChangeTypeLedgerEntryRestored,
+			Restored: &xdr.LedgerEntry{
+				Data: xdr.LedgerEntryData{
+					Type:         xdr.LedgerEntryTypeContractData,
+					ContractData: contractDataEntry,
 				},
 			},
 		},
@@ -268,20 +305,22 @@ func TestRestoreRemove(t *testing.T) {
 	require.Equal(t, change.ChangeType, xdr.LedgerEntryChangeTypeLedgerEntryRestored)
 	require.Equal(t, change.Type, xdr.LedgerEntryTypeContractData)
 	require.Nil(t, change.Pre)
-	require.Equal(t, &contractDataEntry, change.Post.Data.ContractData)
+	require.Equal(t, contractDataEntry, change.Post.Data.ContractData)
 
 	change = changes[1]
 	require.Equal(t, change.ChangeType, xdr.LedgerEntryChangeTypeLedgerEntryRemoved)
 	require.Equal(t, change.Type, xdr.LedgerEntryTypeContractData)
-	require.Equal(t, &contractDataEntry, change.Pre.Data.ContractData)
+	require.Equal(t, contractDataEntry, change.Pre.Data.ContractData)
 	require.Nil(t, change.Post)
 }
 
-func TestRemoveWithState(t *testing.T) {
+func TestRemoveChangeWithState(t *testing.T) {
 	contractDataEntry := createContractDataEntry()
+
 	var ledgerEntry xdr.LedgerEntryData
-	ledgerEntry.SetContractData(&contractDataEntry)
-	ledgerKey, _ := ledgerEntry.LedgerKey()
+	ledgerEntry.SetContractData(contractDataEntry)
+	ledgerKey, err := ledgerEntry.LedgerKey()
+	require.NoError(t, err)
 
 	ledgerEntries := xdr.LedgerEntryChanges{
 		xdr.LedgerEntryChange{
@@ -289,7 +328,7 @@ func TestRemoveWithState(t *testing.T) {
 			State: &xdr.LedgerEntry{
 				Data: xdr.LedgerEntryData{
 					Type:         xdr.LedgerEntryTypeContractData,
-					ContractData: &contractDataEntry,
+					ContractData: contractDataEntry,
 				},
 			},
 		},
@@ -303,17 +342,38 @@ func TestRemoveWithState(t *testing.T) {
 	change := changes[0]
 	require.Equal(t, change.ChangeType, xdr.LedgerEntryChangeTypeLedgerEntryRemoved)
 	require.Equal(t, change.Type, xdr.LedgerEntryTypeContractData)
-	require.Equal(t, &contractDataEntry, change.Pre.Data.ContractData)
+	require.Equal(t, contractDataEntry, change.Pre.Data.ContractData)
 	require.Nil(t, change.Post)
 }
 
-func TestRemoveWithoutState(t *testing.T) {
+func TestInvalidRemoveChange(t *testing.T) {
 	contractDataEntry := createContractDataEntry()
+
 	var ledgerEntry xdr.LedgerEntryData
-	ledgerEntry.SetContractData(&contractDataEntry)
-	ledgerKey, _ := ledgerEntry.LedgerKey()
+	ledgerEntry.SetContractData(contractDataEntry)
+	ledgerKey, err := ledgerEntry.LedgerKey()
+	require.NoError(t, err)
 
 	ledgerEntries := xdr.LedgerEntryChanges{
+		xdr.LedgerEntryChange{
+			Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
+			State: &xdr.LedgerEntry{
+				Data: xdr.LedgerEntryData{
+					Type:         xdr.LedgerEntryTypeContractData,
+					ContractData: contractDataEntry,
+				},
+			},
+		},
+		xdr.LedgerEntryChange{
+			Type: xdr.LedgerEntryChangeTypeLedgerEntryCreated,
+			Created: &xdr.LedgerEntry{
+				Data: xdr.LedgerEntryData{
+					Type:         xdr.LedgerEntryTypeContractData,
+					ContractData: contractDataEntry,
+				},
+			},
+		},
+		// Remove change without an associated State or Restored change
 		xdr.LedgerEntryChange{
 			Type:    xdr.LedgerEntryChangeTypeLedgerEntryRemoved,
 			Removed: &ledgerKey,
@@ -322,10 +382,10 @@ func TestRemoveWithoutState(t *testing.T) {
 	f := func() {
 		GetChangesFromLedgerEntryChanges(ledgerEntries)
 	}
-	assert.Panics(t, f)
+	require.Panics(t, f)
 }
 
-func TestRestoreUpdate(t *testing.T) {
+func TestUpdateChangeWithRestore(t *testing.T) {
 	contractDataEntry := createContractDataEntry()
 
 	ledgerEntries := xdr.LedgerEntryChanges{
@@ -334,7 +394,7 @@ func TestRestoreUpdate(t *testing.T) {
 			Restored: &xdr.LedgerEntry{
 				Data: xdr.LedgerEntryData{
 					Type:         xdr.LedgerEntryTypeContractData,
-					ContractData: &contractDataEntry,
+					ContractData: contractDataEntry,
 				},
 			},
 		},
@@ -343,7 +403,7 @@ func TestRestoreUpdate(t *testing.T) {
 			Updated: &xdr.LedgerEntry{
 				Data: xdr.LedgerEntryData{
 					Type:         xdr.LedgerEntryTypeContractData,
-					ContractData: &contractDataEntry,
+					ContractData: contractDataEntry,
 				},
 			},
 		},
@@ -355,16 +415,16 @@ func TestRestoreUpdate(t *testing.T) {
 	require.Equal(t, change.ChangeType, xdr.LedgerEntryChangeTypeLedgerEntryRestored)
 	require.Equal(t, change.Type, xdr.LedgerEntryTypeContractData)
 	require.Nil(t, change.Pre)
-	require.Equal(t, &contractDataEntry, change.Post.Data.ContractData)
+	require.Equal(t, contractDataEntry, change.Post.Data.ContractData)
 
 	change = changes[1]
 	require.Equal(t, change.ChangeType, xdr.LedgerEntryChangeTypeLedgerEntryUpdated)
 	require.Equal(t, change.Type, xdr.LedgerEntryTypeContractData)
-	require.Equal(t, &contractDataEntry, change.Pre.Data.ContractData)
-	require.Equal(t, &contractDataEntry, change.Post.Data.ContractData)
+	require.Equal(t, contractDataEntry, change.Pre.Data.ContractData)
+	require.Equal(t, contractDataEntry, change.Post.Data.ContractData)
 }
 
-func TestRestoreWithState(t *testing.T) {
+func TestUpdateChangeWithState(t *testing.T) {
 	contractDataEntry := createContractDataEntry()
 
 	ledgerEntries := xdr.LedgerEntryChanges{
@@ -373,7 +433,7 @@ func TestRestoreWithState(t *testing.T) {
 			State: &xdr.LedgerEntry{
 				Data: xdr.LedgerEntryData{
 					Type:         xdr.LedgerEntryTypeContractData,
-					ContractData: &contractDataEntry,
+					ContractData: contractDataEntry,
 				},
 			},
 		},
@@ -382,7 +442,7 @@ func TestRestoreWithState(t *testing.T) {
 			Updated: &xdr.LedgerEntry{
 				Data: xdr.LedgerEntryData{
 					Type:         xdr.LedgerEntryTypeContractData,
-					ContractData: &contractDataEntry,
+					ContractData: contractDataEntry,
 				},
 			},
 		},
@@ -393,20 +453,39 @@ func TestRestoreWithState(t *testing.T) {
 	change := changes[0]
 	require.Equal(t, change.ChangeType, xdr.LedgerEntryChangeTypeLedgerEntryUpdated)
 	require.Equal(t, change.Type, xdr.LedgerEntryTypeContractData)
-	require.Equal(t, &contractDataEntry, change.Pre.Data.ContractData)
-	require.Equal(t, &contractDataEntry, change.Post.Data.ContractData)
+	require.Equal(t, contractDataEntry, change.Pre.Data.ContractData)
+	require.Equal(t, contractDataEntry, change.Post.Data.ContractData)
 }
 
-func TestUpdateWithoutState(t *testing.T) {
+func TestInvalidUpdateChange(t *testing.T) {
 	contractDataEntry := createContractDataEntry()
 
 	ledgerEntries := xdr.LedgerEntryChanges{
+		xdr.LedgerEntryChange{
+			Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
+			State: &xdr.LedgerEntry{
+				Data: xdr.LedgerEntryData{
+					Type:         xdr.LedgerEntryTypeContractData,
+					ContractData: contractDataEntry,
+				},
+			},
+		},
+		xdr.LedgerEntryChange{
+			Type: xdr.LedgerEntryChangeTypeLedgerEntryCreated,
+			Created: &xdr.LedgerEntry{
+				Data: xdr.LedgerEntryData{
+					Type:         xdr.LedgerEntryTypeContractData,
+					ContractData: contractDataEntry,
+				},
+			},
+		},
+		// Update change without an associated State or Restored change
 		xdr.LedgerEntryChange{
 			Type: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
 			Updated: &xdr.LedgerEntry{
 				Data: xdr.LedgerEntryData{
 					Type:         xdr.LedgerEntryTypeContractData,
-					ContractData: &contractDataEntry,
+					ContractData: contractDataEntry,
 				},
 			},
 		},
@@ -415,5 +494,5 @@ func TestUpdateWithoutState(t *testing.T) {
 	f := func() {
 		GetChangesFromLedgerEntryChanges(ledgerEntries)
 	}
-	assert.Panics(t, f)
+	require.Panics(t, f)
 }
