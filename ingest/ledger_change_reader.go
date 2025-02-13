@@ -80,7 +80,7 @@ type compactingChangeReader struct {
 	input     ChangeReader
 	changes   []Change
 	compacted bool
-	config    *ChangeCompactorConfig
+	config    ChangeCompactorConfig
 }
 
 func (c *compactingChangeReader) compact() error {
@@ -122,10 +122,7 @@ func (c *compactingChangeReader) Close() error {
 
 // NewCompactingChangeReader wraps a given ChangeReader and returns a ChangeReader
 // which compacts all the the Changes extracted from the input.
-func NewCompactingChangeReader(input ChangeReader, config *ChangeCompactorConfig) ChangeReader {
-	if config == nil {
-		config = NewChangeCompactorDefaultConfig()
-	}
+func NewCompactingChangeReader(input ChangeReader, config ChangeCompactorConfig) ChangeReader {
 	return &compactingChangeReader{
 		input:  input,
 		config: config,

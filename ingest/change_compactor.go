@@ -69,7 +69,7 @@ type ChangeCompactor struct {
 	// ledger key => Change
 	cache          map[string]Change
 	encodingBuffer *xdr.EncodingBuffer
-	config         *ChangeCompactorConfig
+	config         ChangeCompactorConfig
 }
 
 type ChangeCompactorConfig struct {
@@ -79,8 +79,8 @@ type ChangeCompactorConfig struct {
 	EmitArchivedEntryRemovedChange bool
 }
 
-func NewChangeCompactorDefaultConfig() *ChangeCompactorConfig {
-	return &ChangeCompactorConfig{
+func NewChangeCompactorDefaultConfig() ChangeCompactorConfig {
+	return ChangeCompactorConfig{
 		// By default, set it to true to enable the change compactor
 		// to emit REMOVED change for archived entries.
 		EmitArchivedEntryRemovedChange: true,
@@ -88,7 +88,7 @@ func NewChangeCompactorDefaultConfig() *ChangeCompactorConfig {
 }
 
 // NewChangeCompactor returns a new ChangeCompactor.
-func NewChangeCompactor(config *ChangeCompactorConfig) *ChangeCompactor {
+func NewChangeCompactor(config ChangeCompactorConfig) *ChangeCompactor {
 	return &ChangeCompactor{
 		cache:          make(map[string]Change),
 		encodingBuffer: xdr.NewEncodingBuffer(),

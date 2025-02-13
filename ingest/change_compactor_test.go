@@ -417,7 +417,7 @@ type TestChangeCompactorExistingRestoredSuite struct {
 }
 
 func (s *TestChangeCompactorExistingRestoredSuite) SetupTest() {
-	s.cache = NewChangeCompactor(&ChangeCompactorConfig{EmitArchivedEntryRemovedChange: s.emitArchivedEntryRemovedChange})
+	s.cache = NewChangeCompactor(ChangeCompactorConfig{EmitArchivedEntryRemovedChange: s.emitArchivedEntryRemovedChange})
 	val := true
 	s.contractDataEntry = xdr.LedgerEntry{
 		LastModifiedLedgerSeq: 1,
