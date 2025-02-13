@@ -280,7 +280,7 @@ func (c *ChangeCompactor) addRestoredChange(change Change) error {
 
 	if _, exist := c.cache[ledgerKeyString]; exist {
 		return NewStateError(errors.Errorf(
-			"can't restore an entry that already exists (ledger key = %s)",
+			"can't restore an entry that is already active (ledger key = %s)",
 			base64.StdEncoding.EncodeToString(ledgerKey),
 		))
 	}
