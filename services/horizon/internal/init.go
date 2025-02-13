@@ -107,6 +107,9 @@ func initIngester(app *App) {
 			RetentionCount: uint32(app.config.HistoryRetentionCount),
 			BatchSize:      uint32(app.config.HistoryRetentionReapCount),
 		},
+		LoadTestFixturesPath:  app.config.IngestionLoadTestFixturesPath,
+		LoadTestLedgersPath:   app.config.IngestionLoadTestLedgersPath,
+		LoadTestCloseDuration: app.config.IngestionLoadTestCloseDuration,
 	})
 
 	if err != nil {
