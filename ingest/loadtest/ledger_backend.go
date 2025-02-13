@@ -12,6 +12,7 @@ import (
 
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/ingest/ledgerbackend"
+	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/xdr"
 )
 
@@ -192,6 +193,9 @@ func (r *LedgerBackend) PrepareRange(ctx context.Context, ledgerRange ledgerback
 	}
 	cleanup = false
 
+	log.WithField("start", r.startLedgerSeq).
+		WithField("end", latestLedgerSeq).
+		Info("ingesting ledgers from loadtest ledger backend")
 	r.mergedLedgersFilePath = mergedLedgersFile.Name()
 	r.mergedLedgersStream = mergedLedgersStream
 	// from this point, ledgers will be available at a rate of once

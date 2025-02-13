@@ -28,6 +28,10 @@ type Config struct {
 	CaptiveCoreConfigUseDB      bool
 	HistoryArchiveCaching       bool
 
+	IngestionLoadTestFixturesPath  string
+	IngestionLoadTestLedgersPath   string
+	IngestionLoadTestCloseDuration time.Duration
+
 	StellarCoreURL string
 
 	// MaxDBConnections has a priority over all 4 values below.
