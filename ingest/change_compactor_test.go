@@ -132,7 +132,7 @@ func (s *TestChangeCompactorExistingCreatedSuite) TestChangeRestored() {
 	}
 	s.Assert().EqualError(
 		s.cache.AddChange(change),
-		"can't restore an entry that already exists (ledger key = AAAAAAAAAAC2LgFRDBZ3J52nLm30kq2iMgrO7dYzYAN3hvjtf1IHWg==)",
+		"can't restore an entry that is already active (ledger key = AAAAAAAAAAC2LgFRDBZ3J52nLm30kq2iMgrO7dYzYAN3hvjtf1IHWg==)",
 	)
 }
 
@@ -267,7 +267,7 @@ func (s *TestChangeCompactorExistingUpdatedSuite) TestChangeRestored() {
 	}
 	s.Assert().EqualError(
 		s.cache.AddChange(change),
-		"can't restore an entry that already exists (ledger key = AAAAAAAAAAC2LgFRDBZ3J52nLm30kq2iMgrO7dYzYAN3hvjtf1IHWg==)",
+		"can't restore an entry that is already active (ledger key = AAAAAAAAAAC2LgFRDBZ3J52nLm30kq2iMgrO7dYzYAN3hvjtf1IHWg==)",
 	)
 }
 
@@ -394,15 +394,15 @@ func (s *TestChangeCompactorExistingRemovedSuite) TestChangeRestored() {
 	}
 	s.Assert().EqualError(
 		s.cache.AddChange(change),
-		"can't restore an entry that already exists (ledger key = AAAAAAAAAAC2LgFRDBZ3J52nLm30kq2iMgrO7dYzYAN3hvjtf1IHWg==)",
+		"can't restore an entry that is already active (ledger key = AAAAAAAAAAC2LgFRDBZ3J52nLm30kq2iMgrO7dYzYAN3hvjtf1IHWg==)",
 	)
 
 }
 
 func TestChangeCompactorExistingRestored(t *testing.T) {
-	for _, emitExpiredRemoved := range []bool{true, false} {
+	for _, emitRemoved := range []bool{true, false} {
 		s := new(TestChangeCompactorExistingRestoredSuite)
-		s.emitExpiredEntryRemovedChange = emitExpiredRemoved
+		s.emitArchivedEntryRemovedChange = emitRemoved
 		suite.Run(t, s)
 	}
 }
@@ -411,13 +411,13 @@ func TestChangeCompactorExistingRestored(t *testing.T) {
 // RESTORED state in the cache.
 type TestChangeCompactorExistingRestoredSuite struct {
 	suite.Suite
-	cache                         *ChangeCompactor
-	contractDataEntry             xdr.LedgerEntry
-	emitExpiredEntryRemovedChange bool
+	cache                          *ChangeCompactor
+	contractDataEntry              xdr.LedgerEntry
+	emitArchivedEntryRemovedChange bool
 }
 
 func (s *TestChangeCompactorExistingRestoredSuite) SetupTest() {
-	s.cache = NewChangeCompactor(&ChangeCompactorConfig{EmitExpiredEntryRemovedChange: s.emitExpiredEntryRemovedChange})
+	s.cache = NewChangeCompactor(&ChangeCompactorConfig{EmitArchivedEntryRemovedChange: s.emitArchivedEntryRemovedChange})
 	val := true
 	s.contractDataEntry = xdr.LedgerEntry{
 		LastModifiedLedgerSeq: 1,
@@ -499,7 +499,7 @@ func (s *TestChangeCompactorExistingRestoredSuite) TestChangeRemoved() {
 	s.Assert().NoError(s.cache.AddChange(change))
 	changes := s.cache.GetChanges()
 
-	if s.cache.config.EmitExpiredEntryRemovedChange {
+	if s.cache.config.EmitArchivedEntryRemovedChange {
 		s.Assert().Len(changes, 1)
 		s.Assert().Equal(xdr.LedgerEntryChangeTypeLedgerEntryRemoved, changes[0].ChangeType)
 		s.Assert().EqualValues(&s.contractDataEntry, changes[0].Pre)
@@ -517,7 +517,7 @@ func (s *TestChangeCompactorExistingRestoredSuite) TestChangeRestored() {
 	}
 	s.Assert().EqualError(
 		s.cache.AddChange(change),
-		fmt.Sprintf("can't restore an entry that already exists (ledger key = %s)",
+		fmt.Sprintf("can't restore an entry that is already active (ledger key = %s)",
 			s.getLedgerKeyString(&s.contractDataEntry),
 		),
 	)

@@ -62,7 +62,7 @@ import (
 //     in the ledger.
 //  4. If the change is RESTORED it checks if any change related to the given
 //     entry already exists in the cache. If not, it adds the RESTORED change.
-//     Otherwise, it returns an error because only expired entries can be
+//     Otherwise, it returns an error because only archived entries can be
 //     restored. If the entry was created, updated or removed in the same
 //     ledger, the entry must be active and not archived.
 type ChangeCompactor struct {
@@ -73,17 +73,17 @@ type ChangeCompactor struct {
 }
 
 type ChangeCompactorConfig struct {
-	// Determines whether the change compactor emits a REMOVED change when an expired entry
+	// Determines whether the change compactor emits a REMOVED change when an archived entry
 	// is restored and then removed within the same ledger.
 	// If set to true, a REMOVED change is emitted; if false, REMOVED change is suppressed.
-	EmitExpiredEntryRemovedChange bool
+	EmitArchivedEntryRemovedChange bool
 }
 
 func NewChangeCompactorDefaultConfig() *ChangeCompactorConfig {
 	return &ChangeCompactorConfig{
 		// By default, set it to true to enable the change compactor
-		// to emit REMOVED change for expired entries.
-		EmitExpiredEntryRemovedChange: true,
+		// to emit REMOVED change for archived entries.
+		EmitArchivedEntryRemovedChange: true,
 	}
 }
 
@@ -251,7 +251,7 @@ func (c *ChangeCompactor) addRemovedChange(change Change) error {
 			base64.StdEncoding.EncodeToString(ledgerKey),
 		))
 	case xdr.LedgerEntryChangeTypeLedgerEntryRestored:
-		if c.config.EmitExpiredEntryRemovedChange {
+		if c.config.EmitArchivedEntryRemovedChange {
 			c.cache[ledgerKeyString] = Change{
 				Type:       change.Type,
 				Pre:        change.Pre,
