@@ -121,7 +121,7 @@ func build(pkg, dest, version, buildOS, buildArch string) {
 
 	cmd.Env = append(
 		os.Environ(),
-		"CGO_ENABLED=0",
+		"CGO_ENABLED=1",
 		fmt.Sprintf("GOFLAGS=-ldflags=%s", versionFlag),
 		fmt.Sprintf("GOOS=%s", buildOS),
 		fmt.Sprintf("GOARCH=%s", buildArch),
