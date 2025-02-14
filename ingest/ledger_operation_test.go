@@ -1,11 +1,15 @@
 package ingest
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
 )
+
+var testScSymbol xdr.ScSymbol = "test"
+var testScBool bool = true
 
 func TestOperation(t *testing.T) {
 	o := LedgerOperation{
@@ -1392,41 +1396,50 @@ func resultTestOutput() []testOutput {
 		{
 			err: nil,
 			result: LiquidityPoolDepositDetail{
-				LiquidityPoolID:       "AQIDBAUGBwgJAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
-				MaxPrice:              1e+06,
-				MaxPriceN:             1000000,
-				MaxPriceD:             1,
-				MinPrice:              1e-06,
-				MinPriceN:             1,
-				MinPriceD:             1000000,
-				ReserveAAssetCode:     "USDT",
-				ReserveAAssetIssuer:   "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
-				ReserveAAssetType:     "credit_alphanum4",
-				ReserveADepositAmount: int64(1),
-				ReserveAMaxAmount:     int64(1000),
-				ReserveBAssetCode:     "USDT",
-				ReserveBAssetIssuer:   "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
-				ReserveBAssetType:     "credit_alphanum4",
-				ReserveBDepositAmount: 1,
-				ReserveBMaxAmount:     int64(100),
-				SharesReceived:        1,
+				LiquidityPoolID: "AQIDBAUGBwgJAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+				MaxPrice:        1e+06,
+				MaxPriceN:       1000000,
+				MaxPriceD:       1,
+				MinPrice:        1e-06,
+				MinPriceN:       1,
+				MinPriceD:       1000000,
+				ReserveAssetA: ReserveAsset{
+					AssetCode:     "USDT",
+					AssetIssuer:   "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
+					AssetType:     "credit_alphanum4",
+					DepositAmount: int64(1),
+					MaxAmount:     int64(1000),
+				},
+				ReserveAssetB: ReserveAsset{
+					AssetCode:     "USDT",
+					AssetIssuer:   "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
+					AssetType:     "credit_alphanum4",
+					DepositAmount: 1,
+					MaxAmount:     int64(100),
+				},
+				SharesReceived: 1,
 			},
 		},
 		{
 			err: nil,
 			result: LiquidityPoolWithdrawDetail{
-				LiquidityPoolID:        "AQIDBAUGBwgJAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
-				ReserveAAssetCode:      "USDT",
-				ReserveAAssetIssuer:    "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
-				ReserveAAssetType:      "credit_alphanum4",
-				ReserveAMinAmount:      int64(1),
-				ReserveAWithdrawAmount: int64(-1),
-				ReserveBAssetCode:      "USDT",
-				ReserveBAssetIssuer:    "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
-				ReserveBAssetType:      "credit_alphanum4",
-				ReserveBMinAmount:      int64(1),
-				ReserveBWithdrawAmount: int64(-1),
-				Shares:                 int64(4),
+				LiquidityPoolID: "AQIDBAUGBwgJAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+				ReserveAssetA: ReserveAsset{
+					AssetCode:      "USDT",
+					AssetIssuer:    "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
+					AssetType:      "credit_alphanum4",
+					MinAmount:      int64(1),
+					WithdrawAmount: int64(-1),
+				},
+
+				ReserveAssetB: ReserveAsset{
+					AssetCode:      "USDT",
+					AssetIssuer:    "GBVVRXLMNCJQW3IDDXC3X6XCH35B5Q7QXNMMFPENSOGUPQO7WO7HGZPA",
+					AssetType:      "credit_alphanum4",
+					MinAmount:      int64(1),
+					WithdrawAmount: int64(-1),
+				},
+				Shares: int64(4),
 			},
 		},
 		{
@@ -1436,25 +1449,15 @@ func resultTestOutput() []testOutput {
 				ContractID:          "CAJDIVTYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABR37",
 				Function:            "HostFunctionTypeHostFunctionTypeInvokeContract",
 				LedgerKeyHash:       []string{"AAAABgAAAAESNAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAA=="},
-				Parameters: []map[string]string{
-					{
-						"type":  "Address",
-						"value": "AAAAEgAAAAESNFZ4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+				Parameters: []interface{}{
+					json.RawMessage{
+						0x7b, 0x22, 0x61, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x22, 0x3a, 0x22, 0x43, 0x41, 0x4a, 0x44,
+						0x49, 0x56, 0x54, 0x59, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41,
+						0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41,
+						0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41,
+						0x42, 0x52, 0x33, 0x37, 0x22, 0x7d,
 					},
-					{
-						"type":  "Sym",
-						"value": "AAAADwAAAAR0ZXN0",
-					},
-				},
-				ParametersDecoded: []map[string]string{
-					{
-						"type":  "Address",
-						"value": "CAJDIVTYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABR37",
-					},
-					{
-						"type":  "Sym",
-						"value": "test",
-					},
+					json.RawMessage{0x7b, 0x22, 0x73, 0x79, 0x6d, 0x62, 0x6f, 0x6c, 0x22, 0x3a, 0x22, 0x74, 0x65, 0x73, 0x74, 0x22, 0x7d},
 				},
 				Type: "invoke_contract",
 			},
@@ -1493,17 +1496,8 @@ func resultTestOutput() []testOutput {
 				From:          "asset",
 				Function:      "HostFunctionTypeHostFunctionTypeCreateContractV2",
 				LedgerKeyHash: []string{"AAAABgAAAAESNAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAA=="},
-				Parameters: []map[string]string{
-					{
-						"type":  "B",
-						"value": "AAAAAAAAAAE=",
-					},
-				},
-				ParametersDecoded: []map[string]string{
-					{
-						"type":  "B",
-						"value": "true",
-					},
+				Parameters: []interface{}{
+					json.RawMessage{0x7b, 0x22, 0x62, 0x6f, 0x6f, 0x6c, 0x22, 0x3a, 0x74, 0x72, 0x75, 0x65, 0x7d},
 				},
 				Type: "create_contract_v2",
 			},

@@ -1,11 +1,12 @@
 package ingest
 
 import (
-	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"math/big"
 
 	"github.com/dgryski/go-farm"
+	"github.com/stellar/go-stellar-xdr-json/xdr2json"
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/support/contractevents"
 	"github.com/stellar/go/toid"
@@ -362,32 +363,29 @@ func (o *LedgerOperation) getLiquidityPoolAndProductDelta(lpID *xdr.PoolId) (*xd
 	return nil, nil, fmt.Errorf("liquidity pool change not found")
 }
 
-func (o *LedgerOperation) serializeParameters(args []xdr.ScVal) ([]map[string]string, []map[string]string) {
-	params := make([]map[string]string, 0, len(args))
-	paramsDecoded := make([]map[string]string, 0, len(args))
+func (o *LedgerOperation) serializeParameters(args []xdr.ScVal) ([]interface{}, error) {
+	var params []interface{}
 
 	for _, param := range args {
-		serializedParam := map[string]string{}
-		serializedParam["value"] = "n/a"
-		serializedParam["type"] = "n/a"
-
-		serializedParamDecoded := map[string]string{}
-		serializedParamDecoded["value"] = "n/a"
-		serializedParamDecoded["type"] = "n/a"
-
-		if scValTypeName, ok := param.ArmForSwitch(int32(param.Type)); ok {
-			serializedParam["type"] = scValTypeName
-			serializedParamDecoded["type"] = scValTypeName
-			if raw, err := param.MarshalBinary(); err == nil {
-				serializedParam["value"] = base64.StdEncoding.EncodeToString(raw)
-				serializedParamDecoded["value"] = param.String()
+		if _, ok := param.ArmForSwitch(int32(param.Type)); ok {
+			var err error
+			var raw []byte
+			var jsonMessage json.RawMessage
+			raw, err = param.MarshalBinary()
+			if err != nil {
+				return nil, err
 			}
+
+			jsonMessage, err = xdr2json.ConvertBytes(xdr.ScVal{}, raw)
+			if err != nil {
+				return nil, err
+			}
+
+			params = append(params, jsonMessage)
 		}
-		params = append(params, serializedParam)
-		paramsDecoded = append(paramsDecoded, serializedParamDecoded)
 	}
 
-	return params, paramsDecoded
+	return params, nil
 }
 
 func (o *LedgerOperation) parseAssetBalanceChangesFromContractEvents() ([]BalanceChangeDetail, error) {

@@ -8,7 +8,7 @@ type AccountMergeDetail struct {
 	AccountMuxedID uint64 `json:"account_muxed_id,string"`
 	Into           string `json:"into"`
 	IntoMuxed      string `json:"into_muxed"`
-	IntoMuxedID    uint64 `json:"into_muxed_id"`
+	IntoMuxedID    uint64 `json:"into_muxed_id,string"`
 }
 
 func (o *LedgerOperation) AccountMergeDetails() (AccountMergeDetail, error) {

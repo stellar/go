@@ -7,18 +7,10 @@ import (
 )
 
 type LiquidityPoolWithdrawDetail struct {
-	LiquidityPoolID        string `json:"liquidity_pool_id"`
-	ReserveAAssetCode      string `json:"reserve_a_asset_code"`
-	ReserveAAssetIssuer    string `json:"reserve_a_asset_issuer"`
-	ReserveAAssetType      string `json:"reserve_a_asset_type"`
-	ReserveAMinAmount      int64  `json:"reserve_a_min_amount,string"`
-	ReserveAWithdrawAmount int64  `json:"reserve_a_withdraw_amount,string"`
-	ReserveBAssetCode      string `json:"reserve_b_asset_code"`
-	ReserveBAssetIssuer    string `json:"reserve_b_asset_issuer"`
-	ReserveBAssetType      string `json:"reserve_b_asset_type"`
-	ReserveBMinAmount      int64  `json:"reserve_b_min_amount,string"`
-	ReserveBWithdrawAmount int64  `json:"reserve_b_withdraw_amount,string"`
-	Shares                 int64  `json:"shares,string"`
+	LiquidityPoolID string       `json:"liquidity_pool_id"`
+	ReserveAssetA   ReserveAsset `json:"reserve_asset_a"`
+	ReserveAssetB   ReserveAsset `json:"reserve_asset_b"`
+	Shares          int64        `json:"shares,string"`
 }
 
 func (o *LedgerOperation) LiquidityPoolWithdrawDetails() (LiquidityPoolWithdrawDetail, error) {
@@ -28,9 +20,13 @@ func (o *LedgerOperation) LiquidityPoolWithdrawDetails() (LiquidityPoolWithdrawD
 	}
 
 	liquidityPoolWithdrawDetail := LiquidityPoolWithdrawDetail{
-		ReserveAMinAmount: int64(op.MinAmountA),
-		ReserveBMinAmount: int64(op.MinAmountB),
-		Shares:            int64(op.Amount),
+		ReserveAssetA: ReserveAsset{
+			MinAmount: int64(op.MinAmountA),
+		},
+		ReserveAssetB: ReserveAsset{
+			MinAmount: int64(op.MinAmountB),
+		},
+		Shares: int64(op.Amount),
 	}
 
 	var err error
@@ -66,10 +62,10 @@ func (o *LedgerOperation) LiquidityPoolWithdrawDetails() (LiquidityPoolWithdrawD
 		return LiquidityPoolWithdrawDetail{}, err
 	}
 
-	liquidityPoolWithdrawDetail.ReserveAAssetCode = assetACode
-	liquidityPoolWithdrawDetail.ReserveAAssetIssuer = assetAIssuer
-	liquidityPoolWithdrawDetail.ReserveAAssetType = assetAType
-	liquidityPoolWithdrawDetail.ReserveAWithdrawAmount = int64(receivedA)
+	liquidityPoolWithdrawDetail.ReserveAssetA.AssetCode = assetACode
+	liquidityPoolWithdrawDetail.ReserveAssetA.AssetIssuer = assetAIssuer
+	liquidityPoolWithdrawDetail.ReserveAssetA.AssetType = assetAType
+	liquidityPoolWithdrawDetail.ReserveAssetA.WithdrawAmount = int64(receivedA)
 
 	// Process AssetB Details
 	var assetBCode, assetBIssuer, assetBType string
@@ -78,10 +74,10 @@ func (o *LedgerOperation) LiquidityPoolWithdrawDetails() (LiquidityPoolWithdrawD
 		return LiquidityPoolWithdrawDetail{}, err
 	}
 
-	liquidityPoolWithdrawDetail.ReserveBAssetCode = assetBCode
-	liquidityPoolWithdrawDetail.ReserveBAssetIssuer = assetBIssuer
-	liquidityPoolWithdrawDetail.ReserveBAssetType = assetBType
-	liquidityPoolWithdrawDetail.ReserveBWithdrawAmount = int64(receivedB)
+	liquidityPoolWithdrawDetail.ReserveAssetB.AssetCode = assetBCode
+	liquidityPoolWithdrawDetail.ReserveAssetB.AssetIssuer = assetBIssuer
+	liquidityPoolWithdrawDetail.ReserveAssetB.AssetType = assetBType
+	liquidityPoolWithdrawDetail.ReserveAssetB.WithdrawAmount = int64(receivedB)
 
 	return liquidityPoolWithdrawDetail, nil
 }

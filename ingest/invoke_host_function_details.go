@@ -12,8 +12,7 @@ type InvokeHostFunctionDetail struct {
 	LedgerKeyHash       []string              `json:"ledger_key_hash"`
 	ContractID          string                `json:"contract_id"`
 	ContractCodeHash    string                `json:"contract_code_hash"`
-	Parameters          []map[string]string   `json:"parameters"`
-	ParametersDecoded   []map[string]string   `json:"parameters_decoded"`
+	Parameters          []interface{}         `json:"parameters"`
 	AssetBalanceChanges []BalanceChangeDetail `json:"asset_balance_changes"`
 	From                string                `json:"from"`
 	Address             string                `json:"address"`
@@ -56,8 +55,10 @@ func (o *LedgerOperation) InvokeHostFunctionDetails() (InvokeHostFunctionDetail,
 			invokeHostFunctionDetail.ContractCodeHash = contractCodeHash
 		}
 
-		// TODO: Parameters should be processed with xdr2json
-		invokeHostFunctionDetail.Parameters, invokeHostFunctionDetail.ParametersDecoded = o.serializeParameters(args)
+		invokeHostFunctionDetail.Parameters, err = o.serializeParameters(args)
+		if err != nil {
+			return InvokeHostFunctionDetail{}, err
+		}
 
 		balanceChanges, err := o.parseAssetBalanceChangesFromContractEvents()
 		if err != nil {
@@ -101,7 +102,10 @@ func (o *LedgerOperation) InvokeHostFunctionDetails() (InvokeHostFunctionDetail,
 		// ConstructorArgs is a list of ScVals
 		// This will initially be handled the same as InvokeContractParams until a different
 		// model is found necessary.
-		invokeHostFunctionDetail.Parameters, invokeHostFunctionDetail.ParametersDecoded = o.serializeParameters(args.ConstructorArgs)
+		invokeHostFunctionDetail.Parameters, err = o.serializeParameters(args.ConstructorArgs)
+		if err != nil {
+			return InvokeHostFunctionDetail{}, err
+		}
 	default:
 		return InvokeHostFunctionDetail{}, fmt.Errorf("unknown host function type: %s", op.HostFunction.Type)
 	}

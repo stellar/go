@@ -8,24 +8,26 @@ import (
 )
 
 type LiquidityPoolDepositDetail struct {
-	LiquidityPoolID       string  `json:"liquidity_pool_id"`
-	ReserveAAssetCode     string  `json:"reserve_a_asset_code"`
-	ReserveAAssetIssuer   string  `json:"reserve_a_asset_issuer"`
-	ReserveAAssetType     string  `json:"reserve_a_asset_type"`
-	ReserveAMaxAmount     int64   `json:"reserve_a_max_amount,string"`
-	ReserveADepositAmount int64   `json:"reserve_a_deposit_amount,string"`
-	ReserveBAssetCode     string  `json:"reserve_b_asset_code"`
-	ReserveBAssetIssuer   string  `json:"reserve_b_asset_issuer"`
-	ReserveBAssetType     string  `json:"reserve_b_asset_type"`
-	ReserveBMaxAmount     int64   `json:"reserve_b_max_amount,string"`
-	ReserveBDepositAmount int64   `json:"reserve_b_deposit_amount,string"`
-	MinPriceN             int32   `json:"min_price_n"`
-	MinPriceD             int32   `json:"min_price_d"`
-	MinPrice              float64 `json:"min_price"`
-	MaxPriceN             int32   `json:"max_price_n"`
-	MaxPriceD             int32   `json:"max_price_d"`
-	MaxPrice              float64 `json:"max_price"`
-	SharesReceived        int64   `json:"shares_received,string"`
+	LiquidityPoolID string       `json:"liquidity_pool_id"`
+	ReserveAssetA   ReserveAsset `json:"reserve_asset_a"`
+	ReserveAssetB   ReserveAsset `json:"reserve_asset_b"`
+	MinPriceN       int32        `json:"min_price_n"`
+	MinPriceD       int32        `json:"min_price_d"`
+	MinPrice        float64      `json:"min_price"`
+	MaxPriceN       int32        `json:"max_price_n"`
+	MaxPriceD       int32        `json:"max_price_d"`
+	MaxPrice        float64      `json:"max_price"`
+	SharesReceived  int64        `json:"shares_received,string"`
+}
+
+type ReserveAsset struct {
+	AssetCode      string `json:"asset_code"`
+	AssetIssuer    string `json:"asset_issuer"`
+	AssetType      string `json:"asset_type"`
+	MinAmount      int64  `json:"min_amount,string"`
+	MaxAmount      int64  `json:"max_amount,string"`
+	DepositAmount  int64  `json:"deposit_amount,string"`
+	WithdrawAmount int64  `json:"withdraw_amount,string"`
 }
 
 func (o *LedgerOperation) LiquidityPoolDepositDetails() (LiquidityPoolDepositDetail, error) {
@@ -35,12 +37,16 @@ func (o *LedgerOperation) LiquidityPoolDepositDetails() (LiquidityPoolDepositDet
 	}
 
 	liquidityPoolDepositDetail := LiquidityPoolDepositDetail{
-		ReserveAMaxAmount: int64(op.MaxAmountA),
-		ReserveBMaxAmount: int64(op.MaxAmountB),
-		MinPriceN:         int32(op.MinPrice.N),
-		MinPriceD:         int32(op.MinPrice.D),
-		MaxPriceN:         int32(op.MaxPrice.N),
-		MaxPriceD:         int32(op.MaxPrice.D),
+		ReserveAssetA: ReserveAsset{
+			MaxAmount: int64(op.MaxAmountA),
+		},
+		ReserveAssetB: ReserveAsset{
+			MaxAmount: int64(op.MaxAmountB),
+		},
+		MinPriceN: int32(op.MinPrice.N),
+		MinPriceD: int32(op.MinPrice.D),
+		MaxPriceN: int32(op.MaxPrice.N),
+		MaxPriceD: int32(op.MaxPrice.D),
 	}
 
 	var err error
@@ -79,10 +85,10 @@ func (o *LedgerOperation) LiquidityPoolDepositDetails() (LiquidityPoolDepositDet
 		return LiquidityPoolDepositDetail{}, err
 	}
 
-	liquidityPoolDepositDetail.ReserveAAssetCode = assetACode
-	liquidityPoolDepositDetail.ReserveAAssetIssuer = assetAIssuer
-	liquidityPoolDepositDetail.ReserveAAssetType = assetAType
-	liquidityPoolDepositDetail.ReserveADepositAmount = int64(depositedA)
+	liquidityPoolDepositDetail.ReserveAssetA.AssetCode = assetACode
+	liquidityPoolDepositDetail.ReserveAssetA.AssetIssuer = assetAIssuer
+	liquidityPoolDepositDetail.ReserveAssetA.AssetType = assetAType
+	liquidityPoolDepositDetail.ReserveAssetA.DepositAmount = int64(depositedA)
 
 	//Process ReserveB Details
 	var assetBCode, assetBIssuer, assetBType string
@@ -91,10 +97,10 @@ func (o *LedgerOperation) LiquidityPoolDepositDetails() (LiquidityPoolDepositDet
 		return LiquidityPoolDepositDetail{}, err
 	}
 
-	liquidityPoolDepositDetail.ReserveBAssetCode = assetBCode
-	liquidityPoolDepositDetail.ReserveBAssetIssuer = assetBIssuer
-	liquidityPoolDepositDetail.ReserveBAssetType = assetBType
-	liquidityPoolDepositDetail.ReserveBDepositAmount = int64(depositedB)
+	liquidityPoolDepositDetail.ReserveAssetB.AssetCode = assetBCode
+	liquidityPoolDepositDetail.ReserveAssetB.AssetIssuer = assetBIssuer
+	liquidityPoolDepositDetail.ReserveAssetB.AssetType = assetBType
+	liquidityPoolDepositDetail.ReserveAssetB.DepositAmount = int64(depositedB)
 
 	liquidityPoolDepositDetail.MinPrice, err = strconv.ParseFloat(op.MinPrice.String(), 64)
 	if err != nil {
