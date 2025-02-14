@@ -882,7 +882,7 @@ func TestTransactionHelperFunctions(t *testing.T) {
 	assert.Equal(t, uint32(789), sorobanResourcesWriteBytes)
 
 	var inclusionFeeBid int64
-	inclusionFeeBid, ok = transaction.InclusionFeeBid()
+	inclusionFeeBid, ok = transaction.SorobanInclusionFeeBid()
 	assert.Equal(t, true, ok)
 	assert.Equal(t, int64(3326), inclusionFeeBid)
 

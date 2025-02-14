@@ -96,6 +96,7 @@ func (s *ParticipantsProcessorTestSuiteLedger) SetupTest() {
 		s.accountLoader,
 		s.mockBatchInsertBuilder,
 		s.mockOperationsBatchInsertBuilder,
+		networkPassphrase,
 	)
 
 	s.txs = []ingest.LedgerTransaction{

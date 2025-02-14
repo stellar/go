@@ -19,17 +19,21 @@ type ParticipantsProcessor struct {
 	accountLoader *history.AccountLoader
 	txBatch       history.TransactionParticipantsBatchInsertBuilder
 	opBatch       history.OperationParticipantBatchInsertBuilder
+	network       string
 }
 
 func NewParticipantsProcessor(
 	accountLoader *history.AccountLoader,
 	txBatch history.TransactionParticipantsBatchInsertBuilder,
 	opBatch history.OperationParticipantBatchInsertBuilder,
+	network string,
+
 ) *ParticipantsProcessor {
 	return &ParticipantsProcessor{
 		accountLoader: accountLoader,
 		txBatch:       txBatch,
 		opBatch:       opBatch,
+		network:       network,
 	}
 }
 
@@ -129,7 +133,7 @@ func (p *ParticipantsProcessor) addOperationsParticipants(
 	sequence uint32,
 	transaction ingest.LedgerTransaction,
 ) error {
-	participants, err := operationsParticipants(transaction, sequence)
+	participants, err := operationsParticipants(transaction, sequence, p.network)
 	if err != nil {
 		return errors.Wrap(err, "could not determine operation participants")
 	}

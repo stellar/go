@@ -27,7 +27,7 @@ services:
       - "8080:8080"
     environment:
       - ENDPOINT=:8080
-      - NETWORK_PASSPHRASE=Standalone Network ; February 2017
+      - NETWORK_PASSPHRASE=${NETWORK_PASSPHRASE}
       - CAPTIVE_CORE_CONFIG_PATH=/captive-core.cfg
       - HISTORY_ARCHIVE_URLS=http://core:1570
       - CHECKPOINT_FREQUENCY=8

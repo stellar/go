@@ -86,7 +86,7 @@ func TestManualClose_NotAvailable(t *testing.T) {
 	assert.EqualError(t, err, "exception in response: Set MANUAL_CLOSE=true")
 }
 
-func TestGetLedgerEntries(t *testing.T) {
+func TestGetRawLedgerEntries(t *testing.T) {
 	hmock := httptest.NewClient()
 	c := &Client{HTTP: hmock, URL: "http://localhost:11626"}
 
@@ -137,6 +137,66 @@ func TestGetLedgerEntries(t *testing.T) {
 	require.Len(t, resp.Entries, 2)
 	require.Equal(t, "pretend this is XDR lol", resp.Entries[0].Entry)
 	require.Equal(t, "pretend this is another XDR lol", resp.Entries[1].Entry)
+}
+
+func TestGetLedgerEntries(t *testing.T) {
+	hmock := httptest.NewClient()
+	c := &Client{HTTP: hmock, URL: "http://localhost:11626"}
+
+	// build a fake response body
+	mockResp := proto.GetLedgerEntryResponse{
+		Ledger: 1215, // checkpoint align on expected request
+		Entries: []proto.LedgerEntryResponse{{
+			Entry: "pretend this is XDR lol",
+			State: "live",
+			Ttl:   1234,
+		}, {
+			Entry: "pretend this is another XDR lol",
+			State: "archived",
+		}},
+	}
+
+	var key xdr.LedgerKey
+	acc, err := xdr.AddressToAccountId(keypair.MustRandom().Address())
+	require.NoError(t, err)
+	key.SetAccount(acc)
+
+	// happy path - fetch an entry
+	ce := hmock.On("POST", "http://localhost:11626/getledgerentry")
+	hmock.RegisterResponder(
+		"POST",
+		"http://localhost:11626/getledgerentry",
+		func(r *http.Request) (*http.Response, error) {
+			// Ensure the request has the correct POST body
+			requestData, ierr := io.ReadAll(r.Body)
+			require.NoError(t, ierr)
+
+			keyB64, ierr := key.MarshalBinaryBase64()
+			require.NoError(t, ierr)
+			expected := fmt.Sprintf("key=%s&ledgerSeq=1234", url.QueryEscape(keyB64))
+			require.Equal(t, expected, string(requestData))
+
+			resp, ierr := httpmock.NewJsonResponse(http.StatusOK, &mockResp)
+			require.NoError(t, ierr)
+			ce.Return(httpmock.ResponderFromResponse(resp))
+			return resp, nil
+		})
+
+	resp, err := c.GetLedgerEntries(context.Background(), 1234, key)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+
+	require.EqualValues(t, 1215, resp.Ledger)
+	require.Len(t, resp.Entries, 2)
+	require.Equal(t, "pretend this is XDR lol", resp.Entries[0].Entry)
+	require.Equal(t, "pretend this is another XDR lol", resp.Entries[1].Entry)
+	require.EqualValues(t, 1234, resp.Entries[0].Ttl)
+	require.EqualValues(t, "live", resp.Entries[0].State)
+	require.EqualValues(t, "archived", resp.Entries[1].State)
+
+	key.Type = xdr.LedgerEntryTypeTtl
+	_, err = c.GetLedgerEntries(context.Background(), 1234, key)
+	require.Error(t, err)
 }
 
 func TestGenSorobanConfigUpgradeTxAndKey(t *testing.T) {

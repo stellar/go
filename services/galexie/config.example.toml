@@ -28,7 +28,7 @@ network = "testnet"
 # Alternatively, you can manually configure captive-core parameters (overrides defaults if 'network' is set).
 
 # Path to the captive-core configuration file.
-#captive_core_config_path = "my-captive-core.cfg"
+#captive_core_toml_path = "my-captive-core.cfg"
 
 # URLs for Stellar history archives, with multiple URLs allowed.
 #history_archive_urls = ["http://testarchiveurl1", "http://testarchiveurl2"]
