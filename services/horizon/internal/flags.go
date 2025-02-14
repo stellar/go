@@ -187,6 +187,37 @@ func Flags() (*Config, support.ConfigOptions) {
 			UsedInCommands: IngestionCommands,
 		},
 		&support.ConfigOption{
+			Name:           "ingestion-load-test-fixtures-path",
+			OptType:        types.String,
+			FlagDefault:    "",
+			Required:       false,
+			Usage:          "path to ledger entries file which will be used as fixtures for the ingestion load test.",
+			ConfigKey:      &config.IngestionLoadTestFixturesPath,
+			UsedInCommands: IngestionCommands,
+		},
+		&support.ConfigOption{
+			Name:           "ingestion-load-test-ledgers-path",
+			OptType:        types.String,
+			FlagDefault:    "",
+			Required:       false,
+			Usage:          "path to ledgers file which will be replayed in the ingestion load test.",
+			ConfigKey:      &config.IngestionLoadTestLedgersPath,
+			UsedInCommands: IngestionCommands,
+		},
+		&support.ConfigOption{
+			Name:        "ingestion-load-test-close-duration",
+			OptType:     types.Float64,
+			FlagDefault: 2.0,
+			Required:    false,
+			CustomSetValue: func(co *support.ConfigOption) error {
+				*(co.ConfigKey.(*time.Duration)) = time.Duration(viper.GetFloat64(co.Name)) * time.Second
+				return nil
+			},
+			Usage:          "the time (in seconds) it takes to close ledgers in the ingestion load test.",
+			ConfigKey:      &config.IngestionLoadTestCloseDuration,
+			UsedInCommands: IngestionCommands,
+		},
+		&support.ConfigOption{
 			Name:           DisableTxSubFlagName,
 			OptType:        types.Bool,
 			FlagDefault:    false,

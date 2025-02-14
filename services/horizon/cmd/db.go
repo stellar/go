@@ -195,6 +195,9 @@ func runDBReingestRange(ledgerRanges []history.LedgerRange, reingestForce bool, 
 		SkipTxmeta:                  config.SkipTxmeta,
 		LedgerBackendType:           ledgerBackendType,
 		StorageBackendConfig:        storageBackendConfig,
+		LoadTestFixturesPath:        config.IngestionLoadTestFixturesPath,
+		LoadTestLedgersPath:         config.IngestionLoadTestLedgersPath,
+		LoadTestCloseDuration:       config.IngestionLoadTestCloseDuration,
 	}
 
 	if ingestConfig.HistorySession, err = db.Open("postgres", config.DatabaseURL); err != nil {
