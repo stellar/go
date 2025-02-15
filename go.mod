@@ -1,6 +1,6 @@
 module github.com/stellar/go
 
-go 1.23
+go 1.23.1
 
 require (
 	cloud.google.com/go/firestore v1.15.0 // indirect
@@ -47,7 +47,7 @@ require (
 	github.com/spf13/viper v1.17.0
 	github.com/stellar/go-xdr v0.0.0-20231122183749-b53fb00bcac2
 	github.com/stellar/throttled v2.2.3-0.20190823235211-89d75816f59d+incompatible
-	github.com/stretchr/testify v1.9.0
+	github.com/stretchr/testify v1.10.0
 	github.com/tyler-smith/go-bip39 v0.0.0-20180618194314-52158e4697b8
 	github.com/xdrpp/goxdr v0.1.1
 	google.golang.org/api v0.183.0
@@ -62,7 +62,7 @@ require (
 	github.com/docker/docker v27.3.1+incompatible
 	github.com/docker/go-connections v0.5.0
 	github.com/fsouza/fake-gcs-server v1.49.2
-	github.com/stellar/go-stellar-xdr-json v0.0.0-20250203230501-c6fa0788fe99
+	github.com/stellar/go-stellar-xdr-json v0.0.1-test
 )
 
 require (
