@@ -75,16 +75,7 @@ type ChangeCompactor struct {
 type ChangeCompactorConfig struct {
 	// Determines whether the change compactor emits a REMOVED change when an archived entry
 	// is restored and then removed within the same ledger.
-	// If set to true, a REMOVED change is emitted; if false, REMOVED change is suppressed.
-	EmitArchivedEntryRemovedChange bool
-}
-
-func NewChangeCompactorDefaultConfig() ChangeCompactorConfig {
-	return ChangeCompactorConfig{
-		// By default, set it to true to enable the change compactor
-		// to emit REMOVED change for archived entries.
-		EmitArchivedEntryRemovedChange: true,
-	}
+	SuppressRemoveAfterRestoreChange bool
 }
 
 // NewChangeCompactor returns a new ChangeCompactor.
@@ -251,16 +242,16 @@ func (c *ChangeCompactor) addRemovedChange(change Change) error {
 			base64.StdEncoding.EncodeToString(ledgerKey),
 		))
 	case xdr.LedgerEntryChangeTypeLedgerEntryRestored:
-		if c.config.EmitArchivedEntryRemovedChange {
+		if c.config.SuppressRemoveAfterRestoreChange {
+			// Entry was restored and removed in the same ledger; deleting it is effectively a noop.
+			delete(c.cache, ledgerKeyString)
+		} else {
 			c.cache[ledgerKeyString] = Change{
 				Type:       change.Type,
 				Pre:        change.Pre,
 				Post:       nil,
 				ChangeType: change.ChangeType,
 			}
-		} else {
-			// Entry was restored and removed in the same ledger; deleting it is effectively a noop.
-			delete(c.cache, ledgerKeyString)
 		}
 	default:
 		return errors.Errorf("Unknown LedgerEntryChangeType: %d", existingChange.ChangeType)

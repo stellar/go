@@ -23,7 +23,7 @@ type TestChangeCompactorExistingCreatedSuite struct {
 }
 
 func (s *TestChangeCompactorExistingCreatedSuite) SetupTest() {
-	s.cache = NewChangeCompactor(NewChangeCompactorDefaultConfig())
+	s.cache = NewChangeCompactor(ChangeCompactorConfig{})
 
 	change := Change{
 		Type: xdr.LedgerEntryTypeAccount,
@@ -148,7 +148,7 @@ type TestChangeCompactorExistingUpdatedSuite struct {
 }
 
 func (s *TestChangeCompactorExistingUpdatedSuite) SetupTest() {
-	s.cache = NewChangeCompactor(NewChangeCompactorDefaultConfig())
+	s.cache = NewChangeCompactor(ChangeCompactorConfig{})
 
 	change := Change{
 		Type: xdr.LedgerEntryTypeAccount,
@@ -283,7 +283,7 @@ type TestChangeCompactorExistingRemovedSuite struct {
 }
 
 func (s *TestChangeCompactorExistingRemovedSuite) SetupTest() {
-	s.cache = NewChangeCompactor(NewChangeCompactorDefaultConfig())
+	s.cache = NewChangeCompactor(ChangeCompactorConfig{})
 
 	change := Change{
 		Type: xdr.LedgerEntryTypeAccount,
@@ -400,9 +400,9 @@ func (s *TestChangeCompactorExistingRemovedSuite) TestChangeRestored() {
 }
 
 func TestChangeCompactorExistingRestored(t *testing.T) {
-	for _, emitRemoved := range []bool{true, false} {
+	for _, supressRemoved := range []bool{true, false} {
 		s := new(TestChangeCompactorExistingRestoredSuite)
-		s.emitArchivedEntryRemovedChange = emitRemoved
+		s.suppressRemoveAfterRestoreChange = supressRemoved
 		suite.Run(t, s)
 	}
 }
@@ -411,13 +411,13 @@ func TestChangeCompactorExistingRestored(t *testing.T) {
 // RESTORED state in the cache.
 type TestChangeCompactorExistingRestoredSuite struct {
 	suite.Suite
-	cache                          *ChangeCompactor
-	contractDataEntry              xdr.LedgerEntry
-	emitArchivedEntryRemovedChange bool
+	cache                            *ChangeCompactor
+	contractDataEntry                xdr.LedgerEntry
+	suppressRemoveAfterRestoreChange bool
 }
 
 func (s *TestChangeCompactorExistingRestoredSuite) SetupTest() {
-	s.cache = NewChangeCompactor(ChangeCompactorConfig{EmitArchivedEntryRemovedChange: s.emitArchivedEntryRemovedChange})
+	s.cache = NewChangeCompactor(ChangeCompactorConfig{SuppressRemoveAfterRestoreChange: s.suppressRemoveAfterRestoreChange})
 	val := true
 	s.contractDataEntry = xdr.LedgerEntry{
 		LastModifiedLedgerSeq: 1,
@@ -499,12 +499,12 @@ func (s *TestChangeCompactorExistingRestoredSuite) TestChangeRemoved() {
 	s.Assert().NoError(s.cache.AddChange(change))
 	changes := s.cache.GetChanges()
 
-	if s.cache.config.EmitArchivedEntryRemovedChange {
+	if s.cache.config.SuppressRemoveAfterRestoreChange {
+		s.Assert().Len(changes, 0)
+	} else {
 		s.Assert().Len(changes, 1)
 		s.Assert().Equal(xdr.LedgerEntryChangeTypeLedgerEntryRemoved, changes[0].ChangeType)
 		s.Assert().EqualValues(&s.contractDataEntry, changes[0].Pre)
-	} else {
-		s.Assert().Len(changes, 0)
 	}
 }
 
@@ -530,7 +530,7 @@ func (s *TestChangeCompactorExistingRestoredSuite) TestChangeRestored() {
 // GAJ2T6NQ6TDZRVRSNWM3JC7L3TG4H7UBCVK3GUHKP3TQ5NQ3LM4JGBTJ sends money
 // GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML receives money
 func TestChangeCompactorSquashMultiplePayments(t *testing.T) {
-	cache := NewChangeCompactor(NewChangeCompactorDefaultConfig())
+	cache := NewChangeCompactor(ChangeCompactorConfig{})
 
 	for i := 1; i <= 1000; i++ {
 		change := Change{
