@@ -16,22 +16,44 @@ func TestStatsChangeProcessor(t *testing.T) {
 	for ledgerEntryType := range xdr.LedgerEntryTypeMap {
 		// Created
 		assert.NoError(t, processor.ProcessChange(ctx, Change{
-			Type: xdr.LedgerEntryType(ledgerEntryType),
-			Pre:  nil,
-			Post: &xdr.LedgerEntry{},
+			Type:       xdr.LedgerEntryType(ledgerEntryType),
+			Pre:        nil,
+			Post:       &xdr.LedgerEntry{},
+			ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryCreated,
 		}))
 		// Updated
 		assert.NoError(t, processor.ProcessChange(ctx, Change{
-			Type: xdr.LedgerEntryType(ledgerEntryType),
-			Pre:  &xdr.LedgerEntry{},
-			Post: &xdr.LedgerEntry{},
+			Type:       xdr.LedgerEntryType(ledgerEntryType),
+			Pre:        &xdr.LedgerEntry{},
+			Post:       &xdr.LedgerEntry{},
+			ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
 		}))
 		// Removed
 		assert.NoError(t, processor.ProcessChange(ctx, Change{
-			Type: xdr.LedgerEntryType(ledgerEntryType),
-			Pre:  &xdr.LedgerEntry{},
-			Post: nil,
+			Type:       xdr.LedgerEntryType(ledgerEntryType),
+			Pre:        &xdr.LedgerEntry{},
+			Post:       nil,
+			ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryRemoved,
 		}))
+		// Restored
+		if xdr.LedgerEntryType(ledgerEntryType) == xdr.LedgerEntryTypeContractData ||
+			xdr.LedgerEntryType(ledgerEntryType) == xdr.LedgerEntryTypeContractCode ||
+			xdr.LedgerEntryType(ledgerEntryType) == xdr.LedgerEntryTypeTtl {
+			assert.NoError(t, processor.ProcessChange(ctx, Change{
+				Type:       xdr.LedgerEntryType(ledgerEntryType),
+				Pre:        &xdr.LedgerEntry{},
+				Post:       &xdr.LedgerEntry{},
+				ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryRestored,
+			}))
+		} else {
+			assert.Contains(t, processor.ProcessChange(ctx, Change{
+				Type:       xdr.LedgerEntryType(ledgerEntryType),
+				Pre:        &xdr.LedgerEntry{},
+				Post:       &xdr.LedgerEntry{},
+				ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryRestored,
+			}).Error(), "unsupported ledger entry change type")
+
+		}
 	}
 
 	results := processor.GetResults()
@@ -69,5 +91,10 @@ func TestStatsChangeProcessor(t *testing.T) {
 	assert.Equal(t, int64(1), results.ConfigSettingsRemoved)
 	assert.Equal(t, int64(1), results.TtlRemoved)
 
-	assert.Equal(t, len(xdr.LedgerEntryTypeMap)*3, len(results.Map()))
+	assert.Equal(t, int64(1), results.ContractCodeRestored)
+	assert.Equal(t, int64(1), results.ContractDataRestored)
+	assert.Equal(t, int64(1), results.TtlRestored)
+
+	// "+3" for the three entry types (Ttl, Contract Code, and Contract Data) that will have a "restored" change type.
+	assert.Equal(t, len(xdr.LedgerEntryTypeMap)*3+3, len(results.Map()))
 }

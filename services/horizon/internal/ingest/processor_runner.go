@@ -262,7 +262,7 @@ func (s *ProcessorRunner) runChangeProcessorOnLedger(
 	if err != nil {
 		return errors.Wrap(err, "Error creating ledger change reader")
 	}
-	changeReader = ingest.NewCompactingChangeReader(changeReader)
+	changeReader = ingest.NewCompactingChangeReader(changeReader, ingest.ChangeCompactorConfig{SuppressRemoveAfterRestoreChange: false})
 	if err = streamChanges(s.ctx, changeProcessor, ledger.LedgerSequence(), changeReader); err != nil {
 		return errors.Wrap(err, "Error streaming changes from ledger")
 

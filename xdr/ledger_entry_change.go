@@ -26,6 +26,9 @@ func (change *LedgerEntryChange) LedgerKey() (LedgerKey, error) {
 	case LedgerEntryChangeTypeLedgerEntryState:
 		change := change.MustState()
 		return change.LedgerKey()
+	case LedgerEntryChangeTypeLedgerEntryRestored:
+		change := change.MustRestored()
+		return change.LedgerKey()
 	default:
 		return LedgerKey{}, fmt.Errorf("unknown change type: %v", change.Type)
 	}
@@ -54,6 +57,8 @@ func (change *LedgerEntryChange) GetLedgerEntry() (LedgerEntry, bool) {
 		return change.GetUpdated()
 	case LedgerEntryChangeTypeLedgerEntryRemoved:
 		return LedgerEntry{}, false
+	case LedgerEntryChangeTypeLedgerEntryRestored:
+		return change.GetRestored()
 	default:
 		return LedgerEntry{}, false
 	}
