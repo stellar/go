@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file. This projec
 
 ## Pending
 
+### Protocol 23 Support
+* Added support for the new `RESTORE` ledger entry change type [5587](https://github.com/stellar/go/pull/5587).
+
 ### Bug Fixes
 * Update the boundary check in `BufferedStorageBackend` to queue ledgers up to the end boundary, resolving skipped final batch when the `from` ledger doesn't align with file boundary [5563](https://github.com/stellar/go/pull/5563).
 
