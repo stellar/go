@@ -40,6 +40,10 @@ func (e *Entry) SetLevel(level logrus.Level) {
 	e.entry.Logger.SetLevel(level)
 }
 
+func (e *Entry) SetExitFunc(exitFun func(int)) {
+	e.entry.Logger.ExitFunc = exitFun
+}
+
 func (e *Entry) UseJSONFormatter() {
 	formatter := new(logrus.JSONFormatter)
 	formatter.TimestampFormat = timeStampFormat

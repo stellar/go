@@ -103,7 +103,7 @@ func NewCheckpointChangeReader(
 // associated with the CheckpointChangeReader matches the expectedHash.
 // Assuming expectedHash comes from a trusted source (captive-core running in unbounded mode), this
 // check will give you full security that the data returned by the CheckpointChangeReader can be trusted.
-// Note that XdrStream will verify all the ledger entries from an individual bucket and
+// Note that Stream will verify all the ledger entries from an individual bucket and
 // VerifyBucketList() verifies the entire list of bucket hashes.
 func (r *CheckpointChangeReader) VerifyBucketList(expectedHash xdr.Hash) error {
 	historyBucketListHash, err := r.has.BucketListHash()
@@ -216,14 +216,14 @@ func (r *CheckpointChangeReader) streamBuckets() {
 // If any errors are encountered while reading from `stream`, readBucketEntry will
 // retry the operation using a new *historyarchive.XdrStream.
 // The total number of retries will not exceed `maxStreamRetries`.
-func (r *CheckpointChangeReader) readBucketEntry(stream *historyarchive.XdrStream, hash historyarchive.Hash) (
+func (r *CheckpointChangeReader) readBucketEntry(stream *xdr.Stream, hash historyarchive.Hash) (
 	xdr.BucketEntry,
 	error,
 ) {
 	var entry xdr.BucketEntry
 	var err error
 	currentPosition := stream.BytesRead()
-	gzipCurrentPosition := stream.GzipBytesRead()
+	gzipCurrentPosition := stream.CompressedBytesRead()
 
 	for attempts := 0; ; attempts++ {
 		if r.ctx.Err() != nil {
@@ -234,7 +234,7 @@ func (r *CheckpointChangeReader) readBucketEntry(stream *historyarchive.XdrStrea
 			err = stream.ReadOne(&entry)
 			if err == nil || err == io.EOF {
 				r.readBytesMutex.Lock()
-				r.totalRead += stream.GzipBytesRead() - gzipCurrentPosition
+				r.totalRead += stream.CompressedBytesRead() - gzipCurrentPosition
 				r.readBytesMutex.Unlock()
 				break
 			}
@@ -245,7 +245,7 @@ func (r *CheckpointChangeReader) readBucketEntry(stream *historyarchive.XdrStrea
 
 		stream.Close()
 
-		var retryStream *historyarchive.XdrStream
+		var retryStream *xdr.Stream
 		retryStream, err = r.newXDRStream(hash)
 		if err != nil {
 			err = errors.Wrap(err, "Error creating new xdr stream")
@@ -265,7 +265,7 @@ func (r *CheckpointChangeReader) readBucketEntry(stream *historyarchive.XdrStrea
 }
 
 func (r *CheckpointChangeReader) newXDRStream(hash historyarchive.Hash) (
-	*historyarchive.XdrStream,
+	*xdr.Stream,
 	error,
 ) {
 	rdr, e := r.archive.GetXdrStreamForHash(hash)

@@ -226,8 +226,8 @@ func (pa *ArchivePool) PutRootHAS(has HistoryArchiveState, opts *CommandOptions)
 	})
 }
 
-func (pa *ArchivePool) GetXdrStreamForHash(hash Hash) (*XdrStream, error) {
-	var stream *XdrStream
+func (pa *ArchivePool) GetXdrStreamForHash(hash Hash) (*xdr.Stream, error) {
+	var stream *xdr.Stream
 	return stream, pa.runRoundRobin(func(ai ArchiveInterface) error {
 		var err error
 		stream, err = ai.GetXdrStreamForHash(hash)
@@ -235,8 +235,8 @@ func (pa *ArchivePool) GetXdrStreamForHash(hash Hash) (*XdrStream, error) {
 	})
 }
 
-func (pa *ArchivePool) GetXdrStream(pth string) (*XdrStream, error) {
-	var stream *XdrStream
+func (pa *ArchivePool) GetXdrStream(pth string) (*xdr.Stream, error) {
+	var stream *xdr.Stream
 	return stream, pa.runRoundRobin(func(ai ArchiveInterface) error {
 		var err error
 		stream, err = ai.GetXdrStream(pth)
