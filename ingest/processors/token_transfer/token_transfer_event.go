@@ -1,6 +1,7 @@
 package token_transfer
 
 import (
+	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/ingest/address"
 	"github.com/stellar/go/ingest/asset"
 	"time"
@@ -75,5 +76,15 @@ func NewFeeEvent(ledgerSequence uint32, closedAt time.Time, txHash string, from 
 				Amount: amount,
 			},
 		},
+	}
+}
+
+func NewEventMeta(tx ingest.LedgerTransaction, operationIndex *uint32, contractAddress *address.Address) *EventMeta {
+	return &EventMeta{
+		LedgerSequence:  tx.Ledger.LedgerSequence(),
+		ClosedAt:        timestamppb.New(tx.Ledger.ClosedAt()),
+		TxHash:          tx.Hash.HexString(),
+		OperationIndex:  operationIndex,
+		ContractAddress: contractAddress,
 	}
 }

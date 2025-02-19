@@ -71,38 +71,37 @@ func ProcessTokenTransferEventsFromTransaction(tx ingest.LedgerTransaction) ([]*
 func ProcessTokenTransferEventsFromOperation(opIndex uint32, op xdr.Operation, opResult xdr.OperationResult, tx ingest.LedgerTransaction) ([]*TokenTransferEvent, error) {
 	switch op.Body.Type {
 	case xdr.OperationTypeCreateAccount:
-		return accountCreateEvents(op.Body.MustCreateAccountOp(), opResult.Tr.MustCreateAccountResult(), tx)
-	// AccountMerge is wierd
+		return accountCreateEvents(opIndex, op, opResult, tx)
 	case xdr.OperationTypeAccountMerge:
-		return mergeAccountEvents(op, opResult, tx)
+		return mergeAccountEvents(opIndex, op, opResult, tx)
 	case xdr.OperationTypePayment:
-		return paymentEvents(op.Body.MustPaymentOp(), opResult.Tr.MustPaymentResult(), tx)
+		return paymentEvents(opIndex, op.Body.MustPaymentOp(), opResult.Tr.MustPaymentResult(), tx)
 	case xdr.OperationTypeCreateClaimableBalance:
-		return createClaimableBalanceEvents(op.Body.MustCreateClaimableBalanceOp(), opResult.Tr.MustCreateClaimableBalanceResult(), tx)
+		return createClaimableBalanceEvents(opIndex, op.Body.MustCreateClaimableBalanceOp(), opResult.Tr.MustCreateClaimableBalanceResult(), tx)
 	case xdr.OperationTypeClaimClaimableBalance:
-		return claimClaimableBalanceEvents(op.Body.MustClaimClaimableBalanceOp(), opResult.Tr.MustClaimClaimableBalanceResult(), tx)
+		return claimClaimableBalanceEvents(opIndex, op.Body.MustClaimClaimableBalanceOp(), opResult.Tr.MustClaimClaimableBalanceResult(), tx)
 	case xdr.OperationTypeClawback:
-		return clawbackEvents(op.Body.MustClawbackOp(), opResult.Tr.MustClawbackResult(), tx)
+		return clawbackEvents(opIndex, op.Body.MustClawbackOp(), opResult.Tr.MustClawbackResult(), tx)
 	case xdr.OperationTypeClawbackClaimableBalance:
-		return clawbackClaimableBalanceEvents(op.Body.MustClawbackClaimableBalanceOp(), opResult.Tr.MustClawbackClaimableBalanceResult(), tx)
+		return clawbackClaimableBalanceEvents(opIndex, op.Body.MustClawbackClaimableBalanceOp(), opResult.Tr.MustClawbackClaimableBalanceResult(), tx)
 	case xdr.OperationTypeAllowTrust:
-		return allowTrustEvents(op.Body.MustAllowTrustOp(), opResult.Tr.MustAllowTrustResult(), tx)
+		return allowTrustEvents(opIndex, op.Body.MustAllowTrustOp(), opResult.Tr.MustAllowTrustResult(), tx)
 	case xdr.OperationTypeSetTrustLineFlags:
-		return setTrustLineFlagsEvents(op.Body.MustSetTrustLineFlagsOp(), opResult.Tr.MustSetTrustLineFlagsResult(), tx)
+		return setTrustLineFlagsEvents(opIndex, op.Body.MustSetTrustLineFlagsOp(), opResult.Tr.MustSetTrustLineFlagsResult(), tx)
 	case xdr.OperationTypeLiquidityPoolDeposit:
-		return liquidityPoolDepositEvents(op.Body.MustLiquidityPoolDepositOp(), opResult.Tr.MustLiquidityPoolDepositResult(), tx)
+		return liquidityPoolDepositEvents(opIndex, op.Body.MustLiquidityPoolDepositOp(), opResult.Tr.MustLiquidityPoolDepositResult(), tx)
 	case xdr.OperationTypeLiquidityPoolWithdraw:
-		return liquidityPoolWithdrawEvents(op.Body.MustLiquidityPoolWithdrawOp(), opResult.Tr.MustLiquidityPoolWithdrawResult(), tx)
+		return liquidityPoolWithdrawEvents(opIndex, op.Body.MustLiquidityPoolWithdrawOp(), opResult.Tr.MustLiquidityPoolWithdrawResult(), tx)
 	case xdr.OperationTypeManageBuyOffer:
-		return manageBuyOfferEvents(op.Body.MustManageBuyOfferOp(), opResult.Tr.MustManageBuyOfferResult(), tx)
+		return manageBuyOfferEvents(opIndex, op.Body.MustManageBuyOfferOp(), opResult.Tr.MustManageBuyOfferResult(), tx)
 	case xdr.OperationTypeManageSellOffer:
-		return manageSellOfferEvents(op.Body.MustManageSellOfferOp(), opResult.Tr.MustManageSellOfferResult(), tx)
+		return manageSellOfferEvents(opIndex, op.Body.MustManageSellOfferOp(), opResult.Tr.MustManageSellOfferResult(), tx)
 	case xdr.OperationTypeCreatePassiveSellOffer:
-		return createPassiveSellOfferEvents(op.Body.MustCreatePassiveSellOfferOp(), opResult.Tr.MustCreatePassiveSellOfferResult(), tx)
+		return createPassiveSellOfferEvents(opIndex, op.Body.MustCreatePassiveSellOfferOp(), opResult.Tr.MustCreatePassiveSellOfferResult(), tx)
 	case xdr.OperationTypePathPaymentStrictSend:
-		return pathPaymentStrictSendEvents(op.Body.MustPathPaymentStrictSendOp(), opResult.Tr.MustPathPaymentStrictSendResult(), tx)
+		return pathPaymentStrictSendEvents(opIndex, op.Body.MustPathPaymentStrictSendOp(), opResult.Tr.MustPathPaymentStrictSendResult(), tx)
 	case xdr.OperationTypePathPaymentStrictReceive:
-		return pathPaymentStrictReceiveEvents(op.Body.MustPathPaymentStrictReceiveOp(), opResult.Tr.MustPathPaymentStrictReceiveResult(), tx)
+		return pathPaymentStrictReceiveEvents(opIndex, op.Body.MustPathPaymentStrictReceiveOp(), opResult.Tr.MustPathPaymentStrictReceiveResult(), tx)
 	default:
 		return nil, nil
 	}
@@ -128,66 +127,93 @@ func generateFeeEvent(tx ingest.LedgerTransaction) ([]*TokenTransferEvent, error
 }
 
 // Function stubs
-func accountCreateEvents(op xdr.CreateAccountOp, result xdr.CreateAccountResult, tx ingest.LedgerTransaction) ([]*TokenTransferEvent, error) {
+func accountCreateEvents(opIndex uint32, op xdr.Operation, result xdr.OperationResult, tx ingest.LedgerTransaction) ([]*TokenTransferEvent, error) {
+	srcAcc := sourceAccount(tx, op)
+
+	createAccountOp := op.Body.MustCreateAccountOp()
+	destAcc, amt := createAccountOp.Destination, amount.String(createAccountOp.StartingBalance)
+	meta := NewEventMeta(tx, &opIndex, nil)
+	event := NewTransferEvent(meta, address.AddressFromAccount(srcAcc), address.AddressFromAccountId(destAcc), amt, asset.NewNativeAsset())
+	return []*TokenTransferEvent{event}, nil // Just one event will be generated
+}
+
+func mergeAccountEvents(opIndex uint32, op xdr.Operation, result xdr.OperationResult, tx ingest.LedgerTransaction) ([]*TokenTransferEvent, error) {
+	res := result.Tr.MustAccountMergeResult()
+	// If there is no transfer of XLM from source account to destination (i.e src account is empty), then no need to generate a transfer event
+	if res.SourceAccountBalance == nil {
+		return nil, nil
+	}
+
+	srcAcc := sourceAccount(tx, op)
+	destAcc := op.Body.MustDestination()
+	amt := amount.String(*res.SourceAccountBalance)
+	meta := NewEventMeta(tx, &opIndex, nil)
+	event := NewTransferEvent(meta, address.AddressFromAccount(srcAcc), address.AddressFromAccount(destAcc), amt, asset.NewNativeAsset())
+	return []*TokenTransferEvent{event}, nil // Just one event will be generated
+}
+
+func paymentEvents(opIndex uint32, op xdr.PaymentOp, result xdr.PaymentResult, tx ingest.LedgerTransaction) ([]*TokenTransferEvent, error) {
 	return nil, nil
 }
 
-func mergeAccountEvents(op xdr.Operation, result xdr.OperationResult, tx ingest.LedgerTransaction) ([]*TokenTransferEvent, error) {
+func createClaimableBalanceEvents(opIndex uint32, op xdr.CreateClaimableBalanceOp, result xdr.CreateClaimableBalanceResult, tx ingest.LedgerTransaction) ([]*TokenTransferEvent, error) {
 	return nil, nil
 }
 
-func paymentEvents(op xdr.PaymentOp, result xdr.PaymentResult, tx ingest.LedgerTransaction) ([]*TokenTransferEvent, error) {
+func claimClaimableBalanceEvents(opIndex uint32, op xdr.ClaimClaimableBalanceOp, result xdr.ClaimClaimableBalanceResult, tx ingest.LedgerTransaction) ([]*TokenTransferEvent, error) {
 	return nil, nil
 }
 
-func createClaimableBalanceEvents(op xdr.CreateClaimableBalanceOp, result xdr.CreateClaimableBalanceResult, tx ingest.LedgerTransaction) ([]*TokenTransferEvent, error) {
+func clawbackEvents(opIndex uint32, op xdr.ClawbackOp, result xdr.ClawbackResult, tx ingest.LedgerTransaction) ([]*TokenTransferEvent, error) {
 	return nil, nil
 }
 
-func claimClaimableBalanceEvents(op xdr.ClaimClaimableBalanceOp, result xdr.ClaimClaimableBalanceResult, tx ingest.LedgerTransaction) ([]*TokenTransferEvent, error) {
+func clawbackClaimableBalanceEvents(opIndex uint32, op xdr.ClawbackClaimableBalanceOp, result xdr.ClawbackClaimableBalanceResult, tx ingest.LedgerTransaction) ([]*TokenTransferEvent, error) {
 	return nil, nil
 }
 
-func clawbackEvents(op xdr.ClawbackOp, result xdr.ClawbackResult, tx ingest.LedgerTransaction) ([]*TokenTransferEvent, error) {
+func allowTrustEvents(opIndex uint32, op xdr.AllowTrustOp, result xdr.AllowTrustResult, tx ingest.LedgerTransaction) ([]*TokenTransferEvent, error) {
 	return nil, nil
 }
 
-func clawbackClaimableBalanceEvents(op xdr.ClawbackClaimableBalanceOp, result xdr.ClawbackClaimableBalanceResult, tx ingest.LedgerTransaction) ([]*TokenTransferEvent, error) {
+func setTrustLineFlagsEvents(opIndex uint32, op xdr.SetTrustLineFlagsOp, result xdr.SetTrustLineFlagsResult, tx ingest.LedgerTransaction) ([]*TokenTransferEvent, error) {
 	return nil, nil
 }
 
-func allowTrustEvents(op xdr.AllowTrustOp, result xdr.AllowTrustResult, tx ingest.LedgerTransaction) ([]*TokenTransferEvent, error) {
+func liquidityPoolDepositEvents(opIndex uint32, op xdr.LiquidityPoolDepositOp, result xdr.LiquidityPoolDepositResult, tx ingest.LedgerTransaction) ([]*TokenTransferEvent, error) {
 	return nil, nil
 }
 
-func setTrustLineFlagsEvents(op xdr.SetTrustLineFlagsOp, result xdr.SetTrustLineFlagsResult, tx ingest.LedgerTransaction) ([]*TokenTransferEvent, error) {
+func liquidityPoolWithdrawEvents(opIndex uint32, op xdr.LiquidityPoolWithdrawOp, result xdr.LiquidityPoolWithdrawResult, tx ingest.LedgerTransaction) ([]*TokenTransferEvent, error) {
 	return nil, nil
 }
 
-func liquidityPoolDepositEvents(op xdr.LiquidityPoolDepositOp, result xdr.LiquidityPoolDepositResult, tx ingest.LedgerTransaction) ([]*TokenTransferEvent, error) {
+func manageBuyOfferEvents(opIndex uint32, op xdr.ManageBuyOfferOp, result xdr.ManageBuyOfferResult, tx ingest.LedgerTransaction) ([]*TokenTransferEvent, error) {
 	return nil, nil
 }
 
-func liquidityPoolWithdrawEvents(op xdr.LiquidityPoolWithdrawOp, result xdr.LiquidityPoolWithdrawResult, tx ingest.LedgerTransaction) ([]*TokenTransferEvent, error) {
+func manageSellOfferEvents(opIndex uint32, op xdr.ManageSellOfferOp, result xdr.ManageSellOfferResult, tx ingest.LedgerTransaction) ([]*TokenTransferEvent, error) {
 	return nil, nil
 }
 
-func manageBuyOfferEvents(op xdr.ManageBuyOfferOp, result xdr.ManageBuyOfferResult, tx ingest.LedgerTransaction) ([]*TokenTransferEvent, error) {
+func createPassiveSellOfferEvents(opIndex uint32, op xdr.CreatePassiveSellOfferOp, result xdr.ManageSellOfferResult, tx ingest.LedgerTransaction) ([]*TokenTransferEvent, error) {
 	return nil, nil
 }
 
-func manageSellOfferEvents(op xdr.ManageSellOfferOp, result xdr.ManageSellOfferResult, tx ingest.LedgerTransaction) ([]*TokenTransferEvent, error) {
+func pathPaymentStrictSendEvents(opIndex uint32, op xdr.PathPaymentStrictSendOp, result xdr.PathPaymentStrictSendResult, tx ingest.LedgerTransaction) ([]*TokenTransferEvent, error) {
 	return nil, nil
 }
 
-func createPassiveSellOfferEvents(op xdr.CreatePassiveSellOfferOp, result xdr.ManageSellOfferResult, tx ingest.LedgerTransaction) ([]*TokenTransferEvent, error) {
+func pathPaymentStrictReceiveEvents(opIndex uint32, op xdr.PathPaymentStrictReceiveOp, result xdr.PathPaymentStrictReceiveResult, tx ingest.LedgerTransaction) ([]*TokenTransferEvent, error) {
 	return nil, nil
 }
 
-func pathPaymentStrictSendEvents(op xdr.PathPaymentStrictSendOp, result xdr.PathPaymentStrictSendResult, tx ingest.LedgerTransaction) ([]*TokenTransferEvent, error) {
-	return nil, nil
-}
-
-func pathPaymentStrictReceiveEvents(op xdr.PathPaymentStrictReceiveOp, result xdr.PathPaymentStrictReceiveResult, tx ingest.LedgerTransaction) ([]*TokenTransferEvent, error) {
-	return nil, nil
+// Helper functions
+func sourceAccount(tx ingest.LedgerTransaction, op xdr.Operation) xdr.MuxedAccount {
+	acc := op.SourceAccount
+	if acc != nil {
+		return *acc
+	}
+	res := tx.Envelope.SourceAccount()
+	return res
 }
