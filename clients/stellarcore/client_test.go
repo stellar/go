@@ -203,8 +203,6 @@ func TestGetLedgerEntries(t *testing.T) {
 			requestData, ierr := io.ReadAll(r.Body)
 			require.NoError(t, ierr)
 
-			keyB64, ierr := key.MarshalBinaryBase64()
-			require.NoError(t, ierr)
 			expected := fmt.Sprintf("key=%s&ledgerSeq=1234", url.QueryEscape(keyB64))
 			require.Equal(t, expected, string(requestData))
 
