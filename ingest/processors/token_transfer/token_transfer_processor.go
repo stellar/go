@@ -1,7 +1,10 @@
 package token_transfer
 
 import (
+	"github.com/stellar/go/amount"
 	"github.com/stellar/go/ingest"
+	"github.com/stellar/go/ingest/address"
+	"github.com/stellar/go/ingest/asset"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 	"io"
@@ -35,8 +38,12 @@ func ProcessTokenTransferEventsFromLedger(lcm xdr.LedgerCloseMeta, networkPassPh
 
 func ProcessTokenTransferEventsFromTransaction(tx ingest.LedgerTransaction) ([]*TokenTransferEvent, error) {
 	var events []*TokenTransferEvent
-	feeEvent := generateFeeEvent(tx)
-	events = append(events, feeEvent)
+	feeEvents, err := generateFeeEvent(tx)
+	if err != nil {
+		return nil, errors.Wrap(err, "error generating fee event")
+	}
+	events = append(events, feeEvents...)
+
 	operations := tx.Envelope.Operations()
 	operationResults, _ := tx.Result.OperationResults()
 
@@ -60,7 +67,7 @@ func ProcessTokenTransferEventsFromTransaction(tx ingest.LedgerTransaction) ([]*
 	return events, nil
 }
 
-// opIndex will be needed, on the offchance that we need to fetch ledgerEntry changes
+// opIndex will be needed, on the offchance that we need to fetch ledgerEntry changes, especially in setTrustline or AllowTrust
 func ProcessTokenTransferEventsFromOperation(opIndex uint32, op xdr.Operation, opResult xdr.OperationResult, tx ingest.LedgerTransaction) ([]*TokenTransferEvent, error) {
 	switch op.Body.Type {
 	case xdr.OperationTypeCreateAccount:
@@ -101,8 +108,23 @@ func ProcessTokenTransferEventsFromOperation(opIndex uint32, op xdr.Operation, o
 	}
 }
 
-func generateFeeEvent(tx ingest.LedgerTransaction) *TokenTransferEvent {
-	return nil
+func generateFeeEvent(tx ingest.LedgerTransaction) ([]*TokenTransferEvent, error) {
+	var events []*TokenTransferEvent
+	feeChanges := tx.GetFeeChanges()
+	for _, change := range feeChanges {
+		if change.Type != xdr.LedgerEntryTypeAccount {
+			return nil, errors.Errorf("invalid ledgerEntryType for fee change: %s", change.Type.String())
+		}
+
+		// Do I need to do all this? Can I not simply use tx.Result.Result.FeeCharged
+		preBalance := change.Pre.Data.MustAccount().Balance
+		postBalance := change.Post.Data.MustAccount().Balance
+		accId := change.Pre.Data.MustAccount().AccountId
+		amt := amount.String(postBalance - preBalance)
+		event := NewFeeEvent(tx.Ledger.LedgerSequence(), tx.Ledger.ClosedAt(), tx.Hash.HexString(), address.AddressFromAccountId(accId), amt, asset.NewNativeAsset())
+		events = append(events, event)
+	}
+	return events, nil
 }
 
 // Function stubs

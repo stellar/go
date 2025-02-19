@@ -133,6 +133,15 @@ func String128(v xdr.Int128Parts) string {
 	return rat.FloatString(7)
 }
 
+func String128Raw(v xdr.Int128Parts) string {
+	// the upper half of the i128 always indicates its sign regardless of its
+	// value, just like a native signed type
+	val := big.NewInt(int64(v.Hi))
+	val.Lsh(val, 64).Add(val, new(big.Int).SetUint64(uint64(v.Lo)))
+
+	return val.String()
+}
+
 // StringFromInt64 returns an "amount string" from the provided raw int64 value `v`.
 func StringFromInt64(v int64) string {
 	r := big.NewRat(v, 1)
