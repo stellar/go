@@ -203,7 +203,11 @@ func TestGetLedgerEntries(t *testing.T) {
 			requestData, ierr := io.ReadAll(r.Body)
 			require.NoError(t, ierr)
 
-			expected := fmt.Sprintf("key=%s&ledgerSeq=1234", url.QueryEscape(keyB64))
+			expected := fmt.Sprintf(
+				"key=%s&key=%s&key=%s&ledgerSeq=1234",
+				url.QueryEscape(keyB64),
+				url.QueryEscape(keyB64),
+				url.QueryEscape(keyB64))
 			require.Equal(t, expected, string(requestData))
 
 			resp, ierr := httpmock.NewJsonResponse(http.StatusOK, &mockResp)
@@ -212,7 +216,7 @@ func TestGetLedgerEntries(t *testing.T) {
 			return resp, nil
 		})
 
-	resp, err := c.GetLedgerEntries(context.Background(), 1234, key)
+	resp, err := c.GetLedgerEntries(context.Background(), 1234, key, key, key)
 	require.NoError(t, err)
 	require.NotNil(t, resp)
 
