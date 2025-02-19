@@ -2,6 +2,7 @@ package stellarcore
 
 import (
 	"context"
+	"crypto/rand"
 	"fmt"
 	"io"
 	"net/http"
@@ -143,23 +144,54 @@ func TestGetLedgerEntries(t *testing.T) {
 	hmock := httptest.NewClient()
 	c := &Client{HTTP: hmock, URL: "http://localhost:11626"}
 
-	// build a fake response body
-	mockResp := proto.GetLedgerEntryResponse{
-		Ledger: 1215, // checkpoint align on expected request
-		Entries: []proto.LedgerEntryResponse{{
-			Entry: "pretend this is XDR lol",
-			State: "live",
-			Ttl:   1234,
-		}, {
-			Entry: "pretend this is another XDR lol",
-			State: "archived",
-		}},
+	var hash xdr.Hash
+	_, err := rand.Read(hash[:])
+	require.NoError(t, err)
+
+	tr, err := xdr.NewScVal(xdr.ScValTypeScvBool, true)
+	require.NoError(t, err)
+	fl, err := xdr.NewScVal(xdr.ScValTypeScvBool, false)
+	require.NoError(t, err)
+
+	rawEntry := xdr.ContractDataEntry{
+		Ext:        xdr.ExtensionPoint{},
+		Contract:   xdr.ScAddress{Type: xdr.ScAddressTypeScAddressTypeContract, ContractId: &hash},
+		Key:        tr,
+		Durability: xdr.ContractDataDurabilityPersistent,
+		Val:        fl,
 	}
+	entry := xdr.LedgerEntry{
+		LastModifiedLedgerSeq: 1210,
+		Data: xdr.LedgerEntryData{
+			Type:         xdr.LedgerEntryTypeContractData,
+			ContractData: &rawEntry,
+		},
+	}
+	entryB64, err := xdr.MarshalBase64(entry)
+	require.NoError(t, err)
 
 	var key xdr.LedgerKey
 	acc, err := xdr.AddressToAccountId(keypair.MustRandom().Address())
 	require.NoError(t, err)
 	key.SetAccount(acc)
+	keyB64, err := key.MarshalBinaryBase64()
+	require.NoError(t, err)
+
+	// build a fake response body
+	mockResp := proto.GetLedgerEntryResponse{
+		Ledger: 1215, // checkpoint align on expected request
+		Entries: []proto.LedgerEntryResponse{{
+			Entry: entryB64,
+			State: "live",
+			Ttl:   1234,
+		}, {
+			Entry: entryB64,
+			State: "archived",
+		}, {
+			Entry: keyB64,
+			State: "new",
+		}},
+	}
 
 	// happy path - fetch an entry
 	ce := hmock.On("POST", "http://localhost:11626/getledgerentry")
@@ -187,12 +219,14 @@ func TestGetLedgerEntries(t *testing.T) {
 	require.NotNil(t, resp)
 
 	require.EqualValues(t, 1215, resp.Ledger)
-	require.Len(t, resp.Entries, 2)
-	require.Equal(t, "pretend this is XDR lol", resp.Entries[0].Entry)
-	require.Equal(t, "pretend this is another XDR lol", resp.Entries[1].Entry)
+	require.Len(t, resp.Entries, 3)
+	require.Equal(t, entryB64, resp.Entries[0].Entry)
+	require.Equal(t, entryB64, resp.Entries[1].Entry)
+	require.Equal(t, keyB64, resp.Entries[2].Entry)
 	require.EqualValues(t, 1234, resp.Entries[0].Ttl)
 	require.EqualValues(t, "live", resp.Entries[0].State)
 	require.EqualValues(t, "archived", resp.Entries[1].State)
+	require.EqualValues(t, "new", resp.Entries[2].State)
 
 	key.Type = xdr.LedgerEntryTypeTtl
 	_, err = c.GetLedgerEntries(context.Background(), 1234, key)
