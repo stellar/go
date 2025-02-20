@@ -3,8 +3,8 @@ package token_transfer
 import (
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/ingest"
-	"github.com/stellar/go/ingest/address"
-	"github.com/stellar/go/ingest/asset"
+	addressProto "github.com/stellar/go/ingest/address"
+	assetProto "github.com/stellar/go/ingest/asset"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 	"io"
@@ -120,7 +120,7 @@ func generateFeeEvent(tx ingest.LedgerTransaction) ([]*TokenTransferEvent, error
 		postBalance := change.Post.Data.MustAccount().Balance
 		accId := change.Pre.Data.MustAccount().AccountId
 		amt := amount.String(postBalance - preBalance)
-		event := NewFeeEvent(tx.Ledger.LedgerSequence(), tx.Ledger.ClosedAt(), tx.Hash.HexString(), addressFromAccountId(accId), amt, asset.NewNativeAsset())
+		event := NewFeeEvent(tx.Ledger.LedgerSequence(), tx.Ledger.ClosedAt(), tx.Hash.HexString(), protoAddressFromAccountId(accId), amt, assetProto.NewNativeAsset())
 		events = append(events, event)
 	}
 	return events, nil
@@ -128,11 +128,11 @@ func generateFeeEvent(tx ingest.LedgerTransaction) ([]*TokenTransferEvent, error
 
 // Function stubs
 func accountCreateEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation) ([]*TokenTransferEvent, error) {
-	srcAcc := sourceAccount(tx, op)
+	srcAcc := operationSourceAccount(tx, op)
 	createAccountOp := op.Body.MustCreateAccountOp()
 	destAcc, amt := createAccountOp.Destination, amount.String(createAccountOp.StartingBalance)
 	meta := NewEventMeta(tx, &opIndex, nil)
-	event := NewTransferEvent(meta, addressFromAccount(srcAcc), addressFromAccountId(destAcc), amt, asset.NewNativeAsset())
+	event := NewTransferEvent(meta, protoAddressFromAccount(srcAcc), protoAddressFromAccountId(destAcc), amt, assetProto.NewNativeAsset())
 	return []*TokenTransferEvent{event}, nil // Just one event will be generated
 }
 
@@ -142,41 +142,47 @@ func mergeAccountEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Oper
 	if res.SourceAccountBalance == nil {
 		return nil, nil
 	}
-	srcAcc := sourceAccount(tx, op)
+	srcAcc := operationSourceAccount(tx, op)
 	destAcc := op.Body.MustDestination()
 	amt := amount.String(*res.SourceAccountBalance)
 	meta := NewEventMeta(tx, &opIndex, nil)
-	event := NewTransferEvent(meta, addressFromAccount(srcAcc), addressFromAccount(destAcc), amt, asset.NewNativeAsset())
+	event := NewTransferEvent(meta, protoAddressFromAccount(srcAcc), protoAddressFromAccount(destAcc), amt, assetProto.NewNativeAsset())
 	return []*TokenTransferEvent{event}, nil // Just one event will be generated
+}
+
+// Depending on the asset - if src or dest account == issuer of asset, then mint/burn event, else transfer event
+func mintOrBurnOrTransferEvent(asset xdr.Asset, srcAcc xdr.MuxedAccount, destAcc xdr.MuxedAccount, amt string, meta *EventMeta) *TokenTransferEvent {
+	protoAsset := assetProto.NewIssuedAsset(asset.GetCode(), asset.GetIssuer())
+	var event *TokenTransferEvent
+	sAddress := protoAddressFromAccount(srcAcc)
+	dAddress := protoAddressFromAccount(destAcc)
+	assetIssuerAccountId, _ := asset.GetIssuerAccountId()
+	if assetIssuerAccountId.Equals(srcAcc.ToAccountId()) {
+		// Mint event
+		event = NewMintEvent(meta, dAddress, amt, protoAsset)
+	} else if assetIssuerAccountId.Equals(destAcc.ToAccountId()) {
+		// Burn event
+		event = NewBurnEvent(meta, sAddress, amt, protoAsset)
+	} else {
+		// Regular transfer
+		event = NewTransferEvent(meta, sAddress, dAddress, amt, protoAsset)
+	}
+	return event
 }
 
 func paymentEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation) ([]*TokenTransferEvent, error) {
 	paymentOp := op.Body.MustPaymentOp()
-	srcAcc := sourceAccount(tx, op)
+	srcAcc := operationSourceAccount(tx, op)
 	destAcc := paymentOp.Destination
-	sAddress := addressFromAccount(srcAcc)
-	dAddress := addressFromAccount(destAcc)
 	amt := amount.String(paymentOp.Amount)
-	var as *asset.Asset
 	meta := NewEventMeta(tx, &opIndex, nil)
+
 	var event *TokenTransferEvent
 	if paymentOp.Asset.IsNative() {
-		as = asset.NewNativeAsset()
-		// If native asset, it is always a regular transfer
-		event = NewTransferEvent(meta, sAddress, dAddress, amt, asset.NewNativeAsset())
+		// If native assetProto, it is always a regular transfer
+		event = NewTransferEvent(meta, protoAddressFromAccount(srcAcc), protoAddressFromAccount(destAcc), amt, assetProto.NewNativeAsset())
 	} else {
-		as = asset.NewIssuedAsset(paymentOp.Asset.GetCode(), paymentOp.Asset.GetIssuer())
-		assetIssuerAccountId, _ := paymentOp.Asset.GetIssuerAccountId()
-		if assetIssuerAccountId.Equals(srcAcc.ToAccountId()) {
-			// Mint event
-			event = NewMintEvent(meta, dAddress, amt, as)
-		} else if assetIssuerAccountId.Equals(destAcc.ToAccountId()) {
-			// Burn event
-			event = NewBurnEvent(meta, sAddress, amt, as)
-		} else {
-			// Regular transfer
-			event = NewTransferEvent(meta, sAddress, dAddress, amt, as)
-		}
+		event = mintOrBurnOrTransferEvent(paymentOp.Asset, srcAcc, destAcc, amt, meta)
 	}
 	return []*TokenTransferEvent{event}, nil
 }
@@ -234,7 +240,7 @@ func pathPaymentStrictReceiveEvents(tx ingest.LedgerTransaction, opIndex uint32,
 }
 
 // Helper functions
-func sourceAccount(tx ingest.LedgerTransaction, op xdr.Operation) xdr.MuxedAccount {
+func operationSourceAccount(tx ingest.LedgerTransaction, op xdr.Operation) xdr.MuxedAccount {
 	acc := op.SourceAccount
 	if acc != nil {
 		return *acc
@@ -243,35 +249,35 @@ func sourceAccount(tx ingest.LedgerTransaction, op xdr.Operation) xdr.MuxedAccou
 	return res
 }
 
-func addressFromAccount(account xdr.MuxedAccount) *address.Address {
-	addr := &address.Address{}
+func protoAddressFromAccount(account xdr.MuxedAccount) *addressProto.Address {
+	addr := &addressProto.Address{}
 	switch account.Type {
 	case xdr.CryptoKeyTypeKeyTypeEd25519:
-		addr.AddressType = address.AddressType_ADDRESS_TYPE_ACCOUNT
+		addr.AddressType = addressProto.AddressType_ADDRESS_TYPE_ACCOUNT
 	case xdr.CryptoKeyTypeKeyTypeMuxedEd25519:
-		addr.AddressType = address.AddressType_ADDRESS_TYPE_MUXED_ACCOUNT
+		addr.AddressType = addressProto.AddressType_ADDRESS_TYPE_MUXED_ACCOUNT
 	}
 	addr.StrKey = account.Address()
 	return addr
 }
 
-func addressFromAccountId(account xdr.AccountId) *address.Address {
-	return &address.Address{
-		AddressType: address.AddressType_ADDRESS_TYPE_ACCOUNT,
+func protoAddressFromAccountId(account xdr.AccountId) *addressProto.Address {
+	return &addressProto.Address{
+		AddressType: addressProto.AddressType_ADDRESS_TYPE_ACCOUNT,
 		StrKey:      account.Address(),
 	}
 }
 
-func addressFromLpHash(lpHash xdr.PoolId) *address.Address {
-	return &address.Address{
-		AddressType: address.AddressType_ADDRESS_TYPE_LIQUIDITY_POOL,
+func protoAddressFromLpHash(lpHash xdr.PoolId) *addressProto.Address {
+	return &addressProto.Address{
+		AddressType: addressProto.AddressType_ADDRESS_TYPE_LIQUIDITY_POOL,
 		StrKey:      xdr.Hash(lpHash).HexString(), // replace with strkey
 	}
 }
 
-func addressFromClaimableBalanceId(cb xdr.ClaimableBalanceId) *address.Address {
-	return &address.Address{
-		AddressType: address.AddressType_ADDRESS_TYPE_LIQUIDITY_POOL,
+func protoAddressFromClaimableBalanceId(cb xdr.ClaimableBalanceId) *addressProto.Address {
+	return &addressProto.Address{
+		AddressType: addressProto.AddressType_ADDRESS_TYPE_LIQUIDITY_POOL,
 		StrKey:      cb.MustV0().HexString(), //replace with strkey
 	}
 }
