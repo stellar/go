@@ -108,22 +108,17 @@ func ProcessTokenTransferEventsFromOperation(tx ingest.LedgerTransaction, opInde
 }
 
 func generateFeeEvent(tx ingest.LedgerTransaction) ([]*TokenTransferEvent, error) {
-	var events []*TokenTransferEvent
-	feeChanges := tx.GetFeeChanges()
-	for _, change := range feeChanges {
-		if change.Type != xdr.LedgerEntryTypeAccount {
-			return nil, errors.Errorf("invalid ledgerEntryType for fee change: %s", change.Type.String())
-		}
+	/*
+		For a feeBump transaction, this will be the outer transaction.
+		FeeAccount() gives the proper "muxed" account that paid the fees.
+		And we want the "muxed" Account, so that it can be passed directly to protoAddressFromAccount
+	*/
+	feeAccount := tx.FeeAccount()
+	// FeeCharged() takes care of a bug in an intermediate protocol release. So using that
+	feeAmt, _ := tx.FeeCharged()
 
-		// Do I need to do all this? Can I not simply use tx.Result.Result.FeeCharged
-		preBalance := change.Pre.Data.MustAccount().Balance
-		postBalance := change.Post.Data.MustAccount().Balance
-		accId := change.Pre.Data.MustAccount().AccountId
-		amt := amount.String(postBalance - preBalance)
-		event := NewFeeEvent(tx.Ledger.LedgerSequence(), tx.Ledger.ClosedAt(), tx.Hash.HexString(), protoAddressFromAccountId(accId), amt, assetProto.NewNativeAsset())
-		events = append(events, event)
-	}
-	return events, nil
+	event := NewFeeEvent(tx.Ledger.LedgerSequence(), tx.Ledger.ClosedAt(), tx.Hash.HexString(), protoAddressFromAccount(feeAccount), amount.String(xdr.Int64(feeAmt)), assetProto.NewNativeAsset())
+	return []*TokenTransferEvent{event}, nil
 }
 
 // Function stubs
