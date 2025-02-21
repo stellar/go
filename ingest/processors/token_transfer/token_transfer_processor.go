@@ -225,6 +225,8 @@ func manageBuyOfferEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Op
 	var events []*TokenTransferEvent
 
 	for _, claim := range buyOfferResult.Success.OffersClaimed {
+		// I can directly call claim.SellerID() here, since I dont expect any Liquidity pool type claim atoms here.
+		// I cant do this when coding up pathPayment related operations
 		sellerId := claim.SellerId()
 		sellerAccount := sellerId.ToMuxedAccount()
 		assetBought := claim.AssetBought()
@@ -252,6 +254,8 @@ func manageSellOfferEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.O
 	var events []*TokenTransferEvent
 
 	for _, claim := range sellOfferResult.Success.OffersClaimed {
+		// I can directly call claim.SellerID() here, since I dont expect any Liquidity pool type claim atoms here.
+		// I cant do this when coding up pathPayment related operations
 		buyerId := claim.SellerId()
 		buyerAccount := buyerId.ToMuxedAccount()
 		assetSold := claim.AssetSold()
