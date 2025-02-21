@@ -592,31 +592,6 @@ func (t *LedgerTransaction) AccountMuxed() (string, bool) {
 
 }
 
-func (t *LedgerTransaction) FeeAccount() (string, bool) {
-	if !t.Envelope.IsFeeBump() {
-		return "", false
-	}
-
-	feeBumpAccount := t.Envelope.FeeBumpAccount()
-	feeAccount := feeBumpAccount.ToAccountId()
-
-	return feeAccount.Address(), true
-
-}
-
-func (t *LedgerTransaction) FeeAccountMuxed() (string, bool) {
-	if !t.Envelope.IsFeeBump() {
-		return "", false
-	}
-
-	feeBumpAccount := t.Envelope.FeeBumpAccount()
-	if feeBumpAccount.Type != xdr.CryptoKeyTypeKeyTypeMuxedEd25519 {
-		return "", false
-	}
-
-	return feeBumpAccount.Address(), true
-}
-
 func (t *LedgerTransaction) InnerTransactionHash() (string, bool) {
 	if !t.Envelope.IsFeeBump() {
 		return "", false
