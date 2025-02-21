@@ -93,11 +93,11 @@ func ProcessTokenTransferEventsFromOperation(tx ingest.LedgerTransaction, opInde
 	case xdr.OperationTypeLiquidityPoolWithdraw:
 		return liquidityPoolWithdrawEvents(tx, opIndex, op.Body.MustLiquidityPoolWithdrawOp(), opResult.Tr.MustLiquidityPoolWithdrawResult())
 	case xdr.OperationTypeManageBuyOffer:
-		return manageBuyOfferEvents(tx, opIndex, op.Body.MustManageBuyOfferOp(), opResult.Tr.MustManageBuyOfferResult())
+		return manageBuyOfferEvents(tx, opIndex, op, opResult)
 	case xdr.OperationTypeManageSellOffer:
-		return manageSellOfferEvents(tx, opIndex, op.Body.MustManageSellOfferOp(), opResult.Tr.MustManageSellOfferResult())
+		return manageSellOfferEvents(tx, opIndex, op, opResult)
 	case xdr.OperationTypeCreatePassiveSellOffer:
-		return createPassiveSellOfferEvents(tx, opIndex, op.Body.MustCreatePassiveSellOfferOp(), opResult.Tr.MustCreatePassiveSellOfferResult())
+		return createPassiveSellOfferEvents(tx, opIndex, op, opResult)
 	case xdr.OperationTypePathPaymentStrictSend:
 		return pathPaymentStrictSendEvents(tx, opIndex, op.Body.MustPathPaymentStrictSendOp(), opResult.Tr.MustPathPaymentStrictSendResult())
 	case xdr.OperationTypePathPaymentStrictReceive:
@@ -151,21 +151,21 @@ func mergeAccountEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Oper
 }
 
 // Depending on the asset - if src or dest account == issuer of asset, then mint/burn event, else transfer event
-func mintOrBurnOrTransferEvent(asset xdr.Asset, srcAcc xdr.MuxedAccount, destAcc xdr.MuxedAccount, amt string, meta *EventMeta) *TokenTransferEvent {
+func mintOrBurnOrTransferEvent(asset xdr.Asset, fromAcc xdr.MuxedAccount, toAcc xdr.MuxedAccount, amt string, meta *EventMeta) *TokenTransferEvent {
 	protoAsset := assetProto.NewIssuedAsset(asset.GetCode(), asset.GetIssuer())
 	var event *TokenTransferEvent
-	sAddress := protoAddressFromAccount(srcAcc)
-	dAddress := protoAddressFromAccount(destAcc)
+	fromAddress := protoAddressFromAccount(fromAcc)
+	toAddress := protoAddressFromAccount(toAcc)
 	assetIssuerAccountId, _ := asset.GetIssuerAccountId()
-	if assetIssuerAccountId.Equals(srcAcc.ToAccountId()) {
+	if assetIssuerAccountId.Equals(fromAcc.ToAccountId()) {
 		// Mint event
-		event = NewMintEvent(meta, dAddress, amt, protoAsset)
-	} else if assetIssuerAccountId.Equals(destAcc.ToAccountId()) {
+		event = NewMintEvent(meta, toAddress, amt, protoAsset)
+	} else if assetIssuerAccountId.Equals(toAcc.ToAccountId()) {
 		// Burn event
-		event = NewBurnEvent(meta, sAddress, amt, protoAsset)
+		event = NewBurnEvent(meta, fromAddress, amt, protoAsset)
 	} else {
 		// Regular transfer
-		event = NewTransferEvent(meta, sAddress, dAddress, amt, protoAsset)
+		event = NewTransferEvent(meta, fromAddress, toAddress, amt, protoAsset)
 	}
 	return event
 }
@@ -219,16 +219,62 @@ func liquidityPoolWithdrawEvents(tx ingest.LedgerTransaction, opIndex uint32, op
 	return nil, nil
 }
 
-func manageBuyOfferEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.ManageBuyOfferOp, result xdr.ManageBuyOfferResult) ([]*TokenTransferEvent, error) {
-	return nil, nil
+func manageBuyOfferEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation, result xdr.OperationResult) ([]*TokenTransferEvent, error) {
+	buyOfferResult := result.Tr.MustManageBuyOfferResult()
+	operationSrcAccount := operationSourceAccount(tx, op)
+	var events []*TokenTransferEvent
+
+	for _, claim := range buyOfferResult.Success.OffersClaimed {
+		sellerId := claim.SellerId()
+		sellerAccount := sellerId.ToMuxedAccount()
+		assetBought := claim.AssetBought()
+		assetSold := claim.AssetSold()
+
+		meta := NewEventMeta(tx, &opIndex, nil)
+
+		// Create event for asset bought, from = seller in claimAtom, to = manageBuyOperation account
+		events = append(events,
+			mintOrBurnOrTransferEvent(assetBought, sellerAccount, operationSrcAccount, amount.String(claim.AmountBought()), meta),
+		)
+
+		// Create event for asset sold, from = manageBuyOperation account, to = seller in claim atom
+		events = append(events,
+			mintOrBurnOrTransferEvent(assetSold, operationSrcAccount, sellerAccount, amount.String(claim.AmountSold()), meta),
+		)
+	}
+
+	return events, nil
 }
 
-func manageSellOfferEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.ManageSellOfferOp, result xdr.ManageSellOfferResult) ([]*TokenTransferEvent, error) {
-	return nil, nil
+func manageSellOfferEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation, result xdr.OperationResult) ([]*TokenTransferEvent, error) {
+	sellOfferResult := result.Tr.MustManageSellOfferResult()
+	operationSrcAccount := operationSourceAccount(tx, op)
+	var events []*TokenTransferEvent
+
+	for _, claim := range sellOfferResult.Success.OffersClaimed {
+		buyerId := claim.SellerId()
+		buyerAccount := buyerId.ToMuxedAccount()
+		assetSold := claim.AssetSold()
+		assetBought := claim.AssetBought()
+
+		meta := NewEventMeta(tx, &opIndex, nil)
+
+		// Create event for asset sold, from = operationSourceAccount, to = seller in claimAtom
+		events = append(events,
+			mintOrBurnOrTransferEvent(assetSold, operationSrcAccount, buyerAccount, amount.String(claim.AmountSold()), meta),
+		)
+
+		// Create event for asset bought, from = seller in claim Atom, to = operationSourceAccount
+		events = append(events,
+			mintOrBurnOrTransferEvent(assetBought, buyerAccount, operationSrcAccount, amount.String(claim.AmountBought()), meta),
+		)
+	}
+	return events, nil
 }
 
-func createPassiveSellOfferEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.CreatePassiveSellOfferOp, result xdr.ManageSellOfferResult) ([]*TokenTransferEvent, error) {
-	return nil, nil
+// EXACTLY SAME as manageSellOfferEvents
+func createPassiveSellOfferEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation, result xdr.OperationResult) ([]*TokenTransferEvent, error) {
+	return manageSellOfferEvents(tx, opIndex, op, result)
 }
 
 func pathPaymentStrictSendEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.PathPaymentStrictSendOp, result xdr.PathPaymentStrictSendResult) ([]*TokenTransferEvent, error) {
@@ -268,6 +314,7 @@ func protoAddressFromAccountId(account xdr.AccountId) *addressProto.Address {
 	}
 }
 
+/*
 func protoAddressFromLpHash(lpHash xdr.PoolId) *addressProto.Address {
 	return &addressProto.Address{
 		AddressType: addressProto.AddressType_ADDRESS_TYPE_LIQUIDITY_POOL,
@@ -281,3 +328,4 @@ func protoAddressFromClaimableBalanceId(cb xdr.ClaimableBalanceId) *addressProto
 		StrKey:      cb.MustV0().HexString(), //replace with strkey
 	}
 }
+*/
