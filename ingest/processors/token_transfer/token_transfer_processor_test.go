@@ -4,26 +4,36 @@ import (
 	"github.com/stellar/go/ingest"
 	addressProto "github.com/stellar/go/ingest/address"
 	assetProto "github.com/stellar/go/ingest/asset"
+	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"strings"
 	"testing"
 )
 
 var (
-	someTxAccount = "GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3"
+	someTxAccount = xdr.MustMuxedAddress(keypair.MustRandom().Address())
 	someTxHash    = xdr.Hash{1, 1, 1, 1}
 
-	accountA = "GBXGQJWVLWOYHFLVTKWV5FGHA3LNYY2JQKM7OAJAUEQFU6LPCSEFVXON"
-	accountB = "GCCOBXW2XQNUSL467IEILE6MMCNRR66SSVL4YQADUNYYNUVREF3FIV2Z"
-	memoA    = uint64(123)
-	memoB    = uint64(234)
+	gAddressAccountA = "GBXGQJWVLWOYHFLVTKWV5FGHA3LNYY2JQKM7OAJAUEQFU6LPCSEFVXON"
+	gAddressAccountB = "GCCOBXW2XQNUSL467IEILE6MMCNRR66SSVL4YQADUNYYNUVREF3FIV2Z"
+	accountA         = xdr.MustMuxedAddress(gAddressAccountA)
+	accountB         = xdr.MustMuxedAddress(gAddressAccountB)
+
+	memoA            = uint64(123)
+	memoB            = uint64(234)
+	muxedAccountA    = muxedAccountFromGaddr(gAddressAccountA, memoA)
+	muxedAccountB    = muxedAccountFromGaddr(gAddressAccountB, memoB)
+	mAddressAccountA = muxedAccountA.Address()
+	mAddressAccountB = muxedAccountB.Address()
 
 	hundredUnitsInt64 = xdr.Int64(1000000000)
 	hundredUnitsStr   = "100.0000000"
 
 	usdc           = "USDC"
 	usdcIssuer     = "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN"
+	usdcAccount    = xdr.MustMuxedAddress(usdcIssuer)
 	usdcAsset      = xdr.MustNewCreditAsset(usdc, usdcIssuer)
 	usdcProtoAsset = assetProto.NewIssuedAsset(usdc, usdcIssuer)
 
@@ -51,7 +61,7 @@ var (
 			Type: xdr.EnvelopeTypeEnvelopeTypeTx,
 			V1: &xdr.TransactionV1Envelope{
 				Tx: xdr.Transaction{
-					SourceAccount: xdr.MustMuxedAddress(someTxAccount),
+					SourceAccount: someTxAccount,
 				},
 			},
 		},
@@ -64,23 +74,77 @@ var (
 
 	someOperationIndex = uint32(0)
 	expectedEventMeta  = NewEventMeta(someTx, &someOperationIndex, nil)
+
+	protoAddress = func(addr string) *addressProto.Address {
+		ret := &addressProto.Address{StrKey: addr}
+		if strings.HasPrefix(addr, "G") {
+			ret.AddressType = addressProto.AddressType_ADDRESS_TYPE_ACCOUNT
+		} else {
+			ret.AddressType = addressProto.AddressType_ADDRESS_TYPE_MUXED_ACCOUNT
+		}
+		return ret
+	}
+
+	mintEvent = func(to *addressProto.Address, amt string, asset *assetProto.Asset) *TokenTransferEvent {
+		ret := &TokenTransferEvent{
+			Meta: expectedEventMeta,
+			Event: &TokenTransferEvent_Mint{
+				Mint: &Mint{
+					To:     to,
+					Amount: amt,
+				},
+			},
+		}
+		if asset != nil {
+			ret.Asset = asset
+		} else {
+			ret.Asset = assetProto.NewNativeAsset()
+		}
+		return ret
+	}
+
+	burnEvent = func(from *addressProto.Address, amt string, asset *assetProto.Asset) *TokenTransferEvent {
+		ret := &TokenTransferEvent{
+			Meta: expectedEventMeta,
+			Event: &TokenTransferEvent_Burn{
+				Burn: &Burn{
+					From:   from,
+					Amount: amt,
+				},
+			},
+		}
+		if asset != nil {
+			ret.Asset = asset
+		} else {
+			ret.Asset = assetProto.NewNativeAsset()
+		}
+		return ret
+	}
+
+	transferEvent = func(from *addressProto.Address, to *addressProto.Address, amt string, asset *assetProto.Asset) *TokenTransferEvent {
+		ret := &TokenTransferEvent{
+			Meta: expectedEventMeta,
+			Event: &TokenTransferEvent_Transfer{
+				Transfer: &Transfer{
+					From:   from,
+					To:     to,
+					Amount: amt,
+				},
+			},
+		}
+		if asset != nil {
+			ret.Asset = asset
+		} else {
+			ret.Asset = assetProto.NewNativeAsset()
+		}
+		return ret
+	}
 )
 
 // Helper functions for testing
-func muxedAddrFromGaddr(gAddress string, memoId uint64) string {
-	addr, _ := xdr.MuxedAccountFromAccountId(gAddress, memoId)
-	mAddress := addr.Address()
-	return mAddress
-}
-
 func muxedAccountFromGaddr(gAddress string, memoId uint64) xdr.MuxedAccount {
 	res, _ := xdr.MuxedAccountFromAccountId(gAddress, memoId)
 	return res
-}
-
-func muxedAccountPtrFromGaddr(gAddress string, memoId uint64) *xdr.MuxedAccount {
-	res := muxedAccountFromGaddr(gAddress, memoId)
-	return &res
 }
 
 func buildLedgerTransaction(sourceAccount string) ingest.LedgerTransaction {
@@ -119,11 +183,11 @@ func TestAccountCreateEvents(t *testing.T) {
 			tx:      someTx,
 			opIndex: 0,
 			op: xdr.Operation{
-				SourceAccount: xdr.MustMuxedAddressPtr(accountA),
+				SourceAccount: &accountA,
 				Body: xdr.OperationBody{
 					Type: xdr.OperationTypeCreateAccount,
 					CreateAccountOp: &xdr.CreateAccountOp{
-						Destination:     xdr.MustAddress(accountB),
+						Destination:     accountB.ToAccountId(),
 						StartingBalance: hundredUnitsInt64,
 					},
 				},
@@ -136,8 +200,8 @@ func TestAccountCreateEvents(t *testing.T) {
 
 					Event: &TokenTransferEvent_Transfer{
 						Transfer: &Transfer{
-							From:   &addressProto.Address{AddressType: addressProto.AddressType_ADDRESS_TYPE_ACCOUNT, StrKey: accountA},
-							To:     &addressProto.Address{AddressType: addressProto.AddressType_ADDRESS_TYPE_ACCOUNT, StrKey: accountB},
+							From:   &addressProto.Address{AddressType: addressProto.AddressType_ADDRESS_TYPE_ACCOUNT, StrKey: gAddressAccountA},
+							To:     &addressProto.Address{AddressType: addressProto.AddressType_ADDRESS_TYPE_ACCOUNT, StrKey: gAddressAccountB},
 							Amount: hundredUnitsStr,
 						},
 					},
@@ -160,18 +224,21 @@ func TestAccountCreateEvents(t *testing.T) {
 }
 
 func TestMergeAccountEvents(t *testing.T) {
+	mergeAccountOp :=
+		xdr.Operation{
+			SourceAccount: &accountA,
+			Body: xdr.OperationBody{
+				Type:        xdr.OperationTypeAccountMerge,
+				Destination: &accountB,
+			},
+		}
+
 	tests := []testFixture{
 		{
 			name:    "successful account merge",
 			tx:      someTx,
 			opIndex: 0,
-			op: xdr.Operation{
-				SourceAccount: xdr.MustMuxedAddressPtr(accountA),
-				Body: xdr.OperationBody{
-					Type:        xdr.OperationTypeAccountMerge,
-					Destination: xdr.MustMuxedAddressPtr(accountB),
-				},
-			},
+			op:      mergeAccountOp,
 			opResult: xdr.OperationResult{
 				Code: xdr.OperationResultCodeOpInner,
 				Tr: &xdr.OperationResultTr{
@@ -183,30 +250,14 @@ func TestMergeAccountEvents(t *testing.T) {
 				},
 			},
 			expected: []*TokenTransferEvent{
-				{
-					Meta:  expectedEventMeta,
-					Asset: assetProto.NewNativeAsset(),
-					Event: &TokenTransferEvent_Transfer{
-						Transfer: &Transfer{
-							From:   &addressProto.Address{AddressType: addressProto.AddressType_ADDRESS_TYPE_ACCOUNT, StrKey: accountA},
-							To:     &addressProto.Address{AddressType: addressProto.AddressType_ADDRESS_TYPE_ACCOUNT, StrKey: accountB},
-							Amount: hundredUnitsStr,
-						},
-					},
-				},
+				transferEvent(protoAddress(gAddressAccountA), protoAddress(gAddressAccountB), hundredUnitsStr, nil),
 			},
 		},
 		{
 			name:    "empty account merge - no events",
 			tx:      someTx,
 			opIndex: 0,
-			op: xdr.Operation{
-				SourceAccount: xdr.MustMuxedAddressPtr(accountA),
-				Body: xdr.OperationBody{
-					Type:        xdr.OperationTypeAccountMerge,
-					Destination: xdr.MustMuxedAddressPtr(accountB),
-				},
-			},
+			op:      mergeAccountOp,
 			opResult: xdr.OperationResult{
 				Code: xdr.OperationResultCodeOpInner,
 				Tr: &xdr.OperationResultTr{
@@ -235,233 +286,97 @@ func TestMergeAccountEvents(t *testing.T) {
 }
 
 func TestPaymentEvents(t *testing.T) {
+
+	paymentOp := func(src *xdr.MuxedAccount, dst xdr.MuxedAccount, asset *xdr.Asset) xdr.Operation {
+		op := xdr.Operation{
+			SourceAccount: src,
+			Body: xdr.OperationBody{
+				Type: xdr.OperationTypePayment,
+				PaymentOp: &xdr.PaymentOp{
+					Destination: dst,
+					Amount:      hundredUnitsInt64,
+				},
+			},
+		}
+		if asset != nil {
+			op.Body.PaymentOp.Asset = *asset
+		} else {
+			op.Body.PaymentOp.Asset = xdr.Asset{Type: xdr.AssetTypeAssetTypeNative}
+		}
+		return op
+	}
+
 	tests := []testFixture{
 		{
 			name:    "G account to G account - XLM transfer",
 			tx:      someTx,
 			opIndex: 0,
-			op: xdr.Operation{
-				SourceAccount: xdr.MustMuxedAddressPtr(accountA),
-				Body: xdr.OperationBody{
-					Type: xdr.OperationTypePayment,
-					PaymentOp: &xdr.PaymentOp{
-						Destination: xdr.MustMuxedAddress(accountB),
-						Asset:       xdr.Asset{Type: xdr.AssetTypeAssetTypeNative},
-						Amount:      hundredUnitsInt64,
-					},
-				},
-			},
+			op:      paymentOp(&accountA, accountB, nil),
 			expected: []*TokenTransferEvent{
-				{
-					Meta:  expectedEventMeta,
-					Asset: assetProto.NewNativeAsset(),
-					Event: &TokenTransferEvent_Transfer{
-						Transfer: &Transfer{
-							From:   &addressProto.Address{AddressType: addressProto.AddressType_ADDRESS_TYPE_ACCOUNT, StrKey: accountA},
-							To:     &addressProto.Address{AddressType: addressProto.AddressType_ADDRESS_TYPE_ACCOUNT, StrKey: accountB},
-							Amount: hundredUnitsStr,
-						},
-					},
-				},
+				transferEvent(protoAddress(gAddressAccountA), protoAddress(gAddressAccountB), hundredUnitsStr, nil),
 			},
 		},
 		{
-			name:    "G account to G account - USDC tranfer",
+			name:    "G account to G account - USDC transfer",
 			tx:      someTx,
 			opIndex: 0,
-			op: xdr.Operation{
-				SourceAccount: xdr.MustMuxedAddressPtr(accountA),
-				Body: xdr.OperationBody{
-					Type: xdr.OperationTypePayment,
-					PaymentOp: &xdr.PaymentOp{
-						Destination: xdr.MustMuxedAddress(accountB),
-						Asset:       usdcAsset,
-						Amount:      hundredUnitsInt64,
-					},
-				},
-			},
+			op:      paymentOp(&accountA, accountB, &usdcAsset),
 			expected: []*TokenTransferEvent{
-				{
-					Meta:  expectedEventMeta,
-					Asset: usdcProtoAsset,
-					Event: &TokenTransferEvent_Transfer{
-						Transfer: &Transfer{
-							From:   &addressProto.Address{AddressType: addressProto.AddressType_ADDRESS_TYPE_ACCOUNT, StrKey: accountA},
-							To:     &addressProto.Address{AddressType: addressProto.AddressType_ADDRESS_TYPE_ACCOUNT, StrKey: accountB},
-							Amount: hundredUnitsStr,
-						},
-					},
-				},
+				transferEvent(protoAddress(gAddressAccountA), protoAddress(gAddressAccountB), hundredUnitsStr, usdcProtoAsset),
 			},
 		},
 		{
 			name:    "G account to M Account - USDC transfer",
 			tx:      someTx,
 			opIndex: 0,
-			op: xdr.Operation{
-				SourceAccount: xdr.MustMuxedAddressPtr(accountA),
-				Body: xdr.OperationBody{
-					Type: xdr.OperationTypePayment,
-					PaymentOp: &xdr.PaymentOp{
-						Destination: muxedAccountFromGaddr(accountB, memoB),
-						Asset:       usdcAsset,
-						Amount:      hundredUnitsInt64,
-					},
-				},
-			},
+			op:      paymentOp(&accountA, muxedAccountB, &usdcAsset),
 			expected: []*TokenTransferEvent{
-				{
-					Meta:  expectedEventMeta,
-					Asset: usdcProtoAsset,
-					Event: &TokenTransferEvent_Transfer{
-						Transfer: &Transfer{
-							From:   &addressProto.Address{AddressType: addressProto.AddressType_ADDRESS_TYPE_ACCOUNT, StrKey: accountA},
-							To:     &addressProto.Address{AddressType: addressProto.AddressType_ADDRESS_TYPE_MUXED_ACCOUNT, StrKey: muxedAddrFromGaddr(accountB, memoB)}, // M-address format
-							Amount: hundredUnitsStr,
-						},
-					},
-				},
+				transferEvent(protoAddress(gAddressAccountA), protoAddress(mAddressAccountB), hundredUnitsStr, usdcProtoAsset),
 			},
 		},
 		{
 			name:    "M account to G Account - USDC transfer",
 			tx:      someTx,
 			opIndex: 0,
-			op: xdr.Operation{
-				SourceAccount: muxedAccountPtrFromGaddr(accountA, memoA),
-				Body: xdr.OperationBody{
-					Type: xdr.OperationTypePayment,
-					PaymentOp: &xdr.PaymentOp{
-						Destination: xdr.MustMuxedAddress(accountB),
-						Asset:       usdcAsset,
-						Amount:      hundredUnitsInt64,
-					},
-				},
-			},
+			op:      paymentOp(&muxedAccountA, accountB, &usdcAsset),
 			expected: []*TokenTransferEvent{
-				{
-					Meta:  expectedEventMeta,
-					Asset: usdcProtoAsset,
-					Event: &TokenTransferEvent_Transfer{
-						Transfer: &Transfer{
-							From:   &addressProto.Address{AddressType: addressProto.AddressType_ADDRESS_TYPE_MUXED_ACCOUNT, StrKey: muxedAddrFromGaddr(accountA, memoA)},
-							To:     &addressProto.Address{AddressType: addressProto.AddressType_ADDRESS_TYPE_ACCOUNT, StrKey: accountB},
-							Amount: hundredUnitsStr,
-						},
-					},
-				},
+				transferEvent(protoAddress(mAddressAccountA), protoAddress(gAddressAccountB), hundredUnitsStr, usdcProtoAsset),
 			},
 		},
 		{
 			name:    "G (issuer account) to G account - USDC mint",
 			tx:      someTx,
 			opIndex: 0,
-			op: xdr.Operation{
-				SourceAccount: xdr.MustMuxedAddressPtr(usdcIssuer),
-				Body: xdr.OperationBody{
-					Type: xdr.OperationTypePayment,
-					PaymentOp: &xdr.PaymentOp{
-						Destination: xdr.MustMuxedAddress(accountB),
-						Asset:       usdcAsset,
-						Amount:      hundredUnitsInt64,
-					},
-				},
-			},
+			op:      paymentOp(&usdcAccount, accountB, &usdcAsset),
 			expected: []*TokenTransferEvent{
-				{
-					Meta:  expectedEventMeta,
-					Asset: usdcProtoAsset,
-					Event: &TokenTransferEvent_Mint{
-						Mint: &Mint{
-							To:     &addressProto.Address{AddressType: addressProto.AddressType_ADDRESS_TYPE_ACCOUNT, StrKey: accountB},
-							Amount: hundredUnitsStr,
-						},
-					},
-				},
+				mintEvent(protoAddress(gAddressAccountB), hundredUnitsStr, usdcProtoAsset),
 			},
 		},
 		{
 			name:    "G (issuer account) to M account - USDC mint",
 			tx:      someTx,
 			opIndex: 0,
-			op: xdr.Operation{
-				SourceAccount: xdr.MustMuxedAddressPtr(usdcIssuer),
-				Body: xdr.OperationBody{
-					Type: xdr.OperationTypePayment,
-					PaymentOp: &xdr.PaymentOp{
-						Destination: muxedAccountFromGaddr(accountB, memoB),
-						Asset:       usdcAsset,
-						Amount:      hundredUnitsInt64,
-					},
-				},
-			},
+			op:      paymentOp(&usdcAccount, muxedAccountB, &usdcAsset),
 			expected: []*TokenTransferEvent{
-				{
-					Meta:  expectedEventMeta,
-					Asset: usdcProtoAsset,
-					Event: &TokenTransferEvent_Mint{
-						Mint: &Mint{
-							To:     &addressProto.Address{AddressType: addressProto.AddressType_ADDRESS_TYPE_MUXED_ACCOUNT, StrKey: muxedAddrFromGaddr(accountB, memoB)},
-							Amount: hundredUnitsStr,
-						},
-					},
-				},
+				mintEvent(protoAddress(mAddressAccountB), hundredUnitsStr, usdcProtoAsset),
 			},
 		},
 		{
 			name:    "G account to G (issuer account) - USDC burn",
 			tx:      someTx,
 			opIndex: 0,
-			op: xdr.Operation{
-				SourceAccount: xdr.MustMuxedAddressPtr(accountA),
-				Body: xdr.OperationBody{
-					Type: xdr.OperationTypePayment,
-					PaymentOp: &xdr.PaymentOp{
-						Destination: xdr.MustMuxedAddress(usdcIssuer),
-						Asset:       usdcAsset,
-						Amount:      hundredUnitsInt64,
-					},
-				},
-			},
+			op:      paymentOp(&accountA, usdcAccount, &usdcAsset),
 			expected: []*TokenTransferEvent{
-				{
-					Meta:  expectedEventMeta,
-					Asset: usdcProtoAsset,
-					Event: &TokenTransferEvent_Burn{
-						Burn: &Burn{
-							From:   &addressProto.Address{AddressType: addressProto.AddressType_ADDRESS_TYPE_ACCOUNT, StrKey: accountA}, // M-address format
-							Amount: hundredUnitsStr,
-						},
-					},
-				},
+				burnEvent(protoAddress(gAddressAccountA), hundredUnitsStr, usdcProtoAsset),
 			},
 		},
 		{
 			name:    "M account to G (issuer account) - USDC burn",
 			tx:      someTx,
 			opIndex: 0,
-			op: xdr.Operation{
-				SourceAccount: muxedAccountPtrFromGaddr(accountA, memoA),
-				Body: xdr.OperationBody{
-					Type: xdr.OperationTypePayment,
-					PaymentOp: &xdr.PaymentOp{
-						Destination: xdr.MustMuxedAddress(usdcIssuer),
-						Asset:       usdcAsset,
-						Amount:      hundredUnitsInt64,
-					},
-				},
-			},
+			op:      paymentOp(&muxedAccountA, usdcAccount, &usdcAsset),
 			expected: []*TokenTransferEvent{
-				{
-					Meta:  expectedEventMeta,
-					Asset: usdcProtoAsset,
-					Event: &TokenTransferEvent_Burn{
-						Burn: &Burn{
-							From:   &addressProto.Address{AddressType: addressProto.AddressType_ADDRESS_TYPE_MUXED_ACCOUNT, StrKey: muxedAddrFromGaddr(accountA, memoA)},
-							Amount: hundredUnitsStr,
-						},
-					},
-				},
+				burnEvent(protoAddress(mAddressAccountA), hundredUnitsStr, usdcProtoAsset),
 			},
 		},
 	}
