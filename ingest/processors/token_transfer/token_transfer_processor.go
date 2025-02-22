@@ -147,10 +147,16 @@ func mergeAccountEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Oper
 
 // Depending on the asset - if src or dest account == issuer of asset, then mint/burn event, else transfer event
 func mintOrBurnOrTransferEvent(asset xdr.Asset, fromAcc xdr.MuxedAccount, toAcc xdr.MuxedAccount, amt string, meta *EventMeta) *TokenTransferEvent {
-	protoAsset := assetProto.NewIssuedAsset(asset.GetCode(), asset.GetIssuer())
-	var event *TokenTransferEvent
 	fromAddress := protoAddressFromAccount(fromAcc)
 	toAddress := protoAddressFromAccount(toAcc)
+
+	if asset.IsNative() { // if asset is native, it can only be a transfer
+		return NewTransferEvent(meta, fromAddress, toAddress, amt, assetProto.NewNativeAsset())
+	}
+
+	protoAsset := assetProto.NewIssuedAsset(asset.GetCode(), asset.GetIssuer())
+	var event *TokenTransferEvent
+
 	assetIssuerAccountId, _ := asset.GetIssuerAccountId()
 	if assetIssuerAccountId.Equals(fromAcc.ToAccountId()) {
 		// Mint event
@@ -172,13 +178,7 @@ func paymentEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation
 	amt := amount.String(paymentOp.Amount)
 	meta := NewEventMeta(tx, &opIndex, nil)
 
-	var event *TokenTransferEvent
-	if paymentOp.Asset.IsNative() {
-		// If native assetProto, it is always a regular transfer
-		event = NewTransferEvent(meta, protoAddressFromAccount(srcAcc), protoAddressFromAccount(destAcc), amt, assetProto.NewNativeAsset())
-	} else {
-		event = mintOrBurnOrTransferEvent(paymentOp.Asset, srcAcc, destAcc, amt, meta)
-	}
+	event := mintOrBurnOrTransferEvent(paymentOp.Asset, srcAcc, destAcc, amt, meta)
 	return []*TokenTransferEvent{event}, nil
 }
 
@@ -214,61 +214,35 @@ func liquidityPoolWithdrawEvents(tx ingest.LedgerTransaction, opIndex uint32, op
 	return nil, nil
 }
 
-func manageBuyOfferEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation, result xdr.OperationResult) ([]*TokenTransferEvent, error) {
-	buyOfferResult := result.Tr.MustManageBuyOfferResult()
-	operationSrcAccount := operationSourceAccount(tx, op)
+func generateEventsFromClaimAtoms(meta *EventMeta, operationSrcAccount xdr.MuxedAccount, claims []xdr.ClaimAtom) []*TokenTransferEvent {
 	var events []*TokenTransferEvent
-
-	for _, claim := range buyOfferResult.Success.OffersClaimed {
-		// I can directly call claim.SellerID() here, since I dont expect any Liquidity pool type claim atoms here.
-		// I cant do this when coding up pathPayment related operations
+	for _, claim := range claims {
+		// We can directly call claim.SellerID() here, since I dont expect any Liquidity pool type claim atoms here.
+		// We cant do this when coding up pathPayment related operations
 		sellerId := claim.SellerId()
 		sellerAccount := sellerId.ToMuxedAccount()
-		assetBought := claim.AssetBought()
-		assetSold := claim.AssetSold()
-
-		meta := NewEventMeta(tx, &opIndex, nil)
-
-		// Create event for asset bought, from = seller in claimAtom, to = manageBuyOperation account
 		events = append(events,
-			mintOrBurnOrTransferEvent(assetBought, sellerAccount, operationSrcAccount, amount.String(claim.AmountBought()), meta),
+			mintOrBurnOrTransferEvent(claim.AssetSold(), sellerAccount, operationSrcAccount, amount.String(claim.AmountSold()), meta),
 		)
 
-		// Create event for asset sold, from = manageBuyOperation account, to = seller in claim atom
 		events = append(events,
-			mintOrBurnOrTransferEvent(assetSold, operationSrcAccount, sellerAccount, amount.String(claim.AmountSold()), meta),
+			mintOrBurnOrTransferEvent(claim.AssetBought(), operationSrcAccount, sellerAccount, amount.String(claim.AmountBought()), meta),
 		)
+
 	}
+	return events
+}
 
-	return events, nil
+func manageBuyOfferEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation, result xdr.OperationResult) ([]*TokenTransferEvent, error) {
+	operationSrcAccount := operationSourceAccount(tx, op)
+	meta := NewEventMeta(tx, &opIndex, nil)
+	return generateEventsFromClaimAtoms(meta, operationSrcAccount, result.Tr.MustManageBuyOfferResult().Success.OffersClaimed), nil
 }
 
 func manageSellOfferEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation, result xdr.OperationResult) ([]*TokenTransferEvent, error) {
-	sellOfferResult := result.Tr.MustManageSellOfferResult()
 	operationSrcAccount := operationSourceAccount(tx, op)
-	var events []*TokenTransferEvent
-
-	for _, claim := range sellOfferResult.Success.OffersClaimed {
-		// I can directly call claim.SellerID() here, since I dont expect any Liquidity pool type claim atoms here.
-		// I cant do this when coding up pathPayment related operations
-		buyerId := claim.SellerId()
-		buyerAccount := buyerId.ToMuxedAccount()
-		assetSold := claim.AssetSold()
-		assetBought := claim.AssetBought()
-
-		meta := NewEventMeta(tx, &opIndex, nil)
-
-		// Create event for asset sold, from = operationSourceAccount, to = seller in claimAtom
-		events = append(events,
-			mintOrBurnOrTransferEvent(assetSold, operationSrcAccount, buyerAccount, amount.String(claim.AmountSold()), meta),
-		)
-
-		// Create event for asset bought, from = seller in claim Atom, to = operationSourceAccount
-		events = append(events,
-			mintOrBurnOrTransferEvent(assetBought, buyerAccount, operationSrcAccount, amount.String(claim.AmountBought()), meta),
-		)
-	}
-	return events, nil
+	meta := NewEventMeta(tx, &opIndex, nil)
+	return generateEventsFromClaimAtoms(meta, operationSrcAccount, result.Tr.MustManageSellOfferResult().Success.OffersClaimed), nil
 }
 
 // EXACTLY SAME as manageSellOfferEvents

@@ -4,16 +4,16 @@ import (
 	"github.com/stellar/go/ingest"
 	addressProto "github.com/stellar/go/ingest/address"
 	assetProto "github.com/stellar/go/ingest/asset"
-	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 	"strings"
 	"testing"
 )
 
 var (
-	someTxAccount = xdr.MustMuxedAddress(keypair.MustRandom().Address())
+	someTxAccount = xdr.MustMuxedAddress("GBF3XFXGBGNQDN3HOSZ7NVRF6TJ2JOD5U6ELIWJOOEI6T5WKMQT2YSXQ")
 	someTxHash    = xdr.Hash{1, 1, 1, 1}
 
 	gAddressAccountA = "GBXGQJWVLWOYHFLVTKWV5FGHA3LNYY2JQKM7OAJAUEQFU6LPCSEFVXON"
@@ -28,14 +28,27 @@ var (
 	mAddressAccountA = muxedAccountA.Address()
 	mAddressAccountB = muxedAccountB.Address()
 
-	hundredUnitsInt64 = xdr.Int64(1000000000)
-	hundredUnitsStr   = "100.0000000"
+	tenMillion = int64(1e7)
+
+	oneUnit    = xdr.Int64(1 * tenMillion)
+	twoUnits   = xdr.Int64(2 * tenMillion)
+	threeUnits = xdr.Int64(3 * tenMillion)
+	// fourUnits := xdr.Int64(4 * tenMillion)
+	fiveUnits = xdr.Int64(5 * tenMillion)
+	sixUnits  = xdr.Int64(6 * tenMillion)
+	tenUnits  = xdr.Int64(10 * tenMillion)
+
+	hundredUnits    = xdr.Int64(100 * tenMillion)
+	hundredUnitsStr = "100.0000000"
 
 	usdc           = "USDC"
 	usdcIssuer     = "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN"
 	usdcAccount    = xdr.MustMuxedAddress(usdcIssuer)
 	usdcAsset      = xdr.MustNewCreditAsset(usdc, usdcIssuer)
 	usdcProtoAsset = assetProto.NewIssuedAsset(usdc, usdcIssuer)
+
+	xlmAsset      = xdr.MustNewNativeAsset()
+	xlmProtoAsset = assetProto.NewNativeAsset()
 
 	someLcm = xdr.LedgerCloseMeta{
 		V: int32(0),
@@ -86,8 +99,9 @@ var (
 	}
 
 	mintEvent = func(to *addressProto.Address, amt string, asset *assetProto.Asset) *TokenTransferEvent {
-		ret := &TokenTransferEvent{
-			Meta: expectedEventMeta,
+		return &TokenTransferEvent{
+			Meta:  expectedEventMeta,
+			Asset: asset,
 			Event: &TokenTransferEvent_Mint{
 				Mint: &Mint{
 					To:     to,
@@ -95,17 +109,13 @@ var (
 				},
 			},
 		}
-		if asset != nil {
-			ret.Asset = asset
-		} else {
-			ret.Asset = assetProto.NewNativeAsset()
-		}
-		return ret
+
 	}
 
 	burnEvent = func(from *addressProto.Address, amt string, asset *assetProto.Asset) *TokenTransferEvent {
-		ret := &TokenTransferEvent{
-			Meta: expectedEventMeta,
+		return &TokenTransferEvent{
+			Meta:  expectedEventMeta,
+			Asset: asset,
 			Event: &TokenTransferEvent_Burn{
 				Burn: &Burn{
 					From:   from,
@@ -113,17 +123,13 @@ var (
 				},
 			},
 		}
-		if asset != nil {
-			ret.Asset = asset
-		} else {
-			ret.Asset = assetProto.NewNativeAsset()
-		}
-		return ret
+
 	}
 
 	transferEvent = func(from *addressProto.Address, to *addressProto.Address, amt string, asset *assetProto.Asset) *TokenTransferEvent {
-		ret := &TokenTransferEvent{
-			Meta: expectedEventMeta,
+		return &TokenTransferEvent{
+			Meta:  expectedEventMeta,
+			Asset: asset,
 			Event: &TokenTransferEvent_Transfer{
 				Transfer: &Transfer{
 					From:   from,
@@ -132,12 +138,70 @@ var (
 				},
 			},
 		}
-		if asset != nil {
-			ret.Asset = asset
-		} else {
-			ret.Asset = assetProto.NewNativeAsset()
+	}
+
+	manageBuyOfferOp = func(sourceAccount xdr.MuxedAccount) xdr.Operation {
+		return xdr.Operation{
+			SourceAccount: &sourceAccount,
+			Body: xdr.OperationBody{
+				Type:             xdr.OperationTypeManageBuyOffer,
+				ManageBuyOfferOp: &xdr.ManageBuyOfferOp{},
+			},
 		}
-		return ret
+	}
+
+	manageBuyOfferResult = func(claims []xdr.ClaimOfferAtom) xdr.OperationResult {
+		var offersClaimed []xdr.ClaimAtom
+		for _, c := range claims {
+			offersClaimed = append(offersClaimed, xdr.ClaimAtom{
+				Type:      xdr.ClaimAtomTypeClaimAtomTypeOrderBook,
+				OrderBook: &c,
+			})
+		}
+
+		return xdr.OperationResult{
+			Code: xdr.OperationResultCodeOpInner,
+			Tr: &xdr.OperationResultTr{
+				Type: xdr.OperationTypeManageBuyOffer,
+				ManageBuyOfferResult: &xdr.ManageBuyOfferResult{
+					Success: &xdr.ManageOfferSuccessResult{
+						OffersClaimed: offersClaimed,
+					},
+				},
+			},
+		}
+	}
+
+	manageSellOfferOp = func(sourceAccount xdr.MuxedAccount) xdr.Operation {
+		return xdr.Operation{
+			SourceAccount: &sourceAccount,
+			Body: xdr.OperationBody{
+				Type:              xdr.OperationTypeManageSellOffer,
+				ManageSellOfferOp: &xdr.ManageSellOfferOp{},
+			},
+		}
+	}
+
+	manageSellOfferResult = func(claims []xdr.ClaimOfferAtom) xdr.OperationResult {
+		var offersClaimed []xdr.ClaimAtom
+		for _, c := range claims {
+			offersClaimed = append(offersClaimed, xdr.ClaimAtom{
+				Type:      xdr.ClaimAtomTypeClaimAtomTypeOrderBook,
+				OrderBook: &c,
+			})
+		}
+
+		return xdr.OperationResult{
+			Code: xdr.OperationResultCodeOpInner,
+			Tr: &xdr.OperationResultTr{
+				Type: xdr.OperationTypeManageSellOffer,
+				ManageSellOfferResult: &xdr.ManageSellOfferResult{
+					Success: &xdr.ManageOfferSuccessResult{
+						OffersClaimed: offersClaimed,
+					},
+				},
+			},
+		}
 	}
 )
 
@@ -176,6 +240,33 @@ type testFixture struct {
 	wantErr  bool
 }
 
+// RunTokenTransferEventTests runs a standard set of tests for token transfer event processing
+func runTokenTransferEventTests(t *testing.T, tests []testFixture) {
+	for _, fixture := range tests {
+		t.Run(fixture.name, func(t *testing.T) {
+			events, err := ProcessTokenTransferEventsFromOperation(
+				fixture.tx,
+				fixture.opIndex,
+				fixture.op,
+				fixture.opResult,
+			)
+
+			if fixture.wantErr {
+				require.Error(t, err)
+				return
+			}
+
+			require.NoError(t, err)
+			assert.Len(t, events, len(fixture.expected))
+			for i := range fixture.expected {
+				assert.True(t, proto.Equal(fixture.expected[i], events[i]),
+					"Mismatch at index %d:\nExpected: %+v\nGot: %+v",
+					i, fixture.expected[i], events[i])
+			}
+		})
+	}
+}
+
 func TestAccountCreateEvents(t *testing.T) {
 	tests := []testFixture{
 		{
@@ -188,7 +279,7 @@ func TestAccountCreateEvents(t *testing.T) {
 					Type: xdr.OperationTypeCreateAccount,
 					CreateAccountOp: &xdr.CreateAccountOp{
 						Destination:     accountB.ToAccountId(),
-						StartingBalance: hundredUnitsInt64,
+						StartingBalance: hundredUnits,
 					},
 				},
 			},
@@ -210,17 +301,7 @@ func TestAccountCreateEvents(t *testing.T) {
 		},
 	}
 
-	for _, fixture := range tests {
-		t.Run(fixture.name, func(t *testing.T) {
-			events, err := ProcessTokenTransferEventsFromOperation(fixture.tx, fixture.opIndex, fixture.op, fixture.opResult)
-			if fixture.wantErr {
-				require.Error(t, err)
-				return
-			}
-			require.NoError(t, err)
-			assert.Equal(t, fixture.expected, events)
-		})
-	}
+	runTokenTransferEventTests(t, tests)
 }
 
 func TestMergeAccountEvents(t *testing.T) {
@@ -245,12 +326,12 @@ func TestMergeAccountEvents(t *testing.T) {
 					Type: xdr.OperationTypeAccountMerge,
 					AccountMergeResult: &xdr.AccountMergeResult{
 						Code:                 xdr.AccountMergeResultCodeAccountMergeSuccess,
-						SourceAccountBalance: &hundredUnitsInt64,
+						SourceAccountBalance: &hundredUnits,
 					},
 				},
 			},
 			expected: []*TokenTransferEvent{
-				transferEvent(protoAddress(gAddressAccountA), protoAddress(gAddressAccountB), hundredUnitsStr, nil),
+				transferEvent(protoAddress(gAddressAccountA), protoAddress(gAddressAccountB), hundredUnitsStr, xlmProtoAsset),
 			},
 		},
 		{
@@ -272,17 +353,7 @@ func TestMergeAccountEvents(t *testing.T) {
 		},
 	}
 
-	for _, fixture := range tests {
-		t.Run(fixture.name, func(t *testing.T) {
-			events, err := ProcessTokenTransferEventsFromOperation(fixture.tx, fixture.opIndex, fixture.op, fixture.opResult)
-			if fixture.wantErr {
-				require.Error(t, err)
-				return
-			}
-			require.NoError(t, err)
-			assert.Equal(t, fixture.expected, events)
-		})
-	}
+	runTokenTransferEventTests(t, tests)
 }
 
 func TestPaymentEvents(t *testing.T) {
@@ -294,7 +365,7 @@ func TestPaymentEvents(t *testing.T) {
 				Type: xdr.OperationTypePayment,
 				PaymentOp: &xdr.PaymentOp{
 					Destination: dst,
-					Amount:      hundredUnitsInt64,
+					Amount:      hundredUnits,
 				},
 			},
 		}
@@ -313,7 +384,7 @@ func TestPaymentEvents(t *testing.T) {
 			opIndex: 0,
 			op:      paymentOp(&accountA, accountB, nil),
 			expected: []*TokenTransferEvent{
-				transferEvent(protoAddress(gAddressAccountA), protoAddress(gAddressAccountB), hundredUnitsStr, nil),
+				transferEvent(protoAddress(gAddressAccountA), protoAddress(gAddressAccountB), hundredUnitsStr, xlmProtoAsset),
 			},
 		},
 		{
@@ -381,15 +452,91 @@ func TestPaymentEvents(t *testing.T) {
 		},
 	}
 
-	for _, fixture := range tests {
-		t.Run(fixture.name, func(t *testing.T) {
-			events, err := ProcessTokenTransferEventsFromOperation(fixture.tx, fixture.opIndex, fixture.op, fixture.opResult)
-			if fixture.wantErr {
-				require.Error(t, err)
-				return
-			}
-			require.NoError(t, err)
-			assert.Equal(t, fixture.expected, events)
-		})
+	runTokenTransferEventTests(t, tests)
+}
+
+func TestManageOfferEvents(t *testing.T) {
+
+	tests := []testFixture{
+		{
+			name:    "ManageBuyOffer - Buy USDC for XLM (2 claim atoms)",
+			tx:      someTx,
+			opIndex: 0,
+			op:      manageBuyOfferOp(someTxAccount), // don't care for anything in xdr.Operation other than source account
+			opResult: manageBuyOfferResult(
+				[]xdr.ClaimOfferAtom{
+					// 1 USDC == 5 XLM
+					{SellerId: accountA.ToAccountId(), AssetSold: usdcAsset, AssetBought: xlmAsset, AmountSold: oneUnit, AmountBought: fiveUnits},
+					{SellerId: accountB.ToAccountId(), AssetSold: usdcAsset, AssetBought: xlmAsset, AmountSold: twoUnits, AmountBought: tenUnits},
+				},
+			),
+
+			expected: []*TokenTransferEvent{
+				transferEvent(protoAddressFromAccount(accountA), protoAddressFromAccount(someTxAccount), "1.0000000", usdcProtoAsset),
+				transferEvent(protoAddressFromAccount(someTxAccount), protoAddressFromAccount(accountA), "5.0000000", xlmProtoAsset),
+
+				transferEvent(protoAddressFromAccount(accountB), protoAddressFromAccount(someTxAccount), "2.0000000", usdcProtoAsset),
+				transferEvent(protoAddressFromAccount(someTxAccount), protoAddressFromAccount(accountB), "10.0000000", xlmProtoAsset),
+			},
+		},
+
+		{
+			name:    "ManageSellOffer - Sell USDC for XLM (2 claim atoms)",
+			tx:      someTx,
+			opIndex: 0,
+			op:      manageSellOfferOp(someTxAccount), // don't care for anything in xdr.Operation other than source account
+			opResult: manageSellOfferResult([]xdr.ClaimOfferAtom{
+				// 1 USDC = 3 XLM
+				{SellerId: accountA.ToAccountId(), AssetSold: xlmAsset, AssetBought: usdcAsset, AmountSold: threeUnits, AmountBought: oneUnit},
+				{SellerId: accountB.ToAccountId(), AssetSold: xlmAsset, AssetBought: usdcAsset, AmountSold: sixUnits, AmountBought: twoUnits},
+			}),
+			expected: []*TokenTransferEvent{
+				transferEvent(protoAddressFromAccount(accountA), protoAddressFromAccount(someTxAccount), "3.0000000", xlmProtoAsset),
+				transferEvent(protoAddressFromAccount(someTxAccount), protoAddressFromAccount(accountA), "1.0000000", usdcProtoAsset),
+
+				transferEvent(protoAddressFromAccount(accountB), protoAddressFromAccount(someTxAccount), "6.0000000", xlmProtoAsset),
+				transferEvent(protoAddressFromAccount(someTxAccount), protoAddressFromAccount(accountB), "2.0000000", usdcProtoAsset),
+			},
+		},
+
+		{
+			name:    "ManageBuyOffer - Buy USDC for XLM (Source is USDC issuer, 2 claim atoms, BURN events)",
+			tx:      someTx,
+			opIndex: 0,
+			op:      manageBuyOfferOp(usdcAccount), // don't care for anything in xdr.Operation other than source account
+			opResult: manageBuyOfferResult([]xdr.ClaimOfferAtom{
+				// 1 USDC == 5 XLM
+				{SellerId: accountA.ToAccountId(), AssetSold: usdcAsset, AssetBought: xlmAsset, AmountSold: oneUnit, AmountBought: fiveUnits},
+				{SellerId: accountB.ToAccountId(), AssetSold: usdcAsset, AssetBought: xlmAsset, AmountSold: twoUnits, AmountBought: tenUnits},
+			}),
+			expected: []*TokenTransferEvent{
+				burnEvent(protoAddressFromAccount(accountA), "1.0000000", usdcProtoAsset),
+				transferEvent(protoAddressFromAccount(usdcAccount), protoAddressFromAccount(accountA), "5.0000000", xlmProtoAsset),
+
+				burnEvent(protoAddressFromAccount(accountB), "2.0000000", usdcProtoAsset),
+				transferEvent(protoAddressFromAccount(usdcAccount), protoAddressFromAccount(accountB), "10.0000000", xlmProtoAsset),
+			},
+		},
+
+		{
+			name:    "ManageSellOffer - Sell USDC for XLM (Source is USDC issuer, 2 claim atoms, MINT events)",
+			tx:      someTx,
+			opIndex: 0,
+			op:      manageSellOfferOp(usdcAccount), // don't care for anything in xdr.Operation other than source account
+			opResult: manageSellOfferResult([]xdr.ClaimOfferAtom{
+				// 1 USDC = 3 XLM
+				{SellerId: accountA.ToAccountId(), AssetSold: xlmAsset, AssetBought: usdcAsset, AmountSold: threeUnits, AmountBought: oneUnit},
+				{SellerId: accountB.ToAccountId(), AssetSold: xlmAsset, AssetBought: usdcAsset, AmountSold: sixUnits, AmountBought: twoUnits},
+			}),
+			expected: []*TokenTransferEvent{
+				transferEvent(protoAddressFromAccount(accountA), protoAddressFromAccount(usdcAccount), "3.0000000", xlmProtoAsset),
+				mintEvent(protoAddressFromAccount(accountA), "1.0000000", usdcProtoAsset),
+
+				transferEvent(protoAddressFromAccount(accountB), protoAddressFromAccount(usdcAccount), "6.0000000", xlmProtoAsset),
+				mintEvent(protoAddressFromAccount(accountB), "2.0000000", usdcProtoAsset),
+			},
+		},
 	}
+
+	runTokenTransferEventTests(t, tests)
 }
