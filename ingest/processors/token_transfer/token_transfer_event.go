@@ -62,14 +62,14 @@ func NewClawbackEvent(meta *EventMeta, from *addressProto.Address, amount string
 	}
 }
 
-func NewFeeEvent(ledgerSequence uint32, closedAt time.Time, txHash string, from *addressProto.Address, amount string, token *assetProto.Asset) *TokenTransferEvent {
+func NewFeeEvent(ledgerSequence uint32, closedAt time.Time, txHash string, from *addressProto.Address, amount string) *TokenTransferEvent {
 	return &TokenTransferEvent{
 		Meta: &EventMeta{
 			LedgerSequence: ledgerSequence,
 			ClosedAt:       timestamppb.New(closedAt),
 			TxHash:         txHash,
 		},
-		Asset: token,
+		Asset: assetProto.NewNativeAsset(),
 		Event: &TokenTransferEvent_Fee{
 			Fee: &Fee{
 				From:   from,

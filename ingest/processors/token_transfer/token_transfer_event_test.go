@@ -107,9 +107,8 @@ func TestEventSerialization(t *testing.T) {
 			fixtureSetupFn: func() (*TokenTransferEvent, *EventMeta, *assetProto.Asset, *addressProto.Address, string) {
 				from := newTestAddress()
 				amount := "50"
-				token := newTestAsset()
-				event := NewFeeEvent(12345, time.Now(), "abc123xyz", from, amount, token)
-				return event, nil, token, from, amount // No meta for Fee event
+				event := NewFeeEvent(12345, time.Now(), "abc123xyz", from, amount)
+				return event, nil, assetProto.NewNativeAsset(), from, amount // No meta for Fee event
 			},
 			assertFn: func(event *TokenTransferEvent) proto.Message {
 				return event.GetFee()

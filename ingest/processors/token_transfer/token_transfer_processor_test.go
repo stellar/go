@@ -194,7 +194,6 @@ func runTokenTransferEventTests(t *testing.T, tests []testFixture) {
 			}
 
 			require.NoError(t, err)
-			assert.Len(t, events, len(fixture.expected))
 			assert.Equal(t, len(events), len(fixture.expected),
 				"length mismatch: got %d events, expected %d",
 				len(events), len(fixture.expected))
@@ -552,4 +551,85 @@ func TestManageOfferEvents(t *testing.T) {
 	}
 
 	runTokenTransferEventTests(t, tests)
+}
+
+func TestFeeEvent(t *testing.T) {
+
+	failedTx := func(envelopeType xdr.EnvelopeType, txFee xdr.Int64) ingest.LedgerTransaction {
+		tx := ingest.LedgerTransaction{
+			Ledger:   someLcm,
+			Hash:     someTxHash,
+			Envelope: xdr.TransactionEnvelope{},
+			Result: xdr.TransactionResultPair{
+				TransactionHash: someTxHash,
+				Result: xdr.TransactionResult{
+					FeeCharged: txFee,
+					Result:     xdr.TransactionResultResult{},
+				},
+			},
+		}
+		if envelopeType == xdr.EnvelopeTypeEnvelopeTypeTxFeeBump {
+			tx.Envelope = xdr.TransactionEnvelope{
+				Type: xdr.EnvelopeTypeEnvelopeTypeTxFeeBump,
+				FeeBump: &xdr.FeeBumpTransactionEnvelope{
+					Tx: xdr.FeeBumpTransaction{
+						FeeSource: someTxAccount,
+						InnerTx: xdr.FeeBumpTransactionInnerTx{
+							Type: xdr.EnvelopeTypeEnvelopeTypeTx,
+							V1:   &xdr.TransactionV1Envelope{},
+						},
+					},
+				},
+			}
+			tx.Result.Result.Result.Code = xdr.TransactionResultCodeTxFeeBumpInnerFailed
+		} else if envelopeType == xdr.EnvelopeTypeEnvelopeTypeTx {
+			tx.Envelope = xdr.TransactionEnvelope{
+				Type: xdr.EnvelopeTypeEnvelopeTypeTx,
+				V1: &xdr.TransactionV1Envelope{
+					Tx: xdr.Transaction{
+						SourceAccount: someTxAccount,
+					},
+				},
+			}
+			tx.Result.Result.Result.Code = xdr.TransactionResultCodeTxFailed
+		}
+		return tx
+	}
+
+	expectedFeeEvent := func(feeAmt string) *TokenTransferEvent {
+		return NewFeeEvent(
+			someLcm.LedgerSequence(), someLcm.ClosedAt(), someTxHash.HexString(), protoAddressFromAccount(someTxAccount),
+			feeAmt,
+		)
+	}
+
+	// Fixture
+	tests := []testFixture{
+		{
+			name: "Fee Event only - Failed Fee Bump Transaction",
+			tx:   failedTx(xdr.EnvelopeTypeEnvelopeTypeTxFeeBump, xdr.Int64(1e7/1e2)), // Fee  = 0.01 XLM
+			expected: []*TokenTransferEvent{
+				expectedFeeEvent("0.0100000"),
+			},
+		},
+		{
+			name: "Fee Event only - Failed V1 Transaction",
+			tx:   failedTx(xdr.EnvelopeTypeEnvelopeTypeTx, xdr.Int64(1e7/1e4)), // Fee  = 0.0001 XLM ,
+			expected: []*TokenTransferEvent{
+				expectedFeeEvent("0.0001000"),
+			},
+		},
+	}
+
+	for _, fixture := range tests {
+		t.Run(fixture.name, func(t *testing.T) {
+			events, err := ProcessTokenTransferEventsFromTransaction(fixture.tx)
+			assert.NoError(t, err)
+			assert.Equal(t, len(fixture.expected), len(events))
+			for i := range events {
+				assert.True(t, proto.Equal(events[i], fixture.expected[i]),
+					"Expected event: %+v\nFound event: %+v", fixture.expected[i], events[i])
+			}
+		})
+	}
 }

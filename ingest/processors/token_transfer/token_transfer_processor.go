@@ -44,24 +44,25 @@ func ProcessTokenTransferEventsFromTransaction(tx ingest.LedgerTransaction) ([]*
 	}
 	events = append(events, feeEvents...)
 
+	// Ensure we only process operations if the transaction was successful
+	if !tx.Result.Successful() {
+		return events, nil
+	}
+
 	operations := tx.Envelope.Operations()
 	operationResults, _ := tx.Result.OperationResults()
+	for i := range operations {
+		op := operations[i]
+		opResult := operationResults[i]
 
-	// Ensure we only process operations if the transaction was successful
-	if tx.Result.Successful() {
-		for i := range operations {
-			op := operations[i]
-			opResult := operationResults[i]
-
-			// Process the operation and collect events
-			opEvents, err := ProcessTokenTransferEventsFromOperation(tx, uint32(i), op, opResult)
-			if err != nil {
-				return nil,
-					errors.Wrapf(err, "error processing token transfer events from operation, index: %d,  %s", i, op.Body.Type.String())
-			}
-
-			events = append(events, opEvents...)
+		// Process the operation and collect events
+		opEvents, err := ProcessTokenTransferEventsFromOperation(tx, uint32(i), op, opResult)
+		if err != nil {
+			return nil,
+				errors.Wrapf(err, "error processing token transfer events from operation, index: %d,  %s", i, op.Body.Type.String())
 		}
+
+		events = append(events, opEvents...)
 	}
 
 	return events, nil
@@ -117,7 +118,7 @@ func generateFeeEvent(tx ingest.LedgerTransaction) ([]*TokenTransferEvent, error
 	// FeeCharged() takes care of a bug in an intermediate protocol release. So using that
 	feeAmt, _ := tx.FeeCharged()
 
-	event := NewFeeEvent(tx.Ledger.LedgerSequence(), tx.Ledger.ClosedAt(), tx.Hash.HexString(), protoAddressFromAccount(feeAccount), amount.String(xdr.Int64(feeAmt)), assetProto.NewNativeAsset())
+	event := NewFeeEvent(tx.Ledger.LedgerSequence(), tx.Ledger.ClosedAt(), tx.Hash.HexString(), protoAddressFromAccount(feeAccount), amount.String(xdr.Int64(feeAmt)))
 	return []*TokenTransferEvent{event}, nil
 }
 
