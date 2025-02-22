@@ -88,6 +88,7 @@ var (
 	someOperationIndex = uint32(0)
 	expectedEventMeta  = NewEventMeta(someTx, &someOperationIndex, nil)
 
+	// Some global anonymous functions.
 	protoAddress = func(addr string) *addressProto.Address {
 		ret := &addressProto.Address{StrKey: addr}
 		if strings.HasPrefix(addr, "G") {
@@ -135,70 +136,6 @@ var (
 					From:   from,
 					To:     to,
 					Amount: amt,
-				},
-			},
-		}
-	}
-
-	manageBuyOfferOp = func(sourceAccount xdr.MuxedAccount) xdr.Operation {
-		return xdr.Operation{
-			SourceAccount: &sourceAccount,
-			Body: xdr.OperationBody{
-				Type:             xdr.OperationTypeManageBuyOffer,
-				ManageBuyOfferOp: &xdr.ManageBuyOfferOp{},
-			},
-		}
-	}
-
-	manageBuyOfferResult = func(claims []xdr.ClaimOfferAtom) xdr.OperationResult {
-		var offersClaimed []xdr.ClaimAtom
-		for _, c := range claims {
-			offersClaimed = append(offersClaimed, xdr.ClaimAtom{
-				Type:      xdr.ClaimAtomTypeClaimAtomTypeOrderBook,
-				OrderBook: &c,
-			})
-		}
-
-		return xdr.OperationResult{
-			Code: xdr.OperationResultCodeOpInner,
-			Tr: &xdr.OperationResultTr{
-				Type: xdr.OperationTypeManageBuyOffer,
-				ManageBuyOfferResult: &xdr.ManageBuyOfferResult{
-					Success: &xdr.ManageOfferSuccessResult{
-						OffersClaimed: offersClaimed,
-					},
-				},
-			},
-		}
-	}
-
-	manageSellOfferOp = func(sourceAccount xdr.MuxedAccount) xdr.Operation {
-		return xdr.Operation{
-			SourceAccount: &sourceAccount,
-			Body: xdr.OperationBody{
-				Type:              xdr.OperationTypeManageSellOffer,
-				ManageSellOfferOp: &xdr.ManageSellOfferOp{},
-			},
-		}
-	}
-
-	manageSellOfferResult = func(claims []xdr.ClaimOfferAtom) xdr.OperationResult {
-		var offersClaimed []xdr.ClaimAtom
-		for _, c := range claims {
-			offersClaimed = append(offersClaimed, xdr.ClaimAtom{
-				Type:      xdr.ClaimAtomTypeClaimAtomTypeOrderBook,
-				OrderBook: &c,
-			})
-		}
-
-		return xdr.OperationResult{
-			Code: xdr.OperationResultCodeOpInner,
-			Tr: &xdr.OperationResultTr{
-				Type: xdr.OperationTypeManageSellOffer,
-				ManageSellOfferResult: &xdr.ManageSellOfferResult{
-					Success: &xdr.ManageOfferSuccessResult{
-						OffersClaimed: offersClaimed,
-					},
 				},
 			},
 		}
@@ -477,6 +414,72 @@ func TestPaymentEvents(t *testing.T) {
 
 func TestManageOfferEvents(t *testing.T) {
 
+	// a few anonymous helper functions to generate fixtures for this particular test
+	manageBuyOfferOp := func(sourceAccount xdr.MuxedAccount) xdr.Operation {
+		return xdr.Operation{
+			SourceAccount: &sourceAccount,
+			Body: xdr.OperationBody{
+				Type:             xdr.OperationTypeManageBuyOffer,
+				ManageBuyOfferOp: &xdr.ManageBuyOfferOp{},
+			},
+		}
+	}
+
+	manageBuyOfferResult := func(claims []xdr.ClaimOfferAtom) xdr.OperationResult {
+		var offersClaimed []xdr.ClaimAtom
+		for _, c := range claims {
+			offersClaimed = append(offersClaimed, xdr.ClaimAtom{
+				Type:      xdr.ClaimAtomTypeClaimAtomTypeOrderBook,
+				OrderBook: &c,
+			})
+		}
+
+		return xdr.OperationResult{
+			Code: xdr.OperationResultCodeOpInner,
+			Tr: &xdr.OperationResultTr{
+				Type: xdr.OperationTypeManageBuyOffer,
+				ManageBuyOfferResult: &xdr.ManageBuyOfferResult{
+					Success: &xdr.ManageOfferSuccessResult{
+						OffersClaimed: offersClaimed,
+					},
+				},
+			},
+		}
+	}
+
+	manageSellOfferOp := func(sourceAccount xdr.MuxedAccount) xdr.Operation {
+		return xdr.Operation{
+			SourceAccount: &sourceAccount,
+			Body: xdr.OperationBody{
+				Type:              xdr.OperationTypeManageSellOffer,
+				ManageSellOfferOp: &xdr.ManageSellOfferOp{},
+			},
+		}
+	}
+
+	manageSellOfferResult := func(claims []xdr.ClaimOfferAtom) xdr.OperationResult {
+		var offersClaimed []xdr.ClaimAtom
+		for _, c := range claims {
+			offersClaimed = append(offersClaimed, xdr.ClaimAtom{
+				Type:      xdr.ClaimAtomTypeClaimAtomTypeOrderBook,
+				OrderBook: &c,
+			})
+		}
+
+		return xdr.OperationResult{
+			Code: xdr.OperationResultCodeOpInner,
+			Tr: &xdr.OperationResultTr{
+				Type: xdr.OperationTypeManageSellOffer,
+				ManageSellOfferResult: &xdr.ManageSellOfferResult{
+					Success: &xdr.ManageOfferSuccessResult{
+						OffersClaimed: offersClaimed,
+					},
+				},
+			},
+		}
+	}
+
+	// Fixture
 	tests := []testFixture{
 		{
 			name:    "ManageBuyOffer - Buy USDC for XLM (2 claim atoms)",
