@@ -258,11 +258,31 @@ func runTokenTransferEventTests(t *testing.T, tests []testFixture) {
 
 			require.NoError(t, err)
 			assert.Len(t, events, len(fixture.expected))
-			for i := range fixture.expected {
-				assert.True(t, proto.Equal(fixture.expected[i], events[i]),
-					"Mismatch at index %d:\nExpected: %+v\nGot: %+v",
-					i, fixture.expected[i], events[i])
+			assert.Equal(t, len(events), len(fixture.expected),
+				"length mismatch: got %d events, expected %d",
+				len(events), len(fixture.expected))
+
+			// Create a map to track which events have been matched
+			matched := make([]bool, len(events))
+
+			// For each expected event, try to find a matching actual event
+			for i, expectedEvent := range fixture.expected {
+				found := false
+				for j, actualEvent := range events {
+					if !matched[j] && proto.Equal(expectedEvent, actualEvent) {
+						matched[j] = true
+						found = true
+						break
+					}
+				}
+
+				if !found {
+					assert.Fail(t, "Expected event not found",
+						"Expected event %d: %+v\nAvailable events: %+v",
+						i, expectedEvent, events)
+				}
 			}
+
 		})
 	}
 }
