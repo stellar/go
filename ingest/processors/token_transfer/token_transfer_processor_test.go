@@ -8,7 +8,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
-	"strings"
 	"testing"
 )
 
@@ -16,17 +15,14 @@ var (
 	someTxAccount = xdr.MustMuxedAddress("GBF3XFXGBGNQDN3HOSZ7NVRF6TJ2JOD5U6ELIWJOOEI6T5WKMQT2YSXQ")
 	someTxHash    = xdr.Hash{1, 1, 1, 1}
 
-	gAddressAccountA = "GBXGQJWVLWOYHFLVTKWV5FGHA3LNYY2JQKM7OAJAUEQFU6LPCSEFVXON"
-	gAddressAccountB = "GCCOBXW2XQNUSL467IEILE6MMCNRR66SSVL4YQADUNYYNUVREF3FIV2Z"
-	accountA         = xdr.MustMuxedAddress(gAddressAccountA)
-	accountB         = xdr.MustMuxedAddress(gAddressAccountB)
+	accountA = xdr.MustMuxedAddress("GBXGQJWVLWOYHFLVTKWV5FGHA3LNYY2JQKM7OAJAUEQFU6LPCSEFVXON")
+	accountB = xdr.MustMuxedAddress("GCCOBXW2XQNUSL467IEILE6MMCNRR66SSVL4YQADUNYYNUVREF3FIV2Z")
 
-	memoA            = uint64(123)
-	memoB            = uint64(234)
-	muxedAccountA    = muxedAccountFromGaddr(gAddressAccountA, memoA)
-	muxedAccountB    = muxedAccountFromGaddr(gAddressAccountB, memoB)
-	mAddressAccountA = muxedAccountA.Address()
-	mAddressAccountB = muxedAccountB.Address()
+	memoA = uint64(123)
+	memoB = uint64(234)
+
+	muxedAccountA, _ = xdr.MuxedAccountFromAccountId(accountA.Address(), memoA)
+	muxedAccountB, _ = xdr.MuxedAccountFromAccountId(accountB.Address(), memoB)
 
 	tenMillion = int64(1e7)
 
@@ -89,16 +85,6 @@ var (
 	expectedEventMeta  = NewEventMeta(someTx, &someOperationIndex, nil)
 
 	// Some global anonymous functions.
-	protoAddress = func(addr string) *addressProto.Address {
-		ret := &addressProto.Address{StrKey: addr}
-		if strings.HasPrefix(addr, "G") {
-			ret.AddressType = addressProto.AddressType_ADDRESS_TYPE_ACCOUNT
-		} else {
-			ret.AddressType = addressProto.AddressType_ADDRESS_TYPE_MUXED_ACCOUNT
-		}
-		return ret
-	}
-
 	mintEvent = func(to *addressProto.Address, amt string, asset *assetProto.Asset) *TokenTransferEvent {
 		return &TokenTransferEvent{
 			Meta:  expectedEventMeta,
@@ -141,31 +127,6 @@ var (
 		}
 	}
 )
-
-// Helper functions for testing
-func muxedAccountFromGaddr(gAddress string, memoId uint64) xdr.MuxedAccount {
-	res, _ := xdr.MuxedAccountFromAccountId(gAddress, memoId)
-	return res
-}
-
-func buildLedgerTransaction(sourceAccount string) ingest.LedgerTransaction {
-	return ingest.LedgerTransaction{
-		Index: 1,
-		Envelope: xdr.TransactionEnvelope{
-			Type: xdr.EnvelopeTypeEnvelopeTypeTx,
-			V1: &xdr.TransactionV1Envelope{
-				Tx: xdr.Transaction{
-					SourceAccount: xdr.MustMuxedAddress(sourceAccount),
-				},
-			},
-		},
-		Result:        xdr.TransactionResultPair{},
-		UnsafeMeta:    xdr.TransactionMeta{},
-		LedgerVersion: 1234,
-		Ledger:        someLcm,
-		Hash:          someTxHash,
-	}
-}
 
 type testFixture struct {
 	name     string
@@ -224,35 +185,27 @@ func runTokenTransferEventTests(t *testing.T, tests []testFixture) {
 }
 
 func TestAccountCreateEvents(t *testing.T) {
-	tests := []testFixture{
-		{
-			name:    "successful account creation",
-			tx:      someTx,
-			opIndex: 0,
-			op: xdr.Operation{
-				SourceAccount: &accountA,
-				Body: xdr.OperationBody{
-					Type: xdr.OperationTypeCreateAccount,
-					CreateAccountOp: &xdr.CreateAccountOp{
-						Destination:     accountB.ToAccountId(),
-						StartingBalance: hundredUnits,
-					},
+	createAccountOp := func(sourceAccount xdr.MuxedAccount, newAccount xdr.AccountId, startingBalance xdr.Int64) xdr.Operation {
+		return xdr.Operation{
+			SourceAccount: &sourceAccount,
+			Body: xdr.OperationBody{
+				Type: xdr.OperationTypeCreateAccount,
+				CreateAccountOp: &xdr.CreateAccountOp{
+					Destination:     newAccount,
+					StartingBalance: startingBalance,
 				},
 			},
+		}
+	}
+	tests := []testFixture{
+		{
+			name:     "successful account creation",
+			tx:       someTx,
+			opIndex:  0,
+			op:       createAccountOp(accountA, accountB.ToAccountId(), hundredUnits),
 			opResult: xdr.OperationResult{},
 			expected: []*TokenTransferEvent{
-				{
-					Meta:  expectedEventMeta,
-					Asset: assetProto.NewNativeAsset(),
-
-					Event: &TokenTransferEvent_Transfer{
-						Transfer: &Transfer{
-							From:   &addressProto.Address{AddressType: addressProto.AddressType_ADDRESS_TYPE_ACCOUNT, StrKey: gAddressAccountA},
-							To:     &addressProto.Address{AddressType: addressProto.AddressType_ADDRESS_TYPE_ACCOUNT, StrKey: gAddressAccountB},
-							Amount: hundredUnitsStr,
-						},
-					},
-				},
+				transferEvent(protoAddressFromAccount(accountA), protoAddressFromAccount(accountB), hundredUnitsStr, xlmProtoAsset),
 			},
 		},
 	}
@@ -270,7 +223,7 @@ func TestMergeAccountEvents(t *testing.T) {
 			},
 		}
 
-	mergeAccountResult := func(balance *xdr.Int64) xdr.OperationResult {
+	mergedAccountResultWithBalance := func(balance *xdr.Int64) xdr.OperationResult {
 		return xdr.OperationResult{
 			Code: xdr.OperationResultCodeOpInner,
 			Tr: &xdr.OperationResultTr{
@@ -289,9 +242,9 @@ func TestMergeAccountEvents(t *testing.T) {
 			tx:       someTx,
 			opIndex:  0,
 			op:       mergeAccountOp,
-			opResult: mergeAccountResult(&hundredUnits),
+			opResult: mergedAccountResultWithBalance(&hundredUnits),
 			expected: []*TokenTransferEvent{
-				transferEvent(protoAddress(gAddressAccountA), protoAddress(gAddressAccountB), hundredUnitsStr, xlmProtoAsset),
+				transferEvent(protoAddressFromAccount(accountA), protoAddressFromAccount(accountB), hundredUnitsStr, xlmProtoAsset),
 			},
 		},
 		{
@@ -299,7 +252,7 @@ func TestMergeAccountEvents(t *testing.T) {
 			tx:       someTx,
 			opIndex:  0,
 			op:       mergeAccountOp,
-			opResult: mergeAccountResult(nil),
+			opResult: mergedAccountResultWithBalance(nil),
 			expected: nil,
 		},
 	}
@@ -308,7 +261,6 @@ func TestMergeAccountEvents(t *testing.T) {
 }
 
 func TestPaymentEvents(t *testing.T) {
-
 	paymentOp := func(src *xdr.MuxedAccount, dst xdr.MuxedAccount, asset xdr.Asset) xdr.Operation {
 		return xdr.Operation{
 			SourceAccount: src,
@@ -330,7 +282,7 @@ func TestPaymentEvents(t *testing.T) {
 			opIndex: 0,
 			op:      paymentOp(&accountA, accountB, xlmAsset),
 			expected: []*TokenTransferEvent{
-				transferEvent(protoAddress(gAddressAccountA), protoAddress(gAddressAccountB), hundredUnitsStr, xlmProtoAsset),
+				transferEvent(protoAddressFromAccount(accountA), protoAddressFromAccount(accountB), hundredUnitsStr, xlmProtoAsset),
 			},
 		},
 		{
@@ -339,7 +291,7 @@ func TestPaymentEvents(t *testing.T) {
 			opIndex: 0,
 			op:      paymentOp(&accountA, accountB, usdcAsset),
 			expected: []*TokenTransferEvent{
-				transferEvent(protoAddress(gAddressAccountA), protoAddress(gAddressAccountB), hundredUnitsStr, usdcProtoAsset),
+				transferEvent(protoAddressFromAccount(accountA), protoAddressFromAccount(accountB), hundredUnitsStr, usdcProtoAsset),
 			},
 		},
 		{
@@ -348,7 +300,7 @@ func TestPaymentEvents(t *testing.T) {
 			opIndex: 0,
 			op:      paymentOp(&accountA, muxedAccountB, usdcAsset),
 			expected: []*TokenTransferEvent{
-				transferEvent(protoAddress(gAddressAccountA), protoAddress(mAddressAccountB), hundredUnitsStr, usdcProtoAsset),
+				transferEvent(protoAddressFromAccount(accountA), protoAddressFromAccount(muxedAccountB), hundredUnitsStr, usdcProtoAsset),
 			},
 		},
 		{
@@ -357,7 +309,7 @@ func TestPaymentEvents(t *testing.T) {
 			opIndex: 0,
 			op:      paymentOp(&muxedAccountA, accountB, usdcAsset),
 			expected: []*TokenTransferEvent{
-				transferEvent(protoAddress(mAddressAccountA), protoAddress(gAddressAccountB), hundredUnitsStr, usdcProtoAsset),
+				transferEvent(protoAddressFromAccount(muxedAccountA), protoAddressFromAccount(accountB), hundredUnitsStr, usdcProtoAsset),
 			},
 		},
 		{
@@ -366,7 +318,7 @@ func TestPaymentEvents(t *testing.T) {
 			opIndex: 0,
 			op:      paymentOp(&usdcAccount, accountB, usdcAsset),
 			expected: []*TokenTransferEvent{
-				mintEvent(protoAddress(gAddressAccountB), hundredUnitsStr, usdcProtoAsset),
+				mintEvent(protoAddressFromAccount(accountB), hundredUnitsStr, usdcProtoAsset),
 			},
 		},
 		{
@@ -375,7 +327,7 @@ func TestPaymentEvents(t *testing.T) {
 			opIndex: 0,
 			op:      paymentOp(&usdcAccount, muxedAccountB, usdcAsset),
 			expected: []*TokenTransferEvent{
-				mintEvent(protoAddress(mAddressAccountB), hundredUnitsStr, usdcProtoAsset),
+				mintEvent(protoAddressFromAccount(muxedAccountB), hundredUnitsStr, usdcProtoAsset),
 			},
 		},
 		{
@@ -384,7 +336,7 @@ func TestPaymentEvents(t *testing.T) {
 			opIndex: 0,
 			op:      paymentOp(&accountA, usdcAccount, usdcAsset),
 			expected: []*TokenTransferEvent{
-				burnEvent(protoAddress(gAddressAccountA), hundredUnitsStr, usdcProtoAsset),
+				burnEvent(protoAddressFromAccount(accountA), hundredUnitsStr, usdcProtoAsset),
 			},
 		},
 		{
@@ -393,7 +345,7 @@ func TestPaymentEvents(t *testing.T) {
 			opIndex: 0,
 			op:      paymentOp(&muxedAccountA, usdcAccount, usdcAsset),
 			expected: []*TokenTransferEvent{
-				burnEvent(protoAddress(mAddressAccountA), hundredUnitsStr, usdcProtoAsset),
+				burnEvent(protoAddressFromAccount(muxedAccountA), hundredUnitsStr, usdcProtoAsset),
 			},
 		},
 	}
@@ -402,8 +354,6 @@ func TestPaymentEvents(t *testing.T) {
 }
 
 func TestManageOfferEvents(t *testing.T) {
-
-	// a few anonymous helper functions to generate fixtures for this particular test
 	manageBuyOfferOp := func(sourceAccount xdr.MuxedAccount) xdr.Operation {
 		return xdr.Operation{
 			SourceAccount: &sourceAccount,
@@ -554,7 +504,6 @@ func TestManageOfferEvents(t *testing.T) {
 }
 
 func TestFeeEvent(t *testing.T) {
-
 	failedTx := func(envelopeType xdr.EnvelopeType, txFee xdr.Int64) ingest.LedgerTransaction {
 		tx := ingest.LedgerTransaction{
 			Ledger:   someLcm,
