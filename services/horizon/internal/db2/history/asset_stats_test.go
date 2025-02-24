@@ -125,28 +125,22 @@ func TestAssetContractStats(t *testing.T) {
 	c1 := ContractAssetStatRow{
 		ContractID: []byte{1},
 		Stat: ContractStat{
-			ActiveBalance:   "100",
-			ActiveHolders:   2,
-			ArchivedBalance: "0",
-			ArchivedHolders: 0,
+			ActiveBalance: "100",
+			ActiveHolders: 2,
 		},
 	}
 	c2 := ContractAssetStatRow{
 		ContractID: []byte{2},
 		Stat: ContractStat{
-			ActiveBalance:   "40",
-			ActiveHolders:   1,
-			ArchivedBalance: "0",
-			ArchivedHolders: 0,
+			ActiveBalance: "40",
+			ActiveHolders: 1,
 		},
 	}
 	c3 := ContractAssetStatRow{
 		ContractID: []byte{3},
 		Stat: ContractStat{
-			ActiveBalance:   "900",
-			ActiveHolders:   12,
-			ArchivedBalance: "23",
-			ArchivedHolders: 3,
+			ActiveBalance: "900",
+			ActiveHolders: 12,
 		},
 	}
 
@@ -161,7 +155,6 @@ func TestAssetContractStats(t *testing.T) {
 
 	c2.Stat.ActiveHolders = 3
 	c2.Stat.ActiveBalance = "20"
-	c3.Stat.ArchivedBalance = "900"
 	c2.Stat.ActiveHolders = 5
 	numRows, err := q.UpdateContractAssetStat(tt.Ctx, c2)
 	tt.Assert.NoError(err)
@@ -568,10 +561,8 @@ func TestGetAssetStatsFiltersAndCursor(t *testing.T) {
 
 	q := &Q{tt.HorizonSession()}
 	zero := ContractStat{
-		ActiveBalance:   "0",
-		ActiveHolders:   0,
-		ArchivedBalance: "0",
-		ArchivedHolders: 0,
+		ActiveBalance: "0",
+		ActiveHolders: 0,
 	}
 	usdAssetStat := AssetAndContractStat{
 		ExpAssetStat: ExpAssetStat{
@@ -652,10 +643,8 @@ func TestGetAssetStatsFiltersAndCursor(t *testing.T) {
 			},
 		},
 		Contracts: ContractStat{
-			ActiveBalance:   "120",
-			ActiveHolders:   3,
-			ArchivedBalance: "90",
-			ArchivedHolders: 1,
+			ActiveBalance: "120",
+			ActiveHolders: 3,
 		},
 	}
 	eurAssetStat.SetContractID([32]byte{})
@@ -684,10 +673,8 @@ func TestGetAssetStatsFiltersAndCursor(t *testing.T) {
 	numChanged, err := q.InsertContractAssetStat(tt.Ctx, ContractAssetStatRow{
 		ContractID: []byte{1},
 		Stat: ContractStat{
-			ActiveBalance:   "400",
-			ActiveHolders:   30,
-			ArchivedBalance: "0",
-			ArchivedHolders: 0,
+			ActiveBalance: "400",
+			ActiveHolders: 30,
 		},
 	})
 	tt.Assert.NoError(err)
@@ -1141,13 +1128,17 @@ func TestUpdateContractAssetBalanceExpirations(t *testing.T) {
 		q.InsertContractAssetBalances(context.Background(), []ContractAssetBalance{balance, otherBalance}),
 	)
 
-	balances, err := q.GetContractAssetBalancesExpiringAt(context.Background(), 10)
+	balances, err := q.DeleteContractAssetBalancesExpiringAt(context.Background(), 10)
 	tt.Assert.NoError(err)
 	assertContractAssetBalancesEqual(t, balances, []ContractAssetBalance{balance})
 
-	balances, err = q.GetContractAssetBalancesExpiringAt(context.Background(), 11)
+	balances, err = q.DeleteContractAssetBalancesExpiringAt(context.Background(), 11)
 	tt.Assert.NoError(err)
 	assertContractAssetBalancesEqual(t, balances, []ContractAssetBalance{otherBalance})
+
+	balances, err = q.GetContractAssetBalances(context.Background(), []xdr.Hash{keyHash, otherKeyHash})
+	tt.Assert.NoError(err)
+	tt.Assert.Empty(balances)
 
 	nonExistantKeyHash := xdr.Hash{4}
 
@@ -1161,17 +1152,11 @@ func TestUpdateContractAssetBalanceExpirations(t *testing.T) {
 
 	balances, err = q.GetContractAssetBalances(context.Background(), []xdr.Hash{keyHash, otherKeyHash})
 	tt.Assert.NoError(err)
-	balance.ExpirationLedger = 200
-	otherBalance.ExpirationLedger = 200
-	assertContractAssetBalancesEqual(t, balances, []ContractAssetBalance{balance, otherBalance})
+	tt.Assert.Empty(balances)
 
-	balances, err = q.GetContractAssetBalancesExpiringAt(context.Background(), 10)
+	balances, err = q.DeleteContractAssetBalancesExpiringAt(context.Background(), 10)
 	tt.Assert.NoError(err)
 	assert.Empty(t, balances)
-
-	balances, err = q.GetContractAssetBalancesExpiringAt(context.Background(), 200)
-	tt.Assert.NoError(err)
-	assertContractAssetBalancesEqual(t, balances, []ContractAssetBalance{balance, otherBalance})
 
 	tt.Assert.NoError(q.Rollback())
 }

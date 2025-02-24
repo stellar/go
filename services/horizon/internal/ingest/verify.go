@@ -482,10 +482,8 @@ func checkAssetStats(
 					entry = history.ContractAssetStatRow{
 						ContractID: contractID[:],
 						Stat: history.ContractStat{
-							ActiveBalance:   "0",
-							ActiveHolders:   0,
-							ArchivedBalance: "0",
-							ArchivedHolders: 0,
+							ActiveBalance: "0",
+							ActiveHolders: 0,
 						},
 					}
 				}

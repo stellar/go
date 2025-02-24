@@ -186,11 +186,11 @@ func (q *Q) UpdateContractAssetBalanceExpirations(ctx context.Context, keys []xd
 	return nil
 }
 
-// GetContractAssetBalancesExpiringAt returns all contract asset balances which are active
+// DeleteContractAssetBalancesExpiringAt deletes and returns all contract asset balances which are active
 // at `ledger` and expired at `ledger+1`
-func (q *Q) GetContractAssetBalancesExpiringAt(ctx context.Context, ledger uint32) ([]ContractAssetBalance, error) {
-	sql := sq.Select("contract_asset_balances.*").From("contract_asset_balances").
-		Where(map[string]interface{}{"expiration_ledger": ledger})
+func (q *Q) DeleteContractAssetBalancesExpiringAt(ctx context.Context, ledger uint32) ([]ContractAssetBalance, error) {
+	sql := sq.Delete("contract_asset_balances").
+		Where(map[string]interface{}{"expiration_ledger": ledger}).Suffix("RETURNING *")
 	var balances []ContractAssetBalance
 	err := q.Select(ctx, &balances, sql)
 	return balances, err

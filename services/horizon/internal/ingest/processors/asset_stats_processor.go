@@ -213,10 +213,6 @@ func (p *AssetStatsProcessor) updateDB(
 		return errors.Wrap(err, "Error inserting contract asset balances")
 	}
 
-	if err := contractAssetStatSet.ingestRestoredBalances(ctx); err != nil {
-		return err
-	}
-
 	if err := p.updateContractAssetBalanceExpirations(ctx); err != nil {
 		return err
 	}
@@ -585,17 +581,11 @@ func (p *AssetStatsProcessor) updateContractID(
 
 func (p *AssetStatsProcessor) addContractAssetStat(contractAssetStat assetContractStatValue, row *history.ContractAssetStatRow) error {
 	row.Stat.ActiveHolders += contractAssetStat.activeHolders
-	row.Stat.ArchivedHolders += contractAssetStat.archivedHolders
 	activeBalance, ok := new(big.Int).SetString(row.Stat.ActiveBalance, 10)
 	if !ok {
 		return errors.New("Error parsing: " + row.Stat.ActiveBalance)
 	}
 	row.Stat.ActiveBalance = activeBalance.Add(activeBalance, contractAssetStat.activeBalance).String()
-	archivedBalance, ok := new(big.Int).SetString(row.Stat.ArchivedBalance, 10)
-	if !ok {
-		return errors.New("Error parsing: " + row.Stat.ArchivedBalance)
-	}
-	row.Stat.ArchivedBalance = archivedBalance.Add(archivedBalance, contractAssetStat.archivedBalance).String()
 	return nil
 }
 
@@ -633,10 +623,8 @@ func (p *AssetStatsProcessor) updateAssetContractStats(
 		}
 
 		if row.Stat == (history.ContractStat{
-			ActiveBalance:   "0",
-			ActiveHolders:   0,
-			ArchivedBalance: "0",
-			ArchivedHolders: 0,
+			ActiveBalance: "0",
+			ActiveHolders: 0,
 		}) {
 			rowsAffected, err = p.assetStatsQ.RemoveAssetContractStat(ctx, contractID[:])
 		} else {

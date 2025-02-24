@@ -175,21 +175,15 @@ type AssetStat struct {
 	} `json:"_links"`
 
 	base.Asset
-	PT                   string `json:"paging_token"`
-	ContractID           string `json:"contract_id,omitempty"`
-	NumClaimableBalances int32  `json:"num_claimable_balances"`
-	NumLiquidityPools    int32  `json:"num_liquidity_pools"`
-	NumContracts         int32  `json:"num_contracts"`
-	// NumArchivedContracts is deprecated and will be removed in the v23 release
-	// Action needed in release: horizon-v23.0.0: remove field
-	NumArchivedContracts    int32             `json:"num_archived_contracts"`
+	PT                      string            `json:"paging_token"`
+	ContractID              string            `json:"contract_id,omitempty"`
+	NumClaimableBalances    int32             `json:"num_claimable_balances"`
+	NumLiquidityPools       int32             `json:"num_liquidity_pools"`
+	NumContracts            int32             `json:"num_contracts"`
 	Accounts                AssetStatAccounts `json:"accounts"`
 	ClaimableBalancesAmount string            `json:"claimable_balances_amount"`
 	LiquidityPoolsAmount    string            `json:"liquidity_pools_amount"`
 	ContractsAmount         string            `json:"contracts_amount"`
-	// ArchivedContractsAmount is deprecated and will be removed in the v23 release
-	// Action needed in release: horizon-v23.0.0: remove field
-	ArchivedContractsAmount string            `json:"archived_contracts_amount"`
 	Balances                AssetStatBalances `json:"balances"`
 	Flags                   AccountFlags      `json:"flags"`
 }

@@ -3,10 +3,11 @@ package ingest
 import (
 	"context"
 	"fmt"
-	"github.com/stellar/go/amount"
 	"io"
 	"reflect"
 	"testing"
+
+	"github.com/stellar/go/amount"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -280,7 +281,7 @@ func TestProcessorRunnerRunAllProcessorsOnLedger(t *testing.T) {
 		Return(nil).Once()
 	q.MockQAssetStats.On("UpdateContractAssetBalanceExpirations", ctx, []xdr.Hash{}, []uint32{}).
 		Return(nil).Once()
-	q.MockQAssetStats.On("GetContractAssetBalancesExpiringAt", ctx, uint32(22)).
+	q.MockQAssetStats.On("DeleteContractAssetBalancesExpiringAt", ctx, uint32(22)).
 		Return([]history.ContractAssetBalance{}, nil).Once()
 
 	runner := ProcessorRunner{
@@ -373,7 +374,7 @@ func TestProcessorRunnerRunTransactionsProcessorsOnLedgers(t *testing.T) {
 		Return(nil).Once()
 	q.MockQAssetStats.On("UpdateContractAssetBalanceExpirations", ctx, []xdr.Hash{}, []uint32{}).
 		Return(nil).Once()
-	q.MockQAssetStats.On("GetContractAssetBalancesExpiringAt", ctx, uint32(22)).
+	q.MockQAssetStats.On("DeleteContractAssetBalancesExpiringAt", ctx, uint32(22)).
 		Return([]history.ContractAssetBalance{}, nil).Once()
 
 	runner := ProcessorRunner{
