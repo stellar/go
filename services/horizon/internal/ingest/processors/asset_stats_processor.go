@@ -59,6 +59,13 @@ func (p *AssetStatsProcessor) ProcessChange(ctx context.Context, change ingest.C
 		return nil
 	}
 
+	// We don't need to handle evictions because we immediately delete contract balances
+	// upon expiration. So by the time an archived ledger entry is evicted it will already
+	// be deleted from the horizon DB.
+	if change.Reason == ingest.LedgerEntryChangeReasonEviction {
+		return nil
+	}
+
 	var err error
 	switch change.Type {
 	case xdr.LedgerEntryTypeLiquidityPool:
