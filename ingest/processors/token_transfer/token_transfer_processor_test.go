@@ -43,8 +43,7 @@ var (
 	usdcAsset      = xdr.MustNewCreditAsset(usdc, usdcIssuer)
 	usdcProtoAsset = assetProto.NewIssuedAsset(usdc, usdcIssuer)
 
-	xlmAsset      = xdr.MustNewNativeAsset()
-	xlmProtoAsset = assetProto.NewNativeAsset()
+	xlmAsset = xdr.MustNewNativeAsset()
 
 	someLcm = xdr.LedgerCloseMeta{
 		V: int32(0),
@@ -261,14 +260,14 @@ func TestMergeAccountEvents(t *testing.T) {
 }
 
 func TestPaymentEvents(t *testing.T) {
-	paymentOp := func(src *xdr.MuxedAccount, dst xdr.MuxedAccount, asset xdr.Asset) xdr.Operation {
+	paymentOp := func(src *xdr.MuxedAccount, dst xdr.MuxedAccount, asset xdr.Asset, amount xdr.Int64) xdr.Operation {
 		return xdr.Operation{
 			SourceAccount: src,
 			Body: xdr.OperationBody{
 				Type: xdr.OperationTypePayment,
 				PaymentOp: &xdr.PaymentOp{
 					Destination: dst,
-					Amount:      hundredUnits,
+					Amount:      amount,
 					Asset:       asset,
 				},
 			},
@@ -280,7 +279,7 @@ func TestPaymentEvents(t *testing.T) {
 			name:    "G account to G account - XLM transfer",
 			tx:      someTx,
 			opIndex: 0,
-			op:      paymentOp(&accountA, accountB, xlmAsset),
+			op:      paymentOp(&accountA, accountB, xlmAsset, hundredUnits),
 			expected: []*TokenTransferEvent{
 				transferEvent(protoAddressFromAccount(accountA), protoAddressFromAccount(accountB), hundredUnitsStr, xlmProtoAsset),
 			},
@@ -289,7 +288,7 @@ func TestPaymentEvents(t *testing.T) {
 			name:    "G account to G account - USDC transfer",
 			tx:      someTx,
 			opIndex: 0,
-			op:      paymentOp(&accountA, accountB, usdcAsset),
+			op:      paymentOp(&accountA, accountB, usdcAsset, hundredUnits),
 			expected: []*TokenTransferEvent{
 				transferEvent(protoAddressFromAccount(accountA), protoAddressFromAccount(accountB), hundredUnitsStr, usdcProtoAsset),
 			},
@@ -298,7 +297,7 @@ func TestPaymentEvents(t *testing.T) {
 			name:    "G account to M Account - USDC transfer",
 			tx:      someTx,
 			opIndex: 0,
-			op:      paymentOp(&accountA, muxedAccountB, usdcAsset),
+			op:      paymentOp(&accountA, muxedAccountB, usdcAsset, hundredUnits),
 			expected: []*TokenTransferEvent{
 				transferEvent(protoAddressFromAccount(accountA), protoAddressFromAccount(muxedAccountB), hundredUnitsStr, usdcProtoAsset),
 			},
@@ -307,7 +306,7 @@ func TestPaymentEvents(t *testing.T) {
 			name:    "M account to G Account - USDC transfer",
 			tx:      someTx,
 			opIndex: 0,
-			op:      paymentOp(&muxedAccountA, accountB, usdcAsset),
+			op:      paymentOp(&muxedAccountA, accountB, usdcAsset, hundredUnits),
 			expected: []*TokenTransferEvent{
 				transferEvent(protoAddressFromAccount(muxedAccountA), protoAddressFromAccount(accountB), hundredUnitsStr, usdcProtoAsset),
 			},
@@ -316,7 +315,7 @@ func TestPaymentEvents(t *testing.T) {
 			name:    "G (issuer account) to G account - USDC mint",
 			tx:      someTx,
 			opIndex: 0,
-			op:      paymentOp(&usdcAccount, accountB, usdcAsset),
+			op:      paymentOp(&usdcAccount, accountB, usdcAsset, hundredUnits),
 			expected: []*TokenTransferEvent{
 				mintEvent(protoAddressFromAccount(accountB), hundredUnitsStr, usdcProtoAsset),
 			},
@@ -325,7 +324,7 @@ func TestPaymentEvents(t *testing.T) {
 			name:    "G (issuer account) to M account - USDC mint",
 			tx:      someTx,
 			opIndex: 0,
-			op:      paymentOp(&usdcAccount, muxedAccountB, usdcAsset),
+			op:      paymentOp(&usdcAccount, muxedAccountB, usdcAsset, hundredUnits),
 			expected: []*TokenTransferEvent{
 				mintEvent(protoAddressFromAccount(muxedAccountB), hundredUnitsStr, usdcProtoAsset),
 			},
@@ -334,7 +333,7 @@ func TestPaymentEvents(t *testing.T) {
 			name:    "G account to G (issuer account) - USDC burn",
 			tx:      someTx,
 			opIndex: 0,
-			op:      paymentOp(&accountA, usdcAccount, usdcAsset),
+			op:      paymentOp(&accountA, usdcAccount, usdcAsset, hundredUnits),
 			expected: []*TokenTransferEvent{
 				burnEvent(protoAddressFromAccount(accountA), hundredUnitsStr, usdcProtoAsset),
 			},
@@ -343,7 +342,7 @@ func TestPaymentEvents(t *testing.T) {
 			name:    "M account to G (issuer account) - USDC burn",
 			tx:      someTx,
 			opIndex: 0,
-			op:      paymentOp(&muxedAccountA, usdcAccount, usdcAsset),
+			op:      paymentOp(&muxedAccountA, usdcAccount, usdcAsset, hundredUnits),
 			expected: []*TokenTransferEvent{
 				burnEvent(protoAddressFromAccount(muxedAccountA), hundredUnitsStr, usdcProtoAsset),
 			},

@@ -10,6 +10,10 @@ import (
 	"io"
 )
 
+var (
+	xlmProtoAsset = assetProto.NewNativeAsset()
+)
+
 func ProcessTokenTransferEventsFromLedger(lcm xdr.LedgerCloseMeta, networkPassPhrase string) ([]*TokenTransferEvent, error) {
 	var events []*TokenTransferEvent
 	txReader, err := ingest.NewLedgerTransactionReaderFromLedgerCloseMeta(networkPassPhrase, lcm)
@@ -128,7 +132,7 @@ func accountCreateEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Ope
 	createAccountOp := op.Body.MustCreateAccountOp()
 	destAcc, amt := createAccountOp.Destination, amount.String(createAccountOp.StartingBalance)
 	meta := NewEventMeta(tx, &opIndex, nil)
-	event := NewTransferEvent(meta, protoAddressFromAccount(srcAcc), protoAddressFromAccountId(destAcc), amt, assetProto.NewNativeAsset())
+	event := NewTransferEvent(meta, protoAddressFromAccount(srcAcc), protoAddressFromAccountId(destAcc), amt, xlmProtoAsset)
 	return []*TokenTransferEvent{event}, nil // Just one event will be generated
 }
 
@@ -142,31 +146,61 @@ func mergeAccountEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Oper
 	destAcc := op.Body.MustDestination()
 	amt := amount.String(*res.SourceAccountBalance)
 	meta := NewEventMeta(tx, &opIndex, nil)
-	event := NewTransferEvent(meta, protoAddressFromAccount(srcAcc), protoAddressFromAccount(destAcc), amt, assetProto.NewNativeAsset())
+	event := NewTransferEvent(meta, protoAddressFromAccount(srcAcc), protoAddressFromAccount(destAcc), amt, xlmProtoAsset)
 	return []*TokenTransferEvent{event}, nil // Just one event will be generated
 }
 
+type addressWrapper struct {
+	account            *xdr.MuxedAccount
+	liquidityPoolId    *xdr.PoolId
+	claimableBalanceId *xdr.ClaimableBalanceId
+}
+
 // Depending on the asset - if src or dest account == issuer of asset, then mint/burn event, else transfer event
-func mintOrBurnOrTransferEvent(asset xdr.Asset, fromAcc xdr.MuxedAccount, toAcc xdr.MuxedAccount, amt string, meta *EventMeta) *TokenTransferEvent {
-	fromAddress := protoAddressFromAccount(fromAcc)
-	toAddress := protoAddressFromAccount(toAcc)
-
-	if asset.IsNative() { // if asset is native, it can only be a transfer
-		return NewTransferEvent(meta, fromAddress, toAddress, amt, assetProto.NewNativeAsset())
-	}
-
-	protoAsset := assetProto.NewIssuedAsset(asset.GetCode(), asset.GetIssuer())
-	var event *TokenTransferEvent
+func mintOrBurnOrTransferEvent(asset xdr.Asset, from addressWrapper, to addressWrapper, amt string, meta *EventMeta) *TokenTransferEvent {
+	var fromAddress, toAddress *addressProto.Address
+	// no need to have a separate flag for transferEvent. if neither burn nor mint, then it is regular transfer
+	var isMintEvent, isBurnEvent bool
 
 	assetIssuerAccountId, _ := asset.GetIssuerAccountId()
-	if assetIssuerAccountId.Equals(fromAcc.ToAccountId()) {
+
+	if from.account != nil {
+		fromAddress = protoAddressFromAccount(*from.account)
+		if !asset.IsNative() && assetIssuerAccountId.Equals(from.account.ToAccountId()) {
+			isMintEvent = true
+		}
+	} else if from.liquidityPoolId != nil {
+		fromAddress = protoAddressFromLpHash(*from.liquidityPoolId)
+	} else if from.claimableBalanceId != nil {
+		fromAddress = protoAddressFromClaimableBalanceId(*from.claimableBalanceId)
+	}
+
+	if to.account != nil {
+		toAddress = protoAddressFromAccount(*to.account)
+		if !asset.IsNative() && assetIssuerAccountId.Equals(to.account.ToAccountId()) {
+			isBurnEvent = true
+		}
+	} else if to.liquidityPoolId != nil {
+		toAddress = protoAddressFromLpHash(*to.liquidityPoolId)
+	} else if from.claimableBalanceId != nil {
+		toAddress = protoAddressFromClaimableBalanceId(*to.claimableBalanceId)
+	}
+
+	var protoAsset *assetProto.Asset
+	if asset.IsNative() {
+		protoAsset = xlmProtoAsset
+	} else {
+		protoAsset = assetProto.NewIssuedAsset(asset.GetCode(), asset.GetIssuer())
+	}
+
+	var event *TokenTransferEvent
+	if isMintEvent {
 		// Mint event
 		event = NewMintEvent(meta, toAddress, amt, protoAsset)
-	} else if assetIssuerAccountId.Equals(toAcc.ToAccountId()) {
+	} else if isBurnEvent {
 		// Burn event
 		event = NewBurnEvent(meta, fromAddress, amt, protoAsset)
 	} else {
-		// Regular transfer
 		event = NewTransferEvent(meta, fromAddress, toAddress, amt, protoAsset)
 	}
 	return event
@@ -179,7 +213,7 @@ func paymentEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation
 	amt := amount.String(paymentOp.Amount)
 	meta := NewEventMeta(tx, &opIndex, nil)
 
-	event := mintOrBurnOrTransferEvent(paymentOp.Asset, srcAcc, destAcc, amt, meta)
+	event := mintOrBurnOrTransferEvent(paymentOp.Asset, addressWrapper{account: &srcAcc}, addressWrapper{account: &destAcc}, amt, meta)
 	return []*TokenTransferEvent{event}, nil
 }
 
@@ -215,7 +249,11 @@ func liquidityPoolWithdrawEvents(tx ingest.LedgerTransaction, opIndex uint32, op
 	return nil, nil
 }
 
-func generateEventsFromClaimAtoms(meta *EventMeta, operationSrcAccount xdr.MuxedAccount, claims []xdr.ClaimAtom) []*TokenTransferEvent {
+func generateEventsFromLiquidityPoolFills(meta *EventMeta, operationSrcAccount xdr.MuxedAccount, claims []xdr.ClaimAtom) []*TokenTransferEvent {
+	return nil
+}
+
+func generateEventsFromFilledOffers(meta *EventMeta, operationSrcAccount xdr.MuxedAccount, claims []xdr.ClaimAtom) []*TokenTransferEvent {
 	var events []*TokenTransferEvent
 	for _, claim := range claims {
 		// We can directly call claim.SellerID() here, since I dont expect any Liquidity pool type claim atoms here.
@@ -223,11 +261,11 @@ func generateEventsFromClaimAtoms(meta *EventMeta, operationSrcAccount xdr.Muxed
 		sellerId := claim.SellerId()
 		sellerAccount := sellerId.ToMuxedAccount()
 		events = append(events,
-			mintOrBurnOrTransferEvent(claim.AssetSold(), sellerAccount, operationSrcAccount, amount.String(claim.AmountSold()), meta),
+			mintOrBurnOrTransferEvent(claim.AssetSold(), addressWrapper{account: &sellerAccount}, addressWrapper{account: &operationSrcAccount}, amount.String(claim.AmountSold()), meta),
 		)
 
 		events = append(events,
-			mintOrBurnOrTransferEvent(claim.AssetBought(), operationSrcAccount, sellerAccount, amount.String(claim.AmountBought()), meta),
+			mintOrBurnOrTransferEvent(claim.AssetBought(), addressWrapper{account: &operationSrcAccount}, addressWrapper{account: &sellerAccount}, amount.String(claim.AmountBought()), meta),
 		)
 
 	}
@@ -236,14 +274,23 @@ func generateEventsFromClaimAtoms(meta *EventMeta, operationSrcAccount xdr.Muxed
 
 func manageBuyOfferEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation, result xdr.OperationResult) ([]*TokenTransferEvent, error) {
 	operationSrcAccount := operationSourceAccount(tx, op)
+	offersClaimed := result.Tr.MustManageBuyOfferResult().Success.OffersClaimed
+	if len(offersClaimed) == 0 {
+		return nil, nil
+	}
+
 	meta := NewEventMeta(tx, &opIndex, nil)
-	return generateEventsFromClaimAtoms(meta, operationSrcAccount, result.Tr.MustManageBuyOfferResult().Success.OffersClaimed), nil
+	return generateEventsFromFilledOffers(meta, operationSrcAccount, offersClaimed), nil
 }
 
 func manageSellOfferEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation, result xdr.OperationResult) ([]*TokenTransferEvent, error) {
 	operationSrcAccount := operationSourceAccount(tx, op)
+	offersClaimed := result.Tr.MustManageSellOfferResult().Success.OffersClaimed
+	if len(offersClaimed) == 0 {
+		return nil, nil
+	}
 	meta := NewEventMeta(tx, &opIndex, nil)
-	return generateEventsFromClaimAtoms(meta, operationSrcAccount, result.Tr.MustManageSellOfferResult().Success.OffersClaimed), nil
+	return generateEventsFromFilledOffers(meta, operationSrcAccount, offersClaimed), nil
 }
 
 // EXACTLY SAME as manageSellOfferEvents
@@ -288,18 +335,18 @@ func protoAddressFromAccountId(account xdr.AccountId) *addressProto.Address {
 	}
 }
 
-/*
 func protoAddressFromLpHash(lpHash xdr.PoolId) *addressProto.Address {
 	return &addressProto.Address{
 		AddressType: addressProto.AddressType_ADDRESS_TYPE_LIQUIDITY_POOL,
-		StrKey:      xdr.Hash(lpHash).HexString(), // replace with strkey
+		//TODO: replace with strkey
+		StrKey: xdr.Hash(lpHash).HexString(),
 	}
 }
 
 func protoAddressFromClaimableBalanceId(cb xdr.ClaimableBalanceId) *addressProto.Address {
 	return &addressProto.Address{
 		AddressType: addressProto.AddressType_ADDRESS_TYPE_LIQUIDITY_POOL,
-		StrKey:      cb.MustV0().HexString(), //replace with strkey
+		//TODO: replace with strkey
+		StrKey: cb.MustV0().HexString(),
 	}
 }
-*/
