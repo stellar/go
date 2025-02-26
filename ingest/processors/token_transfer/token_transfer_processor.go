@@ -131,9 +131,9 @@ func generateFeeEvent(tx ingest.LedgerTransaction) ([]*TokenTransferEvent, error
 func accountCreateEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation) ([]*TokenTransferEvent, error) {
 	srcAcc := operationSourceAccount(tx, op)
 	createAccountOp := op.Body.MustCreateAccountOp()
-	destAcc, amt := createAccountOp.Destination, amount.String(createAccountOp.StartingBalance)
+	destAcc, amt := createAccountOp.Destination.ToMuxedAccount(), amount.String(createAccountOp.StartingBalance)
 	meta := NewEventMeta(tx, &opIndex, nil)
-	event := NewTransferEvent(meta, protoAddressFromAccount(srcAcc), protoAddressFromAccountId(destAcc), amt, xlmProtoAsset)
+	event := NewTransferEvent(meta, protoAddressFromAccount(srcAcc), protoAddressFromAccount(destAcc), amt, xlmProtoAsset)
 	return []*TokenTransferEvent{event}, nil // Just one event will be generated
 }
 
@@ -191,7 +191,7 @@ func mintOrBurnOrTransferEvent(asset xdr.Asset, from addressWrapper, to addressW
 	if asset.IsNative() {
 		protoAsset = xlmProtoAsset
 	} else {
-		protoAsset = assetProto.NewIssuedAsset(asset.GetCode(), asset.GetIssuer())
+		protoAsset = assetProto.NewIssuedAsset(asset)
 	}
 
 	var event *TokenTransferEvent
@@ -397,13 +397,6 @@ func protoAddressFromAccount(account xdr.MuxedAccount) *addressProto.Address {
 	}
 	addr.StrKey = account.Address()
 	return addr
-}
-
-func protoAddressFromAccountId(account xdr.AccountId) *addressProto.Address {
-	return &addressProto.Address{
-		AddressType: addressProto.AddressType_ADDRESS_TYPE_ACCOUNT,
-		StrKey:      account.Address(),
-	}
 }
 
 func protoAddressFromLpHash(lpHash xdr.PoolId) *addressProto.Address {

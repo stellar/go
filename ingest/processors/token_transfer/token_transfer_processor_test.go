@@ -37,13 +37,25 @@ var (
 	hundredUnits    = xdr.Int64(100 * tenMillion)
 	hundredUnitsStr = "100.0000000"
 
-	usdc           = "USDC"
+	xlmAsset = xdr.MustNewNativeAsset()
+
 	usdcIssuer     = "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN"
 	usdcAccount    = xdr.MustMuxedAddress(usdcIssuer)
-	usdcAsset      = xdr.MustNewCreditAsset(usdc, usdcIssuer)
-	usdcProtoAsset = assetProto.NewIssuedAsset(usdc, usdcIssuer)
+	usdcAsset      = xdr.MustNewCreditAsset("USDC", usdcIssuer)
+	usdcProtoAsset = assetProto.NewIssuedAsset(usdcAsset)
 
-	xlmAsset = xdr.MustNewNativeAsset()
+	ethIssuer     = "GCEODJVUUVYVFD5KT4TOEDTMXQ76OPFOQC2EMYYMLPXQCUVPOB6XRWPQ"
+	ethAccount    = xdr.MustMuxedAddress(ethIssuer)
+	ethAsset      = xdr.MustNewCreditAsset("ETH", ethIssuer)
+	ethProtoAsset = assetProto.NewIssuedAsset(ethAsset)
+
+	btcIsuer      = "GBT4YAEGJQ5YSFUMNKX6BPBUOCPNAIOFAVZOF6MIME2CECBMEIUXFZZN"
+	btcAccount    = xdr.MustMuxedAddress(btcIsuer)
+	btcAsset      = xdr.MustNewCreditAsset("BTC", btcIsuer)
+	btcProtoAsset = assetProto.NewIssuedAsset(btcAsset)
+
+	lpBtcEthId, _  = xdr.NewPoolId(btcAsset, ethAsset, xdr.LiquidityPoolFeeV18)
+	lpEthUsdcId, _ = xdr.NewPoolId(ethAsset, usdcAsset, xdr.LiquidityPoolFeeV18)
 
 	someLcm = xdr.LedgerCloseMeta{
 		V: int32(0),
@@ -420,7 +432,7 @@ func TestManageOfferEvents(t *testing.T) {
 	// Fixture
 	tests := []testFixture{
 		{
-			name:    "ManageBuyOffer - Buy USDC for XLM (2 claim atoms)",
+			name:    "ManageBuyOffer - Buy USDC for XLM (2 claim atoms, Transfer events)",
 			tx:      someTx,
 			opIndex: 0,
 			op:      manageBuyOfferOp(someTxAccount), // don't care for anything in xdr.Operation other than source account
@@ -442,7 +454,7 @@ func TestManageOfferEvents(t *testing.T) {
 		},
 
 		{
-			name:    "ManageSellOffer - Sell USDC for XLM (2 claim atoms)",
+			name:    "ManageSellOffer - Sell USDC for XLM (2 claim atoms, Transfer events)",
 			tx:      someTx,
 			opIndex: 0,
 			op:      manageSellOfferOp(someTxAccount), // don't care for anything in xdr.Operation other than source account
