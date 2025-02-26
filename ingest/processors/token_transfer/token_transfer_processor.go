@@ -5,6 +5,7 @@ import (
 	"github.com/stellar/go/ingest"
 	addressProto "github.com/stellar/go/ingest/address"
 	assetProto "github.com/stellar/go/ingest/asset"
+	operationProcessor "github.com/stellar/go/ingest/processors/operation_processor"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 	"io"
@@ -94,9 +95,9 @@ func ProcessTokenTransferEventsFromOperation(tx ingest.LedgerTransaction, opInde
 	case xdr.OperationTypeSetTrustLineFlags:
 		return setTrustLineFlagsEvents(tx, opIndex, op.Body.MustSetTrustLineFlagsOp(), opResult.Tr.MustSetTrustLineFlagsResult())
 	case xdr.OperationTypeLiquidityPoolDeposit:
-		return liquidityPoolDepositEvents(tx, opIndex, op.Body.MustLiquidityPoolDepositOp(), opResult.Tr.MustLiquidityPoolDepositResult())
+		return liquidityPoolDepositEvents(tx, opIndex, op)
 	case xdr.OperationTypeLiquidityPoolWithdraw:
-		return liquidityPoolWithdrawEvents(tx, opIndex, op.Body.MustLiquidityPoolWithdrawOp(), opResult.Tr.MustLiquidityPoolWithdrawResult())
+		return liquidityPoolWithdrawEvents(tx, opIndex, op)
 	case xdr.OperationTypeManageBuyOffer:
 		return manageBuyOfferEvents(tx, opIndex, op, opResult)
 	case xdr.OperationTypeManageSellOffer:
@@ -104,9 +105,9 @@ func ProcessTokenTransferEventsFromOperation(tx ingest.LedgerTransaction, opInde
 	case xdr.OperationTypeCreatePassiveSellOffer:
 		return createPassiveSellOfferEvents(tx, opIndex, op, opResult)
 	case xdr.OperationTypePathPaymentStrictSend:
-		return pathPaymentStrictSendEvents(tx, opIndex, op.Body.MustPathPaymentStrictSendOp(), opResult.Tr.MustPathPaymentStrictSendResult())
+		return pathPaymentStrictSendEvents(tx, opIndex, op, opResult)
 	case xdr.OperationTypePathPaymentStrictReceive:
-		return pathPaymentStrictReceiveEvents(tx, opIndex, op.Body.MustPathPaymentStrictReceiveOp(), opResult.Tr.MustPathPaymentStrictReceiveResult())
+		return pathPaymentStrictReceiveEvents(tx, opIndex, op, opResult)
 	default:
 		return nil, nil
 	}
@@ -241,33 +242,79 @@ func setTrustLineFlagsEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr
 	return nil, nil
 }
 
-func liquidityPoolDepositEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.LiquidityPoolDepositOp, result xdr.LiquidityPoolDepositResult) ([]*TokenTransferEvent, error) {
-	return nil, nil
+func liquidityPoolDepositEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation) ([]*TokenTransferEvent, error) {
+	lpDepositOp := op.Body.MustLiquidityPoolDepositOp()
+	lpEntry, delta, err := operationProcessor.GetLiquidityPoolAndProductDelta(int32(opIndex), tx, &lpDepositOp.LiquidityPoolId)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to get liquidity pool deposit event details from operation changes")
+	}
+
+	meta := NewEventMeta(tx, &opIndex, nil)
+	operationSrcAccount := operationSourceAccount(tx, op)
+	from, to := addressWrapper{account: &operationSrcAccount}, addressWrapper{liquidityPoolId: &lpEntry.LiquidityPoolId}
+
+	assetA, assetB := lpEntry.Body.ConstantProduct.Params.AssetB, lpEntry.Body.ConstantProduct.Params.AssetB
+	// delta is calculated as (post - pre) for the ledgerEntryChange
+	amtA, amtB := delta.ReserveA, delta.ReserveB
+	if amtA <= 0 {
+		return nil, errors.Wrapf(err, "Deposited amount (%v) for assetA: %v, cannot be negative", amtA, assetA.String())
+	}
+	if amtB <= 0 {
+		return nil, errors.Wrapf(err, "Deposited amount (%v) for assetB: %v, cannot be negative", amtB, assetB.String())
+	}
+
+	return []*TokenTransferEvent{
+		mintOrBurnOrTransferEvent(assetA, from, to, amount.String(amtA), meta),
+		mintOrBurnOrTransferEvent(assetB, from, to, amount.String(amtB), meta),
+	}, nil
 }
 
-func liquidityPoolWithdrawEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.LiquidityPoolWithdrawOp, result xdr.LiquidityPoolWithdrawResult) ([]*TokenTransferEvent, error) {
-	return nil, nil
-}
+func liquidityPoolWithdrawEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation) ([]*TokenTransferEvent, error) {
+	lpWithdrawOp := op.Body.MustLiquidityPoolWithdrawOp()
+	lpEntry, delta, err := operationProcessor.GetLiquidityPoolAndProductDelta(int32(opIndex), tx, &lpWithdrawOp.LiquidityPoolId)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to get liquidity pool withdraw event details from operation changes")
+	}
 
-func generateEventsFromLiquidityPoolFills(meta *EventMeta, operationSrcAccount xdr.MuxedAccount, claims []xdr.ClaimAtom) []*TokenTransferEvent {
-	return nil
-}
+	meta := NewEventMeta(tx, &opIndex, nil)
+	operationSrcAccount := operationSourceAccount(tx, op)
+	from, to := addressWrapper{account: &operationSrcAccount}, addressWrapper{liquidityPoolId: &lpEntry.LiquidityPoolId}
 
-func generateEventsFromFilledOffers(meta *EventMeta, operationSrcAccount xdr.MuxedAccount, claims []xdr.ClaimAtom) []*TokenTransferEvent {
+	assetA, assetB := lpEntry.Body.ConstantProduct.Params.AssetB, lpEntry.Body.ConstantProduct.Params.AssetB
+	// delta is calculated as (post - pre) for the ledgerEntryChange. For withdraw operation, reverse the sign
+	amtA, amtB := -delta.ReserveA, -delta.ReserveB
+	if amtA <= 0 {
+		return nil, errors.Wrapf(err, "Withdrawn amount (%v) for assetA: %v, cannot be negative", amtA, assetA.String())
+	}
+	if amtB <= 0 {
+		return nil, errors.Wrapf(err, "Withdrawn amount (%v) for assetB: %v, cannot be negative", amtB, assetB.String())
+	}
+
+	return []*TokenTransferEvent{
+		mintOrBurnOrTransferEvent(assetA, from, to, amount.String(amtA), meta),
+		mintOrBurnOrTransferEvent(assetB, from, to, amount.String(amtB), meta),
+	}, nil
+}
+func generateEventsFromClaimAtoms(meta *EventMeta, operationSrcAccount xdr.MuxedAccount, claims []xdr.ClaimAtom) []*TokenTransferEvent {
 	var events []*TokenTransferEvent
+	operationSourceAddressWrapper := addressWrapper{account: &operationSrcAccount}
+	var sellerAddressWrapper addressWrapper
+
 	for _, claim := range claims {
-		// We can directly call claim.SellerID() here, since I dont expect any Liquidity pool type claim atoms here.
-		// We cant do this when coding up pathPayment related operations
-		sellerId := claim.SellerId()
-		sellerAccount := sellerId.ToMuxedAccount()
-		events = append(events,
-			mintOrBurnOrTransferEvent(claim.AssetSold(), addressWrapper{account: &sellerAccount}, addressWrapper{account: &operationSrcAccount}, amount.String(claim.AmountSold()), meta),
-		)
+		if claim.Type == xdr.ClaimAtomTypeClaimAtomTypeLiquidityPool {
+			lpId := claim.MustLiquidityPool().LiquidityPoolId
+			sellerAddressWrapper = addressWrapper{liquidityPoolId: &lpId}
+		} else {
+			sellerId := claim.SellerId()
+			sellerAccount := sellerId.ToMuxedAccount()
+			sellerAddressWrapper = addressWrapper{account: &sellerAccount}
 
-		events = append(events,
-			mintOrBurnOrTransferEvent(claim.AssetBought(), addressWrapper{account: &operationSrcAccount}, addressWrapper{account: &sellerAccount}, amount.String(claim.AmountBought()), meta),
-		)
+		}
 
+		// 2 events generated per trade
+		events = append(events,
+			mintOrBurnOrTransferEvent(claim.AssetSold(), sellerAddressWrapper, operationSourceAddressWrapper, amount.String(claim.AmountSold()), meta),
+			mintOrBurnOrTransferEvent(claim.AssetBought(), operationSourceAddressWrapper, sellerAddressWrapper, amount.String(claim.AmountBought()), meta))
 	}
 	return events
 }
@@ -280,7 +327,7 @@ func manageBuyOfferEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Op
 	}
 
 	meta := NewEventMeta(tx, &opIndex, nil)
-	return generateEventsFromFilledOffers(meta, operationSrcAccount, offersClaimed), nil
+	return generateEventsFromClaimAtoms(meta, operationSrcAccount, offersClaimed), nil
 }
 
 func manageSellOfferEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation, result xdr.OperationResult) ([]*TokenTransferEvent, error) {
@@ -290,7 +337,7 @@ func manageSellOfferEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.O
 		return nil, nil
 	}
 	meta := NewEventMeta(tx, &opIndex, nil)
-	return generateEventsFromFilledOffers(meta, operationSrcAccount, offersClaimed), nil
+	return generateEventsFromClaimAtoms(meta, operationSrcAccount, offersClaimed), nil
 }
 
 // EXACTLY SAME as manageSellOfferEvents
@@ -298,12 +345,36 @@ func createPassiveSellOfferEvents(tx ingest.LedgerTransaction, opIndex uint32, o
 	return manageSellOfferEvents(tx, opIndex, op, result)
 }
 
-func pathPaymentStrictSendEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.PathPaymentStrictSendOp, result xdr.PathPaymentStrictSendResult) ([]*TokenTransferEvent, error) {
-	return nil, nil
+func pathPaymentStrictSendEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation, result xdr.OperationResult) ([]*TokenTransferEvent, error) {
+	meta := NewEventMeta(tx, &opIndex, nil)
+	operationSrcAccount := operationSourceAccount(tx, op)
+	strictSendOp := op.Body.MustPathPaymentStrictSendOp()
+	strictSendResult := result.Tr.MustPathPaymentStrictSendResult()
+
+	var events []*TokenTransferEvent
+	events = append(events, generateEventsFromClaimAtoms(meta, operationSrcAccount, strictSendResult.MustSuccess().Offers)...)
+
+	// Generate one final event indicating the amount that the destination received in terms of destination asset
+	events = append(events,
+		mintOrBurnOrTransferEvent(strictSendOp.DestAsset, addressWrapper{account: &operationSrcAccount}, addressWrapper{account: &strictSendOp.Destination}, amount.String(strictSendResult.DestAmount()), meta))
+
+	return events, nil
 }
 
-func pathPaymentStrictReceiveEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.PathPaymentStrictReceiveOp, result xdr.PathPaymentStrictReceiveResult) ([]*TokenTransferEvent, error) {
-	return nil, nil
+func pathPaymentStrictReceiveEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation, result xdr.OperationResult) ([]*TokenTransferEvent, error) {
+	meta := NewEventMeta(tx, &opIndex, nil)
+	operationSrcAccount := operationSourceAccount(tx, op)
+	strictReceiveOp := op.Body.MustPathPaymentStrictReceiveOp()
+	strictReceiveResult := result.Tr.MustPathPaymentStrictReceiveResult()
+
+	var events []*TokenTransferEvent
+	events = append(events, generateEventsFromClaimAtoms(meta, operationSrcAccount, strictReceiveResult.MustSuccess().Offers)...)
+
+	// Generate one final event indicating the amount that the destination received in terms of destination asset
+	events = append(events,
+		mintOrBurnOrTransferEvent(strictReceiveOp.DestAsset, addressWrapper{account: &operationSrcAccount}, addressWrapper{account: &strictReceiveOp.Destination}, amount.String(strictReceiveOp.DestAmount), meta))
+
+	return events, nil
 }
 
 // Helper functions
