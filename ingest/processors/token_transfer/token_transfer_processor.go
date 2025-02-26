@@ -83,7 +83,7 @@ func ProcessTokenTransferEventsFromOperation(tx ingest.LedgerTransaction, opInde
 	case xdr.OperationTypePayment:
 		return paymentEvents(tx, opIndex, op)
 	case xdr.OperationTypeCreateClaimableBalance:
-		return createClaimableBalanceEvents(tx, opIndex, op.Body.MustCreateClaimableBalanceOp(), opResult.Tr.MustCreateClaimableBalanceResult())
+		return createClaimableBalanceEvents(tx, opIndex, op, opResult)
 	case xdr.OperationTypeClaimClaimableBalance:
 		return claimClaimableBalanceEvents(tx, opIndex, op.Body.MustClaimClaimableBalanceOp(), opResult.Tr.MustClaimClaimableBalanceResult())
 	case xdr.OperationTypeClawback:
@@ -129,11 +129,11 @@ func generateFeeEvent(tx ingest.LedgerTransaction) ([]*TokenTransferEvent, error
 
 // Function stubs
 func accountCreateEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation) ([]*TokenTransferEvent, error) {
-	srcAcc := operationSourceAccount(tx, op)
+	operationSrcAccount := operationSourceAccount(tx, op)
 	createAccountOp := op.Body.MustCreateAccountOp()
 	destAcc, amt := createAccountOp.Destination.ToMuxedAccount(), amount.String(createAccountOp.StartingBalance)
 	meta := NewEventMeta(tx, &opIndex, nil)
-	event := NewTransferEvent(meta, protoAddressFromAccount(srcAcc), protoAddressFromAccount(destAcc), amt, xlmProtoAsset)
+	event := NewTransferEvent(meta, protoAddressFromAccount(operationSrcAccount), protoAddressFromAccount(destAcc), amt, xlmProtoAsset)
 	return []*TokenTransferEvent{event}, nil // Just one event will be generated
 }
 
@@ -143,11 +143,11 @@ func mergeAccountEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Oper
 	if res.SourceAccountBalance == nil {
 		return nil, nil
 	}
-	srcAcc := operationSourceAccount(tx, op)
+	operationSrcAccount := operationSourceAccount(tx, op)
 	destAcc := op.Body.MustDestination()
 	amt := amount.String(*res.SourceAccountBalance)
 	meta := NewEventMeta(tx, &opIndex, nil)
-	event := NewTransferEvent(meta, protoAddressFromAccount(srcAcc), protoAddressFromAccount(destAcc), amt, xlmProtoAsset)
+	event := NewTransferEvent(meta, protoAddressFromAccount(operationSrcAccount), protoAddressFromAccount(destAcc), amt, xlmProtoAsset)
 	return []*TokenTransferEvent{event}, nil // Just one event will be generated
 }
 
@@ -209,17 +209,26 @@ func mintOrBurnOrTransferEvent(asset xdr.Asset, from addressWrapper, to addressW
 
 func paymentEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation) ([]*TokenTransferEvent, error) {
 	paymentOp := op.Body.MustPaymentOp()
-	srcAcc := operationSourceAccount(tx, op)
+	operationSrcAccount := operationSourceAccount(tx, op)
 	destAcc := paymentOp.Destination
 	amt := amount.String(paymentOp.Amount)
 	meta := NewEventMeta(tx, &opIndex, nil)
 
-	event := mintOrBurnOrTransferEvent(paymentOp.Asset, addressWrapper{account: &srcAcc}, addressWrapper{account: &destAcc}, amt, meta)
+	from, to := addressWrapper{account: &operationSrcAccount}, addressWrapper{account: &destAcc}
+	event := mintOrBurnOrTransferEvent(paymentOp.Asset, from, to, amt, meta)
 	return []*TokenTransferEvent{event}, nil
 }
 
-func createClaimableBalanceEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.CreateClaimableBalanceOp, result xdr.CreateClaimableBalanceResult) ([]*TokenTransferEvent, error) {
-	return nil, nil
+func createClaimableBalanceEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation, result xdr.OperationResult) ([]*TokenTransferEvent, error) {
+	createCbOp := op.Body.MustCreateClaimableBalanceOp()
+	createCbResult := result.Tr.MustCreateClaimableBalanceResult()
+	operationSrcAccount := operationSourceAccount(tx, op)
+	meta := NewEventMeta(tx, &opIndex, nil)
+	claimableBalanceId := createCbResult.MustBalanceId()
+
+	from, to := addressWrapper{account: &operationSrcAccount}, addressWrapper{claimableBalanceId: &claimableBalanceId}
+	event := mintOrBurnOrTransferEvent(createCbOp.Asset, from, to, amount.String(createCbOp.Amount), meta)
+	return []*TokenTransferEvent{event}, nil
 }
 
 func claimClaimableBalanceEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.ClaimClaimableBalanceOp, result xdr.ClaimClaimableBalanceResult) ([]*TokenTransferEvent, error) {
@@ -251,7 +260,6 @@ func liquidityPoolDepositEvents(tx ingest.LedgerTransaction, opIndex uint32, op 
 
 	meta := NewEventMeta(tx, &opIndex, nil)
 	operationSrcAccount := operationSourceAccount(tx, op)
-	from, to := addressWrapper{account: &operationSrcAccount}, addressWrapper{liquidityPoolId: &lpEntry.LiquidityPoolId}
 
 	assetA, assetB := lpEntry.Body.ConstantProduct.Params.AssetB, lpEntry.Body.ConstantProduct.Params.AssetB
 	// delta is calculated as (post - pre) for the ledgerEntryChange
@@ -263,6 +271,7 @@ func liquidityPoolDepositEvents(tx ingest.LedgerTransaction, opIndex uint32, op 
 		return nil, errors.Wrapf(err, "Deposited amount (%v) for assetB: %v, cannot be negative", amtB, assetB.String())
 	}
 
+	from, to := addressWrapper{account: &operationSrcAccount}, addressWrapper{liquidityPoolId: &lpEntry.LiquidityPoolId}
 	return []*TokenTransferEvent{
 		mintOrBurnOrTransferEvent(assetA, from, to, amount.String(amtA), meta),
 		mintOrBurnOrTransferEvent(assetB, from, to, amount.String(amtB), meta),
@@ -278,7 +287,6 @@ func liquidityPoolWithdrawEvents(tx ingest.LedgerTransaction, opIndex uint32, op
 
 	meta := NewEventMeta(tx, &opIndex, nil)
 	operationSrcAccount := operationSourceAccount(tx, op)
-	from, to := addressWrapper{account: &operationSrcAccount}, addressWrapper{liquidityPoolId: &lpEntry.LiquidityPoolId}
 
 	assetA, assetB := lpEntry.Body.ConstantProduct.Params.AssetB, lpEntry.Body.ConstantProduct.Params.AssetB
 	// delta is calculated as (post - pre) for the ledgerEntryChange. For withdraw operation, reverse the sign
@@ -290,6 +298,7 @@ func liquidityPoolWithdrawEvents(tx ingest.LedgerTransaction, opIndex uint32, op
 		return nil, errors.Wrapf(err, "Withdrawn amount (%v) for assetB: %v, cannot be negative", amtB, assetB.String())
 	}
 
+	from, to := addressWrapper{account: &operationSrcAccount}, addressWrapper{liquidityPoolId: &lpEntry.LiquidityPoolId}
 	return []*TokenTransferEvent{
 		mintOrBurnOrTransferEvent(assetA, from, to, amount.String(amtA), meta),
 		mintOrBurnOrTransferEvent(assetB, from, to, amount.String(amtB), meta),
@@ -325,7 +334,6 @@ func manageBuyOfferEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Op
 	if len(offersClaimed) == 0 {
 		return nil, nil
 	}
-
 	meta := NewEventMeta(tx, &opIndex, nil)
 	return generateEventsFromClaimAtoms(meta, operationSrcAccount, offersClaimed), nil
 }
@@ -355,9 +363,9 @@ func pathPaymentStrictSendEvents(tx ingest.LedgerTransaction, opIndex uint32, op
 	events = append(events, generateEventsFromClaimAtoms(meta, operationSrcAccount, strictSendResult.MustSuccess().Offers)...)
 
 	// Generate one final event indicating the amount that the destination received in terms of destination asset
+	from, to := addressWrapper{account: &operationSrcAccount}, addressWrapper{account: &strictSendOp.Destination}
 	events = append(events,
-		mintOrBurnOrTransferEvent(strictSendOp.DestAsset, addressWrapper{account: &operationSrcAccount}, addressWrapper{account: &strictSendOp.Destination}, amount.String(strictSendResult.DestAmount()), meta))
-
+		mintOrBurnOrTransferEvent(strictSendOp.DestAsset, from, to, amount.String(strictSendResult.DestAmount()), meta))
 	return events, nil
 }
 
@@ -371,9 +379,9 @@ func pathPaymentStrictReceiveEvents(tx ingest.LedgerTransaction, opIndex uint32,
 	events = append(events, generateEventsFromClaimAtoms(meta, operationSrcAccount, strictReceiveResult.MustSuccess().Offers)...)
 
 	// Generate one final event indicating the amount that the destination received in terms of destination asset
+	from, to := addressWrapper{account: &operationSrcAccount}, addressWrapper{account: &strictReceiveOp.Destination}
 	events = append(events,
-		mintOrBurnOrTransferEvent(strictReceiveOp.DestAsset, addressWrapper{account: &operationSrcAccount}, addressWrapper{account: &strictReceiveOp.Destination}, amount.String(strictReceiveOp.DestAmount), meta))
-
+		mintOrBurnOrTransferEvent(strictReceiveOp.DestAsset, from, to, amount.String(strictReceiveOp.DestAmount), meta))
 	return events, nil
 }
 
@@ -409,7 +417,7 @@ func protoAddressFromLpHash(lpHash xdr.PoolId) *addressProto.Address {
 
 func protoAddressFromClaimableBalanceId(cb xdr.ClaimableBalanceId) *addressProto.Address {
 	return &addressProto.Address{
-		AddressType: addressProto.AddressType_ADDRESS_TYPE_LIQUIDITY_POOL,
+		AddressType: addressProto.AddressType_ADDRESS_TYPE_CLAIMABLE_BALANCE,
 		//TODO: replace with strkey
 		StrKey: cb.MustV0().HexString(),
 	}
