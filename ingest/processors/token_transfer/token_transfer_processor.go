@@ -88,9 +88,9 @@ func ProcessTokenTransferEventsFromOperation(tx ingest.LedgerTransaction, opInde
 	case xdr.OperationTypeClaimClaimableBalance:
 		return claimClaimableBalanceEvents(tx, opIndex, op)
 	case xdr.OperationTypeClawback:
-		return clawbackEvents(tx, opIndex, op.Body.MustClawbackOp(), opResult.Tr.MustClawbackResult())
+		return clawbackEvents(tx, opIndex, op)
 	case xdr.OperationTypeClawbackClaimableBalance:
-		return clawbackClaimableBalanceEvents(tx, opIndex, op.Body.MustClawbackClaimableBalanceOp(), opResult.Tr.MustClawbackClaimableBalanceResult())
+		return clawbackClaimableBalanceEvents(tx, opIndex, op)
 	case xdr.OperationTypeAllowTrust:
 		return allowTrustEvents(tx, opIndex, op.Body.MustAllowTrustOp(), opResult.Tr.MustAllowTrustResult())
 	case xdr.OperationTypeSetTrustLineFlags:
@@ -263,28 +263,45 @@ func getClaimableBalanceDetailsFromOperation(tx ingest.LedgerTransaction, opInde
 
 func claimClaimableBalanceEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation) ([]*TokenTransferEvent, error) {
 	claimCbOp := op.Body.MustClaimClaimableBalanceOp()
-	operationSrcAccount := operationSourceAccount(tx, op)
-	meta := NewEventMeta(tx, &opIndex, nil)
 	cbId := claimCbOp.BalanceId
-
-	// This is one case where the order is reversed. Money flows from CBid to the sourceAccount of this claimCb operation
-	from, to := addressWrapper{claimableBalanceId: &cbId}, addressWrapper{account: &operationSrcAccount}
 
 	cbEntry, err := getClaimableBalanceDetailsFromOperation(tx, opIndex, cbId)
 	if err != nil {
 		return nil, err
 	}
 
+	meta := NewEventMeta(tx, &opIndex, nil)
+	operationSrcAccount := operationSourceAccount(tx, op)
+	// This is one case where the order is reversed. Money flows from CBid --> sourceAccount of this claimCb operation
+	from, to := addressWrapper{claimableBalanceId: &cbId}, addressWrapper{account: &operationSrcAccount}
 	event := mintOrBurnOrTransferEvent(cbEntry.Asset, from, to, amount.String(cbEntry.Amount), meta)
 	return []*TokenTransferEvent{event}, nil
 }
 
-func clawbackEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.ClawbackOp, result xdr.ClawbackResult) ([]*TokenTransferEvent, error) {
+func clawbackEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation) ([]*TokenTransferEvent, error) {
+	clawbackOp := op.Body.MustClawbackOp()
+	meta := NewEventMeta(tx, &opIndex, nil)
+
+	// fromAddress is not the operationSourceAccount. It is the account specified in the operation
+	from := protoAddressFromAccount(clawbackOp.From)
+	event := NewClawbackEvent(meta, from, amount.String(clawbackOp.Amount), assetProto.NewIssuedAsset(clawbackOp.Asset))
+	return []*TokenTransferEvent{event}, nil
 	return nil, nil
 }
 
-func clawbackClaimableBalanceEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.ClawbackClaimableBalanceOp, result xdr.ClawbackClaimableBalanceResult) ([]*TokenTransferEvent, error) {
-	return nil, nil
+func clawbackClaimableBalanceEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation) ([]*TokenTransferEvent, error) {
+	clawbackCbOp := op.Body.MustClawbackClaimableBalanceOp()
+	cbId := clawbackCbOp.BalanceId
+
+	cbEntry, err := getClaimableBalanceDetailsFromOperation(tx, opIndex, cbId)
+	if err != nil {
+		return nil, err
+	}
+
+	meta := NewEventMeta(tx, &opIndex, nil)
+	// Money is clawed back from the claimableBalanceId
+	event := NewClawbackEvent(meta, protoAddressFromClaimableBalanceId(cbId), amount.String(cbEntry.Amount), assetProto.NewIssuedAsset(cbEntry.Asset))
+	return []*TokenTransferEvent{event}, nil
 }
 
 func allowTrustEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.AllowTrustOp, result xdr.AllowTrustResult) ([]*TokenTransferEvent, error) {
