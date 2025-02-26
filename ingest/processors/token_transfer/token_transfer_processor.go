@@ -322,7 +322,7 @@ func liquidityPoolDepositEvents(tx ingest.LedgerTransaction, opIndex uint32, op 
 	meta := NewEventMeta(tx, &opIndex, nil)
 	operationSrcAccount := operationSourceAccount(tx, op)
 
-	assetA, assetB := lpEntry.Body.ConstantProduct.Params.AssetB, lpEntry.Body.ConstantProduct.Params.AssetB
+	assetA, assetB := lpEntry.Body.ConstantProduct.Params.AssetA, lpEntry.Body.ConstantProduct.Params.AssetB
 	// delta is calculated as (post - pre) for the ledgerEntryChange
 	amtA, amtB := delta.ReserveA, delta.ReserveB
 	if amtA <= 0 {
@@ -332,6 +332,7 @@ func liquidityPoolDepositEvents(tx ingest.LedgerTransaction, opIndex uint32, op 
 		return nil, errors.Wrapf(err, "Deposited amount (%v) for assetB: %v, cannot be negative", amtB, assetB.String())
 	}
 
+	// From = operation source account, to = LP
 	from, to := addressWrapper{account: &operationSrcAccount}, addressWrapper{liquidityPoolId: &lpEntry.LiquidityPoolId}
 	return []*TokenTransferEvent{
 		mintOrBurnOrTransferEvent(assetA, from, to, amount.String(amtA), meta),
@@ -349,7 +350,7 @@ func liquidityPoolWithdrawEvents(tx ingest.LedgerTransaction, opIndex uint32, op
 	meta := NewEventMeta(tx, &opIndex, nil)
 	operationSrcAccount := operationSourceAccount(tx, op)
 
-	assetA, assetB := lpEntry.Body.ConstantProduct.Params.AssetB, lpEntry.Body.ConstantProduct.Params.AssetB
+	assetA, assetB := lpEntry.Body.ConstantProduct.Params.AssetA, lpEntry.Body.ConstantProduct.Params.AssetB
 	// delta is calculated as (post - pre) for the ledgerEntryChange. For withdraw operation, reverse the sign
 	amtA, amtB := -delta.ReserveA, -delta.ReserveB
 	if amtA <= 0 {
@@ -359,7 +360,8 @@ func liquidityPoolWithdrawEvents(tx ingest.LedgerTransaction, opIndex uint32, op
 		return nil, errors.Wrapf(err, "Withdrawn amount (%v) for assetB: %v, cannot be negative", amtB, assetB.String())
 	}
 
-	from, to := addressWrapper{account: &operationSrcAccount}, addressWrapper{liquidityPoolId: &lpEntry.LiquidityPoolId}
+	// Opposite of LP Deposit. from = LP, to = operation source acocunt
+	from, to := addressWrapper{liquidityPoolId: &lpEntry.LiquidityPoolId}, addressWrapper{account: &operationSrcAccount}
 	return []*TokenTransferEvent{
 		mintOrBurnOrTransferEvent(assetA, from, to, amount.String(amtA), meta),
 		mintOrBurnOrTransferEvent(assetB, from, to, amount.String(amtB), meta),
