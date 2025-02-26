@@ -163,7 +163,8 @@ func (c *ChangeCompactor) getLedgerKey(ledgerEntry *xdr.LedgerEntry) ([]byte, er
 	return ledgerKey, nil
 }
 
-func compactTTLUpdate(a, b xdr.TtlEntry) xdr.TtlEntry {
+// maxTTL returns the ttl entry with the highest LiveUntilLedgerSeq
+func maxTTL(a, b xdr.TtlEntry) xdr.TtlEntry {
 	if a.LiveUntilLedgerSeq > b.LiveUntilLedgerSeq {
 		return a
 	}
@@ -193,7 +194,7 @@ func (c *ChangeCompactor) addUpdatedChange(change Change) error {
 		if change.Type == xdr.LedgerEntryTypeTtl {
 			// CAP-63 introduces special update semantics for TTL entries, see
 			// https://github.com/stellar/stellar-protocol/blob/master/core/cap-0063.md#ttl-ledger-change-semantics
-			*post.Data.Ttl = compactTTLUpdate(*existingChange.Post.Data.Ttl, *post.Data.Ttl)
+			*post.Data.Ttl = maxTTL(*existingChange.Post.Data.Ttl, *post.Data.Ttl)
 		}
 		c.cache[ledgerKeyString] = Change{
 			Type:       change.Type,
