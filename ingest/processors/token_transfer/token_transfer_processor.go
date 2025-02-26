@@ -1,6 +1,7 @@
 package token_transfer
 
 import (
+	"fmt"
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/ingest"
 	addressProto "github.com/stellar/go/ingest/address"
@@ -85,7 +86,7 @@ func ProcessTokenTransferEventsFromOperation(tx ingest.LedgerTransaction, opInde
 	case xdr.OperationTypeCreateClaimableBalance:
 		return createClaimableBalanceEvents(tx, opIndex, op, opResult)
 	case xdr.OperationTypeClaimClaimableBalance:
-		return claimClaimableBalanceEvents(tx, opIndex, op.Body.MustClaimClaimableBalanceOp(), opResult.Tr.MustClaimClaimableBalanceResult())
+		return claimClaimableBalanceEvents(tx, opIndex, op)
 	case xdr.OperationTypeClawback:
 		return clawbackEvents(tx, opIndex, op.Body.MustClawbackOp(), opResult.Tr.MustClawbackResult())
 	case xdr.OperationTypeClawbackClaimableBalance:
@@ -231,8 +232,51 @@ func createClaimableBalanceEvents(tx ingest.LedgerTransaction, opIndex uint32, o
 	return []*TokenTransferEvent{event}, nil
 }
 
-func claimClaimableBalanceEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.ClaimClaimableBalanceOp, result xdr.ClaimClaimableBalanceResult) ([]*TokenTransferEvent, error) {
-	return nil, nil
+func getClaimableBalanceDetailsFromOperation(tx ingest.LedgerTransaction, opIndex uint32, cbId xdr.ClaimableBalanceId) (xdr.ClaimableBalanceEntry, error) {
+	changes, err := tx.GetOperationChanges(opIndex)
+	if err != nil {
+		return xdr.ClaimableBalanceEntry{}, err
+	}
+
+	var cb xdr.ClaimableBalanceEntry
+	found := false
+	for _, change := range changes {
+		if change.Type != xdr.LedgerEntryTypeClaimableBalance {
+			continue
+		}
+		if change.Pre != nil && change.Post == nil {
+			cb = change.Pre.Data.MustClaimableBalance()
+
+			if cb.BalanceId.MustV0().Equals(cbId.MustV0()) {
+				found = true
+				break
+			}
+		}
+	}
+
+	if !found {
+		// TODO: fix this with strkey for ClaimableBalanceId
+		return xdr.ClaimableBalanceEntry{}, fmt.Errorf("change not found for balanceId: %v", cbId.MustV0().HexString())
+	}
+	return cb, nil
+}
+
+func claimClaimableBalanceEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation) ([]*TokenTransferEvent, error) {
+	claimCbOp := op.Body.MustClaimClaimableBalanceOp()
+	operationSrcAccount := operationSourceAccount(tx, op)
+	meta := NewEventMeta(tx, &opIndex, nil)
+	cbId := claimCbOp.BalanceId
+
+	// This is one case where the order is reversed. Money flows from CBid to the sourceAccount of this claimCb operation
+	from, to := addressWrapper{claimableBalanceId: &cbId}, addressWrapper{account: &operationSrcAccount}
+
+	cbEntry, err := getClaimableBalanceDetailsFromOperation(tx, opIndex, cbId)
+	if err != nil {
+		return nil, err
+	}
+
+	event := mintOrBurnOrTransferEvent(cbEntry.Asset, from, to, amount.String(cbEntry.Amount), meta)
+	return []*TokenTransferEvent{event}, nil
 }
 
 func clawbackEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.ClawbackOp, result xdr.ClawbackResult) ([]*TokenTransferEvent, error) {
