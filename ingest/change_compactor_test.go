@@ -601,3 +601,222 @@ func TestChangeCompactorSquashMultiplePayments(t *testing.T) {
 		}
 	}
 }
+
+func TestCompactTTLUpdates(t *testing.T) {
+	cache := NewChangeCompactor(ChangeCompactorConfig{})
+	assert.NoError(t, cache.AddChange(Change{
+		Type: xdr.LedgerEntryTypeTtl,
+		Pre: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: 10,
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeTtl,
+				Ttl: &xdr.TtlEntry{
+					KeyHash:            xdr.Hash{1},
+					LiveUntilLedgerSeq: 11,
+				},
+			},
+		},
+		Post: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: 12,
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeTtl,
+				Ttl: &xdr.TtlEntry{
+					KeyHash:            xdr.Hash{1},
+					LiveUntilLedgerSeq: 13,
+				},
+			},
+		},
+		ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
+	}))
+	assert.NoError(t, cache.AddChange(Change{
+		Type: xdr.LedgerEntryTypeTtl,
+		Pre: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: 10,
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeTtl,
+				Ttl: &xdr.TtlEntry{
+					KeyHash:            xdr.Hash{1},
+					LiveUntilLedgerSeq: 11,
+				},
+			},
+		},
+		Post: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: 12,
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeTtl,
+				Ttl: &xdr.TtlEntry{
+					KeyHash:            xdr.Hash{1},
+					LiveUntilLedgerSeq: 15,
+				},
+			},
+		},
+		ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
+	}))
+	assert.NoError(t, cache.AddChange(Change{
+		Type: xdr.LedgerEntryTypeTtl,
+		Pre: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: 10,
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeTtl,
+				Ttl: &xdr.TtlEntry{
+					KeyHash:            xdr.Hash{1},
+					LiveUntilLedgerSeq: 11,
+				},
+			},
+		},
+		Post: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: 12,
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeTtl,
+				Ttl: &xdr.TtlEntry{
+					KeyHash:            xdr.Hash{1},
+					LiveUntilLedgerSeq: 12,
+				},
+			},
+		},
+		ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
+	}))
+
+	changes := cache.GetChanges()
+	assert.Len(t, changes, 1)
+	assert.Equal(t, xdr.Uint32(15), changes[0].Post.Data.MustTtl().LiveUntilLedgerSeq)
+	assert.Equal(t, xdr.Hash{1}, changes[0].Post.Data.MustTtl().KeyHash)
+
+	cache = NewChangeCompactor(ChangeCompactorConfig{})
+	assert.NoError(t, cache.AddChange(Change{
+		Type: xdr.LedgerEntryTypeTtl,
+		Post: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: 12,
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeTtl,
+				Ttl: &xdr.TtlEntry{
+					KeyHash:            xdr.Hash{1},
+					LiveUntilLedgerSeq: 15,
+				},
+			},
+		},
+		ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryCreated,
+	}))
+	assert.NoError(t, cache.AddChange(Change{
+		Type: xdr.LedgerEntryTypeTtl,
+		Pre: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: 12,
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeTtl,
+				Ttl: &xdr.TtlEntry{
+					KeyHash:            xdr.Hash{1},
+					LiveUntilLedgerSeq: 15,
+				},
+			},
+		},
+		Post: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: 12,
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeTtl,
+				Ttl: &xdr.TtlEntry{
+					KeyHash:            xdr.Hash{1},
+					LiveUntilLedgerSeq: 30,
+				},
+			},
+		},
+		ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
+	}))
+	assert.NoError(t, cache.AddChange(Change{
+		Type: xdr.LedgerEntryTypeTtl,
+		Pre: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: 12,
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeTtl,
+				Ttl: &xdr.TtlEntry{
+					KeyHash:            xdr.Hash{1},
+					LiveUntilLedgerSeq: 15,
+				},
+			},
+		},
+		Post: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: 12,
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeTtl,
+				Ttl: &xdr.TtlEntry{
+					KeyHash:            xdr.Hash{1},
+					LiveUntilLedgerSeq: 22,
+				},
+			},
+		},
+		ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
+	}))
+
+	changes = cache.GetChanges()
+	assert.Len(t, changes, 1)
+	assert.Equal(t, xdr.Uint32(30), changes[0].Post.Data.MustTtl().LiveUntilLedgerSeq)
+	assert.Equal(t, xdr.Hash{1}, changes[0].Post.Data.MustTtl().KeyHash)
+
+	cache = NewChangeCompactor(ChangeCompactorConfig{})
+	assert.NoError(t, cache.AddChange(Change{
+		Type: xdr.LedgerEntryTypeTtl,
+		Post: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: 12,
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeTtl,
+				Ttl: &xdr.TtlEntry{
+					KeyHash:            xdr.Hash{1},
+					LiveUntilLedgerSeq: 15,
+				},
+			},
+		},
+		ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryRestored,
+	}))
+	assert.NoError(t, cache.AddChange(Change{
+		Type: xdr.LedgerEntryTypeTtl,
+		Pre: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: 12,
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeTtl,
+				Ttl: &xdr.TtlEntry{
+					KeyHash:            xdr.Hash{1},
+					LiveUntilLedgerSeq: 15,
+				},
+			},
+		},
+		Post: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: 12,
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeTtl,
+				Ttl: &xdr.TtlEntry{
+					KeyHash:            xdr.Hash{1},
+					LiveUntilLedgerSeq: 30,
+				},
+			},
+		},
+		ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
+	}))
+	assert.NoError(t, cache.AddChange(Change{
+		Type: xdr.LedgerEntryTypeTtl,
+		Pre: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: 12,
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeTtl,
+				Ttl: &xdr.TtlEntry{
+					KeyHash:            xdr.Hash{1},
+					LiveUntilLedgerSeq: 15,
+				},
+			},
+		},
+		Post: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: 12,
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeTtl,
+				Ttl: &xdr.TtlEntry{
+					KeyHash:            xdr.Hash{1},
+					LiveUntilLedgerSeq: 22,
+				},
+			},
+		},
+		ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
+	}))
+
+	changes = cache.GetChanges()
+	assert.Len(t, changes, 1)
+	assert.Equal(t, xdr.Uint32(30), changes[0].Post.Data.MustTtl().LiveUntilLedgerSeq)
+	assert.Equal(t, xdr.Hash{1}, changes[0].Post.Data.MustTtl().KeyHash)
+}
