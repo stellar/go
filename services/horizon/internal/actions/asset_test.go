@@ -156,7 +156,6 @@ func TestAssetStats(t *testing.T) {
 		ClaimableBalancesAmount: "0.0000010",
 		LiquidityPoolsAmount:    "0.0000020",
 		ContractsAmount:         "0.0000000",
-		ArchivedContractsAmount: "0.0000000",
 		Asset: base.Asset{
 			Type:   "credit_alphanum4",
 			Code:   usdAssetStat.AssetCode,
@@ -199,7 +198,6 @@ func TestAssetStats(t *testing.T) {
 		ClaimableBalancesAmount: "0.0000000",
 		LiquidityPoolsAmount:    "0.0000000",
 		ContractsAmount:         "0.0000000",
-		ArchivedContractsAmount: "0.0000000",
 		Asset: base.Asset{
 			Type:   "credit_alphanum4",
 			Code:   etherAssetStat.AssetCode,
@@ -242,7 +240,6 @@ func TestAssetStats(t *testing.T) {
 		ClaimableBalancesAmount: "0.0000000",
 		LiquidityPoolsAmount:    "0.0000000",
 		ContractsAmount:         "0.0000000",
-		ArchivedContractsAmount: "0.0000000",
 		Asset: base.Asset{
 			Type:   "credit_alphanum4",
 			Code:   otherUSDAssetStat.AssetCode,
@@ -287,7 +284,6 @@ func TestAssetStats(t *testing.T) {
 		ClaimableBalancesAmount: "0.0000000",
 		LiquidityPoolsAmount:    "0.0000000",
 		ContractsAmount:         "0.0000000",
-		ArchivedContractsAmount: "0.0000000",
 		Asset: base.Asset{
 			Type:   "credit_alphanum4",
 			Code:   eurAssetStat.AssetCode,
@@ -461,7 +457,6 @@ func TestAssetStatsIssuerDoesNotExist(t *testing.T) {
 		ClaimableBalancesAmount: "0.0000000",
 		LiquidityPoolsAmount:    "0.0000000",
 		ContractsAmount:         "0.0000000",
-		ArchivedContractsAmount: "0.0000000",
 		Asset: base.Asset{
 			Type:   "credit_alphanum4",
 			Code:   usdAssetStat.AssetCode,

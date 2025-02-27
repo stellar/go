@@ -262,7 +262,16 @@ func (s *ProcessorRunner) runChangeProcessorOnLedger(
 	if err != nil {
 		return errors.Wrap(err, "Error creating ledger change reader")
 	}
-	changeReader = ingest.NewCompactingChangeReader(changeReader, ingest.ChangeCompactorConfig{SuppressRemoveAfterRestoreChange: false})
+	changeReader = ingest.NewCompactingChangeReader(
+		changeReader,
+		ingest.ChangeCompactorConfig{
+			// The asset stats processor is the only processor which can ingest ledger entry restorations.
+			// The asset stats processor deletes contract data ledger entries immediately upon expiration.
+			// So, restores are equivalent to unconditional db insertions and removing after restoration
+			// is a no-op.
+			SuppressRemoveAfterRestoreChange: true,
+		},
+	)
 	if err = streamChanges(s.ctx, changeProcessor, ledger.LedgerSequence(), changeReader); err != nil {
 		return errors.Wrap(err, "Error streaming changes from ledger")
 

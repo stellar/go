@@ -345,7 +345,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestInsertClaimableBalance() {
 		Return(nil).Once()
 	s.mockQ.On("UpdateContractAssetBalanceExpirations", s.ctx, []xdr.Hash{}, []uint32{}).
 		Return(nil).Once()
-	s.mockQ.On("GetContractAssetBalancesExpiringAt", s.ctx, uint32(1234)).
+	s.mockQ.On("DeleteContractAssetBalancesExpiringAt", s.ctx, uint32(1234)).
 		Return([]history.ContractAssetBalance{}, nil).Once()
 
 	s.Assert().NoError(s.processor.Commit(s.ctx))
@@ -508,7 +508,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestInsertTrustLine() {
 		Return(nil).Once()
 	s.mockQ.On("UpdateContractAssetBalanceExpirations", s.ctx, []xdr.Hash{}, []uint32{}).
 		Return(nil).Once()
-	s.mockQ.On("GetContractAssetBalancesExpiringAt", s.ctx, uint32(1234)).
+	s.mockQ.On("DeleteContractAssetBalancesExpiringAt", s.ctx, uint32(1234)).
 		Return([]history.ContractAssetBalance{}, nil).Once()
 
 	s.Assert().NoError(s.processor.Commit(s.ctx))
@@ -623,7 +623,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestInsertContractID() {
 		Return(nil).Once()
 	s.mockQ.On("UpdateContractAssetBalanceExpirations", s.ctx, []xdr.Hash{}, []uint32{}).
 		Return(nil).Once()
-	s.mockQ.On("GetContractAssetBalancesExpiringAt", s.ctx, uint32(1234)).
+	s.mockQ.On("DeleteContractAssetBalancesExpiringAt", s.ctx, uint32(1234)).
 		Return([]history.ContractAssetBalance{}, nil).Once()
 
 	s.Assert().NoError(s.processor.Commit(s.ctx))
@@ -663,10 +663,8 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestInsertContractBalance() {
 	usdAssetContractStat := history.ContractAssetStatRow{
 		ContractID: usdID[:],
 		Stat: history.ContractStat{
-			ActiveBalance:   "200",
-			ActiveHolders:   1,
-			ArchivedBalance: "0",
-			ArchivedHolders: 0,
+			ActiveBalance: "200",
+			ActiveHolders: 1,
 		},
 	}
 	s.mockQ.On("InsertContractAssetStat", s.ctx, mock.MatchedBy(func(row history.ContractAssetStatRow) bool {
@@ -688,7 +686,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestInsertContractBalance() {
 	}).Return(nil).Once()
 	s.mockQ.On("UpdateContractAssetBalanceExpirations", s.ctx, []xdr.Hash{}, []uint32{}).
 		Return(nil).Once()
-	s.mockQ.On("GetContractAssetBalancesExpiringAt", s.ctx, uint32(1234)).
+	s.mockQ.On("DeleteContractAssetBalancesExpiringAt", s.ctx, uint32(1234)).
 		Return([]history.ContractAssetBalance{}, nil).Once()
 
 	s.Assert().NoError(s.processor.Commit(s.ctx))
@@ -715,10 +713,8 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateContractBalance() {
 	usdAssetContractStat := history.ContractAssetStatRow{
 		ContractID: usdID[:],
 		Stat: history.ContractStat{
-			ActiveBalance:   "150",
-			ActiveHolders:   1,
-			ArchivedBalance: "20",
-			ArchivedHolders: 2,
+			ActiveBalance: "150",
+			ActiveHolders: 1,
 		},
 	}
 	s.mockQ.On("GetContractAssetStat", s.ctx, usdID[:]).
@@ -748,7 +744,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateContractBalance() {
 		Return(nil).Once()
 	s.mockQ.On("UpdateContractAssetBalanceExpirations", s.ctx, []xdr.Hash{}, []uint32{}).
 		Return(nil).Once()
-	s.mockQ.On("GetContractAssetBalancesExpiringAt", s.ctx, uint32(1234)).
+	s.mockQ.On("DeleteContractAssetBalancesExpiringAt", s.ctx, uint32(1234)).
 		Return([]history.ContractAssetBalance{}, nil).Once()
 
 	s.Assert().NoError(s.processor.Commit(s.ctx))
@@ -785,10 +781,8 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveContractBalance() {
 	usdAssetContractStat := history.ContractAssetStatRow{
 		ContractID: usdID[:],
 		Stat: history.ContractStat{
-			ActiveBalance:   "200",
-			ActiveHolders:   1,
-			ArchivedHolders: 0,
-			ArchivedBalance: "0",
+			ActiveBalance: "200",
+			ActiveHolders: 1,
 		},
 	}
 	s.mockQ.On("GetContractAssetStat", s.ctx, usdID[:]).
@@ -805,7 +799,51 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveContractBalance() {
 		Return(nil).Once()
 	s.mockQ.On("UpdateContractAssetBalanceExpirations", s.ctx, []xdr.Hash{}, []uint32{}).
 		Return(nil).Once()
-	s.mockQ.On("GetContractAssetBalancesExpiringAt", s.ctx, uint32(1234)).
+	s.mockQ.On("DeleteContractAssetBalancesExpiringAt", s.ctx, uint32(1234)).
+		Return([]history.ContractAssetBalance{}, nil).Once()
+
+	s.Assert().NoError(s.processor.Commit(s.ctx))
+}
+
+func (s *AssetStatsProcessorTestSuiteLedger) TestEviction() {
+	lastModifiedLedgerSeq := xdr.Uint32(1234)
+	usdID, err := xdr.MustNewCreditAsset("USD", trustLineIssuer.Address()).ContractID("")
+	s.Assert().NoError(err)
+
+	s.Assert().NoError(s.processor.ProcessChange(s.ctx, ingest.Change{
+		Type:   xdr.LedgerEntryTypeContractData,
+		Reason: ingest.LedgerEntryChangeReasonEviction,
+		Pre: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+			Data:                  BalanceToContractData(usdID, [32]byte{1}, 200),
+		},
+	}))
+
+	keyHash := getKeyHashForBalance(s.T(), usdID, [32]byte{1})
+	s.Assert().NoError(s.processor.ProcessChange(s.ctx, ingest.Change{
+		Type:   xdr.LedgerEntryTypeTtl,
+		Reason: ingest.LedgerEntryChangeReasonEviction,
+		Pre: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeTtl,
+				Ttl: &xdr.TtlEntry{
+					KeyHash:            keyHash,
+					LiveUntilLedgerSeq: 2234,
+				},
+			},
+		},
+	}))
+
+	s.mockQ.On("RemoveContractAssetBalances", s.ctx, []xdr.Hash(nil)).
+		Return(nil).Once()
+	s.mockQ.On("UpdateContractAssetBalanceAmounts", s.ctx, []xdr.Hash{}, []string{}).
+		Return(nil).Once()
+	s.mockQ.On("InsertContractAssetBalances", s.ctx, []history.ContractAssetBalance(nil)).
+		Return(nil).Once()
+	s.mockQ.On("UpdateContractAssetBalanceExpirations", s.ctx, []xdr.Hash{}, []uint32{}).
+		Return(nil).Once()
+	s.mockQ.On("DeleteContractAssetBalancesExpiringAt", s.ctx, uint32(1234)).
 		Return([]history.ContractAssetBalance{}, nil).Once()
 
 	s.Assert().NoError(s.processor.Commit(s.ctx))
@@ -931,10 +969,8 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestInsertContractIDWithBalance() {
 	btcAssetContractStat := history.ContractAssetStatRow{
 		ContractID: btcID[:],
 		Stat: history.ContractStat{
-			ActiveBalance:   "20",
-			ActiveHolders:   1,
-			ArchivedBalance: "0",
-			ArchivedHolders: 0,
+			ActiveBalance: "20",
+			ActiveHolders: 1,
 		},
 	}
 	s.mockQ.On("InsertContractAssetStat", s.ctx, mock.MatchedBy(func(row history.ContractAssetStatRow) bool {
@@ -974,7 +1010,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestInsertContractIDWithBalance() {
 	}).Return(nil).Once()
 	s.mockQ.On("UpdateContractAssetBalanceExpirations", s.ctx, []xdr.Hash{}, []uint32{}).
 		Return(nil).Once()
-	s.mockQ.On("GetContractAssetBalancesExpiringAt", s.ctx, uint32(1234)).
+	s.mockQ.On("DeleteContractAssetBalancesExpiringAt", s.ctx, uint32(1234)).
 		Return([]history.ContractAssetBalance{}, nil).Once()
 
 	s.Assert().NoError(s.processor.Commit(s.ctx))
@@ -1085,7 +1121,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestInsertClaimableBalanceAndTrustl
 		Return(nil).Once()
 	s.mockQ.On("UpdateContractAssetBalanceExpirations", s.ctx, []xdr.Hash{}, []uint32{}).
 		Return(nil).Once()
-	s.mockQ.On("GetContractAssetBalancesExpiringAt", s.ctx, uint32(1234)).
+	s.mockQ.On("DeleteContractAssetBalancesExpiringAt", s.ctx, uint32(1234)).
 		Return([]history.ContractAssetBalance{}, nil).Once()
 
 	s.Assert().NoError(s.processor.Commit(s.ctx))
@@ -1152,7 +1188,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateContractID() {
 		Return(nil).Once()
 	s.mockQ.On("UpdateContractAssetBalanceExpirations", s.ctx, []xdr.Hash{}, []uint32{}).
 		Return(nil).Once()
-	s.mockQ.On("GetContractAssetBalancesExpiringAt", s.ctx, uint32(1234)).
+	s.mockQ.On("DeleteContractAssetBalancesExpiringAt", s.ctx, uint32(1234)).
 		Return([]history.ContractAssetBalance{}, nil).Once()
 
 	s.Assert().NoError(s.processor.Commit(s.ctx))
@@ -1306,10 +1342,8 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateContractIDWithBalance() {
 	eurAssetContractStat := history.ContractAssetStatRow{
 		ContractID: eurID[:],
 		Stat: history.ContractStat{
-			ActiveBalance:   "10",
-			ActiveHolders:   2,
-			ArchivedBalance: "0",
-			ArchivedHolders: 0,
+			ActiveBalance: "10",
+			ActiveHolders: 2,
 		},
 	}
 	s.mockQ.On("GetContractAssetStat", s.ctx, eurID[:]).
@@ -1337,7 +1371,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateContractIDWithBalance() {
 		Return(nil).Once()
 	s.mockQ.On("UpdateContractAssetBalanceExpirations", s.ctx, []xdr.Hash{}, []uint32{}).
 		Return(nil).Once()
-	s.mockQ.On("GetContractAssetBalancesExpiringAt", s.ctx, uint32(1234)).
+	s.mockQ.On("DeleteContractAssetBalancesExpiringAt", s.ctx, uint32(1234)).
 		Return([]history.ContractAssetBalance{}, nil).Once()
 
 	s.Assert().NoError(s.processor.Commit(s.ctx))
@@ -1639,7 +1673,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateTrustLine() {
 		Return(nil).Once()
 	s.mockQ.On("UpdateContractAssetBalanceExpirations", s.ctx, []xdr.Hash{}, []uint32{}).
 		Return(nil).Once()
-	s.mockQ.On("GetContractAssetBalancesExpiringAt", s.ctx, uint32(1234)).
+	s.mockQ.On("DeleteContractAssetBalancesExpiringAt", s.ctx, uint32(1234)).
 		Return([]history.ContractAssetBalance{}, nil).Once()
 
 	s.Assert().NoError(s.processor.Commit(s.ctx))
@@ -1858,7 +1892,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateTrustLineAuthorization() 
 		Return(nil).Once()
 	s.mockQ.On("UpdateContractAssetBalanceExpirations", s.ctx, []xdr.Hash{}, []uint32{}).
 		Return(nil).Once()
-	s.mockQ.On("GetContractAssetBalancesExpiringAt", s.ctx, uint32(1234)).
+	s.mockQ.On("DeleteContractAssetBalancesExpiringAt", s.ctx, uint32(1234)).
 		Return([]history.ContractAssetBalance{}, nil).Once()
 
 	s.Assert().NoError(s.processor.Commit(s.ctx))
@@ -1973,7 +2007,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveClaimableBalance() {
 		Return(nil).Once()
 	s.mockQ.On("UpdateContractAssetBalanceExpirations", s.ctx, []xdr.Hash{}, []uint32{}).
 		Return(nil).Once()
-	s.mockQ.On("GetContractAssetBalancesExpiringAt", s.ctx, uint32(1234)).
+	s.mockQ.On("DeleteContractAssetBalancesExpiringAt", s.ctx, uint32(1234)).
 		Return([]history.ContractAssetBalance{}, nil).Once()
 
 	s.Assert().NoError(s.processor.Commit(s.ctx))
@@ -2074,7 +2108,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveTrustLine() {
 		Return(nil).Once()
 	s.mockQ.On("UpdateContractAssetBalanceExpirations", s.ctx, []xdr.Hash{}, []uint32{}).
 		Return(nil).Once()
-	s.mockQ.On("GetContractAssetBalancesExpiringAt", s.ctx, uint32(1234)).
+	s.mockQ.On("DeleteContractAssetBalancesExpiringAt", s.ctx, uint32(1234)).
 		Return([]history.ContractAssetBalance{}, nil).Once()
 
 	s.Assert().NoError(s.processor.Commit(s.ctx))
@@ -2127,7 +2161,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveContractID() {
 		Return(nil).Once()
 	s.mockQ.On("UpdateContractAssetBalanceExpirations", s.ctx, []xdr.Hash{}, []uint32{}).
 		Return(nil).Once()
-	s.mockQ.On("GetContractAssetBalancesExpiringAt", s.ctx, uint32(1234)).
+	s.mockQ.On("DeleteContractAssetBalancesExpiringAt", s.ctx, uint32(1234)).
 		Return([]history.ContractAssetBalance{}, nil).Once()
 
 	s.Assert().NoError(s.processor.Commit(s.ctx))
@@ -2227,7 +2261,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateTrustlineAndRemoveContrac
 		Return(nil).Once()
 	s.mockQ.On("UpdateContractAssetBalanceExpirations", s.ctx, []xdr.Hash{}, []uint32{}).
 		Return(nil).Once()
-	s.mockQ.On("GetContractAssetBalancesExpiringAt", s.ctx, uint32(1234)).
+	s.mockQ.On("DeleteContractAssetBalancesExpiringAt", s.ctx, uint32(1234)).
 		Return([]history.ContractAssetBalance{}, nil).Once()
 
 	s.Assert().NoError(s.processor.Commit(s.ctx))
@@ -2281,7 +2315,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveContractIDFromZeroRow() {
 		Return(nil).Once()
 	s.mockQ.On("UpdateContractAssetBalanceExpirations", s.ctx, []xdr.Hash{}, []uint32{}).
 		Return(nil).Once()
-	s.mockQ.On("GetContractAssetBalancesExpiringAt", s.ctx, uint32(1234)).
+	s.mockQ.On("DeleteContractAssetBalancesExpiringAt", s.ctx, uint32(1234)).
 		Return([]history.ContractAssetBalance{}, nil).Once()
 
 	s.Assert().NoError(s.processor.Commit(s.ctx))
@@ -2374,10 +2408,8 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveContractIDAndBalanceZeroR
 	eurAssetContractStat := history.ContractAssetStatRow{
 		ContractID: eurID[:],
 		Stat: history.ContractStat{
-			ActiveBalance:   "10",
-			ActiveHolders:   2,
-			ArchivedBalance: "0",
-			ArchivedHolders: 0,
+			ActiveBalance: "10",
+			ActiveHolders: 2,
 		},
 	}
 	s.mockQ.On("GetContractAssetStat", s.ctx, eurID[:]).
@@ -2395,7 +2427,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveContractIDAndBalanceZeroR
 		Return(nil).Once()
 	s.mockQ.On("UpdateContractAssetBalanceExpirations", s.ctx, []xdr.Hash{}, []uint32{}).
 		Return(nil).Once()
-	s.mockQ.On("GetContractAssetBalancesExpiringAt", s.ctx, uint32(1234)).
+	s.mockQ.On("DeleteContractAssetBalancesExpiringAt", s.ctx, uint32(1234)).
 		Return([]history.ContractAssetBalance{}, nil).Once()
 
 	s.Assert().NoError(s.processor.Commit(s.ctx))
@@ -2472,7 +2504,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveContractIDAndRow() {
 		Return(nil).Once()
 	s.mockQ.On("UpdateContractAssetBalanceExpirations", s.ctx, []xdr.Hash{}, []uint32{}).
 		Return(nil).Once()
-	s.mockQ.On("GetContractAssetBalancesExpiringAt", s.ctx, uint32(1234)).
+	s.mockQ.On("DeleteContractAssetBalancesExpiringAt", s.ctx, uint32(1234)).
 		Return([]history.ContractAssetBalance{}, nil).Once()
 
 	s.Assert().NoError(s.processor.Commit(s.ctx))
@@ -2555,7 +2587,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestProcessUpgradeChange() {
 		Return(nil).Once()
 	s.mockQ.On("UpdateContractAssetBalanceExpirations", s.ctx, []xdr.Hash{}, []uint32{}).
 		Return(nil).Once()
-	s.mockQ.On("GetContractAssetBalancesExpiringAt", s.ctx, uint32(1234)).
+	s.mockQ.On("DeleteContractAssetBalancesExpiringAt", s.ctx, uint32(1234)).
 		Return([]history.ContractAssetBalance{}, nil).Once()
 
 	s.Assert().NoError(s.processor.Commit(s.ctx))

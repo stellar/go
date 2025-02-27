@@ -376,10 +376,8 @@ type Asset struct {
 }
 
 type ContractStat struct {
-	ActiveBalance   string `json:"balance"`
-	ActiveHolders   int32  `json:"holders"`
-	ArchivedBalance string `json:"archived_balance"`
-	ArchivedHolders int32  `json:"archived_holders"`
+	ActiveBalance string `json:"balance"`
+	ActiveHolders int32  `json:"holders"`
 }
 
 func (c ContractStat) Value() (driver.Value, error) {
@@ -393,7 +391,6 @@ func (c ContractStat) Value() (driver.Value, error) {
 func (c *ContractStat) Scan(src interface{}) error {
 	if src == nil {
 		c.ActiveBalance = "0"
-		c.ArchivedBalance = "0"
 		return nil
 	}
 
@@ -410,9 +407,6 @@ func (c *ContractStat) Scan(src interface{}) error {
 	// Sets zero values for empty balances
 	if c.ActiveBalance == "" {
 		c.ActiveBalance = "0"
-	}
-	if c.ArchivedBalance == "" {
-		c.ArchivedBalance = "0"
 	}
 
 	return nil
@@ -581,7 +575,7 @@ type QAssetStats interface {
 	UpdateContractAssetBalanceAmounts(ctx context.Context, keys []xdr.Hash, amounts []string) error
 	UpdateContractAssetBalanceExpirations(ctx context.Context, keys []xdr.Hash, expirationLedgers []uint32) error
 	GetContractAssetBalances(ctx context.Context, keys []xdr.Hash) ([]ContractAssetBalance, error)
-	GetContractAssetBalancesExpiringAt(ctx context.Context, ledger uint32) ([]ContractAssetBalance, error)
+	DeleteContractAssetBalancesExpiringAt(ctx context.Context, ledger uint32) ([]ContractAssetBalance, error)
 	InsertAssetStats(ctx context.Context, stats []ExpAssetStat) error
 	InsertContractAssetStats(ctx context.Context, rows []ContractAssetStatRow) error
 	InsertAssetStat(ctx context.Context, stat ExpAssetStat) (int64, error)

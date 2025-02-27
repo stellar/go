@@ -1120,9 +1120,7 @@ func assertAssetStats(itest *integration.Test, expected assetStats) {
 	assert.Equal(itest.CurrentTest(), expected.issuer, asset.Issuer)
 	assert.Equal(itest.CurrentTest(), expected.numAccounts, asset.Accounts.Authorized)
 	assert.Equal(itest.CurrentTest(), expected.numContracts, asset.NumContracts)
-	assert.Equal(itest.CurrentTest(), expected.numArchivedContracts, asset.NumArchivedContracts)
 	assert.Equal(itest.CurrentTest(), expected.balanceContracts.String(), parseBalance(itest, asset.ContractsAmount).String())
-	assert.Equal(itest.CurrentTest(), expected.balanceArchivedContracts.String(), parseBalance(itest, asset.ArchivedContractsAmount).String())
 	assert.Equal(itest.CurrentTest(), strkey.MustEncode(strkey.VersionByteContract, expected.contractID[:]), asset.ContractID)
 }
 

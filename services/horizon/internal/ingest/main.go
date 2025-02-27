@@ -64,7 +64,8 @@ const (
 	//       contract data ledger entries.
 	// - 18: Ingest contract asset balances so we can keep track of expired / restore asset
 	//       balances for asset stats.
-	CurrentVersion = 18
+	// - 19: Archived contract asset balances are no longer stored in the horizon db.
+	CurrentVersion = 19
 
 	// MaxDBConnections is the size of the postgres connection pool dedicated to Horizon ingestion:
 	//  * Ledger ingestion,

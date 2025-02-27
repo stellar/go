@@ -160,7 +160,7 @@ func TestCaptiveNew(t *testing.T) {
 			HistoryArchiveURLs:    historyURLs,
 			StoragePath:           storagePath,
 			UserAgent:             "uatest",
-			CoreProtocolVersionFn: func(string) (uint, error) { return 21, nil },
+			CoreProtocolVersionFn: func(string) (uint, error) { return 23, nil },
 		},
 	)
 
@@ -193,11 +193,11 @@ func TestCaptiveNewUnsupportedProtocolVersion(t *testing.T) {
 			HistoryArchiveURLs:    historyURLs,
 			StoragePath:           storagePath,
 			UserAgent:             "uatest",
-			CoreProtocolVersionFn: func(string) (uint, error) { return 20, nil },
+			CoreProtocolVersionFn: func(string) (uint, error) { return 22, nil },
 		},
 	)
 
-	assert.EqualError(t, err, "stellar-core version not supported. Installed stellar-core version is at protocol 20, but minimum required version is 21. Please upgrade stellar-core to a version that supports protocol version 21 or higher")
+	assert.EqualError(t, err, "stellar-core version not supported. Installed stellar-core version is at protocol 22, but minimum required version is 23. Please upgrade stellar-core to a version that supports protocol version 23 or higher")
 }
 
 func TestCaptivePrepareRange(t *testing.T) {
@@ -1041,7 +1041,7 @@ func TestCaptiveStellarCore_PrepareRangeAfterClose(t *testing.T) {
 			HistoryArchiveURLs:    historyURLs,
 			Toml:                  captiveCoreToml,
 			StoragePath:           storagePath,
-			CoreProtocolVersionFn: func(string) (uint, error) { return 21, nil },
+			CoreProtocolVersionFn: func(string) (uint, error) { return 23, nil },
 		},
 	)
 	assert.NoError(t, err)

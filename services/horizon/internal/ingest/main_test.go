@@ -95,7 +95,7 @@ func TestNewSystem(t *testing.T) {
 		DisableStateVerification: true,
 		HistoryArchiveURLs:       []string{"https://history.stellar.org/prd/core-live/core_live_001"},
 		CheckpointFrequency:      64,
-		CoreProtocolVersionFn:    func(string) (uint, error) { return 21, nil },
+		CoreProtocolVersionFn:    func(string) (uint, error) { return 23, nil },
 	}
 
 	sIface, err := NewSystem(config)

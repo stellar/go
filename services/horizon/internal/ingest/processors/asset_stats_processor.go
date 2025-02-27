@@ -59,6 +59,13 @@ func (p *AssetStatsProcessor) ProcessChange(ctx context.Context, change ingest.C
 		return nil
 	}
 
+	// We don't need to handle evictions because we immediately delete contract balances
+	// upon expiration. So by the time an archived ledger entry is evicted it will already
+	// be deleted from the horizon DB.
+	if change.Reason == ingest.LedgerEntryChangeReasonEviction {
+		return nil
+	}
+
 	var err error
 	switch change.Type {
 	case xdr.LedgerEntryTypeLiquidityPool:
@@ -89,7 +96,34 @@ func (p *AssetStatsProcessor) ProcessChange(ctx context.Context, change ingest.C
 	return err
 }
 
+// AssetStatsProcessor requires that the ttl changes it ingests are already compacted
+// because the TTL change semantics in CAP-63 (see
+// https://github.com/stellar/stellar-protocol/blob/master/core/cap-0063.md#ttl-ledger-change-semantics )
+// are encapsulated in the ChangeCompactor
+func (p *AssetStatsProcessor) checkTTLChangeIsCompacted(change ingest.Change) error {
+	var keyHash xdr.Hash
+	if change.Pre != nil {
+		keyHash = change.Pre.Data.MustTtl().KeyHash
+	} else {
+		keyHash = change.Post.Data.MustTtl().KeyHash
+	}
+	if _, ok := p.removedExpirationEntries[keyHash]; ok {
+		return errors.Errorf("ttl change is not compacted Pre: %v Post: %v", change.Pre, change.Post)
+	}
+	if _, ok := p.createdExpirationEntries[keyHash]; ok {
+		return errors.Errorf("ttl change is not compacted Pre: %v Post: %v", change.Pre, change.Post)
+	}
+	if _, ok := p.updatedExpirationEntries[keyHash]; ok {
+		return errors.Errorf("ttl change is not compacted Pre: %v Post: %v", change.Pre, change.Post)
+	}
+	return nil
+}
+
 func (p *AssetStatsProcessor) addExpirationChange(change ingest.Change) error {
+	if err := p.checkTTLChangeIsCompacted(change); err != nil {
+		return err
+	}
+
 	switch {
 	case change.Pre == nil && change.Post != nil: // created
 		post := change.Post.Data.MustTtl()
@@ -131,6 +165,7 @@ func (p *AssetStatsProcessor) addExpirationChange(change ingest.Change) error {
 	default:
 		return errors.Errorf("unexpected change Pre: %v Post: %v", change.Pre, change.Post)
 	}
+
 	return nil
 }
 
@@ -211,10 +246,6 @@ func (p *AssetStatsProcessor) updateDB(
 
 	if err := p.assetStatsQ.InsertContractAssetBalances(ctx, contractAssetStatSet.createdBalances); err != nil {
 		return errors.Wrap(err, "Error inserting contract asset balances")
-	}
-
-	if err := contractAssetStatSet.ingestRestoredBalances(ctx); err != nil {
-		return err
 	}
 
 	if err := p.updateContractAssetBalanceExpirations(ctx); err != nil {
@@ -585,17 +616,11 @@ func (p *AssetStatsProcessor) updateContractID(
 
 func (p *AssetStatsProcessor) addContractAssetStat(contractAssetStat assetContractStatValue, row *history.ContractAssetStatRow) error {
 	row.Stat.ActiveHolders += contractAssetStat.activeHolders
-	row.Stat.ArchivedHolders += contractAssetStat.archivedHolders
 	activeBalance, ok := new(big.Int).SetString(row.Stat.ActiveBalance, 10)
 	if !ok {
 		return errors.New("Error parsing: " + row.Stat.ActiveBalance)
 	}
 	row.Stat.ActiveBalance = activeBalance.Add(activeBalance, contractAssetStat.activeBalance).String()
-	archivedBalance, ok := new(big.Int).SetString(row.Stat.ArchivedBalance, 10)
-	if !ok {
-		return errors.New("Error parsing: " + row.Stat.ArchivedBalance)
-	}
-	row.Stat.ArchivedBalance = archivedBalance.Add(archivedBalance, contractAssetStat.archivedBalance).String()
 	return nil
 }
 
@@ -633,10 +658,8 @@ func (p *AssetStatsProcessor) updateAssetContractStats(
 		}
 
 		if row.Stat == (history.ContractStat{
-			ActiveBalance:   "0",
-			ActiveHolders:   0,
-			ArchivedBalance: "0",
-			ArchivedHolders: 0,
+			ActiveBalance: "0",
+			ActiveHolders: 0,
 		}) {
 			rowsAffected, err = p.assetStatsQ.RemoveAssetContractStat(ctx, contractID[:])
 		} else {

@@ -20,7 +20,7 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-const minProtocolVersionSupported uint = 21
+const minProtocolVersionSupported uint = 23
 
 // Ensure CaptiveStellarCore implements LedgerBackend
 var _ LedgerBackend = (*CaptiveStellarCore)(nil)

@@ -39,7 +39,7 @@ func (m *MockQAssetStats) GetContractAssetBalances(ctx context.Context, keys []x
 	return a.Get(0).([]ContractAssetBalance), a.Error(1)
 }
 
-func (m *MockQAssetStats) GetContractAssetBalancesExpiringAt(ctx context.Context, ledger uint32) ([]ContractAssetBalance, error) {
+func (m *MockQAssetStats) DeleteContractAssetBalancesExpiringAt(ctx context.Context, ledger uint32) ([]ContractAssetBalance, error) {
 	a := m.Called(ctx, ledger)
 	return a.Get(0).([]ContractAssetBalance), a.Error(1)
 }
