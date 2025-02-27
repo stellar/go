@@ -317,7 +317,7 @@ func runTokenTransferEventTests(t *testing.T, tests []testFixture) {
 			for i := range fixture.expected {
 				if !proto.Equal(events[i], fixture.expected[i]) {
 					assert.Fail(t, "result does not match expected event",
-						"Expected: %+v\nFound: %+v", fixture.expected[i], events[i])
+						"index: %d\nExpected: %+v\nFound: %+v", i, fixture.expected[i], events[i])
 				}
 			}
 
@@ -574,101 +574,6 @@ func TestPaymentEvents(t *testing.T) {
 	runTokenTransferEventTests(t, tests)
 }
 
-func TestPathPaymentEvents(t *testing.T) {
-	strictSendOp := func(sourceAccount *xdr.MuxedAccount, destAccount xdr.MuxedAccount, srcAsset xdr.Asset, destAsset xdr.Asset) xdr.Operation {
-		return xdr.Operation{
-			SourceAccount: sourceAccount,
-			Body: xdr.OperationBody{
-				Type: xdr.OperationTypePathPaymentStrictSend,
-				// dont really need the operation Paths for calculating events. Only need the claimAtoms in the result
-				PathPaymentStrictSendOp: &xdr.PathPaymentStrictSendOp{
-					SendAsset:   srcAsset,
-					Destination: destAccount,
-					DestAsset:   destAsset,
-				},
-			},
-		}
-	}
-
-	strictSendResult := func(claims []xdr.ClaimAtom, destAmount xdr.Int64) xdr.OperationResult {
-		return xdr.OperationResult{
-			Tr: &xdr.OperationResultTr{
-				Type: xdr.OperationTypePathPaymentStrictSend,
-				PathPaymentStrictSendResult: &xdr.PathPaymentStrictSendResult{
-					Success: &xdr.PathPaymentStrictSendResultSuccess{
-						Offers: claims,
-						Last: xdr.SimplePaymentResult{
-							Amount: destAmount,
-						},
-					},
-				},
-			},
-		}
-	}
-
-	/*
-		strictReceiveOp := func(sourceAccount *xdr.MuxedAccount, destAccount xdr.MuxedAccount) xdr.Operation {
-			return xdr.Operation{
-				SourceAccount: sourceAccount,
-				Body: xdr.OperationBody{
-					Type: xdr.OperationTypePathPaymentStrictReceive,
-					// dont really need the operation Paths for calculating events. Only need the claimAtoms in the result
-					PathPaymentStrictReceiveOp: &xdr.PathPaymentStrictReceiveOp{
-						Destination: destAccount,
-					},
-				},
-			}
-		}
-
-		strictReceiveResult := func(claims []xdr.ClaimAtom) xdr.OperationResult {
-			return xdr.OperationResult{
-				Tr: &xdr.OperationResultTr{
-					Type: xdr.OperationTypePathPaymentStrictReceive,
-					PathPaymentStrictReceiveResult: &xdr.PathPaymentStrictReceiveResult{
-						Success: &xdr.PathPaymentStrictReceiveResultSuccess{Offers: claims},
-					},
-				},
-			}
-		}
-
-	*/
-
-	someXlmSellerAccount := xdr.MustMuxedAddress("GC7ERFCD7QLDFRSEPLYB3GYSWX6GYMCHLDL45N4S5Q2N5EJDOMOJ63V4")
-	someEthSellerAccount := xdr.MustMuxedAddress("GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY")
-
-	// Fixture
-	tests := []testFixture{
-		{
-			name:    "Strict Send - A (BTC) to B (ETH) - 2 Offers (BTC/XLM, XLM/ETH)",
-			tx:      someTx,
-			opIndex: 0,
-			op:      strictSendOp(&accountA, accountB, btcAsset, ethAsset),
-			opResult: strictSendResult(
-				[]xdr.ClaimAtom{
-					// source Account traded against some XLM holder and bought XLM
-					generateClaimAtom(xdr.ClaimAtomTypeClaimAtomTypeOrderBook, &someXlmSellerAccount, nil, xlmAsset, fiveUnits, btcAsset, oneUnit),
-					// source Account then sold XLM and bought ETH from some ETH holder
-					generateClaimAtom(xdr.ClaimAtomTypeClaimAtomTypeOrderBook, &someEthSellerAccount, nil, ethAsset, twoUnits, xlmAsset, tenUnits),
-				},
-				// source Account then sent that ETH to destination
-				hundredUnits,
-			),
-			expected: []*TokenTransferEvent{
-				transferEvent(protoAddressFromAccount(someXlmSellerAccount), protoAddressFromAccount(accountA), "5.0000000", xlmProtoAsset),
-				transferEvent(protoAddressFromAccount(accountA), protoAddressFromAccount(someXlmSellerAccount), "1.0000000", btcProtoAsset),
-
-				transferEvent(protoAddressFromAccount(someEthSellerAccount), protoAddressFromAccount(accountA), "2.0000000", ethProtoAsset),
-				transferEvent(protoAddressFromAccount(accountA), protoAddressFromAccount(someEthSellerAccount), "10.0000000", xlmProtoAsset),
-
-				// Final transfer from A to B of ETH
-				transferEvent(protoAddressFromAccount(accountA), protoAddressFromAccount(accountB), hundredUnitsStr, ethProtoAsset),
-			},
-		},
-	}
-	runTokenTransferEventTests(t, tests)
-
-}
-
 func TestManageOfferEvents(t *testing.T) {
 	manageBuyOfferOp := func(sourceAccount *xdr.MuxedAccount) xdr.Operation {
 		return xdr.Operation{
@@ -802,6 +707,176 @@ func TestManageOfferEvents(t *testing.T) {
 	}
 
 	runTokenTransferEventTests(t, tests)
+}
+
+func TestPathPaymentEvents(t *testing.T) {
+	strictSendOp := func(sourceAccount *xdr.MuxedAccount, destAccount xdr.MuxedAccount, sendAsset xdr.Asset, destAsset xdr.Asset) xdr.Operation {
+		return xdr.Operation{
+			SourceAccount: sourceAccount,
+			Body: xdr.OperationBody{
+				Type: xdr.OperationTypePathPaymentStrictSend,
+				// dont really need the operation Paths for calculating events. Only need the claimAtoms in the result
+				PathPaymentStrictSendOp: &xdr.PathPaymentStrictSendOp{
+					SendAsset:   sendAsset,
+					Destination: destAccount,
+					DestAsset:   destAsset,
+				},
+			},
+		}
+	}
+
+	strictSendResult := func(claims []xdr.ClaimAtom, destAmount xdr.Int64) xdr.OperationResult {
+		return xdr.OperationResult{
+			Tr: &xdr.OperationResultTr{
+				Type: xdr.OperationTypePathPaymentStrictSend,
+				PathPaymentStrictSendResult: &xdr.PathPaymentStrictSendResult{
+					Success: &xdr.PathPaymentStrictSendResultSuccess{
+						Offers: claims,
+						Last: xdr.SimplePaymentResult{
+							Amount: destAmount,
+						},
+					},
+				},
+			},
+		}
+	}
+
+	strictReceiveOp := func(sourceAccount *xdr.MuxedAccount, destAccount xdr.MuxedAccount, sendAsset xdr.Asset, destAsset xdr.Asset, destAmount xdr.Int64) xdr.Operation {
+		return xdr.Operation{
+			SourceAccount: sourceAccount,
+			Body: xdr.OperationBody{
+				Type: xdr.OperationTypePathPaymentStrictReceive,
+				// dont really need the operation Paths for calculating events. Only need the claimAtoms in the result
+				PathPaymentStrictReceiveOp: &xdr.PathPaymentStrictReceiveOp{
+					SendAsset:   sendAsset,
+					DestAsset:   destAsset,
+					Destination: destAccount,
+					DestAmount:  destAmount,
+				},
+			},
+		}
+	}
+
+	strictReceiveResult := func(claims []xdr.ClaimAtom) xdr.OperationResult {
+		return xdr.OperationResult{
+			Tr: &xdr.OperationResultTr{
+				Type: xdr.OperationTypePathPaymentStrictReceive,
+				PathPaymentStrictReceiveResult: &xdr.PathPaymentStrictReceiveResult{
+					Success: &xdr.PathPaymentStrictReceiveResultSuccess{Offers: claims},
+				},
+			},
+		}
+	}
+
+	someXlmSellerAccount := xdr.MustMuxedAddress("GC7ERFCD7QLDFRSEPLYB3GYSWX6GYMCHLDL45N4S5Q2N5EJDOMOJ63V4")
+	someEthSellerAccount := xdr.MustMuxedAddress("GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY")
+
+	// Fixture
+	tests := []testFixture{
+		{
+			name:    "Strict Send - A (BTC Issuer) sends BTC to B as ETH - 2 Offers (BTC/XLM, XLM/ETH) - Mint and Transfer events",
+			tx:      someTx,
+			opIndex: 0,
+			op:      strictSendOp(&btcAccount, accountB, btcAsset, ethAsset),
+			opResult: strictSendResult(
+				[]xdr.ClaimAtom{
+					// source Account sold(minted) some of its BTC and bought XLM from some XLM holder
+					generateClaimAtom(xdr.ClaimAtomTypeClaimAtomTypeOrderBook, &someXlmSellerAccount, nil, xlmAsset, fiveUnits, btcAsset, oneUnit),
+					// source Account then sold XLM and bought ETH from some ETH holder
+					generateClaimAtom(xdr.ClaimAtomTypeClaimAtomTypeOrderBook, &someEthSellerAccount, nil, ethAsset, twoUnits, xlmAsset, tenUnits),
+				},
+				// source Account then sent that ETH to destination
+				hundredUnits,
+			),
+			expected: []*TokenTransferEvent{
+				transferEvent(protoAddressFromAccount(someXlmSellerAccount), protoAddressFromAccount(btcAccount), "5.0000000", xlmProtoAsset),
+				mintEvent(protoAddressFromAccount(someXlmSellerAccount), "1.0000000", btcProtoAsset),
+
+				transferEvent(protoAddressFromAccount(someEthSellerAccount), protoAddressFromAccount(btcAccount), "2.0000000", ethProtoAsset),
+				transferEvent(protoAddressFromAccount(btcAccount), protoAddressFromAccount(someEthSellerAccount), "10.0000000", xlmProtoAsset),
+
+				// Final transfer from source to dest of ETH
+				transferEvent(protoAddressFromAccount(btcAccount), protoAddressFromAccount(accountB), hundredUnitsStr, ethProtoAsset),
+			},
+		},
+		{
+			name:    "Strict Receive - A (BTC Issuer) sends BTC to B (ETH Issuer) as ETH - 2 Offers (BTC/XLM, XLM/ETH) - Mint, Transfer and Burn events",
+			tx:      someTx,
+			opIndex: 0,
+			op:      strictReceiveOp(&btcAccount, ethAccount, btcAsset, ethAsset, sixUnits),
+			opResult: strictReceiveResult(
+				[]xdr.ClaimAtom{
+					// source Account sold(minted) some of its BTC and bought XLM from some XLM holder
+					generateClaimAtom(xdr.ClaimAtomTypeClaimAtomTypeOrderBook, &someXlmSellerAccount, nil, xlmAsset, fiveUnits, btcAsset, oneUnit),
+					// source Account then sold XLM and bought ETH from some ETH holder
+					generateClaimAtom(xdr.ClaimAtomTypeClaimAtomTypeOrderBook, &someEthSellerAccount, nil, ethAsset, twoUnits, xlmAsset, tenUnits),
+				},
+			),
+			expected: []*TokenTransferEvent{
+				transferEvent(protoAddressFromAccount(someXlmSellerAccount), protoAddressFromAccount(btcAccount), "5.0000000", xlmProtoAsset),
+				mintEvent(protoAddressFromAccount(someXlmSellerAccount), "1.0000000", btcProtoAsset),
+
+				transferEvent(protoAddressFromAccount(someEthSellerAccount), protoAddressFromAccount(btcAccount), "2.0000000", ethProtoAsset),
+				transferEvent(protoAddressFromAccount(btcAccount), protoAddressFromAccount(someEthSellerAccount), "10.0000000", xlmProtoAsset),
+
+				// Final burn from source to dest of ETH
+				burnEvent(protoAddressFromAccount(btcAccount), "6.0000000", ethProtoAsset),
+			},
+		},
+
+		{
+			name:    "Strict Send - A (BTC Issuer) sends BTC to B as USDC - 2 LP sweeps (BTC/ETH, ETH/USDC) - Mint and Transfer events",
+			tx:      someTx,
+			opIndex: 0,
+			op:      strictSendOp(&btcAccount, accountB, btcAsset, usdcAsset),
+			opResult: strictSendResult(
+				[]xdr.ClaimAtom{
+					// source Account traded against the BtcEth Liquidity pool and acquired Eth and sold BTC(minted)
+					generateClaimAtom(xdr.ClaimAtomTypeClaimAtomTypeLiquidityPool, nil, &lpBtcEthId, ethAsset, fiveUnits, btcAsset, oneUnit),
+					// source Account then traded against the EthUsdc pool and acquired USDC
+					generateClaimAtom(xdr.ClaimAtomTypeClaimAtomTypeLiquidityPool, nil, &lpEthUsdcId, usdcAsset, tenUnits, ethAsset, threeUnits),
+				},
+				// source Account then sent that USDC to destination
+				hundredUnits,
+			),
+			expected: []*TokenTransferEvent{
+				transferEvent(protoAddressFromLpHash(lpBtcEthId), protoAddressFromAccount(btcAccount), "5.0000000", ethProtoAsset),
+				mintEvent(protoAddressFromLpHash(lpBtcEthId), "1.0000000", btcProtoAsset),
+
+				transferEvent(protoAddressFromLpHash(lpEthUsdcId), protoAddressFromAccount(btcAccount), "10.0000000", usdcProtoAsset),
+				transferEvent(protoAddressFromAccount(btcAccount), protoAddressFromLpHash(lpEthUsdcId), "3.0000000", ethProtoAsset),
+
+				// Final transfer from source to dest of ETH
+				transferEvent(protoAddressFromAccount(btcAccount), protoAddressFromAccount(accountB), hundredUnitsStr, usdcProtoAsset),
+			},
+		},
+		{
+			name:    "Strict Receive - A (BTC Issuer) sends BTC to B (USDC Issuer) as USDC - 2 Offers (BTC/RTH, ETH/USDC) - Mint, Transfer and Burn events",
+			tx:      someTx,
+			opIndex: 0,
+			op:      strictReceiveOp(&btcAccount, usdcAccount, btcAsset, usdcAsset, sixUnits),
+			opResult: strictReceiveResult(
+				[]xdr.ClaimAtom{
+					// source Account traded against the BtcEth Liquidity pool and acquired Eth and sold BTC(minted)
+					generateClaimAtom(xdr.ClaimAtomTypeClaimAtomTypeLiquidityPool, nil, &lpBtcEthId, ethAsset, fiveUnits, btcAsset, oneUnit),
+					// source Account then traded against the EthUsdc pool and acquired USDC
+					generateClaimAtom(xdr.ClaimAtomTypeClaimAtomTypeLiquidityPool, nil, &lpEthUsdcId, usdcAsset, tenUnits, ethAsset, threeUnits),
+				},
+			),
+			expected: []*TokenTransferEvent{
+				transferEvent(protoAddressFromLpHash(lpBtcEthId), protoAddressFromAccount(btcAccount), "5.0000000", ethProtoAsset),
+				mintEvent(protoAddressFromLpHash(lpBtcEthId), "1.0000000", btcProtoAsset),
+
+				transferEvent(protoAddressFromLpHash(lpEthUsdcId), protoAddressFromAccount(btcAccount), "10.0000000", usdcProtoAsset),
+				transferEvent(protoAddressFromAccount(btcAccount), protoAddressFromLpHash(lpEthUsdcId), "3.0000000", ethProtoAsset),
+
+				// Final burn from source to dest of USDC
+				burnEvent(protoAddressFromAccount(btcAccount), "6.0000000", usdcProtoAsset),
+			},
+		},
+	}
+	runTokenTransferEventTests(t, tests)
+
 }
 
 func TestLiquidityPoolEvents(t *testing.T) {
