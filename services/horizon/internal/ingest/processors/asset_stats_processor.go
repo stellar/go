@@ -196,7 +196,7 @@ func (p *AssetStatsProcessor) updateDB(
 		// When ingesting from the history archives we can take advantage of the fact
 		// that there are only created ledger entries. We don't need to execute any
 		// updates or removals on the asset stats tables. And we can also skip
-		// ingesting restored contract balances and expired contract balances.
+		// deleting expired contract balances.
 		assetStatsDeltas := p.assetStatSet.All()
 		if len(assetStatsDeltas) > 0 {
 			var err error

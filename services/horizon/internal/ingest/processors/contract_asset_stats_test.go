@@ -106,7 +106,7 @@ func TestAddContractData(t *testing.T) {
 	assert.NoError(t, err)
 
 	otherEtherBalanceKeyHash := getKeyHashForBalance(t, etherID, [32]byte{1})
-	set.updatedExpirationEntries[otherEtherBalanceKeyHash] = [2]uint32{100, 150}
+	set.createdExpirationEntries[otherEtherBalanceKeyHash] = 150
 	err = set.AddContractData(context.Background(), ingest.Change{
 		Type: xdr.LedgerEntryTypeContractData,
 		Post: &xdr.LedgerEntry{
@@ -135,16 +135,6 @@ func TestAddContractData(t *testing.T) {
 		},
 	})
 	assert.NoError(t, err)
-
-	invalidBTCBalanceKeyHash := getKeyHashForBalance(t, btcID, [32]byte{3})
-	set.updatedExpirationEntries[invalidBTCBalanceKeyHash] = [2]uint32{100, 120}
-	err = set.AddContractData(context.Background(), ingest.Change{
-		Type: xdr.LedgerEntryTypeContractData,
-		Post: &xdr.LedgerEntry{
-			Data: BalanceToContractData(btcID, [32]byte{3}, 90),
-		},
-	})
-	assert.ErrorContains(t, err, "contract balance has invalid expiration ledger")
 
 	assert.Empty(t, set.updatedBalances)
 	assert.Empty(t, set.removedBalances)

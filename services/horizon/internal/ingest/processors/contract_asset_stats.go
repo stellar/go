@@ -169,23 +169,7 @@ func (s *ContractAssetStatSet) ingestContractAssetBalance(ctx context.Context, c
 			return err
 		}
 		expirationLedger, ok := s.createdExpirationEntries[keyHash]
-		if !ok {
-			// when restoring a contract balance which is archived but not yet evicted,
-			// the restoration meta for the ttl entry will appear like an update because
-			// it will include the previous state
-			if expirationUpdate, ok := s.updatedExpirationEntries[keyHash]; ok {
-				expirationLedger = expirationUpdate[1]
-			} else {
-				return nil
-			}
-			if expirationLedger < s.currentLedger {
-				return errors.Errorf(
-					"contract balance has invalid expiration ledger keyhash %v expiration ledger %v",
-					keyHash,
-					expirationLedger,
-				)
-			}
-		} else if expirationLedger < s.currentLedger {
+		if !ok || expirationLedger < s.currentLedger {
 			return nil
 		}
 		s.createdBalances = append(s.createdBalances, history.ContractAssetBalance{
