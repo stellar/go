@@ -228,6 +228,30 @@ var (
 			},
 		}
 	}
+
+	generateClaimAtom = func(claimAtomType xdr.ClaimAtomType, sellerId *xdr.MuxedAccount, lpId *xdr.PoolId, assetSold xdr.Asset, amountSold xdr.Int64, assetBought xdr.Asset, amountBought xdr.Int64) xdr.ClaimAtom {
+		claimAtom := xdr.ClaimAtom{
+			Type: claimAtomType,
+		}
+		if claimAtomType == xdr.ClaimAtomTypeClaimAtomTypeLiquidityPool {
+			claimAtom.LiquidityPool = &xdr.ClaimLiquidityAtom{
+				LiquidityPoolId: *lpId,
+				AssetBought:     assetBought,
+				AmountBought:    amountBought,
+				AssetSold:       assetSold,
+				AmountSold:      amountSold,
+			}
+		} else if claimAtomType == xdr.ClaimAtomTypeClaimAtomTypeOrderBook {
+			claimAtom.OrderBook = &xdr.ClaimOfferAtom{
+				SellerId:     sellerId.ToAccountId(),
+				AssetBought:  assetBought,
+				AmountBought: amountBought,
+				AssetSold:    assetSold,
+				AmountSold:   amountSold,
+			}
+		}
+		return claimAtom
+	}
 )
 
 type testFixture struct {
@@ -297,6 +321,86 @@ func runTokenTransferEventTests(t *testing.T, tests []testFixture) {
 				}
 			}
 
+		})
+	}
+}
+
+func TestFeeEvent(t *testing.T) {
+	failedTx := func(envelopeType xdr.EnvelopeType, txFee xdr.Int64) ingest.LedgerTransaction {
+		tx := ingest.LedgerTransaction{
+			Ledger:   someLcm,
+			Hash:     someTxHash,
+			Envelope: xdr.TransactionEnvelope{},
+			Result: xdr.TransactionResultPair{
+				TransactionHash: someTxHash,
+				Result: xdr.TransactionResult{
+					FeeCharged: txFee,
+					Result:     xdr.TransactionResultResult{},
+				},
+			},
+		}
+		if envelopeType == xdr.EnvelopeTypeEnvelopeTypeTxFeeBump {
+			tx.Envelope = xdr.TransactionEnvelope{
+				Type: xdr.EnvelopeTypeEnvelopeTypeTxFeeBump,
+				FeeBump: &xdr.FeeBumpTransactionEnvelope{
+					Tx: xdr.FeeBumpTransaction{
+						FeeSource: someTxAccount,
+						InnerTx: xdr.FeeBumpTransactionInnerTx{
+							Type: xdr.EnvelopeTypeEnvelopeTypeTx,
+							V1:   &xdr.TransactionV1Envelope{},
+						},
+					},
+				},
+			}
+			tx.Result.Result.Result.Code = xdr.TransactionResultCodeTxFeeBumpInnerFailed
+		} else if envelopeType == xdr.EnvelopeTypeEnvelopeTypeTx {
+			tx.Envelope = xdr.TransactionEnvelope{
+				Type: xdr.EnvelopeTypeEnvelopeTypeTx,
+				V1: &xdr.TransactionV1Envelope{
+					Tx: xdr.Transaction{
+						SourceAccount: someTxAccount,
+					},
+				},
+			}
+			tx.Result.Result.Result.Code = xdr.TransactionResultCodeTxFailed
+		}
+		return tx
+	}
+
+	expectedFeeEvent := func(feeAmt string) *TokenTransferEvent {
+		return NewFeeEvent(
+			someLcm.LedgerSequence(), someLcm.ClosedAt(), someTxHash.HexString(), protoAddressFromAccount(someTxAccount),
+			feeAmt,
+		)
+	}
+
+	// Fixture
+	tests := []testFixture{
+		{
+			name: "Fee Event only - Failed Fee Bump Transaction",
+			tx:   failedTx(xdr.EnvelopeTypeEnvelopeTypeTxFeeBump, xdr.Int64(1e7/1e2)), // Fee  = 0.01 XLM
+			expected: []*TokenTransferEvent{
+				expectedFeeEvent("0.0100000"),
+			},
+		},
+		{
+			name: "Fee Event only - Failed V1 Transaction",
+			tx:   failedTx(xdr.EnvelopeTypeEnvelopeTypeTx, xdr.Int64(1e7/1e4)), // Fee  = 0.0001 XLM ,
+			expected: []*TokenTransferEvent{
+				expectedFeeEvent("0.0001000"),
+			},
+		},
+	}
+
+	for _, fixture := range tests {
+		t.Run(fixture.name, func(t *testing.T) {
+			events, err := ProcessTokenTransferEventsFromTransaction(fixture.tx)
+			assert.NoError(t, err)
+			assert.Equal(t, len(fixture.expected), len(events))
+			for i := range events {
+				assert.True(t, proto.Equal(events[i], fixture.expected[i]),
+					"Expected event: %+v\nFound event: %+v", fixture.expected[i], events[i])
+			}
 		})
 	}
 }
@@ -471,9 +575,9 @@ func TestPaymentEvents(t *testing.T) {
 }
 
 func TestManageOfferEvents(t *testing.T) {
-	manageBuyOfferOp := func(sourceAccount xdr.MuxedAccount) xdr.Operation {
+	manageBuyOfferOp := func(sourceAccount *xdr.MuxedAccount) xdr.Operation {
 		return xdr.Operation{
-			SourceAccount: &sourceAccount,
+			SourceAccount: sourceAccount,
 			Body: xdr.OperationBody{
 				Type:             xdr.OperationTypeManageBuyOffer,
 				ManageBuyOfferOp: &xdr.ManageBuyOfferOp{},
@@ -481,31 +585,22 @@ func TestManageOfferEvents(t *testing.T) {
 		}
 	}
 
-	manageBuyOfferResult := func(claims []xdr.ClaimOfferAtom) xdr.OperationResult {
-		var offersClaimed []xdr.ClaimAtom
-		for _, c := range claims {
-			offersClaimed = append(offersClaimed, xdr.ClaimAtom{
-				Type:      xdr.ClaimAtomTypeClaimAtomTypeOrderBook,
-				OrderBook: &c,
-			})
-		}
-
+	manageBuyOfferResult := func(claims []xdr.ClaimAtom) xdr.OperationResult {
 		return xdr.OperationResult{
-			Code: xdr.OperationResultCodeOpInner,
 			Tr: &xdr.OperationResultTr{
 				Type: xdr.OperationTypeManageBuyOffer,
 				ManageBuyOfferResult: &xdr.ManageBuyOfferResult{
 					Success: &xdr.ManageOfferSuccessResult{
-						OffersClaimed: offersClaimed,
+						OffersClaimed: claims,
 					},
 				},
 			},
 		}
 	}
 
-	manageSellOfferOp := func(sourceAccount xdr.MuxedAccount) xdr.Operation {
+	manageSellOfferOp := func(sourceAccount *xdr.MuxedAccount) xdr.Operation {
 		return xdr.Operation{
-			SourceAccount: &sourceAccount,
+			SourceAccount: sourceAccount,
 			Body: xdr.OperationBody{
 				Type:              xdr.OperationTypeManageSellOffer,
 				ManageSellOfferOp: &xdr.ManageSellOfferOp{},
@@ -513,22 +608,13 @@ func TestManageOfferEvents(t *testing.T) {
 		}
 	}
 
-	manageSellOfferResult := func(claims []xdr.ClaimOfferAtom) xdr.OperationResult {
-		var offersClaimed []xdr.ClaimAtom
-		for _, c := range claims {
-			offersClaimed = append(offersClaimed, xdr.ClaimAtom{
-				Type:      xdr.ClaimAtomTypeClaimAtomTypeOrderBook,
-				OrderBook: &c,
-			})
-		}
-
+	manageSellOfferResult := func(claims []xdr.ClaimAtom) xdr.OperationResult {
 		return xdr.OperationResult{
-			Code: xdr.OperationResultCodeOpInner,
 			Tr: &xdr.OperationResultTr{
 				Type: xdr.OperationTypeManageSellOffer,
 				ManageSellOfferResult: &xdr.ManageSellOfferResult{
 					Success: &xdr.ManageOfferSuccessResult{
-						OffersClaimed: offersClaimed,
+						OffersClaimed: claims,
 					},
 				},
 			},
@@ -541,15 +627,14 @@ func TestManageOfferEvents(t *testing.T) {
 			name:    "ManageBuyOffer - Buy USDC for XLM (2 claim atoms, Transfer events)",
 			tx:      someTx,
 			opIndex: 0,
-			op:      manageBuyOfferOp(someTxAccount), // don't care for anything in xdr.Operation other than source account
+			op:      manageBuyOfferOp(nil), // don't care for anything in xdr.Operation other than source account
 			opResult: manageBuyOfferResult(
-				[]xdr.ClaimOfferAtom{
+				[]xdr.ClaimAtom{
 					// 1 USDC == 5 XLM
-					{SellerId: accountA.ToAccountId(), AssetSold: usdcAsset, AssetBought: xlmAsset, AmountSold: oneUnit, AmountBought: fiveUnits},
-					{SellerId: accountB.ToAccountId(), AssetSold: usdcAsset, AssetBought: xlmAsset, AmountSold: twoUnits, AmountBought: tenUnits},
+					generateClaimAtom(xdr.ClaimAtomTypeClaimAtomTypeOrderBook, &accountA, nil, usdcAsset, oneUnit, xlmAsset, fiveUnits),
+					generateClaimAtom(xdr.ClaimAtomTypeClaimAtomTypeOrderBook, &accountB, nil, usdcAsset, twoUnits, xlmAsset, tenUnits),
 				},
 			),
-
 			expected: []*TokenTransferEvent{
 				transferEvent(protoAddressFromAccount(accountA), protoAddressFromAccount(someTxAccount), "1.0000000", usdcProtoAsset),
 				transferEvent(protoAddressFromAccount(someTxAccount), protoAddressFromAccount(accountA), "5.0000000", xlmProtoAsset),
@@ -563,12 +648,13 @@ func TestManageOfferEvents(t *testing.T) {
 			name:    "ManageSellOffer - Sell USDC for XLM (2 claim atoms, Transfer events)",
 			tx:      someTx,
 			opIndex: 0,
-			op:      manageSellOfferOp(someTxAccount), // don't care for anything in xdr.Operation other than source account
-			opResult: manageSellOfferResult([]xdr.ClaimOfferAtom{
-				// 1 USDC = 3 XLM
-				{SellerId: accountA.ToAccountId(), AssetSold: xlmAsset, AssetBought: usdcAsset, AmountSold: threeUnits, AmountBought: oneUnit},
-				{SellerId: accountB.ToAccountId(), AssetSold: xlmAsset, AssetBought: usdcAsset, AmountSold: sixUnits, AmountBought: twoUnits},
-			}),
+			op:      manageSellOfferOp(nil), // don't care for anything in xdr.Operation other than source account
+			opResult: manageSellOfferResult(
+				[]xdr.ClaimAtom{
+					// 1 USDC = 3 XLM
+					generateClaimAtom(xdr.ClaimAtomTypeClaimAtomTypeOrderBook, &accountA, nil, xlmAsset, threeUnits, usdcAsset, oneUnit),
+					generateClaimAtom(xdr.ClaimAtomTypeClaimAtomTypeOrderBook, &accountB, nil, xlmAsset, sixUnits, usdcAsset, twoUnits),
+				}),
 			expected: []*TokenTransferEvent{
 				transferEvent(protoAddressFromAccount(accountA), protoAddressFromAccount(someTxAccount), "3.0000000", xlmProtoAsset),
 				transferEvent(protoAddressFromAccount(someTxAccount), protoAddressFromAccount(accountA), "1.0000000", usdcProtoAsset),
@@ -582,11 +668,11 @@ func TestManageOfferEvents(t *testing.T) {
 			name:    "ManageBuyOffer - Buy USDC for XLM (Source is USDC issuer, 2 claim atoms, BURN events)",
 			tx:      someTx,
 			opIndex: 0,
-			op:      manageBuyOfferOp(usdcAccount), // don't care for anything in xdr.Operation other than source account
-			opResult: manageBuyOfferResult([]xdr.ClaimOfferAtom{
+			op:      manageBuyOfferOp(&usdcAccount), // don't care for anything in xdr.Operation other than source account
+			opResult: manageBuyOfferResult([]xdr.ClaimAtom{
 				// 1 USDC == 5 XLM
-				{SellerId: accountA.ToAccountId(), AssetSold: usdcAsset, AssetBought: xlmAsset, AmountSold: oneUnit, AmountBought: fiveUnits},
-				{SellerId: accountB.ToAccountId(), AssetSold: usdcAsset, AssetBought: xlmAsset, AmountSold: twoUnits, AmountBought: tenUnits},
+				generateClaimAtom(xdr.ClaimAtomTypeClaimAtomTypeOrderBook, &accountA, nil, usdcAsset, oneUnit, xlmAsset, fiveUnits),
+				generateClaimAtom(xdr.ClaimAtomTypeClaimAtomTypeOrderBook, &accountB, nil, usdcAsset, twoUnits, xlmAsset, tenUnits),
 			}),
 			expected: []*TokenTransferEvent{
 				burnEvent(protoAddressFromAccount(accountA), "1.0000000", usdcProtoAsset),
@@ -601,11 +687,14 @@ func TestManageOfferEvents(t *testing.T) {
 			name:    "ManageSellOffer - Sell USDC for XLM (Source is USDC issuer, 2 claim atoms, MINT events)",
 			tx:      someTx,
 			opIndex: 0,
-			op:      manageSellOfferOp(usdcAccount), // don't care for anything in xdr.Operation other than source account
-			opResult: manageSellOfferResult([]xdr.ClaimOfferAtom{
+			op:      manageSellOfferOp(&usdcAccount), // don't care for anything in xdr.Operation other than source account
+			opResult: manageSellOfferResult([]xdr.ClaimAtom{
 				// 1 USDC = 3 XLM
-				{SellerId: accountA.ToAccountId(), AssetSold: xlmAsset, AssetBought: usdcAsset, AmountSold: threeUnits, AmountBought: oneUnit},
-				{SellerId: accountB.ToAccountId(), AssetSold: xlmAsset, AssetBought: usdcAsset, AmountSold: sixUnits, AmountBought: twoUnits},
+				generateClaimAtom(xdr.ClaimAtomTypeClaimAtomTypeOrderBook, &accountA, nil, xlmAsset, threeUnits, usdcAsset, oneUnit),
+				generateClaimAtom(xdr.ClaimAtomTypeClaimAtomTypeOrderBook, &accountB, nil, xlmAsset, sixUnits, usdcAsset, twoUnits),
+
+				//{SellerId: accountA.ToAccountId(), AssetSold: xlmAsset, AssetBought: usdcAsset, AmountSold: threeUnits, AmountBought: oneUnit},
+				//{SellerId: accountB.ToAccountId(), AssetSold: xlmAsset, AssetBought: usdcAsset, AmountSold: sixUnits, AmountBought: twoUnits},
 			}),
 			expected: []*TokenTransferEvent{
 				transferEvent(protoAddressFromAccount(accountA), protoAddressFromAccount(usdcAccount), "3.0000000", xlmProtoAsset),
@@ -620,88 +709,7 @@ func TestManageOfferEvents(t *testing.T) {
 	runTokenTransferEventTests(t, tests)
 }
 
-func TestFeeEvent(t *testing.T) {
-	failedTx := func(envelopeType xdr.EnvelopeType, txFee xdr.Int64) ingest.LedgerTransaction {
-		tx := ingest.LedgerTransaction{
-			Ledger:   someLcm,
-			Hash:     someTxHash,
-			Envelope: xdr.TransactionEnvelope{},
-			Result: xdr.TransactionResultPair{
-				TransactionHash: someTxHash,
-				Result: xdr.TransactionResult{
-					FeeCharged: txFee,
-					Result:     xdr.TransactionResultResult{},
-				},
-			},
-		}
-		if envelopeType == xdr.EnvelopeTypeEnvelopeTypeTxFeeBump {
-			tx.Envelope = xdr.TransactionEnvelope{
-				Type: xdr.EnvelopeTypeEnvelopeTypeTxFeeBump,
-				FeeBump: &xdr.FeeBumpTransactionEnvelope{
-					Tx: xdr.FeeBumpTransaction{
-						FeeSource: someTxAccount,
-						InnerTx: xdr.FeeBumpTransactionInnerTx{
-							Type: xdr.EnvelopeTypeEnvelopeTypeTx,
-							V1:   &xdr.TransactionV1Envelope{},
-						},
-					},
-				},
-			}
-			tx.Result.Result.Result.Code = xdr.TransactionResultCodeTxFeeBumpInnerFailed
-		} else if envelopeType == xdr.EnvelopeTypeEnvelopeTypeTx {
-			tx.Envelope = xdr.TransactionEnvelope{
-				Type: xdr.EnvelopeTypeEnvelopeTypeTx,
-				V1: &xdr.TransactionV1Envelope{
-					Tx: xdr.Transaction{
-						SourceAccount: someTxAccount,
-					},
-				},
-			}
-			tx.Result.Result.Result.Code = xdr.TransactionResultCodeTxFailed
-		}
-		return tx
-	}
-
-	expectedFeeEvent := func(feeAmt string) *TokenTransferEvent {
-		return NewFeeEvent(
-			someLcm.LedgerSequence(), someLcm.ClosedAt(), someTxHash.HexString(), protoAddressFromAccount(someTxAccount),
-			feeAmt,
-		)
-	}
-
-	// Fixture
-	tests := []testFixture{
-		{
-			name: "Fee Event only - Failed Fee Bump Transaction",
-			tx:   failedTx(xdr.EnvelopeTypeEnvelopeTypeTxFeeBump, xdr.Int64(1e7/1e2)), // Fee  = 0.01 XLM
-			expected: []*TokenTransferEvent{
-				expectedFeeEvent("0.0100000"),
-			},
-		},
-		{
-			name: "Fee Event only - Failed V1 Transaction",
-			tx:   failedTx(xdr.EnvelopeTypeEnvelopeTypeTx, xdr.Int64(1e7/1e4)), // Fee  = 0.0001 XLM ,
-			expected: []*TokenTransferEvent{
-				expectedFeeEvent("0.0001000"),
-			},
-		},
-	}
-
-	for _, fixture := range tests {
-		t.Run(fixture.name, func(t *testing.T) {
-			events, err := ProcessTokenTransferEventsFromTransaction(fixture.tx)
-			assert.NoError(t, err)
-			assert.Equal(t, len(fixture.expected), len(events))
-			for i := range events {
-				assert.True(t, proto.Equal(events[i], fixture.expected[i]),
-					"Expected event: %+v\nFound event: %+v", fixture.expected[i], events[i])
-			}
-		})
-	}
-}
-
 func TestLiquidityPoolEvents(t *testing.T) {
-
 	tests := []testFixture{
 		{
 			name:    "Liquidity Pool Deposit Operation - New LP Creation - Transfer",
