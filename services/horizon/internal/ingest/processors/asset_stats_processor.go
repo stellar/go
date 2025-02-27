@@ -96,7 +96,34 @@ func (p *AssetStatsProcessor) ProcessChange(ctx context.Context, change ingest.C
 	return err
 }
 
+// AssetStatsProcessor requires that the ttl changes it ingests are already compacted
+// because the TTL change semantics in CAP-63 (see
+// https://github.com/stellar/stellar-protocol/blob/master/core/cap-0063.md#ttl-ledger-change-semantics )
+// are encapsulated in the ChangeCompactor
+func (p *AssetStatsProcessor) checkTTLChangeIsCompacted(change ingest.Change) error {
+	var keyHash xdr.Hash
+	if change.Pre != nil {
+		keyHash = change.Pre.Data.MustTtl().KeyHash
+	} else {
+		keyHash = change.Post.Data.MustTtl().KeyHash
+	}
+	if _, ok := p.removedExpirationEntries[keyHash]; ok {
+		return errors.Errorf("ttl change is not compacted Pre: %v Post: %v", change.Pre, change.Post)
+	}
+	if _, ok := p.createdExpirationEntries[keyHash]; ok {
+		return errors.Errorf("ttl change is not compacted Pre: %v Post: %v", change.Pre, change.Post)
+	}
+	if _, ok := p.updatedExpirationEntries[keyHash]; ok {
+		return errors.Errorf("ttl change is not compacted Pre: %v Post: %v", change.Pre, change.Post)
+	}
+	return nil
+}
+
 func (p *AssetStatsProcessor) addExpirationChange(change ingest.Change) error {
+	if err := p.checkTTLChangeIsCompacted(change); err != nil {
+		return err
+	}
+
 	switch {
 	case change.Pre == nil && change.Post != nil: // created
 		post := change.Post.Data.MustTtl()
@@ -138,6 +165,7 @@ func (p *AssetStatsProcessor) addExpirationChange(change ingest.Change) error {
 	default:
 		return errors.Errorf("unexpected change Pre: %v Post: %v", change.Pre, change.Post)
 	}
+
 	return nil
 }
 
