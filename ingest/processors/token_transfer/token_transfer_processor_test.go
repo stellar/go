@@ -53,6 +53,11 @@ var (
 	lpBtcEthId, _  = xdr.NewPoolId(btcAsset, ethAsset, xdr.LiquidityPoolFeeV18)
 	lpEthUsdcId, _ = xdr.NewPoolId(ethAsset, usdcAsset, xdr.LiquidityPoolFeeV18)
 
+	someBalanceId = xdr.ClaimableBalanceId{
+		Type: xdr.ClaimableBalanceIdTypeClaimableBalanceIdTypeV0,
+		V0:   &xdr.Hash{1, 2, 3, 4, 5},
+	}
+
 	someLcm = xdr.LedgerCloseMeta{
 		V: int32(0),
 		V0: &xdr.LedgerCloseMetaV0{
@@ -86,6 +91,34 @@ var (
 		LedgerVersion: 1234,
 		Ledger:        someLcm,
 		Hash:          someTxHash,
+	}
+
+	someTxWithOperationChanges = func(changes xdr.LedgerEntryChanges) ingest.LedgerTransaction {
+		return ingest.LedgerTransaction{
+			Index: 1,
+			Envelope: xdr.TransactionEnvelope{
+				Type: xdr.EnvelopeTypeEnvelopeTypeTx,
+				V1: &xdr.TransactionV1Envelope{
+					Tx: xdr.Transaction{
+						SourceAccount: someTxAccount,
+					},
+				},
+			},
+			Result: xdr.TransactionResultPair{},
+			UnsafeMeta: xdr.TransactionMeta{
+				V: 3,
+				V3: &xdr.TransactionMetaV3{
+					Operations: []xdr.OperationMeta{
+						{
+							Changes: changes,
+						},
+					},
+				},
+			},
+			LedgerVersion: 1234,
+			Ledger:        someLcm,
+			Hash:          someTxHash,
+		}
 	}
 
 	someOperationIndex = uint32(0)
@@ -147,30 +180,51 @@ var (
 		}
 	}
 
-	lpDepositOp = func(poolId xdr.PoolId, sourceAccount *xdr.MuxedAccount) xdr.Operation {
-		return xdr.Operation{
-			SourceAccount: sourceAccount,
-			Body: xdr.OperationBody{
-				Type: xdr.OperationTypeLiquidityPoolDeposit,
-				LiquidityPoolDepositOp: &xdr.LiquidityPoolDepositOp{
-					LiquidityPoolId: poolId,
+	// Helpers to generate LedgerEntryChanges for Claimable Balances, to be fed to the operationMeta when creating sample transaction
+	cbLedgerEntry = func(cbId xdr.ClaimableBalanceId, asset xdr.Asset, amount xdr.Int64) *xdr.ClaimableBalanceEntry {
+		return &xdr.ClaimableBalanceEntry{
+			BalanceId: cbId,
+			Asset:     asset,
+			Amount:    amount,
+		}
+	}
+
+	generateCbEntryChangeState = func(cbLedgerEntry *xdr.ClaimableBalanceEntry) xdr.LedgerEntryChange {
+		return xdr.LedgerEntryChange{
+			Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
+			State: &xdr.LedgerEntry{
+				Data: xdr.LedgerEntryData{
+					Type:             xdr.LedgerEntryTypeClaimableBalance,
+					ClaimableBalance: cbLedgerEntry,
 				},
 			},
 		}
 	}
 
-	lpWithdrawOp = func(poolId xdr.PoolId, sourceAccount *xdr.MuxedAccount) xdr.Operation {
-		return xdr.Operation{
-			SourceAccount: sourceAccount,
-			Body: xdr.OperationBody{
-				Type: xdr.OperationTypeLiquidityPoolWithdraw,
-				LiquidityPoolWithdrawOp: &xdr.LiquidityPoolWithdrawOp{
-					LiquidityPoolId: poolId,
+	generateCbEntryCreatedChange = func(cbLedgerEntry *xdr.ClaimableBalanceEntry) xdr.LedgerEntryChange {
+		return xdr.LedgerEntryChange{
+			Type: xdr.LedgerEntryChangeTypeLedgerEntryCreated,
+			Created: &xdr.LedgerEntry{
+				Data: xdr.LedgerEntryData{
+					Type:             xdr.LedgerEntryTypeClaimableBalance,
+					ClaimableBalance: cbLedgerEntry,
 				},
 			},
 		}
 	}
 
+	generateCbEntryRemovedChange = func(cbId xdr.ClaimableBalanceId) xdr.LedgerEntryChange {
+		return xdr.LedgerEntryChange{
+			Type: xdr.LedgerEntryChangeTypeLedgerEntryRemoved,
+			Removed: &xdr.LedgerKey{
+				ClaimableBalance: &xdr.LedgerKeyClaimableBalance{
+					BalanceId: cbId,
+				},
+			},
+		}
+	}
+
+	// Helpers to generate LedgerEntryChanges for Liquidity Pools, to be fed to the operationMeta when creating sample transaction
 	lpLedgerEntry = func(poolId xdr.PoolId, assetA xdr.Asset, assetB xdr.Asset, reserveA xdr.Int64, reserveB xdr.Int64) *xdr.LiquidityPoolEntry {
 		return &xdr.LiquidityPoolEntry{
 			LiquidityPoolId: poolId,
@@ -188,7 +242,7 @@ var (
 		}
 	}
 
-	lpEntryBaseState = func(lpLedgerEntry *xdr.LiquidityPoolEntry) xdr.LedgerEntryChange {
+	generateLpEntryChangeState = func(lpLedgerEntry *xdr.LiquidityPoolEntry) xdr.LedgerEntryChange {
 		return xdr.LedgerEntryChange{
 			Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
 			State: &xdr.LedgerEntry{
@@ -200,19 +254,19 @@ var (
 		}
 	}
 
-	lpEntryCreatedChange = func(lpEntry *xdr.LiquidityPoolEntry) xdr.LedgerEntryChange {
+	generateLpEntryCreatedChange = func(lpLedgerEntry *xdr.LiquidityPoolEntry) xdr.LedgerEntryChange {
 		return xdr.LedgerEntryChange{
 			Type: xdr.LedgerEntryChangeTypeLedgerEntryCreated,
 			Created: &xdr.LedgerEntry{
 				Data: xdr.LedgerEntryData{
 					Type:          xdr.LedgerEntryTypeLiquidityPool,
-					LiquidityPool: lpEntry,
+					LiquidityPool: lpLedgerEntry,
 				},
 			},
 		}
 	}
 
-	lpEntryRemovedChange = func(lpId xdr.PoolId) xdr.LedgerEntryChange {
+	generateLpEntryRemovedChange = func(lpId xdr.PoolId) xdr.LedgerEntryChange {
 		return xdr.LedgerEntryChange{
 			Type: xdr.LedgerEntryChangeTypeLedgerEntryRemoved,
 			Removed: &xdr.LedgerKey{
@@ -223,7 +277,7 @@ var (
 		}
 	}
 
-	lpEntryUpdatedChange = func(entry *xdr.LiquidityPoolEntry, newReserveA xdr.Int64, newReserveB xdr.Int64) xdr.LedgerEntryChange {
+	generateLpEntryUpdatedChange = func(entry *xdr.LiquidityPoolEntry, newReserveA xdr.Int64, newReserveB xdr.Int64) xdr.LedgerEntryChange {
 		entry.Body.ConstantProduct.ReserveA = newReserveA
 		entry.Body.ConstantProduct.ReserveB = newReserveB
 		return xdr.LedgerEntryChange{
@@ -270,34 +324,6 @@ type testFixture struct {
 	opResult xdr.OperationResult
 	expected []*TokenTransferEvent
 	wantErr  bool
-}
-
-func someTxWithOperationChanges(changes xdr.LedgerEntryChanges) ingest.LedgerTransaction {
-	return ingest.LedgerTransaction{
-		Index: 1,
-		Envelope: xdr.TransactionEnvelope{
-			Type: xdr.EnvelopeTypeEnvelopeTypeTx,
-			V1: &xdr.TransactionV1Envelope{
-				Tx: xdr.Transaction{
-					SourceAccount: someTxAccount,
-				},
-			},
-		},
-		Result: xdr.TransactionResultPair{},
-		UnsafeMeta: xdr.TransactionMeta{
-			V: 3,
-			V3: &xdr.TransactionMetaV3{
-				Operations: []xdr.OperationMeta{
-					{
-						Changes: changes,
-					},
-				},
-			},
-		},
-		LedgerVersion: 1234,
-		Ledger:        someLcm,
-		Hash:          someTxHash,
-	}
 }
 
 // RunTokenTransferEventTests runs a standard set of tests for token transfer event processing
@@ -885,6 +911,30 @@ func TestPathPaymentEvents(t *testing.T) {
 }
 
 func TestLiquidityPoolEvents(t *testing.T) {
+	lpDepositOp := func(poolId xdr.PoolId, sourceAccount *xdr.MuxedAccount) xdr.Operation {
+		return xdr.Operation{
+			SourceAccount: sourceAccount,
+			Body: xdr.OperationBody{
+				Type: xdr.OperationTypeLiquidityPoolDeposit,
+				LiquidityPoolDepositOp: &xdr.LiquidityPoolDepositOp{
+					LiquidityPoolId: poolId,
+				},
+			},
+		}
+	}
+
+	lpWithdrawOp := func(poolId xdr.PoolId, sourceAccount *xdr.MuxedAccount) xdr.Operation {
+		return xdr.Operation{
+			SourceAccount: sourceAccount,
+			Body: xdr.OperationBody{
+				Type: xdr.OperationTypeLiquidityPoolWithdraw,
+				LiquidityPoolWithdrawOp: &xdr.LiquidityPoolWithdrawOp{
+					LiquidityPoolId: poolId,
+				},
+			},
+		}
+	}
+
 	tests := []testFixture{
 		{
 			name:    "Liquidity Pool Deposit Operation - New LP Creation - Transfer",
@@ -892,7 +942,8 @@ func TestLiquidityPoolEvents(t *testing.T) {
 			op:      lpDepositOp(lpBtcEthId, nil), // source account = Tx account
 			tx: someTxWithOperationChanges(
 				xdr.LedgerEntryChanges{
-					lpEntryCreatedChange(lpLedgerEntry(lpBtcEthId, btcAsset, ethAsset, oneUnit, threeUnits)),
+					// pre = nil, post = new
+					generateLpEntryCreatedChange(lpLedgerEntry(lpBtcEthId, btcAsset, ethAsset, oneUnit, threeUnits)),
 				}),
 			expected: []*TokenTransferEvent{
 				transferEvent(protoAddressFromAccount(someTxAccount), protoAddressFromLpHash(lpBtcEthId), "1.0000000", btcProtoAsset),
@@ -905,9 +956,9 @@ func TestLiquidityPoolEvents(t *testing.T) {
 			op:      lpDepositOp(lpBtcEthId, nil), // source account = Tx account
 			tx: someTxWithOperationChanges(
 				xdr.LedgerEntryChanges{
-					lpEntryBaseState(lpLedgerEntry(lpBtcEthId, btcAsset, ethAsset, oneUnit, threeUnits)),
+					generateLpEntryChangeState(lpLedgerEntry(lpBtcEthId, btcAsset, ethAsset, oneUnit, threeUnits)), // pre state
 					// Increase BTC from 1 -> 5, ETH from 3 -> 10
-					lpEntryUpdatedChange(lpLedgerEntry(lpBtcEthId, btcAsset, ethAsset, oneUnit, threeUnits), fiveUnits, tenUnits),
+					generateLpEntryUpdatedChange(lpLedgerEntry(lpBtcEthId, btcAsset, ethAsset, oneUnit, threeUnits), fiveUnits, tenUnits), // post state
 				}),
 			expected: []*TokenTransferEvent{
 				transferEvent(protoAddressFromAccount(someTxAccount), protoAddressFromLpHash(lpBtcEthId), "4.0000000", btcProtoAsset),
@@ -920,7 +971,8 @@ func TestLiquidityPoolEvents(t *testing.T) {
 			op:      lpDepositOp(lpBtcEthId, &btcAccount), //operation source account = BTC Asset Issuer
 			tx: someTxWithOperationChanges(
 				xdr.LedgerEntryChanges{
-					lpEntryCreatedChange(lpLedgerEntry(lpBtcEthId, btcAsset, ethAsset, oneUnit, threeUnits)),
+					// pre = nil, post = new
+					generateLpEntryCreatedChange(lpLedgerEntry(lpBtcEthId, btcAsset, ethAsset, oneUnit, threeUnits)),
 				}),
 			expected: []*TokenTransferEvent{
 				mintEvent(protoAddressFromLpHash(lpBtcEthId), "1.0000000", btcProtoAsset),
@@ -933,9 +985,9 @@ func TestLiquidityPoolEvents(t *testing.T) {
 			op:      lpWithdrawOp(lpBtcEthId, nil), // source account = Tx account
 			tx: someTxWithOperationChanges(
 				xdr.LedgerEntryChanges{
-					lpEntryBaseState(lpLedgerEntry(lpBtcEthId, btcAsset, ethAsset, fiveUnits, tenUnits)),
+					generateLpEntryChangeState(lpLedgerEntry(lpBtcEthId, btcAsset, ethAsset, fiveUnits, tenUnits)), // pre state
 					// Decrease BTC from 5 -> 2, ETH from 10 -> 2
-					lpEntryUpdatedChange(lpLedgerEntry(lpBtcEthId, btcAsset, ethAsset, fiveUnits, tenUnits), twoUnits, twoUnits),
+					generateLpEntryUpdatedChange(lpLedgerEntry(lpBtcEthId, btcAsset, ethAsset, fiveUnits, tenUnits), twoUnits, twoUnits), // post state
 				}),
 			expected: []*TokenTransferEvent{
 				transferEvent(protoAddressFromLpHash(lpBtcEthId), protoAddressFromAccount(someTxAccount), "3.0000000", btcProtoAsset),
@@ -948,8 +1000,9 @@ func TestLiquidityPoolEvents(t *testing.T) {
 			op:      lpWithdrawOp(lpBtcEthId, nil), // source account = Tx account
 			tx: someTxWithOperationChanges(
 				xdr.LedgerEntryChanges{
-					lpEntryBaseState(lpLedgerEntry(lpBtcEthId, btcAsset, ethAsset, fiveUnits, tenUnits)),
-					lpEntryRemovedChange(lpBtcEthId),
+					// pre != nil, post = nil
+					generateLpEntryChangeState(lpLedgerEntry(lpBtcEthId, btcAsset, ethAsset, fiveUnits, tenUnits)),
+					generateLpEntryRemovedChange(lpBtcEthId),
 				}),
 			expected: []*TokenTransferEvent{
 				transferEvent(protoAddressFromLpHash(lpBtcEthId), protoAddressFromAccount(someTxAccount), "5.0000000", btcProtoAsset),
@@ -962,8 +1015,9 @@ func TestLiquidityPoolEvents(t *testing.T) {
 			op:      lpWithdrawOp(lpBtcEthId, &ethAccount), // operation Source Account = EthIssuer
 			tx: someTxWithOperationChanges(
 				xdr.LedgerEntryChanges{
-					lpEntryBaseState(lpLedgerEntry(lpBtcEthId, btcAsset, ethAsset, fiveUnits, tenUnits)),
-					lpEntryRemovedChange(lpBtcEthId),
+					// pre != nil, post = nil
+					generateLpEntryChangeState(lpLedgerEntry(lpBtcEthId, btcAsset, ethAsset, fiveUnits, tenUnits)),
+					generateLpEntryRemovedChange(lpBtcEthId),
 				}),
 			expected: []*TokenTransferEvent{
 				transferEvent(protoAddressFromLpHash(lpBtcEthId), protoAddressFromAccount(ethAccount), "5.0000000", btcProtoAsset),
@@ -1004,6 +1058,54 @@ func TestClawbackEvents(t *testing.T) {
 			tx:   someTx,
 			expected: []*TokenTransferEvent{
 				clawbackEvent(protoAddressFromAccount(accountB), "0.0100000", usdcProtoAsset),
+			},
+		},
+	}
+
+	runTokenTransferEventTests(t, tests)
+}
+
+func TestClawbackClaimableBalanceEvents(t *testing.T) {
+	clawbackCbOp := func(cbId xdr.ClaimableBalanceId) xdr.Operation {
+		return xdr.Operation{
+			Body: xdr.OperationBody{
+				Type: xdr.OperationTypeClawbackClaimableBalance,
+				ClawbackClaimableBalanceOp: &xdr.ClawbackClaimableBalanceOp{
+					BalanceId: someBalanceId,
+				},
+			},
+		}
+	}
+
+	tests := []testFixture{
+		{
+			name:    "Clawback XLM claimable balance - Claimable Balance removed",
+			opIndex: 0,
+			op:      clawbackCbOp(someBalanceId),
+			tx: someTxWithOperationChanges(
+				xdr.LedgerEntryChanges{
+					// pre != nil, post = nil
+					generateCbEntryChangeState(cbLedgerEntry(someBalanceId, xlmAsset, oneUnit)),
+					generateCbEntryRemovedChange(someBalanceId),
+				},
+			),
+			expected: []*TokenTransferEvent{
+				clawbackEvent(protoAddressFromClaimableBalanceId(someBalanceId), "1.0000000", xlmProtoAsset),
+			},
+		},
+		{
+			name:    "Clawback USDC claimable balance - Claimable Balance removed",
+			opIndex: 0,
+			op:      clawbackCbOp(someBalanceId),
+			tx: someTxWithOperationChanges(
+				xdr.LedgerEntryChanges{
+					// pre != nil, post = nil
+					generateCbEntryChangeState(cbLedgerEntry(someBalanceId, usdcAsset, oneUnit/1e3)),
+					generateCbEntryRemovedChange(someBalanceId),
+				},
+			),
+			expected: []*TokenTransferEvent{
+				clawbackEvent(protoAddressFromClaimableBalanceId(someBalanceId), "0.0010000", usdcProtoAsset),
 			},
 		},
 	}

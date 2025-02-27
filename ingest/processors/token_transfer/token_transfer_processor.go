@@ -241,15 +241,26 @@ func getClaimableBalanceEntryFromOperation(tx ingest.LedgerTransaction, opIndex 
 	if err != nil {
 		return xdr.ClaimableBalanceEntry{}, err
 	}
-
+	/*
+		This function is expected to be called only to get details of newly created claimable balance
+		(for e.g set flags or revoke trustline operations)
+		or claimable balances that are be deleted
+		(for e.g due to clawback claimable balance operation)
+	*/
 	var cb xdr.ClaimableBalanceEntry
 	for _, change := range changes {
 		if change.Type != xdr.LedgerEntryTypeClaimableBalance {
 			continue
 		}
+		// Check if claimable balance entry is deleted
 		if change.Pre != nil && change.Post == nil {
 			cb = change.Pre.Data.MustClaimableBalance()
 
+			if cb.BalanceId.MustV0().Equals(cbId.MustV0()) {
+				return cb, nil
+			}
+		} else if change.Post != nil && change.Pre == nil { // check if claimable balance entry is created
+			cb = change.Post.Data.MustClaimableBalance()
 			if cb.BalanceId.MustV0().Equals(cbId.MustV0()) {
 				return cb, nil
 			}
@@ -264,7 +275,7 @@ func claimClaimableBalanceEvents(tx ingest.LedgerTransaction, opIndex uint32, op
 	claimCbOp := op.Body.MustClaimClaimableBalanceOp()
 	cbId := claimCbOp.BalanceId
 
-	// After this operation, the CB will be deleted. this function checks for cb.pre != nil and cp.post == nil
+	// After this operation, the CB will be deleted.
 	cbEntry, err := getClaimableBalanceEntryFromOperation(tx, opIndex, cbId)
 	if err != nil {
 		return nil, err
@@ -294,7 +305,7 @@ func clawbackClaimableBalanceEvents(tx ingest.LedgerTransaction, opIndex uint32,
 	clawbackCbOp := op.Body.MustClawbackClaimableBalanceOp()
 	cbId := clawbackCbOp.BalanceId
 
-	// After this operation, the CB will be deleted. this function checks for cb.pre != nil and cp.post == nil
+	// After this operation, the CB will be deleted.
 	cbEntry, err := getClaimableBalanceEntryFromOperation(tx, opIndex, cbId)
 	if err != nil {
 		return nil, err
