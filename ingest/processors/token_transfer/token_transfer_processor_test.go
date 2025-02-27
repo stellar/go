@@ -851,7 +851,7 @@ func TestPathPaymentEvents(t *testing.T) {
 			},
 		},
 		{
-			name:    "Strict Receive - A (BTC Issuer) sends BTC to B (USDC Issuer) as USDC - 2 Offers (BTC/RTH, ETH/USDC) - Mint, Transfer and Burn events",
+			name:    "Strict Receive - A (BTC Issuer) sends BTC to B (USDC Issuer) as USDC - 2 LP sweeps (BTC/ETH, ETH/USDC) - Mint, Transfer and Burn events",
 			tx:      someTx,
 			opIndex: 0,
 			op:      strictReceiveOp(&btcAccount, usdcAccount, btcAsset, usdcAsset, sixUnits),
