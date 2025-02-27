@@ -7,17 +7,14 @@ const (
 	// current state when created. In this case, the `Entry` field will be an
 	// xdr.LedgerKey matching the one requested rather than an xdr.LedgerEntry.
 	LedgerEntryStateNew = "new"
-	// Indicates that the entry has been archived due to its TTL but still lives
-	// in the live state
+	// Indicates that the entry has been archived to the hot archive due to its
+	// TTL expiring
 	LedgerEntryStateArchived = "archived"
-	// Indicates that the entry has been evicted from the live state and now
-	// lives in the "hot archive" state.
-	LedgerEntryStateEvicted = "evicted"
 )
 
 // GetLedgerEntryResponse is the structure of Stellar Core's /getledgerentry
 type GetLedgerEntryResponse struct {
-	Ledger  uint32                `json:"ledger"`
+	Ledger  uint32                `json:"ledgerSeq"`
 	Entries []LedgerEntryResponse `json:"entries"`
 }
 
