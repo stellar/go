@@ -598,6 +598,251 @@ func TestLedgerChangeLedgerCloseMetaV2(t *testing.T) {
 	mock.AssertExpectations(t)
 }
 
+func TestLedgerChangeLedgerCloseMetaV2ParallelPhases(t *testing.T) {
+	ctx := context.Background()
+	mock := &ledgerbackend.MockDatabaseBackend{}
+	seq := uint32(123)
+
+	src := xdr.MustAddress("GBXGQJWVLWOYHFLVTKWV5FGHA3LNYY2JQKM7OAJAUEQFU6LPCSEFVXON")
+	firstTx := xdr.TransactionEnvelope{
+		Type: xdr.EnvelopeTypeEnvelopeTypeTx,
+		V1: &xdr.TransactionV1Envelope{
+			Tx: xdr.Transaction{
+				Fee:           1,
+				SourceAccount: src.ToMuxedAccount(),
+			},
+		},
+	}
+	firstTxHash, err := network.HashTransactionInEnvelope(firstTx, network.TestNetworkPassphrase)
+	assert.NoError(t, err)
+
+	src = xdr.MustAddress("GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU")
+	secondTx := xdr.TransactionEnvelope{
+		Type: xdr.EnvelopeTypeEnvelopeTypeTx,
+		V1: &xdr.TransactionV1Envelope{
+			Tx: xdr.Transaction{
+				Fee:           2,
+				SourceAccount: src.ToMuxedAccount(),
+			},
+		},
+	}
+	secondTxHash, err := network.HashTransactionInEnvelope(secondTx, network.TestNetworkPassphrase)
+	assert.NoError(t, err)
+
+	tempKey := xdr.ScSymbol("TEMPKEY")
+	persistentKey := xdr.ScSymbol("TEMPVAL")
+	contractIDBytes, err := hex.DecodeString("df06d62447fd25da07c0135eed7557e5a5497ee7d15b7fe345bd47e191d8f577")
+	assert.NoError(t, err)
+	var contractID xdr.Hash
+	copy(contractID[:], contractIDBytes)
+	contractAddress := xdr.ScAddress{
+		Type:       xdr.ScAddressTypeScAddressTypeContract,
+		ContractId: &contractID,
+	}
+	ledger := xdr.LedgerCloseMeta{
+		V: 1,
+		V1: &xdr.LedgerCloseMetaV1{
+			LedgerHeader: xdr.LedgerHeaderHistoryEntry{Header: xdr.LedgerHeader{LedgerVersion: 10}},
+			TxSet: xdr.GeneralizedTransactionSet{
+				V: 1,
+				V1TxSet: &xdr.TransactionSetV1{
+					PreviousLedgerHash: xdr.Hash{1, 2, 3},
+					Phases: []xdr.TransactionPhase{
+						{
+							V: 1,
+							ParallelTxsComponent: &xdr.ParallelTxsComponent{
+								ExecutionStages: []xdr.ParallelTxExecutionStage{
+									{
+										xdr.DependentTxCluster{secondTx},
+									},
+									{
+										xdr.DependentTxCluster{firstTx},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			TxProcessing: []xdr.TransactionResultMeta{
+				{
+					Result: xdr.TransactionResultPair{TransactionHash: firstTxHash},
+					FeeProcessing: xdr.LedgerEntryChanges{
+						buildChange(feeAddress, 100),
+						buildChange(feeAddress, 200),
+					},
+					TxApplyProcessing: xdr.TransactionMeta{
+						V: 3,
+						V3: &xdr.TransactionMetaV3{
+							Operations: []xdr.OperationMeta{
+								{
+									Changes: xdr.LedgerEntryChanges{
+										buildChange(
+											metaAddress,
+											300,
+										),
+										buildChange(
+											metaAddress,
+											400,
+										),
+
+										// Add a couple changes simulating a ledger entry extension
+										{
+											Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
+											State: &xdr.LedgerEntry{
+												LastModifiedLedgerSeq: 1,
+												Data: xdr.LedgerEntryData{
+													Type: xdr.LedgerEntryTypeContractData,
+													ContractData: &xdr.ContractDataEntry{
+														Contract: contractAddress,
+														Key: xdr.ScVal{
+															Type: xdr.ScValTypeScvSymbol,
+															Sym:  &persistentKey,
+														},
+														Durability: xdr.ContractDataDurabilityPersistent,
+													},
+												},
+											},
+										},
+										{
+											Type: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
+											Updated: &xdr.LedgerEntry{
+												LastModifiedLedgerSeq: 1,
+												Data: xdr.LedgerEntryData{
+													Type: xdr.LedgerEntryTypeContractData,
+													ContractData: &xdr.ContractDataEntry{
+														Contract: xdr.ScAddress{
+															Type:       xdr.ScAddressTypeScAddressTypeContract,
+															ContractId: &contractID,
+														},
+														Key: xdr.ScVal{
+															Type: xdr.ScValTypeScvSymbol,
+															Sym:  &persistentKey,
+														},
+														Durability: xdr.ContractDataDurabilityPersistent,
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				{
+					Result: xdr.TransactionResultPair{TransactionHash: secondTxHash},
+					FeeProcessing: xdr.LedgerEntryChanges{
+						buildChange(feeAddress, 300),
+					},
+					TxApplyProcessing: xdr.TransactionMeta{
+						V: 3,
+						V3: &xdr.TransactionMetaV3{
+							TxChangesBefore: xdr.LedgerEntryChanges{
+								buildChange(metaAddress, 600),
+							},
+							Operations: []xdr.OperationMeta{
+								{
+									Changes: xdr.LedgerEntryChanges{
+										buildChange(metaAddress, 700),
+									},
+								},
+							},
+							TxChangesAfter: xdr.LedgerEntryChanges{
+								buildChange(metaAddress, 800),
+								buildChange(metaAddress, 900),
+							},
+						},
+					},
+				},
+			},
+			UpgradesProcessing: []xdr.UpgradeEntryMeta{
+				{
+					Changes: xdr.LedgerEntryChanges{
+						buildChange(upgradeAddress, 2),
+					},
+				},
+				{
+					Changes: xdr.LedgerEntryChanges{
+						buildChange(upgradeAddress, 3),
+					},
+				},
+			},
+			EvictedTemporaryLedgerKeys: []xdr.LedgerKey{
+				{
+					Type: xdr.LedgerEntryTypeContractData,
+					ContractData: &xdr.LedgerKeyContractData{
+						Contract: contractAddress,
+						Key: xdr.ScVal{
+							Type: xdr.ScValTypeScvSymbol,
+							Sym:  &tempKey,
+						},
+						Durability: xdr.ContractDataDurabilityTemporary,
+					},
+				},
+			},
+			EvictedPersistentLedgerEntries: []xdr.LedgerEntry{
+				{
+					LastModifiedLedgerSeq: 123,
+					Data: xdr.LedgerEntryData{
+						Type: xdr.LedgerEntryTypeContractData,
+						ContractData: &xdr.ContractDataEntry{
+							Contract: contractAddress,
+							Key: xdr.ScVal{
+								Type: xdr.ScValTypeScvSymbol,
+								Sym:  &persistentKey,
+							},
+							Durability: xdr.ContractDataDurabilityTemporary,
+						},
+					},
+				},
+			},
+		},
+	}
+	mock.On("GetLedger", ctx, seq).Return(ledger, nil).Once()
+
+	// Check the changes are as expected
+	assertChangesEqual(t, ctx, seq, mock, []changePredicate{
+		// First the first txn balance xfers
+		isBalance(feeAddress, 100),
+		isBalance(feeAddress, 200),
+		isBalance(feeAddress, 300),
+		isBalance(metaAddress, 300),
+		isBalance(metaAddress, 400),
+		// Then the first txn data entry extension
+		isContractDataExtension(
+			contractAddress,
+			xdr.ScVal{
+				Type: xdr.ScValTypeScvSymbol,
+				Sym:  &persistentKey,
+			},
+			5904,
+		),
+
+		// Second txn transfers
+		isBalance(metaAddress, 600),
+		isBalance(metaAddress, 700),
+		isBalance(metaAddress, 800),
+		isBalance(metaAddress, 900),
+
+		// Evictions
+		isContractDataEviction(
+			contractAddress,
+			xdr.ScVal{
+				Type: xdr.ScValTypeScvSymbol,
+				Sym:  &persistentKey,
+			},
+		),
+
+		// Upgrades last
+		isBalance(upgradeAddress, 2),
+		isBalance(upgradeAddress, 3),
+	})
+	mock.AssertExpectations(t)
+
+	mock.AssertExpectations(t)
+}
+
 func TestLedgerChangeLedgerCloseMetaV2Empty(t *testing.T) {
 	ctx := context.Background()
 	mock := &ledgerbackend.MockDatabaseBackend{}
