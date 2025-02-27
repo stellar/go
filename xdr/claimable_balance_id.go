@@ -25,4 +25,5 @@ func (a *ClaimableBalanceId) Equals(b ClaimableBalanceId) bool {
 	default:
 		panic(fmt.Errorf("Unknown claimable balance type: %v", a.Type))
 	}
+	return false
 }
