@@ -24,17 +24,13 @@ var (
 	muxedAccountA, _ = xdr.MuxedAccountFromAccountId(accountA.Address(), memoA)
 	muxedAccountB, _ = xdr.MuxedAccountFromAccountId(accountB.Address(), memoB)
 
-	tenMillion = int64(1e7)
-
-	oneUnit    = xdr.Int64(1 * tenMillion)
-	twoUnits   = xdr.Int64(2 * tenMillion)
-	threeUnits = xdr.Int64(3 * tenMillion)
-	// fourUnits := xdr.Int64(4 * tenMillion)
-	fiveUnits = xdr.Int64(5 * tenMillion)
-	sixUnits  = xdr.Int64(6 * tenMillion)
-	tenUnits  = xdr.Int64(10 * tenMillion)
-
-	hundredUnits    = xdr.Int64(100 * tenMillion)
+	oneUnit         = xdr.Int64(1e7)
+	twoUnits        = 2 * oneUnit
+	threeUnits      = 3 * oneUnit
+	fiveUnits       = 5 * oneUnit
+	sixUnits        = 6 * oneUnit
+	tenUnits        = 10 * oneUnit
+	hundredUnits    = 100 * oneUnit
 	hundredUnitsStr = "100.0000000"
 
 	xlmAsset = xdr.MustNewNativeAsset()
@@ -42,17 +38,17 @@ var (
 	usdcIssuer     = "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN"
 	usdcAccount    = xdr.MustMuxedAddress(usdcIssuer)
 	usdcAsset      = xdr.MustNewCreditAsset("USDC", usdcIssuer)
-	usdcProtoAsset = assetProto.NewIssuedAsset(usdcAsset)
+	usdcProtoAsset = assetProto.NewProtoAsset(usdcAsset)
 
 	ethIssuer     = "GCEODJVUUVYVFD5KT4TOEDTMXQ76OPFOQC2EMYYMLPXQCUVPOB6XRWPQ"
 	ethAccount    = xdr.MustMuxedAddress(ethIssuer)
 	ethAsset      = xdr.MustNewCreditAsset("ETH", ethIssuer)
-	ethProtoAsset = assetProto.NewIssuedAsset(ethAsset)
+	ethProtoAsset = assetProto.NewProtoAsset(ethAsset)
 
 	btcIsuer      = "GBT4YAEGJQ5YSFUMNKX6BPBUOCPNAIOFAVZOF6MIME2CECBMEIUXFZZN"
 	btcAccount    = xdr.MustMuxedAddress(btcIsuer)
 	btcAsset      = xdr.MustNewCreditAsset("BTC", btcIsuer)
-	btcProtoAsset = assetProto.NewIssuedAsset(btcAsset)
+	btcProtoAsset = assetProto.NewProtoAsset(btcAsset)
 
 	lpBtcEthId, _  = xdr.NewPoolId(btcAsset, ethAsset, xdr.LiquidityPoolFeeV18)
 	lpEthUsdcId, _ = xdr.NewPoolId(ethAsset, usdcAsset, xdr.LiquidityPoolFeeV18)
@@ -138,6 +134,19 @@ var (
 		}
 	}
 
+	clawbackEvent = func(from *addressProto.Address, amt string, asset *assetProto.Asset) *TokenTransferEvent {
+		return &TokenTransferEvent{
+			Meta:  expectedEventMeta,
+			Asset: asset,
+			Event: &TokenTransferEvent_Clawback{
+				Clawback: &Clawback{
+					From:   from,
+					Amount: amt,
+				},
+			},
+		}
+	}
+
 	lpDepositOp = func(poolId xdr.PoolId, sourceAccount *xdr.MuxedAccount) xdr.Operation {
 		return xdr.Operation{
 			SourceAccount: sourceAccount,
@@ -171,7 +180,6 @@ var (
 					Params: xdr.LiquidityPoolConstantProductParameters{
 						AssetA: assetA,
 						AssetB: assetB,
-						Fee:    20,
 					},
 					ReserveA: reserveA,
 					ReserveB: reserveB,
@@ -374,18 +382,17 @@ func TestFeeEvent(t *testing.T) {
 		)
 	}
 
-	// Fixture
 	tests := []testFixture{
 		{
 			name: "Fee Event only - Failed Fee Bump Transaction",
-			tx:   failedTx(xdr.EnvelopeTypeEnvelopeTypeTxFeeBump, xdr.Int64(1e7/1e2)), // Fee  = 0.01 XLM
+			tx:   failedTx(xdr.EnvelopeTypeEnvelopeTypeTxFeeBump, oneUnit/1e2), // Fee  = 0.01 XLM
 			expected: []*TokenTransferEvent{
 				expectedFeeEvent("0.0100000"),
 			},
 		},
 		{
 			name: "Fee Event only - Failed V1 Transaction",
-			tx:   failedTx(xdr.EnvelopeTypeEnvelopeTypeTx, xdr.Int64(1e7/1e4)), // Fee  = 0.0001 XLM ,
+			tx:   failedTx(xdr.EnvelopeTypeEnvelopeTypeTx, oneUnit/1e4), // Fee  = 0.0001 XLM ,
 			expected: []*TokenTransferEvent{
 				expectedFeeEvent("0.0001000"),
 			},
@@ -621,7 +628,6 @@ func TestManageOfferEvents(t *testing.T) {
 		}
 	}
 
-	// Fixture
 	tests := []testFixture{
 		{
 			name:    "ManageBuyOffer - Buy USDC for XLM (2 claim atoms, Transfer events)",
@@ -771,7 +777,6 @@ func TestPathPaymentEvents(t *testing.T) {
 	someXlmSellerAccount := xdr.MustMuxedAddress("GC7ERFCD7QLDFRSEPLYB3GYSWX6GYMCHLDL45N4S5Q2N5EJDOMOJ63V4")
 	someEthSellerAccount := xdr.MustMuxedAddress("GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY")
 
-	// Fixture
 	tests := []testFixture{
 		{
 			name:    "Strict Send - A (BTC Issuer) sends BTC to B as ETH - 2 Offers (BTC/XLM, XLM/ETH) - Mint and Transfer events",
@@ -963,6 +968,42 @@ func TestLiquidityPoolEvents(t *testing.T) {
 			expected: []*TokenTransferEvent{
 				transferEvent(protoAddressFromLpHash(lpBtcEthId), protoAddressFromAccount(ethAccount), "5.0000000", btcProtoAsset),
 				burnEvent(protoAddressFromLpHash(lpBtcEthId), "10.0000000", ethProtoAsset),
+			},
+		},
+	}
+
+	runTokenTransferEventTests(t, tests)
+}
+
+func TestClawbackEvents(t *testing.T) {
+	clawbackOp := func(from xdr.MuxedAccount, asset xdr.Asset, amount xdr.Int64) xdr.Operation {
+		return xdr.Operation{
+			Body: xdr.OperationBody{
+				Type: xdr.OperationTypeClawback,
+				ClawbackOp: &xdr.ClawbackOp{
+					Asset:  asset,
+					From:   from,
+					Amount: amount,
+				},
+			},
+		}
+	}
+
+	tests := []testFixture{
+		{
+			name: "Clawback XLM from some account",
+			op:   clawbackOp(accountA, xlmAsset, hundredUnits),
+			tx:   someTx,
+			expected: []*TokenTransferEvent{
+				clawbackEvent(protoAddressFromAccount(accountA), hundredUnitsStr, xlmProtoAsset),
+			},
+		},
+		{
+			name: "Clawback USDC from some account",
+			op:   clawbackOp(accountB, usdcAsset, oneUnit/1e2),
+			tx:   someTx,
+			expected: []*TokenTransferEvent{
+				clawbackEvent(protoAddressFromAccount(accountB), "0.0100000", usdcProtoAsset),
 			},
 		},
 	}

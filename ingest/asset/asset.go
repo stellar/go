@@ -7,19 +7,10 @@ func NewNativeAsset() *Asset {
 	return &Asset{AssetType: &Asset_Native{Native: true}}
 }
 
-// NewIssuedAssetFromCodeAndIssuer creates an Asset with an asset code and issuer.
-func NewIssuedAssetFromCodeAndIssuer(assetCode, issuer string) *Asset {
-	return &Asset{
-		AssetType: &Asset_IssuedAsset{
-			IssuedAsset: &IssuedAsset{
-				AssetCode: assetCode,
-				Issuer:    issuer,
-			},
-		},
+func NewProtoAsset(asset xdr.Asset) *Asset {
+	if asset.IsNative() {
+		return NewNativeAsset()
 	}
-}
-
-func NewIssuedAsset(asset xdr.Asset) *Asset {
 	return &Asset{
 		AssetType: &Asset_IssuedAsset{
 			IssuedAsset: &IssuedAsset{

@@ -22,21 +22,26 @@ func TestNewNativeAsset(t *testing.T) {
 	assert.True(t, nativeAsset.GetNative(), "Native asset should have Native set to true")
 }
 
-func TestNewIssuedAsset(t *testing.T) {
+func TestNewProtoAsset(t *testing.T) {
 
-	usdcProtoAsset := NewIssuedAsset(usdcAsset)
+	usdcProtoAsset := NewProtoAsset(usdcAsset)
 
-	assert.NotNil(t, usdcProtoAsset, "Issued asset should not be nil")
-	assert.IsType(t, &Asset{}, usdcProtoAsset, "Issued asset should be of type *Asset")
+	assert.NotNil(t, usdcProtoAsset, "asset should not be nil")
+	assert.IsType(t, &Asset{}, usdcProtoAsset, "asset should be of type *Asset")
 	assert.IsType(t, &Asset_IssuedAsset{}, usdcProtoAsset.AssetType, "AssetType should be *Asset_IssuedAsset")
-
 	// Check issued asset fields
 	assert.Equal(t, assetCode, usdcProtoAsset.GetIssuedAsset().AssetCode, "Asset code should match")
 	assert.Equal(t, issuer, usdcProtoAsset.GetIssuedAsset().Issuer, "Issuer should match")
+
+	xlmProtoAsset := NewProtoAsset(xdr.MustNewNativeAsset())
+	assert.NotNil(t, xlmProtoAsset, "asset should not be nil")
+	assert.IsType(t, &Asset{}, xlmProtoAsset, "asset should be of type *Asset")
+	assert.IsType(t, &Asset_Native{}, xlmProtoAsset.AssetType, "AssetType should be *Asset_Native")
+	assert.True(t, xlmProtoAsset.GetNative(), "Native asset should have Native set to true")
 }
 
 func TestAssetSerialization(t *testing.T) {
-	original := NewIssuedAsset(usdcAsset)
+	original := NewProtoAsset(usdcAsset)
 
 	serializedAsset, err := proto.Marshal(original)
 	assert.NoError(t, err, "Failed to marshal asset")

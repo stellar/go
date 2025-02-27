@@ -74,7 +74,10 @@ func ProcessTokenTransferEventsFromTransaction(tx ingest.LedgerTransaction) ([]*
 	return events, nil
 }
 
-// opIndex will be needed, on the offchance that we need to fetch ledgerEntry changes, especially in setTrustline or AllowTrust
+// ProcessTokenTransferEventsFromOperation
+// There is a separate private function to derive events for each operation.
+// It is implicitly assumed that the operation is successful, and thus will contribute towards generating events.
+// which is why we dont check for the code in the OperationResult
 func ProcessTokenTransferEventsFromOperation(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation, opResult xdr.OperationResult) ([]*TokenTransferEvent, error) {
 	switch op.Body.Type {
 	case xdr.OperationTypeCreateAccount:
@@ -158,7 +161,13 @@ type addressWrapper struct {
 	claimableBalanceId *xdr.ClaimableBalanceId
 }
 
-// Depending on the asset - if src or dest account == issuer of asset, then mint/burn event, else transfer event
+/*
+Depending on the asset - if src or dest account == issuer of asset, then mint/burn event, else transfer event
+All operation related functions will call this function instead of directly calling the underlying proto functions to generate events
+The only exception to this is clawbackOperation and claimableClawbackOperation.
+Those 2 will call the underlying proto function for clawback
+*/
+
 func mintOrBurnOrTransferEvent(asset xdr.Asset, from addressWrapper, to addressWrapper, amt string, meta *EventMeta) *TokenTransferEvent {
 	var fromAddress, toAddress *addressProto.Address
 	// no need to have a separate flag for transferEvent. if neither burn nor mint, then it is regular transfer
@@ -188,12 +197,7 @@ func mintOrBurnOrTransferEvent(asset xdr.Asset, from addressWrapper, to addressW
 		toAddress = protoAddressFromClaimableBalanceId(*to.claimableBalanceId)
 	}
 
-	var protoAsset *assetProto.Asset
-	if asset.IsNative() {
-		protoAsset = xlmProtoAsset
-	} else {
-		protoAsset = assetProto.NewIssuedAsset(asset)
-	}
+	protoAsset := assetProto.NewProtoAsset(asset)
 
 	var event *TokenTransferEvent
 	if isMintEvent {
@@ -232,14 +236,13 @@ func createClaimableBalanceEvents(tx ingest.LedgerTransaction, opIndex uint32, o
 	return []*TokenTransferEvent{event}, nil
 }
 
-func getClaimableBalanceDetailsFromOperation(tx ingest.LedgerTransaction, opIndex uint32, cbId xdr.ClaimableBalanceId) (xdr.ClaimableBalanceEntry, error) {
+func getClaimableBalanceEntryFromOperation(tx ingest.LedgerTransaction, opIndex uint32, cbId xdr.ClaimableBalanceId) (xdr.ClaimableBalanceEntry, error) {
 	changes, err := tx.GetOperationChanges(opIndex)
 	if err != nil {
 		return xdr.ClaimableBalanceEntry{}, err
 	}
 
 	var cb xdr.ClaimableBalanceEntry
-	found := false
 	for _, change := range changes {
 		if change.Type != xdr.LedgerEntryTypeClaimableBalance {
 			continue
@@ -248,24 +251,21 @@ func getClaimableBalanceDetailsFromOperation(tx ingest.LedgerTransaction, opInde
 			cb = change.Pre.Data.MustClaimableBalance()
 
 			if cb.BalanceId.MustV0().Equals(cbId.MustV0()) {
-				found = true
-				break
+				return cb, nil
 			}
 		}
 	}
 
-	if !found {
-		// TODO: fix this with strkey for ClaimableBalanceId
-		return xdr.ClaimableBalanceEntry{}, fmt.Errorf("change not found for balanceId: %v", cbId.MustV0().HexString())
-	}
-	return cb, nil
+	// TODO: fix this with strkey for ClaimableBalanceId
+	return xdr.ClaimableBalanceEntry{}, fmt.Errorf("change not found for balanceId: %v", cbId.MustV0().HexString())
 }
 
 func claimClaimableBalanceEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation) ([]*TokenTransferEvent, error) {
 	claimCbOp := op.Body.MustClaimClaimableBalanceOp()
 	cbId := claimCbOp.BalanceId
 
-	cbEntry, err := getClaimableBalanceDetailsFromOperation(tx, opIndex, cbId)
+	// After this operation, the CB will be deleted. this function checks for cb.pre != nil and cp.post == nil
+	cbEntry, err := getClaimableBalanceEntryFromOperation(tx, opIndex, cbId)
 	if err != nil {
 		return nil, err
 	}
@@ -282,9 +282,10 @@ func clawbackEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operatio
 	clawbackOp := op.Body.MustClawbackOp()
 	meta := NewEventMeta(tx, &opIndex, nil)
 
-	// fromAddress is not the operationSourceAccount. It is the account specified in the operation
+	// fromAddress is NOT the operationSourceAccount.
+	// It is the account specified in the operation from whom you want money to be clawed back
 	from := protoAddressFromAccount(clawbackOp.From)
-	event := NewClawbackEvent(meta, from, amount.String(clawbackOp.Amount), assetProto.NewIssuedAsset(clawbackOp.Asset))
+	event := NewClawbackEvent(meta, from, amount.String(clawbackOp.Amount), assetProto.NewProtoAsset(clawbackOp.Asset))
 	return []*TokenTransferEvent{event}, nil
 	return nil, nil
 }
@@ -293,14 +294,15 @@ func clawbackClaimableBalanceEvents(tx ingest.LedgerTransaction, opIndex uint32,
 	clawbackCbOp := op.Body.MustClawbackClaimableBalanceOp()
 	cbId := clawbackCbOp.BalanceId
 
-	cbEntry, err := getClaimableBalanceDetailsFromOperation(tx, opIndex, cbId)
+	// After this operation, the CB will be deleted. this function checks for cb.pre != nil and cp.post == nil
+	cbEntry, err := getClaimableBalanceEntryFromOperation(tx, opIndex, cbId)
 	if err != nil {
 		return nil, err
 	}
 
 	meta := NewEventMeta(tx, &opIndex, nil)
 	// Money is clawed back from the claimableBalanceId
-	event := NewClawbackEvent(meta, protoAddressFromClaimableBalanceId(cbId), amount.String(cbEntry.Amount), assetProto.NewIssuedAsset(cbEntry.Asset))
+	event := NewClawbackEvent(meta, protoAddressFromClaimableBalanceId(cbId), amount.String(cbEntry.Amount), assetProto.NewProtoAsset(cbEntry.Asset))
 	return []*TokenTransferEvent{event}, nil
 }
 
