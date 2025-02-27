@@ -1112,3 +1112,52 @@ func TestClawbackClaimableBalanceEvents(t *testing.T) {
 
 	runTokenTransferEventTests(t, tests)
 }
+
+func TestClaimClaimableBalanceEvents(t *testing.T) {
+	claimCbop := func(cbId xdr.ClaimableBalanceId, sourceAccount *xdr.MuxedAccount) xdr.Operation {
+		return xdr.Operation{
+			SourceAccount: sourceAccount,
+			Body: xdr.OperationBody{
+				Type: xdr.OperationTypeClaimClaimableBalance,
+				ClaimClaimableBalanceOp: &xdr.ClaimClaimableBalanceOp{
+					BalanceId: cbId,
+				},
+			},
+		}
+	}
+
+	tests := []testFixture{
+		{
+			name:    "Claim XLM claimable balance - Claimable Balance removed - Transfer Event",
+			opIndex: 0,
+			op:      claimCbop(someBalanceId, &accountA), // money moves from CB to the source account of operation
+			tx: someTxWithOperationChanges(
+				xdr.LedgerEntryChanges{
+					// pre != nil, post = nil
+					generateCbEntryChangeState(cbLedgerEntry(someBalanceId, xlmAsset, oneUnit)),
+					generateCbEntryRemovedChange(someBalanceId),
+				},
+			),
+			expected: []*TokenTransferEvent{
+				transferEvent(protoAddressFromClaimableBalanceId(someBalanceId), protoAddressFromAccount(accountA), "1.0000000", xlmProtoAsset),
+			},
+		},
+		{
+			name:    "Claim USDC claimable balance back by issuer - Claimable Balance removed - Burn Event",
+			opIndex: 0,
+			op:      claimCbop(someBalanceId, &usdcAccount), // money moves from CB to the source account of operation
+			tx: someTxWithOperationChanges(
+				xdr.LedgerEntryChanges{
+					// pre != nil, post = nil
+					generateCbEntryChangeState(cbLedgerEntry(someBalanceId, usdcAsset, oneUnit/1e3)),
+					generateCbEntryRemovedChange(someBalanceId),
+				},
+			),
+			expected: []*TokenTransferEvent{
+				burnEvent(protoAddressFromClaimableBalanceId(someBalanceId), "0.0010000", usdcProtoAsset),
+			},
+		},
+	}
+
+	runTokenTransferEventTests(t, tests)
+}
