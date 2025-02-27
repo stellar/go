@@ -32,6 +32,10 @@ func (t *LedgerTransaction) txInternalError() bool {
 	return t.Result.Result.Result.Code == xdr.TransactionResultCodeTxInternalError
 }
 
+func (t *LedgerTransaction) FeeAccount() xdr.MuxedAccount {
+	return t.Envelope.FeeAccount()
+}
+
 // GetFeeChanges returns a developer friendly representation of LedgerEntryChanges
 // connected to fees.
 func (t *LedgerTransaction) GetFeeChanges() []Change {
@@ -590,31 +594,6 @@ func (t *LedgerTransaction) AccountMuxed() (string, bool) {
 
 	return sourceAccount.Address(), true
 
-}
-
-func (t *LedgerTransaction) FeeAccount() (string, bool) {
-	if !t.Envelope.IsFeeBump() {
-		return "", false
-	}
-
-	feeBumpAccount := t.Envelope.FeeBumpAccount()
-	feeAccount := feeBumpAccount.ToAccountId()
-
-	return feeAccount.Address(), true
-
-}
-
-func (t *LedgerTransaction) FeeAccountMuxed() (string, bool) {
-	if !t.Envelope.IsFeeBump() {
-		return "", false
-	}
-
-	feeBumpAccount := t.Envelope.FeeBumpAccount()
-	if feeBumpAccount.Type != xdr.CryptoKeyTypeKeyTypeMuxedEd25519 {
-		return "", false
-	}
-
-	return feeBumpAccount.Address(), true
 }
 
 func (t *LedgerTransaction) InnerTransactionHash() (string, bool) {
