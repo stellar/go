@@ -163,6 +163,14 @@ func (c *ChangeCompactor) getLedgerKey(ledgerEntry *xdr.LedgerEntry) ([]byte, er
 	return ledgerKey, nil
 }
 
+// maxTTL returns the ttl entry with the highest LiveUntilLedgerSeq
+func maxTTL(a, b xdr.TtlEntry) xdr.TtlEntry {
+	if a.LiveUntilLedgerSeq > b.LiveUntilLedgerSeq {
+		return a
+	}
+	return b
+}
+
 // addUpdatedChange adds a change to the cache, but returns an error if update
 // change is unexpected.
 func (c *ChangeCompactor) addUpdatedChange(change Change) error {
@@ -179,22 +187,19 @@ func (c *ChangeCompactor) addUpdatedChange(change Change) error {
 	}
 
 	switch existingChange.ChangeType {
-	case xdr.LedgerEntryChangeTypeLedgerEntryCreated:
-		// If existing type is created it means that this entry does not
-		// exist in a DB so we update entry change.
-		c.cache[ledgerKeyString] = Change{
-			Type:       change.Type,
-			Pre:        existingChange.Pre, // = nil
-			Post:       change.Post,
-			ChangeType: existingChange.ChangeType,
+	case xdr.LedgerEntryChangeTypeLedgerEntryCreated,
+		xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
+		xdr.LedgerEntryChangeTypeLedgerEntryRestored:
+		post := change.Post
+		if change.Type == xdr.LedgerEntryTypeTtl {
+			// CAP-63 introduces special update semantics for TTL entries, see
+			// https://github.com/stellar/stellar-protocol/blob/master/core/cap-0063.md#ttl-ledger-change-semantics
+			*post.Data.Ttl = maxTTL(*existingChange.Post.Data.Ttl, *post.Data.Ttl)
 		}
-	case xdr.LedgerEntryChangeTypeLedgerEntryUpdated:
-		fallthrough
-	case xdr.LedgerEntryChangeTypeLedgerEntryRestored:
 		c.cache[ledgerKeyString] = Change{
 			Type:       change.Type,
 			Pre:        existingChange.Pre,
-			Post:       change.Post,
+			Post:       post,
 			ChangeType: existingChange.ChangeType, //keep the existing change type
 		}
 	case xdr.LedgerEntryChangeTypeLedgerEntryRemoved:

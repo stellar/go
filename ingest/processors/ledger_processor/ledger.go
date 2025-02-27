@@ -200,7 +200,14 @@ func getTransactionPhase(transactionPhase []xdr.TransactionPhase) (transactionEn
 				switch component.Type {
 				case 0:
 					transactionSlice = append(transactionSlice, component.TxsMaybeDiscountedFee.Txs...)
-
+				case 1:
+					for _, stage := range phase.ParallelTxsComponent.ExecutionStages {
+						for _, cluster := range stage {
+							for _, envelope := range cluster {
+								transactionSlice = append(transactionSlice, envelope)
+							}
+						}
+					}
 				default:
 					panic(fmt.Sprintf("Unsupported TxSetComponentType: %d", component.Type))
 				}

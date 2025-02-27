@@ -58,8 +58,21 @@ func (l LedgerCloseMeta) TransactionEnvelopes() []TransactionEnvelope {
 	case 1:
 		var envelopes = make([]TransactionEnvelope, 0, l.CountTransactions())
 		for _, phase := range l.MustV1().TxSet.V1TxSet.Phases {
-			for _, component := range *phase.V0Components {
-				envelopes = append(envelopes, component.TxsMaybeDiscountedFee.Txs...)
+			switch phase.V {
+			case 0:
+				for _, component := range *phase.V0Components {
+					envelopes = append(envelopes, component.TxsMaybeDiscountedFee.Txs...)
+				}
+			case 1:
+				for _, stage := range phase.ParallelTxsComponent.ExecutionStages {
+					for _, cluster := range stage {
+						for _, envelope := range cluster {
+							envelopes = append(envelopes, envelope)
+						}
+					}
+				}
+			default:
+				panic(fmt.Sprintf("Unsupported phase type: %d", phase.V))
 			}
 		}
 		return envelopes
