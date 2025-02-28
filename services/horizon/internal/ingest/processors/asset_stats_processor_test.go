@@ -2113,7 +2113,8 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveContractID() {
 	s.Assert().NoError(err)
 
 	err = s.processor.ProcessChange(s.ctx, ingest.Change{
-		Type: xdr.LedgerEntryTypeContractData,
+		Reason: ingest.LedgerEntryChangeReasonEviction,
+		Type:   xdr.LedgerEntryTypeContractData,
 		Pre: &xdr.LedgerEntry{
 			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
 			Data:                  eurContractData,
