@@ -97,9 +97,9 @@ func ProcessTokenTransferEventsFromOperation(tx ingest.LedgerTransaction, opInde
 	case xdr.OperationTypeClawbackClaimableBalance:
 		return clawbackClaimableBalanceEvents(tx, opIndex, op)
 	case xdr.OperationTypeAllowTrust:
-		return allowTrustEvents(tx, opIndex, op)
+		return allowTrustEvents(tx, opIndex)
 	case xdr.OperationTypeSetTrustLineFlags:
-		return setTrustLineFlagsEvents(tx, opIndex, op)
+		return setTrustLineFlagsEvents(tx, opIndex)
 	case xdr.OperationTypeLiquidityPoolDeposit:
 		return liquidityPoolDepositEvents(tx, opIndex, op)
 	case xdr.OperationTypeLiquidityPoolWithdraw:
@@ -354,16 +354,15 @@ func clawbackClaimableBalanceEvents(tx ingest.LedgerTransaction, opIndex uint32,
 	return []*TokenTransferEvent{event}, nil
 }
 
-func allowTrustEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation) ([]*TokenTransferEvent, error) {
-	return generateEventsForRevokedTrustlines(tx, opIndex, op)
+func allowTrustEvents(tx ingest.LedgerTransaction, opIndex uint32) ([]*TokenTransferEvent, error) {
+	return generateEventsForRevokedTrustlines(tx, opIndex)
 }
 
-func setTrustLineFlagsEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation) ([]*TokenTransferEvent, error) {
-	return generateEventsForRevokedTrustlines(tx, opIndex, op)
+func setTrustLineFlagsEvents(tx ingest.LedgerTransaction, opIndex uint32) ([]*TokenTransferEvent, error) {
+	return generateEventsForRevokedTrustlines(tx, opIndex)
 }
 
-func generateEventsForRevokedTrustlines(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation) ([]*TokenTransferEvent, error) {
-	opSrcAcc := operationSourceAccount(tx, op)
+func generateEventsForRevokedTrustlines(tx ingest.LedgerTransaction, opIndex uint32) ([]*TokenTransferEvent, error) {
 
 	// IF this operation is used to revoke authorization from a trustline that deposited into a liquidity pool,
 	// then UPTO 2 claimable balances will be created for the withdrawn assets (See CAP-0038 for more info) PER each impacted Liquidity Pool
@@ -402,15 +401,17 @@ func generateEventsForRevokedTrustlines(tx ingest.LedgerTransaction, opIndex uin
 
 		It would be nice, if somehow, core could trickle this information up in the ledger entry changes for the claimable balances created - something like createdBy in the extension field.
 	*/
-	createdCbIdToCreatorLpId := make(map[xdr.ClaimableBalanceId]xdr.PoolId)
+	createdCbIdToCreatorLpId := make(map[string]string)
 	for _, lp := range impactedLiquidityPools {
 		// This `claimableBalancesCreated` slice will have exactly 2 entries - one for each asset in the LP
-		claimableBalancesCreated, err := generateClaimableBalanceIdFromLiquidityPoolId(lp, tx, opSrcAcc.ToAccountId(), opIndex)
+		// The logic in CAP-38 dictates that the transactionAccount is what is passed to generate the ClaimableBalanceId
+		// and NOT the operation source account.
+		claimableBalancesCreated, err := generateClaimableBalanceIdFromLiquidityPoolId(lp, tx, tx.Envelope.SourceAccount().ToAccountId(), opIndex)
 		if err != nil {
 			return nil, err
 		}
-		for _, cb := range claimableBalancesCreated {
-			createdCbIdToCreatorLpId[cb] = lp.liquidityPoolId
+		for _, cbId := range claimableBalancesCreated {
+			createdCbIdToCreatorLpId[cbIdToStrkey(cbId)] = lpIdToStrkey(lp.liquidityPoolId)
 		}
 	}
 
@@ -423,70 +424,73 @@ func generateEventsForRevokedTrustlines(tx ingest.LedgerTransaction, opIndex uin
 		// Nested for loop.
 		// See the  logic in CAP-38(https://github.com/stellar/stellar-protocol/blob/master/core/cap-0038.md#settrustlineflagsop-and-allowtrustop).
 		// This is consistent with that
-		for _, cb := range impactedClaimableBalances {
-			if _, foundCreatorLp := createdCbIdToCreatorLpId[cb.BalanceId]; foundCreatorLp {
-				cbsCreatedByThisLp = append(cbsCreatedByThisLp, cb)
+		currentLpId := lpIdToStrkey(lp.liquidityPoolId)
+		for _, cbEntry := range impactedClaimableBalances {
+			cbId := cbIdToStrkey(cbEntry.BalanceId)
+			// Maybe the additional check for creatorLpId == currentLpId is redundant, but just in case
+			if creatorLpId, found := createdCbIdToCreatorLpId[cbId]; found && creatorLpId == currentLpId {
+				cbsCreatedByThisLp = append(cbsCreatedByThisLp, cbEntry)
+			}
+		}
+
+		if len(cbsCreatedByThisLp) == 0 {
+			continue // there are no events since there are no claimable balances that were created by this LP
+		} else if len(cbsCreatedByThisLp) == 1 {
+
+			// There was exactly 1 claimable balance created by this LP, whereas, normally, you'd expect 2.
+			// which means that the other asset was sent back to the issuer.
+			// This is the case where the trustor (account in operation whose trustline is being revoked) is the issuer.
+			//, i.e that asset's amount was burned, which is why no LP was created in the first place.
+			//  issue 2 events:
+			//		- transfer event -- from: LPHash, to:Cb that was created, asset: Asset in cbEntry, amt: Amt in CB
+			//		- burn event for the asset for which no CB was created -- from: LPHash, asset: burnedAsset from LP, amt: Amt of burnedAsset in the LP
+
+			/*
+				For e.g suppose an account - ethIssuerAccount, deposits to USDC-ETH liquidity pool
+				Now, a setTrustlineFlags operation is issued by the USDC-Issuer account to revoke ethIssuerAccount's USDC trustline.
+				As a side-effect of this trustline revocation, there is a removal of ethIssuerAcount's stake from the USDB-ETH liquidity pool.
+				In this case, 1 Claimable balance for BTC will be created, with claimantAccount = trustor(ethIssuerAccount)
+				No Claimable balance for ETH will be created. it will simply be burned.
+			*/
+			assetInCb := cbsCreatedByThisLp[0].Asset
+
+			// The asset that needs to be burned is the one that is the OPPOSITE of the asset in the CB, so find that in the LP
+			var burnedAsset xdr.Asset
+			var burnedAmount xdr.Int64
+			if assetInCb == lp.assetA {
+				burnedAsset = lp.assetB
+				burnedAmount = lp.amountChangeForAssetB
+			} else {
+				burnedAsset = lp.assetA
+				burnedAmount = lp.amountChangeForAssetA
 			}
 
-			if len(cbsCreatedByThisLp) == 0 {
-				continue // there are no events since there are no claimable balances that were created by this LP
-			} else if len(cbsCreatedByThisLp) == 1 {
+			from := protoAddressFromLpHash(lp.liquidityPoolId)
+			transferEvent := NewTransferEvent(meta, from,
+				protoAddressFromClaimableBalanceId(cbsCreatedByThisLp[0].BalanceId),
+				amount.String(cbsCreatedByThisLp[0].Amount),
+				assetProto.NewProtoAsset(assetInCb))
 
-				// There was exactly 1 claimable balance created by this LP, whereas, normally, you'd expect 2.
-				// which means that the other asset was sent back to the issuer.
-				// This is the case where the trustor (account in operation whose trustline is being revoked) is the issuer.
-				//, i.e that asset's amount was burned, which is why no LP was created in the first place.
-				//  issue 2 events:
-				//		- transfer event -- from: LPHash, to:Cb that was created, asset: Asset in cb, amt: Amt in CB
-				//		- burn event for the asset for which no CB was created -- from: LPHash, asset: burnedAsset from LP, amt: Amt of burnedAsset in the LP
+			burnEvent := NewBurnEvent(meta, from, amount.String(burnedAmount), assetProto.NewProtoAsset(burnedAsset))
+			events = append(events, transferEvent, burnEvent)
 
-				/*
-					For e.g suppose an account - ethIssuerAccount, deposits to USDC-ETH liquidity pool
-					Now, a setTrustlineFlags operation is issued by the USDC-Issuer account to revoke ethIssuerAccount's USDC trustline.
-					As a side-effect of this trustline revocation, there is a removal of ethIssuerAcount's stake from the USDB-ETH liquidity pool.
-					In this case, 1 Claimable balance for BTC will be created, with claimantAccount = trustor(ethIssuerAccount)
-					No Claimable balance for ETH will be created. it will simply be burned.
-				*/
-				assetInCb := cbsCreatedByThisLp[0].Asset
+		} else if len(cbsCreatedByThisLp) == 2 {
+			// Easy case - This LP created 2 claimable balances - one for each of the assets in the LP, to be sent to the account whose trustline was revoked.
+			// so generate 2 transfer events
+			from := protoAddressFromLpHash(lp.liquidityPoolId)
+			asset1, asset2 := cbsCreatedByThisLp[0].Asset, cbsCreatedByThisLp[1].Asset
+			to1, to2 := protoAddressFromClaimableBalanceId(cbsCreatedByThisLp[0].BalanceId), protoAddressFromClaimableBalanceId(cbsCreatedByThisLp[1].BalanceId)
+			amt1, amt2 := amount.String(cbsCreatedByThisLp[0].Amount), amount.String(cbsCreatedByThisLp[1].Amount)
 
-				// The asset that needs to be burned is the one that is the OPPOSITE of the asset in the CB, so find that in the LP
-				var burnedAsset xdr.Asset
-				var burnedAmount xdr.Int64
-				if assetInCb == lp.assetA {
-					burnedAsset = lp.assetB
-					burnedAmount = lp.amountChangeForAssetB
-				} else {
-					burnedAsset = lp.assetA
-					burnedAmount = lp.amountChangeForAssetA
-				}
+			events = append(events,
+				NewTransferEvent(meta, from, to1, amt1, assetProto.NewProtoAsset(asset1)),
+				NewTransferEvent(meta, from, to2, amt2, assetProto.NewProtoAsset(asset2)),
+			)
 
-				from := protoAddressFromLpHash(lp.liquidityPoolId)
-				transferEvent := NewTransferEvent(meta, from,
-					protoAddressFromClaimableBalanceId(cbsCreatedByThisLp[0].BalanceId),
-					amount.String(cbsCreatedByThisLp[0].Amount),
-					assetProto.NewProtoAsset(assetInCb))
-
-				burnEvent := NewBurnEvent(meta, from, amount.String(burnedAmount), assetProto.NewProtoAsset(burnedAsset))
-				events = append(events, transferEvent, burnEvent)
-
-			} else if len(cbsCreatedByThisLp) == 2 {
-				// Easy case - This LP created 2 claimable balances - one for each of the assets in the LP, to be sent to the account whose trustline was revoked.
-				// so generate 2 transfer events
-				from := protoAddressFromLpHash(lp.liquidityPoolId)
-				asset1, asset2 := cbsCreatedByThisLp[0].Asset, cbsCreatedByThisLp[1].Asset
-				to1, to2 := protoAddressFromClaimableBalanceId(cbsCreatedByThisLp[0].BalanceId), protoAddressFromClaimableBalanceId(cbsCreatedByThisLp[1].BalanceId)
-				amt1, amt2 := amount.String(cbsCreatedByThisLp[0].Amount), amount.String(cbsCreatedByThisLp[1].Amount)
-
-				events = append(events,
-					NewTransferEvent(meta, from, to1, amt1, assetProto.NewProtoAsset(asset1)),
-					NewTransferEvent(meta, from, to2, amt2, assetProto.NewProtoAsset(asset2)),
-				)
-
-			} else if len(cbsCreatedByThisLp) > 2 {
-				return nil,
-					fmt.Errorf("more than two claimable balances created for LP: %v, due to operation: %s. This shouldnt be possible",
-						lpIdToStrkey(lp.liquidityPoolId), op.Body.Type.String())
-			}
+		} else if len(cbsCreatedByThisLp) > 2 {
+			return nil,
+				fmt.Errorf("more than two claimable balances created from LP: %v. This shouldnt be possible",
+					lpIdToStrkey(lp.liquidityPoolId))
 		}
 	}
 
