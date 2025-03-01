@@ -1,6 +1,7 @@
 package token_transfer
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/ingest"
@@ -96,9 +97,9 @@ func ProcessTokenTransferEventsFromOperation(tx ingest.LedgerTransaction, opInde
 	case xdr.OperationTypeClawbackClaimableBalance:
 		return clawbackClaimableBalanceEvents(tx, opIndex, op)
 	case xdr.OperationTypeAllowTrust:
-		return allowTrustEvents(tx, opIndex, op.Body.MustAllowTrustOp(), opResult.Tr.MustAllowTrustResult())
+		return allowTrustEvents(tx, opIndex, op)
 	case xdr.OperationTypeSetTrustLineFlags:
-		return setTrustLineFlagsEvents(tx, opIndex, op.Body.MustSetTrustLineFlagsOp(), opResult.Tr.MustSetTrustLineFlagsResult())
+		return setTrustLineFlagsEvents(tx, opIndex, op)
 	case xdr.OperationTypeLiquidityPoolDeposit:
 		return liquidityPoolDepositEvents(tx, opIndex, op)
 	case xdr.OperationTypeLiquidityPoolWithdraw:
@@ -236,6 +237,37 @@ func createClaimableBalanceEvents(tx ingest.LedgerTransaction, opIndex uint32, o
 	return []*TokenTransferEvent{event}, nil
 }
 
+func generateClaimableBalanceIdFromLiquidityPoolId(lpEntry liquidityPoolEntryDelta, tx ingest.LedgerTransaction, sourceAccount xdr.AccountId, opIndex uint32) ([]xdr.ClaimableBalanceId, error) {
+	var generatedClaimableBalanceIds []xdr.ClaimableBalanceId
+	seqNum := tx.Envelope.SeqNum()
+
+	assetA, AssetB := lpEntry.assetA, lpEntry.assetB
+	for _, asset := range []xdr.Asset{assetA, AssetB} {
+		preImageId := xdr.HashIdPreimage{
+			Type: xdr.EnvelopeTypeEnvelopeTypePoolRevokeOpId,
+			RevokeId: &xdr.HashIdPreimageRevokeId{
+				SourceAccount:   sourceAccount,
+				SeqNum:          xdr.SequenceNumber(seqNum),
+				OpNum:           xdr.Uint32(opIndex),
+				LiquidityPoolId: lpEntry.liquidityPoolId,
+				Asset:           asset,
+			},
+		}
+		binaryDump, e := preImageId.MarshalBinary()
+		if e != nil {
+			return nil, errors.Wrapf(e, "Failed to convert HashIdPreimage to claimable balanceId")
+		}
+		sha256hash := xdr.Hash(sha256.Sum256(binaryDump))
+		cbId := xdr.ClaimableBalanceId{
+			Type: xdr.ClaimableBalanceIdTypeClaimableBalanceIdTypeV0,
+			V0:   &sha256hash,
+		}
+		generatedClaimableBalanceIds = append(generatedClaimableBalanceIds, cbId)
+	}
+
+	return generatedClaimableBalanceIds, nil
+}
+
 func getClaimableBalanceEntriesFromOperationChanges(tx ingest.LedgerTransaction, opIndex uint32) ([]xdr.ClaimableBalanceEntry, error) {
 	changes, err := tx.GetOperationChanges(opIndex)
 	if err != nil {
@@ -322,35 +354,154 @@ func clawbackClaimableBalanceEvents(tx ingest.LedgerTransaction, opIndex uint32,
 	return []*TokenTransferEvent{event}, nil
 }
 
-func allowTrustEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.AllowTrustOp, result xdr.AllowTrustResult) ([]*TokenTransferEvent, error) {
+func allowTrustEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation) ([]*TokenTransferEvent, error) {
+	return generateEventsForRevokedTrustlines(tx, opIndex, op)
+}
+
+func setTrustLineFlagsEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation) ([]*TokenTransferEvent, error) {
+	return generateEventsForRevokedTrustlines(tx, opIndex, op)
+}
+
+func generateEventsForRevokedTrustlines(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation) ([]*TokenTransferEvent, error) {
+	opSrcAcc := operationSourceAccount(tx, op)
+
+	// IF this operation is used to revoke authorization from a trustline that deposited into a liquidity pool,
+	// then UPTO 2 claimable balances will be created for the withdrawn assets (See CAP-0038 for more info) PER each impacted Liquidity Pool
+
+	// Go through the operation changes and find the LiquidityPools that were impacted
+	impactedLiquidityPools, err := getImpactedLiquidityPoolEntriesFromOperation(tx, opIndex)
+	if err != nil {
+		return nil, err
+	}
+
+	// The operation didnt cause revocation of the trustor account's pool shares in any liquidity pools. So no events generated at all
+	if len(impactedLiquidityPools) == 0 {
+		return nil, nil
+	}
+
+	impactedClaimableBalances, err := getClaimableBalanceEntriesFromOperationChanges(tx, opIndex)
+	if err != nil {
+		return nil, err
+	}
+
+	// There were no claimable balances created, even though there were some liquidity pools that showed up.
+	// This can happen, if all the liquidity pools impacted were empty in the first place,
+	//i.e they didnt have any pool shares OR reserves of asset A and B
+	// So there is no transfer of money, so no events generated
+	if len(impactedClaimableBalances) == 0 {
+		return nil, nil
+	}
+
 	/*
-		IF this operation is used to revoke authorization from a trustline that deposited into a liquidity pool,
-		then UPTO 2 claimable balances will be created for the withdrawn assets (See CAP-0038 for more info)
+		MAGIC happens here.
+		Based on the logic in CAP-38 (https://github.com/stellar/stellar-protocol/blob/master/core/cap-0038.md#settrustlineflagsop-and-allowtrustop),
+		There is no concrete way to tie which claimable balances(either 1 or 2) were created in response to which liquidity pool.
+		So, it is difficult to generate the from, to in the transfer event.
+		So, we need to re-implement the code logic to derive claimableBalanceIds from liquidity pool
+		and then do additional logic to compare it with the claimableBalances that were actually created (i,e the ones that show up in the operation changes)
 
-		Code logic:
-		- Go through the operation changes and find the LiquidityPool from which assets were withdrawn. (QUESTION = Can there be more than LP that shows up in operation ledgerEntryChanges??)
-		- IF no LP found, then nothing to do
-		- If a LP is found, then go through the operation changes to fetch the (upto 2) Claimable Balances created.
-			for each claimable balance create a transfer event -- from: LpHash, to: CBid, asset = one asset from LP, someAmount
-
-
+		It would be nice, if somehow, core could trickle this information up in the ledger entry changes for the claimable balances created - something like createdBy in the extension field.
 	*/
-	return nil, nil
+	createdCbIdToCreatorLpId := make(map[xdr.ClaimableBalanceId]xdr.PoolId)
+	for _, lp := range impactedLiquidityPools {
+		// This `claimableBalancesCreated` slice will have exactly 2 entries - one for each asset in the LP
+		claimableBalancesCreated, err := generateClaimableBalanceIdFromLiquidityPoolId(lp, tx, opSrcAcc.ToAccountId(), opIndex)
+		if err != nil {
+			return nil, err
+		}
+		for _, cb := range claimableBalancesCreated {
+			createdCbIdToCreatorLpId[cb] = lp.liquidityPoolId
+		}
+	}
+
+	meta := NewEventMeta(tx, &opIndex, nil)
+	var events []*TokenTransferEvent
+
+	for _, lp := range impactedLiquidityPools {
+		var cbsCreatedByThisLp []xdr.ClaimableBalanceEntry
+
+		// Nested for loop.
+		// See the  logic in CAP-38(https://github.com/stellar/stellar-protocol/blob/master/core/cap-0038.md#settrustlineflagsop-and-allowtrustop).
+		// This is consistent with that
+		for _, cb := range impactedClaimableBalances {
+			if _, foundCreatorLp := createdCbIdToCreatorLpId[cb.BalanceId]; foundCreatorLp {
+				cbsCreatedByThisLp = append(cbsCreatedByThisLp, cb)
+			}
+
+			if len(cbsCreatedByThisLp) == 0 {
+				continue // there are no events since there are no claimable balances that were created by this LP
+			} else if len(cbsCreatedByThisLp) == 1 {
+
+				// There was exactly 1 claimable balance created by this LP, whereas, normally, you'd expect 2.
+				// which means that the other asset was sent back to the issuer.
+				// This is the case where the trustor (account in operation whose trustline is being revoked) is the issuer.
+				//, i.e that asset's amount was burned, which is why no LP was created in the first place.
+				//  issue 2 events:
+				//		- transfer event -- from: LPHash, to:Cb that was created, asset: Asset in cb, amt: Amt in CB
+				//		- burn event for the asset for which no CB was created -- from: LPHash, asset: burnedAsset from LP, amt: Amt of burnedAsset in the LP
+
+				/*
+					For e.g suppose an account - ethIssuerAccount, deposits to USDC-ETH liquidity pool
+					Now, a setTrustlineFlags operation is issued by the USDC-Issuer account to revoke ethIssuerAccount's USDC trustline.
+					As a side-effect of this trustline revocation, there is a removal of ethIssuerAcount's stake from the USDB-ETH liquidity pool.
+					In this case, 1 Claimable balance for BTC will be created, with claimantAccount = trustor(ethIssuerAccount)
+					No Claimable balance for ETH will be created. it will simply be burned.
+				*/
+				assetInCb := cbsCreatedByThisLp[0].Asset
+
+				// The asset that needs to be burned is the one that is the OPPOSITE of the asset in the CB, so find that in the LP
+				var burnedAsset xdr.Asset
+				var burnedAmount xdr.Int64
+				if assetInCb == lp.assetA {
+					burnedAsset = lp.assetB
+					burnedAmount = lp.amountChangeForAssetB
+				} else {
+					burnedAsset = lp.assetA
+					burnedAmount = lp.amountChangeForAssetA
+				}
+
+				from := protoAddressFromLpHash(lp.liquidityPoolId)
+				transferEvent := NewTransferEvent(meta, from,
+					protoAddressFromClaimableBalanceId(cbsCreatedByThisLp[0].BalanceId),
+					amount.String(cbsCreatedByThisLp[0].Amount),
+					assetProto.NewProtoAsset(assetInCb))
+
+				burnEvent := NewBurnEvent(meta, from, amount.String(burnedAmount), assetProto.NewProtoAsset(burnedAsset))
+				events = append(events, transferEvent, burnEvent)
+
+			} else if len(cbsCreatedByThisLp) == 2 {
+				// Easy case - This LP created 2 claimable balances - one for each of the assets in the LP, to be sent to the account whose trustline was revoked.
+				// so generate 2 transfer events
+				from := protoAddressFromLpHash(lp.liquidityPoolId)
+				asset1, asset2 := cbsCreatedByThisLp[0].Asset, cbsCreatedByThisLp[1].Asset
+				to1, to2 := protoAddressFromClaimableBalanceId(cbsCreatedByThisLp[0].BalanceId), protoAddressFromClaimableBalanceId(cbsCreatedByThisLp[1].BalanceId)
+				amt1, amt2 := amount.String(cbsCreatedByThisLp[0].Amount), amount.String(cbsCreatedByThisLp[1].Amount)
+
+				events = append(events,
+					NewTransferEvent(meta, from, to1, amt1, assetProto.NewProtoAsset(asset1)),
+					NewTransferEvent(meta, from, to2, amt2, assetProto.NewProtoAsset(asset2)),
+				)
+
+			} else if len(cbsCreatedByThisLp) > 2 {
+				return nil,
+					fmt.Errorf("more than two claimable balances created for LP: %v, due to operation: %s. This shouldnt be possible",
+						lpIdToStrkey(lp.liquidityPoolId), op.Body.Type.String())
+			}
+		}
+	}
+
+	return events, nil
 }
 
 type liquidityPoolEntryDelta struct {
-	lpId               xdr.PoolId
-	assetA             xdr.Asset
-	assetB             xdr.Asset
-	reservesRemainingA xdr.Int64
-	reservesRemainingB xdr.Int64
+	liquidityPoolId       xdr.PoolId
+	assetA                xdr.Asset
+	assetB                xdr.Asset
+	amountChangeForAssetA xdr.Int64
+	amountChangeForAssetB xdr.Int64
 }
 
-func setTrustLineFlagsEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.SetTrustLineFlagsOp, result xdr.SetTrustLineFlagsResult) ([]*TokenTransferEvent, error) {
-	return nil, nil
-}
-
-func getImpactedLiquidityPoolEntriesFromOperation(opIndex uint32, tx ingest.LedgerTransaction) ([]liquidityPoolEntryDelta, error) {
+func getImpactedLiquidityPoolEntriesFromOperation(tx ingest.LedgerTransaction, opIndex uint32) ([]liquidityPoolEntryDelta, error) {
 	changes, err := tx.GetOperationChanges(opIndex)
 	if err != nil {
 		return nil, err
@@ -367,7 +518,7 @@ func getImpactedLiquidityPoolEntriesFromOperation(opIndex uint32, tx ingest.Ledg
 		var preA, preB xdr.Int64
 		if c.Pre != nil {
 			lp = c.Pre.Data.LiquidityPool
-			entry.lpId = lp.LiquidityPoolId
+			entry.liquidityPoolId = lp.LiquidityPoolId
 			cp := lp.Body.ConstantProduct
 			entry.assetA, entry.assetB = cp.Params.AssetA, cp.Params.AssetB
 			preA, preB = cp.ReserveA, cp.ReserveB
@@ -376,14 +527,14 @@ func getImpactedLiquidityPoolEntriesFromOperation(opIndex uint32, tx ingest.Ledg
 		var postA, postB xdr.Int64
 		if c.Post != nil {
 			lp = c.Post.Data.LiquidityPool
-			entry.lpId = lp.LiquidityPoolId
+			entry.liquidityPoolId = lp.LiquidityPoolId
 			cp := lp.Body.ConstantProduct
 			entry.assetA, entry.assetB = cp.Params.AssetA, cp.Params.AssetB
 			postA, postB = cp.ReserveA, cp.ReserveB
 		}
-		
-		entry.reservesRemainingA = postA - preA
-		entry.reservesRemainingB = postB - preB
+
+		entry.amountChangeForAssetA = postA - preA
+		entry.amountChangeForAssetB = postB - preB
 		entries = append(entries, entry)
 	}
 
@@ -394,7 +545,7 @@ func getImpactedLiquidityPoolEntriesFromOperation(opIndex uint32, tx ingest.Ledg
 }
 
 func liquidityPoolDepositEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation) ([]*TokenTransferEvent, error) {
-	lpDeltas, e := getImpactedLiquidityPoolEntriesFromOperation(opIndex, tx)
+	lpDeltas, e := getImpactedLiquidityPoolEntriesFromOperation(tx, opIndex)
 	if e != nil {
 		return nil, e
 	} else if len(lpDeltas) != 1 {
@@ -402,10 +553,10 @@ func liquidityPoolDepositEvents(tx ingest.LedgerTransaction, opIndex uint32, op 
 	}
 
 	delta := lpDeltas[0]
-	lpId := delta.lpId
+	lpId := delta.liquidityPoolId
 	assetA, assetB := delta.assetA, delta.assetB
 	// delta is calculated as (post - pre) for the ledgerEntryChange
-	amtA, amtB := delta.reservesRemainingA, delta.reservesRemainingB
+	amtA, amtB := delta.amountChangeForAssetA, delta.amountChangeForAssetB
 	if amtA <= 0 {
 		return nil,
 			fmt.Errorf("deposited amount (%v) for asset: %v, cannot be negative in LiquidityPool: %v", amtA, assetA.String(), lpIdToStrkey(lpId))
@@ -418,7 +569,7 @@ func liquidityPoolDepositEvents(tx ingest.LedgerTransaction, opIndex uint32, op 
 	meta := NewEventMeta(tx, &opIndex, nil)
 	opSrcAcc := operationSourceAccount(tx, op)
 	// From = operation source account, to = LP
-	from, to := addressWrapper{account: &opSrcAcc}, addressWrapper{liquidityPoolId: &delta.lpId}
+	from, to := addressWrapper{account: &opSrcAcc}, addressWrapper{liquidityPoolId: &delta.liquidityPoolId}
 	return []*TokenTransferEvent{
 		mintOrBurnOrTransferEvent(assetA, from, to, amount.String(amtA), meta),
 		mintOrBurnOrTransferEvent(assetB, from, to, amount.String(amtB), meta),
@@ -426,7 +577,7 @@ func liquidityPoolDepositEvents(tx ingest.LedgerTransaction, opIndex uint32, op 
 }
 
 func liquidityPoolWithdrawEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation) ([]*TokenTransferEvent, error) {
-	lpDeltas, e := getImpactedLiquidityPoolEntriesFromOperation(opIndex, tx)
+	lpDeltas, e := getImpactedLiquidityPoolEntriesFromOperation(tx, opIndex)
 	if e != nil {
 		return nil, e
 	} else if len(lpDeltas) != 1 {
@@ -434,10 +585,10 @@ func liquidityPoolWithdrawEvents(tx ingest.LedgerTransaction, opIndex uint32, op
 	}
 
 	delta := lpDeltas[0]
-	lpId := delta.lpId
+	lpId := delta.liquidityPoolId
 	assetA, assetB := delta.assetA, delta.assetB
 	// delta is calculated as (post - pre) for the ledgerEntryChange. For withdraw operation, reverse the sign
-	amtA, amtB := -delta.reservesRemainingA, -delta.reservesRemainingB
+	amtA, amtB := -delta.amountChangeForAssetA, -delta.amountChangeForAssetB
 	if amtA <= 0 {
 		//TODO convert to strkey for LPId
 		return nil,
@@ -452,7 +603,7 @@ func liquidityPoolWithdrawEvents(tx ingest.LedgerTransaction, opIndex uint32, op
 	meta := NewEventMeta(tx, &opIndex, nil)
 	opSrcAcc := operationSourceAccount(tx, op)
 	// Opposite of LP Deposit. from = LP, to = operation source acocunt
-	from, to := addressWrapper{liquidityPoolId: &delta.lpId}, addressWrapper{account: &opSrcAcc}
+	from, to := addressWrapper{liquidityPoolId: &delta.liquidityPoolId}, addressWrapper{account: &opSrcAcc}
 	return []*TokenTransferEvent{
 		mintOrBurnOrTransferEvent(assetA, from, to, amount.String(amtA), meta),
 		mintOrBurnOrTransferEvent(assetB, from, to, amount.String(amtB), meta),
