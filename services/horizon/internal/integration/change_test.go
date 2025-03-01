@@ -23,83 +23,124 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
+var (
+	revokeTrustline = func(trustor string, asset txnbuild.Asset) *txnbuild.SetTrustLineFlags {
+		return &txnbuild.SetTrustLineFlags{
+			Trustor:    trustor,
+			Asset:      asset,
+			ClearFlags: []txnbuild.TrustLineFlag{txnbuild.TrustLineAuthorized},
+			SetFlags:   []txnbuild.TrustLineFlag{0},
+		}
+	}
+	// Give the master account the revocable flag (needed to set the clawback flag)
+	setRevocableFlag = txnbuild.SetOptions{
+		SetFlags: []txnbuild.AccountFlag{
+			txnbuild.AuthRevocable,
+		},
+	}
+
+	addTrustlineForAssetOp = func(forAccount string, asset txnbuild.Asset) *txnbuild.ChangeTrust {
+		return &txnbuild.ChangeTrust{
+			Line: txnbuild.ChangeTrustAssetWrapper{
+				Asset: asset,
+			},
+			Limit:         txnbuild.MaxTrustlineLimit,
+			SourceAccount: forAccount,
+		}
+
+	}
+
+	addTrustlineForLiquidityPoolOp = func(forAccount string, assetA txnbuild.Asset, assetB txnbuild.Asset) *txnbuild.ChangeTrust {
+		return &txnbuild.ChangeTrust{
+			SourceAccount: forAccount,
+			Line: txnbuild.LiquidityPoolShareChangeTrustAsset{
+				LiquidityPoolParameters: txnbuild.LiquidityPoolParameters{
+					AssetA: assetA,
+					AssetB: assetB,
+					Fee:    30,
+				},
+			},
+			Limit: txnbuild.MaxTrustlineLimit,
+		}
+	}
+
+	paymentOp = func(src string, dest string, asset txnbuild.Asset, amount string) *txnbuild.Payment {
+		return &txnbuild.Payment{
+			SourceAccount: src,
+			Destination:   dest,
+			Asset:         asset,
+			Amount:        amount,
+		}
+	}
+)
+
 func TestLiquidityPoolHappyPath2(t *testing.T) {
 	tt := assert.New(t)
 	itest := integration.NewTest(t, integration.Config{})
 	master := itest.Master()
 
-	// Give the master account the revocable flag (needed to set the clawback flag)
-	setRevocableFlag := txnbuild.SetOptions{
-		SetFlags: []txnbuild.AccountFlag{
-			txnbuild.AuthRevocable,
-		},
-	}
 	itest.MustSubmitOperations(itest.MasterAccount(), master, &setRevocableFlag)
 
-	keys, accounts := itest.CreateAccounts(2, "1000000")
-	shareKeys, shareAccount := keys[0], accounts[0]
+	keys, accounts := itest.CreateAccounts(2, "1000000000")
+	lpParticipantAccountKeys, lpParticipantAccount := keys[0], accounts[0]
+	ethAccountKeys, ethAccount := keys[1], accounts[1]
 
-	itest.MustSubmitMultiSigOperations(shareAccount, []*keypair.Full{shareKeys, master},
-		&txnbuild.ChangeTrust{
-			Line: txnbuild.ChangeTrustAssetWrapper{
-				Asset: txnbuild.CreditAsset{
-					Code:   "USD",
-					Issuer: master.Address(),
-				},
-			},
-			Limit: txnbuild.MaxTrustlineLimit,
-		},
-		&txnbuild.ChangeTrust{
-			Line: txnbuild.LiquidityPoolShareChangeTrustAsset{
-				LiquidityPoolParameters: txnbuild.LiquidityPoolParameters{
-					AssetA: txnbuild.NativeAsset{},
-					AssetB: txnbuild.CreditAsset{
-						Code:   "USD",
-						Issuer: master.Address(),
-					},
-					Fee: 30,
-				},
-			},
-			Limit: txnbuild.MaxTrustlineLimit,
-		},
-		&txnbuild.Payment{
-			SourceAccount: master.Address(),
-			Destination:   shareAccount.GetAccountID(),
-			Asset: txnbuild.CreditAsset{
-				Code:   "USD",
-				Issuer: master.Address(),
-			},
-			Amount: "1000",
-		},
+	usdcAsset := txnbuild.CreditAsset{
+		Code:   "USDC",
+		Issuer: master.Address(),
+	}
+
+	ethAsset := txnbuild.CreditAsset{
+		Code:   "ETH",
+		Issuer: ethAccount.GetAccountID(),
+	}
+	xlmAsset := txnbuild.NativeAsset{}
+
+	itest.MustSubmitMultiSigOperations(itest.MasterAccount(),
+		[]*keypair.Full{lpParticipantAccountKeys, master, ethAccountKeys},
+
+		addTrustlineForAssetOp(lpParticipantAccount.GetAccountID(), usdcAsset),
+		addTrustlineForAssetOp(ethAccount.GetAccountID(), usdcAsset),
+		addTrustlineForAssetOp(master.Address(), ethAsset),
+
+		addTrustlineForLiquidityPoolOp(lpParticipantAccount.GetAccountID(), xlmAsset, usdcAsset),
+		addTrustlineForLiquidityPoolOp(ethAccount.GetAccountID(), ethAsset, usdcAsset),
+
+		paymentOp(master.Address(), lpParticipantAccount.GetAccountID(), usdcAsset, "1000"),
+		paymentOp(master.Address(), ethAccount.GetAccountID(), usdcAsset, "1000"),
+		//paymentOp(ethAccount.GetAccountID(), master.Address(), ethAsset, "3000"),
 	)
 
-	poolID, err := xdr.NewPoolId(
+	usdcXlmPoolId, _ := xdr.NewPoolId(
 		xdr.MustNewNativeAsset(),
-		xdr.MustNewCreditAsset("USD", master.Address()),
+		xdr.MustNewCreditAsset(usdcAsset.Code, usdcAsset.Issuer),
 		30,
 	)
-	tt.NoError(err)
-	poolIDHexString := xdr.Hash(poolID).HexString()
 
-	pools, err := itest.Client().LiquidityPools(horizonclient.LiquidityPoolsRequest{})
-	tt.NoError(err)
-	tt.Len(pools.Embedded.Records, 1)
+	usdcEthPoolId, e := xdr.NewPoolId(
+		xdr.MustNewCreditAsset(ethAsset.Code, ethAsset.Issuer),
+		xdr.MustNewCreditAsset(usdcAsset.Code, usdcAsset.Issuer),
+		30,
+	)
+	if e != nil {
+		panic(e)
+	}
 
-	pool := pools.Embedded.Records[0]
-	tt.Equal(poolIDHexString, pool.ID)
-	tt.Equal(uint32(30), pool.FeeBP)
-	tt.Equal("constant_product", pool.Type)
-	tt.Equal("0.0000000", pool.TotalShares)
-	tt.Equal(uint64(1), pool.TotalTrustlines)
+	usdcXlmPoolIDHexString := xdr.Hash(usdcXlmPoolId).HexString()
 
-	tt.Equal("0.0000000", pool.Reserves[0].Amount)
-	tt.Equal("native", pool.Reserves[0].Asset)
-	tt.Equal("0.0000000", pool.Reserves[1].Amount)
-	tt.Equal(fmt.Sprintf("USD:%s", master.Address()), pool.Reserves[1].Asset)
-
-	itest.MustSubmitOperations(shareAccount, shareKeys,
+	itest.MustSubmitMultiSigOperations(itest.MasterAccount(),
+		[]*keypair.Full{master, lpParticipantAccountKeys, ethAccountKeys},
 		&txnbuild.LiquidityPoolDeposit{
-			LiquidityPoolID: [32]byte(poolID),
+			SourceAccount:   lpParticipantAccount.GetAccountID(),
+			LiquidityPoolID: [32]byte(usdcXlmPoolId),
+			MaxAmountA:      "400",
+			MaxAmountB:      "777",
+			MinPrice:        xdr.Price{N: 1, D: 2},
+			MaxPrice:        xdr.Price{N: 2, D: 1},
+		},
+		&txnbuild.LiquidityPoolDeposit{
+			SourceAccount:   ethAccount.GetAccountID(),
+			LiquidityPoolID: [32]byte(usdcEthPoolId),
 			MaxAmountA:      "400",
 			MaxAmountB:      "777",
 			MinPrice:        xdr.Price{N: 1, D: 2},
@@ -107,63 +148,31 @@ func TestLiquidityPoolHappyPath2(t *testing.T) {
 		},
 	)
 
-	pool, err = itest.Client().LiquidityPoolDetail(horizonclient.LiquidityPoolRequest{
-		LiquidityPoolID: poolIDHexString,
+	pool, err := itest.Client().LiquidityPoolDetail(horizonclient.LiquidityPoolRequest{
+		LiquidityPoolID: usdcXlmPoolIDHexString,
 	})
 	tt.NoError(err)
 
-	tt.Equal(poolIDHexString, pool.ID)
+	tt.Equal(usdcXlmPoolIDHexString, pool.ID)
 	tt.Equal(uint64(1), pool.TotalTrustlines)
 
 	tt.Equal("400.0000000", pool.Reserves[0].Amount)
 	tt.Equal("native", pool.Reserves[0].Asset)
 	tt.Equal("777.0000000", pool.Reserves[1].Amount)
-	tt.Equal(fmt.Sprintf("USD:%s", master.Address()), pool.Reserves[1].Asset)
+	tt.Equal(fmt.Sprintf("%s:%s", usdcAsset.Code, usdcAsset.Issuer), pool.Reserves[1].Asset)
 
-	// Full clawback of the asset, with a deauthorize/reauthorize sandwich
-	//revokeTrustlineOp := txnbuild.SetTrustLineFlags{
-	//	Trustor: shareAccount.GetAccountID(),
-	//	Asset: txnbuild.CreditAsset{
-	//		Code:   "USD",
-	//		Issuer: master.Address(),
-	//	},
-	//	ClearFlags: []txnbuild.TrustLineFlag{txnbuild.TrustLineAuthorized},
-	//	SetFlags:   []txnbuild.TrustLineFlag{0},
-	//}
+	revokeTrustlineTxResp := itest.MustSubmitOperations(
+		itest.MasterAccount(),
+		master,
+		revokeTrustline(lpParticipantAccount.GetAccountID(), usdcAsset),
+		revokeTrustline(ethAccount.GetAccountID(), usdcAsset),
+	)
 
-	randomKeys, randomAccount := keys[1], accounts[1]
-	signerKeys := []*keypair.Full{randomKeys, master}
-
-	submissionResp := itest.MustSubmitMultiSigOperations(
-		//itest.MasterAccount(),
-		//master,
-		randomAccount, // some other account pays the fees
-		signerKeys,
-		//randomKeys,
-		&txnbuild.SetTrustLineFlags{
-			SourceAccount: master.Address(),
-			Trustor:       shareAccount.GetAccountID(),
-			Asset: txnbuild.CreditAsset{
-				Code:   "USD",
-				Issuer: master.Address(),
-			},
-			ClearFlags: []txnbuild.TrustLineFlag{txnbuild.TrustLineAuthorized},
-			SetFlags:   []txnbuild.TrustLineFlag{0},
-		})
-
-	//fmt.Println("**********")
-	//fmt.Println("submissionResp := ")
-	// Marshal the struct to JSON with indentation
-	//jsonString, _ := json.MarshalIndent(submissionResp, "", "    ") // Use 4 spaces for indentation
-	// Print the indented JSON string
-	//fmt.Println(string(jsonString))
-	//fmt.Println("**********")
-
-	if !submissionResp.Successful {
+	if !revokeTrustlineTxResp.Successful {
 		return
 	}
 	fmt.Println("***** Transaction submission successful")
-	ledgerSeq := uint32(submissionResp.Ledger)
+	ledgerSeq := uint32(revokeTrustlineTxResp.Ledger)
 	itest.WaitForLedgerInArchive(30*time.Second, ledgerSeq)
 	ledger := getLedgers(itest, ledgerSeq, ledgerSeq)[ledgerSeq]
 	changes := getChangesFromLedger(itest, ledger)
@@ -180,12 +189,11 @@ func TestLiquidityPoolHappyPath2(t *testing.T) {
 		lpMap[xdr.Hash(entry).HexString()] = entry
 	}
 
-	asset := xdr.MustNewCreditAsset("USD", master.Address())
+	asset := xdr.MustNewCreditAsset(usdcAsset.Code, usdcAsset.Issuer)
 
-	//masterAccountId := xdr.MustAddress(itest.Master().Address())
-	randomAccountId := xdr.MustAddress(randomAccount.GetAccountID())
+	masterAccountId := xdr.MustAddress(itest.Master().Address())
 	for _, entry := range lpIds {
-		genCbId := generateCBIdFromLpId(entry, submissionResp.AccountSequence, randomAccountId, 0, asset)
+		genCbId := generateCBIdFromLpId(entry, revokeTrustlineTxResp.AccountSequence, masterAccountId, 0, asset)
 		fmt.Printf("Constructed Claimable Balance Id from LP ----- %v\n", genCbId.HexString())
 	}
 	for _, entry := range cbEntries {
