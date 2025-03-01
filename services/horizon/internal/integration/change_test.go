@@ -2,6 +2,10 @@ package integration
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/json"
+	"fmt"
+	"github.com/stellar/go/clients/horizonclient"
 	"io"
 	"sort"
 	"testing"
@@ -17,6 +21,240 @@ import (
 	"github.com/stellar/go/txnbuild"
 	"github.com/stellar/go/xdr"
 )
+
+func TestLiquidityPoolHappyPath2(t *testing.T) {
+	tt := assert.New(t)
+	itest := integration.NewTest(t, integration.Config{})
+	master := itest.Master()
+
+	// Give the master account the revocable flag (needed to set the clawback flag)
+	setRevocableFlag := txnbuild.SetOptions{
+		SetFlags: []txnbuild.AccountFlag{
+			txnbuild.AuthRevocable,
+		},
+	}
+	itest.MustSubmitOperations(itest.MasterAccount(), master, &setRevocableFlag)
+
+	keys, accounts := itest.CreateAccounts(2, "1000000")
+	shareKeys, shareAccount := keys[0], accounts[0]
+
+	itest.MustSubmitMultiSigOperations(shareAccount, []*keypair.Full{shareKeys, master},
+		&txnbuild.ChangeTrust{
+			Line: txnbuild.ChangeTrustAssetWrapper{
+				Asset: txnbuild.CreditAsset{
+					Code:   "USD",
+					Issuer: master.Address(),
+				},
+			},
+			Limit: txnbuild.MaxTrustlineLimit,
+		},
+		&txnbuild.ChangeTrust{
+			Line: txnbuild.LiquidityPoolShareChangeTrustAsset{
+				LiquidityPoolParameters: txnbuild.LiquidityPoolParameters{
+					AssetA: txnbuild.NativeAsset{},
+					AssetB: txnbuild.CreditAsset{
+						Code:   "USD",
+						Issuer: master.Address(),
+					},
+					Fee: 30,
+				},
+			},
+			Limit: txnbuild.MaxTrustlineLimit,
+		},
+		&txnbuild.Payment{
+			SourceAccount: master.Address(),
+			Destination:   shareAccount.GetAccountID(),
+			Asset: txnbuild.CreditAsset{
+				Code:   "USD",
+				Issuer: master.Address(),
+			},
+			Amount: "1000",
+		},
+	)
+
+	poolID, err := xdr.NewPoolId(
+		xdr.MustNewNativeAsset(),
+		xdr.MustNewCreditAsset("USD", master.Address()),
+		30,
+	)
+	tt.NoError(err)
+	poolIDHexString := xdr.Hash(poolID).HexString()
+
+	pools, err := itest.Client().LiquidityPools(horizonclient.LiquidityPoolsRequest{})
+	tt.NoError(err)
+	tt.Len(pools.Embedded.Records, 1)
+
+	pool := pools.Embedded.Records[0]
+	tt.Equal(poolIDHexString, pool.ID)
+	tt.Equal(uint32(30), pool.FeeBP)
+	tt.Equal("constant_product", pool.Type)
+	tt.Equal("0.0000000", pool.TotalShares)
+	tt.Equal(uint64(1), pool.TotalTrustlines)
+
+	tt.Equal("0.0000000", pool.Reserves[0].Amount)
+	tt.Equal("native", pool.Reserves[0].Asset)
+	tt.Equal("0.0000000", pool.Reserves[1].Amount)
+	tt.Equal(fmt.Sprintf("USD:%s", master.Address()), pool.Reserves[1].Asset)
+
+	itest.MustSubmitOperations(shareAccount, shareKeys,
+		&txnbuild.LiquidityPoolDeposit{
+			LiquidityPoolID: [32]byte(poolID),
+			MaxAmountA:      "400",
+			MaxAmountB:      "777",
+			MinPrice:        xdr.Price{N: 1, D: 2},
+			MaxPrice:        xdr.Price{N: 2, D: 1},
+		},
+	)
+
+	pool, err = itest.Client().LiquidityPoolDetail(horizonclient.LiquidityPoolRequest{
+		LiquidityPoolID: poolIDHexString,
+	})
+	tt.NoError(err)
+
+	tt.Equal(poolIDHexString, pool.ID)
+	tt.Equal(uint64(1), pool.TotalTrustlines)
+
+	tt.Equal("400.0000000", pool.Reserves[0].Amount)
+	tt.Equal("native", pool.Reserves[0].Asset)
+	tt.Equal("777.0000000", pool.Reserves[1].Amount)
+	tt.Equal(fmt.Sprintf("USD:%s", master.Address()), pool.Reserves[1].Asset)
+
+	// Full clawback of the asset, with a deauthorize/reauthorize sandwich
+	randomKeys, randomAccount := keys[1], accounts[1]
+	//revokeTrustlineOp := txnbuild.SetTrustLineFlags{
+	//	Trustor: shareAccount.GetAccountID(),
+	//	Asset: txnbuild.CreditAsset{
+	//		Code:   "USD",
+	//		Issuer: master.Address(),
+	//	},
+	//	ClearFlags: []txnbuild.TrustLineFlag{txnbuild.TrustLineAuthorized},
+	//	SetFlags:   []txnbuild.TrustLineFlag{0},
+	//}
+
+	//signerKeys := []*keypair.Full{randomKeys, master}
+	submissionResp := itest.MustSubmitOperations(
+		//itest.MasterAccount(),
+		//master,
+		randomAccount, // some other account pays the fees
+		randomKeys,
+		&txnbuild.SetTrustLineFlags{
+			Trustor: shareAccount.GetAccountID(),
+			Asset: txnbuild.CreditAsset{
+				Code:   "USD",
+				Issuer: master.Address(),
+			},
+			ClearFlags: []txnbuild.TrustLineFlag{txnbuild.TrustLineAuthorized},
+			SetFlags:   []txnbuild.TrustLineFlag{0},
+		})
+
+	//if errr != nil {
+	//	fmt.Println("**********")
+	//
+	//	fmt.Println(errr)
+	//	fmt.Println("**********")
+	//
+	//}
+	//
+	//return
+	ledgerSeq := uint32(submissionResp.Ledger)
+	itest.WaitForLedgerInArchive(30*time.Second, ledgerSeq)
+
+	fmt.Println("**********")
+	fmt.Println("submissionResp := ")
+	// Marshal the struct to JSON with indentation
+	jsonString, _ := json.MarshalIndent(submissionResp, "", "    ") // Use 4 spaces for indentation
+	// Print the indented JSON string
+	fmt.Println(string(jsonString))
+	fmt.Println("**********")
+
+	ledger := getLedgers(itest, ledgerSeq, ledgerSeq)[ledgerSeq]
+	changes := getChangesFromLedger(itest, ledger)
+
+	lpIds := getLpIdsFromChanges(changes)
+	cbEntries := getCbEntriesFromChanges(changes)
+	lpMap := make(map[string]xdr.PoolId)
+	cbMap := make(map[string]xdr.ClaimableBalanceEntry)
+
+	for _, entry := range cbEntries {
+		cbMap[entry.BalanceId.MustV0().HexString()] = entry
+	}
+	for _, entry := range lpIds {
+		lpMap[xdr.Hash(entry).HexString()] = entry
+	}
+
+	masterAccountId := xdr.MustAddress(itest.Master().Address())
+	//var somethings []string
+	asset := xdr.MustNewCreditAsset("USD", master.Address())
+	for _, entry := range lpIds {
+		preImageId := xdr.HashIdPreimage{
+			Type: xdr.EnvelopeTypeEnvelopeTypePoolRevokeOpId,
+			RevokeId: &xdr.HashIdPreimageRevokeId{
+				SourceAccount:   masterAccountId,
+				SeqNum:          xdr.SequenceNumber(submissionResp.AccountSequence),
+				OpNum:           xdr.Uint32(0),
+				LiquidityPoolId: entry,
+				Asset:           asset,
+			},
+		}
+		binaryDump, _ := preImageId.MarshalBinary()
+		sha256hash := xdr.Hash(sha256.Sum256(binaryDump))
+		fmt.Printf("Constructed Claimable Balance Id from LP ----- %v\n", sha256hash.HexString())
+	}
+	for _, entry := range cbEntries {
+		fmt.Printf("CB Entry from changes CBId: %v\n", entry.BalanceId.MustV0().HexString())
+	}
+
+}
+
+func getLpIdsFromChanges(changes []ingest.Change) []xdr.PoolId {
+
+	var entries []xdr.PoolId
+	for _, c := range changes {
+		if c.Type != xdr.LedgerEntryTypeLiquidityPool {
+			continue
+		}
+		var lpId xdr.PoolId
+
+		if c.Pre != nil {
+			lpId = c.Pre.Data.LiquidityPool.LiquidityPoolId
+		}
+
+		if c.Post != nil {
+			lpId = c.Post.Data.LiquidityPool.LiquidityPoolId
+		}
+
+		entries = append(entries, lpId)
+	}
+
+	return entries
+}
+
+func getCbEntriesFromChanges(changes []ingest.Change) []xdr.ClaimableBalanceEntry {
+
+	var entries []xdr.ClaimableBalanceEntry
+	/*
+		This function is expected to be called only to get details of newly created claimable balance
+		(for e.g as a result of allowTrust or setTrustlineFlags  operations)
+		or claimable balances that are be deleted
+		(for e.g due to clawback claimable balance operation)
+	*/
+	var cb xdr.ClaimableBalanceEntry
+	for _, change := range changes {
+		if change.Type != xdr.LedgerEntryTypeClaimableBalance {
+			continue
+		}
+		// Check if claimable balance entry is deleted
+		if change.Pre != nil && change.Post == nil {
+			cb = change.Pre.Data.MustClaimableBalance()
+			entries = append(entries, cb)
+		} else if change.Post != nil && change.Pre == nil { // check if claimable balance entry is created
+			cb = change.Post.Data.MustClaimableBalance()
+			entries = append(entries, cb)
+		}
+	}
+
+	return entries
+}
 
 func TestProtocolUpgradeChanges(t *testing.T) {
 	tt := assert.New(t)
