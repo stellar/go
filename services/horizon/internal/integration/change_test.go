@@ -3,9 +3,10 @@ package integration
 import (
 	"context"
 	"crypto/sha256"
-	"encoding/json"
 	"fmt"
 	"github.com/stellar/go/clients/horizonclient"
+	"github.com/stellar/go/ingest/processors/token_transfer"
+	"google.golang.org/protobuf/encoding/protojson"
 	"io"
 	"sort"
 	"testing"
@@ -120,7 +121,6 @@ func TestLiquidityPoolHappyPath2(t *testing.T) {
 	tt.Equal(fmt.Sprintf("USD:%s", master.Address()), pool.Reserves[1].Asset)
 
 	// Full clawback of the asset, with a deauthorize/reauthorize sandwich
-	randomKeys, randomAccount := keys[1], accounts[1]
 	//revokeTrustlineOp := txnbuild.SetTrustLineFlags{
 	//	Trustor: shareAccount.GetAccountID(),
 	//	Asset: txnbuild.CreditAsset{
@@ -131,14 +131,18 @@ func TestLiquidityPoolHappyPath2(t *testing.T) {
 	//	SetFlags:   []txnbuild.TrustLineFlag{0},
 	//}
 
-	//signerKeys := []*keypair.Full{randomKeys, master}
-	submissionResp := itest.MustSubmitOperations(
+	randomKeys, randomAccount := keys[1], accounts[1]
+	signerKeys := []*keypair.Full{randomKeys, master}
+
+	submissionResp := itest.MustSubmitMultiSigOperations(
 		//itest.MasterAccount(),
 		//master,
 		randomAccount, // some other account pays the fees
-		randomKeys,
+		signerKeys,
+		//randomKeys,
 		&txnbuild.SetTrustLineFlags{
-			Trustor: shareAccount.GetAccountID(),
+			SourceAccount: master.Address(),
+			Trustor:       shareAccount.GetAccountID(),
 			Asset: txnbuild.CreditAsset{
 				Code:   "USD",
 				Issuer: master.Address(),
@@ -147,26 +151,20 @@ func TestLiquidityPoolHappyPath2(t *testing.T) {
 			SetFlags:   []txnbuild.TrustLineFlag{0},
 		})
 
-	//if errr != nil {
-	//	fmt.Println("**********")
-	//
-	//	fmt.Println(errr)
-	//	fmt.Println("**********")
-	//
-	//}
-	//
-	//return
+	//fmt.Println("**********")
+	//fmt.Println("submissionResp := ")
+	// Marshal the struct to JSON with indentation
+	//jsonString, _ := json.MarshalIndent(submissionResp, "", "    ") // Use 4 spaces for indentation
+	// Print the indented JSON string
+	//fmt.Println(string(jsonString))
+	//fmt.Println("**********")
+
+	if !submissionResp.Successful {
+		return
+	}
+	fmt.Println("***** Transaction submission successful")
 	ledgerSeq := uint32(submissionResp.Ledger)
 	itest.WaitForLedgerInArchive(30*time.Second, ledgerSeq)
-
-	fmt.Println("**********")
-	fmt.Println("submissionResp := ")
-	// Marshal the struct to JSON with indentation
-	jsonString, _ := json.MarshalIndent(submissionResp, "", "    ") // Use 4 spaces for indentation
-	// Print the indented JSON string
-	fmt.Println(string(jsonString))
-	fmt.Println("**********")
-
 	ledger := getLedgers(itest, ledgerSeq, ledgerSeq)[ledgerSeq]
 	changes := getChangesFromLedger(itest, ledger)
 
@@ -182,28 +180,49 @@ func TestLiquidityPoolHappyPath2(t *testing.T) {
 		lpMap[xdr.Hash(entry).HexString()] = entry
 	}
 
-	masterAccountId := xdr.MustAddress(itest.Master().Address())
-	//var somethings []string
 	asset := xdr.MustNewCreditAsset("USD", master.Address())
+
+	//masterAccountId := xdr.MustAddress(itest.Master().Address())
+	randomAccountId := xdr.MustAddress(randomAccount.GetAccountID())
 	for _, entry := range lpIds {
-		preImageId := xdr.HashIdPreimage{
-			Type: xdr.EnvelopeTypeEnvelopeTypePoolRevokeOpId,
-			RevokeId: &xdr.HashIdPreimageRevokeId{
-				SourceAccount:   masterAccountId,
-				SeqNum:          xdr.SequenceNumber(submissionResp.AccountSequence),
-				OpNum:           xdr.Uint32(0),
-				LiquidityPoolId: entry,
-				Asset:           asset,
-			},
-		}
-		binaryDump, _ := preImageId.MarshalBinary()
-		sha256hash := xdr.Hash(sha256.Sum256(binaryDump))
-		fmt.Printf("Constructed Claimable Balance Id from LP ----- %v\n", sha256hash.HexString())
+		genCbId := generateCBIdFromLpId(entry, submissionResp.AccountSequence, randomAccountId, 0, asset)
+		fmt.Printf("Constructed Claimable Balance Id from LP ----- %v\n", genCbId.HexString())
 	}
 	for _, entry := range cbEntries {
 		fmt.Printf("CB Entry from changes CBId: %v\n", entry.BalanceId.MustV0().HexString())
 	}
 
+	events, _ := token_transfer.ProcessTokenTransferEventsFromLedger(ledger, itest.GetPassPhrase())
+	fmt.Println("Printing all token transfer events from ledger:")
+	printProtoEvents(events)
+
+}
+
+func generateCBIdFromLpId(lpId xdr.PoolId, accountSeq int64, txAccount xdr.AccountId, opIndex uint32, asset xdr.Asset) xdr.Hash {
+	preImageId := xdr.HashIdPreimage{
+		Type: xdr.EnvelopeTypeEnvelopeTypePoolRevokeOpId,
+		RevokeId: &xdr.HashIdPreimageRevokeId{
+			SourceAccount:   txAccount,
+			SeqNum:          xdr.SequenceNumber(accountSeq),
+			OpNum:           xdr.Uint32(opIndex),
+			LiquidityPoolId: lpId,
+			Asset:           asset,
+		},
+	}
+	binaryDump, _ := preImageId.MarshalBinary()
+	sha256hash := xdr.Hash(sha256.Sum256(binaryDump))
+	return sha256hash
+}
+func printProtoEvents(events []*token_transfer.TokenTransferEvent) {
+	for _, event := range events {
+		jsonBytes, _ := protojson.MarshalOptions{
+			Multiline: true, // Enable pretty printing with newlines
+			Indent:    "  ", // Specify indentation string (e.g., two spaces)
+		}.Marshal(event)
+		fmt.Println("###")
+		fmt.Println(string(jsonBytes))
+		fmt.Println("###")
+	}
 }
 
 func getLpIdsFromChanges(changes []ingest.Change) []xdr.PoolId {
