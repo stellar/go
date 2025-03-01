@@ -16,6 +16,12 @@ var (
 	xlmProtoAsset                    = assetProto.NewNativeAsset()
 	ErrLiquidityPoolEntryNotFound    = errors.New("liquidity pool entry not found in operation changes")
 	ErrClaimableBalanceEntryNotFound = errors.New("claimable balance entry not found in operation changes")
+	abs64                            = func(a xdr.Int64) xdr.Int64 {
+		if a < 0 {
+			return -a
+		}
+		return a
+	}
 )
 
 func ProcessTokenTransferEventsFromLedger(lcm xdr.LedgerCloseMeta, networkPassPhrase string) ([]*TokenTransferEvent, error) {
@@ -537,8 +543,8 @@ func getImpactedLiquidityPoolEntriesFromOperation(tx ingest.LedgerTransaction, o
 			postA, postB = cp.ReserveA, cp.ReserveB
 		}
 
-		entry.amountChangeForAssetA = postA - preA
-		entry.amountChangeForAssetB = postB - preB
+		entry.amountChangeForAssetA = abs64(postA - preA)
+		entry.amountChangeForAssetB = abs64(postB - preB)
 		entries = append(entries, entry)
 	}
 
@@ -559,7 +565,6 @@ func liquidityPoolDepositEvents(tx ingest.LedgerTransaction, opIndex uint32, op 
 	delta := lpDeltas[0]
 	lpId := delta.liquidityPoolId
 	assetA, assetB := delta.assetA, delta.assetB
-	// delta is calculated as (post - pre) for the ledgerEntryChange
 	amtA, amtB := delta.amountChangeForAssetA, delta.amountChangeForAssetB
 	if amtA <= 0 {
 		return nil,
@@ -591,8 +596,7 @@ func liquidityPoolWithdrawEvents(tx ingest.LedgerTransaction, opIndex uint32, op
 	delta := lpDeltas[0]
 	lpId := delta.liquidityPoolId
 	assetA, assetB := delta.assetA, delta.assetB
-	// delta is calculated as (post - pre) for the ledgerEntryChange. For withdraw operation, reverse the sign
-	amtA, amtB := -delta.amountChangeForAssetA, -delta.amountChangeForAssetB
+	amtA, amtB := delta.amountChangeForAssetA, delta.amountChangeForAssetB
 	if amtA <= 0 {
 		//TODO convert to strkey for LPId
 		return nil,
