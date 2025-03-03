@@ -24,12 +24,13 @@ import (
 )
 
 var (
-	revokeTrustline = func(trustor string, asset txnbuild.Asset) *txnbuild.SetTrustLineFlags {
+	revokeTrustline = func(issuer, trustor string, asset txnbuild.Asset) *txnbuild.SetTrustLineFlags {
 		return &txnbuild.SetTrustLineFlags{
-			Trustor:    trustor,
-			Asset:      asset,
-			ClearFlags: []txnbuild.TrustLineFlag{txnbuild.TrustLineAuthorized},
-			SetFlags:   []txnbuild.TrustLineFlag{0},
+			SourceAccount: issuer,
+			Trustor:       trustor,
+			Asset:         asset,
+			ClearFlags:    []txnbuild.TrustLineFlag{txnbuild.TrustLineAuthorized},
+			//SetFlags:      []txnbuild.TrustLineFlag{0},
 		}
 	}
 	// Give the master account the revocable flag (needed to set the clawback flag)
@@ -161,11 +162,14 @@ func TestLiquidityPoolHappyPath2(t *testing.T) {
 	tt.Equal("777.0000000", pool.Reserves[1].Amount)
 	tt.Equal(fmt.Sprintf("%s:%s", usdcAsset.Code, usdcAsset.Issuer), pool.Reserves[1].Asset)
 
-	revokeTrustlineTxResp := itest.MustSubmitOperations(
+	itest.MustSubmitOperations(ethAccount, ethAccountKeys, &setRevocableFlag)
+
+	revokeTrustlineTxResp := itest.MustSubmitMultiSigOperations(
 		itest.MasterAccount(),
-		master,
-		revokeTrustline(lpParticipantAccount.GetAccountID(), usdcAsset),
-		revokeTrustline(ethAccount.GetAccountID(), usdcAsset),
+		[]*keypair.Full{master, ethAccountKeys},
+		revokeTrustline(master.Address(), lpParticipantAccount.GetAccountID(), usdcAsset),
+		revokeTrustline(master.Address(), ethAccount.GetAccountID(), usdcAsset),
+		revokeTrustline(ethAccount.GetAccountID(), master.Address(), ethAsset),
 	)
 
 	if !revokeTrustlineTxResp.Successful {
