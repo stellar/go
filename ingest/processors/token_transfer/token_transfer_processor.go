@@ -13,10 +13,10 @@ import (
 )
 
 var (
-	xlmProtoAsset                    = assetProto.NewNativeAsset()
-	ErrLiquidityPoolEntryNotFound    = errors.New("liquidity pool entry not found in operation changes")
-	ErrClaimableBalanceEntryNotFound = errors.New("claimable balance entry not found in operation changes")
-	abs64                            = func(a xdr.Int64) xdr.Int64 {
+	xlmProtoAsset                   = assetProto.NewNativeAsset()
+	ErrNoLiquidityPoolEntryFound    = errors.New("no liquidity pool entry found in operation changes")
+	ErrNoClaimableBalanceEntryFound = errors.New("no claimable balance entry found in operation changes")
+	abs64                           = func(a xdr.Int64) xdr.Int64 {
 		if a < 0 {
 			return -a
 		}
@@ -41,7 +41,7 @@ func ProcessTokenTransferEventsFromLedger(lcm xdr.LedgerCloseMeta, networkPassPh
 		if err != nil {
 			return nil, errors.Wrap(err, "error reading transaction")
 		}
-		txEvents, err = ProcessTokenTransferEventsFromTransaction(tx)
+		txEvents, err = ProcessTokenTransferEventsFromTransaction(tx, networkPassPhrase)
 		if err != nil {
 			return nil, errors.Wrap(err, "error processing token transfer events from transaction")
 		}
@@ -50,7 +50,7 @@ func ProcessTokenTransferEventsFromLedger(lcm xdr.LedgerCloseMeta, networkPassPh
 	return events, nil
 }
 
-func ProcessTokenTransferEventsFromTransaction(tx ingest.LedgerTransaction) ([]*TokenTransferEvent, error) {
+func ProcessTokenTransferEventsFromTransaction(tx ingest.LedgerTransaction, networkPassPhrase string) ([]*TokenTransferEvent, error) {
 	var events []*TokenTransferEvent
 	feeEvents, err := generateFeeEvent(tx)
 	if err != nil {
@@ -70,7 +70,7 @@ func ProcessTokenTransferEventsFromTransaction(tx ingest.LedgerTransaction) ([]*
 		opResult := operationResults[i]
 
 		// Process the operation and collect events
-		opEvents, err := ProcessTokenTransferEventsFromOperation(tx, uint32(i), op, opResult)
+		opEvents, err := ProcessTokenTransferEventsFromOperation(tx, uint32(i), op, opResult, networkPassPhrase)
 		if err != nil {
 			return nil,
 				errors.Wrapf(err, "error processing token transfer events from operation, index: %d,  %s", i, op.Body.Type.String())
@@ -83,10 +83,10 @@ func ProcessTokenTransferEventsFromTransaction(tx ingest.LedgerTransaction) ([]*
 }
 
 // ProcessTokenTransferEventsFromOperation
-// There is a separate private function to derive events for each operation.
+// There is a separate private function to derive events for each classic operation.
 // It is implicitly assumed that the operation is successful, and thus will contribute towards generating events.
 // which is why we dont check for the code in the OperationResult
-func ProcessTokenTransferEventsFromOperation(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation, opResult xdr.OperationResult) ([]*TokenTransferEvent, error) {
+func ProcessTokenTransferEventsFromOperation(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation, opResult xdr.OperationResult, networkPassPhrase string) ([]*TokenTransferEvent, error) {
 	switch op.Body.Type {
 	case xdr.OperationTypeCreateAccount:
 		return accountCreateEvents(tx, opIndex, op)
@@ -103,9 +103,9 @@ func ProcessTokenTransferEventsFromOperation(tx ingest.LedgerTransaction, opInde
 	case xdr.OperationTypeClawbackClaimableBalance:
 		return clawbackClaimableBalanceEvents(tx, opIndex, op)
 	case xdr.OperationTypeAllowTrust:
-		return allowTrustEvents(tx, opIndex)
+		return allowTrustEvents(tx, opIndex, op)
 	case xdr.OperationTypeSetTrustLineFlags:
-		return setTrustLineFlagsEvents(tx, opIndex)
+		return setTrustLineFlagsEvents(tx, opIndex, op)
 	case xdr.OperationTypeLiquidityPoolDeposit:
 		return liquidityPoolDepositEvents(tx, opIndex, op)
 	case xdr.OperationTypeLiquidityPoolWithdraw:
@@ -303,7 +303,7 @@ func getClaimableBalanceEntriesFromOperationChanges(tx ingest.LedgerTransaction,
 	}
 
 	if len(entries) == 0 {
-		return nil, ErrClaimableBalanceEntryNotFound
+		return nil, ErrNoClaimableBalanceEntryFound
 	}
 	return entries, nil
 }
@@ -360,11 +360,15 @@ func clawbackClaimableBalanceEvents(tx ingest.LedgerTransaction, opIndex uint32,
 	return []*TokenTransferEvent{event}, nil
 }
 
-func allowTrustEvents(tx ingest.LedgerTransaction, opIndex uint32) ([]*TokenTransferEvent, error) {
+func allowTrustEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation) ([]*TokenTransferEvent, error) {
+	// ?? Should I be checking for generation of liquidity pools and CBs iff the flag is set to false?
+	// isAuthRevoked := op.Body.MustAllowTrustOp().Authorize == 0
 	return generateEventsForRevokedTrustlines(tx, opIndex)
 }
 
-func setTrustLineFlagsEvents(tx ingest.LedgerTransaction, opIndex uint32) ([]*TokenTransferEvent, error) {
+func setTrustLineFlagsEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation) ([]*TokenTransferEvent, error) {
+	// ?? Should I be checking for generation of liquidity pools and CBs iff the flag is set to false?
+	// isAuthRevoked := op.Body.MustSetTrustLineFlagsOp().ClearFlags != 0
 	return generateEventsForRevokedTrustlines(tx, opIndex)
 }
 
@@ -375,26 +379,22 @@ func generateEventsForRevokedTrustlines(tx ingest.LedgerTransaction, opIndex uin
 
 	// Go through the operation changes and find the LiquidityPools that were impacted
 	impactedLiquidityPools, err := getImpactedLiquidityPoolEntriesFromOperation(tx, opIndex)
-	if err != nil {
-		return nil, err
-	}
-
 	// The operation didnt cause revocation of the trustor account's pool shares in any liquidity pools. So no events generated at all
-	if len(impactedLiquidityPools) == 0 {
+	if err == ErrNoLiquidityPoolEntryFound {
 		return nil, nil
+	} else if err != nil {
+		return nil, err
 	}
 
 	impactedClaimableBalances, err := getClaimableBalanceEntriesFromOperationChanges(tx, opIndex)
-	if err != nil {
-		return nil, err
-	}
-
 	// There were no claimable balances created, even though there were some liquidity pools that showed up.
 	// This can happen, if all the liquidity pools impacted were empty in the first place,
 	//i.e they didnt have any pool shares OR reserves of asset A and B
 	// So there is no transfer of money, so no events generated
-	if len(impactedClaimableBalances) == 0 {
+	if err == ErrNoClaimableBalanceEntryFound {
 		return nil, nil
+	} else if err != nil {
+		return nil, err
 	}
 
 	/*
@@ -549,7 +549,7 @@ func getImpactedLiquidityPoolEntriesFromOperation(tx ingest.LedgerTransaction, o
 	}
 
 	if len(entries) == 0 {
-		return nil, ErrLiquidityPoolEntryNotFound
+		return nil, ErrNoLiquidityPoolEntryFound
 	}
 	return entries, nil
 }
