@@ -29,7 +29,6 @@ func (v assetContractStatValue) ConvertToHistoryObject() history.ContractAssetSt
 }
 
 type contractAssetBalancesQ interface {
-	GetContractAssetBalances(ctx context.Context, keys []xdr.Hash) ([]history.ContractAssetBalance, error)
 	DeleteContractAssetBalancesExpiringAt(ctx context.Context, ledger uint32) ([]history.ContractAssetBalance, error)
 }
 
@@ -169,23 +168,7 @@ func (s *ContractAssetStatSet) ingestContractAssetBalance(ctx context.Context, c
 			return err
 		}
 		expirationLedger, ok := s.createdExpirationEntries[keyHash]
-		if !ok {
-			// when restoring a contract balance which is archived but not yet evicted,
-			// the restoration meta for the ttl entry will appear like an update because
-			// it will include the previous state
-			if expirationUpdate, ok := s.updatedExpirationEntries[keyHash]; ok {
-				expirationLedger = expirationUpdate[1]
-			} else {
-				return nil
-			}
-			if expirationLedger < s.currentLedger {
-				return errors.Errorf(
-					"contract balance has invalid expiration ledger keyhash %v expiration ledger %v",
-					keyHash,
-					expirationLedger,
-				)
-			}
-		} else if expirationLedger < s.currentLedger {
+		if !ok || expirationLedger < s.currentLedger {
 			return nil
 		}
 		s.createdBalances = append(s.createdBalances, history.ContractAssetBalance{
@@ -258,38 +241,6 @@ func (s *ContractAssetStatSet) ingestContractAssetBalance(ctx context.Context, c
 		keyHash, err := getKeyHash(*change.Post)
 		if err != nil {
 			return err
-		}
-
-		var preExpiration, postExpiration uint32
-		if expirationUpdate, ok := s.updatedExpirationEntries[keyHash]; ok {
-			preExpiration, postExpiration = expirationUpdate[0], expirationUpdate[1]
-		} else {
-			rows, err := s.assetStatsQ.GetContractAssetBalances(ctx, []xdr.Hash{keyHash})
-			if err != nil {
-				return errors.Wrapf(err, "could not query contract asset balance for %v", keyHash)
-			}
-			if len(rows) == 0 {
-				return nil
-			}
-			if len(rows) != 1 {
-				return errors.Wrapf(
-					err,
-					"expected 1 contract asset balance for %v but got %v",
-					keyHash,
-					len(rows),
-				)
-			}
-			preExpiration = rows[0].ExpirationLedger
-			postExpiration = preExpiration
-		}
-		for _, expiration := range []uint32{preExpiration, postExpiration} {
-			if expiration < s.currentLedger {
-				return errors.Errorf(
-					"contract balance has invalid expiration ledger keyhash %v expiration ledger %v",
-					keyHash,
-					expiration,
-				)
-			}
 		}
 
 		s.updatedBalances[keyHash] = postAmt

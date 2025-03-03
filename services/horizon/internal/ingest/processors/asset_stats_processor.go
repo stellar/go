@@ -59,13 +59,6 @@ func (p *AssetStatsProcessor) ProcessChange(ctx context.Context, change ingest.C
 		return nil
 	}
 
-	// We don't need to handle evictions because we immediately delete contract balances
-	// upon expiration. So by the time an archived ledger entry is evicted it will already
-	// be deleted from the horizon DB.
-	if change.Reason == ingest.LedgerEntryChangeReasonEviction {
-		return nil
-	}
-
 	var err error
 	switch change.Type {
 	case xdr.LedgerEntryTypeLiquidityPool:
@@ -84,6 +77,14 @@ func (p *AssetStatsProcessor) ProcessChange(ctx context.Context, change ingest.C
 		asset := AssetFromContractData(*ledgerEntry, p.networkPassphrase)
 		_, _, balanceFound := ContractBalanceFromContractData(*ledgerEntry, p.networkPassphrase)
 		if asset == nil && !balanceFound {
+			return nil
+		}
+		// We don't need to handle evictions for contract balances because we immediately delete
+		// contract balances upon expiration. So by the time an archived ledger entry is evicted
+		// it will already be deleted from the horizon DB.
+		// However, we do handle evictions if the asset contract itself is evicted. In that
+		// scenario we will omit contract asset stats for that asset in the /assets response.
+		if change.Reason == ingest.LedgerEntryChangeReasonEviction && asset == nil {
 			return nil
 		}
 		p.contractDataChanges = append(p.contractDataChanges, change)
@@ -147,11 +148,14 @@ func (p *AssetStatsProcessor) addExpirationChange(change ingest.Change) error {
 				post.LiveUntilLedgerSeq,
 			)
 		}
-		// also the new expiration ledger must always be greater than or equal
-		// to the current ledger
-		if uint32(post.LiveUntilLedgerSeq) < p.currentLedger {
+
+		// The previous expiration ledger must always be greater than or equal to the current ledger
+		// because if the previous expiration ledger is less than the current ledger then it implies
+		// the ledger entry was archived. However, an archived ledger entry cannot be updated without
+		// first being restored.
+		if uint32(pre.LiveUntilLedgerSeq) < p.currentLedger {
 			return errors.Errorf(
-				"post expiration ledger is less than current ledger."+
+				"pre expiration ledger is less than current ledger."+
 					" Pre: %v Post: %v current ledger: %v",
 				pre.LiveUntilLedgerSeq,
 				post.LiveUntilLedgerSeq,
@@ -196,7 +200,7 @@ func (p *AssetStatsProcessor) updateDB(
 		// When ingesting from the history archives we can take advantage of the fact
 		// that there are only created ledger entries. We don't need to execute any
 		// updates or removals on the asset stats tables. And we can also skip
-		// ingesting restored contract balances and expired contract balances.
+		// deleting expired contract balances.
 		assetStatsDeltas := p.assetStatSet.All()
 		if len(assetStatsDeltas) > 0 {
 			var err error

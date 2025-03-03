@@ -720,16 +720,6 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateContractBalance() {
 	s.mockQ.On("GetContractAssetStat", s.ctx, usdID[:]).
 		Return(usdAssetContractStat, nil).Once()
 
-	s.mockQ.On("GetContractAssetBalances", s.ctx, []xdr.Hash{keyHash}).
-		Return([]history.ContractAssetBalance{
-			{
-				KeyHash:          keyHash[:],
-				ContractID:       usdID[:],
-				Amount:           "100",
-				ExpirationLedger: 2234,
-			},
-		}, nil).Once()
-
 	usdAssetContractStat.Stat.ActiveBalance = "350"
 	s.mockQ.On("UpdateContractAssetStat", s.ctx, mock.MatchedBy(func(row history.ContractAssetStatRow) bool {
 		return bytes.Equal(usdID[:], row.ContractID) &&
@@ -1253,12 +1243,12 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestExpirationLedgerCannotBeLessTha
 				Type: xdr.LedgerEntryTypeTtl,
 				Ttl: &xdr.TtlEntry{
 					KeyHash:            keyHash,
-					LiveUntilLedgerSeq: 1234,
+					LiveUntilLedgerSeq: 1236,
 				},
 			},
 		},
 	}),
-		"post expiration ledger is less than current ledger. Pre: 1230 Post: 1234 current ledger: 1235",
+		"pre expiration ledger is less than current ledger. Pre: 1230 Post: 1236 current ledger: 1235",
 	)
 }
 
@@ -2123,7 +2113,8 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveContractID() {
 	s.Assert().NoError(err)
 
 	err = s.processor.ProcessChange(s.ctx, ingest.Change{
-		Type: xdr.LedgerEntryTypeContractData,
+		Reason: ingest.LedgerEntryChangeReasonEviction,
+		Type:   xdr.LedgerEntryTypeContractData,
 		Pre: &xdr.LedgerEntry{
 			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
 			Data:                  eurContractData,

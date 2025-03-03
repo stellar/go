@@ -106,7 +106,7 @@ func TestAddContractData(t *testing.T) {
 	assert.NoError(t, err)
 
 	otherEtherBalanceKeyHash := getKeyHashForBalance(t, etherID, [32]byte{1})
-	set.updatedExpirationEntries[otherEtherBalanceKeyHash] = [2]uint32{100, 150}
+	set.createdExpirationEntries[otherEtherBalanceKeyHash] = 150
 	err = set.AddContractData(context.Background(), ingest.Change{
 		Type: xdr.LedgerEntryTypeContractData,
 		Post: &xdr.LedgerEntry{
@@ -135,16 +135,6 @@ func TestAddContractData(t *testing.T) {
 		},
 	})
 	assert.NoError(t, err)
-
-	invalidBTCBalanceKeyHash := getKeyHashForBalance(t, btcID, [32]byte{3})
-	set.updatedExpirationEntries[invalidBTCBalanceKeyHash] = [2]uint32{100, 120}
-	err = set.AddContractData(context.Background(), ingest.Change{
-		Type: xdr.LedgerEntryTypeContractData,
-		Post: &xdr.LedgerEntry{
-			Data: BalanceToContractData(btcID, [32]byte{3}, 90),
-		},
-	})
-	assert.ErrorContains(t, err, "contract balance has invalid expiration ledger")
 
 	assert.Empty(t, set.updatedBalances)
 	assert.Empty(t, set.removedBalances)
@@ -225,16 +215,6 @@ func TestUpdateContractBalance(t *testing.T) {
 	assert.NoError(t, err)
 
 	keyHash = getKeyHashForBalance(t, usdcID, [32]byte{2})
-	ctx := context.Background()
-	mockQ.On("GetContractAssetBalances", ctx, []xdr.Hash{keyHash}).
-		Return([]history.ContractAssetBalance{
-			{
-				KeyHash:          keyHash[:],
-				ContractID:       usdcID[:],
-				Amount:           "30",
-				ExpirationLedger: 180,
-			},
-		}, nil).Once()
 	expectedBalances[keyHash] = "100"
 	err = set.AddContractData(context.Background(), ingest.Change{
 		Type: xdr.LedgerEntryTypeContractData,
@@ -247,31 +227,7 @@ func TestUpdateContractBalance(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	keyHash = getKeyHashForBalance(t, usdcID, [32]byte{4})
-	// balances which don't exist in the db will be ignored
-	mockQ.On("GetContractAssetBalances", ctx, []xdr.Hash{keyHash}).
-		Return([]history.ContractAssetBalance{}, nil).Once()
-	err = set.AddContractData(context.Background(), ingest.Change{
-		Type: xdr.LedgerEntryTypeContractData,
-		Pre: &xdr.LedgerEntry{
-			Data: BalanceToContractData(usdcID, [32]byte{4}, 0),
-		},
-		Post: &xdr.LedgerEntry{
-			Data: BalanceToContractData(usdcID, [32]byte{4}, 100),
-		},
-	})
-	assert.NoError(t, err)
-
 	keyHash = getKeyHashForBalance(t, etherID, [32]byte{})
-	mockQ.On("GetContractAssetBalances", ctx, []xdr.Hash{keyHash}).
-		Return([]history.ContractAssetBalance{
-			{
-				KeyHash:          keyHash[:],
-				ContractID:       etherID[:],
-				Amount:           "200",
-				ExpirationLedger: 200,
-			},
-		}, nil).Once()
 	expectedBalances[keyHash] = "50"
 	err = set.AddContractData(context.Background(), ingest.Change{
 		Type: xdr.LedgerEntryTypeContractData,
@@ -319,40 +275,6 @@ func TestUpdateContractBalance(t *testing.T) {
 		},
 	})
 	assert.NoError(t, err)
-
-	keyHash = getKeyHashForBalance(t, btcID, [32]byte{5})
-	mockQ.On("GetContractAssetBalances", ctx, []xdr.Hash{keyHash}).
-		Return([]history.ContractAssetBalance{
-			{
-				KeyHash:          keyHash[:],
-				ContractID:       btcID[:],
-				Amount:           "10",
-				ExpirationLedger: 20,
-			},
-		}, nil).Once()
-	err = set.AddContractData(context.Background(), ingest.Change{
-		Type: xdr.LedgerEntryTypeContractData,
-		Pre: &xdr.LedgerEntry{
-			Data: BalanceToContractData(btcID, [32]byte{5}, 10),
-		},
-		Post: &xdr.LedgerEntry{
-			Data: BalanceToContractData(btcID, [32]byte{5}, 15),
-		},
-	})
-	assert.ErrorContains(t, err, "contract balance has invalid expiration ledger keyhash")
-
-	keyHash = getKeyHashForBalance(t, btcID, [32]byte{6})
-	set.updatedExpirationEntries[keyHash] = [2]uint32{100, 110}
-	err = set.AddContractData(context.Background(), ingest.Change{
-		Type: xdr.LedgerEntryTypeContractData,
-		Pre: &xdr.LedgerEntry{
-			Data: BalanceToContractData(btcID, [32]byte{6}, 120),
-		},
-		Post: &xdr.LedgerEntry{
-			Data: BalanceToContractData(btcID, [32]byte{6}, 135),
-		},
-	})
-	assert.ErrorContains(t, err, "contract balance has invalid expiration ledger keyhash")
 
 	keyHash = getKeyHashForBalance(t, uniID, [32]byte{4})
 	set.updatedExpirationEntries[keyHash] = [2]uint32{150, 170}
