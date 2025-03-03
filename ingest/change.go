@@ -66,11 +66,7 @@ type Change struct {
 	Transaction *LedgerTransaction
 
 	// The LedgerCloseMeta that precipitated the change.
-	// This is useful only when the Change is caused by an upgrade or by an eviction, i.e. outside a transaction
-	// This field is populated only when the Reason is one of:
-	// LedgerEntryChangeReasonUpgrade or LedgerEntryChangeReasonEviction
-	// For changes caused by transaction or operations, look at the Transaction field
-	Ledger *xdr.LedgerCloseMeta
+	Ledger xdr.LedgerCloseMeta
 
 	// Information about the upgrade, if the change occurred as part of an upgrade
 	// This field is relevant only when the Reason is LedgerEntryChangeReasonUpgrade
@@ -95,9 +91,6 @@ const (
 
 	// LedgerEntryChangeReasonUpgrade indicates a change caused by a ledger upgrade.
 	LedgerEntryChangeReasonUpgrade
-
-	// LedgerEntryChangeReasonEviction indicates a change caused by entry eviction.
-	LedgerEntryChangeReasonEviction
 )
 
 // String returns a best effort string representation of the change.
