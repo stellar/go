@@ -332,7 +332,7 @@ type testFixture struct {
 func runTokenTransferEventTests(t *testing.T, tests []testFixture) {
 	for _, fixture := range tests {
 		t.Run(fixture.name, func(t *testing.T) {
-			events, err := ProcessTokenTransferEventsFromOperation(
+			events, err := ProcessTokenTransferEventsFromOperationAndOperationResult(
 				fixture.tx,
 				fixture.opIndex,
 				fixture.op,
@@ -465,7 +465,6 @@ func TestAccountCreateEvents(t *testing.T) {
 			},
 		},
 	}
-
 	runTokenTransferEventTests(t, tests)
 }
 
@@ -510,7 +509,6 @@ func TestMergeAccountEvents(t *testing.T) {
 			expected: nil,
 		},
 	}
-
 	runTokenTransferEventTests(t, tests)
 }
 
@@ -595,7 +593,6 @@ func TestPaymentEvents(t *testing.T) {
 			},
 		},
 	}
-
 	runTokenTransferEventTests(t, tests)
 }
 
@@ -725,7 +722,6 @@ func TestManageOfferEvents(t *testing.T) {
 			},
 		},
 	}
-
 	runTokenTransferEventTests(t, tests)
 }
 
@@ -891,7 +887,6 @@ func TestPathPaymentEvents(t *testing.T) {
 		},
 	}
 	runTokenTransferEventTests(t, tests)
-
 }
 
 func TestLiquidityPoolEvents(t *testing.T) {
@@ -1003,7 +998,6 @@ func TestLiquidityPoolEvents(t *testing.T) {
 			},
 		},
 	}
-
 	runTokenTransferEventTests(t, tests)
 }
 
@@ -1039,7 +1033,6 @@ func TestClawbackEvents(t *testing.T) {
 			},
 		},
 	}
-
 	runTokenTransferEventTests(t, tests)
 }
 
@@ -1085,7 +1078,6 @@ func TestClawbackClaimableBalanceEvents(t *testing.T) {
 			},
 		},
 	}
-
 	runTokenTransferEventTests(t, tests)
 }
 
@@ -1132,14 +1124,13 @@ func TestClaimClaimableBalanceEvents(t *testing.T) {
 			},
 		},
 	}
-
 	runTokenTransferEventTests(t, tests)
 }
 
 func TestAllowTrustAndSetTrustlineFlagsRevokeTrustlineTest(t *testing.T) {
 	// For these 2 operations, it really doest matter what the operation or operation result is.
 	// We are strictly going by the liquidity pool and trustlines that might be created
-	// I am simply creating one here for completeness, because it needs to be passed to the ProcessTokenTransferEventsFromOperation() function
+	// I am simply creating one here for completeness, because it needs to be passed to the ProcessTokenTransferEventsFromOperationAndOperationResult() function
 	trustlineRevokeOp := xdr.Operation{
 		Body: xdr.OperationBody{
 			Type: xdr.OperationTypeSetTrustLineFlags,
@@ -1206,5 +1197,4 @@ func TestAllowTrustAndSetTrustlineFlagsRevokeTrustlineTest(t *testing.T) {
 		},
 	}
 	runTokenTransferEventTests(t, tests)
-
 }

@@ -70,7 +70,7 @@ func ProcessTokenTransferEventsFromTransaction(tx ingest.LedgerTransaction, netw
 		opResult := operationResults[i]
 
 		// Process the operation and collect events
-		opEvents, err := ProcessTokenTransferEventsFromOperation(tx, uint32(i), op, opResult, networkPassPhrase)
+		opEvents, err := ProcessTokenTransferEventsFromOperationAndOperationResult(tx, uint32(i), op, opResult, networkPassPhrase)
 		if err != nil {
 			return nil,
 				errors.Wrapf(err, "error processing token transfer events from operation, index: %d,  %s", i, op.Body.Type.String())
@@ -82,11 +82,11 @@ func ProcessTokenTransferEventsFromTransaction(tx ingest.LedgerTransaction, netw
 	return events, nil
 }
 
-// ProcessTokenTransferEventsFromOperation
+// ProcessTokenTransferEventsFromOperationAndOperationResult
 // There is a separate private function to derive events for each classic operation.
 // It is implicitly assumed that the operation is successful, and thus will contribute towards generating events.
 // which is why we dont check for the code in the OperationResult
-func ProcessTokenTransferEventsFromOperation(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation, opResult xdr.OperationResult, networkPassPhrase string) ([]*TokenTransferEvent, error) {
+func ProcessTokenTransferEventsFromOperationAndOperationResult(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation, opResult xdr.OperationResult, networkPassPhrase string) ([]*TokenTransferEvent, error) {
 	switch op.Body.Type {
 	case xdr.OperationTypeCreateAccount:
 		return accountCreateEvents(tx, opIndex, op)
