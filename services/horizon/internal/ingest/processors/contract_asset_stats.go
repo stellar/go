@@ -3,7 +3,6 @@ package processors
 import (
 	"context"
 	"crypto/sha256"
-	"fmt"
 	"math/big"
 
 	"github.com/stellar/go/ingest"
@@ -35,7 +34,7 @@ type contractAssetBalancesQ interface {
 // ContractAssetStatSet represents a collection of asset stats for
 // contract asset holders
 type ContractAssetStatSet struct {
-	contractToAsset          map[xdr.Hash]*xdr.Asset
+	contractToAsset          map[xdr.Hash]xdr.Asset
 	contractAssetStats       map[xdr.Hash]assetContractStatValue
 	createdBalances          []history.ContractAssetBalance
 	removedBalances          []xdr.Hash
@@ -58,7 +57,7 @@ func NewContractAssetStatSet(
 	currentLedger uint32,
 ) *ContractAssetStatSet {
 	return &ContractAssetStatSet{
-		contractToAsset:          map[xdr.Hash]*xdr.Asset{},
+		contractToAsset:          map[xdr.Hash]xdr.Asset{},
 		contractAssetStats:       map[xdr.Hash]assetContractStatValue{},
 		networkPassphrase:        networkPassphrase,
 		assetStatsQ:              assetStatsQ,
@@ -72,7 +71,7 @@ func NewContractAssetStatSet(
 
 // AddContractData updates the set to account for how a given contract data entry has changed.
 // change must be a xdr.LedgerEntryTypeContractData type.
-func (s *ContractAssetStatSet) AddContractData(ctx context.Context, change ingest.Change) error {
+func (s *ContractAssetStatSet) AddContractData(change ingest.Change) error {
 	// skip ingestion of contract asset balances if we find an asset contract metadata entry
 	// because a ledger entry cannot be both an asset contract metadata entry and a
 	// contract asset balance.
@@ -81,7 +80,7 @@ func (s *ContractAssetStatSet) AddContractData(ctx context.Context, change inges
 	} else if found {
 		return nil
 	}
-	return s.ingestContractAssetBalance(ctx, change)
+	return s.ingestContractAssetBalance(change)
 }
 
 func (s *ContractAssetStatSet) GetContractStats() []history.ContractAssetStatRow {
@@ -96,42 +95,21 @@ func (s *ContractAssetStatSet) GetCreatedBalances() []history.ContractAssetBalan
 	return s.createdBalances
 }
 
-func (s *ContractAssetStatSet) GetAssetToContractMap() map[xdr.Hash]*xdr.Asset {
+func (s *ContractAssetStatSet) GetAssetToContractMap() map[xdr.Hash]xdr.Asset {
 	return s.contractToAsset
 }
 
 func (s *ContractAssetStatSet) ingestAssetContractMetadata(change ingest.Change) (bool, error) {
-	if change.Pre != nil {
-		asset := AssetFromContractData(*change.Pre, s.networkPassphrase)
-		if asset == nil {
-			return false, nil
-		}
-		pContractID := change.Pre.Data.MustContractData().Contract.ContractId
-		if pContractID == nil {
-			return false, nil
-		}
-		contractID := *pContractID
-		if change.Post == nil {
-			s.contractToAsset[contractID] = nil
-			return true, nil
-		}
-		// The contract id for any soroban contract should never change and
-		// therefore we return a fatal ingestion error if we encounter
-		// a stellar asset changing contract ids.
-		postAsset := AssetFromContractData(*change.Post, s.networkPassphrase)
-		if postAsset == nil || !(*postAsset).Equals(*asset) {
-			return false, ingest.NewStateError(fmt.Errorf("asset contract changed asset"))
-		}
+	if change.Pre != nil || change.Post == nil {
+		return false, nil
+	}
+	asset, found := AssetFromContractData(*change.Post, s.networkPassphrase)
+	if !found {
+		return false, nil
+	}
+	if pContactID := change.Post.Data.MustContractData().Contract.ContractId; pContactID != nil {
+		s.contractToAsset[*pContactID] = asset
 		return true, nil
-	} else if change.Post != nil {
-		asset := AssetFromContractData(*change.Post, s.networkPassphrase)
-		if asset == nil {
-			return false, nil
-		}
-		if pContactID := change.Post.Data.MustContractData().Contract.ContractId; pContactID != nil {
-			s.contractToAsset[*pContactID] = asset
-			return true, nil
-		}
 	}
 	return false, nil
 }
@@ -148,7 +126,7 @@ func getKeyHash(ledgerEntry xdr.LedgerEntry) (xdr.Hash, error) {
 	return sha256.Sum256(bin), nil
 }
 
-func (s *ContractAssetStatSet) ingestContractAssetBalance(ctx context.Context, change ingest.Change) error {
+func (s *ContractAssetStatSet) ingestContractAssetBalance(change ingest.Change) error {
 	switch {
 	case change.Pre == nil && change.Post != nil: // created or restored
 		pContractID := change.Post.Data.MustContractData().Contract.ContractId

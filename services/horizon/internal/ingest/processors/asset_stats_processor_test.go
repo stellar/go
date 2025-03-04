@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -32,7 +33,7 @@ type AssetStatsProcessorTestSuiteState struct {
 func (s *AssetStatsProcessorTestSuiteState) SetupTest() {
 	s.ctx = context.Background()
 	s.mockQ = &history.MockQAssetStats{}
-	s.processor = NewAssetStatsProcessor(s.mockQ, "", true, 123)
+	s.processor = NewAssetStatsProcessor(s.mockQ, "", true, 123, nil)
 }
 
 func (s *AssetStatsProcessorTestSuiteState) TearDownTest() {
@@ -194,7 +195,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) SetupTest() {
 	s.ctx = context.Background()
 	s.mockQ = &history.MockQAssetStats{}
 
-	s.processor = NewAssetStatsProcessor(s.mockQ, "", false, 1235)
+	s.processor = NewAssetStatsProcessor(s.mockQ, "", false, 1235, nil)
 }
 
 func (s *AssetStatsProcessorTestSuiteLedger) TearDownTest() {
@@ -795,35 +796,34 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveContractBalance() {
 	s.Assert().NoError(s.processor.Commit(s.ctx))
 }
 
-func (s *AssetStatsProcessorTestSuiteLedger) TestEviction() {
+func (s *AssetStatsProcessorTestSuiteLedger) TestBalanceEviction() {
 	lastModifiedLedgerSeq := xdr.Uint32(1234)
 	usdID, err := xdr.MustNewCreditAsset("USD", trustLineIssuer.Address()).ContractID("")
 	s.Assert().NoError(err)
 
-	s.Assert().NoError(s.processor.ProcessChange(s.ctx, ingest.Change{
-		Type:   xdr.LedgerEntryTypeContractData,
-		Reason: ingest.LedgerEntryChangeReasonEviction,
-		Pre: &xdr.LedgerEntry{
-			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
-			Data:                  BalanceToContractData(usdID, [32]byte{1}, 200),
-		},
-	}))
+	balanceEntry := xdr.LedgerEntry{
+		LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+		Data:                  BalanceToContractData(usdID, [32]byte{1}, 200),
+	}
+	balanceLedgerKey, err := balanceEntry.LedgerKey()
+	s.Assert().NoError(err)
 
 	keyHash := getKeyHashForBalance(s.T(), usdID, [32]byte{1})
-	s.Assert().NoError(s.processor.ProcessChange(s.ctx, ingest.Change{
-		Type:   xdr.LedgerEntryTypeTtl,
-		Reason: ingest.LedgerEntryChangeReasonEviction,
-		Pre: &xdr.LedgerEntry{
-			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
-			Data: xdr.LedgerEntryData{
-				Type: xdr.LedgerEntryTypeTtl,
-				Ttl: &xdr.TtlEntry{
-					KeyHash:            keyHash,
-					LiveUntilLedgerSeq: 2234,
-				},
+	ttlEntry := xdr.LedgerEntry{
+		LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+		Data: xdr.LedgerEntryData{
+			Type: xdr.LedgerEntryTypeTtl,
+			Ttl: &xdr.TtlEntry{
+				KeyHash:            keyHash,
+				LiveUntilLedgerSeq: 2234,
 			},
 		},
-	}))
+	}
+	ttlLedgerKey, err := ttlEntry.LedgerKey()
+	s.Assert().NoError(err)
+
+	evictedKeys := []xdr.LedgerKey{balanceLedgerKey, ttlLedgerKey}
+	s.processor = NewAssetStatsProcessor(s.mockQ, "", false, 1235, evictedKeys)
 
 	s.mockQ.On("RemoveContractAssetBalances", s.ctx, []xdr.Hash(nil)).
 		Return(nil).Once()
@@ -1489,6 +1489,40 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateTrustlineAndContractIDErr
 	)
 }
 
+func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveMissingContractID() {
+	lastModifiedLedgerSeq := xdr.Uint32(1234)
+
+	eurID, err := xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()).ContractID("")
+	s.Assert().NoError(err)
+	eurContractData, err := AssetToContractData(false, "EUR", trustLineIssuer.Address(), eurID)
+	s.Assert().NoError(err)
+
+	eurLedgerEntry := xdr.LedgerEntry{
+		LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+		Data:                  eurContractData,
+	}
+	eurLedgerKey, err := eurLedgerEntry.LedgerKey()
+	s.Assert().NoError(err)
+	evictedKeys := []xdr.LedgerKey{eurLedgerKey}
+	s.processor = NewAssetStatsProcessor(s.mockQ, "", false, 1235, evictedKeys)
+
+	s.mockQ.On("GetAssetStatByContract", s.ctx, xdr.Hash(eurID)).
+		Return(history.ExpAssetStat{}, sql.ErrNoRows).Once()
+
+	s.mockQ.On("RemoveContractAssetBalances", s.ctx, []xdr.Hash(nil)).
+		Return(nil).Once()
+	s.mockQ.On("UpdateContractAssetBalanceAmounts", s.ctx, []xdr.Hash{}, []string{}).
+		Return(nil).Once()
+	s.mockQ.On("InsertContractAssetBalances", s.ctx, []history.ContractAssetBalance(nil)).
+		Return(nil).Once()
+	s.mockQ.On("UpdateContractAssetBalanceExpirations", s.ctx, []xdr.Hash{}, []uint32{}).
+		Return(nil).Once()
+	s.mockQ.On("DeleteContractAssetBalancesExpiringAt", s.ctx, uint32(1234)).
+		Return([]history.ContractAssetBalance{}, nil).Once()
+
+	s.Assert().NoError(s.processor.Commit(s.ctx))
+}
+
 func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveContractIDError() {
 	lastModifiedLedgerSeq := xdr.Uint32(1234)
 
@@ -1497,21 +1531,21 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveContractIDError() {
 	eurContractData, err := AssetToContractData(false, "EUR", trustLineIssuer.Address(), eurID)
 	s.Assert().NoError(err)
 
-	err = s.processor.ProcessChange(s.ctx, ingest.Change{
-		Type: xdr.LedgerEntryTypeContractData,
-		Pre: &xdr.LedgerEntry{
-			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
-			Data:                  eurContractData,
-		},
-	})
+	eurLedgerEntry := xdr.LedgerEntry{
+		LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+		Data:                  eurContractData,
+	}
+	eurLedgerKey, err := eurLedgerEntry.LedgerKey()
 	s.Assert().NoError(err)
+	evictedKeys := []xdr.LedgerKey{eurLedgerKey}
+	s.processor = NewAssetStatsProcessor(s.mockQ, "", false, 1235, evictedKeys)
 
 	s.mockQ.On("GetAssetStatByContract", s.ctx, xdr.Hash(eurID)).
-		Return(history.ExpAssetStat{}, sql.ErrNoRows).Once()
+		Return(history.ExpAssetStat{}, fmt.Errorf("transient error")).Once()
 
 	s.Assert().EqualError(
 		s.processor.Commit(s.ctx),
-		"row for asset with contract 67b1f192e30d8cd56dcb103c783cfee753588a434ad1092ef8a39375c9738bab is missing",
+		"error querying asset by contract id: transient error",
 	)
 }
 
@@ -1523,14 +1557,14 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateTrustlineAndRemoveContrac
 	eurContractData, err := AssetToContractData(false, "EUR", trustLineIssuer.Address(), eurID)
 	s.Assert().NoError(err)
 
-	err = s.processor.ProcessChange(s.ctx, ingest.Change{
-		Type: xdr.LedgerEntryTypeContractData,
-		Pre: &xdr.LedgerEntry{
-			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
-			Data:                  eurContractData,
-		},
-	})
+	eurLedgerEntry := xdr.LedgerEntry{
+		LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+		Data:                  eurContractData,
+	}
+	eurLedgerKey, err := eurLedgerEntry.LedgerKey()
 	s.Assert().NoError(err)
+	evictedKeys := []xdr.LedgerKey{eurLedgerKey}
+	s.processor = NewAssetStatsProcessor(s.mockQ, "", false, 1235, evictedKeys)
 
 	trustLine := xdr.TrustLineEntry{
 		AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
@@ -2112,15 +2146,14 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveContractID() {
 	eurContractData, err := AssetToContractData(false, "EUR", trustLineIssuer.Address(), eurID)
 	s.Assert().NoError(err)
 
-	err = s.processor.ProcessChange(s.ctx, ingest.Change{
-		Reason: ingest.LedgerEntryChangeReasonEviction,
-		Type:   xdr.LedgerEntryTypeContractData,
-		Pre: &xdr.LedgerEntry{
-			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
-			Data:                  eurContractData,
-		},
-	})
+	eurLedgerEntry := xdr.LedgerEntry{
+		LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+		Data:                  eurContractData,
+	}
+	eurLedgerKey, err := eurLedgerEntry.LedgerKey()
 	s.Assert().NoError(err)
+	evictedKeys := []xdr.LedgerKey{eurLedgerKey}
+	s.processor = NewAssetStatsProcessor(s.mockQ, "", false, 1235, evictedKeys)
 
 	eurAssetStat := history.ExpAssetStat{
 		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
@@ -2166,14 +2199,14 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateTrustlineAndRemoveContrac
 	eurContractData, err := AssetToContractData(false, "EUR", trustLineIssuer.Address(), eurID)
 	s.Assert().NoError(err)
 
-	err = s.processor.ProcessChange(s.ctx, ingest.Change{
-		Type: xdr.LedgerEntryTypeContractData,
-		Pre: &xdr.LedgerEntry{
-			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
-			Data:                  eurContractData,
-		},
-	})
+	eurLedgerEntry := xdr.LedgerEntry{
+		LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+		Data:                  eurContractData,
+	}
+	eurLedgerKey, err := eurLedgerEntry.LedgerKey()
 	s.Assert().NoError(err)
+	evictedKeys := []xdr.LedgerKey{eurLedgerKey}
+	s.processor = NewAssetStatsProcessor(s.mockQ, "", false, 1235, evictedKeys)
 
 	trustLine := xdr.TrustLineEntry{
 		AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
@@ -2266,14 +2299,14 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveContractIDFromZeroRow() {
 	eurContractData, err := AssetToContractData(false, "EUR", trustLineIssuer.Address(), eurID)
 	s.Assert().NoError(err)
 
-	err = s.processor.ProcessChange(s.ctx, ingest.Change{
-		Type: xdr.LedgerEntryTypeContractData,
-		Pre: &xdr.LedgerEntry{
-			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
-			Data:                  eurContractData,
-		},
-	})
+	eurLedgerEntry := xdr.LedgerEntry{
+		LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+		Data:                  eurContractData,
+	}
+	eurLedgerKey, err := eurLedgerEntry.LedgerKey()
 	s.Assert().NoError(err)
+	evictedKeys := []xdr.LedgerKey{eurLedgerKey}
+	s.processor = NewAssetStatsProcessor(s.mockQ, "", false, 1235, evictedKeys)
 
 	eurAssetStat := history.ExpAssetStat{
 		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
@@ -2320,14 +2353,14 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveContractIDAndBalanceZeroR
 	eurContractData, err := AssetToContractData(false, "EUR", trustLineIssuer.Address(), eurID)
 	s.Assert().NoError(err)
 
-	err = s.processor.ProcessChange(s.ctx, ingest.Change{
-		Type: xdr.LedgerEntryTypeContractData,
-		Pre: &xdr.LedgerEntry{
-			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
-			Data:                  eurContractData,
-		},
-	})
+	eurLedgerEntry := xdr.LedgerEntry{
+		LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+		Data:                  eurContractData,
+	}
+	eurLedgerKey, err := eurLedgerEntry.LedgerKey()
 	s.Assert().NoError(err)
+	evictedKeys := []xdr.LedgerKey{eurLedgerKey}
+	s.processor = NewAssetStatsProcessor(s.mockQ, "", false, 1235, evictedKeys)
 
 	s.Assert().NoError(s.processor.ProcessChange(s.ctx, ingest.Change{
 		Type: xdr.LedgerEntryTypeContractData,
@@ -2432,14 +2465,14 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveContractIDAndRow() {
 	eurContractData, err := AssetToContractData(false, "EUR", trustLineIssuer.Address(), eurID)
 	s.Assert().NoError(err)
 
-	err = s.processor.ProcessChange(s.ctx, ingest.Change{
-		Type: xdr.LedgerEntryTypeContractData,
-		Pre: &xdr.LedgerEntry{
-			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
-			Data:                  eurContractData,
-		},
-	})
+	eurLedgerEntry := xdr.LedgerEntry{
+		LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+		Data:                  eurContractData,
+	}
+	eurLedgerKey, err := eurLedgerEntry.LedgerKey()
 	s.Assert().NoError(err)
+	evictedKeys := []xdr.LedgerKey{eurLedgerKey}
+	s.processor = NewAssetStatsProcessor(s.mockQ, "", false, 1235, evictedKeys)
 
 	authorizedTrustLine := xdr.TrustLineEntry{
 		AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
