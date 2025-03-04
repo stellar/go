@@ -600,6 +600,7 @@ func (s *ProcessorRunner) RunAllProcessorsOnLedger(ledger xdr.LedgerCloseMeta) (
 	var evictedLedgerKeys []xdr.LedgerKey
 	if evictedLedgerKeys, err = ledger.EvictedLedgerKeys(); err != nil {
 		err = errors.Wrap(err, "Error getting evicted ledger keys")
+		return
 	}
 	groupChangeProcessors := buildChangeProcessor(
 		s.historyQ,
