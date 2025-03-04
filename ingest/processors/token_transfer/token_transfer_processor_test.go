@@ -4,6 +4,7 @@ import (
 	"github.com/stellar/go/ingest"
 	addressProto "github.com/stellar/go/ingest/address"
 	assetProto "github.com/stellar/go/ingest/asset"
+	"github.com/stellar/go/support/converters"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -82,6 +83,7 @@ var (
 			V1: &xdr.TransactionV1Envelope{
 				Tx: xdr.Transaction{
 					SourceAccount: someTxAccount,
+					SeqNum:        xdr.SequenceNumber(54321), // need this for generating CbIds from LPIds for revokeTrustline tests
 				},
 			},
 		},
@@ -100,6 +102,7 @@ var (
 				V1: &xdr.TransactionV1Envelope{
 					Tx: xdr.Transaction{
 						SourceAccount: someTxAccount,
+						SeqNum:        xdr.SequenceNumber(54321), // need this for generating CbIds from LPIds for revokeTrustline tests
 					},
 				},
 			},
@@ -1146,6 +1149,9 @@ func TestAllowTrustAndSetTrustlineFlagsRevokeTrustlineTest(t *testing.T) {
 		},
 	}
 
+	generatedCbIdForBtc, _ := converters.ConvertLiquidityPoolIdToClaimableBalanceId(lpBtcEthId, btcAsset, xdr.SequenceNumber(someTx.Envelope.SeqNum()), someTx.Envelope.SourceAccount().ToAccountId(), 0)
+	generatedCbIdForEth, _ := converters.ConvertLiquidityPoolIdToClaimableBalanceId(lpBtcEthId, ethAsset, xdr.SequenceNumber(someTx.Envelope.SeqNum()), someTx.Envelope.SourceAccount().ToAccountId(), 0)
+
 	tests := []testFixture{
 		{
 			name:     "Trustline Revoked - No Liquidity pool ledger entry changes - no events",
@@ -1157,12 +1163,46 @@ func TestAllowTrustAndSetTrustlineFlagsRevokeTrustlineTest(t *testing.T) {
 			name: "Trustline Revoked - LP entries present, but no CB entries - no events",
 			op:   trustlineRevokeOp,
 			tx: someTxWithOperationChanges([]xdr.LedgerEntryChange{
-				// pre != nil, post = nil
 				// a realistic case where the reserveA and reserveB were 0, so no CBs were created
 				generateLpEntryChangeState(lpLedgerEntry(lpBtcEthId, btcAsset, ethAsset, 0, 0)),
 				generateLpEntryRemovedChange(lpBtcEthId),
 			}),
 			expected: nil,
+		},
+		{
+			name: "Trustline Revoked - LP entries present, CB entries for the both assets in LP - 2 transfer events",
+			op:   trustlineRevokeOp,
+			tx: someTxWithOperationChanges([]xdr.LedgerEntryChange{
+				// 1 unit of BTC and 2 units of ETH need to go from LPId to a claimable balance
+				generateLpEntryChangeState(lpLedgerEntry(lpBtcEthId, btcAsset, ethAsset, oneUnit, twoUnits)),
+				generateLpEntryRemovedChange(lpBtcEthId),
+
+				// New Cb for BTC from lpBtcEthId
+				generateCbEntryCreatedChange(cbLedgerEntry(generatedCbIdForBtc, btcAsset, oneUnit)),
+				// New CB for ETH from lpBtcEthId
+				generateCbEntryCreatedChange(cbLedgerEntry(generatedCbIdForEth, ethAsset, twoUnits)),
+			}),
+			expected: []*TokenTransferEvent{
+				transferEvent(protoAddressFromLpHash(lpBtcEthId), protoAddressFromClaimableBalanceId(generatedCbIdForBtc), "1.0000000", btcProtoAsset),
+				transferEvent(protoAddressFromLpHash(lpBtcEthId), protoAddressFromClaimableBalanceId(generatedCbIdForEth), "2.0000000", ethProtoAsset),
+			},
+		},
+		{
+			name: "Trustline Revoked - LP entries present, only 1 CB entry created -1 transfer event, 1 mint event",
+			op:   trustlineRevokeOp,
+			tx: someTxWithOperationChanges([]xdr.LedgerEntryChange{
+				// 1 unit of BTC and 2 units of ETH need to go from LPId to a claimable balance
+				generateLpEntryChangeState(lpLedgerEntry(lpBtcEthId, btcAsset, ethAsset, oneUnit, twoUnits)),
+				generateLpEntryRemovedChange(lpBtcEthId),
+
+				// New Cb for BTC from lpBtcEthId
+				generateCbEntryCreatedChange(cbLedgerEntry(generatedCbIdForBtc, btcAsset, oneUnit)),
+				// No CB created for ETH. i.e one burn event
+			}),
+			expected: []*TokenTransferEvent{
+				transferEvent(protoAddressFromLpHash(lpBtcEthId), protoAddressFromClaimableBalanceId(generatedCbIdForBtc), "1.0000000", btcProtoAsset),
+				burnEvent(protoAddressFromLpHash(lpBtcEthId), "2.0000000", ethProtoAsset),
+			},
 		},
 	}
 	runTokenTransferEventTests(t, tests)

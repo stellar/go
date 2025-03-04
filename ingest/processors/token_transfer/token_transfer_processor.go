@@ -1,12 +1,12 @@
 package token_transfer
 
 import (
-	"crypto/sha256"
 	"fmt"
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/ingest"
 	addressProto "github.com/stellar/go/ingest/address"
 	assetProto "github.com/stellar/go/ingest/asset"
+	"github.com/stellar/go/support/converters"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 	"io"
@@ -243,38 +243,27 @@ func createClaimableBalanceEvents(tx ingest.LedgerTransaction, opIndex uint32, o
 	return []*TokenTransferEvent{event}, nil
 }
 
-func generateClaimableBalanceIdFromLiquidityPoolId(lpEntry liquidityPoolEntryDelta, tx ingest.LedgerTransaction, sourceAccount xdr.AccountId, opIndex uint32) ([]xdr.ClaimableBalanceId, error) {
+func generateClaimableBalanceIdFromLiquidityPoolId(lpEntry liquidityPoolEntryDelta, tx ingest.LedgerTransaction, txSrcAccount xdr.AccountId, opIndex uint32) ([]xdr.ClaimableBalanceId, error) {
 	var generatedClaimableBalanceIds []xdr.ClaimableBalanceId
-	seqNum := tx.Envelope.SeqNum()
+	lpId := lpEntry.liquidityPoolId
+	seqNum := xdr.SequenceNumber(tx.Envelope.SeqNum())
 
-	assetA, AssetB := lpEntry.assetA, lpEntry.assetB
-	for _, asset := range []xdr.Asset{assetA, AssetB} {
-		preImageId := xdr.HashIdPreimage{
-			Type: xdr.EnvelopeTypeEnvelopeTypePoolRevokeOpId,
-			RevokeId: &xdr.HashIdPreimageRevokeId{
-				SourceAccount:   sourceAccount,
-				SeqNum:          xdr.SequenceNumber(seqNum),
-				OpNum:           xdr.Uint32(opIndex),
-				LiquidityPoolId: lpEntry.liquidityPoolId,
-				Asset:           asset,
-			},
-		}
-		binaryDump, e := preImageId.MarshalBinary()
-		if e != nil {
-			return nil, errors.Wrapf(e, "Failed to convert HashIdPreimage to claimable balanceId")
-		}
-		sha256hash := xdr.Hash(sha256.Sum256(binaryDump))
-		cbId := xdr.ClaimableBalanceId{
-			Type: xdr.ClaimableBalanceIdTypeClaimableBalanceIdTypeV0,
-			V0:   &sha256hash,
+	for _, asset := range []xdr.Asset{lpEntry.assetA, lpEntry.assetB} {
+		cbId, err := converters.ConvertLiquidityPoolIdToClaimableBalanceId(lpId, asset, seqNum, txSrcAccount, opIndex)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to generate claimable balance id from LiquidityPoolId: %v, for asset: %v", lpIdToStrkey(lpId), asset.String())
 		}
 		generatedClaimableBalanceIds = append(generatedClaimableBalanceIds, cbId)
 	}
-
 	return generatedClaimableBalanceIds, nil
 }
 
-func getClaimableBalanceEntriesFromOperationChanges(tx ingest.LedgerTransaction, opIndex uint32) ([]xdr.ClaimableBalanceEntry, error) {
+// This operation is used to only find CB entries that are either created or deleted, not updated
+func getClaimableBalanceEntriesFromOperationChanges(changeType xdr.LedgerEntryChangeType, tx ingest.LedgerTransaction, opIndex uint32) ([]xdr.ClaimableBalanceEntry, error) {
+	if !(changeType == xdr.LedgerEntryChangeTypeLedgerEntryRemoved || changeType == xdr.LedgerEntryChangeTypeLedgerEntryCreated) {
+		return nil, fmt.Errorf("changeType: %v, not allowed", changeType)
+	}
+
 	changes, err := tx.GetOperationChanges(opIndex)
 	if err != nil {
 		return nil, err
@@ -293,18 +282,16 @@ func getClaimableBalanceEntriesFromOperationChanges(tx ingest.LedgerTransaction,
 			continue
 		}
 		// Check if claimable balance entry is deleted
-		if change.Pre != nil && change.Post == nil {
+		//?? maybe it is not necessary to check change.Pre != nil && change.Post since that will be true for deleted entries?
+		if changeType == xdr.LedgerEntryChangeTypeLedgerEntryRemoved && change.Pre != nil && change.Post == nil {
 			cb = change.Pre.Data.MustClaimableBalance()
 			entries = append(entries, cb)
-		} else if change.Post != nil && change.Pre == nil { // check if claimable balance entry is created
+		} else if changeType == xdr.LedgerEntryChangeTypeLedgerEntryCreated && change.Post != nil && change.Pre == nil { // check if claimable balance entry is created
 			cb = change.Post.Data.MustClaimableBalance()
 			entries = append(entries, cb)
 		}
 	}
 
-	if len(entries) == 0 {
-		return nil, ErrNoClaimableBalanceEntryFound
-	}
 	return entries, nil
 }
 
@@ -313,7 +300,7 @@ func claimClaimableBalanceEvents(tx ingest.LedgerTransaction, opIndex uint32, op
 	cbId := claimCbOp.BalanceId
 
 	// After this operation, the CB will be deleted.
-	cbEntries, err := getClaimableBalanceEntriesFromOperationChanges(tx, opIndex)
+	cbEntries, err := getClaimableBalanceEntriesFromOperationChanges(xdr.LedgerEntryChangeTypeLedgerEntryRemoved, tx, opIndex)
 	if err != nil {
 		return nil, err
 	} else if len(cbEntries) != 1 {
@@ -346,7 +333,7 @@ func clawbackClaimableBalanceEvents(tx ingest.LedgerTransaction, opIndex uint32,
 	cbId := clawbackCbOp.BalanceId
 
 	// After this operation, the CB will be deleted.
-	cbEntries, err := getClaimableBalanceEntriesFromOperationChanges(tx, opIndex)
+	cbEntries, err := getClaimableBalanceEntriesFromOperationChanges(xdr.LedgerEntryChangeTypeLedgerEntryRemoved, tx, opIndex)
 	if err != nil {
 		return nil, err
 	} else if len(cbEntries) != 1 {
@@ -373,28 +360,32 @@ func setTrustLineFlagsEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr
 }
 
 func generateEventsForRevokedTrustlines(tx ingest.LedgerTransaction, opIndex uint32) ([]*TokenTransferEvent, error) {
-
 	// IF this operation is used to revoke authorization from a trustline that deposited into a liquidity pool,
 	// then UPTO 2 claimable balances will be created for the withdrawn assets (See CAP-0038 for more info) PER each impacted Liquidity Pool
 
 	// Go through the operation changes and find the LiquidityPools that were impacted
 	impactedLiquidityPools, err := getImpactedLiquidityPoolEntriesFromOperation(tx, opIndex)
-	// The operation didnt cause revocation of the trustor account's pool shares in any liquidity pools. So no events generated at all
-	if err == ErrNoLiquidityPoolEntryFound {
-		return nil, nil
-	} else if err != nil {
+	if err != nil {
 		return nil, err
 	}
 
-	impactedClaimableBalances, err := getClaimableBalanceEntriesFromOperationChanges(tx, opIndex)
+	// The operation didnt cause revocation of the trustor account's pool shares in any liquidity pools.
+	// So no events generated at all
+	if len(impactedLiquidityPools) == 0 {
+		return nil, nil
+	}
+
+	impactedClaimableBalances, err := getClaimableBalanceEntriesFromOperationChanges(xdr.LedgerEntryChangeTypeLedgerEntryCreated, tx, opIndex)
+	if err != nil {
+		return nil, err
+	}
+
 	// There were no claimable balances created, even though there were some liquidity pools that showed up.
 	// This can happen, if all the liquidity pools impacted were empty in the first place,
-	//i.e they didnt have any pool shares OR reserves of asset A and B
+	// i.e they didnt have any pool shares OR reserves of asset A and B
 	// So there is no transfer of money, so no events generated
-	if err == ErrNoClaimableBalanceEntryFound {
+	if len(impactedClaimableBalances) == 0 {
 		return nil, nil
-	} else if err != nil {
-		return nil, err
 	}
 
 	/*
@@ -548,9 +539,6 @@ func getImpactedLiquidityPoolEntriesFromOperation(tx ingest.LedgerTransaction, o
 		entries = append(entries, entry)
 	}
 
-	if len(entries) == 0 {
-		return nil, ErrNoLiquidityPoolEntryFound
-	}
 	return entries, nil
 }
 
@@ -558,6 +546,8 @@ func liquidityPoolDepositEvents(tx ingest.LedgerTransaction, opIndex uint32, op 
 	lpDeltas, e := getImpactedLiquidityPoolEntriesFromOperation(tx, opIndex)
 	if e != nil {
 		return nil, e
+	} else if len(lpDeltas) == 0 {
+		return nil, ErrNoLiquidityPoolEntryFound
 	} else if len(lpDeltas) != 1 {
 		return nil, fmt.Errorf("more than one Liquidiy pool entry found for operation: %s", op.Body.Type.String())
 	}
@@ -589,6 +579,8 @@ func liquidityPoolWithdrawEvents(tx ingest.LedgerTransaction, opIndex uint32, op
 	lpDeltas, e := getImpactedLiquidityPoolEntriesFromOperation(tx, opIndex)
 	if e != nil {
 		return nil, e
+	} else if len(lpDeltas) == 0 {
+		return nil, ErrNoLiquidityPoolEntryFound
 	} else if len(lpDeltas) != 1 {
 		return nil, fmt.Errorf("more than one Liquidiy pool entry found for operation: %s", op.Body.Type.String())
 	}
