@@ -25,7 +25,7 @@ type AssetStatsProcessor struct {
 	updatedExpirationEntries map[xdr.Hash][2]uint32
 	ingestFromHistoryArchive bool
 	networkPassphrase        string
-	// evictedAssetContractCandidates is a list of evicted contracts
+	// possibleEvictedAssetContracts is a list of evicted contracts
 	// that are possibly SACs
 	possibleEvictedAssetContracts set.Set[xdr.Hash]
 }
