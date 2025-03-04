@@ -446,7 +446,7 @@ func generateEventsForRevokedTrustlines(tx ingest.LedgerTransaction, opIndex uin
 				For e.g suppose an account - ethIssuerAccount, deposits to USDC-ETH liquidity pool
 				Now, a setTrustlineFlags operation is issued by the USDC-Issuer account to revoke ethIssuerAccount's USDC trustline.
 				As a side-effect of this trustline revocation, there is a removal of ethIssuerAcount's stake from the USDB-ETH liquidity pool.
-				In this case, 1 Claimable balance for BTC will be created, with claimantAccount = trustor(ethIssuerAccount)
+				In this case, 1 Claimable balance for USDC will be created, with claimantAccount = trustor i.e. ethIssuerAccount
 				No Claimable balance for ETH will be created. it will simply be burned.
 			*/
 			assetInCb := cbsCreatedByThisLp[0].Asset
@@ -609,6 +609,7 @@ func liquidityPoolWithdrawEvents(tx ingest.LedgerTransaction, opIndex uint32, op
 		mintOrBurnOrTransferEvent(assetB, from, to, amount.String(amtB), meta),
 	}, nil
 }
+
 func generateEventsFromClaimAtoms(meta *EventMeta, opSrcAcc xdr.MuxedAccount, claims []xdr.ClaimAtom) []*TokenTransferEvent {
 	var events []*TokenTransferEvent
 	operationSourceAddressWrapper := addressWrapper{account: &opSrcAcc}
