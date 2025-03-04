@@ -303,6 +303,8 @@ func claimClaimableBalanceEvents(tx ingest.LedgerTransaction, opIndex uint32, op
 	cbEntries, err := getClaimableBalanceEntriesFromOperationChanges(xdr.LedgerEntryChangeTypeLedgerEntryRemoved, tx, opIndex)
 	if err != nil {
 		return nil, err
+	} else if len(cbEntries) == 0 {
+		return nil, ErrNoClaimableBalanceEntryFound
 	} else if len(cbEntries) != 1 {
 		return nil, fmt.Errorf("more than one claimable entry found for operation: %s", op.Body.Type.String())
 	}
@@ -336,6 +338,8 @@ func clawbackClaimableBalanceEvents(tx ingest.LedgerTransaction, opIndex uint32,
 	cbEntries, err := getClaimableBalanceEntriesFromOperationChanges(xdr.LedgerEntryChangeTypeLedgerEntryRemoved, tx, opIndex)
 	if err != nil {
 		return nil, err
+	} else if len(cbEntries) == 0 {
+		return nil, ErrNoClaimableBalanceEntryFound
 	} else if len(cbEntries) != 1 {
 		return nil, fmt.Errorf("more than one claimable entry found for operation: %s", op.Body.Type.String())
 	}
