@@ -56,7 +56,7 @@ func TestStatsChangeProcessor(t *testing.T) {
 		}
 	}
 
-	processor.ProcessEvictions([]xdr.LedgerKey{xdr.LedgerKey{}})
+	processor.ProcessEvictions([]xdr.LedgerKey{{}})
 
 	results := processor.GetResults()
 
