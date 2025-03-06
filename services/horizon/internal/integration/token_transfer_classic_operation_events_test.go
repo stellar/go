@@ -1,10 +1,8 @@
 package integration
 
 import (
-	"crypto/sha256"
 	"fmt"
 	"github.com/stellar/go/clients/horizonclient"
-	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/ingest/processors/token_transfer"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/services/horizon/internal/test/integration"
@@ -68,81 +66,16 @@ var (
 	}
 )
 
-func generateCBIdFromLpId(lpId xdr.PoolId, accountSeq int64, txAccount xdr.AccountId, opIndex uint32, asset xdr.Asset) xdr.Hash {
-	preImageId := xdr.HashIdPreimage{
-		Type: xdr.EnvelopeTypeEnvelopeTypePoolRevokeOpId,
-		RevokeId: &xdr.HashIdPreimageRevokeId{
-			SourceAccount:   txAccount,
-			SeqNum:          xdr.SequenceNumber(accountSeq),
-			OpNum:           xdr.Uint32(opIndex),
-			LiquidityPoolId: lpId,
-			Asset:           asset,
-		},
-	}
-	binaryDump, _ := preImageId.MarshalBinary()
-	sha256hash := xdr.Hash(sha256.Sum256(binaryDump))
-	return sha256hash
-}
 func printProtoEvents(events []*token_transfer.TokenTransferEvent) {
 	for _, event := range events {
 		jsonBytes, _ := protojson.MarshalOptions{
-			Multiline: true, // Enable pretty printing with newlines
-			Indent:    "  ", // Specify indentation string (e.g., two spaces)
+			Multiline: true,
+			Indent:    "  ",
 		}.Marshal(event)
-		fmt.Println("###")
+		fmt.Printf("### Event Type : %v\n", event.GetEventType())
 		fmt.Println(string(jsonBytes))
 		fmt.Println("###")
 	}
-}
-
-func getLpIdsFromChanges(changes []ingest.Change) []xdr.PoolId {
-
-	var entries []xdr.PoolId
-	for _, c := range changes {
-		if c.Type != xdr.LedgerEntryTypeLiquidityPool {
-			continue
-		}
-		var lpId xdr.PoolId
-
-		if c.Pre != nil {
-			lpId = c.Pre.Data.LiquidityPool.LiquidityPoolId
-		}
-
-		if c.Post != nil {
-			lpId = c.Post.Data.LiquidityPool.LiquidityPoolId
-		}
-
-		entries = append(entries, lpId)
-	}
-
-	return entries
-}
-
-func getCbEntriesFromChanges(changes []ingest.Change) []xdr.ClaimableBalanceEntry {
-
-	var entries []xdr.ClaimableBalanceEntry
-	/*
-		This function is expected to be called only to get details of newly created claimable balance
-		(for e.g as a result of allowTrust or setTrustlineFlags  operations)
-		or claimable balances that are be deleted
-		(for e.g due to clawback claimable balance operation)
-	*/
-	var cb xdr.ClaimableBalanceEntry
-	for _, change := range changes {
-		if change.Type != xdr.LedgerEntryTypeClaimableBalance {
-			continue
-		}
-		// Check if claimable balance entry is deleted
-		if change.Pre != nil && change.Post == nil {
-			cb = change.Pre.Data.MustClaimableBalance()
-			entries = append(entries, cb)
-		} else if change.Post != nil && change.Pre == nil { // check if claimable balance entry is created
-			cb = change.Post.Data.MustClaimableBalance()
-			entries = append(entries, cb)
-		}
-	}
-
-	return entries
 }
 
 func TestTrustlineRevocationEvents(t *testing.T) {
@@ -150,6 +83,7 @@ func TestTrustlineRevocationEvents(t *testing.T) {
 	itest := integration.NewTest(t, integration.Config{})
 	master := itest.Master()
 
+	//Setup
 	keys, accounts := itest.CreateAccounts(2, "1000000000")
 	// One simple account that participates in LP-USDC-XLM
 	lpParticipantAccountKeys, lpParticipantAccount := keys[0], accounts[0]
@@ -170,7 +104,6 @@ func TestTrustlineRevocationEvents(t *testing.T) {
 	}
 	xlmAsset := txnbuild.NativeAsset{}
 
-	// Pre-setup
 	itest.MustSubmitMultiSigOperations(itest.MasterAccount(),
 		[]*keypair.Full{lpParticipantAccountKeys, master, ethAccountKeys},
 
@@ -220,6 +153,7 @@ func TestTrustlineRevocationEvents(t *testing.T) {
 		},
 	)
 
+	// Some sanity asserts
 	_, err := itest.Client().LiquidityPoolDetail(horizonclient.LiquidityPoolRequest{
 		LiquidityPoolID: usdcXlmPoolIDHexString,
 	})
@@ -229,12 +163,14 @@ func TestTrustlineRevocationEvents(t *testing.T) {
 	})
 	tt.NoError(err)
 
+	// Actual test fixture
 	revokeTrustlineTxResp := itest.MustSubmitMultiSigOperations(
 		itest.MasterAccount(),
-		[]*keypair.Full{master, ethAccountKeys},
+		[]*keypair.Full{master},
+		// This operation shud generate 2 transfer events
 		revokeTrustline(master.Address(), lpParticipantAccount.GetAccountID(), usdcAsset),
+		// Revoking USDC trustline for EthIssuer.. BURN
 		revokeTrustline(master.Address(), ethAccount.GetAccountID(), usdcAsset),
-		revokeTrustline(ethAccount.GetAccountID(), master.Address(), ethAsset),
 	)
 
 	ledgerSeq := uint32(revokeTrustlineTxResp.Ledger)

@@ -88,3 +88,20 @@ func NewEventMeta(tx ingest.LedgerTransaction, operationIndex *uint32, contractA
 		ContractAddress: contractAddress,
 	}
 }
+
+func (event *TokenTransferEvent) GetEventType() string {
+	switch event.GetEvent().(type) {
+	case *TokenTransferEvent_Transfer:
+		return "Transfer"
+	case *TokenTransferEvent_Mint:
+		return "Mint"
+	case *TokenTransferEvent_Burn:
+		return "Burn"
+	case *TokenTransferEvent_Clawback:
+		return "Clawback"
+	case *TokenTransferEvent_Fee:
+		return "Fee"
+	default:
+		return "Unknown"
+	}
+}
