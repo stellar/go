@@ -705,30 +705,18 @@ func operationSourceAccount(tx ingest.LedgerTransaction, op xdr.Operation) xdr.M
 	return res
 }
 
+// Even though these functions simply call the corresponding proto, these are helpful to reduce clutter when being used in the unit test
+// otherwise the entire imported path alias needs to be added and it is distracting
 func protoAddressFromAccount(account xdr.MuxedAccount) *addressProto.Address {
-	addr := &addressProto.Address{}
-	switch account.Type {
-	case xdr.CryptoKeyTypeKeyTypeEd25519:
-		addr.AddressType = addressProto.AddressType_ADDRESS_TYPE_ACCOUNT
-	case xdr.CryptoKeyTypeKeyTypeMuxedEd25519:
-		addr.AddressType = addressProto.AddressType_ADDRESS_TYPE_MUXED_ACCOUNT
-	}
-	addr.StrKey = account.Address()
-	return addr
+	return addressProto.NewAddressFromAccount(account)
 }
 
 func protoAddressFromLpHash(lpId xdr.PoolId) *addressProto.Address {
-	return &addressProto.Address{
-		AddressType: addressProto.AddressType_ADDRESS_TYPE_LIQUIDITY_POOL,
-		StrKey:      lpIdToStrkey(lpId),
-	}
+	return addressProto.NewLiquidityPoolAddress(lpId)
 }
 
 func protoAddressFromClaimableBalanceId(cb xdr.ClaimableBalanceId) *addressProto.Address {
-	return &addressProto.Address{
-		AddressType: addressProto.AddressType_ADDRESS_TYPE_CLAIMABLE_BALANCE,
-		StrKey:      cbIdToStrkey(cb),
-	}
+	return addressProto.NewAddressFromClaimableBalance(cb)
 }
 
 func cbIdToStrkey(cb xdr.ClaimableBalanceId) string {

@@ -70,13 +70,11 @@ var (
 
 	//TODO - once support for strkey is done, extend this to include CB and LP
 	protoAddress = func(address string) *addressProto.Address {
-		addr := &addressProto.Address{StrKey: address}
-		if strings.HasPrefix(address, "G") {
-			addr.AddressType = addressProto.AddressType_ADDRESS_TYPE_ACCOUNT
+		var addr *addressProto.Address
+		if strings.HasPrefix(address, "G") || strings.HasPrefix(address, "M") {
+			addr = addressProto.NewAddressFromAccount(xdr.MustMuxedAddress(address))
 		} else if strings.HasPrefix(address, "C") {
-			addr.AddressType = addressProto.AddressType_ADDRESS_TYPE_CONTRACT
-		} else if strings.HasPrefix(address, "M") {
-			addr.AddressType = addressProto.AddressType_ADDRESS_TYPE_MUXED_ACCOUNT
+			addr = addressProto.NewAddressFromContract(address)
 		}
 		return addr
 	}

@@ -11,10 +11,7 @@ import (
 )
 
 func newTestAddress() *addressProto.Address {
-	return &addressProto.Address{
-		AddressType: addressProto.AddressType_ADDRESS_TYPE_ACCOUNT,
-		StrKey:      "GBRX5D3FLJ72FHYFVFF2BOICRVDF7FESIAT6GQ4K3ST2MXXJJZC24H2F",
-	}
+	return &addressProto.Address{}
 }
 
 func newTestAsset() *assetProto.Asset {
