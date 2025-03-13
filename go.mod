@@ -17,6 +17,7 @@ require (
 	github.com/djherbis/fscache v0.10.1
 	github.com/elazarl/go-bindata-assetfs v1.0.1
 	github.com/getsentry/raven-go v0.2.0
+	github.com/gin-contrib/sse v1.0.0
 	github.com/go-chi/chi v4.1.2+incompatible
 	github.com/go-errors/errors v1.5.1
 	github.com/golang-jwt/jwt v3.2.2+incompatible
@@ -29,7 +30,6 @@ require (
 	github.com/jarcoal/httpmock v0.0.0-20161210151336-4442edb3db31
 	github.com/jmoiron/sqlx v1.3.5
 	github.com/lib/pq v1.10.9
-	github.com/manucorporat/sse v0.0.0-20160126180136-ee05b128a739
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.27.10
@@ -47,7 +47,7 @@ require (
 	github.com/spf13/viper v1.17.0
 	github.com/stellar/go-xdr v0.0.0-20231122183749-b53fb00bcac2
 	github.com/stellar/throttled v2.2.3-0.20190823235211-89d75816f59d+incompatible
-	github.com/stretchr/testify v1.9.0
+	github.com/stretchr/testify v1.10.0
 	github.com/tyler-smith/go-bip39 v0.0.0-20180618194314-52158e4697b8
 	github.com/xdrpp/goxdr v0.1.1
 	google.golang.org/api v0.183.0
