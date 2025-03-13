@@ -3,13 +3,17 @@ package integration
 import (
 	"fmt"
 	"github.com/stellar/go/clients/horizonclient"
+	addressProto "github.com/stellar/go/ingest/address"
+	assetProto "github.com/stellar/go/ingest/asset"
 	"github.com/stellar/go/ingest/processors/token_transfer"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/services/horizon/internal/test/integration"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/encoding/protojson"
+	"strings"
 	"testing"
 	"time"
 )
@@ -21,7 +25,6 @@ var (
 			Trustor:       trustor,
 			Asset:         asset,
 			ClearFlags:    []txnbuild.TrustLineFlag{txnbuild.TrustLineAuthorized},
-			//SetFlags:      []txnbuild.TrustLineFlag{0},
 		}
 	}
 	// Give the master account the revocable flag (needed to set the clawback flag)
@@ -64,8 +67,80 @@ var (
 			Amount:        amount,
 		}
 	}
+
+	//TODO - once support for strkey is done, extend this to include CB and LP
+	protoAddress = func(address string) *addressProto.Address {
+		addr := &addressProto.Address{StrKey: address}
+		if strings.HasPrefix(address, "G") {
+			addr.AddressType = addressProto.AddressType_ADDRESS_TYPE_ACCOUNT
+		} else if strings.HasPrefix(address, "C") {
+			addr.AddressType = addressProto.AddressType_ADDRESS_TYPE_CONTRACT
+		} else if strings.HasPrefix(address, "M") {
+			addr.AddressType = addressProto.AddressType_ADDRESS_TYPE_MUXED_ACCOUNT
+		}
+		return addr
+	}
 )
 
+func assertFeeEvent(t *testing.T, events []*token_transfer.TokenTransferEvent, from *addressProto.Address, amt string) {
+	require.Condition(t, func() bool {
+		for _, event := range events {
+			if event.GetEventType() == "Fee" &&
+				event.GetFee().From.Equals(from) &&
+				event.GetFee().Amount == amt {
+				return true
+			}
+		}
+		return false
+	}, "Expected a fee event with amount %s, but not found", amt)
+}
+
+func assertTransferEvent(t *testing.T, events []*token_transfer.TokenTransferEvent, from, to *addressProto.Address, asset *assetProto.Asset, amt string) {
+	require.Condition(t, func() bool {
+		for _, event := range events {
+			if event.GetEventType() == "Transfer" &&
+				event.GetTransfer().From == from &&
+				event.GetTransfer().To == to &&
+				event.GetTransfer().Amount == amt &&
+				event.Asset == asset {
+				return true
+			}
+		}
+		return false
+	}, "Expected transfer event: %s -> %s, amount: %s, asset: %s, but not found", from, to, amt, asset)
+}
+
+// Assert that a mint event exists
+func assertMintEvent(t *testing.T, events []*token_transfer.TokenTransferEvent, to *addressProto.Address, amt string, asset *assetProto.Asset) {
+	require.Condition(t, func() bool {
+		for _, event := range events {
+			if event.GetEventType() == "Mint" &&
+				event.GetMint().To == to &&
+				event.Asset == asset &&
+				event.GetMint().Amount == amt {
+				return true
+			}
+		}
+		return false
+	}, "Expected mint event: to %s, asset: %s, amount: %s, but not found", to, asset, amt)
+}
+
+// Assert that a burn event exists
+func assertBurnEvent(t *testing.T, events []*token_transfer.TokenTransferEvent, from *addressProto.Address, amt string, asset *assetProto.Asset) {
+	require.Condition(t, func() bool {
+		for _, event := range events {
+			if event.GetEventType() == "Burn" &&
+				event.GetBurn().From == from &&
+				event.Asset == asset &&
+				event.GetBurn().Amount == amt {
+				return true
+			}
+		}
+		return false
+	}, "Expected burn event: from %s, asset: %s, amount: %s, but not found", from, asset, amt)
+}
+
+// Retaining this function to help with debugging
 func printProtoEvents(events []*token_transfer.TokenTransferEvent) {
 	for _, event := range events {
 		jsonBytes, _ := protojson.MarshalOptions{
@@ -177,10 +252,13 @@ func TestTrustlineRevocationEvents(t *testing.T) {
 	itest.WaitForLedgerInArchive(30*time.Second, ledgerSeq)
 	ledger := getLedgers(itest, ledgerSeq, ledgerSeq)[ledgerSeq]
 
-	events, _ := token_transfer.ProcessTokenTransferEventsFromLedger(ledger, itest.GetPassPhrase())
-	fmt.Println("Printing all token transfer events from ledger:")
+	events, err := token_transfer.ProcessTokenTransferEventsFromLedger(ledger, itest.GetPassPhrase())
+	tt.NoError(err)
 
-	// Assertions to follow soon, for now just printing
-	printProtoEvents(events)
+	t = itest.CurrentTest()
 
+	// 2 operations - 100 stroops per operation
+	assertFeeEvent(t, events, protoAddress(master.Address()), "0.0000200")
+
+	// TODO - Add assertions for transfer with CB and LP, once Strkey support is added
 }
