@@ -48,12 +48,12 @@ func NewAssetStatsProcessor(
 		removedExpirationEntries:      map[xdr.Hash]uint32{},
 		createdExpirationEntries:      map[xdr.Hash]uint32{},
 		updatedExpirationEntries:      map[xdr.Hash][2]uint32{},
-		possibleEvictedAssetContracts: findAssetContractCandidates(evictedLedgerKeys),
+		possibleEvictedAssetContracts: findEvictedAssetContractCandidates(evictedLedgerKeys),
 	}
 	return p
 }
 
-func findAssetContractCandidates(evictedLedgerKeys []xdr.LedgerKey) set.Set[xdr.Hash] {
+func findEvictedAssetContractCandidates(evictedLedgerKeys []xdr.LedgerKey) set.Set[xdr.Hash] {
 	candidates := set.Set[xdr.Hash]{}
 	for _, key := range evictedLedgerKeys {
 		contractData, ok := key.GetContractData()
