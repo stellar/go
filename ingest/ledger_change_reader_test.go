@@ -536,22 +536,6 @@ func TestLedgerChangeLedgerCloseMetaV2(t *testing.T) {
 					},
 				},
 			},
-			EvictedPersistentLedgerEntries: []xdr.LedgerEntry{
-				{
-					LastModifiedLedgerSeq: 123,
-					Data: xdr.LedgerEntryData{
-						Type: xdr.LedgerEntryTypeContractData,
-						ContractData: &xdr.ContractDataEntry{
-							Contract: contractAddress,
-							Key: xdr.ScVal{
-								Type: xdr.ScValTypeScvSymbol,
-								Sym:  &persistentKey,
-							},
-							Durability: xdr.ContractDataDurabilityTemporary,
-						},
-					},
-				},
-			},
 		},
 	}
 	mock.On("GetLedger", ctx, seq).Return(ledger, nil).Once()
@@ -579,15 +563,6 @@ func TestLedgerChangeLedgerCloseMetaV2(t *testing.T) {
 		isBalance(metaAddress, 700),
 		isBalance(metaAddress, 800),
 		isBalance(metaAddress, 900),
-
-		// Evictions
-		isContractDataEviction(
-			contractAddress,
-			xdr.ScVal{
-				Type: xdr.ScValTypeScvSymbol,
-				Sym:  &persistentKey,
-			},
-		),
 
 		// Upgrades last
 		isBalance(upgradeAddress, 2),
@@ -781,22 +756,6 @@ func TestLedgerChangeLedgerCloseMetaV2ParallelPhases(t *testing.T) {
 					},
 				},
 			},
-			EvictedPersistentLedgerEntries: []xdr.LedgerEntry{
-				{
-					LastModifiedLedgerSeq: 123,
-					Data: xdr.LedgerEntryData{
-						Type: xdr.LedgerEntryTypeContractData,
-						ContractData: &xdr.ContractDataEntry{
-							Contract: contractAddress,
-							Key: xdr.ScVal{
-								Type: xdr.ScValTypeScvSymbol,
-								Sym:  &persistentKey,
-							},
-							Durability: xdr.ContractDataDurabilityTemporary,
-						},
-					},
-				},
-			},
 		},
 	}
 	mock.On("GetLedger", ctx, seq).Return(ledger, nil).Once()
@@ -824,15 +783,6 @@ func TestLedgerChangeLedgerCloseMetaV2ParallelPhases(t *testing.T) {
 		isBalance(metaAddress, 700),
 		isBalance(metaAddress, 800),
 		isBalance(metaAddress, 900),
-
-		// Evictions
-		isContractDataEviction(
-			contractAddress,
-			xdr.ScVal{
-				Type: xdr.ScValTypeScvSymbol,
-				Sym:  &persistentKey,
-			},
-		),
 
 		// Upgrades last
 		isBalance(upgradeAddress, 2),

@@ -114,7 +114,9 @@ func buildChangeProcessor(
 	source ingestionSource,
 	ledgerSequence uint32,
 	networkPassphrase string,
+	evictedLedgerKeys []xdr.LedgerKey,
 ) *groupChangeProcessors {
+	changeStats.ProcessEvictions(evictedLedgerKeys)
 	statsChangeProcessor := &statsChangeProcessor{
 		StatsChangeProcessor: changeStats,
 	}
@@ -124,7 +126,13 @@ func buildChangeProcessor(
 		processors.NewAccountDataProcessor(historyQ),
 		processors.NewAccountsProcessor(historyQ),
 		processors.NewOffersProcessor(historyQ, ledgerSequence),
-		processors.NewAssetStatsProcessor(historyQ, networkPassphrase, source == historyArchiveSource, ledgerSequence),
+		processors.NewAssetStatsProcessor(
+			historyQ,
+			networkPassphrase,
+			source == historyArchiveSource,
+			ledgerSequence,
+			evictedLedgerKeys,
+		),
 		processors.NewSignersProcessor(historyQ),
 		processors.NewTrustLinesProcessor(historyQ),
 		processors.NewClaimableBalancesChangeProcessor(historyQ),
@@ -204,6 +212,7 @@ func (s *ProcessorRunner) RunHistoryArchiveIngestion(
 		historyArchiveSource,
 		checkpointLedger,
 		s.config.NetworkPassphrase,
+		[]xdr.LedgerKey{},
 	)
 
 	if err := registerChangeProcessors(
@@ -588,12 +597,18 @@ func (s *ProcessorRunner) RunAllProcessorsOnLedger(ledger xdr.LedgerCloseMeta) (
 		return
 	}
 
+	var evictedLedgerKeys []xdr.LedgerKey
+	if evictedLedgerKeys, err = ledger.EvictedLedgerKeys(); err != nil {
+		err = errors.Wrap(err, "Error getting evicted ledger keys")
+		return
+	}
 	groupChangeProcessors := buildChangeProcessor(
 		s.historyQ,
 		&changeStatsProcessor,
 		ledgerSource,
 		ledger.LedgerSequence(),
 		s.config.NetworkPassphrase,
+		evictedLedgerKeys,
 	)
 
 	registry := nameRegistry{}
