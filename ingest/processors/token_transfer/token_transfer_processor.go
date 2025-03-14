@@ -132,7 +132,10 @@ func generateFeeEvent(tx ingest.LedgerTransaction) ([]*TokenTransferEvent, error
 	*/
 	feeAccount := tx.FeeAccount()
 	// FeeCharged() takes care of a bug in an intermediate protocol release. So using that
-	feeAmt, _ := tx.FeeCharged()
+	feeAmt, ok := tx.FeeCharged()
+	if !ok {
+		return nil, errors.New("error getting fee amount from transaction")
+	}
 
 	event := NewFeeEvent(tx.Ledger.LedgerSequence(), tx.Ledger.ClosedAt(), tx.Hash.HexString(), protoAddressFromAccount(feeAccount), amount.String(xdr.Int64(feeAmt)))
 	return []*TokenTransferEvent{event}, nil
