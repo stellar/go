@@ -242,8 +242,8 @@ func createClaimableBalanceEvents(tx ingest.LedgerTransaction, opIndex uint32, o
 	return []*TokenTransferEvent{event}, nil
 }
 
-func generateClaimableBalanceIdFromLiquidityPoolId(lpEntry liquidityPoolEntryDelta, tx ingest.LedgerTransaction, txSrcAccount xdr.AccountId, opIndex uint32) ([]xdr.ClaimableBalanceId, error) {
-	var generatedClaimableBalanceIds []xdr.ClaimableBalanceId
+func possibleClaimableBalanceIdsFromRevocation(lpEntry liquidityPoolEntryDelta, tx ingest.LedgerTransaction, txSrcAccount xdr.AccountId, opIndex uint32) ([]xdr.ClaimableBalanceId, error) {
+	var possibleClaimableBalanceIds []xdr.ClaimableBalanceId
 	lpId := lpEntry.liquidityPoolId
 	seqNum := xdr.SequenceNumber(tx.Envelope.SeqNum())
 
@@ -252,9 +252,9 @@ func generateClaimableBalanceIdFromLiquidityPoolId(lpEntry liquidityPoolEntryDel
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to generate claimable balance id from LiquidityPoolId: %v, for asset: %v", lpIdToStrkey(lpId), asset.String())
 		}
-		generatedClaimableBalanceIds = append(generatedClaimableBalanceIds, cbId)
+		possibleClaimableBalanceIds = append(possibleClaimableBalanceIds, cbId)
 	}
-	return generatedClaimableBalanceIds, nil
+	return possibleClaimableBalanceIds, nil
 }
 
 // This operation is used to only find CB entries that are either created or deleted, not updated
@@ -376,7 +376,7 @@ func generateEventsForRevokedTrustlines(tx ingest.LedgerTransaction, opIndex uin
 		return nil, nil
 	}
 
-	impactedClaimableBalances, err := getClaimableBalanceEntriesFromOperationChanges(xdr.LedgerEntryChangeTypeLedgerEntryCreated, tx, opIndex)
+	createdClaimableBalances, err := getClaimableBalanceEntriesFromOperationChanges(xdr.LedgerEntryChangeTypeLedgerEntryCreated, tx, opIndex)
 	if err != nil {
 		return nil, err
 	}
@@ -385,7 +385,7 @@ func generateEventsForRevokedTrustlines(tx ingest.LedgerTransaction, opIndex uin
 	// This can happen, if all the liquidity pools impacted were empty in the first place,
 	// i.e they didnt have any pool shares OR reserves of asset A and B
 	// So there is no transfer of money, so no events generated
-	if len(impactedClaimableBalances) == 0 {
+	if len(createdClaimableBalances) == 0 {
 		return nil, nil
 	}
 
@@ -399,35 +399,28 @@ func generateEventsForRevokedTrustlines(tx ingest.LedgerTransaction, opIndex uin
 
 		It would be nice, if somehow, core could trickle this information up in the ledger entry changes for the claimable balances created - something like createdBy in the extension field.
 	*/
-	createdCbIdToCreatorLpId := make(map[string]string)
-	for _, lp := range impactedLiquidityPools {
-		// This `claimableBalancesCreated` slice will have exactly 2 entries - one for each asset in the LP
-		// The logic in CAP-38 dictates that the transactionAccount is what is passed to generate the ClaimableBalanceId
-		// and NOT the operation source account.
-		claimableBalancesCreated, err := generateClaimableBalanceIdFromLiquidityPoolId(lp, tx, tx.Envelope.SourceAccount().ToAccountId(), opIndex)
-		if err != nil {
-			return nil, err
-		}
-		for _, cbId := range claimableBalancesCreated {
-			createdCbIdToCreatorLpId[cbIdToStrkey(cbId)] = lpIdToStrkey(lp.liquidityPoolId)
-		}
+
+	createdClaimableBalancesById := map[xdr.Hash]xdr.ClaimableBalanceEntry{}
+	for _, cb := range createdClaimableBalances {
+		createdClaimableBalancesById[cb.BalanceId.MustV0()] = cb
 	}
 
 	meta := NewEventMeta(tx, &opIndex, nil)
 	var events []*TokenTransferEvent
 
 	for _, lp := range impactedLiquidityPools {
-		var cbsCreatedByThisLp []xdr.ClaimableBalanceEntry
+		// This `possibleClaimableBalanceIds` slice will have exactly 2 entries - one for each asset in the LP
+		// The logic in CAP-38 dictates that the transactionAccount is what is passed to generate the ClaimableBalanceId
+		// and NOT the operation source account.
+		possibleClaimableBalanceIds, err := possibleClaimableBalanceIdsFromRevocation(lp, tx, tx.Envelope.SourceAccount().ToAccountId(), opIndex)
+		if err != nil {
+			return nil, err
+		}
 
-		// Nested for loop.
-		// See the  logic in CAP-38(https://github.com/stellar/stellar-protocol/blob/master/core/cap-0038.md#settrustlineflagsop-and-allowtrustop).
-		// This is consistent with that
-		currentLpId := lpIdToStrkey(lp.liquidityPoolId)
-		for _, cbEntry := range impactedClaimableBalances {
-			cbId := cbIdToStrkey(cbEntry.BalanceId)
-			// Maybe the additional check for creatorLpId == currentLpId is redundant, but just in case
-			if creatorLpId, found := createdCbIdToCreatorLpId[cbId]; found && creatorLpId == currentLpId {
-				cbsCreatedByThisLp = append(cbsCreatedByThisLp, cbEntry)
+		var cbsCreatedByThisLp []xdr.ClaimableBalanceEntry
+		for _, id := range possibleClaimableBalanceIds {
+			if cb, ok := createdClaimableBalancesById[id.MustV0()]; ok {
+				cbsCreatedByThisLp = append(cbsCreatedByThisLp, cb)
 			}
 		}
 
@@ -485,7 +478,7 @@ func generateEventsForRevokedTrustlines(tx ingest.LedgerTransaction, opIndex uin
 				NewTransferEvent(meta, from, to2, amt2, assetProto.NewProtoAsset(asset2)),
 			)
 
-		} else if len(cbsCreatedByThisLp) > 2 {
+		} else {
 			return nil,
 				fmt.Errorf("more than two claimable balances created from LP: %v. This shouldnt be possible",
 					lpIdToStrkey(lp.liquidityPoolId))
