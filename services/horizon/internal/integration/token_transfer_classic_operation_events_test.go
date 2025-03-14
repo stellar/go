@@ -8,6 +8,7 @@ import (
 	"github.com/stellar/go/ingest/processors/token_transfer"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/services/horizon/internal/test/integration"
+	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
@@ -74,7 +75,8 @@ var (
 		if strings.HasPrefix(address, "G") || strings.HasPrefix(address, "M") {
 			addr = addressProto.NewAddressFromAccount(xdr.MustMuxedAddress(address))
 		} else if strings.HasPrefix(address, "C") {
-			addr = addressProto.NewAddressFromContract(address)
+			contractId := strkey.MustDecode(strkey.VersionByteContract, address)
+			addr = addressProto.NewAddressFromContract(xdr.Hash(contractId))
 		}
 		return addr
 	}
@@ -254,6 +256,7 @@ func TestTrustlineRevocationEvents(t *testing.T) {
 	tt.NoError(err)
 
 	t = itest.CurrentTest()
+	printProtoEvents(events)
 
 	// 2 operations - 100 stroops per operation
 	assertFeeEvent(t, events, protoAddress(master.Address()), "0.0000200")

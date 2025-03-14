@@ -1,6 +1,9 @@
 package asset
 
-import "github.com/stellar/go/xdr"
+import (
+	"github.com/stellar/go/xdr"
+	"strings"
+)
 
 // NewNativeAsset creates an Asset representing the native token (XLM).
 func NewNativeAsset() *Asset {
@@ -14,7 +17,8 @@ func NewProtoAsset(asset xdr.Asset) *Asset {
 	return &Asset{
 		AssetType: &Asset_IssuedAsset{
 			IssuedAsset: &IssuedAsset{
-				AssetCode: asset.GetCode(),
+				// Need to trim the extra null characters from showing in the code when saving to assetCode
+				AssetCode: strings.TrimRight(asset.GetCode(), "\x00"),
 				Issuer:    asset.GetIssuer(),
 			},
 		},

@@ -1,6 +1,7 @@
 package address
 
 import (
+	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
@@ -86,11 +87,11 @@ func NewAddressFromAccount(account xdr.MuxedAccount) *Address {
 	return addr
 }
 
-func NewAddressFromContract(strKey string) *Address {
+func NewAddressFromContract(contractId xdr.Hash) *Address {
 	return &Address{
 		AddressType: &Address_Contract{
 			Contract: &Contract{
-				StrKey: strKey,
+				StrKey: strkey.MustEncode(strkey.VersionByteContract, contractId[:]),
 			},
 		},
 	}
