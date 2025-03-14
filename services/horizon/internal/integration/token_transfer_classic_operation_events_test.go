@@ -99,10 +99,10 @@ func assertTransferEvent(t *testing.T, events []*token_transfer.TokenTransferEve
 	require.Condition(t, func() bool {
 		for _, event := range events {
 			if event.GetEventType() == "Transfer" &&
-				event.GetTransfer().From == from &&
-				event.GetTransfer().To == to &&
+				event.GetTransfer().From.Equals(from) &&
+				event.GetTransfer().To.Equals(to) &&
 				event.GetTransfer().Amount == amt &&
-				event.Asset == asset {
+				event.Asset.Equals(asset) {
 				return true
 			}
 		}
@@ -115,8 +115,8 @@ func assertMintEvent(t *testing.T, events []*token_transfer.TokenTransferEvent, 
 	require.Condition(t, func() bool {
 		for _, event := range events {
 			if event.GetEventType() == "Mint" &&
-				event.GetMint().To == to &&
-				event.Asset == asset &&
+				event.GetMint().To.Equals(to) &&
+				event.Asset.Equals(asset) &&
 				event.GetMint().Amount == amt {
 				return true
 			}
@@ -130,8 +130,8 @@ func assertBurnEvent(t *testing.T, events []*token_transfer.TokenTransferEvent, 
 	require.Condition(t, func() bool {
 		for _, event := range events {
 			if event.GetEventType() == "Burn" &&
-				event.GetBurn().From == from &&
-				event.Asset == asset &&
+				event.GetBurn().From.Equals(from) &&
+				event.Asset.Equals(asset) &&
 				event.GetBurn().Amount == amt {
 				return true
 			}
@@ -256,7 +256,7 @@ func TestTrustlineRevocationEvents(t *testing.T) {
 	tt.NoError(err)
 
 	t = itest.CurrentTest()
-	printProtoEvents(events)
+	//printProtoEvents(events)
 
 	// 2 operations - 100 stroops per operation
 	assertFeeEvent(t, events, protoAddress(master.Address()), "0.0000200")

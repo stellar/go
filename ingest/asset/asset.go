@@ -24,3 +24,27 @@ func NewProtoAsset(asset xdr.Asset) *Asset {
 		},
 	}
 }
+
+func (a *Asset) Equals(other *Asset) bool {
+	// If both assets are the same type (native or issued asset)
+	if a.AssetType == nil || other.AssetType == nil {
+		return false
+	}
+
+	switch a := a.AssetType.(type) {
+	case *Asset_Native:
+		if b, ok := other.AssetType.(*Asset_Native); ok {
+			// Both assets are native; compare the native boolean value.
+			// Ideally i could simply be returning true here, but it is more idiomatic to check for the flag equality
+			return a.Native == b.Native
+		}
+	case *Asset_IssuedAsset:
+		if b, ok := other.AssetType.(*Asset_IssuedAsset); ok {
+			// Both assets are issued assets; compare their asset_code and issuer
+			return a.IssuedAsset.AssetCode == b.IssuedAsset.AssetCode &&
+				a.IssuedAsset.Issuer == b.IssuedAsset.Issuer
+		}
+	}
+
+	return false
+}
