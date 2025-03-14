@@ -1,9 +1,16 @@
 package asset
 
 import (
+	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/proto"
 	"testing"
+)
+
+var (
+	assetCode = "USDC"
+	issuer    = "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN"
+	usdcAsset = xdr.MustNewCreditAsset(assetCode, issuer)
 )
 
 func TestNewNativeAsset(t *testing.T) {
@@ -15,25 +22,26 @@ func TestNewNativeAsset(t *testing.T) {
 	assert.True(t, nativeAsset.GetNative(), "Native asset should have Native set to true")
 }
 
-func TestNewIssuedAsset(t *testing.T) {
-	assetCode := "USDC"
-	issuer := "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN"
+func TestNewProtoAsset(t *testing.T) {
 
-	issuedAsset := NewIssuedAsset(assetCode, issuer)
+	usdcProtoAsset := NewProtoAsset(usdcAsset)
 
-	assert.NotNil(t, issuedAsset, "Issued asset should not be nil")
-	assert.IsType(t, &Asset{}, issuedAsset, "Issued asset should be of type *Asset")
-	assert.IsType(t, &Asset_IssuedAsset{}, issuedAsset.AssetType, "AssetType should be *Asset_IssuedAsset")
-
+	assert.NotNil(t, usdcProtoAsset, "asset should not be nil")
+	assert.IsType(t, &Asset{}, usdcProtoAsset, "asset should be of type *Asset")
+	assert.IsType(t, &Asset_IssuedAsset{}, usdcProtoAsset.AssetType, "AssetType should be *Asset_IssuedAsset")
 	// Check issued asset fields
-	assert.Equal(t, assetCode, issuedAsset.GetIssuedAsset().AssetCode, "Asset code should match")
-	assert.Equal(t, issuer, issuedAsset.GetIssuedAsset().Issuer, "Issuer should match")
+	assert.Equal(t, assetCode, usdcProtoAsset.GetIssuedAsset().AssetCode, "Asset code should match")
+	assert.Equal(t, issuer, usdcProtoAsset.GetIssuedAsset().Issuer, "Issuer should match")
+
+	xlmProtoAsset := NewProtoAsset(xdr.MustNewNativeAsset())
+	assert.NotNil(t, xlmProtoAsset, "asset should not be nil")
+	assert.IsType(t, &Asset{}, xlmProtoAsset, "asset should be of type *Asset")
+	assert.IsType(t, &Asset_Native{}, xlmProtoAsset.AssetType, "AssetType should be *Asset_Native")
+	assert.True(t, xlmProtoAsset.GetNative(), "Native asset should have Native set to true")
 }
 
 func TestAssetSerialization(t *testing.T) {
-	assetCode := "USDC"
-	issuer := "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN"
-	original := NewIssuedAsset(assetCode, issuer)
+	original := NewProtoAsset(usdcAsset)
 
 	serializedAsset, err := proto.Marshal(original)
 	assert.NoError(t, err, "Failed to marshal asset")

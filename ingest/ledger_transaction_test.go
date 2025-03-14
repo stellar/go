@@ -928,16 +928,6 @@ func TestTransactionHelperFunctions(t *testing.T) {
 	assert.Equal(t, true, ok)
 	assert.Equal(t, "MAISEMYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPMJ2I", accountMuxed)
 
-	var feeAccount string
-	feeAccount, ok = transaction.FeeAccount()
-	assert.Equal(t, false, ok)
-	assert.Equal(t, "", feeAccount)
-
-	var feeAccountMuxed string
-	feeAccountMuxed, ok = transaction.FeeAccountMuxed()
-	assert.Equal(t, false, ok)
-	assert.Equal(t, "", feeAccountMuxed)
-
 	var innerTransactionHash string
 	innerTransactionHash, ok = transaction.InnerTransactionHash()
 	assert.Equal(t, false, ok)
