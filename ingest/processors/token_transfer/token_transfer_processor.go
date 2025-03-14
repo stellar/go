@@ -6,7 +6,6 @@ import (
 	"github.com/stellar/go/ingest"
 	addressProto "github.com/stellar/go/ingest/address"
 	assetProto "github.com/stellar/go/ingest/asset"
-	"github.com/stellar/go/support/converters"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 	"io"
@@ -249,7 +248,7 @@ func generateClaimableBalanceIdFromLiquidityPoolId(lpEntry liquidityPoolEntryDel
 	seqNum := xdr.SequenceNumber(tx.Envelope.SeqNum())
 
 	for _, asset := range []xdr.Asset{lpEntry.assetA, lpEntry.assetB} {
-		cbId, err := converters.ConvertLiquidityPoolIdToClaimableBalanceId(lpId, asset, seqNum, txSrcAccount, opIndex)
+		cbId, err := ClaimableBalanceIdFromRevocation(lpId, asset, seqNum, txSrcAccount, opIndex)
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to generate claimable balance id from LiquidityPoolId: %v, for asset: %v", lpIdToStrkey(lpId), asset.String())
 		}
@@ -260,8 +259,8 @@ func generateClaimableBalanceIdFromLiquidityPoolId(lpEntry liquidityPoolEntryDel
 
 // This operation is used to only find CB entries that are either created or deleted, not updated
 func getClaimableBalanceEntriesFromOperationChanges(changeType xdr.LedgerEntryChangeType, tx ingest.LedgerTransaction, opIndex uint32) ([]xdr.ClaimableBalanceEntry, error) {
-	if !(changeType == xdr.LedgerEntryChangeTypeLedgerEntryRemoved || changeType == xdr.LedgerEntryChangeTypeLedgerEntryCreated) {
-		return nil, fmt.Errorf("changeType: %v, not allowed", changeType)
+	if changeType == xdr.LedgerEntryChangeTypeLedgerEntryUpdated {
+		return nil, fmt.Errorf("LEDGER_ENTRY_UPDATED is not a valid filter")
 	}
 
 	changes, err := tx.GetOperationChanges(opIndex)
@@ -278,15 +277,13 @@ func getClaimableBalanceEntriesFromOperationChanges(changeType xdr.LedgerEntryCh
 	*/
 	var cb xdr.ClaimableBalanceEntry
 	for _, change := range changes {
-		if change.Type != xdr.LedgerEntryTypeClaimableBalance {
+		if change.Type != xdr.LedgerEntryTypeClaimableBalance || change.LedgerEntryChangeType() != changeType {
 			continue
 		}
-		// Check if claimable balance entry is deleted
-		//?? maybe it is not necessary to check change.Pre != nil && change.Post since that will be true for deleted entries?
-		if changeType == xdr.LedgerEntryChangeTypeLedgerEntryRemoved && change.Pre != nil && change.Post == nil {
+		if change.Pre != nil {
 			cb = change.Pre.Data.MustClaimableBalance()
 			entries = append(entries, cb)
-		} else if changeType == xdr.LedgerEntryChangeTypeLedgerEntryCreated && change.Post != nil && change.Pre == nil { // check if claimable balance entry is created
+		} else if change.Post != nil {
 			cb = change.Post.Data.MustClaimableBalance()
 			entries = append(entries, cb)
 		}
@@ -560,11 +557,13 @@ func liquidityPoolDepositEvents(tx ingest.LedgerTransaction, opIndex uint32, op 
 	lpId := delta.liquidityPoolId
 	assetA, assetB := delta.assetA, delta.assetB
 	amtA, amtB := delta.amountChangeForAssetA, delta.amountChangeForAssetB
-	if amtA <= 0 {
+	if amtA < 0 {
+		//TODO convert to strkey for LPId
 		return nil,
 			fmt.Errorf("deposited amount (%v) for asset: %v, cannot be negative in LiquidityPool: %v", amtA, assetA.String(), lpIdToStrkey(lpId))
 	}
-	if amtB <= 0 {
+	if amtB < 0 {
+		//TODO convert to strkey for LPId
 		return nil,
 			fmt.Errorf("deposited amount (%v) for asset: %v, cannot be negative in LiquidityPool: %v", amtB, assetB.String(), lpIdToStrkey(lpId))
 	}
@@ -573,10 +572,19 @@ func liquidityPoolDepositEvents(tx ingest.LedgerTransaction, opIndex uint32, op 
 	opSrcAcc := operationSourceAccount(tx, op)
 	// From = operation source account, to = LP
 	from, to := addressWrapper{account: &opSrcAcc}, addressWrapper{liquidityPoolId: &delta.liquidityPoolId}
-	return []*TokenTransferEvent{
-		mintOrBurnOrTransferEvent(assetA, from, to, amount.String(amtA), meta),
-		mintOrBurnOrTransferEvent(assetB, from, to, amount.String(amtB), meta),
-	}, nil
+
+	var events []*TokenTransferEvent
+	// I am not sure if it is possible for amtA or amtB to be ever 0, for e,g when LpDeposit updates the amount for just 1 asset in an already existing LP
+	// So, out of abundance of caution, I will generate the event only if the amounts are greater than 0
+	if amtA > 0 {
+		events = append(events, mintOrBurnOrTransferEvent(assetA, from, to, amount.String(amtA), meta))
+	}
+
+	if amtB > 0 {
+		events = append(events, mintOrBurnOrTransferEvent(assetB, from, to, amount.String(amtB), meta))
+
+	}
+	return events, nil
 }
 
 func liquidityPoolWithdrawEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation) ([]*TokenTransferEvent, error) {
@@ -593,12 +601,12 @@ func liquidityPoolWithdrawEvents(tx ingest.LedgerTransaction, opIndex uint32, op
 	lpId := delta.liquidityPoolId
 	assetA, assetB := delta.assetA, delta.assetB
 	amtA, amtB := delta.amountChangeForAssetA, delta.amountChangeForAssetB
-	if amtA <= 0 {
+	if amtA < 0 {
 		//TODO convert to strkey for LPId
 		return nil,
 			fmt.Errorf("deposited amount (%v) for asset: %v, cannot be negative in LiquidityPool: %v", amtA, assetA.String(), lpIdToStrkey(lpId))
 	}
-	if amtB <= 0 {
+	if amtB < 0 {
 		//TODO convert to strkey for LPId
 		return nil,
 			fmt.Errorf("deposited amount (%v) for asset: %v, cannot be negative in LiquidityPool: %v", amtB, assetB.String(), lpIdToStrkey(lpId))
@@ -608,10 +616,19 @@ func liquidityPoolWithdrawEvents(tx ingest.LedgerTransaction, opIndex uint32, op
 	opSrcAcc := operationSourceAccount(tx, op)
 	// Opposite of LP Deposit. from = LP, to = operation source acocunt
 	from, to := addressWrapper{liquidityPoolId: &delta.liquidityPoolId}, addressWrapper{account: &opSrcAcc}
-	return []*TokenTransferEvent{
-		mintOrBurnOrTransferEvent(assetA, from, to, amount.String(amtA), meta),
-		mintOrBurnOrTransferEvent(assetB, from, to, amount.String(amtB), meta),
-	}, nil
+
+	var events []*TokenTransferEvent
+	// I am not sure if it is possible for amtA or amtB to be ever 0, for e,g when LpDeposit updates the amount for just 1 asset in an already existing LP
+	// So, out of abundance of caution, I will generate the event only if the amounts are greater than 0
+	if amtA > 0 {
+		events = append(events, mintOrBurnOrTransferEvent(assetA, from, to, amount.String(amtA), meta))
+	}
+
+	if amtB > 0 {
+		events = append(events, mintOrBurnOrTransferEvent(assetB, from, to, amount.String(amtB), meta))
+
+	}
+	return events, nil
 }
 
 func generateEventsFromClaimAtoms(meta *EventMeta, opSrcAcc xdr.MuxedAccount, claims []xdr.ClaimAtom) []*TokenTransferEvent {

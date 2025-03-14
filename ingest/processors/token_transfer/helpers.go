@@ -1,4 +1,4 @@
-package converters
+package token_transfer
 
 import (
 	"crypto/sha256"
@@ -19,7 +19,7 @@ The generated ClaimableBalanceId is derived from:
 - The transaction accountId
 - The operationIndex of the setTrustlineFlags or allowTrust operation within the transaction
 */
-func ConvertLiquidityPoolIdToClaimableBalanceId(liquidityPoolId xdr.PoolId, asset xdr.Asset, accountSequence xdr.SequenceNumber, accountId xdr.AccountId, opIndex uint32) (xdr.ClaimableBalanceId, error) {
+func ClaimableBalanceIdFromRevocation(liquidityPoolId xdr.PoolId, asset xdr.Asset, accountSequence xdr.SequenceNumber, accountId xdr.AccountId, opIndex uint32) (xdr.ClaimableBalanceId, error) {
 	preImageId := xdr.HashIdPreimage{
 		Type: xdr.EnvelopeTypeEnvelopeTypePoolRevokeOpId,
 		RevokeId: &xdr.HashIdPreimageRevokeId{

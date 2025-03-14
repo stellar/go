@@ -4,7 +4,6 @@ import (
 	"github.com/stellar/go/ingest"
 	addressProto "github.com/stellar/go/ingest/address"
 	assetProto "github.com/stellar/go/ingest/asset"
-	"github.com/stellar/go/support/converters"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -1140,8 +1139,8 @@ func TestAllowTrustAndSetTrustlineFlagsRevokeTrustlineTest(t *testing.T) {
 		},
 	}
 
-	generatedCbIdForBtc, _ := converters.ConvertLiquidityPoolIdToClaimableBalanceId(lpBtcEthId, btcAsset, xdr.SequenceNumber(someTx.Envelope.SeqNum()), someTx.Envelope.SourceAccount().ToAccountId(), 0)
-	generatedCbIdForEth, _ := converters.ConvertLiquidityPoolIdToClaimableBalanceId(lpBtcEthId, ethAsset, xdr.SequenceNumber(someTx.Envelope.SeqNum()), someTx.Envelope.SourceAccount().ToAccountId(), 0)
+	generatedCbIdForBtc, _ := ClaimableBalanceIdFromRevocation(lpBtcEthId, btcAsset, xdr.SequenceNumber(someTx.Envelope.SeqNum()), someTx.Envelope.SourceAccount().ToAccountId(), 0)
+	generatedCbIdForEth, _ := ClaimableBalanceIdFromRevocation(lpBtcEthId, ethAsset, xdr.SequenceNumber(someTx.Envelope.SeqNum()), someTx.Envelope.SourceAccount().ToAccountId(), 0)
 
 	tests := []testFixture{
 		{
