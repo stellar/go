@@ -23,6 +23,9 @@ var (
 	}
 )
 
+// ProcessTokenTransferEventsFromLedger processes token transfer events for all transactions in a given ledger.
+// This function operates at the ledger level, iterating over all transactions in the ledger.
+// it calls ProcessTokenTransferEventsFromTransaction to process token transfer events from each transaction within the ledger.
 func ProcessTokenTransferEventsFromLedger(lcm xdr.LedgerCloseMeta, networkPassPhrase string) ([]*TokenTransferEvent, error) {
 	var events []*TokenTransferEvent
 	txReader, err := ingest.NewLedgerTransactionReaderFromLedgerCloseMeta(networkPassPhrase, lcm)
@@ -49,6 +52,12 @@ func ProcessTokenTransferEventsFromLedger(lcm xdr.LedgerCloseMeta, networkPassPh
 	return events, nil
 }
 
+// ProcessTokenTransferEventsFromTransaction processes token transfer events for all operations within a given transaction.
+//
+//	First, it generates a FeeEvent for the transaction
+//	If the transaction was successful, it processes all operations in the transaction by calling ProcessTokenTransferEventsFromOperationAndOperationResult for each operation in the transaction.
+//
+// If the transaction is unsuccessful, it only generates events for transaction fees.
 func ProcessTokenTransferEventsFromTransaction(tx ingest.LedgerTransaction, networkPassPhrase string) ([]*TokenTransferEvent, error) {
 	var events []*TokenTransferEvent
 	feeEvents, err := generateFeeEvent(tx)
@@ -81,10 +90,13 @@ func ProcessTokenTransferEventsFromTransaction(tx ingest.LedgerTransaction, netw
 	return events, nil
 }
 
-// ProcessTokenTransferEventsFromOperationAndOperationResult
+// ProcessTokenTransferEventsFromOperationAndOperationResult processes token transfer events for a given operation within a transaction.
+// It operates at the operation level, analyzing the operation type and generating corresponding token transfer events.
+// If the operation is successful, it processes the event based on the operation type (e.g., payment, account creation, etc.).
+// It handles various operation types like payments, account merges, trust line modifications, and more.
 // There is a separate private function to derive events for each classic operation.
 // It is implicitly assumed that the operation is successful, and thus will contribute towards generating events.
-// which is why we dont check for the code in the OperationResult
+// which is why we dont check for the success code in the OperationResult
 func ProcessTokenTransferEventsFromOperationAndOperationResult(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation, opResult xdr.OperationResult, networkPassPhrase string) ([]*TokenTransferEvent, error) {
 	switch op.Body.Type {
 	case xdr.OperationTypeCreateAccount:
