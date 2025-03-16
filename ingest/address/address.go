@@ -7,6 +7,9 @@ import (
 )
 
 func (a *Address) ToStrkey() string {
+	if a == nil {
+		panic(errors.New("nil address"))
+	}
 
 	switch a.AddressType.(type) {
 	case *Address_Account:

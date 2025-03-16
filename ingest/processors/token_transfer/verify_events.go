@@ -129,33 +129,6 @@ func fetchClaimableDeltaFromChange(change ingest.Change) *balanceKey {
 	return &balanceKey{key: cbKey, asset: asset, delta: delta}
 }
 
-func findBalanceDeltaFromChanges(changes []ingest.Change) []balanceKey {
-	var entries []balanceKey
-	for _, change := range changes {
-		switch change.Type {
-		case xdr.LedgerEntryTypeAccount:
-			entry := fetchAccountDeltaFromChange(change)
-			if entry != nil {
-				entries = append(entries, *entry)
-			}
-		case xdr.LedgerEntryTypeTrustline:
-
-			entry := fetchTrustlineDeltaFromChange(change)
-			if entry != nil {
-				entries = append(entries, *entry)
-			}
-		case xdr.LedgerEntryTypeClaimableBalance:
-			entry := fetchClaimableDeltaFromChange(change)
-			if entry != nil {
-				entries = append(entries, *entry)
-			}
-		case xdr.LedgerEntryTypeLiquidityPool:
-			entries = append(entries, fetchLiquidityPoolDeltaFromChange(change)...)
-		}
-	}
-	return entries
-}
-
 func balanceKeysToMap(entries []balanceKey) map[Strkey]mapset.Set[balanceKey] {
 	var strkeysToBalancesMap = make(map[Strkey]mapset.Set[balanceKey])
 	for _, entry := range entries {
@@ -169,9 +142,33 @@ func balanceKeysToMap(entries []balanceKey) map[Strkey]mapset.Set[balanceKey] {
 	return strkeysToBalancesMap
 }
 
-// Main function - part 1
 func findBalanceDeltasFromChanges(changes []ingest.Change) map[Strkey]mapset.Set[balanceKey] {
-	entries := findBalanceDeltaFromChanges(changes)
+	var entries []balanceKey
+	for _, change := range changes {
+		switch change.Type {
+
+		case xdr.LedgerEntryTypeAccount:
+			entry := fetchAccountDeltaFromChange(change)
+			if entry != nil {
+				entries = append(entries, *entry)
+			}
+
+		case xdr.LedgerEntryTypeTrustline:
+			entry := fetchTrustlineDeltaFromChange(change)
+			if entry != nil {
+				entries = append(entries, *entry)
+			}
+
+		case xdr.LedgerEntryTypeClaimableBalance:
+			entry := fetchClaimableDeltaFromChange(change)
+			if entry != nil {
+				entries = append(entries, *entry)
+			}
+
+		case xdr.LedgerEntryTypeLiquidityPool:
+			entries = append(entries, fetchLiquidityPoolDeltaFromChange(change)...)
+		}
+	}
 	return balanceKeysToMap(entries)
 }
 
@@ -188,48 +185,50 @@ func findBalanceDeltasFromEvents(events []*TokenTransferEvent) map[Strkey]mapset
 		switch eventType {
 		case "Fee":
 			ev := event.GetFee()
-			key := ev.From.ToStrkey()
+			address := ev.From.ToStrkey()
 			asset := xlmAsset.StringCanonical()
 			amt := int64(amount.MustParse(ev.Amount))
-			// Key's balance reduces by amt in FEE
-			entry := balanceKey{key: key, asset: asset, delta: -amt}
+			// Address' balance reduces by amt in FEE
+			entry := balanceKey{key: address, asset: asset, delta: -amt}
 			entries = append(entries, entry)
 
 		case "Transfer":
 			ev := event.GetTransfer()
-			fromKey, toKey := ev.From.ToStrkey(), ev.To.ToStrkey()
+			fromAddress := ev.From.ToStrkey()
+			toAddress := ev.To.ToStrkey()
 			amt := int64(amount.MustParse(ev.Amount))
 			asset := event.Asset.ToXdrAsset().StringCanonical()
-			// FromKey's balance reduces by amt in TRANSFER
-			fromEntry := balanceKey{key: fromKey, asset: asset, delta: -amt}
-			//ToKey's balance increases by amt in TRANSFER
-			toEntry := balanceKey{key: toKey, asset: asset, delta: amt}
-			entries = append(entries, fromEntry, toEntry)
+			// FromAddress' balance reduces by amt in TRANSFER
+			fromEntry := balanceKey{key: fromAddress, asset: asset, delta: -amt}
+			// ToAddress' balance increases by amt in TRANSFER
+			toEntry := balanceKey{key: toAddress, asset: asset, delta: amt}
+			entries = append(entries, toEntry, fromEntry)
 
 		case "Mint":
 			ev := event.GetMint()
-			key := ev.To.ToStrkey()
+			toAddress := ev.To.ToStrkey()
 			asset := event.Asset.ToXdrAsset().StringCanonical()
 			amt := int64(amount.MustParse(ev.Amount))
-			// Key's balance incrases by amt in MINT
-			entry := balanceKey{key: key, asset: asset, delta: amt}
+			// ToAddress' balance increases by amt in MINT
+			entry := balanceKey{key: toAddress, asset: asset, delta: amt}
 			entries = append(entries, entry)
 
 		case "Burn":
 			ev := event.GetBurn()
-			key := ev.From.ToStrkey()
+			fromAddress := ev.From.ToStrkey()
 			asset := event.Asset.ToXdrAsset().StringCanonical()
 			amt := int64(amount.MustParse(ev.Amount))
-			// Key's balance reduces by amt in BURN
-			entry := balanceKey{key: key, asset: asset, delta: -amt}
+			// FromAddress' balance reduces by amt in BURN
+			entry := balanceKey{key: fromAddress, asset: asset, delta: -amt}
 			entries = append(entries, entry)
 
 		case "Clawback":
 			ev := event.GetClawback()
-			key := ev.From.ToStrkey()
+			fromAddress := ev.From.ToStrkey()
 			asset := event.Asset.ToXdrAsset().StringCanonical()
 			amt := int64(amount.MustParse(ev.Amount))
-			entry := balanceKey{key: key, asset: asset, delta: -amt}
+			// FromAddress' balance reduces by amt in CLAWBACK
+			entry := balanceKey{key: fromAddress, asset: asset, delta: -amt}
 			entries = append(entries, entry)
 
 		default:
@@ -261,23 +260,13 @@ func getChangesFromLedger(ledger xdr.LedgerCloseMeta, passphrase string) []inges
 
 func VerifyTtpOnLedger(ledger xdr.LedgerCloseMeta, passphrase string) bool {
 	changes := getChangesFromLedger(ledger, passphrase)
-
 	events, err := ProcessTokenTransferEventsFromLedger(ledger, passphrase)
 	if err != nil {
 		panic(errors.Wrapf(err, "unable to process token transfer events from ledger"))
 	}
+
 	changesMap := findBalanceDeltasFromChanges(changes)
 	eventsMap := findBalanceDeltasFromEvents(events)
-	fmt.Println("******")
-	fmt.Println("ChangesMap")
-	PrintMap(changesMap)
-	fmt.Println("******")
-
-	fmt.Println("******")
-	fmt.Println("ChangesMap")
-	PrintMap(eventsMap)
-	fmt.Println("******")
-
 	return mapsEqual(eventsMap, changesMap)
 }
 

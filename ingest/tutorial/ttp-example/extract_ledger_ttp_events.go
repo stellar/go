@@ -73,9 +73,14 @@ func main() {
 		}
 
 		//  Write events to output file or print to screen
-		writeEventsToOutput(events, outputFile)
+		//writeEventsToOutput(events, outputFile)
 
-		fmt.Printf("Processed ledger %d, found %d events\n", ledger.LedgerSequence(), len(events))
+		fmt.Printf("Processing ledger Seq: %d, ClosedAt: %v, Protocol Version: %v\n",
+			ledger.LedgerSequence(), ledger.ClosedAt(), ledger.ProtocolVersion())
+		verificationResult := token_transfer.VerifyTtpOnLedger(ledger, network.PublicNetworkPassphrase)
+		fmt.Printf("Processed ledger Seq: %d, ClosedAt: %v, Protocol Version: %v, num events: %v, verficationResult: %v\n",
+			ledger.LedgerSequence(), ledger.ClosedAt(), ledger.ProtocolVersion(), len(events), verificationResult)
+
 		lineNum++
 	}
 
