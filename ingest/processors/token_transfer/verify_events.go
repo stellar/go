@@ -39,7 +39,7 @@ func fetchAccountDeltaFromChange(change ingest.Change) *keyAndAmount {
 	if delta == 0 {
 		return nil
 	}
-	return &keyAndAmount{key: balanceKey{holder: accountKey, asset: accountKey}, amt: delta}
+	return &keyAndAmount{key: balanceKey{holder: accountKey, asset: xlmAsset.StringCanonical()}, amt: delta}
 }
 
 func fetchTrustlineDeltaFromChange(change ingest.Change) *keyAndAmount {
@@ -139,24 +139,36 @@ func findBalanceDeltasFromChanges(changes []ingest.Change) map[balanceKey]int64 
 			entry := fetchAccountDeltaFromChange(change)
 			if entry != nil {
 				hashmap[entry.key] += entry.amt
+				if hashmap[entry.key] == 0 {
+					delete(hashmap, entry.key)
+				}
 			}
 
 		case xdr.LedgerEntryTypeTrustline:
 			entry := fetchTrustlineDeltaFromChange(change)
 			if entry != nil {
 				hashmap[entry.key] += entry.amt
+				if hashmap[entry.key] == 0 {
+					delete(hashmap, entry.key)
+				}
 			}
 
 		case xdr.LedgerEntryTypeClaimableBalance:
 			entry := fetchClaimableDeltaFromChange(change)
 			if entry != nil {
 				hashmap[entry.key] += entry.amt
+				if hashmap[entry.key] == 0 {
+					delete(hashmap, entry.key)
+				}
 			}
 
 		case xdr.LedgerEntryTypeLiquidityPool:
 			entries := fetchLiquidityPoolDeltaFromChange(change)
 			for _, entry := range entries {
 				hashmap[entry.key] += entry.amt
+				if hashmap[entry.key] == 0 {
+					delete(hashmap, entry.key)
+				}
 			}
 		}
 	}
@@ -182,6 +194,9 @@ func findBalanceDeltasFromEvents(events []*TokenTransferEvent) map[balanceKey]in
 			// Address' balance reduces by amt in FEE
 			entry := balanceKey{holder: address, asset: asset}
 			hashmap[entry] += -amt
+			if hashmap[entry] == 0 {
+				delete(hashmap, entry)
+			}
 
 		case "Transfer":
 			ev := event.GetTransfer()
@@ -195,6 +210,12 @@ func findBalanceDeltasFromEvents(events []*TokenTransferEvent) map[balanceKey]in
 			toEntry := balanceKey{holder: toAddress, asset: asset}
 			hashmap[fromEntry] += -amt
 			hashmap[toEntry] += amt
+			if hashmap[toEntry] == 0 {
+				delete(hashmap, toEntry)
+			}
+			if hashmap[fromEntry] == 0 {
+				delete(hashmap, fromEntry)
+			}
 
 		case "Mint":
 			ev := event.GetMint()
@@ -204,6 +225,9 @@ func findBalanceDeltasFromEvents(events []*TokenTransferEvent) map[balanceKey]in
 			// ToAddress' balance increases by amt in MINT
 			entry := balanceKey{holder: toAddress, asset: asset}
 			hashmap[entry] += amt
+			if hashmap[entry] == 0 {
+				delete(hashmap, entry)
+			}
 
 		case "Burn":
 			ev := event.GetBurn()
@@ -213,6 +237,9 @@ func findBalanceDeltasFromEvents(events []*TokenTransferEvent) map[balanceKey]in
 			// FromAddress' balance reduces by amt in BURN
 			entry := balanceKey{holder: fromAddress, asset: asset}
 			hashmap[entry] += -amt
+			if hashmap[entry] == 0 {
+				delete(hashmap, entry)
+			}
 
 		case "Clawback":
 			ev := event.GetClawback()
@@ -222,6 +249,9 @@ func findBalanceDeltasFromEvents(events []*TokenTransferEvent) map[balanceKey]in
 			// FromAddress' balance reduces by amt in CLAWBACK
 			entry := balanceKey{holder: fromAddress, asset: asset}
 			hashmap[entry] += -amt
+			if hashmap[entry] == 0 {
+				delete(hashmap, entry)
+			}
 
 		default:
 			panic(errors.Errorf("unknown event type %s", eventType))
