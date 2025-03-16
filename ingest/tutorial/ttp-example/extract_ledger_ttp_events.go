@@ -73,7 +73,7 @@ func main() {
 		}
 
 		//  Write events to output file or print to screen
-		//writeEventsToOutput(events, outputFile)
+		writeEventsToOutput(events, outputFile)
 
 		fmt.Printf("Processing ledger Seq: %d, ClosedAt: %v, Protocol Version: %v\n",
 			ledger.LedgerSequence(), ledger.ClosedAt(), ledger.ProtocolVersion())
