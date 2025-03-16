@@ -185,7 +185,7 @@ func findBalanceDeltasFromEvents(events []*TokenTransferEvent) map[Strkey]mapset
 		switch eventType {
 		case "Fee":
 			ev := event.GetFee()
-			address := ev.From.ToStrkey()
+			address := ev.From.StrKey
 			asset := xlmAsset.StringCanonical()
 			amt := int64(amount.MustParse(ev.Amount))
 			// Address' balance reduces by amt in FEE
@@ -194,8 +194,8 @@ func findBalanceDeltasFromEvents(events []*TokenTransferEvent) map[Strkey]mapset
 
 		case "Transfer":
 			ev := event.GetTransfer()
-			fromAddress := ev.From.ToStrkey()
-			toAddress := ev.To.ToStrkey()
+			fromAddress := ev.From.StrKey
+			toAddress := ev.To.StrKey
 			amt := int64(amount.MustParse(ev.Amount))
 			asset := event.Asset.ToXdrAsset().StringCanonical()
 			// FromAddress' balance reduces by amt in TRANSFER
@@ -206,7 +206,7 @@ func findBalanceDeltasFromEvents(events []*TokenTransferEvent) map[Strkey]mapset
 
 		case "Mint":
 			ev := event.GetMint()
-			toAddress := ev.To.ToStrkey()
+			toAddress := ev.To.StrKey
 			asset := event.Asset.ToXdrAsset().StringCanonical()
 			amt := int64(amount.MustParse(ev.Amount))
 			// ToAddress' balance increases by amt in MINT
@@ -215,7 +215,7 @@ func findBalanceDeltasFromEvents(events []*TokenTransferEvent) map[Strkey]mapset
 
 		case "Burn":
 			ev := event.GetBurn()
-			fromAddress := ev.From.ToStrkey()
+			fromAddress := ev.From.StrKey
 			asset := event.Asset.ToXdrAsset().StringCanonical()
 			amt := int64(amount.MustParse(ev.Amount))
 			// FromAddress' balance reduces by amt in BURN
@@ -224,7 +224,7 @@ func findBalanceDeltasFromEvents(events []*TokenTransferEvent) map[Strkey]mapset
 
 		case "Clawback":
 			ev := event.GetClawback()
-			fromAddress := ev.From.ToStrkey()
+			fromAddress := ev.From.StrKey
 			asset := event.Asset.ToXdrAsset().StringCanonical()
 			amt := int64(amount.MustParse(ev.Amount))
 			// FromAddress' balance reduces by amt in CLAWBACK

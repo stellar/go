@@ -2,34 +2,7 @@ syntax = "proto3";
 
 package address;
 
-message Account {
-  string str_key = 1;
-}
-
-message ClaimableBalance {
-  string str_key = 1;
-}
-
-message LiquidityPool {
-  string str_key = 1;
-}
-
-message Contract {
-  string str_key = 1;
-}
-
-message Muxed_Account {
-  uint64 memo_id = 1;
-  string str_key = 2;
-  Account base_account = 3;
-}
-
+// All that you need for identifying an address is the strkey representation
 message Address {
-  oneof address_type {
-    Account account = 1;
-    Contract contract = 2;
-    ClaimableBalance claimable_balance = 3;
-    LiquidityPool liquidity_pool = 4;
-    Muxed_Account muxed_account = 5;
-  }
+  string str_key = 1;
 }

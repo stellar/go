@@ -20,259 +20,17 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-type Account struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	StrKey        string                 `protobuf:"bytes,1,opt,name=str_key,json=strKey,proto3" json:"str_key,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *Account) Reset() {
-	*x = Account{}
-	mi := &file_ingest_address_address_proto_msgTypes[0]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *Account) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*Account) ProtoMessage() {}
-
-func (x *Account) ProtoReflect() protoreflect.Message {
-	mi := &file_ingest_address_address_proto_msgTypes[0]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use Account.ProtoReflect.Descriptor instead.
-func (*Account) Descriptor() ([]byte, []int) {
-	return file_ingest_address_address_proto_rawDescGZIP(), []int{0}
-}
-
-func (x *Account) GetStrKey() string {
-	if x != nil {
-		return x.StrKey
-	}
-	return ""
-}
-
-type ClaimableBalance struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	StrKey        string                 `protobuf:"bytes,1,opt,name=str_key,json=strKey,proto3" json:"str_key,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ClaimableBalance) Reset() {
-	*x = ClaimableBalance{}
-	mi := &file_ingest_address_address_proto_msgTypes[1]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ClaimableBalance) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ClaimableBalance) ProtoMessage() {}
-
-func (x *ClaimableBalance) ProtoReflect() protoreflect.Message {
-	mi := &file_ingest_address_address_proto_msgTypes[1]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ClaimableBalance.ProtoReflect.Descriptor instead.
-func (*ClaimableBalance) Descriptor() ([]byte, []int) {
-	return file_ingest_address_address_proto_rawDescGZIP(), []int{1}
-}
-
-func (x *ClaimableBalance) GetStrKey() string {
-	if x != nil {
-		return x.StrKey
-	}
-	return ""
-}
-
-type LiquidityPool struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	StrKey        string                 `protobuf:"bytes,1,opt,name=str_key,json=strKey,proto3" json:"str_key,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *LiquidityPool) Reset() {
-	*x = LiquidityPool{}
-	mi := &file_ingest_address_address_proto_msgTypes[2]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *LiquidityPool) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*LiquidityPool) ProtoMessage() {}
-
-func (x *LiquidityPool) ProtoReflect() protoreflect.Message {
-	mi := &file_ingest_address_address_proto_msgTypes[2]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use LiquidityPool.ProtoReflect.Descriptor instead.
-func (*LiquidityPool) Descriptor() ([]byte, []int) {
-	return file_ingest_address_address_proto_rawDescGZIP(), []int{2}
-}
-
-func (x *LiquidityPool) GetStrKey() string {
-	if x != nil {
-		return x.StrKey
-	}
-	return ""
-}
-
-type Contract struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	StrKey        string                 `protobuf:"bytes,1,opt,name=str_key,json=strKey,proto3" json:"str_key,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *Contract) Reset() {
-	*x = Contract{}
-	mi := &file_ingest_address_address_proto_msgTypes[3]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *Contract) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*Contract) ProtoMessage() {}
-
-func (x *Contract) ProtoReflect() protoreflect.Message {
-	mi := &file_ingest_address_address_proto_msgTypes[3]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use Contract.ProtoReflect.Descriptor instead.
-func (*Contract) Descriptor() ([]byte, []int) {
-	return file_ingest_address_address_proto_rawDescGZIP(), []int{3}
-}
-
-func (x *Contract) GetStrKey() string {
-	if x != nil {
-		return x.StrKey
-	}
-	return ""
-}
-
-type Muxed_Account struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	MemoId        uint64                 `protobuf:"varint,1,opt,name=memo_id,json=memoId,proto3" json:"memo_id,omitempty"`
-	StrKey        string                 `protobuf:"bytes,2,opt,name=str_key,json=strKey,proto3" json:"str_key,omitempty"`
-	BaseAccount   *Account               `protobuf:"bytes,3,opt,name=base_account,json=baseAccount,proto3" json:"base_account,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *Muxed_Account) Reset() {
-	*x = Muxed_Account{}
-	mi := &file_ingest_address_address_proto_msgTypes[4]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *Muxed_Account) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*Muxed_Account) ProtoMessage() {}
-
-func (x *Muxed_Account) ProtoReflect() protoreflect.Message {
-	mi := &file_ingest_address_address_proto_msgTypes[4]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use Muxed_Account.ProtoReflect.Descriptor instead.
-func (*Muxed_Account) Descriptor() ([]byte, []int) {
-	return file_ingest_address_address_proto_rawDescGZIP(), []int{4}
-}
-
-func (x *Muxed_Account) GetMemoId() uint64 {
-	if x != nil {
-		return x.MemoId
-	}
-	return 0
-}
-
-func (x *Muxed_Account) GetStrKey() string {
-	if x != nil {
-		return x.StrKey
-	}
-	return ""
-}
-
-func (x *Muxed_Account) GetBaseAccount() *Account {
-	if x != nil {
-		return x.BaseAccount
-	}
-	return nil
-}
-
+// All that you need for identifying an address is the strkey representation
 type Address struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Types that are valid to be assigned to AddressType:
-	//
-	//	*Address_Account
-	//	*Address_Contract
-	//	*Address_ClaimableBalance
-	//	*Address_LiquidityPool
-	//	*Address_MuxedAccount
-	AddressType   isAddress_AddressType `protobuf_oneof:"address_type"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	StrKey        string                 `protobuf:"bytes,1,opt,name=str_key,json=strKey,proto3" json:"str_key,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Address) Reset() {
 	*x = Address{}
-	mi := &file_ingest_address_address_proto_msgTypes[5]
+	mi := &file_ingest_address_address_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -284,7 +42,7 @@ func (x *Address) String() string {
 func (*Address) ProtoMessage() {}
 
 func (x *Address) ProtoReflect() protoreflect.Message {
-	mi := &file_ingest_address_address_proto_msgTypes[5]
+	mi := &file_ingest_address_address_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -297,139 +55,25 @@ func (x *Address) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Address.ProtoReflect.Descriptor instead.
 func (*Address) Descriptor() ([]byte, []int) {
-	return file_ingest_address_address_proto_rawDescGZIP(), []int{5}
+	return file_ingest_address_address_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *Address) GetAddressType() isAddress_AddressType {
+func (x *Address) GetStrKey() string {
 	if x != nil {
-		return x.AddressType
+		return x.StrKey
 	}
-	return nil
+	return ""
 }
-
-func (x *Address) GetAccount() *Account {
-	if x != nil {
-		if x, ok := x.AddressType.(*Address_Account); ok {
-			return x.Account
-		}
-	}
-	return nil
-}
-
-func (x *Address) GetContract() *Contract {
-	if x != nil {
-		if x, ok := x.AddressType.(*Address_Contract); ok {
-			return x.Contract
-		}
-	}
-	return nil
-}
-
-func (x *Address) GetClaimableBalance() *ClaimableBalance {
-	if x != nil {
-		if x, ok := x.AddressType.(*Address_ClaimableBalance); ok {
-			return x.ClaimableBalance
-		}
-	}
-	return nil
-}
-
-func (x *Address) GetLiquidityPool() *LiquidityPool {
-	if x != nil {
-		if x, ok := x.AddressType.(*Address_LiquidityPool); ok {
-			return x.LiquidityPool
-		}
-	}
-	return nil
-}
-
-func (x *Address) GetMuxedAccount() *Muxed_Account {
-	if x != nil {
-		if x, ok := x.AddressType.(*Address_MuxedAccount); ok {
-			return x.MuxedAccount
-		}
-	}
-	return nil
-}
-
-type isAddress_AddressType interface {
-	isAddress_AddressType()
-}
-
-type Address_Account struct {
-	Account *Account `protobuf:"bytes,1,opt,name=account,proto3,oneof"`
-}
-
-type Address_Contract struct {
-	Contract *Contract `protobuf:"bytes,2,opt,name=contract,proto3,oneof"`
-}
-
-type Address_ClaimableBalance struct {
-	ClaimableBalance *ClaimableBalance `protobuf:"bytes,3,opt,name=claimable_balance,json=claimableBalance,proto3,oneof"`
-}
-
-type Address_LiquidityPool struct {
-	LiquidityPool *LiquidityPool `protobuf:"bytes,4,opt,name=liquidity_pool,json=liquidityPool,proto3,oneof"`
-}
-
-type Address_MuxedAccount struct {
-	MuxedAccount *Muxed_Account `protobuf:"bytes,5,opt,name=muxed_account,json=muxedAccount,proto3,oneof"`
-}
-
-func (*Address_Account) isAddress_AddressType() {}
-
-func (*Address_Contract) isAddress_AddressType() {}
-
-func (*Address_ClaimableBalance) isAddress_AddressType() {}
-
-func (*Address_LiquidityPool) isAddress_AddressType() {}
-
-func (*Address_MuxedAccount) isAddress_AddressType() {}
 
 var File_ingest_address_address_proto protoreflect.FileDescriptor
 
 var file_ingest_address_address_proto_rawDesc = []byte{
 	0x0a, 0x1c, 0x69, 0x6e, 0x67, 0x65, 0x73, 0x74, 0x2f, 0x61, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73,
 	0x2f, 0x61, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x12, 0x07,
-	0x61, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x22, 0x22, 0x0a, 0x07, 0x41, 0x63, 0x63, 0x6f, 0x75,
-	0x6e, 0x74, 0x12, 0x17, 0x0a, 0x07, 0x73, 0x74, 0x72, 0x5f, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20,
-	0x01, 0x28, 0x09, 0x52, 0x06, 0x73, 0x74, 0x72, 0x4b, 0x65, 0x79, 0x22, 0x2b, 0x0a, 0x10, 0x43,
-	0x6c, 0x61, 0x69, 0x6d, 0x61, 0x62, 0x6c, 0x65, 0x42, 0x61, 0x6c, 0x61, 0x6e, 0x63, 0x65, 0x12,
-	0x17, 0x0a, 0x07, 0x73, 0x74, 0x72, 0x5f, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09,
-	0x52, 0x06, 0x73, 0x74, 0x72, 0x4b, 0x65, 0x79, 0x22, 0x28, 0x0a, 0x0d, 0x4c, 0x69, 0x71, 0x75,
-	0x69, 0x64, 0x69, 0x74, 0x79, 0x50, 0x6f, 0x6f, 0x6c, 0x12, 0x17, 0x0a, 0x07, 0x73, 0x74, 0x72,
-	0x5f, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x73, 0x74, 0x72, 0x4b,
-	0x65, 0x79, 0x22, 0x23, 0x0a, 0x08, 0x43, 0x6f, 0x6e, 0x74, 0x72, 0x61, 0x63, 0x74, 0x12, 0x17,
-	0x0a, 0x07, 0x73, 0x74, 0x72, 0x5f, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52,
-	0x06, 0x73, 0x74, 0x72, 0x4b, 0x65, 0x79, 0x22, 0x76, 0x0a, 0x0d, 0x4d, 0x75, 0x78, 0x65, 0x64,
-	0x5f, 0x41, 0x63, 0x63, 0x6f, 0x75, 0x6e, 0x74, 0x12, 0x17, 0x0a, 0x07, 0x6d, 0x65, 0x6d, 0x6f,
-	0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x04, 0x52, 0x06, 0x6d, 0x65, 0x6d, 0x6f, 0x49,
-	0x64, 0x12, 0x17, 0x0a, 0x07, 0x73, 0x74, 0x72, 0x5f, 0x6b, 0x65, 0x79, 0x18, 0x02, 0x20, 0x01,
-	0x28, 0x09, 0x52, 0x06, 0x73, 0x74, 0x72, 0x4b, 0x65, 0x79, 0x12, 0x33, 0x0a, 0x0c, 0x62, 0x61,
-	0x73, 0x65, 0x5f, 0x61, 0x63, 0x63, 0x6f, 0x75, 0x6e, 0x74, 0x18, 0x03, 0x20, 0x01, 0x28, 0x0b,
-	0x32, 0x10, 0x2e, 0x61, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x2e, 0x41, 0x63, 0x63, 0x6f, 0x75,
-	0x6e, 0x74, 0x52, 0x0b, 0x62, 0x61, 0x73, 0x65, 0x41, 0x63, 0x63, 0x6f, 0x75, 0x6e, 0x74, 0x22,
-	0xc2, 0x02, 0x0a, 0x07, 0x41, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x12, 0x2c, 0x0a, 0x07, 0x61,
-	0x63, 0x63, 0x6f, 0x75, 0x6e, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x10, 0x2e, 0x61,
-	0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x2e, 0x41, 0x63, 0x63, 0x6f, 0x75, 0x6e, 0x74, 0x48, 0x00,
-	0x52, 0x07, 0x61, 0x63, 0x63, 0x6f, 0x75, 0x6e, 0x74, 0x12, 0x2f, 0x0a, 0x08, 0x63, 0x6f, 0x6e,
-	0x74, 0x72, 0x61, 0x63, 0x74, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x11, 0x2e, 0x61, 0x64,
-	0x64, 0x72, 0x65, 0x73, 0x73, 0x2e, 0x43, 0x6f, 0x6e, 0x74, 0x72, 0x61, 0x63, 0x74, 0x48, 0x00,
-	0x52, 0x08, 0x63, 0x6f, 0x6e, 0x74, 0x72, 0x61, 0x63, 0x74, 0x12, 0x48, 0x0a, 0x11, 0x63, 0x6c,
-	0x61, 0x69, 0x6d, 0x61, 0x62, 0x6c, 0x65, 0x5f, 0x62, 0x61, 0x6c, 0x61, 0x6e, 0x63, 0x65, 0x18,
-	0x03, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x19, 0x2e, 0x61, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x2e,
-	0x43, 0x6c, 0x61, 0x69, 0x6d, 0x61, 0x62, 0x6c, 0x65, 0x42, 0x61, 0x6c, 0x61, 0x6e, 0x63, 0x65,
-	0x48, 0x00, 0x52, 0x10, 0x63, 0x6c, 0x61, 0x69, 0x6d, 0x61, 0x62, 0x6c, 0x65, 0x42, 0x61, 0x6c,
-	0x61, 0x6e, 0x63, 0x65, 0x12, 0x3f, 0x0a, 0x0e, 0x6c, 0x69, 0x71, 0x75, 0x69, 0x64, 0x69, 0x74,
-	0x79, 0x5f, 0x70, 0x6f, 0x6f, 0x6c, 0x18, 0x04, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x16, 0x2e, 0x61,
-	0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x2e, 0x4c, 0x69, 0x71, 0x75, 0x69, 0x64, 0x69, 0x74, 0x79,
-	0x50, 0x6f, 0x6f, 0x6c, 0x48, 0x00, 0x52, 0x0d, 0x6c, 0x69, 0x71, 0x75, 0x69, 0x64, 0x69, 0x74,
-	0x79, 0x50, 0x6f, 0x6f, 0x6c, 0x12, 0x3d, 0x0a, 0x0d, 0x6d, 0x75, 0x78, 0x65, 0x64, 0x5f, 0x61,
-	0x63, 0x63, 0x6f, 0x75, 0x6e, 0x74, 0x18, 0x05, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x16, 0x2e, 0x61,
-	0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x2e, 0x4d, 0x75, 0x78, 0x65, 0x64, 0x5f, 0x41, 0x63, 0x63,
-	0x6f, 0x75, 0x6e, 0x74, 0x48, 0x00, 0x52, 0x0c, 0x6d, 0x75, 0x78, 0x65, 0x64, 0x41, 0x63, 0x63,
-	0x6f, 0x75, 0x6e, 0x74, 0x42, 0x0e, 0x0a, 0x0c, 0x61, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x5f,
-	0x74, 0x79, 0x70, 0x65, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x61, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x22, 0x22, 0x0a, 0x07, 0x41, 0x64, 0x64, 0x72, 0x65,
+	0x73, 0x73, 0x12, 0x17, 0x0a, 0x07, 0x73, 0x74, 0x72, 0x5f, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20,
+	0x01, 0x28, 0x09, 0x52, 0x06, 0x73, 0x74, 0x72, 0x4b, 0x65, 0x79, 0x62, 0x06, 0x70, 0x72, 0x6f,
+	0x74, 0x6f, 0x33,
 }
 
 var (
@@ -444,27 +88,16 @@ func file_ingest_address_address_proto_rawDescGZIP() []byte {
 	return file_ingest_address_address_proto_rawDescData
 }
 
-var file_ingest_address_address_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_ingest_address_address_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_ingest_address_address_proto_goTypes = []any{
-	(*Account)(nil),          // 0: address.Account
-	(*ClaimableBalance)(nil), // 1: address.ClaimableBalance
-	(*LiquidityPool)(nil),    // 2: address.LiquidityPool
-	(*Contract)(nil),         // 3: address.Contract
-	(*Muxed_Account)(nil),    // 4: address.Muxed_Account
-	(*Address)(nil),          // 5: address.Address
+	(*Address)(nil), // 0: address.Address
 }
 var file_ingest_address_address_proto_depIdxs = []int32{
-	0, // 0: address.Muxed_Account.base_account:type_name -> address.Account
-	0, // 1: address.Address.account:type_name -> address.Account
-	3, // 2: address.Address.contract:type_name -> address.Contract
-	1, // 3: address.Address.claimable_balance:type_name -> address.ClaimableBalance
-	2, // 4: address.Address.liquidity_pool:type_name -> address.LiquidityPool
-	4, // 5: address.Address.muxed_account:type_name -> address.Muxed_Account
-	6, // [6:6] is the sub-list for method output_type
-	6, // [6:6] is the sub-list for method input_type
-	6, // [6:6] is the sub-list for extension type_name
-	6, // [6:6] is the sub-list for extension extendee
-	0, // [0:6] is the sub-list for field type_name
+	0, // [0:0] is the sub-list for method output_type
+	0, // [0:0] is the sub-list for method input_type
+	0, // [0:0] is the sub-list for extension type_name
+	0, // [0:0] is the sub-list for extension extendee
+	0, // [0:0] is the sub-list for field type_name
 }
 
 func init() { file_ingest_address_address_proto_init() }
@@ -472,20 +105,13 @@ func file_ingest_address_address_proto_init() {
 	if File_ingest_address_address_proto != nil {
 		return
 	}
-	file_ingest_address_address_proto_msgTypes[5].OneofWrappers = []any{
-		(*Address_Account)(nil),
-		(*Address_Contract)(nil),
-		(*Address_ClaimableBalance)(nil),
-		(*Address_LiquidityPool)(nil),
-		(*Address_MuxedAccount)(nil),
-	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_ingest_address_address_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   6,
+			NumMessages:   1,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
