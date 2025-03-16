@@ -62,12 +62,13 @@ func NewClawbackEvent(meta *EventMeta, from *addressProto.Address, amount string
 	}
 }
 
-func NewFeeEvent(ledgerSequence uint32, closedAt time.Time, txHash string, from *addressProto.Address, amount string) *TokenTransferEvent {
+func NewFeeEvent(ledgerSequence uint32, closedAt time.Time, txHash string, transactionIndex uint32, from *addressProto.Address, amount string) *TokenTransferEvent {
 	return &TokenTransferEvent{
 		Meta: &EventMeta{
-			LedgerSequence: ledgerSequence,
-			ClosedAt:       timestamppb.New(closedAt),
-			TxHash:         txHash,
+			LedgerSequence:   ledgerSequence,
+			ClosedAt:         timestamppb.New(closedAt),
+			TxHash:           txHash,
+			TransactionIndex: transactionIndex,
 		},
 		Asset: assetProto.NewNativeAsset(),
 		Event: &TokenTransferEvent_Fee{
@@ -79,13 +80,14 @@ func NewFeeEvent(ledgerSequence uint32, closedAt time.Time, txHash string, from 
 	}
 }
 
-func NewEventMeta(tx ingest.LedgerTransaction, operationIndex *uint32, contractAddress *addressProto.Address) *EventMeta {
+func NewEventMeta(tx ingest.LedgerTransaction, transactionIndex uint32, operationIndex *uint32, contractAddress *addressProto.Address) *EventMeta {
 	return &EventMeta{
-		LedgerSequence:  tx.Ledger.LedgerSequence(),
-		ClosedAt:        timestamppb.New(tx.Ledger.ClosedAt()),
-		TxHash:          tx.Hash.HexString(),
-		OperationIndex:  operationIndex,
-		ContractAddress: contractAddress,
+		LedgerSequence:   tx.Ledger.LedgerSequence(),
+		ClosedAt:         timestamppb.New(tx.Ledger.ClosedAt()),
+		TxHash:           tx.Hash.HexString(),
+		TransactionIndex: transactionIndex,
+		OperationIndex:   operationIndex,
+		ContractAddress:  contractAddress,
 	}
 }
 

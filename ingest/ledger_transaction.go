@@ -14,7 +14,7 @@ import (
 
 // LedgerTransaction represents the data for a single transaction within a ledger.
 type LedgerTransaction struct {
-	Index    uint32
+	Index    uint32 // this index is 1-indexed as opposed to zero. Refer Read() in ledger_transaction_reader.go
 	Envelope xdr.TransactionEnvelope
 	Result   xdr.TransactionResultPair
 	// FeeChanges and UnsafeMeta are low level values, do not use them directly unless

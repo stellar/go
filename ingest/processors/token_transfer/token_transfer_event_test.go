@@ -27,9 +27,10 @@ func newTestAsset() *assetProto.Asset {
 
 func newTestEventMeta() *EventMeta {
 	return &EventMeta{
-		LedgerSequence: 12345,
-		ClosedAt:       timestamppb.New(time.Now()),
-		TxHash:         "abc123xyz",
+		LedgerSequence:   12345,
+		ClosedAt:         timestamppb.New(time.Now()),
+		TxHash:           "abc123xyz",
+		TransactionIndex: 0,
 	}
 }
 
@@ -104,7 +105,7 @@ func TestEventSerialization(t *testing.T) {
 			fixtureSetupFn: func() (*TokenTransferEvent, *EventMeta, *assetProto.Asset, *addressProto.Address, string) {
 				from := newTestAddress()
 				amount := "50"
-				event := NewFeeEvent(12345, time.Now(), "abc123xyz", from, amount)
+				event := NewFeeEvent(12345, time.Now(), "abc123xyz", 0, from, amount)
 				return event, nil, assetProto.NewNativeAsset(), from, amount // No meta for Fee event
 			},
 			assertFn: func(event *TokenTransferEvent) proto.Message {

@@ -121,7 +121,7 @@ var (
 	}
 
 	someOperationIndex = uint32(0)
-	expectedEventMeta  = NewEventMeta(someTx, &someOperationIndex, nil)
+	expectedEventMeta  = NewEventMeta(someTx, 0, &someOperationIndex, nil)
 
 	// Some global anonymous functions.
 	mintEvent = func(to *addressProto.Address, amt string, asset *assetProto.Asset) *TokenTransferEvent {
@@ -362,6 +362,7 @@ func runTokenTransferEventTests(t *testing.T, tests []testFixture) {
 func TestFeeEvent(t *testing.T) {
 	failedTx := func(envelopeType xdr.EnvelopeType, txFee xdr.Int64) ingest.LedgerTransaction {
 		tx := ingest.LedgerTransaction{
+			Index:    1,
 			Ledger:   someLcm,
 			Hash:     someTxHash,
 			Envelope: xdr.TransactionEnvelope{},
@@ -403,7 +404,7 @@ func TestFeeEvent(t *testing.T) {
 
 	expectedFeeEvent := func(feeAmt string) *TokenTransferEvent {
 		return NewFeeEvent(
-			someLcm.LedgerSequence(), someLcm.ClosedAt(), someTxHash.HexString(), protoAddressFromAccount(someTxAccount),
+			someLcm.LedgerSequence(), someLcm.ClosedAt(), someTxHash.HexString(), 0, protoAddressFromAccount(someTxAccount),
 			feeAmt,
 		)
 	}

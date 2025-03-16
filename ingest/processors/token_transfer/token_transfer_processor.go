@@ -164,7 +164,7 @@ func generateFeeEvent(tx ingest.LedgerTransaction) ([]*TokenTransferEvent, error
 		return nil, errors.New("error getting fee amount from transaction")
 	}
 
-	event := NewFeeEvent(tx.Ledger.LedgerSequence(), tx.Ledger.ClosedAt(), tx.Hash.HexString(), protoAddressFromAccount(feeAccount), amount.String(xdr.Int64(feeAmt)))
+	event := NewFeeEvent(tx.Ledger.LedgerSequence(), tx.Ledger.ClosedAt(), tx.Hash.HexString(), tx.Index-1, protoAddressFromAccount(feeAccount), amount.String(xdr.Int64(feeAmt)))
 	return []*TokenTransferEvent{event}, nil
 }
 
@@ -173,7 +173,7 @@ func accountCreateEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Ope
 	opSrcAcc := operationSourceAccount(tx, op)
 	createAccountOp := op.Body.MustCreateAccountOp()
 	destAcc, amt := createAccountOp.Destination.ToMuxedAccount(), amount.String(createAccountOp.StartingBalance)
-	meta := NewEventMeta(tx, &opIndex, nil)
+	meta := NewEventMeta(tx, tx.Index-1, &opIndex, nil)
 	event := NewTransferEvent(meta, protoAddressFromAccount(opSrcAcc), protoAddressFromAccount(destAcc), amt, xlmProtoAsset)
 	return []*TokenTransferEvent{event}, nil // Just one event will be generated
 }
@@ -187,7 +187,7 @@ func mergeAccountEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Oper
 	opSrcAcc := operationSourceAccount(tx, op)
 	destAcc := op.Body.MustDestination()
 	amt := amount.String(*res.SourceAccountBalance)
-	meta := NewEventMeta(tx, &opIndex, nil)
+	meta := NewEventMeta(tx, tx.Index-1, &opIndex, nil)
 	event := NewTransferEvent(meta, protoAddressFromAccount(opSrcAcc), protoAddressFromAccount(destAcc), amt, xlmProtoAsset)
 	return []*TokenTransferEvent{event}, nil // Just one event will be generated
 }
@@ -270,7 +270,7 @@ func paymentEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation
 	opSrcAcc := operationSourceAccount(tx, op)
 	destAcc := paymentOp.Destination
 	amt := amount.String(paymentOp.Amount)
-	meta := NewEventMeta(tx, &opIndex, nil)
+	meta := NewEventMeta(tx, tx.Index-1, &opIndex, nil)
 
 	from, to := addressWrapper{account: &opSrcAcc}, addressWrapper{account: &destAcc}
 	event, err := mintOrBurnOrTransferEvent(paymentOp.Asset, from, to, amt, meta)
@@ -284,7 +284,7 @@ func createClaimableBalanceEvents(tx ingest.LedgerTransaction, opIndex uint32, o
 	createCbOp := op.Body.MustCreateClaimableBalanceOp()
 	createCbResult := result.Tr.MustCreateClaimableBalanceResult()
 	opSrcAcc := operationSourceAccount(tx, op)
-	meta := NewEventMeta(tx, &opIndex, nil)
+	meta := NewEventMeta(tx, tx.Index-1, &opIndex, nil)
 	claimableBalanceId := createCbResult.MustBalanceId()
 
 	from, to := addressWrapper{account: &opSrcAcc}, addressWrapper{claimableBalanceId: &claimableBalanceId}
@@ -359,7 +359,7 @@ func claimClaimableBalanceEvents(tx ingest.LedgerTransaction, opIndex uint32, op
 		return nil, fmt.Errorf("more than one claimable entry found for operation: %s", op.Body.Type.String())
 	}
 
-	meta := NewEventMeta(tx, &opIndex, nil)
+	meta := NewEventMeta(tx, tx.Index-1, &opIndex, nil)
 	opSrcAcc := operationSourceAccount(tx, op)
 	cb := cbEntries[0]
 
@@ -374,7 +374,7 @@ func claimClaimableBalanceEvents(tx ingest.LedgerTransaction, opIndex uint32, op
 
 func clawbackEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation) ([]*TokenTransferEvent, error) {
 	clawbackOp := op.Body.MustClawbackOp()
-	meta := NewEventMeta(tx, &opIndex, nil)
+	meta := NewEventMeta(tx, tx.Index-1, &opIndex, nil)
 
 	// fromAddress is NOT the operationSourceAccount.
 	// It is the account specified in the operation from whom you want money to be clawed back
@@ -398,7 +398,7 @@ func clawbackClaimableBalanceEvents(tx ingest.LedgerTransaction, opIndex uint32,
 	}
 
 	cb := cbEntries[0]
-	meta := NewEventMeta(tx, &opIndex, nil)
+	meta := NewEventMeta(tx, tx.Index-1, &opIndex, nil)
 	// Money is clawed back from the claimableBalanceId
 	event := NewClawbackEvent(meta, protoAddressFromClaimableBalanceId(cbId), amount.String(cb.Amount), assetProto.NewProtoAsset(cb.Asset))
 	return []*TokenTransferEvent{event}, nil
@@ -461,7 +461,7 @@ func generateEventsForRevokedTrustlines(tx ingest.LedgerTransaction, opIndex uin
 		createdClaimableBalancesById[cb.BalanceId.MustV0()] = cb
 	}
 
-	meta := NewEventMeta(tx, &opIndex, nil)
+	meta := NewEventMeta(tx, tx.Index-1, &opIndex, nil)
 	var events []*TokenTransferEvent
 
 	for _, lp := range impactedLiquidityPools {
@@ -615,7 +615,7 @@ func liquidityPoolDepositEvents(tx ingest.LedgerTransaction, opIndex uint32, op 
 			fmt.Errorf("deposited amount (%v) for asset: %v, cannot be negative in LiquidityPool: %v", amtB, assetB.String(), lpIdToStrkey(lpId))
 	}
 
-	meta := NewEventMeta(tx, &opIndex, nil)
+	meta := NewEventMeta(tx, tx.Index-1, &opIndex, nil)
 	opSrcAcc := operationSourceAccount(tx, op)
 	// From = operation source account, to = LP
 	from, to := addressWrapper{account: &opSrcAcc}, addressWrapper{liquidityPoolId: &delta.liquidityPoolId}
@@ -665,7 +665,7 @@ func liquidityPoolWithdrawEvents(tx ingest.LedgerTransaction, opIndex uint32, op
 			fmt.Errorf("deposited amount (%v) for asset: %v, cannot be negative in LiquidityPool: %v", amtB, assetB.String(), lpIdToStrkey(lpId))
 	}
 
-	meta := NewEventMeta(tx, &opIndex, nil)
+	meta := NewEventMeta(tx, tx.Index-1, &opIndex, nil)
 	opSrcAcc := operationSourceAccount(tx, op)
 	// Opposite of LP Deposit. from = LP, to = operation source acocunt
 	from, to := addressWrapper{liquidityPoolId: &delta.liquidityPoolId}, addressWrapper{account: &opSrcAcc}
@@ -729,7 +729,7 @@ func manageBuyOfferEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Op
 	if len(offersClaimed) == 0 {
 		return nil, nil
 	}
-	meta := NewEventMeta(tx, &opIndex, nil)
+	meta := NewEventMeta(tx, tx.Index-1, &opIndex, nil)
 	return generateEventsFromClaimAtoms(meta, opSrcAcc, offersClaimed)
 }
 
@@ -739,7 +739,7 @@ func manageSellOfferEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.O
 	if len(offersClaimed) == 0 {
 		return nil, nil
 	}
-	meta := NewEventMeta(tx, &opIndex, nil)
+	meta := NewEventMeta(tx, tx.Index-1, &opIndex, nil)
 	return generateEventsFromClaimAtoms(meta, opSrcAcc, offersClaimed)
 }
 
@@ -749,7 +749,7 @@ func createPassiveSellOfferEvents(tx ingest.LedgerTransaction, opIndex uint32, o
 }
 
 func pathPaymentStrictSendEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation, result xdr.OperationResult) ([]*TokenTransferEvent, error) {
-	meta := NewEventMeta(tx, &opIndex, nil)
+	meta := NewEventMeta(tx, tx.Index-1, &opIndex, nil)
 	opSrcAcc := operationSourceAccount(tx, op)
 	strictSendOp := op.Body.MustPathPaymentStrictSendOp()
 	strictSendResult := result.Tr.MustPathPaymentStrictSendResult()
@@ -772,7 +772,7 @@ func pathPaymentStrictSendEvents(tx ingest.LedgerTransaction, opIndex uint32, op
 }
 
 func pathPaymentStrictReceiveEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation, result xdr.OperationResult) ([]*TokenTransferEvent, error) {
-	meta := NewEventMeta(tx, &opIndex, nil)
+	meta := NewEventMeta(tx, tx.Index-1, &opIndex, nil)
 	opSrcAcc := operationSourceAccount(tx, op)
 	strictReceiveOp := op.Body.MustPathPaymentStrictReceiveOp()
 	strictReceiveResult := result.Tr.MustPathPaymentStrictReceiveResult()

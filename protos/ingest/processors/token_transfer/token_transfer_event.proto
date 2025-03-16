@@ -13,8 +13,11 @@ message EventMeta {
   uint32 ledger_sequence = 1;
   google.protobuf.Timestamp closed_at = 2;
   string tx_hash = 3;
-  optional uint32 operation_index = 4;
-  address.Address contract_address = 5;
+  // Index of transaction within this ledger. 0-indexed
+  uint32 transaction_index = 4;
+  // Index of operation within the transaction, if it is not a fee event. 0-indexed
+  optional uint32 operation_index = 5;
+  address.Address contract_address = 6;
 }
 
 message Transfer {
