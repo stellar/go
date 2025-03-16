@@ -20,7 +20,10 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// All that you need for identifying an address is the strkey representation
+// The Address is a custom message type of its own instead of just being a string
+// For now, it only has a str_key string field, but making it a custom message allows for future extensibility,
+// especially if we need to add a oneOf for AccountAddress vs MuxedAddress vs ContractAddress and include more information
+// about all the address types
 type Address struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	StrKey        string                 `protobuf:"bytes,1,opt,name=str_key,json=strKey,proto3" json:"str_key,omitempty"`
