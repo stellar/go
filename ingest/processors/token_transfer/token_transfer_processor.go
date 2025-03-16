@@ -787,6 +787,9 @@ func pathPaymentStrictReceiveEvents(tx ingest.LedgerTransaction, opIndex uint32,
 	// Generate one final event indicating the amount that the destination received in terms of destination asset
 	from, to := addressWrapper{account: &opSrcAcc}, addressWrapper{account: &strictReceiveOp.Destination}
 	finalEvent, err := mintOrBurnOrTransferEvent(strictReceiveOp.DestAsset, from, to, amount.String(strictReceiveOp.DestAmount), meta)
+	if err != nil {
+		return nil, err
+	}
 	events = append(events, finalEvent)
 	return events, nil
 }
