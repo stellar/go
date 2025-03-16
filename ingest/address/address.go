@@ -6,6 +6,27 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
+func (a *Address) ToStrkey() string {
+
+	switch a.AddressType.(type) {
+	case *Address_Account:
+		return a.GetAccount().StrKey
+
+	case *Address_Contract:
+		return a.GetContract().StrKey
+
+	case *Address_ClaimableBalance:
+		return a.GetClaimableBalance().StrKey
+
+	case *Address_LiquidityPool:
+		return a.GetLiquidityPool().StrKey
+
+	case *Address_MuxedAccount:
+		return a.GetMuxedAccount().StrKey
+	}
+	panic(errors.Errorf("invalid address type: %v", a.AddressType))
+}
+
 func (a *Address) Equals(other *Address) bool {
 	if a == nil || other == nil {
 		return a == other

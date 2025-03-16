@@ -25,6 +25,19 @@ func NewProtoAsset(asset xdr.Asset) *Asset {
 	}
 }
 
+func (a *Asset) ToXdrAsset() xdr.Asset {
+	if a == nil {
+		panic("nil asset")
+	}
+	switch a := a.AssetType.(type) {
+	case *Asset_Native:
+		return xdr.MustNewNativeAsset()
+	case *Asset_IssuedAsset:
+		return xdr.MustNewCreditAsset(a.IssuedAsset.AssetCode, a.IssuedAsset.Issuer)
+	}
+	panic("unknown asset type")
+}
+
 func (a *Asset) Equals(other *Asset) bool {
 	// If both assets are the same type (native or issued asset)
 	if a.AssetType == nil || other.AssetType == nil {

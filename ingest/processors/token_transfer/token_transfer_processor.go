@@ -12,6 +12,7 @@ import (
 )
 
 var (
+	xlmAsset                        = xdr.MustNewNativeAsset()
 	xlmProtoAsset                   = assetProto.NewNativeAsset()
 	ErrNoLiquidityPoolEntryFound    = errors.New("no liquidity pool entry found in operation changes")
 	ErrNoClaimableBalanceEntryFound = errors.New("no claimable balance entry found in operation changes")
@@ -566,12 +567,10 @@ func liquidityPoolDepositEvents(tx ingest.LedgerTransaction, opIndex uint32, op 
 	assetA, assetB := delta.assetA, delta.assetB
 	amtA, amtB := delta.amountChangeForAssetA, delta.amountChangeForAssetB
 	if amtA < 0 {
-		//TODO convert to strkey for LPId
 		return nil,
 			fmt.Errorf("deposited amount (%v) for asset: %v, cannot be negative in LiquidityPool: %v", amtA, assetA.String(), lpIdToStrkey(lpId))
 	}
 	if amtB < 0 {
-		//TODO convert to strkey for LPId
 		return nil,
 			fmt.Errorf("deposited amount (%v) for asset: %v, cannot be negative in LiquidityPool: %v", amtB, assetB.String(), lpIdToStrkey(lpId))
 	}
@@ -610,12 +609,10 @@ func liquidityPoolWithdrawEvents(tx ingest.LedgerTransaction, opIndex uint32, op
 	assetA, assetB := delta.assetA, delta.assetB
 	amtA, amtB := delta.amountChangeForAssetA, delta.amountChangeForAssetB
 	if amtA < 0 {
-		//TODO convert to strkey for LPId
 		return nil,
 			fmt.Errorf("deposited amount (%v) for asset: %v, cannot be negative in LiquidityPool: %v", amtA, assetA.String(), lpIdToStrkey(lpId))
 	}
 	if amtB < 0 {
-		//TODO convert to strkey for LPId
 		return nil,
 			fmt.Errorf("deposited amount (%v) for asset: %v, cannot be negative in LiquidityPool: %v", amtB, assetB.String(), lpIdToStrkey(lpId))
 	}
@@ -744,6 +741,12 @@ func protoAddressFromClaimableBalanceId(cb xdr.ClaimableBalanceId) *addressProto
 	return addressProto.NewAddressFromClaimableBalance(cb)
 }
 
+// TODO convert to strkey for LpId
 func lpIdToStrkey(lpId xdr.PoolId) string {
 	return xdr.Hash(lpId).HexString()
+}
+
+// TODO convert to strkey for CbId
+func cbIdToStrkey(cbId xdr.ClaimableBalanceId) string {
+	return cbId.MustV0().HexString()
 }
