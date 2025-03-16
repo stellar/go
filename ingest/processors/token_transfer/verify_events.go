@@ -2,7 +2,6 @@ package token_transfer
 
 import (
 	"fmt"
-	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/support/errors"
@@ -11,15 +10,17 @@ import (
 	"sort"
 )
 
-type Strkey string
-
 type balanceKey struct {
-	key   string
-	asset string
-	delta int64
+	holder string
+	asset  string
 }
 
-func fetchAccountDeltaFromChange(change ingest.Change) *balanceKey {
+type keyAndAmount struct {
+	key balanceKey
+	amt int64
+}
+
+func fetchAccountDeltaFromChange(change ingest.Change) *keyAndAmount {
 	var accountKey string
 	var pre, post xdr.Int64
 
@@ -38,10 +39,10 @@ func fetchAccountDeltaFromChange(change ingest.Change) *balanceKey {
 	if delta == 0 {
 		return nil
 	}
-	return &balanceKey{key: accountKey, asset: xlmAsset.StringCanonical(), delta: delta}
+	return &keyAndAmount{key: balanceKey{holder: accountKey, asset: accountKey}, amt: delta}
 }
 
-func fetchTrustlineDeltaFromChange(change ingest.Change) *balanceKey {
+func fetchTrustlineDeltaFromChange(change ingest.Change) *keyAndAmount {
 	var trustlineKey string
 	var asset string
 	var pre, post xdr.Int64
@@ -69,10 +70,34 @@ func fetchTrustlineDeltaFromChange(change ingest.Change) *balanceKey {
 	if delta == 0 {
 		return nil
 	}
-	return &balanceKey{key: trustlineKey, asset: asset, delta: delta}
+	return &keyAndAmount{key: balanceKey{holder: trustlineKey, asset: asset}, amt: delta}
 }
 
-func fetchLiquidityPoolDeltaFromChange(change ingest.Change) []balanceKey {
+func fetchClaimableDeltaFromChange(change ingest.Change) *keyAndAmount {
+	var cbKey string
+	var asset string
+	var pre, post xdr.Int64
+
+	if change.Pre != nil {
+		entry := change.Pre.Data.MustClaimableBalance()
+		cbKey = cbIdToStrkey(entry.BalanceId)
+		asset = entry.Asset.StringCanonical()
+		pre = entry.Amount
+	}
+	if change.Post != nil {
+		entry := change.Post.Data.MustClaimableBalance()
+		cbKey = cbIdToStrkey(entry.BalanceId)
+		asset = entry.Asset.StringCanonical()
+		post = entry.Amount
+	}
+	delta := int64(post - pre)
+	if delta == 0 {
+		return nil
+	}
+	return &keyAndAmount{key: balanceKey{holder: cbKey, asset: asset}, amt: delta}
+}
+
+func fetchLiquidityPoolDeltaFromChange(change ingest.Change) []keyAndAmount {
 	var lpKey string
 	var assetA, assetB string
 	var preA, preB, postA, postB xdr.Int64
@@ -95,85 +120,51 @@ func fetchLiquidityPoolDeltaFromChange(change ingest.Change) []balanceKey {
 
 	deltaA := int64(postA - preA)
 	deltaB := int64(postB - preB)
-	var entries []balanceKey
+	var entries []keyAndAmount
 	if deltaA != 0 {
-		entries = append(entries, balanceKey{key: lpKey, asset: assetA, delta: deltaA})
+		entries = append(entries, keyAndAmount{key: balanceKey{holder: lpKey, asset: assetA}, amt: deltaA})
 	}
 	if deltaB != 0 {
-		entries = append(entries, balanceKey{key: lpKey, asset: assetB, delta: deltaB})
+		entries = append(entries, keyAndAmount{key: balanceKey{holder: lpKey, asset: assetB}, amt: deltaB})
 	}
 	return entries
 }
 
-func fetchClaimableDeltaFromChange(change ingest.Change) *balanceKey {
-	var cbKey string
-	var asset string
-	var pre, post xdr.Int64
-
-	if change.Pre != nil {
-		entry := change.Pre.Data.MustClaimableBalance()
-		cbKey = cbIdToStrkey(entry.BalanceId)
-		asset = entry.Asset.StringCanonical()
-		pre = entry.Amount
-	}
-	if change.Post != nil {
-		entry := change.Post.Data.MustClaimableBalance()
-		cbKey = cbIdToStrkey(entry.BalanceId)
-		asset = entry.Asset.StringCanonical()
-		post = entry.Amount
-	}
-	delta := int64(post - pre)
-	if delta == 0 {
-		return nil
-	}
-	return &balanceKey{key: cbKey, asset: asset, delta: delta}
-}
-
-func balanceKeysToMap(entries []balanceKey) map[Strkey]mapset.Set[balanceKey] {
-	var strkeysToBalancesMap = make(map[Strkey]mapset.Set[balanceKey])
-	for _, entry := range entries {
-		key := Strkey(entry.key)
-		// Check if the set for the key is nil, if so, initialize it
-		if strkeysToBalancesMap[key] == nil {
-			strkeysToBalancesMap[key] = mapset.NewSet[balanceKey]()
-		}
-		strkeysToBalancesMap[key].Add(entry)
-	}
-	return strkeysToBalancesMap
-}
-
-func findBalanceDeltasFromChanges(changes []ingest.Change) map[Strkey]mapset.Set[balanceKey] {
-	var entries []balanceKey
+func findBalanceDeltasFromChanges(changes []ingest.Change) map[balanceKey]int64 {
+	var hashmap = make(map[balanceKey]int64)
 	for _, change := range changes {
 		switch change.Type {
 
 		case xdr.LedgerEntryTypeAccount:
 			entry := fetchAccountDeltaFromChange(change)
 			if entry != nil {
-				entries = append(entries, *entry)
+				hashmap[entry.key] += entry.amt
 			}
 
 		case xdr.LedgerEntryTypeTrustline:
 			entry := fetchTrustlineDeltaFromChange(change)
 			if entry != nil {
-				entries = append(entries, *entry)
+				hashmap[entry.key] += entry.amt
 			}
 
 		case xdr.LedgerEntryTypeClaimableBalance:
 			entry := fetchClaimableDeltaFromChange(change)
 			if entry != nil {
-				entries = append(entries, *entry)
+				hashmap[entry.key] += entry.amt
 			}
 
 		case xdr.LedgerEntryTypeLiquidityPool:
-			entries = append(entries, fetchLiquidityPoolDeltaFromChange(change)...)
+			entries := fetchLiquidityPoolDeltaFromChange(change)
+			for _, entry := range entries {
+				hashmap[entry.key] += entry.amt
+			}
 		}
 	}
-	return balanceKeysToMap(entries)
+	return hashmap
 }
 
-func findBalanceDeltasFromEvents(events []*TokenTransferEvent) map[Strkey]mapset.Set[balanceKey] {
-	var entries []balanceKey
+func findBalanceDeltasFromEvents(events []*TokenTransferEvent) map[balanceKey]int64 {
+	var hashmap = make(map[balanceKey]int64)
 
 	for _, event := range events {
 
@@ -189,8 +180,8 @@ func findBalanceDeltasFromEvents(events []*TokenTransferEvent) map[Strkey]mapset
 			asset := xlmAsset.StringCanonical()
 			amt := int64(amount.MustParse(ev.Amount))
 			// Address' balance reduces by amt in FEE
-			entry := balanceKey{key: address, asset: asset, delta: -amt}
-			entries = append(entries, entry)
+			entry := balanceKey{holder: address, asset: asset}
+			hashmap[entry] += -amt
 
 		case "Transfer":
 			ev := event.GetTransfer()
@@ -199,10 +190,11 @@ func findBalanceDeltasFromEvents(events []*TokenTransferEvent) map[Strkey]mapset
 			amt := int64(amount.MustParse(ev.Amount))
 			asset := event.Asset.ToXdrAsset().StringCanonical()
 			// FromAddress' balance reduces by amt in TRANSFER
-			fromEntry := balanceKey{key: fromAddress, asset: asset, delta: -amt}
+			fromEntry := balanceKey{holder: fromAddress, asset: asset}
 			// ToAddress' balance increases by amt in TRANSFER
-			toEntry := balanceKey{key: toAddress, asset: asset, delta: amt}
-			entries = append(entries, toEntry, fromEntry)
+			toEntry := balanceKey{holder: toAddress, asset: asset}
+			hashmap[fromEntry] += -amt
+			hashmap[toEntry] += amt
 
 		case "Mint":
 			ev := event.GetMint()
@@ -210,8 +202,8 @@ func findBalanceDeltasFromEvents(events []*TokenTransferEvent) map[Strkey]mapset
 			asset := event.Asset.ToXdrAsset().StringCanonical()
 			amt := int64(amount.MustParse(ev.Amount))
 			// ToAddress' balance increases by amt in MINT
-			entry := balanceKey{key: toAddress, asset: asset, delta: amt}
-			entries = append(entries, entry)
+			entry := balanceKey{holder: toAddress, asset: asset}
+			hashmap[entry] += amt
 
 		case "Burn":
 			ev := event.GetBurn()
@@ -219,8 +211,8 @@ func findBalanceDeltasFromEvents(events []*TokenTransferEvent) map[Strkey]mapset
 			asset := event.Asset.ToXdrAsset().StringCanonical()
 			amt := int64(amount.MustParse(ev.Amount))
 			// FromAddress' balance reduces by amt in BURN
-			entry := balanceKey{key: fromAddress, asset: asset, delta: -amt}
-			entries = append(entries, entry)
+			entry := balanceKey{holder: fromAddress, asset: asset}
+			hashmap[entry] += -amt
 
 		case "Clawback":
 			ev := event.GetClawback()
@@ -228,14 +220,14 @@ func findBalanceDeltasFromEvents(events []*TokenTransferEvent) map[Strkey]mapset
 			asset := event.Asset.ToXdrAsset().StringCanonical()
 			amt := int64(amount.MustParse(ev.Amount))
 			// FromAddress' balance reduces by amt in CLAWBACK
-			entry := balanceKey{key: fromAddress, asset: asset, delta: -amt}
-			entries = append(entries, entry)
+			entry := balanceKey{holder: fromAddress, asset: asset}
+			hashmap[entry] += -amt
 
 		default:
 			panic(errors.Errorf("unknown event type %s", eventType))
 		}
 	}
-	return balanceKeysToMap(entries)
+	return hashmap
 }
 
 func getChangesFromLedger(ledger xdr.LedgerCloseMeta, passphrase string) []ingest.Change {
@@ -258,6 +250,22 @@ func getChangesFromLedger(ledger xdr.LedgerCloseMeta, passphrase string) []inges
 	return changes
 }
 
+func mapsEqual(map1, map2 map[balanceKey]int64) bool {
+	// First, check if the maps have the same length
+	if len(map1) != len(map2) {
+		return false
+	}
+
+	// Then, compare the keys and values in both maps
+	for key, value := range map1 {
+		if val, exists := map2[key]; !exists || val != value {
+			return false
+		}
+	}
+
+	return true
+}
+
 func VerifyTtpOnLedger(ledger xdr.LedgerCloseMeta, passphrase string) bool {
 	changes := getChangesFromLedger(ledger, passphrase)
 	events, err := ProcessTokenTransferEventsFromLedger(ledger, passphrase)
@@ -267,71 +275,49 @@ func VerifyTtpOnLedger(ledger xdr.LedgerCloseMeta, passphrase string) bool {
 
 	changesMap := findBalanceDeltasFromChanges(changes)
 	eventsMap := findBalanceDeltasFromEvents(events)
+
+	fmt.Println("----ChangeMap-----")
+	printMap(changesMap)
+	fmt.Println("------")
+	fmt.Println("----EventsMap-----")
+	printMap(eventsMap)
+	fmt.Println("------")
+
 	return mapsEqual(eventsMap, changesMap)
 }
 
-func mapsEqual(a, b map[Strkey]mapset.Set[balanceKey]) bool {
-	if len(a) != len(b) {
-		// If the maps have different lengths, they are not equal
-		return false
-	}
+// A custom type to implement sorting by balanceKey
+type balanceKeySlice []balanceKey
 
-	// Compare each key and the associated sets
-	for key, setA := range a {
-		setB, ok := b[key]
-		if !ok {
-			// If key is missing in map b, they are not equal
-			return false
-		}
-
-		// Compare the sets associated with the current key
-		if !setA.Equal(setB) {
-			// If the sets are not equal, the maps are not equal
-			return false
-		}
-	}
-
-	// If all keys and sets are equal, the maps are equal
-	return true
+func (s balanceKeySlice) Len() int {
+	return len(s)
 }
 
-// PrintMap prints the map in a sorted, deconstructed format
-func PrintMap(m map[Strkey]mapset.Set[balanceKey]) {
-	// Extract keys from the map and sort them
-	var keys []Strkey
+func (s balanceKeySlice) Less(i, j int) bool {
+	// Sort first by holder, then by asset
+	if s[i].holder == s[j].holder {
+		return s[i].asset < s[j].asset
+	}
+	return s[i].holder < s[j].holder
+}
+
+func (s balanceKeySlice) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
+}
+
+// Function to print map in sorted order of keys
+func printMap(m map[balanceKey]int64) {
+	// Extract the keys from the map and sort them
+	var keys []balanceKey
 	for key := range m {
 		keys = append(keys, key)
 	}
-	sort.Slice(keys, func(i, j int) bool {
-		return keys[i] < keys[j] // Sort by string value (Strkey is a string)
-	})
 
-	// Iterate over sorted keys and print the corresponding sets in sorted order
+	// Sort the keys
+	sort.Sort(balanceKeySlice(keys))
+
+	// Iterate over sorted keys and print the map in that order
 	for _, key := range keys {
-		// Print the key
-		fmt.Printf("Key: %s\n", key)
-
-		// Convert the set to a slice and sort it
-		set := m[key]
-		var entries []balanceKey
-
-		set.Each(
-			func(entry balanceKey) bool {
-				entries = append(entries, entry)
-				return true
-			})
-
-		// Sort the entries by `asset` and then `delta`
-		sort.Slice(entries, func(i, j int) bool {
-			if entries[i].asset == entries[j].asset {
-				return entries[i].delta < entries[j].delta // Secondary sort by delta
-			}
-			return entries[i].asset < entries[j].asset // Primary sort by asset
-		})
-
-		// Print the sorted entries in the set
-		for _, entry := range entries {
-			fmt.Printf("  - Asset: %s, Delta: %d\n", entry.asset, entry.delta)
-		}
+		fmt.Printf("Holder: %s, Asset: %s, Delta: %d\n", key.holder, key.asset, m[key])
 	}
 }
