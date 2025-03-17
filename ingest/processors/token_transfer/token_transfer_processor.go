@@ -38,12 +38,22 @@ var (
 	}
 )
 
+type TokenTransferProcessor struct {
+	networkPassphrase string
+}
+
+func NewTokenTransferProcessor(networkPassphrase string) *TokenTransferProcessor {
+	return &TokenTransferProcessor{
+		networkPassphrase: networkPassphrase,
+	}
+}
+
 // ProcessTokenTransferEventsFromLedger processes token transfer events for all transactions in a given ledger.
 // This function operates at the ledger level, iterating over all transactions in the ledger.
 // it calls ProcessTokenTransferEventsFromTransaction to process token transfer events from each transaction within the ledger.
-func ProcessTokenTransferEventsFromLedger(lcm xdr.LedgerCloseMeta, networkPassPhrase string) ([]*TokenTransferEvent, error) {
+func (ttp *TokenTransferProcessor) ProcessTokenTransferEventsFromLedger(lcm xdr.LedgerCloseMeta) ([]*TokenTransferEvent, error) {
 	var events []*TokenTransferEvent
-	txReader, err := ingest.NewLedgerTransactionReaderFromLedgerCloseMeta(networkPassPhrase, lcm)
+	txReader, err := ingest.NewLedgerTransactionReaderFromLedgerCloseMeta(ttp.networkPassphrase, lcm)
 	if err != nil {
 		return nil, errors.Wrap(err, "error creating transaction reader")
 	}
@@ -58,7 +68,7 @@ func ProcessTokenTransferEventsFromLedger(lcm xdr.LedgerCloseMeta, networkPassPh
 		if err != nil {
 			return nil, errors.Wrap(err, "error reading transaction")
 		}
-		txEvents, err = ProcessTokenTransferEventsFromTransaction(tx, networkPassPhrase)
+		txEvents, err = ttp.ProcessTokenTransferEventsFromTransaction(tx)
 		if err != nil {
 			return nil, errors.Wrap(err, "error processing token transfer events from transaction")
 		}
@@ -73,9 +83,9 @@ func ProcessTokenTransferEventsFromLedger(lcm xdr.LedgerCloseMeta, networkPassPh
 //	If the transaction was successful, it processes all operations in the transaction by calling ProcessTokenTransferEventsFromOperationAndOperationResult for each operation in the transaction.
 //
 // If the transaction is unsuccessful, it only generates events for transaction fees.
-func ProcessTokenTransferEventsFromTransaction(tx ingest.LedgerTransaction, networkPassPhrase string) ([]*TokenTransferEvent, error) {
+func (ttp *TokenTransferProcessor) ProcessTokenTransferEventsFromTransaction(tx ingest.LedgerTransaction) ([]*TokenTransferEvent, error) {
 	var events []*TokenTransferEvent
-	feeEvents, err := generateFeeEvent(tx)
+	feeEvents, err := ttp.generateFeeEvent(tx)
 	if err != nil {
 		return nil, errors.Wrap(err, "error generating fee event")
 	}
@@ -93,7 +103,7 @@ func ProcessTokenTransferEventsFromTransaction(tx ingest.LedgerTransaction, netw
 		opResult := operationResults[i]
 
 		// Process the operation and collect events
-		opEvents, err := ProcessTokenTransferEventsFromOperationAndOperationResult(tx, uint32(i), op, opResult, networkPassPhrase)
+		opEvents, err := ttp.ProcessTokenTransferEventsFromOperationAndOperationResult(tx, uint32(i), op, opResult)
 		if err != nil {
 			return nil,
 				errors.Wrapf(err, "error processing token transfer events from operation, index: %d,  %s", i, op.Body.Type.String())
@@ -112,46 +122,46 @@ func ProcessTokenTransferEventsFromTransaction(tx ingest.LedgerTransaction, netw
 // There is a separate private function to derive events for each classic operation.
 // It is implicitly assumed that the operation is successful, and thus will contribute towards generating events.
 // which is why we dont check for the success code in the OperationResult
-func ProcessTokenTransferEventsFromOperationAndOperationResult(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation, opResult xdr.OperationResult, networkPassPhrase string) ([]*TokenTransferEvent, error) {
+func (ttp *TokenTransferProcessor) ProcessTokenTransferEventsFromOperationAndOperationResult(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation, opResult xdr.OperationResult) ([]*TokenTransferEvent, error) {
 	switch op.Body.Type {
 	case xdr.OperationTypeCreateAccount:
-		return accountCreateEvents(tx, opIndex, op)
+		return ttp.accountCreateEvents(tx, opIndex, op)
 	case xdr.OperationTypeAccountMerge:
-		return mergeAccountEvents(tx, opIndex, op, opResult)
+		return ttp.mergeAccountEvents(tx, opIndex, op, opResult)
 	case xdr.OperationTypePayment:
-		return paymentEvents(tx, opIndex, op)
+		return ttp.paymentEvents(tx, opIndex, op)
 	case xdr.OperationTypeCreateClaimableBalance:
-		return createClaimableBalanceEvents(tx, opIndex, op, opResult)
+		return ttp.createClaimableBalanceEvents(tx, opIndex, op, opResult)
 	case xdr.OperationTypeClaimClaimableBalance:
-		return claimClaimableBalanceEvents(tx, opIndex, op)
+		return ttp.claimClaimableBalanceEvents(tx, opIndex, op)
 	case xdr.OperationTypeClawback:
-		return clawbackEvents(tx, opIndex, op)
+		return ttp.clawbackEvents(tx, opIndex, op)
 	case xdr.OperationTypeClawbackClaimableBalance:
-		return clawbackClaimableBalanceEvents(tx, opIndex, op)
+		return ttp.clawbackClaimableBalanceEvents(tx, opIndex, op)
 	case xdr.OperationTypeAllowTrust:
-		return allowTrustEvents(tx, opIndex, op)
+		return ttp.allowTrustEvents(tx, opIndex, op)
 	case xdr.OperationTypeSetTrustLineFlags:
-		return setTrustLineFlagsEvents(tx, opIndex, op)
+		return ttp.setTrustLineFlagsEvents(tx, opIndex, op)
 	case xdr.OperationTypeLiquidityPoolDeposit:
-		return liquidityPoolDepositEvents(tx, opIndex, op)
+		return ttp.liquidityPoolDepositEvents(tx, opIndex, op)
 	case xdr.OperationTypeLiquidityPoolWithdraw:
-		return liquidityPoolWithdrawEvents(tx, opIndex, op)
+		return ttp.liquidityPoolWithdrawEvents(tx, opIndex, op)
 	case xdr.OperationTypeManageBuyOffer:
-		return manageBuyOfferEvents(tx, opIndex, op, opResult)
+		return ttp.manageBuyOfferEvents(tx, opIndex, op, opResult)
 	case xdr.OperationTypeManageSellOffer:
-		return manageSellOfferEvents(tx, opIndex, op, opResult)
+		return ttp.manageSellOfferEvents(tx, opIndex, op, opResult)
 	case xdr.OperationTypeCreatePassiveSellOffer:
-		return createPassiveSellOfferEvents(tx, opIndex, op, opResult)
+		return ttp.createPassiveSellOfferEvents(tx, opIndex, op, opResult)
 	case xdr.OperationTypePathPaymentStrictSend:
-		return pathPaymentStrictSendEvents(tx, opIndex, op, opResult)
+		return ttp.pathPaymentStrictSendEvents(tx, opIndex, op, opResult)
 	case xdr.OperationTypePathPaymentStrictReceive:
-		return pathPaymentStrictReceiveEvents(tx, opIndex, op, opResult)
+		return ttp.pathPaymentStrictReceiveEvents(tx, opIndex, op, opResult)
 	default:
 		return nil, nil
 	}
 }
 
-func generateFeeEvent(tx ingest.LedgerTransaction) ([]*TokenTransferEvent, error) {
+func (ttp *TokenTransferProcessor) generateFeeEvent(tx ingest.LedgerTransaction) ([]*TokenTransferEvent, error) {
 	/*
 		For a feeBump transaction, this will be the outer transaction.
 		FeeAccount() gives the proper "muxed" account that paid the fees.
@@ -169,7 +179,7 @@ func generateFeeEvent(tx ingest.LedgerTransaction) ([]*TokenTransferEvent, error
 }
 
 // Function stubs
-func accountCreateEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation) ([]*TokenTransferEvent, error) {
+func (ttp *TokenTransferProcessor) accountCreateEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation) ([]*TokenTransferEvent, error) {
 	opSrcAcc := operationSourceAccount(tx, op)
 	createAccountOp := op.Body.MustCreateAccountOp()
 	destAcc, amt := createAccountOp.Destination.ToMuxedAccount(), amount.String(createAccountOp.StartingBalance)
@@ -178,7 +188,7 @@ func accountCreateEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Ope
 	return []*TokenTransferEvent{event}, nil // Just one event will be generated
 }
 
-func mergeAccountEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation, result xdr.OperationResult) ([]*TokenTransferEvent, error) {
+func (ttp *TokenTransferProcessor) mergeAccountEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation, result xdr.OperationResult) ([]*TokenTransferEvent, error) {
 	res := result.Tr.MustAccountMergeResult()
 	// If there is no transfer of XLM from source account to destination (i.e src account is empty), then no need to generate a transfer event
 	if res.SourceAccountBalance == nil {
@@ -204,7 +214,7 @@ All operation related functions will call this function instead of directly call
 The only exception to this is clawbackOperation and claimableClawbackOperation.
 Those 2 will call the underlying proto function for clawback
 */
-func mintOrBurnOrTransferEvent(asset xdr.Asset, from addressWrapper, to addressWrapper, amt string, meta *EventMeta) (*TokenTransferEvent, error) {
+func (ttp *TokenTransferProcessor) mintOrBurnOrTransferEvent(asset xdr.Asset, from addressWrapper, to addressWrapper, amt string, meta *EventMeta) (*TokenTransferEvent, error) {
 	var fromAddress, toAddress *addressProto.Address
 	// no need to have a separate flag for transferEvent. if neither burn nor mint, then it is regular transfer
 	var isMintEvent, isBurnEvent bool
@@ -265,7 +275,7 @@ func mintOrBurnOrTransferEvent(asset xdr.Asset, from addressWrapper, to addressW
 	return NewTransferEvent(meta, fromAddress, toAddress, amt, protoAsset), nil
 }
 
-func paymentEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation) ([]*TokenTransferEvent, error) {
+func (ttp *TokenTransferProcessor) paymentEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation) ([]*TokenTransferEvent, error) {
 	paymentOp := op.Body.MustPaymentOp()
 	opSrcAcc := operationSourceAccount(tx, op)
 	destAcc := paymentOp.Destination
@@ -273,14 +283,14 @@ func paymentEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation
 	meta := NewEventMeta(tx, tx.Index-1, &opIndex, nil)
 
 	from, to := addressWrapper{account: &opSrcAcc}, addressWrapper{account: &destAcc}
-	event, err := mintOrBurnOrTransferEvent(paymentOp.Asset, from, to, amt, meta)
+	event, err := ttp.mintOrBurnOrTransferEvent(paymentOp.Asset, from, to, amt, meta)
 	if err != nil {
 		return nil, err
 	}
 	return []*TokenTransferEvent{event}, nil
 }
 
-func createClaimableBalanceEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation, result xdr.OperationResult) ([]*TokenTransferEvent, error) {
+func (ttp *TokenTransferProcessor) createClaimableBalanceEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation, result xdr.OperationResult) ([]*TokenTransferEvent, error) {
 	createCbOp := op.Body.MustCreateClaimableBalanceOp()
 	createCbResult := result.Tr.MustCreateClaimableBalanceResult()
 	opSrcAcc := operationSourceAccount(tx, op)
@@ -288,7 +298,7 @@ func createClaimableBalanceEvents(tx ingest.LedgerTransaction, opIndex uint32, o
 	claimableBalanceId := createCbResult.MustBalanceId()
 
 	from, to := addressWrapper{account: &opSrcAcc}, addressWrapper{claimableBalanceId: &claimableBalanceId}
-	event, err := mintOrBurnOrTransferEvent(createCbOp.Asset, from, to, amount.String(createCbOp.Amount), meta)
+	event, err := ttp.mintOrBurnOrTransferEvent(createCbOp.Asset, from, to, amount.String(createCbOp.Amount), meta)
 	if err != nil {
 		return nil, err
 	}
@@ -345,7 +355,7 @@ func getClaimableBalanceEntriesFromOperationChanges(changeType xdr.LedgerEntryCh
 	return entries, nil
 }
 
-func claimClaimableBalanceEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation) ([]*TokenTransferEvent, error) {
+func (ttp *TokenTransferProcessor) claimClaimableBalanceEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation) ([]*TokenTransferEvent, error) {
 	claimCbOp := op.Body.MustClaimClaimableBalanceOp()
 	cbId := claimCbOp.BalanceId
 
@@ -365,14 +375,14 @@ func claimClaimableBalanceEvents(tx ingest.LedgerTransaction, opIndex uint32, op
 
 	// This is one case where the order is reversed. Money flows from CBid --> sourceAccount of this claimCb operation
 	from, to := addressWrapper{claimableBalanceId: &cbId}, addressWrapper{account: &opSrcAcc}
-	event, err := mintOrBurnOrTransferEvent(cb.Asset, from, to, amount.String(cb.Amount), meta)
+	event, err := ttp.mintOrBurnOrTransferEvent(cb.Asset, from, to, amount.String(cb.Amount), meta)
 	if err != nil {
 		return nil, err
 	}
 	return []*TokenTransferEvent{event}, nil
 }
 
-func clawbackEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation) ([]*TokenTransferEvent, error) {
+func (ttp *TokenTransferProcessor) clawbackEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation) ([]*TokenTransferEvent, error) {
 	clawbackOp := op.Body.MustClawbackOp()
 	meta := NewEventMeta(tx, tx.Index-1, &opIndex, nil)
 
@@ -383,7 +393,7 @@ func clawbackEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operatio
 	return []*TokenTransferEvent{event}, nil
 }
 
-func clawbackClaimableBalanceEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation) ([]*TokenTransferEvent, error) {
+func (ttp *TokenTransferProcessor) clawbackClaimableBalanceEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation) ([]*TokenTransferEvent, error) {
 	clawbackCbOp := op.Body.MustClawbackClaimableBalanceOp()
 	cbId := clawbackCbOp.BalanceId
 
@@ -404,13 +414,13 @@ func clawbackClaimableBalanceEvents(tx ingest.LedgerTransaction, opIndex uint32,
 	return []*TokenTransferEvent{event}, nil
 }
 
-func allowTrustEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation) ([]*TokenTransferEvent, error) {
+func (ttp *TokenTransferProcessor) allowTrustEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation) ([]*TokenTransferEvent, error) {
 	// ?? Should I be checking for generation of liquidity pools and CBs iff the flag is set to false?
 	// isAuthRevoked := op.Body.MustAllowTrustOp().Authorize == 0
 	return generateEventsForRevokedTrustlines(tx, opIndex)
 }
 
-func setTrustLineFlagsEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation) ([]*TokenTransferEvent, error) {
+func (ttp *TokenTransferProcessor) setTrustLineFlagsEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation) ([]*TokenTransferEvent, error) {
 	// ?? Should I be checking for generation of liquidity pools and CBs iff the flag is set to false?
 	// isAuthRevoked := op.Body.MustSetTrustLineFlagsOp().ClearFlags != 0
 	return generateEventsForRevokedTrustlines(tx, opIndex)
@@ -592,7 +602,7 @@ func getImpactedLiquidityPoolEntriesFromOperation(tx ingest.LedgerTransaction, o
 	return entries, nil
 }
 
-func liquidityPoolDepositEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation) ([]*TokenTransferEvent, error) {
+func (ttp *TokenTransferProcessor) liquidityPoolDepositEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation) ([]*TokenTransferEvent, error) {
 	lpDeltas, e := getImpactedLiquidityPoolEntriesFromOperation(tx, opIndex)
 	if e != nil {
 		return nil, e
@@ -624,7 +634,7 @@ func liquidityPoolDepositEvents(tx ingest.LedgerTransaction, opIndex uint32, op 
 	// I am not sure if it is possible for amtA or amtB to be ever 0, for e,g when LpDeposit updates the amount for just 1 asset in an already existing LP
 	// So, out of abundance of caution, I will generate the event only if the amounts are greater than 0
 	if amtA > 0 {
-		event, err := mintOrBurnOrTransferEvent(assetA, from, to, amount.String(amtA), meta)
+		event, err := ttp.mintOrBurnOrTransferEvent(assetA, from, to, amount.String(amtA), meta)
 		if err != nil {
 			return nil, err
 		}
@@ -632,7 +642,7 @@ func liquidityPoolDepositEvents(tx ingest.LedgerTransaction, opIndex uint32, op 
 	}
 
 	if amtB > 0 {
-		event, err := mintOrBurnOrTransferEvent(assetB, from, to, amount.String(amtB), meta)
+		event, err := ttp.mintOrBurnOrTransferEvent(assetB, from, to, amount.String(amtB), meta)
 		if err != nil {
 			return nil, err
 		}
@@ -642,7 +652,7 @@ func liquidityPoolDepositEvents(tx ingest.LedgerTransaction, opIndex uint32, op 
 	return events, nil
 }
 
-func liquidityPoolWithdrawEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation) ([]*TokenTransferEvent, error) {
+func (ttp *TokenTransferProcessor) liquidityPoolWithdrawEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation) ([]*TokenTransferEvent, error) {
 	lpDeltas, e := getImpactedLiquidityPoolEntriesFromOperation(tx, opIndex)
 	if e != nil {
 		return nil, e
@@ -674,7 +684,7 @@ func liquidityPoolWithdrawEvents(tx ingest.LedgerTransaction, opIndex uint32, op
 	// I am not sure if it is possible for amtA or amtB to be ever 0, for e,g when LpDeposit updates the amount for just 1 asset in an already existing LP
 	// So, out of abundance of caution, I will generate the event only if the amounts are greater than 0
 	if amtA > 0 {
-		event, err := mintOrBurnOrTransferEvent(assetA, from, to, amount.String(amtA), meta)
+		event, err := ttp.mintOrBurnOrTransferEvent(assetA, from, to, amount.String(amtA), meta)
 		if err != nil {
 			return nil, err
 		}
@@ -682,7 +692,7 @@ func liquidityPoolWithdrawEvents(tx ingest.LedgerTransaction, opIndex uint32, op
 	}
 
 	if amtB > 0 {
-		event, err := mintOrBurnOrTransferEvent(assetB, from, to, amount.String(amtB), meta)
+		event, err := ttp.mintOrBurnOrTransferEvent(assetB, from, to, amount.String(amtB), meta)
 		if err != nil {
 			return nil, err
 		}
@@ -692,7 +702,7 @@ func liquidityPoolWithdrawEvents(tx ingest.LedgerTransaction, opIndex uint32, op
 	return events, nil
 }
 
-func generateEventsFromClaimAtoms(meta *EventMeta, opSrcAcc xdr.MuxedAccount, claims []xdr.ClaimAtom) ([]*TokenTransferEvent, error) {
+func (ttp *TokenTransferProcessor) generateEventsFromClaimAtoms(meta *EventMeta, opSrcAcc xdr.MuxedAccount, claims []xdr.ClaimAtom) ([]*TokenTransferEvent, error) {
 	var events []*TokenTransferEvent
 	operationSourceAddressWrapper := addressWrapper{account: &opSrcAcc}
 	var sellerAddressWrapper addressWrapper
@@ -708,11 +718,11 @@ func generateEventsFromClaimAtoms(meta *EventMeta, opSrcAcc xdr.MuxedAccount, cl
 
 		}
 
-		ev1, err := mintOrBurnOrTransferEvent(claim.AssetSold(), sellerAddressWrapper, operationSourceAddressWrapper, amount.String(claim.AmountSold()), meta)
+		ev1, err := ttp.mintOrBurnOrTransferEvent(claim.AssetSold(), sellerAddressWrapper, operationSourceAddressWrapper, amount.String(claim.AmountSold()), meta)
 		if err != nil {
 			return nil, err
 		}
-		ev2, err := mintOrBurnOrTransferEvent(claim.AssetBought(), operationSourceAddressWrapper, sellerAddressWrapper, amount.String(claim.AmountBought()), meta)
+		ev2, err := ttp.mintOrBurnOrTransferEvent(claim.AssetBought(), operationSourceAddressWrapper, sellerAddressWrapper, amount.String(claim.AmountBought()), meta)
 		if err != nil {
 			return nil, err
 		}
@@ -723,39 +733,39 @@ func generateEventsFromClaimAtoms(meta *EventMeta, opSrcAcc xdr.MuxedAccount, cl
 	return events, nil
 }
 
-func manageBuyOfferEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation, result xdr.OperationResult) ([]*TokenTransferEvent, error) {
+func (ttp *TokenTransferProcessor) manageBuyOfferEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation, result xdr.OperationResult) ([]*TokenTransferEvent, error) {
 	opSrcAcc := operationSourceAccount(tx, op)
 	offersClaimed := result.Tr.MustManageBuyOfferResult().Success.OffersClaimed
 	if len(offersClaimed) == 0 {
 		return nil, nil
 	}
 	meta := NewEventMeta(tx, tx.Index-1, &opIndex, nil)
-	return generateEventsFromClaimAtoms(meta, opSrcAcc, offersClaimed)
+	return ttp.generateEventsFromClaimAtoms(meta, opSrcAcc, offersClaimed)
 }
 
-func manageSellOfferEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation, result xdr.OperationResult) ([]*TokenTransferEvent, error) {
+func (ttp *TokenTransferProcessor) manageSellOfferEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation, result xdr.OperationResult) ([]*TokenTransferEvent, error) {
 	opSrcAcc := operationSourceAccount(tx, op)
 	offersClaimed := result.Tr.MustManageSellOfferResult().Success.OffersClaimed
 	if len(offersClaimed) == 0 {
 		return nil, nil
 	}
 	meta := NewEventMeta(tx, tx.Index-1, &opIndex, nil)
-	return generateEventsFromClaimAtoms(meta, opSrcAcc, offersClaimed)
+	return ttp.generateEventsFromClaimAtoms(meta, opSrcAcc, offersClaimed)
 }
 
 // EXACTLY SAME as manageSellOfferEvents
-func createPassiveSellOfferEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation, result xdr.OperationResult) ([]*TokenTransferEvent, error) {
-	return manageSellOfferEvents(tx, opIndex, op, result)
+func (ttp *TokenTransferProcessor) createPassiveSellOfferEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation, result xdr.OperationResult) ([]*TokenTransferEvent, error) {
+	return ttp.manageSellOfferEvents(tx, opIndex, op, result)
 }
 
-func pathPaymentStrictSendEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation, result xdr.OperationResult) ([]*TokenTransferEvent, error) {
+func (ttp *TokenTransferProcessor) pathPaymentStrictSendEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation, result xdr.OperationResult) ([]*TokenTransferEvent, error) {
 	meta := NewEventMeta(tx, tx.Index-1, &opIndex, nil)
 	opSrcAcc := operationSourceAccount(tx, op)
 	strictSendOp := op.Body.MustPathPaymentStrictSendOp()
 	strictSendResult := result.Tr.MustPathPaymentStrictSendResult()
 
 	var events []*TokenTransferEvent
-	ev, err := generateEventsFromClaimAtoms(meta, opSrcAcc, strictSendResult.MustSuccess().Offers)
+	ev, err := ttp.generateEventsFromClaimAtoms(meta, opSrcAcc, strictSendResult.MustSuccess().Offers)
 	if err != nil {
 		return nil, err
 	}
@@ -763,7 +773,7 @@ func pathPaymentStrictSendEvents(tx ingest.LedgerTransaction, opIndex uint32, op
 
 	// Generate one final event indicating the amount that the destination received in terms of destination asset
 	from, to := addressWrapper{account: &opSrcAcc}, addressWrapper{account: &strictSendOp.Destination}
-	finalEvent, err := mintOrBurnOrTransferEvent(strictSendOp.DestAsset, from, to, amount.String(strictSendResult.DestAmount()), meta)
+	finalEvent, err := ttp.mintOrBurnOrTransferEvent(strictSendOp.DestAsset, from, to, amount.String(strictSendResult.DestAmount()), meta)
 	if err != nil {
 		return nil, err
 	}
@@ -771,14 +781,14 @@ func pathPaymentStrictSendEvents(tx ingest.LedgerTransaction, opIndex uint32, op
 	return events, nil
 }
 
-func pathPaymentStrictReceiveEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation, result xdr.OperationResult) ([]*TokenTransferEvent, error) {
+func (ttp *TokenTransferProcessor) pathPaymentStrictReceiveEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation, result xdr.OperationResult) ([]*TokenTransferEvent, error) {
 	meta := NewEventMeta(tx, tx.Index-1, &opIndex, nil)
 	opSrcAcc := operationSourceAccount(tx, op)
 	strictReceiveOp := op.Body.MustPathPaymentStrictReceiveOp()
 	strictReceiveResult := result.Tr.MustPathPaymentStrictReceiveResult()
 
 	var events []*TokenTransferEvent
-	ev, err := generateEventsFromClaimAtoms(meta, opSrcAcc, strictReceiveResult.MustSuccess().Offers)
+	ev, err := ttp.generateEventsFromClaimAtoms(meta, opSrcAcc, strictReceiveResult.MustSuccess().Offers)
 	if err != nil {
 		return nil, err
 	}
@@ -786,7 +796,7 @@ func pathPaymentStrictReceiveEvents(tx ingest.LedgerTransaction, opIndex uint32,
 
 	// Generate one final event indicating the amount that the destination received in terms of destination asset
 	from, to := addressWrapper{account: &opSrcAcc}, addressWrapper{account: &strictReceiveOp.Destination}
-	finalEvent, err := mintOrBurnOrTransferEvent(strictReceiveOp.DestAsset, from, to, amount.String(strictReceiveOp.DestAmount), meta)
+	finalEvent, err := ttp.mintOrBurnOrTransferEvent(strictReceiveOp.DestAsset, from, to, amount.String(strictReceiveOp.DestAmount), meta)
 	if err != nil {
 		return nil, err
 	}

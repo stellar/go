@@ -66,7 +66,8 @@ func main() {
 		}
 
 		// Process the ledger to extract token transfer events
-		events, err := token_transfer.ProcessTokenTransferEventsFromLedger(ledger, network.PublicNetworkPassphrase)
+		ttp := token_transfer.NewTokenTransferProcessor(network.PublicNetworkPassphrase)
+		events, err := ttp.ProcessTokenTransferEventsFromLedger(ledger)
 		if err != nil {
 			log.Errorf("Error processing ledger at line %d: %v", lineNum, err)
 			continue // Skip to the next line in case of error
@@ -101,8 +102,9 @@ func readLine(file *os.File) (string, error) {
 func writeEventsToOutput(events []*token_transfer.TokenTransferEvent, outputFile io.Writer) {
 	for _, event := range events {
 		jsonBytes, _ := protojson.MarshalOptions{
-			Multiline: true,
-			Indent:    "  ",
+			Multiline:         true,
+			EmitDefaultValues: true,
+			Indent:            "  ",
 		}.Marshal(event)
 
 		_, err := fmt.Fprintf(outputFile, "### Event Type: %v\n", event.GetEventType())

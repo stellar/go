@@ -328,13 +328,13 @@ type testFixture struct {
 // RunTokenTransferEventTests runs a standard set of tests for token transfer event processing
 func runTokenTransferEventTests(t *testing.T, tests []testFixture) {
 	for _, fixture := range tests {
+		ttp := NewTokenTransferProcessor(someNetworkPassphrase)
 		t.Run(fixture.name, func(t *testing.T) {
-			events, err := ProcessTokenTransferEventsFromOperationAndOperationResult(
+			events, err := ttp.ProcessTokenTransferEventsFromOperationAndOperationResult(
 				fixture.tx,
 				fixture.opIndex,
 				fixture.op,
 				fixture.opResult,
-				someNetworkPassphrase,
 			)
 
 			if fixture.wantErr {
@@ -427,8 +427,9 @@ func TestFeeEvent(t *testing.T) {
 	}
 
 	for _, fixture := range tests {
+		ttp := NewTokenTransferProcessor(someNetworkPassphrase)
 		t.Run(fixture.name, func(t *testing.T) {
-			events, err := ProcessTokenTransferEventsFromTransaction(fixture.tx, someNetworkPassphrase)
+			events, err := ttp.ProcessTokenTransferEventsFromTransaction(fixture.tx)
 			assert.NoError(t, err)
 			assert.Equal(t, len(fixture.expected), len(events))
 			for i := range events {

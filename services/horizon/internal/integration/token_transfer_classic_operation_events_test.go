@@ -144,8 +144,9 @@ func assertBurnEvent(t *testing.T, events []*token_transfer.TokenTransferEvent, 
 func printProtoEvents(events []*token_transfer.TokenTransferEvent) {
 	for _, event := range events {
 		jsonBytes, _ := protojson.MarshalOptions{
-			Multiline: true,
-			Indent:    "  ",
+			Multiline:         true,
+			EmitDefaultValues: true,
+			Indent:            "  ",
 		}.Marshal(event)
 		fmt.Printf("### Event Type : %v\n", event.GetEventType())
 		fmt.Println(string(jsonBytes))
@@ -252,11 +253,12 @@ func TestTrustlineRevocationEvents(t *testing.T) {
 	itest.WaitForLedgerInArchive(30*time.Second, ledgerSeq)
 	ledger := getLedgers(itest, ledgerSeq, ledgerSeq)[ledgerSeq]
 
-	events, err := token_transfer.ProcessTokenTransferEventsFromLedger(ledger, itest.GetPassPhrase())
+	ttp := token_transfer.NewTokenTransferProcessor(itest.GetPassPhrase())
+	events, err := ttp.ProcessTokenTransferEventsFromLedger(ledger)
 	tt.NoError(err)
 
 	t = itest.CurrentTest()
-	//printProtoEvents(events)
+	printProtoEvents(events)
 
 	// 2 operations - 100 stroops per operation
 	assertFeeEvent(t, events, protoAddress(master.Address()), "0.0000200")

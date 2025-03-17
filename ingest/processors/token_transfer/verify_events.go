@@ -153,7 +153,7 @@ func findBalanceDeltasFromEvents(events []*TokenTransferEvent) map[balanceKey]in
 		switch eventType {
 		case "Fee":
 			ev := event.GetFee()
-			address := ev.From.StrKey
+			address := ev.From.Strkey
 			asset := xlmAsset.StringCanonical()
 			amt := int64(amount.MustParse(ev.Amount))
 			// Address' balance reduces by amt in FEE
@@ -161,8 +161,8 @@ func findBalanceDeltasFromEvents(events []*TokenTransferEvent) map[balanceKey]in
 
 		case "Transfer":
 			ev := event.GetTransfer()
-			fromAddress := ev.From.StrKey
-			toAddress := ev.To.StrKey
+			fromAddress := ev.From.Strkey
+			toAddress := ev.To.Strkey
 			amt := int64(amount.MustParse(ev.Amount))
 			asset := event.Asset.ToXdrAsset().StringCanonical()
 			// FromAddress' balance reduces by amt in TRANSFER
@@ -172,7 +172,7 @@ func findBalanceDeltasFromEvents(events []*TokenTransferEvent) map[balanceKey]in
 
 		case "Mint":
 			ev := event.GetMint()
-			toAddress := ev.To.StrKey
+			toAddress := ev.To.Strkey
 			asset := event.Asset.ToXdrAsset().StringCanonical()
 			amt := int64(amount.MustParse(ev.Amount))
 			// ToAddress' balance increases by amt in MINT
@@ -180,7 +180,7 @@ func findBalanceDeltasFromEvents(events []*TokenTransferEvent) map[balanceKey]in
 
 		case "Burn":
 			ev := event.GetBurn()
-			fromAddress := ev.From.StrKey
+			fromAddress := ev.From.Strkey
 			asset := event.Asset.ToXdrAsset().StringCanonical()
 			amt := int64(amount.MustParse(ev.Amount))
 			// FromAddress' balance reduces by amt in BURN
@@ -188,7 +188,7 @@ func findBalanceDeltasFromEvents(events []*TokenTransferEvent) map[balanceKey]in
 
 		case "Clawback":
 			ev := event.GetClawback()
-			fromAddress := ev.From.StrKey
+			fromAddress := ev.From.Strkey
 			asset := event.Asset.ToXdrAsset().StringCanonical()
 			amt := int64(amount.MustParse(ev.Amount))
 			// FromAddress' balance reduces by amt in CLAWBACK
@@ -239,7 +239,8 @@ func mapsEqual(map1, map2 map[balanceKey]int64) bool {
 
 func VerifyTtpOnLedger(ledger xdr.LedgerCloseMeta, passphrase string) bool {
 	changes := getChangesFromLedger(ledger, passphrase)
-	events, err := ProcessTokenTransferEventsFromLedger(ledger, passphrase)
+	ttp := NewTokenTransferProcessor(passphrase)
+	events, err := ttp.ProcessTokenTransferEventsFromLedger(ledger)
 	if err != nil {
 		panic(errors.Wrapf(err, "unable to process token transfer events from ledger"))
 	}

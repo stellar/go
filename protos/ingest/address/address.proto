@@ -9,5 +9,5 @@ especially if we need to add a oneOf for AccountAddress vs MuxedAddress vs Contr
 about all the address types
  */
 message Address {
-  string str_key = 1;
+  string strkey = 1;
 }
