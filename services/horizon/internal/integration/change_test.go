@@ -79,7 +79,7 @@ func TestOneTxOneOperationChanges(t *testing.T) {
 	for _, change := range changes {
 		tt.Equal(change.Transaction.Hash.HexString(), txResp.Hash)
 		tt.Equal(change.Transaction.Ledger.LedgerSequence(), ledgerSeq)
-		tt.Empty(change.Ledger)
+		tt.Equal(change.Ledger.LedgerSequence(), ledgerSeq)
 		tt.Empty(change.LedgerUpgrade)
 	}
 

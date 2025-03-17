@@ -71,23 +71,23 @@ var (
 //     { ScVal{ Sym: ScSymbol("asset_code") } -> ScVal{ Str: ScString(...) } },
 //     { ScVal{ Sym: ScSymbol("issuer") } -> ScVal{ Bytes: ScBytes(...) } }
 //     )}
-func AssetFromContractData(ledgerEntry xdr.LedgerEntry, passphrase string) *xdr.Asset {
+func AssetFromContractData(ledgerEntry xdr.LedgerEntry, passphrase string) (xdr.Asset, bool) {
 	contractData, ok := ledgerEntry.Data.GetContractData()
 	if !ok {
-		return nil
+		return xdr.Asset{}, false
 	}
 	if contractData.Key.Type != xdr.ScValTypeScvLedgerKeyContractInstance {
-		return nil
+		return xdr.Asset{}, false
 	}
 	contractInstanceData, ok := contractData.Val.GetInstance()
 	if !ok || contractInstanceData.Storage == nil {
-		return nil
+		return xdr.Asset{}, false
 	}
 
 	// we don't support asset stats for lumens
 	nativeAssetContractID, err := xdr.MustNewNativeAsset().ContractID(passphrase)
 	if err != nil || (contractData.Contract.ContractId != nil && (*contractData.Contract.ContractId) == nativeAssetContractID) {
-		return nil
+		return xdr.Asset{}, false
 	}
 
 	var assetInfo *xdr.ScVal
@@ -96,83 +96,83 @@ func AssetFromContractData(ledgerEntry xdr.LedgerEntry, passphrase string) *xdr.
 			// clone the map entry to avoid reference to loop iterator
 			mapValXdr, cloneErr := mapEntry.Val.MarshalBinary()
 			if cloneErr != nil {
-				return nil
+				return xdr.Asset{}, false
 			}
 			assetInfo = &xdr.ScVal{}
 			cloneErr = assetInfo.UnmarshalBinary(mapValXdr)
 			if cloneErr != nil {
-				return nil
+				return xdr.Asset{}, false
 			}
 			break
 		}
 	}
 
 	if assetInfo == nil {
-		return nil
+		return xdr.Asset{}, false
 	}
 
 	vecPtr, ok := assetInfo.GetVec()
 	if !ok || vecPtr == nil || len(*vecPtr) != 2 {
-		return nil
+		return xdr.Asset{}, false
 	}
 	vec := *vecPtr
 
 	sym, ok := vec[0].GetSym()
 	if !ok {
-		return nil
+		return xdr.Asset{}, false
 	}
 	switch sym {
 	case "AlphaNum4":
 	case "AlphaNum12":
 	default:
-		return nil
+		return xdr.Asset{}, false
 	}
 
 	var assetCode, assetIssuer string
 	assetMapPtr, ok := vec[1].GetMap()
 	if !ok || assetMapPtr == nil || len(*assetMapPtr) != 2 {
-		return nil
+		return xdr.Asset{}, false
 	}
 	assetMap := *assetMapPtr
 
 	assetCodeEntry, assetIssuerEntry := assetMap[0], assetMap[1]
 	if sym, ok = assetCodeEntry.Key.GetSym(); !ok || sym != assetCodeSym {
-		return nil
+		return xdr.Asset{}, false
 	}
 	assetCodeSc, ok := assetCodeEntry.Val.GetStr()
 	if !ok {
-		return nil
+		return xdr.Asset{}, false
 	}
 	if assetCode = string(assetCodeSc); assetCode == "" {
-		return nil
+		return xdr.Asset{}, false
 	}
 
 	if sym, ok = assetIssuerEntry.Key.GetSym(); !ok || sym != issuerSym {
-		return nil
+		return xdr.Asset{}, false
 	}
 	assetIssuerSc, ok := assetIssuerEntry.Val.GetBytes()
 	if !ok {
-		return nil
+		return xdr.Asset{}, false
 	}
 	assetIssuer, err = strkey.Encode(strkey.VersionByteAccountID, assetIssuerSc)
 	if err != nil {
-		return nil
+		return xdr.Asset{}, false
 	}
 
 	asset, err := xdr.NewCreditAsset(assetCode, assetIssuer)
 	if err != nil {
-		return nil
+		return xdr.Asset{}, false
 	}
 
 	expectedID, err := asset.ContractID(passphrase)
 	if err != nil {
-		return nil
+		return xdr.Asset{}, false
 	}
 	if contractData.Contract.ContractId == nil || expectedID != *(contractData.Contract.ContractId) {
-		return nil
+		return xdr.Asset{}, false
 	}
 
-	return &asset
+	return asset, true
 }
 
 // ContractBalanceFromContractData takes a ledger entry and verifies that the

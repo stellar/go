@@ -56,6 +56,8 @@ func TestStatsChangeProcessor(t *testing.T) {
 		}
 	}
 
+	processor.ProcessEvictions([]xdr.LedgerKey{{}})
+
 	results := processor.GetResults()
 
 	assert.Equal(t, int64(1), results.AccountsCreated)
@@ -95,6 +97,9 @@ func TestStatsChangeProcessor(t *testing.T) {
 	assert.Equal(t, int64(1), results.ContractDataRestored)
 	assert.Equal(t, int64(1), results.TtlRestored)
 
+	assert.Equal(t, int64(1), results.LedgerEntriesEvicted)
+
 	// "+3" for the three entry types (Ttl, Contract Code, and Contract Data) that will have a "restored" change type.
-	assert.Equal(t, len(xdr.LedgerEntryTypeMap)*3+3, len(results.Map()))
+	// "+1" for the ledger entries evicted stat
+	assert.Equal(t, len(xdr.LedgerEntryTypeMap)*3+3+1, len(results.Map()))
 }

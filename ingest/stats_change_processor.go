@@ -57,6 +57,8 @@ type StatsChangeProcessorResults struct {
 	TtlUpdated  int64
 	TtlRemoved  int64
 	TtlRestored int64
+
+	LedgerEntriesEvicted int64
 }
 
 func (p *StatsChangeProcessor) ProcessChange(ctx context.Context, change Change) error {
@@ -194,6 +196,10 @@ func (p *StatsChangeProcessor) ProcessChange(ctx context.Context, change Change)
 	return nil
 }
 
+func (p *StatsChangeProcessor) ProcessEvictions(evictions []xdr.LedgerKey) {
+	p.results.LedgerEntriesEvicted += int64(len(evictions))
+}
+
 func (p *StatsChangeProcessor) GetResults() StatsChangeProcessorResults {
 	return p.results
 }
@@ -242,5 +248,7 @@ func (stats *StatsChangeProcessorResults) Map() map[string]interface{} {
 		"stats_ttl_updated":  stats.TtlUpdated,
 		"stats_ttl_removed":  stats.TtlRemoved,
 		"stats_ttl_restored": stats.TtlRestored,
+
+		"stats_ledger_entries_evicted": stats.LedgerEntriesEvicted,
 	}
 }

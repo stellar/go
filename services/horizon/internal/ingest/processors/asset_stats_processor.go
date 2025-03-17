@@ -4,11 +4,13 @@ import (
 	"context"
 	"database/sql"
 	"encoding/hex"
+	pkgerrors "errors"
 	"fmt"
 	"math/big"
 
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/support/collections/set"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
@@ -23,6 +25,9 @@ type AssetStatsProcessor struct {
 	updatedExpirationEntries map[xdr.Hash][2]uint32
 	ingestFromHistoryArchive bool
 	networkPassphrase        string
+	// possibleEvictedAssetContracts is a list of evicted contracts
+	// that are possibly SACs
+	possibleEvictedAssetContracts set.Set[xdr.Hash]
 }
 
 // NewAssetStatsProcessor constructs a new AssetStatsProcessor instance.
@@ -31,19 +36,39 @@ func NewAssetStatsProcessor(
 	networkPassphrase string,
 	ingestFromHistoryArchive bool,
 	currentLedger uint32,
+	evictedLedgerKeys []xdr.LedgerKey,
 ) *AssetStatsProcessor {
 	p := &AssetStatsProcessor{
-		currentLedger:            currentLedger,
-		assetStatsQ:              assetStatsQ,
-		ingestFromHistoryArchive: ingestFromHistoryArchive,
-		networkPassphrase:        networkPassphrase,
-		assetStatSet:             NewAssetStatSet(),
-		contractDataChanges:      []ingest.Change{},
-		removedExpirationEntries: map[xdr.Hash]uint32{},
-		createdExpirationEntries: map[xdr.Hash]uint32{},
-		updatedExpirationEntries: map[xdr.Hash][2]uint32{},
+		currentLedger:                 currentLedger,
+		assetStatsQ:                   assetStatsQ,
+		ingestFromHistoryArchive:      ingestFromHistoryArchive,
+		networkPassphrase:             networkPassphrase,
+		assetStatSet:                  NewAssetStatSet(),
+		contractDataChanges:           []ingest.Change{},
+		removedExpirationEntries:      map[xdr.Hash]uint32{},
+		createdExpirationEntries:      map[xdr.Hash]uint32{},
+		updatedExpirationEntries:      map[xdr.Hash][2]uint32{},
+		possibleEvictedAssetContracts: findEvictedAssetContractCandidates(evictedLedgerKeys),
 	}
 	return p
+}
+
+func findEvictedAssetContractCandidates(evictedLedgerKeys []xdr.LedgerKey) set.Set[xdr.Hash] {
+	candidates := set.Set[xdr.Hash]{}
+	for _, key := range evictedLedgerKeys {
+		contractData, ok := key.GetContractData()
+		if !ok ||
+			contractData.Durability != xdr.ContractDataDurabilityPersistent ||
+			contractData.Key.Type != xdr.ScValTypeScvLedgerKeyContractInstance {
+			continue
+		}
+		contractID, ok := contractData.Contract.GetContractId()
+		if !ok {
+			continue
+		}
+		candidates.Add(contractID)
+	}
+	return candidates
 }
 
 func (p *AssetStatsProcessor) Name() string {
@@ -74,17 +99,9 @@ func (p *AssetStatsProcessor) ProcessChange(ctx context.Context, change ingest.C
 		if ledgerEntry == nil {
 			ledgerEntry = change.Pre
 		}
-		asset := AssetFromContractData(*ledgerEntry, p.networkPassphrase)
+		_, assetFound := AssetFromContractData(*ledgerEntry, p.networkPassphrase)
 		_, _, balanceFound := ContractBalanceFromContractData(*ledgerEntry, p.networkPassphrase)
-		if asset == nil && !balanceFound {
-			return nil
-		}
-		// We don't need to handle evictions for contract balances because we immediately delete
-		// contract balances upon expiration. So by the time an archived ledger entry is evicted
-		// it will already be deleted from the horizon DB.
-		// However, we do handle evictions if the asset contract itself is evicted. In that
-		// scenario we will omit contract asset stats for that asset in the /assets response.
-		if change.Reason == ingest.LedgerEntryChangeReasonEviction && asset == nil {
+		if !assetFound && !balanceFound {
 			return nil
 		}
 		p.contractDataChanges = append(p.contractDataChanges, change)
@@ -174,7 +191,6 @@ func (p *AssetStatsProcessor) addExpirationChange(change ingest.Change) error {
 }
 
 func (p *AssetStatsProcessor) Commit(ctx context.Context) error {
-
 	contractAssetStatSet := NewContractAssetStatSet(
 		p.assetStatsQ,
 		p.networkPassphrase,
@@ -184,7 +200,7 @@ func (p *AssetStatsProcessor) Commit(ctx context.Context) error {
 		p.currentLedger,
 	)
 	for _, change := range p.contractDataChanges {
-		if err := contractAssetStatSet.AddContractData(ctx, change); err != nil {
+		if err := contractAssetStatSet.AddContractData(change); err != nil {
 			return errors.Wrap(err, "Error ingesting contract data")
 		}
 	}
@@ -292,7 +308,7 @@ func (p *AssetStatsProcessor) updateContractAssetBalanceExpirations(ctx context.
 func IncludeContractIDsInAssetStats(
 	networkPassphrase string,
 	assetStatsDeltas []history.ExpAssetStat,
-	contractToAsset map[xdr.Hash]*xdr.Asset,
+	contractToAsset map[xdr.Hash]xdr.Asset,
 ) ([]history.ExpAssetStat, error) {
 	included := map[xdr.Hash]bool{}
 	// modify the asset stat row to update the contract_id column whenever we encounter a
@@ -304,12 +320,7 @@ func IncludeContractIDsInAssetStats(
 		if err != nil {
 			return nil, errors.Wrap(err, "cannot compute contract id for asset")
 		}
-		if asset, ok := contractToAsset[contractID]; ok && asset == nil {
-			return nil, ingest.NewStateError(fmt.Errorf(
-				"unexpected contract data removal in history archives: %s",
-				hex.EncodeToString(contractID[:]),
-			))
-		} else if ok {
+		if _, ok := contractToAsset[contractID]; ok {
 			assetStatDelta.SetContractID(contractID)
 			included[contractID] = true
 		}
@@ -324,12 +335,6 @@ func IncludeContractIDsInAssetStats(
 	for contractID, asset := range contractToAsset {
 		if included[contractID] {
 			continue
-		}
-		if asset == nil {
-			return nil, ingest.NewStateError(fmt.Errorf(
-				"unexpected contract data removal in history archives: %s",
-				hex.EncodeToString(contractID[:]),
-			))
 		}
 		var assetType xdr.AssetType
 		var assetCode, assetIssuer string
@@ -351,7 +356,7 @@ func IncludeContractIDsInAssetStats(
 func (p *AssetStatsProcessor) updateAssetStats(
 	ctx context.Context,
 	assetStatsDeltas []history.ExpAssetStat,
-	contractToAsset map[xdr.Hash]*xdr.Asset,
+	contractToAsset map[xdr.Hash]xdr.Asset,
 ) error {
 	for _, delta := range assetStatsDeltas {
 		var rowsAffected int64
@@ -378,7 +383,18 @@ func (p *AssetStatsProcessor) updateAssetStats(
 			delta.ContractID = stat.ContractID
 		}
 
-		if asset, ok := contractToAsset[contractID]; ok && asset == nil {
+		if asset, ok := contractToAsset[contractID]; ok {
+			if assetStatFound && stat.ContractID != nil {
+				return ingest.NewStateError(errors.Errorf(
+					"attempting to set contract id %s but row %s already has contract id set: %s",
+					hex.EncodeToString(contractID[:]),
+					asset.String(),
+					hex.EncodeToString((*stat.ContractID)[:]),
+				))
+			}
+			delta.SetContractID(contractID)
+			delete(contractToAsset, contractID)
+		} else if p.possibleEvictedAssetContracts.Contains(contractID) {
 			if assetStatFound && stat.ContractID == nil {
 				return ingest.NewStateError(errors.Errorf(
 					"row has no contract id to remove %s: %s %s %s",
@@ -389,18 +405,8 @@ func (p *AssetStatsProcessor) updateAssetStats(
 				))
 			}
 			delta.ContractID = nil
-		} else if ok {
-			if assetStatFound && stat.ContractID != nil {
-				return ingest.NewStateError(errors.Errorf(
-					"attempting to set contract id %s but row %s already has contract id set: %s",
-					hex.EncodeToString(contractID[:]),
-					asset.String(),
-					hex.EncodeToString((*stat.ContractID)[:]),
-				))
-			}
-			delta.SetContractID(contractID)
+			p.possibleEvictedAssetContracts.Remove(contractID)
 		}
-		delete(contractToAsset, contractID)
 
 		if assetStatNotFound {
 			// Safety checks
@@ -512,98 +518,66 @@ func (p *AssetStatsProcessor) updateAssetStats(
 
 func (p *AssetStatsProcessor) updateContractIDs(
 	ctx context.Context,
-	contractToAsset map[xdr.Hash]*xdr.Asset,
+	contractToAsset map[xdr.Hash]xdr.Asset,
 ) error {
 	for contractID, asset := range contractToAsset {
-		if err := p.updateContractID(ctx, contractID, asset); err != nil {
+		if err := p.setContractID(ctx, contractID, asset); err != nil {
+			return err
+		}
+	}
+
+	for contractID := range p.possibleEvictedAssetContracts {
+		if err := p.removeContractID(ctx, contractID); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-// updateContractID will update the asset stat row for the corresponding asset to either
-// add or remove the given contract id
-func (p *AssetStatsProcessor) updateContractID(
+// setContractID will update the asset stat row for the corresponding asset to assign
+// the given contract id
+func (p *AssetStatsProcessor) setContractID(
 	ctx context.Context,
 	contractID xdr.Hash,
-	asset *xdr.Asset,
+	asset xdr.Asset,
 ) error {
 	var rowsAffected int64
-	// asset is nil so we need to set the contract_id column to NULL
-	if asset == nil {
-		stat, err := p.assetStatsQ.GetAssetStatByContract(ctx, contractID)
-		if err == sql.ErrNoRows {
-			return ingest.NewStateError(errors.Errorf(
-				"row for asset with contract %s is missing",
-				hex.EncodeToString(contractID[:]),
-			))
+
+	var assetType xdr.AssetType
+	var assetCode, assetIssuer string
+	asset.MustExtract(&assetType, &assetCode, &assetIssuer)
+	stat, err := p.assetStatsQ.GetAssetStat(ctx, assetType, assetCode, assetIssuer)
+	if pkgerrors.Is(err, sql.ErrNoRows) {
+		// there is no asset stat for the given asset so we need to create a new row
+		row := history.ExpAssetStat{
+			AssetType:   assetType,
+			AssetCode:   assetCode,
+			AssetIssuer: assetIssuer,
+			Accounts:    history.ExpAssetStatAccounts{},
+			Balances:    newAssetStatBalance().ConvertToHistoryObject(),
 		}
+		row.SetContractID(contractID)
+
+		rowsAffected, err = p.assetStatsQ.InsertAssetStat(ctx, row)
 		if err != nil {
-			return errors.Wrap(err, "error querying asset by contract id")
+			return errors.Wrap(err, "could not insert asset stat")
 		}
-
-		if stat.Accounts.IsZero() {
-			if !stat.Balances.IsZero() {
-				return ingest.NewStateError(errors.Errorf(
-					"asset stat has 0 holders but non zero balance: %s",
-					hex.EncodeToString(contractID[:]),
-				))
-			}
-			// the asset stat is empty so we can remove the row entirely
-			rowsAffected, err = p.assetStatsQ.RemoveAssetStat(ctx,
-				stat.AssetType,
-				stat.AssetCode,
-				stat.AssetIssuer,
-			)
-			if err != nil {
-				return errors.Wrap(err, "could not remove asset stat")
-			}
-		} else {
-			// update the row to set the contract_id column to NULL
-			stat.ContractID = nil
-			rowsAffected, err = p.assetStatsQ.UpdateAssetStat(ctx, stat)
-			if err != nil {
-				return errors.Wrap(err, "could not update asset stat")
-			}
-		}
-	} else { // asset is non nil, so we need to populate the contract_id column
-		var assetType xdr.AssetType
-		var assetCode, assetIssuer string
-		asset.MustExtract(&assetType, &assetCode, &assetIssuer)
-		stat, err := p.assetStatsQ.GetAssetStat(ctx, assetType, assetCode, assetIssuer)
-		if err == sql.ErrNoRows {
-			// there is no asset stat for the given asset so we need to create a new row
-			row := history.ExpAssetStat{
-				AssetType:   assetType,
-				AssetCode:   assetCode,
-				AssetIssuer: assetIssuer,
-				Accounts:    history.ExpAssetStatAccounts{},
-				Balances:    newAssetStatBalance().ConvertToHistoryObject(),
-			}
-			row.SetContractID(contractID)
-
-			rowsAffected, err = p.assetStatsQ.InsertAssetStat(ctx, row)
-			if err != nil {
-				return errors.Wrap(err, "could not insert asset stat")
-			}
-		} else if err != nil {
-			return errors.Wrap(err, "error querying asset by asset code and issuer")
-		} else if dbContractID, ok := stat.GetContractID(); ok {
-			// the asset stat already has a column_id set which is unexpected (the column should be NULL)
-			return ingest.NewStateError(errors.Errorf(
-				"attempting to set contract id %s but row %s already has contract id set: %s",
-				hex.EncodeToString(contractID[:]),
-				asset.String(),
-				hex.EncodeToString(dbContractID[:]),
-			))
-		} else {
-			// update the column_id column
-			stat.SetContractID(contractID)
-			rowsAffected, err = p.assetStatsQ.UpdateAssetStat(ctx, stat)
-			if err != nil {
-				return errors.Wrap(err, "could not update asset stat")
-			}
+	} else if err != nil {
+		return errors.Wrap(err, "error querying asset by asset code and issuer")
+	} else if dbContractID, ok := stat.GetContractID(); ok {
+		// the asset stat already has a column_id set which is unexpected (the column should be NULL)
+		return ingest.NewStateError(errors.Errorf(
+			"attempting to set contract id %s but row %s already has contract id set: %s",
+			hex.EncodeToString(contractID[:]),
+			asset.String(),
+			hex.EncodeToString(dbContractID[:]),
+		))
+	} else {
+		// update the column_id column
+		stat.SetContractID(contractID)
+		rowsAffected, err = p.assetStatsQ.UpdateAssetStat(ctx, stat)
+		if err != nil {
+			return errors.Wrap(err, "could not update asset stat")
 		}
 	}
 
@@ -613,6 +587,60 @@ func (p *AssetStatsProcessor) updateContractID(
 			"%d rows affected (expected exactly 1) when adjusting asset stat for asset: %s",
 			rowsAffected,
 			asset.String(),
+		))
+	}
+	return nil
+}
+
+// removeContractID will update the asset stat row for the corresponding asset to
+// remove the given contract id
+func (p *AssetStatsProcessor) removeContractID(
+	ctx context.Context,
+	contractID xdr.Hash,
+) error {
+	var rowsAffected int64
+	stat, err := p.assetStatsQ.GetAssetStatByContract(ctx, contractID)
+	if pkgerrors.Is(err, sql.ErrNoRows) {
+		// we cannot know for sure if the contract id belongs to a legitimate SAC
+		// so we will assume that if the row is not found then the evicted contract
+		// does not belong to a SAC
+		return nil
+	}
+	if err != nil {
+		return errors.Wrap(err, "error querying asset by contract id")
+	}
+
+	if stat.Accounts.IsZero() {
+		if !stat.Balances.IsZero() {
+			return ingest.NewStateError(errors.Errorf(
+				"asset stat has 0 holders but non zero balance: %s",
+				hex.EncodeToString(contractID[:]),
+			))
+		}
+		// the asset stat is empty so we can remove the row entirely
+		rowsAffected, err = p.assetStatsQ.RemoveAssetStat(ctx,
+			stat.AssetType,
+			stat.AssetCode,
+			stat.AssetIssuer,
+		)
+		if err != nil {
+			return errors.Wrap(err, "could not remove asset stat")
+		}
+	} else {
+		// update the row to set the contract_id column to NULL
+		stat.ContractID = nil
+		rowsAffected, err = p.assetStatsQ.UpdateAssetStat(ctx, stat)
+		if err != nil {
+			return errors.Wrap(err, "could not update asset stat")
+		}
+	}
+
+	if rowsAffected != 1 {
+		// assert that we have updated exactly one row
+		return ingest.NewStateError(errors.Errorf(
+			"%d rows affected (expected exactly 1) when adjusting asset stat for asset: %s",
+			rowsAffected,
+			fmt.Sprintf("%s %s %s", stat.AssetType, stat.AssetCode, stat.AssetIssuer),
 		))
 	}
 	return nil

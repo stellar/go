@@ -307,7 +307,7 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool, checkpointSeque
 	)
 	for i := range contractDataEntries {
 		entry := contractDataEntries[i]
-		if err = contractAssetStatSet.AddContractData(ctx, ingest.Change{
+		if err = contractAssetStatSet.AddContractData(ingest.Change{
 			Type: xdr.LedgerEntryTypeContractData,
 			Post: &entry,
 		}); err != nil {
@@ -443,15 +443,6 @@ func checkAssetStats(
 
 			if contractID, ok := assetStat.GetContractID(); ok {
 				asset := contractToAsset[contractID]
-				if asset == nil {
-					return ingest.NewStateError(
-						fmt.Errorf(
-							"asset %v has contract id %v in db but contract id is not in HAS",
-							key,
-							contractID,
-						),
-					)
-				}
 
 				var assetType xdr.AssetType
 				var code, issuer string
