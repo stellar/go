@@ -39,7 +39,7 @@ func (t *LedgerTransaction) GetFeeChanges() []Change {
 	for i := range changes {
 		changes[i].Reason = LedgerEntryChangeReasonFee
 		changes[i].Transaction = t
-		changes[i].Ledger = t.Ledger
+		changes[i].Ledger = &t.Ledger
 	}
 	return changes
 }
@@ -49,7 +49,7 @@ func (t *LedgerTransaction) getTransactionChanges(ledgerEntryChanges xdr.LedgerE
 	for i := range changes {
 		changes[i].Reason = LedgerEntryChangeReasonTransaction
 		changes[i].Transaction = t
-		changes[i].Ledger = t.Ledger
+		changes[i].Ledger = &t.Ledger
 	}
 	return changes
 }
@@ -182,7 +182,7 @@ func (t *LedgerTransaction) operationChanges(ops []xdr.OperationMeta, index uint
 		changes[i].Reason = LedgerEntryChangeReasonOperation
 		changes[i].Transaction = t
 		changes[i].OperationIndex = index
-		changes[i].Ledger = t.Ledger
+		changes[i].Ledger = &t.Ledger
 	}
 	return changes
 }

@@ -66,7 +66,9 @@ type Change struct {
 	Transaction *LedgerTransaction
 
 	// The LedgerCloseMeta that precipitated the change.
-	Ledger xdr.LedgerCloseMeta
+	// This field is not populated when the Change is obtained from enumerating
+	// ledger entries from a history archive snapshot (e.g. via CheckpointChangeReader).
+	Ledger *xdr.LedgerCloseMeta
 
 	// Information about the upgrade, if the change occurred as part of an upgrade
 	// This field is relevant only when the Reason is LedgerEntryChangeReasonUpgrade

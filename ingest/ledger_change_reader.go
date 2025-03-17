@@ -185,7 +185,7 @@ func (r *LedgerChangeReader) Read() (Change, error) {
 			ledgerUpgrades := r.LedgerTransactionReader.lcm.UpgradesProcessing()
 			for i := range changes {
 				changes[i].Reason = LedgerEntryChangeReasonUpgrade
-				changes[i].Ledger = r.lcm
+				changes[i].Ledger = &r.lcm
 				changes[i].LedgerUpgrade = &ledgerUpgrades[r.upgradeIndex].Upgrade
 			}
 			r.pending = append(r.pending, changes...)
