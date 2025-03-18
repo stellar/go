@@ -2,7 +2,6 @@ package token_transfer
 
 import (
 	"fmt"
-	"github.com/pkg/errors"
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/support/collections/maps"
@@ -195,7 +194,7 @@ func findBalanceDeltasFromEvents(events []*TokenTransferEvent) map[balanceKey]in
 			updateBalanceMap(hashmap, balanceKey{holder: fromAddress, asset: asset}, -amt)
 
 		default:
-			panic(errors.Errorf("unknown event type %s", eventType))
+			panic(fmt.Errorf("unknown event type %s", eventType))
 		}
 	}
 	return hashmap
@@ -206,7 +205,7 @@ func getChangesFromLedger(ledger xdr.LedgerCloseMeta, passphrase string) []inges
 	changes := make([]ingest.Change, 0)
 	defer changeReader.Close()
 	if err != nil {
-		panic(errors.Wrapf(err, "unable to create ledger change reader"))
+		panic(fmt.Errorf("unable to create ledger change reader: %w", err))
 	}
 	for {
 		change, err := changeReader.Read()
@@ -214,7 +213,7 @@ func getChangesFromLedger(ledger xdr.LedgerCloseMeta, passphrase string) []inges
 			break
 		}
 		if err != nil {
-			panic(errors.Wrapf(err, "unable to read from ledger"))
+			panic(fmt.Errorf("unable to read from ledger: %w", err))
 		}
 		changes = append(changes, change)
 	}
@@ -242,7 +241,7 @@ func VerifyEvents(ledger xdr.LedgerCloseMeta, passphrase string) bool {
 	ttp := NewEventsProcessor(passphrase)
 	events, err := ttp.EventsFromLedger(ledger)
 	if err != nil {
-		panic(errors.Wrapf(err, "unable to process token transfer events from ledger"))
+		panic(fmt.Errorf("unable to process token transfer events from ledger: %w", err))
 	}
 
 	changesMap := findBalanceDeltasFromChanges(changes)

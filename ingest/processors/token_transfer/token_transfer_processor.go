@@ -1,8 +1,8 @@
 package token_transfer
 
 import (
+	"errors"
 	"fmt"
-	"github.com/pkg/errors"
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/ingest"
 	assetProto "github.com/stellar/go/ingest/asset"
@@ -55,7 +55,7 @@ func (p *EventsProcessor) EventsFromLedger(lcm xdr.LedgerCloseMeta) ([]*TokenTra
 	var events []*TokenTransferEvent
 	txReader, err := ingest.NewLedgerTransactionReaderFromLedgerCloseMeta(p.networkPassphrase, lcm)
 	if err != nil {
-		return nil, errors.Wrap(err, "error creating transaction reader")
+		return nil, fmt.Errorf("error creating transaction reader: %w", err)
 	}
 
 	for {
@@ -66,11 +66,11 @@ func (p *EventsProcessor) EventsFromLedger(lcm xdr.LedgerCloseMeta) ([]*TokenTra
 			break
 		}
 		if err != nil {
-			return nil, errors.Wrap(err, "error reading transaction")
+			return nil, fmt.Errorf("error reading transaction: %w", err)
 		}
 		txEvents, err = p.EventsFromTransaction(tx)
 		if err != nil {
-			return nil, errors.Wrap(err, "error processing token transfer events from transaction")
+			return nil, fmt.Errorf("error processing token transfer events from transaction: %w", err)
 		}
 		events = append(events, txEvents...)
 	}
@@ -87,7 +87,7 @@ func (p *EventsProcessor) EventsFromTransaction(tx ingest.LedgerTransaction) ([]
 	var events []*TokenTransferEvent
 	feeEvents, err := p.generateFeeEvent(tx)
 	if err != nil {
-		return nil, errors.Wrap(err, "error generating fee event")
+		return nil, fmt.Errorf("error generating fee event: %w", err)
 	}
 	events = append(events, feeEvents...)
 
@@ -106,7 +106,7 @@ func (p *EventsProcessor) EventsFromTransaction(tx ingest.LedgerTransaction) ([]
 		opEvents, err := p.EventsFromOperation(tx, uint32(i), op, opResult)
 		if err != nil {
 			return nil,
-				errors.Wrapf(err, "error processing token transfer events from operation, index: %d,  %s", i, op.Body.Type.String())
+				fmt.Errorf("error processing token transfer events from operation, index: %d, %s: %w", i, op.Body.Type.String(), err)
 		}
 
 		events = append(events, opEvents...)
@@ -170,13 +170,30 @@ func (p *EventsProcessor) EventsFromOperation(tx ingest.LedgerTransaction, opInd
 		return nil, err
 	}
 
+	// DO not run this reconciliation check for ledgers with protocol version >= 8 or if operation is Inflation
+	if tx.Ledger.ProtocolVersion() >= 8 {
+		return events, nil
+	}
+
 	// Run reconciliation for all operations except Inflation, InvokeHostFunction, and default cases
 	// which are already returned above
-	reconciliationEvents, err := p.generateXlmReconciliationEvents(tx, opIndex, op, events)
+	reconciliationEvent, err := p.generateXlmReconciliationEvents(tx, opIndex, op, events)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error generating reconciliation events")
+		return nil, fmt.Errorf("error generating reconciliation events: %w", err)
 	}
-	events = append(events, reconciliationEvents...)
+
+	if reconciliationEvent != nil {
+		if reconciliationEvent.GetMint() != nil {
+			// If it is a mint, put the mint event before the list of other events for this operation
+			events = append([]*TokenTransferEvent{reconciliationEvent}, events...)
+		} else if reconciliationEvent.GetBurn() != nil {
+			// If it is a burn, put the burn event at the end of the list of other events for this operation
+			events = append(events, reconciliationEvent)
+		} else {
+			return nil, fmt.Errorf("invalid reconciliation event type: %v. reconciliation event type can be only mint or burn", reconciliationEvent.GetEventType())
+		}
+	}
+
 	return events, nil
 }
 
@@ -258,7 +275,7 @@ func (p *EventsProcessor) generateEventMeta(tx ingest.LedgerTransaction, opIndex
 	// Update the meta to always have contractId of the asset
 	contractId, err := asset.ContractID(p.networkPassphrase)
 	if err != nil {
-		panic(errors.Wrapf(err, "Unable to generate ContractId from Asset:%v", asset.StringCanonical()))
+		panic(fmt.Errorf("unable to generate ContractId from Asset:%v: %w", asset.StringCanonical(), err))
 	}
 	contractAddress := strkey.MustEncode(strkey.VersionByteContract, contractId[:])
 	return NewEventMetaFromTx(tx, opIndex, contractAddress)
@@ -349,7 +366,7 @@ func possibleClaimableBalanceIdsFromRevocation(lpEntry liquidityPoolEntryDelta, 
 	for _, asset := range []xdr.Asset{lpEntry.assetA, lpEntry.assetB} {
 		cbId, err := ClaimableBalanceIdFromRevocation(lpId, asset, seqNum, txSrcAccount, opIndex)
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to generate claimable balance id from LiquidityPoolId: %v, for asset: %v", lpIdToStrkey(lpId), asset.String())
+			return nil, fmt.Errorf("failed to generate claimable balance id from LiquidityPoolId: %v, for asset: %v: %w", lpIdToStrkey(lpId), asset.String(), err)
 		}
 		possibleClaimableBalanceIds = append(possibleClaimableBalanceIds, cbId)
 	}
@@ -810,16 +827,14 @@ For more details, on why this is needed, refer - https://github.com/stellar/stel
 
 The maybeGenerateMintOrBurnEvents function takes in an account and an asset, but in reality, this will only be called for operationSourceAccount and strictly for XLM
 */
-func (p *EventsProcessor) maybeGenerateMintOrBurnEventsForReconciliation(tx ingest.LedgerTransaction, opIndex uint32, changesMap, eventsMap map[balanceKey]int64, account xdr.MuxedAccount, asset xdr.Asset) []*TokenTransferEvent {
-	var events []*TokenTransferEvent
-
+func (p *EventsProcessor) maybeGenerateMintOrBurnEventsForReconciliation(tx ingest.LedgerTransaction, opIndex uint32, changesMap, eventsMap map[balanceKey]int64, account xdr.MuxedAccount, asset xdr.Asset) *TokenTransferEvent {
 	accountStr := account.ToAccountId().Address()
 	// Create the balance key for this account and XLM asset
 	key := balanceKey{holder: accountStr, asset: asset.StringCanonical()}
 
 	// Get the balance changes from both maps
-	changesBalance, existsInChanges := changesMap[key]
-	eventsBalance, existsInEvents := eventsMap[key]
+	changesBalance := changesMap[key]
+	eventsBalance := eventsMap[key]
 
 	/*
 		Highlighting all possible scenarios:
@@ -871,53 +886,37 @@ func (p *EventsProcessor) maybeGenerateMintOrBurnEventsForReconciliation(tx inge
 
 	*/
 
-	// Calculate the difference
-	var diff int64
-	if existsInChanges && existsInEvents {
-		// Both maps have entries for this account/asset
-		diff = changesBalance - eventsBalance
-	} else if existsInChanges {
-		// Only in changes map, not in events map
-		diff = changesBalance
-	} else if existsInEvents {
-		// Only in events map, not in changes map
-		diff = -eventsBalance
-	} else {
-		// Not in either map, no difference
-		return events
-	}
+	// Both maps have entries for this account/asset
+	diff := changesBalance - eventsBalance
+	// Not in either map, no difference
 
-	// If no difference, return empty events list
+	// If no difference, no mint or burn needs to be emitted
 	if diff == 0 {
-		return events
+		return nil
 	}
 
+	// There will only be one event - either a mint or burn that will need to be generated.
+	var mintOrBurnEvent *TokenTransferEvent
 	meta := p.generateEventMeta(tx, &opIndex, asset)
 	protoAsset := assetProto.NewProtoAsset(asset)
 
 	// Generate appropriate event based on the difference
 	if diff > 0 {
 		// changesMap shows more XLM than eventsMap - need to MINT
-		mintEvent := NewMintEvent(meta, accountStr, amount.String64Raw(xdr.Int64(diff)), protoAsset)
-		events = append(events, mintEvent)
+		mintOrBurnEvent = NewMintEvent(meta, accountStr, amount.String64Raw(xdr.Int64(diff)), protoAsset)
 	} else {
 		// changesMap shows less XLM than eventsMap - need to BURN
-		burnEvent := NewBurnEvent(meta, accountStr, amount.String64Raw(xdr.Int64(-diff)), protoAsset)
-		events = append(events, burnEvent)
+		mintOrBurnEvent = NewBurnEvent(meta, accountStr, amount.String64Raw(xdr.Int64(-diff)), protoAsset)
 	}
 
-	return events
+	return mintOrBurnEvent
 }
 
-func (p *EventsProcessor) generateXlmReconciliationEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation, operationEvents []*TokenTransferEvent) ([]*TokenTransferEvent, error) {
-	// DO not run this reconciliation check for ledgers > 8 or if operation is Inflation
-	if tx.Ledger.ProtocolVersion() > 8 {
-		return nil, nil
-	}
+func (p *EventsProcessor) generateXlmReconciliationEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation, operationEvents []*TokenTransferEvent) (*TokenTransferEvent, error) {
 
 	operationChanges, err := tx.GetOperationChanges(opIndex)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to get operation changes for operation Index: %v", opIndex)
+		return nil, fmt.Errorf("failed to get operation changes for operation Index: %v: %w", opIndex, err)
 	}
 	changesMap := findBalanceDeltasFromChanges(operationChanges)
 	eventsMap := findBalanceDeltasFromEvents(operationEvents)

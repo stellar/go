@@ -3,7 +3,6 @@ package token_transfer
 import (
 	"crypto/sha256"
 	"fmt"
-	"github.com/pkg/errors"
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/xdr"
 )
@@ -34,7 +33,7 @@ func ClaimableBalanceIdFromRevocation(liquidityPoolId xdr.PoolId, asset xdr.Asse
 	}
 	binaryDump, e := preImageId.MarshalBinary()
 	if e != nil {
-		return xdr.ClaimableBalanceId{}, errors.Wrapf(e, "Failed to convert HashIdPreimage to claimable balanceId")
+		return xdr.ClaimableBalanceId{}, fmt.Errorf("failed to convert HashIdPreimage to claimable balanceId:%w", e)
 	}
 	sha256hash := xdr.Hash(sha256.Sum256(binaryDump))
 	cbId := xdr.ClaimableBalanceId{
