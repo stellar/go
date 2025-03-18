@@ -2,6 +2,8 @@ package token_transfer
 
 import (
 	"crypto/sha256"
+	"fmt"
+	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
@@ -40,4 +42,73 @@ func ClaimableBalanceIdFromRevocation(liquidityPoolId xdr.PoolId, asset xdr.Asse
 		V0:   &sha256hash,
 	}
 	return cbId, nil
+}
+
+// Helper functions
+func operationSourceAccount(tx ingest.LedgerTransaction, op xdr.Operation) xdr.MuxedAccount {
+	acc := op.SourceAccount
+	if acc != nil {
+		return *acc
+	}
+	res := tx.Envelope.SourceAccount()
+	return res
+}
+
+// Even though these functions simply call the corresponding proto, these are helpful to reduce clutter when being used in the unit test
+// otherwise the entire imported path alias needs to be added and it is distracting
+func protoAddressFromAccount(account xdr.MuxedAccount) string {
+	return account.ToAccountId().Address()
+}
+
+func protoAddressFromLpHash(lpId xdr.PoolId) string {
+	return xdr.Hash(lpId).HexString()
+}
+
+func protoAddressFromClaimableBalanceId(cb xdr.ClaimableBalanceId) string {
+	return cb.MustV0().HexString()
+}
+
+// TODO convert to strkey for LpId
+func lpIdToStrkey(lpId xdr.PoolId) string {
+	return xdr.Hash(lpId).HexString()
+}
+
+// TODO convert to strkey for CbId
+func cbIdToStrkey(cbId xdr.ClaimableBalanceId) string {
+	return cbId.MustV0().HexString()
+}
+
+// This operation is used to only find CB entries that are either created or deleted, not updated
+func getClaimableBalanceEntriesFromOperationChanges(changeType xdr.LedgerEntryChangeType, tx ingest.LedgerTransaction, opIndex uint32) ([]xdr.ClaimableBalanceEntry, error) {
+	if changeType == xdr.LedgerEntryChangeTypeLedgerEntryUpdated {
+		return nil, fmt.Errorf("LEDGER_ENTRY_UPDATED is not a valid filter")
+	}
+
+	changes, err := tx.GetOperationChanges(opIndex)
+	if err != nil {
+		return nil, err
+	}
+
+	var entries []xdr.ClaimableBalanceEntry
+	/*
+		This function is expected to be called only to get details of newly created claimable balance
+		(for e.g as a result of allowTrust or setTrustlineFlags  operations)
+		or claimable balances that are be deleted
+		(for e.g due to clawback claimable balance operation)
+	*/
+	var cb xdr.ClaimableBalanceEntry
+	for _, change := range changes {
+		if change.Type != xdr.LedgerEntryTypeClaimableBalance || change.LedgerEntryChangeType() != changeType {
+			continue
+		}
+		if change.Pre != nil {
+			cb = change.Pre.Data.MustClaimableBalance()
+			entries = append(entries, cb)
+		} else if change.Post != nil {
+			cb = change.Post.Data.MustClaimableBalance()
+			entries = append(entries, cb)
+		}
+	}
+
+	return entries, nil
 }

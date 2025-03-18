@@ -2,14 +2,11 @@ package token_transfer
 
 import (
 	"github.com/stellar/go/ingest"
-	addressProto "github.com/stellar/go/ingest/address"
 	assetProto "github.com/stellar/go/ingest/asset"
-	"time"
-
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-func NewTransferEvent(meta *EventMeta, from, to *addressProto.Address, amount string, token *assetProto.Asset) *TokenTransferEvent {
+func NewTransferEvent(meta *EventMeta, from, to string, amount string, token *assetProto.Asset) *TokenTransferEvent {
 	return &TokenTransferEvent{
 		Meta:  meta,
 		Asset: token,
@@ -23,7 +20,7 @@ func NewTransferEvent(meta *EventMeta, from, to *addressProto.Address, amount st
 	}
 }
 
-func NewMintEvent(meta *EventMeta, to *addressProto.Address, amount string, token *assetProto.Asset) *TokenTransferEvent {
+func NewMintEvent(meta *EventMeta, to string, amount string, token *assetProto.Asset) *TokenTransferEvent {
 	return &TokenTransferEvent{
 		Meta:  meta,
 		Asset: token,
@@ -36,7 +33,7 @@ func NewMintEvent(meta *EventMeta, to *addressProto.Address, amount string, toke
 	}
 }
 
-func NewBurnEvent(meta *EventMeta, from *addressProto.Address, amount string, token *assetProto.Asset) *TokenTransferEvent {
+func NewBurnEvent(meta *EventMeta, from string, amount string, token *assetProto.Asset) *TokenTransferEvent {
 	return &TokenTransferEvent{
 		Meta:  meta,
 		Asset: token,
@@ -49,7 +46,7 @@ func NewBurnEvent(meta *EventMeta, from *addressProto.Address, amount string, to
 	}
 }
 
-func NewClawbackEvent(meta *EventMeta, from *addressProto.Address, amount string, token *assetProto.Asset) *TokenTransferEvent {
+func NewClawbackEvent(meta *EventMeta, from string, amount string, token *assetProto.Asset) *TokenTransferEvent {
 	return &TokenTransferEvent{
 		Meta:  meta,
 		Asset: token,
@@ -62,15 +59,10 @@ func NewClawbackEvent(meta *EventMeta, from *addressProto.Address, amount string
 	}
 }
 
-func NewFeeEvent(ledgerSequence uint32, closedAt time.Time, txHash string, transactionIndex uint32, from *addressProto.Address, amount string) *TokenTransferEvent {
+func NewFeeEvent(meta *EventMeta, from string, amount string, token *assetProto.Asset) *TokenTransferEvent {
 	return &TokenTransferEvent{
-		Meta: &EventMeta{
-			LedgerSequence:   ledgerSequence,
-			ClosedAt:         timestamppb.New(closedAt),
-			TxHash:           txHash,
-			TransactionIndex: transactionIndex,
-		},
-		Asset: assetProto.NewNativeAsset(),
+		Meta:  meta,
+		Asset: token,
 		Event: &TokenTransferEvent_Fee{
 			Fee: &Fee{
 				From:   from,
@@ -80,12 +72,12 @@ func NewFeeEvent(ledgerSequence uint32, closedAt time.Time, txHash string, trans
 	}
 }
 
-func NewEventMeta(tx ingest.LedgerTransaction, transactionIndex uint32, operationIndex *uint32, contractAddress *addressProto.Address) *EventMeta {
+func NewEventMetaFromTx(tx ingest.LedgerTransaction, operationIndex *uint32, contractAddress string) *EventMeta {
 	return &EventMeta{
 		LedgerSequence:   tx.Ledger.LedgerSequence(),
 		ClosedAt:         timestamppb.New(tx.Ledger.ClosedAt()),
 		TxHash:           tx.Hash.HexString(),
-		TransactionIndex: transactionIndex,
+		TransactionIndex: tx.Index - 1,
 		OperationIndex:   operationIndex,
 		ContractAddress:  contractAddress,
 	}

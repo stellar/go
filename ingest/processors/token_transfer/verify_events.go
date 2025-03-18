@@ -153,17 +153,17 @@ func findBalanceDeltasFromEvents(events []*TokenTransferEvent) map[balanceKey]in
 		switch eventType {
 		case "Fee":
 			ev := event.GetFee()
-			address := ev.From.Strkey
+			address := ev.From
 			asset := xlmAsset.StringCanonical()
-			amt := int64(amount.MustParse(ev.Amount))
+			amt := amount.MustParseInt64Raw(ev.Amount)
 			// Address' balance reduces by amt in FEE
 			updateBalanceMap(hashmap, balanceKey{holder: address, asset: asset}, -amt)
 
 		case "Transfer":
 			ev := event.GetTransfer()
-			fromAddress := ev.From.Strkey
-			toAddress := ev.To.Strkey
-			amt := int64(amount.MustParse(ev.Amount))
+			fromAddress := ev.From
+			toAddress := ev.To
+			amt := amount.MustParseInt64Raw(ev.Amount)
 			asset := event.Asset.ToXdrAsset().StringCanonical()
 			// FromAddress' balance reduces by amt in TRANSFER
 			updateBalanceMap(hashmap, balanceKey{holder: fromAddress, asset: asset}, -amt)
@@ -172,25 +172,25 @@ func findBalanceDeltasFromEvents(events []*TokenTransferEvent) map[balanceKey]in
 
 		case "Mint":
 			ev := event.GetMint()
-			toAddress := ev.To.Strkey
+			toAddress := ev.To
 			asset := event.Asset.ToXdrAsset().StringCanonical()
-			amt := int64(amount.MustParse(ev.Amount))
+			amt := amount.MustParseInt64Raw(ev.Amount)
 			// ToAddress' balance increases by amt in MINT
 			updateBalanceMap(hashmap, balanceKey{holder: toAddress, asset: asset}, amt)
 
 		case "Burn":
 			ev := event.GetBurn()
-			fromAddress := ev.From.Strkey
+			fromAddress := ev.From
 			asset := event.Asset.ToXdrAsset().StringCanonical()
-			amt := int64(amount.MustParse(ev.Amount))
+			amt := amount.MustParseInt64Raw(ev.Amount)
 			// FromAddress' balance reduces by amt in BURN
 			updateBalanceMap(hashmap, balanceKey{holder: fromAddress, asset: asset}, -amt)
 
 		case "Clawback":
 			ev := event.GetClawback()
-			fromAddress := ev.From.Strkey
+			fromAddress := ev.From
 			asset := event.Asset.ToXdrAsset().StringCanonical()
-			amt := int64(amount.MustParse(ev.Amount))
+			amt := amount.MustParseInt64Raw(ev.Amount)
 			// FromAddress' balance reduces by amt in CLAWBACK
 			updateBalanceMap(hashmap, balanceKey{holder: fromAddress, asset: asset}, -amt)
 

@@ -1,7 +1,6 @@
 package token_transfer
 
 import (
-	addressProto "github.com/stellar/go/ingest/address"
 	assetProto "github.com/stellar/go/ingest/asset"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/proto"
@@ -10,8 +9,8 @@ import (
 	"time"
 )
 
-func newTestAddress() *addressProto.Address {
-	return &addressProto.Address{}
+func newTestAddress() string {
+	return "someString"
 }
 
 func newTestAsset() *assetProto.Asset {
@@ -39,13 +38,13 @@ func TestEventSerialization(t *testing.T) {
 		// test fixtureName
 		fixtureName string
 		// Setup the test fixture
-		fixtureSetupFn func() (*TokenTransferEvent, *EventMeta, *assetProto.Asset, *addressProto.Address, string)
+		fixtureSetupFn func() (*TokenTransferEvent, *EventMeta, *assetProto.Asset, string, string)
 		// Function to assert to see if data matches
 		assertFn func(event *TokenTransferEvent) proto.Message
 	}{
 		{
 			fixtureName: "Transfer",
-			fixtureSetupFn: func() (*TokenTransferEvent, *EventMeta, *assetProto.Asset, *addressProto.Address, string) {
+			fixtureSetupFn: func() (*TokenTransferEvent, *EventMeta, *assetProto.Asset, string, string) {
 				from := newTestAddress()
 				to := newTestAddress()
 				amount := "1000"
@@ -60,7 +59,7 @@ func TestEventSerialization(t *testing.T) {
 		},
 		{
 			fixtureName: "Mint",
-			fixtureSetupFn: func() (*TokenTransferEvent, *EventMeta, *assetProto.Asset, *addressProto.Address, string) {
+			fixtureSetupFn: func() (*TokenTransferEvent, *EventMeta, *assetProto.Asset, string, string) {
 				to := newTestAddress()
 				amount := "500"
 				meta := newTestEventMeta()
@@ -74,7 +73,7 @@ func TestEventSerialization(t *testing.T) {
 		},
 		{
 			fixtureName: "Burn",
-			fixtureSetupFn: func() (*TokenTransferEvent, *EventMeta, *assetProto.Asset, *addressProto.Address, string) {
+			fixtureSetupFn: func() (*TokenTransferEvent, *EventMeta, *assetProto.Asset, string, string) {
 				from := newTestAddress()
 				amount := "200"
 				meta := newTestEventMeta()
@@ -88,7 +87,7 @@ func TestEventSerialization(t *testing.T) {
 		},
 		{
 			fixtureName: "Clawback",
-			fixtureSetupFn: func() (*TokenTransferEvent, *EventMeta, *assetProto.Asset, *addressProto.Address, string) {
+			fixtureSetupFn: func() (*TokenTransferEvent, *EventMeta, *assetProto.Asset, string, string) {
 				from := newTestAddress()
 				amount := "300"
 				meta := newTestEventMeta()
@@ -102,11 +101,12 @@ func TestEventSerialization(t *testing.T) {
 		},
 		{
 			fixtureName: "Fee",
-			fixtureSetupFn: func() (*TokenTransferEvent, *EventMeta, *assetProto.Asset, *addressProto.Address, string) {
+			fixtureSetupFn: func() (*TokenTransferEvent, *EventMeta, *assetProto.Asset, string, string) {
 				from := newTestAddress()
 				amount := "50"
-				event := NewFeeEvent(12345, time.Now(), "abc123xyz", 0, from, amount)
-				return event, nil, assetProto.NewNativeAsset(), from, amount // No meta for Fee event
+				meta := newTestEventMeta()
+				event := NewFeeEvent(meta, from, amount, xlmProtoAsset)
+				return event, nil, xlmProtoAsset, from, amount // No meta for Fee event
 			},
 			assertFn: func(event *TokenTransferEvent) proto.Message {
 				return event.GetFee()

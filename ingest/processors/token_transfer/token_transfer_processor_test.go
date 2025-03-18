@@ -1,9 +1,10 @@
 package token_transfer
 
 import (
+	"github.com/stellar/go/amount"
 	"github.com/stellar/go/ingest"
-	addressProto "github.com/stellar/go/ingest/address"
 	assetProto "github.com/stellar/go/ingest/asset"
+	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -23,14 +24,11 @@ var (
 	muxedAccountA, _ = xdr.MuxedAccountFromAccountId(accountA.Address(), memoA)
 	muxedAccountB, _ = xdr.MuxedAccountFromAccountId(accountB.Address(), memoB)
 
-	oneUnit         = xdr.Int64(1e7)
-	twoUnits        = 2 * oneUnit
-	threeUnits      = 3 * oneUnit
-	fiveUnits       = 5 * oneUnit
-	sixUnits        = 6 * oneUnit
-	tenUnits        = 10 * oneUnit
-	hundredUnits    = 100 * oneUnit
-	hundredUnitsStr = "100.0000000"
+	oneUnit = xdr.Int64(1e7)
+
+	unitsToStr = func(v xdr.Int64) string {
+		return amount.String64Raw(v)
+	}
 
 	usdcIssuer     = "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN"
 	usdcAccount    = xdr.MustMuxedAddress(usdcIssuer)
@@ -121,12 +119,16 @@ var (
 	}
 
 	someOperationIndex = uint32(0)
-	expectedEventMeta  = NewEventMeta(someTx, 0, &someOperationIndex, nil)
+
+	contractIdFromAsset = func(asset xdr.Asset) string {
+		contractId, _ := asset.ContractID(someNetworkPassphrase)
+		return strkey.MustEncode(strkey.VersionByteContract, contractId[:])
+	}
 
 	// Some global anonymous functions.
-	mintEvent = func(to *addressProto.Address, amt string, asset *assetProto.Asset) *TokenTransferEvent {
+	mintEvent = func(to string, amt string, asset *assetProto.Asset) *TokenTransferEvent {
 		return &TokenTransferEvent{
-			Meta:  expectedEventMeta,
+			Meta:  NewEventMetaFromTx(someTx, &someOperationIndex, contractIdFromAsset(asset.ToXdrAsset())),
 			Asset: asset,
 			Event: &TokenTransferEvent_Mint{
 				Mint: &Mint{
@@ -138,9 +140,9 @@ var (
 
 	}
 
-	burnEvent = func(from *addressProto.Address, amt string, asset *assetProto.Asset) *TokenTransferEvent {
+	burnEvent = func(from string, amt string, asset *assetProto.Asset) *TokenTransferEvent {
 		return &TokenTransferEvent{
-			Meta:  expectedEventMeta,
+			Meta:  NewEventMetaFromTx(someTx, &someOperationIndex, contractIdFromAsset(asset.ToXdrAsset())),
 			Asset: asset,
 			Event: &TokenTransferEvent_Burn{
 				Burn: &Burn{
@@ -152,9 +154,9 @@ var (
 
 	}
 
-	transferEvent = func(from *addressProto.Address, to *addressProto.Address, amt string, asset *assetProto.Asset) *TokenTransferEvent {
+	transferEvent = func(from string, to string, amt string, asset *assetProto.Asset) *TokenTransferEvent {
 		return &TokenTransferEvent{
-			Meta:  expectedEventMeta,
+			Meta:  NewEventMetaFromTx(someTx, &someOperationIndex, contractIdFromAsset(asset.ToXdrAsset())),
 			Asset: asset,
 			Event: &TokenTransferEvent_Transfer{
 				Transfer: &Transfer{
@@ -166,9 +168,9 @@ var (
 		}
 	}
 
-	clawbackEvent = func(from *addressProto.Address, amt string, asset *assetProto.Asset) *TokenTransferEvent {
+	clawbackEvent = func(from string, amt string, asset *assetProto.Asset) *TokenTransferEvent {
 		return &TokenTransferEvent{
-			Meta:  expectedEventMeta,
+			Meta:  NewEventMetaFromTx(someTx, &someOperationIndex, contractIdFromAsset(asset.ToXdrAsset())),
 			Asset: asset,
 			Event: &TokenTransferEvent_Clawback{
 				Clawback: &Clawback{
@@ -403,10 +405,8 @@ func TestFeeEvent(t *testing.T) {
 	}
 
 	expectedFeeEvent := func(feeAmt string) *TokenTransferEvent {
-		return NewFeeEvent(
-			someLcm.LedgerSequence(), someLcm.ClosedAt(), someTxHash.HexString(), 0, protoAddressFromAccount(someTxAccount),
-			feeAmt,
-		)
+		return NewFeeEvent(NewEventMetaFromTx(someTx, nil, contractIdFromAsset(xlmAsset)),
+			protoAddressFromAccount(someTxAccount), feeAmt, xlmProtoAsset)
 	}
 
 	tests := []testFixture{
@@ -414,14 +414,14 @@ func TestFeeEvent(t *testing.T) {
 			name: "Fee Event only - Failed Fee Bump Transaction",
 			tx:   failedTx(xdr.EnvelopeTypeEnvelopeTypeTxFeeBump, oneUnit/1e2), // Fee  = 0.01 XLM
 			expected: []*TokenTransferEvent{
-				expectedFeeEvent("0.0100000"),
+				expectedFeeEvent(unitsToStr(oneUnit / 1e2)),
 			},
 		},
 		{
 			name: "Fee Event only - Failed V1 Transaction",
 			tx:   failedTx(xdr.EnvelopeTypeEnvelopeTypeTx, oneUnit/1e4), // Fee  = 0.0001 XLM ,
 			expected: []*TokenTransferEvent{
-				expectedFeeEvent("0.0001000"),
+				expectedFeeEvent(unitsToStr(oneUnit / 1e4)),
 			},
 		},
 	}
@@ -457,10 +457,10 @@ func TestAccountCreateEvents(t *testing.T) {
 		{
 			name:     "successful account creation",
 			tx:       someTx,
-			op:       createAccountOp(accountA, accountB.ToAccountId(), hundredUnits),
+			op:       createAccountOp(accountA, accountB.ToAccountId(), 100*oneUnit),
 			opResult: xdr.OperationResult{},
 			expected: []*TokenTransferEvent{
-				transferEvent(protoAddressFromAccount(accountA), protoAddressFromAccount(accountB), hundredUnitsStr, xlmProtoAsset),
+				transferEvent(protoAddressFromAccount(accountA), protoAddressFromAccount(accountB), unitsToStr(100*oneUnit), xlmProtoAsset),
 			},
 		},
 	}
@@ -490,6 +490,7 @@ func TestMergeAccountEvents(t *testing.T) {
 		}
 	}
 
+	hundredUnits := 100 * oneUnit
 	tests := []testFixture{
 		{
 			name:     "successful account merge",
@@ -497,7 +498,7 @@ func TestMergeAccountEvents(t *testing.T) {
 			op:       mergeAccountOp,
 			opResult: mergedAccountResultWithBalance(&hundredUnits),
 			expected: []*TokenTransferEvent{
-				transferEvent(protoAddressFromAccount(accountA), protoAddressFromAccount(accountB), hundredUnitsStr, xlmProtoAsset),
+				transferEvent(protoAddressFromAccount(accountA), protoAddressFromAccount(accountB), unitsToStr(hundredUnits), xlmProtoAsset),
 			},
 		},
 		{
@@ -530,65 +531,65 @@ func TestPaymentEvents(t *testing.T) {
 		{
 			name: "G account to G account - XLM transfer",
 			tx:   someTx,
-			op:   paymentOp(&accountA, accountB, xlmAsset, hundredUnits),
+			op:   paymentOp(&accountA, accountB, xlmAsset, 100*oneUnit),
 			expected: []*TokenTransferEvent{
-				transferEvent(protoAddressFromAccount(accountA), protoAddressFromAccount(accountB), hundredUnitsStr, xlmProtoAsset),
+				transferEvent(protoAddressFromAccount(accountA), protoAddressFromAccount(accountB), unitsToStr(100*oneUnit), xlmProtoAsset),
 			},
 		},
 		{
 			name: "G account to G account - USDC transfer",
 			tx:   someTx,
-			op:   paymentOp(&accountA, accountB, usdcAsset, hundredUnits),
+			op:   paymentOp(&accountA, accountB, usdcAsset, 100*oneUnit),
 			expected: []*TokenTransferEvent{
-				transferEvent(protoAddressFromAccount(accountA), protoAddressFromAccount(accountB), hundredUnitsStr, usdcProtoAsset),
+				transferEvent(protoAddressFromAccount(accountA), protoAddressFromAccount(accountB), unitsToStr(100*oneUnit), usdcProtoAsset),
 			},
 		},
 		{
 			name: "G account to M Account - USDC transfer",
 			tx:   someTx,
-			op:   paymentOp(&accountA, muxedAccountB, usdcAsset, hundredUnits),
+			op:   paymentOp(&accountA, muxedAccountB, usdcAsset, 100*oneUnit),
 			expected: []*TokenTransferEvent{
-				transferEvent(protoAddressFromAccount(accountA), protoAddressFromAccount(muxedAccountB), hundredUnitsStr, usdcProtoAsset),
+				transferEvent(protoAddressFromAccount(accountA), protoAddressFromAccount(muxedAccountB), unitsToStr(100*oneUnit), usdcProtoAsset),
 			},
 		},
 		{
 			name: "M account to G Account - USDC transfer",
 			tx:   someTx,
-			op:   paymentOp(&muxedAccountA, accountB, usdcAsset, hundredUnits),
+			op:   paymentOp(&muxedAccountA, accountB, usdcAsset, 100*oneUnit),
 			expected: []*TokenTransferEvent{
-				transferEvent(protoAddressFromAccount(muxedAccountA), protoAddressFromAccount(accountB), hundredUnitsStr, usdcProtoAsset),
+				transferEvent(protoAddressFromAccount(muxedAccountA), protoAddressFromAccount(accountB), unitsToStr(100*oneUnit), usdcProtoAsset),
 			},
 		},
 		{
 			name: "G (issuer account) to G account - USDC mint",
 			tx:   someTx,
-			op:   paymentOp(&usdcAccount, accountB, usdcAsset, hundredUnits),
+			op:   paymentOp(&usdcAccount, accountB, usdcAsset, 100*oneUnit),
 			expected: []*TokenTransferEvent{
-				mintEvent(protoAddressFromAccount(accountB), hundredUnitsStr, usdcProtoAsset),
+				mintEvent(protoAddressFromAccount(accountB), unitsToStr(100*oneUnit), usdcProtoAsset),
 			},
 		},
 		{
 			name: "G (issuer account) to M account - USDC mint",
 			tx:   someTx,
-			op:   paymentOp(&usdcAccount, muxedAccountB, usdcAsset, hundredUnits),
+			op:   paymentOp(&usdcAccount, muxedAccountB, usdcAsset, 100*oneUnit),
 			expected: []*TokenTransferEvent{
-				mintEvent(protoAddressFromAccount(muxedAccountB), hundredUnitsStr, usdcProtoAsset),
+				mintEvent(protoAddressFromAccount(muxedAccountB), unitsToStr(100*oneUnit), usdcProtoAsset),
 			},
 		},
 		{
 			name: "G account to G (issuer account) - USDC burn",
 			tx:   someTx,
-			op:   paymentOp(&accountA, usdcAccount, usdcAsset, hundredUnits),
+			op:   paymentOp(&accountA, usdcAccount, usdcAsset, 100*oneUnit),
 			expected: []*TokenTransferEvent{
-				burnEvent(protoAddressFromAccount(accountA), hundredUnitsStr, usdcProtoAsset),
+				burnEvent(protoAddressFromAccount(accountA), unitsToStr(100*oneUnit), usdcProtoAsset),
 			},
 		},
 		{
 			name: "M account to G (issuer account) - USDC burn",
 			tx:   someTx,
-			op:   paymentOp(&muxedAccountA, usdcAccount, usdcAsset, hundredUnits),
+			op:   paymentOp(&muxedAccountA, usdcAccount, usdcAsset, 100*oneUnit),
 			expected: []*TokenTransferEvent{
-				burnEvent(protoAddressFromAccount(muxedAccountA), hundredUnitsStr, usdcProtoAsset),
+				burnEvent(protoAddressFromAccount(muxedAccountA), unitsToStr(100*oneUnit), usdcProtoAsset),
 			},
 		},
 	}
@@ -650,16 +651,16 @@ func TestManageOfferEvents(t *testing.T) {
 			opResult: manageBuyOfferResult(
 				[]xdr.ClaimAtom{
 					// 1 USDC == 5 XLM
-					generateClaimAtom(xdr.ClaimAtomTypeClaimAtomTypeOrderBook, &accountA, nil, usdcAsset, oneUnit, xlmAsset, fiveUnits),
-					generateClaimAtom(xdr.ClaimAtomTypeClaimAtomTypeOrderBook, &accountB, nil, usdcAsset, twoUnits, xlmAsset, tenUnits),
+					generateClaimAtom(xdr.ClaimAtomTypeClaimAtomTypeOrderBook, &accountA, nil, usdcAsset, oneUnit, xlmAsset, 5*oneUnit),
+					generateClaimAtom(xdr.ClaimAtomTypeClaimAtomTypeOrderBook, &accountB, nil, usdcAsset, 2*oneUnit, xlmAsset, 10*oneUnit),
 				},
 			),
 			expected: []*TokenTransferEvent{
-				transferEvent(protoAddressFromAccount(accountA), protoAddressFromAccount(someTxAccount), "1.0000000", usdcProtoAsset),
-				transferEvent(protoAddressFromAccount(someTxAccount), protoAddressFromAccount(accountA), "5.0000000", xlmProtoAsset),
+				transferEvent(protoAddressFromAccount(accountA), protoAddressFromAccount(someTxAccount), unitsToStr(oneUnit), usdcProtoAsset),
+				transferEvent(protoAddressFromAccount(someTxAccount), protoAddressFromAccount(accountA), unitsToStr(5*oneUnit), xlmProtoAsset),
 
-				transferEvent(protoAddressFromAccount(accountB), protoAddressFromAccount(someTxAccount), "2.0000000", usdcProtoAsset),
-				transferEvent(protoAddressFromAccount(someTxAccount), protoAddressFromAccount(accountB), "10.0000000", xlmProtoAsset),
+				transferEvent(protoAddressFromAccount(accountB), protoAddressFromAccount(someTxAccount), unitsToStr(2*oneUnit), usdcProtoAsset),
+				transferEvent(protoAddressFromAccount(someTxAccount), protoAddressFromAccount(accountB), unitsToStr(10*oneUnit), xlmProtoAsset),
 			},
 		},
 
@@ -670,15 +671,15 @@ func TestManageOfferEvents(t *testing.T) {
 			opResult: manageSellOfferResult(
 				[]xdr.ClaimAtom{
 					// 1 USDC = 3 XLM
-					generateClaimAtom(xdr.ClaimAtomTypeClaimAtomTypeOrderBook, &accountA, nil, xlmAsset, threeUnits, usdcAsset, oneUnit),
-					generateClaimAtom(xdr.ClaimAtomTypeClaimAtomTypeOrderBook, &accountB, nil, xlmAsset, sixUnits, usdcAsset, twoUnits),
+					generateClaimAtom(xdr.ClaimAtomTypeClaimAtomTypeOrderBook, &accountA, nil, xlmAsset, 3*oneUnit, usdcAsset, oneUnit),
+					generateClaimAtom(xdr.ClaimAtomTypeClaimAtomTypeOrderBook, &accountB, nil, xlmAsset, 6*oneUnit, usdcAsset, 2*oneUnit),
 				}),
 			expected: []*TokenTransferEvent{
-				transferEvent(protoAddressFromAccount(accountA), protoAddressFromAccount(someTxAccount), "3.0000000", xlmProtoAsset),
-				transferEvent(protoAddressFromAccount(someTxAccount), protoAddressFromAccount(accountA), "1.0000000", usdcProtoAsset),
+				transferEvent(protoAddressFromAccount(accountA), protoAddressFromAccount(someTxAccount), unitsToStr(3*oneUnit), xlmProtoAsset),
+				transferEvent(protoAddressFromAccount(someTxAccount), protoAddressFromAccount(accountA), unitsToStr(oneUnit), usdcProtoAsset),
 
-				transferEvent(protoAddressFromAccount(accountB), protoAddressFromAccount(someTxAccount), "6.0000000", xlmProtoAsset),
-				transferEvent(protoAddressFromAccount(someTxAccount), protoAddressFromAccount(accountB), "2.0000000", usdcProtoAsset),
+				transferEvent(protoAddressFromAccount(accountB), protoAddressFromAccount(someTxAccount), unitsToStr(6*oneUnit), xlmProtoAsset),
+				transferEvent(protoAddressFromAccount(someTxAccount), protoAddressFromAccount(accountB), unitsToStr(2*oneUnit), usdcProtoAsset),
 			},
 		},
 
@@ -688,15 +689,15 @@ func TestManageOfferEvents(t *testing.T) {
 			op:   manageBuyOfferOp(&usdcAccount), // don't care for anything in xdr.Operation other than source account
 			opResult: manageBuyOfferResult([]xdr.ClaimAtom{
 				// 1 USDC == 5 XLM
-				generateClaimAtom(xdr.ClaimAtomTypeClaimAtomTypeOrderBook, &accountA, nil, usdcAsset, oneUnit, xlmAsset, fiveUnits),
-				generateClaimAtom(xdr.ClaimAtomTypeClaimAtomTypeOrderBook, &accountB, nil, usdcAsset, twoUnits, xlmAsset, tenUnits),
+				generateClaimAtom(xdr.ClaimAtomTypeClaimAtomTypeOrderBook, &accountA, nil, usdcAsset, oneUnit, xlmAsset, 5*oneUnit),
+				generateClaimAtom(xdr.ClaimAtomTypeClaimAtomTypeOrderBook, &accountB, nil, usdcAsset, 2*oneUnit, xlmAsset, 10*oneUnit),
 			}),
 			expected: []*TokenTransferEvent{
-				burnEvent(protoAddressFromAccount(accountA), "1.0000000", usdcProtoAsset),
-				transferEvent(protoAddressFromAccount(usdcAccount), protoAddressFromAccount(accountA), "5.0000000", xlmProtoAsset),
+				burnEvent(protoAddressFromAccount(accountA), unitsToStr(oneUnit), usdcProtoAsset),
+				transferEvent(protoAddressFromAccount(usdcAccount), protoAddressFromAccount(accountA), unitsToStr(5*oneUnit), xlmProtoAsset),
 
-				burnEvent(protoAddressFromAccount(accountB), "2.0000000", usdcProtoAsset),
-				transferEvent(protoAddressFromAccount(usdcAccount), protoAddressFromAccount(accountB), "10.0000000", xlmProtoAsset),
+				burnEvent(protoAddressFromAccount(accountB), unitsToStr(2*oneUnit), usdcProtoAsset),
+				transferEvent(protoAddressFromAccount(usdcAccount), protoAddressFromAccount(accountB), unitsToStr(10*oneUnit), xlmProtoAsset),
 			},
 		},
 
@@ -706,18 +707,18 @@ func TestManageOfferEvents(t *testing.T) {
 			op:   manageSellOfferOp(&usdcAccount), // don't care for anything in xdr.Operation other than source account
 			opResult: manageSellOfferResult([]xdr.ClaimAtom{
 				// 1 USDC = 3 XLM
-				generateClaimAtom(xdr.ClaimAtomTypeClaimAtomTypeOrderBook, &accountA, nil, xlmAsset, threeUnits, usdcAsset, oneUnit),
-				generateClaimAtom(xdr.ClaimAtomTypeClaimAtomTypeOrderBook, &accountB, nil, xlmAsset, sixUnits, usdcAsset, twoUnits),
+				generateClaimAtom(xdr.ClaimAtomTypeClaimAtomTypeOrderBook, &accountA, nil, xlmAsset, 3*oneUnit, usdcAsset, oneUnit),
+				generateClaimAtom(xdr.ClaimAtomTypeClaimAtomTypeOrderBook, &accountB, nil, xlmAsset, 6*oneUnit, usdcAsset, 2*oneUnit),
 
-				//{SellerId: accountA.ToAccountId(), AssetSold: xlmAsset, AssetBought: usdcAsset, AmountSold: threeUnits, AmountBought: oneUnit},
-				//{SellerId: accountB.ToAccountId(), AssetSold: xlmAsset, AssetBought: usdcAsset, AmountSold: sixUnits, AmountBought: twoUnits},
+				//{SellerId: accountA.ToAccountId(), AssetSold: xlmAsset, AssetBought: usdcAsset, AmountSold: 3 * oneUnit, AmountBought: oneUnit},
+				//{SellerId: accountB.ToAccountId(), AssetSold: xlmAsset, AssetBought: usdcAsset, AmountSold: 6 * oneUnit, AmountBought: 2 * oneUnit},
 			}),
 			expected: []*TokenTransferEvent{
-				transferEvent(protoAddressFromAccount(accountA), protoAddressFromAccount(usdcAccount), "3.0000000", xlmProtoAsset),
-				mintEvent(protoAddressFromAccount(accountA), "1.0000000", usdcProtoAsset),
+				transferEvent(protoAddressFromAccount(accountA), protoAddressFromAccount(usdcAccount), unitsToStr(3*oneUnit), xlmProtoAsset),
+				mintEvent(protoAddressFromAccount(accountA), unitsToStr(oneUnit), usdcProtoAsset),
 
-				transferEvent(protoAddressFromAccount(accountB), protoAddressFromAccount(usdcAccount), "6.0000000", xlmProtoAsset),
-				mintEvent(protoAddressFromAccount(accountB), "2.0000000", usdcProtoAsset),
+				transferEvent(protoAddressFromAccount(accountB), protoAddressFromAccount(usdcAccount), unitsToStr(6*oneUnit), xlmProtoAsset),
+				mintEvent(protoAddressFromAccount(accountB), unitsToStr(2*oneUnit), usdcProtoAsset),
 			},
 		},
 	}
@@ -794,45 +795,45 @@ func TestPathPaymentEvents(t *testing.T) {
 			opResult: strictSendResult(
 				[]xdr.ClaimAtom{
 					// source Account sold(minted) some of its BTC and bought XLM from some XLM holder
-					generateClaimAtom(xdr.ClaimAtomTypeClaimAtomTypeOrderBook, &someXlmSellerAccount, nil, xlmAsset, fiveUnits, btcAsset, oneUnit),
+					generateClaimAtom(xdr.ClaimAtomTypeClaimAtomTypeOrderBook, &someXlmSellerAccount, nil, xlmAsset, 5*oneUnit, btcAsset, oneUnit),
 					// source Account then sold XLM and bought ETH from some ETH holder
-					generateClaimAtom(xdr.ClaimAtomTypeClaimAtomTypeOrderBook, &someEthSellerAccount, nil, ethAsset, twoUnits, xlmAsset, tenUnits),
+					generateClaimAtom(xdr.ClaimAtomTypeClaimAtomTypeOrderBook, &someEthSellerAccount, nil, ethAsset, 2*oneUnit, xlmAsset, 10*oneUnit),
 				},
 				// source Account then sent that ETH to destination
-				hundredUnits,
+				100*oneUnit,
 			),
 			expected: []*TokenTransferEvent{
-				transferEvent(protoAddressFromAccount(someXlmSellerAccount), protoAddressFromAccount(btcAccount), "5.0000000", xlmProtoAsset),
-				mintEvent(protoAddressFromAccount(someXlmSellerAccount), "1.0000000", btcProtoAsset),
+				transferEvent(protoAddressFromAccount(someXlmSellerAccount), protoAddressFromAccount(btcAccount), unitsToStr(5*oneUnit), xlmProtoAsset),
+				mintEvent(protoAddressFromAccount(someXlmSellerAccount), unitsToStr(oneUnit), btcProtoAsset),
 
-				transferEvent(protoAddressFromAccount(someEthSellerAccount), protoAddressFromAccount(btcAccount), "2.0000000", ethProtoAsset),
-				transferEvent(protoAddressFromAccount(btcAccount), protoAddressFromAccount(someEthSellerAccount), "10.0000000", xlmProtoAsset),
+				transferEvent(protoAddressFromAccount(someEthSellerAccount), protoAddressFromAccount(btcAccount), unitsToStr(2*oneUnit), ethProtoAsset),
+				transferEvent(protoAddressFromAccount(btcAccount), protoAddressFromAccount(someEthSellerAccount), unitsToStr(10*oneUnit), xlmProtoAsset),
 
 				// Final transfer from source to dest of ETH
-				transferEvent(protoAddressFromAccount(btcAccount), protoAddressFromAccount(accountB), hundredUnitsStr, ethProtoAsset),
+				transferEvent(protoAddressFromAccount(btcAccount), protoAddressFromAccount(accountB), unitsToStr(100*oneUnit), ethProtoAsset),
 			},
 		},
 		{
 			name: "Strict Receive - A (BTC Issuer) sends BTC to B (ETH Issuer) as ETH - 2 Offers (BTC/XLM, XLM/ETH) - Mint, Transfer and Burn events",
 			tx:   someTx,
-			op:   strictReceiveOp(&btcAccount, ethAccount, btcAsset, ethAsset, sixUnits),
+			op:   strictReceiveOp(&btcAccount, ethAccount, btcAsset, ethAsset, 6*oneUnit),
 			opResult: strictReceiveResult(
 				[]xdr.ClaimAtom{
 					// source Account sold(minted) some of its BTC and bought XLM from some XLM holder
-					generateClaimAtom(xdr.ClaimAtomTypeClaimAtomTypeOrderBook, &someXlmSellerAccount, nil, xlmAsset, fiveUnits, btcAsset, oneUnit),
+					generateClaimAtom(xdr.ClaimAtomTypeClaimAtomTypeOrderBook, &someXlmSellerAccount, nil, xlmAsset, 5*oneUnit, btcAsset, oneUnit),
 					// source Account then sold XLM and bought ETH from some ETH holder
-					generateClaimAtom(xdr.ClaimAtomTypeClaimAtomTypeOrderBook, &someEthSellerAccount, nil, ethAsset, twoUnits, xlmAsset, tenUnits),
+					generateClaimAtom(xdr.ClaimAtomTypeClaimAtomTypeOrderBook, &someEthSellerAccount, nil, ethAsset, 2*oneUnit, xlmAsset, 10*oneUnit),
 				},
 			),
 			expected: []*TokenTransferEvent{
-				transferEvent(protoAddressFromAccount(someXlmSellerAccount), protoAddressFromAccount(btcAccount), "5.0000000", xlmProtoAsset),
-				mintEvent(protoAddressFromAccount(someXlmSellerAccount), "1.0000000", btcProtoAsset),
+				transferEvent(protoAddressFromAccount(someXlmSellerAccount), protoAddressFromAccount(btcAccount), unitsToStr(5*oneUnit), xlmProtoAsset),
+				mintEvent(protoAddressFromAccount(someXlmSellerAccount), unitsToStr(oneUnit), btcProtoAsset),
 
-				transferEvent(protoAddressFromAccount(someEthSellerAccount), protoAddressFromAccount(btcAccount), "2.0000000", ethProtoAsset),
-				transferEvent(protoAddressFromAccount(btcAccount), protoAddressFromAccount(someEthSellerAccount), "10.0000000", xlmProtoAsset),
+				transferEvent(protoAddressFromAccount(someEthSellerAccount), protoAddressFromAccount(btcAccount), unitsToStr(2*oneUnit), ethProtoAsset),
+				transferEvent(protoAddressFromAccount(btcAccount), protoAddressFromAccount(someEthSellerAccount), unitsToStr(10*oneUnit), xlmProtoAsset),
 
 				// Final burn from source to dest of ETH
-				burnEvent(protoAddressFromAccount(btcAccount), "6.0000000", ethProtoAsset),
+				burnEvent(protoAddressFromAccount(btcAccount), unitsToStr(6*oneUnit), ethProtoAsset),
 			},
 		},
 
@@ -843,45 +844,45 @@ func TestPathPaymentEvents(t *testing.T) {
 			opResult: strictSendResult(
 				[]xdr.ClaimAtom{
 					// source Account traded against the BtcEth Liquidity pool and acquired Eth and sold BTC(minted)
-					generateClaimAtom(xdr.ClaimAtomTypeClaimAtomTypeLiquidityPool, nil, &lpBtcEthId, ethAsset, fiveUnits, btcAsset, oneUnit),
+					generateClaimAtom(xdr.ClaimAtomTypeClaimAtomTypeLiquidityPool, nil, &lpBtcEthId, ethAsset, 5*oneUnit, btcAsset, oneUnit),
 					// source Account then traded against the EthUsdc pool and acquired USDC
-					generateClaimAtom(xdr.ClaimAtomTypeClaimAtomTypeLiquidityPool, nil, &lpEthUsdcId, usdcAsset, tenUnits, ethAsset, threeUnits),
+					generateClaimAtom(xdr.ClaimAtomTypeClaimAtomTypeLiquidityPool, nil, &lpEthUsdcId, usdcAsset, 10*oneUnit, ethAsset, 3*oneUnit),
 				},
 				// source Account then sent that USDC to destination
-				hundredUnits,
+				100*oneUnit,
 			),
 			expected: []*TokenTransferEvent{
-				transferEvent(protoAddressFromLpHash(lpBtcEthId), protoAddressFromAccount(btcAccount), "5.0000000", ethProtoAsset),
-				mintEvent(protoAddressFromLpHash(lpBtcEthId), "1.0000000", btcProtoAsset),
+				transferEvent(protoAddressFromLpHash(lpBtcEthId), protoAddressFromAccount(btcAccount), unitsToStr(5*oneUnit), ethProtoAsset),
+				mintEvent(protoAddressFromLpHash(lpBtcEthId), unitsToStr(oneUnit), btcProtoAsset),
 
-				transferEvent(protoAddressFromLpHash(lpEthUsdcId), protoAddressFromAccount(btcAccount), "10.0000000", usdcProtoAsset),
-				transferEvent(protoAddressFromAccount(btcAccount), protoAddressFromLpHash(lpEthUsdcId), "3.0000000", ethProtoAsset),
+				transferEvent(protoAddressFromLpHash(lpEthUsdcId), protoAddressFromAccount(btcAccount), unitsToStr(10*oneUnit), usdcProtoAsset),
+				transferEvent(protoAddressFromAccount(btcAccount), protoAddressFromLpHash(lpEthUsdcId), unitsToStr(3*oneUnit), ethProtoAsset),
 
 				// Final transfer from source to dest of ETH
-				transferEvent(protoAddressFromAccount(btcAccount), protoAddressFromAccount(accountB), hundredUnitsStr, usdcProtoAsset),
+				transferEvent(protoAddressFromAccount(btcAccount), protoAddressFromAccount(accountB), unitsToStr(100*oneUnit), usdcProtoAsset),
 			},
 		},
 		{
 			name: "Strict Receive - A (BTC Issuer) sends BTC to B (USDC Issuer) as USDC - 2 LP sweeps (BTC/ETH, ETH/USDC) - Mint, Transfer and Burn events",
 			tx:   someTx,
-			op:   strictReceiveOp(&btcAccount, usdcAccount, btcAsset, usdcAsset, sixUnits),
+			op:   strictReceiveOp(&btcAccount, usdcAccount, btcAsset, usdcAsset, 6*oneUnit),
 			opResult: strictReceiveResult(
 				[]xdr.ClaimAtom{
 					// source Account traded against the BtcEth Liquidity pool and acquired Eth and sold BTC(minted)
-					generateClaimAtom(xdr.ClaimAtomTypeClaimAtomTypeLiquidityPool, nil, &lpBtcEthId, ethAsset, fiveUnits, btcAsset, oneUnit),
+					generateClaimAtom(xdr.ClaimAtomTypeClaimAtomTypeLiquidityPool, nil, &lpBtcEthId, ethAsset, 5*oneUnit, btcAsset, oneUnit),
 					// source Account then traded against the EthUsdc pool and acquired USDC
-					generateClaimAtom(xdr.ClaimAtomTypeClaimAtomTypeLiquidityPool, nil, &lpEthUsdcId, usdcAsset, tenUnits, ethAsset, threeUnits),
+					generateClaimAtom(xdr.ClaimAtomTypeClaimAtomTypeLiquidityPool, nil, &lpEthUsdcId, usdcAsset, 10*oneUnit, ethAsset, 3*oneUnit),
 				},
 			),
 			expected: []*TokenTransferEvent{
-				transferEvent(protoAddressFromLpHash(lpBtcEthId), protoAddressFromAccount(btcAccount), "5.0000000", ethProtoAsset),
-				mintEvent(protoAddressFromLpHash(lpBtcEthId), "1.0000000", btcProtoAsset),
+				transferEvent(protoAddressFromLpHash(lpBtcEthId), protoAddressFromAccount(btcAccount), unitsToStr(5*oneUnit), ethProtoAsset),
+				mintEvent(protoAddressFromLpHash(lpBtcEthId), unitsToStr(oneUnit), btcProtoAsset),
 
-				transferEvent(protoAddressFromLpHash(lpEthUsdcId), protoAddressFromAccount(btcAccount), "10.0000000", usdcProtoAsset),
-				transferEvent(protoAddressFromAccount(btcAccount), protoAddressFromLpHash(lpEthUsdcId), "3.0000000", ethProtoAsset),
+				transferEvent(protoAddressFromLpHash(lpEthUsdcId), protoAddressFromAccount(btcAccount), unitsToStr(10*oneUnit), usdcProtoAsset),
+				transferEvent(protoAddressFromAccount(btcAccount), protoAddressFromLpHash(lpEthUsdcId), unitsToStr(3*oneUnit), ethProtoAsset),
 
 				// Final burn from source to dest of USDC
-				burnEvent(protoAddressFromAccount(btcAccount), "6.0000000", usdcProtoAsset),
+				burnEvent(protoAddressFromAccount(btcAccount), unitsToStr(6*oneUnit), usdcProtoAsset),
 			},
 		},
 	}
@@ -920,11 +921,11 @@ func TestLiquidityPoolEvents(t *testing.T) {
 			tx: someTxWithOperationChanges(
 				xdr.LedgerEntryChanges{
 					// pre = nil, post = new
-					generateLpEntryCreatedChange(lpLedgerEntry(lpBtcEthId, btcAsset, ethAsset, oneUnit, threeUnits)),
+					generateLpEntryCreatedChange(lpLedgerEntry(lpBtcEthId, btcAsset, ethAsset, oneUnit, 3*oneUnit)),
 				}),
 			expected: []*TokenTransferEvent{
-				transferEvent(protoAddressFromAccount(someTxAccount), protoAddressFromLpHash(lpBtcEthId), "1.0000000", btcProtoAsset),
-				transferEvent(protoAddressFromAccount(someTxAccount), protoAddressFromLpHash(lpBtcEthId), "3.0000000", ethProtoAsset),
+				transferEvent(protoAddressFromAccount(someTxAccount), protoAddressFromLpHash(lpBtcEthId), unitsToStr(oneUnit), btcProtoAsset),
+				transferEvent(protoAddressFromAccount(someTxAccount), protoAddressFromLpHash(lpBtcEthId), unitsToStr(3*oneUnit), ethProtoAsset),
 			},
 		},
 		{
@@ -932,13 +933,13 @@ func TestLiquidityPoolEvents(t *testing.T) {
 			op:   lpDepositOp(lpBtcEthId, nil), // source account = Tx account
 			tx: someTxWithOperationChanges(
 				xdr.LedgerEntryChanges{
-					generateLpEntryChangeState(lpLedgerEntry(lpBtcEthId, btcAsset, ethAsset, oneUnit, threeUnits)), // pre state
+					generateLpEntryChangeState(lpLedgerEntry(lpBtcEthId, btcAsset, ethAsset, oneUnit, 3*oneUnit)), // pre state
 					// Increase BTC from 1 -> 5, ETH from 3 -> 10
-					generateLpEntryUpdatedChange(lpLedgerEntry(lpBtcEthId, btcAsset, ethAsset, oneUnit, threeUnits), fiveUnits, tenUnits), // post state
+					generateLpEntryUpdatedChange(lpLedgerEntry(lpBtcEthId, btcAsset, ethAsset, oneUnit, 3*oneUnit), 5*oneUnit, 10*oneUnit), // post state
 				}),
 			expected: []*TokenTransferEvent{
-				transferEvent(protoAddressFromAccount(someTxAccount), protoAddressFromLpHash(lpBtcEthId), "4.0000000", btcProtoAsset),
-				transferEvent(protoAddressFromAccount(someTxAccount), protoAddressFromLpHash(lpBtcEthId), "7.0000000", ethProtoAsset),
+				transferEvent(protoAddressFromAccount(someTxAccount), protoAddressFromLpHash(lpBtcEthId), unitsToStr(4*oneUnit), btcProtoAsset),
+				transferEvent(protoAddressFromAccount(someTxAccount), protoAddressFromLpHash(lpBtcEthId), unitsToStr(7*oneUnit), ethProtoAsset),
 			},
 		},
 		{
@@ -947,11 +948,11 @@ func TestLiquidityPoolEvents(t *testing.T) {
 			tx: someTxWithOperationChanges(
 				xdr.LedgerEntryChanges{
 					// pre = nil, post = new
-					generateLpEntryCreatedChange(lpLedgerEntry(lpBtcEthId, btcAsset, ethAsset, oneUnit, threeUnits)),
+					generateLpEntryCreatedChange(lpLedgerEntry(lpBtcEthId, btcAsset, ethAsset, oneUnit, 3*oneUnit)),
 				}),
 			expected: []*TokenTransferEvent{
-				mintEvent(protoAddressFromLpHash(lpBtcEthId), "1.0000000", btcProtoAsset),
-				transferEvent(protoAddressFromAccount(btcAccount), protoAddressFromLpHash(lpBtcEthId), "3.0000000", ethProtoAsset),
+				mintEvent(protoAddressFromLpHash(lpBtcEthId), unitsToStr(oneUnit), btcProtoAsset),
+				transferEvent(protoAddressFromAccount(btcAccount), protoAddressFromLpHash(lpBtcEthId), unitsToStr(3*oneUnit), ethProtoAsset),
 			},
 		},
 		{
@@ -959,13 +960,13 @@ func TestLiquidityPoolEvents(t *testing.T) {
 			op:   lpWithdrawOp(lpBtcEthId, nil), // source account = Tx account
 			tx: someTxWithOperationChanges(
 				xdr.LedgerEntryChanges{
-					generateLpEntryChangeState(lpLedgerEntry(lpBtcEthId, btcAsset, ethAsset, fiveUnits, tenUnits)), // pre state
+					generateLpEntryChangeState(lpLedgerEntry(lpBtcEthId, btcAsset, ethAsset, 5*oneUnit, 10*oneUnit)), // pre state
 					// Decrease BTC from 5 -> 2, ETH from 10 -> 2
-					generateLpEntryUpdatedChange(lpLedgerEntry(lpBtcEthId, btcAsset, ethAsset, fiveUnits, tenUnits), twoUnits, twoUnits), // post state
+					generateLpEntryUpdatedChange(lpLedgerEntry(lpBtcEthId, btcAsset, ethAsset, 5*oneUnit, 10*oneUnit), 2*oneUnit, 2*oneUnit), // post state
 				}),
 			expected: []*TokenTransferEvent{
-				transferEvent(protoAddressFromLpHash(lpBtcEthId), protoAddressFromAccount(someTxAccount), "3.0000000", btcProtoAsset),
-				transferEvent(protoAddressFromLpHash(lpBtcEthId), protoAddressFromAccount(someTxAccount), "8.0000000", ethProtoAsset),
+				transferEvent(protoAddressFromLpHash(lpBtcEthId), protoAddressFromAccount(someTxAccount), unitsToStr(3*oneUnit), btcProtoAsset),
+				transferEvent(protoAddressFromLpHash(lpBtcEthId), protoAddressFromAccount(someTxAccount), unitsToStr(8*oneUnit), ethProtoAsset),
 			},
 		},
 		{
@@ -974,12 +975,12 @@ func TestLiquidityPoolEvents(t *testing.T) {
 			tx: someTxWithOperationChanges(
 				xdr.LedgerEntryChanges{
 					// pre != nil, post = nil
-					generateLpEntryChangeState(lpLedgerEntry(lpBtcEthId, btcAsset, ethAsset, fiveUnits, tenUnits)),
+					generateLpEntryChangeState(lpLedgerEntry(lpBtcEthId, btcAsset, ethAsset, 5*oneUnit, 10*oneUnit)),
 					generateLpEntryRemovedChange(lpBtcEthId),
 				}),
 			expected: []*TokenTransferEvent{
-				transferEvent(protoAddressFromLpHash(lpBtcEthId), protoAddressFromAccount(someTxAccount), "5.0000000", btcProtoAsset),
-				transferEvent(protoAddressFromLpHash(lpBtcEthId), protoAddressFromAccount(someTxAccount), "10.0000000", ethProtoAsset),
+				transferEvent(protoAddressFromLpHash(lpBtcEthId), protoAddressFromAccount(someTxAccount), unitsToStr(5*oneUnit), btcProtoAsset),
+				transferEvent(protoAddressFromLpHash(lpBtcEthId), protoAddressFromAccount(someTxAccount), unitsToStr(10*oneUnit), ethProtoAsset),
 			},
 		},
 		{
@@ -988,12 +989,12 @@ func TestLiquidityPoolEvents(t *testing.T) {
 			tx: someTxWithOperationChanges(
 				xdr.LedgerEntryChanges{
 					// pre != nil, post = nil
-					generateLpEntryChangeState(lpLedgerEntry(lpBtcEthId, btcAsset, ethAsset, fiveUnits, tenUnits)),
+					generateLpEntryChangeState(lpLedgerEntry(lpBtcEthId, btcAsset, ethAsset, 5*oneUnit, 10*oneUnit)),
 					generateLpEntryRemovedChange(lpBtcEthId),
 				}),
 			expected: []*TokenTransferEvent{
-				transferEvent(protoAddressFromLpHash(lpBtcEthId), protoAddressFromAccount(ethAccount), "5.0000000", btcProtoAsset),
-				burnEvent(protoAddressFromLpHash(lpBtcEthId), "10.0000000", ethProtoAsset),
+				transferEvent(protoAddressFromLpHash(lpBtcEthId), protoAddressFromAccount(ethAccount), unitsToStr(5*oneUnit), btcProtoAsset),
+				burnEvent(protoAddressFromLpHash(lpBtcEthId), unitsToStr(10*oneUnit), ethProtoAsset),
 			},
 		},
 	}
@@ -1017,10 +1018,10 @@ func TestClawbackEvents(t *testing.T) {
 	tests := []testFixture{
 		{
 			name: "Clawback XLM from some account",
-			op:   clawbackOp(accountA, xlmAsset, hundredUnits),
+			op:   clawbackOp(accountA, xlmAsset, 100*oneUnit),
 			tx:   someTx,
 			expected: []*TokenTransferEvent{
-				clawbackEvent(protoAddressFromAccount(accountA), hundredUnitsStr, xlmProtoAsset),
+				clawbackEvent(protoAddressFromAccount(accountA), unitsToStr(100*oneUnit), xlmProtoAsset),
 			},
 		},
 		{
@@ -1028,7 +1029,7 @@ func TestClawbackEvents(t *testing.T) {
 			op:   clawbackOp(accountB, usdcAsset, oneUnit/1e2),
 			tx:   someTx,
 			expected: []*TokenTransferEvent{
-				clawbackEvent(protoAddressFromAccount(accountB), "0.0100000", usdcProtoAsset),
+				clawbackEvent(protoAddressFromAccount(accountB), unitsToStr(oneUnit/1e2), usdcProtoAsset),
 			},
 		},
 	}
@@ -1054,12 +1055,12 @@ func TestClawbackClaimableBalanceEvents(t *testing.T) {
 			tx: someTxWithOperationChanges(
 				xdr.LedgerEntryChanges{
 					// pre != nil, post = nil
-					generateCbEntryChangeState(cbLedgerEntry(someBalanceId, xlmAsset, oneUnit)),
+					generateCbEntryChangeState(cbLedgerEntry(someBalanceId, xlmAsset, 100*oneUnit)),
 					generateCbEntryRemovedChange(someBalanceId),
 				},
 			),
 			expected: []*TokenTransferEvent{
-				clawbackEvent(protoAddressFromClaimableBalanceId(someBalanceId), "1.0000000", xlmProtoAsset),
+				clawbackEvent(protoAddressFromClaimableBalanceId(someBalanceId), unitsToStr(100*oneUnit), xlmProtoAsset),
 			},
 		},
 		{
@@ -1073,7 +1074,7 @@ func TestClawbackClaimableBalanceEvents(t *testing.T) {
 				},
 			),
 			expected: []*TokenTransferEvent{
-				clawbackEvent(protoAddressFromClaimableBalanceId(someBalanceId), "0.0010000", usdcProtoAsset),
+				clawbackEvent(protoAddressFromClaimableBalanceId(someBalanceId), unitsToStr(oneUnit/1e3), usdcProtoAsset),
 			},
 		},
 	}
@@ -1105,7 +1106,7 @@ func TestClaimClaimableBalanceEvents(t *testing.T) {
 				},
 			),
 			expected: []*TokenTransferEvent{
-				transferEvent(protoAddressFromClaimableBalanceId(someBalanceId), protoAddressFromAccount(accountA), "1.0000000", xlmProtoAsset),
+				transferEvent(protoAddressFromClaimableBalanceId(someBalanceId), protoAddressFromAccount(accountA), unitsToStr(oneUnit), xlmProtoAsset),
 			},
 		},
 		{
@@ -1119,7 +1120,7 @@ func TestClaimClaimableBalanceEvents(t *testing.T) {
 				},
 			),
 			expected: []*TokenTransferEvent{
-				burnEvent(protoAddressFromClaimableBalanceId(someBalanceId), "0.0010000", usdcProtoAsset),
+				burnEvent(protoAddressFromClaimableBalanceId(someBalanceId), unitsToStr(oneUnit/1e3), usdcProtoAsset),
 			},
 		},
 	}
@@ -1164,17 +1165,17 @@ func TestAllowTrustAndSetTrustlineFlagsRevokeTrustlineTest(t *testing.T) {
 			op:   trustlineRevokeOp,
 			tx: someTxWithOperationChanges([]xdr.LedgerEntryChange{
 				// 1 unit of BTC and 2 units of ETH need to go from LPId to a claimable balance
-				generateLpEntryChangeState(lpLedgerEntry(lpBtcEthId, btcAsset, ethAsset, oneUnit, twoUnits)),
+				generateLpEntryChangeState(lpLedgerEntry(lpBtcEthId, btcAsset, ethAsset, oneUnit, 2*oneUnit)),
 				generateLpEntryRemovedChange(lpBtcEthId),
 
 				// New Cb for BTC from lpBtcEthId
 				generateCbEntryCreatedChange(cbLedgerEntry(generatedCbIdForBtc, btcAsset, oneUnit)),
 				// New CB for ETH from lpBtcEthId
-				generateCbEntryCreatedChange(cbLedgerEntry(generatedCbIdForEth, ethAsset, twoUnits)),
+				generateCbEntryCreatedChange(cbLedgerEntry(generatedCbIdForEth, ethAsset, 2*oneUnit)),
 			}),
 			expected: []*TokenTransferEvent{
-				transferEvent(protoAddressFromLpHash(lpBtcEthId), protoAddressFromClaimableBalanceId(generatedCbIdForBtc), "1.0000000", btcProtoAsset),
-				transferEvent(protoAddressFromLpHash(lpBtcEthId), protoAddressFromClaimableBalanceId(generatedCbIdForEth), "2.0000000", ethProtoAsset),
+				transferEvent(protoAddressFromLpHash(lpBtcEthId), protoAddressFromClaimableBalanceId(generatedCbIdForBtc), unitsToStr(oneUnit), btcProtoAsset),
+				transferEvent(protoAddressFromLpHash(lpBtcEthId), protoAddressFromClaimableBalanceId(generatedCbIdForEth), unitsToStr(2*oneUnit), ethProtoAsset),
 			},
 		},
 		{
@@ -1182,7 +1183,7 @@ func TestAllowTrustAndSetTrustlineFlagsRevokeTrustlineTest(t *testing.T) {
 			op:   trustlineRevokeOp,
 			tx: someTxWithOperationChanges([]xdr.LedgerEntryChange{
 				// 1 unit of BTC and 2 units of ETH need to go from LPId to a claimable balance
-				generateLpEntryChangeState(lpLedgerEntry(lpBtcEthId, btcAsset, ethAsset, oneUnit, twoUnits)),
+				generateLpEntryChangeState(lpLedgerEntry(lpBtcEthId, btcAsset, ethAsset, oneUnit, 2*oneUnit)),
 				generateLpEntryRemovedChange(lpBtcEthId),
 
 				// New Cb for BTC from lpBtcEthId
@@ -1190,8 +1191,8 @@ func TestAllowTrustAndSetTrustlineFlagsRevokeTrustlineTest(t *testing.T) {
 				// No CB created for ETH. i.e one burn event
 			}),
 			expected: []*TokenTransferEvent{
-				transferEvent(protoAddressFromLpHash(lpBtcEthId), protoAddressFromClaimableBalanceId(generatedCbIdForBtc), "1.0000000", btcProtoAsset),
-				burnEvent(protoAddressFromLpHash(lpBtcEthId), "2.0000000", ethProtoAsset),
+				transferEvent(protoAddressFromLpHash(lpBtcEthId), protoAddressFromClaimableBalanceId(generatedCbIdForBtc), unitsToStr(oneUnit), btcProtoAsset),
+				burnEvent(protoAddressFromLpHash(lpBtcEthId), unitsToStr(2*oneUnit), ethProtoAsset),
 			},
 		},
 	}

@@ -3,18 +3,15 @@ package integration
 import (
 	"fmt"
 	"github.com/stellar/go/clients/horizonclient"
-	addressProto "github.com/stellar/go/ingest/address"
 	assetProto "github.com/stellar/go/ingest/asset"
 	"github.com/stellar/go/ingest/processors/token_transfer"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/services/horizon/internal/test/integration"
-	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/encoding/protojson"
-	"strings"
 	"testing"
 	"time"
 )
@@ -68,25 +65,13 @@ var (
 			Amount:        amount,
 		}
 	}
-
-	//TODO - once support for strkey is done, extend this to include CB and LP
-	protoAddress = func(address string) *addressProto.Address {
-		var addr *addressProto.Address
-		if strings.HasPrefix(address, "G") || strings.HasPrefix(address, "M") {
-			addr = addressProto.NewAddressFromAccount(xdr.MustMuxedAddress(address))
-		} else if strings.HasPrefix(address, "C") {
-			contractId := strkey.MustDecode(strkey.VersionByteContract, address)
-			addr = addressProto.NewAddressFromContract(xdr.Hash(contractId))
-		}
-		return addr
-	}
 )
 
-func assertFeeEvent(t *testing.T, events []*token_transfer.TokenTransferEvent, from *addressProto.Address, amt string) {
+func assertFeeEvent(t *testing.T, events []*token_transfer.TokenTransferEvent, from string, amt string) {
 	require.Condition(t, func() bool {
 		for _, event := range events {
 			if event.GetEventType() == "Fee" &&
-				event.GetFee().From.Equals(from) &&
+				event.GetFee().From == from &&
 				event.GetFee().Amount == amt {
 				return true
 			}
@@ -95,12 +80,12 @@ func assertFeeEvent(t *testing.T, events []*token_transfer.TokenTransferEvent, f
 	}, "Expected a fee event with amount %s, but not found", amt)
 }
 
-func assertTransferEvent(t *testing.T, events []*token_transfer.TokenTransferEvent, from, to *addressProto.Address, asset *assetProto.Asset, amt string) {
+func assertTransferEvent(t *testing.T, events []*token_transfer.TokenTransferEvent, from, to string, asset *assetProto.Asset, amt string) {
 	require.Condition(t, func() bool {
 		for _, event := range events {
 			if event.GetEventType() == "Transfer" &&
-				event.GetTransfer().From.Equals(from) &&
-				event.GetTransfer().To.Equals(to) &&
+				event.GetTransfer().From == from &&
+				event.GetTransfer().To == to &&
 				event.GetTransfer().Amount == amt &&
 				event.Asset.Equals(asset) {
 				return true
@@ -111,11 +96,11 @@ func assertTransferEvent(t *testing.T, events []*token_transfer.TokenTransferEve
 }
 
 // Assert that a mint event exists
-func assertMintEvent(t *testing.T, events []*token_transfer.TokenTransferEvent, to *addressProto.Address, amt string, asset *assetProto.Asset) {
+func assertMintEvent(t *testing.T, events []*token_transfer.TokenTransferEvent, to string, amt string, asset *assetProto.Asset) {
 	require.Condition(t, func() bool {
 		for _, event := range events {
 			if event.GetEventType() == "Mint" &&
-				event.GetMint().To.Equals(to) &&
+				event.GetMint().To == to &&
 				event.Asset.Equals(asset) &&
 				event.GetMint().Amount == amt {
 				return true
@@ -126,11 +111,11 @@ func assertMintEvent(t *testing.T, events []*token_transfer.TokenTransferEvent, 
 }
 
 // Assert that a burn event exists
-func assertBurnEvent(t *testing.T, events []*token_transfer.TokenTransferEvent, from *addressProto.Address, amt string, asset *assetProto.Asset) {
+func assertBurnEvent(t *testing.T, events []*token_transfer.TokenTransferEvent, from string, amt string, asset *assetProto.Asset) {
 	require.Condition(t, func() bool {
 		for _, event := range events {
 			if event.GetEventType() == "Burn" &&
-				event.GetBurn().From.Equals(from) &&
+				event.GetBurn().From == from &&
 				event.Asset.Equals(asset) &&
 				event.GetBurn().Amount == amt {
 				return true
@@ -261,7 +246,7 @@ func TestTrustlineRevocationEvents(t *testing.T) {
 	printProtoEvents(events)
 
 	// 2 operations - 100 stroops per operation
-	assertFeeEvent(t, events, protoAddress(master.Address()), "0.0000200")
+	assertFeeEvent(t, events, master.Address(), "200")
 	assert.True(t, token_transfer.VerifyTtpOnLedger(ledger, itest.GetPassPhrase()))
 
 	// TODO - Add assertions for transfer with CB and LP, once Strkey support is added
