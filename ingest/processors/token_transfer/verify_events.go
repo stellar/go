@@ -237,7 +237,7 @@ func mapsEqual(map1, map2 map[balanceKey]int64) bool {
 	return true
 }
 
-func VerifyTtpOnLedger(ledger xdr.LedgerCloseMeta, passphrase string) bool {
+func VerifyEvents(ledger xdr.LedgerCloseMeta, passphrase string) bool {
 	changes := getChangesFromLedger(ledger, passphrase)
 	ttp := NewEventsProcessor(passphrase)
 	events, err := ttp.EventsFromLedger(ledger)

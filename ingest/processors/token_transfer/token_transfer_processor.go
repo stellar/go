@@ -50,7 +50,7 @@ func NewEventsProcessor(networkPassphrase string) *EventsProcessor {
 
 // EventsFromLedger processes token transfer events for all transactions in a given ledger.
 // This function operates at the ledger level, iterating over all transactions in the ledger.
-// it calls ProcessTokenTransferEventsFromTransaction to process token transfer events from each transaction within the ledger.
+// it calls EventsFromTransaction to process token transfer events from each transaction within the ledger.
 func (p *EventsProcessor) EventsFromLedger(lcm xdr.LedgerCloseMeta) ([]*TokenTransferEvent, error) {
 	var events []*TokenTransferEvent
 	txReader, err := ingest.NewLedgerTransactionReaderFromLedgerCloseMeta(p.networkPassphrase, lcm)
@@ -68,7 +68,7 @@ func (p *EventsProcessor) EventsFromLedger(lcm xdr.LedgerCloseMeta) ([]*TokenTra
 		if err != nil {
 			return nil, errors.Wrap(err, "error reading transaction")
 		}
-		txEvents, err = p.ProcessTokenTransferEventsFromTransaction(tx)
+		txEvents, err = p.EventsFromTransaction(tx)
 		if err != nil {
 			return nil, errors.Wrap(err, "error processing token transfer events from transaction")
 		}
@@ -77,13 +77,13 @@ func (p *EventsProcessor) EventsFromLedger(lcm xdr.LedgerCloseMeta) ([]*TokenTra
 	return events, nil
 }
 
-// ProcessTokenTransferEventsFromTransaction processes token transfer events for all operations within a given transaction.
+// EventsFromTransaction processes token transfer events for all operations within a given transaction.
 //
 //	First, it generates a FeeEvent for the transaction
-//	If the transaction was successful, it processes all operations in the transaction by calling ProcessTokenTransferEventsFromOperationAndOperationResult for each operation in the transaction.
+//	If the transaction was successful, it processes all operations in the transaction by calling EventsFromOperation for each operation in the transaction.
 //
 // If the transaction is unsuccessful, it only generates events for transaction fees.
-func (p *EventsProcessor) ProcessTokenTransferEventsFromTransaction(tx ingest.LedgerTransaction) ([]*TokenTransferEvent, error) {
+func (p *EventsProcessor) EventsFromTransaction(tx ingest.LedgerTransaction) ([]*TokenTransferEvent, error) {
 	var events []*TokenTransferEvent
 	feeEvents, err := p.generateFeeEvent(tx)
 	if err != nil {
@@ -103,7 +103,7 @@ func (p *EventsProcessor) ProcessTokenTransferEventsFromTransaction(tx ingest.Le
 		opResult := operationResults[i]
 
 		// Process the operation and collect events
-		opEvents, err := p.ProcessTokenTransferEventsFromOperationAndOperationResult(tx, uint32(i), op, opResult)
+		opEvents, err := p.EventsFromOperation(tx, uint32(i), op, opResult)
 		if err != nil {
 			return nil,
 				errors.Wrapf(err, "error processing token transfer events from operation, index: %d,  %s", i, op.Body.Type.String())
@@ -115,14 +115,14 @@ func (p *EventsProcessor) ProcessTokenTransferEventsFromTransaction(tx ingest.Le
 	return events, nil
 }
 
-// ProcessTokenTransferEventsFromOperationAndOperationResult processes token transfer events for a given operation within a transaction.
+// EventsFromOperation processes token transfer events for a given operation within a transaction.
 // It operates at the operation level, analyzing the operation type and generating corresponding token transfer events.
 // If the operation is successful, it processes the event based on the operation type (e.g., payment, account creation, etc.).
 // It handles various operation types like payments, account merges, trust line modifications, and more.
 // There is a separate private function to derive events for each classic operation.
 // It is implicitly assumed that the operation is successful, and thus will contribute towards generating events.
 // which is why we don't check for the success code in the OperationResult
-func (p *EventsProcessor) ProcessTokenTransferEventsFromOperationAndOperationResult(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation, opResult xdr.OperationResult) ([]*TokenTransferEvent, error) {
+func (p *EventsProcessor) EventsFromOperation(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation, opResult xdr.OperationResult) ([]*TokenTransferEvent, error) {
 	switch op.Body.Type {
 	case xdr.OperationTypeCreateAccount:
 		return p.accountCreateEvents(tx, opIndex, op)

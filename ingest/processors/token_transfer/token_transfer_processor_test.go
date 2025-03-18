@@ -332,7 +332,7 @@ func runTokenTransferEventTests(t *testing.T, tests []testFixture) {
 	for _, fixture := range tests {
 		ttp := NewEventsProcessor(someNetworkPassphrase)
 		t.Run(fixture.name, func(t *testing.T) {
-			events, err := ttp.ProcessTokenTransferEventsFromOperationAndOperationResult(
+			events, err := ttp.EventsFromOperation(
 				fixture.tx,
 				fixture.opIndex,
 				fixture.op,
@@ -429,7 +429,7 @@ func TestFeeEvent(t *testing.T) {
 	for _, fixture := range tests {
 		ttp := NewEventsProcessor(someNetworkPassphrase)
 		t.Run(fixture.name, func(t *testing.T) {
-			events, err := ttp.ProcessTokenTransferEventsFromTransaction(fixture.tx)
+			events, err := ttp.EventsFromTransaction(fixture.tx)
 			assert.NoError(t, err)
 			assert.Equal(t, len(fixture.expected), len(events))
 			for i := range events {
@@ -1130,7 +1130,7 @@ func TestClaimClaimableBalanceEvents(t *testing.T) {
 func TestAllowTrustAndSetTrustlineFlagsRevokeTrustlineTest(t *testing.T) {
 	// For these 2 operations, it really doest matter what the operation or operation result is.
 	// We are strictly going by the liquidity pool and trustlines that might be created
-	// I am simply creating one here for completeness, because it needs to be passed to the ProcessTokenTransferEventsFromOperationAndOperationResult() function
+	// I am simply creating one here for completeness, because it needs to be passed to the EventsFromOperation() function
 	trustlineRevokeOp := xdr.Operation{
 		Body: xdr.OperationBody{
 			Type: xdr.OperationTypeSetTrustLineFlags,
