@@ -238,8 +238,8 @@ func TestTrustlineRevocationEvents(t *testing.T) {
 	itest.WaitForLedgerInArchive(30*time.Second, ledgerSeq)
 	ledger := getLedgers(itest, ledgerSeq, ledgerSeq)[ledgerSeq]
 
-	ttp := token_transfer.NewTokenTransferProcessor(itest.GetPassPhrase())
-	events, err := ttp.ProcessTokenTransferEventsFromLedger(ledger)
+	ttp := token_transfer.NewEventsProcessor(itest.GetPassPhrase())
+	events, err := ttp.EventsFromLedger(ledger)
 	tt.NoError(err)
 
 	t = itest.CurrentTest()

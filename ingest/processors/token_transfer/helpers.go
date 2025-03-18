@@ -3,8 +3,8 @@ package token_transfer
 import (
 	"crypto/sha256"
 	"fmt"
+	"github.com/pkg/errors"
 	"github.com/stellar/go/ingest"
-	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
 

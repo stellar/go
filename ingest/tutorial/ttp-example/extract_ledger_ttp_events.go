@@ -66,8 +66,8 @@ func main() {
 		}
 
 		// Process the ledger to extract token transfer events
-		ttp := token_transfer.NewTokenTransferProcessor(network.PublicNetworkPassphrase)
-		events, err := ttp.ProcessTokenTransferEventsFromLedger(ledger)
+		ttp := token_transfer.NewEventsProcessor(network.PublicNetworkPassphrase)
+		events, err := ttp.EventsFromLedger(ledger)
 		if err != nil {
 			log.Errorf("Error processing ledger at line %d: %v", lineNum, err)
 			continue // Skip to the next line in case of error

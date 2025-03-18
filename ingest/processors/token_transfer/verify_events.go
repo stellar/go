@@ -2,10 +2,10 @@ package token_transfer
 
 import (
 	"fmt"
+	"github.com/pkg/errors"
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/support/collections/maps"
-	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 	"io"
 	"slices"
@@ -239,8 +239,8 @@ func mapsEqual(map1, map2 map[balanceKey]int64) bool {
 
 func VerifyTtpOnLedger(ledger xdr.LedgerCloseMeta, passphrase string) bool {
 	changes := getChangesFromLedger(ledger, passphrase)
-	ttp := NewTokenTransferProcessor(passphrase)
-	events, err := ttp.ProcessTokenTransferEventsFromLedger(ledger)
+	ttp := NewEventsProcessor(passphrase)
+	events, err := ttp.EventsFromLedger(ledger)
 	if err != nil {
 		panic(errors.Wrapf(err, "unable to process token transfer events from ledger"))
 	}
