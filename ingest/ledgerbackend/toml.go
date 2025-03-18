@@ -109,6 +109,7 @@ type captiveCoreTomlValues struct {
 	HTTPQueryPort                         *uint                `toml:"HTTP_QUERY_PORT,omitempty"`
 	QueryThreadPoolSize                   *uint                `toml:"QUERY_THREAD_POOL_SIZE,omitempty"`
 	QuerySnapshotLedgers                  *uint                `toml:"QUERY_SNAPSHOT_LEDGERS,omitempty"`
+	BucketListDBMemoryForCaching          *uint                `toml:"BUCKETLIST_DB_MEMORY_FOR_CACHING,omitempty"`
 }
 
 // QuorumSetIsConfigured returns true if there is a quorum set defined in the configuration.
@@ -520,6 +521,16 @@ func (c *CaptiveCoreToml) setDefaults(params CaptiveCoreTomlParams) {
 		poolSize := uint(params.HTTPQueryServerParams.ThreadPoolSize)
 		c.QueryThreadPoolSize = &poolSize
 
+	}
+
+	if !c.tree.Has("BUCKETLIST_DB_MEMORY_FOR_CACHING") {
+		// set BUCKETLIST_DB_MEMORY_FOR_CACHING to 0 to disable allocation of
+		// memory for caching entries in BucketListDB.
+		// If we do not set BUCKETLIST_DB_MEMORY_FOR_CACHING, core will apply
+		// the default value which may result in additional 2-3 GB of memory usage
+		// in captive core
+		var disable uint = 0
+		c.BucketListDBMemoryForCaching = &disable
 	}
 }
 

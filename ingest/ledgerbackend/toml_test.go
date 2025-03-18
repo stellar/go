@@ -376,6 +376,14 @@ func TestGenerateConfig(t *testing.T) {
 			useDB:        true,
 			logPath:      nil,
 		},
+		{
+			name:         "BUCKETLIST_DB_MEMORY_FOR_CACHING in appendix",
+			mode:         stellarCoreRunnerModeOnline,
+			appendPath:   filepath.Join("testdata", "appendix-with-memory-for-bucketlist-caching.cfg"),
+			expectedPath: filepath.Join("testdata", "expected-with-memory-for-bucketlist-caching.cfg"),
+			useDB:        true,
+			logPath:      nil,
+		},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			var err error
