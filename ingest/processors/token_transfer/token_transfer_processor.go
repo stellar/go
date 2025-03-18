@@ -172,11 +172,11 @@ func (p *EventsProcessor) EventsFromOperation(tx ingest.LedgerTransaction, opInd
 
 	// Run reconciliation for all operations except Inflation, InvokeHostFunction, and default cases
 	// which are already returned above
-	reconciliaionEvents, err := p.generateXlmReconciliationEvents(tx, opIndex, op, events)
+	reconciliationEvents, err := p.generateXlmReconciliationEvents(tx, opIndex, op, events)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error generating reconciliation events")
 	}
-	events = append(events, reconciliaionEvents...)
+	events = append(events, reconciliationEvents...)
 	return events, nil
 }
 
@@ -898,7 +898,6 @@ func (p *EventsProcessor) maybeGenerateMintOrBurnEventsForReconciliation(tx inge
 	// Generate appropriate event based on the difference
 	if diff > 0 {
 		// changesMap shows more XLM than eventsMap - need to MINT
-
 		mintEvent := NewMintEvent(meta, accountStr, amount.String64Raw(xdr.Int64(diff)), protoAsset)
 		events = append(events, mintEvent)
 	} else {
@@ -912,10 +911,7 @@ func (p *EventsProcessor) maybeGenerateMintOrBurnEventsForReconciliation(tx inge
 
 func (p *EventsProcessor) generateXlmReconciliationEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation, operationEvents []*TokenTransferEvent) ([]*TokenTransferEvent, error) {
 	// DO not run this reconciliation check for ledgers > 8 or if operation is Inflation
-	if tx.Ledger.LedgerSequence() > 8 {
-		return nil, nil
-	}
-	if op.Body.Type == xdr.OperationTypeInflation {
+	if tx.Ledger.ProtocolVersion() > 8 {
 		return nil, nil
 	}
 
@@ -927,6 +923,5 @@ func (p *EventsProcessor) generateXlmReconciliationEvents(tx ingest.LedgerTransa
 	eventsMap := findBalanceDeltasFromEvents(operationEvents)
 	operationSrcAccount := operationSourceAccount(tx, op)
 
-	//
 	return p.maybeGenerateMintOrBurnEventsForReconciliation(tx, opIndex, changesMap, eventsMap, operationSrcAccount, xlmAsset), nil
 }
