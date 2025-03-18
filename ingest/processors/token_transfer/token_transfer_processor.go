@@ -123,42 +123,61 @@ func (p *EventsProcessor) EventsFromTransaction(tx ingest.LedgerTransaction) ([]
 // It is implicitly assumed that the operation is successful, and thus will contribute towards generating events.
 // which is why we don't check for the success code in the OperationResult
 func (p *EventsProcessor) EventsFromOperation(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation, opResult xdr.OperationResult) ([]*TokenTransferEvent, error) {
+	var events []*TokenTransferEvent
+	var err error
 	switch op.Body.Type {
 	case xdr.OperationTypeCreateAccount:
-		return p.accountCreateEvents(tx, opIndex, op)
+		events, err = p.accountCreateEvents(tx, opIndex, op)
 	case xdr.OperationTypeAccountMerge:
-		return p.mergeAccountEvents(tx, opIndex, op, opResult)
+		events, err = p.mergeAccountEvents(tx, opIndex, op, opResult)
 	case xdr.OperationTypePayment:
-		return p.paymentEvents(tx, opIndex, op)
+		events, err = p.paymentEvents(tx, opIndex, op)
 	case xdr.OperationTypeCreateClaimableBalance:
-		return p.createClaimableBalanceEvents(tx, opIndex, op, opResult)
+		events, err = p.createClaimableBalanceEvents(tx, opIndex, op, opResult)
 	case xdr.OperationTypeClaimClaimableBalance:
-		return p.claimClaimableBalanceEvents(tx, opIndex, op)
+		events, err = p.claimClaimableBalanceEvents(tx, opIndex, op)
 	case xdr.OperationTypeClawback:
-		return p.clawbackEvents(tx, opIndex, op)
+		events, err = p.clawbackEvents(tx, opIndex, op)
 	case xdr.OperationTypeClawbackClaimableBalance:
-		return p.clawbackClaimableBalanceEvents(tx, opIndex, op)
+		events, err = p.clawbackClaimableBalanceEvents(tx, opIndex, op)
 	case xdr.OperationTypeAllowTrust:
-		return p.allowTrustEvents(tx, opIndex, op)
+		events, err = p.allowTrustEvents(tx, opIndex, op)
 	case xdr.OperationTypeSetTrustLineFlags:
-		return p.setTrustLineFlagsEvents(tx, opIndex, op)
+		events, err = p.setTrustLineFlagsEvents(tx, opIndex, op)
 	case xdr.OperationTypeLiquidityPoolDeposit:
-		return p.liquidityPoolDepositEvents(tx, opIndex, op)
+		events, err = p.liquidityPoolDepositEvents(tx, opIndex, op)
 	case xdr.OperationTypeLiquidityPoolWithdraw:
-		return p.liquidityPoolWithdrawEvents(tx, opIndex, op)
+		events, err = p.liquidityPoolWithdrawEvents(tx, opIndex, op)
 	case xdr.OperationTypeManageBuyOffer:
-		return p.manageBuyOfferEvents(tx, opIndex, op, opResult)
+		events, err = p.manageBuyOfferEvents(tx, opIndex, op, opResult)
 	case xdr.OperationTypeManageSellOffer:
-		return p.manageSellOfferEvents(tx, opIndex, op, opResult)
+		events, err = p.manageSellOfferEvents(tx, opIndex, op, opResult)
 	case xdr.OperationTypeCreatePassiveSellOffer:
-		return p.createPassiveSellOfferEvents(tx, opIndex, op, opResult)
+		events, err = p.createPassiveSellOfferEvents(tx, opIndex, op, opResult)
 	case xdr.OperationTypePathPaymentStrictSend:
-		return p.pathPaymentStrictSendEvents(tx, opIndex, op, opResult)
+		events, err = p.pathPaymentStrictSendEvents(tx, opIndex, op, opResult)
 	case xdr.OperationTypePathPaymentStrictReceive:
-		return p.pathPaymentStrictReceiveEvents(tx, opIndex, op, opResult)
+		events, err = p.pathPaymentStrictReceiveEvents(tx, opIndex, op, opResult)
+	case xdr.OperationTypeInflation:
+		return nil, nil //TODO implement this
+	case xdr.OperationTypeInvokeHostFunction:
+		return nil, nil //TODO implement this
 	default:
 		return nil, nil
 	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	// Run reconciliation for all operations except Inflation, InvokeHostFunction, and default cases
+	// which are already returned above
+	reconciliaionEvents, err := p.generateXlmReconciliationEvents(tx, opIndex, op, events)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error generating reconciliation events")
+	}
+	events = append(events, reconciliaionEvents...)
+	return events, nil
 }
 
 type addressWrapper struct {
@@ -782,4 +801,132 @@ func (p *EventsProcessor) pathPaymentStrictReceiveEvents(tx ingest.LedgerTransac
 	}
 	events = append(events, finalEvent)
 	return events, nil
+}
+
+/*
+This code needs to be run to compare the diffs between the changesMap and eventsMap for the (sourceAccount, XLM) combination
+This needs to be run for each operation, except INFLATION OPERATION, and when ledgerSeq <= 8
+For more details, on why this is needed, refer - https://github.com/stellar/stellar-protocol/blob/master/core/cap-0067.md#retroactively-emitting-events
+
+The maybeGenerateMintOrBurnEvents function takes in an account and an asset, but in reality, this will only be called for operationSourceAccount and strictly for XLM
+*/
+func (p *EventsProcessor) maybeGenerateMintOrBurnEventsForReconciliation(tx ingest.LedgerTransaction, opIndex uint32, changesMap, eventsMap map[balanceKey]int64, account xdr.MuxedAccount, asset xdr.Asset) []*TokenTransferEvent {
+	var events []*TokenTransferEvent
+
+	accountStr := account.ToAccountId().Address()
+	// Create the balance key for this account and XLM asset
+	key := balanceKey{holder: accountStr, asset: asset.StringCanonical()}
+
+	// Get the balance changes from both maps
+	changesBalance, existsInChanges := changesMap[key]
+	eventsBalance, existsInEvents := eventsMap[key]
+
+	/*
+		Highlighting all possible scenarios:
+
+		1.	 Account exists in both maps
+			changesMap[account, XLM] = 100	-- 	Account gained 100 XLM according to ledger changes
+			eventsMap[account, XLM] = 70	--	But our events only account for 70 XLM
+			diff = 100 - 70 = 30 > 0, so we issue a MINT event for 30 XLM
+
+		2.	 Account exists in both maps (negative balance)
+			changesMap[account, XLM] = -50	--	Account lost 50 XLM according to ledger changes
+			eventsMap[account, XLM] = -20	--	But our events only account for 20 XLM being lost
+			diff = -50 - (-20) = -30 < 0, so we issue a BURN event for 30 XLM
+
+		3.	Account only in changesMap
+			changesMap[account, XLM] = 50	--	Account gained 50 XLM according to ledger changes
+			eventsMap[account, XLM] = 0	--	No events recorded for this account (key doesn't exist)
+			diff = 50 - 0 = 50 > 0, so we issue a MINT event for 50 XLM
+
+		4.	Account only in eventsMap
+			changesMap[account, XLM] = 0	--	No changes recorded for this account (key doesn't exist)
+			eventsMap[account, XLM] = 30	--	But our events show 30 XLM being credited
+			diff = 0 - 30 = -30 < 0, so we issue a BURN event for 30 XLM
+
+			More nuanced scenarios
+
+		5.  changesMap positive, eventsMap negative
+			changesMap[account, XLM] = 100	--	Account gained 100 XLM according to ledger changes
+			eventsMap[account, XLM] = -50	--	But our events show 50 XLM being deducted
+			diff = 100 - (-50) = 150 > 0, so we issue a MINT event for 150 XLM
+
+		6.	changesMap negative, eventsMap positive
+			changesMap[account, XLM] = -80	--	Account lost 80 XLM according to ledger changes
+			eventsMap[account, XLM] = 40	--	But our events show 40 XLM being credited
+			diff = -80 - 40 = -120 < 0, so we issue a BURN event for 120 XLM
+
+			Even more nuanced scenarios
+
+		7.	Opposite of Case 2
+			changesMap[account, XLM] = -20	--	Account lost 20 XLM according to ledger changes
+			eventsMap[account, XLM] = -50	--	But our events show 50 XLM being lost
+			diff = -20 - (-50) = 30 > 0, so we issue a MINT event for 30 XLM
+
+		8. 	Opposite of Case 1
+			changesMap[account, XLM] = 70	-- 	Account gained 70 XLM according to ledger changes
+			eventsMap[account, XLM] = 100	--	But our events only account for 100 XLM
+			diff = 70 - 100 = -30, so we issue a BURN event for 30 XLM
+
+
+	*/
+
+	// Calculate the difference
+	var diff int64
+	if existsInChanges && existsInEvents {
+		// Both maps have entries for this account/asset
+		diff = changesBalance - eventsBalance
+	} else if existsInChanges {
+		// Only in changes map, not in events map
+		diff = changesBalance
+	} else if existsInEvents {
+		// Only in events map, not in changes map
+		diff = -eventsBalance
+	} else {
+		// Not in either map, no difference
+		return events
+	}
+
+	// If no difference, return empty events list
+	if diff == 0 {
+		return events
+	}
+
+	meta := p.generateEventMeta(tx, &opIndex, asset)
+	protoAsset := assetProto.NewProtoAsset(asset)
+
+	// Generate appropriate event based on the difference
+	if diff > 0 {
+		// changesMap shows more XLM than eventsMap - need to MINT
+
+		mintEvent := NewMintEvent(meta, accountStr, amount.String64Raw(xdr.Int64(diff)), protoAsset)
+		events = append(events, mintEvent)
+	} else {
+		// changesMap shows less XLM than eventsMap - need to BURN
+		burnEvent := NewBurnEvent(meta, accountStr, amount.String64Raw(xdr.Int64(-diff)), protoAsset)
+		events = append(events, burnEvent)
+	}
+
+	return events
+}
+
+func (p *EventsProcessor) generateXlmReconciliationEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation, operationEvents []*TokenTransferEvent) ([]*TokenTransferEvent, error) {
+	// DO not run this reconciliation check for ledgers > 8 or if operation is Inflation
+	if tx.Ledger.LedgerSequence() > 8 {
+		return nil, nil
+	}
+	if op.Body.Type == xdr.OperationTypeInflation {
+		return nil, nil
+	}
+
+	operationChanges, err := tx.GetOperationChanges(opIndex)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to get operation changes for operation Index: %v", opIndex)
+	}
+	changesMap := findBalanceDeltasFromChanges(operationChanges)
+	eventsMap := findBalanceDeltasFromEvents(operationEvents)
+	operationSrcAccount := operationSourceAccount(tx, op)
+
+	//
+	return p.maybeGenerateMintOrBurnEventsForReconciliation(tx, opIndex, changesMap, eventsMap, operationSrcAccount, xlmAsset), nil
 }
