@@ -148,9 +148,8 @@ func findBalanceDeltasFromEvents(events []*TokenTransferEvent) map[balanceKey]in
 			continue
 		}
 
-		eventType := event.GetEventType()
-		switch eventType {
-		case "Fee":
+		switch event.GetEvent().(type) {
+		case *TokenTransferEvent_Fee:
 			ev := event.GetFee()
 			address := ev.From
 			asset := xlmAsset.StringCanonical()
@@ -158,7 +157,7 @@ func findBalanceDeltasFromEvents(events []*TokenTransferEvent) map[balanceKey]in
 			// Address' balance reduces by amt in FEE
 			updateBalanceMap(hashmap, balanceKey{holder: address, asset: asset}, -amt)
 
-		case "Transfer":
+		case *TokenTransferEvent_Transfer:
 			ev := event.GetTransfer()
 			fromAddress := ev.From
 			toAddress := ev.To
@@ -169,7 +168,7 @@ func findBalanceDeltasFromEvents(events []*TokenTransferEvent) map[balanceKey]in
 			// ToAddress' balance increases by amt in TRANSFER
 			updateBalanceMap(hashmap, balanceKey{holder: toAddress, asset: asset}, amt)
 
-		case "Mint":
+		case *TokenTransferEvent_Mint:
 			ev := event.GetMint()
 			toAddress := ev.To
 			asset := event.Asset.ToXdrAsset().StringCanonical()
@@ -177,7 +176,7 @@ func findBalanceDeltasFromEvents(events []*TokenTransferEvent) map[balanceKey]in
 			// ToAddress' balance increases by amt in MINT
 			updateBalanceMap(hashmap, balanceKey{holder: toAddress, asset: asset}, amt)
 
-		case "Burn":
+		case *TokenTransferEvent_Burn:
 			ev := event.GetBurn()
 			fromAddress := ev.From
 			asset := event.Asset.ToXdrAsset().StringCanonical()
@@ -185,7 +184,7 @@ func findBalanceDeltasFromEvents(events []*TokenTransferEvent) map[balanceKey]in
 			// FromAddress' balance reduces by amt in BURN
 			updateBalanceMap(hashmap, balanceKey{holder: fromAddress, asset: asset}, -amt)
 
-		case "Clawback":
+		case *TokenTransferEvent_Clawback:
 			ev := event.GetClawback()
 			fromAddress := ev.From
 			asset := event.Asset.ToXdrAsset().StringCanonical()
@@ -194,7 +193,7 @@ func findBalanceDeltasFromEvents(events []*TokenTransferEvent) map[balanceKey]in
 			updateBalanceMap(hashmap, balanceKey{holder: fromAddress, asset: asset}, -amt)
 
 		default:
-			panic(fmt.Errorf("unknown event type %s", eventType))
+			panic(fmt.Errorf("unknown event type %s", event.GetEventType()))
 		}
 	}
 	return hashmap

@@ -82,40 +82,50 @@ var (
 				},
 			},
 		},
-		Result:        xdr.TransactionResultPair{},
-		UnsafeMeta:    xdr.TransactionMeta{},
+		Result: xdr.TransactionResultPair{},
+		UnsafeMeta: xdr.TransactionMeta{
+			V: 3,
+			V3: &xdr.TransactionMetaV3{
+				Operations: []xdr.OperationMeta{{}},
+			},
+		},
 		LedgerVersion: 1234,
 		Ledger:        someLcm,
 		Hash:          someTxHash,
 	}
 
 	someTxWithOperationChanges = func(changes xdr.LedgerEntryChanges) ingest.LedgerTransaction {
-		return ingest.LedgerTransaction{
-			Index: 1,
-			Envelope: xdr.TransactionEnvelope{
-				Type: xdr.EnvelopeTypeEnvelopeTypeTx,
-				V1: &xdr.TransactionV1Envelope{
-					Tx: xdr.Transaction{
-						SourceAccount: someTxAccount,
-						SeqNum:        xdr.SequenceNumber(54321), // need this for generating CbIds from LPIds for revokeTrustline tests
-					},
+		resp := someTx
+		resp.UnsafeMeta.V = 3
+		resp.UnsafeMeta.V3 = &xdr.TransactionMetaV3{
+			Operations: []xdr.OperationMeta{
+				{
+					Changes: changes,
 				},
 			},
-			Result: xdr.TransactionResultPair{},
-			UnsafeMeta: xdr.TransactionMeta{
-				V: 3,
-				V3: &xdr.TransactionMetaV3{
-					Operations: []xdr.OperationMeta{
-						{
-							Changes: changes,
-						},
-					},
-				},
-			},
-			LedgerVersion: 1234,
-			Ledger:        someLcm,
-			Hash:          someTxHash,
 		}
+		return resp
+	}
+
+	someOldTxWithOperationChanges = func(changes xdr.LedgerEntryChanges) ingest.LedgerTransaction {
+		resp := someTxWithOperationChanges(changes)
+		someOldLcm := someLcm
+		someOldLcm.V0 =
+			&xdr.LedgerCloseMetaV0{
+				LedgerHeader: xdr.LedgerHeaderHistoryEntry{
+					Header: xdr.LedgerHeader{
+						LedgerVersion: 5, // This is to trigger the XLM reconciliation check
+						LedgerSeq:     xdr.Uint32(12345),
+						ScpValue:      xdr.StellarValue{CloseTime: xdr.TimePoint(12345 * 100)},
+					},
+				},
+				TxSet:              xdr.TransactionSet{},
+				TxProcessing:       nil,
+				UpgradesProcessing: nil,
+				ScpInfo:            nil,
+			}
+		resp.Ledger = someOldLcm
+		return resp
 	}
 
 	someOperationIndex = uint32(0)
@@ -315,6 +325,20 @@ var (
 		}
 		return claimAtom
 	}
+
+	paymentOp = func(src *xdr.MuxedAccount, dst xdr.MuxedAccount, asset xdr.Asset, amount xdr.Int64) xdr.Operation {
+		return xdr.Operation{
+			SourceAccount: src,
+			Body: xdr.OperationBody{
+				Type: xdr.OperationTypePayment,
+				PaymentOp: &xdr.PaymentOp{
+					Destination: dst,
+					Amount:      amount,
+					Asset:       asset,
+				},
+			},
+		}
+	}
 )
 
 type testFixture struct {
@@ -467,6 +491,120 @@ func TestAccountCreateEvents(t *testing.T) {
 	runTokenTransferEventTests(t, tests)
 }
 
+func TestReconciliation(t *testing.T) {
+	accountEntry := func(acc xdr.MuxedAccount, balance xdr.Int64) *xdr.AccountEntry {
+		return &xdr.AccountEntry{
+			AccountId: acc.ToAccountId(),
+			Balance:   1000 * oneUnit,
+			SeqNum:    xdr.SequenceNumber(12345),
+		}
+	}
+
+	generateAccountEntryChangState := func(accountEntry *xdr.AccountEntry) xdr.LedgerEntryChange {
+		return xdr.LedgerEntryChange{
+			Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
+			State: &xdr.LedgerEntry{
+				Data: xdr.LedgerEntryData{
+					Type:    xdr.LedgerEntryTypeAccount,
+					Account: accountEntry,
+				},
+			},
+		}
+	}
+
+	generateAccountEntryUpdatedChange := func(accountEntry *xdr.AccountEntry, newBalance xdr.Int64) xdr.LedgerEntryChange {
+		accountEntry.Balance = newBalance
+		return xdr.LedgerEntryChange{
+			Type: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
+			Updated: &xdr.LedgerEntry{
+				Data: xdr.LedgerEntryData{
+					Type:    xdr.LedgerEntryTypeAccount,
+					Account: accountEntry,
+				},
+			},
+		}
+	}
+
+	tests := []testFixture{
+		{
+			name: "Source Account mints money - part 1",
+			op:   paymentOp(&accountA, accountB, xlmAsset, 70*oneUnit),
+			tx: someOldTxWithOperationChanges(
+				xdr.LedgerEntryChanges{
+					// Src initial state
+					generateAccountEntryChangState(accountEntry(accountA, 1000*oneUnit)),
+					// Src went up from 1000 to 1090 XLM instead of down by 70 XLM. Src minted money
+					generateAccountEntryUpdatedChange(accountEntry(accountA, 1000*oneUnit), 1090*oneUnit),
+				}),
+
+			expected: []*TokenTransferEvent{
+				// diff is between changesDiff and eventsDiff
+				// diff = (1090 - 1000) -  (amount in payment that went from src to dst, i.e -70) --> 90 - (-70) = 160
+				// +ve value of the diff means it's a mint. mint will appear before any events in the operation
+				mintEvent(accountA.Address(), unitsToStr(160*oneUnit), xlmProtoAsset),
+				transferEvent(accountA.Address(), accountB.Address(), unitsToStr(70*oneUnit), xlmProtoAsset),
+			},
+		},
+		{
+			name: "Source Account burns money  - part 1",
+			op:   paymentOp(&accountA, accountB, xlmAsset, 70*oneUnit),
+			tx: someOldTxWithOperationChanges(
+				xdr.LedgerEntryChanges{
+					// Src initial state
+					generateAccountEntryChangState(accountEntry(accountA, 1000*oneUnit)),
+					// Src went down from 1000 to 800 XLM instead of down by 70 XLM. Src burned money
+					generateAccountEntryUpdatedChange(accountEntry(accountA, 1000*oneUnit), 800*oneUnit),
+				}),
+
+			expected: []*TokenTransferEvent{
+				// diff is between changesDiff and eventsDiff
+				// diff = (800 - 1000) -  (amount in payment that went from src to dst, i.e -70) --> -200 - (-70) = -130
+				// -ve value of the diff means it's a burn. burn will appear after all events in the operation
+				transferEvent(accountA.Address(), accountB.Address(), unitsToStr(70*oneUnit), xlmProtoAsset),
+				burnEvent(accountA.Address(), unitsToStr(130*oneUnit), xlmProtoAsset),
+			},
+		},
+		{
+			name: "Source Account mints money - part 2",
+			op:   paymentOp(&accountA, accountB, xlmAsset, 70*oneUnit),
+			tx: someOldTxWithOperationChanges(
+				xdr.LedgerEntryChanges{
+					// Src initial state
+					generateAccountEntryChangState(accountEntry(accountA, 1000*oneUnit)),
+					// Src was supposed to go down by 70, instead it went down only by 20. Src minted money
+					generateAccountEntryUpdatedChange(accountEntry(accountA, 1000*oneUnit), 980*oneUnit),
+				}),
+
+			expected: []*TokenTransferEvent{
+				// diff is between changesDiff and eventsDiff
+				// diff = (980 - 1000) -  (amount in payment that went from src to dst, i.e -70) --> -20 - (-70) = 50
+				// +ve value of the diff means it's a mint. mint will appear before any events in the operation
+				mintEvent(accountA.Address(), unitsToStr(50*oneUnit), xlmProtoAsset),
+				transferEvent(accountA.Address(), accountB.Address(), unitsToStr(70*oneUnit), xlmProtoAsset),
+			},
+		},
+		{
+			name: "Source Account mints money - part 3",
+			op:   paymentOp(&accountA, accountB, xlmAsset, 70*oneUnit),
+			tx: someOldTxWithOperationChanges(
+				xdr.LedgerEntryChanges{
+					// no entries for src (imagine it was merged in a previous operation). This actually happened on pubnet
+					// No changes implies that src balance didnt change (semantically), when it shud have gone done by 70. Src minted money
+				}),
+
+			expected: []*TokenTransferEvent{
+				// diff is between changesDiff and eventsDiff
+				// diff = 0 -  (amount in payment that went from src to dst, i.e -70) --> 0 - (-70) = 70
+				// +ve value of the diff means it's a mint. mint will appear before any events in the operation
+				mintEvent(accountA.Address(), unitsToStr(70*oneUnit), xlmProtoAsset),
+				transferEvent(accountA.Address(), accountB.Address(), unitsToStr(70*oneUnit), xlmProtoAsset),
+			},
+		},
+	}
+	runTokenTransferEventTests(t, tests)
+
+}
+
 func TestMergeAccountEvents(t *testing.T) {
 	mergeAccountOp :=
 		xdr.Operation{
@@ -489,7 +627,6 @@ func TestMergeAccountEvents(t *testing.T) {
 			},
 		}
 	}
-
 	hundredUnits := 100 * oneUnit
 	tests := []testFixture{
 		{
@@ -513,19 +650,6 @@ func TestMergeAccountEvents(t *testing.T) {
 }
 
 func TestPaymentEvents(t *testing.T) {
-	paymentOp := func(src *xdr.MuxedAccount, dst xdr.MuxedAccount, asset xdr.Asset, amount xdr.Int64) xdr.Operation {
-		return xdr.Operation{
-			SourceAccount: src,
-			Body: xdr.OperationBody{
-				Type: xdr.OperationTypePayment,
-				PaymentOp: &xdr.PaymentOp{
-					Destination: dst,
-					Amount:      amount,
-					Asset:       asset,
-				},
-			},
-		}
-	}
 
 	tests := []testFixture{
 		{
