@@ -2,6 +2,7 @@ package actions
 
 import (
 	"net/http"
+	"slices"
 
 	protocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/context"
@@ -24,17 +25,7 @@ type OrderBookResponse struct {
 }
 
 func priceLevelsEqual(a, b []protocol.PriceLevel) bool {
-	if len(a) != len(b) {
-		return false
-	}
-
-	for i := range a {
-		if a[i] != b[i] {
-			return false
-		}
-	}
-
-	return true
+	return slices.Equal(a, b)
 }
 
 // Equals returns true if the OrderBookResponse is equal to `other`
