@@ -2,6 +2,7 @@ package token_transfer
 
 import (
 	"fmt"
+	"github.com/google/go-cmp/cmp"
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/support/collections/maps"
@@ -235,7 +236,7 @@ func mapsEqual(map1, map2 map[balanceKey]int64) bool {
 	return true
 }
 
-func VerifyEvents(ledger xdr.LedgerCloseMeta, passphrase string) bool {
+func VerifyEvents(ledger xdr.LedgerCloseMeta, passphrase string) error {
 	changes := getChangesFromLedger(ledger, passphrase)
 	ttp := NewEventsProcessor(passphrase)
 	events, err := ttp.EventsFromLedger(ledger)
@@ -243,10 +244,15 @@ func VerifyEvents(ledger xdr.LedgerCloseMeta, passphrase string) bool {
 		panic(fmt.Errorf("unable to process token transfer events from ledger: %w", err))
 	}
 
-	changesMap := findBalanceDeltasFromChanges(changes)
-	eventsMap := findBalanceDeltasFromEvents(events)
+	var changesMap, eventsMap map[balanceKey]int64
+	changesMap = findBalanceDeltasFromChanges(changes)
+	eventsMap = findBalanceDeltasFromEvents(events)
 
-	return mapsEqual(eventsMap, changesMap)
+	if diff := cmp.Diff(eventsMap, changesMap); diff != "" {
+		return fmt.Errorf("balance delta mismatch between events and ledger changes:\n"+
+			"('-' indicates missing or different in events, '+' indicates missing or different in ledger changes)\n%s", diff)
+	}
+	return nil
 }
 
 // Function to print map in sorted order of keys
