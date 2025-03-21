@@ -5,10 +5,8 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/ingest"
-	"github.com/stellar/go/support/collections/maps"
 	"github.com/stellar/go/xdr"
 	"io"
-	"slices"
 )
 
 // balanceKey represents a unique holder-asset pair for tracking balance changes
@@ -220,22 +218,6 @@ func getChangesFromLedger(ledger xdr.LedgerCloseMeta, passphrase string) []inges
 	return changes
 }
 
-func mapsEqual(map1, map2 map[balanceKey]int64) bool {
-	// First, check if the maps have the same length
-	if len(map1) != len(map2) {
-		return false
-	}
-
-	// Then, compare the keys and values in both maps
-	for key, value := range map1 {
-		if val, exists := map2[key]; !exists || val != value {
-			return false
-		}
-	}
-
-	return true
-}
-
 func VerifyEvents(ledger xdr.LedgerCloseMeta, passphrase string) error {
 	changes := getChangesFromLedger(ledger, passphrase)
 	ttp := NewEventsProcessor(passphrase)
@@ -253,32 +235,4 @@ func VerifyEvents(ledger xdr.LedgerCloseMeta, passphrase string) error {
 			"('-' indicates missing or different in events, '+' indicates missing or different in ledger changes)\n%s", diff)
 	}
 	return nil
-}
-
-// Function to print map in sorted order of keys
-func printMap(m map[balanceKey]int64) {
-	keys := maps.Keys(m)
-
-	// Stable sort
-	slices.SortStableFunc(keys, func(a, b balanceKey) int {
-		// Sort first by holder, then by asset
-		if a.holder != b.holder {
-			if a.holder < b.holder {
-				return -1
-			}
-			return 1
-		}
-		if a.asset < b.asset {
-			return -1
-		}
-		if a.asset > b.asset {
-			return 1
-		}
-		return 0
-	})
-
-	// Iterate over sorted keys and print the map in that order
-	for _, key := range keys {
-		fmt.Printf("Holder: %s, Asset: %s, Delta: %d\n", key.holder, key.asset, m[key])
-	}
 }
