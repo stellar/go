@@ -39,6 +39,15 @@ func (e TransactionEnvelope) SourceAccount() MuxedAccount {
 	}
 }
 
+func (e TransactionEnvelope) FeeAccount() MuxedAccount {
+	switch e.Type {
+	case EnvelopeTypeEnvelopeTypeTxFeeBump:
+		return e.FeeBumpAccount()
+	default:
+		return e.SourceAccount()
+	}
+}
+
 // Fee returns the fee defined for the transaction envelope
 // If the transaction envelope is for a fee bump transaction, Fee()
 // returns the fee defined in the inner transaction
