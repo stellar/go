@@ -159,7 +159,7 @@ func (p *EventsProcessor) EventsFromOperation(tx ingest.LedgerTransaction, opInd
 	case xdr.OperationTypePathPaymentStrictReceive:
 		events, err = p.pathPaymentStrictReceiveEvents(tx, opIndex, op, opResult)
 	case xdr.OperationTypeInflation:
-		return nil, nil //TODO implement this
+		events, err = p.inflationEvents(tx, opIndex, op, opResult)
 	case xdr.OperationTypeInvokeHostFunction:
 		return nil, nil //TODO implement this
 	default:
@@ -170,13 +170,12 @@ func (p *EventsProcessor) EventsFromOperation(tx ingest.LedgerTransaction, opInd
 		return nil, err
 	}
 
-	// DO not run this reconciliation check for ledgers with protocol version >= 8 or if operation is Inflation
+	// DO not run this reconciliation check for ledgers with protocol version >= 8
 	if tx.Ledger.ProtocolVersion() >= 8 {
 		return events, nil
 	}
 
-	// Run reconciliation for all operations except Inflation, InvokeHostFunction, and default cases
-	// which are already returned above
+	// Run reconciliation for all operations except InvokeHostFunction
 	reconciliationEvent, err := p.generateXlmReconciliationEvents(tx, opIndex, op, events)
 	if err != nil {
 		return nil, fmt.Errorf("error generating reconciliation events: %w", err)
@@ -223,9 +222,9 @@ func (p *EventsProcessor) mintOrBurnOrTransferEvent(tx ingest.LedgerTransaction,
 			isMintEvent = true
 		}
 	} else if from.liquidityPoolId != nil {
-		fromAddress = protoAddressFromLpHash(*from.liquidityPoolId)
+		fromAddress = lpIdToStrkey(*from.liquidityPoolId)
 	} else if from.claimableBalanceId != nil {
-		fromAddress = protoAddressFromClaimableBalanceId(*from.claimableBalanceId)
+		fromAddress = cbIdToStrkey(*from.claimableBalanceId)
 	}
 
 	// Checking 'to' address
@@ -235,9 +234,9 @@ func (p *EventsProcessor) mintOrBurnOrTransferEvent(tx ingest.LedgerTransaction,
 			isBurnEvent = true
 		}
 	} else if to.liquidityPoolId != nil {
-		toAddress = protoAddressFromLpHash(*to.liquidityPoolId)
+		toAddress = lpIdToStrkey(*to.liquidityPoolId)
 	} else if to.claimableBalanceId != nil {
-		toAddress = protoAddressFromClaimableBalanceId(*to.claimableBalanceId)
+		toAddress = cbIdToStrkey(*to.claimableBalanceId)
 	}
 
 	protoAsset := assetProto.NewProtoAsset(asset)
@@ -344,6 +343,17 @@ func (p *EventsProcessor) paymentEvents(tx ingest.LedgerTransaction, opIndex uin
 	return []*TokenTransferEvent{event}, nil
 }
 
+func (p *EventsProcessor) inflationEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation, result xdr.OperationResult) ([]*TokenTransferEvent, error) {
+	payouts := result.Tr.MustInflationResult().MustPayouts()
+
+	var mintEvents []*TokenTransferEvent
+	meta := p.generateEventMeta(tx, &opIndex, xlmAsset)
+	for _, recipient := range payouts {
+		mintEvents = append(mintEvents, NewMintEvent(meta, recipient.Destination.Address(), amount.String64Raw(recipient.Amount), xlmProtoAsset))
+	}
+	return mintEvents, nil
+}
+
 func (p *EventsProcessor) createClaimableBalanceEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation, result xdr.OperationResult) ([]*TokenTransferEvent, error) {
 	createCbOp := op.Body.MustCreateClaimableBalanceOp()
 	createCbResult := result.Tr.MustCreateClaimableBalanceResult()
@@ -427,7 +437,7 @@ func (p *EventsProcessor) clawbackClaimableBalanceEvents(tx ingest.LedgerTransac
 	cb := cbEntries[0]
 	meta := p.generateEventMeta(tx, &opIndex, cb.Asset)
 	// Money is clawed back from the claimableBalanceId
-	event := NewClawbackEvent(meta, protoAddressFromClaimableBalanceId(cbId), amount.String64Raw(cb.Amount), assetProto.NewProtoAsset(cb.Asset))
+	event := NewClawbackEvent(meta, cbIdToStrkey(cbId), amount.String64Raw(cb.Amount), assetProto.NewProtoAsset(cb.Asset))
 	return []*TokenTransferEvent{event}, nil
 }
 
@@ -549,7 +559,7 @@ func (p *EventsProcessor) generateEventsForRevokedTrustlines(tx ingest.LedgerTra
 			}
 
 			burnMeta := p.generateEventMeta(tx, &opIndex, burnedAsset)
-			burnEvent := NewBurnEvent(burnMeta, protoAddressFromLpHash(from), amount.String64Raw(burnedAmount), assetProto.NewProtoAsset(burnedAsset))
+			burnEvent := NewBurnEvent(burnMeta, lpIdToStrkey(from), amount.String64Raw(burnedAmount), assetProto.NewProtoAsset(burnedAsset))
 			events = append(events, transferEvent, burnEvent)
 
 		} else if len(cbsCreatedByThisLp) == 2 {
@@ -822,7 +832,7 @@ func (p *EventsProcessor) pathPaymentStrictReceiveEvents(tx ingest.LedgerTransac
 
 /*
 This code needs to be run to compare the diffs between the changesMap and eventsMap for the (sourceAccount, XLM) combination
-This needs to be run for each operation, except INFLATION OPERATION, and when ledgerSeq <= 8
+This needs to be run for each operation, when ledgerSeq <= 8
 For more details, on why this is needed, refer - https://github.com/stellar/stellar-protocol/blob/master/core/cap-0067.md#retroactively-emitting-events
 
 The maybeGenerateMintOrBurnEvents function takes in an account and an asset, but in reality, this will only be called for operationSourceAccount and strictly for XLM

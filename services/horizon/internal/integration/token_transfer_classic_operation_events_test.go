@@ -243,7 +243,7 @@ func TestTrustlineRevocationEvents(t *testing.T) {
 	tt.NoError(err)
 
 	t = itest.CurrentTest()
-	printProtoEvents(events)
+	//printProtoEvents(events)
 
 	// 2 operations - 100 stroops per operation
 	assertFeeEvent(t, events, master.Address(), "200")

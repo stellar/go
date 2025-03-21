@@ -600,9 +600,79 @@ func TestReconciliation(t *testing.T) {
 				transferEvent(accountA.Address(), accountB.Address(), unitsToStr(70*oneUnit), xlmProtoAsset),
 			},
 		},
+		{
+			name: "Tx Account mints money by sending a 0 value payment",
+			op:   paymentOp(nil, accountB, xlmAsset, 0*oneUnit),
+			tx: someOldTxWithOperationChanges(
+				xdr.LedgerEntryChanges{
+					// Src initial state
+					generateAccountEntryChangState(accountEntry(someTxAccount, 1000*oneUnit)),
+					// diff = 1020 - 1000  = 20
+					generateAccountEntryUpdatedChange(accountEntry(someTxAccount, 1000*oneUnit), 1020*oneUnit),
+				}),
+
+			expected: []*TokenTransferEvent{
+				// +ve value of the diff means it's a mint. mint will appear before any events in the operation
+				mintEvent(someTxAccount.Address(), unitsToStr(20*oneUnit), xlmProtoAsset),
+				transferEvent(someTxAccount.Address(), accountB.Address(), unitsToStr(0*oneUnit), xlmProtoAsset),
+			},
+		},
+		{
+			name: "Tx Account burns money by sending a 0 value payment",
+			op:   paymentOp(nil, accountB, xlmAsset, 0*oneUnit),
+			tx: someOldTxWithOperationChanges(
+				xdr.LedgerEntryChanges{
+					// Src initial state
+					generateAccountEntryChangState(accountEntry(someTxAccount, 1000*oneUnit)),
+					// diff = 1000 - 980  = -20
+					generateAccountEntryUpdatedChange(accountEntry(someTxAccount, 1000*oneUnit), 980*oneUnit),
+				}),
+
+			expected: []*TokenTransferEvent{
+				// -ve value of the diff means it's a burn. burn` will appear before any events in the operation
+				transferEvent(someTxAccount.Address(), accountB.Address(), unitsToStr(0*oneUnit), xlmProtoAsset),
+				burnEvent(someTxAccount.Address(), unitsToStr(20*oneUnit), xlmProtoAsset),
+			},
+		},
+	}
+
+	runTokenTransferEventTests(t, tests)
+}
+
+func TestInflationEvents(t *testing.T) {
+	inflationOp := xdr.Operation{
+		Body: xdr.OperationBody{
+			Type: xdr.OperationTypeInflation,
+		},
+	}
+	inflationResults := func(payouts []xdr.InflationPayout) xdr.OperationResult {
+		return xdr.OperationResult{
+			Tr: &xdr.OperationResultTr{
+				Type: xdr.OperationTypeInflation,
+				InflationResult: &xdr.InflationResult{
+					Code:    xdr.InflationResultCodeInflationSuccess,
+					Payouts: &payouts,
+				},
+			},
+		}
+	}
+
+	tests := []testFixture{
+		{
+			name: "inflation payout to multiple recipients - multiple mints",
+			tx:   someTx,
+			op:   inflationOp,
+			opResult: inflationResults([]xdr.InflationPayout{
+				{Destination: accountA.ToAccountId(), Amount: 111 * oneUnit},
+				{Destination: accountB.ToAccountId(), Amount: 123 * oneUnit},
+			}),
+			expected: []*TokenTransferEvent{
+				mintEvent(accountA.Address(), unitsToStr(111*oneUnit), xlmProtoAsset),
+				mintEvent(accountB.Address(), unitsToStr(123*oneUnit), xlmProtoAsset),
+			},
+		},
 	}
 	runTokenTransferEventTests(t, tests)
-
 }
 
 func TestMergeAccountEvents(t *testing.T) {
@@ -960,7 +1030,6 @@ func TestPathPaymentEvents(t *testing.T) {
 				burnEvent(protoAddressFromAccount(btcAccount), unitsToStr(6*oneUnit), ethProtoAsset),
 			},
 		},
-
 		{
 			name: "Strict Send - A (BTC Issuer) sends BTC to B as USDC - 2 LP sweeps (BTC/ETH, ETH/USDC) - Mint and Transfer events",
 			tx:   someTx,
@@ -976,11 +1045,11 @@ func TestPathPaymentEvents(t *testing.T) {
 				100*oneUnit,
 			),
 			expected: []*TokenTransferEvent{
-				transferEvent(protoAddressFromLpHash(lpBtcEthId), protoAddressFromAccount(btcAccount), unitsToStr(5*oneUnit), ethProtoAsset),
-				mintEvent(protoAddressFromLpHash(lpBtcEthId), unitsToStr(oneUnit), btcProtoAsset),
+				transferEvent(lpIdToStrkey(lpBtcEthId), protoAddressFromAccount(btcAccount), unitsToStr(5*oneUnit), ethProtoAsset),
+				mintEvent(lpIdToStrkey(lpBtcEthId), unitsToStr(oneUnit), btcProtoAsset),
 
-				transferEvent(protoAddressFromLpHash(lpEthUsdcId), protoAddressFromAccount(btcAccount), unitsToStr(10*oneUnit), usdcProtoAsset),
-				transferEvent(protoAddressFromAccount(btcAccount), protoAddressFromLpHash(lpEthUsdcId), unitsToStr(3*oneUnit), ethProtoAsset),
+				transferEvent(lpIdToStrkey(lpEthUsdcId), protoAddressFromAccount(btcAccount), unitsToStr(10*oneUnit), usdcProtoAsset),
+				transferEvent(protoAddressFromAccount(btcAccount), lpIdToStrkey(lpEthUsdcId), unitsToStr(3*oneUnit), ethProtoAsset),
 
 				// Final transfer from source to dest of ETH
 				transferEvent(protoAddressFromAccount(btcAccount), protoAddressFromAccount(accountB), unitsToStr(100*oneUnit), usdcProtoAsset),
@@ -999,11 +1068,11 @@ func TestPathPaymentEvents(t *testing.T) {
 				},
 			),
 			expected: []*TokenTransferEvent{
-				transferEvent(protoAddressFromLpHash(lpBtcEthId), protoAddressFromAccount(btcAccount), unitsToStr(5*oneUnit), ethProtoAsset),
-				mintEvent(protoAddressFromLpHash(lpBtcEthId), unitsToStr(oneUnit), btcProtoAsset),
+				transferEvent(lpIdToStrkey(lpBtcEthId), protoAddressFromAccount(btcAccount), unitsToStr(5*oneUnit), ethProtoAsset),
+				mintEvent(lpIdToStrkey(lpBtcEthId), unitsToStr(oneUnit), btcProtoAsset),
 
-				transferEvent(protoAddressFromLpHash(lpEthUsdcId), protoAddressFromAccount(btcAccount), unitsToStr(10*oneUnit), usdcProtoAsset),
-				transferEvent(protoAddressFromAccount(btcAccount), protoAddressFromLpHash(lpEthUsdcId), unitsToStr(3*oneUnit), ethProtoAsset),
+				transferEvent(lpIdToStrkey(lpEthUsdcId), protoAddressFromAccount(btcAccount), unitsToStr(10*oneUnit), usdcProtoAsset),
+				transferEvent(protoAddressFromAccount(btcAccount), lpIdToStrkey(lpEthUsdcId), unitsToStr(3*oneUnit), ethProtoAsset),
 
 				// Final burn from source to dest of USDC
 				burnEvent(protoAddressFromAccount(btcAccount), unitsToStr(6*oneUnit), usdcProtoAsset),
@@ -1048,8 +1117,8 @@ func TestLiquidityPoolEvents(t *testing.T) {
 					generateLpEntryCreatedChange(lpLedgerEntry(lpBtcEthId, btcAsset, ethAsset, oneUnit, 3*oneUnit)),
 				}),
 			expected: []*TokenTransferEvent{
-				transferEvent(protoAddressFromAccount(someTxAccount), protoAddressFromLpHash(lpBtcEthId), unitsToStr(oneUnit), btcProtoAsset),
-				transferEvent(protoAddressFromAccount(someTxAccount), protoAddressFromLpHash(lpBtcEthId), unitsToStr(3*oneUnit), ethProtoAsset),
+				transferEvent(protoAddressFromAccount(someTxAccount), lpIdToStrkey(lpBtcEthId), unitsToStr(oneUnit), btcProtoAsset),
+				transferEvent(protoAddressFromAccount(someTxAccount), lpIdToStrkey(lpBtcEthId), unitsToStr(3*oneUnit), ethProtoAsset),
 			},
 		},
 		{
@@ -1062,8 +1131,8 @@ func TestLiquidityPoolEvents(t *testing.T) {
 					generateLpEntryUpdatedChange(lpLedgerEntry(lpBtcEthId, btcAsset, ethAsset, oneUnit, 3*oneUnit), 5*oneUnit, 10*oneUnit), // post state
 				}),
 			expected: []*TokenTransferEvent{
-				transferEvent(protoAddressFromAccount(someTxAccount), protoAddressFromLpHash(lpBtcEthId), unitsToStr(4*oneUnit), btcProtoAsset),
-				transferEvent(protoAddressFromAccount(someTxAccount), protoAddressFromLpHash(lpBtcEthId), unitsToStr(7*oneUnit), ethProtoAsset),
+				transferEvent(protoAddressFromAccount(someTxAccount), lpIdToStrkey(lpBtcEthId), unitsToStr(4*oneUnit), btcProtoAsset),
+				transferEvent(protoAddressFromAccount(someTxAccount), lpIdToStrkey(lpBtcEthId), unitsToStr(7*oneUnit), ethProtoAsset),
 			},
 		},
 		{
@@ -1075,8 +1144,8 @@ func TestLiquidityPoolEvents(t *testing.T) {
 					generateLpEntryCreatedChange(lpLedgerEntry(lpBtcEthId, btcAsset, ethAsset, oneUnit, 3*oneUnit)),
 				}),
 			expected: []*TokenTransferEvent{
-				mintEvent(protoAddressFromLpHash(lpBtcEthId), unitsToStr(oneUnit), btcProtoAsset),
-				transferEvent(protoAddressFromAccount(btcAccount), protoAddressFromLpHash(lpBtcEthId), unitsToStr(3*oneUnit), ethProtoAsset),
+				mintEvent(lpIdToStrkey(lpBtcEthId), unitsToStr(oneUnit), btcProtoAsset),
+				transferEvent(protoAddressFromAccount(btcAccount), lpIdToStrkey(lpBtcEthId), unitsToStr(3*oneUnit), ethProtoAsset),
 			},
 		},
 		{
@@ -1089,8 +1158,8 @@ func TestLiquidityPoolEvents(t *testing.T) {
 					generateLpEntryUpdatedChange(lpLedgerEntry(lpBtcEthId, btcAsset, ethAsset, 5*oneUnit, 10*oneUnit), 2*oneUnit, 2*oneUnit), // post state
 				}),
 			expected: []*TokenTransferEvent{
-				transferEvent(protoAddressFromLpHash(lpBtcEthId), protoAddressFromAccount(someTxAccount), unitsToStr(3*oneUnit), btcProtoAsset),
-				transferEvent(protoAddressFromLpHash(lpBtcEthId), protoAddressFromAccount(someTxAccount), unitsToStr(8*oneUnit), ethProtoAsset),
+				transferEvent(lpIdToStrkey(lpBtcEthId), protoAddressFromAccount(someTxAccount), unitsToStr(3*oneUnit), btcProtoAsset),
+				transferEvent(lpIdToStrkey(lpBtcEthId), protoAddressFromAccount(someTxAccount), unitsToStr(8*oneUnit), ethProtoAsset),
 			},
 		},
 		{
@@ -1103,8 +1172,8 @@ func TestLiquidityPoolEvents(t *testing.T) {
 					generateLpEntryRemovedChange(lpBtcEthId),
 				}),
 			expected: []*TokenTransferEvent{
-				transferEvent(protoAddressFromLpHash(lpBtcEthId), protoAddressFromAccount(someTxAccount), unitsToStr(5*oneUnit), btcProtoAsset),
-				transferEvent(protoAddressFromLpHash(lpBtcEthId), protoAddressFromAccount(someTxAccount), unitsToStr(10*oneUnit), ethProtoAsset),
+				transferEvent(lpIdToStrkey(lpBtcEthId), protoAddressFromAccount(someTxAccount), unitsToStr(5*oneUnit), btcProtoAsset),
+				transferEvent(lpIdToStrkey(lpBtcEthId), protoAddressFromAccount(someTxAccount), unitsToStr(10*oneUnit), ethProtoAsset),
 			},
 		},
 		{
@@ -1117,8 +1186,8 @@ func TestLiquidityPoolEvents(t *testing.T) {
 					generateLpEntryRemovedChange(lpBtcEthId),
 				}),
 			expected: []*TokenTransferEvent{
-				transferEvent(protoAddressFromLpHash(lpBtcEthId), protoAddressFromAccount(ethAccount), unitsToStr(5*oneUnit), btcProtoAsset),
-				burnEvent(protoAddressFromLpHash(lpBtcEthId), unitsToStr(10*oneUnit), ethProtoAsset),
+				transferEvent(lpIdToStrkey(lpBtcEthId), protoAddressFromAccount(ethAccount), unitsToStr(5*oneUnit), btcProtoAsset),
+				burnEvent(lpIdToStrkey(lpBtcEthId), unitsToStr(10*oneUnit), ethProtoAsset),
 			},
 		},
 	}
@@ -1184,7 +1253,7 @@ func TestClawbackClaimableBalanceEvents(t *testing.T) {
 				},
 			),
 			expected: []*TokenTransferEvent{
-				clawbackEvent(protoAddressFromClaimableBalanceId(someBalanceId), unitsToStr(100*oneUnit), xlmProtoAsset),
+				clawbackEvent(cbIdToStrkey(someBalanceId), unitsToStr(100*oneUnit), xlmProtoAsset),
 			},
 		},
 		{
@@ -1198,7 +1267,7 @@ func TestClawbackClaimableBalanceEvents(t *testing.T) {
 				},
 			),
 			expected: []*TokenTransferEvent{
-				clawbackEvent(protoAddressFromClaimableBalanceId(someBalanceId), unitsToStr(oneUnit/1e3), usdcProtoAsset),
+				clawbackEvent(cbIdToStrkey(someBalanceId), unitsToStr(oneUnit/1e3), usdcProtoAsset),
 			},
 		},
 	}
@@ -1230,7 +1299,7 @@ func TestClaimClaimableBalanceEvents(t *testing.T) {
 				},
 			),
 			expected: []*TokenTransferEvent{
-				transferEvent(protoAddressFromClaimableBalanceId(someBalanceId), protoAddressFromAccount(accountA), unitsToStr(oneUnit), xlmProtoAsset),
+				transferEvent(cbIdToStrkey(someBalanceId), protoAddressFromAccount(accountA), unitsToStr(oneUnit), xlmProtoAsset),
 			},
 		},
 		{
@@ -1244,7 +1313,7 @@ func TestClaimClaimableBalanceEvents(t *testing.T) {
 				},
 			),
 			expected: []*TokenTransferEvent{
-				burnEvent(protoAddressFromClaimableBalanceId(someBalanceId), unitsToStr(oneUnit/1e3), usdcProtoAsset),
+				burnEvent(cbIdToStrkey(someBalanceId), unitsToStr(oneUnit/1e3), usdcProtoAsset),
 			},
 		},
 	}
@@ -1298,8 +1367,8 @@ func TestAllowTrustAndSetTrustlineFlagsRevokeTrustlineTest(t *testing.T) {
 				generateCbEntryCreatedChange(cbLedgerEntry(generatedCbIdForEth, ethAsset, 2*oneUnit)),
 			}),
 			expected: []*TokenTransferEvent{
-				transferEvent(protoAddressFromLpHash(lpBtcEthId), protoAddressFromClaimableBalanceId(generatedCbIdForBtc), unitsToStr(oneUnit), btcProtoAsset),
-				transferEvent(protoAddressFromLpHash(lpBtcEthId), protoAddressFromClaimableBalanceId(generatedCbIdForEth), unitsToStr(2*oneUnit), ethProtoAsset),
+				transferEvent(lpIdToStrkey(lpBtcEthId), cbIdToStrkey(generatedCbIdForBtc), unitsToStr(oneUnit), btcProtoAsset),
+				transferEvent(lpIdToStrkey(lpBtcEthId), cbIdToStrkey(generatedCbIdForEth), unitsToStr(2*oneUnit), ethProtoAsset),
 			},
 		},
 		{
@@ -1315,8 +1384,8 @@ func TestAllowTrustAndSetTrustlineFlagsRevokeTrustlineTest(t *testing.T) {
 				// No CB created for ETH. i.e one burn event
 			}),
 			expected: []*TokenTransferEvent{
-				transferEvent(protoAddressFromLpHash(lpBtcEthId), protoAddressFromClaimableBalanceId(generatedCbIdForBtc), unitsToStr(oneUnit), btcProtoAsset),
-				burnEvent(protoAddressFromLpHash(lpBtcEthId), unitsToStr(2*oneUnit), ethProtoAsset),
+				transferEvent(lpIdToStrkey(lpBtcEthId), cbIdToStrkey(generatedCbIdForBtc), unitsToStr(oneUnit), btcProtoAsset),
+				burnEvent(lpIdToStrkey(lpBtcEthId), unitsToStr(2*oneUnit), ethProtoAsset),
 			},
 		},
 	}

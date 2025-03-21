@@ -59,14 +59,6 @@ func protoAddressFromAccount(account xdr.MuxedAccount) string {
 	return account.ToAccountId().Address()
 }
 
-func protoAddressFromLpHash(lpId xdr.PoolId) string {
-	return xdr.Hash(lpId).HexString()
-}
-
-func protoAddressFromClaimableBalanceId(cb xdr.ClaimableBalanceId) string {
-	return cb.MustV0().HexString()
-}
-
 // TODO convert to strkey for LpId
 func lpIdToStrkey(lpId xdr.PoolId) string {
 	return xdr.Hash(lpId).HexString()
