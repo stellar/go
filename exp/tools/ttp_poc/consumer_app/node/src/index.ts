@@ -26,7 +26,8 @@ async function main() {
             startLedger,
             endLedger,
             (event) => {
-                // Handle each ttp event as it arrives
+                // Do cool Stuff with TTP events!
+                // ideally something more intresting than logging to console..
                 console.log('Received TTP event:');
                 console.log(JSON.stringify(event.toObject(), null, 2));
                 console.log('-------------------');
