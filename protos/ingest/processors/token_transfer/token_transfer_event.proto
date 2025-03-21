@@ -58,10 +58,10 @@ message Fee {
 message TokenTransferEvent {
   EventMeta meta = 1;
   oneof event {
-    Transfer transfer = 3;
-    Mint mint = 4;
-    Burn burn = 5;
-    Clawback clawback = 6;
-    Fee fee = 7;
+    Transfer transfer = 2;
+    Mint mint = 3;
+    Burn burn = 4;
+    Clawback clawback = 5;
+    Fee fee = 6;
   }
 }
