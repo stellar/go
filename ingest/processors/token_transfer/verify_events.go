@@ -246,16 +246,7 @@ func VerifyEvents(ledger xdr.LedgerCloseMeta, passphrase string) bool {
 	changesMap := findBalanceDeltasFromChanges(changes)
 	eventsMap := findBalanceDeltasFromEvents(events)
 
-	isSuccess := mapsEqual(eventsMap, changesMap)
-	if !isSuccess {
-		fmt.Println("----ChangeMap-----")
-		printMap(changesMap)
-		fmt.Println("------")
-		fmt.Println("----EventsMap-----")
-		printMap(eventsMap)
-		fmt.Println("------")
-	}
-	return isSuccess
+	return mapsEqual(eventsMap, changesMap)
 }
 
 // Function to print map in sorted order of keys
