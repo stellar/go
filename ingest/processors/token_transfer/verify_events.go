@@ -143,7 +143,7 @@ func findBalanceDeltasFromEvents(events []*TokenTransferEvent) map[balanceKey]in
 	hashmap := make(map[balanceKey]int64)
 
 	for _, event := range events {
-		if event.Asset == nil { // needed check for custom token events which won't have an asset
+		if event.GetAsset() == nil { // needed check for custom token events which won't have an asset
 			continue
 		}
 
@@ -161,7 +161,7 @@ func findBalanceDeltasFromEvents(events []*TokenTransferEvent) map[balanceKey]in
 			fromAddress := ev.From
 			toAddress := ev.To
 			amt := amount.MustParseInt64Raw(ev.Amount)
-			asset := event.Asset.ToXdrAsset().StringCanonical()
+			asset := event.GetAsset().ToXdrAsset().StringCanonical()
 			// FromAddress' balance reduces by amt in TRANSFER
 			updateBalanceMap(hashmap, balanceKey{holder: fromAddress, asset: asset}, -amt)
 			// ToAddress' balance increases by amt in TRANSFER
@@ -170,7 +170,7 @@ func findBalanceDeltasFromEvents(events []*TokenTransferEvent) map[balanceKey]in
 		case *TokenTransferEvent_Mint:
 			ev := event.GetMint()
 			toAddress := ev.To
-			asset := event.Asset.ToXdrAsset().StringCanonical()
+			asset := event.GetAsset().ToXdrAsset().StringCanonical()
 			amt := amount.MustParseInt64Raw(ev.Amount)
 			// ToAddress' balance increases by amt in MINT
 			updateBalanceMap(hashmap, balanceKey{holder: toAddress, asset: asset}, amt)
@@ -178,7 +178,7 @@ func findBalanceDeltasFromEvents(events []*TokenTransferEvent) map[balanceKey]in
 		case *TokenTransferEvent_Burn:
 			ev := event.GetBurn()
 			fromAddress := ev.From
-			asset := event.Asset.ToXdrAsset().StringCanonical()
+			asset := event.GetAsset().ToXdrAsset().StringCanonical()
 			amt := amount.MustParseInt64Raw(ev.Amount)
 			// FromAddress' balance reduces by amt in BURN
 			updateBalanceMap(hashmap, balanceKey{holder: fromAddress, asset: asset}, -amt)
@@ -186,7 +186,7 @@ func findBalanceDeltasFromEvents(events []*TokenTransferEvent) map[balanceKey]in
 		case *TokenTransferEvent_Clawback:
 			ev := event.GetClawback()
 			fromAddress := ev.From
-			asset := event.Asset.ToXdrAsset().StringCanonical()
+			asset := event.GetAsset().ToXdrAsset().StringCanonical()
 			amt := amount.MustParseInt64Raw(ev.Amount)
 			// FromAddress' balance reduces by amt in CLAWBACK
 			updateBalanceMap(hashmap, balanceKey{holder: fromAddress, asset: asset}, -amt)

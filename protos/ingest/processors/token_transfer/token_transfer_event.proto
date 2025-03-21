@@ -27,32 +27,36 @@ message EventMeta {
 message Transfer {
   string from = 1;
   string to = 2;
-  string amount = 3;
+  asset.Asset asset = 3; // Asset can be native or issued. For custom tokens, it will be absent
+  string amount = 4;
 }
 
 message Mint {
   string to = 1;
-  string amount = 2;
+  asset.Asset asset = 2; // Asset can be native or issued. For custom tokens, it will be absent
+  string amount = 3;
 }
 
 message Burn {
   string from = 1;
-  string amount = 2;
+  asset.Asset asset = 2; // Asset can be native or issued. For custom tokens, it will be absent
+  string amount = 3;
 }
 
 message Clawback {
   string from = 1;
+  asset.Asset asset = 2; // Asset can be native or issued. For custom tokens, it will be absent
   string amount = 3;
 }
 
 message Fee {
   string from = 1;
-  string amount = 2;
+  asset.Asset asset = 2; // Asset can be native or issued. For custom tokens, it will be absent
+  string amount = 3;
 }
 
 message TokenTransferEvent {
   EventMeta meta = 1;
-  asset.Asset asset = 2; // Asset can be native or issued. For custom tokens, it will be absent
   oneof event {
     Transfer transfer = 3;
     Mint mint = 4;

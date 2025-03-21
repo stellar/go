@@ -70,7 +70,7 @@ var (
 func assertFeeEvent(t *testing.T, events []*token_transfer.TokenTransferEvent, from string, amt string) {
 	require.Condition(t, func() bool {
 		for _, event := range events {
-			if event.GetEventType() == "Fee" &&
+			if event.GetEventType() == token_transfer.FeeEvent &&
 				event.GetFee().From == from &&
 				event.GetFee().Amount == amt {
 				return true
@@ -83,11 +83,11 @@ func assertFeeEvent(t *testing.T, events []*token_transfer.TokenTransferEvent, f
 func assertTransferEvent(t *testing.T, events []*token_transfer.TokenTransferEvent, from, to string, asset *assetProto.Asset, amt string) {
 	require.Condition(t, func() bool {
 		for _, event := range events {
-			if event.GetEventType() == "Transfer" &&
+			if event.GetEventType() == token_transfer.TransferEvent &&
 				event.GetTransfer().From == from &&
 				event.GetTransfer().To == to &&
 				event.GetTransfer().Amount == amt &&
-				event.Asset.Equals(asset) {
+				event.GetAsset().Equals(asset) {
 				return true
 			}
 		}
@@ -99,9 +99,9 @@ func assertTransferEvent(t *testing.T, events []*token_transfer.TokenTransferEve
 func assertMintEvent(t *testing.T, events []*token_transfer.TokenTransferEvent, to string, amt string, asset *assetProto.Asset) {
 	require.Condition(t, func() bool {
 		for _, event := range events {
-			if event.GetEventType() == "Mint" &&
+			if event.GetEventType() == token_transfer.MintEvent &&
 				event.GetMint().To == to &&
-				event.Asset.Equals(asset) &&
+				event.GetAsset().Equals(asset) &&
 				event.GetMint().Amount == amt {
 				return true
 			}
@@ -114,9 +114,9 @@ func assertMintEvent(t *testing.T, events []*token_transfer.TokenTransferEvent, 
 func assertBurnEvent(t *testing.T, events []*token_transfer.TokenTransferEvent, from string, amt string, asset *assetProto.Asset) {
 	require.Condition(t, func() bool {
 		for _, event := range events {
-			if event.GetEventType() == "Burn" &&
+			if event.GetEventType() == token_transfer.BurnEvent &&
 				event.GetBurn().From == from &&
-				event.Asset.Equals(asset) &&
+				event.GetAsset().Equals(asset) &&
 				event.GetBurn().Amount == amt {
 				return true
 			}
@@ -243,7 +243,7 @@ func TestTrustlineRevocationEvents(t *testing.T) {
 	tt.NoError(err)
 
 	t = itest.CurrentTest()
-	//printProtoEvents(events)
+	printProtoEvents(events)
 
 	// 2 operations - 100 stroops per operation
 	assertFeeEvent(t, events, master.Address(), "200")

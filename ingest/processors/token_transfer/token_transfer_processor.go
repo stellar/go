@@ -368,21 +368,6 @@ func (p *EventsProcessor) createClaimableBalanceEvents(tx ingest.LedgerTransacti
 	return []*TokenTransferEvent{event}, nil
 }
 
-func possibleClaimableBalanceIdsFromRevocation(lpEntry liquidityPoolEntryDelta, tx ingest.LedgerTransaction, txSrcAccount xdr.AccountId, opIndex uint32) ([]xdr.ClaimableBalanceId, error) {
-	var possibleClaimableBalanceIds []xdr.ClaimableBalanceId
-	lpId := lpEntry.liquidityPoolId
-	seqNum := xdr.SequenceNumber(tx.Envelope.SeqNum())
-
-	for _, asset := range []xdr.Asset{lpEntry.assetA, lpEntry.assetB} {
-		cbId, err := ClaimableBalanceIdFromRevocation(lpId, asset, seqNum, txSrcAccount, opIndex)
-		if err != nil {
-			return nil, fmt.Errorf("failed to generate claimable balance id from LiquidityPoolId: %v, for asset: %v: %w", lpIdToStrkey(lpId), asset.String(), err)
-		}
-		possibleClaimableBalanceIds = append(possibleClaimableBalanceIds, cbId)
-	}
-	return possibleClaimableBalanceIds, nil
-}
-
 func (p *EventsProcessor) claimClaimableBalanceEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation) ([]*TokenTransferEvent, error) {
 	claimCbOp := op.Body.MustClaimClaimableBalanceOp()
 	cbId := claimCbOp.BalanceId
@@ -596,54 +581,6 @@ func (p *EventsProcessor) generateEventsForRevokedTrustlines(tx ingest.LedgerTra
 	}
 
 	return events, nil
-}
-
-type liquidityPoolEntryDelta struct {
-	liquidityPoolId       xdr.PoolId
-	assetA                xdr.Asset
-	assetB                xdr.Asset
-	amountChangeForAssetA xdr.Int64
-	amountChangeForAssetB xdr.Int64
-}
-
-func getImpactedLiquidityPoolEntriesFromOperation(tx ingest.LedgerTransaction, opIndex uint32) ([]liquidityPoolEntryDelta, error) {
-	changes, err := tx.GetOperationChanges(opIndex)
-	if err != nil {
-		return nil, err
-	}
-
-	var entries []liquidityPoolEntryDelta
-	for _, c := range changes {
-		if c.Type != xdr.LedgerEntryTypeLiquidityPool {
-			continue
-		}
-		var lp *xdr.LiquidityPoolEntry
-		var entry liquidityPoolEntryDelta
-
-		var preA, preB xdr.Int64
-		if c.Pre != nil {
-			lp = c.Pre.Data.LiquidityPool
-			entry.liquidityPoolId = lp.LiquidityPoolId
-			cp := lp.Body.ConstantProduct
-			entry.assetA, entry.assetB = cp.Params.AssetA, cp.Params.AssetB
-			preA, preB = cp.ReserveA, cp.ReserveB
-		}
-
-		var postA, postB xdr.Int64
-		if c.Post != nil {
-			lp = c.Post.Data.LiquidityPool
-			entry.liquidityPoolId = lp.LiquidityPoolId
-			cp := lp.Body.ConstantProduct
-			entry.assetA, entry.assetB = cp.Params.AssetA, cp.Params.AssetB
-			postA, postB = cp.ReserveA, cp.ReserveB
-		}
-
-		entry.amountChangeForAssetA = abs64(postA - preA)
-		entry.amountChangeForAssetB = abs64(postB - preB)
-		entries = append(entries, entry)
-	}
-
-	return entries, nil
 }
 
 func (p *EventsProcessor) liquidityPoolDepositEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation) ([]*TokenTransferEvent, error) {

@@ -138,11 +138,11 @@ var (
 	// Some global anonymous functions.
 	mintEvent = func(to string, amt string, asset *assetProto.Asset) *TokenTransferEvent {
 		return &TokenTransferEvent{
-			Meta:  NewEventMetaFromTx(someTx, &someOperationIndex, contractIdFromAsset(asset.ToXdrAsset())),
-			Asset: asset,
+			Meta: NewEventMetaFromTx(someTx, &someOperationIndex, contractIdFromAsset(asset.ToXdrAsset())),
 			Event: &TokenTransferEvent_Mint{
 				Mint: &Mint{
 					To:     to,
+					Asset:  asset,
 					Amount: amt,
 				},
 			},
@@ -152,11 +152,11 @@ var (
 
 	burnEvent = func(from string, amt string, asset *assetProto.Asset) *TokenTransferEvent {
 		return &TokenTransferEvent{
-			Meta:  NewEventMetaFromTx(someTx, &someOperationIndex, contractIdFromAsset(asset.ToXdrAsset())),
-			Asset: asset,
+			Meta: NewEventMetaFromTx(someTx, &someOperationIndex, contractIdFromAsset(asset.ToXdrAsset())),
 			Event: &TokenTransferEvent_Burn{
 				Burn: &Burn{
 					From:   from,
+					Asset:  asset,
 					Amount: amt,
 				},
 			},
@@ -166,12 +166,12 @@ var (
 
 	transferEvent = func(from string, to string, amt string, asset *assetProto.Asset) *TokenTransferEvent {
 		return &TokenTransferEvent{
-			Meta:  NewEventMetaFromTx(someTx, &someOperationIndex, contractIdFromAsset(asset.ToXdrAsset())),
-			Asset: asset,
+			Meta: NewEventMetaFromTx(someTx, &someOperationIndex, contractIdFromAsset(asset.ToXdrAsset())),
 			Event: &TokenTransferEvent_Transfer{
 				Transfer: &Transfer{
 					From:   from,
 					To:     to,
+					Asset:  asset,
 					Amount: amt,
 				},
 			},
@@ -180,11 +180,11 @@ var (
 
 	clawbackEvent = func(from string, amt string, asset *assetProto.Asset) *TokenTransferEvent {
 		return &TokenTransferEvent{
-			Meta:  NewEventMetaFromTx(someTx, &someOperationIndex, contractIdFromAsset(asset.ToXdrAsset())),
-			Asset: asset,
+			Meta: NewEventMetaFromTx(someTx, &someOperationIndex, contractIdFromAsset(asset.ToXdrAsset())),
 			Event: &TokenTransferEvent_Clawback{
 				Clawback: &Clawback{
 					From:   from,
+					Asset:  asset,
 					Amount: amt,
 				},
 			},

@@ -127,7 +127,7 @@ func TestEventSerialization(t *testing.T) {
 
 			// Common assertions
 			assert.True(t, proto.Equal(event.Meta, deserializedEvent.Meta))
-			assert.True(t, proto.Equal(event.Asset, deserializedEvent.Asset))
+			assert.True(t, proto.Equal(event.GetAsset(), deserializedEvent.GetAsset()))
 
 			// Event-specific assertions via the provided getter function
 			assert.True(t, proto.Equal(tt.assertFn(event), tt.assertFn(&deserializedEvent)))
