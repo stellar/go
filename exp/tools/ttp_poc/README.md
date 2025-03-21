@@ -1,5 +1,5 @@
 # TTP POC 
-example of Token transfer processor[TTP](https://github.com/stellar/go/pull/5609) as a GRPC server which streams events to a node js application as the grpc consumer.
+example of Token transfer Processor[TTP](../../../ingest/processors/token_transfer/token_transfer_processor.go) as a GRPC server which streams events to a node js application as the grpc consumer.
 
 ![TTP gRPC Diagram](./ttp_grpc.png)
 
