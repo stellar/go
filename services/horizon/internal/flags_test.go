@@ -113,7 +113,6 @@ func Test_createCaptiveCoreDefaultConfig(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.config.CaptiveCoreTomlParams.UseDB = true
 			e := setNetworkConfiguration(&tt.config)
 			if tt.errStr == "" {
 				assert.NoError(t, e)
@@ -210,7 +209,6 @@ func TestSetCaptiveCoreConfig(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.config.CaptiveCoreTomlParams.UseDB = true
 			e := setCaptiveCoreConfiguration(&tt.config,
 				ApplyOptions{RequireCaptiveCoreFullConfig: tt.requireCaptiveCoreConfig})
 			if tt.errStr == "" {
@@ -321,7 +319,6 @@ func TestEnvironmentVariables(t *testing.T) {
 	assert.Equal(t, config.Port, uint(8001))
 	assert.Equal(t, config.CaptiveCoreBinaryPath, os.Getenv("HORIZON_INTEGRATION_TESTS_CAPTIVE_CORE_BIN"))
 	assert.Equal(t, config.CaptiveCoreConfigPath, "../docker/captive-core-integration-tests.cfg")
-	assert.Equal(t, config.CaptiveCoreConfigUseDB, true)
 }
 
 func horizonEnvVars() map[string]string {
@@ -338,7 +335,6 @@ func horizonEnvVars() map[string]string {
 		"PORT":                     "8001",
 		"CAPTIVE_CORE_BINARY_PATH": os.Getenv("HORIZON_INTEGRATION_TESTS_CAPTIVE_CORE_BIN"),
 		"CAPTIVE_CORE_CONFIG_PATH": "../docker/captive-core-integration-tests.cfg",
-		"CAPTIVE_CORE_USE_DB":      "true",
 	}
 }
 

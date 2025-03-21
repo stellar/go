@@ -26,7 +26,6 @@ func TestCaptiveCoreTomlValidation(t *testing.T) {
 		peerPort          *uint
 		logPath           *string
 		expectedError     string
-		inMemory          bool
 	}{
 		{
 			name:              "mismatching NETWORK_PASSPHRASE",
@@ -201,19 +200,6 @@ func TestCaptiveCoreTomlValidation(t *testing.T) {
 			appendPath:    filepath.Join("testdata", "appendix-with-bucket-dir-path.cfg"),
 			expectedError: "could not unmarshal captive core toml: setting BUCKET_DIR_PATH is disallowed for Captive Core, use CAPTIVE_CORE_STORAGE_PATH instead",
 		},
-		{
-			name:       "invalid DEPRECATED_SQL_LEDGER_STATE on-disk",
-			appendPath: filepath.Join("testdata", "sample-appendix-on-disk.cfg"),
-			expectedError: "invalid captive core toml: CAPTIVE_CORE_USE_DB parameter is set to true, indicating " +
-				"stellar-core on-disk mode, in which DEPRECATED_SQL_LEDGER_STATE must be set to false",
-		},
-		{
-			name:       "invalid DEPRECATED_SQL_LEDGER_STATE in-memory",
-			appendPath: filepath.Join("testdata", "sample-appendix-in-memory.cfg"),
-			expectedError: "invalid captive core toml: CAPTIVE_CORE_USE_DB parameter is set to false, indicating " +
-				"stellar-core in-memory mode, in which DEPRECATED_SQL_LEDGER_STATE must be set to true",
-			inMemory: true,
-		},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			params := CaptiveCoreTomlParams{
@@ -223,7 +209,6 @@ func TestCaptiveCoreTomlValidation(t *testing.T) {
 				PeerPort:           testCase.peerPort,
 				LogPath:            testCase.logPath,
 				Strict:             true,
-				UseDB:              !testCase.inMemory,
 			}
 			_, err := NewCaptiveCoreTomlFromFile(testCase.appendPath, params)
 			assert.EqualError(t, err, testCase.expectedError)
@@ -240,7 +225,6 @@ func TestGenerateConfig(t *testing.T) {
 		httpPort                       *uint
 		peerPort                       *uint
 		logPath                        *string
-		useDB                          bool
 		enforceSorobanDiagnosticEvents bool
 		enforceEmitMetaV1              bool
 	}{
@@ -252,7 +236,6 @@ func TestGenerateConfig(t *testing.T) {
 			httpPort:     newUint(6789),
 			peerPort:     newUint(12345),
 			logPath:      nil,
-			useDB:        true,
 		},
 		{
 			name:         "offline config with no peer port",
@@ -353,27 +336,10 @@ func TestGenerateConfig(t *testing.T) {
 			logPath:      nil,
 		},
 		{
-			name:         "default BucketlistDB config",
-			mode:         stellarCoreRunnerModeOnline,
-			appendPath:   filepath.Join("testdata", "sample-appendix.cfg"),
-			expectedPath: filepath.Join("testdata", "expected-default-bucketlistdb-core.cfg"),
-			useDB:        true,
-			logPath:      nil,
-		},
-		{
-			name:         "BucketlistDB config in appendix",
-			mode:         stellarCoreRunnerModeOnline,
-			appendPath:   filepath.Join("testdata", "sample-appendix-bucketlistdb.cfg"),
-			expectedPath: filepath.Join("testdata", "expected-bucketlistdb-core.cfg"),
-			useDB:        true,
-			logPath:      nil,
-		},
-		{
 			name:         "Query parameters in appendix",
 			mode:         stellarCoreRunnerModeOnline,
 			appendPath:   filepath.Join("testdata", "sample-appendix-query-params.cfg"),
 			expectedPath: filepath.Join("testdata", "expected-query-params.cfg"),
-			useDB:        true,
 			logPath:      nil,
 		},
 	} {
@@ -387,7 +353,6 @@ func TestGenerateConfig(t *testing.T) {
 				PeerPort:                           testCase.peerPort,
 				LogPath:                            testCase.logPath,
 				Strict:                             false,
-				UseDB:                              testCase.useDB,
 				EnforceSorobanDiagnosticEvents:     testCase.enforceSorobanDiagnosticEvents,
 				EnforceSorobanTransactionMetaExtV1: testCase.enforceEmitMetaV1,
 			}
@@ -407,29 +372,6 @@ func TestGenerateConfig(t *testing.T) {
 			assert.Equal(t, string(expectedByte), string(configBytes))
 		})
 	}
-}
-
-func TestGenerateCoreConfigInMemory(t *testing.T) {
-	appendPath := filepath.Join("testdata", "sample-appendix.cfg")
-	expectedPath := filepath.Join("testdata", "expected-in-mem-core.cfg")
-	var err error
-	var captiveCoreToml *CaptiveCoreToml
-	params := CaptiveCoreTomlParams{
-		NetworkPassphrase:  "Public Global Stellar Network ; September 2015",
-		HistoryArchiveURLs: []string{"http://localhost:1170"},
-		Strict:             false,
-		UseDB:              false,
-	}
-	captiveCoreToml, err = NewCaptiveCoreTomlFromFile(appendPath, params)
-	assert.NoError(t, err)
-
-	configBytes, err := generateConfig(captiveCoreToml, stellarCoreRunnerModeOnline)
-	assert.NoError(t, err)
-
-	expectedByte, err := ioutil.ReadFile(expectedPath)
-	assert.NoError(t, err)
-
-	assert.Equal(t, string(expectedByte), string(configBytes))
 }
 
 func TestHistoryArchiveURLTrailingSlash(t *testing.T) {
@@ -496,7 +438,6 @@ func TestDBConfigDefaultsToSqlite(t *testing.T) {
 		PeerPort:           &peerPort,
 		LogPath:            &logPath,
 		Strict:             false,
-		UseDB:              true,
 	}
 
 	captiveCoreToml, err = NewCaptiveCoreToml(params)
@@ -508,37 +449,8 @@ func TestDBConfigDefaultsToSqlite(t *testing.T) {
 	toml := CaptiveCoreToml{}
 	require.NoError(t, toml.unmarshal(configBytes, true))
 	assert.Equal(t, toml.Database, "sqlite3://stellar.db")
-	assert.Equal(t, *toml.DeprecatedSqlLedgerState, false)
 	assert.Equal(t, *toml.BucketListDBPageSizeExp, defaultBucketListDBPageSize)
 	assert.Equal(t, toml.BucketListDBCutoff, (*uint)(nil))
-}
-
-func TestNonDBConfigDoesNotUpdateDatabase(t *testing.T) {
-	var err error
-	var captiveCoreToml *CaptiveCoreToml
-	httpPort := uint(8000)
-	peerPort := uint(8000)
-	logPath := "logPath"
-
-	// UseDB not set, which means it's false
-	params := CaptiveCoreTomlParams{
-		NetworkPassphrase:  "Public Global Stellar Network ; September 2015",
-		HistoryArchiveURLs: []string{"http://localhost:1170"},
-		HTTPPort:           &httpPort,
-		PeerPort:           &peerPort,
-		LogPath:            &logPath,
-		Strict:             false,
-	}
-
-	captiveCoreToml, err = NewCaptiveCoreToml(params)
-	assert.NoError(t, err)
-
-	configBytes, err := generateConfig(captiveCoreToml, stellarCoreRunnerModeOffline)
-
-	assert.NoError(t, err)
-	toml := CaptiveCoreToml{}
-	require.NoError(t, toml.unmarshal(configBytes, true))
-	assert.Equal(t, toml.Database, "")
 }
 
 func TestHTTPQueryParameters(t *testing.T) {
@@ -555,7 +467,6 @@ func TestHTTPQueryParameters(t *testing.T) {
 		PeerPort:           &peerPort,
 		LogPath:            &logPath,
 		Strict:             false,
-		UseDB:              true,
 		HTTPQueryServerParams: &HTTPQueryServerParams{
 			Port:            100,
 			ThreadPoolSize:  200,

@@ -2,7 +2,6 @@ package ledgerbackend
 
 import (
 	"context"
-	"encoding/hex"
 	"fmt"
 	"net/http"
 	"os"
@@ -80,8 +79,6 @@ func (c *CaptiveStellarCore) roundDownToFirstReplayAfterCheckpointStart(ledger u
 type CaptiveStellarCore struct {
 	archive           historyarchive.ArchiveInterface
 	checkpointManager historyarchive.CheckpointManager
-	ledgerHashStore   TrustedLedgerHashStore
-	useDB             bool
 
 	// cancel is the CancelFunc for context which controls the lifetime of a CaptiveStellarCore instance.
 	// Once it is invoked CaptiveStellarCore will not be able to stream ledgers from Stellar Core or
@@ -136,8 +133,6 @@ type CaptiveCoreConfig struct {
 	// CheckpointFrequency is the number of ledgers between checkpoints
 	// if unset, DefaultCheckpointFrequency will be used
 	CheckpointFrequency uint32
-	// LedgerHashStore is an optional store used to obtain hashes for ledger sequences from a trusted source
-	LedgerHashStore TrustedLedgerHashStore
 	// Log is an (optional) custom logger which will capture any output from the Stellar Core process.
 	// If Log is omitted then all output will be printed to stdout.
 	Log *log.Entry
@@ -150,12 +145,6 @@ type CaptiveCoreConfig struct {
 	// stored. We always append /captive-core to this directory, since we clean
 	// it up entirely on shutdown.
 	StoragePath string
-
-	// UseDB, when true, instructs the core invocation to use an external db url
-	// for ledger states rather than in memory(RAM). The external db url is determined by the presence
-	// of DATABASE parameter in the captive-core-config-path or if absent, the db will default to sqlite
-	// and the db file will be stored at location derived from StoragePath parameter.
-	UseDB bool
 
 	// CoreProtocolVersionFn is a function that returns the protocol version of the stellar-core binary.
 	CoreProtocolVersionFn CoreProtocolVersionFunc
@@ -223,8 +212,6 @@ func NewCaptive(config CaptiveCoreConfig) (*CaptiveStellarCore, error) {
 
 	c := &CaptiveStellarCore{
 		archive:           archivePool,
-		ledgerHashStore:   config.LedgerHashStore,
-		useDB:             config.UseDB,
 		cancel:            cancel,
 		config:            config,
 		checkpointManager: historyarchive.NewCheckpointManager(config.CheckpointFrequency),
@@ -392,13 +379,13 @@ func (c *CaptiveStellarCore) openOfflineReplaySubprocess(from, to uint32) error 
 }
 
 func (c *CaptiveStellarCore) openOnlineReplaySubprocess(ctx context.Context, from uint32) error {
-	runFrom, ledgerHash, err := c.runFromParams(ctx, from)
+	runFrom, err := c.runFromParams(ctx, from)
 	if err != nil {
 		return errors.Wrap(err, "error calculating ledger and hash for stellar-core run")
 	}
 
 	stellarCoreRunner := c.stellarCoreRunnerFactory()
-	if err = stellarCoreRunner.runFrom(runFrom, ledgerHash); err != nil {
+	if err = stellarCoreRunner.runFrom(runFrom); err != nil {
 		return errors.Wrap(err, "error running stellar-core")
 	}
 	c.stellarCoreRunner = stellarCoreRunner
@@ -419,13 +406,13 @@ func (c *CaptiveStellarCore) openOnlineReplaySubprocess(ctx context.Context, fro
 }
 
 // runFromParams receives a ledger sequence and calculates the required values to call stellar-core run with --start-ledger and --start-hash
-func (c *CaptiveStellarCore) runFromParams(ctx context.Context, from uint32) (uint32, string, error) {
+func (c *CaptiveStellarCore) runFromParams(ctx context.Context, from uint32) (uint32, error) {
 	if from == 1 {
 		// Trying to start-from 1 results in an error from Stellar-Core:
 		// Target ledger 1 is not newer than last closed ledger 1 - nothing to do
 		// TODO maybe we can fix it by generating 1st ledger meta
 		// like GenesisLedgerStateReader?
-		return 0, "", ErrCannotStartFromGenesis
+		return 0, ErrCannotStartFromGenesis
 	}
 
 	if from <= c.checkpointManager.GetCheckpoint(0) {
@@ -439,7 +426,7 @@ func (c *CaptiveStellarCore) runFromParams(ctx context.Context, from uint32) (ui
 
 	latestCheckpointSequence, err := c.getLatestCheckpointSequence()
 	if err != nil {
-		return 0, "", errors.Wrap(err, "error getting latest checkpoint sequence")
+		return 0, errors.Wrap(err, "error getting latest checkpoint sequence")
 	}
 
 	// We don't allow starting the online mode starting with more than two
@@ -449,48 +436,14 @@ func (c *CaptiveStellarCore) runFromParams(ctx context.Context, from uint32) (ui
 	twoCheckPointsLength := (c.checkpointManager.GetCheckpoint(0) + 1) * 2
 	maxLedger := latestCheckpointSequence + twoCheckPointsLength
 	if from > maxLedger {
-		return 0, "", errors.Errorf(
+		return 0, errors.Errorf(
 			"trying to start online mode too far (latest checkpoint=%d), only two checkpoints in the future allowed",
 			latestCheckpointSequence,
 		)
 	}
 
 	runFrom := from - 1
-	if c.useDB {
-		// when running captive core with a db the ledger hash is not required
-		return runFrom, "", nil
-	}
-
-	if c.ledgerHashStore != nil {
-		var ledgerHash string
-		var exists bool
-		ledgerHash, exists, err = c.ledgerHashStore.GetLedgerHash(ctx, runFrom)
-		if err != nil {
-			err = errors.Wrapf(err, "error trying to read ledger hash %d", runFrom)
-			return 0, "", err
-		}
-		if exists {
-			return runFrom, ledgerHash, nil
-		}
-	}
-
-	// If from is ahead of the latest checkpoint and we need to obtain
-	// the ledgerHash from the history archives we will not be able to do
-	// so because the history archives only contains ledgers up to the latest
-	// checkpoint. In this case, we'll try to start from the latest checkpoint
-	// ledger so that we're able to obtain the ledgerHash successfully.
-	// Then we will seek ahead to the desired ledger in PrepareRange().
-	if latestCheckpointSequence > 0 && from > latestCheckpointSequence {
-		from = latestCheckpointSequence
-		runFrom = from - 1
-	}
-
-	ledgerHeader, err := c.archive.GetLedgerHeader(from)
-	if err != nil {
-		return 0, "", errors.Wrapf(err, "error trying to read ledger header %d from HAS", from)
-	}
-	ledgerHash := hex.EncodeToString(ledgerHeader.Header.PreviousLedgerHash[:])
-	return runFrom, ledgerHash, nil
+	return runFrom, nil
 }
 
 // nextExpectedSequence returns nextLedger (if currently set) or start of
@@ -829,12 +782,6 @@ func (c *CaptiveStellarCore) Close() error {
 	defer c.stellarCoreLock.RUnlock()
 
 	c.closed = true
-
-	// TODO: Sucks to ignore the error here, but no worse than it was before,
-	// so...
-	if c.ledgerHashStore != nil {
-		c.ledgerHashStore.Close()
-	}
 
 	if c.stellarCoreRunner != nil {
 		return c.stellarCoreRunner.close()

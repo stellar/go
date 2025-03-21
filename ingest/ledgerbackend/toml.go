@@ -99,7 +99,6 @@ type captiveCoreTomlValues struct {
 	QuorumSetEntries                      map[string]QuorumSet `toml:"-"`
 	BucketListDBPageSizeExp               *uint                `toml:"BUCKETLIST_DB_INDEX_PAGE_SIZE_EXPONENT,omitempty"`
 	BucketListDBCutoff                    *uint                `toml:"BUCKETLIST_DB_INDEX_CUTOFF,omitempty"`
-	DeprecatedSqlLedgerState              *bool                `toml:"DEPRECATED_SQL_LEDGER_STATE,omitempty"`
 	EnableSorobanDiagnosticEvents         *bool                `toml:"ENABLE_SOROBAN_DIAGNOSTIC_EVENTS,omitempty"`
 	TestingMinimumPersistentEntryLifetime *uint                `toml:"TESTING_MINIMUM_PERSISTENT_ENTRY_LIFETIME,omitempty"`
 	TestingSorobanHighLimitOverride       *bool                `toml:"TESTING_SOROBAN_HIGH_LIMIT_OVERRIDE,omitempty"`
@@ -347,8 +346,6 @@ type CaptiveCoreTomlParams struct {
 	LogPath *string
 	// Strict is a flag which, if enabled, rejects Stellar Core toml fields which are not supported by captive core.
 	Strict bool
-	// If true, specifies that captive core should be invoked with on-disk rather than in-memory option for ledger state
-	UseDB bool
 	// the path to the core binary, used to introspect core at runtime, determine some toml capabilities
 	CoreBinaryPath string
 	// Enforce EnableSorobanDiagnosticEvents and EnableDiagnosticsForTxSubmission when not disabled explicitly
@@ -455,19 +452,13 @@ func (c *CaptiveCoreToml) CatchupToml() (*CaptiveCoreToml, error) {
 }
 
 func (c *CaptiveCoreToml) setDefaults(params CaptiveCoreTomlParams) {
-	if params.UseDB && !c.tree.Has("DATABASE") {
+	if !c.tree.Has("DATABASE") {
 		c.Database = "sqlite3://stellar.db"
 	}
 
-	deprecatedSqlLedgerState := false
-	if !params.UseDB {
-		deprecatedSqlLedgerState = true
-	} else {
-		if !c.tree.Has("BUCKETLIST_DB_INDEX_PAGE_SIZE_EXPONENT") {
-			c.BucketListDBPageSizeExp = &defaultBucketListDBPageSize
-		}
+	if !c.tree.Has("BUCKETLIST_DB_INDEX_PAGE_SIZE_EXPONENT") {
+		c.BucketListDBPageSizeExp = &defaultBucketListDBPageSize
 	}
-	c.DeprecatedSqlLedgerState = &deprecatedSqlLedgerState
 
 	if !c.tree.Has("NETWORK_PASSPHRASE") {
 		c.NetworkPassphrase = params.NetworkPassphrase
@@ -592,16 +583,6 @@ func (c *CaptiveCoreToml) validate(params CaptiveCoreTomlParams) error {
 				c.PeerPort,
 				*params.PeerPort,
 			)
-		}
-	}
-
-	if c.tree.Has("DEPRECATED_SQL_LEDGER_STATE") {
-		if params.UseDB && *c.DeprecatedSqlLedgerState {
-			return fmt.Errorf("CAPTIVE_CORE_USE_DB parameter is set to true, indicating stellar-core on-disk mode," +
-				" in which DEPRECATED_SQL_LEDGER_STATE must be set to false")
-		} else if !params.UseDB && !*c.DeprecatedSqlLedgerState {
-			return fmt.Errorf("CAPTIVE_CORE_USE_DB parameter is set to false, indicating stellar-core in-memory mode," +
-				" in which DEPRECATED_SQL_LEDGER_STATE must be set to true")
 		}
 	}
 

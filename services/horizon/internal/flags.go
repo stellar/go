@@ -41,9 +41,6 @@ const (
 	captiveCoreConfigAppendPathName = "captive-core-config-append-path"
 	// CaptiveCoreConfigPathName is the command line flag for configuring the path to the captive core configuration file
 	CaptiveCoreConfigPathName = "captive-core-config-path"
-	// CaptiveCoreConfigUseDB is the command line flag for enabling captive core runtime to use an external db url
-	// connection rather than RAM for ledger states
-	CaptiveCoreConfigUseDB = "captive-core-use-db"
 	// CaptiveCoreHTTPPortFlagName is the commandline flag for specifying captive core HTTP port
 	CaptiveCoreHTTPPortFlagName = "captive-core-http-port"
 	// EnableCaptiveCoreIngestionFlagName is the commandline flag for enabling captive core ingestion
@@ -233,25 +230,6 @@ func Flags() (*Config, support.ConfigOptions) {
 				}
 				return nil
 			},
-			UsedInCommands: IngestionCommands,
-		},
-		&support.ConfigOption{
-			Name:        CaptiveCoreConfigUseDB,
-			OptType:     types.Bool,
-			FlagDefault: true,
-			Required:    false,
-			Usage:       `when enabled, Horizon ingestion will instruct the captive core invocation to use an external db url for ledger states rather than in memory(RAM). Will result in several GB of space shifting out of RAM and to the external db persistence. The external db url is determined by the presence of DATABASE parameter in the captive-core-config-path or if absent, the db will default to sqlite and the db file will be stored at location derived from captive-core-storage-path parameter.`,
-			CustomSetValue: func(opt *support.ConfigOption) error {
-				if val := viper.GetBool(opt.Name); val {
-					stdLog.Printf("The usage of the flag --captive-core-use-db has been deprecated. " +
-						"Setting it to false to achieve in-memory functionality on captive core will be removed in " +
-						"future releases. We recommend removing usage of this flag now in preparation.")
-					config.CaptiveCoreConfigUseDB = val
-					config.CaptiveCoreTomlParams.UseDB = val
-				}
-				return nil
-			},
-			ConfigKey:      &config.CaptiveCoreConfigUseDB,
 			UsedInCommands: IngestionCommands,
 		},
 		&support.ConfigOption{

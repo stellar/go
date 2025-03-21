@@ -25,7 +25,6 @@ type Config struct {
 	CaptiveCoreToml             *ledgerbackend.CaptiveCoreToml
 	CaptiveCoreStoragePath      string
 	CaptiveCoreReuseStoragePath bool
-	CaptiveCoreConfigUseDB      bool
 	HistoryArchiveCaching       bool
 
 	StellarCoreURL string

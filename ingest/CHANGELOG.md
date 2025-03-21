@@ -7,6 +7,11 @@ All notable changes to this project will be documented in this file. This projec
 ### Protocol 23 Support
 * Added support for the new `RESTORE` ledger entry change type [5587](https://github.com/stellar/go/pull/5587).
 
+### Breaking Changes
+In Protocol 23, Stellar Core removes in-memory mode and requires on-disk mode (using BucketListDB) for captive core ([5627](https://github.com/stellar/go/pull/5627)). As a result, the following configurations are no longer supported and have been removed:
+- `CAPTIVE_CORE_USE_DB`
+- `DEPRECATED_SQL_LEDGER_STATE`
+
 ### Bug Fixes
 * Update the boundary check in `BufferedStorageBackend` to queue ledgers up to the end boundary, resolving skipped final batch when the `from` ledger doesn't align with file boundary [5563](https://github.com/stellar/go/pull/5563).
 

@@ -131,7 +131,6 @@ var ingestVerifyRangeCmd = &cobra.Command{
 			HistoryArchiveURLs:     globalConfig.HistoryArchiveURLs,
 			HistoryArchiveCaching:  globalConfig.HistoryArchiveCaching,
 			CaptiveCoreBinaryPath:  globalConfig.CaptiveCoreBinaryPath,
-			CaptiveCoreConfigUseDB: globalConfig.CaptiveCoreConfigUseDB,
 			CheckpointFrequency:    globalConfig.CheckpointFrequency,
 			CaptiveCoreToml:        globalConfig.CaptiveCoreToml,
 			CaptiveCoreStoragePath: globalConfig.CaptiveCoreStoragePath,
@@ -214,7 +213,6 @@ var ingestStressTestCmd = &cobra.Command{
 			HistoryArchiveCaching:  globalConfig.HistoryArchiveCaching,
 			RoundingSlippageFilter: globalConfig.RoundingSlippageFilter,
 			CaptiveCoreBinaryPath:  globalConfig.CaptiveCoreBinaryPath,
-			CaptiveCoreConfigUseDB: globalConfig.CaptiveCoreConfigUseDB,
 		}
 
 		system, err := ingest.NewSystem(ingestConfig)
@@ -302,7 +300,6 @@ var ingestBuildStateCmd = &cobra.Command{
 			HistoryArchiveURLs:     globalConfig.HistoryArchiveURLs,
 			HistoryArchiveCaching:  globalConfig.HistoryArchiveCaching,
 			CaptiveCoreBinaryPath:  globalConfig.CaptiveCoreBinaryPath,
-			CaptiveCoreConfigUseDB: globalConfig.CaptiveCoreConfigUseDB,
 			CheckpointFrequency:    globalConfig.CheckpointFrequency,
 			CaptiveCoreToml:        globalConfig.CaptiveCoreToml,
 			CaptiveCoreStoragePath: globalConfig.CaptiveCoreStoragePath,

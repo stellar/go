@@ -13,7 +13,6 @@ type captiveCoreConfigTemplatePrams struct {
 }
 
 const validatorCoreConfigTemplate = `
-DEPRECATED_SQL_LEDGER_STATE=false
 ARTIFICIALLY_ACCELERATE_TIME_FOR_TESTING={{ .Accelerate }}
 
 NETWORK_PASSPHRASE="{{ .NetworkPassphrase }}"
@@ -45,7 +44,6 @@ mkdir="mkdir -p history/vs/{0}"
 `
 
 const captiveCoreConfigTemplate = `
-DEPRECATED_SQL_LEDGER_STATE=false
 ARTIFICIALLY_ACCELERATE_TIME_FOR_TESTING={{ .Accelerate }}
 
 NETWORK_PASSPHRASE="{{ .NetworkPassphrase }}"

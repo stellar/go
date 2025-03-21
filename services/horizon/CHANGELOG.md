@@ -5,6 +5,12 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Pending
 
+### Breaking Changes
+In Protocol 23, Stellar Core removes in-memory mode and requires on-disk mode (using BucketListDB) for captive core ([5627](https://github.com/stellar/go/pull/5627)). As a result, the following configurations are no longer supported and have been removed:
+- `CAPTIVE_CORE_USE_DB`
+- `DEPRECATED_SQL_LEDGER_STATE`
+
+### Added
 - Update default pubnet captive core configuration to replace Whalestack with Creit Technologies in the quorum set ([5564](https://github.com/stellar/go/pull/5564)).
 
 ### Fixed
