@@ -231,8 +231,8 @@ func VerifyEvents(ledger xdr.LedgerCloseMeta, passphrase string) error {
 	eventsMap = findBalanceDeltasFromEvents(events)
 
 	if diff := cmp.Diff(eventsMap, changesMap); diff != "" {
-		return fmt.Errorf("balance delta mismatch between events and ledger changes:\n"+
-			"('-' indicates missing or different in events, '+' indicates missing or different in ledger changes)\n%s", diff)
+		return fmt.Errorf("balance delta mismatch between events and ledger changes for ledgerSequence: %v\n"+
+			"('-' indicates missing or different in events, '+' indicates missing or different in ledger changes)\n%s", ledger.LedgerSequence(), diff)
 	}
 	return nil
 }
