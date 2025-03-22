@@ -359,6 +359,8 @@ type CaptiveCoreTomlParams struct {
 	EnforceSorobanTransactionMetaExtV1 bool
 	// Fast HTTP Query Server parameters
 	HTTPQueryServerParams *HTTPQueryServerParams
+	// CoreBuildVersionFn is a function that returns the build version of the stellar-core binary.
+	CoreBuildVersionFn CoreBuildVersionFunc
 }
 
 // NewCaptiveCoreTomlFromFile constructs a new CaptiveCoreToml instance by merging configuration
@@ -471,15 +473,20 @@ func (c coreVersion) greaterThanOrEqual(other coreVersion) bool {
 	if c.major == 0 && c.minor == 0 {
 		return false
 	}
-	return (c.major == other.major && c.minor >= other.minor) || (c.major > other.minor)
+	return (c.major == other.major && c.minor >= other.minor) || (c.major > other.major)
 }
 
-func (c *CaptiveCoreToml) checkCoreVersion(coreBinaryPath string) coreVersion {
-	if coreBinaryPath == "" {
+func (c *CaptiveCoreToml) checkCoreVersion(params CaptiveCoreTomlParams) coreVersion {
+	if params.CoreBinaryPath == "" {
 		return coreVersion{}
 	}
 
-	versionRaw, err := CoreBuildVersion(coreBinaryPath)
+	getCoreVersion := params.CoreBuildVersionFn
+	if getCoreVersion == nil {
+		getCoreVersion = CoreBuildVersion
+	}
+
+	versionRaw, err := getCoreVersion(params.CoreBinaryPath)
 	if err != nil {
 		return coreVersion{}
 	}
@@ -575,7 +582,7 @@ func (c *CaptiveCoreToml) setDefaults(params CaptiveCoreTomlParams) {
 	}
 
 	if !c.tree.Has("BUCKETLIST_DB_MEMORY_FOR_CACHING") &&
-		c.checkCoreVersion(params.CoreBinaryPath).greaterThanOrEqual(minVersionForBucketlistCaching) {
+		c.checkCoreVersion(params).greaterThanOrEqual(minVersionForBucketlistCaching) {
 		// set BUCKETLIST_DB_MEMORY_FOR_CACHING to 0 to disable allocation of
 		// memory for caching entries in BucketListDB.
 		// If we do not set BUCKETLIST_DB_MEMORY_FOR_CACHING, core will apply
