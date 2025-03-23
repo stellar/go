@@ -5,9 +5,7 @@ go 1.23
 toolchain go1.23.7
 
 require (
-    // this is pulling the ttp processor and protos from a branch version of monorepo
-	// https://github.com/stellar/go/pull/5609
-	github.com/stellar/go v0.0.0-20250318012248-2e759c007f3d
+	github.com/stellar/go v0.0.0-20250322075617-5ccaef04a539
 	github.com/stellar/stellar-rpc v0.9.6-0.20250130160539-be7702aa01ba
 	google.golang.org/grpc v1.71.0
 	google.golang.org/protobuf v1.36.5
@@ -36,6 +34,7 @@ require (
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
+	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/google/s2a-go v0.1.7 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.2 // indirect
