@@ -209,8 +209,7 @@ Those 2 will call the underlying proto function for clawback
 */
 func (p *EventsProcessor) mintOrBurnOrTransferEvent(tx ingest.LedgerTransaction, opIndex *uint32, asset xdr.Asset, from addressWrapper, to addressWrapper, amt string) (*TokenTransferEvent, error) {
 	var fromAddress, toAddress string
-	// no need to have a separate flag for transferEvent. if neither burn nor mint, then it is regular transfer
-	var isMintEvent, isBurnEvent bool
+	var isFromIssuer, isToIssuer bool
 
 	assetIssuerAccountId, _ := asset.GetIssuerAccountId()
 
@@ -218,7 +217,7 @@ func (p *EventsProcessor) mintOrBurnOrTransferEvent(tx ingest.LedgerTransaction,
 	if from.account != nil {
 		fromAddress = protoAddressFromAccount(*from.account)
 		if !asset.IsNative() && assetIssuerAccountId.Equals(from.account.ToAccountId()) {
-			isMintEvent = true
+			isFromIssuer = true
 		}
 	} else if from.liquidityPoolId != nil {
 		fromAddress = lpIdToStrkey(*from.liquidityPoolId)
@@ -230,7 +229,7 @@ func (p *EventsProcessor) mintOrBurnOrTransferEvent(tx ingest.LedgerTransaction,
 	if to.account != nil {
 		toAddress = protoAddressFromAccount(*to.account)
 		if !asset.IsNative() && assetIssuerAccountId.Equals(to.account.ToAccountId()) {
-			isBurnEvent = true
+			isToIssuer = true
 		}
 	} else if to.liquidityPoolId != nil {
 		toAddress = lpIdToStrkey(*to.liquidityPoolId)
@@ -244,18 +243,18 @@ func (p *EventsProcessor) mintOrBurnOrTransferEvent(tx ingest.LedgerTransaction,
 	// This means that the payment is a wierd one, where the src == dest AND in addition, the src/dest address is the issuer of the asset
 	// Check this section out in CAP-67 https://github.com/stellar/stellar-protocol/blob/master/core/cap-0067.md#payment
 	// We need to issue a TRANSFER event for this.
-	// Keep in mind though that this wont show up in opeartionMeta as a balance change
+	// Keep in mind though that this wont show up in operationMeta as a balance change
 	// This has happened in ledgerSequence: 4522126 on pubnet
-	if isMintEvent && isBurnEvent {
+	if isFromIssuer && isToIssuer {
 		return NewTransferEvent(meta, fromAddress, toAddress, amt, protoAsset), nil
-	} else if isMintEvent {
+	} else if isFromIssuer {
 
 		// Check for Mint Event
 		if toAddress == "" {
 			return nil, NewEventError("mint event error: to address is nil")
 		}
 		return NewMintEvent(meta, toAddress, amt, protoAsset), nil
-	} else if isBurnEvent {
+	} else if isToIssuer {
 
 		// Check for Burn Event
 		if fromAddress == "" {
@@ -264,6 +263,12 @@ func (p *EventsProcessor) mintOrBurnOrTransferEvent(tx ingest.LedgerTransaction,
 		return NewBurnEvent(meta, fromAddress, amt, protoAsset), nil
 	}
 
+	if fromAddress == "" {
+		return nil, NewEventError("transfer event error: from address is nil")
+	}
+	if toAddress == "" {
+		return nil, NewEventError("transfer event error: to address is nil")
+	}
 	// Create transfer event
 	return NewTransferEvent(meta, fromAddress, toAddress, amt, protoAsset), nil
 }
@@ -597,11 +602,11 @@ func (p *EventsProcessor) liquidityPoolDepositEvents(tx ingest.LedgerTransaction
 	amtA, amtB := delta.amountChangeForAssetA, delta.amountChangeForAssetB
 	if amtA <= 0 {
 		return nil,
-			fmt.Errorf("deposited amount (%v) for asset: %v, cannot be zero or negative in LiquidityPool: %v", amtA, assetA.String(), lpIdToStrkey(lpId))
+			fmt.Errorf("deposited amount (%v) for asset: %v, cannot be zero or negative for LiquidityPool: %v", amtA, assetA.String(), lpIdToStrkey(lpId))
 	}
 	if amtB <= 0 {
 		return nil,
-			fmt.Errorf("deposited amount (%v) for asset: %v, cannot be zero or negative in LiquidityPool: %v", amtB, assetB.String(), lpIdToStrkey(lpId))
+			fmt.Errorf("deposited amount (%v) for asset: %v, cannot be zero or negative for LiquidityPool: %v", amtB, assetB.String(), lpIdToStrkey(lpId))
 	}
 
 	opSrcAcc := operationSourceAccount(tx, op)
@@ -638,13 +643,19 @@ func (p *EventsProcessor) liquidityPoolWithdrawEvents(tx ingest.LedgerTransactio
 	lpId := delta.liquidityPoolId
 	assetA, assetB := delta.assetA, delta.assetB
 	amtA, amtB := delta.amountChangeForAssetA, delta.amountChangeForAssetB
-	if amtA <= 0 {
+	/*
+		This is slightly different from the LpDeposit operation check. In LpDeposit, if amt <=0: then error
+		However, for LpWithdraw, the check is if amt < 0: then error.
+		This is because, the rounding on withdraw could result in nothing being withdrawn
+		Refer https://github.com/sisuresh/stellar-protocol/blob/unified/core/cap-0038.md#price-bounds-for-liquiditypoolwithdrawop
+	*/
+	if amtA < 0 {
 		return nil,
-			fmt.Errorf("deposited amount (%v) for asset: %v, cannot be zero or negative in LiquidityPool: %v", amtA, assetA.String(), lpIdToStrkey(lpId))
+			fmt.Errorf("withdrawn amount (%v) for asset: %v, cannot be negative for LiquidityPool: %v", amtA, assetA.String(), lpIdToStrkey(lpId))
 	}
-	if amtB <= 0 {
+	if amtB < 0 {
 		return nil,
-			fmt.Errorf("deposited amount (%v) for asset: %v, cannot be zero or negative in LiquidityPool: %v", amtB, assetB.String(), lpIdToStrkey(lpId))
+			fmt.Errorf("withdrawn amount (%v) for asset: %v, cannot be negative for LiquidityPool: %v", amtB, assetB.String(), lpIdToStrkey(lpId))
 	}
 
 	opSrcAcc := operationSourceAccount(tx, op)
