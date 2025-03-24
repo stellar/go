@@ -3,7 +3,9 @@ package token_transfer
 import (
 	"crypto/sha256"
 	"fmt"
+
 	"github.com/stellar/go/ingest"
+	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/xdr"
 )
 
@@ -59,14 +61,12 @@ func protoAddressFromAccount(account xdr.MuxedAccount) string {
 	return account.ToAccountId().Address()
 }
 
-// TODO convert to strkey for LpId
 func lpIdToStrkey(lpId xdr.PoolId) string {
-	return xdr.Hash(lpId).HexString()
+	return strkey.MustEncode(strkey.VersionByteLiquidityPool, lpId[:])
 }
 
-// TODO convert to strkey for CbId
 func cbIdToStrkey(cbId xdr.ClaimableBalanceId) string {
-	return cbId.MustV0().HexString()
+	return cbId.MustEncodeToStrkey()
 }
 
 // This operation is used to only find CB entries that are either created or deleted, not updated
