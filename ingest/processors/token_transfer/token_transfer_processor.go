@@ -70,7 +70,7 @@ func (p *EventsProcessor) EventsFromLedger(lcm xdr.LedgerCloseMeta) ([]*TokenTra
 		}
 		txEvents, err = p.EventsFromTransaction(tx)
 		if err != nil {
-			return nil, fmt.Errorf("error processing token transfer events from transaction: %w", err)
+			return nil, err
 		}
 		events = append(events, txEvents...)
 	}
@@ -105,8 +105,7 @@ func (p *EventsProcessor) EventsFromTransaction(tx ingest.LedgerTransaction) ([]
 		// Process the operation and collect events
 		opEvents, err := p.EventsFromOperation(tx, uint32(i), op, opResult)
 		if err != nil {
-			return nil,
-				fmt.Errorf("error processing token transfer events from operation, index: %d, %s: %w", i, op.Body.Type.String(), err)
+			return nil, err
 		}
 
 		events = append(events, opEvents...)
@@ -167,7 +166,7 @@ func (p *EventsProcessor) EventsFromOperation(tx ingest.LedgerTransaction, opInd
 	}
 
 	if err != nil {
-		return nil, err
+		return nil, formatError(err, tx, opIndex, op)
 	}
 
 	// DO not run this reconciliation check for ledgers with protocol version >= 8
@@ -178,7 +177,7 @@ func (p *EventsProcessor) EventsFromOperation(tx ingest.LedgerTransaction, opInd
 	// Run reconciliation for all operations except InvokeHostFunction
 	reconciliationEvent, err := p.generateXlmReconciliationEvents(tx, opIndex, op, events)
 	if err != nil {
-		return nil, fmt.Errorf("error generating reconciliation events: %w", err)
+		return nil, formatError(fmt.Errorf("error generating reconciliation events: %w", err), tx, opIndex, op)
 	}
 
 	if reconciliationEvent != nil {
@@ -189,7 +188,7 @@ func (p *EventsProcessor) EventsFromOperation(tx ingest.LedgerTransaction, opInd
 			// If it is a burn, put the burn event at the end of the list of other events for this operation
 			events = append(events, reconciliationEvent)
 		} else {
-			return nil, fmt.Errorf("invalid reconciliation event type: %v. reconciliation event type can be only mint or burn", reconciliationEvent.GetEventType())
+			return nil, formatError(fmt.Errorf("invalid reconciliation event type: %v. reconciliation event type can be only mint or burn", reconciliationEvent.GetEventType()), tx, opIndex, op)
 		}
 	}
 
