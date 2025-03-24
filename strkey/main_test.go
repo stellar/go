@@ -51,6 +51,16 @@ func TestVersion(t *testing.T) {
 			Address:             "CA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJUWDA",
 			ExpectedVersionByte: VersionByteContract,
 		},
+		{
+			Name:                "Liquidity Pool",
+			Address:             "LA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJUPJN",
+			ExpectedVersionByte: VersionByteLiquidityPool,
+		},
+		{
+			Name:                "Claimable Balance",
+			Address:             "BAAD6DBUX6J22DMZOHIEZTEQ64CVCHEDRKWZONFEUL5Q26QD7R76RGR4TU",
+			ExpectedVersionByte: VersionByteClaimableBalance,
+		},
 	}
 
 	for _, kase := range cases {
