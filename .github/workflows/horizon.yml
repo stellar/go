@@ -19,12 +19,13 @@ jobs:
       postgres:
         image: "bitnami/postgresql:${{ matrix.pg }}"
         env:
-          POSTGRESQL_USERNAME: postgres
-          POSTGRESQL_DATABASE: postgres
-          POSTGRESQL_PASSWORD: postgres
-          POSTGRESQL_FSYNC: "off"
+          POSTGRESQL_DATABASE: 'postgres'
+          POSTGRESQL_USERNAME: 'postgres'
+          POSTGRESQL_PASSWORD: 'postgres'
+          POSTGRESQL_POSTGRES_PASSWORD: 'postgres'
+          POSTGRESQL_FSYNC: 'off'
         options: >-
-          --health-cmd pg_isready
+          --health-cmd "pg_isready -d postgres -U postgres -p 5432"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
