@@ -872,7 +872,6 @@ func NewTransaction(params TransactionParams) (*Transaction, error) {
 		V1: &xdr.TransactionV1Envelope{
 			Tx: xdr.Transaction{
 				SourceAccount: sourceAccount,
-				Fee:           xdr.Uint32(tx.maxFee),
 				SeqNum:        xdr.SequenceNumber(sequence),
 				Cond:          precondXdr,
 			},
@@ -915,8 +914,16 @@ func NewTransaction(params TransactionParams) (*Transaction, error) {
 		if err != nil {
 			return nil, errors.Wrap(err, fmt.Sprintf("failed to build operation %T", sorobanOp))
 		}
+		if envelope.V1.Tx.Ext.SorobanData != nil {
+			sorobanFee := int64(envelope.V1.Tx.Ext.SorobanData.ResourceFee)
+			tx.maxFee += sorobanFee
+			if tx.maxFee < 0 {
+				return nil, fmt.Errorf("soroban fee: %v overflows transaction fee", sorobanFee)
+			}
+		}
 	}
 
+	envelope.V1.Tx.Fee = xdr.Uint32(tx.maxFee)
 	tx.envelope = envelope
 	return tx, nil
 }
@@ -995,6 +1002,14 @@ func NewFeeBumpTransaction(params FeeBumpTransactionParams) (*FeeBumpTransaction
 		return tx, errors.Errorf(
 			"base fee cannot be lower than network minimum of %d", MinBaseFee,
 		)
+	}
+
+	if inner.envelope.V1 != nil && inner.envelope.V1.Tx.Ext.SorobanData != nil {
+		sorobanFee := int64(inner.envelope.V1.Tx.Ext.SorobanData.ResourceFee)
+		tx.maxFee += sorobanFee
+		if tx.maxFee < 0 {
+			return nil, fmt.Errorf("soroban fee: %v overflows transaction fee", sorobanFee)
+		}
 	}
 
 	var feeSource xdr.MuxedAccount

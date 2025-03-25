@@ -8,6 +8,7 @@ import (
 	"math/big"
 
 	"github.com/stellar/go/ingest"
+	"github.com/stellar/go/ingest/sac"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
@@ -74,8 +75,8 @@ func (p *AssetStatsProcessor) ProcessChange(ctx context.Context, change ingest.C
 		if ledgerEntry == nil {
 			ledgerEntry = change.Pre
 		}
-		asset := AssetFromContractData(*ledgerEntry, p.networkPassphrase)
-		_, _, balanceFound := ContractBalanceFromContractData(*ledgerEntry, p.networkPassphrase)
+		asset := sac.AssetFromContractData(*ledgerEntry, p.networkPassphrase)
+		_, _, balanceFound := sac.ContractBalanceFromContractData(*ledgerEntry, p.networkPassphrase)
 		if asset == nil && !balanceFound {
 			return nil
 		}

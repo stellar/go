@@ -150,8 +150,14 @@ func TestAsyncTxSub_TransactionMalformed(t *testing.T) {
 	require.NoError(t, err)
 
 	installContractOp := assembleInstallContractCodeOp(t, master.Address(), "soroban_sac_test.wasm")
-	preFlightOp, minFee := itest.PreflightHostFunctions(&sourceAccount, *installContractOp)
-	txParams := integration.GetBaseTransactionParamsWithFee(&sourceAccount, minFee+txnbuild.MinBaseFee, &preFlightOp)
+	preFlightOp := itest.PreflightHostFunctions(&sourceAccount, *installContractOp)
+	txParams := txnbuild.TransactionParams{
+		SourceAccount:        &sourceAccount,
+		Operations:           []txnbuild.Operation{&preFlightOp},
+		BaseFee:              txnbuild.MinBaseFee,
+		Preconditions:        txnbuild.Preconditions{TimeBounds: txnbuild.NewInfiniteTimeout()},
+		IncrementSequenceNum: true,
+	}
 	_, err = itest.AsyncSubmitTransaction(master, txParams)
 	assert.EqualError(
 		t, err,
