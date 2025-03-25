@@ -1,0 +1,52 @@
+# This yaml file serves as an example job configuration file for GCP batch.
+# https://cloud.google.com/batch
+
+job:
+  taskGroups:
+  - taskSpec:
+      computeResource:
+        cpuMilli: 3000
+        memoryMib: 2000
+      maxRetryCount: 1
+      container:
+        imageUri: "stellar/stellar-galexie:1.0.0"
+        entrypoint: "galexie"
+        commands: ["append", "--config-file", "/mnt/galexie-config-pubnet-batch/config-pubnet.toml", "--start", "${START}", "--end", "#{END}"]
+      tasks:
+      # It is possible to use the GCP batch index instead of manually naming each task
+      - name: "galexie-1"
+        environments:
+          START: "2"
+          END: "2499999"
+      - name: "galexie-2"
+        environments:
+          START: "2500000"
+          END: "4999999"
+
+      ...
+
+      - name: "galexie-3"
+        environments:
+          START: "30000000"
+          END: "31249999"
+      - name: "galexie-4"
+        environments:
+          START: "31250000"
+          END: "32499999"
+
+      ...
+
+    requireHostsFile: true
+    requireTaskHostsFile: true
+  allocationPolicy:
+    instances:
+    - policy: 
+        machineType: "e2-standard-2"
+        disks:
+        - newDisk:
+            type: "pd-standard"
+            sizeGb: 10
+          mountPoint: "/mnt/shared"
+        - existingDisk:
+            disk: "<disk name>"
+          mountPoint: "/mnt/galexie-config-pubnet-batch"
