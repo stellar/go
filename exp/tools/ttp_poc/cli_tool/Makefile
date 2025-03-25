@@ -1,6 +1,8 @@
 .PHONY: all init gen-proto build-server
 .SILENT:
 
+PROTOS_BASE_URL := https://raw.githubusercontent.com/stellar/go/master/protos
+
 all: build-server
 
 # Initialize Go module and install dependencies
@@ -12,8 +14,8 @@ init:
 	rm -rf protos/ingest/asset > /dev/null 2>&1
 	mkdir -p protos/ingest/asset > /dev/null 2>&1
 
-	curl -s -o protos/ingest/processors/token_transfer/token_transfer_event.proto https://raw.githubusercontent.com/stellar/go/karthik/ttp-classic-operations/protos/ingest/processors/token_transfer/token_transfer_event.proto
-	curl -s -o protos/ingest/asset/asset.proto https://raw.githubusercontent.com/stellar/go/karthik/ttp-classic-operations/protos/ingest/asset/asset.proto
+	curl -s -o protos/ingest/processors/token_transfer/token_transfer_event.proto $(PROTOS_BASE_URL)/ingest/processors/token_transfer/token_transfer_event.proto
+	curl -s -o protos/ingest/asset/asset.proto $(PROTOS_BASE_URL)/ingest/asset/asset.proto
 	echo "✓ Init completed"
 
 
