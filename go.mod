@@ -62,6 +62,7 @@ require (
 	github.com/docker/docker v27.3.1+incompatible
 	github.com/docker/go-connections v0.5.0
 	github.com/fsouza/fake-gcs-server v1.49.2
+	github.com/stellar/go-stellar-xdr-json v0.0.0-20250203230501-c6fa0788fe99
 )
 
 require (
