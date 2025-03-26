@@ -36,9 +36,11 @@ func (s *EventServer) GetTTPEvents(req *event_service.GetEventsRequest, stream e
 	}
 
 	// If EndLedger < StartLedger, do infinite long polling
+	// this is naive, inefficient long polling approach
+	// with every request getting max of one ledger back
 	if req.EndLedger < req.StartLedger {
 		getLedgersReq.Pagination = &protocol.LedgerPaginationOptions{
-			Limit: 2,
+			Limit: 1,
 		}
 		for {
 			// Check if context is cancelled
@@ -58,11 +60,12 @@ func (s *EventServer) GetTTPEvents(req *event_service.GetEventsRequest, stream e
 			}
 
 			if len(resp.Ledgers) == 0 {
-				// No new ledgers, wait a bit before polling again
+				// No ledgers, wait a bit before polling again
 				time.Sleep(5 * time.Second)
 				continue
 			}
 
+			lastSeq := 0
 			// Process each ledger
 			for _, ledgerInfo := range resp.Ledgers {
 				// Convert LedgerMetadata to xdr.LedgerCloseMeta
@@ -71,6 +74,7 @@ func (s *EventServer) GetTTPEvents(req *event_service.GetEventsRequest, stream e
 					log.Printf("Error unmarshaling ledger metadata: %v: %v", ledgerInfo.LedgerMetadata, err)
 					return err
 				}
+				lastSeq = int(ledgerMeta.LedgerSequence())
 
 				// Get events from ledger using the token_transfer processor
 				events, err := s.processor.EventsFromLedger(ledgerMeta)
@@ -81,19 +85,27 @@ func (s *EventServer) GetTTPEvents(req *event_service.GetEventsRequest, stream e
 
 				// Stream each event
 				for i := range events {
-					if err := stream.Send(events[i]); err != nil {
+					ttpEvent := events[i]
+					if err := stream.Send(ttpEvent); err != nil {
 						log.Printf("Error sending event to stream: %v", err)
 						return err
 					}
 				}
 			}
 
+			// naive approach to enable our example long polling
+			// cursor to stay at least one ledger back from latest ledger on rpc
+			if lastSeq >= (int(resp.LatestLedger) - 1) {
+				time.Sleep(7 * time.Second)
+			}
+
 			// Update cursor for next request
 			getLedgersReq.Pagination.Cursor = resp.Cursor
+			getLedgersReq.StartLedger = 0
 		}
 	} else {
-		// For finite range, we'll let the RPC server handle pagination
-		// since we know the end ledger
+		// For finite range, we'll do naievly simple for example sake
+		// to make this a single request.
 		getLedgersReq.StartLedger = uint32(req.EndLedger)
 		getLedgersReq.Pagination = &protocol.LedgerPaginationOptions{
 			Limit: uint(req.EndLedger - req.StartLedger),
@@ -110,7 +122,7 @@ func (s *EventServer) GetTTPEvents(req *event_service.GetEventsRequest, stream e
 		for _, ledgerInfo := range resp.Ledgers {
 			// Convert LedgerMetadata to xdr.LedgerCloseMeta
 			var ledgerMeta xdr.LedgerCloseMeta
-			
+
 			if err := xdr.SafeUnmarshalBase64(ledgerInfo.LedgerMetadata, &ledgerMeta); err != nil {
 				log.Printf("Error unmarshaling ledger metadata: %v: %v", ledgerInfo.LedgerMetadata, err)
 				return err
