@@ -242,28 +242,27 @@ func (p *EventsProcessor) mintOrBurnOrTransferEvent(tx ingest.LedgerTransaction,
 	protoAsset := assetProto.NewProtoAsset(asset)
 	meta := p.generateEventMeta(tx, opIndex, asset)
 
-	// Check for Mint Event
-	if isMintEvent {
+	// This means that the payment is a wierd one, where the src == dest AND in addition, the src/dest address is the issuer of the asset
+	// Check this section out in CAP-67 https://github.com/stellar/stellar-protocol/blob/master/core/cap-0067.md#payment
+	// We need to issue a TRANSFER event for this.
+	// Keep in mind though that this wont show up in opeartionMeta as a balance change
+	// This has happened in ledgerSequence: 4522126 on pubnet
+	if isMintEvent && isBurnEvent {
+		return NewTransferEvent(meta, fromAddress, toAddress, amt, protoAsset), nil
+	} else if isMintEvent {
+
+		// Check for Mint Event
 		if toAddress == "" {
 			return nil, NewEventError("mint event error: to address is nil")
 		}
 		return NewMintEvent(meta, toAddress, amt, protoAsset), nil
-	}
+	} else if isBurnEvent {
 
-	// Check for Burn Event
-	if isBurnEvent {
+		// Check for Burn Event
 		if fromAddress == "" {
 			return nil, NewEventError("burn event error: from address is nil")
 		}
 		return NewBurnEvent(meta, fromAddress, amt, protoAsset), nil
-	}
-
-	// If you are here, then it's a transfer event
-	if toAddress == "" {
-		return nil, NewEventError("transfer event error: to address is nil")
-	}
-	if fromAddress == "" {
-		return nil, NewEventError("transfer event error: from address is nil")
 	}
 
 	// Create transfer event
