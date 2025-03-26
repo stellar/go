@@ -40,6 +40,7 @@ func TestTxSub(t *testing.T) {
 			HorizonEnvironment: map[string]string{
 				"DISABLE_TX_SUB": "true",
 			},
+			QuickExpiration: true,
 		})
 		master := itest.Master()
 

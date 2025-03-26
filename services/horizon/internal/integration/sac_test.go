@@ -196,6 +196,15 @@ func TestContractMintToContract(t *testing.T) {
 		effects.EffectAccountDebited,
 		effects.EffectContractCredited)
 
+	balanceAmount, _, _ := assertInvokeHostFnSucceeds(
+		itest,
+		itest.Master(),
+		contractBalance(itest, issuer, asset, recipientContractID),
+	)
+	assert.Equal(itest.CurrentTest(), xdr.ScValTypeScvI128, balanceAmount.Type)
+	assert.Equal(itest.CurrentTest(), xdr.Uint64(6), (*balanceAmount.I128).Lo)
+	assert.Equal(itest.CurrentTest(), xdr.Int64(0), (*balanceAmount.I128).Hi)
+
 	mintAmount := xdr.Int128Parts{Lo: math.MaxUint64 - 6, Hi: math.MaxInt64}
 	_, mintTx, _ := assertInvokeHostFnSucceeds(
 		itest,
@@ -209,16 +218,6 @@ func TestContractMintToContract(t *testing.T) {
 	assertContainsEffect(t, getTxEffects(itest, mintTx, asset),
 		effects.EffectContractCredited)
 
-	balanceAmount, _, _ := assertInvokeHostFnSucceeds(
-		itest,
-		itest.Master(),
-		contractBalance(itest, issuer, asset, recipientContractID),
-	)
-	assert.Equal(itest.CurrentTest(), xdr.ScValTypeScvI128, balanceAmount.Type)
-	assert.Equal(itest.CurrentTest(), xdr.Uint64(math.MaxUint64-6), (*balanceAmount.I128).Lo)
-	assert.Equal(itest.CurrentTest(), xdr.Int64(math.MaxInt64), (*balanceAmount.I128).Hi)
-	assertEventPayments(itest, mintTx, asset, "", strkeyRecipientContractID, "mint", amount.String128(mintAmount))
-
 	balanceAmount, _, _ = assertInvokeHostFnSucceeds(
 		itest,
 		itest.Master(),
@@ -227,6 +226,7 @@ func TestContractMintToContract(t *testing.T) {
 	assert.Equal(itest.CurrentTest(), xdr.ScValTypeScvI128, balanceAmount.Type)
 	assert.Equal(itest.CurrentTest(), xdr.Uint64(math.MaxUint64), (*balanceAmount.I128).Lo)
 	assert.Equal(itest.CurrentTest(), xdr.Int64(math.MaxInt64), (*balanceAmount.I128).Hi)
+	assertEventPayments(itest, mintTx, asset, "", strkeyRecipientContractID, "mint", amount.String128(mintAmount))
 
 	// 2^127 - 1
 	balanceContracts := new(big.Int).Lsh(big.NewInt(1), 127)
