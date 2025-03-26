@@ -23,7 +23,7 @@ RPC_ENDPOINT=https://soroban-testnet.stellar.org NETWORK_PASSPHRASE="Test SDF Ne
 
 ## in another terminal, run an example consumer app
 This example is in node, and it builds a grpc client from the protos to connect and consume events from the TTP grpc server
-Make sure to have node >= 22 installed locally on host
+Make sure to have **Node >= 22** installed locally on host
 ```
 cd consumer_app
 make build-node

@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "Node.js gRPC client for event service",
   "main": "dist/index.js",
+  "engines": {
+    "node": ">=22.0.0"
+  },
   "scripts": {
     "build": "tsc",
     "start": "ts-node src/index.ts",
