@@ -147,7 +147,6 @@ func TestContractMintToContract(t *testing.T) {
 
 	itest := integration.NewTest(t, integration.Config{
 		EnableStellarRPC: true,
-		QuickExpiration:  true,
 	})
 
 	issuer := itest.Master().Address()
@@ -160,29 +159,6 @@ func TestContractMintToContract(t *testing.T) {
 	recipientContractID, _ := mustCreateAndInstallContract(itest, itest.Master(), "a1", add_u64_contract)
 	strkeyRecipientContractID, err := strkey.Encode(strkey.VersionByteContract, recipientContractID[:])
 	assert.NoError(t, err)
-
-	mintAmount := xdr.Int128Parts{Lo: math.MaxUint64 - 3, Hi: math.MaxInt64}
-	_, mintTx, _ := assertInvokeHostFnSucceeds(
-		itest,
-		itest.Master(),
-		mintWithAmt(
-			itest,
-			issuer, asset,
-			i128Param(int64(mintAmount.Hi), uint64(mintAmount.Lo)),
-			contractAddressParam(recipientContractID)),
-	)
-	assertContainsEffect(t, getTxEffects(itest, mintTx, asset),
-		effects.EffectContractCredited)
-
-	balanceAmount, _, _ := assertInvokeHostFnSucceeds(
-		itest,
-		itest.Master(),
-		contractBalance(itest, issuer, asset, recipientContractID),
-	)
-	assert.Equal(itest.CurrentTest(), xdr.ScValTypeScvI128, balanceAmount.Type)
-	assert.Equal(itest.CurrentTest(), xdr.Uint64(math.MaxUint64-3), (*balanceAmount.I128).Lo)
-	assert.Equal(itest.CurrentTest(), xdr.Int64(math.MaxInt64), (*balanceAmount.I128).Hi)
-	assertEventPayments(itest, mintTx, asset, "", strkeyRecipientContractID, "mint", amount.String128(mintAmount))
 
 	// calling transfer from the issuer account will also mint the asset
 	invokeHostOp, err := txnbuild.NewPaymentToContract(txnbuild.PaymentToContractParams{
@@ -201,6 +177,47 @@ func TestContractMintToContract(t *testing.T) {
 	assertContainsEffect(t, getTxEffects(itest, transferTx.Hash, asset),
 		effects.EffectAccountDebited,
 		effects.EffectContractCredited)
+
+	// call transfer again to exercise code path when the contract balance already exists
+	invokeHostOp, err = txnbuild.NewPaymentToContract(txnbuild.PaymentToContractParams{
+		NetworkPassphrase: itest.GetPassPhrase(),
+		Destination:       strkey.MustEncode(strkey.VersionByteContract, recipientContractID[:]),
+		Amount:            amount.String(3),
+		Asset: txnbuild.CreditAsset{
+			Code:   code,
+			Issuer: issuer,
+		},
+		SourceAccount: issuer,
+	})
+	assert.NoError(t, err)
+	transferTx = itest.MustSubmitOperations(itest.MasterAccount(), itest.Master(), &invokeHostOp)
+
+	assertContainsEffect(t, getTxEffects(itest, transferTx.Hash, asset),
+		effects.EffectAccountDebited,
+		effects.EffectContractCredited)
+
+	mintAmount := xdr.Int128Parts{Lo: math.MaxUint64 - 6, Hi: math.MaxInt64}
+	_, mintTx, _ := assertInvokeHostFnSucceeds(
+		itest,
+		itest.Master(),
+		mintWithAmt(
+			itest,
+			issuer, asset,
+			i128Param(int64(mintAmount.Hi), uint64(mintAmount.Lo)),
+			contractAddressParam(recipientContractID)),
+	)
+	assertContainsEffect(t, getTxEffects(itest, mintTx, asset),
+		effects.EffectContractCredited)
+
+	balanceAmount, _, _ := assertInvokeHostFnSucceeds(
+		itest,
+		itest.Master(),
+		contractBalance(itest, issuer, asset, recipientContractID),
+	)
+	assert.Equal(itest.CurrentTest(), xdr.ScValTypeScvI128, balanceAmount.Type)
+	assert.Equal(itest.CurrentTest(), xdr.Uint64(math.MaxUint64-6), (*balanceAmount.I128).Lo)
+	assert.Equal(itest.CurrentTest(), xdr.Int64(math.MaxInt64), (*balanceAmount.I128).Hi)
+	assertEventPayments(itest, mintTx, asset, "", strkeyRecipientContractID, "mint", amount.String128(mintAmount))
 
 	balanceAmount, _, _ = assertInvokeHostFnSucceeds(
 		itest,
@@ -513,7 +530,6 @@ func TestContractTransferBetweenAccounts(t *testing.T) {
 
 	itest := integration.NewTest(t, integration.Config{
 		EnableStellarRPC: true,
-		QuickExpiration:  true,
 	})
 
 	issuer := itest.Master().Address()
@@ -589,7 +605,6 @@ func TestContractTransferBetweenAccountAndContract(t *testing.T) {
 
 	itest := integration.NewTest(t, integration.Config{
 		EnableStellarRPC: true,
-		QuickExpiration:  true,
 	})
 
 	issuer := itest.Master().Address()
@@ -627,16 +642,6 @@ func TestContractTransferBetweenAccountAndContract(t *testing.T) {
 		initAssetContract(itest, issuer, asset, recipientContractID, recipientContractHash),
 	)
 
-	// Add funds to recipient contract
-	_, mintTx, _ := assertInvokeHostFnSucceeds(
-		itest,
-		itest.Master(),
-		mint(itest, issuer, asset, "1000", contractAddressParam(recipientContractID)),
-	)
-	assertContainsBalance(itest, recipientKp, issuer, code, amount.MustParse("1000"))
-	assertContainsEffect(t, getTxEffects(itest, mintTx, asset),
-		effects.EffectContractCredited)
-
 	assertAssetStats(itest, assetStats{
 		code:                     code,
 		issuer:                   issuer,
@@ -644,13 +649,12 @@ func TestContractTransferBetweenAccountAndContract(t *testing.T) {
 		balanceAccounts:          amount.MustParse("1000"),
 		balanceArchivedContracts: big.NewInt(0),
 		numArchivedContracts:     0,
-		numContracts:             1,
-		balanceContracts:         big.NewInt(int64(amount.MustParse("1000"))),
+		numContracts:             0,
+		balanceContracts:         big.NewInt(0),
 		contractID:               stellarAssetContractID(itest, asset),
 	})
 
 	// transfer from account to contract
-	// calling transfer from the issuer account will also mint the asset
 	invokeHostOp, err := txnbuild.NewPaymentToContract(txnbuild.PaymentToContractParams{
 		NetworkPassphrase: itest.GetPassPhrase(),
 		Destination:       strkey.MustEncode(strkey.VersionByteContract, recipientContractID[:]),
@@ -676,33 +680,64 @@ func TestContractTransferBetweenAccountAndContract(t *testing.T) {
 		balanceArchivedContracts: big.NewInt(0),
 		numArchivedContracts:     0,
 		numContracts:             1,
-		balanceContracts:         big.NewInt(int64(amount.MustParse("1030"))),
+		balanceContracts:         big.NewInt(int64(amount.MustParse("30"))),
 		contractID:               stellarAssetContractID(itest, asset),
 	})
 	assertEventPayments(itest, transferTx.Hash, asset, recipientKp.Address(), strkeyRecipientContractID, "transfer", "30.0000000")
+
+	// transfer from account to contract again to exercise code path where contract balance already exists
+	invokeHostOp, err = txnbuild.NewPaymentToContract(txnbuild.PaymentToContractParams{
+		NetworkPassphrase: itest.GetPassPhrase(),
+		Destination:       strkey.MustEncode(strkey.VersionByteContract, recipientContractID[:]),
+		Amount:            "70",
+		Asset: txnbuild.CreditAsset{
+			Code:   code,
+			Issuer: issuer,
+		},
+		SourceAccount: recipientKp.Address(),
+	})
+	assert.NoError(t, err)
+	transferTx = itest.MustSubmitOperations(recipient, recipientKp, &invokeHostOp)
+
+	assertAccountInvokeHostFunctionOperation(itest, recipientKp.Address(), recipientKp.Address(), strkeyRecipientContractID, "70.0000000")
+	assertContainsBalance(itest, recipientKp, issuer, code, amount.MustParse("900"))
+	assertContainsEffect(t, getTxEffects(itest, transferTx.Hash, asset),
+		effects.EffectAccountDebited, effects.EffectContractCredited)
+	assertAssetStats(itest, assetStats{
+		code:                     code,
+		issuer:                   issuer,
+		numAccounts:              1,
+		balanceAccounts:          amount.MustParse("900"),
+		balanceArchivedContracts: big.NewInt(0),
+		numArchivedContracts:     0,
+		numContracts:             1,
+		balanceContracts:         big.NewInt(int64(amount.MustParse("100"))),
+		contractID:               stellarAssetContractID(itest, asset),
+	})
+	assertEventPayments(itest, transferTx.Hash, asset, recipientKp.Address(), strkeyRecipientContractID, "transfer", "70.0000000")
 
 	// transfer from contract to account
 	_, transferTxHash, _ := assertInvokeHostFnSucceeds(
 		itest,
 		recipientKp,
-		transferFromContract(itest, recipientKp.Address(), asset, recipientContractID, recipientContractHash, "500", accountAddressParam(recipient.GetAccountID())),
+		transferFromContract(itest, recipientKp.Address(), asset, recipientContractID, recipientContractHash, "50", accountAddressParam(recipient.GetAccountID())),
 	)
-	assertAccountInvokeHostFunctionOperation(itest, recipientKp.Address(), strkeyRecipientContractID, recipientKp.Address(), "500.0000000")
+	assertAccountInvokeHostFunctionOperation(itest, recipientKp.Address(), strkeyRecipientContractID, recipientKp.Address(), "50.0000000")
 	assertContainsEffect(t, getTxEffects(itest, transferTxHash, asset),
 		effects.EffectContractDebited, effects.EffectAccountCredited)
-	assertContainsBalance(itest, recipientKp, issuer, code, amount.MustParse("1470"))
+	assertContainsBalance(itest, recipientKp, issuer, code, amount.MustParse("950"))
 	assertAssetStats(itest, assetStats{
 		code:                     code,
 		issuer:                   issuer,
 		numAccounts:              1,
-		balanceAccounts:          amount.MustParse("1470"),
+		balanceAccounts:          amount.MustParse("950"),
 		balanceArchivedContracts: big.NewInt(0),
 		numArchivedContracts:     0,
 		numContracts:             1,
-		balanceContracts:         big.NewInt(int64(amount.MustParse("530"))),
+		balanceContracts:         big.NewInt(int64(amount.MustParse("50"))),
 		contractID:               stellarAssetContractID(itest, asset),
 	})
-	assertEventPayments(itest, transferTxHash, asset, strkeyRecipientContractID, recipientKp.Address(), "transfer", "500.0000000")
+	assertEventPayments(itest, transferTxHash, asset, strkeyRecipientContractID, recipientKp.Address(), "transfer", "50.0000000")
 
 	balanceAmount, _, _ := assertInvokeHostFnSucceeds(
 		itest,
@@ -710,7 +745,7 @@ func TestContractTransferBetweenAccountAndContract(t *testing.T) {
 		contractBalance(itest, issuer, asset, recipientContractID),
 	)
 	assert.Equal(itest.CurrentTest(), xdr.ScValTypeScvI128, balanceAmount.Type)
-	assert.Equal(itest.CurrentTest(), xdr.Uint64(5300000000), (*balanceAmount.I128).Lo)
+	assert.Equal(itest.CurrentTest(), xdr.Uint64(500000000), (*balanceAmount.I128).Lo)
 	assert.Equal(itest.CurrentTest(), xdr.Int64(0), (*balanceAmount.I128).Hi)
 }
 

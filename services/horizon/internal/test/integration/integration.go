@@ -215,7 +215,7 @@ func NewTest(t *testing.T, config Config) *Test {
 
 		i.WaitForHorizonIngest()
 
-		if !config.SkipCoreContainerCreation {
+		if !config.SkipCoreContainerCreation && !i.config.QuickExpiration {
 			i.upgradeLimits()
 		}
 	}
