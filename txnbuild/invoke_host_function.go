@@ -29,6 +29,7 @@ var defaultPaymentToContractFees = SorobanFees{
 	ResourceFee:  5_000_000,
 }
 
+// PaymentToContractParams configures the payment returned by NewPaymentToContract
 type PaymentToContractParams struct {
 	// NetworkPassphrase is the passphrase for the Stellar network
 	NetworkPassphrase string
@@ -46,6 +47,8 @@ type PaymentToContractParams struct {
 	Fees SorobanFees
 }
 
+// NewPaymentToContract constructs an invoke host operation to send a payment from a
+// source account to a destination smart contract
 func NewPaymentToContract(params PaymentToContractParams) (InvokeHostFunction, error) {
 	asset, err := params.Asset.ToXDR()
 	if err != nil {

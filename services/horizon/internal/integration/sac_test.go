@@ -330,9 +330,10 @@ func TestExpirationAndRestoration(t *testing.T) {
 	})
 
 	// create balance which we will expire
+	holder := [32]byte{2}
 	balanceToExpire := sac.BalanceToContractData(
 		storeContractID,
-		[32]byte{2},
+		holder,
 		37,
 	)
 	assertInvokeHostFnSucceeds(
@@ -408,11 +409,20 @@ func TestExpirationAndRestoration(t *testing.T) {
 	})
 
 	// restore expired balance
-	sourceAccount, restoreFootprint := itest.RestoreFootprint(
-		itest.Master().Address(),
-		balanceToExpireLedgerKey,
-	)
-	itest.MustSubmitOperations(&sourceAccount, itest.Master(), &restoreFootprint)
+	restoreFootprint, err := txnbuild.NewAssetBalanceRestoration(txnbuild.AssetBalanceRestorationParams{
+		NetworkPassphrase: itest.GetPassPhrase(),
+		Contract:          strkey.MustEncode(strkey.VersionByteContract, holder[:]),
+		Asset: txnbuild.CreditAsset{
+			Code:   code,
+			Issuer: issuer,
+		},
+		SourceAccount: itest.Master().Address(),
+	})
+	assert.NoError(t, err)
+	// set the contract id to storeContractID because we are restoring a fake asset balance
+	restoreFootprint.Ext.SorobanData.Resources.Footprint.ReadWrite[0].ContractData.Contract.ContractId = &storeContractID
+	itest.MustSubmitOperations(itest.MasterAccount(), itest.Master(), &restoreFootprint)
+
 	assertAssetStats(itest, assetStats{
 		code:                     code,
 		issuer:                   issuer,
