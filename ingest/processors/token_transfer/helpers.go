@@ -2,6 +2,7 @@ package token_transfer
 
 import (
 	"crypto/sha256"
+	"errors"
 	"fmt"
 
 	"github.com/stellar/go/ingest"
@@ -173,4 +174,13 @@ func formatError(err error, tx ingest.LedgerTransaction, opIndex uint32, op xdr.
 	}
 	return fmt.Errorf("failed to process token transfer events for ledgerSequence: %v, txHash: %v, operationIndex: %v, operationType: %v. error: %w",
 		tx.Ledger.LedgerSequence(), tx.Hash.HexString(), opIndex, op.Body.Type.String(), err)
+}
+
+// extractAddress helps extract a string representation of an address from a ScVal
+func extractAddress(val xdr.ScVal) (string, error) {
+	addr, ok := val.GetAddress()
+	if !ok {
+		return "", errors.New("invalid address")
+	}
+	return addr.String()
 }
