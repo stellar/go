@@ -1,6 +1,7 @@
 package token_transfer
 
 import (
+	"fmt"
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/ingest"
 	assetProto "github.com/stellar/go/ingest/asset"
@@ -1390,4 +1391,12 @@ func TestAllowTrustAndSetTrustlineFlagsRevokeTrustlineTest(t *testing.T) {
 		},
 	}
 	runTokenTransferEventTests(t, tests)
+}
+
+func TestBlah(t *testing.T) {
+
+	a := ""
+	ass, err := xdr.NewCreditAsset(a, accountA.Address())
+	fmt.Printf("%v\n", ass)
+	assert.Nil(t, err)
 }

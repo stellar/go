@@ -4,15 +4,16 @@ import (
 	"fmt"
 	"github.com/stellar/go/ingest"
 	assetProto "github.com/stellar/go/ingest/asset"
+	"github.com/stellar/go/xdr"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 var (
-	TransferEvent = "Transfer"
-	MintEvent     = "Mint"
-	BurnEvent     = "Burn"
-	ClawbackEvent = "Clawback"
-	FeeEvent      = "Fee"
+	TransferEvent = "transfer"
+	MintEvent     = "mint"
+	BurnEvent     = "burn"
+	ClawbackEvent = "clawback"
+	FeeEvent      = "fee"
 )
 
 func NewTransferEvent(meta *EventMeta, from, to string, amount string, token *assetProto.Asset) *TokenTransferEvent {
@@ -128,4 +129,22 @@ func (event *TokenTransferEvent) GetAsset() *assetProto.Asset {
 		panic(fmt.Errorf("unkown event type:%v", event))
 	}
 	return asset
+}
+
+func (event *TokenTransferEvent) SetAsset(asset xdr.Asset) {
+	protoAsset := assetProto.NewProtoAsset(asset)
+	switch event.GetEvent().(type) {
+	case *TokenTransferEvent_Mint:
+		event.GetMint().Asset = protoAsset
+	case *TokenTransferEvent_Burn:
+		event.GetBurn().Asset = protoAsset
+	case *TokenTransferEvent_Clawback:
+		event.GetClawback().Asset = protoAsset
+	case *TokenTransferEvent_Fee:
+		event.GetFee().Asset = protoAsset
+	case *TokenTransferEvent_Transfer:
+		event.GetTransfer().Asset = protoAsset
+	default:
+		panic(fmt.Errorf("unkown event type:%v", event))
+	}
 }
