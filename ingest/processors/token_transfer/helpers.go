@@ -166,3 +166,11 @@ func getImpactedLiquidityPoolEntriesFromOperation(tx ingest.LedgerTransaction, o
 
 	return entries, nil
 }
+
+func formatError(err error, tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation) error {
+	if err == nil {
+		return nil
+	}
+	return fmt.Errorf("failed to process token transfer events for ledgerSequence: %v, txHash: %v, operationIndex: %v, operationType: %v. error: %w",
+		tx.Ledger.LedgerSequence(), tx.Hash.HexString(), opIndex, op.Body.Type.String(), err)
+}
