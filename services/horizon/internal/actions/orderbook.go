@@ -2,6 +2,7 @@ package actions
 
 import (
 	"net/http"
+	"slices"
 
 	protocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/context"
@@ -23,20 +24,6 @@ type OrderBookResponse struct {
 	protocol.OrderBookSummary
 }
 
-func priceLevelsEqual(a, b []protocol.PriceLevel) bool {
-	if len(a) != len(b) {
-		return false
-	}
-
-	for i := range a {
-		if a[i] != b[i] {
-			return false
-		}
-	}
-
-	return true
-}
-
 // Equals returns true if the OrderBookResponse is equal to `other`
 func (o OrderBookResponse) Equals(other StreamableObjectResponse) bool {
 	otherOrderBook, ok := other.(OrderBookResponse)
@@ -45,8 +32,8 @@ func (o OrderBookResponse) Equals(other StreamableObjectResponse) bool {
 	}
 	return otherOrderBook.Selling == o.Selling &&
 		otherOrderBook.Buying == o.Buying &&
-		priceLevelsEqual(otherOrderBook.Bids, o.Bids) &&
-		priceLevelsEqual(otherOrderBook.Asks, o.Asks)
+		slices.Equal(otherOrderBook.Bids, o.Bids) &&
+		slices.Equal(otherOrderBook.Asks, o.Asks)
 }
 
 var invalidOrderBook = problem.P{
