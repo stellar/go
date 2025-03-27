@@ -85,12 +85,20 @@ func NewFeeEvent(meta *EventMeta, from string, amount string, token *assetProto.
 }
 
 func NewEventMetaFromTx(tx ingest.LedgerTransaction, operationIndex *uint32, contractAddress string) *EventMeta {
+	// The input operationIndex is 0-indexed.
+	// As per SEP-35, the OperationIndex in the output proto should be 1-indexed.
+	// Make that conversion here
+	var outputOpIndex *uint32
+	if operationIndex != nil {
+		temp := *operationIndex + 1
+		outputOpIndex = &temp
+	}
 	return &EventMeta{
 		LedgerSequence:   tx.Ledger.LedgerSequence(),
 		ClosedAt:         timestamppb.New(tx.Ledger.ClosedAt()),
 		TxHash:           tx.Hash.HexString(),
-		TransactionIndex: tx.Index - 1,
-		OperationIndex:   operationIndex,
+		TransactionIndex: tx.Index, // The index in ingest.LedgerTransaction is already 1-indexed
+		OperationIndex:   outputOpIndex,
 		ContractAddress:  contractAddress,
 	}
 }
