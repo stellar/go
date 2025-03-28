@@ -1,0 +1,177 @@
+### Event Type: fee
+{
+  "meta":  {
+    "ledgerSequence":  9652679,
+    "closedAt":  "2017-03-18T09:27:24Z",
+    "txHash":  "df43c5233e7f90b0c25a558e6f983cd15cd3d61477405fc708ef3bf4a7027dc2",
+    "transactionIndex":  1,
+    "contractAddress":  "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA"
+  },
+  "fee":  {
+    "from":  "GDPT6UNS63PLCFBTOTMJK5UCOSGUUSEWTBBMAIGAHGAS6HRZHL4RZU4G",
+    "asset":  {
+      "native":  true
+    },
+    "amount":  "400"
+  }
+}
+###
+### Event Type: transfer
+{
+  "meta":  {
+    "ledgerSequence":  9652679,
+    "closedAt":  "2017-03-18T09:27:24Z",
+    "txHash":  "df43c5233e7f90b0c25a558e6f983cd15cd3d61477405fc708ef3bf4a7027dc2",
+    "transactionIndex":  1,
+    "operationIndex":  1,
+    "contractAddress":  "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA"
+  },
+  "transfer":  {
+    "from":  "GDPT6UNS63PLCFBTOTMJK5UCOSGUUSEWTBBMAIGAHGAS6HRZHL4RZU4G",
+    "to":  "GAF32SPJJRDT6NTIQQIQO57BVCTPDWOS3OILRWIN3LMJ5PXYRACB6SLL",
+    "asset":  {
+      "native":  true
+    },
+    "amount":  "250000000"
+  }
+}
+###
+### Event Type: transfer
+{
+  "meta":  {
+    "ledgerSequence":  9652679,
+    "closedAt":  "2017-03-18T09:27:24Z",
+    "txHash":  "df43c5233e7f90b0c25a558e6f983cd15cd3d61477405fc708ef3bf4a7027dc2",
+    "transactionIndex":  1,
+    "operationIndex":  2,
+    "contractAddress":  "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA"
+  },
+  "transfer":  {
+    "from":  "GDPT6UNS63PLCFBTOTMJK5UCOSGUUSEWTBBMAIGAHGAS6HRZHL4RZU4G",
+    "to":  "GAF32SPJJRDT6NTIQQIQO57BVCTPDWOS3OILRWIN3LMJ5PXYRACB6SLL",
+    "asset":  {
+      "native":  true
+    },
+    "amount":  "301837715906081"
+  }
+}
+###
+### Event Type: mint
+{
+  "meta":  {
+    "ledgerSequence":  9652679,
+    "closedAt":  "2017-03-18T09:27:24Z",
+    "txHash":  "df43c5233e7f90b0c25a558e6f983cd15cd3d61477405fc708ef3bf4a7027dc2",
+    "transactionIndex":  1,
+    "operationIndex":  3,
+    "contractAddress":  "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA"
+  },
+  "mint":  {
+    "to":  "GDPT6UNS63PLCFBTOTMJK5UCOSGUUSEWTBBMAIGAHGAS6HRZHL4RZU4G",
+    "asset":  {
+      "native":  true
+    },
+    "amount":  "301837715906081"
+  }
+}
+###
+### Event Type: transfer
+{
+  "meta":  {
+    "ledgerSequence":  9652679,
+    "closedAt":  "2017-03-18T09:27:24Z",
+    "txHash":  "df43c5233e7f90b0c25a558e6f983cd15cd3d61477405fc708ef3bf4a7027dc2",
+    "transactionIndex":  1,
+    "operationIndex":  3,
+    "contractAddress":  "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA"
+  },
+  "transfer":  {
+    "from":  "GDPT6UNS63PLCFBTOTMJK5UCOSGUUSEWTBBMAIGAHGAS6HRZHL4RZU4G",
+    "to":  "GAF32SPJJRDT6NTIQQIQO57BVCTPDWOS3OILRWIN3LMJ5PXYRACB6SLL",
+    "asset":  {
+      "native":  true
+    },
+    "amount":  "301837715906081"
+  }
+}
+###
+### Event Type: mint
+{
+  "meta":  {
+    "ledgerSequence":  9652679,
+    "closedAt":  "2017-03-18T09:27:24Z",
+    "txHash":  "df43c5233e7f90b0c25a558e6f983cd15cd3d61477405fc708ef3bf4a7027dc2",
+    "transactionIndex":  1,
+    "operationIndex":  4,
+    "contractAddress":  "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA"
+  },
+  "mint":  {
+    "to":  "GDPT6UNS63PLCFBTOTMJK5UCOSGUUSEWTBBMAIGAHGAS6HRZHL4RZU4G",
+    "asset":  {
+      "native":  true
+    },
+    "amount":  "301837715906081"
+  }
+}
+###
+### Event Type: transfer
+{
+  "meta":  {
+    "ledgerSequence":  9652679,
+    "closedAt":  "2017-03-18T09:27:24Z",
+    "txHash":  "df43c5233e7f90b0c25a558e6f983cd15cd3d61477405fc708ef3bf4a7027dc2",
+    "transactionIndex":  1,
+    "operationIndex":  4,
+    "contractAddress":  "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA"
+  },
+  "transfer":  {
+    "from":  "GDPT6UNS63PLCFBTOTMJK5UCOSGUUSEWTBBMAIGAHGAS6HRZHL4RZU4G",
+    "to":  "GAF32SPJJRDT6NTIQQIQO57BVCTPDWOS3OILRWIN3LMJ5PXYRACB6SLL",
+    "asset":  {
+      "native":  true
+    },
+    "amount":  "301837715906081"
+  }
+}
+###
+### Event Type: fee
+{
+  "meta":  {
+    "ledgerSequence":  9652679,
+    "closedAt":  "2017-03-18T09:27:24Z",
+    "txHash":  "efd679d703c9b698bf798ebd892eba860e7327fb3849bec2d864daf472ccd020",
+    "transactionIndex":  2,
+    "contractAddress":  "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA"
+  },
+  "fee":  {
+    "from":  "GDA7DLK5NOB6BQDIGOSQJY3GFXR6CFZMND3HZLINUATEXA4ZE3VSFWX7",
+    "asset":  {
+      "native":  true
+    },
+    "amount":  "100"
+  }
+}
+###
+### Event Type: transfer
+{
+  "meta":  {
+    "ledgerSequence":  9652679,
+    "closedAt":  "2017-03-18T09:27:24Z",
+    "txHash":  "efd679d703c9b698bf798ebd892eba860e7327fb3849bec2d864daf472ccd020",
+    "transactionIndex":  2,
+    "operationIndex":  1,
+    "contractAddress":  "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA"
+  },
+  "transfer":  {
+    "from":  "GDA7DLK5NOB6BQDIGOSQJY3GFXR6CFZMND3HZLINUATEXA4ZE3VSFWX7",
+    "to":  "GCQDXNPSH524RF7EISN3NLFIFEKJYTVCTL7ZNNW5MGOBLTRHJBRKAWJH",
+    "asset":  {
+      "native":  true
+    },
+    "amount":  "1462907284"
+  }
+}
+###
+Processing ledger Seq: 9652679, ClosedAt: 2017-03-18 09:27:24 +0000 UTC, Protocol Version: 4
+Processed ledger Seq: 9652679, ClosedAt: 2017-03-18 09:27:24 +0000 UTC, Protocol Version: 4, num events: 9, verification: success
+Finished processing ledgers

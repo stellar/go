@@ -1,0 +1,138 @@
+### Event Type: fee
+{
+  "meta":  {
+    "ledgerSequence":  9652698,
+    "closedAt":  "2017-03-18T09:29:02Z",
+    "txHash":  "fccf83db8e1b9b11ea11f34987f4f99ab809f6ca4ab2a2a7a296575f835cb090",
+    "transactionIndex":  1,
+    "contractAddress":  "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA"
+  },
+  "fee":  {
+    "from":  "GDA7DLK5NOB6BQDIGOSQJY3GFXR6CFZMND3HZLINUATEXA4ZE3VSFWX7",
+    "asset":  {
+      "native":  true
+    },
+    "amount":  "100"
+  }
+}
+###
+### Event Type: transfer
+{
+  "meta":  {
+    "ledgerSequence":  9652698,
+    "closedAt":  "2017-03-18T09:29:02Z",
+    "txHash":  "fccf83db8e1b9b11ea11f34987f4f99ab809f6ca4ab2a2a7a296575f835cb090",
+    "transactionIndex":  1,
+    "operationIndex":  1,
+    "contractAddress":  "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA"
+  },
+  "transfer":  {
+    "from":  "GDA7DLK5NOB6BQDIGOSQJY3GFXR6CFZMND3HZLINUATEXA4ZE3VSFWX7",
+    "to":  "GCQDXNPSH524RF7EISN3NLFIFEKJYTVCTL7ZNNW5MGOBLTRHJBRKAWJH",
+    "asset":  {
+      "native":  true
+    },
+    "amount":  "1082232771"
+  }
+}
+###
+### Event Type: fee
+{
+  "meta":  {
+    "ledgerSequence":  9652698,
+    "closedAt":  "2017-03-18T09:29:02Z",
+    "txHash":  "3724b2fb4613d3795317e67f3cb23f1ca5a4579a71608dcd3cdf913f8bd0e5e5",
+    "transactionIndex":  2,
+    "contractAddress":  "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA"
+  },
+  "fee":  {
+    "from":  "GAF32SPJJRDT6NTIQQIQO57BVCTPDWOS3OILRWIN3LMJ5PXYRACB6SLL",
+    "asset":  {
+      "native":  true
+    },
+    "amount":  "300"
+  }
+}
+###
+### Event Type: transfer
+{
+  "meta":  {
+    "ledgerSequence":  9652698,
+    "closedAt":  "2017-03-18T09:29:02Z",
+    "txHash":  "3724b2fb4613d3795317e67f3cb23f1ca5a4579a71608dcd3cdf913f8bd0e5e5",
+    "transactionIndex":  2,
+    "operationIndex":  1,
+    "contractAddress":  "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA"
+  },
+  "transfer":  {
+    "from":  "GAF32SPJJRDT6NTIQQIQO57BVCTPDWOS3OILRWIN3LMJ5PXYRACB6SLL",
+    "to":  "GCH7JC6VXPBHELQTQWPS3AKV5YLOWQSFHUIIUTYD55FJAU2PJYHHTFDS",
+    "asset":  {
+      "native":  true
+    },
+    "amount":  "250000000"
+  }
+}
+###
+### Event Type: transfer
+{
+  "meta":  {
+    "ledgerSequence":  9652698,
+    "closedAt":  "2017-03-18T09:29:02Z",
+    "txHash":  "3724b2fb4613d3795317e67f3cb23f1ca5a4579a71608dcd3cdf913f8bd0e5e5",
+    "transactionIndex":  2,
+    "operationIndex":  2,
+    "contractAddress":  "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA"
+  },
+  "transfer":  {
+    "from":  "GAF32SPJJRDT6NTIQQIQO57BVCTPDWOS3OILRWIN3LMJ5PXYRACB6SLL",
+    "to":  "GCH7JC6VXPBHELQTQWPS3AKV5YLOWQSFHUIIUTYD55FJAU2PJYHHTFDS",
+    "asset":  {
+      "native":  true
+    },
+    "amount":  "905513147717943"
+  }
+}
+###
+### Event Type: mint
+{
+  "meta":  {
+    "ledgerSequence":  9652698,
+    "closedAt":  "2017-03-18T09:29:02Z",
+    "txHash":  "3724b2fb4613d3795317e67f3cb23f1ca5a4579a71608dcd3cdf913f8bd0e5e5",
+    "transactionIndex":  2,
+    "operationIndex":  3,
+    "contractAddress":  "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA"
+  },
+  "mint":  {
+    "to":  "GAF32SPJJRDT6NTIQQIQO57BVCTPDWOS3OILRWIN3LMJ5PXYRACB6SLL",
+    "asset":  {
+      "native":  true
+    },
+    "amount":  "905513147717943"
+  }
+}
+###
+### Event Type: transfer
+{
+  "meta":  {
+    "ledgerSequence":  9652698,
+    "closedAt":  "2017-03-18T09:29:02Z",
+    "txHash":  "3724b2fb4613d3795317e67f3cb23f1ca5a4579a71608dcd3cdf913f8bd0e5e5",
+    "transactionIndex":  2,
+    "operationIndex":  3,
+    "contractAddress":  "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA"
+  },
+  "transfer":  {
+    "from":  "GAF32SPJJRDT6NTIQQIQO57BVCTPDWOS3OILRWIN3LMJ5PXYRACB6SLL",
+    "to":  "GCH7JC6VXPBHELQTQWPS3AKV5YLOWQSFHUIIUTYD55FJAU2PJYHHTFDS",
+    "asset":  {
+      "native":  true
+    },
+    "amount":  "905513147717943"
+  }
+}
+###
+Processing ledger Seq: 9652698, ClosedAt: 2017-03-18 09:29:02 +0000 UTC, Protocol Version: 4
+Processed ledger Seq: 9652698, ClosedAt: 2017-03-18 09:29:02 +0000 UTC, Protocol Version: 4, num events: 7, verification: success
+Finished processing ledgers

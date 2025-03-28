@@ -1,0 +1,43 @@
+### Event Type: fee
+{
+  "meta":  {
+    "ledgerSequence":  7320888,
+    "closedAt":  "2016-11-05T01:59:00Z",
+    "txHash":  "297573e9c26494c7800ae59c3ae33392c4d28497a187ae13effc14d17aad0049",
+    "transactionIndex":  1,
+    "contractAddress":  "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA"
+  },
+  "fee":  {
+    "from":  "GBUYUAI75XXWDZEKLY66CFYKQPET5JR4EENXZBUZ3YXZ7DS56Z4OKOFU",
+    "asset":  {
+      "native":  true
+    },
+    "amount":  "100"
+  }
+}
+###
+### Event Type: mint
+{
+  "meta":  {
+    "ledgerSequence":  7320888,
+    "closedAt":  "2016-11-05T01:59:00Z",
+    "txHash":  "297573e9c26494c7800ae59c3ae33392c4d28497a187ae13effc14d17aad0049",
+    "transactionIndex":  1,
+    "operationIndex":  1,
+    "contractAddress":  "CBDPC6YTQS7MPPSVNK2NXUAM5TQMJYU5427KW4XSL7Z6F4XQV7WGQ7XN"
+  },
+  "mint":  {
+    "to":  "GDW3CNKSP5AOTDQ2YCKNGC6L65CE4JDX3JS5BV427OB54HCF2J4PUEVG",
+    "asset":  {
+      "issuedAsset":  {
+        "assetCode":  "BTC",
+        "issuer":  "GBUYUAI75XXWDZEKLY66CFYKQPET5JR4EENXZBUZ3YXZ7DS56Z4OKOFU"
+      }
+    },
+    "amount":  "90000000"
+  }
+}
+###
+Processing ledger Seq: 7320888, ClosedAt: 2016-11-05 01:59:00 +0000 UTC, Protocol Version: 2
+Processed ledger Seq: 7320888, ClosedAt: 2016-11-05 01:59:00 +0000 UTC, Protocol Version: 2, num events: 2, verification: success
+Finished processing ledgers

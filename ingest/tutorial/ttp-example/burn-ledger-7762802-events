@@ -1,0 +1,43 @@
+### Event Type: fee
+{
+  "meta":  {
+    "ledgerSequence":  7762802,
+    "closedAt":  "2016-11-29T09:06:31Z",
+    "txHash":  "32fa75e921b0006727b0ae5ac636e2a021b32b695f6b87b7c46618ae03fe3348",
+    "transactionIndex":  1,
+    "contractAddress":  "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA"
+  },
+  "fee":  {
+    "from":  "GDRFRGR2FDUFF2RI6PQE5KFSCJHGSEIOGET22R66XSATP3BYHZ46BPLO",
+    "asset":  {
+      "native":  true
+    },
+    "amount":  "100"
+  }
+}
+###
+### Event Type: burn
+{
+  "meta":  {
+    "ledgerSequence":  7762802,
+    "closedAt":  "2016-11-29T09:06:31Z",
+    "txHash":  "32fa75e921b0006727b0ae5ac636e2a021b32b695f6b87b7c46618ae03fe3348",
+    "transactionIndex":  1,
+    "operationIndex":  1,
+    "contractAddress":  "CACX6A5Z4D6V2VIAVJ2XJ5ONBJMVZDA6QYIJ276ZDMVS43WTCWD3E63N"
+  },
+  "burn":  {
+    "from":  "GDRFRGR2FDUFF2RI6PQE5KFSCJHGSEIOGET22R66XSATP3BYHZ46BPLO",
+    "asset":  {
+      "issuedAsset":  {
+        "assetCode":  "BITCRYSTALS",
+        "issuer":  "GB3XEHZMSIOS63JL6DEAO7KCIT2TNSYDEODNA5BNM72FUGVOMA73TA75"
+      }
+    },
+    "amount":  "7175538"
+  }
+}
+###
+Processing ledger Seq: 7762802, ClosedAt: 2016-11-29 09:06:31 +0000 UTC, Protocol Version: 2
+Processed ledger Seq: 7762802, ClosedAt: 2016-11-29 09:06:31 +0000 UTC, Protocol Version: 2, num events: 2, verification: success
+Finished processing ledgers

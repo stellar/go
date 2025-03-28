@@ -1,0 +1,78 @@
+### Event Type: fee
+{
+  "meta":  {
+    "ledgerSequence":  9722383,
+    "closedAt":  "2017-03-22T10:30:03Z",
+    "txHash":  "76cddefbef8c029d2195d8c75131189aeeae99114444a5a556b1fb3fb7afa543",
+    "transactionIndex":  1,
+    "contractAddress":  "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA"
+  },
+  "fee":  {
+    "from":  "GBPAAY5NG7P53XLXRDGMJMXUXBNGGY2JRFDHJXAN2F2LXTHBV6M7PTS3",
+    "asset":  {
+      "native":  true
+    },
+    "amount":  "100"
+  }
+}
+###
+### Event Type: transfer
+{
+  "meta":  {
+    "ledgerSequence":  9722383,
+    "closedAt":  "2017-03-22T10:30:03Z",
+    "txHash":  "76cddefbef8c029d2195d8c75131189aeeae99114444a5a556b1fb3fb7afa543",
+    "transactionIndex":  1,
+    "operationIndex":  1,
+    "contractAddress":  "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA"
+  },
+  "transfer":  {
+    "from":  "GBPAAY5NG7P53XLXRDGMJMXUXBNGGY2JRFDHJXAN2F2LXTHBV6M7PTS3",
+    "to":  "GBPAAY5NG7P53XLXRDGMJMXUXBNGGY2JRFDHJXAN2F2LXTHBV6M7PTS3",
+    "asset":  {
+      "native":  true
+    },
+    "amount":  "10000000"
+  }
+}
+###
+### Event Type: burn
+{
+  "meta":  {
+    "ledgerSequence":  9722383,
+    "closedAt":  "2017-03-22T10:30:03Z",
+    "txHash":  "76cddefbef8c029d2195d8c75131189aeeae99114444a5a556b1fb3fb7afa543",
+    "transactionIndex":  1,
+    "operationIndex":  1,
+    "contractAddress":  "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA"
+  },
+  "burn":  {
+    "from":  "GBPAAY5NG7P53XLXRDGMJMXUXBNGGY2JRFDHJXAN2F2LXTHBV6M7PTS3",
+    "asset":  {
+      "native":  true
+    },
+    "amount":  "10000000"
+  }
+}
+###
+### Event Type: fee
+{
+  "meta":  {
+    "ledgerSequence":  9722383,
+    "closedAt":  "2017-03-22T10:30:03Z",
+    "txHash":  "2771fd1def0c5334962e437a4dea0580e764431b2aa749969714d04ebf5d59da",
+    "transactionIndex":  2,
+    "contractAddress":  "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA"
+  },
+  "fee":  {
+    "from":  "GASXQDZACD5DRGVPIVB2LAW5JFGADBPPXAPHD6FTBRWC6RHDLL4YVQ5G",
+    "asset":  {
+      "native":  true
+    },
+    "amount":  "100"
+  }
+}
+###
+Processing ledger Seq: 9722383, ClosedAt: 2017-03-22 10:30:03 +0000 UTC, Protocol Version: 4
+Processed ledger Seq: 9722383, ClosedAt: 2017-03-22 10:30:03 +0000 UTC, Protocol Version: 4, num events: 4, verification: success
+Finished processing ledgers
