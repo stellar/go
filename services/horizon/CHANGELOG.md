@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this
 file. This project adheres to [Semantic Versioning](http://semver.org/).
 
+
+## 22.0.3
+
+### Fixed
+-  Fix the account operations endpoint to include InvokeHostFunction operations. The fix ensures that all account operations will be listed going forward. However, it will not retroactively include these operations for previously ingested ledgers; reingesting the historical data is required to address that. ([5574](https://github.com/stellar/go/pull/5574)).
+
 ## 22.0.2
 
 ### Fixed

@@ -11,7 +11,7 @@ binary-build:
 		--pull always \
 		--env CGO_ENABLED=0 \
 		--env GOFLAGS="-ldflags=-X=github.com/stellar/go/support/app.version=$(VERSION_STRING)" \
-		golang:1.22-bullseye \
+		golang:1.23-bullseye \
 		/bin/bash -c '\
 			git config --global --add safe.directory /go/src/github.com/stellar/go && \
 			cd /go/src/github.com/stellar/go && \
