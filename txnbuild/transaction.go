@@ -1011,7 +1011,7 @@ func NewFeeBumpTransaction(params FeeBumpTransactionParams) (*FeeBumpTransaction
 	if totalFee < lo || totalFee > math.MaxInt64 {
 		return nil, fmt.Errorf("soroban fee %v results in an overflow of max fee", sorobanFee)
 	}
-	tx.maxFee = int64(lo)
+	tx.maxFee = int64(totalFee)
 
 	var feeSource xdr.MuxedAccount
 	if err := feeSource.SetAddress(tx.feeAccount); err != nil {
