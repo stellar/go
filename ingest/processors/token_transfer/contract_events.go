@@ -1,7 +1,6 @@
 package token_transfer
 
 import (
-	"errors"
 	"fmt"
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/ingest"
@@ -9,27 +8,43 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
+type ErrNotSep41TokenEvent struct {
+	Message string
+}
+
+func (e ErrNotSep41TokenEvent) Error() string {
+	return e.Message
+}
+
+func errNotSep41TokenFromMsg(msg string) ErrNotSep41TokenEvent {
+	return ErrNotSep41TokenEvent{msg}
+}
+
+func errNotSep41TokenFromError(err error) ErrNotSep41TokenEvent {
+	return ErrNotSep41TokenEvent{err.Error()}
+}
+
 // ParseEvent is the main entry point for parsing contract events
 // It attempts to parse events with a flexible, hierarchical approach
-func (p *EventsProcessor) parseEvent(tx ingest.LedgerTransaction, opIndex *uint32, contractEvent *xdr.ContractEvent) (*TokenTransferEvent, error) {
+func (p *EventsProcessor) ParseEvent(tx ingest.LedgerTransaction, opIndex *uint32, contractEvent *xdr.ContractEvent) (*TokenTransferEvent, error) {
 	// Validate basic contract contractEvent structure
 	if contractEvent.Type != xdr.ContractEventTypeContract ||
 		contractEvent.ContractId == nil ||
 		contractEvent.Body.V != 0 {
-		return nil, errors.New("not a valid contract contractEvent")
+		return nil, errNotSep41TokenFromMsg("not a valid contract contractEvent")
 	}
 
 	topics := contractEvent.Body.V0.Topics
 
 	// Require at least 2 topics for meaningful contractEvent parsing
 	if len(topics) < 2 {
-		return nil, errors.New("insufficient topics for token contractEvent")
+		return nil, errNotSep41TokenFromMsg("insufficient topics in contract event")
 	}
 
 	// Extract the contractEvent function name
 	fn, ok := topics[0].GetSym()
 	if !ok {
-		return nil, errors.New("invalid contractEvent function name")
+		return nil, errNotSep41TokenFromMsg("invalid function name")
 	}
 
 	// First, try parsing as a standard SEP41 token contractEvent
@@ -80,8 +95,9 @@ func parseCustomTokenEvent(
 	// Parse token amount. If that fails, then no need to bother checking for eventType
 	amt, ok := value.GetI128()
 	if !ok {
-		return nil, errors.New("invalid event amount")
+		return nil, errNotSep41TokenFromMsg("invalid event amount")
 	}
+	amtRaw128 := amount.String128Raw(amt)
 
 	contractAddress := strkey.MustEncode(strkey.VersionByteContract, contractEvent.ContractId[:])
 	meta := NewEventMetaFromTx(tx, opIndex, contractAddress)
@@ -93,63 +109,63 @@ func parseCustomTokenEvent(
 	case TransferEvent:
 		// Transfer requires MINIMUM 3 topics: event type, fromAddr, toAddr
 		if lenTopics < 3 {
-			return nil, fmt.Errorf("transfer event requires miminum 3 topics, found: %v", lenTopics)
+			return nil, errNotSep41TokenFromMsg(fmt.Sprintf("transfer event requires miminum 3 topics, found: %v", lenTopics))
 		}
 		from, err := extractAddress(topics[1])
 		if err != nil {
-			return nil, fmt.Errorf("invalid fromAddress. error: %w", err)
+			return nil, errNotSep41TokenFromError(fmt.Errorf("invalid fromAddress. error: %w", err))
 		}
 		to, err := extractAddress(topics[2])
 		if err != nil {
-			return nil, fmt.Errorf("invalid toAddress. error: %w", err)
+			return nil, errNotSep41TokenFromError(fmt.Errorf("invalid toAddress. error: %w", err))
 		}
-		event = NewTransferEvent(meta, from, to, amount.String128Raw(amt), nil)
+		event = NewTransferEvent(meta, from, to, amtRaw128, nil)
 
 	case MintEvent:
 		// Mint requires MINIMUM 3 topics - event type, admin, toAddr
 		if lenTopics < 3 {
-			return nil, fmt.Errorf("mint event requires minimum 3 topics, found: %v", lenTopics)
+			return nil, errNotSep41TokenFromMsg(fmt.Sprintf("mint event requires minimum 3 topics, found: %v", lenTopics))
 		}
 		// Dont care for admin when generating proto, but validating nonetheless
 		_, err := extractAddress(topics[1])
 		if err != nil {
-			return nil, fmt.Errorf("invalid adminAddress. error: %w", err)
+			return nil, errNotSep41TokenFromError(fmt.Errorf("invalid adminAddress. error: %w", err))
 		}
 		to, err := extractAddress(topics[2])
 		if err != nil {
-			return nil, fmt.Errorf("invalid toAddress error: %w", err)
+			return nil, errNotSep41TokenFromError(fmt.Errorf("invalid toAddress error: %w", err))
 		}
-		event = NewMintEvent(meta, to, amount.String128Raw(amt), nil)
+		event = NewMintEvent(meta, to, amtRaw128, nil)
 
 	case ClawbackEvent:
 		// Clawback requires MINIMUM 3 topics - event type, admin, fromAddr
 		if lenTopics < 3 {
-			return nil, fmt.Errorf("clawback event requires minimum 3 topics, found: %v", lenTopics)
+			return nil, errNotSep41TokenFromMsg(fmt.Sprintf("clawback event requires minimum 3 topics, found: %v", lenTopics))
 		}
 		// Dont care for admin when generating proto, but validating nonetheless
 		_, err := extractAddress(topics[1])
 		if err != nil {
-			return nil, fmt.Errorf("invalid adminAddress. error: %w", err)
+			return nil, errNotSep41TokenFromError(fmt.Errorf("invalid adminAddress. error: %w", err))
 		}
 		from, err := extractAddress(topics[2])
 		if err != nil {
-			return nil, fmt.Errorf("invalid fromAddress error: %w", err)
+			return nil, errNotSep41TokenFromError(fmt.Errorf("invalid fromAddress error: %w", err))
 		}
-		event = NewClawbackEvent(meta, from, amount.String128Raw(amt), nil)
+		event = NewClawbackEvent(meta, from, amtRaw128, nil)
 
 	case BurnEvent:
 		// Burn requires MINIMUM 2 topics - event type, fromAddr
 		if lenTopics < 2 {
-			return nil, fmt.Errorf("burn event requires minimum 2 topics, found: %v", lenTopics)
+			return nil, errNotSep41TokenFromMsg(fmt.Sprintf("burn event requires minimum 2 topics, found: %v", lenTopics))
 		}
 		from, err := extractAddress(topics[1])
 		if err != nil {
-			return nil, fmt.Errorf("invalid fromAddress error: %w", err)
+			return nil, errNotSep41TokenFromError(fmt.Errorf("invalid fromAddress error: %w", err))
 		}
-		event = NewBurnEvent(meta, from, amount.String128Raw(amt), nil)
+		event = NewBurnEvent(meta, from, amtRaw128, nil)
 
 	default:
-		return nil, fmt.Errorf("unsupported custom token event type: %v", eventType)
+		return nil, errNotSep41TokenFromMsg(fmt.Sprintf("unsupported custom token event type: %v", eventType))
 	}
 
 	return event, nil
