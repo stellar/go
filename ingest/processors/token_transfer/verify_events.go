@@ -5,6 +5,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/ingest"
+	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/xdr"
 	"io"
 )
@@ -15,8 +16,17 @@ type balanceKey struct {
 	asset  string
 }
 
+func isContractAddress(key balanceKey) bool {
+	_, err := strkey.Decode(strkey.VersionByteContract, key.holder)
+	return err == nil
+}
+
 // updateBalanceMap updates the map and removes the entry if the value becomes 0
 func updateBalanceMap(m map[balanceKey]int64, key balanceKey, delta int64) {
+	// We dont include movement to/from contract address is balance delta tracking, since there is no standard way to derive/verify from contractData
+	if isContractAddress(key) {
+		return
+	}
 	m[key] += delta
 	if m[key] == 0 {
 		delete(m, key)

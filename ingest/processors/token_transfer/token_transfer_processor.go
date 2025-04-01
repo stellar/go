@@ -160,7 +160,7 @@ func (p *EventsProcessor) EventsFromOperation(tx ingest.LedgerTransaction, opInd
 	case xdr.OperationTypeInflation:
 		events, err = p.inflationEvents(tx, opIndex, op, opResult)
 	case xdr.OperationTypeInvokeHostFunction:
-		return nil, nil //TODO implement this
+		events, err = p.contractEvents(tx, opIndex)
 	default:
 		return nil, nil
 	}
@@ -192,6 +192,24 @@ func (p *EventsProcessor) EventsFromOperation(tx ingest.LedgerTransaction, opInd
 		}
 	}
 
+	return events, nil
+}
+
+func (p *EventsProcessor) contractEvents(tx ingest.LedgerTransaction, opIndex uint32) ([]*TokenTransferEvent, error) {
+	diagnosticEvents, err := tx.GetDiagnosticEvents()
+	if err != nil {
+		return nil, fmt.Errorf("error getting diagnostic events: %w", err)
+	}
+	events := make([]*TokenTransferEvent, 0, len(diagnosticEvents))
+	for _, contractEvent := range filterEvents(diagnosticEvents) {
+		ev, err := p.parseEvent(tx, &opIndex, contractEvent)
+
+		// You dont bail on error here, since error here means that it is not a sep-41 compliant token event.
+		// Instead, if no error, it is a valid event, and it should be included in the output.
+		if err == nil {
+			events = append(events, ev)
+		}
+	}
 	return events, nil
 }
 

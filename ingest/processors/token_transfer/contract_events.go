@@ -24,9 +24,9 @@ func errNotSep41TokenFromError(err error) ErrNotSep41TokenEvent {
 	return ErrNotSep41TokenEvent{err.Error()}
 }
 
-// ParseEvent is the main entry point for parsing contract events
+// parseEvent is the main entry point for parsing contract events
 // It attempts to parse events with a flexible, hierarchical approach
-func (p *EventsProcessor) ParseEvent(tx ingest.LedgerTransaction, opIndex *uint32, contractEvent xdr.ContractEvent) (*TokenTransferEvent, error) {
+func (p *EventsProcessor) parseEvent(tx ingest.LedgerTransaction, opIndex *uint32, contractEvent xdr.ContractEvent) (*TokenTransferEvent, error) {
 	// Validate basic contract contractEvent structure
 	if contractEvent.Type != xdr.ContractEventTypeContract ||
 		contractEvent.ContractId == nil ||

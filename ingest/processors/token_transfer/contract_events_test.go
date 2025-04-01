@@ -346,7 +346,7 @@ func TestValidContractEvents(t *testing.T) {
 					)
 				}
 
-				event, err := processor.ParseEvent(someTx, &someOperationIndex, contractEvent)
+				event, err := processor.parseEvent(someTx, &someOperationIndex, contractEvent)
 
 				require.NoError(t, err)
 				require.NotNil(t, event)
@@ -754,7 +754,7 @@ func TestInvalidEvents(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			contractEvent := tc.setupEvent()
-			event, err := processor.ParseEvent(someTx, &someOperationIndex, contractEvent)
+			event, err := processor.parseEvent(someTx, &someOperationIndex, contractEvent)
 
 			if tc.expectedErrMsg == "" {
 				// If no error is expected, the test should pass
