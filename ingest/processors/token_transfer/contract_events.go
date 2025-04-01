@@ -54,7 +54,7 @@ func (p *EventsProcessor) parseEvent(tx ingest.LedgerTransaction, opIndex *uint3
 	}
 
 	// This has passed validation for SEP-41 complaint token.
-	// At the very least, you will now emit an contractEvent.
+	// At the very least, you will now emit a contractEvent.
 	// Attempt SAC validation if possible, to get asset name
 
 	// SAC validation requires a very strict check on len(topics)

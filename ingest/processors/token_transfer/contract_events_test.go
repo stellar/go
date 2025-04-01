@@ -953,10 +953,7 @@ func TestSacAssetValidation(t *testing.T) {
 				eventAsset := event.GetAsset()
 
 				assert.NotNil(t, eventAsset, "Asset should be set for this event")
-				if eventAsset != nil {
-					// Assuming ToXdrAsset is implemented correctly
-					assert.True(t, eventAsset.ToXdrAsset().Equals(xlmAsset))
-				}
+				assert.True(t, eventAsset.ToXdrAsset().Equals(xlmAsset))
 			} else {
 				eventAsset := event.GetAsset()
 				assert.Nil(t, eventAsset, "Asset should not be set for this event")
