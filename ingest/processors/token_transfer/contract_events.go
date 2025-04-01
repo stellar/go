@@ -31,7 +31,7 @@ func (p *EventsProcessor) ParseEvent(tx ingest.LedgerTransaction, opIndex *uint3
 	if contractEvent.Type != xdr.ContractEventTypeContract ||
 		contractEvent.ContractId == nil ||
 		contractEvent.Body.V != 0 {
-		return nil, errNotSep41TokenFromMsg("not a valid contract contractEvent")
+		return nil, errNotSep41TokenFromMsg("invalid contractEvent")
 	}
 
 	topics := contractEvent.Body.V0.Topics
@@ -109,7 +109,7 @@ func parseCustomTokenEvent(
 	case TransferEvent:
 		// Transfer requires MINIMUM 3 topics: event type, fromAddr, toAddr
 		if lenTopics < 3 {
-			return nil, errNotSep41TokenFromMsg(fmt.Sprintf("transfer event requires miminum 3 topics, found: %v", lenTopics))
+			return nil, errNotSep41TokenFromMsg(fmt.Sprintf("transfer event requires minimum 3 topics, found: %v", lenTopics))
 		}
 		from, err := extractAddress(topics[1])
 		if err != nil {

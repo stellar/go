@@ -357,3 +357,419 @@ func TestValidContractEvents(t *testing.T) {
 		})
 	}
 }
+
+func TestInvalidEvents(t *testing.T) {
+	testCases := []struct {
+		name           string
+		setupEvent     func() xdr.ContractEvent
+		expectedErrMsg string
+	}{
+		{
+			name: "Invalid contract event type",
+			setupEvent: func() xdr.ContractEvent {
+				// Use a non-contract event type
+				event := createContractEvent(TransferEvent, randomAccount, someContract1, 1000, "asset", &someContractHash1)
+				event.Type = xdr.ContractEventTypeSystem // Invalid type
+				return event
+			},
+			expectedErrMsg: "invalid contractEvent",
+		},
+		{
+			name: "Missing contract ID",
+			setupEvent: func() xdr.ContractEvent {
+				event := createContractEvent(TransferEvent, randomAccount, someContract1, 1000, "asset", nil)
+				return event
+			},
+			expectedErrMsg: "invalid contractEvent",
+		},
+		{
+			name: "Invalid body version",
+			setupEvent: func() xdr.ContractEvent {
+				event := createContractEvent(TransferEvent, randomAccount, someContract1, 1000, "asset", &someContractHash1)
+				event.Body.V = 1 // Invalid version
+				return event
+			},
+			expectedErrMsg: "invalid contractEvent",
+		},
+		{
+			name: "Insufficient topics",
+			setupEvent: func() xdr.ContractEvent {
+				// Create event with only one topic (the function name)
+				topics := []xdr.ScVal{
+					createSymbol(TransferEvent),
+				}
+
+				return xdr.ContractEvent{
+					Type:       xdr.ContractEventTypeContract,
+					ContractId: &someContractHash1,
+					Body: xdr.ContractEventBody{
+						V: 0,
+						V0: &xdr.ContractEventV0{
+							Topics: topics,
+							Data:   createInt128(1000),
+						},
+					},
+				}
+			},
+			expectedErrMsg: "insufficient topics in contract event",
+		},
+		{
+			name: "Invalid function name type",
+			setupEvent: func() xdr.ContractEvent {
+				// Use a string instead of a symbol for function name
+				topics := []xdr.ScVal{
+					createString(TransferEvent), // Should be a symbol
+					createAddress(randomAccount),
+					createAddress(someContract1),
+				}
+
+				return xdr.ContractEvent{
+					Type:       xdr.ContractEventTypeContract,
+					ContractId: &someContractHash1,
+					Body: xdr.ContractEventBody{
+						V: 0,
+						V0: &xdr.ContractEventV0{
+							Topics: topics,
+							Data:   createInt128(1000),
+						},
+					},
+				}
+			},
+			expectedErrMsg: "invalid function name",
+		},
+		{
+			name: "Invalid amount format",
+			setupEvent: func() xdr.ContractEvent {
+				event := createContractEvent(TransferEvent, randomAccount, someContract1, 1000, "asset", &someContractHash1)
+				// Replace the amount with a string value instead of Int128
+				event.Body.V0.Data = createString("1000")
+				return event
+			},
+			expectedErrMsg: "invalid event amount",
+		},
+		{
+			name: "Transfer: Too few topics",
+			setupEvent: func() xdr.ContractEvent {
+				// Only include function name and from address, missing to address
+				topics := []xdr.ScVal{
+					createSymbol(TransferEvent),
+					createAddress(randomAccount),
+					// Missing to address
+				}
+
+				return xdr.ContractEvent{
+					Type:       xdr.ContractEventTypeContract,
+					ContractId: &someContractHash1,
+					Body: xdr.ContractEventBody{
+						V: 0,
+						V0: &xdr.ContractEventV0{
+							Topics: topics,
+							Data:   createInt128(1000),
+						},
+					},
+				}
+			},
+			expectedErrMsg: "transfer event requires minimum 3 topics, found: 2",
+		},
+		{
+			name: "Transfer: Invalid from address",
+			setupEvent: func() xdr.ContractEvent {
+				// Use an invalid value for from address (not an address)
+				topics := []xdr.ScVal{
+					createSymbol(TransferEvent),
+					createString("not an address"), // Invalid from address
+					createAddress(someContract1),
+				}
+
+				return xdr.ContractEvent{
+					Type:       xdr.ContractEventTypeContract,
+					ContractId: &someContractHash1,
+					Body: xdr.ContractEventBody{
+						V: 0,
+						V0: &xdr.ContractEventV0{
+							Topics: topics,
+							Data:   createInt128(1000),
+						},
+					},
+				}
+			},
+			expectedErrMsg: "invalid fromAddress",
+		},
+		{
+			name: "Transfer: Invalid to address",
+			setupEvent: func() xdr.ContractEvent {
+				// Use an invalid value for to address (not an address)
+				topics := []xdr.ScVal{
+					createSymbol(TransferEvent),
+					createAddress(randomAccount),
+					createString("not an address"), // Invalid to address
+				}
+
+				return xdr.ContractEvent{
+					Type:       xdr.ContractEventTypeContract,
+					ContractId: &someContractHash1,
+					Body: xdr.ContractEventBody{
+						V: 0,
+						V0: &xdr.ContractEventV0{
+							Topics: topics,
+							Data:   createInt128(1000),
+						},
+					},
+				}
+			},
+			expectedErrMsg: "invalid toAddress",
+		},
+		{
+			name: "Mint: Too few topics",
+			setupEvent: func() xdr.ContractEvent {
+				// Only include function name and admin, missing to address
+				topics := []xdr.ScVal{
+					createSymbol(MintEvent),
+					createAddress(randomAccount),
+					// Missing to address
+				}
+
+				return xdr.ContractEvent{
+					Type:       xdr.ContractEventTypeContract,
+					ContractId: &someContractHash1,
+					Body: xdr.ContractEventBody{
+						V: 0,
+						V0: &xdr.ContractEventV0{
+							Topics: topics,
+							Data:   createInt128(1000),
+						},
+					},
+				}
+			},
+			expectedErrMsg: "mint event requires minimum 3 topics",
+		},
+		{
+			name: "Mint: Invalid admin address",
+			setupEvent: func() xdr.ContractEvent {
+				// Use an invalid value for admin address (not an address)
+				topics := []xdr.ScVal{
+					createSymbol(MintEvent),
+					createString("not an address"), // Invalid admin address
+					createAddress(someContract1),
+				}
+
+				return xdr.ContractEvent{
+					Type:       xdr.ContractEventTypeContract,
+					ContractId: &someContractHash1,
+					Body: xdr.ContractEventBody{
+						V: 0,
+						V0: &xdr.ContractEventV0{
+							Topics: topics,
+							Data:   createInt128(1000),
+						},
+					},
+				}
+			},
+			expectedErrMsg: "invalid adminAddress",
+		},
+		{
+			name: "Mint: Invalid to address",
+			setupEvent: func() xdr.ContractEvent {
+				// Use an invalid value for to address (not an address)
+				topics := []xdr.ScVal{
+					createSymbol(MintEvent),
+					createAddress(randomAccount),
+					createString("not an address"), // Invalid to address
+				}
+
+				return xdr.ContractEvent{
+					Type:       xdr.ContractEventTypeContract,
+					ContractId: &someContractHash1,
+					Body: xdr.ContractEventBody{
+						V: 0,
+						V0: &xdr.ContractEventV0{
+							Topics: topics,
+							Data:   createInt128(1000),
+						},
+					},
+				}
+			},
+			expectedErrMsg: "invalid toAddress",
+		},
+		{
+			name: "Clawback: Too few topics",
+			setupEvent: func() xdr.ContractEvent {
+				// Only include function name and admin, missing from address
+				topics := []xdr.ScVal{
+					createSymbol(ClawbackEvent),
+					createAddress(randomAccount),
+					// Missing from address
+				}
+
+				return xdr.ContractEvent{
+					Type:       xdr.ContractEventTypeContract,
+					ContractId: &someContractHash1,
+					Body: xdr.ContractEventBody{
+						V: 0,
+						V0: &xdr.ContractEventV0{
+							Topics: topics,
+							Data:   createInt128(1000),
+						},
+					},
+				}
+			},
+			expectedErrMsg: "clawback event requires minimum 3 topics",
+		},
+		{
+			name: "Clawback: Invalid admin address",
+			setupEvent: func() xdr.ContractEvent {
+				// Use an invalid value for admin address (not an address)
+				topics := []xdr.ScVal{
+					createSymbol(ClawbackEvent),
+					createString("not an address"), // Invalid admin address
+					createAddress(randomAccount),
+				}
+
+				return xdr.ContractEvent{
+					Type:       xdr.ContractEventTypeContract,
+					ContractId: &someContractHash1,
+					Body: xdr.ContractEventBody{
+						V: 0,
+						V0: &xdr.ContractEventV0{
+							Topics: topics,
+							Data:   createInt128(1000),
+						},
+					},
+				}
+			},
+			expectedErrMsg: "invalid adminAddress",
+		},
+		{
+			name: "Clawback: Invalid from address",
+			setupEvent: func() xdr.ContractEvent {
+				// Use an invalid value for from address (not an address)
+				topics := []xdr.ScVal{
+					createSymbol(ClawbackEvent),
+					createAddress(someContract1),
+					createString("not an address"), // Invalid from address
+				}
+
+				return xdr.ContractEvent{
+					Type:       xdr.ContractEventTypeContract,
+					ContractId: &someContractHash1,
+					Body: xdr.ContractEventBody{
+						V: 0,
+						V0: &xdr.ContractEventV0{
+							Topics: topics,
+							Data:   createInt128(1000),
+						},
+					},
+				}
+			},
+			expectedErrMsg: "invalid fromAddress",
+		},
+		{
+			name: "Burn: Too few topics",
+			// this is true for any event really. Minimum number of topics is 2.
+			setupEvent: func() xdr.ContractEvent {
+				// Only include function name, missing from address
+				topics := []xdr.ScVal{
+					createSymbol(BurnEvent),
+					// Missing from address
+				}
+
+				return xdr.ContractEvent{
+					Type:       xdr.ContractEventTypeContract,
+					ContractId: &someContractHash1,
+					Body: xdr.ContractEventBody{
+						V: 0,
+						V0: &xdr.ContractEventV0{
+							Topics: topics,
+							Data:   createInt128(1000),
+						},
+					},
+				}
+			},
+			expectedErrMsg: "insufficient topics in contract event",
+		},
+		{
+			name: "Burn: Invalid from address",
+			setupEvent: func() xdr.ContractEvent {
+				// Use an invalid value for from address (not an address)
+				topics := []xdr.ScVal{
+					createSymbol(BurnEvent),
+					createString("not an address"), // Invalid from address
+				}
+
+				return xdr.ContractEvent{
+					Type:       xdr.ContractEventTypeContract,
+					ContractId: &someContractHash1,
+					Body: xdr.ContractEventBody{
+						V: 0,
+						V0: &xdr.ContractEventV0{
+							Topics: topics,
+							Data:   createInt128(1000),
+						},
+					},
+				}
+			},
+			expectedErrMsg: "invalid fromAddress",
+		},
+		{
+			name: "Unsupported event type",
+			setupEvent: func() xdr.ContractEvent {
+				return createContractEvent(
+					"unknown_event", // Unsupported event type
+					randomAccount,
+					someContract1,
+					1000,
+					"asset",
+					&someContractHash1,
+				)
+			},
+			expectedErrMsg: "unsupported custom token event type",
+		},
+		{
+			name: "Invalid SAC asset string",
+			setupEvent: func() xdr.ContractEvent {
+				// Create transfer event with invalid asset string that can't be parsed
+				topics := []xdr.ScVal{
+					createSymbol(TransferEvent),
+					createAddress(randomAccount),
+					createAddress(someContract1),
+					createString("not:a:valid:asset"), // Invalid asset string
+				}
+
+				return xdr.ContractEvent{
+					Type:       xdr.ContractEventTypeContract,
+					ContractId: &someContractHash1,
+					Body: xdr.ContractEventBody{
+						V: 0,
+						V0: &xdr.ContractEventV0{
+							Topics: topics,
+							Data:   createInt128(1000),
+						},
+					},
+				}
+			},
+			expectedErrMsg: "", // This should not error as SAC validation is only for enhancement
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			contractEvent := tc.setupEvent()
+			event, err := processor.ParseEvent(someTx, &someOperationIndex, contractEvent)
+
+			if tc.expectedErrMsg == "" {
+				// If no error is expected, the test should pass
+				require.NoError(t, err)
+				require.NotNil(t, event)
+			} else {
+				// If an error is expected
+				require.Error(t, err)
+				assert.Nil(t, event)
+				assert.Contains(t, err.Error(), tc.expectedErrMsg, "Error message should contain expected text")
+
+				// Verify it's the right error type
+				_, ok := err.(ErrNotSep41TokenEvent)
+				assert.True(t, ok, "Error should be of type ErrNotSep41TokenEvent")
+			}
+		})
+	}
+}
