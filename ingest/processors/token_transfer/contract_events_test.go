@@ -154,7 +154,7 @@ func TestValidContractEvents(t *testing.T) {
 				assert.Equal(t, from, event.GetTransfer().From)
 				assert.Equal(t, to, event.GetTransfer().To)
 				assert.Equal(t, amount, event.GetTransfer().Amount)
-				assert.Nil(t, event.GetTransfer().Asset) // asset is nil for non-SAC events
+				assert.Nil(t, event.GetAsset()) // asset is nil for non-SAC events
 			},
 		},
 		{
@@ -169,10 +169,10 @@ func TestValidContractEvents(t *testing.T) {
 				assert.Equal(t, from, event.GetTransfer().From)
 				assert.Equal(t, to, event.GetTransfer().To)
 				assert.Equal(t, amount, event.GetTransfer().Amount)
-				assert.NotNil(t, event.GetTransfer().Asset)
+				assert.NotNil(t, event.GetAsset())
 
 				asset := assetItem.(xdr.Asset)
-				assert.True(t, event.GetTransfer().Asset.ToXdrAsset().Equals(asset))
+				assert.True(t, event.GetAsset().ToXdrAsset().Equals(asset))
 			},
 		},
 		{
@@ -186,7 +186,7 @@ func TestValidContractEvents(t *testing.T) {
 				assert.NotNil(t, event.GetMint())
 				assert.Equal(t, to, event.GetMint().To)
 				assert.Equal(t, amount, event.GetMint().Amount)
-				assert.Nil(t, event.GetMint().Asset) // asset is nil for non-SAC events
+				assert.Nil(t, event.GetAsset()) // asset is nil for non-SAC events
 			},
 		},
 		{
@@ -200,10 +200,10 @@ func TestValidContractEvents(t *testing.T) {
 				assert.NotNil(t, event.GetMint())
 				assert.Equal(t, to, event.GetMint().To)
 				assert.Equal(t, amount, event.GetMint().Amount)
-				assert.NotNil(t, event.GetMint().Asset)
+				assert.NotNil(t, event.GetAsset())
 
 				asset := assetItem.(xdr.Asset)
-				assert.True(t, event.GetMint().Asset.ToXdrAsset().Equals(asset))
+				assert.True(t, event.GetAsset().ToXdrAsset().Equals(asset))
 			},
 		},
 		{
@@ -217,7 +217,7 @@ func TestValidContractEvents(t *testing.T) {
 				assert.NotNil(t, event.GetBurn())
 				assert.Equal(t, from, event.GetBurn().From)
 				assert.Equal(t, amount, event.GetBurn().Amount)
-				assert.Nil(t, event.GetBurn().Asset) // asset is nil for non-SAC events
+				assert.Nil(t, event.GetAsset()) // asset is nil for non-SAC events
 			},
 		},
 		{
@@ -231,10 +231,10 @@ func TestValidContractEvents(t *testing.T) {
 				assert.NotNil(t, event.GetBurn())
 				assert.Equal(t, from, event.GetBurn().From)
 				assert.Equal(t, amount, event.GetBurn().Amount)
-				assert.NotNil(t, event.GetBurn().Asset)
+				assert.NotNil(t, event.GetAsset())
 
 				asset := assetItem.(xdr.Asset)
-				assert.True(t, event.GetBurn().Asset.ToXdrAsset().Equals(asset))
+				assert.True(t, event.GetAsset().ToXdrAsset().Equals(asset))
 			},
 		},
 		{
@@ -248,7 +248,7 @@ func TestValidContractEvents(t *testing.T) {
 				assert.NotNil(t, event.GetClawback())
 				assert.Equal(t, from, event.GetClawback().From)
 				assert.Equal(t, amount, event.GetClawback().Amount)
-				assert.Nil(t, event.GetClawback().Asset) // asset is nil for non-SAC events
+				assert.Nil(t, event.GetAsset()) // asset is nil for non-SAC events
 			},
 		},
 		{
@@ -262,10 +262,10 @@ func TestValidContractEvents(t *testing.T) {
 				assert.NotNil(t, event.GetClawback())
 				assert.Equal(t, from, event.GetClawback().From)
 				assert.Equal(t, amount, event.GetClawback().Amount)
-				assert.NotNil(t, event.GetClawback().Asset)
+				assert.NotNil(t, event.GetAsset())
 
 				asset := assetItem.(xdr.Asset)
-				assert.True(t, event.GetClawback().Asset.ToXdrAsset().Equals(asset))
+				assert.True(t, event.GetAsset().ToXdrAsset().Equals(asset))
 			},
 		},
 	}
@@ -770,6 +770,198 @@ func TestInvalidEvents(t *testing.T) {
 				_, ok := err.(ErrNotSep41TokenEvent)
 				assert.True(t, ok, "Error should be of type ErrNotSep41TokenEvent")
 			}
+		})
+	}
+}
+
+func TestSacAssetValidation(t *testing.T) {
+	// None of the test fixtures here will result in errors
+	// They simply might not pass the additional validation required to qualify as a SAC event, is all
+	xlmContractId := contractIdFromAsset(xlmAsset, processor.networkPassphrase)
+
+	testCases := []struct {
+		name              string
+		setupEvent        func() xdr.ContractEvent
+		isAssetSetInEvent bool // Whether to check if the asset is set in the event
+	}{
+		{
+			name: "Valid SAC asset with matching contract ID",
+			setupEvent: func() xdr.ContractEvent {
+				return createContractEvent(
+					TransferEvent,
+					randomAccount,
+					someContract1,
+					1000,
+					xlmAsset.StringCanonical(),
+					xlmContractId,
+				)
+			},
+			isAssetSetInEvent: true,
+		},
+		{
+			name: "Valid SAC asset string but mismatched contract ID",
+			setupEvent: func() xdr.ContractEvent {
+				// Use valid asset string but wrong contract ID
+				return createContractEvent(
+					TransferEvent,
+					randomAccount,
+					someContract1,
+					1000,
+					xlmAsset.StringCanonical(),
+					&someContractHash2, // Different from xlmContractId
+				)
+			},
+			isAssetSetInEvent: false, // Asset should not be set due to mismatch
+		},
+		{
+			name: "Valid SAC asset with correct format but not exactly 4 topics",
+			setupEvent: func() xdr.ContractEvent {
+				// Add an extra topic to make it 5 instead of 4
+				topics := []xdr.ScVal{
+					createSymbol(TransferEvent),
+					createAddress(randomAccount),
+					createAddress(someContract1),
+					createString(xlmAsset.StringCanonical()),
+					createString("extra topic"),
+				}
+
+				return xdr.ContractEvent{
+					Type:       xdr.ContractEventTypeContract,
+					ContractId: xlmContractId,
+					Body: xdr.ContractEventBody{
+						V: 0,
+						V0: &xdr.ContractEventV0{
+							Topics: topics,
+							Data:   createInt128(1000),
+						},
+					},
+				}
+			},
+			isAssetSetInEvent: false, // Should not set asset due to wrong topic count
+		},
+		{
+			name: "Valid burn event with exactly 3 topics and valid asset",
+			setupEvent: func() xdr.ContractEvent {
+				topics := []xdr.ScVal{
+					createSymbol(BurnEvent),
+					createAddress(randomAccount),
+					createString(xlmAsset.StringCanonical()),
+				}
+
+				return xdr.ContractEvent{
+					Type:       xdr.ContractEventTypeContract,
+					ContractId: xlmContractId,
+					Body: xdr.ContractEventBody{
+						V: 0,
+						V0: &xdr.ContractEventV0{
+							Topics: topics,
+							Data:   createInt128(1000),
+						},
+					},
+				}
+			},
+			isAssetSetInEvent: true, // Should set asset for burn with 3 topics
+		},
+		{
+			name: "Valid token event but last topic is not a string",
+			setupEvent: func() xdr.ContractEvent {
+				topics := []xdr.ScVal{
+					createSymbol(TransferEvent),
+					createAddress(randomAccount),
+					createAddress(someContract1),
+					createInt128(12345), // Not a string
+				}
+
+				return xdr.ContractEvent{
+					Type:       xdr.ContractEventTypeContract,
+					ContractId: xlmContractId,
+					Body: xdr.ContractEventBody{
+						V: 0,
+						V0: &xdr.ContractEventV0{
+							Topics: topics,
+							Data:   createInt128(1000),
+						},
+					},
+				}
+			},
+			isAssetSetInEvent: false, // Should not set asset due to non-string
+		},
+		{
+			name: "Valid token event but asset string is empty",
+			setupEvent: func() xdr.ContractEvent {
+				topics := []xdr.ScVal{
+					createSymbol(TransferEvent),
+					createAddress(randomAccount),
+					createAddress(someContract1),
+					createString(""), // Empty string
+				}
+
+				return xdr.ContractEvent{
+					Type:       xdr.ContractEventTypeContract,
+					ContractId: xlmContractId,
+					Body: xdr.ContractEventBody{
+						V: 0,
+						V0: &xdr.ContractEventV0{
+							Topics: topics,
+							Data:   createInt128(1000),
+						},
+					},
+				}
+			},
+			isAssetSetInEvent: false, // Should not set asset due to empty string
+		},
+		{
+			name: "Valid token event but BuildAssets returns multiple assets",
+			setupEvent: func() xdr.ContractEvent {
+				// Make it so that some custom token emits a string that is a SEP-11 representation of multiple assets
+				topics := []xdr.ScVal{
+					createSymbol(TransferEvent),
+					createAddress(randomAccount),
+					createAddress(someContract1),
+					createString(
+						fmt.Sprintf("%s,%s",
+							xlmAsset.StringCanonical(), xlmAsset.StringCanonical()),
+					),
+				}
+
+				return xdr.ContractEvent{
+					Type:       xdr.ContractEventTypeContract,
+					ContractId: xlmContractId,
+					Body: xdr.ContractEventBody{
+						V: 0,
+						V0: &xdr.ContractEventV0{
+							Topics: topics,
+							Data:   createInt128(1000),
+						},
+					},
+				}
+			},
+			isAssetSetInEvent: false, // Asset shouldn't be set due to buildAssets returning multiple assets
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			contractEvent := tc.setupEvent()
+			event, err := processor.parseEvent(someTx, &someOperationIndex, contractEvent)
+
+			require.NoError(t, err, "Should not error for this test case")
+			require.NotNil(t, event, "Event should be returned")
+
+			// Check if we need to verify asset is set or not set
+			if tc.isAssetSetInEvent {
+				eventAsset := event.GetAsset()
+
+				assert.NotNil(t, eventAsset, "Asset should be set for this event")
+				if eventAsset != nil {
+					// Assuming ToXdrAsset is implemented correctly
+					assert.True(t, eventAsset.ToXdrAsset().Equals(xlmAsset))
+				}
+			} else {
+				eventAsset := event.GetAsset()
+				assert.Nil(t, eventAsset, "Asset should not be set for this event")
+			}
+
 		})
 	}
 }
