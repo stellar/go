@@ -3,7 +3,6 @@ module github.com/stellar/go
 go 1.23
 
 require (
-	cloud.google.com/go/firestore v1.15.0 // indirect
 	cloud.google.com/go/storage v1.42.0
 	firebase.google.com/go v3.12.0+incompatible
 	github.com/2opremio/pretty v0.2.2-0.20230601220618-e1d5758b2a95
@@ -68,6 +67,7 @@ require (
 	cloud.google.com/go/auth v0.5.1 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.2 // indirect
 	cloud.google.com/go/compute/metadata v0.3.0 // indirect
+	cloud.google.com/go/firestore v1.15.0 // indirect
 	cloud.google.com/go/iam v1.1.8 // indirect
 	cloud.google.com/go/longrunning v0.5.7 // indirect
 	cloud.google.com/go/pubsub v1.38.0 // indirect
