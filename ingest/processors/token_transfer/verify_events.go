@@ -229,20 +229,41 @@ func getChangesFromLedger(ledger xdr.LedgerCloseMeta, passphrase string) []inges
 }
 
 func VerifyEvents(ledger xdr.LedgerCloseMeta, passphrase string) error {
-	changes := getChangesFromLedger(ledger, passphrase)
 	ttp := NewEventsProcessor(passphrase)
-	events, err := ttp.EventsFromLedger(ledger)
+	txReader, err := ingest.NewLedgerTransactionReaderFromLedgerCloseMeta(passphrase, ledger)
 	if err != nil {
-		panic(fmt.Errorf("unable to process token transfer events from ledger: %w", err))
+		return fmt.Errorf("error creating transaction reader: %w", err)
 	}
 
-	var changesMap, eventsMap map[balanceKey]int64
-	changesMap = findBalanceDeltasFromChanges(changes)
-	eventsMap = findBalanceDeltasFromEvents(events)
+	for {
+		var tx ingest.LedgerTransaction
+		var txEvents []*TokenTransferEvent
+		tx, err = txReader.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return fmt.Errorf("error reading transaction: %w", err)
+		}
 
-	if diff := cmp.Diff(eventsMap, changesMap); diff != "" {
-		return fmt.Errorf("balance delta mismatch between events and ledger changes for ledgerSequence: %v\n"+
-			"('-' indicates missing or different in events, '+' indicates missing or different in ledger changes)\n%s", ledger.LedgerSequence(), diff)
+		txHash := tx.Hash.HexString()
+		txEvents, err = ttp.EventsFromTransaction(tx)
+		if err != nil {
+			return fmt.Errorf("verifyEventsError: %w", err)
+		}
+		feeChanges := tx.GetFeeChanges()
+		txChanges, err := tx.GetChanges()
+		if err != nil {
+			return fmt.Errorf("verifyEventsError: %w", err)
+		}
+		changes := append(feeChanges, txChanges...)
+		txEventsMap := findBalanceDeltasFromEvents(txEvents)
+		txChangesMap := findBalanceDeltasFromChanges(changes)
+
+		if diff := cmp.Diff(txEventsMap, txChangesMap); diff != "" {
+			return fmt.Errorf("balance delta mismatch between events and ledger changes for ledgerSequence: %v, closedAt: %v, txHash: %v\n"+
+				"('-' indicates missing or different in events, '+' indicates missing or different in ledger changes)\n%s", ledger.LedgerSequence(), ledger.ClosedAt(), txHash, diff)
+		}
 	}
 	return nil
 }
