@@ -188,6 +188,10 @@ func (t *LedgerTransaction) operationChanges(ops []xdr.OperationMeta, index uint
 	return changes
 }
 
+func (t *LedgerTransaction) GetContractEvents() ([]xdr.ContractEvent, error) {
+	return t.UnsafeMeta.GetContractEvents()
+}
+
 // GetDiagnosticEvents returns all contract events emitted by a given operation.
 func (t *LedgerTransaction) GetDiagnosticEvents() ([]xdr.DiagnosticEvent, error) {
 	return t.UnsafeMeta.GetDiagnosticEvents()
@@ -219,19 +223,13 @@ func (t *LedgerTransaction) FeeCharged() (int64, bool) {
 	if ok {
 		if uint32(t.Ledger.LedgerHeaderHistoryEntry().Header.LedgerVersion) < 21 && t.Envelope.Type == xdr.EnvelopeTypeEnvelopeTypeTxFeeBump {
 			var resourceFeeRefund int64
-			var inclusionFeeCharged int64
 
 			resourceFeeRefund, ok = t.SorobanResourceFeeRefund()
 			if !ok {
 				return 0, false
 			}
 
-			inclusionFeeCharged, ok = t.SorobanInclusionFeeCharged()
-			if !ok {
-				return 0, false
-			}
-
-			return int64(t.Result.Result.FeeCharged) - resourceFeeRefund + inclusionFeeCharged, true
+			return int64(t.Result.Result.FeeCharged) - resourceFeeRefund, true
 		}
 	}
 

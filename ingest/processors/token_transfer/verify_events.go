@@ -5,6 +5,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/ingest"
+	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/xdr"
 	"io"
 )
@@ -17,6 +18,10 @@ type balanceKey struct {
 
 // updateBalanceMap updates the map and removes the entry if the value becomes 0
 func updateBalanceMap(m map[balanceKey]int64, key balanceKey, delta int64) {
+	// We dont include movement to/from contract address is balance delta tracking, since there is no standard way to derive/verify from contractData
+	if strkey.IsValidContractAddress(key.holder) {
+		return
+	}
 	m[key] += delta
 	if m[key] == 0 {
 		delete(m, key)
@@ -198,41 +203,42 @@ func findBalanceDeltasFromEvents(events []*TokenTransferEvent) map[balanceKey]in
 	return hashmap
 }
 
-func getChangesFromLedger(ledger xdr.LedgerCloseMeta, passphrase string) []ingest.Change {
-	changeReader, err := ingest.NewLedgerChangeReaderFromLedgerCloseMeta(passphrase, ledger)
-	changes := make([]ingest.Change, 0)
-	defer changeReader.Close()
+func VerifyEvents(ledger xdr.LedgerCloseMeta, passphrase string) error {
+	ttp := NewEventsProcessor(passphrase)
+	txReader, err := ingest.NewLedgerTransactionReaderFromLedgerCloseMeta(passphrase, ledger)
 	if err != nil {
-		panic(fmt.Errorf("unable to create ledger change reader: %w", err))
+		return fmt.Errorf("error creating transaction reader: %w", err)
 	}
+
 	for {
-		change, err := changeReader.Read()
+		var tx ingest.LedgerTransaction
+		var txEvents []*TokenTransferEvent
+		tx, err = txReader.Read()
 		if err == io.EOF {
 			break
 		}
 		if err != nil {
-			panic(fmt.Errorf("unable to read from ledger: %w", err))
+			return fmt.Errorf("error reading transaction: %w", err)
 		}
-		changes = append(changes, change)
-	}
-	return changes
-}
 
-func VerifyEvents(ledger xdr.LedgerCloseMeta, passphrase string) error {
-	changes := getChangesFromLedger(ledger, passphrase)
-	ttp := NewEventsProcessor(passphrase)
-	events, err := ttp.EventsFromLedger(ledger)
-	if err != nil {
-		panic(fmt.Errorf("unable to process token transfer events from ledger: %w", err))
-	}
+		txHash := tx.Hash.HexString()
+		txEvents, err = ttp.EventsFromTransaction(tx)
+		if err != nil {
+			return fmt.Errorf("verifyEventsError: %w", err)
+		}
+		feeChanges := tx.GetFeeChanges()
+		txChanges, err := tx.GetChanges()
+		if err != nil {
+			return fmt.Errorf("verifyEventsError: %w", err)
+		}
+		changes := append(feeChanges, txChanges...)
+		txEventsMap := findBalanceDeltasFromEvents(txEvents)
+		txChangesMap := findBalanceDeltasFromChanges(changes)
 
-	var changesMap, eventsMap map[balanceKey]int64
-	changesMap = findBalanceDeltasFromChanges(changes)
-	eventsMap = findBalanceDeltasFromEvents(events)
-
-	if diff := cmp.Diff(eventsMap, changesMap); diff != "" {
-		return fmt.Errorf("balance delta mismatch between events and ledger changes for ledgerSequence: %v\n"+
-			"('-' indicates missing or different in events, '+' indicates missing or different in ledger changes)\n%s", ledger.LedgerSequence(), diff)
+		if diff := cmp.Diff(txEventsMap, txChangesMap); diff != "" {
+			return fmt.Errorf("balance delta mismatch between events and ledger changes for ledgerSequence: %v, closedAt: %v, txHash: %v\n"+
+				"('-' indicates missing or different in events, '+' indicates missing or different in ledger changes)\n%s", ledger.LedgerSequence(), ledger.ClosedAt(), txHash, diff)
+		}
 	}
 	return nil
 }

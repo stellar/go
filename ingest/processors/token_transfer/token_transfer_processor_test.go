@@ -130,7 +130,7 @@ var (
 
 	someOperationIndex = uint32(0)
 
-	contractIdFromAsset = func(asset xdr.Asset) string {
+	contractIdStrFromAsset = func(asset xdr.Asset) string {
 		contractId, _ := asset.ContractID(someNetworkPassphrase)
 		return strkey.MustEncode(strkey.VersionByteContract, contractId[:])
 	}
@@ -138,7 +138,7 @@ var (
 	// Some global anonymous functions.
 	mintEvent = func(to string, amt string, asset *assetProto.Asset) *TokenTransferEvent {
 		return &TokenTransferEvent{
-			Meta: NewEventMetaFromTx(someTx, &someOperationIndex, contractIdFromAsset(asset.ToXdrAsset())),
+			Meta: NewEventMetaFromTx(someTx, &someOperationIndex, contractIdStrFromAsset(asset.ToXdrAsset())),
 			Event: &TokenTransferEvent_Mint{
 				Mint: &Mint{
 					To:     to,
@@ -152,7 +152,7 @@ var (
 
 	burnEvent = func(from string, amt string, asset *assetProto.Asset) *TokenTransferEvent {
 		return &TokenTransferEvent{
-			Meta: NewEventMetaFromTx(someTx, &someOperationIndex, contractIdFromAsset(asset.ToXdrAsset())),
+			Meta: NewEventMetaFromTx(someTx, &someOperationIndex, contractIdStrFromAsset(asset.ToXdrAsset())),
 			Event: &TokenTransferEvent_Burn{
 				Burn: &Burn{
 					From:   from,
@@ -166,7 +166,7 @@ var (
 
 	transferEvent = func(from string, to string, amt string, asset *assetProto.Asset) *TokenTransferEvent {
 		return &TokenTransferEvent{
-			Meta: NewEventMetaFromTx(someTx, &someOperationIndex, contractIdFromAsset(asset.ToXdrAsset())),
+			Meta: NewEventMetaFromTx(someTx, &someOperationIndex, contractIdStrFromAsset(asset.ToXdrAsset())),
 			Event: &TokenTransferEvent_Transfer{
 				Transfer: &Transfer{
 					From:   from,
@@ -180,7 +180,7 @@ var (
 
 	clawbackEvent = func(from string, amt string, asset *assetProto.Asset) *TokenTransferEvent {
 		return &TokenTransferEvent{
-			Meta: NewEventMetaFromTx(someTx, &someOperationIndex, contractIdFromAsset(asset.ToXdrAsset())),
+			Meta: NewEventMetaFromTx(someTx, &someOperationIndex, contractIdStrFromAsset(asset.ToXdrAsset())),
 			Event: &TokenTransferEvent_Clawback{
 				Clawback: &Clawback{
 					From:   from,
@@ -429,7 +429,7 @@ func TestFeeEvent(t *testing.T) {
 	}
 
 	expectedFeeEvent := func(feeAmt string) *TokenTransferEvent {
-		return NewFeeEvent(NewEventMetaFromTx(someTx, nil, contractIdFromAsset(xlmAsset)),
+		return NewFeeEvent(NewEventMetaFromTx(someTx, nil, contractIdStrFromAsset(xlmAsset)),
 			protoAddressFromAccount(someTxAccount), feeAmt, xlmProtoAsset)
 	}
 

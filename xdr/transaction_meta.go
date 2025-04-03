@@ -21,12 +21,21 @@ func (transactionMeta *TransactionMeta) OperationsMeta() []OperationMeta {
 	}
 }
 
+func (t *TransactionMeta) GetContractEvents() ([]ContractEvent, error) {
+	switch t.V {
+	case 1, 2:
+		return nil, nil
+	case 3:
+		return t.MustV3().SorobanMeta.Events, nil
+	default:
+		return nil, fmt.Errorf("unsupported TransactionMeta version: %v", t.V)
+	}
+}
+
 // GetDiagnosticEvents returns all contract events emitted by a given operation.
 func (t *TransactionMeta) GetDiagnosticEvents() ([]DiagnosticEvent, error) {
 	switch t.V {
-	case 1:
-		return nil, nil
-	case 2:
+	case 1, 2:
 		return nil, nil
 	case 3:
 		var diagnosticEvents []DiagnosticEvent
