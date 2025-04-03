@@ -2,6 +2,7 @@ package token_transfer
 
 import (
 	"fmt"
+	"github.com/stellar/go/amount"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/xdr"
@@ -86,6 +87,7 @@ func createContractEvent(
 	eventType string,
 	from, to string,
 	amount int64,
+	amount128 *xdr.Int128Parts,
 	assetStr string,
 	contractId *xdr.Hash,
 ) xdr.ContractEvent {
@@ -105,6 +107,17 @@ func createContractEvent(
 		topics = append(topics, createString(assetStr))
 	}
 
+	var data xdr.ScVal
+	if amount128 != nil {
+		data = xdr.ScVal{
+			Type: xdr.ScValTypeScvI128,
+			I128: amount128,
+		}
+
+	} else {
+		data = createInt128(amount)
+	}
+
 	return xdr.ContractEvent{
 		Type:       xdr.ContractEventTypeContract,
 		ContractId: contractId,
@@ -112,7 +125,7 @@ func createContractEvent(
 			V: 0,
 			V0: &xdr.ContractEventV0{
 				Topics: topics,
-				Data:   createInt128(amount),
+				Data:   data,
 			},
 		},
 	}
@@ -125,6 +138,7 @@ func TestValidContractEvents(t *testing.T) {
 		addr1         string // meaning depends on event type (from/admin)
 		addr2         string // meaning depends on event type (to/from/empty)
 		amount        int64
+		amount128     *xdr.Int128Parts
 		isSacEvent    bool
 		validateEvent func(t *testing.T, event *TokenTransferEvent, addr1, addr2 string, amount string, assetItem interface{})
 	}{
@@ -254,6 +268,21 @@ func TestValidContractEvents(t *testing.T) {
 				assert.True(t, event.GetAsset().ToXdrAsset().Equals(asset))
 			},
 		},
+		{
+			name:       "Transfer SEP-41 Token Event - Amount is 128bits",
+			eventType:  TransferEvent,
+			addr1:      someContract1, // from
+			addr2:      someContract2, // to
+			amount128:  &xdr.Int128Parts{Hi: 5000, Lo: 1000},
+			isSacEvent: false,
+			validateEvent: func(t *testing.T, event *TokenTransferEvent, from, to string, amount string, _ interface{}) {
+				assert.NotNil(t, event.GetTransfer())
+				assert.Equal(t, from, event.GetTransfer().From)
+				assert.Equal(t, to, event.GetTransfer().To)
+				assert.Equal(t, amount, event.GetTransfer().Amount)
+				assert.Nil(t, event.GetAsset()) // asset is nil for non-SAC events
+			},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -297,6 +326,7 @@ func TestValidContractEvents(t *testing.T) {
 						tc.addr1, // from
 						tc.addr2, // to
 						tc.amount,
+						tc.amount128,
 						assetStr,
 						contractId,
 					)
@@ -307,6 +337,7 @@ func TestValidContractEvents(t *testing.T) {
 						tc.addr1, // admin
 						tc.addr2, // to
 						tc.amount,
+						tc.amount128,
 						assetStr,
 						contractId,
 					)
@@ -317,6 +348,7 @@ func TestValidContractEvents(t *testing.T) {
 						tc.addr1, // from
 						"",       // toAddress is empty
 						tc.amount,
+						tc.amount128,
 						assetStr,
 						contractId,
 					)
@@ -327,6 +359,7 @@ func TestValidContractEvents(t *testing.T) {
 						tc.addr1, // admin
 						tc.addr2, // address from which asset needs to be clawed back
 						tc.amount,
+						tc.amount128,
 						assetStr,
 						contractId,
 					)
@@ -337,7 +370,12 @@ func TestValidContractEvents(t *testing.T) {
 				require.NoError(t, err)
 				require.NotNil(t, event)
 
-				amountStr := fmt.Sprintf("%d", tc.amount)
+				var amountStr string
+				if tc.amount128 != nil {
+					amountStr = amount.String128Raw(*tc.amount128)
+				} else {
+					amountStr = fmt.Sprintf("%d", tc.amount)
+				}
 				tc.validateEvent(t, event, tc.addr1, tc.addr2, amountStr, assetItem)
 			}
 		})
@@ -354,7 +392,7 @@ func TestInvalidEvents(t *testing.T) {
 			name: "Invalid contract event type",
 			setupEvent: func() xdr.ContractEvent {
 				// Use a non-contract event type
-				event := createContractEvent(TransferEvent, randomAccount, someContract1, 1000, "asset", &someContractHash1)
+				event := createContractEvent(TransferEvent, randomAccount, someContract1, 1000, nil, "asset", &someContractHash1)
 				event.Type = xdr.ContractEventTypeSystem // Invalid type
 				return event
 			},
@@ -363,7 +401,7 @@ func TestInvalidEvents(t *testing.T) {
 		{
 			name: "Missing contract ID",
 			setupEvent: func() xdr.ContractEvent {
-				event := createContractEvent(TransferEvent, randomAccount, someContract1, 1000, "asset", nil)
+				event := createContractEvent(TransferEvent, randomAccount, someContract1, 1000, nil, "asset", nil)
 				return event
 			},
 			expectedErrMsg: "invalid contractEvent",
@@ -371,7 +409,7 @@ func TestInvalidEvents(t *testing.T) {
 		{
 			name: "Invalid body version",
 			setupEvent: func() xdr.ContractEvent {
-				event := createContractEvent(TransferEvent, randomAccount, someContract1, 1000, "asset", &someContractHash1)
+				event := createContractEvent(TransferEvent, randomAccount, someContract1, 1000, nil, "asset", &someContractHash1)
 				event.Body.V = 1 // Invalid version
 				return event
 			},
@@ -426,7 +464,7 @@ func TestInvalidEvents(t *testing.T) {
 		{
 			name: "Invalid amount format",
 			setupEvent: func() xdr.ContractEvent {
-				event := createContractEvent(TransferEvent, randomAccount, someContract1, 1000, "asset", &someContractHash1)
+				event := createContractEvent(TransferEvent, randomAccount, someContract1, 1000, nil, "asset", &someContractHash1)
 				// Replace the amount with a string value instead of Int128
 				event.Body.V0.Data = createString("1000")
 				return event
@@ -704,6 +742,7 @@ func TestInvalidEvents(t *testing.T) {
 					randomAccount,
 					someContract1,
 					1000,
+					nil,
 					"asset",
 					&someContractHash1,
 				)
@@ -778,6 +817,7 @@ func TestSacAssetValidation(t *testing.T) {
 					randomAccount,
 					someContract1,
 					1000,
+					nil,
 					xlmAsset.StringCanonical(),
 					xlmContractId,
 				)
@@ -793,6 +833,7 @@ func TestSacAssetValidation(t *testing.T) {
 					randomAccount,
 					someContract1,
 					1000,
+					nil,
 					xlmAsset.StringCanonical(),
 					&someContractHash2, // Different from xlmContractId
 				)
