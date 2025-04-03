@@ -188,6 +188,10 @@ func (t *LedgerTransaction) operationChanges(ops []xdr.OperationMeta, index uint
 	return changes
 }
 
+func (t *LedgerTransaction) GetContractEvents() ([]xdr.ContractEvent, error) {
+	return t.UnsafeMeta.GetContractEvents()
+}
+
 // GetDiagnosticEvents returns all contract events emitted by a given operation.
 func (t *LedgerTransaction) GetDiagnosticEvents() ([]xdr.DiagnosticEvent, error) {
 	return t.UnsafeMeta.GetDiagnosticEvents()

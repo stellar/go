@@ -196,12 +196,12 @@ func (p *EventsProcessor) EventsFromOperation(tx ingest.LedgerTransaction, opInd
 }
 
 func (p *EventsProcessor) contractEvents(tx ingest.LedgerTransaction, opIndex uint32) ([]*TokenTransferEvent, error) {
-	diagnosticEvents, err := tx.GetDiagnosticEvents()
+	contractEvents, err := tx.GetContractEvents()
 	if err != nil {
-		return nil, fmt.Errorf("error getting diagnostic events: %w", err)
+		return nil, fmt.Errorf("error getting contract events: %w", err)
 	}
-	events := make([]*TokenTransferEvent, 0, len(diagnosticEvents))
-	for _, contractEvent := range filterEvents(diagnosticEvents) {
+	events := make([]*TokenTransferEvent, 0, len(contractEvents))
+	for _, contractEvent := range contractEvents {
 		ev, err := p.parseEvent(tx, &opIndex, contractEvent)
 
 		// You dont bail on error here, since error here means that it is not a sep-41 compliant token event.

@@ -184,14 +184,3 @@ func extractAddress(val xdr.ScVal) (string, error) {
 	}
 	return addr.String()
 }
-
-func filterEvents(diagnosticEvents []xdr.DiagnosticEvent) []xdr.ContractEvent {
-	var filtered []xdr.ContractEvent
-	for _, diagnosticEvent := range diagnosticEvents {
-		if !diagnosticEvent.InSuccessfulContractCall || diagnosticEvent.Event.Type != xdr.ContractEventTypeContract {
-			continue
-		}
-		filtered = append(filtered, diagnosticEvent.Event)
-	}
-	return filtered
-}

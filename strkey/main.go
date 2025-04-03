@@ -284,6 +284,24 @@ func IsValidContractAddress(i interface{}) bool {
 	return err == nil
 }
 
+func IsValidClaimableBalance(i interface{}) bool {
+	enc, ok := i.(string)
+	if !ok {
+		return false
+	}
+	_, err := Decode(VersionByteClaimableBalance, enc)
+	return err == nil
+}
+
+func IsValidLiquidityPool(i interface{}) bool {
+	enc, ok := i.(string)
+	if !ok {
+		return false
+	}
+	_, err := Decode(VersionByteLiquidityPool, enc)
+	return err == nil
+}
+
 // IsValidMuxedAccountEd25519PublicKey validates a Stellar SEP-23 muxed address.
 func IsValidMuxedAccountEd25519PublicKey(s string) bool {
 	_, err := Decode(VersionByteMuxedAccount, s)
