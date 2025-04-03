@@ -213,46 +213,34 @@ func (p *EventsProcessor) contractEvents(tx ingest.LedgerTransaction, opIndex ui
 	return events, nil
 }
 
-type addressWrapper struct {
-	account            *xdr.MuxedAccount
-	liquidityPoolId    *xdr.PoolId
-	claimableBalanceId *xdr.ClaimableBalanceId
-}
-
 /*
 Depending on the asset - if src or dest account == issuer of asset, then mint/burn event, else transfer event
 All operation related functions will call this function instead of directly calling the underlying proto functions to generate events
 The only exception to this is clawbackOperation and claimableClawbackOperation.
 Those 2 will call the underlying proto function for clawback
 */
-func (p *EventsProcessor) mintOrBurnOrTransferEvent(tx ingest.LedgerTransaction, opIndex *uint32, asset xdr.Asset, from addressWrapper, to addressWrapper, amt string) (*TokenTransferEvent, error) {
-	var fromAddress, toAddress string
+func (p *EventsProcessor) mintOrBurnOrTransferEvent(tx ingest.LedgerTransaction, opIndex *uint32, asset xdr.Asset, from string, to string, amt string) (*TokenTransferEvent, error) {
 	var isFromIssuer, isToIssuer bool
-
 	assetIssuerAccountId, _ := asset.GetIssuerAccountId()
 
-	// Checking 'from' address
-	if from.account != nil {
-		fromAddress = protoAddressFromAccount(*from.account)
-		if !asset.IsNative() && assetIssuerAccountId.Equals(from.account.ToAccountId()) {
+	if strkey.IsValidEd25519PublicKey(from) || strkey.IsValidMuxedAccountEd25519PublicKey(from) {
+		fromAccount := xdr.MustMuxedAddress(from).ToAccountId()
+		// Always revert back to G-Address for the from field, even if it is an M-address
+		from = fromAccount.Address()
+
+		if !asset.IsNative() && assetIssuerAccountId.Equals(fromAccount) {
 			isFromIssuer = true
 		}
-	} else if from.liquidityPoolId != nil {
-		fromAddress = lpIdToStrkey(*from.liquidityPoolId)
-	} else if from.claimableBalanceId != nil {
-		fromAddress = cbIdToStrkey(*from.claimableBalanceId)
 	}
 
-	// Checking 'to' address
-	if to.account != nil {
-		toAddress = protoAddressFromAccount(*to.account)
-		if !asset.IsNative() && assetIssuerAccountId.Equals(to.account.ToAccountId()) {
+	if strkey.IsValidEd25519PublicKey(to) || strkey.IsValidMuxedAccountEd25519PublicKey(to) {
+		toAccount := xdr.MustMuxedAddress(to).ToAccountId()
+		// Always revert back to G-Address for the to field, even if it is an M-address
+		to = toAccount.Address()
+
+		if !asset.IsNative() && assetIssuerAccountId.Equals(toAccount) {
 			isToIssuer = true
 		}
-	} else if to.liquidityPoolId != nil {
-		toAddress = lpIdToStrkey(*to.liquidityPoolId)
-	} else if to.claimableBalanceId != nil {
-		toAddress = cbIdToStrkey(*to.claimableBalanceId)
 	}
 
 	protoAsset := assetProto.NewProtoAsset(asset)
@@ -264,31 +252,31 @@ func (p *EventsProcessor) mintOrBurnOrTransferEvent(tx ingest.LedgerTransaction,
 	// Keep in mind though that this wont show up in operationMeta as a balance change
 	// This has happened in ledgerSequence: 4522126 on pubnet
 	if isFromIssuer && isToIssuer {
-		return NewTransferEvent(meta, fromAddress, toAddress, amt, protoAsset), nil
+		return NewTransferEvent(meta, from, to, amt, protoAsset), nil
 	} else if isFromIssuer {
 
 		// Check for Mint Event
-		if toAddress == "" {
+		if to == "" {
 			return nil, NewEventError("mint event error: to address is nil")
 		}
-		return NewMintEvent(meta, toAddress, amt, protoAsset), nil
+		return NewMintEvent(meta, to, amt, protoAsset), nil
 	} else if isToIssuer {
 
 		// Check for Burn Event
-		if fromAddress == "" {
+		if from == "" {
 			return nil, NewEventError("burn event error: from address is nil")
 		}
-		return NewBurnEvent(meta, fromAddress, amt, protoAsset), nil
+		return NewBurnEvent(meta, from, amt, protoAsset), nil
 	}
 
-	if fromAddress == "" {
+	if from == "" {
 		return nil, NewEventError("transfer event error: from address is nil")
 	}
-	if toAddress == "" {
+	if to == "" {
 		return nil, NewEventError("transfer event error: to address is nil")
 	}
 	// Create transfer event
-	return NewTransferEvent(meta, fromAddress, toAddress, amt, protoAsset), nil
+	return NewTransferEvent(meta, from, to, amt, protoAsset), nil
 }
 
 func (p *EventsProcessor) generateEventMeta(tx ingest.LedgerTransaction, opIndex *uint32, asset xdr.Asset) *EventMeta {
@@ -324,9 +312,7 @@ func (p *EventsProcessor) accountCreateEvents(tx ingest.LedgerTransaction, opInd
 	opSrcAcc := operationSourceAccount(tx, op)
 	createAccountOp := op.Body.MustCreateAccountOp()
 	destAcc, amt := createAccountOp.Destination.ToMuxedAccount(), amount.String64Raw(createAccountOp.StartingBalance)
-	from := addressWrapper{account: &opSrcAcc}
-	to := addressWrapper{account: &destAcc}
-	event, err := p.mintOrBurnOrTransferEvent(tx, &opIndex, xlmAsset, from, to, amt)
+	event, err := p.mintOrBurnOrTransferEvent(tx, &opIndex, xlmAsset, opSrcAcc.Address(), destAcc.Address(), amt)
 	if err != nil {
 		return nil, err
 	}
@@ -343,7 +329,7 @@ func (p *EventsProcessor) mergeAccountEvents(tx ingest.LedgerTransaction, opInde
 	opSrcAcc := operationSourceAccount(tx, op)
 	destAcc := op.Body.MustDestination()
 	amt := amount.String64Raw(*res.SourceAccountBalance)
-	event, err := p.mintOrBurnOrTransferEvent(tx, &opIndex, xlmAsset, addressWrapper{account: &opSrcAcc}, addressWrapper{account: &destAcc}, amt)
+	event, err := p.mintOrBurnOrTransferEvent(tx, &opIndex, xlmAsset, opSrcAcc.Address(), destAcc.Address(), amt)
 	if err != nil {
 		return nil, err
 	}
@@ -356,8 +342,7 @@ func (p *EventsProcessor) paymentEvents(tx ingest.LedgerTransaction, opIndex uin
 	destAcc := paymentOp.Destination
 	amt := amount.String64Raw(paymentOp.Amount)
 
-	from, to := addressWrapper{account: &opSrcAcc}, addressWrapper{account: &destAcc}
-	event, err := p.mintOrBurnOrTransferEvent(tx, &opIndex, paymentOp.Asset, from, to, amt)
+	event, err := p.mintOrBurnOrTransferEvent(tx, &opIndex, paymentOp.Asset, opSrcAcc.Address(), destAcc.Address(), amt)
 	if err != nil {
 		return nil, err
 	}
@@ -379,10 +364,9 @@ func (p *EventsProcessor) createClaimableBalanceEvents(tx ingest.LedgerTransacti
 	createCbOp := op.Body.MustCreateClaimableBalanceOp()
 	createCbResult := result.Tr.MustCreateClaimableBalanceResult()
 	opSrcAcc := operationSourceAccount(tx, op)
-	claimableBalanceId := createCbResult.MustBalanceId()
+	cbId := createCbResult.MustBalanceId()
 
-	from, to := addressWrapper{account: &opSrcAcc}, addressWrapper{claimableBalanceId: &claimableBalanceId}
-	event, err := p.mintOrBurnOrTransferEvent(tx, &opIndex, createCbOp.Asset, from, to, amount.String64Raw(createCbOp.Amount))
+	event, err := p.mintOrBurnOrTransferEvent(tx, &opIndex, createCbOp.Asset, opSrcAcc.Address(), cbIdToStrkey(cbId), amount.String64Raw(createCbOp.Amount))
 	if err != nil {
 		return nil, err
 	}
@@ -407,8 +391,7 @@ func (p *EventsProcessor) claimClaimableBalanceEvents(tx ingest.LedgerTransactio
 	cb := cbEntries[0]
 
 	// This is one case where the order is reversed. Money flows from CBid --> sourceAccount of this claimCb operation
-	from, to := addressWrapper{claimableBalanceId: &cbId}, addressWrapper{account: &opSrcAcc}
-	event, err := p.mintOrBurnOrTransferEvent(tx, &opIndex, cb.Asset, from, to, amount.String64Raw(cb.Amount))
+	event, err := p.mintOrBurnOrTransferEvent(tx, &opIndex, cb.Asset, cbIdToStrkey(cbId), opSrcAcc.Address(), amount.String64Raw(cb.Amount))
 	if err != nil {
 		return nil, err
 	}
@@ -557,8 +540,8 @@ func (p *EventsProcessor) generateEventsForRevokedTrustlines(tx ingest.LedgerTra
 			from := lp.liquidityPoolId
 
 			transferEvent, err := p.mintOrBurnOrTransferEvent(tx, &opIndex, assetInCb,
-				addressWrapper{liquidityPoolId: &from},
-				addressWrapper{claimableBalanceId: &cbsCreatedByThisLp[0].BalanceId},
+				lpIdToStrkey(from),
+				cbIdToStrkey(cbsCreatedByThisLp[0].BalanceId),
 				amount.String64Raw(cbsCreatedByThisLp[0].Amount))
 			if err != nil {
 				return nil, err
@@ -577,16 +560,16 @@ func (p *EventsProcessor) generateEventsForRevokedTrustlines(tx ingest.LedgerTra
 			amt1, amt2 := amount.String64Raw(cbsCreatedByThisLp[0].Amount), amount.String64Raw(cbsCreatedByThisLp[1].Amount)
 
 			ev1, err := p.mintOrBurnOrTransferEvent(tx, &opIndex, asset1,
-				addressWrapper{liquidityPoolId: &from},
-				addressWrapper{claimableBalanceId: &to1},
+				lpIdToStrkey(from),
+				cbIdToStrkey(to1),
 				amt1)
 			if err != nil {
 				return nil, err
 			}
 
 			ev2, err := p.mintOrBurnOrTransferEvent(tx, &opIndex, asset2,
-				addressWrapper{liquidityPoolId: &from},
-				addressWrapper{claimableBalanceId: &to2},
+				lpIdToStrkey(from),
+				cbIdToStrkey(to2),
 				amt2)
 			if err != nil {
 				return nil, err
@@ -629,16 +612,14 @@ func (p *EventsProcessor) liquidityPoolDepositEvents(tx ingest.LedgerTransaction
 
 	opSrcAcc := operationSourceAccount(tx, op)
 	// From = operation source account, to = LP
-	from, to := addressWrapper{account: &opSrcAcc}, addressWrapper{liquidityPoolId: &delta.liquidityPoolId}
-
 	var events []*TokenTransferEvent
-	event, err := p.mintOrBurnOrTransferEvent(tx, &opIndex, assetA, from, to, amount.String64Raw(amtA))
+	event, err := p.mintOrBurnOrTransferEvent(tx, &opIndex, assetA, opSrcAcc.Address(), lpIdToStrkey(delta.liquidityPoolId), amount.String64Raw(amtA))
 	if err != nil {
 		return nil, err
 	}
 	events = append(events, event)
 
-	event, err = p.mintOrBurnOrTransferEvent(tx, &opIndex, assetB, from, to, amount.String64Raw(amtB))
+	event, err = p.mintOrBurnOrTransferEvent(tx, &opIndex, assetB, opSrcAcc.Address(), lpIdToStrkey(delta.liquidityPoolId), amount.String64Raw(amtB))
 	if err != nil {
 		return nil, err
 	}
@@ -678,16 +659,14 @@ func (p *EventsProcessor) liquidityPoolWithdrawEvents(tx ingest.LedgerTransactio
 
 	opSrcAcc := operationSourceAccount(tx, op)
 	// Opposite of LP Deposit. from = LP, to = operation source account
-	from, to := addressWrapper{liquidityPoolId: &delta.liquidityPoolId}, addressWrapper{account: &opSrcAcc}
-
 	var events []*TokenTransferEvent
-	event, err := p.mintOrBurnOrTransferEvent(tx, &opIndex, assetA, from, to, amount.String64Raw(amtA))
+	event, err := p.mintOrBurnOrTransferEvent(tx, &opIndex, assetA, lpIdToStrkey(delta.liquidityPoolId), opSrcAcc.Address(), amount.String64Raw(amtA))
 	if err != nil {
 		return nil, err
 	}
 	events = append(events, event)
 
-	event, err = p.mintOrBurnOrTransferEvent(tx, &opIndex, assetB, from, to, amount.String64Raw(amtB))
+	event, err = p.mintOrBurnOrTransferEvent(tx, &opIndex, assetB, lpIdToStrkey(delta.liquidityPoolId), opSrcAcc.Address(), amount.String64Raw(amtB))
 	if err != nil {
 		return nil, err
 	}
@@ -698,25 +677,24 @@ func (p *EventsProcessor) liquidityPoolWithdrawEvents(tx ingest.LedgerTransactio
 
 func (p *EventsProcessor) generateEventsFromClaimAtoms(tx ingest.LedgerTransaction, opIndex uint32, opSrcAcc xdr.MuxedAccount, claims []xdr.ClaimAtom) ([]*TokenTransferEvent, error) {
 	var events []*TokenTransferEvent
-	operationSourceAddressWrapper := addressWrapper{account: &opSrcAcc}
-	var sellerAddressWrapper addressWrapper
+	operationSource := opSrcAcc.Address()
+	var seller string
 
 	for _, claim := range claims {
 		if claim.Type == xdr.ClaimAtomTypeClaimAtomTypeLiquidityPool {
 			lpId := claim.MustLiquidityPool().LiquidityPoolId
-			sellerAddressWrapper = addressWrapper{liquidityPoolId: &lpId}
+			seller = lpIdToStrkey(lpId)
 		} else {
 			sellerId := claim.SellerId()
 			sellerAccount := sellerId.ToMuxedAccount()
-			sellerAddressWrapper = addressWrapper{account: &sellerAccount}
-
+			seller = sellerAccount.Address()
 		}
 
-		ev1, err := p.mintOrBurnOrTransferEvent(tx, &opIndex, claim.AssetSold(), sellerAddressWrapper, operationSourceAddressWrapper, amount.String64Raw(claim.AmountSold()))
+		ev1, err := p.mintOrBurnOrTransferEvent(tx, &opIndex, claim.AssetSold(), seller, operationSource, amount.String64Raw(claim.AmountSold()))
 		if err != nil {
 			return nil, err
 		}
-		ev2, err := p.mintOrBurnOrTransferEvent(tx, &opIndex, claim.AssetBought(), operationSourceAddressWrapper, sellerAddressWrapper, amount.String64Raw(claim.AmountBought()))
+		ev2, err := p.mintOrBurnOrTransferEvent(tx, &opIndex, claim.AssetBought(), operationSource, seller, amount.String64Raw(claim.AmountBought()))
 		if err != nil {
 			return nil, err
 		}
@@ -763,8 +741,7 @@ func (p *EventsProcessor) pathPaymentStrictSendEvents(tx ingest.LedgerTransactio
 	events = append(events, ev...)
 
 	// Generate one final event indicating the amount that the destination received in terms of destination asset
-	from, to := addressWrapper{account: &opSrcAcc}, addressWrapper{account: &strictSendOp.Destination}
-	finalEvent, err := p.mintOrBurnOrTransferEvent(tx, &opIndex, strictSendOp.DestAsset, from, to, amount.String64Raw(strictSendResult.DestAmount()))
+	finalEvent, err := p.mintOrBurnOrTransferEvent(tx, &opIndex, strictSendOp.DestAsset, opSrcAcc.Address(), strictSendOp.Destination.Address(), amount.String64Raw(strictSendResult.DestAmount()))
 	if err != nil {
 		return nil, err
 	}
@@ -785,8 +762,7 @@ func (p *EventsProcessor) pathPaymentStrictReceiveEvents(tx ingest.LedgerTransac
 	events = append(events, ev...)
 
 	// Generate one final event indicating the amount that the destination received in terms of destination asset
-	from, to := addressWrapper{account: &opSrcAcc}, addressWrapper{account: &strictReceiveOp.Destination}
-	finalEvent, err := p.mintOrBurnOrTransferEvent(tx, &opIndex, strictReceiveOp.DestAsset, from, to, amount.String64Raw(strictReceiveOp.DestAmount))
+	finalEvent, err := p.mintOrBurnOrTransferEvent(tx, &opIndex, strictReceiveOp.DestAsset, opSrcAcc.Address(), strictReceiveOp.Destination.Address(), amount.String64Raw(strictReceiveOp.DestAmount))
 	if err != nil {
 		return nil, err
 	}

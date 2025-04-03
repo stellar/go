@@ -84,22 +84,17 @@ func (p *EventsProcessor) parseEvent(tx ingest.LedgerTransaction, opIndex *uint3
 					// Meanwhile, we fix it here manually by checking if src/dst is issuer of asset, and if it is, we issue mint/burn instead
 					maybeTransferEvent := protoEvent.GetTransfer()
 					if maybeTransferEvent != nil {
-						src, srcAccErr := xdr.AddressToAccountId(maybeTransferEvent.From)
-						dst, dstAccErr := xdr.AddressToAccountId(maybeTransferEvent.To)
-						if srcAccErr == nil && dstAccErr == nil {
-							srcAcc, dstAcc := src.ToMuxedAccount(), dst.ToMuxedAccount()
-							protoEvent, err = p.mintOrBurnOrTransferEvent(
-								tx, opIndex,
-								maybeTransferEvent.Asset.ToXdrAsset(),
-								addressWrapper{account: &srcAcc},
-								addressWrapper{account: &dstAcc},
-								maybeTransferEvent.Amount,
-							)
-							if err != nil {
-								return nil, fmt.Errorf("contract transfer event error: %w", err)
-							}
-
+						protoEvent, err = p.mintOrBurnOrTransferEvent(
+							tx, opIndex,
+							maybeTransferEvent.Asset.ToXdrAsset(),
+							maybeTransferEvent.From,
+							maybeTransferEvent.To,
+							maybeTransferEvent.Amount,
+						)
+						if err != nil {
+							return nil, fmt.Errorf("contract transfer event error: %w", err)
 						}
+
 					}
 				}
 			}
