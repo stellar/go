@@ -1,7 +1,6 @@
 package token_transfer
 
 import (
-	"encoding/hex"
 	"fmt"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/strkey"
@@ -21,8 +20,8 @@ var (
 	processor = &EventsProcessor{
 		networkPassphrase: someNetworkPassphrase,
 	}
-	contractIdFromAsset = func(asset xdr.Asset, passphrase string) *xdr.Hash {
-		contractId, _ := asset.ContractID(passphrase)
+	contractIdFromAsset = func(asset xdr.Asset) *xdr.Hash {
+		contractId, _ := asset.ContractID(someNetworkPassphrase)
 		hash := xdr.Hash(contractId)
 		return &hash
 	}
@@ -37,30 +36,17 @@ func createSymbol(sym string) xdr.ScVal {
 	}
 }
 
-func contractIdToHash(contractId string) *xdr.Hash {
-	idBytes := [32]byte{}
-	rawBytes, err := hex.DecodeString(contractId)
-	if err != nil {
-		panic(fmt.Errorf("invalid contract id (%s): %v", contractId, err))
-	}
-	if copy(idBytes[:], rawBytes[:]) != 32 {
-		panic("couldn't copy 32 bytes to contract hash")
-	}
-
-	hash := xdr.Hash(idBytes)
-	return &hash
-}
-
 func createAddress(address string) xdr.ScVal {
 	scAddress := xdr.ScAddress{}
 
-	switch address[0] {
-	case 'C':
+	switch {
+	case strkey.IsValidContractAddress(address) == true:
 		scAddress.Type = xdr.ScAddressTypeScAddressTypeContract
 		contractHash := strkey.MustDecode(strkey.VersionByteContract, address)
-		scAddress.ContractId = contractIdToHash(hex.EncodeToString(contractHash))
+		contractId := xdr.Hash(contractHash)
+		scAddress.ContractId = &contractId
 
-	case 'G':
+	case strkey.IsValidEd25519PublicKey(address) == true:
 		scAddress.Type = xdr.ScAddressTypeScAddressTypeAccount
 		scAddress.AccountId = xdr.MustAddressPtr(address)
 
@@ -295,7 +281,7 @@ func TestValidContractEvents(t *testing.T) {
 				if tc.isSacEvent {
 					asset := assetItem.(xdr.Asset)
 					assetStr = asset.StringCanonical()
-					contractId = contractIdFromAsset(asset, processor.networkPassphrase)
+					contractId = contractIdFromAsset(asset)
 				} else {
 					assetStr = assetItem.(string)
 				}
@@ -777,7 +763,7 @@ func TestInvalidEvents(t *testing.T) {
 func TestSacAssetValidation(t *testing.T) {
 	// None of the test fixtures here will result in errors
 	// They simply might not pass the additional validation required to qualify as a SAC event, is all
-	xlmContractId := contractIdFromAsset(xlmAsset, processor.networkPassphrase)
+	xlmContractId := contractIdFromAsset(xlmAsset)
 
 	testCases := []struct {
 		name              string

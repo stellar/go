@@ -78,15 +78,15 @@ func (p *EventsProcessor) parseEvent(tx ingest.LedgerTransaction, opIndex *uint3
 					// If contract ID matches, update with validated asset
 					protoEvent.SetAsset(asset)
 
-					// This is tricky. Burn and mint events currently show up as transfer.
+					// This is tricky. Burn and mint events currently show up as transfer in SAC events
 					// This will be fixed once CAP-67 unified events is released:
 					// https://github.com/stellar/stellar-protocol/blob/master/core/cap-0067.md#protocol-upgrade-transition
 					// Meanwhile, we fix it here manually by checking if src/dst is issuer of asset, and if it is, we issue mint/burn instead
 					maybeTransferEvent := protoEvent.GetTransfer()
 					if maybeTransferEvent != nil {
-						src, isSrcValidAcc := xdr.AddressToAccountId(maybeTransferEvent.From)
-						dst, isDstValidAcc := xdr.AddressToAccountId(maybeTransferEvent.To)
-						if isSrcValidAcc == nil && isDstValidAcc == nil {
+						src, srcAccErr := xdr.AddressToAccountId(maybeTransferEvent.From)
+						dst, dstAccErr := xdr.AddressToAccountId(maybeTransferEvent.To)
+						if srcAccErr == nil && dstAccErr == nil {
 							srcAcc, dstAcc := src.ToMuxedAccount(), dst.ToMuxedAccount()
 							protoEvent, err = p.mintOrBurnOrTransferEvent(
 								tx, opIndex,

@@ -16,15 +16,10 @@ type balanceKey struct {
 	asset  string
 }
 
-func isContractAddress(key balanceKey) bool {
-	_, err := strkey.Decode(strkey.VersionByteContract, key.holder)
-	return err == nil
-}
-
 // updateBalanceMap updates the map and removes the entry if the value becomes 0
 func updateBalanceMap(m map[balanceKey]int64, key balanceKey, delta int64) {
 	// We dont include movement to/from contract address is balance delta tracking, since there is no standard way to derive/verify from contractData
-	if isContractAddress(key) {
+	if strkey.IsValidContractAddress(key.holder) {
 		return
 	}
 	m[key] += delta
@@ -206,26 +201,6 @@ func findBalanceDeltasFromEvents(events []*TokenTransferEvent) map[balanceKey]in
 		}
 	}
 	return hashmap
-}
-
-func getChangesFromLedger(ledger xdr.LedgerCloseMeta, passphrase string) []ingest.Change {
-	changeReader, err := ingest.NewLedgerChangeReaderFromLedgerCloseMeta(passphrase, ledger)
-	changes := make([]ingest.Change, 0)
-	defer changeReader.Close()
-	if err != nil {
-		panic(fmt.Errorf("unable to create ledger change reader: %w", err))
-	}
-	for {
-		change, err := changeReader.Read()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			panic(fmt.Errorf("unable to read from ledger: %w", err))
-		}
-		changes = append(changes, change)
-	}
-	return changes
 }
 
 func VerifyEvents(ledger xdr.LedgerCloseMeta, passphrase string) error {
