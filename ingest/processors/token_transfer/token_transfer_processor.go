@@ -3,12 +3,13 @@ package token_transfer
 import (
 	"errors"
 	"fmt"
+	"io"
+
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/ingest"
 	assetProto "github.com/stellar/go/ingest/asset"
 	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/xdr"
-	"io"
 )
 
 type EventError struct {
@@ -39,13 +40,24 @@ var (
 )
 
 type EventsProcessor struct {
-	networkPassphrase string
+	networkPassphrase     string
+	disableContractEvents bool
 }
 
-func NewEventsProcessor(networkPassphrase string) *EventsProcessor {
-	return &EventsProcessor{
+type EventsProcessorOption func(*EventsProcessor)
+
+var DisableContractEvents EventsProcessorOption = func(processor *EventsProcessor) {
+	processor.disableContractEvents = true
+}
+
+func NewEventsProcessor(networkPassphrase string, options ...EventsProcessorOption) *EventsProcessor {
+	proc := &EventsProcessor{
 		networkPassphrase: networkPassphrase,
 	}
+	for _, opt := range options {
+		opt(proc)
+	}
+	return proc
 }
 
 // EventsFromLedger processes token transfer events for all transactions in a given ledger.
@@ -160,7 +172,9 @@ func (p *EventsProcessor) EventsFromOperation(tx ingest.LedgerTransaction, opInd
 	case xdr.OperationTypeInflation:
 		events, err = p.inflationEvents(tx, opIndex, op, opResult)
 	case xdr.OperationTypeInvokeHostFunction:
-		events, err = p.contractEvents(tx, opIndex)
+		if !p.disableContractEvents {
+			events, err = p.contractEvents(tx, opIndex)
+		}
 	default:
 		return nil, nil
 	}
