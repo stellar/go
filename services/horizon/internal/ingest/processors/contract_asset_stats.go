@@ -7,6 +7,7 @@ import (
 	"math/big"
 
 	"github.com/stellar/go/ingest"
+	"github.com/stellar/go/ingest/sac"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
@@ -107,7 +108,7 @@ func (s *ContractAssetStatSet) GetAssetToContractMap() map[xdr.Hash]*xdr.Asset {
 
 func (s *ContractAssetStatSet) ingestAssetContractMetadata(change ingest.Change) (bool, error) {
 	if change.Pre != nil {
-		asset := AssetFromContractData(*change.Pre, s.networkPassphrase)
+		asset := sac.AssetFromContractData(*change.Pre, s.networkPassphrase)
 		if asset == nil {
 			return false, nil
 		}
@@ -123,13 +124,13 @@ func (s *ContractAssetStatSet) ingestAssetContractMetadata(change ingest.Change)
 		// The contract id for any soroban contract should never change and
 		// therefore we return a fatal ingestion error if we encounter
 		// a stellar asset changing contract ids.
-		postAsset := AssetFromContractData(*change.Post, s.networkPassphrase)
+		postAsset := sac.AssetFromContractData(*change.Post, s.networkPassphrase)
 		if postAsset == nil || !(*postAsset).Equals(*asset) {
 			return false, ingest.NewStateError(fmt.Errorf("asset contract changed asset"))
 		}
 		return true, nil
 	} else if change.Post != nil {
-		asset := AssetFromContractData(*change.Post, s.networkPassphrase)
+		asset := sac.AssetFromContractData(*change.Post, s.networkPassphrase)
 		if asset == nil {
 			return false, nil
 		}
@@ -161,7 +162,7 @@ func (s *ContractAssetStatSet) ingestContractAssetBalance(ctx context.Context, c
 			return nil
 		}
 
-		_, postAmt, postOk := ContractBalanceFromContractData(*change.Post, s.networkPassphrase)
+		_, postAmt, postOk := sac.ContractBalanceFromContractData(*change.Post, s.networkPassphrase)
 		// we only ingest created ledger entries if we determine that they resemble the shape of
 		// a Stellar Asset Contract balance ledger entry
 		if !postOk {
@@ -211,7 +212,7 @@ func (s *ContractAssetStatSet) ingestContractAssetBalance(ctx context.Context, c
 		// entry from our db when the entry is removed from the ledger.
 		s.removedBalances = append(s.removedBalances, keyHash)
 
-		_, preAmt, ok := ContractBalanceFromContractData(*change.Pre, s.networkPassphrase)
+		_, preAmt, ok := sac.ContractBalanceFromContractData(*change.Pre, s.networkPassphrase)
 		if !ok {
 			return nil
 		}
@@ -236,14 +237,14 @@ func (s *ContractAssetStatSet) ingestContractAssetBalance(ctx context.Context, c
 			return nil
 		}
 
-		holder, amt, ok := ContractBalanceFromContractData(*change.Pre, s.networkPassphrase)
+		holder, amt, ok := sac.ContractBalanceFromContractData(*change.Pre, s.networkPassphrase)
 		if !ok {
 			return nil
 		}
 
 		// if the updated ledger entry is not in the expected format then this
 		// cannot be emitted by the stellar asset contract, so ignore it
-		postHolder, postAmt, postOk := ContractBalanceFromContractData(*change.Post, s.networkPassphrase)
+		postHolder, postAmt, postOk := sac.ContractBalanceFromContractData(*change.Post, s.networkPassphrase)
 		if !postOk || postHolder != holder {
 			return nil
 		}

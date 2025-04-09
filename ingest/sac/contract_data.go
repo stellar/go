@@ -1,4 +1,4 @@
-package processors
+package sac
 
 import (
 	"math/big"
@@ -452,7 +452,7 @@ func AssetToContractData(isNative bool, code, issuer string, contractID [32]byte
 //
 // Warning: Only for use in tests. This does not create the accompanied TTLEntry which would typically be created by core.
 func BalanceToContractData(assetContractId, holderID [32]byte, amt uint64) xdr.LedgerEntryData {
-	return balanceToContractData(assetContractId, holderID, xdr.Int128Parts{
+	return BalanceInt128ToContractData(assetContractId, holderID, xdr.Int128Parts{
 		Lo: xdr.Uint64(amt),
 		Hi: 0,
 	})
@@ -488,7 +488,7 @@ func ContractBalanceLedgerKey(assetContractId, holderID [32]byte) xdr.LedgerKey 
 	}
 }
 
-func balanceToContractData(assetContractId, holderID [32]byte, amt xdr.Int128Parts) xdr.LedgerEntryData {
+func BalanceInt128ToContractData(assetContractId, holderID [32]byte, amt xdr.Int128Parts) xdr.LedgerEntryData {
 	ledgerKey := ContractBalanceLedgerKey(assetContractId, holderID)
 
 	amountSym := xdr.ScSymbol("amount")

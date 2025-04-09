@@ -1,6 +1,8 @@
 package txnbuild
 
 import (
+	"github.com/stellar/go/ingest/sac"
+	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
@@ -8,6 +10,77 @@ import (
 type RestoreFootprint struct {
 	SourceAccount string
 	Ext           xdr.TransactionExt
+}
+
+var defaultAssetBalanceRestorationFees = SorobanFees{
+	Instructions: 0,
+	ReadBytes:    500,
+	WriteBytes:   500,
+	ResourceFee:  4_000_000,
+}
+
+// AssetBalanceRestorationParams configures the restore footprint operation returned by
+// NewAssetBalanceRestoration
+type AssetBalanceRestorationParams struct {
+	// NetworkPassphrase is the passphrase for the Stellar network
+	NetworkPassphrase string
+	// Contract is the contract which holds the asset balance
+	Contract string
+	// Asset is the asset which is held in the balance
+	Asset Asset
+	// SourceAccount is the source account for the restoration operation
+	SourceAccount string
+	// Fees configures the fee values for the
+	// soroban transaction. If this field is omitted
+	// default fee values will be used
+	Fees SorobanFees
+}
+
+// NewAssetBalanceRestoration constructs a restore footprint operation which restores an
+// asset balance for a smart contract
+func NewAssetBalanceRestoration(params AssetBalanceRestorationParams) (RestoreFootprint, error) {
+	asset, err := params.Asset.ToXDR()
+	if err != nil {
+		return RestoreFootprint{}, err
+	}
+
+	var assetContractID xdr.Hash
+	assetContractID, err = asset.ContractID(params.NetworkPassphrase)
+	if err != nil {
+		return RestoreFootprint{}, err
+	}
+
+	decoded, err := strkey.Decode(strkey.VersionByteContract, params.Contract)
+	if err != nil {
+		return RestoreFootprint{}, err
+	}
+	var contractID xdr.Hash
+	copy(contractID[:], decoded)
+
+	resources := params.Fees
+	if resources.ResourceFee == 0 {
+		resources = defaultAssetBalanceRestorationFees
+	}
+
+	return RestoreFootprint{
+		SourceAccount: params.SourceAccount,
+		Ext: xdr.TransactionExt{
+			V: 1,
+			SorobanData: &xdr.SorobanTransactionData{
+				Resources: xdr.SorobanResources{
+					Footprint: xdr.LedgerFootprint{
+						ReadWrite: []xdr.LedgerKey{
+							sac.ContractBalanceLedgerKey(assetContractID, contractID),
+						},
+					},
+					Instructions: xdr.Uint32(resources.Instructions),
+					ReadBytes:    xdr.Uint32(resources.ReadBytes),
+					WriteBytes:   xdr.Uint32(resources.WriteBytes),
+				},
+				ResourceFee: xdr.Int64(resources.ResourceFee),
+			},
+		},
+	}, nil
 }
 
 func (f *RestoreFootprint) BuildXDR() (xdr.Operation, error) {

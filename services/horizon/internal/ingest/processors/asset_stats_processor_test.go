@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/stellar/go/ingest"
+	"github.com/stellar/go/ingest/sac"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/xdr"
 
@@ -524,12 +525,12 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestInsertContractID() {
 	}
 	eurID, err := trustLine.Asset.ToAsset().ContractID("")
 	s.Assert().NoError(err)
-	eurContractData, err := AssetToContractData(false, "EUR", trustLineIssuer.Address(), eurID)
+	eurContractData, err := sac.AssetToContractData(false, "EUR", trustLineIssuer.Address(), eurID)
 	s.Assert().NoError(err)
 
 	usdID, err := xdr.MustNewCreditAsset("USD", trustLineIssuer.Address()).ContractID("")
 	s.Assert().NoError(err)
-	usdContractData, err := AssetToContractData(false, "USD", trustLineIssuer.Address(), usdID)
+	usdContractData, err := sac.AssetToContractData(false, "USD", trustLineIssuer.Address(), usdID)
 	s.Assert().NoError(err)
 
 	lastModifiedLedgerSeq := xdr.Uint32(1234)
@@ -638,7 +639,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestInsertContractBalance() {
 		Type: xdr.LedgerEntryTypeContractData,
 		Post: &xdr.LedgerEntry{
 			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
-			Data:                  BalanceToContractData(usdID, [32]byte{1}, 200),
+			Data:                  sac.BalanceToContractData(usdID, [32]byte{1}, 200),
 		},
 	}))
 
@@ -704,11 +705,11 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateContractBalance() {
 		Type: xdr.LedgerEntryTypeContractData,
 		Pre: &xdr.LedgerEntry{
 			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
-			Data:                  BalanceToContractData(usdID, [32]byte{1}, 100),
+			Data:                  sac.BalanceToContractData(usdID, [32]byte{1}, 100),
 		},
 		Post: &xdr.LedgerEntry{
 			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
-			Data:                  BalanceToContractData(usdID, [32]byte{1}, 300),
+			Data:                  sac.BalanceToContractData(usdID, [32]byte{1}, 300),
 		},
 	}))
 
@@ -763,7 +764,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveContractBalance() {
 		Type: xdr.LedgerEntryTypeContractData,
 		Pre: &xdr.LedgerEntry{
 			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
-			Data:                  BalanceToContractData(usdID, [32]byte{1}, 200),
+			Data:                  sac.BalanceToContractData(usdID, [32]byte{1}, 200),
 		},
 	}))
 
@@ -821,12 +822,12 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestInsertContractIDWithBalance() {
 	}
 	eurID, err := trustLine.Asset.ToAsset().ContractID("")
 	s.Assert().NoError(err)
-	eurContractData, err := AssetToContractData(false, "EUR", trustLineIssuer.Address(), eurID)
+	eurContractData, err := sac.AssetToContractData(false, "EUR", trustLineIssuer.Address(), eurID)
 	s.Assert().NoError(err)
 
 	usdID, err := xdr.MustNewCreditAsset("USD", trustLineIssuer.Address()).ContractID("")
 	s.Assert().NoError(err)
-	usdContractData, err := AssetToContractData(false, "USD", trustLineIssuer.Address(), usdID)
+	usdContractData, err := sac.AssetToContractData(false, "USD", trustLineIssuer.Address(), usdID)
 	s.Assert().NoError(err)
 
 	lastModifiedLedgerSeq := xdr.Uint32(1234)
@@ -867,7 +868,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestInsertContractIDWithBalance() {
 		Type: xdr.LedgerEntryTypeContractData,
 		Post: &xdr.LedgerEntry{
 			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
-			Data:                  BalanceToContractData(usdID, [32]byte{1}, 150),
+			Data:                  sac.BalanceToContractData(usdID, [32]byte{1}, 150),
 		},
 	}))
 
@@ -876,7 +877,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestInsertContractIDWithBalance() {
 		Type: xdr.LedgerEntryTypeContractData,
 		Post: &xdr.LedgerEntry{
 			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
-			Data:                  BalanceToContractData(btcID, [32]byte{1}, 20),
+			Data:                  sac.BalanceToContractData(btcID, [32]byte{1}, 20),
 		},
 	}))
 
@@ -1096,7 +1097,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateContractID() {
 
 	eurID, err := xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()).ContractID("")
 	s.Assert().NoError(err)
-	eurContractData, err := AssetToContractData(false, "EUR", trustLineIssuer.Address(), eurID)
+	eurContractData, err := sac.AssetToContractData(false, "EUR", trustLineIssuer.Address(), eurID)
 	s.Assert().NoError(err)
 
 	err = s.processor.ProcessChange(s.ctx, ingest.Change{
@@ -1231,7 +1232,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateContractIDWithBalance() {
 
 	eurID, err := xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()).ContractID("")
 	s.Assert().NoError(err)
-	eurContractData, err := AssetToContractData(false, "EUR", trustLineIssuer.Address(), eurID)
+	eurContractData, err := sac.AssetToContractData(false, "EUR", trustLineIssuer.Address(), eurID)
 	s.Assert().NoError(err)
 
 	err = s.processor.ProcessChange(s.ctx, ingest.Change{
@@ -1247,7 +1248,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateContractIDWithBalance() {
 		Type: xdr.LedgerEntryTypeContractData,
 		Post: &xdr.LedgerEntry{
 			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
-			Data:                  BalanceToContractData(eurID, [32]byte{1}, 150),
+			Data:                  sac.BalanceToContractData(eurID, [32]byte{1}, 150),
 		},
 	}))
 	keyHash := getKeyHashForBalance(s.T(), eurID, [32]byte{1})
@@ -1350,7 +1351,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateContractIDError() {
 	s.Assert().NoError(err)
 	eurID, err := xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()).ContractID("")
 	s.Assert().NoError(err)
-	eurContractData, err := AssetToContractData(false, "EUR", trustLineIssuer.Address(), eurID)
+	eurContractData, err := sac.AssetToContractData(false, "EUR", trustLineIssuer.Address(), eurID)
 	s.Assert().NoError(err)
 
 	err = s.processor.ProcessChange(s.ctx, ingest.Change{
@@ -1395,7 +1396,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateTrustlineAndContractIDErr
 	s.Assert().NoError(err)
 	eurID, err := xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()).ContractID("")
 	s.Assert().NoError(err)
-	eurContractData, err := AssetToContractData(false, "EUR", trustLineIssuer.Address(), eurID)
+	eurContractData, err := sac.AssetToContractData(false, "EUR", trustLineIssuer.Address(), eurID)
 	s.Assert().NoError(err)
 
 	err = s.processor.ProcessChange(s.ctx, ingest.Change{
@@ -1470,7 +1471,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveContractIDError() {
 
 	eurID, err := xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()).ContractID("")
 	s.Assert().NoError(err)
-	eurContractData, err := AssetToContractData(false, "EUR", trustLineIssuer.Address(), eurID)
+	eurContractData, err := sac.AssetToContractData(false, "EUR", trustLineIssuer.Address(), eurID)
 	s.Assert().NoError(err)
 
 	err = s.processor.ProcessChange(s.ctx, ingest.Change{
@@ -1496,7 +1497,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateTrustlineAndRemoveContrac
 
 	eurID, err := xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()).ContractID("")
 	s.Assert().NoError(err)
-	eurContractData, err := AssetToContractData(false, "EUR", trustLineIssuer.Address(), eurID)
+	eurContractData, err := sac.AssetToContractData(false, "EUR", trustLineIssuer.Address(), eurID)
 	s.Assert().NoError(err)
 
 	err = s.processor.ProcessChange(s.ctx, ingest.Change{
@@ -2085,7 +2086,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveContractID() {
 
 	eurID, err := xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()).ContractID("")
 	s.Assert().NoError(err)
-	eurContractData, err := AssetToContractData(false, "EUR", trustLineIssuer.Address(), eurID)
+	eurContractData, err := sac.AssetToContractData(false, "EUR", trustLineIssuer.Address(), eurID)
 	s.Assert().NoError(err)
 
 	err = s.processor.ProcessChange(s.ctx, ingest.Change{
@@ -2138,7 +2139,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateTrustlineAndRemoveContrac
 
 	eurID, err := xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()).ContractID("")
 	s.Assert().NoError(err)
-	eurContractData, err := AssetToContractData(false, "EUR", trustLineIssuer.Address(), eurID)
+	eurContractData, err := sac.AssetToContractData(false, "EUR", trustLineIssuer.Address(), eurID)
 	s.Assert().NoError(err)
 
 	err = s.processor.ProcessChange(s.ctx, ingest.Change{
@@ -2238,7 +2239,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveContractIDFromZeroRow() {
 
 	eurID, err := xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()).ContractID("")
 	s.Assert().NoError(err)
-	eurContractData, err := AssetToContractData(false, "EUR", trustLineIssuer.Address(), eurID)
+	eurContractData, err := sac.AssetToContractData(false, "EUR", trustLineIssuer.Address(), eurID)
 	s.Assert().NoError(err)
 
 	err = s.processor.ProcessChange(s.ctx, ingest.Change{
@@ -2292,7 +2293,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveContractIDAndBalanceZeroR
 
 	eurID, err := xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()).ContractID("")
 	s.Assert().NoError(err)
-	eurContractData, err := AssetToContractData(false, "EUR", trustLineIssuer.Address(), eurID)
+	eurContractData, err := sac.AssetToContractData(false, "EUR", trustLineIssuer.Address(), eurID)
 	s.Assert().NoError(err)
 
 	err = s.processor.ProcessChange(s.ctx, ingest.Change{
@@ -2308,7 +2309,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveContractIDAndBalanceZeroR
 		Type: xdr.LedgerEntryTypeContractData,
 		Pre: &xdr.LedgerEntry{
 			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
-			Data:                  BalanceToContractData(eurID, [32]byte{1}, 9),
+			Data:                  sac.BalanceToContractData(eurID, [32]byte{1}, 9),
 		},
 	}))
 	keyHash := getKeyHashForBalance(s.T(), eurID, [32]byte{1})
@@ -2330,7 +2331,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveContractIDAndBalanceZeroR
 		Type: xdr.LedgerEntryTypeContractData,
 		Pre: &xdr.LedgerEntry{
 			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
-			Data:                  BalanceToContractData(eurID, [32]byte{2}, 1),
+			Data:                  sac.BalanceToContractData(eurID, [32]byte{2}, 1),
 		},
 	}))
 	otherKeyHash := getKeyHashForBalance(s.T(), eurID, [32]byte{2})
@@ -2406,7 +2407,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveContractIDAndRow() {
 
 	eurID, err := xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()).ContractID("")
 	s.Assert().NoError(err)
-	eurContractData, err := AssetToContractData(false, "EUR", trustLineIssuer.Address(), eurID)
+	eurContractData, err := sac.AssetToContractData(false, "EUR", trustLineIssuer.Address(), eurID)
 	s.Assert().NoError(err)
 
 	err = s.processor.ProcessChange(s.ctx, ingest.Change{

@@ -9,16 +9,19 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/test/integration"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stellar/go/xdr"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestStateVerifier(t *testing.T) {
-	itest := integration.NewTest(t, integration.Config{})
+	itest := integration.NewTest(t, integration.Config{
+		QuickExpiration: true,
+	})
 
 	sponsored := keypair.MustRandom()
 	sponsoredSource := &txnbuild.SimpleAccount{
