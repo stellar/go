@@ -227,6 +227,58 @@ func (p *EventsProcessor) contractEvents(tx ingest.LedgerTransaction, opIndex ui
 	return events, nil
 }
 
+func (e *TokenTransferEvent) addMuxedInfoForTransferEvent(from, to string, tx ingest.LedgerTransaction) error {
+	if e.GetTransfer() == nil {
+		return nil
+	}
+
+	if strkey.IsValidMuxedAccountEd25519PublicKey(from) {
+		muxedAcc := xdr.MustMuxedAddress(from)
+		muxedId, err := muxedAcc.GetId()
+		if err != nil {
+			return fmt.Errorf("error getting fromMuxedInfo for transfer event: %w", err)
+		}
+		e.Meta.FromMuxedId = &muxedId
+	}
+	err := e.setDestinationMuxedInfo(to, tx)
+	if err != nil {
+		return fmt.Errorf("error setting toMuxedInfo for transfer event: %w", err)
+	}
+
+	return nil
+}
+
+func (e *TokenTransferEvent) setDestinationMuxedInfo(to string, tx ingest.LedgerTransaction) error {
+	if strkey.IsValidMuxedAccountEd25519PublicKey(to) {
+		muxedAcc := xdr.MustMuxedAddress(to)
+		muxedId, err := muxedAcc.GetId()
+		if err != nil {
+			return fmt.Errorf("could not get muxed account id: %w", err)
+		}
+		e.Meta.ToMuxedId = NewMemoFromId(muxedId)
+		return nil
+	}
+
+	txMemo := tx.Envelope.Memo()
+	if txMemo.Type == xdr.MemoTypeMemoNone {
+		return nil
+	}
+	e.Meta.ToMuxedId = NewMemoFromXdrMemo(&txMemo)
+	return nil
+}
+
+func (e *TokenTransferEvent) addMuxedInfoForMintEvent(to string, tx ingest.LedgerTransaction) error {
+	if e.GetMint() == nil {
+		return nil
+	}
+
+	err := e.setDestinationMuxedInfo(to, tx)
+	if err != nil {
+		return fmt.Errorf("error setting toMuxedInfo for mint event: %w", err)
+	}
+	return nil
+}
+
 /*
 Depending on the asset - if src or dest account == issuer of asset, then mint/burn event, else transfer event
 All operation related functions will call this function instead of directly calling the underlying proto functions to generate events
@@ -235,12 +287,13 @@ Those 2 will call the underlying proto function for clawback
 */
 func (p *EventsProcessor) mintOrBurnOrTransferEvent(tx ingest.LedgerTransaction, opIndex *uint32, asset xdr.Asset, from string, to string, amt string) (*TokenTransferEvent, error) {
 	var isFromIssuer, isToIssuer bool
+	fromAddress, toAddress := from, to
 	assetIssuerAccountId, _ := asset.GetIssuerAccountId()
 
 	if strkey.IsValidEd25519PublicKey(from) || strkey.IsValidMuxedAccountEd25519PublicKey(from) {
 		fromAccount := xdr.MustMuxedAddress(from).ToAccountId()
 		// Always revert back to G-Address for the from field, even if it is an M-address
-		from = fromAccount.Address()
+		fromAddress = fromAccount.Address()
 
 		if !asset.IsNative() && assetIssuerAccountId.Equals(fromAccount) {
 			isFromIssuer = true
@@ -250,7 +303,7 @@ func (p *EventsProcessor) mintOrBurnOrTransferEvent(tx ingest.LedgerTransaction,
 	if strkey.IsValidEd25519PublicKey(to) || strkey.IsValidMuxedAccountEd25519PublicKey(to) {
 		toAccount := xdr.MustMuxedAddress(to).ToAccountId()
 		// Always revert back to G-Address for the to field, even if it is an M-address
-		to = toAccount.Address()
+		toAddress = toAccount.Address()
 
 		if !asset.IsNative() && assetIssuerAccountId.Equals(toAccount) {
 			isToIssuer = true
@@ -266,31 +319,43 @@ func (p *EventsProcessor) mintOrBurnOrTransferEvent(tx ingest.LedgerTransaction,
 	// Keep in mind though that this wont show up in operationMeta as a balance change
 	// This has happened in ledgerSequence: 4522126 on pubnet
 	if isFromIssuer && isToIssuer {
-		return NewTransferEvent(meta, from, to, amt, protoAsset), nil
+		// There is no need to check or set muxed info here.
+		return NewTransferEvent(meta, fromAddress, toAddress, amt, protoAsset), nil
 	} else if isFromIssuer {
 
 		// Check for Mint Event
-		if to == "" {
+		if toAddress == "" {
 			return nil, NewEventError("mint event error: to address is nil")
 		}
-		return NewMintEvent(meta, to, amt, protoAsset), nil
+		mintEvent := NewMintEvent(meta, toAddress, amt, protoAsset)
+		// Add muxed information - this will only have `to_muxed_info`, if at all
+		err := mintEvent.addMuxedInfoForMintEvent(to, tx)
+		if err != nil {
+			return nil, err
+		}
+		return mintEvent, nil
 	} else if isToIssuer {
 
 		// Check for Burn Event
-		if from == "" {
+		if fromAddress == "" {
 			return nil, NewEventError("burn event error: from address is nil")
 		}
-		return NewBurnEvent(meta, from, amt, protoAsset), nil
+		return NewBurnEvent(meta, fromAddress, amt, protoAsset), nil
 	}
 
-	if from == "" {
+	if fromAddress == "" {
 		return nil, NewEventError("transfer event error: from address is nil")
 	}
-	if to == "" {
+	if toAddress == "" {
 		return nil, NewEventError("transfer event error: to address is nil")
 	}
 	// Create transfer event
-	return NewTransferEvent(meta, from, to, amt, protoAsset), nil
+	transferEvent := NewTransferEvent(meta, fromAddress, toAddress, amt, protoAsset)
+	err := transferEvent.addMuxedInfoForTransferEvent(from, to, tx) // the addresses have to be the original from and to address
+	if err != nil {
+		return nil, err
+	}
+	return transferEvent, nil
 }
 
 func (p *EventsProcessor) generateEventMeta(tx ingest.LedgerTransaction, opIndex *uint32, asset xdr.Asset) *EventMeta {
@@ -369,6 +434,7 @@ func (p *EventsProcessor) inflationEvents(tx ingest.LedgerTransaction, opIndex u
 	var mintEvents []*TokenTransferEvent
 	meta := p.generateEventMeta(tx, &opIndex, xlmAsset)
 	for _, recipient := range payouts {
+		// NOTE: there can never be any muxed info in the inflation mint event. so no need to fo mintEvent.addMuxedInfoForMintEvent()
 		mintEvents = append(mintEvents, NewMintEvent(meta, recipient.Destination.Address(), amount.String64Raw(recipient.Amount), xlmProtoAsset))
 	}
 	return mintEvents, nil
@@ -791,7 +857,7 @@ For more details, on why this is needed, refer - https://github.com/stellar/stel
 
 The maybeGenerateMintOrBurnEvents function takes in an account and an asset, but in reality, this will only be called for operationSourceAccount and strictly for XLM
 */
-func (p *EventsProcessor) maybeGenerateMintOrBurnEventsForReconciliation(tx ingest.LedgerTransaction, opIndex uint32, changesMap, eventsMap map[balanceKey]int64, account xdr.MuxedAccount, asset xdr.Asset) *TokenTransferEvent {
+func (p *EventsProcessor) maybeGenerateMintOrBurnEventsForReconciliation(tx ingest.LedgerTransaction, opIndex uint32, changesMap, eventsMap map[balanceKey]int64, account xdr.MuxedAccount, asset xdr.Asset) (*TokenTransferEvent, error) {
 	accountStr := account.ToAccountId().Address()
 	// Create the balance key for this account and XLM asset
 	key := balanceKey{holder: accountStr, asset: asset.StringCanonical()}
@@ -856,7 +922,7 @@ func (p *EventsProcessor) maybeGenerateMintOrBurnEventsForReconciliation(tx inge
 
 	// If no difference, no mint or burn needs to be emitted
 	if diff == 0 {
-		return nil
+		return nil, nil
 	}
 
 	// There will only be one event - either a mint or burn that will need to be generated.
@@ -868,12 +934,16 @@ func (p *EventsProcessor) maybeGenerateMintOrBurnEventsForReconciliation(tx inge
 	if diff > 0 {
 		// changesMap shows more XLM than eventsMap - need to MINT
 		mintOrBurnEvent = NewMintEvent(meta, accountStr, amount.String64Raw(xdr.Int64(diff)), protoAsset)
+		err := mintOrBurnEvent.addMuxedInfoForMintEvent(account.Address(), tx)
+		if err != nil {
+			return nil, fmt.Errorf("error in generating XLM reconciliation mint event: %w", err)
+		}
 	} else {
 		// changesMap shows less XLM than eventsMap - need to BURN
 		mintOrBurnEvent = NewBurnEvent(meta, accountStr, amount.String64Raw(xdr.Int64(-diff)), protoAsset)
 	}
 
-	return mintOrBurnEvent
+	return mintOrBurnEvent, nil
 }
 
 func (p *EventsProcessor) generateXlmReconciliationEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation, operationEvents []*TokenTransferEvent) (*TokenTransferEvent, error) {
@@ -886,5 +956,5 @@ func (p *EventsProcessor) generateXlmReconciliationEvents(tx ingest.LedgerTransa
 	eventsMap := findBalanceDeltasFromEvents(operationEvents)
 	operationSrcAccount := operationSourceAccount(tx, op)
 
-	return p.maybeGenerateMintOrBurnEventsForReconciliation(tx, opIndex, changesMap, eventsMap, operationSrcAccount, xlmAsset), nil
+	return p.maybeGenerateMintOrBurnEventsForReconciliation(tx, opIndex, changesMap, eventsMap, operationSrcAccount, xlmAsset)
 }
