@@ -213,6 +213,58 @@ func (p *EventsProcessor) contractEvents(tx ingest.LedgerTransaction, opIndex ui
 	return events, nil
 }
 
+func (e *TokenTransferEvent) addMuxedInfoForTransferEvent(from, to string, tx ingest.LedgerTransaction) error {
+	if e.GetTransfer() == nil {
+		return nil
+	}
+
+	if strkey.IsValidMuxedAccountEd25519PublicKey(from) {
+		muxedAcc := xdr.MustMuxedAddress(from)
+		muxedId, err := muxedAcc.GetId()
+		if err != nil {
+			return fmt.Errorf("error getting fromMuxedInfo for transfer event: %w", err)
+		}
+		e.Meta.FromMuxedId = &muxedId
+	}
+	err := e.setDestinationMuxedInfo(to, tx)
+	if err != nil {
+		return fmt.Errorf("error setting toMuxedInfo for transfer event: %w", err)
+	}
+
+	return nil
+}
+
+func (e *TokenTransferEvent) setDestinationMuxedInfo(to string, tx ingest.LedgerTransaction) error {
+	if strkey.IsValidMuxedAccountEd25519PublicKey(to) {
+		muxedAcc := xdr.MustMuxedAddress(to)
+		muxedId, err := muxedAcc.GetId()
+		if err != nil {
+			return fmt.Errorf("could not get muxed account id: %w", err)
+		}
+		e.Meta.ToMuxedId = NewMemoFromId(muxedId)
+		return nil
+	}
+
+	txMemo := tx.Envelope.Memo()
+	if txMemo.Type == xdr.MemoTypeMemoNone {
+		return nil
+	}
+	e.Meta.ToMuxedId = NewMemoFromXdrMemo(&txMemo)
+	return nil
+}
+
+func (e *TokenTransferEvent) addMuxedInfoForMintEvent(to string, tx ingest.LedgerTransaction) error {
+	if e.GetMint() == nil {
+		return nil
+	}
+
+	err := e.setDestinationMuxedInfo(to, tx)
+	if err != nil {
+		return fmt.Errorf("error setting toMuxedInfo for mint event: %w", err)
+	}
+	return nil
+}
+
 /*
 Depending on the asset - if src or dest account == issuer of asset, then mint/burn event, else transfer event
 All operation related functions will call this function instead of directly calling the underlying proto functions to generate events
@@ -245,7 +297,7 @@ func (p *EventsProcessor) mintOrBurnOrTransferEvent(tx ingest.LedgerTransaction,
 	}
 
 	protoAsset := assetProto.NewProtoAsset(asset)
-	meta := p.generateEventMeta(tx, opIndex, asset, nil, nil)
+	meta := p.generateEventMeta(tx, opIndex, asset)
 
 	// This means that the payment is a wierd one, where the src == dest AND in addition, the src/dest address is the issuer of the asset
 	// Check this section out in CAP-67 https://github.com/stellar/stellar-protocol/blob/master/core/cap-0067.md#payment
@@ -253,6 +305,7 @@ func (p *EventsProcessor) mintOrBurnOrTransferEvent(tx ingest.LedgerTransaction,
 	// Keep in mind though that this wont show up in operationMeta as a balance change
 	// This has happened in ledgerSequence: 4522126 on pubnet
 	if isFromIssuer && isToIssuer {
+		// There is no need to check or set muxed info here.
 		return NewTransferEvent(meta, fromAddress, toAddress, amt, protoAsset), nil
 	} else if isFromIssuer {
 
@@ -260,7 +313,13 @@ func (p *EventsProcessor) mintOrBurnOrTransferEvent(tx ingest.LedgerTransaction,
 		if toAddress == "" {
 			return nil, NewEventError("mint event error: to address is nil")
 		}
-		return NewMintEvent(meta, toAddress, amt, protoAsset), nil
+		mintEvent := NewMintEvent(meta, toAddress, amt, protoAsset)
+		// Add muxed information - this will only have `to_muxed_info`, if at all
+		err := mintEvent.addMuxedInfoForMintEvent(to, tx)
+		if err != nil {
+			return nil, err
+		}
+		return mintEvent, nil
 	} else if isToIssuer {
 
 		// Check for Burn Event
@@ -277,10 +336,15 @@ func (p *EventsProcessor) mintOrBurnOrTransferEvent(tx ingest.LedgerTransaction,
 		return nil, NewEventError("transfer event error: to address is nil")
 	}
 	// Create transfer event
-	return NewTransferEvent(meta, fromAddress, toAddress, amt, protoAsset), nil
+	transferEvent := NewTransferEvent(meta, fromAddress, toAddress, amt, protoAsset)
+	err := transferEvent.addMuxedInfoForTransferEvent(from, to, tx) // the addresses have to be the original from and to address
+	if err != nil {
+		return nil, err
+	}
+	return transferEvent, nil
 }
 
-func (p *EventsProcessor) generateEventMeta(tx ingest.LedgerTransaction, opIndex *uint32, asset xdr.Asset, fromMuxedInfo *uint64, toMuxedInfo *Memo) *EventMeta {
+func (p *EventsProcessor) generateEventMeta(tx ingest.LedgerTransaction, opIndex *uint32, asset xdr.Asset) *EventMeta {
 	// Update the meta to always have contractId of the asset
 	contractId, err := asset.ContractID(p.networkPassphrase)
 	if err != nil {
@@ -303,7 +367,7 @@ func (p *EventsProcessor) generateFeeEvent(tx ingest.LedgerTransaction) ([]*Toke
 		return nil, errors.New("error getting fee amount from transaction")
 	}
 
-	meta := p.generateEventMeta(tx, nil, xlmAsset, nil, nil)
+	meta := p.generateEventMeta(tx, nil, xlmAsset)
 	event := NewFeeEvent(meta, protoAddressFromAccount(feeAccount), amount.String64Raw(xdr.Int64(feeAmt)), xlmProtoAsset)
 	return []*TokenTransferEvent{event}, nil
 }
@@ -354,8 +418,9 @@ func (p *EventsProcessor) inflationEvents(tx ingest.LedgerTransaction, opIndex u
 	payouts := result.Tr.MustInflationResult().MustPayouts()
 
 	var mintEvents []*TokenTransferEvent
-	meta := p.generateEventMeta(tx, &opIndex, xlmAsset, nil, nil)
+	meta := p.generateEventMeta(tx, &opIndex, xlmAsset)
 	for _, recipient := range payouts {
+		// NOTE: there can never be any muxed info in the inflation mint event. so no need to fo mintEvent.addMuxedInfoForMintEvent()
 		mintEvents = append(mintEvents, NewMintEvent(meta, recipient.Destination.Address(), amount.String64Raw(recipient.Amount), xlmProtoAsset))
 	}
 	return mintEvents, nil
@@ -401,7 +466,7 @@ func (p *EventsProcessor) claimClaimableBalanceEvents(tx ingest.LedgerTransactio
 
 func (p *EventsProcessor) clawbackEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation) ([]*TokenTransferEvent, error) {
 	clawbackOp := op.Body.MustClawbackOp()
-	meta := p.generateEventMeta(tx, &opIndex, clawbackOp.Asset, nil, nil)
+	meta := p.generateEventMeta(tx, &opIndex, clawbackOp.Asset)
 
 	// fromAddress is NOT the operationSourceAccount.
 	// It is the account specified in the operation from whom you want money to be clawed back
@@ -425,7 +490,7 @@ func (p *EventsProcessor) clawbackClaimableBalanceEvents(tx ingest.LedgerTransac
 	}
 
 	cb := cbEntries[0]
-	meta := p.generateEventMeta(tx, &opIndex, cb.Asset, nil, nil)
+	meta := p.generateEventMeta(tx, &opIndex, cb.Asset)
 	// Money is clawed back from the claimableBalanceId
 	event := NewClawbackEvent(meta, cbIdToStrkey(cbId), amount.String64Raw(cb.Amount), assetProto.NewProtoAsset(cb.Asset))
 	return []*TokenTransferEvent{event}, nil
@@ -548,7 +613,7 @@ func (p *EventsProcessor) generateEventsForRevokedTrustlines(tx ingest.LedgerTra
 				return nil, err
 			}
 
-			burnMeta := p.generateEventMeta(tx, &opIndex, burnedAsset, nil, nil)
+			burnMeta := p.generateEventMeta(tx, &opIndex, burnedAsset)
 			burnEvent := NewBurnEvent(burnMeta, lpIdToStrkey(from), amount.String64Raw(burnedAmount), assetProto.NewProtoAsset(burnedAsset))
 			events = append(events, transferEvent, burnEvent)
 
@@ -778,7 +843,7 @@ For more details, on why this is needed, refer - https://github.com/stellar/stel
 
 The maybeGenerateMintOrBurnEvents function takes in an account and an asset, but in reality, this will only be called for operationSourceAccount and strictly for XLM
 */
-func (p *EventsProcessor) maybeGenerateMintOrBurnEventsForReconciliation(tx ingest.LedgerTransaction, opIndex uint32, changesMap, eventsMap map[balanceKey]int64, account xdr.MuxedAccount, asset xdr.Asset) *TokenTransferEvent {
+func (p *EventsProcessor) maybeGenerateMintOrBurnEventsForReconciliation(tx ingest.LedgerTransaction, opIndex uint32, changesMap, eventsMap map[balanceKey]int64, account xdr.MuxedAccount, asset xdr.Asset) (*TokenTransferEvent, error) {
 	accountStr := account.ToAccountId().Address()
 	// Create the balance key for this account and XLM asset
 	key := balanceKey{holder: accountStr, asset: asset.StringCanonical()}
@@ -843,24 +908,28 @@ func (p *EventsProcessor) maybeGenerateMintOrBurnEventsForReconciliation(tx inge
 
 	// If no difference, no mint or burn needs to be emitted
 	if diff == 0 {
-		return nil
+		return nil, nil
 	}
 
 	// There will only be one event - either a mint or burn that will need to be generated.
 	var mintOrBurnEvent *TokenTransferEvent
-	meta := p.generateEventMeta(tx, &opIndex, asset, nil, nil)
+	meta := p.generateEventMeta(tx, &opIndex, asset)
 	protoAsset := assetProto.NewProtoAsset(asset)
 
 	// Generate appropriate event based on the difference
 	if diff > 0 {
 		// changesMap shows more XLM than eventsMap - need to MINT
 		mintOrBurnEvent = NewMintEvent(meta, accountStr, amount.String64Raw(xdr.Int64(diff)), protoAsset)
+		err := mintOrBurnEvent.addMuxedInfoForMintEvent(account.Address(), tx)
+		if err != nil {
+			return nil, fmt.Errorf("error in generating XLM reconciliation mint event: %w", err)
+		}
 	} else {
 		// changesMap shows less XLM than eventsMap - need to BURN
 		mintOrBurnEvent = NewBurnEvent(meta, accountStr, amount.String64Raw(xdr.Int64(-diff)), protoAsset)
 	}
 
-	return mintOrBurnEvent
+	return mintOrBurnEvent, nil
 }
 
 func (p *EventsProcessor) generateXlmReconciliationEvents(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation, operationEvents []*TokenTransferEvent) (*TokenTransferEvent, error) {
@@ -873,5 +942,5 @@ func (p *EventsProcessor) generateXlmReconciliationEvents(tx ingest.LedgerTransa
 	eventsMap := findBalanceDeltasFromEvents(operationEvents)
 	operationSrcAccount := operationSourceAccount(tx, op)
 
-	return p.maybeGenerateMintOrBurnEventsForReconciliation(tx, opIndex, changesMap, eventsMap, operationSrcAccount, xlmAsset), nil
+	return p.maybeGenerateMintOrBurnEventsForReconciliation(tx, opIndex, changesMap, eventsMap, operationSrcAccount, xlmAsset)
 }
