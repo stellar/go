@@ -9,7 +9,6 @@ import (
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/support/datastore"
 	"github.com/stellar/go/support/log"
-	"github.com/stellar/go/support/ordered"
 	"github.com/stellar/go/xdr"
 )
 
@@ -115,7 +114,7 @@ func ApplyLedgerMetadata(ledgerRange ledgerbackend.Range,
 		return fmt.Errorf("invalid end value for unbounded range, must be zero")
 	}
 
-	from := ordered.Max(2, ledgerRange.From())
+	from := max(2, ledgerRange.From())
 	ledgerBackend.PrepareRange(ctx, ledgerRange)
 
 	for ledgerSeq := from; ledgerSeq <= ledgerRange.To() || !ledgerRange.Bounded(); ledgerSeq++ {
