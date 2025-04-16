@@ -215,9 +215,7 @@ func NewTest(t *testing.T, config Config) *Test {
 
 		i.WaitForHorizonIngest()
 
-		if !config.SkipCoreContainerCreation && !i.config.QuickExpiration {
-			i.upgradeLimits()
-		}
+		i.upgradeLimits()
 	}
 
 	return i
@@ -730,7 +728,7 @@ func (i *Test) waitForCore() {
 }
 
 func (i *Test) upgradeLimits() {
-	if i.config.ProtocolVersion < 22 {
+	if i.config.ProtocolVersion < 22 || i.config.SkipCoreContainerCreation || i.config.QuickExpiration {
 		return
 	}
 

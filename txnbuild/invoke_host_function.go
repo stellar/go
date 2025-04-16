@@ -44,7 +44,7 @@ type PaymentToContractParams struct {
 	// Fees configures the fee values for the
 	// soroban transaction. If this field is omitted
 	// default fee values will be used
-	Fees SorobanFees
+	Fees *SorobanFees
 }
 
 // NewPaymentToContract constructs an invoke host operation to send a payment from a
@@ -102,9 +102,9 @@ func NewPaymentToContract(params PaymentToContractParams) (InvokeHostFunction, e
 		},
 	}
 
-	resources := params.Fees
-	if resources.ResourceFee == 0 {
-		resources = defaultPaymentToContractFees
+	resources := defaultPaymentToContractFees
+	if params.Fees != nil {
+		resources = *params.Fees
 	}
 
 	assetContractInstance := xdr.LedgerKey{

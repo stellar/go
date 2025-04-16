@@ -43,7 +43,7 @@ func TestPaymentToContract(t *testing.T) {
 	require.Equal(t, uint32(op.Ext.SorobanData.Resources.ReadBytes), defaultPaymentToContractFees.ReadBytes)
 	require.Equal(t, uint32(op.Ext.SorobanData.Resources.Instructions), defaultPaymentToContractFees.Instructions)
 
-	params.Fees = SorobanFees{
+	params.Fees = &SorobanFees{
 		Instructions: 1,
 		ReadBytes:    2,
 		WriteBytes:   3,
