@@ -39,7 +39,7 @@ type PaymentToContractParams struct {
 	Amount string
 	// Asset is the asset being transferred
 	Asset Asset
-	// SourceAccount is the source account of the payment
+	// SourceAccount is the source account of the payment, it must be a Stellar account in strkey encoded`VersionByteAccountID` format, i.e. a 'G' account.
 	SourceAccount string
 	// Fees configures the fee values for the
 	// soroban transaction. If this field is omitted
