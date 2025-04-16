@@ -28,9 +28,9 @@ type EventMeta struct {
 	LedgerSequence uint32                 `protobuf:"varint,1,opt,name=ledger_sequence,json=ledgerSequence,proto3" json:"ledger_sequence,omitempty"`
 	ClosedAt       *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=closed_at,json=closedAt,proto3" json:"closed_at,omitempty"`
 	TxHash         string                 `protobuf:"bytes,3,opt,name=tx_hash,json=txHash,proto3" json:"tx_hash,omitempty"`
-	// Index of transaction within this ledger. 0-indexed
+	// Index of transaction within this ledger. This is 1-indexed as per SEP-35
 	TransactionIndex uint32 `protobuf:"varint,4,opt,name=transaction_index,json=transactionIndex,proto3" json:"transaction_index,omitempty"`
-	// Index of operation within the transaction, if it is not a fee event. 0-indexed
+	// Index of operation within the transaction, if it is not a fee event. This is 1-indexed as per SEP-35
 	OperationIndex *uint32 `protobuf:"varint,5,opt,name=operation_index,json=operationIndex,proto3,oneof" json:"operation_index,omitempty"`
 	// For a classic operation, this contract_address is the ContractID as derived from asset
 	// For a smart contract event, this contractId is the id of the contract emiting the core event

@@ -19,6 +19,8 @@ func main() {
 		return
 	}
 
+	networkPassphrase := network.PublicNetworkPassphrase
+
 	inputFileName := os.Args[1]
 	var outputFile *os.File
 	var err error
@@ -66,7 +68,7 @@ func main() {
 		}
 
 		// Process the ledger to extract token transfer events
-		ttp := token_transfer.NewEventsProcessor(network.PublicNetworkPassphrase)
+		ttp := token_transfer.NewEventsProcessor(networkPassphrase)
 		events, err := ttp.EventsFromLedger(ledger)
 		if err != nil {
 			log.Errorf("Error processing ledger at line %d: %v", lineNum, err)
@@ -79,7 +81,7 @@ func main() {
 		fmt.Printf("Processing ledger Seq: %d, ClosedAt: %v, Protocol Version: %v\n",
 			ledger.LedgerSequence(), ledger.ClosedAt(), ledger.ProtocolVersion())
 
-		verificationResult := token_transfer.VerifyEvents(ledger, network.PublicNetworkPassphrase)
+		verificationResult := token_transfer.VerifyEvents(ledger, networkPassphrase)
 
 		verificationStatus := "success"
 		if verificationResult != nil {

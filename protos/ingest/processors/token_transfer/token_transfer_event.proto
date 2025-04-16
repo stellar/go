@@ -12,9 +12,9 @@ message EventMeta {
   uint32 ledger_sequence = 1;
   google.protobuf.Timestamp closed_at = 2;
   string tx_hash = 3;
-  // Index of transaction within this ledger. 0-indexed
+  // Index of transaction within this ledger. This is 1-indexed as per SEP-35
   uint32 transaction_index = 4;
-  // Index of operation within the transaction, if it is not a fee event. 0-indexed
+  // Index of operation within the transaction, if it is not a fee event. This is 1-indexed as per SEP-35
   optional uint32 operation_index = 5;
   /* For a classic operation, this contract_address is the ContractID as derived from asset
      For a smart contract event, this contractId is the id of the contract emiting the core event
