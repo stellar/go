@@ -48,7 +48,9 @@ type PaymentToContractParams struct {
 }
 
 // NewPaymentToContract constructs an invoke host operation to send a payment from a
-// source account to a destination smart contract
+// an account to a destination smart contract. Note the account sending the payment
+// must be the source account of the operation because the returned invoke host operation
+// will use the source account as the auth credentials.
 func NewPaymentToContract(params PaymentToContractParams) (InvokeHostFunction, error) {
 	asset, err := params.Asset.ToXDR()
 	if err != nil {
