@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	firebaseauth "firebase.google.com/go/auth"
-	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/v5"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stellar/go/exp/services/recoverysigner/internal/account"
 	"github.com/stellar/go/exp/services/recoverysigner/internal/db"
