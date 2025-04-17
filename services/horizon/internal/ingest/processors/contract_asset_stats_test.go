@@ -10,13 +10,14 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/stellar/go/ingest"
+	"github.com/stellar/go/ingest/sac"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/xdr"
 )
 
 func getKeyHashForBalance(t *testing.T, assetContractId, holderID [32]byte) xdr.Hash {
-	ledgerKey := ContractBalanceLedgerKey(assetContractId, holderID)
+	ledgerKey := sac.ContractBalanceLedgerKey(assetContractId, holderID)
 	bin, err := ledgerKey.MarshalBinary()
 	assert.NoError(t, err)
 	return sha256.Sum256(bin)
@@ -46,7 +47,7 @@ func TestAddContractData(t *testing.T) {
 		150,
 	)
 
-	xlmContractData, err := AssetToContractData(true, "", "", xlmID)
+	xlmContractData, err := sac.AssetToContractData(true, "", "", xlmID)
 	assert.NoError(t, err)
 	err = set.AddContractData(context.Background(), ingest.Change{
 		Type: xdr.LedgerEntryTypeContractData,
@@ -62,7 +63,7 @@ func TestAddContractData(t *testing.T) {
 	err = set.AddContractData(context.Background(), ingest.Change{
 		Type: xdr.LedgerEntryTypeContractData,
 		Post: &xdr.LedgerEntry{
-			Data: BalanceToContractData(xlmID, [32]byte{}, 100),
+			Data: sac.BalanceToContractData(xlmID, [32]byte{}, 100),
 		},
 	})
 	assert.NoError(t, err)
@@ -72,12 +73,12 @@ func TestAddContractData(t *testing.T) {
 	err = set.AddContractData(context.Background(), ingest.Change{
 		Type: xdr.LedgerEntryTypeContractData,
 		Post: &xdr.LedgerEntry{
-			Data: BalanceToContractData(uniID, [32]byte{}, 0),
+			Data: sac.BalanceToContractData(uniID, [32]byte{}, 0),
 		},
 	})
 	assert.NoError(t, err)
 
-	usdcContractData, err := AssetToContractData(false, "USDC", usdcIssuer, usdcID)
+	usdcContractData, err := sac.AssetToContractData(false, "USDC", usdcIssuer, usdcID)
 	assert.NoError(t, err)
 	err = set.AddContractData(context.Background(), ingest.Change{
 		Type: xdr.LedgerEntryTypeContractData,
@@ -87,7 +88,7 @@ func TestAddContractData(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	etherContractData, err := AssetToContractData(false, "ETHER", etherIssuer, etherID)
+	etherContractData, err := sac.AssetToContractData(false, "ETHER", etherIssuer, etherID)
 	assert.NoError(t, err)
 	err = set.AddContractData(context.Background(), ingest.Change{
 		Type: xdr.LedgerEntryTypeContractData,
@@ -102,7 +103,7 @@ func TestAddContractData(t *testing.T) {
 	err = set.AddContractData(context.Background(), ingest.Change{
 		Type: xdr.LedgerEntryTypeContractData,
 		Post: &xdr.LedgerEntry{
-			Data: BalanceToContractData(etherID, [32]byte{}, 50),
+			Data: sac.BalanceToContractData(etherID, [32]byte{}, 50),
 		},
 	})
 	assert.NoError(t, err)
@@ -112,7 +113,7 @@ func TestAddContractData(t *testing.T) {
 	err = set.AddContractData(context.Background(), ingest.Change{
 		Type: xdr.LedgerEntryTypeContractData,
 		Post: &xdr.LedgerEntry{
-			Data: BalanceToContractData(etherID, [32]byte{1}, 150),
+			Data: sac.BalanceToContractData(etherID, [32]byte{1}, 150),
 		},
 	})
 	assert.NoError(t, err)
@@ -121,7 +122,7 @@ func TestAddContractData(t *testing.T) {
 	err = set.AddContractData(context.Background(), ingest.Change{
 		Type: xdr.LedgerEntryTypeContractData,
 		Post: &xdr.LedgerEntry{
-			Data: balanceToContractData(etherID, [32]byte{1}, xdr.Int128Parts{Hi: -1, Lo: 0}),
+			Data: sac.BalanceInt128ToContractData(etherID, [32]byte{1}, xdr.Int128Parts{Hi: -1, Lo: 0}),
 		},
 	})
 	assert.NoError(t, err)
@@ -133,7 +134,7 @@ func TestAddContractData(t *testing.T) {
 	err = set.AddContractData(context.Background(), ingest.Change{
 		Type: xdr.LedgerEntryTypeContractData,
 		Post: &xdr.LedgerEntry{
-			Data: BalanceToContractData(btcID, [32]byte{2}, 300),
+			Data: sac.BalanceToContractData(btcID, [32]byte{2}, 300),
 		},
 	})
 	assert.NoError(t, err)
@@ -218,10 +219,10 @@ func TestUpdateContractBalance(t *testing.T) {
 	err = set.AddContractData(context.Background(), ingest.Change{
 		Type: xdr.LedgerEntryTypeContractData,
 		Pre: &xdr.LedgerEntry{
-			Data: BalanceToContractData(usdcID, [32]byte{}, 50),
+			Data: sac.BalanceToContractData(usdcID, [32]byte{}, 50),
 		},
 		Post: &xdr.LedgerEntry{
-			Data: BalanceToContractData(usdcID, [32]byte{}, 100),
+			Data: sac.BalanceToContractData(usdcID, [32]byte{}, 100),
 		},
 	})
 	assert.NoError(t, err)
@@ -241,10 +242,10 @@ func TestUpdateContractBalance(t *testing.T) {
 	err = set.AddContractData(context.Background(), ingest.Change{
 		Type: xdr.LedgerEntryTypeContractData,
 		Pre: &xdr.LedgerEntry{
-			Data: BalanceToContractData(usdcID, [32]byte{2}, 30),
+			Data: sac.BalanceToContractData(usdcID, [32]byte{2}, 30),
 		},
 		Post: &xdr.LedgerEntry{
-			Data: BalanceToContractData(usdcID, [32]byte{2}, 100),
+			Data: sac.BalanceToContractData(usdcID, [32]byte{2}, 100),
 		},
 	})
 	assert.NoError(t, err)
@@ -256,10 +257,10 @@ func TestUpdateContractBalance(t *testing.T) {
 	err = set.AddContractData(context.Background(), ingest.Change{
 		Type: xdr.LedgerEntryTypeContractData,
 		Pre: &xdr.LedgerEntry{
-			Data: BalanceToContractData(usdcID, [32]byte{4}, 0),
+			Data: sac.BalanceToContractData(usdcID, [32]byte{4}, 0),
 		},
 		Post: &xdr.LedgerEntry{
-			Data: BalanceToContractData(usdcID, [32]byte{4}, 100),
+			Data: sac.BalanceToContractData(usdcID, [32]byte{4}, 100),
 		},
 	})
 	assert.NoError(t, err)
@@ -278,10 +279,10 @@ func TestUpdateContractBalance(t *testing.T) {
 	err = set.AddContractData(context.Background(), ingest.Change{
 		Type: xdr.LedgerEntryTypeContractData,
 		Pre: &xdr.LedgerEntry{
-			Data: BalanceToContractData(etherID, [32]byte{}, 200),
+			Data: sac.BalanceToContractData(etherID, [32]byte{}, 200),
 		},
 		Post: &xdr.LedgerEntry{
-			Data: BalanceToContractData(etherID, [32]byte{}, 50),
+			Data: sac.BalanceToContractData(etherID, [32]byte{}, 50),
 		},
 	})
 	assert.NoError(t, err)
@@ -290,10 +291,10 @@ func TestUpdateContractBalance(t *testing.T) {
 	err = set.AddContractData(context.Background(), ingest.Change{
 		Type: xdr.LedgerEntryTypeContractData,
 		Pre: &xdr.LedgerEntry{
-			Data: BalanceToContractData(etherID, [32]byte{}, 200),
+			Data: sac.BalanceToContractData(etherID, [32]byte{}, 200),
 		},
 		Post: &xdr.LedgerEntry{
-			Data: balanceToContractData(etherID, [32]byte{1}, xdr.Int128Parts{Hi: -1, Lo: 0}),
+			Data: sac.BalanceInt128ToContractData(etherID, [32]byte{1}, xdr.Int128Parts{Hi: -1, Lo: 0}),
 		},
 	})
 	assert.NoError(t, err)
@@ -302,10 +303,10 @@ func TestUpdateContractBalance(t *testing.T) {
 	err = set.AddContractData(context.Background(), ingest.Change{
 		Type: xdr.LedgerEntryTypeContractData,
 		Pre: &xdr.LedgerEntry{
-			Data: balanceToContractData(etherID, [32]byte{1}, xdr.Int128Parts{Hi: -1, Lo: 0}),
+			Data: sac.BalanceInt128ToContractData(etherID, [32]byte{1}, xdr.Int128Parts{Hi: -1, Lo: 0}),
 		},
 		Post: &xdr.LedgerEntry{
-			Data: BalanceToContractData(etherID, [32]byte{}, 200),
+			Data: sac.BalanceToContractData(etherID, [32]byte{}, 200),
 		},
 	})
 	assert.NoError(t, err)
@@ -314,10 +315,10 @@ func TestUpdateContractBalance(t *testing.T) {
 	err = set.AddContractData(context.Background(), ingest.Change{
 		Type: xdr.LedgerEntryTypeContractData,
 		Pre: &xdr.LedgerEntry{
-			Data: BalanceToContractData(btcID, [32]byte{2}, 300),
+			Data: sac.BalanceToContractData(btcID, [32]byte{2}, 300),
 		},
 		Post: &xdr.LedgerEntry{
-			Data: BalanceToContractData(btcID, [32]byte{2}, 300),
+			Data: sac.BalanceToContractData(btcID, [32]byte{2}, 300),
 		},
 	})
 	assert.NoError(t, err)
@@ -335,10 +336,10 @@ func TestUpdateContractBalance(t *testing.T) {
 	err = set.AddContractData(context.Background(), ingest.Change{
 		Type: xdr.LedgerEntryTypeContractData,
 		Pre: &xdr.LedgerEntry{
-			Data: BalanceToContractData(btcID, [32]byte{5}, 10),
+			Data: sac.BalanceToContractData(btcID, [32]byte{5}, 10),
 		},
 		Post: &xdr.LedgerEntry{
-			Data: BalanceToContractData(btcID, [32]byte{5}, 15),
+			Data: sac.BalanceToContractData(btcID, [32]byte{5}, 15),
 		},
 	})
 	assert.ErrorContains(t, err, "contract balance has invalid expiration ledger keyhash")
@@ -348,10 +349,10 @@ func TestUpdateContractBalance(t *testing.T) {
 	err = set.AddContractData(context.Background(), ingest.Change{
 		Type: xdr.LedgerEntryTypeContractData,
 		Pre: &xdr.LedgerEntry{
-			Data: BalanceToContractData(btcID, [32]byte{6}, 120),
+			Data: sac.BalanceToContractData(btcID, [32]byte{6}, 120),
 		},
 		Post: &xdr.LedgerEntry{
-			Data: BalanceToContractData(btcID, [32]byte{6}, 135),
+			Data: sac.BalanceToContractData(btcID, [32]byte{6}, 135),
 		},
 	})
 	assert.ErrorContains(t, err, "contract balance has invalid expiration ledger keyhash")
@@ -362,10 +363,10 @@ func TestUpdateContractBalance(t *testing.T) {
 	err = set.AddContractData(context.Background(), ingest.Change{
 		Type: xdr.LedgerEntryTypeContractData,
 		Pre: &xdr.LedgerEntry{
-			Data: BalanceToContractData(uniID, [32]byte{4}, 50),
+			Data: sac.BalanceToContractData(uniID, [32]byte{4}, 50),
 		},
 		Post: &xdr.LedgerEntry{
-			Data: BalanceToContractData(uniID, [32]byte{4}, 75),
+			Data: sac.BalanceToContractData(uniID, [32]byte{4}, 75),
 		},
 	})
 	assert.NoError(t, err)
@@ -427,7 +428,7 @@ func TestRemoveContractData(t *testing.T) {
 		150,
 	)
 
-	usdcContractData, err := AssetToContractData(false, "USDC", usdcIssuer, usdcID)
+	usdcContractData, err := sac.AssetToContractData(false, "USDC", usdcIssuer, usdcID)
 	assert.NoError(t, err)
 	err = set.AddContractData(context.Background(), ingest.Change{
 		Type: xdr.LedgerEntryTypeContractData,
@@ -442,7 +443,7 @@ func TestRemoveContractData(t *testing.T) {
 	err = set.AddContractData(context.Background(), ingest.Change{
 		Type: xdr.LedgerEntryTypeContractData,
 		Pre: &xdr.LedgerEntry{
-			Data: BalanceToContractData(usdcID, [32]byte{}, 50),
+			Data: sac.BalanceToContractData(usdcID, [32]byte{}, 50),
 		},
 	})
 	assert.NoError(t, err)
@@ -452,7 +453,7 @@ func TestRemoveContractData(t *testing.T) {
 	err = set.AddContractData(context.Background(), ingest.Change{
 		Type: xdr.LedgerEntryTypeContractData,
 		Pre: &xdr.LedgerEntry{
-			Data: BalanceToContractData(usdcID, [32]byte{1}, 20),
+			Data: sac.BalanceToContractData(usdcID, [32]byte{1}, 20),
 		},
 	})
 	assert.NoError(t, err)
@@ -461,7 +462,7 @@ func TestRemoveContractData(t *testing.T) {
 	err = set.AddContractData(context.Background(), ingest.Change{
 		Type: xdr.LedgerEntryTypeContractData,
 		Pre: &xdr.LedgerEntry{
-			Data: BalanceToContractData(usdcID, [32]byte{2}, 34),
+			Data: sac.BalanceToContractData(usdcID, [32]byte{2}, 34),
 		},
 	})
 	assert.NoError(t, err)

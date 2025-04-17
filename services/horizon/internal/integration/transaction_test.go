@@ -82,8 +82,8 @@ func TestP20MetaTransaction(t *testing.T) {
 	require.NoError(t, err)
 
 	installContractOp := assembleInstallContractCodeOp(t, itest.Master().Address(), add_u64_contract)
-	preFlightOp, minFee := itest.PreflightHostFunctions(&sourceAccount, *installContractOp)
-	clientTx := itest.MustSubmitOperationsWithFee(&sourceAccount, itest.Master(), minFee+txnbuild.MinBaseFee, &preFlightOp)
+	preFlightOp := itest.PreflightHostFunctions(&sourceAccount, *installContractOp)
+	clientTx := itest.MustSubmitOperations(&sourceAccount, itest.Master(), &preFlightOp)
 
 	var txMetaResult xdr.TransactionMeta
 	err = xdr.SafeUnmarshalBase64(clientTx.ResultMetaXdr, &txMetaResult)
@@ -112,8 +112,8 @@ func TestP20MetaDisabledTransaction(t *testing.T) {
 	require.NoError(t, err)
 
 	installContractOp := assembleInstallContractCodeOp(t, itest.Master().Address(), add_u64_contract)
-	preFlightOp, minFee := itest.PreflightHostFunctions(&sourceAccount, *installContractOp)
-	clientTx := itest.MustSubmitOperationsWithFee(&sourceAccount, itest.Master(), minFee+txnbuild.MinBaseFee, &preFlightOp)
+	preFlightOp := itest.PreflightHostFunctions(&sourceAccount, *installContractOp)
+	clientTx := itest.MustSubmitOperations(&sourceAccount, itest.Master(), &preFlightOp)
 
 	assert.Empty(t, clientTx.ResultMetaXdr)
 }

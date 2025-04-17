@@ -10,6 +10,7 @@ import (
 
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/clients/horizonclient"
+	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/protocols/horizon/operations"
 	"github.com/stellar/go/services/horizon/internal/test/integration"
 	"github.com/stellar/go/strkey"
@@ -44,8 +45,8 @@ func TestContractInvokeHostFunctionInstallContract(t *testing.T) {
 	require.NoError(t, err)
 
 	installContractOp := assembleInstallContractCodeOp(t, itest.Master().Address(), add_u64_contract)
-	preFlightOp, minFee := itest.PreflightHostFunctions(&sourceAccount, *installContractOp)
-	tx := itest.MustSubmitOperationsWithFee(&sourceAccount, itest.Master(), minFee+txnbuild.MinBaseFee, &preFlightOp)
+	preFlightOp := itest.PreflightHostFunctions(&sourceAccount, *installContractOp)
+	tx := itest.MustSubmitOperations(&sourceAccount, itest.Master(), &preFlightOp)
 
 	clientTx, err := itest.Client().TransactionDetail(tx.Hash)
 	require.NoError(t, err)
@@ -77,6 +78,58 @@ func TestContractInvokeHostFunctionInstallContract(t *testing.T) {
 
 }
 
+func TestSorobanFeeBumpTransaction(t *testing.T) {
+	if integration.GetCoreMaxSupportedProtocol() < 20 {
+		t.Skip("This test run does not support less than Protocol 20")
+	}
+
+	itest := integration.NewTest(t, integration.Config{
+		EnableStellarRPC: true,
+	})
+
+	feeKp, feeAccount := itest.CreateAccount("10000")
+
+	// establish which account will be contract owner, and load it's current seq
+	sourceAccount, err := itest.Client().AccountDetail(horizonclient.AccountRequest{
+		AccountID: itest.Master().Address(),
+	})
+	require.NoError(t, err)
+
+	installContractOp := assembleInstallContractCodeOp(t, itest.Master().Address(), add_u64_contract)
+	preFlightOp := itest.PreflightHostFunctions(&sourceAccount, *installContractOp)
+	inner, err := itest.CreateSignedTransactionFromOps(&sourceAccount, []*keypair.Full{itest.Master()}, &preFlightOp)
+	require.NoError(t, err)
+	feeBump, err := txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
+		Inner:      inner,
+		FeeAccount: feeAccount.GetAccountID(),
+		BaseFee:    txnbuild.MinBaseFee,
+	})
+	require.NoError(t, err)
+	feeBump, err = feeBump.Sign(itest.GetPassPhrase(), feeKp)
+	require.NoError(t, err)
+
+	tx, err := itest.Client().SubmitFeeBumpTransaction(feeBump)
+	require.NoError(t, err)
+	require.True(t, tx.Successful)
+
+	clientTx, err := itest.Client().TransactionDetail(tx.Hash)
+	require.NoError(t, err)
+
+	assert.Equal(t, tx.Hash, clientTx.Hash)
+	var txResult xdr.TransactionResult
+	err = xdr.SafeUnmarshalBase64(clientTx.ResultXdr, &txResult)
+	require.NoError(t, err)
+
+	clientInvokeOp, err := itest.Client().Operations(horizonclient.OperationRequest{
+		ForTransaction: tx.Hash,
+	})
+	require.NoError(t, err)
+
+	invokeHostFunctionOpJson, ok := clientInvokeOp.Embedded.Records[0].(operations.InvokeHostFunction)
+	assert.True(t, ok)
+	assert.Equal(t, invokeHostFunctionOpJson.Function, "HostFunctionTypeHostFunctionTypeUploadContractWasm")
+}
+
 func TestContractInvokeHostFunctionCreateContractByAddress(t *testing.T) {
 	if integration.GetCoreMaxSupportedProtocol() < 20 {
 		t.Skip("This test run does not support less than Protocol 20")
@@ -94,13 +147,13 @@ func TestContractInvokeHostFunctionCreateContractByAddress(t *testing.T) {
 
 	// Install the contract
 	installContractOp := assembleInstallContractCodeOp(t, itest.Master().Address(), add_u64_contract)
-	preFlightOp, minFee := itest.PreflightHostFunctions(&sourceAccount, *installContractOp)
-	itest.MustSubmitOperationsWithFee(&sourceAccount, itest.Master(), minFee+txnbuild.MinBaseFee, &preFlightOp)
+	preFlightOp := itest.PreflightHostFunctions(&sourceAccount, *installContractOp)
+	itest.MustSubmitOperations(&sourceAccount, itest.Master(), &preFlightOp)
 
 	// Create the contract
 	createContractOp := assembleCreateContractOp(t, itest.Master().Address(), add_u64_contract, "a1")
-	preFlightOp, minFee = itest.PreflightHostFunctions(&sourceAccount, *createContractOp)
-	tx, err := itest.SubmitOperationsWithFee(&sourceAccount, itest.Master(), minFee+txnbuild.MinBaseFee, &preFlightOp)
+	preFlightOp = itest.PreflightHostFunctions(&sourceAccount, *createContractOp)
+	tx, err := itest.SubmitOperations(&sourceAccount, itest.Master(), &preFlightOp)
 	require.NoError(t, err)
 
 	clientTx, err := itest.Client().TransactionDetail(tx.Hash)
@@ -147,8 +200,8 @@ func TestContractInvokeHostFunctionCreateConstructorContract(t *testing.T) {
 
 	// Install the contract
 	installContractOp := assembleInstallContractCodeOp(t, itest.Master().Address(), constructor_contract)
-	preFlightOp, minFee := itest.PreflightHostFunctions(itest.MasterAccount(), *installContractOp)
-	itest.MustSubmitOperationsWithFee(itest.MasterAccount(), itest.Master(), minFee+txnbuild.MinBaseFee, &preFlightOp)
+	preFlightOp := itest.PreflightHostFunctions(itest.MasterAccount(), *installContractOp)
+	itest.MustSubmitOperations(itest.MasterAccount(), itest.Master(), &preFlightOp)
 
 	// Create the contract
 	senderAddressArg := accountAddressParam(itest.Master().Address())
@@ -169,8 +222,8 @@ func TestContractInvokeHostFunctionCreateConstructorContract(t *testing.T) {
 			amount,
 		},
 	)
-	preFlightOp, minFee = itest.PreflightHostFunctions(itest.MasterAccount(), *createContractOp)
-	tx, err := itest.SubmitOperationsWithFee(itest.MasterAccount(), itest.Master(), minFee+txnbuild.MinBaseFee, &preFlightOp)
+	preFlightOp = itest.PreflightHostFunctions(itest.MasterAccount(), *createContractOp)
+	tx, err := itest.SubmitOperations(itest.MasterAccount(), itest.Master(), &preFlightOp)
 	require.NoError(t, err)
 	contractID := preFlightOp.Ext.SorobanData.Resources.Footprint.ReadWrite[0].MustContractData().Contract.ContractId
 
@@ -241,13 +294,13 @@ func TestContractInvokeHostFunctionInvokeStatelessContractFn(t *testing.T) {
 
 	// Install the contract
 	installContractOp := assembleInstallContractCodeOp(t, itest.Master().Address(), add_u64_contract)
-	preFlightOp, minFee := itest.PreflightHostFunctions(&sourceAccount, *installContractOp)
-	itest.MustSubmitOperationsWithFee(&sourceAccount, itest.Master(), minFee+txnbuild.MinBaseFee, &preFlightOp)
+	preFlightOp := itest.PreflightHostFunctions(&sourceAccount, *installContractOp)
+	itest.MustSubmitOperations(&sourceAccount, itest.Master(), &preFlightOp)
 
 	// Create the contract
 	createContractOp := assembleCreateContractOp(t, itest.Master().Address(), add_u64_contract, "a1")
-	preFlightOp, minFee = itest.PreflightHostFunctions(&sourceAccount, *createContractOp)
-	tx, err := itest.SubmitOperationsWithFee(&sourceAccount, itest.Master(), minFee+txnbuild.MinBaseFee, &preFlightOp)
+	preFlightOp = itest.PreflightHostFunctions(&sourceAccount, *createContractOp)
+	tx, err := itest.SubmitOperations(&sourceAccount, itest.Master(), &preFlightOp)
 	require.NoError(t, err)
 
 	// contract has been deployed, now invoke a simple 'add' fn on the contract
@@ -285,8 +338,8 @@ func TestContractInvokeHostFunctionInvokeStatelessContractFn(t *testing.T) {
 		SourceAccount: sourceAccount.AccountID,
 	}
 
-	preFlightOp, minFee = itest.PreflightHostFunctions(&sourceAccount, *invokeHostFunctionOp)
-	tx, err = itest.SubmitOperationsWithFee(&sourceAccount, itest.Master(), minFee+txnbuild.MinBaseFee, &preFlightOp)
+	preFlightOp = itest.PreflightHostFunctions(&sourceAccount, *invokeHostFunctionOp)
+	tx, err = itest.SubmitOperations(&sourceAccount, itest.Master(), &preFlightOp)
 	require.NoError(t, err)
 
 	clientTx, err := itest.Client().TransactionDetail(tx.Hash)
@@ -350,14 +403,14 @@ func TestContractInvokeHostFunctionInvokeStatefulContractFn(t *testing.T) {
 	// Install the contract
 
 	installContractOp := assembleInstallContractCodeOp(t, itest.Master().Address(), increment_contract)
-	preFlightOp, minFee := itest.PreflightHostFunctions(&sourceAccount, *installContractOp)
-	itest.MustSubmitOperationsWithFee(&sourceAccount, itest.Master(), minFee+txnbuild.MinBaseFee, &preFlightOp)
+	preFlightOp := itest.PreflightHostFunctions(&sourceAccount, *installContractOp)
+	itest.MustSubmitOperations(&sourceAccount, itest.Master(), &preFlightOp)
 
 	// Create the contract
 
 	createContractOp := assembleCreateContractOp(t, itest.Master().Address(), increment_contract, "a1")
-	preFlightOp, minFee = itest.PreflightHostFunctions(&sourceAccount, *createContractOp)
-	tx, err := itest.SubmitOperationsWithFee(&sourceAccount, itest.Master(), minFee+txnbuild.MinBaseFee, &preFlightOp)
+	preFlightOp = itest.PreflightHostFunctions(&sourceAccount, *createContractOp)
+	tx, err := itest.SubmitOperations(&sourceAccount, itest.Master(), &preFlightOp)
 	require.NoError(t, err)
 
 	// contract has been deployed, now invoke a simple 'add' fn on the contract
@@ -380,8 +433,8 @@ func TestContractInvokeHostFunctionInvokeStatefulContractFn(t *testing.T) {
 		SourceAccount: sourceAccount.AccountID,
 	}
 
-	preFlightOp, minFee = itest.PreflightHostFunctions(&sourceAccount, *invokeHostFunctionOp)
-	tx, err = itest.SubmitOperationsWithFee(&sourceAccount, itest.Master(), minFee+txnbuild.MinBaseFee, &preFlightOp)
+	preFlightOp = itest.PreflightHostFunctions(&sourceAccount, *invokeHostFunctionOp)
+	tx, err = itest.SubmitOperations(&sourceAccount, itest.Master(), &preFlightOp)
 	require.NoError(t, err)
 
 	clientTx, err := itest.Client().TransactionDetail(tx.Hash)
