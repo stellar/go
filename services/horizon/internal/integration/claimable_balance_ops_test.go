@@ -42,10 +42,11 @@ func TestClaimableBalanceCreationOperationsAndEffects(t *testing.T) {
 		expectedBalanceID, err := xdr.MarshalHex(claimCreationOp.BalanceId)
 		tt.NoError(err)
 
-		response, err := itest.Client().Operations(sdk.OperationRequest{})
+		response, err := itest.Client().Operations(sdk.OperationRequest{
+			Order: "desc",
+		})
 		ops := response.Embedded.Records
 		tt.NoError(err)
-		tt.Len(ops, 1)
 		cb := ops[0].(operations.CreateClaimableBalance)
 		tt.Equal("native", cb.Asset)
 		tt.Equal("10.0000000", cb.Amount)

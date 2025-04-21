@@ -14,9 +14,9 @@ import (
 
 	"github.com/stellar/go/gxdr"
 	"github.com/stellar/go/ingest"
+	"github.com/stellar/go/ingest/sac"
 	"github.com/stellar/go/randxdr"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/services/horizon/internal/ingest/processors"
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/xdr"
@@ -241,7 +241,7 @@ func assetContractMetadataFromTrustline(tt *test.T, trustline xdr.LedgerEntryCha
 	tt.Assert.NoError(
 		trustline.Created.Data.MustTrustLine().Asset.Extract(&assetType, &code, &issuer),
 	)
-	ledgerData, err := processors.AssetToContractData(assetType == xdr.AssetTypeAssetTypeNative, code, issuer, contractID)
+	ledgerData, err := sac.AssetToContractData(assetType == xdr.AssetTypeAssetTypeNative, code, issuer, contractID)
 	tt.Assert.NoError(err)
 	assetContractMetadata := xdr.LedgerEntryChange{
 		Type: xdr.LedgerEntryChangeTypeLedgerEntryCreated,
@@ -266,7 +266,7 @@ func balanceContractDataFromTrustline(tt *test.T, trustline xdr.LedgerEntryChang
 		Type: xdr.LedgerEntryChangeTypeLedgerEntryCreated,
 		Created: &xdr.LedgerEntry{
 			LastModifiedLedgerSeq: trustline.Created.LastModifiedLedgerSeq,
-			Data:                  processors.BalanceToContractData(contractID, *trustlineData.AccountId.Ed25519, uint64(trustlineData.Balance)),
+			Data:                  sac.BalanceToContractData(contractID, *trustlineData.AccountId.Ed25519, uint64(trustlineData.Balance)),
 		},
 	}
 	return assetContractMetadata

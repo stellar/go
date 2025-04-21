@@ -3,10 +3,61 @@ package txnbuild
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
+	"github.com/stellar/go/network"
+	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/xdr"
 
 	"github.com/stretchr/testify/assert"
 )
+
+func TestPaymentToContract(t *testing.T) {
+	issuer := newKeypair0()
+	sourceAccount := newKeypair1()
+	params := PaymentToContractParams{
+		NetworkPassphrase: network.PublicNetworkPassphrase,
+		Destination:       "invalid",
+		Amount:            "10",
+		Asset: CreditAsset{
+			Code:   "USD",
+			Issuer: issuer.Address(),
+		},
+		SourceAccount: sourceAccount.Address(),
+	}
+	_, err := NewPaymentToContract(params)
+	require.Error(t, err)
+
+	params.Destination = newKeypair2().Address()
+	_, err = NewPaymentToContract(params)
+	require.Error(t, err)
+
+	contractID := xdr.Hash{1}
+	params.Destination = strkey.MustEncode(strkey.VersionByteContract, contractID[:])
+
+	op, err := NewPaymentToContract(params)
+	require.NoError(t, err)
+	require.NoError(t, op.Validate())
+	require.Equal(t, int64(op.Ext.SorobanData.ResourceFee), defaultPaymentToContractFees.ResourceFee)
+	require.Equal(t, uint32(op.Ext.SorobanData.Resources.WriteBytes), defaultPaymentToContractFees.WriteBytes)
+	require.Equal(t, uint32(op.Ext.SorobanData.Resources.ReadBytes), defaultPaymentToContractFees.ReadBytes)
+	require.Equal(t, uint32(op.Ext.SorobanData.Resources.Instructions), defaultPaymentToContractFees.Instructions)
+
+	params.Fees = &SorobanFees{
+		Instructions: 1,
+		ReadBytes:    2,
+		WriteBytes:   3,
+		ResourceFee:  4,
+	}
+
+	op, err = NewPaymentToContract(params)
+	require.NoError(t, err)
+	require.NoError(t, op.Validate())
+	require.Equal(t, int64(op.Ext.SorobanData.ResourceFee), int64(4))
+	require.Equal(t, uint32(op.Ext.SorobanData.Resources.WriteBytes), uint32(3))
+	require.Equal(t, uint32(op.Ext.SorobanData.Resources.ReadBytes), uint32(2))
+	require.Equal(t, uint32(op.Ext.SorobanData.Resources.Instructions), uint32(1))
+}
 
 func TestCreateInvokeHostFunctionValid(t *testing.T) {
 	kp1 := newKeypair1()
