@@ -213,19 +213,11 @@ func (p *EventsProcessor) contractEvents(tx ingest.LedgerTransaction, opIndex ui
 	return events, nil
 }
 
-func (e *TokenTransferEvent) addMuxedInfoForTransferEvent(from, to string, tx ingest.LedgerTransaction) error {
+func (e *TokenTransferEvent) addMuxedInfoForTransferEvent(to string, tx ingest.LedgerTransaction) error {
 	if e.GetTransfer() == nil {
 		return nil
 	}
 
-	if strkey.IsValidMuxedAccountEd25519PublicKey(from) {
-		muxedAcc := xdr.MustMuxedAddress(from)
-		muxedId, err := muxedAcc.GetId()
-		if err != nil {
-			return fmt.Errorf("error getting fromMuxedInfo for transfer event: %w", err)
-		}
-		e.Meta.FromMuxedId = &muxedId
-	}
 	err := e.setDestinationMuxedInfo(to, tx)
 	if err != nil {
 		return fmt.Errorf("error setting toMuxedInfo for transfer event: %w", err)
@@ -337,7 +329,7 @@ func (p *EventsProcessor) mintOrBurnOrTransferEvent(tx ingest.LedgerTransaction,
 	}
 	// Create transfer event
 	transferEvent := NewTransferEvent(meta, fromAddress, toAddress, amt, protoAsset)
-	err := transferEvent.addMuxedInfoForTransferEvent(from, to, tx) // the addresses have to be the original from and to address
+	err := transferEvent.addMuxedInfoForTransferEvent(to, tx) // the addresses have to be the original from and to address
 	if err != nil {
 		return nil, err
 	}
@@ -742,8 +734,9 @@ func (p *EventsProcessor) liquidityPoolWithdrawEvents(tx ingest.LedgerTransactio
 }
 
 func (p *EventsProcessor) generateEventsFromClaimAtoms(tx ingest.LedgerTransaction, opIndex uint32, opSrcAcc xdr.MuxedAccount, claims []xdr.ClaimAtom) ([]*TokenTransferEvent, error) {
+	// Converting MuxedAccount to strictly G-Addresss, since events from trading pair shouldnt have destination muxed_info set
+	operationSource := opSrcAcc.ToAccountId().Address()
 	var events []*TokenTransferEvent
-	operationSource := opSrcAcc.Address()
 	var seller string
 
 	for _, claim := range claims {
