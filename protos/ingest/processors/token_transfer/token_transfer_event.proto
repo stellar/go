@@ -27,7 +27,7 @@ message EventMeta {
    it will be the memo from the transaction
    Refer this section is CAP-67 - https://github.com/stellar/stellar-protocol/blob/master/core/cap-0067.md#multiplexing-support
    */
-  MuxedInfo to_muxed_id = 8;
+  MuxedInfo to_muxed_id = 7;
 }
 
 // The `from` and `to` fields in each of these events is the strkey representations of the different address types
