@@ -5,7 +5,7 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-func NewMuxedInfoFromMemo(m *xdr.Memo) *MuxedInfo {
+func NewMuxedInfoFromMemo(m xdr.Memo) *MuxedInfo {
 	protoMemo := &MuxedInfo{}
 
 	switch m.Type {

@@ -227,50 +227,6 @@ func (p *EventsProcessor) contractEvents(tx ingest.LedgerTransaction, opIndex ui
 	return events, nil
 }
 
-func (e *TokenTransferEvent) addMuxedInfoForTransferEvent(to string, tx ingest.LedgerTransaction) error {
-	if e.GetTransfer() == nil {
-		return nil
-	}
-
-	err := e.setDestinationMuxedInfo(to, tx)
-	if err != nil {
-		return fmt.Errorf("error setting toMuxedInfo for transfer event: %w", err)
-	}
-
-	return nil
-}
-
-func (e *TokenTransferEvent) setDestinationMuxedInfo(to string, tx ingest.LedgerTransaction) error {
-	if strkey.IsValidMuxedAccountEd25519PublicKey(to) {
-		muxedAcc := xdr.MustMuxedAddress(to)
-		muxedId, err := muxedAcc.GetId()
-		if err != nil {
-			return fmt.Errorf("could not get muxed account id: %w", err)
-		}
-		e.Meta.ToMuxedInfo = NewMuxedInfoFromId(muxedId)
-		return nil
-	}
-
-	txMemo := tx.Envelope.Memo()
-	if txMemo.Type == xdr.MemoTypeMemoNone {
-		return nil
-	}
-	e.Meta.ToMuxedInfo = NewMuxedInfoFromMemo(&txMemo)
-	return nil
-}
-
-func (e *TokenTransferEvent) addMuxedInfoForMintEvent(to string, tx ingest.LedgerTransaction) error {
-	if e.GetMint() == nil {
-		return nil
-	}
-
-	err := e.setDestinationMuxedInfo(to, tx)
-	if err != nil {
-		return fmt.Errorf("error setting toMuxedInfo for mint event: %w", err)
-	}
-	return nil
-}
-
 /*
 Depending on the asset - if src or dest account == issuer of asset, then mint/burn event, else transfer event
 All operation related functions will call this function instead of directly calling the underlying proto functions to generate events

@@ -834,7 +834,7 @@ func TestMuxedInformation(t *testing.T) {
 			tx:   someTxWithMemo(someTextMemo),
 			op:   paymentOp(&accountA, accountB, usdcAsset, 100*oneUnit),
 			expected: []*TokenTransferEvent{
-				transferEventWithDestMux(protoAddressFromAccount(accountA), protoAddressFromAccount(accountB), unitsToStr(100*oneUnit), usdcProtoAsset, NewMuxedInfoFromMemo(&someTextMemo)),
+				transferEventWithDestMux(protoAddressFromAccount(accountA), protoAddressFromAccount(accountB), unitsToStr(100*oneUnit), usdcProtoAsset, NewMuxedInfoFromMemo(someTextMemo)),
 			},
 		},
 		{
@@ -842,7 +842,7 @@ func TestMuxedInformation(t *testing.T) {
 			tx:   someTxWithMemo(someHashMemo),
 			op:   paymentOp(&usdcAccount, accountB, usdcAsset, 100*oneUnit),
 			expected: []*TokenTransferEvent{
-				mintEventWithDestMux(protoAddressFromAccount(accountB), unitsToStr(100*oneUnit), usdcProtoAsset, NewMuxedInfoFromMemo(&someHashMemo)),
+				mintEventWithDestMux(protoAddressFromAccount(accountB), unitsToStr(100*oneUnit), usdcProtoAsset, NewMuxedInfoFromMemo(someHashMemo)),
 			},
 		},
 		{
@@ -894,7 +894,7 @@ func TestMuxedInformation(t *testing.T) {
 				[]xdr.ClaimAtom{}, // empty path
 			),
 			expected: []*TokenTransferEvent{
-				transferEventWithDestMux(protoAddressFromAccount(accountA), protoAddressFromAccount(muxedAccountB), unitsToStr(100*oneUnit), btcProtoAsset, NewMuxedInfoFromMemo(&someIdMemo)),
+				transferEventWithDestMux(protoAddressFromAccount(accountA), protoAddressFromAccount(muxedAccountB), unitsToStr(100*oneUnit), btcProtoAsset, NewMuxedInfoFromMemo(someIdMemo)),
 			},
 		},
 	}

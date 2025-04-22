@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/stellar/go/ingest"
 	assetProto "github.com/stellar/go/ingest/asset"
+	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/xdr"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -155,4 +156,45 @@ func (event *TokenTransferEvent) SetAsset(asset xdr.Asset) {
 	default:
 		panic(fmt.Errorf("unkown event type:%v", event))
 	}
+}
+
+func (e *TokenTransferEvent) addMuxedInfoForTransferEvent(to string, tx ingest.LedgerTransaction) error {
+	if e.GetTransfer() == nil {
+		return nil
+	}
+
+	err := e.setDestinationMuxedInfo(to, tx)
+	if err != nil {
+		return fmt.Errorf("error setting toMuxedInfo for transfer event: %w", err)
+	}
+
+	return nil
+}
+
+func (e *TokenTransferEvent) setDestinationMuxedInfo(to string, tx ingest.LedgerTransaction) error {
+	if strkey.IsValidMuxedAccountEd25519PublicKey(to) {
+		muxedAcc := xdr.MustMuxedAddress(to)
+		muxedId, err := muxedAcc.GetId()
+		if err != nil {
+			return fmt.Errorf("could not get muxed account id: %w", err)
+		}
+		e.Meta.ToMuxedInfo = NewMuxedInfoFromId(muxedId)
+		return nil
+	}
+
+	txMemo := tx.Envelope.Memo()
+	e.Meta.ToMuxedInfo = NewMuxedInfoFromMemo(txMemo)
+	return nil
+}
+
+func (e *TokenTransferEvent) addMuxedInfoForMintEvent(to string, tx ingest.LedgerTransaction) error {
+	if e.GetMint() == nil {
+		return nil
+	}
+
+	err := e.setDestinationMuxedInfo(to, tx)
+	if err != nil {
+		return fmt.Errorf("error setting toMuxedInfo for mint event: %w", err)
+	}
+	return nil
 }
