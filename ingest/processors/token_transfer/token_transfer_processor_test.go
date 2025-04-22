@@ -163,7 +163,7 @@ var (
 
 	mintEventWithDestMux = func(to string, amt string, asset *assetProto.Asset, destMuxInfo *MuxedInfo) *TokenTransferEvent {
 		ev := mintEvent(to, amt, asset)
-		ev.Meta.ToMuxedId = destMuxInfo
+		ev.Meta.ToMuxedInfo = destMuxInfo
 		return ev
 	}
 
@@ -195,7 +195,7 @@ var (
 		}
 	}
 
-	memoFromMuxedAccount = func(acc xdr.MuxedAccount) *MuxedInfo {
+	muxedinfoFromMuxedAccount = func(acc xdr.MuxedAccount) *MuxedInfo {
 		id, err := acc.GetId()
 		if err != nil {
 			return nil
@@ -205,7 +205,7 @@ var (
 
 	transferEventWithDestMux = func(from string, to string, amt string, asset *assetProto.Asset, destMuxInfo *MuxedInfo) *TokenTransferEvent {
 		ev := transferEvent(from, to, amt, asset)
-		ev.Meta.ToMuxedId = destMuxInfo
+		ev.Meta.ToMuxedInfo = destMuxInfo
 		return ev
 	}
 
@@ -818,7 +818,7 @@ func TestMuxedInformation(t *testing.T) {
 			tx:   someTx,
 			op:   paymentOp(&accountA, muxedAccountB, usdcAsset, 100*oneUnit),
 			expected: []*TokenTransferEvent{
-				transferEventWithDestMux(protoAddressFromAccount(accountA), protoAddressFromAccount(muxedAccountB), unitsToStr(100*oneUnit), usdcProtoAsset, memoFromMuxedAccount(muxedAccountB)),
+				transferEventWithDestMux(protoAddressFromAccount(accountA), protoAddressFromAccount(muxedAccountB), unitsToStr(100*oneUnit), usdcProtoAsset, muxedinfoFromMuxedAccount(muxedAccountB)),
 			},
 		},
 		{
@@ -826,7 +826,7 @@ func TestMuxedInformation(t *testing.T) {
 			tx:   someTx,
 			op:   paymentOp(&usdcAccount, muxedAccountB, usdcAsset, 100*oneUnit),
 			expected: []*TokenTransferEvent{
-				mintEventWithDestMux(protoAddressFromAccount(muxedAccountB), unitsToStr(100*oneUnit), usdcProtoAsset, memoFromMuxedAccount(muxedAccountB)),
+				mintEventWithDestMux(protoAddressFromAccount(muxedAccountB), unitsToStr(100*oneUnit), usdcProtoAsset, muxedinfoFromMuxedAccount(muxedAccountB)),
 			},
 		},
 		{
@@ -846,6 +846,24 @@ func TestMuxedInformation(t *testing.T) {
 			},
 		},
 		{
+			name: "Simple Payment - G account to M Account + Tx Memo - USDC transfer",
+			tx:   someTxWithMemo(someTextMemo),
+			op:   paymentOp(&accountA, muxedAccountB, usdcAsset, 100*oneUnit),
+			expected: []*TokenTransferEvent{
+				// the muxedAccountId will take preference over txMemo in the output
+				transferEventWithDestMux(protoAddressFromAccount(accountA), protoAddressFromAccount(accountB), unitsToStr(100*oneUnit), usdcProtoAsset, muxedinfoFromMuxedAccount(muxedAccountB)),
+			},
+		},
+		{
+			name: "Simple Payment - G (issuer account) to M account + Tx Memo - USDC mint",
+			tx:   someTxWithMemo(someHashMemo),
+			op:   paymentOp(&usdcAccount, muxedAccountB, usdcAsset, 100*oneUnit),
+			expected: []*TokenTransferEvent{
+				// the muxedAccountId will take preference over txMemo in the output
+				mintEventWithDestMux(protoAddressFromAccount(accountB), unitsToStr(100*oneUnit), usdcProtoAsset, muxedinfoFromMuxedAccount(muxedAccountB)),
+			},
+		},
+		{
 			name: "Path Payment - BTC Issuer to M Account - BTC mint",
 			tx:   someTx,
 			op:   strictSendOp(&btcAccount, muxedAccountB, btcAsset, btcAsset),
@@ -854,7 +872,7 @@ func TestMuxedInformation(t *testing.T) {
 				100*oneUnit,
 			),
 			expected: []*TokenTransferEvent{
-				mintEventWithDestMux(protoAddressFromAccount(muxedAccountB), unitsToStr(100*oneUnit), btcProtoAsset, memoFromMuxedAccount(muxedAccountB)),
+				mintEventWithDestMux(protoAddressFromAccount(muxedAccountB), unitsToStr(100*oneUnit), btcProtoAsset, muxedinfoFromMuxedAccount(muxedAccountB)),
 			},
 		},
 		{
@@ -865,7 +883,7 @@ func TestMuxedInformation(t *testing.T) {
 				[]xdr.ClaimAtom{}, // empty path
 			),
 			expected: []*TokenTransferEvent{
-				transferEventWithDestMux(protoAddressFromAccount(accountA), protoAddressFromAccount(muxedAccountB), unitsToStr(100*oneUnit), btcProtoAsset, memoFromMuxedAccount(muxedAccountB)),
+				transferEventWithDestMux(protoAddressFromAccount(accountA), protoAddressFromAccount(muxedAccountB), unitsToStr(100*oneUnit), btcProtoAsset, muxedinfoFromMuxedAccount(muxedAccountB)),
 			},
 		},
 		{

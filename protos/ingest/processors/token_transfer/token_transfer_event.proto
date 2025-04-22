@@ -22,12 +22,9 @@ message EventMeta {
   string contract_address = 6;
 
   /*
-   The to_muxed_id will be either the 64-bit memo-id if the destination is a muxed account
-   OR
-   it will be the memo from the transaction
-   Refer this section is CAP-67 - https://github.com/stellar/stellar-protocol/blob/master/core/cap-0067.md#multiplexing-support
-   */
-  MuxedInfo to_muxed_id = 7;
+   The to_muxed_info follows the spec outlined in section in CAP-67 - https://github.com/stellar/stellar-protocol/blob/master/core/cap-0067.md#multiplexing-support
+ */
+  MuxedInfo to_muxed_info= 7;
 }
 
 // The `from` and `to` fields in each of these events is the strkey representations of the different address types
@@ -76,7 +73,7 @@ message TokenTransferEvent {
 
 message MuxedInfo {
   oneof content {
-    string text = 1;    // with max length of 28 characters
+    string text = 1;
     uint64 id = 2;
     bytes hash = 3;
   }

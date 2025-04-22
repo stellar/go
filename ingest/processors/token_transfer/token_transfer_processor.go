@@ -247,7 +247,7 @@ func (e *TokenTransferEvent) setDestinationMuxedInfo(to string, tx ingest.Ledger
 		if err != nil {
 			return fmt.Errorf("could not get muxed account id: %w", err)
 		}
-		e.Meta.ToMuxedId = NewMuxedInfoFromId(muxedId)
+		e.Meta.ToMuxedInfo = NewMuxedInfoFromId(muxedId)
 		return nil
 	}
 
@@ -255,7 +255,7 @@ func (e *TokenTransferEvent) setDestinationMuxedInfo(to string, tx ingest.Ledger
 	if txMemo.Type == xdr.MemoTypeMemoNone {
 		return nil
 	}
-	e.Meta.ToMuxedId = NewMuxedInfoFromMemo(&txMemo)
+	e.Meta.ToMuxedInfo = NewMuxedInfoFromMemo(&txMemo)
 	return nil
 }
 
