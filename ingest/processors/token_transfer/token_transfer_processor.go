@@ -238,7 +238,7 @@ func (p *EventsProcessor) mintOrBurnOrTransferEvent(tx ingest.LedgerTransaction,
 	fromAddress, toAddress := fromStrkey, toStrkey
 	assetIssuerAccountId, _ := asset.GetIssuerAccountId()
 
-	if strkey.IsValidEd25519PublicKey(fromStrkey) || strkey.IsValidMuxedAccountEd25519PublicKey(fromStrkey) {
+	if isAccountAddress(fromStrkey) {
 		fromAccount := xdr.MustMuxedAddress(fromStrkey).ToAccountId()
 		// Always revert back to G-Address for the from field, even if it is an M-address
 		fromAddress = fromAccount.Address()
@@ -248,7 +248,7 @@ func (p *EventsProcessor) mintOrBurnOrTransferEvent(tx ingest.LedgerTransaction,
 		}
 	}
 
-	if strkey.IsValidEd25519PublicKey(toStrkey) || strkey.IsValidMuxedAccountEd25519PublicKey(toStrkey) {
+	if isAccountAddress(toStrkey) {
 		toAccount := xdr.MustMuxedAddress(toStrkey).ToAccountId()
 		// Always revert back to G-Address for the to field, even if it is an M-address
 		toAddress = toAccount.Address()
