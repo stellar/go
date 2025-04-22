@@ -11,13 +11,12 @@ func NewMuxedInfoFromMemo(m *xdr.Memo) *MuxedInfo {
 	switch m.Type {
 	case xdr.MemoTypeMemoNone:
 		return nil
+	case xdr.MemoTypeMemoId:
+		id := uint64(*m.Id)
+		return NewMuxedInfoFromId(id)
 	case xdr.MemoTypeMemoText:
 		protoMemo.Content = &MuxedInfo_Text{
 			Text: *m.Text,
-		}
-	case xdr.MemoTypeMemoId:
-		protoMemo.Content = &MuxedInfo_Id{
-			Id: uint64(*m.Id),
 		}
 	case xdr.MemoTypeMemoHash:
 		hashSlice := make([]byte, 32)
