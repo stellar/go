@@ -90,6 +90,7 @@ func (p *EventsProcessor) parseEvent(tx ingest.LedgerTransaction, opIndex *uint3
 							maybeTransferEvent.From,
 							maybeTransferEvent.To,
 							maybeTransferEvent.Amount,
+							true,
 						)
 						if err != nil {
 							return nil, fmt.Errorf("contract transfer event error: %w", err)
