@@ -247,7 +247,7 @@ func (e *TokenTransferEvent) setDestinationMuxedInfo(to string, tx ingest.Ledger
 		if err != nil {
 			return fmt.Errorf("could not get muxed account id: %w", err)
 		}
-		e.Meta.ToMuxedId = NewMemoFromId(muxedId)
+		e.Meta.ToMuxedId = NewMuxedInfoFromId(muxedId)
 		return nil
 	}
 
@@ -255,7 +255,7 @@ func (e *TokenTransferEvent) setDestinationMuxedInfo(to string, tx ingest.Ledger
 	if txMemo.Type == xdr.MemoTypeMemoNone {
 		return nil
 	}
-	e.Meta.ToMuxedId = NewMemoFromXdrMemo(&txMemo)
+	e.Meta.ToMuxedId = NewMuxedInfoFromMemo(&txMemo)
 	return nil
 }
 
@@ -277,13 +277,13 @@ All operation related functions will call this function instead of directly call
 The only exception to this is clawbackOperation and claimableClawbackOperation.
 Those 2 will call the underlying proto function for clawback
 */
-func (p *EventsProcessor) mintOrBurnOrTransferEvent(tx ingest.LedgerTransaction, opIndex *uint32, asset xdr.Asset, from string, to string, amt string) (*TokenTransferEvent, error) {
+func (p *EventsProcessor) mintOrBurnOrTransferEvent(tx ingest.LedgerTransaction, opIndex *uint32, asset xdr.Asset, fromStrkey string, toStrkey string, amt string) (*TokenTransferEvent, error) {
 	var isFromIssuer, isToIssuer bool
-	fromAddress, toAddress := from, to
+	fromAddress, toAddress := fromStrkey, toStrkey
 	assetIssuerAccountId, _ := asset.GetIssuerAccountId()
 
-	if strkey.IsValidEd25519PublicKey(from) || strkey.IsValidMuxedAccountEd25519PublicKey(from) {
-		fromAccount := xdr.MustMuxedAddress(from).ToAccountId()
+	if strkey.IsValidEd25519PublicKey(fromStrkey) || strkey.IsValidMuxedAccountEd25519PublicKey(fromStrkey) {
+		fromAccount := xdr.MustMuxedAddress(fromStrkey).ToAccountId()
 		// Always revert back to G-Address for the from field, even if it is an M-address
 		fromAddress = fromAccount.Address()
 
@@ -292,8 +292,8 @@ func (p *EventsProcessor) mintOrBurnOrTransferEvent(tx ingest.LedgerTransaction,
 		}
 	}
 
-	if strkey.IsValidEd25519PublicKey(to) || strkey.IsValidMuxedAccountEd25519PublicKey(to) {
-		toAccount := xdr.MustMuxedAddress(to).ToAccountId()
+	if strkey.IsValidEd25519PublicKey(toStrkey) || strkey.IsValidMuxedAccountEd25519PublicKey(toStrkey) {
+		toAccount := xdr.MustMuxedAddress(toStrkey).ToAccountId()
 		// Always revert back to G-Address for the to field, even if it is an M-address
 		toAddress = toAccount.Address()
 
@@ -321,7 +321,7 @@ func (p *EventsProcessor) mintOrBurnOrTransferEvent(tx ingest.LedgerTransaction,
 		}
 		mintEvent := NewMintEvent(meta, toAddress, amt, protoAsset)
 		// Add muxed information - this will only have `to_muxed_info`, if at all
-		err := mintEvent.addMuxedInfoForMintEvent(to, tx)
+		err := mintEvent.addMuxedInfoForMintEvent(toStrkey, tx)
 		if err != nil {
 			return nil, err
 		}
@@ -343,7 +343,7 @@ func (p *EventsProcessor) mintOrBurnOrTransferEvent(tx ingest.LedgerTransaction,
 	}
 	// Create transfer event
 	transferEvent := NewTransferEvent(meta, fromAddress, toAddress, amt, protoAsset)
-	err := transferEvent.addMuxedInfoForTransferEvent(to, tx) // the addresses have to be the original from and to address
+	err := transferEvent.addMuxedInfoForTransferEvent(toStrkey, tx) // the addresses have to be the original from and to address
 	if err != nil {
 		return nil, err
 	}

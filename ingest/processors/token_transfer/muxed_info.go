@@ -1,8 +1,11 @@
 package token_transfer
 
-import "github.com/stellar/go/xdr"
+import (
+	"fmt"
+	"github.com/stellar/go/xdr"
+)
 
-func NewMemoFromXdrMemo(m *xdr.Memo) *MuxedInfo {
+func NewMuxedInfoFromMemo(m *xdr.Memo) *MuxedInfo {
 	protoMemo := &MuxedInfo{}
 
 	switch m.Type {
@@ -28,11 +31,14 @@ func NewMemoFromXdrMemo(m *xdr.Memo) *MuxedInfo {
 		protoMemo.Content = &MuxedInfo_Hash{
 			Hash: hashSlice,
 		}
+	default:
+		panic(fmt.Errorf("unknown memo type: %v", m.Type))
 	}
+
 	return protoMemo
 }
 
-func NewMemoFromId(id uint64) *MuxedInfo {
+func NewMuxedInfoFromId(id uint64) *MuxedInfo {
 	return &MuxedInfo{
 		Content: &MuxedInfo_Id{
 			Id: id,
