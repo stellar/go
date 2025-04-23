@@ -20,6 +20,11 @@ message EventMeta {
      For a smart contract event, this contractId is the id of the contract emiting the core event
    */
   string contract_address = 6;
+
+  /*
+   The to_muxed_info follows the spec outlined in section in CAP-67 - https://github.com/stellar/stellar-protocol/blob/master/core/cap-0067.md#multiplexing-support
+ */
+  MuxedInfo to_muxed_info= 7;
 }
 
 // The `from` and `to` fields in each of these events is the strkey representations of the different address types
@@ -63,5 +68,13 @@ message TokenTransferEvent {
     Burn burn = 4;
     Clawback clawback = 5;
     Fee fee = 6;
+  }
+}
+
+message MuxedInfo {
+  oneof content {
+    string text = 1;
+    uint64 id = 2;
+    bytes hash = 3;
   }
 }

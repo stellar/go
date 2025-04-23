@@ -94,6 +94,18 @@ var (
 		Hash:          someTxHash,
 	}
 
+	someTxWithMemo = func(memo xdr.Memo) ingest.LedgerTransaction {
+		resp := someTx
+		resp.Envelope.V1 = &xdr.TransactionV1Envelope{
+			Tx: xdr.Transaction{
+				SourceAccount: someTxAccount,
+				SeqNum:        xdr.SequenceNumber(54321),
+				Memo:          memo,
+			},
+		}
+		return resp
+	}
+
 	someTxWithOperationChanges = func(changes xdr.LedgerEntryChanges) ingest.LedgerTransaction {
 		resp := someTx
 		resp.UnsafeMeta.V = 3
@@ -102,6 +114,18 @@ var (
 				{
 					Changes: changes,
 				},
+			},
+		}
+		return resp
+	}
+
+	someTxWithOperationChangesAndMemo = func(changes xdr.LedgerEntryChanges, memo xdr.Memo) ingest.LedgerTransaction {
+		resp := someTxWithOperationChanges(changes)
+		resp.Envelope.V1 = &xdr.TransactionV1Envelope{
+			Tx: xdr.Transaction{
+				SourceAccount: someTxAccount,
+				SeqNum:        xdr.SequenceNumber(54321),
+				Memo:          memo,
 			},
 		}
 		return resp
@@ -147,7 +171,12 @@ var (
 				},
 			},
 		}
+	}
 
+	mintEventWithDestMux = func(to string, amt string, asset *assetProto.Asset, destMuxInfo *MuxedInfo) *TokenTransferEvent {
+		ev := mintEvent(to, amt, asset)
+		ev.Meta.ToMuxedInfo = destMuxInfo
+		return ev
 	}
 
 	burnEvent = func(from string, amt string, asset *assetProto.Asset) *TokenTransferEvent {
@@ -176,6 +205,20 @@ var (
 				},
 			},
 		}
+	}
+
+	muxedinfoFromMuxedAccount = func(acc xdr.MuxedAccount) *MuxedInfo {
+		id, err := acc.GetId()
+		if err != nil {
+			return nil
+		}
+		return NewMuxedInfoFromId(id)
+	}
+
+	transferEventWithDestMux = func(from string, to string, amt string, asset *assetProto.Asset, destMuxInfo *MuxedInfo) *TokenTransferEvent {
+		ev := transferEvent(from, to, amt, asset)
+		ev.Meta.ToMuxedInfo = destMuxInfo
+		return ev
 	}
 
 	clawbackEvent = func(from string, amt string, asset *assetProto.Asset) *TokenTransferEvent {
@@ -335,6 +378,146 @@ var (
 					Destination: dst,
 					Amount:      amount,
 					Asset:       asset,
+				},
+			},
+		}
+	}
+
+	strictSendOp = func(sourceAccount *xdr.MuxedAccount, destAccount xdr.MuxedAccount, sendAsset xdr.Asset, destAsset xdr.Asset) xdr.Operation {
+		return xdr.Operation{
+			SourceAccount: sourceAccount,
+			Body: xdr.OperationBody{
+				Type: xdr.OperationTypePathPaymentStrictSend,
+				// dont really need the operation Paths for calculating events. Only need the claimAtoms in the result
+				PathPaymentStrictSendOp: &xdr.PathPaymentStrictSendOp{
+					SendAsset:   sendAsset,
+					Destination: destAccount,
+					DestAsset:   destAsset,
+				},
+			},
+		}
+	}
+
+	strictSendResult = func(claims []xdr.ClaimAtom, destAmount xdr.Int64) xdr.OperationResult {
+		return xdr.OperationResult{
+			Tr: &xdr.OperationResultTr{
+				Type: xdr.OperationTypePathPaymentStrictSend,
+				PathPaymentStrictSendResult: &xdr.PathPaymentStrictSendResult{
+					Success: &xdr.PathPaymentStrictSendResultSuccess{
+						Offers: claims,
+						Last: xdr.SimplePaymentResult{
+							Amount: destAmount,
+						},
+					},
+				},
+			},
+		}
+	}
+
+	strictReceiveOp = func(sourceAccount *xdr.MuxedAccount, destAccount xdr.MuxedAccount, sendAsset xdr.Asset, destAsset xdr.Asset, destAmount xdr.Int64) xdr.Operation {
+		return xdr.Operation{
+			SourceAccount: sourceAccount,
+			Body: xdr.OperationBody{
+				Type: xdr.OperationTypePathPaymentStrictReceive,
+				// dont really need the operation Paths for calculating events. Only need the claimAtoms in the result
+				PathPaymentStrictReceiveOp: &xdr.PathPaymentStrictReceiveOp{
+					SendAsset:   sendAsset,
+					DestAsset:   destAsset,
+					Destination: destAccount,
+					DestAmount:  destAmount,
+				},
+			},
+		}
+	}
+
+	strictReceiveResult = func(claims []xdr.ClaimAtom) xdr.OperationResult {
+		return xdr.OperationResult{
+			Tr: &xdr.OperationResultTr{
+				Type: xdr.OperationTypePathPaymentStrictReceive,
+				PathPaymentStrictReceiveResult: &xdr.PathPaymentStrictReceiveResult{
+					Success: &xdr.PathPaymentStrictReceiveResultSuccess{Offers: claims},
+				},
+			},
+		}
+	}
+
+	manageBuyOfferOp = func(sourceAccount *xdr.MuxedAccount) xdr.Operation {
+		return xdr.Operation{
+			SourceAccount: sourceAccount,
+			Body: xdr.OperationBody{
+				Type:             xdr.OperationTypeManageBuyOffer,
+				ManageBuyOfferOp: &xdr.ManageBuyOfferOp{},
+			},
+		}
+	}
+
+	manageBuyOfferResult = func(claims []xdr.ClaimAtom) xdr.OperationResult {
+		return xdr.OperationResult{
+			Tr: &xdr.OperationResultTr{
+				Type: xdr.OperationTypeManageBuyOffer,
+				ManageBuyOfferResult: &xdr.ManageBuyOfferResult{
+					Success: &xdr.ManageOfferSuccessResult{
+						OffersClaimed: claims,
+					},
+				},
+			},
+		}
+	}
+
+	manageSellOfferOp = func(sourceAccount *xdr.MuxedAccount) xdr.Operation {
+		return xdr.Operation{
+			SourceAccount: sourceAccount,
+			Body: xdr.OperationBody{
+				Type:              xdr.OperationTypeManageSellOffer,
+				ManageSellOfferOp: &xdr.ManageSellOfferOp{},
+			},
+		}
+	}
+
+	manageSellOfferResult = func(claims []xdr.ClaimAtom) xdr.OperationResult {
+		return xdr.OperationResult{
+			Tr: &xdr.OperationResultTr{
+				Type: xdr.OperationTypeManageSellOffer,
+				ManageSellOfferResult: &xdr.ManageSellOfferResult{
+					Success: &xdr.ManageOfferSuccessResult{
+						OffersClaimed: claims,
+					},
+				},
+			},
+		}
+	}
+
+	claimCbop = func(cbId xdr.ClaimableBalanceId, sourceAccount *xdr.MuxedAccount) xdr.Operation {
+		return xdr.Operation{
+			SourceAccount: sourceAccount,
+			Body: xdr.OperationBody{
+				Type: xdr.OperationTypeClaimClaimableBalance,
+				ClaimClaimableBalanceOp: &xdr.ClaimClaimableBalanceOp{
+					BalanceId: cbId,
+				},
+			},
+		}
+	}
+
+	lpDepositOp = func(poolId xdr.PoolId, sourceAccount *xdr.MuxedAccount) xdr.Operation {
+		return xdr.Operation{
+			SourceAccount: sourceAccount,
+			Body: xdr.OperationBody{
+				Type: xdr.OperationTypeLiquidityPoolDeposit,
+				LiquidityPoolDepositOp: &xdr.LiquidityPoolDepositOp{
+					LiquidityPoolId: poolId,
+				},
+			},
+		}
+	}
+
+	lpWithdrawOp = func(poolId xdr.PoolId, sourceAccount *xdr.MuxedAccount) xdr.Operation {
+		return xdr.Operation{
+			SourceAccount: sourceAccount,
+			Body: xdr.OperationBody{
+				Type: xdr.OperationTypeLiquidityPoolWithdraw,
+				LiquidityPoolWithdrawOp: &xdr.LiquidityPoolWithdrawOp{
+					LiquidityPoolId: poolId,
 				},
 			},
 		}
@@ -719,6 +902,146 @@ func TestMergeAccountEvents(t *testing.T) {
 	runTokenTransferEventTests(t, tests)
 }
 
+func TestMuxedInformation(t *testing.T) {
+	someTextMemo := xdr.MemoText("some dest memo")
+	someHashMemo := xdr.MemoHash(xdr.Hash{1, 2, 3})
+	someIdMemo := xdr.MemoID(999)
+	tests := []testFixture{
+		{
+			name: "Simple Payment - G account to M Account - USDC transfer",
+			tx:   someTx,
+			op:   paymentOp(&accountA, muxedAccountB, usdcAsset, 100*oneUnit),
+			expected: []*TokenTransferEvent{
+				transferEventWithDestMux(protoAddressFromAccount(accountA), protoAddressFromAccount(muxedAccountB), unitsToStr(100*oneUnit), usdcProtoAsset, muxedinfoFromMuxedAccount(muxedAccountB)),
+			},
+		},
+		{
+			name: "Simple Payment - G (issuer account) to M account - USDC mint",
+			tx:   someTx,
+			op:   paymentOp(&usdcAccount, muxedAccountB, usdcAsset, 100*oneUnit),
+			expected: []*TokenTransferEvent{
+				mintEventWithDestMux(protoAddressFromAccount(muxedAccountB), unitsToStr(100*oneUnit), usdcProtoAsset, muxedinfoFromMuxedAccount(muxedAccountB)),
+			},
+		},
+		{
+			name: "Simple Payment - G account to G Account with Tx Memo - USDC transfer",
+			tx:   someTxWithMemo(someTextMemo),
+			op:   paymentOp(&accountA, accountB, usdcAsset, 100*oneUnit),
+			expected: []*TokenTransferEvent{
+				transferEventWithDestMux(protoAddressFromAccount(accountA), protoAddressFromAccount(accountB), unitsToStr(100*oneUnit), usdcProtoAsset, NewMuxedInfoFromMemo(someTextMemo)),
+			},
+		},
+		{
+			name: "Simple Payment - G (issuer account) to G account with Tx Memo - USDC mint",
+			tx:   someTxWithMemo(someHashMemo),
+			op:   paymentOp(&usdcAccount, accountB, usdcAsset, 100*oneUnit),
+			expected: []*TokenTransferEvent{
+				mintEventWithDestMux(protoAddressFromAccount(accountB), unitsToStr(100*oneUnit), usdcProtoAsset, NewMuxedInfoFromMemo(someHashMemo)),
+			},
+		},
+		{
+			name: "Simple Payment - G account to M Account + Tx Memo - USDC transfer",
+			tx:   someTxWithMemo(someTextMemo),
+			op:   paymentOp(&accountA, muxedAccountB, usdcAsset, 100*oneUnit),
+			expected: []*TokenTransferEvent{
+				// the muxedAccountId will take preference over txMemo in the output
+				transferEventWithDestMux(protoAddressFromAccount(accountA), protoAddressFromAccount(accountB), unitsToStr(100*oneUnit), usdcProtoAsset, muxedinfoFromMuxedAccount(muxedAccountB)),
+			},
+		},
+		{
+			name: "Simple Payment - G (issuer account) to M account + Tx Memo - USDC mint",
+			tx:   someTxWithMemo(someHashMemo),
+			op:   paymentOp(&usdcAccount, muxedAccountB, usdcAsset, 100*oneUnit),
+			expected: []*TokenTransferEvent{
+				// the muxedAccountId will take preference over txMemo in the output
+				mintEventWithDestMux(protoAddressFromAccount(accountB), unitsToStr(100*oneUnit), usdcProtoAsset, muxedinfoFromMuxedAccount(muxedAccountB)),
+			},
+		},
+		{
+			name: "Path Payment - BTC Issuer to M Account - BTC mint",
+			tx:   someTx,
+			op:   strictSendOp(&btcAccount, muxedAccountB, btcAsset, btcAsset),
+			opResult: strictSendResult(
+				[]xdr.ClaimAtom{}, // empty path
+				100*oneUnit,
+			),
+			expected: []*TokenTransferEvent{
+				mintEventWithDestMux(protoAddressFromAccount(muxedAccountB), unitsToStr(100*oneUnit), btcProtoAsset, muxedinfoFromMuxedAccount(muxedAccountB)),
+			},
+		},
+		{
+			name: "Path Payment - G account to M Account - BTC Transfer",
+			tx:   someTx,
+			op:   strictReceiveOp(&accountA, muxedAccountB, btcAsset, btcAsset, 100*oneUnit),
+			opResult: strictReceiveResult(
+				[]xdr.ClaimAtom{}, // empty path
+			),
+			expected: []*TokenTransferEvent{
+				transferEventWithDestMux(protoAddressFromAccount(accountA), protoAddressFromAccount(muxedAccountB), unitsToStr(100*oneUnit), btcProtoAsset, muxedinfoFromMuxedAccount(muxedAccountB)),
+			},
+		},
+		{
+			name: "Path Payment - G account to G Account with Tx Memo - BTC Transfer",
+			tx:   someTxWithMemo(someIdMemo),
+			op:   strictReceiveOp(&accountA, accountB, btcAsset, btcAsset, 100*oneUnit),
+			opResult: strictReceiveResult(
+				[]xdr.ClaimAtom{}, // empty path
+			),
+			expected: []*TokenTransferEvent{
+				transferEventWithDestMux(protoAddressFromAccount(accountA), protoAddressFromAccount(muxedAccountB), unitsToStr(100*oneUnit), btcProtoAsset, NewMuxedInfoFromMemo(someIdMemo)),
+			},
+		},
+		{
+			name: "ManageSellOffer with Tx Memo - Transfer - No MuxInfo in event",
+			tx:   someTxWithMemo(xdr.MemoText("wont appear in output")),
+			op:   manageSellOfferOp(nil), // don't care for anything in xdr.Operation other than source account
+			opResult: manageSellOfferResult(
+				[]xdr.ClaimAtom{
+					// 1 USDC = 3 XLM
+					generateClaimAtom(xdr.ClaimAtomTypeClaimAtomTypeOrderBook, &accountA, nil, xlmAsset, 3*oneUnit, usdcAsset, oneUnit),
+				}),
+			expected: []*TokenTransferEvent{
+				transferEvent(protoAddressFromAccount(accountA), protoAddressFromAccount(someTxAccount), unitsToStr(3*oneUnit), xlmProtoAsset),
+				transferEvent(protoAddressFromAccount(someTxAccount), protoAddressFromAccount(accountA), unitsToStr(oneUnit), usdcProtoAsset),
+			},
+		},
+		{
+			name: "Claim XLM claimable balance with TxMemo - Claimable Balance removed - Transfer",
+			op:   claimCbop(someBalanceId, &accountA), // money moves from CB to the source account of operation
+			tx: someTxWithOperationChangesAndMemo(
+				xdr.LedgerEntryChanges{
+					// pre != nil, post = nil
+					generateCbEntryChangeState(cbLedgerEntry(someBalanceId, xlmAsset, oneUnit)),
+					generateCbEntryRemovedChange(someBalanceId),
+				},
+				xdr.MemoText("will appear in output"),
+			),
+			expected: []*TokenTransferEvent{
+				transferEventWithDestMux(cbIdToStrkey(someBalanceId), protoAddressFromAccount(accountA), unitsToStr(oneUnit), xlmProtoAsset,
+					NewMuxedInfoFromMemo(xdr.MemoText("will appear in output"))),
+			},
+		},
+		{
+			name: "Liquidity Pool Withdraw Operation with Tx Memo - LP Removed - Transfer",
+			op:   lpWithdrawOp(lpBtcEthId, nil), // source account = Tx account
+			tx: someTxWithOperationChangesAndMemo(
+				xdr.LedgerEntryChanges{
+					// pre != nil, post = nil
+					generateLpEntryChangeState(lpLedgerEntry(lpBtcEthId, btcAsset, ethAsset, 5*oneUnit, 10*oneUnit)),
+					generateLpEntryRemovedChange(lpBtcEthId),
+				},
+				xdr.MemoText("will appear in output")),
+			expected: []*TokenTransferEvent{
+				transferEventWithDestMux(lpIdToStrkey(lpBtcEthId), protoAddressFromAccount(someTxAccount), unitsToStr(5*oneUnit), btcProtoAsset,
+					NewMuxedInfoFromMemo(xdr.MemoText("will appear in output"))),
+				transferEventWithDestMux(lpIdToStrkey(lpBtcEthId), protoAddressFromAccount(someTxAccount), unitsToStr(10*oneUnit), ethProtoAsset,
+					NewMuxedInfoFromMemo(xdr.MemoText("will appear in output"))),
+			},
+		},
+	}
+	runTokenTransferEventTests(t, tests)
+}
+
 func TestPaymentEvents(t *testing.T) {
 
 	tests := []testFixture{
@@ -739,14 +1062,6 @@ func TestPaymentEvents(t *testing.T) {
 			},
 		},
 		{
-			name: "G account to M Account - USDC transfer",
-			tx:   someTx,
-			op:   paymentOp(&accountA, muxedAccountB, usdcAsset, 100*oneUnit),
-			expected: []*TokenTransferEvent{
-				transferEvent(protoAddressFromAccount(accountA), protoAddressFromAccount(muxedAccountB), unitsToStr(100*oneUnit), usdcProtoAsset),
-			},
-		},
-		{
 			name: "M account to G Account - USDC transfer",
 			tx:   someTx,
 			op:   paymentOp(&muxedAccountA, accountB, usdcAsset, 100*oneUnit),
@@ -760,14 +1075,6 @@ func TestPaymentEvents(t *testing.T) {
 			op:   paymentOp(&usdcAccount, accountB, usdcAsset, 100*oneUnit),
 			expected: []*TokenTransferEvent{
 				mintEvent(protoAddressFromAccount(accountB), unitsToStr(100*oneUnit), usdcProtoAsset),
-			},
-		},
-		{
-			name: "G (issuer account) to M account - USDC mint",
-			tx:   someTx,
-			op:   paymentOp(&usdcAccount, muxedAccountB, usdcAsset, 100*oneUnit),
-			expected: []*TokenTransferEvent{
-				mintEvent(protoAddressFromAccount(muxedAccountB), unitsToStr(100*oneUnit), usdcProtoAsset),
 			},
 		},
 		{
@@ -791,51 +1098,6 @@ func TestPaymentEvents(t *testing.T) {
 }
 
 func TestManageOfferEvents(t *testing.T) {
-	manageBuyOfferOp := func(sourceAccount *xdr.MuxedAccount) xdr.Operation {
-		return xdr.Operation{
-			SourceAccount: sourceAccount,
-			Body: xdr.OperationBody{
-				Type:             xdr.OperationTypeManageBuyOffer,
-				ManageBuyOfferOp: &xdr.ManageBuyOfferOp{},
-			},
-		}
-	}
-
-	manageBuyOfferResult := func(claims []xdr.ClaimAtom) xdr.OperationResult {
-		return xdr.OperationResult{
-			Tr: &xdr.OperationResultTr{
-				Type: xdr.OperationTypeManageBuyOffer,
-				ManageBuyOfferResult: &xdr.ManageBuyOfferResult{
-					Success: &xdr.ManageOfferSuccessResult{
-						OffersClaimed: claims,
-					},
-				},
-			},
-		}
-	}
-
-	manageSellOfferOp := func(sourceAccount *xdr.MuxedAccount) xdr.Operation {
-		return xdr.Operation{
-			SourceAccount: sourceAccount,
-			Body: xdr.OperationBody{
-				Type:              xdr.OperationTypeManageSellOffer,
-				ManageSellOfferOp: &xdr.ManageSellOfferOp{},
-			},
-		}
-	}
-
-	manageSellOfferResult := func(claims []xdr.ClaimAtom) xdr.OperationResult {
-		return xdr.OperationResult{
-			Tr: &xdr.OperationResultTr{
-				Type: xdr.OperationTypeManageSellOffer,
-				ManageSellOfferResult: &xdr.ManageSellOfferResult{
-					Success: &xdr.ManageOfferSuccessResult{
-						OffersClaimed: claims,
-					},
-				},
-			},
-		}
-	}
 
 	tests := []testFixture{
 		{
@@ -857,10 +1119,9 @@ func TestManageOfferEvents(t *testing.T) {
 				transferEvent(protoAddressFromAccount(someTxAccount), protoAddressFromAccount(accountB), unitsToStr(10*oneUnit), xlmProtoAsset),
 			},
 		},
-
 		{
 			name: "ManageSellOffer - Sell USDC for XLM (2 claim atoms, Transfer events)",
-			tx:   someTx,
+			tx:   someTxWithMemo(xdr.MemoText("this is awesome")),
 			op:   manageSellOfferOp(nil), // don't care for anything in xdr.Operation other than source account
 			opResult: manageSellOfferResult(
 				[]xdr.ClaimAtom{
@@ -876,7 +1137,6 @@ func TestManageOfferEvents(t *testing.T) {
 				transferEvent(protoAddressFromAccount(someTxAccount), protoAddressFromAccount(accountB), unitsToStr(2*oneUnit), usdcProtoAsset),
 			},
 		},
-
 		{
 			name: "ManageBuyOffer - Buy USDC for XLM (Source is USDC issuer, 2 claim atoms, BURN events)",
 			tx:   someTx,
@@ -894,7 +1154,6 @@ func TestManageOfferEvents(t *testing.T) {
 				transferEvent(protoAddressFromAccount(usdcAccount), protoAddressFromAccount(accountB), unitsToStr(10*oneUnit), xlmProtoAsset),
 			},
 		},
-
 		{
 			name: "ManageSellOffer - Sell USDC for XLM (Source is USDC issuer, 2 claim atoms, MINT events)",
 			tx:   someTx,
@@ -920,63 +1179,6 @@ func TestManageOfferEvents(t *testing.T) {
 }
 
 func TestPathPaymentEvents(t *testing.T) {
-	strictSendOp := func(sourceAccount *xdr.MuxedAccount, destAccount xdr.MuxedAccount, sendAsset xdr.Asset, destAsset xdr.Asset) xdr.Operation {
-		return xdr.Operation{
-			SourceAccount: sourceAccount,
-			Body: xdr.OperationBody{
-				Type: xdr.OperationTypePathPaymentStrictSend,
-				// dont really need the operation Paths for calculating events. Only need the claimAtoms in the result
-				PathPaymentStrictSendOp: &xdr.PathPaymentStrictSendOp{
-					SendAsset:   sendAsset,
-					Destination: destAccount,
-					DestAsset:   destAsset,
-				},
-			},
-		}
-	}
-
-	strictSendResult := func(claims []xdr.ClaimAtom, destAmount xdr.Int64) xdr.OperationResult {
-		return xdr.OperationResult{
-			Tr: &xdr.OperationResultTr{
-				Type: xdr.OperationTypePathPaymentStrictSend,
-				PathPaymentStrictSendResult: &xdr.PathPaymentStrictSendResult{
-					Success: &xdr.PathPaymentStrictSendResultSuccess{
-						Offers: claims,
-						Last: xdr.SimplePaymentResult{
-							Amount: destAmount,
-						},
-					},
-				},
-			},
-		}
-	}
-
-	strictReceiveOp := func(sourceAccount *xdr.MuxedAccount, destAccount xdr.MuxedAccount, sendAsset xdr.Asset, destAsset xdr.Asset, destAmount xdr.Int64) xdr.Operation {
-		return xdr.Operation{
-			SourceAccount: sourceAccount,
-			Body: xdr.OperationBody{
-				Type: xdr.OperationTypePathPaymentStrictReceive,
-				// dont really need the operation Paths for calculating events. Only need the claimAtoms in the result
-				PathPaymentStrictReceiveOp: &xdr.PathPaymentStrictReceiveOp{
-					SendAsset:   sendAsset,
-					DestAsset:   destAsset,
-					Destination: destAccount,
-					DestAmount:  destAmount,
-				},
-			},
-		}
-	}
-
-	strictReceiveResult := func(claims []xdr.ClaimAtom) xdr.OperationResult {
-		return xdr.OperationResult{
-			Tr: &xdr.OperationResultTr{
-				Type: xdr.OperationTypePathPaymentStrictReceive,
-				PathPaymentStrictReceiveResult: &xdr.PathPaymentStrictReceiveResult{
-					Success: &xdr.PathPaymentStrictReceiveResultSuccess{Offers: claims},
-				},
-			},
-		}
-	}
 
 	someXlmSellerAccount := xdr.MustMuxedAddress("GC7ERFCD7QLDFRSEPLYB3GYSWX6GYMCHLDL45N4S5Q2N5EJDOMOJ63V4")
 	someEthSellerAccount := xdr.MustMuxedAddress("GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY")
@@ -1083,30 +1285,6 @@ func TestPathPaymentEvents(t *testing.T) {
 }
 
 func TestLiquidityPoolEvents(t *testing.T) {
-	lpDepositOp := func(poolId xdr.PoolId, sourceAccount *xdr.MuxedAccount) xdr.Operation {
-		return xdr.Operation{
-			SourceAccount: sourceAccount,
-			Body: xdr.OperationBody{
-				Type: xdr.OperationTypeLiquidityPoolDeposit,
-				LiquidityPoolDepositOp: &xdr.LiquidityPoolDepositOp{
-					LiquidityPoolId: poolId,
-				},
-			},
-		}
-	}
-
-	lpWithdrawOp := func(poolId xdr.PoolId, sourceAccount *xdr.MuxedAccount) xdr.Operation {
-		return xdr.Operation{
-			SourceAccount: sourceAccount,
-			Body: xdr.OperationBody{
-				Type: xdr.OperationTypeLiquidityPoolWithdraw,
-				LiquidityPoolWithdrawOp: &xdr.LiquidityPoolWithdrawOp{
-					LiquidityPoolId: poolId,
-				},
-			},
-		}
-	}
-
 	tests := []testFixture{
 		{
 			name: "Liquidity Pool Deposit Operation - New LP Creation - Transfer",
@@ -1275,18 +1453,6 @@ func TestClawbackClaimableBalanceEvents(t *testing.T) {
 }
 
 func TestClaimClaimableBalanceEvents(t *testing.T) {
-	claimCbop := func(cbId xdr.ClaimableBalanceId, sourceAccount *xdr.MuxedAccount) xdr.Operation {
-		return xdr.Operation{
-			SourceAccount: sourceAccount,
-			Body: xdr.OperationBody{
-				Type: xdr.OperationTypeClaimClaimableBalance,
-				ClaimClaimableBalanceOp: &xdr.ClaimClaimableBalanceOp{
-					BalanceId: cbId,
-				},
-			},
-		}
-	}
-
 	tests := []testFixture{
 		{
 			name: "Claim XLM claimable balance - Claimable Balance removed - Transfer Event",

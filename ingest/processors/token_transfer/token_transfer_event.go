@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/stellar/go/ingest"
 	assetProto "github.com/stellar/go/ingest/asset"
+	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/xdr"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -155,4 +156,26 @@ func (event *TokenTransferEvent) SetAsset(asset xdr.Asset) {
 	default:
 		panic(fmt.Errorf("unkown event type:%v", event))
 	}
+}
+
+func (e *TokenTransferEvent) setDestinationMuxedInfo(to string, tx ingest.LedgerTransaction) error {
+	// Destination Mux info needs to be set only for accountAddresses, and not for LPs or CBs.
+	// This is as per CAP-67
+	if !isAccountAddress(to) {
+		return nil
+	}
+
+	if strkey.IsValidMuxedAccountEd25519PublicKey(to) {
+		muxedAcc := xdr.MustMuxedAddress(to)
+		muxedId, err := muxedAcc.GetId()
+		if err != nil {
+			return fmt.Errorf("could not get muxed account id: %w", err)
+		}
+		e.Meta.ToMuxedInfo = NewMuxedInfoFromId(muxedId)
+		return nil
+	}
+
+	txMemo := tx.Envelope.Memo()
+	e.Meta.ToMuxedInfo = NewMuxedInfoFromMemo(txMemo)
+	return nil
 }
