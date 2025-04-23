@@ -186,7 +186,7 @@ func TestValidCaptiveCoreOverridenArchiveUrls(t *testing.T) {
 	require.Equal(t, ccConfig.NetworkPassphrase, network.PublicNetworkPassphrase)
 	require.Equal(t, ccConfig.HistoryArchiveURLs, []string{"http://testarchive"})
 	require.Empty(t, ccConfig.Toml.HistoryEntries)
-	require.Len(t, ccConfig.Toml.Validators, 23)
+	require.Len(t, ccConfig.Toml.Validators, 21)
 	require.Equal(t, ccConfig.Toml.Validators[0].Name, "bootes")
 }
 
