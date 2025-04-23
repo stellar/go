@@ -158,19 +158,6 @@ func (event *TokenTransferEvent) SetAsset(asset xdr.Asset) {
 	}
 }
 
-func (e *TokenTransferEvent) addMuxedInfoForTransferEvent(to string, tx ingest.LedgerTransaction) error {
-	if e.GetTransfer() == nil {
-		return nil
-	}
-
-	err := e.setDestinationMuxedInfo(to, tx)
-	if err != nil {
-		return fmt.Errorf("error setting toMuxedInfo for transfer event: %w", err)
-	}
-
-	return nil
-}
-
 func (e *TokenTransferEvent) setDestinationMuxedInfo(to string, tx ingest.LedgerTransaction) error {
 	// Destination Mux info needs to be set only for accountAddresses, and not for LPs or CBs.
 	// This is as per CAP-67
@@ -190,17 +177,5 @@ func (e *TokenTransferEvent) setDestinationMuxedInfo(to string, tx ingest.Ledger
 
 	txMemo := tx.Envelope.Memo()
 	e.Meta.ToMuxedInfo = NewMuxedInfoFromMemo(txMemo)
-	return nil
-}
-
-func (e *TokenTransferEvent) addMuxedInfoForMintEvent(to string, tx ingest.LedgerTransaction) error {
-	if e.GetMint() == nil {
-		return nil
-	}
-
-	err := e.setDestinationMuxedInfo(to, tx)
-	if err != nil {
-		return fmt.Errorf("error setting toMuxedInfo for mint event: %w", err)
-	}
 	return nil
 }

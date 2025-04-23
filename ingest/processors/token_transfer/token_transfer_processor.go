@@ -278,9 +278,9 @@ func (p *EventsProcessor) mintOrBurnOrTransferEvent(tx ingest.LedgerTransaction,
 		mintEvent := NewMintEvent(meta, toAddress, amt, protoAsset)
 		if includeMuxInfo {
 			// Add muxed information - this will only have `to_muxed_info`, if at all
-			err := mintEvent.addMuxedInfoForMintEvent(toStrkey, tx)
+			err := mintEvent.setDestinationMuxedInfo(toStrkey, tx)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("error setting destination muxed info for mint event: %w", err)
 			}
 		}
 		return mintEvent, nil
@@ -302,9 +302,9 @@ func (p *EventsProcessor) mintOrBurnOrTransferEvent(tx ingest.LedgerTransaction,
 	// Create transfer event
 	transferEvent := NewTransferEvent(meta, fromAddress, toAddress, amt, protoAsset)
 	if includeMuxInfo {
-		err := transferEvent.addMuxedInfoForTransferEvent(toStrkey, tx) // the addresses have to be the original from and to address
+		err := transferEvent.setDestinationMuxedInfo(toStrkey, tx) // the addresses have to be the original from and to address
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("error setting destination muxed info for transfer event: %w", err)
 		}
 	}
 
