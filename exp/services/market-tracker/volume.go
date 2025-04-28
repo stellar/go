@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"sort"
 	"strconv"
@@ -205,7 +206,7 @@ func getAggRecords(taps []hProtocol.TradeAggregationsPage) (records []hProtocol.
 
 func constructVolumeHistory(tas []hProtocol.TradeAggregation, xlmPrices []xlmPrice, assetPrice float64, start, end time.Time, res int) ([]volumeHist, error) {
 	if len(xlmPrices) < 2 {
-		return []volumeHist{}, fmt.Errorf("mis-formed xlm price history from stellar expert")
+		return []volumeHist{}, errors.New("mis-formed xlm price history from stellar expert")
 	}
 
 	volumeHistory := []volumeHist{}
@@ -414,18 +415,18 @@ func calcWeightedPrice(timestamp int64, startIndex int, prices []xlmPrice) (floa
 	// TODO: Use resolution to weight prices.
 	if startIndex < 0 {
 		if timestamp < prices[0].timestamp {
-			return 0.0, fmt.Errorf("update price index before calculating price")
+			return 0.0, errors.New("update price index before calculating price")
 		}
 		return prices[0].price, nil
 	} else if startIndex >= len(prices)-1 {
 		if timestamp > prices[len(prices)-1].timestamp {
-			return 0.0, fmt.Errorf("update price index before calculating price")
+			return 0.0, errors.New("update price index before calculating price")
 		}
 		return prices[len(prices)-1].price, nil
 	}
 
 	if timestamp > prices[startIndex].timestamp || timestamp < prices[startIndex+1].timestamp {
-		return 0.0, fmt.Errorf("update price index before calculating price")
+		return 0.0, errors.New("update price index before calculating price")
 	}
 
 	avgPrice := (prices[startIndex].price + prices[startIndex+1].price) / 2

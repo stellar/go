@@ -42,13 +42,13 @@ func (c *APIClient) CallAPI(reqParams RequestParams) (interface{}, error) {
 	}
 
 	if reqParams.Endpoint == "" {
-		return nil, fmt.Errorf("Please set endpoint to query")
+		return nil, errors.New("Please set endpoint to query")
 	}
 
 	url := c.GetURL(reqParams.Endpoint, reqParams.QueryParams)
 	reqBody, err := CreateRequestBody(reqParams.RequestType, url)
 	if err != nil {
-		return nil, fmt.Errorf("http request creation failed")
+		return nil, errors.New("http request creation failed")
 	}
 
 	SetAuthHeaders(reqBody, c.AuthType, c.AuthHeaders)
