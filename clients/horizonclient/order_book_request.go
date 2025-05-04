@@ -16,7 +16,7 @@ func (obr OrderBookRequest) BuildURL() (endpoint string, err error) {
 	endpoint = "order_book"
 
 	// add the parameters to a map here so it is easier for addQueryParams to populate the parameter list
-	// We can't use assetCode and assetIssuer types here because the paremeter names are different
+	// We can't use assetCode and assetIssuer types here because the parameter names are different
 	paramMap := make(map[string]string)
 	paramMap["selling_asset_type"] = string(obr.SellingAssetType)
 	paramMap["selling_asset_code"] = obr.SellingAssetCode
