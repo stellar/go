@@ -114,7 +114,7 @@ func (reader *LedgerTransactionReader) Seek(index int) error {
 	return nil
 }
 
-// storeHashes creates a mapping between hashes and envelopes in order to
+// storeTransactions creates a mapping between hashes and envelopes in order to
 // correctly provide a per-transaction view on-the-fly when Read() is called.
 func (reader *LedgerTransactionReader) storeTransactions(networkPassphrase string) error {
 	// See https://github.com/stellar/go/pull/2720: envelopes in the meta (which
