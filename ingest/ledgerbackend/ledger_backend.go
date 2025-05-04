@@ -14,7 +14,7 @@ type LedgerBackend interface {
 	// GetLedger will block until the ledger is available.
 	GetLedger(ctx context.Context, sequence uint32) (xdr.LedgerCloseMeta, error)
 	// PrepareRange prepares the given range (including from and to) to be loaded.
-	// Some backends (like captive stellar-core) need to initalize data to be
+	// Some backends (like captive stellar-core) need to initialize data to be
 	// able to stream ledgers. Blocks until the first ledger is available.
 	PrepareRange(ctx context.Context, ledgerRange Range) error
 	// IsPrepared returns true if a given ledgerRange is prepared.
