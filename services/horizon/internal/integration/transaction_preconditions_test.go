@@ -198,25 +198,28 @@ func TestTransactionPreconditionsMinSequenceNumberLedgerGap(t *testing.T) {
 		t.Skip("Can't run with protocol < 19")
 	}
 	master := itest.Master()
-	masterAccount := itest.MasterAccount()
-	currentAccountSeq, err := masterAccount.GetSequenceNumber()
-	tt.NoError(err)
+	masterAccount := itest.MustGetAccount(master)
 
-	// gather up the current sequence number
-	networkLedger, err := itest.GetCurrentCoreLedgerSequence()
-	tt.NoError(err)
+	var networkLedger int
+	var err error
+	tt.Eventually(func() bool {
+		// gather up the current sequence number
+		networkLedger, err = itest.GetCurrentCoreLedgerSequence()
+		tt.NoError(err)
+		return uint32(networkLedger) > masterAccount.SequenceLedger
+	}, time.Second*10, time.Second)
 
 	// build a tx with seqnum based on master.seqNum+1 as source account
-	txParams := buildTXParams(master, masterAccount, currentAccountSeq+1)
+	txParams := buildTXParams(master, &masterAccount, masterAccount.Sequence+1)
 
 	// this txsub will error because the tx preconditions require a min sequence gap
 	// which has been set 10000 sequence numbers greater than the current difference between
 	// network ledger sequence and account sequnece numbers
-	txParams.Preconditions.MinSequenceNumberLedgerGap = uint32(int64(networkLedger) - currentAccountSeq + 10000)
+	txParams.Preconditions.MinSequenceNumberLedgerGap = uint32(networkLedger) - masterAccount.SequenceLedger + 10000
 	_, err = itest.SubmitMultiSigTransaction([]*keypair.Full{master}, txParams)
 	tt.Error(err)
 
-	txParams.Preconditions.MinSequenceNumberLedgerGap = uint32(int64(networkLedger) - currentAccountSeq - 1)
+	txParams.Preconditions.MinSequenceNumberLedgerGap = uint32(networkLedger) - masterAccount.SequenceLedger - 1
 	// Now the transaction should be submitted without problems, the min sequence gap
 	// is set to be one less then the current difference between network sequence and account sequence number.
 	tx, err := itest.SubmitMultiSigTransaction([]*keypair.Full{master}, txParams)

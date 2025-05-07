@@ -423,6 +423,19 @@ func (a *Asset) GetIssuer() string {
 	}
 }
 
+func (a *Asset) GetIssuerAccountId() (AccountId, error) {
+	var addr AccountId
+	switch a.Type {
+	case AssetTypeAssetTypeNative:
+		return AccountId{}, errors.New("native Asset has no issuer")
+	case AssetTypeAssetTypeCreditAlphanum4:
+		addr = (*a.AlphaNum4).Issuer
+	case AssetTypeAssetTypeCreditAlphanum12:
+		addr = (*a.AlphaNum12).Issuer
+	}
+	return addr, nil
+}
+
 func (a *Asset) LessThan(b Asset) bool {
 	if a.Type != b.Type {
 		return int32(a.Type) < int32(b.Type)
@@ -454,4 +467,8 @@ func (a Asset) ContractID(passphrase string) ([32]byte, error) {
 		return [32]byte{}, err
 	}
 	return sha256.Sum256(xdrPreImageBytes), nil
+}
+
+func (a Asset) IsNative() bool {
+	return a.Type == AssetTypeAssetTypeNative
 }

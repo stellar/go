@@ -227,6 +227,7 @@ func TestGenerateConfig(t *testing.T) {
 		logPath                        *string
 		enforceSorobanDiagnosticEvents bool
 		enforceEmitMetaV1              bool
+		coreVersion                    string
 	}{
 		{
 			name:         "offline config with no appendix",
@@ -236,6 +237,7 @@ func TestGenerateConfig(t *testing.T) {
 			httpPort:     newUint(6789),
 			peerPort:     newUint(12345),
 			logPath:      nil,
+			coreVersion:  "v22.2.0-124-ga50f3f919",
 		},
 		{
 			name:         "offline config with no peer port",
@@ -245,6 +247,7 @@ func TestGenerateConfig(t *testing.T) {
 			httpPort:     newUint(6789),
 			peerPort:     nil,
 			logPath:      newString("/var/stellar-core/test.log"),
+			coreVersion:  "v22.2.0-124-ga50f3f919",
 		},
 		{
 			name:         "online config with appendix",
@@ -254,6 +257,7 @@ func TestGenerateConfig(t *testing.T) {
 			httpPort:     newUint(6789),
 			peerPort:     newUint(12345),
 			logPath:      nil,
+			coreVersion:  "v22.2.0-124-ga50f3f919",
 		},
 		{
 			name:         "online config with unsupported field in appendix",
@@ -263,6 +267,7 @@ func TestGenerateConfig(t *testing.T) {
 			httpPort:     newUint(6789),
 			peerPort:     newUint(12345),
 			logPath:      nil,
+			coreVersion:  "v22.2.0-124-ga50f3f919",
 		},
 		{
 			name:         "online config with no peer port",
@@ -272,6 +277,7 @@ func TestGenerateConfig(t *testing.T) {
 			httpPort:     newUint(6789),
 			peerPort:     nil,
 			logPath:      newString("/var/stellar-core/test.log"),
+			coreVersion:  "v22.2.0-124-ga50f3f919",
 		},
 		{
 			name:         "online config with no http port",
@@ -281,6 +287,7 @@ func TestGenerateConfig(t *testing.T) {
 			httpPort:     nil,
 			peerPort:     newUint(12345),
 			logPath:      nil,
+			coreVersion:  "v22.2.0-124-ga50f3f919",
 		},
 		{
 			name:         "offline config with appendix",
@@ -290,6 +297,7 @@ func TestGenerateConfig(t *testing.T) {
 			httpPort:     newUint(6789),
 			peerPort:     newUint(12345),
 			logPath:      nil,
+			coreVersion:  "v22.2.0-124-ga50f3f919",
 		},
 		{
 			name:         "offline config with extra fields in appendix",
@@ -299,6 +307,7 @@ func TestGenerateConfig(t *testing.T) {
 			httpPort:     newUint(6789),
 			peerPort:     newUint(12345),
 			logPath:      nil,
+			coreVersion:  "v22.2.0-124-ga50f3f919",
 		},
 		{
 			name:                           "offline config with enforce diagnostic events and metav1",
@@ -307,6 +316,7 @@ func TestGenerateConfig(t *testing.T) {
 			logPath:                        nil,
 			enforceSorobanDiagnosticEvents: true,
 			enforceEmitMetaV1:              true,
+			coreVersion:                    "v22.2.0-124-ga50f3f919",
 		},
 		{
 			name:                           "offline config disabling enforced diagnostic events and metav1",
@@ -316,6 +326,7 @@ func TestGenerateConfig(t *testing.T) {
 			logPath:                        nil,
 			enforceSorobanDiagnosticEvents: true,
 			enforceEmitMetaV1:              true,
+			coreVersion:                    "v22.2.0-124-ga50f3f919",
 		},
 		{
 			name:                           "online config with enforce diagnostic events and meta v1",
@@ -327,6 +338,7 @@ func TestGenerateConfig(t *testing.T) {
 			logPath:                        nil,
 			enforceSorobanDiagnosticEvents: true,
 			enforceEmitMetaV1:              true,
+			coreVersion:                    "v22.2.0-124-ga50f3f919",
 		},
 		{
 			name:         "offline config with minimum persistent entry in appendix",
@@ -334,6 +346,7 @@ func TestGenerateConfig(t *testing.T) {
 			appendPath:   filepath.Join("testdata", "appendix-with-minimum-persistent-entry.cfg"),
 			expectedPath: filepath.Join("testdata", "expected-online-with-appendix-minimum-persistent-entry.cfg"),
 			logPath:      nil,
+			coreVersion:  "v22.2.0-124-ga50f3f919",
 		},
 		{
 			name:         "Query parameters in appendix",
@@ -341,6 +354,15 @@ func TestGenerateConfig(t *testing.T) {
 			appendPath:   filepath.Join("testdata", "sample-appendix-query-params.cfg"),
 			expectedPath: filepath.Join("testdata", "expected-query-params.cfg"),
 			logPath:      nil,
+			coreVersion:  "v22.2.0-124-ga50f3f919",
+		},
+		{
+			name:         "BUCKETLIST_DB_MEMORY_FOR_CACHING in appendix",
+			mode:         stellarCoreRunnerModeOnline,
+			appendPath:   filepath.Join("testdata", "appendix-with-memory-for-bucketlist-caching.cfg"),
+			expectedPath: filepath.Join("testdata", "expected-with-memory-for-bucketlist-caching.cfg"),
+			logPath:      nil,
+			coreVersion:  "v22.2.0-124-ga50f3f919",
 		},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
@@ -355,6 +377,10 @@ func TestGenerateConfig(t *testing.T) {
 				Strict:                             false,
 				EnforceSorobanDiagnosticEvents:     testCase.enforceSorobanDiagnosticEvents,
 				EnforceSorobanTransactionMetaExtV1: testCase.enforceEmitMetaV1,
+				CoreBinaryPath:                     "stellar-core",
+				CoreBuildVersionFn: func(string) (string, error) {
+					return testCase.coreVersion, nil
+				},
 			}
 			if testCase.appendPath != "" {
 				captiveCoreToml, err = NewCaptiveCoreTomlFromFile(testCase.appendPath, params)

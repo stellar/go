@@ -5,7 +5,6 @@ package token_transfer;
 import "google/protobuf/timestamp.proto";
 
 // Import are relative to the top level directory -  `/protos`
-import "ingest/address/address.proto";
 import "ingest/asset/asset.proto";
 
 // EventMeta message
@@ -13,44 +12,69 @@ message EventMeta {
   uint32 ledger_sequence = 1;
   google.protobuf.Timestamp closed_at = 2;
   string tx_hash = 3;
-  optional uint32 operation_index = 4;
-  address.Address contract_address = 5;
+  // Index of transaction within this ledger. This is 1-indexed as per SEP-35
+  uint32 transaction_index = 4;
+  // Index of operation within the transaction, if it is not a fee event. This is 1-indexed as per SEP-35
+  optional uint32 operation_index = 5;
+  /* For a classic operation, this contract_address is the ContractID as derived from asset
+     For a smart contract event, this contractId is the id of the contract emiting the core event
+   */
+  string contract_address = 6;
+
+  /*
+   The to_muxed_info follows the spec outlined in section in CAP-67 - https://github.com/stellar/stellar-protocol/blob/master/core/cap-0067.md#multiplexing-support
+ */
+  MuxedInfo to_muxed_info= 7;
 }
 
+// The `from` and `to` fields in each of these events is the strkey representations of the different address types
+
 message Transfer {
-  address.Address from = 1;
-  address.Address to = 2;
-  string amount = 3;
+  string from = 1;
+  string to = 2;
+  asset.Asset asset = 3; // Asset can be native or issued. For custom tokens, it will be absent
+  string amount = 4;
 }
 
 message Mint {
-  address.Address to = 1;
-  string amount = 2;
+  string to = 1;
+  asset.Asset asset = 2; // Asset can be native or issued. For custom tokens, it will be absent
+  string amount = 3;
 }
 
 message Burn {
-  address.Address from = 1;
-  string amount = 2;
+  string from = 1;
+  asset.Asset asset = 2; // Asset can be native or issued. For custom tokens, it will be absent
+  string amount = 3;
 }
 
 message Clawback {
-  address.Address from = 1;
+  string from = 1;
+  asset.Asset asset = 2; // Asset can be native or issued. For custom tokens, it will be absent
   string amount = 3;
 }
 
 message Fee {
-  address.Address from = 1;
-  string amount = 2;
+  string from = 1;
+  asset.Asset asset = 2; // Asset can be native or issued. For custom tokens, it will be absent
+  string amount = 3;
 }
 
 message TokenTransferEvent {
   EventMeta meta = 1;
-  asset.Asset asset = 2; // Asset can be native or issued. For custom tokens, it will be absent
   oneof event {
-    Transfer transfer = 3;
-    Mint mint = 4;
-    Burn burn = 5;
-    Clawback clawback = 6;
-    Fee fee = 7;
+    Transfer transfer = 2;
+    Mint mint = 3;
+    Burn burn = 4;
+    Clawback clawback = 5;
+    Fee fee = 6;
+  }
+}
+
+message MuxedInfo {
+  oneof content {
+    string text = 1;
+    uint64 id = 2;
+    bytes hash = 3;
   }
 }

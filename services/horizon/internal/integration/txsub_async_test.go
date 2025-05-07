@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/stellar/go/clients/horizonclient"
+	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/test/integration"
 	"github.com/stellar/go/support/errors"
@@ -50,12 +51,16 @@ func TestAsyncTxSub_SuccessfulSubmission(t *testing.T) {
 			LedgerBounds: &txnbuild.LedgerBounds{MinLedger: 0, MaxLedger: 100},
 		},
 	}
+	tx, err := itest.CreateSignedTransaction([]*keypair.Full{master}, txParams)
+	assert.NoError(t, err)
+	expectedHash, err := tx.HashHex(itest.GetPassPhrase())
+	assert.NoError(t, err)
 
-	txResp, err := itest.AsyncSubmitTransaction(master, txParams)
+	txResp, err := itest.Client().AsyncSubmitTransaction(tx)
 	assert.NoError(t, err)
 	assert.Equal(t, txResp, horizon.AsyncTransactionSubmissionResponse{
 		TxStatus: "PENDING",
-		Hash:     "6cbb7f714bd08cea7c30cab7818a35c510cbbfc0a6aa06172a1e94146ecf0165",
+		Hash:     expectedHash,
 	})
 
 	err = getTransaction(itest.Client(), txResp.Hash)
@@ -84,13 +89,18 @@ func TestAsyncTxSub_SubmissionError(t *testing.T) {
 		},
 	}
 
-	txResp, err := itest.AsyncSubmitTransaction(master, txParams)
+	tx, err := itest.CreateSignedTransaction([]*keypair.Full{master}, txParams)
+	assert.NoError(t, err)
+	expectedHash, err := tx.HashHex(itest.GetPassPhrase())
+	assert.NoError(t, err)
+
+	txResp, err := itest.Client().AsyncSubmitTransaction(tx)
 	assert.NoError(t, err)
 	assert.Equal(t, txResp, horizon.AsyncTransactionSubmissionResponse{
 		ErrorResultXDR:           "AAAAAAAAAGT////7AAAAAA==",
 		DeprecatedErrorResultXDR: "AAAAAAAAAGT////7AAAAAA==",
 		TxStatus:                 "ERROR",
-		Hash:                     "0684df00f20efd5876f1b8d17bc6d3a68d8b85c06bb41e448815ecaa6307a251",
+		Hash:                     expectedHash,
 	})
 }
 
@@ -116,20 +126,30 @@ func TestAsyncTxSub_SubmissionTryAgainLater(t *testing.T) {
 		},
 	}
 
-	txResp, err := itest.AsyncSubmitTransaction(master, txParams)
+	tx, err := itest.CreateSignedTransaction([]*keypair.Full{master}, txParams)
+	assert.NoError(t, err)
+	expectedHash, err := tx.HashHex(itest.GetPassPhrase())
+	assert.NoError(t, err)
+
+	txResp, err := itest.Client().AsyncSubmitTransaction(tx)
 	assert.NoError(t, err)
 	assert.Equal(t, txResp, horizon.AsyncTransactionSubmissionResponse{
 		ErrorResultXDR: "",
 		TxStatus:       "PENDING",
-		Hash:           "6cbb7f714bd08cea7c30cab7818a35c510cbbfc0a6aa06172a1e94146ecf0165",
+		Hash:           expectedHash,
 	})
 
-	txResp, err = itest.AsyncSubmitTransaction(master, txParams)
+	tx, err = itest.CreateSignedTransaction([]*keypair.Full{master}, txParams)
+	assert.NoError(t, err)
+	expectedHash, err = tx.HashHex(itest.GetPassPhrase())
+	assert.NoError(t, err)
+
+	txResp, err = itest.Client().AsyncSubmitTransaction(tx)
 	assert.NoError(t, err)
 	assert.Equal(t, txResp, horizon.AsyncTransactionSubmissionResponse{
 		ErrorResultXDR: "",
 		TxStatus:       "TRY_AGAIN_LATER",
-		Hash:           "d5eb72a4c1832b89965850fff0bd9bba4b6ca102e7c89099dcaba5e7d7d2e049",
+		Hash:           expectedHash,
 	})
 }
 
@@ -150,8 +170,14 @@ func TestAsyncTxSub_TransactionMalformed(t *testing.T) {
 	require.NoError(t, err)
 
 	installContractOp := assembleInstallContractCodeOp(t, master.Address(), "soroban_sac_test.wasm")
-	preFlightOp, minFee := itest.PreflightHostFunctions(&sourceAccount, *installContractOp)
-	txParams := integration.GetBaseTransactionParamsWithFee(&sourceAccount, minFee+txnbuild.MinBaseFee, &preFlightOp)
+	preFlightOp := itest.PreflightHostFunctions(&sourceAccount, *installContractOp)
+	txParams := txnbuild.TransactionParams{
+		SourceAccount:        &sourceAccount,
+		Operations:           []txnbuild.Operation{&preFlightOp},
+		BaseFee:              txnbuild.MinBaseFee,
+		Preconditions:        txnbuild.Preconditions{TimeBounds: txnbuild.NewInfiniteTimeout()},
+		IncrementSequenceNum: true,
+	}
 	_, err = itest.AsyncSubmitTransaction(master, txParams)
 	assert.EqualError(
 		t, err,

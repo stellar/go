@@ -41,6 +41,12 @@ const (
 
 	//VersionByteContract is the version byte used for encoded stellar contracts
 	VersionByteContract = 2 << 3 // Base-32 encodes to 'C'
+
+	//VersionByteLiquidityPool is the version byte used for encoded stellar liquidity pools
+	VersionByteLiquidityPool = 11 << 3
+
+	//VersionByteClaimableBalance is the version byte used for encoded stellar claimable balances
+	VersionByteClaimableBalance = 1 << 3
 )
 
 // maxPayloadSize is the maximum length of the payload for all versions. The
@@ -191,7 +197,9 @@ func Version(src string) (VersionByte, error) {
 // is not one of the defined valid version byte constants.
 func checkValidVersionByte(version VersionByte) error {
 	switch version {
-	case VersionByteAccountID, VersionByteMuxedAccount, VersionByteSeed, VersionByteHashTx, VersionByteHashX, VersionByteSignedPayload, VersionByteContract:
+	case VersionByteAccountID, VersionByteMuxedAccount, VersionByteSeed,
+		VersionByteHashTx, VersionByteHashX, VersionByteSignedPayload,
+		VersionByteContract, VersionByteLiquidityPool, VersionByteClaimableBalance:
 		return nil
 	default:
 		return ErrInvalidVersionByte
@@ -264,6 +272,33 @@ func IsValidEd25519PublicKey(i interface{}) bool {
 
 	_, err := Decode(VersionByteAccountID, enc)
 
+	return err == nil
+}
+
+func IsValidContractAddress(i interface{}) bool {
+	enc, ok := i.(string)
+	if !ok {
+		return false
+	}
+	_, err := Decode(VersionByteContract, enc)
+	return err == nil
+}
+
+func IsValidClaimableBalance(i interface{}) bool {
+	enc, ok := i.(string)
+	if !ok {
+		return false
+	}
+	_, err := Decode(VersionByteClaimableBalance, enc)
+	return err == nil
+}
+
+func IsValidLiquidityPool(i interface{}) bool {
+	enc, ok := i.(string)
+	if !ok {
+		return false
+	}
+	_, err := Decode(VersionByteLiquidityPool, enc)
 	return err == nil
 }
 

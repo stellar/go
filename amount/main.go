@@ -82,6 +82,15 @@ func ParseInt64(v string) (int64, error) {
 	return i, nil
 }
 
+// MustParseInt64Raw simply converts an string into a 64-bit signed integer
+func MustParseInt64Raw(v string) int64 {
+	i, err := strconv.ParseInt(v, 10, 64)
+	if err != nil {
+		panic(err)
+	}
+	return i
+}
+
 // IntStringToAmount converts string integer value and converts it to stellar
 // "amount". In other words, it divides the given string integer value by 10^7
 // and returns the string representation of that number.
@@ -138,4 +147,18 @@ func StringFromInt64(v int64) string {
 	r := big.NewRat(v, 1)
 	r.Quo(r, bigOne)
 	return r.FloatString(7)
+}
+
+// No conversion. Simply convert int64 to string. Useful to have this in one place, should the underlying implementation change
+func String64Raw(v xdr.Int64) string {
+	return strconv.FormatInt(int64(v), 10)
+}
+
+func String128Raw(v xdr.Int128Parts) string {
+	// the upper half of the i128 always indicates its sign regardless of its
+	// value, just like a native signed type
+	val := big.NewInt(int64(v.Hi))
+	val.Lsh(val, 64).Add(val, new(big.Int).SetUint64(uint64(v.Lo)))
+
+	return val.String()
 }

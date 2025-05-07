@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/stellar/go/support/errors"
@@ -108,6 +109,7 @@ type captiveCoreTomlValues struct {
 	HTTPQueryPort                         *uint                `toml:"HTTP_QUERY_PORT,omitempty"`
 	QueryThreadPoolSize                   *uint                `toml:"QUERY_THREAD_POOL_SIZE,omitempty"`
 	QuerySnapshotLedgers                  *uint                `toml:"QUERY_SNAPSHOT_LEDGERS,omitempty"`
+	BucketListDBMemoryForCaching          *uint                `toml:"BUCKETLIST_DB_MEMORY_FOR_CACHING,omitempty"`
 }
 
 // QuorumSetIsConfigured returns true if there is a quorum set defined in the configuration.
@@ -354,6 +356,8 @@ type CaptiveCoreTomlParams struct {
 	EnforceSorobanTransactionMetaExtV1 bool
 	// Fast HTTP Query Server parameters
 	HTTPQueryServerParams *HTTPQueryServerParams
+	// CoreBuildVersionFn is a function that returns the build version of the stellar-core binary.
+	CoreBuildVersionFn CoreBuildVersionFunc
 }
 
 // NewCaptiveCoreTomlFromFile constructs a new CaptiveCoreToml instance by merging configuration
@@ -451,6 +455,61 @@ func (c *CaptiveCoreToml) CatchupToml() (*CaptiveCoreToml, error) {
 	return offline, nil
 }
 
+// coreVersion helper struct identify a core version and provides the
+// utilities to compare the version ( i.e. minor + major pair ) to a predefined
+// version.
+type coreVersion struct {
+	major int
+	minor int
+}
+
+// greaterThanOrEqual compares the core version to a version specific. If unable
+// to make the decision, the result is always "false", leaning toward the
+// common denominator.
+func (c coreVersion) greaterThanOrEqual(other coreVersion) bool {
+	if c.major == 0 && c.minor == 0 {
+		return false
+	}
+	return (c.major == other.major && c.minor >= other.minor) || (c.major > other.major)
+}
+
+func (c *CaptiveCoreToml) checkCoreVersion(params CaptiveCoreTomlParams) coreVersion {
+	if params.CoreBinaryPath == "" {
+		return coreVersion{}
+	}
+
+	getCoreVersion := params.CoreBuildVersionFn
+	if getCoreVersion == nil {
+		getCoreVersion = CoreBuildVersion
+	}
+
+	versionRaw, err := getCoreVersion(params.CoreBinaryPath)
+	if err != nil {
+		return coreVersion{}
+	}
+
+	var version [2]int
+
+	re := regexp.MustCompile(`\D*(\d*)\.(\d*).*`)
+	versionStr := re.FindStringSubmatch(versionRaw)
+	if err == nil && len(versionStr) == 3 {
+		for i := 1; i < len(versionStr); i++ {
+			val, err := strconv.Atoi((versionStr[i]))
+			if err != nil {
+				break
+			}
+			version[i-1] = val
+		}
+	}
+
+	return coreVersion{
+		major: version[0],
+		minor: version[1],
+	}
+}
+
+var minVersionForBucketlistCaching = coreVersion{major: 22, minor: 2}
+
 func (c *CaptiveCoreToml) setDefaults(params CaptiveCoreTomlParams) {
 	if !c.tree.Has("DATABASE") {
 		c.Database = "sqlite3://stellar.db"
@@ -511,6 +570,17 @@ func (c *CaptiveCoreToml) setDefaults(params CaptiveCoreTomlParams) {
 		poolSize := uint(params.HTTPQueryServerParams.ThreadPoolSize)
 		c.QueryThreadPoolSize = &poolSize
 
+	}
+
+	if !c.tree.Has("BUCKETLIST_DB_MEMORY_FOR_CACHING") &&
+		c.checkCoreVersion(params).greaterThanOrEqual(minVersionForBucketlistCaching) {
+		// set BUCKETLIST_DB_MEMORY_FOR_CACHING to 0 to disable allocation of
+		// memory for caching entries in BucketListDB.
+		// If we do not set BUCKETLIST_DB_MEMORY_FOR_CACHING, core will apply
+		// the default value which may result in additional 2-3 GB of memory usage
+		// in captive core
+		var disable uint = 0
+		c.BucketListDBMemoryForCaching = &disable
 	}
 }
 
