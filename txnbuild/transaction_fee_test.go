@@ -4,8 +4,9 @@ import (
 	"math"
 	"testing"
 
-	"github.com/stellar/go/keypair"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/stellar/go/keypair"
 )
 
 func TestBaseFeeCanBeZeroOrPositive(t *testing.T) {

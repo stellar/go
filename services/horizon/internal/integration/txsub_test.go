@@ -40,6 +40,7 @@ func TestTxSub(t *testing.T) {
 			HorizonEnvironment: map[string]string{
 				"DISABLE_TX_SUB": "true",
 			},
+			QuickExpiration: true,
 		})
 		master := itest.Master()
 
@@ -74,8 +75,8 @@ func TestTxSubLimitsBodySize(t *testing.T) {
 	require.NoError(t, err)
 
 	installContractOp := assembleInstallContractCodeOp(t, itest.Master().Address(), "soroban_sac_test.wasm")
-	preFlightOp, minFee := itest.PreflightHostFunctions(&sourceAccount, *installContractOp)
-	_, err = itest.SubmitOperationsWithFee(&sourceAccount, itest.Master(), minFee+txnbuild.MinBaseFee, &preFlightOp)
+	preFlightOp := itest.PreflightHostFunctions(&sourceAccount, *installContractOp)
+	_, err = itest.SubmitOperations(&sourceAccount, itest.Master(), &preFlightOp)
 	assert.EqualError(
 		t, err,
 		"horizon error: \"Transaction Malformed\" - check horizon.Error.Problem for more information",
@@ -87,8 +88,8 @@ func TestTxSubLimitsBodySize(t *testing.T) {
 	require.NoError(t, err)
 
 	installContractOp = assembleInstallContractCodeOp(t, itest.Master().Address(), "soroban_add_u64.wasm")
-	preFlightOp, minFee = itest.PreflightHostFunctions(&sourceAccount, *installContractOp)
-	tx, err := itest.SubmitOperationsWithFee(&sourceAccount, itest.Master(), minFee+txnbuild.MinBaseFee, &preFlightOp)
+	preFlightOp = itest.PreflightHostFunctions(&sourceAccount, *installContractOp)
+	tx, err := itest.SubmitOperations(&sourceAccount, itest.Master(), &preFlightOp)
 	require.NoError(t, err)
 	require.True(t, tx.Successful)
 }

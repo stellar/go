@@ -13,6 +13,8 @@ In Protocol 23, Stellar Core removes in-memory mode and requires on-disk mode (u
 ### Added
 - Update default pubnet captive core configuration to replace Whalestack with Creit Technologies in the quorum set ([5564](https://github.com/stellar/go/pull/5564)).
 
+## 22.0.3
+
 ### Fixed
 -  Fix the account operations endpoint to include InvokeHostFunction operations. The fix ensures that all account operations will be listed going forward. However, it will not retroactively include these operations for previously ingested ledgers; reingesting the historical data is required to address that. ([5574](https://github.com/stellar/go/pull/5574)).
 

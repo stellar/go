@@ -22,7 +22,6 @@ import (
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/ingest/loadtest"
 	"github.com/stellar/go/keypair"
-	"github.com/stellar/go/protocols/horizon"
 	proto "github.com/stellar/go/protocols/stellarcore"
 	"github.com/stellar/go/services/horizon/internal/test/integration"
 	"github.com/stellar/go/txnbuild"
@@ -33,7 +32,6 @@ const loadTestNetworkPassphrase = "load test network"
 
 type sorobanTransaction struct {
 	op             *txnbuild.InvokeHostFunction
-	fee            int64
 	signer         *keypair.Full
 	sequenceNumber int64
 }
@@ -62,40 +60,6 @@ func TestGenerateLedgers(t *testing.T) {
 	// transactionsPerLedger should be a multiple of maxAccountsPerTransaction
 	require.Zero(t, transactionsPerLedger%maxAccountsPerTransaction)
 
-	txErr := itest.CoreClient().UpgradeTxSetSize(context.Background(), uint32(transactionsPerLedger*100), time.Unix(0, 0))
-	require.NoError(t, txErr)
-
-	txErr = itest.CoreClient().UpgradeSorobanTxSetSize(context.Background(), uint32(transactionsPerLedger*100), time.Unix(0, 0))
-	require.NoError(t, txErr)
-
-	contents, err := os.ReadFile(filepath.Join("testdata", "unlimited-config.xdr"))
-	require.NoError(t, err)
-	var configSet xdr.ConfigUpgradeSet
-	err = xdr.SafeUnmarshalBase64(string(contents), &configSet)
-	require.NoError(t, err)
-
-	upgradeTransactions, upgradeKey, err := stellarcore.GenSorobanConfigUpgradeTxAndKey(stellarcore.GenSorobanConfig{
-		BaseSeqNum:        0,
-		NetworkPassphrase: itest.Config().NetworkPassphrase,
-		SigningKey:        itest.Master(),
-		StellarCorePath:   itest.CoreBinaryPath(),
-	}, configSet)
-	require.NoError(t, err)
-
-	for _, transaction := range upgradeTransactions {
-		var b64 string
-		b64, err = xdr.MarshalBase64(transaction)
-		require.NoError(t, err)
-		var response horizon.Transaction
-		response, err = itest.Client().SubmitTransactionXDR(b64)
-		require.NoError(t, err)
-		require.True(t, response.Successful)
-	}
-
-	require.NoError(t,
-		itest.CoreClient().UpgradeSorobanConfig(context.Background(), upgradeKey, time.Unix(0, 0)),
-	)
-
 	xlm := xdr.MustNewNativeAsset()
 	createSAC(itest, xlm)
 
@@ -111,8 +75,7 @@ func TestGenerateLedgers(t *testing.T) {
 	var accountLedgers []uint32
 	for i := 0; i < 2*transactionsPerLedger; i += maxAccountsPerTransaction {
 		keys, curAccounts := itest.CreateAccounts(maxAccountsPerTransaction, "10000000")
-		var account horizon.Account
-		account, err = itest.Client().AccountDetail(horizonclient.AccountRequest{AccountID: curAccounts[0].GetAccountID()})
+		account, err := itest.Client().AccountDetail(horizonclient.AccountRequest{AccountID: curAccounts[0].GetAccountID()})
 		require.NoError(t, err)
 		accountLedgers = append(accountLedgers, account.LastModifiedLedger)
 
@@ -141,25 +104,22 @@ func TestGenerateLedgers(t *testing.T) {
 		} else if i%2 == 1 {
 			for j := 0; j < transfersPerTx; j++ {
 				var contractID xdr.Hash
-				_, err = rand.Read(contractID[:])
+				_, err := rand.Read(contractID[:])
 				require.NoError(t, err)
 				bulkRecipients = append(bulkRecipients, contractAddressParam(contractID))
 			}
 		}
 
 		op = bulkTransfer(itest, bulkContractID, sender, xlm, &bulkRecipients, &bulkAmounts)
-		preFlightOp, minFee := itest.PreflightHostFunctions(accounts[i], *op)
+		preFlightOp := itest.PreflightHostFunctions(accounts[i], *op)
 		preFlightOp.Ext.SorobanData.Resources.ReadBytes *= 10
 		preFlightOp.Ext.SorobanData.Resources.WriteBytes *= 10
 		preFlightOp.Ext.SorobanData.Resources.Instructions *= 10
 		preFlightOp.Ext.SorobanData.ResourceFee *= 10
-		minFee *= 10
-		var sequenceNumber int64
-		sequenceNumber, err = accounts[i].GetSequenceNumber()
+		sequenceNumber, err := accounts[i].GetSequenceNumber()
 		require.NoError(t, err)
 		transactions = append(transactions, sorobanTransaction{
 			op:             &preFlightOp,
-			fee:            minFee + txnbuild.MinBaseFee,
 			signer:         signers[i],
 			sequenceNumber: sequenceNumber,
 		})
@@ -240,8 +200,7 @@ func TestGenerateLedgers(t *testing.T) {
 		if change.Type != xdr.LedgerEntryTypeAccount {
 			continue
 		}
-		var ledgerKey xdr.LedgerKey
-		ledgerKey, err = change.LedgerKey()
+		ledgerKey, err := change.LedgerKey()
 		require.NoError(t, err)
 		require.True(t, accountSet[ledgerKey.MustAccount().AccountId.Address()])
 	}
@@ -417,7 +376,7 @@ func txSubWorker(
 	pending := map[string]bool{}
 	for _, tx := range subset {
 		account := txnbuild.NewSimpleAccount(tx.signer.Address(), tx.sequenceNumber+sequenceOffset)
-		tx, err := itest.CreateSignedTransactionFromOpsWithFee(&account, []*keypair.Full{tx.signer}, tx.fee, tx.op)
+		tx, err := itest.CreateSignedTransactionFromOps(&account, []*keypair.Full{tx.signer}, tx.op)
 		require.NoError(itest.CurrentTest(), err)
 
 		hash, err := tx.HashHex(itest.Config().NetworkPassphrase)

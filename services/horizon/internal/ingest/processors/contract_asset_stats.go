@@ -6,6 +6,7 @@ import (
 	"math/big"
 
 	"github.com/stellar/go/ingest"
+	"github.com/stellar/go/ingest/sac"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
@@ -103,7 +104,7 @@ func (s *ContractAssetStatSet) ingestAssetContractMetadata(change ingest.Change)
 	if change.Pre != nil || change.Post == nil {
 		return false, nil
 	}
-	asset, found := AssetFromContractData(*change.Post, s.networkPassphrase)
+	asset, found := sac.AssetFromContractData(*change.Post, s.networkPassphrase)
 	if !found {
 		return false, nil
 	}
@@ -134,7 +135,7 @@ func (s *ContractAssetStatSet) ingestContractAssetBalance(change ingest.Change) 
 			return nil
 		}
 
-		_, postAmt, postOk := ContractBalanceFromContractData(*change.Post, s.networkPassphrase)
+		_, postAmt, postOk := sac.ContractBalanceFromContractData(*change.Post, s.networkPassphrase)
 		// we only ingest created ledger entries if we determine that they resemble the shape of
 		// a Stellar Asset Contract balance ledger entry
 		if !postOk {
@@ -179,7 +180,7 @@ func (s *ContractAssetStatSet) ingestContractAssetBalance(change ingest.Change) 
 		// entry from our db when the entry is removed from the ledger.
 		s.removedBalances = append(s.removedBalances, keyHash)
 
-		_, preAmt, ok := ContractBalanceFromContractData(*change.Pre, s.networkPassphrase)
+		_, preAmt, ok := sac.ContractBalanceFromContractData(*change.Pre, s.networkPassphrase)
 		if !ok {
 			return nil
 		}
@@ -199,14 +200,14 @@ func (s *ContractAssetStatSet) ingestContractAssetBalance(change ingest.Change) 
 			return nil
 		}
 
-		holder, amt, ok := ContractBalanceFromContractData(*change.Pre, s.networkPassphrase)
+		holder, amt, ok := sac.ContractBalanceFromContractData(*change.Pre, s.networkPassphrase)
 		if !ok {
 			return nil
 		}
 
 		// if the updated ledger entry is not in the expected format then this
 		// cannot be emitted by the stellar asset contract, so ignore it
-		postHolder, postAmt, postOk := ContractBalanceFromContractData(*change.Post, s.networkPassphrase)
+		postHolder, postAmt, postOk := sac.ContractBalanceFromContractData(*change.Post, s.networkPassphrase)
 		if !postOk || postHolder != holder {
 			return nil
 		}

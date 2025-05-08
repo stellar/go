@@ -14,7 +14,7 @@ import (
 
 // LedgerTransaction represents the data for a single transaction within a ledger.
 type LedgerTransaction struct {
-	Index    uint32
+	Index    uint32 // this index is 1-indexed as opposed to zero. Refer Read() in ledger_transaction_reader.go
 	Envelope xdr.TransactionEnvelope
 	Result   xdr.TransactionResultPair
 	// FeeChanges and UnsafeMeta are low level values, do not use them directly unless
@@ -30,6 +30,10 @@ type LedgerTransaction struct {
 
 func (t *LedgerTransaction) txInternalError() bool {
 	return t.Result.Result.Result.Code == xdr.TransactionResultCodeTxInternalError
+}
+
+func (t *LedgerTransaction) FeeAccount() xdr.MuxedAccount {
+	return t.Envelope.FeeAccount()
 }
 
 // GetFeeChanges returns a developer friendly representation of LedgerEntryChanges
@@ -187,6 +191,10 @@ func (t *LedgerTransaction) operationChanges(ops []xdr.OperationMeta, index uint
 	return changes
 }
 
+func (t *LedgerTransaction) GetContractEvents() ([]xdr.ContractEvent, error) {
+	return t.UnsafeMeta.GetContractEvents()
+}
+
 // GetDiagnosticEvents returns all contract events emitted by a given operation.
 func (t *LedgerTransaction) GetDiagnosticEvents() ([]xdr.DiagnosticEvent, error) {
 	return t.UnsafeMeta.GetDiagnosticEvents()
@@ -218,19 +226,13 @@ func (t *LedgerTransaction) FeeCharged() (int64, bool) {
 	if ok {
 		if uint32(t.Ledger.LedgerHeaderHistoryEntry().Header.LedgerVersion) < 21 && t.Envelope.Type == xdr.EnvelopeTypeEnvelopeTypeTxFeeBump {
 			var resourceFeeRefund int64
-			var inclusionFeeCharged int64
 
 			resourceFeeRefund, ok = t.SorobanResourceFeeRefund()
 			if !ok {
 				return 0, false
 			}
 
-			inclusionFeeCharged, ok = t.SorobanInclusionFeeCharged()
-			if !ok {
-				return 0, false
-			}
-
-			return int64(t.Result.Result.FeeCharged) - resourceFeeRefund + inclusionFeeCharged, true
+			return int64(t.Result.Result.FeeCharged) - resourceFeeRefund, true
 		}
 	}
 
@@ -595,31 +597,6 @@ func (t *LedgerTransaction) AccountMuxed() (string, bool) {
 
 }
 
-func (t *LedgerTransaction) FeeAccount() (string, bool) {
-	if !t.Envelope.IsFeeBump() {
-		return "", false
-	}
-
-	feeBumpAccount := t.Envelope.FeeBumpAccount()
-	feeAccount := feeBumpAccount.ToAccountId()
-
-	return feeAccount.Address(), true
-
-}
-
-func (t *LedgerTransaction) FeeAccountMuxed() (string, bool) {
-	if !t.Envelope.IsFeeBump() {
-		return "", false
-	}
-
-	feeBumpAccount := t.Envelope.FeeBumpAccount()
-	if feeBumpAccount.Type != xdr.CryptoKeyTypeKeyTypeMuxedEd25519 {
-		return "", false
-	}
-
-	return feeBumpAccount.Address(), true
-}
-
 func (t *LedgerTransaction) InnerTransactionHash() (string, bool) {
 	if !t.Envelope.IsFeeBump() {
 		return "", false
@@ -640,4 +617,148 @@ func (t *LedgerTransaction) NewMaxFee() (uint32, bool) {
 
 func (t *LedgerTransaction) Successful() bool {
 	return t.Result.Successful()
+}
+
+func (t *LedgerTransaction) GetTransactionV1Envelope() (xdr.TransactionV1Envelope, bool) {
+	switch t.Envelope.Type {
+	case xdr.EnvelopeTypeEnvelopeTypeTx:
+		switch t.Envelope.Type {
+		case 2:
+			return *t.Envelope.V1, true
+		default:
+			return xdr.TransactionV1Envelope{}, false
+		}
+	case xdr.EnvelopeTypeEnvelopeTypeTxFeeBump:
+		return t.Envelope.MustFeeBump().Tx.InnerTx.MustV1(), true
+	default:
+		return xdr.TransactionV1Envelope{}, false
+	}
+}
+
+func (t *LedgerTransaction) LedgerKeyHashesFromSorobanFootprint() []string {
+	var ledgerKeyHash []string
+
+	v1Envelope, ok := t.GetTransactionV1Envelope()
+	if !ok {
+		return ledgerKeyHash
+	}
+
+	for _, ledgerKey := range v1Envelope.Tx.Ext.SorobanData.Resources.Footprint.ReadOnly {
+		ledgerKeyBase64, err := xdr.MarshalBase64(ledgerKey)
+		if err != nil {
+			panic(err)
+		}
+		if ledgerKeyBase64 != "" {
+			ledgerKeyHash = append(ledgerKeyHash, ledgerKeyBase64)
+		}
+	}
+
+	for _, ledgerKey := range v1Envelope.Tx.Ext.SorobanData.Resources.Footprint.ReadWrite {
+		ledgerKeyBase64, err := xdr.MarshalBase64(ledgerKey)
+		if err != nil {
+			panic(err)
+		}
+		if ledgerKeyBase64 != "" {
+			ledgerKeyHash = append(ledgerKeyHash, ledgerKeyBase64)
+		}
+	}
+
+	return ledgerKeyHash
+}
+
+func (t *LedgerTransaction) ContractCodeHashFromSorobanFootprint() (string, bool) {
+	v1Envelope, ok := t.GetTransactionV1Envelope()
+	if !ok {
+		return "", false
+	}
+	for _, ledgerKey := range v1Envelope.Tx.Ext.SorobanData.Resources.Footprint.ReadOnly {
+		contractCode, ok := t.contractCodeFromContractData(ledgerKey)
+		if !ok {
+			return "", false
+		}
+		if contractCode != "" {
+			return contractCode, true
+		}
+	}
+
+	for _, ledgerKey := range v1Envelope.Tx.Ext.SorobanData.Resources.Footprint.ReadWrite {
+		contractCode, ok := t.contractCodeFromContractData(ledgerKey)
+		if !ok {
+			return "", false
+		}
+		if contractCode != "" {
+			return contractCode, true
+		}
+	}
+
+	return "", true
+}
+
+func (t *LedgerTransaction) contractCodeFromContractData(ledgerKey xdr.LedgerKey) (string, bool) {
+	contractCode, ok := ledgerKey.GetContractCode()
+	if !ok {
+		return "", false
+	}
+
+	codeHash, err := xdr.MarshalBase64(contractCode.Hash)
+	if err != nil {
+		panic(err)
+	}
+
+	return codeHash, true
+}
+
+func (t *LedgerTransaction) ContractIdFromTxEnvelope() (string, bool) {
+	v1Envelope, ok := t.GetTransactionV1Envelope()
+	if !ok {
+		return "", false
+	}
+	for _, ledgerKey := range v1Envelope.Tx.Ext.SorobanData.Resources.Footprint.ReadWrite {
+		contractId, ok := t.contractIdFromContractData(ledgerKey)
+		if !ok {
+			return "", false
+		}
+
+		if contractId != "" {
+			return contractId, true
+		}
+	}
+
+	for _, ledgerKey := range v1Envelope.Tx.Ext.SorobanData.Resources.Footprint.ReadOnly {
+		contractId, ok := t.contractIdFromContractData(ledgerKey)
+		if !ok {
+			return "", false
+		}
+
+		if contractId != "" {
+			return contractId, true
+		}
+	}
+
+	return "", true
+}
+
+func (t *LedgerTransaction) contractIdFromContractData(ledgerKey xdr.LedgerKey) (string, bool) {
+	contractData, ok := ledgerKey.GetContractData()
+	if !ok {
+		return "", false
+	}
+	contractIdHash, ok := contractData.Contract.GetContractId()
+	if !ok {
+		return "", false
+	}
+
+	var contractIdByte []byte
+	var contractId string
+	var err error
+	contractIdByte, err = contractIdHash.MarshalBinary()
+	if err != nil {
+		panic(err)
+	}
+	contractId, err = strkey.Encode(strkey.VersionByteContract, contractIdByte)
+	if err != nil {
+		panic(err)
+	}
+
+	return contractId, true
 }

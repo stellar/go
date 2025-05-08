@@ -214,6 +214,8 @@ func NewTest(t *testing.T, config Config) *Test {
 		}
 
 		i.WaitForHorizonIngest()
+
+		i.upgradeLimits()
 	}
 
 	return i
@@ -722,6 +724,45 @@ func (i *Test) waitForCore() {
 	i.t.Fatalf("Core could not sync after %v + %v", maxWaitForCoreStartup, maxWaitForCoreUpgrade)
 }
 
+func (i *Test) upgradeLimits() {
+	if i.config.ProtocolVersion < 22 || i.config.SkipCoreContainerCreation || i.config.QuickExpiration {
+		return
+	}
+
+	err := i.CoreClient().UpgradeTxSetSize(context.Background(), 100_000, time.Unix(0, 0))
+	require.NoError(i.t, err)
+
+	err = i.CoreClient().UpgradeSorobanTxSetSize(context.Background(), 100_000, time.Unix(0, 0))
+	require.NoError(i.t, err)
+
+	contents, err := os.ReadFile(filepath.Join("testdata", "unlimited-config.xdr"))
+	require.NoError(i.t, err)
+	var configSet xdr.ConfigUpgradeSet
+	err = xdr.SafeUnmarshalBase64(string(contents), &configSet)
+	require.NoError(i.t, err)
+
+	upgradeTransactions, upgradeKey, err := stellarcore.GenSorobanConfigUpgradeTxAndKey(stellarcore.GenSorobanConfig{
+		BaseSeqNum:        0,
+		NetworkPassphrase: i.Config().NetworkPassphrase,
+		SigningKey:        i.Master(),
+		StellarCorePath:   i.CoreBinaryPath(),
+	}, configSet)
+	require.NoError(i.t, err)
+
+	for _, transaction := range upgradeTransactions {
+		var b64 string
+		b64, err = xdr.MarshalBase64(transaction)
+		require.NoError(i.t, err)
+		response, err := i.Client().SubmitTransactionXDR(b64)
+		require.NoError(i.t, err)
+		require.True(i.t, response.Successful)
+	}
+
+	require.NoError(i.t,
+		i.CoreClient().UpgradeSorobanConfig(context.Background(), upgradeKey, time.Unix(0, 0)),
+	)
+}
+
 const stellarRPCInitTime = 60 * 6 * time.Second
 const stellarRPCHealthCheckInterval = time.Second
 
@@ -767,7 +808,7 @@ type RPCSimulateTxResponse struct {
 
 func (i *Test) PreflightHostFunctions(
 	sourceAccount txnbuild.Account, function txnbuild.InvokeHostFunction,
-) (txnbuild.InvokeHostFunction, int64) {
+) txnbuild.InvokeHostFunction {
 	if function.HostFunction.Type == xdr.HostFunctionTypeHostFunctionTypeInvokeContract {
 		fmt.Printf("Preflighting function call to: %s\n", string(function.HostFunction.InvokeContract.FunctionName))
 	}
@@ -792,7 +833,7 @@ func (i *Test) PreflightHostFunctions(
 	}
 	function.Auth = funAuth
 
-	return function, result.MinResourceFee
+	return function
 }
 
 func (i *Test) simulateTransaction(
@@ -806,7 +847,13 @@ func (i *Test) simulateTransaction(
 	// TODO: soroban-tools should be exporting a proper Go client
 	ch := jhttp.NewChannel("http://localhost:"+strconv.Itoa(StellarRPCPort), nil)
 	stellarRPCClient := jrpc2.NewClient(ch, nil)
-	txParams := GetBaseTransactionParamsWithFee(sourceAccount, txnbuild.MinBaseFee, op)
+	txParams := txnbuild.TransactionParams{
+		SourceAccount:        sourceAccount,
+		Operations:           []txnbuild.Operation{op},
+		BaseFee:              txnbuild.MinBaseFee,
+		Preconditions:        txnbuild.Preconditions{TimeBounds: txnbuild.NewInfiniteTimeout()},
+		IncrementSequenceNum: true,
+	}
 	txParams.IncrementSequenceNum = false
 	tx, err := txnbuild.NewTransaction(txParams)
 	assert.NoError(i.t, err)
@@ -884,7 +931,7 @@ func (i *Test) WaitUntilLedgerEntryTTL(ledgerKey xdr.LedgerKey) {
 
 func (i *Test) PreflightExtendExpiration(
 	account string, ledgerKeys []xdr.LedgerKey, extendAmt uint32,
-) (proto.Account, txnbuild.ExtendFootprintTtl, int64) {
+) (proto.Account, txnbuild.ExtendFootprintTtl) {
 	sourceAccount, err := i.Client().AccountDetail(sdk.AccountRequest{
 		AccountID: account,
 	})
@@ -907,18 +954,18 @@ func (i *Test) PreflightExtendExpiration(
 			},
 		},
 	}
-	result, transactionData := i.simulateTransaction(&sourceAccount, &bumpFootprint)
+	_, transactionData := i.simulateTransaction(&sourceAccount, &bumpFootprint)
 	bumpFootprint.Ext = xdr.TransactionExt{
 		V:           1,
 		SorobanData: &transactionData,
 	}
 
-	return sourceAccount, bumpFootprint, result.MinResourceFee
+	return sourceAccount, bumpFootprint
 }
 
 func (i *Test) RestoreFootprint(
 	account string, ledgerKey xdr.LedgerKey,
-) (proto.Account, txnbuild.RestoreFootprint, int64) {
+) (proto.Account, txnbuild.RestoreFootprint) {
 	sourceAccount, err := i.Client().AccountDetail(sdk.AccountRequest{
 		AccountID: account,
 	})
@@ -939,13 +986,13 @@ func (i *Test) RestoreFootprint(
 			},
 		},
 	}
-	result, transactionData := i.simulateTransaction(&sourceAccount, &restoreFootprint)
+	_, transactionData := i.simulateTransaction(&sourceAccount, &restoreFootprint)
 	restoreFootprint.Ext = xdr.TransactionExt{
 		V:           1,
 		SorobanData: &transactionData,
 	}
 
-	return sourceAccount, restoreFootprint, result.MinResourceFee
+	return sourceAccount, restoreFootprint
 }
 
 // UpgradeProtocol arms Core with upgrade and blocks until protocol is upgraded.
@@ -1260,13 +1307,7 @@ func (i *Test) MustGetAccount(source *keypair.Full) proto.Account {
 func (i *Test) MustSubmitOperations(
 	source txnbuild.Account, signer *keypair.Full, ops ...txnbuild.Operation,
 ) proto.Transaction {
-	return i.MustSubmitOperationsWithFee(source, signer, txnbuild.MinBaseFee, ops...)
-}
-
-func (i *Test) MustSubmitOperationsWithFee(
-	source txnbuild.Account, signer *keypair.Full, fee int64, ops ...txnbuild.Operation,
-) proto.Transaction {
-	tx, err := i.SubmitOperationsWithFee(source, signer, fee, ops...)
+	tx, err := i.SubmitOperations(source, signer, ops...)
 	panicIf(err)
 	return tx
 }
@@ -1280,19 +1321,7 @@ func (i *Test) SubmitOperations(
 func (i *Test) SubmitMultiSigOperations(
 	source txnbuild.Account, signers []*keypair.Full, ops ...txnbuild.Operation,
 ) (proto.Transaction, error) {
-	return i.SubmitMultiSigOperationsWithFee(source, signers, txnbuild.MinBaseFee, ops...)
-}
-
-func (i *Test) SubmitOperationsWithFee(
-	source txnbuild.Account, signer *keypair.Full, fee int64, ops ...txnbuild.Operation,
-) (proto.Transaction, error) {
-	return i.SubmitMultiSigOperationsWithFee(source, []*keypair.Full{signer}, fee, ops...)
-}
-
-func (i *Test) SubmitMultiSigOperationsWithFee(
-	source txnbuild.Account, signers []*keypair.Full, fee int64, ops ...txnbuild.Operation,
-) (proto.Transaction, error) {
-	tx, err := i.CreateSignedTransactionFromOpsWithFee(source, signers, fee, ops...)
+	tx, err := i.CreateSignedTransactionFromOps(source, signers, ops...)
 	if err != nil {
 		return proto.Transaction{}, err
 	}
@@ -1368,31 +1397,13 @@ func (i *Test) CreateSignedTransaction(signers []*keypair.Full, txParams txnbuil
 func (i *Test) CreateSignedTransactionFromOps(
 	source txnbuild.Account, signers []*keypair.Full, ops ...txnbuild.Operation,
 ) (*txnbuild.Transaction, error) {
-	return i.CreateSignedTransactionFromOpsWithFee(source, signers, txnbuild.MinBaseFee, ops...)
-}
-
-func (i *Test) CreateSignedTransactionFromOpsWithFee(
-	source txnbuild.Account, signers []*keypair.Full, fee int64, ops ...txnbuild.Operation,
-) (*txnbuild.Transaction, error) {
-	txParams := GetBaseTransactionParamsWithFee(source, fee, ops...)
-	return i.CreateSignedTransaction(signers, txParams)
-}
-
-func GetBaseTransactionParamsWithFee(source txnbuild.Account, fee int64, ops ...txnbuild.Operation) txnbuild.TransactionParams {
-	return txnbuild.TransactionParams{
+	return i.CreateSignedTransaction(signers, txnbuild.TransactionParams{
 		SourceAccount:        source,
 		Operations:           ops,
-		BaseFee:              fee,
+		BaseFee:              txnbuild.MinBaseFee,
 		Preconditions:        txnbuild.Preconditions{TimeBounds: txnbuild.NewInfiniteTimeout()},
 		IncrementSequenceNum: true,
-	}
-}
-
-func (i *Test) CreateUnsignedTransaction(
-	source txnbuild.Account, ops ...txnbuild.Operation,
-) (*txnbuild.Transaction, error) {
-	txParams := GetBaseTransactionParamsWithFee(source, txnbuild.MinBaseFee, ops...)
-	return txnbuild.NewTransaction(txParams)
+	})
 }
 
 func (i *Test) GetCurrentCoreLedgerSequence() (int, error) {

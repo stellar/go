@@ -847,16 +847,6 @@ func NewTransaction(params TransactionParams) (*Transaction, error) {
 		return nil, errors.New("transaction has no operations")
 	}
 
-	// check if maxFee fits in a uint32
-	// 64 bit fees are only available in fee bump transactions
-	// if maxFee is negative then there must have been an int overflow
-	hi, lo := bits.Mul64(uint64(params.BaseFee), uint64(len(params.Operations)))
-	if hi > 0 || lo > math.MaxUint32 {
-		return nil, errors.Errorf(
-			"base fee %d results in an overflow of max fee", params.BaseFee)
-	}
-	tx.maxFee = int64(lo)
-
 	// Check that all preconditions are valid
 	if err = tx.preconditions.Validate(); err != nil {
 		return nil, errors.Wrap(err, "invalid preconditions")
@@ -872,7 +862,6 @@ func NewTransaction(params TransactionParams) (*Transaction, error) {
 		V1: &xdr.TransactionV1Envelope{
 			Tx: xdr.Transaction{
 				SourceAccount: sourceAccount,
-				Fee:           xdr.Uint32(tx.maxFee),
 				SeqNum:        xdr.SequenceNumber(sequence),
 				Cond:          precondXdr,
 			},
@@ -910,12 +899,31 @@ func NewTransaction(params TransactionParams) (*Transaction, error) {
 	}
 
 	// In case it's a smart contract transaction, we need to include the Ext field within the envelope.
+	var sorobanFee uint64
 	if sorobanOp != nil {
 		envelope.V1.Tx.Ext, err = sorobanOp.BuildTransactionExt()
 		if err != nil {
 			return nil, errors.Wrap(err, fmt.Sprintf("failed to build operation %T", sorobanOp))
 		}
+		if envelope.V1.Tx.Ext.SorobanData != nil {
+			sorobanFee = uint64(envelope.V1.Tx.Ext.SorobanData.ResourceFee)
+		}
 	}
+
+	// check if maxFee fits in a uint32
+	// 64 bit fees are only available in fee bump transactions
+	// if maxFee is negative then there must have been an int overflow
+	hi, lo := bits.Mul64(uint64(params.BaseFee), uint64(len(params.Operations)))
+	if hi > 0 || lo > math.MaxUint32 {
+		return nil, errors.Errorf(
+			"base fee %d results in an overflow of max fee", params.BaseFee)
+	}
+	totalFee := lo + sorobanFee
+	if totalFee < lo || totalFee > math.MaxUint32 {
+		return nil, fmt.Errorf("soroban fee %v results in an overflow of max fee", sorobanFee)
+	}
+	tx.maxFee = int64(totalFee)
+	envelope.V1.Tx.Fee = xdr.Uint32(totalFee)
 
 	tx.envelope = envelope
 	return tx, nil
@@ -976,17 +984,10 @@ func NewFeeBumpTransaction(params FeeBumpTransactionParams) (*FeeBumpTransaction
 		// number of operations in the inner transaction. Correspondingly, the minimum fee for
 		// the fee-bump transaction is one base fee more than the minimum fee for the inner
 		// transaction.
-		maxFee:     params.BaseFee * int64(len(inner.operations)+1),
 		feeAccount: params.FeeAccount,
 		inner:      new(Transaction),
 	}
 	*tx.inner = *inner
-
-	hi, lo := bits.Mul64(uint64(params.BaseFee), uint64(len(inner.operations)+1))
-	if hi > 0 || lo > math.MaxInt64 {
-		return nil, errors.Errorf("base fee %d results in an overflow of max fee", params.BaseFee)
-	}
-	tx.maxFee = int64(lo)
 
 	if tx.baseFee < tx.inner.baseFee {
 		return tx, errors.New("base fee cannot be lower than provided inner transaction fee")
@@ -996,6 +997,21 @@ func NewFeeBumpTransaction(params FeeBumpTransactionParams) (*FeeBumpTransaction
 			"base fee cannot be lower than network minimum of %d", MinBaseFee,
 		)
 	}
+
+	var sorobanFee uint64
+	if inner.envelope.V1 != nil && inner.envelope.V1.Tx.Ext.SorobanData != nil {
+		sorobanFee = uint64(inner.envelope.V1.Tx.Ext.SorobanData.ResourceFee)
+	}
+
+	hi, lo := bits.Mul64(uint64(params.BaseFee), uint64(len(inner.operations)+1))
+	if hi > 0 || lo > math.MaxInt64 {
+		return nil, errors.Errorf("base fee %d results in an overflow of max fee", params.BaseFee)
+	}
+	totalFee := lo + sorobanFee
+	if totalFee < lo || totalFee > math.MaxInt64 {
+		return nil, fmt.Errorf("soroban fee %v results in an overflow of max fee", sorobanFee)
+	}
+	tx.maxFee = int64(totalFee)
 
 	var feeSource xdr.MuxedAccount
 	if err := feeSource.SetAddress(tx.feeAccount); err != nil {
