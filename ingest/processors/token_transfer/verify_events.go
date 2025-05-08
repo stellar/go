@@ -212,7 +212,7 @@ func VerifyEvents(ledger xdr.LedgerCloseMeta, passphrase string) error {
 
 	for {
 		var tx ingest.LedgerTransaction
-		var txEvents []*TokenTransferEvent
+		var events []*TokenTransferEvent
 		tx, err = txReader.Read()
 		if err == io.EOF {
 			break
@@ -222,17 +222,21 @@ func VerifyEvents(ledger xdr.LedgerCloseMeta, passphrase string) error {
 		}
 
 		txHash := tx.Hash.HexString()
-		txEvents, err = ttp.EventsFromTransaction(tx)
+		txEvents, err := ttp.EventsFromTransaction(tx)
 		if err != nil {
 			return fmt.Errorf("verifyEventsError: %w", err)
 		}
+
+		events = append(events, txEvents.FeeEvents...) // order here doesnt matter, since we are only using this to verify
+		events = append(events, txEvents.OperationEvents...)
+
 		feeChanges := tx.GetFeeChanges()
 		txChanges, err := tx.GetChanges()
 		if err != nil {
 			return fmt.Errorf("verifyEventsError: %w", err)
 		}
 		changes := append(feeChanges, txChanges...)
-		txEventsMap := findBalanceDeltasFromEvents(txEvents)
+		txEventsMap := findBalanceDeltasFromEvents(events)
 		txChangesMap := findBalanceDeltasFromChanges(changes)
 
 		if diff := cmp.Diff(txEventsMap, txChangesMap); diff != "" {
