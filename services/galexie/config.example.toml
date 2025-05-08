@@ -16,8 +16,8 @@ destination_bucket_path = "your-bucket-name/<optional_subpath1>/<optional_subpat
 
 [datastore_config.schema]
 # Configuration for data organization
-ledgers_per_file = 64      # Number of ledgers stored in each file.
-files_per_partition = 10   # Number of files per partition/directory.
+ledgers_per_file = 1      # Number of ledgers stored in each file.
+files_per_partition = 64000   # Number of files per partition/directory.
 
 # Stellar-core Configuration
 [stellar_core_config]
