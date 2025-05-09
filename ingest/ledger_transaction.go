@@ -224,10 +224,7 @@ func (t *LedgerTransaction) FeeCharged() (int64, bool) {
 		if uint32(t.Ledger.LedgerHeaderHistoryEntry().Header.LedgerVersion) < 21 && t.Envelope.Type == xdr.EnvelopeTypeEnvelopeTypeTxFeeBump {
 			var resourceFeeRefund int64
 
-			resourceFeeRefund, ok = t.SorobanResourceFeeRefund()
-			if !ok {
-				return 0, false
-			}
+			resourceFeeRefund = t.SorobanResourceFeeRefund()
 
 			return int64(t.Result.Result.FeeCharged) - resourceFeeRefund, true
 		}
@@ -345,6 +342,11 @@ func (t *LedgerTransaction) GetSorobanData() (xdr.SorobanTransactionData, bool) 
 	default:
 		panic(fmt.Errorf("unknown EnvelopeType %d", t.Envelope.Type))
 	}
+}
+
+func (t *LedgerTransaction) IsSorobanTx() bool {
+	_, res := t.GetSorobanData()
+	return res
 }
 
 func (t *LedgerTransaction) SorobanResourceFee() (int64, bool) {
@@ -499,21 +501,23 @@ func getAccountBalanceFromLedgerEntryChanges(changes xdr.LedgerEntryChanges, sou
 	return accountBalanceStart, accountBalanceEnd
 }
 
-func (t *LedgerTransaction) SorobanResourceFeeRefund() (int64, bool) {
-	meta, ok := t.UnsafeMeta.GetV3()
-	if !ok {
-		return 0, false
+func (t *LedgerTransaction) OriginalFeeCharged() int64 {
+	startingBal, endingBal := getAccountBalanceFromLedgerEntryChanges(t.FeeChanges, t.FeeAccount().ToAccountId().Address())
+	if endingBal > startingBal {
+		panic("Invalid Fee")
 	}
+	return startingBal - endingBal
+}
 
-	feeAccountAddress, ok := t.FeeAccountAddress()
-	if !ok {
-		return 0, false
+func (t *LedgerTransaction) SorobanResourceFeeRefund() int64 {
+	if !t.IsSorobanTx() {
+		return 0
 	}
-
-	accountBalanceStart, accountBalanceEnd := getAccountBalanceFromLedgerEntryChanges(meta.TxChangesAfter, feeAccountAddress)
-
-	return accountBalanceEnd - accountBalanceStart, true
-
+	startingBal, endingBal := getAccountBalanceFromLedgerEntryChanges(t.UnsafeMeta.MustV3().TxChangesAfter, t.FeeAccount().ToAccountId().Address())
+	if startingBal > endingBal {
+		panic("Invalid Soroban Resource Refund")
+	}
+	return endingBal - startingBal
 }
 
 func (t *LedgerTransaction) SorobanTotalNonRefundableResourceFeeCharged() (int64, bool) {

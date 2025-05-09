@@ -376,15 +376,39 @@ func (p *EventsProcessor) generateFeeEvent(tx ingest.LedgerTransaction) ([]*Toke
 		And we want the "muxed" Account, so that it can be passed directly to protoAddressFromAccount
 	*/
 	feeAccount := tx.FeeAccount()
-	// FeeCharged() takes care of a bug in an intermediate protocol release. So using that
-	feeAmt, ok := tx.FeeCharged()
-	if !ok {
-		return nil, errors.New("error getting fee amount from transaction")
+	meta := p.generateEventMeta(tx, nil, xlmAsset)
+
+	if !tx.IsSorobanTx() {
+		/*
+			For classic transaction, there will only ever be one fee event.
+			For classic operations, you can always rely on the FeeCharged field in the TransactionResult
+			You could have just as easily got this value from tx.OriginalFeeCharged().
+			Since it is a classic operation, it will have no refunds
+		*/
+		feeAmt := tx.Result.Result.FeeCharged
+		classicFeeEvent := NewFeeEvent(meta, protoAddressFromAccount(feeAccount), amount.String64Raw(feeAmt), xlmProtoAsset)
+		return []*TokenTransferEvent{classicFeeEvent}, nil
 	}
 
-	meta := p.generateEventMeta(tx, nil, xlmAsset)
-	event := NewFeeEvent(meta, protoAddressFromAccount(feeAccount), amount.String64Raw(xdr.Int64(feeAmt)), xlmProtoAsset)
-	return []*TokenTransferEvent{event}, nil
+	/* Fee calculations/event generation for soroban Txs is 2-part:
+	1. 	Calculate the Fee that was originally charged at the beginning of the transaction and debit it from the fee account.
+	   	This event will show with positive amount in the FeeEvent
+	2. 	If there was a refund, then credit it back to the feeAccount.
+		Refund will show with amount as negative amount in the FeeEvent, as per CAP-67
+	  	https://github.com/stellar/stellar-protocol/blob/master/core/cap-0067.md#new-events-for-representing-fees
+	*/
+	var feeEvents []*TokenTransferEvent
+
+	originalSorobanFeeCharged := tx.OriginalFeeCharged()
+	sorobanFeeRefund := tx.SorobanResourceFeeRefund()
+	originalFeeEvent := NewFeeEvent(meta, protoAddressFromAccount(feeAccount), amount.String64Raw(xdr.Int64(originalSorobanFeeCharged)), xlmProtoAsset)
+	feeEvents = append(feeEvents, originalFeeEvent)
+
+	if sorobanFeeRefund > 0 {
+		refundEvent := NewFeeEvent(meta, protoAddressFromAccount(feeAccount), amount.String64Raw(xdr.Int64(-sorobanFeeRefund)), xlmProtoAsset)
+		feeEvents = append(feeEvents, refundEvent)
+	}
+	return feeEvents, nil
 }
 
 // Function stubs
