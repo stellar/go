@@ -222,10 +222,7 @@ func (t *LedgerTransaction) FeeCharged() (int64, bool) {
 	_, ok = t.GetSorobanData()
 	if ok {
 		if uint32(t.Ledger.LedgerHeaderHistoryEntry().Header.LedgerVersion) < 21 && t.Envelope.Type == xdr.EnvelopeTypeEnvelopeTypeTxFeeBump {
-			var resourceFeeRefund int64
-
-			resourceFeeRefund = t.SorobanResourceFeeRefund()
-
+			resourceFeeRefund := t.SorobanResourceFeeRefund()
 			return int64(t.Result.Result.FeeCharged) - resourceFeeRefund, true
 		}
 	}

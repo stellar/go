@@ -400,10 +400,10 @@ func (p *EventsProcessor) generateFeeEvent(tx ingest.LedgerTransaction) ([]*Toke
 	var feeEvents []*TokenTransferEvent
 
 	originalSorobanFeeCharged := tx.OriginalFeeCharged()
-	sorobanFeeRefund := tx.SorobanResourceFeeRefund()
 	originalFeeEvent := NewFeeEvent(meta, protoAddressFromAccount(feeAccount), amount.String64Raw(xdr.Int64(originalSorobanFeeCharged)), xlmProtoAsset)
 	feeEvents = append(feeEvents, originalFeeEvent)
 
+	sorobanFeeRefund := tx.SorobanResourceFeeRefund()
 	if sorobanFeeRefund > 0 {
 		refundEvent := NewFeeEvent(meta, protoAddressFromAccount(feeAccount), amount.String64Raw(xdr.Int64(-sorobanFeeRefund)), xlmProtoAsset)
 		feeEvents = append(feeEvents, refundEvent)
