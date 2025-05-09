@@ -638,10 +638,11 @@ func TestFeeEvent(t *testing.T) {
 		t.Run(fixture.name, func(t *testing.T) {
 			events, err := ttp.EventsFromTransaction(fixture.tx)
 			assert.NoError(t, err)
-			assert.Equal(t, len(fixture.expected), len(events))
-			for i := range events {
-				assert.True(t, proto.Equal(events[i], fixture.expected[i]),
-					"Expected event: %+v\nFound event: %+v", fixture.expected[i], events[i])
+			assert.Equal(t, len(fixture.expected), len(events.FeeEvents))
+			assert.Equal(t, 0, len(events.OperationEvents))
+			for i := range events.FeeEvents {
+				assert.True(t, proto.Equal(events.FeeEvents[i], fixture.expected[i]),
+					"Expected event: %+v\nFound event: %+v", fixture.expected[i], events.FeeEvents[i])
 			}
 		})
 	}
