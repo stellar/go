@@ -73,7 +73,7 @@ func (p *EventsProcessor) EventsFromLedger(lcm xdr.LedgerCloseMeta) ([]*TokenTra
 	var allEvents []*TokenTransferEvent
 
 	/*
-		For protocol version 22 and under, the following represents chronological ordering of events in a ledger
+		As of protocol 22, the following represents chronological ordering of events in a ledger
 			- FeeEvents from all Transactions upfront
 			- For each transaction
 				events from each operation
