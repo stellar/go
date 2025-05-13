@@ -64,15 +64,44 @@ func NewEventsProcessor(networkPassphrase string, options ...EventsProcessorOpti
 // This function operates at the ledger level, iterating over all transactions in the ledger.
 // it calls EventsFromTransaction to process token transfer events from each transaction within the ledger.
 func (p *EventsProcessor) EventsFromLedger(lcm xdr.LedgerCloseMeta) ([]*TokenTransferEvent, error) {
-	var events []*TokenTransferEvent
 	txReader, err := ingest.NewLedgerTransactionReaderFromLedgerCloseMeta(p.networkPassphrase, lcm)
 	if err != nil {
 		return nil, fmt.Errorf("error creating transaction reader: %w", err)
 	}
 
+	var feeEvents []*TokenTransferEvent
+	var allEvents []*TokenTransferEvent
+
+	/*
+		As of protocol 22, the following represents chronological ordering of events in a ledger
+			- FeeEvents from all Transactions upfront
+			- For each transaction
+				events from each operation
+			- FeeRefund for each transaction follows immediately after operationEvents
+
+			Tx-1-FeeEvent
+			Tx-2-FeeEvent
+			......
+			Tx-N-FeeEvent
+			Tx-1-Operation-1-Events...
+			......
+			Tx-1-Operation-N-Events...
+			Tx-1-FeeRefund (if any)
+			Tx-2-Operation-1-Events...
+			......
+			Tx-2-Operation-N-Events...
+			Tx-2-FeeRefund (if any)
+			......
+			......
+			......
+			Tx-N-Operation-1-Events...
+			......
+			Tx-N-Operation-N-Events...
+			Tx-N-FeeRefund (if any)
+	*/
+
 	for {
 		var tx ingest.LedgerTransaction
-		var txEvents []*TokenTransferEvent
 		tx, err = txReader.Read()
 		if err == io.EOF {
 			break
@@ -80,13 +109,29 @@ func (p *EventsProcessor) EventsFromLedger(lcm xdr.LedgerCloseMeta) ([]*TokenTra
 		if err != nil {
 			return nil, fmt.Errorf("error reading transaction: %w", err)
 		}
-		txEvents, err = p.EventsFromTransaction(tx)
+		txEvents, err := p.EventsFromTransaction(tx)
 		if err != nil {
 			return nil, err
 		}
-		events = append(events, txEvents...)
+
+		if len(txEvents.FeeEvents) == 0 || len(txEvents.FeeEvents) > 2 {
+			return nil, fmt.Errorf("invalid feeEvents found for transaction: %v, feeEvents found: %v", tx.Hash.HexString(), len(txEvents.FeeEvents))
+		}
+		// FeeEvents from all transactions are to be PRE-pended to events after this loop. Dont add them just yet
+		feeEvents = append(feeEvents, txEvents.FeeEvents[0])
+		allEvents = append(allEvents, txEvents.OperationEvents...)
+		if len(txEvents.FeeEvents) == 2 {
+			// add the refund fee immediately after all the operationEvents from the Tx.
+			allEvents = append(allEvents, txEvents.FeeEvents[1])
+		}
 	}
-	return events, nil
+	allEvents = append(feeEvents, allEvents...)
+	return allEvents, nil
+}
+
+type TransactionEvents struct {
+	FeeEvents       []*TokenTransferEvent
+	OperationEvents []*TokenTransferEvent
 }
 
 // EventsFromTransaction processes token transfer events for all operations within a given transaction.
@@ -95,17 +140,19 @@ func (p *EventsProcessor) EventsFromLedger(lcm xdr.LedgerCloseMeta) ([]*TokenTra
 //	If the transaction was successful, it processes all operations in the transaction by calling EventsFromOperation for each operation in the transaction.
 //
 // If the transaction is unsuccessful, it only generates events for transaction fees.
-func (p *EventsProcessor) EventsFromTransaction(tx ingest.LedgerTransaction) ([]*TokenTransferEvent, error) {
-	var events []*TokenTransferEvent
+func (p *EventsProcessor) EventsFromTransaction(tx ingest.LedgerTransaction) (TransactionEvents, error) {
+	txEvents := TransactionEvents{}
+	var operationEvents []*TokenTransferEvent
+
 	feeEvents, err := p.generateFeeEvent(tx)
 	if err != nil {
-		return nil, fmt.Errorf("error generating fee event: %w", err)
+		return txEvents, fmt.Errorf("error generating fee event: %w", err)
 	}
-	events = append(events, feeEvents...)
+	txEvents.FeeEvents = feeEvents
 
 	// Ensure we only process operations if the transaction was successful
 	if !tx.Result.Successful() {
-		return events, nil
+		return txEvents, nil
 	}
 
 	operations := tx.Envelope.Operations()
@@ -117,13 +164,14 @@ func (p *EventsProcessor) EventsFromTransaction(tx ingest.LedgerTransaction) ([]
 		// Process the operation and collect events
 		opEvents, err := p.EventsFromOperation(tx, uint32(i), op, opResult)
 		if err != nil {
-			return nil, err
+			return TransactionEvents{}, err
 		}
 
-		events = append(events, opEvents...)
+		operationEvents = append(operationEvents, opEvents...)
 	}
+	txEvents.OperationEvents = operationEvents
 
-	return events, nil
+	return txEvents, nil
 }
 
 // EventsFromOperation processes token transfer events for a given operation within a transaction.
@@ -328,15 +376,39 @@ func (p *EventsProcessor) generateFeeEvent(tx ingest.LedgerTransaction) ([]*Toke
 		And we want the "muxed" Account, so that it can be passed directly to protoAddressFromAccount
 	*/
 	feeAccount := tx.FeeAccount()
-	// FeeCharged() takes care of a bug in an intermediate protocol release. So using that
-	feeAmt, ok := tx.FeeCharged()
-	if !ok {
-		return nil, errors.New("error getting fee amount from transaction")
+	meta := p.generateEventMeta(tx, nil, xlmAsset)
+
+	if !tx.IsSorobanTx() {
+		/*
+			For classic transaction, there will only ever be one fee event.
+			For classic operations, you can always rely on the FeeCharged field in the TransactionResult
+			You could have just as easily got this value from tx.OriginalFeeCharged().
+			Since it is a classic operation, it will have no refunds
+		*/
+		feeAmt := tx.Result.Result.FeeCharged
+		classicFeeEvent := NewFeeEvent(meta, protoAddressFromAccount(feeAccount), amount.String64Raw(feeAmt), xlmProtoAsset)
+		return []*TokenTransferEvent{classicFeeEvent}, nil
 	}
 
-	meta := p.generateEventMeta(tx, nil, xlmAsset)
-	event := NewFeeEvent(meta, protoAddressFromAccount(feeAccount), amount.String64Raw(xdr.Int64(feeAmt)), xlmProtoAsset)
-	return []*TokenTransferEvent{event}, nil
+	/* Fee calculations/event generation for soroban Txs is 2-part:
+	1. 	Calculate the Fee that was originally charged at the beginning of the transaction and debit it from the fee account.
+	   	This event will show with positive amount in the FeeEvent
+	2. 	If there was a refund, then credit it back to the feeAccount.
+		Refund will show with amount as negative amount in the FeeEvent, as per CAP-67
+	  	https://github.com/stellar/stellar-protocol/blob/master/core/cap-0067.md#new-events-for-representing-fees
+	*/
+	var feeEvents []*TokenTransferEvent
+
+	originalSorobanFeeCharged := tx.OriginalFeeCharged()
+	originalFeeEvent := NewFeeEvent(meta, protoAddressFromAccount(feeAccount), amount.String64Raw(xdr.Int64(originalSorobanFeeCharged)), xlmProtoAsset)
+	feeEvents = append(feeEvents, originalFeeEvent)
+
+	sorobanFeeRefund := tx.SorobanResourceFeeRefund()
+	if sorobanFeeRefund > 0 {
+		refundEvent := NewFeeEvent(meta, protoAddressFromAccount(feeAccount), amount.String64Raw(xdr.Int64(-sorobanFeeRefund)), xlmProtoAsset)
+		feeEvents = append(feeEvents, refundEvent)
+	}
+	return feeEvents, nil
 }
 
 // Function stubs

@@ -119,6 +119,32 @@ var (
 		return resp
 	}
 
+	someSorobanTx = func(feeChanges xdr.LedgerEntryChanges, txApplyAfterChanges xdr.LedgerEntryChanges) ingest.LedgerTransaction {
+		resp := someTx
+		resp.UnsafeMeta.V = 3
+		resp.FeeChanges = feeChanges
+		resp.Envelope.V1.Tx.Ext = xdr.TransactionExt{
+			V: 1,
+			SorobanData: &xdr.SorobanTransactionData{
+				Ext: xdr.ExtensionPoint{
+					V: 0,
+				},
+				Resources: xdr.SorobanResources{
+					Footprint: xdr.LedgerFootprint{
+						ReadOnly:  []xdr.LedgerKey{},
+						ReadWrite: []xdr.LedgerKey{},
+					},
+				},
+				ResourceFee: 100,
+			},
+		}
+		resp.UnsafeMeta.V3 = &xdr.TransactionMetaV3{
+			TxChangesAfter: txApplyAfterChanges,
+		}
+		resp.Result.Result.Result.Code = xdr.TransactionResultCodeTxFailed
+		return resp
+	}
+
 	someTxWithOperationChangesAndMemo = func(changes xdr.LedgerEntryChanges, memo xdr.Memo) ingest.LedgerTransaction {
 		resp := someTxWithOperationChanges(changes)
 		resp.Envelope.V1 = &xdr.TransactionV1Envelope{
@@ -232,6 +258,44 @@ var (
 				},
 			},
 		}
+	}
+
+	accountEntry = func(acc xdr.MuxedAccount, balance xdr.Int64) *xdr.AccountEntry {
+		return &xdr.AccountEntry{
+			AccountId: acc.ToAccountId(),
+			Balance:   balance,
+			SeqNum:    xdr.SequenceNumber(12345),
+		}
+	}
+
+	generateAccountEntryChangState = func(accountEntry *xdr.AccountEntry) xdr.LedgerEntryChange {
+		return xdr.LedgerEntryChange{
+			Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
+			State: &xdr.LedgerEntry{
+				Data: xdr.LedgerEntryData{
+					Type:    xdr.LedgerEntryTypeAccount,
+					Account: accountEntry,
+				},
+			},
+		}
+	}
+
+	generateAccountEntryUpdatedChange = func(accountEntry *xdr.AccountEntry, newBalance xdr.Int64) xdr.LedgerEntryChange {
+		accountEntry.Balance = newBalance
+		return xdr.LedgerEntryChange{
+			Type: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
+			Updated: &xdr.LedgerEntry{
+				Data: xdr.LedgerEntryData{
+					Type:    xdr.LedgerEntryTypeAccount,
+					Account: accountEntry,
+				},
+			},
+		}
+	}
+
+	expectedFeeEvent = func(feeAmt string) *TokenTransferEvent {
+		return NewFeeEvent(NewEventMetaFromTx(someTx, nil, contractIdStrFromAsset(xlmAsset)),
+			protoAddressFromAccount(someTxAccount), feeAmt, xlmProtoAsset)
 	}
 
 	// Helpers to generate LedgerEntryChanges for Claimable Balances, to be fed to the operationMeta when creating sample transaction
@@ -568,7 +632,60 @@ func runTokenTransferEventTests(t *testing.T, tests []testFixture) {
 	}
 }
 
-func TestFeeEvent(t *testing.T) {
+func TestSorobanFeeEvents(t *testing.T) {
+	tests := []testFixture{
+		{
+			name: "Soroban Failed Tx with no refund",
+			tx: someSorobanTx(
+				// this is FeeChanges
+				xdr.LedgerEntryChanges{
+					generateAccountEntryChangState(accountEntry(someTxAccount, 1000*oneUnit)),
+					generateAccountEntryUpdatedChange(accountEntry(someTxAccount, 1000*oneUnit), 999*oneUnit),
+				},
+				// This is txApplyAfterChanges
+				nil),
+			expected: []*TokenTransferEvent{
+				expectedFeeEvent(unitsToStr(oneUnit)),
+			},
+		},
+		{
+			name: "Soroban Failed Tx with some refund",
+			tx: someSorobanTx(
+				// this is FeeChanges
+				xdr.LedgerEntryChanges{
+					// Fee is 300 units
+					generateAccountEntryChangState(accountEntry(someTxAccount, 1000*oneUnit)),
+					generateAccountEntryUpdatedChange(accountEntry(someTxAccount, 1000*oneUnit), 700*oneUnit),
+				},
+				// This is txApplyAfterChanges
+				xdr.LedgerEntryChanges{
+					// Refund is 30 units
+					generateAccountEntryChangState(accountEntry(someTxAccount, 700*oneUnit)),
+					generateAccountEntryUpdatedChange(accountEntry(someTxAccount, 700*oneUnit), 730*oneUnit),
+				},
+			),
+			expected: []*TokenTransferEvent{
+				expectedFeeEvent(unitsToStr(300 * oneUnit)),
+				expectedFeeEvent(unitsToStr(-30 * oneUnit)),
+			},
+		},
+	}
+	for _, fixture := range tests {
+		ttp := NewEventsProcessor(someNetworkPassphrase)
+		t.Run(fixture.name, func(t *testing.T) {
+			events, err := ttp.EventsFromTransaction(fixture.tx)
+			assert.NoError(t, err)
+			assert.Equal(t, len(fixture.expected), len(events.FeeEvents))
+			assert.Equal(t, 0, len(events.OperationEvents))
+			for i := range events.FeeEvents {
+				assert.True(t, proto.Equal(events.FeeEvents[i], fixture.expected[i]),
+					"Expected event: %+v\nFound event: %+v", fixture.expected[i], events.FeeEvents[i])
+			}
+		})
+	}
+}
+
+func TestClassicFeeEvent(t *testing.T) {
 	failedTx := func(envelopeType xdr.EnvelopeType, txFee xdr.Int64) ingest.LedgerTransaction {
 		tx := ingest.LedgerTransaction{
 			Index:    1,
@@ -611,11 +728,6 @@ func TestFeeEvent(t *testing.T) {
 		return tx
 	}
 
-	expectedFeeEvent := func(feeAmt string) *TokenTransferEvent {
-		return NewFeeEvent(NewEventMetaFromTx(someTx, nil, contractIdStrFromAsset(xlmAsset)),
-			protoAddressFromAccount(someTxAccount), feeAmt, xlmProtoAsset)
-	}
-
 	tests := []testFixture{
 		{
 			name: "Fee Event only - Failed Fee Bump Transaction",
@@ -638,10 +750,11 @@ func TestFeeEvent(t *testing.T) {
 		t.Run(fixture.name, func(t *testing.T) {
 			events, err := ttp.EventsFromTransaction(fixture.tx)
 			assert.NoError(t, err)
-			assert.Equal(t, len(fixture.expected), len(events))
-			for i := range events {
-				assert.True(t, proto.Equal(events[i], fixture.expected[i]),
-					"Expected event: %+v\nFound event: %+v", fixture.expected[i], events[i])
+			assert.Equal(t, len(fixture.expected), len(events.FeeEvents))
+			assert.Equal(t, 0, len(events.OperationEvents))
+			for i := range events.FeeEvents {
+				assert.True(t, proto.Equal(events.FeeEvents[i], fixture.expected[i]),
+					"Expected event: %+v\nFound event: %+v", fixture.expected[i], events.FeeEvents[i])
 			}
 		})
 	}
@@ -675,38 +788,6 @@ func TestAccountCreateEvents(t *testing.T) {
 }
 
 func TestReconciliation(t *testing.T) {
-	accountEntry := func(acc xdr.MuxedAccount, balance xdr.Int64) *xdr.AccountEntry {
-		return &xdr.AccountEntry{
-			AccountId: acc.ToAccountId(),
-			Balance:   1000 * oneUnit,
-			SeqNum:    xdr.SequenceNumber(12345),
-		}
-	}
-
-	generateAccountEntryChangState := func(accountEntry *xdr.AccountEntry) xdr.LedgerEntryChange {
-		return xdr.LedgerEntryChange{
-			Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
-			State: &xdr.LedgerEntry{
-				Data: xdr.LedgerEntryData{
-					Type:    xdr.LedgerEntryTypeAccount,
-					Account: accountEntry,
-				},
-			},
-		}
-	}
-
-	generateAccountEntryUpdatedChange := func(accountEntry *xdr.AccountEntry, newBalance xdr.Int64) xdr.LedgerEntryChange {
-		accountEntry.Balance = newBalance
-		return xdr.LedgerEntryChange{
-			Type: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
-			Updated: &xdr.LedgerEntry{
-				Data: xdr.LedgerEntryData{
-					Type:    xdr.LedgerEntryTypeAccount,
-					Account: accountEntry,
-				},
-			},
-		}
-	}
 
 	tests := []testFixture{
 		{
