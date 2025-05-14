@@ -368,13 +368,13 @@ func (t *LedgerTransaction) SorobanResourcesInstructions() (uint32, bool) {
 	return uint32(sorobanData.Resources.Instructions), true
 }
 
-func (t *LedgerTransaction) SorobanResourcesReadBytes() (uint32, bool) {
+func (t *LedgerTransaction) SorobanResourcesDiskReadBytes() (uint32, bool) {
 	sorobanData, ok := t.GetSorobanData()
 	if !ok {
 		return 0, false
 	}
 
-	return uint32(sorobanData.Resources.ReadBytes), true
+	return uint32(sorobanData.Resources.DiskReadBytes), true
 }
 
 func (t *LedgerTransaction) SorobanResourcesWriteBytes() (uint32, bool) {

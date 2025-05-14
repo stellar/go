@@ -156,7 +156,7 @@ func (l LedgerCloseMeta) EvictedLedgerKeys() ([]LedgerKey, error) {
 	case 0:
 		return nil, nil
 	case 1:
-		return l.MustV1().EvictedTemporaryLedgerKeys, nil
+		return l.MustV1().EvictedKeys, nil
 	default:
 		panic(fmt.Sprintf("Unsupported LedgerCloseMeta.V: %d", l.V))
 	}

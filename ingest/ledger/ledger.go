@@ -66,13 +66,14 @@ func SorobanFeeWrite1Kb(l xdr.LedgerCloseMeta) (int64, bool) {
 	return int64(extV1.SorobanFeeWrite1Kb), true
 }
 
-func TotalByteSizeOfBucketList(l xdr.LedgerCloseMeta) (uint64, bool) {
-	lcmV1, ok := l.GetV1()
-	if !ok {
-		return 0, false
+func TotalByteSizeOfLiveSorobanState(l xdr.LedgerCloseMeta) (uint64, bool) {
+	switch l.V {
+	case 1:
+		return uint64(l.MustV1().TotalByteSizeOfLiveSorobanState), true
+	case 2:
+		return uint64(l.MustV2().TotalByteSizeOfLiveSorobanState), true
 	}
-
-	return uint64(lcmV1.TotalByteSizeOfBucketList), true
+	return 0, false
 }
 
 func NodeID(l xdr.LedgerCloseMeta) (string, error) {

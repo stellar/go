@@ -387,7 +387,7 @@ func TestLedgerChangeLedgerCloseMetaV2(t *testing.T) {
 	persistentKey := xdr.ScSymbol("TEMPVAL")
 	contractIDBytes, err := hex.DecodeString("df06d62447fd25da07c0135eed7557e5a5497ee7d15b7fe345bd47e191d8f577")
 	assert.NoError(t, err)
-	var contractID xdr.Hash
+	var contractID xdr.ContractId
 	copy(contractID[:], contractIDBytes)
 	contractAddress := xdr.ScAddress{
 		Type:       xdr.ScAddressTypeScAddressTypeContract,
@@ -523,7 +523,7 @@ func TestLedgerChangeLedgerCloseMetaV2(t *testing.T) {
 					},
 				},
 			},
-			EvictedTemporaryLedgerKeys: []xdr.LedgerKey{
+			EvictedKeys: []xdr.LedgerKey{
 				{
 					Type: xdr.LedgerEntryTypeContractData,
 					ContractData: &xdr.LedgerKeyContractData{
@@ -608,7 +608,7 @@ func TestLedgerChangeLedgerCloseMetaV2ParallelPhases(t *testing.T) {
 	persistentKey := xdr.ScSymbol("TEMPVAL")
 	contractIDBytes, err := hex.DecodeString("df06d62447fd25da07c0135eed7557e5a5497ee7d15b7fe345bd47e191d8f577")
 	assert.NoError(t, err)
-	var contractID xdr.Hash
+	var contractID xdr.ContractId
 	copy(contractID[:], contractIDBytes)
 	contractAddress := xdr.ScAddress{
 		Type:       xdr.ScAddressTypeScAddressTypeContract,
@@ -743,7 +743,7 @@ func TestLedgerChangeLedgerCloseMetaV2ParallelPhases(t *testing.T) {
 					},
 				},
 			},
-			EvictedTemporaryLedgerKeys: []xdr.LedgerKey{
+			EvictedKeys: []xdr.LedgerKey{
 				{
 					Type: xdr.LedgerEntryTypeContractData,
 					ContractData: &xdr.LedgerKeyContractData{
@@ -822,10 +822,9 @@ func TestLedgerChangeLedgerCloseMetaV2Empty(t *testing.T) {
 					},
 				},
 			},
-			TxProcessing:                   []xdr.TransactionResultMeta{},
-			UpgradesProcessing:             []xdr.UpgradeEntryMeta{},
-			EvictedTemporaryLedgerKeys:     []xdr.LedgerKey{},
-			EvictedPersistentLedgerEntries: []xdr.LedgerEntry{},
+			TxProcessing:       []xdr.TransactionResultMeta{},
+			UpgradesProcessing: []xdr.UpgradeEntryMeta{},
+			EvictedKeys:        []xdr.LedgerKey{},
 		},
 	}
 	mock.On("GetLedger", ctx, seq).Return(ledger, nil).Once()

@@ -871,10 +871,10 @@ func TestTransactionHelperFunctions(t *testing.T) {
 	assert.Equal(t, true, ok)
 	assert.Equal(t, uint32(123), sorobanResourcesInstructions)
 
-	var sorobanResourcesReadBytes uint32
-	sorobanResourcesReadBytes, ok = transaction.SorobanResourcesReadBytes()
+	var sorobanResourcesDiskReadBytes uint32
+	sorobanResourcesDiskReadBytes, ok = transaction.SorobanResourcesDiskReadBytes()
 	assert.Equal(t, true, ok)
-	assert.Equal(t, uint32(456), sorobanResourcesReadBytes)
+	assert.Equal(t, uint32(456), sorobanResourcesDiskReadBytes)
 
 	var sorobanResourcesWriteBytes uint32
 	sorobanResourcesWriteBytes, ok = transaction.SorobanResourcesWriteBytes()
@@ -1007,9 +1007,9 @@ func transactionHelperFunctionsTestInput() LedgerTransaction {
 						V: 1,
 						SorobanData: &xdr.SorobanTransactionData{
 							Resources: xdr.SorobanResources{
-								Instructions: 123,
-								ReadBytes:    456,
-								WriteBytes:   789,
+								Instructions:  123,
+								DiskReadBytes: 456,
+								WriteBytes:    789,
 							},
 							ResourceFee: 1234,
 						},

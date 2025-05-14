@@ -144,7 +144,7 @@ func TestGetLedgerEntries(t *testing.T) {
 	hmock := httptest.NewClient()
 	c := &Client{HTTP: hmock, URL: "http://localhost:11626"}
 
-	var hash xdr.Hash
+	var hash xdr.ContractId
 	_, err := rand.Read(hash[:])
 	require.NoError(t, err)
 

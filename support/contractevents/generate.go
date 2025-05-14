@@ -69,7 +69,7 @@ func GenerateEvent(
 	if err != nil {
 		panic(err)
 	}
-	contractId := xdr.Hash(rawContractId)
+	contractId := xdr.ContractId(rawContractId)
 
 	event := xdr.ContractEvent{
 		Type:       xdr.ContractEventTypeContract,
@@ -86,7 +86,7 @@ func GenerateEvent(
 	return event
 }
 
-func contractIdToHash(contractId string) *xdr.Hash {
+func contractIdToHash(contractId string) *xdr.ContractId {
 	idBytes := [32]byte{}
 	rawBytes, err := hex.DecodeString(contractId)
 	if err != nil {
@@ -96,7 +96,7 @@ func contractIdToHash(contractId string) *xdr.Hash {
 		panic("couldn't copy 32 bytes to contract hash")
 	}
 
-	hash := xdr.Hash(idBytes)
+	hash := xdr.ContractId(idBytes)
 	return &hash
 }
 

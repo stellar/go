@@ -132,6 +132,13 @@ func (s ScAddress) Equals(o ScAddress) bool {
 		return sAccountID.Equals(o.MustAccountId())
 	case ScAddressTypeScAddressTypeContract:
 		return s.MustContractId() == o.MustContractId()
+	case ScAddressTypeScAddressTypeClaimableBalance:
+		return s.MustClaimableBalanceId().MustV0() == o.MustClaimableBalanceId().MustV0()
+	case ScAddressTypeScAddressTypeLiquidityPool:
+		return s.MustLiquidityPoolId() == o.MustLiquidityPoolId()
+	case ScAddressTypeScAddressTypeMuxedAccount:
+		return s.MustMuxedAccount().Id == o.MustMuxedAccount().Id &&
+			s.MustMuxedAccount().Ed25519.Equals(o.MustMuxedAccount().Ed25519)
 	default:
 		panic("unknown ScAddress type: " + s.Type.String())
 	}

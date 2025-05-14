@@ -383,8 +383,7 @@ func MergeLedgers(networkPassphrase string, dst *xdr.LedgerCloseMeta, src xdr.Le
 	dst.V1.TxSet.V1TxSet.Phases = append(dst.V1.TxSet.V1TxSet.Phases, src.V1.TxSet.V1TxSet.Phases...)
 	dst.V1.TxProcessing = append(dst.V1.TxProcessing, src.V1.TxProcessing...)
 	dst.V1.UpgradesProcessing = append(dst.V1.UpgradesProcessing, src.V1.UpgradesProcessing...)
-	dst.V1.EvictedTemporaryLedgerKeys = append(dst.V1.EvictedTemporaryLedgerKeys, src.V1.EvictedTemporaryLedgerKeys...)
-	dst.V1.EvictedPersistentLedgerEntries = append(dst.V1.EvictedPersistentLedgerEntries, src.V1.EvictedPersistentLedgerEntries...)
+	dst.V1.EvictedKeys = append(dst.V1.EvictedKeys, src.V1.EvictedKeys...)
 
 	mergedChangesByKey := map[string][]ingest.Change{}
 	if err := extractChanges(networkPassphrase, mergedChangesByKey, *dst); err != nil {

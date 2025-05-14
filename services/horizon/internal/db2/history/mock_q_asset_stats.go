@@ -89,7 +89,7 @@ func (m *MockQAssetStats) GetAssetStat(ctx context.Context, assetType xdr.AssetT
 	return a.Get(0).(ExpAssetStat), a.Error(1)
 }
 
-func (m *MockQAssetStats) GetAssetStatByContract(ctx context.Context, contractID xdr.Hash) (ExpAssetStat, error) {
+func (m *MockQAssetStats) GetAssetStatByContract(ctx context.Context, contractID xdr.ContractId) (ExpAssetStat, error) {
 	a := m.Called(ctx, contractID)
 	return a.Get(0).(ExpAssetStat), a.Error(1)
 }
