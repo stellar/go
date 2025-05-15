@@ -3,10 +3,9 @@ package stellarcore
 const (
 	// Indicates that the entry is live in the current state
 	LedgerEntryStateLive = "live"
-	// Indicates that the entry is proven to be brand new and will live in the
-	// current state when created. In this case, the `Entry` field will be an
-	// xdr.LedgerKey matching the one requested rather than an xdr.LedgerEntry.
-	LedgerEntryStateNew = "new"
+	// Indicates that the entry wasn't found (thus proven to be brand new) and
+	// will live in the current state if created.
+	LedgerEntryStateNew = "not-found"
 	// Indicates that the entry has been archived to the hot archive due to its
 	// TTL expiring
 	LedgerEntryStateArchived = "archived"
