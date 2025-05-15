@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	xdr "github.com/stellar/go-xdr/xdr3"
+
 	"github.com/stellar/go/support/errors"
 )
 
