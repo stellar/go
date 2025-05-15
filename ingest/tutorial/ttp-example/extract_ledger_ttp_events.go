@@ -5,8 +5,8 @@ import (
 	"io"
 	"os"
 
-	"github.com/stellar/go/ingest/processors/token_transfer"
 	"github.com/stellar/go/network"
+	"github.com/stellar/go/processors/token_transfer"
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/xdr"
 	"google.golang.org/protobuf/encoding/protojson"
