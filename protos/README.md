@@ -61,7 +61,7 @@ This structure is maintained to ensure Go packages align correctly with their co
 
 - **Follow Directory Structure**
   - Organize `.proto` files into directories that match logical groupings.
-  - Keep related `.proto` files together (e.g., All data models related to token_tranfer should be under `protos/processors/token_transfer/`).
+  - Keep related `.proto` files together (e.g., All data models related to token_transfer should be under `protos/processors/token_transfer/`).
 
 
 - **Consistent Package Naming**
