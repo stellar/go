@@ -19,7 +19,7 @@ type GetLedgerEntryResponse struct {
 }
 
 type LedgerEntryResponse struct {
-	Entry string `json:"e"`             // base64-encoded xdr.LedgerEntry, or xdr.LedgerKey if state == new
-	State string `json:"state"`         // one of the above states
-	Ttl   uint32 `json:"ttl,omitempty"` // optionally, a Soroban entry's `liveUntilLedgerSeq`
+	State              string `json:"state"`                        // one of the above states
+	Entry              string `json:"entry,omitempty"`              // base64-encoded xdr.LedgerEntry, or missing if state == new
+	LiveUntilLedgerSeq uint32 `json:"liveUntilLedgerSeq,omitempty"` // optional, for live contract data/code
 }

@@ -181,14 +181,13 @@ func TestGetLedgerEntries(t *testing.T) {
 	mockResp := proto.GetLedgerEntryResponse{
 		Ledger: 1215, // checkpoint align on expected request
 		Entries: []proto.LedgerEntryResponse{{
-			Entry: entryB64,
-			State: "live",
-			Ttl:   1234,
+			Entry:              entryB64,
+			State:              "live",
+			LiveUntilLedgerSeq: 1234,
 		}, {
 			Entry: entryB64,
 			State: "archived",
 		}, {
-			Entry: keyB64,
 			State: "new",
 		}},
 	}
@@ -224,12 +223,15 @@ func TestGetLedgerEntries(t *testing.T) {
 	require.Len(t, resp.Entries, 3)
 	require.Equal(t, entryB64, resp.Entries[0].Entry)
 	require.Equal(t, entryB64, resp.Entries[1].Entry)
-	require.Equal(t, keyB64, resp.Entries[2].Entry)
-	require.EqualValues(t, 1234, resp.Entries[0].Ttl)
+	require.Empty(t, resp.Entries[2].Entry)
+	require.EqualValues(t, 1234, resp.Entries[0].LiveUntilLedgerSeq)
+	require.EqualValues(t, 0, resp.Entries[1].LiveUntilLedgerSeq)
+	require.EqualValues(t, 0, resp.Entries[2].LiveUntilLedgerSeq)
 	require.EqualValues(t, "live", resp.Entries[0].State)
 	require.EqualValues(t, "archived", resp.Entries[1].State)
 	require.EqualValues(t, "new", resp.Entries[2].State)
 
+	// TTL keys aren't returned
 	key.Type = xdr.LedgerEntryTypeTtl
 	_, err = c.GetLedgerEntries(context.Background(), 1234, key)
 	require.Error(t, err)
