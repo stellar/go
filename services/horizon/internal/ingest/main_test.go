@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
+	"github.com/stellar/go/services/horizon/internal/ingest/processors"
 	"reflect"
 	"sync"
 	"testing"
@@ -14,7 +15,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/db"
@@ -647,9 +647,9 @@ func (m *mockProcessorsRunner) RunHistoryArchiveIngestion(
 	skipChecks bool,
 	ledgerProtocolVersion uint32,
 	bucketListHash xdr.Hash,
-) (ingest.StatsChangeProcessorResults, error) {
+) (processors.StatsChangeProcessorResults, error) {
 	args := m.Called(checkpointLedger, skipChecks, ledgerProtocolVersion, bucketListHash)
-	return args.Get(0).(ingest.StatsChangeProcessorResults), args.Error(1)
+	return args.Get(0).(processors.StatsChangeProcessorResults), args.Error(1)
 }
 
 func (m *mockProcessorsRunner) RunAllProcessorsOnLedger(ledger xdr.LedgerCloseMeta) (

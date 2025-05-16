@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"fmt"
+	"github.com/stellar/go/services/horizon/internal/ingest/processors"
 	"io"
 	"math/rand"
 	"regexp"
@@ -294,7 +295,7 @@ func TestTruncateIngestStateTables(t *testing.T) {
 	// insert ledger entries of all types into the DB
 	tt.Assert.NoError(q.BeginTx(tt.Ctx, &sql.TxOptions{}))
 	checkpointLedger := uint32(63)
-	changeProcessor := buildChangeProcessor(q, &ingest.StatsChangeProcessor{}, historyArchiveSource, checkpointLedger, "")
+	changeProcessor := buildChangeProcessor(q, &processors.StatsChangeProcessor{}, historyArchiveSource, checkpointLedger, "")
 	for _, change := range ingest.GetChangesFromLedgerEntryChanges(ledgerEntries) {
 		tt.Assert.NoError(changeProcessor.ProcessChange(tt.Ctx, change))
 	}
@@ -306,7 +307,7 @@ func TestTruncateIngestStateTables(t *testing.T) {
 
 	// reinsert the same ledger entries from before
 	tt.Assert.NoError(q.BeginTx(tt.Ctx, &sql.TxOptions{}))
-	changeProcessor = buildChangeProcessor(q, &ingest.StatsChangeProcessor{}, historyArchiveSource, checkpointLedger, "")
+	changeProcessor = buildChangeProcessor(q, &processors.StatsChangeProcessor{}, historyArchiveSource, checkpointLedger, "")
 	for _, change := range ingest.GetChangesFromLedgerEntryChanges(ledgerEntries) {
 		tt.Assert.NoError(changeProcessor.ProcessChange(tt.Ctx, change))
 	}
@@ -326,7 +327,7 @@ func TestStateVerifierLockBusy(t *testing.T) {
 	tt.Assert.NoError(q.BeginTx(tt.Ctx, &sql.TxOptions{}))
 
 	checkpointLedger := uint32(63)
-	changeProcessor := buildChangeProcessor(q, &ingest.StatsChangeProcessor{}, historyArchiveSource, checkpointLedger, "")
+	changeProcessor := buildChangeProcessor(q, &processors.StatsChangeProcessor{}, historyArchiveSource, checkpointLedger, "")
 
 	for _, change := range ingest.GetChangesFromLedgerEntryChanges(generateRandomLedgerEntries(tt)) {
 		tt.Assert.NoError(changeProcessor.ProcessChange(tt.Ctx, change))
@@ -372,7 +373,7 @@ func TestStateVerifier(t *testing.T) {
 
 	ledger := rand.Int31()
 	checkpointLedger := uint32(ledger - (ledger % 64) - 1)
-	changeProcessor := buildChangeProcessor(q, &ingest.StatsChangeProcessor{}, historyArchiveSource, checkpointLedger, "")
+	changeProcessor := buildChangeProcessor(q, &processors.StatsChangeProcessor{}, historyArchiveSource, checkpointLedger, "")
 	mockChangeReader := &ingest.MockChangeReader{}
 
 	for _, change := range ingest.GetChangesFromLedgerEntryChanges(generateRandomLedgerEntries(tt)) {
