@@ -148,7 +148,27 @@ func makeAddress(address string) xdr.ScVal {
 	case 'G':
 		scAddress.Type = xdr.ScAddressTypeScAddressTypeAccount
 		scAddress.AccountId = xdr.MustAddressPtr(address)
-
+	case 'M':
+		acct, err := strkey.DecodeMuxedAccount(address)
+		if err != nil {
+			panic(fmt.Errorf("address is not a valid muxrd account: %s", address))
+		}
+		scAddress.Type = xdr.ScAddressTypeScAddressTypeMuxedAccount
+		scAddress.MuxedAccount = &xdr.MuxedEd25519Account{
+			Id:      xdr.Uint64(acct.ID()),
+			Ed25519: acct.Ed25519(),
+		}
+	case 'L':
+		scAddress.Type = xdr.ScAddressTypeScAddressTypeLiquidityPool
+		scAddress.LiquidityPoolId = &xdr.PoolId{}
+		copy((*scAddress.LiquidityPoolId)[:], strkey.MustDecode(strkey.VersionByteLiquidityPool, address))
+	case 'B':
+		scAddress.Type = xdr.ScAddressTypeScAddressTypeClaimableBalance
+		scAddress.ClaimableBalanceId = &xdr.ClaimableBalanceId{
+			Type: xdr.ClaimableBalanceIdTypeClaimableBalanceIdTypeV0,
+			V0:   &xdr.Hash{},
+		}
+		copy((*scAddress.ClaimableBalanceId.V0)[:], strkey.MustDecode(strkey.VersionByteClaimableBalance, address))
 	default:
 		panic(fmt.Errorf("unsupported address: %s", address))
 	}

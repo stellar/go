@@ -97,18 +97,11 @@ func Signature(l xdr.LedgerCloseMeta) (string, bool) {
 // TransactionCounts calculates and returns the number of successful and total transactions
 func TransactionCounts(l xdr.LedgerCloseMeta) (successTxCount, totalTxCount uint32) {
 	transactions := l.TransactionEnvelopes()
-	results, err := l.TxProcessing()
-	if err != nil {
-		panic(err)
-	}
 
 	txCount := len(transactions)
-	if txCount != len(results) {
-		panic("transaction count and number of TransactionResultMeta not equal")
-	}
 
 	for i := 0; i < txCount; i++ {
-		if results[i].Result.Successful() {
+		if l.TransactionResultPair(i).Result.Successful() {
 			successTxCount++
 		}
 	}
@@ -120,18 +113,14 @@ func TransactionCounts(l xdr.LedgerCloseMeta) (successTxCount, totalTxCount uint
 // a LedgerCloseMeta
 func OperationCounts(l xdr.LedgerCloseMeta) (successfulOperationCount, totalOperationCount uint32) {
 	transactions := l.TransactionEnvelopes()
-	results, err := l.TxProcessing()
-	if err != nil {
-		panic(err)
-	}
 
-	for i, result := range results {
-		operations := transactions[i].OperationsCount()
+	for i, envelope := range transactions {
+		operations := envelope.OperationsCount()
 		totalOperationCount += operations
 
 		// for successful transactions, the operation count is based on the operations results slice
-		if result.Result.Successful() {
-			operationResults, ok := result.Result.OperationResults()
+		if result := l.TransactionResultPair(i).Result; result.Successful() {
+			operationResults, ok := result.OperationResults()
 			if !ok {
 				panic("could not get OperationResults")
 			}
