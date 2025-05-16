@@ -897,8 +897,7 @@ func TestTransactionHelperFunctions(t *testing.T) {
 	assert.Equal(t, int64(-1234), inclusionFee)
 
 	var sorobanResourceFeeRefund int64
-	sorobanResourceFeeRefund, ok = transaction.SorobanResourceFeeRefund()
-	assert.Equal(t, true, ok)
+	sorobanResourceFeeRefund = transaction.SorobanResourceFeeRefund()
 	assert.Equal(t, int64(0), sorobanResourceFeeRefund)
 
 	var sorobanTotalNonRefundableResourceFeeCharged int64

@@ -2,10 +2,10 @@ package integration
 
 import (
 	"fmt"
+	assetProto "github.com/stellar/go/asset"
 	"github.com/stellar/go/clients/horizonclient"
-	assetProto "github.com/stellar/go/ingest/asset"
-	"github.com/stellar/go/ingest/processors/token_transfer"
 	"github.com/stellar/go/keypair"
+	"github.com/stellar/go/processors/token_transfer"
 	"github.com/stellar/go/services/horizon/internal/test/integration"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stellar/go/xdr"
