@@ -1507,7 +1507,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveMissingContractID() {
 	evictedKeys := []xdr.LedgerKey{eurLedgerKey}
 	s.processor = NewAssetStatsProcessor(s.mockQ, "", false, 1235, evictedKeys)
 
-	s.mockQ.On("GetAssetStatByContract", s.ctx, xdr.Hash(eurID)).
+	s.mockQ.On("GetAssetStatByContract", s.ctx, xdr.ContractId(eurID)).
 		Return(history.ExpAssetStat{}, sql.ErrNoRows).Once()
 
 	s.mockQ.On("RemoveContractAssetBalances", s.ctx, []xdr.Hash(nil)).
@@ -1541,7 +1541,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveContractIDError() {
 	evictedKeys := []xdr.LedgerKey{eurLedgerKey}
 	s.processor = NewAssetStatsProcessor(s.mockQ, "", false, 1235, evictedKeys)
 
-	s.mockQ.On("GetAssetStatByContract", s.ctx, xdr.Hash(eurID)).
+	s.mockQ.On("GetAssetStatByContract", s.ctx, xdr.ContractId(eurID)).
 		Return(history.ExpAssetStat{}, fmt.Errorf("transient error")).Once()
 
 	s.Assert().EqualError(
@@ -2170,7 +2170,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveContractID() {
 		},
 	}
 	eurAssetStat.SetContractID(eurID)
-	s.mockQ.On("GetAssetStatByContract", s.ctx, xdr.Hash(eurID)).
+	s.mockQ.On("GetAssetStatByContract", s.ctx, xdr.ContractId(eurID)).
 		Return(eurAssetStat, nil).Once()
 
 	eurAssetStat.ContractID = nil
@@ -2323,7 +2323,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveContractIDFromZeroRow() {
 		},
 	}
 	eurAssetStat.SetContractID(eurID)
-	s.mockQ.On("GetAssetStatByContract", s.ctx, xdr.Hash(eurID)).
+	s.mockQ.On("GetAssetStatByContract", s.ctx, xdr.ContractId(eurID)).
 		Return(eurAssetStat, nil).Once()
 
 	s.mockQ.On("RemoveAssetStat", s.ctx,
@@ -2421,7 +2421,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveContractIDAndBalanceZeroR
 		},
 	}
 	eurAssetStat.SetContractID(eurID)
-	s.mockQ.On("GetAssetStatByContract", s.ctx, xdr.Hash(eurID)).
+	s.mockQ.On("GetAssetStatByContract", s.ctx, xdr.ContractId(eurID)).
 		Return(eurAssetStat, nil).Once()
 
 	s.mockQ.On("RemoveAssetStat", s.ctx,

@@ -492,7 +492,7 @@ func TestExpirationAndRestoration(t *testing.T) {
 
 func invokeStoreSet(
 	itest *integration.Test,
-	storeContractID xdr.Hash,
+	storeContractID xdr.ContractId,
 	ledgerEntryData xdr.LedgerEntryData,
 ) *txnbuild.InvokeHostFunction {
 	key := ledgerEntryData.MustContractData().Key
@@ -515,7 +515,7 @@ func invokeStoreSet(
 
 func invokeStoreRemove(
 	itest *integration.Test,
-	storeContractID xdr.Hash,
+	storeContractID xdr.ContractId,
 	ledgerKey xdr.LedgerKey,
 ) *txnbuild.InvokeHostFunction {
 	return &txnbuild.InvokeHostFunction{
@@ -1267,7 +1267,7 @@ func assertEventPayments(itest *integration.Test, txHash string, asset xdr.Asset
 	assert.Equal(itest.CurrentTest(), assetBalanceChange.Asset.Issuer, asset.GetIssuer())
 }
 
-func contractIDParam(contractID xdr.Hash) xdr.ScAddress {
+func contractIDParam(contractID xdr.ContractId) xdr.ScAddress {
 	return xdr.ScAddress{
 		Type:       xdr.ScAddressTypeScAddressTypeContract,
 		ContractId: &contractID,
@@ -1285,7 +1285,7 @@ func accountAddressParam(accountID string) xdr.ScVal {
 	}
 }
 
-func contractAddressParam(contractID xdr.Hash) xdr.ScVal {
+func contractAddressParam(contractID xdr.ContractId) xdr.ScVal {
 	address := xdr.ScAddress{
 		Type:       xdr.ScAddressTypeScAddressTypeContract,
 		ContractId: &contractID,
@@ -1330,7 +1330,7 @@ func mintWithAmt(itest *integration.Test, sourceAccount string, asset xdr.Asset,
 	return invokeHostFn
 }
 
-func initAssetContract(itest *integration.Test, sourceAccount string, asset xdr.Asset, sacTestcontractID, sacTestcontractHash xdr.Hash) *txnbuild.InvokeHostFunction {
+func initAssetContract(itest *integration.Test, sourceAccount string, asset xdr.Asset, sacTestcontractID xdr.ContractId, sacTestcontractHash xdr.Hash) *txnbuild.InvokeHostFunction {
 	targetContract := contractIDParam(stellarAssetContractID(itest, asset))
 	invokeHostFn := &txnbuild.InvokeHostFunction{
 		HostFunction: xdr.HostFunction{
@@ -1371,7 +1371,7 @@ func clawback(itest *integration.Test, sourceAccount string, asset xdr.Asset, as
 	return invokeHostFn
 }
 
-func contractBalance(itest *integration.Test, sourceAccount string, asset xdr.Asset, sacTestcontractID xdr.Hash) *txnbuild.InvokeHostFunction {
+func contractBalance(itest *integration.Test, sourceAccount string, asset xdr.Asset, sacTestcontractID xdr.ContractId) *txnbuild.InvokeHostFunction {
 	invokeHostFn := &txnbuild.InvokeHostFunction{
 		HostFunction: xdr.HostFunction{
 			Type: xdr.HostFunctionTypeHostFunctionTypeInvokeContract,
@@ -1411,7 +1411,7 @@ func transferWithAmount(itest *integration.Test, sourceAccount string, asset xdr
 	return invokeHostFn
 }
 
-func transferFromContract(itest *integration.Test, sourceAccount string, asset xdr.Asset, sacTestcontractID xdr.Hash, sacTestContractHash xdr.Hash, assetAmount string, recipient xdr.ScVal) *txnbuild.InvokeHostFunction {
+func transferFromContract(itest *integration.Test, sourceAccount string, asset xdr.Asset, sacTestcontractID xdr.ContractId, sacTestContractHash xdr.Hash, assetAmount string, recipient xdr.ScVal) *txnbuild.InvokeHostFunction {
 	invokeHostFn := &txnbuild.InvokeHostFunction{
 		HostFunction: xdr.HostFunction{
 			Type: xdr.HostFunctionTypeHostFunctionTypeInvokeContract,
@@ -1431,7 +1431,7 @@ func transferFromContract(itest *integration.Test, sourceAccount string, asset x
 }
 
 // Invokes burn_self from the sac_test contract (which just burns assets from itself)
-func burnSelf(itest *integration.Test, sourceAccount string, asset xdr.Asset, sacTestcontractID xdr.Hash, sacTestContractHash xdr.Hash, assetAmount string) *txnbuild.InvokeHostFunction {
+func burnSelf(itest *integration.Test, sourceAccount string, asset xdr.Asset, sacTestcontractID xdr.ContractId, sacTestContractHash xdr.Hash, assetAmount string) *txnbuild.InvokeHostFunction {
 	invokeHostFn := &txnbuild.InvokeHostFunction{
 		HostFunction: xdr.HostFunction{
 			Type: xdr.HostFunctionTypeHostFunctionTypeInvokeContract,
@@ -1494,13 +1494,13 @@ func assertInvokeHostFnSucceeds(itest *integration.Test, signer *keypair.Full, o
 	return &returnValue, clientTx.Hash, &preFlightOp
 }
 
-func stellarAssetContractID(itest *integration.Test, asset xdr.Asset) xdr.Hash {
+func stellarAssetContractID(itest *integration.Test, asset xdr.Asset) xdr.ContractId {
 	contractID, err := asset.ContractID(itest.GetPassPhrase())
 	require.NoError(itest.CurrentTest(), err)
 	return contractID
 }
 
-func mustCreateAndInstallContract(itest *integration.Test, signer *keypair.Full, contractSalt string, wasmFileName string) (xdr.Hash, xdr.Hash) {
+func mustCreateAndInstallContract(itest *integration.Test, signer *keypair.Full, contractSalt string, wasmFileName string) (xdr.ContractId, xdr.Hash) {
 	_, _, installContractOp := assertInvokeHostFnSucceeds(
 		itest,
 		signer,

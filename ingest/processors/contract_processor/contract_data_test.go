@@ -76,6 +76,7 @@ func MockContractBalanceFromContractData(ledgerEntry xdr.LedgerEntry, passphrase
 }
 
 func makeContractDataTestInput() []ingest.Change {
+	var contractID xdr.ContractId
 	var hash xdr.Hash
 	var scStr xdr.ScString = "a"
 	var testVal bool = true
@@ -87,7 +88,7 @@ func makeContractDataTestInput() []ingest.Change {
 			ContractData: &xdr.ContractDataEntry{
 				Contract: xdr.ScAddress{
 					Type:       xdr.ScAddressTypeScAddressTypeContract,
-					ContractId: &hash,
+					ContractId: &contractID,
 				},
 				Key: xdr.ScVal{
 					Type: xdr.ScValTypeScvContractInstance,

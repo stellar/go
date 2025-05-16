@@ -241,7 +241,7 @@ func makeOperationTestInput() (inputTransaction ingest.LedgerTransaction, err er
 		return
 	}
 
-	contractHash := xdr.Hash{}
+	contractHash := xdr.ContractId{}
 	salt := [32]byte{}
 	assetCode := [12]byte{}
 	assetIssuer := xdr.Uint256{}
@@ -2345,9 +2345,9 @@ func transactionTestInput() *ingest.LedgerTransaction {
 						V: 1,
 						SorobanData: &xdr.SorobanTransactionData{
 							Resources: xdr.SorobanResources{
-								Instructions: 123,
-								ReadBytes:    456,
-								WriteBytes:   789,
+								Instructions:  123,
+								DiskReadBytes: 456,
+								WriteBytes:    789,
 								Footprint: xdr.LedgerFootprint{
 									ReadOnly: []xdr.LedgerKey{
 										{
@@ -2355,7 +2355,7 @@ func transactionTestInput() *ingest.LedgerTransaction {
 											ContractData: &xdr.LedgerKeyContractData{
 												Contract: xdr.ScAddress{
 													Type:       1,
-													ContractId: &xdr.Hash{0x12, 0x34},
+													ContractId: &xdr.ContractId{0x12, 0x34},
 												},
 												Key: xdr.ScVal{
 													Type: 0,
@@ -2768,7 +2768,7 @@ func operationTestInput() []xdr.Operation {
 		V0:   &xdr.Hash{1, 2, 3, 4, 5, 6, 7, 8, 9},
 	}
 
-	contractHash := xdr.Hash{0x12, 0x34, 0x56, 0x78}
+	contractHash := xdr.ContractId{0x12, 0x34, 0x56, 0x78}
 	salt := [32]byte{0x12, 0x34, 0x56}
 	wasm := []byte{0x12, 0x34}
 	dummyBool := true

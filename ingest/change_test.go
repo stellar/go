@@ -220,7 +220,7 @@ func createContractDataEntry() *xdr.ContractDataEntry {
 	return &xdr.ContractDataEntry{
 		Contract: xdr.ScAddress{
 			Type:       xdr.ScAddressTypeScAddressTypeContract,
-			ContractId: &xdr.Hash{0xca},
+			ContractId: &xdr.ContractId{0xca},
 		},
 		Key: xdr.ScVal{
 			Type: xdr.ScValTypeScvBool,

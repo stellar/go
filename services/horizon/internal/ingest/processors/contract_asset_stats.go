@@ -13,7 +13,7 @@ import (
 )
 
 type assetContractStatValue struct {
-	contractID    xdr.Hash
+	contractID    xdr.ContractId
 	activeBalance *big.Int
 	activeHolders int32
 }
@@ -35,8 +35,8 @@ type contractAssetBalancesQ interface {
 // ContractAssetStatSet represents a collection of asset stats for
 // contract asset holders
 type ContractAssetStatSet struct {
-	contractToAsset          map[xdr.Hash]xdr.Asset
-	contractAssetStats       map[xdr.Hash]assetContractStatValue
+	contractToAsset          map[xdr.ContractId]xdr.Asset
+	contractAssetStats       map[xdr.ContractId]assetContractStatValue
 	createdBalances          []history.ContractAssetBalance
 	removedBalances          []xdr.Hash
 	updatedBalances          map[xdr.Hash]*big.Int
@@ -58,8 +58,8 @@ func NewContractAssetStatSet(
 	currentLedger uint32,
 ) *ContractAssetStatSet {
 	return &ContractAssetStatSet{
-		contractToAsset:          map[xdr.Hash]xdr.Asset{},
-		contractAssetStats:       map[xdr.Hash]assetContractStatValue{},
+		contractToAsset:          map[xdr.ContractId]xdr.Asset{},
+		contractAssetStats:       map[xdr.ContractId]assetContractStatValue{},
 		networkPassphrase:        networkPassphrase,
 		assetStatsQ:              assetStatsQ,
 		removedExpirationEntries: removedExpirationEntries,
@@ -96,7 +96,7 @@ func (s *ContractAssetStatSet) GetCreatedBalances() []history.ContractAssetBalan
 	return s.createdBalances
 }
 
-func (s *ContractAssetStatSet) GetAssetToContractMap() map[xdr.Hash]xdr.Asset {
+func (s *ContractAssetStatSet) GetAssetToContractMap() map[xdr.ContractId]xdr.Asset {
 	return s.contractToAsset
 }
 
@@ -239,7 +239,7 @@ func (s *ContractAssetStatSet) ingestExpiredBalances(ctx context.Context) error 
 	}
 
 	for _, row := range rows {
-		var keyHash, contractID xdr.Hash
+		var keyHash xdr.Hash
 		copy(keyHash[:], row.KeyHash)
 
 		if _, ok := s.updatedExpirationEntries[keyHash]; ok {
@@ -248,6 +248,7 @@ func (s *ContractAssetStatSet) ingestExpiredBalances(ctx context.Context) error 
 			continue
 		}
 
+		var contractID xdr.ContractId
 		copy(contractID[:], row.ContractID)
 		stat := s.getContractAssetStat(contractID)
 		amt, ok := new(big.Int).SetString(row.Amount, 10)
@@ -267,7 +268,7 @@ func (s *ContractAssetStatSet) ingestExpiredBalances(ctx context.Context) error 
 	return nil
 }
 
-func (s *ContractAssetStatSet) maybeAddContractAssetStat(contractID xdr.Hash, stat assetContractStatValue) {
+func (s *ContractAssetStatSet) maybeAddContractAssetStat(contractID xdr.ContractId, stat assetContractStatValue) {
 	if stat.activeHolders == 0 &&
 		stat.activeBalance.Cmp(big.NewInt(0)) == 0 {
 		delete(s.contractAssetStats, contractID)
@@ -276,7 +277,7 @@ func (s *ContractAssetStatSet) maybeAddContractAssetStat(contractID xdr.Hash, st
 	}
 }
 
-func (s *ContractAssetStatSet) getContractAssetStat(contractID xdr.Hash) assetContractStatValue {
+func (s *ContractAssetStatSet) getContractAssetStat(contractID xdr.ContractId) assetContractStatValue {
 	stat, ok := s.contractAssetStats[contractID]
 	if !ok {
 		stat = assetContractStatValue{

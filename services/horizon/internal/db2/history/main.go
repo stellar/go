@@ -583,7 +583,7 @@ type QAssetStats interface {
 	UpdateAssetStat(ctx context.Context, stat ExpAssetStat) (int64, error)
 	UpdateContractAssetStat(ctx context.Context, row ContractAssetStatRow) (int64, error)
 	GetAssetStat(ctx context.Context, assetType xdr.AssetType, assetCode, assetIssuer string) (ExpAssetStat, error)
-	GetAssetStatByContract(ctx context.Context, contractID xdr.Hash) (ExpAssetStat, error)
+	GetAssetStatByContract(ctx context.Context, contractID xdr.ContractId) (ExpAssetStat, error)
 	GetContractAssetStat(ctx context.Context, contractID []byte) (ContractAssetStatRow, error)
 	RemoveAssetStat(ctx context.Context, assetType xdr.AssetType, assetCode, assetIssuer string) (int64, error)
 	RemoveAssetContractStat(ctx context.Context, contractID []byte) (int64, error)

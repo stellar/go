@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	xdr "github.com/stellar/go-xdr/xdr3"
+
 	"github.com/stellar/go/support/errors"
 )
 
@@ -43,6 +44,11 @@ func (m *MuxedAccount) ID() uint64 {
 // definition for multiplexed accounts.
 func (m *MuxedAccount) AccountID() (string, error) {
 	return Encode(VersionByteAccountID, m.ed25519[:])
+}
+
+// Ed25519 returns the muxed account ed25519 key.
+func (m *MuxedAccount) Ed25519() [32]byte {
+	return m.ed25519
 }
 
 // Address returns the muxed account M-address according with the SEP-23

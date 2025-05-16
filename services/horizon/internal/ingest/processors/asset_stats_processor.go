@@ -28,7 +28,7 @@ type AssetStatsProcessor struct {
 	networkPassphrase        string
 	// possibleEvictedAssetContracts is a list of evicted contracts
 	// that are possibly SACs
-	possibleEvictedAssetContracts set.Set[xdr.Hash]
+	possibleEvictedAssetContracts set.Set[xdr.ContractId]
 }
 
 // NewAssetStatsProcessor constructs a new AssetStatsProcessor instance.
@@ -54,8 +54,8 @@ func NewAssetStatsProcessor(
 	return p
 }
 
-func findEvictedAssetContractCandidates(evictedLedgerKeys []xdr.LedgerKey) set.Set[xdr.Hash] {
-	candidates := set.Set[xdr.Hash]{}
+func findEvictedAssetContractCandidates(evictedLedgerKeys []xdr.LedgerKey) set.Set[xdr.ContractId] {
+	candidates := set.Set[xdr.ContractId]{}
 	for _, key := range evictedLedgerKeys {
 		contractData, ok := key.GetContractData()
 		if !ok ||
@@ -309,9 +309,9 @@ func (p *AssetStatsProcessor) updateContractAssetBalanceExpirations(ctx context.
 func IncludeContractIDsInAssetStats(
 	networkPassphrase string,
 	assetStatsDeltas []history.ExpAssetStat,
-	contractToAsset map[xdr.Hash]xdr.Asset,
+	contractToAsset map[xdr.ContractId]xdr.Asset,
 ) ([]history.ExpAssetStat, error) {
-	included := map[xdr.Hash]bool{}
+	included := map[xdr.ContractId]bool{}
 	// modify the asset stat row to update the contract_id column whenever we encounter a
 	// contract data ledger entry with the Stellar asset metadata.
 	for i, assetStatDelta := range assetStatsDeltas {
@@ -357,7 +357,7 @@ func IncludeContractIDsInAssetStats(
 func (p *AssetStatsProcessor) updateAssetStats(
 	ctx context.Context,
 	assetStatsDeltas []history.ExpAssetStat,
-	contractToAsset map[xdr.Hash]xdr.Asset,
+	contractToAsset map[xdr.ContractId]xdr.Asset,
 ) error {
 	for _, delta := range assetStatsDeltas {
 		var rowsAffected int64
@@ -519,7 +519,7 @@ func (p *AssetStatsProcessor) updateAssetStats(
 
 func (p *AssetStatsProcessor) updateContractIDs(
 	ctx context.Context,
-	contractToAsset map[xdr.Hash]xdr.Asset,
+	contractToAsset map[xdr.ContractId]xdr.Asset,
 ) error {
 	for contractID, asset := range contractToAsset {
 		if err := p.setContractID(ctx, contractID, asset); err != nil {
@@ -539,7 +539,7 @@ func (p *AssetStatsProcessor) updateContractIDs(
 // the given contract id
 func (p *AssetStatsProcessor) setContractID(
 	ctx context.Context,
-	contractID xdr.Hash,
+	contractID xdr.ContractId,
 	asset xdr.Asset,
 ) error {
 	var rowsAffected int64
@@ -597,7 +597,7 @@ func (p *AssetStatsProcessor) setContractID(
 // remove the given contract id
 func (p *AssetStatsProcessor) removeContractID(
 	ctx context.Context,
-	contractID xdr.Hash,
+	contractID xdr.ContractId,
 ) error {
 	var rowsAffected int64
 	stat, err := p.assetStatsQ.GetAssetStatByContract(ctx, contractID)
@@ -659,7 +659,7 @@ func (p *AssetStatsProcessor) addContractAssetStat(contractAssetStat assetContra
 
 func (p *AssetStatsProcessor) updateContractAssetStats(
 	ctx context.Context,
-	contractAssetStats map[xdr.Hash]assetContractStatValue,
+	contractAssetStats map[xdr.ContractId]assetContractStatValue,
 ) error {
 	for contractID, contractAssetStat := range contractAssetStats {
 		if err := p.updateAssetContractStats(ctx, contractID, contractAssetStat); err != nil {
@@ -673,7 +673,7 @@ func (p *AssetStatsProcessor) updateContractAssetStats(
 // it will adjust the contract balance and holders based on assetContractStat
 func (p *AssetStatsProcessor) updateAssetContractStats(
 	ctx context.Context,
-	contractID xdr.Hash,
+	contractID xdr.ContractId,
 	assetContractStat assetContractStatValue,
 ) error {
 	var rowsAffected int64

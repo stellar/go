@@ -96,7 +96,7 @@ func (s *OperationsProcessorTestSuiteLedger) TestOperationTypeInvokeHostFunction
 
 	contractParamVal0 := xdr.ScAddress{
 		Type:       xdr.ScAddressTypeScAddressTypeContract,
-		ContractId: &xdr.Hash{0x1, 0x2},
+		ContractId: &xdr.ContractId{0x1, 0x2},
 	}
 	contractParamVal1 := xdr.ScSymbol("func1")
 	contractParamVal2 := xdr.Int32(-5)
@@ -327,7 +327,7 @@ func (s *OperationsProcessorTestSuiteLedger) TestOperationTypeInvokeHostFunction
 							InvokeContract: &xdr.InvokeContractArgs{
 								ContractAddress: xdr.ScAddress{
 									Type:       xdr.ScAddressTypeScAddressTypeContract,
-									ContractId: &xdr.Hash{0x1, 0x2},
+									ContractId: &xdr.ContractId{0x1, 0x2},
 								},
 								FunctionName: "foo",
 								Args:         xdr.ScVec{},

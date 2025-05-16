@@ -37,14 +37,14 @@ func TestRestoreAssetBalance(t *testing.T) {
 	require.NoError(t, op.Validate())
 	require.Equal(t, int64(op.Ext.SorobanData.ResourceFee), defaultAssetBalanceRestorationFees.ResourceFee)
 	require.Equal(t, uint32(op.Ext.SorobanData.Resources.WriteBytes), defaultAssetBalanceRestorationFees.WriteBytes)
-	require.Equal(t, uint32(op.Ext.SorobanData.Resources.ReadBytes), defaultAssetBalanceRestorationFees.ReadBytes)
+	require.Equal(t, uint32(op.Ext.SorobanData.Resources.DiskReadBytes), defaultAssetBalanceRestorationFees.DiskReadBytes)
 	require.Equal(t, uint32(op.Ext.SorobanData.Resources.Instructions), defaultAssetBalanceRestorationFees.Instructions)
 
 	params.Fees = SorobanFees{
-		Instructions: 1,
-		ReadBytes:    2,
-		WriteBytes:   3,
-		ResourceFee:  4,
+		Instructions:  1,
+		DiskReadBytes: 2,
+		WriteBytes:    3,
+		ResourceFee:   4,
 	}
 
 	op, err = NewAssetBalanceRestoration(params)
@@ -52,6 +52,6 @@ func TestRestoreAssetBalance(t *testing.T) {
 	require.NoError(t, op.Validate())
 	require.Equal(t, int64(op.Ext.SorobanData.ResourceFee), int64(4))
 	require.Equal(t, uint32(op.Ext.SorobanData.Resources.WriteBytes), uint32(3))
-	require.Equal(t, uint32(op.Ext.SorobanData.Resources.ReadBytes), uint32(2))
+	require.Equal(t, uint32(op.Ext.SorobanData.Resources.DiskReadBytes), uint32(2))
 	require.Equal(t, uint32(op.Ext.SorobanData.Resources.Instructions), uint32(1))
 }
