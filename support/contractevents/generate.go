@@ -151,7 +151,7 @@ func makeAddress(address string) xdr.ScVal {
 	case 'M':
 		acct, err := strkey.DecodeMuxedAccount(address)
 		if err != nil {
-			panic(fmt.Errorf("address is not a valid muxrd account: %s", address))
+			panic(fmt.Errorf("address is not a valid muxed account: %s", address))
 		}
 		scAddress.Type = xdr.ScAddressTypeScAddressTypeMuxedAccount
 		scAddress.MuxedAccount = &xdr.MuxedEd25519Account{

@@ -106,7 +106,7 @@ func (t *LedgerTransaction) GetChanges() ([]Change, error) {
 			opChanges := t.operationChanges(operationsMetaV1(v1Meta.Operations), uint32(opIdx))
 			changes = append(changes, opChanges...)
 		}
-	case 2, 3:
+	case 2, 3, 4:
 		var (
 			txBeforeChanges, txAfterChanges xdr.LedgerEntryChanges
 			meta                            operationsMeta
@@ -152,7 +152,7 @@ func (t *LedgerTransaction) GetChanges() ([]Change, error) {
 		txChangesAfter := t.getTransactionChanges(txAfterChanges)
 		changes = append(changes, txChangesAfter...)
 	default:
-		return changes, errors.New("Unsupported TransactionMeta version")
+		return changes, fmt.Errorf("unsupported TransactionMeta version: %v", t.UnsafeMeta.V)
 	}
 
 	return changes, nil
@@ -190,7 +190,7 @@ func (t *LedgerTransaction) GetOperationChanges(operationIndex uint32) ([]Change
 	case 4:
 		meta = operationsMetaV2(t.UnsafeMeta.MustV4().Operations)
 	default:
-		return []Change{}, errors.New("Unsupported TransactionMeta version")
+		return []Change{}, fmt.Errorf("unsupported TransactionMeta version: %v", t.UnsafeMeta.V)
 	}
 	return t.operationChanges(meta, operationIndex), nil
 }
