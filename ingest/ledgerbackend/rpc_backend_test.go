@@ -26,9 +26,9 @@ func (m *MockRPCClient) GetLedgers(ctx context.Context, req protocol.GetLedgersR
 	return args.Get(0).(protocol.GetLedgersResponse), args.Error(1)
 }
 
-func setupRPCTest(t *testing.T) (*RPCBackend, *MockRPCClient) {
+func setupRPCTest(t *testing.T) (*RPCLedgerBackend, *MockRPCClient) {
 	mockClient := new(MockRPCClient)
-	backend, err := NewRPCBackend(mockClient)
+	backend, err := NewRPCLedgerBackend(mockClient)
 	assert.NoError(t, err)
 	return backend, mockClient
 }

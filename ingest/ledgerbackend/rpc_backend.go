@@ -17,28 +17,28 @@ type RPCClient interface {
 	GetLedgers(ctx context.Context, req protocol.GetLedgersRequest) (protocol.GetLedgersResponse, error)
 }
 
-// RPCBackend does not support stateful range preparations.
+// RPCLedgerBackend does not support stateful range preparations.
 // The rpc backend is composed of ephermeral sliding window of ledgers and therefore
 // connot determinsitcally prepare a range of ledgers.
-// Callers should focus on using RPCBackend.GetLedger for the ledger range needed
+// Callers should focus on using RPCLedgerBackend.GetLedger for the ledger range needed
 // and check the returned error for presence of a ledger.
-type RPCBackend struct {
+type RPCLedgerBackend struct {
 	client RPCClient
 }
 
-// Creates the RPCBackend with the given RPCClient.
-func NewRPCBackend(client RPCClient) (*RPCBackend, error) {
-	return &RPCBackend{
+// Creates the RPCLedgerBackend with the given RPCClient.
+func NewRPCLedgerBackend(client RPCClient) (*RPCLedgerBackend, error) {
+	return &RPCLedgerBackend{
 		client: client,
 	}, nil
 }
 
-// Creates the RPCBackend with the given RPC URL and optional HTTP client.
-func NewRPCBackendFromURL(rpcURL string, httpClient *http.Client) (*RPCBackend, error) {
-	return NewRPCBackend(rpc.NewClient(rpcURL, httpClient))
+// Creates the RPCLedgerBackend with the given RPC URL and optional HTTP client.
+func NewRPCLedgerBackendFromURL(rpcURL string, httpClient *http.Client) (*RPCLedgerBackend, error) {
+	return NewRPCLedgerBackend(rpc.NewClient(rpcURL, httpClient))
 }
 
-func (b *RPCBackend) GetLatestLedgerSequence(ctx context.Context) (sequence uint32, err error) {
+func (b *RPCLedgerBackend) GetLatestLedgerSequence(ctx context.Context) (sequence uint32, err error) {
 	ledger, err := b.client.GetLatestLedger(ctx)
 	if err != nil {
 		return 0, fmt.Errorf("failed to get latest ledger sequence: %w", err)
@@ -46,7 +46,7 @@ func (b *RPCBackend) GetLatestLedgerSequence(ctx context.Context) (sequence uint
 	return ledger.Sequence, nil
 }
 
-func (b *RPCBackend) GetLedger(ctx context.Context, sequence uint32) (xdr.LedgerCloseMeta, error) {
+func (b *RPCLedgerBackend) GetLedger(ctx context.Context, sequence uint32) (xdr.LedgerCloseMeta, error) {
 	req := protocol.GetLedgersRequest{
 		StartLedger: sequence,
 		Pagination: &protocol.LedgerPaginationOptions{
@@ -70,18 +70,18 @@ func (b *RPCBackend) GetLedger(ctx context.Context, sequence uint32) (xdr.Ledger
 	return lcm, nil
 }
 
-// RPCBackend does not perform stateful range preparation.
+// RPCLedgerBackend does not perform stateful range preparation.
 // This has no effect on the backend and is a no-op.
-func (b *RPCBackend) PrepareRange(ctx context.Context, ledgerRange Range) error {
+func (b *RPCLedgerBackend) PrepareRange(ctx context.Context, ledgerRange Range) error {
 	return nil
 }
 
-// RPCBackend does not perform stateful range preparation.
+// RPCLedgerBackend does not perform stateful range preparation.
 // This has no effect on the backend and is a no-op.
-func (b *RPCBackend) IsPrepared(ctx context.Context, ledgerRange Range) (bool, error) {
+func (b *RPCLedgerBackend) IsPrepared(ctx context.Context, ledgerRange Range) (bool, error) {
 	return false, nil
 }
 
-func (b *RPCBackend) Close() error {
+func (b *RPCLedgerBackend) Close() error {
 	return nil
 }
