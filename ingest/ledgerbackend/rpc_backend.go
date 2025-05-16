@@ -10,8 +10,7 @@ import (
 	"github.com/stellar/stellar-rpc/protocol"
 )
 
-// The required RPC client compatibility
-// If it has these methods, it can be used by RPCBacked.
+// The minimum required RPC client interface required for usage by RPCLedgerBackend.
 type RPCClient interface {
 	GetLatestLedger(ctx context.Context) (protocol.GetLatestLedgerResponse, error)
 	GetLedgers(ctx context.Context, req protocol.GetLedgersRequest) (protocol.GetLedgersResponse, error)
