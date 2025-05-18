@@ -4,11 +4,32 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/stellar/go/xdr"
 	rpc "github.com/stellar/stellar-rpc/client"
 	"github.com/stellar/stellar-rpc/protocol"
 )
+
+const RPCBackendDefaultBufferSize uint32 = 10
+const RPCBackendDefaultWaitIntervalSeconds uint32 = 2
+
+type RPCLedgerNotFoundError struct {
+	Sequence uint32
+}
+
+func (e *RPCLedgerNotFoundError) Error() string {
+	return fmt.Sprintf("ledger %d not found", e.Sequence)
+}
+
+type RPCLedgerBeyondLatestError struct {
+	Sequence     uint32
+	LatestLedger uint32
+}
+
+func (e *RPCLedgerBeyondLatestError) Error() string {
+	return fmt.Sprintf("ledger %d is beyond the RPC latest ledger is %d", e.Sequence, e.LatestLedger)
+}
 
 // The minimum required RPC client interface required for usage by RPCLedgerBackend.
 type RPCClient interface {
@@ -22,21 +43,30 @@ type RPCClient interface {
 // Callers should focus on using RPCLedgerBackend.GetLedger for the ledger range needed
 // and check the returned error for presence of a ledger.
 type RPCLedgerBackend struct {
-	client RPCClient
+	client     RPCClient
+	buffer     map[uint32]xdr.LedgerCloseMeta
+	bufferSize uint32
 }
 
 // Creates the RPCLedgerBackend with the given RPCClient.
-func NewRPCLedgerBackend(client RPCClient) (*RPCLedgerBackend, error) {
-	return &RPCLedgerBackend{
-		client: client,
-	}, nil
+func NewRPCLedgerBackend(client RPCClient, bufferSize uint32) (*RPCLedgerBackend, error) {
+	if bufferSize == 0 {
+		bufferSize = RPCBackendDefaultBufferSize
+	}
+	backend := &RPCLedgerBackend{
+		client:     client,
+		bufferSize: bufferSize,
+	}
+	backend.initBuffer()
+	return backend, nil
 }
 
 // Creates the RPCLedgerBackend with the given RPC URL and optional HTTP client.
-func NewRPCLedgerBackendFromURL(rpcURL string, httpClient *http.Client) (*RPCLedgerBackend, error) {
-	return NewRPCLedgerBackend(rpc.NewClient(rpcURL, httpClient))
+func NewRPCLedgerBackendFromURL(rpcURL string, httpClient *http.Client, bufferSize uint32) (*RPCLedgerBackend, error) {
+	return NewRPCLedgerBackend(rpc.NewClient(rpcURL, httpClient), bufferSize)
 }
 
+// GetLatestLedgerSequence queries the RPC server for the latest ledger sequence.
 func (b *RPCLedgerBackend) GetLatestLedgerSequence(ctx context.Context) (sequence uint32, err error) {
 	ledger, err := b.client.GetLatestLedger(ctx)
 	if err != nil {
@@ -45,28 +75,46 @@ func (b *RPCLedgerBackend) GetLatestLedgerSequence(ctx context.Context) (sequenc
 	return ledger.Sequence, nil
 }
 
+// GetLedger queries the RPC server for a specific ledger sequence and returns the meta data.
+// If the requested ledger is not immediately available but is beyond the latest ledger in the RPC server,
+// it will block and retry until either:
+//   - The ledger becomes available
+//   - The context is cancelled or times out
+//   - An error occurs
+//
+// The caller can control the maximum wait time by setting a timeout or deadline on the provided context.
+//
+// Parameters:
+//   - ctx: Context for cancellation and timeout control
+//   - sequence: The ledger sequence number to retrieve meta data for
+//
+// Returns:
+//   - xdr.LedgerCloseMeta: The ledger meta data if found
+//   - error: One of:
+//   - nil if ledger is found
+//   - RPCLedgerNotFoundError if ledger is not in RPC's retention window
+//   - context.DeadlineExceeded if context times out
+//   - context.Canceled if context is cancelled
+//   - Other errors that may be due to RPC usage or network issues
 func (b *RPCLedgerBackend) GetLedger(ctx context.Context, sequence uint32) (xdr.LedgerCloseMeta, error) {
-	req := protocol.GetLedgersRequest{
-		StartLedger: sequence,
-		Pagination: &protocol.LedgerPaginationOptions{
-			Limit: 1,
-		},
-	}
-	ledgers, err := b.client.GetLedgers(ctx, req)
-	if err != nil {
-		return xdr.LedgerCloseMeta{}, fmt.Errorf("failed to get ledger %d: %w", sequence, err)
-	}
+	for {
+		lcm, err := b.getBufferedLedger(ctx, sequence)
+		if err == nil {
+			return lcm, nil
+		}
 
-	if len(ledgers.Ledgers) == 0 {
-		return xdr.LedgerCloseMeta{}, fmt.Errorf("ledger %d not found", sequence)
-	}
+		_, isBeyondErr := err.(*RPCLedgerBeyondLatestError)
+		if !isBeyondErr {
+			return xdr.LedgerCloseMeta{}, err
+		}
 
-	var lcm xdr.LedgerCloseMeta
-	if err := xdr.SafeUnmarshalBase64(ledgers.Ledgers[0].LedgerMetadata, &lcm); err != nil {
-		return xdr.LedgerCloseMeta{}, fmt.Errorf("failed to unmarshal ledger close meta: %w", err)
+		select {
+		case <-ctx.Done():
+			return xdr.LedgerCloseMeta{}, ctx.Err()
+		case <-time.After(time.Duration(RPCBackendDefaultWaitIntervalSeconds) * time.Second):
+			continue
+		}
 	}
-
-	return lcm, nil
 }
 
 // RPCLedgerBackend does not perform stateful range preparation.
@@ -83,4 +131,54 @@ func (b *RPCLedgerBackend) IsPrepared(ctx context.Context, ledgerRange Range) (b
 
 func (b *RPCLedgerBackend) Close() error {
 	return nil
+}
+
+func (b *RPCLedgerBackend) initBuffer() {
+	b.buffer = make(map[uint32]xdr.LedgerCloseMeta)
+}
+
+func (b *RPCLedgerBackend) getBufferedLedger(ctx context.Context, sequence uint32) (xdr.LedgerCloseMeta, error) {
+	// Check if ledger is in buffer
+	if lcm, exists := b.buffer[sequence]; exists {
+		return lcm, nil
+	}
+
+	// Ledger not in buffer, fetch a small batch from RPC starting from the requested sequence
+	req := protocol.GetLedgersRequest{
+		StartLedger: sequence,
+		Pagination: &protocol.LedgerPaginationOptions{
+			Limit: uint(b.bufferSize),
+		},
+	}
+
+	ledgers, err := b.client.GetLedgers(ctx, req)
+	if err != nil {
+		return xdr.LedgerCloseMeta{}, fmt.Errorf("failed to get ledgers starting from %d: %w", sequence, err)
+	}
+
+	b.initBuffer()
+
+	// Check if requested ledger is beyond the RPC retention window
+	if sequence > ledgers.LatestLedger {
+		return xdr.LedgerCloseMeta{}, &RPCLedgerBeyondLatestError{
+			Sequence:     sequence,
+			LatestLedger: ledgers.LatestLedger,
+		}
+	}
+
+	// Populate buffer with new ledgers
+	for _, ledger := range ledgers.Ledgers {
+		var lcm xdr.LedgerCloseMeta
+		if err := xdr.SafeUnmarshalBase64(ledger.LedgerMetadata, &lcm); err != nil {
+			return xdr.LedgerCloseMeta{}, fmt.Errorf("failed to unmarshal ledger %d: %w", ledger.Sequence, err)
+		}
+		b.buffer[ledger.Sequence] = lcm
+	}
+
+	// Check if requested ledger is in new buffer
+	if lcm, exists := b.buffer[sequence]; exists {
+		return lcm, nil
+	}
+
+	return xdr.LedgerCloseMeta{}, &RPCLedgerNotFoundError{Sequence: sequence}
 }
