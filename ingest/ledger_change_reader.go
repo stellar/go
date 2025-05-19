@@ -135,6 +135,7 @@ func (r *LedgerChangeReader) Read() (Change, error) {
 	// Changes within a ledger should be read in the following order:
 	// - fee changes of all transactions,
 	// - transaction meta changes of all transactions,
+	// - post tx apply fee changes for all transactions,
 	// - upgrade changes.
 	// Because a single transaction can introduce many changes we read all the
 	// changes from a single transaction  and save them in r.pending.
@@ -158,7 +159,7 @@ func (r *LedgerChangeReader) Read() (Change, error) {
 			if err == io.EOF {
 				// If done streaming fee changes rewind to stream meta changes
 				// If done streaming meta changes rewind to stream postTxApply changes
-				// If done streaming postTxApply changes then we progress to the next state
+				// If done streaming postTxApply changes then we progress to the next state (upgrade changes)
 				if r.state != postTxApplyState {
 					r.LedgerTransactionReader.Rewind()
 				}
