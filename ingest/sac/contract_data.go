@@ -419,7 +419,7 @@ func AssetToContractData(isNative bool, code, issuer string, contractID [32]byte
 	if err != nil {
 		return xdr.LedgerEntryData{}, err
 	}
-	var ContractIDHash xdr.Hash = contractID
+	var ContractIDHash xdr.ContractId = contractID
 
 	return xdr.LedgerEntryData{
 		Type: xdr.LedgerEntryTypeContractData,
@@ -462,7 +462,7 @@ func BalanceToContractData(assetContractId, holderID [32]byte, amt uint64) xdr.L
 // asset balance of a contract holder written to contract storage by the
 // Stellar Asset Contract.
 func ContractBalanceLedgerKey(assetContractId, holderID [32]byte) xdr.LedgerKey {
-	holder := xdr.Hash(holderID)
+	holder := xdr.ContractId(holderID)
 	scAddress := &xdr.ScAddress{
 		Type:       xdr.ScAddressTypeScAddressTypeContract,
 		ContractId: &holder,
@@ -471,7 +471,7 @@ func ContractBalanceLedgerKey(assetContractId, holderID [32]byte) xdr.LedgerKey 
 		xdr.ScVal{Type: xdr.ScValTypeScvSymbol, Sym: &balanceMetadataSym},
 		xdr.ScVal{Type: xdr.ScValTypeScvAddress, Address: scAddress},
 	}
-	var contractIDHash xdr.Hash = assetContractId
+	var contractIDHash xdr.ContractId = assetContractId
 	return xdr.LedgerKey{
 		Type: xdr.LedgerEntryTypeContractData,
 		ContractData: &xdr.LedgerKeyContractData{

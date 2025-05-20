@@ -2,28 +2,30 @@ package token_transfer
 
 import (
 	"fmt"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/xdr"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 var (
 	randomAccount     = keypair.MustRandom().Address()
-	someContractHash1 = xdr.Hash([32]byte{1, 2, 3, 4})
+	someContractHash1 = xdr.ContractId([32]byte{1, 2, 3, 4})
 	someContract1     = strkey.MustEncode(strkey.VersionByteContract, someContractHash1[:])
-	someContractHash2 = xdr.Hash([32]byte{4, 3, 2, 1})
+	someContractHash2 = xdr.ContractId([32]byte{4, 3, 2, 1})
 	someContract2     = strkey.MustEncode(strkey.VersionByteContract, someContractHash2[:])
 
 	processor = &EventsProcessor{
 		networkPassphrase: someNetworkPassphrase,
 	}
-	contractIdFromAsset = func(asset xdr.Asset) *xdr.Hash {
+	contractIdFromAsset = func(asset xdr.Asset) *xdr.ContractId {
 		contractId, _ := asset.ContractID(someNetworkPassphrase)
-		hash := xdr.Hash(contractId)
+		hash := xdr.ContractId(contractId)
 		return &hash
 	}
 )
@@ -44,7 +46,7 @@ func createAddress(address string) xdr.ScVal {
 	case strkey.IsValidContractAddress(address) == true:
 		scAddress.Type = xdr.ScAddressTypeScAddressTypeContract
 		contractHash := strkey.MustDecode(strkey.VersionByteContract, address)
-		contractId := xdr.Hash(contractHash)
+		contractId := xdr.ContractId(contractHash)
 		scAddress.ContractId = &contractId
 
 	case strkey.IsValidEd25519PublicKey(address) == true:
@@ -89,7 +91,7 @@ func createContractEvent(
 	amount int64,
 	amount128 *xdr.Int128Parts,
 	assetStr string,
-	contractId *xdr.Hash,
+	contractId *xdr.ContractId,
 ) xdr.ContractEvent {
 	topics := []xdr.ScVal{
 		createSymbol(eventType),
@@ -289,7 +291,7 @@ func TestValidContractEvents(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Test with multiple assets
 			var assets []interface{}
-			var contractId *xdr.Hash
+			var contractId *xdr.ContractId
 
 			if tc.isSacEvent {
 				// Test with SAC assets

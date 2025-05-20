@@ -403,7 +403,7 @@ func checkAssetStats(
 	// because other balances may be forged.
 	var filteredBalances []history.ContractAssetBalance
 	for _, balance := range contractAssetStatSet.GetCreatedBalances() {
-		var contractID xdr.Hash
+		var contractID xdr.ContractId
 		copy(contractID[:], balance.ContractID)
 		if _, ok := contractToAsset[contractID]; ok {
 			filteredBalances = append(filteredBalances, balance)

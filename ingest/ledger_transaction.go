@@ -17,12 +17,15 @@ type LedgerTransaction struct {
 	Index    uint32 // this index is 1-indexed as opposed to zero. Refer Read() in ledger_transaction_reader.go
 	Envelope xdr.TransactionEnvelope
 	Result   xdr.TransactionResultPair
-	// FeeChanges and UnsafeMeta are low level values, do not use them directly unless
+
+	// FeeChanges, UnsafeMeta, and PostTxApplyFeeChanges are low level values, do not use them directly unless
 	// you know what you are doing.
 	// Use LedgerTransaction.GetChanges() for higher level access to ledger
 	// entry changes.
-	FeeChanges    xdr.LedgerEntryChanges
-	UnsafeMeta    xdr.TransactionMeta
+	FeeChanges            xdr.LedgerEntryChanges
+	UnsafeMeta            xdr.TransactionMeta
+	PostTxApplyFeeChanges xdr.LedgerEntryChanges
+
 	LedgerVersion uint32
 	Ledger        xdr.LedgerCloseMeta // This is read-only and not to be modified by downstream functions
 	Hash          xdr.Hash
@@ -42,6 +45,18 @@ func (t *LedgerTransaction) GetFeeChanges() []Change {
 	changes := GetChangesFromLedgerEntryChanges(t.FeeChanges)
 	for i := range changes {
 		changes[i].Reason = LedgerEntryChangeReasonFee
+		changes[i].Transaction = t
+		changes[i].Ledger = &t.Ledger
+	}
+	return changes
+}
+
+// GetPostApplyFeeChanges returns a developer friendly representation of LedgerEntryChanges
+// connected to fees / fee refunds which are applied after all transactions are executed.
+func (t *LedgerTransaction) GetPostApplyFeeChanges() []Change {
+	changes := GetChangesFromLedgerEntryChanges(t.PostTxApplyFeeChanges)
+	for i := range changes {
+		changes[i].Reason = LedgerEntryChangeReasonFeeRefund
 		changes[i].Transaction = t
 		changes[i].Ledger = &t.Ledger
 	}
@@ -88,13 +103,13 @@ func (t *LedgerTransaction) GetChanges() ([]Change, error) {
 		//	Each element in operationMeta is a list of ledgerEntryChanges
 		//	caused by the operation at that index of the element
 		for opIdx := range operationMeta {
-			opChanges := t.operationChanges(v1Meta.Operations, uint32(opIdx))
+			opChanges := t.operationChanges(operationsMetaV1(v1Meta.Operations), uint32(opIdx))
 			changes = append(changes, opChanges...)
 		}
-	case 2, 3:
+	case 2, 3, 4:
 		var (
 			txBeforeChanges, txAfterChanges xdr.LedgerEntryChanges
-			operationMeta                   []xdr.OperationMeta
+			meta                            operationsMeta
 		)
 
 		switch t.UnsafeMeta.V {
@@ -102,14 +117,19 @@ func (t *LedgerTransaction) GetChanges() ([]Change, error) {
 			v2Meta := t.UnsafeMeta.MustV2()
 			txBeforeChanges = v2Meta.TxChangesBefore
 			txAfterChanges = v2Meta.TxChangesAfter
-			operationMeta = v2Meta.Operations
+			meta = operationsMetaV1(v2Meta.Operations)
 		case 3:
 			v3Meta := t.UnsafeMeta.MustV3()
 			txBeforeChanges = v3Meta.TxChangesBefore
 			txAfterChanges = v3Meta.TxChangesAfter
-			operationMeta = v3Meta.Operations
+			meta = operationsMetaV1(v3Meta.Operations)
+		case 4:
+			v4Meta := t.UnsafeMeta.MustV4()
+			txBeforeChanges = v4Meta.TxChangesBefore
+			txAfterChanges = v4Meta.TxChangesAfter
+			meta = operationsMetaV2(v4Meta.Operations)
 		default:
-			panic("Invalid meta version, expected 2 or 3")
+			panic("Invalid meta version, expected 2, 3, or 4")
 		}
 
 		txChangesBefore := t.getTransactionChanges(txBeforeChanges)
@@ -124,15 +144,15 @@ func (t *LedgerTransaction) GetChanges() ([]Change, error) {
 		//	operationMeta is a list of lists.
 		//	Each element in operationMeta is a list of ledgerEntryChanges
 		//	caused by the operation at that index of the element
-		for opIdx := range operationMeta {
-			opChanges := t.operationChanges(operationMeta, uint32(opIdx))
+		for opIdx := 0; opIdx < meta.len(); opIdx++ {
+			opChanges := t.operationChanges(meta, uint32(opIdx))
 			changes = append(changes, opChanges...)
 		}
 
 		txChangesAfter := t.getTransactionChanges(txAfterChanges)
 		changes = append(changes, txChangesAfter...)
 	default:
-		return changes, errors.New("Unsupported TransactionMeta version")
+		return changes, fmt.Errorf("unsupported TransactionMeta version: %v", t.UnsafeMeta.V)
 	}
 
 	return changes, nil
@@ -159,28 +179,53 @@ func (t *LedgerTransaction) GetOperationChanges(operationIndex uint32) ([]Change
 		return []Change{}, nil
 	}
 
-	var operationMeta []xdr.OperationMeta
+	var meta operationsMeta
 	switch t.UnsafeMeta.V {
 	case 1:
-		operationMeta = t.UnsafeMeta.MustV1().Operations
+		meta = operationsMetaV1(t.UnsafeMeta.MustV1().Operations)
 	case 2:
-		operationMeta = t.UnsafeMeta.MustV2().Operations
+		meta = operationsMetaV1(t.UnsafeMeta.MustV2().Operations)
 	case 3:
-		operationMeta = t.UnsafeMeta.MustV3().Operations
+		meta = operationsMetaV1(t.UnsafeMeta.MustV3().Operations)
+	case 4:
+		meta = operationsMetaV2(t.UnsafeMeta.MustV4().Operations)
 	default:
-		return []Change{}, errors.New("Unsupported TransactionMeta version")
+		return []Change{}, fmt.Errorf("unsupported TransactionMeta version: %v", t.UnsafeMeta.V)
 	}
-
-	return t.operationChanges(operationMeta, operationIndex), nil
+	return t.operationChanges(meta, operationIndex), nil
 }
 
-func (t *LedgerTransaction) operationChanges(ops []xdr.OperationMeta, index uint32) []Change {
-	if int(index) >= len(ops) {
+type operationsMeta interface {
+	getChanges(op uint32) xdr.LedgerEntryChanges
+	len() int
+}
+
+type operationsMetaV1 []xdr.OperationMeta
+
+func (ops operationsMetaV1) getChanges(op uint32) xdr.LedgerEntryChanges {
+	return ops[op].Changes
+}
+
+func (ops operationsMetaV1) len() int {
+	return len(ops)
+}
+
+type operationsMetaV2 []xdr.OperationMetaV2
+
+func (ops operationsMetaV2) getChanges(op uint32) xdr.LedgerEntryChanges {
+	return ops[op].Changes
+}
+
+func (ops operationsMetaV2) len() int {
+	return len(ops)
+}
+
+func (t *LedgerTransaction) operationChanges(ops operationsMeta, index uint32) []Change {
+	if int(index) >= ops.len() {
 		return []Change{}
 	}
 
-	operationMeta := ops[index]
-	changes := GetChangesFromLedgerEntryChanges(operationMeta.Changes)
+	changes := GetChangesFromLedgerEntryChanges(ops.getChanges(index))
 
 	for i := range changes {
 		changes[i].Reason = LedgerEntryChangeReasonOperation
@@ -368,13 +413,13 @@ func (t *LedgerTransaction) SorobanResourcesInstructions() (uint32, bool) {
 	return uint32(sorobanData.Resources.Instructions), true
 }
 
-func (t *LedgerTransaction) SorobanResourcesReadBytes() (uint32, bool) {
+func (t *LedgerTransaction) SorobanResourcesDiskReadBytes() (uint32, bool) {
 	sorobanData, ok := t.GetSorobanData()
 	if !ok {
 		return 0, false
 	}
 
-	return uint32(sorobanData.Resources.ReadBytes), true
+	return uint32(sorobanData.Resources.DiskReadBytes), true
 }
 
 func (t *LedgerTransaction) SorobanResourcesWriteBytes() (uint32, bool) {

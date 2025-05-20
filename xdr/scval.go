@@ -19,8 +19,23 @@ func (address ScAddress) String() (string, error) {
 		pubkey := address.MustAccountId().Ed25519
 		result, err = strkey.Encode(strkey.VersionByteAccountID, pubkey[:])
 	case ScAddressTypeScAddressTypeContract:
-		contractID := *address.ContractId
+		contractID := address.MustContractId()
 		result, err = strkey.Encode(strkey.VersionByteContract, contractID[:])
+	case ScAddressTypeScAddressTypeMuxedAccount:
+		payload := address.MustMuxedAccount()
+		muxed := MuxedAccount{
+			Type: CryptoKeyTypeKeyTypeMuxedEd25519,
+			Med25519: &MuxedAccountMed25519{
+				Id:      payload.Id,
+				Ed25519: payload.Ed25519,
+			},
+		}
+		result, err = muxed.GetAddress()
+	case ScAddressTypeScAddressTypeLiquidityPool:
+		poolID := address.MustLiquidityPoolId()
+		result, err = strkey.Encode(strkey.VersionByteLiquidityPool, poolID[:])
+	case ScAddressTypeScAddressTypeClaimableBalance:
+		result, err = strkey.Encode(strkey.VersionByteClaimableBalance, address.MustClaimableBalanceId().V0[:])
 	default:
 		return "", fmt.Errorf("unfamiliar address type: %v", address.Type)
 	}
@@ -132,6 +147,13 @@ func (s ScAddress) Equals(o ScAddress) bool {
 		return sAccountID.Equals(o.MustAccountId())
 	case ScAddressTypeScAddressTypeContract:
 		return s.MustContractId() == o.MustContractId()
+	case ScAddressTypeScAddressTypeClaimableBalance:
+		return s.MustClaimableBalanceId().MustV0() == o.MustClaimableBalanceId().MustV0()
+	case ScAddressTypeScAddressTypeLiquidityPool:
+		return s.MustLiquidityPoolId() == o.MustLiquidityPoolId()
+	case ScAddressTypeScAddressTypeMuxedAccount:
+		return s.MustMuxedAccount().Id == o.MustMuxedAccount().Id &&
+			s.MustMuxedAccount().Ed25519.Equals(o.MustMuxedAccount().Ed25519)
 	default:
 		panic("unknown ScAddress type: " + s.Type.String())
 	}

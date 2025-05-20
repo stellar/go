@@ -103,7 +103,7 @@ func TestGenerateLedgers(t *testing.T) {
 			}
 		} else if i%2 == 1 {
 			for j := 0; j < transfersPerTx; j++ {
-				var contractID xdr.Hash
+				var contractID xdr.ContractId
 				_, err := rand.Read(contractID[:])
 				require.NoError(t, err)
 				bulkRecipients = append(bulkRecipients, contractAddressParam(contractID))
@@ -112,7 +112,7 @@ func TestGenerateLedgers(t *testing.T) {
 
 		op = bulkTransfer(itest, bulkContractID, sender, xlm, &bulkRecipients, &bulkAmounts)
 		preFlightOp := itest.PreflightHostFunctions(accounts[i], *op)
-		preFlightOp.Ext.SorobanData.Resources.ReadBytes *= 10
+		preFlightOp.Ext.SorobanData.Resources.DiskReadBytes *= 10
 		preFlightOp.Ext.SorobanData.Resources.WriteBytes *= 10
 		preFlightOp.Ext.SorobanData.Resources.Instructions *= 10
 		preFlightOp.Ext.SorobanData.ResourceFee *= 10
@@ -248,7 +248,7 @@ func readFile[T xdr.DecoderFrom](t *testing.T, path string, constructor func() T
 
 func bulkTransfer(
 	itest *integration.Test,
-	bulkContractID xdr.Hash,
+	bulkContractID xdr.ContractId,
 	sender string,
 	asset xdr.Asset,
 	recipients *xdr.ScVec,
@@ -439,8 +439,7 @@ func merge(t *testing.T, networkPassphrase string, ledgers []xdr.LedgerCloseMeta
 	var curCount int
 	for _, ledger := range ledgers {
 		transactionCount := ledger.CountTransactions()
-		require.Empty(t, ledger.V1.EvictedTemporaryLedgerKeys)
-		require.Empty(t, ledger.V1.EvictedPersistentLedgerEntries)
+		require.Empty(t, ledger.V1.EvictedKeys)
 		require.Empty(t, ledger.V1.UpgradesProcessing)
 		if transactionCount == 0 {
 			continue

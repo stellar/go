@@ -13,10 +13,10 @@ type RestoreFootprint struct {
 }
 
 var defaultAssetBalanceRestorationFees = SorobanFees{
-	Instructions: 0,
-	ReadBytes:    500,
-	WriteBytes:   500,
-	ResourceFee:  4_000_000,
+	Instructions:  0,
+	DiskReadBytes: 500,
+	WriteBytes:    500,
+	ResourceFee:   4_000_000,
 }
 
 // AssetBalanceRestorationParams configures the restore footprint operation returned by
@@ -73,9 +73,9 @@ func NewAssetBalanceRestoration(params AssetBalanceRestorationParams) (RestoreFo
 							sac.ContractBalanceLedgerKey(assetContractID, contractID),
 						},
 					},
-					Instructions: xdr.Uint32(resources.Instructions),
-					ReadBytes:    xdr.Uint32(resources.ReadBytes),
-					WriteBytes:   xdr.Uint32(resources.WriteBytes),
+					Instructions:  xdr.Uint32(resources.Instructions),
+					DiskReadBytes: xdr.Uint32(resources.DiskReadBytes),
+					WriteBytes:    xdr.Uint32(resources.WriteBytes),
 				},
 				ResourceFee: xdr.Int64(resources.ResourceFee),
 			},

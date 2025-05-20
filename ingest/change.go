@@ -91,6 +91,9 @@ const (
 	// LedgerEntryChangeReasonFee indicates a change related to transaction fees.
 	LedgerEntryChangeReasonFee
 
+	// LedgerEntryChangeReasonFeeRefund indicates a change related to transaction fee refunds.
+	LedgerEntryChangeReasonFeeRefund
+
 	// LedgerEntryChangeReasonUpgrade indicates a change caused by a ledger upgrade.
 	LedgerEntryChangeReasonUpgrade
 )

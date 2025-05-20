@@ -330,7 +330,7 @@ func (q *Q) GetContractAssetStat(ctx context.Context, contractID []byte) (Contra
 
 // GetAssetStatByContract returns the row in the exp_asset_stats table corresponding
 // to the given contract id
-func (q *Q) GetAssetStatByContract(ctx context.Context, contractID xdr.Hash) (ExpAssetStat, error) {
+func (q *Q) GetAssetStatByContract(ctx context.Context, contractID xdr.ContractId) (ExpAssetStat, error) {
 	sql := selectAssetStats.Where("contract_id = ?", contractID[:])
 	var assetStat ExpAssetStat
 	err := q.Get(ctx, &assetStat, sql)

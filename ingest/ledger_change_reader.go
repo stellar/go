@@ -27,6 +27,8 @@ const (
 	feeChangesState ledgerChangeReaderState = iota
 	// metaChangesState is active when LedgerChangeReader is reading transaction meta changes.
 	metaChangesState
+	// postTxApplyState is active when LedgerChangeReader is reading postTxApplyFeeProcessing changes
+	postTxApplyState
 	// upgradeChanges is active when LedgerChangeReader is reading upgrade changes.
 	upgradeChangesState
 )
@@ -133,6 +135,7 @@ func (r *LedgerChangeReader) Read() (Change, error) {
 	// Changes within a ledger should be read in the following order:
 	// - fee changes of all transactions,
 	// - transaction meta changes of all transactions,
+	// - post tx apply fee changes for all transactions,
 	// - upgrade changes.
 	// Because a single transaction can introduce many changes we read all the
 	// changes from a single transaction  and save them in r.pending.
@@ -150,12 +153,14 @@ func (r *LedgerChangeReader) Read() (Change, error) {
 	}
 
 	switch r.state {
-	case feeChangesState, metaChangesState:
+	case feeChangesState, metaChangesState, postTxApplyState:
 		tx, err := r.LedgerTransactionReader.Read()
 		if err != nil {
 			if err == io.EOF {
 				// If done streaming fee changes rewind to stream meta changes
-				if r.state == feeChangesState {
+				// If done streaming meta changes rewind to stream postTxApply changes
+				// If done streaming postTxApply changes then we progress to the next state (upgrade changes)
+				if r.state != postTxApplyState {
 					r.LedgerTransactionReader.Rewind()
 				}
 				r.state++
@@ -173,6 +178,8 @@ func (r *LedgerChangeReader) Read() (Change, error) {
 				return Change{}, err
 			}
 			r.pending = append(r.pending, metaChanges...)
+		case postTxApplyState:
+			r.pending = append(r.pending, tx.GetPostApplyFeeChanges()...)
 		}
 		return r.Read()
 

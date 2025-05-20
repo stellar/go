@@ -41,6 +41,16 @@ func (p *TransactionProcessor) ProcessTransaction(lcm xdr.LedgerCloseMeta, trans
 
 	if p.skipTxmeta {
 		switch elidedTransaction.UnsafeMeta.V {
+		case 4:
+			elidedTransaction.UnsafeMeta.V4 = &xdr.TransactionMetaV4{
+				Ext:              xdr.ExtensionPoint{},
+				TxChangesBefore:  xdr.LedgerEntryChanges{},
+				Operations:       []xdr.OperationMetaV2{},
+				TxChangesAfter:   xdr.LedgerEntryChanges{},
+				SorobanMeta:      nil,
+				Events:           []xdr.TransactionEvent{},
+				DiagnosticEvents: []xdr.DiagnosticEvent{},
+			}
 		case 3:
 			elidedTransaction.UnsafeMeta.V3 = &xdr.TransactionMetaV3{
 				Ext:             xdr.ExtensionPoint{},
