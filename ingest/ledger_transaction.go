@@ -56,7 +56,7 @@ func (t *LedgerTransaction) GetFeeChanges() []Change {
 func (t *LedgerTransaction) GetPostApplyFeeChanges() []Change {
 	changes := GetChangesFromLedgerEntryChanges(t.PostTxApplyFeeChanges)
 	for i := range changes {
-		changes[i].Reason = LedgerEntryChangeReasonFee
+		changes[i].Reason = LedgerEntryChangeReasonFeeRefund
 		changes[i].Transaction = t
 		changes[i].Ledger = &t.Ledger
 	}
