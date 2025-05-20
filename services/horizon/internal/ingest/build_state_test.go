@@ -4,10 +4,10 @@ package ingest
 
 import (
 	"context"
-	"github.com/stellar/go/services/horizon/internal/ingest/processors"
 	"testing"
 
 	"github.com/stellar/go/ingest/ledgerbackend"
+	"github.com/stellar/go/services/horizon/internal/ingest/processors"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/suite"
