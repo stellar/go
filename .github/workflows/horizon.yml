@@ -123,7 +123,7 @@ jobs:
     runs-on: ubuntu-22.04
     env:
       GO_VERSION: 1.23.4
-      STELLAR_CORE_VERSION: 22.3.0-2485.e643061a4.focal
+      STELLAR_CORE_VERSION: 23.0.0.1-2488.23.0.0rc.1.472e3e69d.focal
       CAPTIVE_CORE_STORAGE_PATH: /tmp
     steps:
       - uses: actions/checkout@v3
