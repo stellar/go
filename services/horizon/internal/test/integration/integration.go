@@ -3,6 +3,7 @@ package integration
 
 import (
 	"context"
+	stderrrors "errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -48,7 +49,6 @@ const (
 	HorizonDefaultPort          = "8000"
 	AdminPort                   = 6060
 	StellarCorePort             = 11626
-	HistoryArchivePort          = 1570
 	StellarRPCPort              = 8080
 	HistoryArchiveUrl           = "http://localhost:1570"
 	CheckpointFrequency         = 8
@@ -65,7 +65,6 @@ type Config struct {
 	EnableStellarRPC          bool
 	LogContainers             bool
 	SkipCoreContainerCreation bool
-	CoreDockerImage           string
 	StellarRPCDockerImage     string
 	SkipProtocolUpgrade       bool
 	QuickExpiration           bool
@@ -310,8 +309,9 @@ func (i *Test) runComposeCommand(envVars []string, args ...string) {
 	if len(out) > 0 {
 		fmt.Printf("stdout:\n%s\n", string(out))
 	}
-	if exitErr, ok := innerErr.(*exec.ExitError); ok {
-		fmt.Printf("stderr:\n%s\n", string(exitErr.Stderr))
+	var exitError *exec.ExitError
+	if stderrrors.As(innerErr, &exitError) {
+		fmt.Printf("stderr:\n%s\n", string(exitError.Stderr))
 	}
 
 	if innerErr != nil {
@@ -321,14 +321,7 @@ func (i *Test) runComposeCommand(envVars []string, args ...string) {
 
 func (i *Test) startCoreValidator() {
 	var envVars []string
-	var coreImageOverride string
-
-	if i.config.CoreDockerImage != "" {
-		coreImageOverride = i.config.CoreDockerImage
-	} else if img := os.Getenv("HORIZON_INTEGRATION_TESTS_DOCKER_IMG"); img != "" {
-		coreImageOverride = img
-	}
-	if coreImageOverride != "" {
+	if coreImageOverride := i.coreValidatorDockerImage(); coreImageOverride != "" {
 		envVars = append(
 			envVars,
 			fmt.Sprintf("CORE_IMAGE=%s", coreImageOverride),
@@ -338,16 +331,13 @@ func (i *Test) startCoreValidator() {
 	i.runComposeCommand(envVars, "up", "--detach", "--quiet-pull", "--no-color", "core")
 }
 
+func (i *Test) coreValidatorDockerImage() string {
+	return os.Getenv("HORIZON_INTEGRATION_TESTS_DOCKER_IMG")
+}
+
 func (i *Test) startRPC() {
 	var envVars []string
-	var stellarRPCOverride string
-
-	if i.config.StellarRPCDockerImage != "" {
-		stellarRPCOverride = i.config.CoreDockerImage
-	} else if img := os.Getenv("HORIZON_INTEGRATION_TESTS_STELLAR_RPC_DOCKER_IMG"); img != "" {
-		stellarRPCOverride = img
-	}
-	if stellarRPCOverride != "" {
+	if stellarRPCOverride := i.rpcDockerImage(); stellarRPCOverride != "" {
 		envVars = append(
 			envVars,
 			fmt.Sprintf("STELLAR_RPC_IMAGE=%s", stellarRPCOverride),
@@ -356,6 +346,11 @@ func (i *Test) startRPC() {
 	}
 
 	i.runComposeCommand(envVars, "up", "--detach", "--quiet-pull", "--no-color", "stellar-rpc")
+}
+
+func (i *Test) rpcDockerImage() string {
+	img := os.Getenv("HORIZON_INTEGRATION_TESTS_STELLAR_RPC_DOCKER_IMG")
+	return img
 }
 
 func (i *Test) removeContainers(containers ...string) {
@@ -740,13 +735,22 @@ func (i *Test) upgradeLimits() {
 	var configSet xdr.ConfigUpgradeSet
 	err = xdr.SafeUnmarshalBase64(string(contents), &configSet)
 	require.NoError(i.t, err)
-
+	coreImage := fmt.Sprintf("stellar/stellar-core:%v", i.config.ProtocolVersion)
+	if i.config.ProtocolVersion == 23 {
+		// protocol 23 docker image is not yet published with 23 tag because it's still an rc
+		// so in this case, we use the rc docker image
+		coreImage = i.coreValidatorDockerImage()
+	}
 	upgradeTransactions, upgradeKey, err := stellarcore.GenSorobanConfigUpgradeTxAndKey(stellarcore.GenSorobanConfig{
 		BaseSeqNum:        0,
 		NetworkPassphrase: i.Config().NetworkPassphrase,
 		SigningKey:        i.Master(),
-		StellarCorePath:   i.CoreBinaryPath(),
+		StellarCoreImage:  coreImage,
 	}, configSet)
+	var exitError *exec.ExitError
+	if stderrrors.As(err, &exitError) {
+		i.CurrentTest().Log(string(exitError.Stderr))
+	}
 	require.NoError(i.t, err)
 
 	for _, transaction := range upgradeTransactions {
