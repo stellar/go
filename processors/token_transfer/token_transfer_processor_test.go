@@ -126,7 +126,7 @@ var (
 		resp.Envelope.V1.Tx.Ext = xdr.TransactionExt{
 			V: 1,
 			SorobanData: &xdr.SorobanTransactionData{
-				Ext: xdr.ExtensionPoint{
+				Ext: xdr.SorobanTransactionDataExt{
 					V: 0,
 				},
 				Resources: xdr.SorobanResources{
