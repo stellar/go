@@ -15,7 +15,6 @@ func TestStatsChangeProcessor(t *testing.T) {
 
 	for ledgerEntryType := range xdr.LedgerEntryTypeMap {
 		// Created
-		//<<<<<<< HEAD:ingest/stats_change_processor_test.go
 		assert.NoError(t, processor.ProcessChange(ctx, ingest.Change{
 			Type:       xdr.LedgerEntryType(ledgerEntryType),
 			Pre:        nil,
