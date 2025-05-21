@@ -17,6 +17,10 @@ func newString(s string) *string {
 	return &s
 }
 
+func newBool(b bool) *bool {
+	return &b
+}
+
 func TestCaptiveCoreTomlValidation(t *testing.T) {
 	for _, testCase := range []struct {
 		name              string
@@ -227,6 +231,7 @@ func TestGenerateConfig(t *testing.T) {
 		logPath                        *string
 		enforceSorobanDiagnosticEvents bool
 		enforceEmitMetaV1              bool
+		backfillRestoreMeta            *bool
 		coreVersion                    string
 	}{
 		{
@@ -288,6 +293,38 @@ func TestGenerateConfig(t *testing.T) {
 			peerPort:     newUint(12345),
 			logPath:      nil,
 			coreVersion:  "v22.2.0-124-ga50f3f919",
+		},
+		{
+			name:                "online config with restore meta backfill set to false",
+			mode:                stellarCoreRunnerModeOnline,
+			appendPath:          filepath.Join("testdata", "sample-appendix.cfg"),
+			expectedPath:        filepath.Join("testdata", "expected-disable-backfill-restore-meta.cfg"),
+			httpPort:            newUint(6789),
+			peerPort:            newUint(12345),
+			logPath:             nil,
+			backfillRestoreMeta: newBool(false),
+			coreVersion:         "v23.0.0rc.1",
+		},
+		{
+			name:                "online config with restore meta backfill set to true",
+			mode:                stellarCoreRunnerModeOnline,
+			appendPath:          filepath.Join("testdata", "sample-appendix.cfg"),
+			expectedPath:        filepath.Join("testdata", "expected-enable-backfill-restore-meta.cfg"),
+			httpPort:            newUint(6789),
+			peerPort:            newUint(12345),
+			logPath:             nil,
+			backfillRestoreMeta: newBool(true),
+			coreVersion:         "v23.0.0rc.1",
+		},
+		{
+			name:         "online config with restore meta backfill omitted",
+			mode:         stellarCoreRunnerModeOnline,
+			appendPath:   filepath.Join("testdata", "sample-appendix.cfg"),
+			expectedPath: filepath.Join("testdata", "expected-enable-backfill-restore-meta.cfg"),
+			httpPort:     newUint(6789),
+			peerPort:     newUint(12345),
+			logPath:      nil,
+			coreVersion:  "v23.0.0rc.1",
 		},
 		{
 			name:         "offline config with appendix",
@@ -381,6 +418,7 @@ func TestGenerateConfig(t *testing.T) {
 				CoreBuildVersionFn: func(string) (string, error) {
 					return testCase.coreVersion, nil
 				},
+				BackfillRestoreMeta: testCase.backfillRestoreMeta,
 			}
 			if testCase.appendPath != "" {
 				captiveCoreToml, err = NewCaptiveCoreTomlFromFile(testCase.appendPath, params)
