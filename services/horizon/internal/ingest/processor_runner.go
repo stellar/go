@@ -44,7 +44,7 @@ type horizonLazyLoader interface {
 }
 
 type statsChangeProcessor struct {
-	*ingest.StatsChangeProcessor
+	*processors.StatsChangeProcessor
 }
 
 func (statsChangeProcessor) Name() string {
@@ -56,7 +56,7 @@ func (statsChangeProcessor) Commit(ctx context.Context) error {
 }
 
 type ledgerStats struct {
-	changeStats          ingest.StatsChangeProcessorResults
+	changeStats          processors.StatsChangeProcessorResults
 	changeDurations      runDurations
 	transactionStats     processors.StatsLedgerTransactionProcessorResults
 	transactionDurations runDurations
@@ -74,7 +74,7 @@ type ProcessorRunnerInterface interface {
 		skipChecks bool,
 		ledgerProtocolVersion uint32,
 		bucketListHash xdr.Hash,
-	) (ingest.StatsChangeProcessorResults, error)
+	) (processors.StatsChangeProcessorResults, error)
 	RunTransactionProcessorsOnLedgers(ledgers []xdr.LedgerCloseMeta, execInTx bool) error
 	RunAllProcessorsOnLedger(ledger xdr.LedgerCloseMeta) (
 		stats ledgerStats,
@@ -110,7 +110,7 @@ func (s *ProcessorRunner) DisableMemoryStatsLogging() {
 
 func buildChangeProcessor(
 	historyQ history.IngestionQ,
-	changeStats *ingest.StatsChangeProcessor,
+	changeStats *processors.StatsChangeProcessor,
 	source ingestionSource,
 	ledgerSequence uint32,
 	networkPassphrase string,
@@ -204,8 +204,8 @@ func (s *ProcessorRunner) RunHistoryArchiveIngestion(
 	skipChecks bool,
 	ledgerProtocolVersion uint32,
 	bucketListHash xdr.Hash,
-) (ingest.StatsChangeProcessorResults, error) {
-	changeStats := ingest.StatsChangeProcessor{}
+) (processors.StatsChangeProcessorResults, error) {
+	changeStats := processors.StatsChangeProcessor{}
 	changeProcessor := buildChangeProcessor(
 		s.historyQ,
 		&changeStats,
@@ -219,7 +219,7 @@ func (s *ProcessorRunner) RunHistoryArchiveIngestion(
 		nameRegistry{},
 		changeProcessor,
 	); err != nil {
-		return ingest.StatsChangeProcessorResults{}, err
+		return processors.StatsChangeProcessorResults{}, err
 	}
 
 	if !skipChecks {
@@ -590,7 +590,7 @@ func (s *ProcessorRunner) RunAllProcessorsOnLedger(ledger xdr.LedgerCloseMeta) (
 	stats ledgerStats,
 	err error,
 ) {
-	changeStatsProcessor := ingest.StatsChangeProcessor{}
+	changeStatsProcessor := processors.StatsChangeProcessor{}
 
 	if err = s.checkIfProtocolVersionSupported(ledger.ProtocolVersion()); err != nil {
 		err = errors.Wrap(err, "Error while checking for supported protocol version")
