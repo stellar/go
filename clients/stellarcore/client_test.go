@@ -7,8 +7,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"os"
-	"os/exec"
 	"testing"
 
 	"github.com/jarcoal/httpmock"
@@ -238,21 +236,13 @@ func TestGetLedgerEntries(t *testing.T) {
 }
 
 func TestGenSorobanConfigUpgradeTxAndKey(t *testing.T) {
-	coreBinary := os.Getenv("STELLAR_CORE_BINARY_PATH")
-	if coreBinary == "" {
-		var err error
-		coreBinary, err = exec.LookPath("stellar-core")
-		if err != nil {
-			t.Skip("couldn't find stellar core binary")
-		}
-	}
 	key, err := keypair.ParseFull("SB6VZS57IY25334Y6F6SPGFUNESWS7D2OSJHKDPIZ354BK3FN5GBTS6V")
 	require.NoError(t, err)
 	funcConfig := GenSorobanConfig{
 		BaseSeqNum:        1,
 		NetworkPassphrase: network.TestNetworkPassphrase,
 		SigningKey:        key,
-		StellarCorePath:   coreBinary,
+		StellarCoreImage:  "stellar/stellar-core:22",
 	}
 	config := xdr.ConfigUpgradeSet{
 		UpdatedEntry: []xdr.ConfigSettingEntry{

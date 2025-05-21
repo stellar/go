@@ -98,6 +98,7 @@ type captiveCoreTomlValues struct {
 	Validators                            []Validator          `toml:"VALIDATORS,omitempty"`
 	HistoryEntries                        map[string]History   `toml:"-"`
 	QuorumSetEntries                      map[string]QuorumSet `toml:"-"`
+	BackfillRestoreMeta                   *bool                `toml:"BACKFILL_RESTORE_META,omitempty"`
 	BucketListDBPageSizeExp               *uint                `toml:"BUCKETLIST_DB_INDEX_PAGE_SIZE_EXPONENT,omitempty"`
 	BucketListDBCutoff                    *uint                `toml:"BUCKETLIST_DB_INDEX_CUTOFF,omitempty"`
 	EnableSorobanDiagnosticEvents         *bool                `toml:"ENABLE_SOROBAN_DIAGNOSTIC_EVENTS,omitempty"`
@@ -352,12 +353,15 @@ type CaptiveCoreTomlParams struct {
 	CoreBinaryPath string
 	// Enforce EnableSorobanDiagnosticEvents and EnableDiagnosticsForTxSubmission when not disabled explicitly
 	EnforceSorobanDiagnosticEvents bool
-	// Enfore EnableSorobanTransactionMetaExtV1 when not disabled explicitly
+	// Enforce EnableSorobanTransactionMetaExtV1 when not disabled explicitly
 	EnforceSorobanTransactionMetaExtV1 bool
 	// Fast HTTP Query Server parameters
 	HTTPQueryServerParams *HTTPQueryServerParams
 	// CoreBuildVersionFn is a function that returns the build version of the stellar-core binary.
 	CoreBuildVersionFn CoreBuildVersionFunc
+	// BackfillRestoreMeta is the value assigned to BACKFILL_RESTORE_META in the captive core toml file.
+	// If omitted we will default BACKFILL_RESTORE_META to true.
+	BackfillRestoreMeta *bool
 }
 
 // NewCaptiveCoreTomlFromFile constructs a new CaptiveCoreToml instance by merging configuration
@@ -509,10 +513,20 @@ func (c *CaptiveCoreToml) checkCoreVersion(params CaptiveCoreTomlParams) coreVer
 }
 
 var minVersionForBucketlistCaching = coreVersion{major: 22, minor: 2}
+var minVersionForBackfillRestoreMeta = coreVersion{major: 23, minor: 0}
 
 func (c *CaptiveCoreToml) setDefaults(params CaptiveCoreTomlParams) {
 	if !c.tree.Has("DATABASE") {
 		c.Database = "sqlite3://stellar.db"
+	}
+
+	if !c.tree.Has("BACKFILL_RESTORE_META") {
+		if params.BackfillRestoreMeta != nil {
+			c.BackfillRestoreMeta = params.BackfillRestoreMeta
+		} else if c.checkCoreVersion(params).greaterThanOrEqual(minVersionForBackfillRestoreMeta) {
+			defaultVal := true
+			c.BackfillRestoreMeta = &defaultVal
+		}
 	}
 
 	if !c.tree.Has("BUCKETLIST_DB_INDEX_PAGE_SIZE_EXPONENT") {
@@ -627,6 +641,14 @@ func (c *CaptiveCoreToml) validate(params CaptiveCoreTomlParams) error {
 			"LOG_FILE_PATH in captive core config file: %s does not match passed configuration (%s)",
 			c.LogFilePath,
 			*params.LogPath,
+		)
+	}
+
+	if def := c.tree.Has("BACKFILL_RESTORE_META"); def && params.BackfillRestoreMeta != nil && *c.BackfillRestoreMeta != *params.BackfillRestoreMeta {
+		return fmt.Errorf(
+			"BACKFILL_RESTORE_META in captive core config file: %v does not match passed configuration (%v)",
+			*c.BackfillRestoreMeta,
+			*params.BackfillRestoreMeta,
 		)
 	}
 
