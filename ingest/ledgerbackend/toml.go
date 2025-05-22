@@ -111,6 +111,8 @@ type captiveCoreTomlValues struct {
 	QueryThreadPoolSize                   *uint                `toml:"QUERY_THREAD_POOL_SIZE,omitempty"`
 	QuerySnapshotLedgers                  *uint                `toml:"QUERY_SNAPSHOT_LEDGERS,omitempty"`
 	BucketListDBMemoryForCaching          *uint                `toml:"BUCKETLIST_DB_MEMORY_FOR_CACHING,omitempty"`
+	EnableEmitClassicEvents               *bool                `toml:"EMIT_CLASSIC_EVENTS,omitempty"`
+	EnableBackfillStellarAssetEvents      *bool                `toml:"BACKFILL_STELLAR_ASSET_EVENTS,omitempty"`
 }
 
 // QuorumSetIsConfigured returns true if there is a quorum set defined in the configuration.
