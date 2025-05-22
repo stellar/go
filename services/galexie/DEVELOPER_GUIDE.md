@@ -15,7 +15,7 @@ The goal of Galexie is to build an easy-to-use tool to export Stellar network le
 To achieve its goals, Galexie uses the following architecture, which consists of the 3 main components:
 - Captive-core to extract raw transaction metadata from the Stellar Network.
 - Export manager to bundles and organizes the ledgers to get them ready for export.
-- The cloud storage plugin writes to the cloud storage. This is specific to the type of cloud storage, GCS in this case.
+- The cloud storage plugin writes to the cloud storage. This is specific to the type of cloud storage. Currently, both AWS S3 and Google Cloud Storage are supported.
 
 
 ![Architecture](./architecture.png)
@@ -24,13 +24,21 @@ To achieve its goals, Galexie uses the following architecture, which consists of
 ## Data Format
 - Galexie uses a compact and efficient data format called [XDR](https://developers.stellar.org/docs/learn/encyclopedia/data-format/xdr) (External Data Representation), which is a compact binary format. A Stellar Captive Core instance emits data in this format and the data structure is referred to as `LedgerCloseMeta`. The exporter bundles multiple `LedgerCloseMeta`'s into a single object using a custom XDR structure called `LedgerCloseMetaBatch` which is defined in [Stellar-exporter.x](https://github.com/stellar/go/blob/master/xdr/Stellar-exporter.x).
 
-- The metadata for the same batch is also stored alongside each exported object. Supported metadata is defined in [metadata.go](https://github.com/stellar/go/blob/master/support/datastore/metadata.go). 
+- The metadata for the same batch is also stored alongside each exported object. Supported metadata is defined in [metadata.go](https://github.com/stellar/go/blob/master/support/datastore/metadata.go).
 
 - Objects are compressed before uploading using the [zstd](http://facebook.github.io/zstd/) (zstandard) compression algorithm to optimize network usage and storage needs.
 
 ## Data Storage
-- An example implementation of `DataStore` for GCS, Google Cloud Storage. This plugin is located in the [support](https://github.com/stellar/go/tree/master/support/datastore) package. 
-- Galexie currently implements the interface only for Google Cloud Storage (GCS). The [GCS plugin](https://github.com/stellar/go/blob/master/support/datastore/gcs_datastore.go) uses GCS-specific behaviors like conditional puts, automatic retry, metadata, and CRC checksum.
+- Example implementations of the `DataStore` interface exist for both Google Cloud Storage (GCS) and AWS S3. These plugins are located in the [support/datastore](https://github.com/stellar/go/tree/master/support/datastore) package.
+- The GCS plugin ([gcs_datastore.go](https://github.com/stellar/go/blob/master/support/datastore/gcs_datastore.go)) uses GCS-specific behaviors like conditional puts, automatic retry, metadata, and CRC checksum.
+- The AWS S3 plugin ([s3_datastore.go](https://github.com/stellar/go/blob/master/support/datastore/s3_datastore.go)) supports AWS S3 features such as server-side encryption, storage class selection, canned ACLs, and custom endpoints.
+
+### AWS S3 Setup
+
+To use AWS S3 as your storage backend, set `type = "S3"` in the `[datastore_config]` section of your config file, and specify the required parameters such as `destination_bucket` and `region` inside `[datastore_config.params]`. See [`config.example.toml`](./config.example.toml) for a sample S3 configuration block and the S3 plugin [documentation](https://github.com/stellar/go/blob/master/support/datastore/s3_datastore.go) for all supported options.
+
+- Credentials and authentication for S3 use the [standard AWS SDK mechanism](https://docs.aws.amazon.com/sdk-for-go/api/aws/session/) (environment variables, profiles, IAM roles, etc).
+- Optional parameters allow customization for encryption, storage class, and use of custom endpoints for S3-compatible storage providers or local development.
 
 ## Build and Run using Docker
 The Dockerfile contains all the necessary dependencies (e.g., Stellar-core) required to run Galexie.
@@ -59,16 +67,16 @@ $ GALEXIE_INTEGRATION_TESTS_ENABLED=true go test -v -race -run TestGalexieTestSu
 ```
 
 ## Adding support for a new storage type
-Support for different data storage types are encapsulated as 'plugins', which are implementation of `DataStore` interface in a go package. To add a data storage plugin based on a new storage type (e.g. AWS S3), follow these steps:
+Support for different data storage types are encapsulated as 'plugins', which are implementations of the `DataStore` interface in a Go package. Galexie currently ships with plugins for both Google Cloud Storage (GCS) and AWS S3. To add a new storage plugin, implement the `DataStore` interface and register it in the factory function.
 
 - A data storage plugin must implement the [DataStore](https://github.com/stellar/go/blob/master/support/datastore/datastore.go) interface.
-- Add support for new datastore-specific features. Implement any datastore-specific custom logic. Different datastores have different ways of handling 
+- Add support for new datastore-specific features. Implement any datastore-specific custom logic. Different datastores have different ways of handling
   - race conditions
   - automatic retries
   - metadata storage, etc.
 - Add the new datastore to the factory function [NewDataStore](https://github.com/stellar/go/blob/master/support/datastore/datastore.go).
-- Add a [config](./config.example.toml) section for the new storage type. This may include configurations like destination, authentication information etc.
-- An emulator such as a GCS emulator [fake-gcs-server](https://github.com/fsouza/fake-gcs-server) can be used for testing without connecting to real cloud storage.
+- Add a [config](./config.example.toml) section for the new storage type. This may include configurations like destination, authentication information, etc.
+- You can use tools like [fake-gcs-server](https://github.com/fsouza/fake-gcs-server) (for GCS emulation) or [localstack](https://github.com/localstack/localstack) / [minio](https://min.io/) (for S3 emulation) to test your plugins without real cloud accounts.
 
 ### Design DOs and DONTs
 - Multiple Galexie instances should be able to run in parallel without the need for explicit locking or synchronization.

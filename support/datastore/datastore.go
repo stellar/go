@@ -34,6 +34,16 @@ func NewDataStore(ctx context.Context, datastoreConfig DataStoreConfig) (DataSto
 			return nil, errors.Errorf("Invalid GCS config, no destination_bucket_path")
 		}
 		return NewGCSDataStore(ctx, destinationBucketPath, datastoreConfig.Schema)
+	case "S3":
+		// Basic validation in factory for clearer config errors
+		if _, ok := datastoreConfig.Params["destination_bucket"]; !ok {
+			return nil, errors.New("S3 config missing required parameter: destination_bucket")
+		}
+		if _, ok := datastoreConfig.Params["region"]; !ok {
+			return nil, errors.New("S3 config missing required parameter: region")
+		}
+		// NewS3DataStore handles further validation and AWS client setup
+		return NewS3DataStore(ctx, datastoreConfig.Params, datastoreConfig.Schema)
 	default:
 		return nil, errors.Errorf("Invalid datastore type %v, not supported", datastoreConfig.Type)
 	}
