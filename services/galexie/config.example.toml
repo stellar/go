@@ -7,12 +7,32 @@ admin_port = 6061
 
 # Datastore Configuration
 [datastore_config]
-# Specifies the type of datastore. Currently, only Google Cloud Storage (GCS) is supported.
+# Specifies the type of datastore. Supported values: "GCS" or "S3".
 type = "GCS"
 
 [datastore_config.params]
 # The Google Cloud Storage bucket path for storing data, with optional subpaths for organization.
 destination_bucket_path = "your-bucket-name/<optional_subpath1>/<optional_subpath2>/"
+
+# AWS S3 EXAMPLE CONFIGURATION:
+# Uncomment the below to use AWS S3 as the storage backend.
+# [datastore_config]
+# type = "S3"
+#
+# [datastore_config.params]
+# # Required for S3:
+# destination_bucket = "your-s3-bucket-name"
+# region = "us-east-1"
+# # Optional parameters:
+# # aws_profile = "my-aws-profile"
+# # endpoint_url = "http://localhost:4566"              # For S3 emulators (e.g., localstack)
+# # disable_ssl = "true"                                # For local/test endpoints only
+# # force_path_style = "true"                           # For some S3-compatible services
+# # destination_path_prefix = "ledgers/export"          # Prefix within the S3 bucket
+# # server_side_encryption = "AES256"                   # Or "aws:kms"
+# # sse_kms_key_id = "<your-kms-key-id-if-required>"
+# # storage_class = "STANDARD"                          # Or e.g., "INTELLIGENT_TIERING"
+# # acl = "private"                                     # Or alternative S3 canned ACLs
 
 [datastore_config.schema]
 # Configuration for data organization
