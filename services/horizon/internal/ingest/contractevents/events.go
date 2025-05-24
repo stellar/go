@@ -7,7 +7,7 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-// EventType represents the type of Stellar Asset Contract event
+// EventType represents the type of Stellar asset Contract event
 type EventType int
 
 const (
@@ -26,8 +26,8 @@ var (
 	}
 
 	ErrUnsupportedTxMetaVersion = errors.New("tx meta version not supported")
-	ErrNotStellarAssetContract  = errors.New("event was not from a Stellar Asset Contract")
-	ErrEventUnsupported         = errors.New("this type of Stellar Asset Contract event is unsupported")
+	ErrNotStellarAssetContract  = errors.New("event was not from a Stellar asset Contract")
+	ErrEventUnsupported         = errors.New("this type of Stellar asset Contract event is unsupported")
 	ErrEventIntegrity           = errors.New("contract ID doesn't match asset + passphrase")
 )
 
@@ -62,7 +62,63 @@ func NewStellarAssetContractEvent(tx ingest.LedgerTransaction, event *xdr.Contra
 	}
 }
 
-func parseTransferEventFromTxMetaV4(topics xdr.ScVec, event *StellarAssetContractEvent) error {
+// parseCommonEventValidation handles the common validation logic for both V3 and V4
+func parseCommonEventValidation(event *xdr.ContractEvent, networkPassphrase string) (EventType, xdr.Asset, xdr.ScVec, xdr.ScVal, error) {
+	// Basic validation
+	if event.Type != xdr.ContractEventTypeContract || event.ContractId == nil || event.Body.V != 0 {
+		return 0, xdr.Asset{}, nil, xdr.ScVal{}, ErrNotStellarAssetContract
+	}
+
+	topics := event.Body.V0.Topics
+	data := event.Body.V0.Data
+	var asset xdr.Asset
+
+	// Check minimum topics
+	if len(topics) < 3 {
+		return 0, asset, topics, data, ErrNotStellarAssetContract
+	}
+
+	// Parse function nname
+	fn, ok := topics[0].GetSym()
+	if !ok {
+		return 0, asset, topics, data, ErrNotStellarAssetContract
+	}
+
+	eventType, found := eventTypeMap[fn]
+	if !found {
+		return 0, asset, topics, data, ErrNotStellarAssetContract
+	}
+
+	// Parse asset from last topic
+	assetStr, ok := topics[len(topics)-1].GetStr()
+	if !ok || assetStr == "" {
+		return 0, asset, topics, data, ErrNotStellarAssetContract
+	}
+
+	// Try parsing the asset from its SEP-11 representation
+	assets, err := xdr.BuildAssets(string(assetStr))
+	if err != nil {
+		return 0, asset, topics, data, errors.Join(ErrNotStellarAssetContract, err)
+	} else if len(assets) > 1 {
+		return 0, asset, topics, data, errors.Join(ErrNotStellarAssetContract, fmt.Errorf("more than one asset found in SEP-11 asset string: %s", assetStr))
+	}
+
+	asset = assets[0]
+	// Verify contract ID matches asset
+	expectedId, err := asset.ContractID(networkPassphrase)
+	if err != nil {
+		return 0, asset, topics, data, errors.Join(ErrNotStellarAssetContract, err)
+	}
+
+	if expectedId != *event.ContractId {
+		return 0, asset, topics, data, ErrEventIntegrity
+	}
+
+	return eventType, asset, topics, data, nil
+}
+
+// parseTransferEvent handles transfer events for both V3 and V4 (same format)
+func parseTransferEvent(topics xdr.ScVec, event *StellarAssetContractEvent) error {
 	// Format: ["transfer", from addr, to addr, sep11 asset]
 	if len(topics) != 4 {
 		return errors.New("transfer event requires 4 topics")
@@ -81,6 +137,40 @@ func parseTransferEventFromTxMetaV4(topics xdr.ScVec, event *StellarAssetContrac
 	return nil
 }
 
+// parseBurnEvent handles burn events for both V3 and V4 (same format)
+func parseBurnEvent(topics xdr.ScVec, event *StellarAssetContractEvent) error {
+	// Format: ["burn", from addr, sep11 asset]
+	if len(topics) != 3 {
+		return errors.New("burn event requires 3 topics")
+	}
+
+	from, err := parseAddress(topics[1])
+	if err != nil {
+		return fmt.Errorf("invalid from address: %w", err)
+	}
+	event.From = from
+	return nil
+}
+
+func parseMintEventFromTxMetaV3(topics xdr.ScVec, event *StellarAssetContractEvent) error {
+	// Format: ["mint", admin addr, to addr, sep11 asset], i128 amount
+	if len(topics) != 4 {
+		return errors.New("mint event requires 4 topics")
+	}
+
+	// Admin is not used. but needs to be parsed for SAC format correctness
+	_, err := parseAddress(topics[1])
+	if err != nil {
+		return fmt.Errorf("invalid admin address: %w", err)
+	}
+	to, err := parseAddress(topics[2])
+	if err != nil {
+		return fmt.Errorf("invalid to address: %w", err)
+	}
+	event.To = to
+	return nil
+}
+
 func parseMintEventFromTxMetaV4(topics xdr.ScVec, event *StellarAssetContractEvent) error {
 	// Format: ["mint", to addr, sep11 asset] - NO admin address in V4
 	if len(topics) != 3 {
@@ -92,6 +182,25 @@ func parseMintEventFromTxMetaV4(topics xdr.ScVec, event *StellarAssetContractEve
 		return fmt.Errorf("invalid to address: %w", err)
 	}
 	event.To = to
+	return nil
+}
+
+func parseClawbackEventFromTxMetaV3(topics xdr.ScVec, event *StellarAssetContractEvent) error {
+	// Format: ["clawback", admin addr, from addr, sep11 asset], i128 amount
+	if len(topics) != 4 {
+		return errors.New("clawback event requires 4 topics")
+	}
+
+	// Admin is not used. but needs to be parsed for SAC format correctness
+	_, err := parseAddress(topics[1])
+	if err != nil {
+		return fmt.Errorf("invalid admin address: %w", err)
+	}
+	from, err := parseAddress(topics[2])
+	if err != nil {
+		return fmt.Errorf("invalid from address: %w", err)
+	}
+	event.From = from
 	return nil
 }
 
@@ -109,78 +218,63 @@ func parseClawbackEventFromTxMetaV4(topics xdr.ScVec, event *StellarAssetContrac
 	return nil
 }
 
-func parseBurnEventFromTxMetaV4(topics xdr.ScVec, event *StellarAssetContractEvent) error {
-	// Format: ["burn", from addr, sep11 asset] - same as V3
-	if len(topics) != 3 {
-		return errors.New("burn event requires 3 topics")
+func parseSacEventFromTxMetaV3(event *xdr.ContractEvent, networkPassphrase string) (*StellarAssetContractEvent, error) {
+	eventType, asset, topics, data, err := parseCommonEventValidation(event, networkPassphrase)
+	if err != nil {
+		return nil, err
 	}
 
-	from, err := parseAddress(topics[1])
-	if err != nil {
-		return fmt.Errorf("invalid from address: %w", err)
+	// Parse amount (V3 is always direct i128)
+	amount, ok := data.GetI128()
+	if !ok {
+		return nil, fmt.Errorf("invalid amount in event data: %v", data.String())
 	}
-	event.From = from
-	return nil
+
+	// Parse addresses based on event type
+	sacEvent := &StellarAssetContractEvent{
+		Type:   eventType,
+		Asset:  asset,
+		Amount: amount,
+	}
+
+	switch eventType {
+	case EventTypeTransfer:
+		if err := parseTransferEvent(topics, sacEvent); err != nil {
+			return nil, err
+		}
+	case EventTypeMint:
+		if err := parseMintEventFromTxMetaV3(topics, sacEvent); err != nil {
+			return nil, err
+		}
+	case EventTypeClawback:
+		if err := parseClawbackEventFromTxMetaV3(topics, sacEvent); err != nil {
+			return nil, err
+		}
+	case EventTypeBurn:
+		if err := parseBurnEvent(topics, sacEvent); err != nil {
+			return nil, err
+		}
+	default:
+		return nil, fmt.Errorf("%w: %v", ErrEventUnsupported, eventType)
+	}
+
+	return sacEvent, nil
 }
 
 func parseSacEventFromTxMetaV4(event *xdr.ContractEvent, networkPassphrase string) (*StellarAssetContractEvent, error) {
-	// Basic validation
-	if event.Type != xdr.ContractEventTypeContract || event.ContractId == nil || event.Body.V != 0 {
-		return nil, ErrNotStellarAssetContract
-	}
-
-	topics := event.Body.V0.Topics
-
-	// Need at least 3 topics for any SAC event in V4
-	if len(topics) < 3 {
-		return nil, ErrNotStellarAssetContract
-	}
-
-	// Parse function name
-	fn, ok := topics[0].GetSym()
-	if !ok {
-		return nil, ErrNotStellarAssetContract
-	}
-
-	eventType, found := eventTypeMap[fn]
-	if !found {
-		return nil, ErrNotStellarAssetContract
-	}
-
-	// Parse asset from last topic
-	assetStr, ok := topics[len(topics)-1].GetStr()
-	if !ok || assetStr == "" {
-		return nil, ErrNotStellarAssetContract
-	}
-
-	// Try parsing the asset from its SEP-11 representation
-	assets, err := xdr.BuildAssets(string(assetStr))
+	eventType, asset, topics, data, err := parseCommonEventValidation(event, networkPassphrase)
 	if err != nil {
-		return nil, errors.Join(ErrNotStellarAssetContract, err)
-	} else if len(assets) > 1 {
-		return nil, errors.Join(ErrNotStellarAssetContract, errors.New("more than one asset found in SEP-11 asset string"))
-	}
-
-	asset := assets[0]
-	// Verify contract ID matches asset
-	expectedId, err := asset.ContractID(networkPassphrase)
-	if err != nil {
-		return nil, errors.Join(ErrNotStellarAssetContract, err)
-	}
-
-	if expectedId != *event.ContractId {
-		return nil, ErrEventIntegrity
+		return nil, err
 	}
 
 	// Parse amount and optional to_muxed_id from data
-	value := event.Body.V0.Data
 	var amount xdr.Int128Parts
 	var memo xdr.Memo
 
 	// Try to parse as ScMap first (V4 format with to_muxed_id)
-	if mapData, ok := value.GetMap(); ok {
+	if mapData, ok := data.GetMap(); ok {
 		if mapData == nil {
-			return nil, errors.New("map is empty")
+			return nil, errors.New("data map is empty")
 		}
 		amount, memo, err = parseV4MapData(*mapData)
 		if err != nil {
@@ -188,9 +282,9 @@ func parseSacEventFromTxMetaV4(event *xdr.ContractEvent, networkPassphrase strin
 		}
 	} else {
 		// Fall back to direct i128 parsing (V4 without to_muxed_id)
-		amount, ok = value.GetI128()
+		amount, ok = data.GetI128()
 		if !ok {
-			return nil, errors.New("invalid amount in event value")
+			return nil, fmt.Errorf("invalid amount in event data: %v", data.String())
 		}
 	}
 
@@ -204,7 +298,7 @@ func parseSacEventFromTxMetaV4(event *xdr.ContractEvent, networkPassphrase strin
 
 	switch eventType {
 	case EventTypeTransfer:
-		if err := parseTransferEventFromTxMetaV4(topics, sacEvent); err != nil {
+		if err := parseTransferEvent(topics, sacEvent); err != nil {
 			return nil, err
 		}
 	case EventTypeMint:
@@ -216,7 +310,7 @@ func parseSacEventFromTxMetaV4(event *xdr.ContractEvent, networkPassphrase strin
 			return nil, err
 		}
 	case EventTypeBurn:
-		if err := parseBurnEventFromTxMetaV4(topics, sacEvent); err != nil {
+		if err := parseBurnEvent(topics, sacEvent); err != nil {
 			return nil, err
 		}
 	default:
@@ -279,162 +373,4 @@ func parseV4MapData(mapData xdr.ScMap) (xdr.Int128Parts, xdr.Memo, error) {
 	}
 
 	return amount, memo, nil
-}
-
-func parseTransferEventFromTxMetaV3(topics xdr.ScVec, event *StellarAssetContractEvent) error {
-	// Format: ["transfer", from addr, to addr, sep11 asset], i128 amount
-	if len(topics) != 4 {
-		return errors.New("transfer event requires 4 topics")
-	}
-
-	from, err := parseAddress(topics[1])
-	if err != nil {
-		return fmt.Errorf("invalid from address: %w", err)
-	}
-	to, err := parseAddress(topics[2])
-	if err != nil {
-		return fmt.Errorf("invalid to address: %w", err)
-	}
-	event.From = from
-	event.To = to
-	return nil
-}
-
-func parseMintEventFromTxMetaV3(topics xdr.ScVec, event *StellarAssetContractEvent) error {
-	// Format: ["mint", admin addr, to addr, sep11 asset], i128 amount
-	if len(topics) != 4 {
-		return errors.New("mint event requires 4 topics")
-	}
-
-	// Admin is not used. but needs to be parsed for SAC format correctness
-	_, err := parseAddress(topics[1])
-	if err != nil {
-		return fmt.Errorf("invalid admin address: %w", err)
-	}
-	to, err := parseAddress(topics[2])
-	if err != nil {
-		return fmt.Errorf("invalid to address: %w", err)
-	}
-	event.To = to
-	return nil
-}
-
-func parseClawbackEventFromTxMetaV3(topics xdr.ScVec, event *StellarAssetContractEvent) error {
-	// Format: ["clawback", admin addr, from addr, sep11 asset], i128 amount
-	if len(topics) != 4 {
-		return errors.New("clawback event requires 4 topics")
-	}
-
-	// Admin is not used. but needs to be parsed for SAC format correctness
-	_, err := parseAddress(topics[1])
-	if err != nil {
-		return fmt.Errorf("invalid admin address: %w", err)
-	}
-	from, err := parseAddress(topics[2])
-	if err != nil {
-		return fmt.Errorf("invalid from address: %w", err)
-	}
-	event.From = from
-	return nil
-}
-
-func parseBurnEventFromTxMetaV3(topics xdr.ScVec, event *StellarAssetContractEvent) error {
-	// Format: ["burn", from addr, sep11 asset], i128 amount
-	if len(topics) != 3 {
-		return errors.New("burn event requires 3 topics")
-	}
-
-	from, err := parseAddress(topics[1])
-	if err != nil {
-		return fmt.Errorf("invalid from address: %w", err)
-	}
-	event.From = from
-	return nil
-}
-
-func parseSacEventFromTxMetaV3(event *xdr.ContractEvent, networkPassphrase string) (*StellarAssetContractEvent, error) {
-	// Basic validation
-	if event.Type != xdr.ContractEventTypeContract || event.ContractId == nil || event.Body.V != 0 {
-		return nil, ErrNotStellarAssetContract
-	}
-
-	topics := event.Body.V0.Topics
-
-	// Need at least 3 topics for any SAC event
-	if len(topics) < 3 {
-		return nil, ErrNotStellarAssetContract
-	}
-
-	// Parse function name
-	fn, ok := topics[0].GetSym()
-	if !ok {
-		return nil, ErrNotStellarAssetContract
-	}
-
-	eventType, found := eventTypeMap[fn]
-	if !found {
-		return nil, ErrNotStellarAssetContract
-	}
-
-	// Parse asset from last topic
-	assetStr, ok := topics[len(topics)-1].GetStr()
-	if !ok || assetStr == "" {
-		return nil, ErrNotStellarAssetContract
-	}
-
-	// Try parsing the asset from its SEP-11 representation
-	assets, err := xdr.BuildAssets(string(assetStr))
-	if err != nil {
-		return nil, errors.Join(ErrNotStellarAssetContract, err)
-	} else if len(assets) > 1 {
-		return nil, errors.Join(ErrNotStellarAssetContract, errors.New("more than one asset found in SEP-11 asset string"))
-	}
-
-	asset := assets[0]
-	// Verify contract ID matches asset
-	expectedId, err := asset.ContractID(networkPassphrase)
-	if err != nil {
-		return nil, errors.Join(ErrNotStellarAssetContract, err)
-	}
-
-	if expectedId != *event.ContractId {
-		return nil, ErrEventIntegrity
-	}
-
-	// Parse amount
-	value := event.Body.V0.Data
-	amount, ok := value.GetI128()
-	if !ok {
-		return nil, errors.New("invalid amount in event value")
-	}
-
-	// Parse addresses based on event type
-	sacEvent := &StellarAssetContractEvent{
-		Type:   eventType,
-		Asset:  asset,
-		Amount: amount,
-	}
-
-	switch eventType {
-	case EventTypeTransfer:
-		if err := parseTransferEventFromTxMetaV3(topics, sacEvent); err != nil {
-			return nil, err
-		}
-	case EventTypeMint:
-		if err := parseMintEventFromTxMetaV3(topics, sacEvent); err != nil {
-			return nil, err
-		}
-	case EventTypeClawback:
-		if err := parseClawbackEventFromTxMetaV3(topics, sacEvent); err != nil {
-			return nil, err
-		}
-	case EventTypeBurn:
-		if err := parseBurnEventFromTxMetaV3(topics, sacEvent); err != nil {
-			return nil, err
-		}
-	default:
-		return nil, fmt.Errorf("%w: %v", ErrEventUnsupported, eventType)
-	}
-
-	return sacEvent, nil
 }
