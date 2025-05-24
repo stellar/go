@@ -13,7 +13,8 @@ import (
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/protocols/horizon/base"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/support/contractevents"
+	"github.com/stellar/go/services/horizon/internal/ingest/contractevents"
+
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/toid"
@@ -271,14 +272,15 @@ func (operation *transactionOperationWrapper) IsPayment() bool {
 		return true
 	case xdr.OperationTypeInvokeHostFunction:
 		diagnosticEvents, err := operation.transaction.GetDiagnosticEvents()
+		tx := operation.transaction
 		if err != nil {
 			return false
 		}
 		// scan all the contract events for at least one SAC event, qualified to be a payment
 		// in horizon
 		for _, contractEvent := range filterEvents(diagnosticEvents) {
-			if sacEvent, err := contractevents.NewStellarAssetContractEvent(&contractEvent, operation.network); err == nil {
-				switch sacEvent.GetType() {
+			if sacEvent, err := contractevents.NewStellarAssetContractEvent(tx, &contractEvent, operation.network); err == nil {
+				switch sacEvent.Type {
 				case contractevents.EventTypeTransfer:
 					return true
 				case contractevents.EventTypeMint:
@@ -783,6 +785,7 @@ func (operation *transactionOperationWrapper) parseAssetBalanceChangesFromContra
 	balanceChanges := []map[string]interface{}{}
 
 	diagnosticEvents, err := operation.transaction.GetDiagnosticEvents()
+	tx := operation.transaction
 	if err != nil {
 		// this operation in this context must be an InvokeHostFunctionOp, therefore V3Meta should be present
 		// as it's in same soroban model, so if any err, it's real,
@@ -793,20 +796,16 @@ func (operation *transactionOperationWrapper) parseAssetBalanceChangesFromContra
 		// Parse the xdr contract event to contractevents.StellarAssetContractEvent model
 
 		// has some convenience like to/from attributes are expressed in strkey format for accounts(G...) and contracts(C...)
-		if sacEvent, err := contractevents.NewStellarAssetContractEvent(&contractEvent, operation.network); err == nil {
-			switch sacEvent.GetType() {
+		if sacEvent, err := contractevents.NewStellarAssetContractEvent(tx, &contractEvent, operation.network); err == nil {
+			switch sacEvent.Type {
 			case contractevents.EventTypeTransfer:
-				transferEvt := sacEvent.(*contractevents.TransferEvent)
-				balanceChanges = append(balanceChanges, createSACBalanceChangeEntry(transferEvt.From, transferEvt.To, transferEvt.Amount, transferEvt.Asset, "transfer"))
+				balanceChanges = append(balanceChanges, createSACBalanceChangeEntry(sacEvent.From, sacEvent.To, sacEvent.Amount, sacEvent.Asset, "transfer"))
 			case contractevents.EventTypeMint:
-				mintEvt := sacEvent.(*contractevents.MintEvent)
-				balanceChanges = append(balanceChanges, createSACBalanceChangeEntry("", mintEvt.To, mintEvt.Amount, mintEvt.Asset, "mint"))
+				balanceChanges = append(balanceChanges, createSACBalanceChangeEntry("", sacEvent.To, sacEvent.Amount, sacEvent.Asset, "mint"))
 			case contractevents.EventTypeClawback:
-				clawbackEvt := sacEvent.(*contractevents.ClawbackEvent)
-				balanceChanges = append(balanceChanges, createSACBalanceChangeEntry(clawbackEvt.From, "", clawbackEvt.Amount, clawbackEvt.Asset, "clawback"))
+				balanceChanges = append(balanceChanges, createSACBalanceChangeEntry(sacEvent.From, "", sacEvent.Amount, sacEvent.Asset, "clawback"))
 			case contractevents.EventTypeBurn:
-				burnEvt := sacEvent.(*contractevents.BurnEvent)
-				balanceChanges = append(balanceChanges, createSACBalanceChangeEntry(burnEvt.From, "", burnEvt.Amount, burnEvt.Asset, "burn"))
+				balanceChanges = append(balanceChanges, createSACBalanceChangeEntry(sacEvent.From, "", sacEvent.Amount, sacEvent.Asset, "burn"))
 			}
 		}
 	}
@@ -1069,7 +1068,7 @@ func (operation *transactionOperationWrapper) Participants() ([]xdr.AccountId, e
 		if diagnosticEvents, err := operation.transaction.GetDiagnosticEvents(); err != nil {
 			return participants, err
 		} else {
-			participants = append(participants, getParticipantsFromSACEvents(filterEvents(diagnosticEvents), operation.network)...)
+			participants = append(participants, getParticipantsFromSACEvents(operation.transaction, filterEvents(diagnosticEvents), operation.network)...)
 		}
 
 	case xdr.OperationTypeExtendFootprintTtl:
@@ -1091,40 +1090,36 @@ func (operation *transactionOperationWrapper) Participants() ([]xdr.AccountId, e
 	return dedupeParticipants(participants), nil
 }
 
-func getParticipantsFromSACEvents(contractEvents []xdr.ContractEvent, network string) []xdr.AccountId {
+func getParticipantsFromSACEvents(tx ingest.LedgerTransaction, contractEvents []xdr.ContractEvent, network string) []xdr.AccountId {
 	var participants []xdr.AccountId
 
 	for _, contractEvent := range contractEvents {
-		if sacEvent, err := contractevents.NewStellarAssetContractEvent(&contractEvent, network); err == nil {
+		sacEvent, err := contractevents.NewStellarAssetContractEvent(tx, &contractEvent, network)
+		if err == nil {
 			// 'to' and 'from' fields in the events can be either a Contract address or an Account address. We're
 			// only interested in account addresses and will skip Contract addresses.
-			switch sacEvent.GetType() {
+			switch sacEvent.Type {
 			case contractevents.EventTypeTransfer:
-				var transferEvt *contractevents.TransferEvent
-				transferEvt = sacEvent.(*contractevents.TransferEvent)
 				var from, to xdr.AccountId
-				if from, err = xdr.AddressToAccountId(transferEvt.From); err == nil {
+				if from, err = xdr.AddressToAccountId(sacEvent.From); err == nil {
 					participants = append(participants, from)
 				}
-				if to, err = xdr.AddressToAccountId(transferEvt.To); err == nil {
+				if to, err = xdr.AddressToAccountId(sacEvent.To); err == nil {
 					participants = append(participants, to)
 				}
 			case contractevents.EventTypeMint:
-				mintEvt := sacEvent.(*contractevents.MintEvent)
 				var to xdr.AccountId
-				if to, err = xdr.AddressToAccountId(mintEvt.To); err == nil {
+				if to, err = xdr.AddressToAccountId(sacEvent.To); err == nil {
 					participants = append(participants, to)
 				}
 			case contractevents.EventTypeClawback:
-				clawbackEvt := sacEvent.(*contractevents.ClawbackEvent)
 				var from xdr.AccountId
-				if from, err = xdr.AddressToAccountId(clawbackEvt.From); err == nil {
+				if from, err = xdr.AddressToAccountId(sacEvent.From); err == nil {
 					participants = append(participants, from)
 				}
 			case contractevents.EventTypeBurn:
-				burnEvt := sacEvent.(*contractevents.BurnEvent)
 				var from xdr.AccountId
-				if from, err = xdr.AddressToAccountId(burnEvt.From); err == nil {
+				if from, err = xdr.AddressToAccountId(sacEvent.From); err == nil {
 					participants = append(participants, from)
 				}
 			}
