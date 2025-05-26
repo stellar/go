@@ -247,14 +247,18 @@ func (t *LedgerTransaction) GetContractEvents(opIndex uint32) ([]xdr.ContractEve
 }
 
 // GetDiagnosticEvents returns all contract events emitted by a given operation.
+// TODO: update comments
 func (t *LedgerTransaction) GetDiagnosticEvents() ([]xdr.DiagnosticEvent, error) {
 	switch t.UnsafeMeta.V {
 	case 1, 2:
 		return nil, nil
 	case 3:
-		return t.UnsafeMeta.GetDiagnosticEventsV3()
+		return t.UnsafeMeta.GetDiagnosticEventsV3(), nil
 	case 4:
-		return nil, nil
+		txMeta := t.UnsafeMeta.MustV4()
+		//TODO: is this correct?
+		return txMeta.DiagnosticEvents, nil
+
 	default:
 		return nil, fmt.Errorf("unsupported TransactionMeta version: %v", t.UnsafeMeta.V)
 	}
