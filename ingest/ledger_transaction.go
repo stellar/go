@@ -242,26 +242,71 @@ func (t *LedgerTransaction) operationChanges(ops operationsMeta, index uint32) [
 	return changes
 }
 
-func (t *LedgerTransaction) GetContractEvents(opIndex uint32) ([]xdr.ContractEvent, error) {
-	return t.UnsafeMeta.GetContractEvents(opIndex)
+func (t *LedgerTransaction) GetContractEventsForOperation(opIndex uint32) ([]xdr.ContractEvent, error) {
+	return t.UnsafeMeta.GetContractEventsForOperation(opIndex)
 }
 
-// GetDiagnosticEvents returns all contract events emitted by a given operation.
-// TODO: update comments
+// GetSorobanContractEvents returns a []xdr.ContractEvent for the smart contract transaction
+// For getting soroban smart contract events,we rely on the fact that there will only be one operation present in the transaction
+func (t *LedgerTransaction) GetSorobanContractEvents() ([]xdr.ContractEvent, error) {
+	if !t.IsSorobanTx() {
+		return nil, errors.New("not a soroban transaction")
+	}
+	return t.GetContractEventsForOperation(0)
+}
+
+// GetDiagnosticEvents returns strictly diagnostic events emitted by a given transaction.
+/*
+	Please note that, depending on the configuration with which txMeta may be generated,
+	it is possible that, for smart contract transactions, the list of generated diagnostic events MAY include contract events as well
+	Users of this function (horizon, rpc, etc) should be careful not to double count diagnostic events and contract events in that case
+*/
 func (t *LedgerTransaction) GetDiagnosticEvents() ([]xdr.DiagnosticEvent, error) {
+	return t.UnsafeMeta.GetDiagnosticEvents()
+}
+
+// GetTransactionEvents gives the breakdown of xdr.ContractEvent, xdr.TransactionEvent, xdr.Disgnostic event as they appea in the TxMeta
+/*
+	In TransactionMetaV3, soroban transaction events and contract events appear in the SorobanMeta struct, i.e. at the top level
+	In TransactionMetaV4 and onwards, there is a more granular breakdown, because of CAP-67 unified events
+	- Contract events will also be present in the "operation []OperationMetaV2" in  structure.
+	- Classic operations will also have contract events.
+	- For smart contract transactions, contract events are going to show up in its respective operation index in []OperationMetaV2
+	- Additionally, if its a smart contract transaction, the contract events will also be included in the "DiagnosticEvents []DiagnosticEvent" structure
+
+	It is preferred to use this function in horizon and rpc
+*/
+func (t *LedgerTransaction) GetTransactionEvents() (TransactionEvents, error) {
+	txEvents := TransactionEvents{}
 	switch t.UnsafeMeta.V {
 	case 1, 2:
-		return nil, nil
+		return txEvents, nil
 	case 3:
-		return t.UnsafeMeta.GetDiagnosticEventsV3(), nil
+		contractEvents, err := t.GetSorobanContractEvents()
+		if err != nil {
+			return txEvents, err
+		}
+		diagnosticEvents, err := t.GetDiagnosticEvents()
+		if err != nil {
+			return txEvents, err
+		}
+		var opEvents [][]xdr.ContractEvent
+		opEvents = append(opEvents, contractEvents)
+		txEvents.OperationEvents = opEvents
+		txEvents.DiagnosticEvents = diagnosticEvents
 	case 4:
 		txMeta := t.UnsafeMeta.MustV4()
-		//TODO: is this correct?
-		return txMeta.DiagnosticEvents, nil
-
+		txEvents.TransactionEvents = txMeta.Events
+		txEvents.DiagnosticEvents = txMeta.DiagnosticEvents
+		txEvents.OperationEvents = make([][]xdr.ContractEvent, len(txMeta.Operations))
+		for _, op := range txMeta.Operations {
+			txEvents.OperationEvents = append(txEvents.OperationEvents, op.Events)
+		}
 	default:
-		return nil, fmt.Errorf("unsupported TransactionMeta version: %v", t.UnsafeMeta.V)
+		return txEvents, fmt.Errorf("unsupported TransactionMeta version: %v", t.UnsafeMeta.V)
 	}
+	return txEvents, nil
+
 }
 
 func (t *LedgerTransaction) ID() int64 {
