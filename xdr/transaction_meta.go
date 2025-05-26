@@ -4,51 +4,49 @@ import (
 	"fmt"
 )
 
-func (t *TransactionMeta) GetContractEvents() ([]ContractEvent, error) {
+func (t *TransactionMeta) GetContractEvents(opIndex uint32) ([]ContractEvent, error) {
 	switch t.V {
 	case 1, 2:
 		return nil, nil
+	// For TxMetaV3, events appear in the TxMetaV3.SorobanMeta.Events
 	case 3:
 		return t.MustV3().SorobanMeta.Events, nil
+	// TxMetaV4 includes unified CAP-67 events that appear at the operation level
+	// To fetch soroban contract events from TxMetaV4, you will need to pass in the operationIndex 0.
+	case 4:
+		return t.MustV4().Operations[opIndex].Events, nil
 	default:
 		return nil, fmt.Errorf("unsupported TransactionMeta version: %v", t.V)
 	}
 }
 
-// GetDiagnosticEvents returns all contract events emitted by a given operation.
-func (t *TransactionMeta) GetDiagnosticEvents() ([]DiagnosticEvent, error) {
-	switch t.V {
-	case 1, 2:
-		return nil, nil
-	case 3:
-		var diagnosticEvents []DiagnosticEvent
-		var contractEvents []ContractEvent
-		if sorobanMeta := t.MustV3().SorobanMeta; sorobanMeta != nil {
-			diagnosticEvents = sorobanMeta.DiagnosticEvents
-			if len(diagnosticEvents) > 0 {
-				// all contract events and diag events for a single operation(by its index in the tx) were available
-				// in tx meta's DiagnosticEvents, no need to look anywhere else for events
-				return diagnosticEvents, nil
-			}
-
-			contractEvents = sorobanMeta.Events
-			if len(contractEvents) == 0 {
-				// no events were present in this tx meta
-				return nil, nil
-			}
+// GetDiagnosticEventsV3 returns all contract events emitted by a Soroban Transaction in TxMetaV3
+func (t *TransactionMeta) GetDiagnosticEventsV3() ([]DiagnosticEvent, error) {
+	var diagnosticEvents []DiagnosticEvent
+	var contractEvents []ContractEvent
+	if sorobanMeta := t.MustV3().SorobanMeta; sorobanMeta != nil {
+		diagnosticEvents = sorobanMeta.DiagnosticEvents
+		if len(diagnosticEvents) > 0 {
+			// all contract events and diag events for a single operation(by its index in the tx) were available
+			// in tx meta's DiagnosticEvents, no need to look anywhere else for events
+			return diagnosticEvents, nil
 		}
 
-		// tx meta only provided contract events, no diagnostic events, we convert the contract
-		// event to a diagnostic event, to fit the response interface.
-		convertedDiagnosticEvents := make([]DiagnosticEvent, len(contractEvents))
-		for i, event := range contractEvents {
-			convertedDiagnosticEvents[i] = DiagnosticEvent{
-				InSuccessfulContractCall: true,
-				Event:                    event,
-			}
+		contractEvents = sorobanMeta.Events
+		if len(contractEvents) == 0 {
+			// no events were present in this tx meta
+			return nil, nil
 		}
-		return convertedDiagnosticEvents, nil
-	default:
-		return nil, fmt.Errorf("unsupported TransactionMeta version: %v", t.V)
 	}
+
+	// tx meta only provided contract events, no diagnostic events, we convert the contract
+	// event to a diagnostic event, to fit the response interface.
+	convertedDiagnosticEvents := make([]DiagnosticEvent, len(contractEvents))
+	for i, event := range contractEvents {
+		convertedDiagnosticEvents[i] = DiagnosticEvent{
+			InSuccessfulContractCall: true,
+			Event:                    event,
+		}
+	}
+	return convertedDiagnosticEvents, nil
 }

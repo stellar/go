@@ -31,6 +31,12 @@ type LedgerTransaction struct {
 	Hash          xdr.Hash
 }
 
+type TransactionEvents struct {
+	TransactionEvents []xdr.TransactionEvent
+	OperationEvents   [][]xdr.ContractEvent
+	DiagnosticEvents  []xdr.DiagnosticEvent
+}
+
 func (t *LedgerTransaction) txInternalError() bool {
 	return t.Result.Result.Result.Code == xdr.TransactionResultCodeTxInternalError
 }
@@ -236,13 +242,22 @@ func (t *LedgerTransaction) operationChanges(ops operationsMeta, index uint32) [
 	return changes
 }
 
-func (t *LedgerTransaction) GetContractEvents() ([]xdr.ContractEvent, error) {
-	return t.UnsafeMeta.GetContractEvents()
+func (t *LedgerTransaction) GetContractEvents(opIndex uint32) ([]xdr.ContractEvent, error) {
+	return t.UnsafeMeta.GetContractEvents(opIndex)
 }
 
 // GetDiagnosticEvents returns all contract events emitted by a given operation.
 func (t *LedgerTransaction) GetDiagnosticEvents() ([]xdr.DiagnosticEvent, error) {
-	return t.UnsafeMeta.GetDiagnosticEvents()
+	switch t.UnsafeMeta.V {
+	case 1, 2:
+		return nil, nil
+	case 3:
+		return t.UnsafeMeta.GetDiagnosticEventsV3()
+	case 4:
+		return nil, nil
+	default:
+		return nil, fmt.Errorf("unsupported TransactionMeta version: %v", t.UnsafeMeta.V)
+	}
 }
 
 func (t *LedgerTransaction) ID() int64 {

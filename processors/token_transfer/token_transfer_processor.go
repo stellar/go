@@ -258,7 +258,7 @@ func (p *EventsProcessor) EventsFromOperation(tx ingest.LedgerTransaction, opInd
 }
 
 func (p *EventsProcessor) contractEvents(tx ingest.LedgerTransaction, opIndex uint32) ([]*TokenTransferEvent, error) {
-	contractEvents, err := tx.GetContractEvents()
+	contractEvents, err := tx.GetContractEvents(opIndex)
 	if err != nil {
 		return nil, fmt.Errorf("error getting contract events: %w", err)
 	}
