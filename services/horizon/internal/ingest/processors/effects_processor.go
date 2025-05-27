@@ -146,14 +146,14 @@ func (operation *transactionOperationWrapper) ingestEffects(accountLoader *histo
 	case xdr.OperationTypeInvokeHostFunction:
 		// If there's an invokeHostFunction operation, there's definitely V3
 		// meta in the transaction, which means this error is real.
-		diagnosticEvents, innerErr := operation.transaction.GetDiagnosticEvents()
+		contractEvents, innerErr := operation.transaction.GetSorobanContractEvents()
 		if innerErr != nil {
 			return innerErr
 		}
 
 		// For now, the only effects are related to the events themselves.
 		// Possible add'l work: https://github.com/stellar/go/issues/4585
-		err = wrapper.addInvokeHostFunctionEffects(filterEvents(diagnosticEvents))
+		err = wrapper.addInvokeHostFunctionEffects(contractEvents)
 	case xdr.OperationTypeExtendFootprintTtl, xdr.OperationTypeRestoreFootprint:
 		// do not produce effects for these operations as horizon only provides
 		// limited visibility into soroban operations
@@ -188,17 +188,6 @@ func (operation *transactionOperationWrapper) ingestEffects(accountLoader *histo
 	}
 
 	return nil
-}
-
-func filterEvents(diagnosticEvents []xdr.DiagnosticEvent) []xdr.ContractEvent {
-	var filtered []xdr.ContractEvent
-	for _, diagnosticEvent := range diagnosticEvents {
-		if !diagnosticEvent.InSuccessfulContractCall || diagnosticEvent.Event.Type != xdr.ContractEventTypeContract {
-			continue
-		}
-		filtered = append(filtered, diagnosticEvent.Event)
-	}
-	return filtered
 }
 
 type effectsWrapper struct {

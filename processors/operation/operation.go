@@ -1830,17 +1830,6 @@ func contractCodeFromContractData(ledgerKey xdr.LedgerKey) string {
 	return contractCodeHash
 }
 
-func FilterEvents(diagnosticEvents []xdr.DiagnosticEvent) []xdr.ContractEvent {
-	var filtered []xdr.ContractEvent
-	for _, diagnosticEvent := range diagnosticEvents {
-		if !diagnosticEvent.InSuccessfulContractCall || diagnosticEvent.Event.Type != xdr.ContractEventTypeContract {
-			continue
-		}
-		filtered = append(filtered, diagnosticEvent.Event)
-	}
-	return filtered
-}
-
 // Searches an operation for SAC events that are of a type which represent
 // asset balances having changed.
 //
@@ -1854,14 +1843,14 @@ func FilterEvents(diagnosticEvents []xdr.DiagnosticEvent) []xdr.ContractEvent {
 func (operation *TransactionOperationWrapper) parseAssetBalanceChangesFromContractEvents() ([]map[string]interface{}, error) {
 	balanceChanges := []map[string]interface{}{}
 
-	diagnosticEvents, err := operation.Transaction.GetDiagnosticEvents()
+	contractEvents, err := operation.Transaction.GetSorobanContractEvents()
 	if err != nil {
 		// this operation in this context must be an InvokeHostFunctionOp, therefore V3Meta should be present
 		// as it's in same soroban model, so if any err, it's real,
 		return nil, err
 	}
 
-	for _, contractEvent := range FilterEvents(diagnosticEvents) {
+	for _, contractEvent := range contractEvents {
 		// Parse the xdr contract event to contractevents.StellarAssetContractEvent model
 
 		// has some convenience like to/from attributes are expressed in strkey format for accounts(G...) and contracts(C...)
@@ -1889,14 +1878,14 @@ func (operation *TransactionOperationWrapper) parseAssetBalanceChangesFromContra
 func parseAssetBalanceChangesFromContractEvents(transaction ingest.LedgerTransaction, network string) ([]map[string]interface{}, error) {
 	balanceChanges := []map[string]interface{}{}
 
-	diagnosticEvents, err := transaction.GetDiagnosticEvents()
+	contractEvents, err := transaction.GetSorobanContractEvents()
 	if err != nil {
 		// this operation in this context must be an InvokeHostFunctionOp, therefore V3Meta should be present
 		// as it's in same soroban model, so if any err, it's real,
 		return nil, err
 	}
 
-	for _, contractEvent := range FilterEvents(diagnosticEvents) {
+	for _, contractEvent := range contractEvents {
 		// Parse the xdr contract event to contractevents.StellarAssetContractEvent model
 
 		// has some convenience like to/from attributes are expressed in strkey format for accounts(G...) and contracts(C...)
@@ -2589,14 +2578,14 @@ func (o *LedgerOperation) serializeParameters(args []xdr.ScVal) ([]interface{}, 
 func (o *LedgerOperation) parseAssetBalanceChangesFromContractEvents() ([]BalanceChangeDetail, error) {
 	balanceChanges := []BalanceChangeDetail{}
 
-	diagnosticEvents, err := o.Transaction.GetDiagnosticEvents()
+	contractEvents, err := o.Transaction.GetSorobanContractEvents()
 	if err != nil {
 		// this operation in this context must be an InvokeHostFunctionOp, therefore V3Meta should be present
 		// as it's in same soroban model, so if any err, it's real,
 		return nil, err
 	}
 
-	for _, contractEvent := range o.filterEvents(diagnosticEvents) {
+	for _, contractEvent := range contractEvents {
 		// Parse the xdr contract event to contractevents.StellarAssetContractEvent model
 
 		var err error
@@ -2642,17 +2631,6 @@ func (o *LedgerOperation) parseAssetBalanceChangesFromContractEvents() ([]Balanc
 	}
 
 	return balanceChanges, nil
-}
-
-func (o *LedgerOperation) filterEvents(diagnosticEvents []xdr.DiagnosticEvent) []xdr.ContractEvent {
-	var filtered []xdr.ContractEvent
-	for _, diagnosticEvent := range diagnosticEvents {
-		if !diagnosticEvent.InSuccessfulContractCall || diagnosticEvent.Event.Type != xdr.ContractEventTypeContract {
-			continue
-		}
-		filtered = append(filtered, diagnosticEvent.Event)
-	}
-	return filtered
 }
 
 type BalanceChangeDetail struct {

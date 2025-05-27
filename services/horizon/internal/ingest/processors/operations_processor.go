@@ -271,14 +271,14 @@ func (operation *transactionOperationWrapper) IsPayment() bool {
 	case xdr.OperationTypeAccountMerge:
 		return true
 	case xdr.OperationTypeInvokeHostFunction:
-		diagnosticEvents, err := operation.transaction.GetDiagnosticEvents()
+		contractEvents, err := operation.transaction.GetSorobanContractEvents()
 		tx := operation.transaction
 		if err != nil {
 			return false
 		}
 		// scan all the contract events for at least one SAC event, qualified to be a payment
 		// in horizon
-		for _, contractEvent := range filterEvents(diagnosticEvents) {
+		for _, contractEvent := range contractEvents {
 			if sacEvent, err := contractevents.NewStellarAssetContractEvent(tx, &contractEvent, operation.network); err == nil {
 				switch sacEvent.Type {
 				case contractevents.EventTypeTransfer:
@@ -783,16 +783,16 @@ func extractFunctionArgs(args []xdr.ScVal) []map[string]string {
 // context of whether an amount was considered incremental or decremental, i.e. credit or debit to a balance.
 func (operation *transactionOperationWrapper) parseAssetBalanceChangesFromContractEvents() ([]map[string]interface{}, error) {
 	balanceChanges := []map[string]interface{}{}
-
-	diagnosticEvents, err := operation.transaction.GetDiagnosticEvents()
 	tx := operation.transaction
+
+	contractEvents, err := tx.GetSorobanContractEvents()
 	if err != nil {
 		// this operation in this context must be an InvokeHostFunctionOp, therefore V3Meta should be present
 		// as it's in same soroban model, so if any err, it's real,
 		return nil, err
 	}
 
-	for _, contractEvent := range filterEvents(diagnosticEvents) {
+	for _, contractEvent := range contractEvents {
 		// Parse the xdr contract event to contractevents.StellarAssetContractEvent model
 
 		// has some convenience like to/from attributes are expressed in strkey format for accounts(G...) and contracts(C...)
@@ -1065,10 +1065,10 @@ func (operation *transactionOperationWrapper) Participants() ([]xdr.AccountId, e
 				}
 			}
 		}
-		if diagnosticEvents, err := operation.transaction.GetDiagnosticEvents(); err != nil {
+		if contractEvents, err := operation.transaction.GetSorobanContractEvents(); err != nil {
 			return participants, err
 		} else {
-			participants = append(participants, getParticipantsFromSACEvents(operation.transaction, filterEvents(diagnosticEvents), operation.network)...)
+			participants = append(participants, getParticipantsFromSACEvents(operation.transaction, contractEvents, operation.network)...)
 		}
 
 	case xdr.OperationTypeExtendFootprintTtl:
