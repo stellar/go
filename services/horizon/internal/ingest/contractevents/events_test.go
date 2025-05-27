@@ -239,7 +239,7 @@ func TestStellarAssetContractEventParsing(t *testing.T) {
 				From:            randomAccount,
 				To:              zeroContract,
 				Amount:          xdr.Int128Parts{Lo: 1000, Hi: 0},
-				destinationMemo: xdr.MemoID(12345),
+				DestinationMemo: xdr.MemoID(12345),
 			},
 		},
 		{
@@ -261,7 +261,7 @@ func TestStellarAssetContractEventParsing(t *testing.T) {
 				From:            randomAccount,
 				To:              zeroContract,
 				Amount:          xdr.Int128Parts{Lo: 1000, Hi: 0},
-				destinationMemo: xdr.MemoText("hello"),
+				DestinationMemo: xdr.MemoText("hello"),
 			},
 		},
 		{
@@ -283,7 +283,7 @@ func TestStellarAssetContractEventParsing(t *testing.T) {
 				From:            randomAccount,
 				To:              zeroContract,
 				Amount:          xdr.Int128Parts{Lo: 1000, Hi: 0},
-				destinationMemo: xdr.MemoHash([32]byte{1, 2, 3, 4}),
+				DestinationMemo: xdr.MemoHash([32]byte{1, 2, 3, 4}),
 			},
 		},
 
@@ -531,7 +531,7 @@ func TestStellarAssetContractEventParsing(t *testing.T) {
 				assert.Equal(t, tc.expectedResult.From, result.From, "From address mismatch for: %s", tc.name)
 				assert.Equal(t, tc.expectedResult.To, result.To, "To address mismatch for: %s", tc.name)
 				assert.Equal(t, tc.expectedResult.Amount, result.Amount, "Amount mismatch for: %s", tc.name)
-				assert.Equal(t, tc.expectedResult.destinationMemo, result.destinationMemo, "Memo mismatch for: %s", tc.name)
+				assert.Equal(t, tc.expectedResult.DestinationMemo, result.DestinationMemo, "Memo mismatch for: %s", tc.name)
 			}
 		})
 	}

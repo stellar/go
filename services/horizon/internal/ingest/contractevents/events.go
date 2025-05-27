@@ -38,7 +38,7 @@ type StellarAssetContractEvent struct {
 	From            string // For transfer, burn, clawback
 	To              string // For transfer, mint
 	Amount          xdr.Int128Parts
-	destinationMemo xdr.Memo // Can be uint64, []byte, or string (V4 only)
+	DestinationMemo xdr.Memo // Can be uint64, []byte, or string (V4 only)
 }
 
 // parseAddress extracts and converts an address from an ScVal
@@ -293,7 +293,7 @@ func parseSacEventFromTxMetaV4(event *xdr.ContractEvent, networkPassphrase strin
 		Type:            eventType,
 		Asset:           asset,
 		Amount:          amount,
-		destinationMemo: memo,
+		DestinationMemo: memo,
 	}
 
 	switch eventType {
