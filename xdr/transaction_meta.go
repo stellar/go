@@ -10,7 +10,11 @@ func (t *TransactionMeta) GetContractEventsForOperation(opIndex uint32) ([]Contr
 		return nil, nil
 	// For TxMetaV3, events appear in the TxMetaV3.SorobanMeta.Events, and we dont need to rely on opIndex
 	case 3:
-		return t.MustV3().SorobanMeta.Events, nil
+		sorobanMeta := t.MustV3().SorobanMeta
+		if sorobanMeta == nil {
+			return nil, nil
+		}
+		return sorobanMeta.Events, nil
 	// TxMetaV4 includes unified CAP-67 events that appear at the operation level
 	// To fetch soroban contract events from TxMetaV4, you will need to pass in the operationIndex 0.
 	case 4:
@@ -43,7 +47,6 @@ func (t *TransactionMeta) GetDiagnosticEvents() ([]DiagnosticEvent, error) {
 
 // GetTransactionEvents returns the xdr.transactionEvents present in the ledger.
 // For TxMetaVersions < 4, they will be empty
-
 func (t *TransactionMeta) GetTransactionEvents() ([]TransactionEvent, error) {
 	switch t.V {
 	case 1, 2, 3:

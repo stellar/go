@@ -267,12 +267,13 @@ func (t *LedgerTransaction) GetDiagnosticEvents() ([]xdr.DiagnosticEvent, error)
 
 // GetTransactionEvents gives the breakdown of xdr.ContractEvent, xdr.TransactionEvent, xdr.Disgnostic event as they appea in the TxMeta
 /*
-	In TransactionMetaV3, soroban transaction events and contract events appear in the SorobanMeta struct, i.e. at the top level
+	In TransactionMetaV3, for soroban transactions, contract events and diagnostic events appear in the SorobanMeta struct in TransactionMetaV3, i.e. at the transaction level
 	In TransactionMetaV4 and onwards, there is a more granular breakdown, because of CAP-67 unified events
-	- Contract events will also be present in the "operation []OperationMetaV2" in  structure.
 	- Classic operations will also have contract events.
-	- For smart contract transactions, contract events are going to show up in its respective operation index in []OperationMetaV2
-	- Additionally, if its a smart contract transaction, the contract events will also be included in the "DiagnosticEvents []DiagnosticEvent" structure
+	- Contract events will now be present in the "operation []OperationMetaV2" in the TransactionMetaV4 structure, instead of at the transaction level as in TxMetaV3.
+	  This is true for soroban transactions as well, which will only have one operation and thus contract events will appear at index 0 in the []OperationMetaV2 structure
+	- Additionally, if its a soroban  transaction, the diagnostic events will also be included in the "DiagnosticEvents []DiagnosticEvent" structure
+	- Non soroban transactions will have an empty list for DiagnosticEvents
 
 	It is preferred to use this function in horizon and rpc
 */
@@ -282,6 +283,10 @@ func (t *LedgerTransaction) GetTransactionEvents() (TransactionEvents, error) {
 	case 1, 2:
 		return txEvents, nil
 	case 3:
+		// There wont be any events for classic operations in TxMetaV3
+		if !t.IsSorobanTx() {
+			return txEvents, nil
+		}
 		contractEvents, err := t.GetSorobanContractEvents()
 		if err != nil {
 			return txEvents, err
@@ -299,8 +304,8 @@ func (t *LedgerTransaction) GetTransactionEvents() (TransactionEvents, error) {
 		txEvents.TransactionEvents = txMeta.Events
 		txEvents.DiagnosticEvents = txMeta.DiagnosticEvents
 		txEvents.OperationEvents = make([][]xdr.ContractEvent, len(txMeta.Operations))
-		for _, op := range txMeta.Operations {
-			txEvents.OperationEvents = append(txEvents.OperationEvents, op.Events)
+		for i, op := range txMeta.Operations {
+			txEvents.OperationEvents[i] = op.Events
 		}
 	default:
 		return txEvents, fmt.Errorf("unsupported TransactionMeta version: %v", t.UnsafeMeta.V)
