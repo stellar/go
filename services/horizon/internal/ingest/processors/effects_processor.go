@@ -146,7 +146,7 @@ func (operation *transactionOperationWrapper) ingestEffects(accountLoader *histo
 	case xdr.OperationTypeInvokeHostFunction:
 		// If there's an invokeHostFunction operation, there's definitely V3
 		// meta in the transaction, which means this error is real.
-		contractEvents, innerErr := operation.transaction.GetSorobanContractEvents()
+		contractEvents, innerErr := operation.transaction.GetContractEvents()
 		if innerErr != nil {
 			return innerErr
 		}

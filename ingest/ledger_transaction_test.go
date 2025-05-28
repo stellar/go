@@ -1122,7 +1122,7 @@ func TestGetSorobanContractEvents(t *testing.T) {
 				UnsafeMeta: tc.txMeta,
 			}
 
-			events, err := tx.GetSorobanContractEvents()
+			events, err := tx.GetContractEvents()
 
 			if tc.expectedError != "" {
 				require.Error(t, err, "Expected error for: %s", tc.name)

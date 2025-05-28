@@ -248,7 +248,7 @@ func Effects(operation *operations.TransactionOperationWrapper) ([]EffectOutput,
 	case xdr.OperationTypeInvokeHostFunction:
 		// If there's an invokeHostFunction operation, there's definitely V3
 		// meta in the transaction, which means this error is real.
-		contractEvents, innerErr := operation.Transaction.GetSorobanContractEvents()
+		contractEvents, innerErr := operation.Transaction.GetContractEvents()
 		if innerErr != nil {
 			return nil, innerErr
 		}

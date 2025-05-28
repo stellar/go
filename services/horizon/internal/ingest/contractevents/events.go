@@ -239,25 +239,20 @@ func parseSacEventFromTxMetaV3(event *xdr.ContractEvent, networkPassphrase strin
 
 	switch eventType {
 	case EventTypeTransfer:
-		if err := parseTransferEvent(topics, sacEvent); err != nil {
-			return nil, err
-		}
+		err = parseTransferEvent(topics, sacEvent)
 	case EventTypeMint:
-		if err := parseMintEventFromTxMetaV3(topics, sacEvent); err != nil {
-			return nil, err
-		}
+		err = parseMintEventFromTxMetaV3(topics, sacEvent)
 	case EventTypeClawback:
-		if err := parseClawbackEventFromTxMetaV3(topics, sacEvent); err != nil {
-			return nil, err
-		}
+		err = parseClawbackEventFromTxMetaV3(topics, sacEvent)
 	case EventTypeBurn:
-		if err := parseBurnEvent(topics, sacEvent); err != nil {
-			return nil, err
-		}
+		err = parseBurnEvent(topics, sacEvent)
 	default:
-		return nil, fmt.Errorf("%w: %v", ErrEventUnsupported, eventType)
+		err = fmt.Errorf("%w: %v", ErrEventUnsupported, eventType)
 	}
 
+	if err != nil {
+		return nil, err
+	}
 	return sacEvent, nil
 }
 
@@ -345,7 +340,6 @@ func parseV4MapData(mapData xdr.ScMap) (xdr.Int128Parts, xdr.Memo, error) {
 			foundAmount = true
 
 		case "to_muxed_id":
-			// Handle different types for to_muxed_id.. do i need a default to error?
 			foundMuxedId = true
 			switch entry.Val.Type {
 			case xdr.ScValTypeScvU64:

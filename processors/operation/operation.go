@@ -1843,7 +1843,7 @@ func contractCodeFromContractData(ledgerKey xdr.LedgerKey) string {
 func (operation *TransactionOperationWrapper) parseAssetBalanceChangesFromContractEvents() ([]map[string]interface{}, error) {
 	balanceChanges := []map[string]interface{}{}
 
-	contractEvents, err := operation.Transaction.GetSorobanContractEvents()
+	contractEvents, err := operation.Transaction.GetContractEvents()
 	if err != nil {
 		// this operation in this context must be an InvokeHostFunctionOp, therefore V3Meta should be present
 		// as it's in same soroban model, so if any err, it's real,
@@ -1878,7 +1878,7 @@ func (operation *TransactionOperationWrapper) parseAssetBalanceChangesFromContra
 func parseAssetBalanceChangesFromContractEvents(transaction ingest.LedgerTransaction, network string) ([]map[string]interface{}, error) {
 	balanceChanges := []map[string]interface{}{}
 
-	contractEvents, err := transaction.GetSorobanContractEvents()
+	contractEvents, err := transaction.GetContractEvents()
 	if err != nil {
 		// this operation in this context must be an InvokeHostFunctionOp, therefore V3Meta should be present
 		// as it's in same soroban model, so if any err, it's real,
@@ -2578,7 +2578,7 @@ func (o *LedgerOperation) serializeParameters(args []xdr.ScVal) ([]interface{}, 
 func (o *LedgerOperation) parseAssetBalanceChangesFromContractEvents() ([]BalanceChangeDetail, error) {
 	balanceChanges := []BalanceChangeDetail{}
 
-	contractEvents, err := o.Transaction.GetSorobanContractEvents()
+	contractEvents, err := o.Transaction.GetContractEvents()
 	if err != nil {
 		// this operation in this context must be an InvokeHostFunctionOp, therefore V3Meta should be present
 		// as it's in same soroban model, so if any err, it's real,

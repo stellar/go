@@ -271,7 +271,7 @@ func (operation *transactionOperationWrapper) IsPayment() bool {
 	case xdr.OperationTypeAccountMerge:
 		return true
 	case xdr.OperationTypeInvokeHostFunction:
-		contractEvents, err := operation.transaction.GetSorobanContractEvents()
+		contractEvents, err := operation.transaction.GetContractEvents()
 		tx := operation.transaction
 		if err != nil {
 			return false
@@ -785,7 +785,7 @@ func (operation *transactionOperationWrapper) parseAssetBalanceChangesFromContra
 	balanceChanges := []map[string]interface{}{}
 	tx := operation.transaction
 
-	contractEvents, err := tx.GetSorobanContractEvents()
+	contractEvents, err := tx.GetContractEvents()
 	if err != nil {
 		// this operation in this context must be an InvokeHostFunctionOp, therefore V3Meta should be present
 		// as it's in same soroban model, so if any err, it's real,
@@ -1065,7 +1065,7 @@ func (operation *transactionOperationWrapper) Participants() ([]xdr.AccountId, e
 				}
 			}
 		}
-		if contractEvents, err := operation.transaction.GetSorobanContractEvents(); err != nil {
+		if contractEvents, err := operation.transaction.GetContractEvents(); err != nil {
 			return participants, err
 		} else {
 			participants = append(participants, getParticipantsFromSACEvents(operation.transaction, contractEvents, operation.network)...)
