@@ -3,6 +3,7 @@
 package processors
 
 import (
+	"github.com/stretchr/testify/require"
 	"math/big"
 	"testing"
 
@@ -12,10 +13,10 @@ import (
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/protocols/horizon/base"
 	"github.com/stellar/go/strkey"
-	"github.com/stellar/go/support/contractevents"
 
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/services/horizon/internal/ingest/contractevents"
 	. "github.com/stellar/go/services/horizon/internal/test/transactions"
 	"github.com/stellar/go/xdr"
 )
@@ -2200,10 +2201,27 @@ func TestParticipantsCoversAllOperationTypes(t *testing.T) {
 			defer func() {
 				err2 := recover()
 				if err != nil {
-					assert.NotContains(t, err.Error(), "Unknown operation type")
+					require.NotContains(t, err.Error(), "Unknown operation type")
 				}
 				assert.True(t, err2 != nil || err == nil, s)
 			}()
+
+			// This is hacky but needed for when opType = InvokeHost
+			// This will trigger the path for the IsSorobanTx() check and that check will fail if SorobanData is not present
+			if op.Body.Type == xdr.OperationTypeInvokeHostFunction {
+				operation.transaction.Envelope = xdr.TransactionEnvelope{
+					Type: xdr.EnvelopeTypeEnvelopeTypeTx,
+					V1: &xdr.TransactionV1Envelope{
+						Tx: xdr.Transaction{
+							Ext: xdr.TransactionExt{
+								V:           1,
+								SorobanData: &xdr.SorobanTransactionData{},
+							},
+						},
+					},
+				}
+			}
+
 			_, err = operation.Participants()
 		}()
 	}
@@ -2311,6 +2329,17 @@ func TestTestInvokeHostFnOperationParticipants(t *testing.T) {
 	clawbackContractEvent := contractevents.GenerateEvent(contractevents.EventTypeClawback, clawbkEvtAcc, "", randomAccount, randomAsset, big.NewInt(10000000), passphrase)
 
 	tx1 := ingest.LedgerTransaction{
+		Envelope: xdr.TransactionEnvelope{
+			Type: xdr.EnvelopeTypeEnvelopeTypeTx,
+			V1: &xdr.TransactionV1Envelope{
+				Tx: xdr.Transaction{
+					Ext: xdr.TransactionExt{
+						V:           1,
+						SorobanData: &xdr.SorobanTransactionData{},
+					},
+				},
+			},
+		},
 		UnsafeMeta: xdr.TransactionMeta{
 			V: 3,
 			V3: &xdr.TransactionMetaV3{
@@ -2338,7 +2367,7 @@ func TestTestInvokeHostFnOperationParticipants(t *testing.T) {
 	}
 
 	participants, err := wrapper1.Participants()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.ElementsMatch(t,
 		[]xdr.AccountId{
 			xdr.MustAddress(source.Address()),
@@ -2361,6 +2390,17 @@ func TestTestInvokeHostFnOperationParticipants(t *testing.T) {
 	clawbackContractEvent = contractevents.GenerateEvent(contractevents.EventTypeClawback, zeroContractStrKey, "", randomAccount, randomAsset, big.NewInt(10000000), passphrase)
 
 	tx2 := ingest.LedgerTransaction{
+		Envelope: xdr.TransactionEnvelope{
+			Type: xdr.EnvelopeTypeEnvelopeTypeTx,
+			V1: &xdr.TransactionV1Envelope{
+				Tx: xdr.Transaction{
+					Ext: xdr.TransactionExt{
+						V:           1,
+						SorobanData: &xdr.SorobanTransactionData{},
+					},
+				},
+			},
+		},
 		UnsafeMeta: xdr.TransactionMeta{
 			V: 3,
 			V3: &xdr.TransactionMetaV3{
@@ -2388,7 +2428,7 @@ func TestTestInvokeHostFnOperationParticipants(t *testing.T) {
 	}
 
 	participants, err = wrapper2.Participants()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.ElementsMatch(t,
 		[]xdr.AccountId{
 			xdr.MustAddress(source.Address()),

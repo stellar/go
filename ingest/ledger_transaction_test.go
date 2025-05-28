@@ -9,6 +9,64 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
+var (
+	mockContractEvent1 = xdr.ContractEvent{
+		Type: xdr.ContractEventTypeContract,
+		Body: xdr.ContractEventBody{
+			V0: &xdr.ContractEventV0{},
+		},
+	}
+
+	mockContractEvent2 = xdr.ContractEvent{
+		Type: xdr.ContractEventTypeContract,
+		Body: xdr.ContractEventBody{
+			V:  0,
+			V0: &xdr.ContractEventV0{},
+		},
+	}
+
+	mockDiagnosticEvent1 = xdr.DiagnosticEvent{
+		InSuccessfulContractCall: true,
+		Event:                    mockContractEvent1,
+	}
+
+	mockDiagnosticEvent2 = xdr.DiagnosticEvent{
+		InSuccessfulContractCall: false,
+		Event:                    mockContractEvent2,
+	}
+
+	mockTransactionEvent1 = xdr.TransactionEvent{
+		Stage: xdr.TransactionEventStageTransactionEventStageBeforeAllTxs,
+		Event: mockContractEvent1,
+	}
+
+	mockTransactionEvent2 = xdr.TransactionEvent{
+		Stage: xdr.TransactionEventStageTransactionEventStageAfterTx,
+		Event: mockContractEvent2,
+	}
+
+	someSorobanTxEnvelope = xdr.TransactionEnvelope{
+		Type: xdr.EnvelopeTypeEnvelopeTypeTx,
+		V1: &xdr.TransactionV1Envelope{
+			Tx: xdr.Transaction{
+				Ext: xdr.TransactionExt{
+					V:           1,
+					SorobanData: &xdr.SorobanTransactionData{},
+				},
+			},
+		},
+	}
+
+	someClassicTxEnvelope = xdr.TransactionEnvelope{
+		Type: xdr.EnvelopeTypeEnvelopeTypeTx,
+		V1: &xdr.TransactionV1Envelope{
+			Tx: xdr.Transaction{
+				Ext: xdr.TransactionExt{},
+			},
+		},
+	}
+)
+
 func TestChangeAccountChangedExceptSignersInvalidType(t *testing.T) {
 	change := Change{
 		Type: xdr.LedgerEntryTypeOffer,
@@ -20,238 +78,6 @@ func TestChangeAccountChangedExceptSignersInvalidType(t *testing.T) {
 	})
 	// the following is here only to avoid false-positive warning by the linter.
 	require.NoError(t, err)
-}
-
-func TestGetContractEventsEmpty(t *testing.T) {
-	tx := LedgerTransaction{
-		FeeChanges: xdr.LedgerEntryChanges{},
-		UnsafeMeta: xdr.TransactionMeta{
-			V: 3,
-			V3: &xdr.TransactionMetaV3{
-				SorobanMeta: &xdr.SorobanTransactionMeta{
-					Events: []xdr.ContractEvent{},
-				},
-			},
-		},
-	}
-
-	events, err := tx.GetDiagnosticEvents()
-	assert.NoError(t, err)
-	assert.Empty(t, events)
-}
-
-func TestGetContractEventsSingle(t *testing.T) {
-	value := xdr.Uint32(1)
-	tx := LedgerTransaction{
-		FeeChanges: xdr.LedgerEntryChanges{},
-		UnsafeMeta: xdr.TransactionMeta{
-			V: 3,
-			V3: &xdr.TransactionMetaV3{
-				SorobanMeta: &xdr.SorobanTransactionMeta{
-					Events: []xdr.ContractEvent{
-						{
-							Type: xdr.ContractEventTypeSystem,
-							Body: xdr.ContractEventBody{
-								V: 0,
-								V0: &xdr.ContractEventV0{
-									Data: xdr.ScVal{Type: xdr.ScValTypeScvU32, U32: &value},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-	}
-
-	events, err := tx.GetDiagnosticEvents()
-	assert.Len(t, events, 1)
-	assert.True(t, events[0].InSuccessfulContractCall)
-	assert.Equal(t, *events[0].Event.Body.V0.Data.U32, value)
-
-	tx.UnsafeMeta.V = 0
-	_, err = tx.GetDiagnosticEvents()
-	assert.EqualError(t, err, "unsupported TransactionMeta version: 0")
-
-	tx.UnsafeMeta.V = 4
-	_, err = tx.GetDiagnosticEvents()
-	assert.EqualError(t, err, "unsupported TransactionMeta version: 4")
-
-	tx.UnsafeMeta.V = 1
-	events, err = tx.GetDiagnosticEvents()
-	assert.NoError(t, err)
-	assert.Empty(t, events)
-
-	tx.UnsafeMeta.V = 2
-	events, err = tx.GetDiagnosticEvents()
-	assert.NoError(t, err)
-	assert.Empty(t, events)
-}
-
-func TestGetContractEventsMultiple(t *testing.T) {
-	values := make([]xdr.Uint32, 2)
-	for i := range values {
-		values[i] = xdr.Uint32(i)
-	}
-	tx := LedgerTransaction{
-		FeeChanges: xdr.LedgerEntryChanges{},
-		UnsafeMeta: xdr.TransactionMeta{
-			V: 3,
-			V3: &xdr.TransactionMetaV3{
-				SorobanMeta: &xdr.SorobanTransactionMeta{
-					Events: []xdr.ContractEvent{
-						{
-							Type: xdr.ContractEventTypeSystem,
-							Body: xdr.ContractEventBody{
-								V: 0,
-								V0: &xdr.ContractEventV0{
-									Data: xdr.ScVal{Type: xdr.ScValTypeScvU32, U32: &values[0]},
-								},
-							},
-						},
-						{
-							Type: xdr.ContractEventTypeSystem,
-							Body: xdr.ContractEventBody{
-								V: 0,
-								V0: &xdr.ContractEventV0{
-									Data: xdr.ScVal{Type: xdr.ScValTypeScvU32, U32: &values[1]},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-	}
-	events, err := tx.GetDiagnosticEvents()
-	assert.NoError(t, err)
-	assert.Len(t, events, 2)
-	assert.True(t, events[0].InSuccessfulContractCall)
-	assert.Equal(t, *events[0].Event.Body.V0.Data.U32, values[0])
-	assert.True(t, events[1].InSuccessfulContractCall)
-	assert.Equal(t, *events[1].Event.Body.V0.Data.U32, values[1])
-}
-
-func TestGetDiagnosticEventsEmpty(t *testing.T) {
-	tx := LedgerTransaction{
-		FeeChanges: xdr.LedgerEntryChanges{},
-		UnsafeMeta: xdr.TransactionMeta{
-			V: 3,
-			V3: &xdr.TransactionMetaV3{
-				SorobanMeta: &xdr.SorobanTransactionMeta{
-					DiagnosticEvents: []xdr.DiagnosticEvent{},
-				},
-			},
-		},
-	}
-
-	events, err := tx.GetDiagnosticEvents()
-	assert.NoError(t, err)
-	assert.Empty(t, events)
-}
-
-func TestGetDiagnosticEventsSingle(t *testing.T) {
-	value := xdr.Uint32(1)
-	tx := LedgerTransaction{
-		FeeChanges: xdr.LedgerEntryChanges{},
-		UnsafeMeta: xdr.TransactionMeta{
-			V: 3,
-			V3: &xdr.TransactionMetaV3{
-				SorobanMeta: &xdr.SorobanTransactionMeta{
-					DiagnosticEvents: []xdr.DiagnosticEvent{
-						{
-							InSuccessfulContractCall: false,
-							Event: xdr.ContractEvent{
-								Type: xdr.ContractEventTypeSystem,
-								Body: xdr.ContractEventBody{
-									V: 0,
-									V0: &xdr.ContractEventV0{
-										Data: xdr.ScVal{Type: xdr.ScValTypeScvU32, U32: &value},
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-	}
-
-	events, err := tx.GetDiagnosticEvents()
-	assert.NoError(t, err)
-	assert.Len(t, events, 1)
-	assert.False(t, events[0].InSuccessfulContractCall)
-	assert.Equal(t, *events[0].Event.Body.V0.Data.U32, value)
-
-	tx.UnsafeMeta.V = 0
-	_, err = tx.GetDiagnosticEvents()
-	assert.EqualError(t, err, "unsupported TransactionMeta version: 0")
-
-	tx.UnsafeMeta.V = 4
-	_, err = tx.GetDiagnosticEvents()
-	assert.EqualError(t, err, "unsupported TransactionMeta version: 4")
-
-	tx.UnsafeMeta.V = 1
-	events, err = tx.GetDiagnosticEvents()
-	assert.NoError(t, err)
-	assert.Empty(t, events)
-
-	tx.UnsafeMeta.V = 2
-	events, err = tx.GetDiagnosticEvents()
-	assert.NoError(t, err)
-	assert.Empty(t, events)
-}
-
-func TestGetDiagnosticEventsMultiple(t *testing.T) {
-	values := make([]xdr.Uint32, 2)
-	for i := range values {
-		values[i] = xdr.Uint32(i)
-	}
-	tx := LedgerTransaction{
-		FeeChanges: xdr.LedgerEntryChanges{},
-		UnsafeMeta: xdr.TransactionMeta{
-			V: 3,
-			V3: &xdr.TransactionMetaV3{
-				SorobanMeta: &xdr.SorobanTransactionMeta{
-					DiagnosticEvents: []xdr.DiagnosticEvent{
-						{
-							InSuccessfulContractCall: true,
-
-							Event: xdr.ContractEvent{
-								Type: xdr.ContractEventTypeSystem,
-								Body: xdr.ContractEventBody{
-									V: 0,
-									V0: &xdr.ContractEventV0{
-										Data: xdr.ScVal{Type: xdr.ScValTypeScvU32, U32: &values[0]},
-									},
-								},
-							},
-						},
-						{
-							InSuccessfulContractCall: true,
-							Event: xdr.ContractEvent{
-								Type: xdr.ContractEventTypeSystem,
-								Body: xdr.ContractEventBody{
-									V: 0,
-									V0: &xdr.ContractEventV0{
-										Data: xdr.ScVal{Type: xdr.ScValTypeScvU32, U32: &values[1]},
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-	}
-
-	events, err := tx.GetDiagnosticEvents()
-	assert.NoError(t, err)
-	assert.Len(t, events, 2)
-	assert.True(t, events[0].InSuccessfulContractCall)
-	assert.Equal(t, *events[0].Event.Body.V0.Data.U32, values[0])
-	assert.True(t, events[1].InSuccessfulContractCall)
-	assert.Equal(t, *events[1].Event.Body.V0.Data.U32, values[1])
 }
 
 func TestFeeMetaAndOperationsChangesSeparate(t *testing.T) {
@@ -1075,4 +901,474 @@ func transactionHelperFunctionsTestInput() LedgerTransaction {
 	}
 
 	return transaction
+}
+
+// Events tests
+
+func TestGetContractEventsForOperation(t *testing.T) {
+	testCases := []struct {
+		name           string
+		txMeta         xdr.TransactionMeta
+		opIndex        uint32
+		expectedEvents []xdr.ContractEvent
+		expectedError  string
+	}{
+		{
+			name:           "V1 transaction meta should return nil events",
+			txMeta:         xdr.TransactionMeta{V: 1},
+			opIndex:        0,
+			expectedEvents: nil,
+		},
+		{
+			name:           "V2 transaction meta should return nil events",
+			txMeta:         xdr.TransactionMeta{V: 2},
+			opIndex:        0,
+			expectedEvents: nil,
+		},
+		{
+			name: "V3 soroban transaction should return events from SorobanMeta",
+			txMeta: xdr.TransactionMeta{
+				V: 3,
+				V3: &xdr.TransactionMetaV3{
+					SorobanMeta: &xdr.SorobanTransactionMeta{
+						Events: []xdr.ContractEvent{mockContractEvent1, mockContractEvent2},
+					},
+				},
+			},
+			opIndex:        0, // opIndex ignored in V3
+			expectedEvents: []xdr.ContractEvent{mockContractEvent1, mockContractEvent2},
+		},
+		{
+			name: "V3 soroban transaction with no events should return empty slice",
+			txMeta: xdr.TransactionMeta{
+				V: 3,
+				V3: &xdr.TransactionMetaV3{
+					SorobanMeta: &xdr.SorobanTransactionMeta{
+						Events: []xdr.ContractEvent{},
+					},
+				},
+			},
+			opIndex:        0,
+			expectedEvents: []xdr.ContractEvent{},
+		},
+		{
+			name: "V4 transaction should return events from specific operation",
+			txMeta: xdr.TransactionMeta{
+				V: 4,
+				V4: &xdr.TransactionMetaV4{
+					Operations: []xdr.OperationMetaV2{
+						{
+							Events: []xdr.ContractEvent{mockContractEvent1},
+						},
+					},
+				},
+			},
+			opIndex:        0,
+			expectedEvents: []xdr.ContractEvent{mockContractEvent1},
+		},
+		{
+			name: "V4 transaction should return events from specified operation index",
+			txMeta: xdr.TransactionMeta{
+				V: 4,
+				V4: &xdr.TransactionMetaV4{
+					Operations: []xdr.OperationMetaV2{
+						{
+							Events: []xdr.ContractEvent{},
+						},
+						{
+							Events: []xdr.ContractEvent{mockContractEvent1, mockContractEvent2},
+						},
+					},
+				},
+			},
+			opIndex:        1,
+			expectedEvents: []xdr.ContractEvent{mockContractEvent1, mockContractEvent2},
+		},
+		{
+			name: "V4 transaction with no events should return empty slice",
+			txMeta: xdr.TransactionMeta{
+				V: 4,
+				V4: &xdr.TransactionMetaV4{
+					Operations: []xdr.OperationMetaV2{
+						{
+							Events: []xdr.ContractEvent{},
+						},
+					},
+				},
+			},
+			opIndex:        0,
+			expectedEvents: []xdr.ContractEvent{},
+		},
+		{
+			name:          "Unsupported version should return error",
+			txMeta:        xdr.TransactionMeta{V: 5},
+			opIndex:       0,
+			expectedError: "unsupported TransactionMeta version: 5",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			tx := &LedgerTransaction{
+				UnsafeMeta: tc.txMeta,
+			}
+
+			events, err := tx.GetContractEventsForOperation(tc.opIndex)
+
+			if tc.expectedError != "" {
+				require.Error(t, err, "Expected error for: %s", tc.name)
+				assert.Contains(t, err.Error(), tc.expectedError, "Error message mismatch for: %s", tc.name)
+				assert.Nil(t, events, "Events should be nil when error expected for: %s", tc.name)
+			} else {
+				require.NoError(t, err, "Unexpected error for: %s", tc.name)
+				assert.Equal(t, tc.expectedEvents, events, "Events mismatch for: %s", tc.name)
+			}
+		})
+	}
+}
+
+func TestGetSorobanContractEvents(t *testing.T) {
+	testCases := []struct {
+		name           string
+		envelope       xdr.TransactionEnvelope
+		txMeta         xdr.TransactionMeta
+		expectedEvents []xdr.ContractEvent
+		expectedError  string
+	}{
+		{
+			name:     "Soroban V3 transaction should return contract events",
+			envelope: someSorobanTxEnvelope,
+			txMeta: xdr.TransactionMeta{
+				V: 3,
+				V3: &xdr.TransactionMetaV3{
+					SorobanMeta: &xdr.SorobanTransactionMeta{
+						Events: []xdr.ContractEvent{mockContractEvent1, mockContractEvent2},
+					},
+				},
+			},
+			expectedEvents: []xdr.ContractEvent{mockContractEvent1, mockContractEvent2},
+		},
+		{
+			name:     "V4 Soroban transaction should return events from operation 0",
+			envelope: someSorobanTxEnvelope,
+			txMeta: xdr.TransactionMeta{
+				V: 4,
+				V4: &xdr.TransactionMetaV4{
+					Operations: []xdr.OperationMetaV2{
+						{
+							Events: []xdr.ContractEvent{mockContractEvent1}, // you'll only ever have 1 operation for soroban txs in TxMetaV4
+						},
+					},
+				},
+			},
+			expectedEvents: []xdr.ContractEvent{mockContractEvent1},
+		},
+		{
+			name:     "Non-Soroban transaction should return error",
+			envelope: someClassicTxEnvelope,
+			txMeta: xdr.TransactionMeta{
+				V: 3,
+				V3: &xdr.TransactionMetaV3{
+					SorobanMeta: nil,
+				},
+			},
+			expectedError: "not a soroban transaction",
+		},
+		{
+			name:     "V3 Soroban transaction with no sorobabMeta should return nil",
+			envelope: someSorobanTxEnvelope,
+			txMeta: xdr.TransactionMeta{
+				V: 3,
+				V3: &xdr.TransactionMetaV3{
+					SorobanMeta: nil,
+				},
+			},
+			expectedEvents: nil,
+		},
+		{
+			name:     "V3 Soroban transaction with no events should return empty slice",
+			envelope: someSorobanTxEnvelope,
+			txMeta: xdr.TransactionMeta{
+				V: 3,
+				V3: &xdr.TransactionMetaV3{
+					SorobanMeta: &xdr.SorobanTransactionMeta{
+						Events: []xdr.ContractEvent{},
+					},
+				},
+			},
+			expectedEvents: []xdr.ContractEvent{},
+		},
+		{
+			name:     "V4 Soroban transaction should with no events should return empty slice",
+			envelope: someSorobanTxEnvelope,
+			txMeta: xdr.TransactionMeta{
+				V: 4,
+				V4: &xdr.TransactionMetaV4{
+					Operations: []xdr.OperationMetaV2{
+						{
+							Events: []xdr.ContractEvent{},
+						},
+					},
+				},
+			},
+			expectedEvents: []xdr.ContractEvent{},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			tx := &LedgerTransaction{
+				Envelope:   tc.envelope,
+				UnsafeMeta: tc.txMeta,
+			}
+
+			events, err := tx.GetContractEvents()
+
+			if tc.expectedError != "" {
+				require.Error(t, err, "Expected error for: %s", tc.name)
+				assert.Contains(t, err.Error(), tc.expectedError, "Error message mismatch for: %s", tc.name)
+				assert.Nil(t, events, "Events should be nil when error expected for: %s", tc.name)
+			} else {
+				require.NoError(t, err, "Unexpected error for: %s", tc.name)
+				assert.Equal(t, tc.expectedEvents, events, "Events mismatch for: %s", tc.name)
+			}
+		})
+	}
+}
+
+func TestGetDiagnosticEvents(t *testing.T) {
+	testCases := []struct {
+		name           string
+		txMeta         xdr.TransactionMeta
+		expectedEvents []xdr.DiagnosticEvent
+		expectedError  string
+	}{
+		{
+			name:           "V1 transaction meta should return nil diagnostic events",
+			txMeta:         xdr.TransactionMeta{V: 1},
+			expectedEvents: nil,
+		},
+		{
+			name:           "V2 transaction meta should return nil diagnostic events",
+			txMeta:         xdr.TransactionMeta{V: 2},
+			expectedEvents: nil,
+		},
+		{
+			name: "V3 should return diagnostic events from SorobanMeta",
+			txMeta: xdr.TransactionMeta{
+				V: 3,
+				V3: &xdr.TransactionMetaV3{
+					SorobanMeta: &xdr.SorobanTransactionMeta{
+						DiagnosticEvents: []xdr.DiagnosticEvent{mockDiagnosticEvent1, mockDiagnosticEvent2},
+					},
+				},
+			},
+			expectedEvents: []xdr.DiagnosticEvent{mockDiagnosticEvent1, mockDiagnosticEvent2},
+		},
+		{
+			name: "V3 with no SorobanMeta should return nil",
+			txMeta: xdr.TransactionMeta{
+				V: 3,
+				V3: &xdr.TransactionMetaV3{
+					SorobanMeta: nil,
+				},
+			},
+			expectedEvents: nil,
+		},
+		{
+			name: "V3 with empty diagnostic events should return empty slice",
+			txMeta: xdr.TransactionMeta{
+				V: 3,
+				V3: &xdr.TransactionMetaV3{
+					SorobanMeta: &xdr.SorobanTransactionMeta{
+						DiagnosticEvents: []xdr.DiagnosticEvent{},
+					},
+				},
+			},
+			expectedEvents: []xdr.DiagnosticEvent{},
+		},
+		{
+			name: "V4 should return diagnostic events from top level",
+			txMeta: xdr.TransactionMeta{
+				V: 4,
+				V4: &xdr.TransactionMetaV4{
+					DiagnosticEvents: []xdr.DiagnosticEvent{mockDiagnosticEvent1},
+				},
+			},
+			expectedEvents: []xdr.DiagnosticEvent{mockDiagnosticEvent1},
+		},
+		{
+			name: "V4 with no diagnostic events should return empty slice",
+			txMeta: xdr.TransactionMeta{
+				V: 4,
+				V4: &xdr.TransactionMetaV4{
+					DiagnosticEvents: []xdr.DiagnosticEvent{},
+				},
+			},
+			expectedEvents: []xdr.DiagnosticEvent{},
+		},
+		{
+			name:          "Unsupported version should return error",
+			txMeta:        xdr.TransactionMeta{V: 5},
+			expectedError: "unsupported TransactionMeta version: 5",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			tx := &LedgerTransaction{
+				UnsafeMeta: tc.txMeta,
+			}
+
+			events, err := tx.GetDiagnosticEvents()
+
+			if tc.expectedError != "" {
+				require.Error(t, err, "Expected error for: %s", tc.name)
+				assert.Contains(t, err.Error(), tc.expectedError, "Error message mismatch for: %s", tc.name)
+				assert.Nil(t, events, "Events should be nil when error expected for: %s", tc.name)
+			} else {
+				require.NoError(t, err, "Unexpected error for: %s", tc.name)
+				assert.Equal(t, tc.expectedEvents, events, "Events mismatch for: %s", tc.name)
+			}
+		})
+	}
+}
+
+func TestGetTransactionEvents(t *testing.T) {
+	testCases := []struct {
+		envelope         xdr.TransactionEnvelope
+		txMeta           xdr.TransactionMeta
+		expectedTxEvents TransactionEvents
+		expectedError    string
+		name             string
+	}{
+		{
+			name:             "V1 should return empty TransactionEvents",
+			envelope:         someClassicTxEnvelope,
+			txMeta:           xdr.TransactionMeta{V: 1},
+			expectedTxEvents: TransactionEvents{},
+		},
+		{
+			name:             "V2 should return empty TransactionEvents",
+			envelope:         someClassicTxEnvelope,
+			txMeta:           xdr.TransactionMeta{V: 2},
+			expectedTxEvents: TransactionEvents{},
+		},
+		{
+			name:             "V3 non-Soroban transaction should return empty events",
+			envelope:         someClassicTxEnvelope,
+			txMeta:           xdr.TransactionMeta{V: 3},
+			expectedTxEvents: TransactionEvents{},
+		},
+		{
+			name:     "V3 Soroban transaction should return events from SorobanMeta",
+			envelope: someSorobanTxEnvelope,
+			txMeta: xdr.TransactionMeta{
+				V: 3,
+				V3: &xdr.TransactionMetaV3{
+					SorobanMeta: &xdr.SorobanTransactionMeta{
+						Events:           []xdr.ContractEvent{mockContractEvent1, mockContractEvent2},
+						DiagnosticEvents: []xdr.DiagnosticEvent{mockDiagnosticEvent1},
+					},
+				},
+			},
+			expectedTxEvents: TransactionEvents{
+				OperationEvents:  [][]xdr.ContractEvent{{mockContractEvent1, mockContractEvent2}},
+				DiagnosticEvents: []xdr.DiagnosticEvent{mockDiagnosticEvent1},
+			},
+		},
+		{
+			name:     "V4 should return all event types from their respective locations",
+			envelope: someClassicTxEnvelope, // doesnt matter here if its soroban tx or not for txMetaV4
+			txMeta: xdr.TransactionMeta{
+				V: 4,
+				V4: &xdr.TransactionMetaV4{
+					Events:           []xdr.TransactionEvent{mockTransactionEvent1, mockTransactionEvent2},
+					DiagnosticEvents: []xdr.DiagnosticEvent{mockDiagnosticEvent1, mockDiagnosticEvent2},
+					Operations: []xdr.OperationMetaV2{
+						{
+							Events: []xdr.ContractEvent{mockContractEvent1},
+						},
+						{
+							Events: []xdr.ContractEvent{mockContractEvent2},
+						},
+					},
+				},
+			},
+			expectedTxEvents: TransactionEvents{
+				TransactionEvents: []xdr.TransactionEvent{mockTransactionEvent1, mockTransactionEvent2},
+				OperationEvents:   [][]xdr.ContractEvent{{mockContractEvent1}, {mockContractEvent2}},
+				DiagnosticEvents:  []xdr.DiagnosticEvent{mockDiagnosticEvent1, mockDiagnosticEvent2},
+			},
+		},
+		{
+			name:     "V4 with no events should return empty slices",
+			envelope: someSorobanTxEnvelope, // doesnt matter here if its soroban tx or not for txMetaV4
+			txMeta: xdr.TransactionMeta{
+				V: 4,
+				V4: &xdr.TransactionMetaV4{
+					Events:           []xdr.TransactionEvent{},
+					DiagnosticEvents: []xdr.DiagnosticEvent{},
+					Operations: []xdr.OperationMetaV2{
+						{
+							Events: []xdr.ContractEvent{},
+						},
+					},
+				},
+			},
+			expectedTxEvents: TransactionEvents{
+				TransactionEvents: []xdr.TransactionEvent{},
+				OperationEvents:   [][]xdr.ContractEvent{{}},
+				DiagnosticEvents:  []xdr.DiagnosticEvent{},
+			},
+		},
+		{
+			name:     "V4 Soroban transaction should return all event types",
+			envelope: someSorobanTxEnvelope, // doesnt matter here if its soroban tx or not for txMetaV4
+			txMeta: xdr.TransactionMeta{
+				V: 4,
+				V4: &xdr.TransactionMetaV4{
+					Events:           []xdr.TransactionEvent{mockTransactionEvent1},
+					DiagnosticEvents: []xdr.DiagnosticEvent{mockDiagnosticEvent1},
+					Operations: []xdr.OperationMetaV2{
+						{
+							Events: []xdr.ContractEvent{mockContractEvent1, mockContractEvent2},
+						},
+					},
+				},
+			},
+			expectedTxEvents: TransactionEvents{
+				TransactionEvents: []xdr.TransactionEvent{mockTransactionEvent1},
+				OperationEvents:   [][]xdr.ContractEvent{{mockContractEvent1, mockContractEvent2}},
+				DiagnosticEvents:  []xdr.DiagnosticEvent{mockDiagnosticEvent1},
+			},
+		},
+		{
+			name:          "Unsupported version should return error",
+			envelope:      someClassicTxEnvelope,
+			txMeta:        xdr.TransactionMeta{V: 5},
+			expectedError: "unsupported TransactionMeta version: 5",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			tx := &LedgerTransaction{
+				Envelope:   tc.envelope,
+				UnsafeMeta: tc.txMeta,
+			}
+
+			events, err := tx.GetTransactionEvents()
+
+			if tc.expectedError != "" {
+				require.Error(t, err, "Expected error for: %s", tc.name)
+				assert.Contains(t, err.Error(), tc.expectedError, "Error message mismatch for: %s", tc.name)
+			} else {
+				require.NoError(t, err, "Unexpected error for: %s", tc.name)
+				assert.Equal(t, tc.expectedTxEvents.TransactionEvents, events.TransactionEvents, "TransactionEvents mismatch for: %s", tc.name)
+				assert.Equal(t, tc.expectedTxEvents.DiagnosticEvents, events.DiagnosticEvents, "DiagnosticEvents mismatch for: %s", tc.name)
+				assert.Equal(t, tc.expectedTxEvents.OperationEvents, events.OperationEvents, "OperationEvents mismatch for: %s", tc.name)
+			}
+		})
+	}
 }

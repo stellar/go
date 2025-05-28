@@ -16,8 +16,9 @@ import (
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/services/horizon/internal/ingest/contractevents"
+
 	"github.com/stellar/go/strkey"
-	"github.com/stellar/go/support/contractevents"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
@@ -110,8 +111,19 @@ func (s *OperationsProcessorTestSuiteLedger) TestOperationTypeInvokeHostFunction
 
 	tx := ingest.LedgerTransaction{
 		UnsafeMeta: xdr.TransactionMeta{
-			V:  2,
-			V2: &xdr.TransactionMetaV2{},
+			V:  3,
+			V3: &xdr.TransactionMetaV3{},
+		},
+		Envelope: xdr.TransactionEnvelope{
+			Type: xdr.EnvelopeTypeEnvelopeTypeTx,
+			V1: &xdr.TransactionV1Envelope{
+				Tx: xdr.Transaction{
+					Ext: xdr.TransactionExt{
+						V:           1,
+						SorobanData: &xdr.SorobanTransactionData{},
+					},
+				},
+			},
 		},
 	}
 
@@ -301,6 +313,17 @@ func (s *OperationsProcessorTestSuiteLedger) TestOperationTypeInvokeHostFunction
 		clawbackContractEvent := contractevents.GenerateEvent(contractevents.EventTypeClawback, zeroContractStrKey, "", randomAccount, randomAsset, big.NewInt(10000000), passphrase)
 
 		tx = ingest.LedgerTransaction{
+			Envelope: xdr.TransactionEnvelope{
+				Type: xdr.EnvelopeTypeEnvelopeTypeTx,
+				V1: &xdr.TransactionV1Envelope{
+					Tx: xdr.Transaction{
+						Ext: xdr.TransactionExt{
+							V:           1,
+							SorobanData: &xdr.SorobanTransactionData{},
+						},
+					},
+				},
+			},
 			UnsafeMeta: xdr.TransactionMeta{
 				V: 3,
 				V3: &xdr.TransactionMetaV3{
@@ -340,7 +363,7 @@ func (s *OperationsProcessorTestSuiteLedger) TestOperationTypeInvokeHostFunction
 		}
 
 		details, err := wrapper.Details()
-		s.Assert().NoError(err)
+		s.Require().NoError(err)
 		s.Assert().Len(details["asset_balance_changes"], 4)
 
 		found := 0

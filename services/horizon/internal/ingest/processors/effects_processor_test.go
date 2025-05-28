@@ -22,8 +22,9 @@ import (
 
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/services/horizon/internal/ingest/contractevents"
 	. "github.com/stellar/go/services/horizon/internal/test/transactions"
-	"github.com/stellar/go/support/contractevents"
+
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/toid"
@@ -428,8 +429,8 @@ func TestEffectsCoversAllOperationTypes(t *testing.T) {
 			ledgerSequence: 1,
 			transaction: ingest.LedgerTransaction{
 				UnsafeMeta: xdr.TransactionMeta{
-					V:  2,
-					V2: &xdr.TransactionMetaV2{},
+					V:  3,
+					V3: &xdr.TransactionMetaV3{},
 				},
 			},
 			operation: op,
@@ -446,6 +447,23 @@ func TestEffectsCoversAllOperationTypes(t *testing.T) {
 				}
 				assert.True(t, err2 != nil || err == nil, s)
 			}()
+
+			// This is hacky but needed for when opType = InvokeHost
+			// This will trigger the path for the IsSorobanTx() check and that check will fail if SorobanData is not present
+			if op.Body.Type == xdr.OperationTypeInvokeHostFunction {
+				operation.transaction.Envelope = xdr.TransactionEnvelope{
+					Type: xdr.EnvelopeTypeEnvelopeTypeTx,
+					V1: &xdr.TransactionV1Envelope{
+						Tx: xdr.Transaction{
+							Ext: xdr.TransactionExt{
+								V:           1,
+								SorobanData: &xdr.SorobanTransactionData{},
+							},
+						},
+					},
+				}
+			}
+
 			err = operation.ingestEffects(history.NewAccountLoader(history.ConcurrentInserts), &history.MockEffectBatchInsertBuilder{})
 		}()
 	}
@@ -3703,7 +3721,6 @@ func TestInvokeHostFunctionEffects(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.desc, func(t *testing.T) {
-			var tx ingest.LedgerTransaction
 
 			fromAddr := from
 			if testCase.from != "" {
@@ -3715,19 +3732,19 @@ func TestInvokeHostFunctionEffects(t *testing.T) {
 				toAddr = testCase.to
 			}
 
-			tx = makeInvocationTransaction(
+			sorobanTx := makeInvocationTransaction(
 				fromAddr, toAddr,
 				admin,
 				testCase.asset,
 				amount,
 				testCase.eventType,
 			)
-			assert.True(t, tx.Result.Successful()) // sanity check
+			assert.True(t, sorobanTx.Result.Successful()) // sanity check
 
 			operation := transactionOperationWrapper{
 				index:          0,
-				transaction:    tx,
-				operation:      tx.Envelope.Operations()[0],
+				transaction:    sorobanTx,
+				operation:      sorobanTx.Envelope.Operations()[0],
 				ledgerSequence: 1,
 				network:        networkPassphrase,
 			}
@@ -3768,6 +3785,11 @@ func makeInvocationTransaction(
 	envelope := xdr.TransactionV1Envelope{
 		Tx: xdr.Transaction{
 			// the rest doesn't matter for effect ingestion
+			Ext: xdr.TransactionExt{
+				V: 1,
+				// sorobanData is needed to pass the check for IsSorobanTx
+				SorobanData: &xdr.SorobanTransactionData{},
+			},
 			Operations: []xdr.Operation{
 				{
 					SourceAccount: xdr.MustMuxedAddressPtr(admin),
