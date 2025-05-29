@@ -203,7 +203,7 @@ func TestUpdateSampleChanges(t *testing.T) {
 		t.Fatalf("could not create sample change reader: %v", err)
 	}
 
-	changeStats := &ingest.StatsChangeProcessor{}
+	changeStats := &processors.StatsChangeProcessor{}
 	err = processors.StreamChanges(changeStats, reader)
 	if err != nil {
 		t.Fatalf("could not stream changes: %v", err)
