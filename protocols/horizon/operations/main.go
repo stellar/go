@@ -403,10 +403,11 @@ type RestoreFootprint struct {
 // Asset  - the classic asset expressed as issuer and code.
 type AssetContractBalanceChange struct {
 	base.Asset
-	Type   string `json:"type"`
-	From   string `json:"from,omitempty"`
-	To     string `json:"to,omitempty"`
-	Amount string `json:"amount"`
+	Type               string `json:"type"`
+	From               string `json:"from,omitempty"`
+	To                 string `json:"to,omitempty"`
+	Amount             string `json:"amount"`
+	DestinationMuxedId string `json:"destination_muxed_id,omitempty"`
 }
 
 // Operation interface contains methods implemented by the operation types
