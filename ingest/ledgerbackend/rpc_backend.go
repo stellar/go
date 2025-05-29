@@ -14,12 +14,12 @@ import (
 const RPCBackendDefaultBufferSize uint32 = 10
 const RPCBackendDefaultWaitIntervalSeconds uint32 = 2
 
-type RPCLedgerNotFoundError struct {
+type RPCLedgerMissingError struct {
 	Sequence uint32
 }
 
-func (e *RPCLedgerNotFoundError) Error() string {
-	return fmt.Sprintf("ledger %d not found", e.Sequence)
+func (e *RPCLedgerMissingError) Error() string {
+	return fmt.Sprintf("ledger %d was not present on rpc", e.Sequence)
 }
 
 type RPCLedgerBeyondLatestError struct {
@@ -35,6 +35,7 @@ func (e *RPCLedgerBeyondLatestError) Error() string {
 type RPCClient interface {
 	GetLatestLedger(ctx context.Context) (protocol.GetLatestLedgerResponse, error)
 	GetLedgers(ctx context.Context, req protocol.GetLedgersRequest) (protocol.GetLedgersResponse, error)
+	GetHealth(ctx context.Context) (protocol.GetHealthResponse, error)
 }
 
 // RPCLedgerBackend does not support stateful range preparations.
@@ -43,9 +44,13 @@ type RPCClient interface {
 // Callers should focus on using RPCLedgerBackend.GetLedger for the ledger range needed
 // and check the returned error for presence of a ledger.
 type RPCLedgerBackend struct {
-	client     RPCClient
-	buffer     map[uint32]xdr.LedgerCloseMeta
-	bufferSize uint32
+	client        RPCClient
+	buffer        map[uint32]xdr.LedgerCloseMeta
+	bufferSize    uint32
+	preparedRange *Range
+	nextLedger    uint32
+	Ledger        uint32
+	closed        bool
 }
 
 // Creates the RPCLedgerBackend with the given RPCClient.
@@ -97,9 +102,31 @@ func (b *RPCLedgerBackend) GetLatestLedgerSequence(ctx context.Context) (sequenc
 //   - context.Canceled if context is cancelled
 //   - Other errors that may be due to RPC usage or network issues
 func (b *RPCLedgerBackend) GetLedger(ctx context.Context, sequence uint32) (xdr.LedgerCloseMeta, error) {
+	if err := b.checkClosed(); err != nil {
+		return xdr.LedgerCloseMeta{}, err
+	}
+
+	if b.preparedRange == nil {
+		return xdr.LedgerCloseMeta{}, fmt.Errorf("RPCLedgerBackend must be prepared before calling GetLedger")
+	}
+
+	if b.closed {
+		return xdr.LedgerCloseMeta{}, fmt.Errorf("RPCLedgerBackend is closed; cannot GetLedger")
+	}
+
+	if sequence < b.preparedRange.from || (b.preparedRange.bounded && sequence > b.preparedRange.to) {
+		return xdr.LedgerCloseMeta{}, fmt.Errorf("requested ledger %d is outside prepared range [%d, %d]",
+			sequence, b.preparedRange.from, b.preparedRange.to)
+	}
+
+	if sequence != b.nextLedger {
+		return xdr.LedgerCloseMeta{}, fmt.Errorf("requested ledger %d is not the expected ledger %d", sequence, b.nextLedger)
+	}
+
 	for {
 		lcm, err := b.getBufferedLedger(ctx, sequence)
 		if err == nil {
+			b.nextLedger = sequence + 1
 			return lcm, nil
 		}
 
@@ -117,19 +144,61 @@ func (b *RPCLedgerBackend) GetLedger(ctx context.Context, sequence uint32) (xdr.
 	}
 }
 
-// RPCLedgerBackend does not perform stateful range preparation.
-// This has no effect on the backend and is a no-op.
+// PrepareRange validates that the requested ledger range is within the RPC server's
+// available history window by checking the health endpoint.
 func (b *RPCLedgerBackend) PrepareRange(ctx context.Context, ledgerRange Range) error {
+	if err := b.checkClosed(); err != nil {
+		return err
+	}
+
+	if b.preparedRange != nil {
+		return fmt.Errorf("RPCLedgerBackend is already prepared with range [%d, %d]", b.preparedRange.from, b.preparedRange.to)
+	}
+	health, err := b.client.GetHealth(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get RPC health info: %w", err)
+	}
+
+	if ledgerRange.from < health.OldestLedger {
+		return fmt.Errorf("requested range start ledger %d is before oldest available ledger %d",
+			ledgerRange.from, health.OldestLedger)
+	}
+
+	// Check bounded range end is not beyond latest ledger
+	if ledgerRange.bounded && ledgerRange.to > health.LatestLedger {
+		return fmt.Errorf("requested range end ledger %d is beyond latest available ledger %d",
+			ledgerRange.to, health.LatestLedger)
+	}
+	b.nextLedger = ledgerRange.from
+	b.preparedRange = &ledgerRange
 	return nil
 }
 
-// RPCLedgerBackend does not perform stateful range preparation.
-// This has no effect on the backend and is a no-op.
 func (b *RPCLedgerBackend) IsPrepared(ctx context.Context, ledgerRange Range) (bool, error) {
-	return false, nil
+	if err := b.checkClosed(); err != nil {
+		return false, err
+	}
+
+	if b.preparedRange == nil {
+		return false, nil
+	}
+
+	rangesMatch := b.preparedRange.from == ledgerRange.from &&
+		b.preparedRange.bounded == ledgerRange.bounded &&
+		(!b.preparedRange.bounded || b.preparedRange.to == ledgerRange.to)
+
+	return rangesMatch, nil
 }
 
 func (b *RPCLedgerBackend) Close() error {
+	b.closed = true
+	return nil
+}
+
+func (b *RPCLedgerBackend) checkClosed() error {
+	if b.closed {
+		return fmt.Errorf("RPCLedgerBackend is closed")
+	}
 	return nil
 }
 
@@ -180,5 +249,5 @@ func (b *RPCLedgerBackend) getBufferedLedger(ctx context.Context, sequence uint3
 		return lcm, nil
 	}
 
-	return xdr.LedgerCloseMeta{}, &RPCLedgerNotFoundError{Sequence: sequence}
+	return xdr.LedgerCloseMeta{}, &RPCLedgerMissingError{Sequence: sequence}
 }

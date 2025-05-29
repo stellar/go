@@ -27,6 +27,11 @@ func (m *MockRPCClient) GetLedgers(ctx context.Context, req protocol.GetLedgersR
 	return args.Get(0).(protocol.GetLedgersResponse), args.Error(1)
 }
 
+func (m *MockRPCClient) GetHealth(ctx context.Context) (protocol.GetHealthResponse, error) {
+	args := m.Called(ctx)
+	return args.Get(0).(protocol.GetHealthResponse), args.Error(1)
+}
+
 func setupRPCTest(t *testing.T) (*RPCLedgerBackend, *MockRPCClient) {
 	mockClient := new(MockRPCClient)
 	backend, err := NewRPCLedgerBackend(mockClient, 0)
@@ -53,6 +58,14 @@ func TestRPCGetLedger(t *testing.T) {
 	rpcBackend, mockClient := setupRPCTest(t)
 	ctx := context.Background()
 	sequence := uint32(12345)
+	mockHealth := protocol.GetHealthResponse{
+		OldestLedger: 12345,
+		LatestLedger: 12345 + 10,
+	}
+	mockClient.On("GetHealth", ctx).Return(mockHealth, nil).Once()
+
+	preparedRange := Range{from: sequence, to: sequence + 10, bounded: true}
+	rpcBackend.PrepareRange(ctx, preparedRange)
 
 	lcm := xdr.LedgerCloseMeta{
 		V: 0,
@@ -78,7 +91,7 @@ func TestRPCGetLedger(t *testing.T) {
 		LatestLedger: sequence + 10,
 	}
 
-	mockNotFoundResponse := protocol.GetLedgersResponse{
+	mockMissingLedgerResponse := protocol.GetLedgersResponse{
 		Ledgers:      []protocol.LedgerInfo{},
 		LatestLedger: sequence + 10,
 	}
@@ -96,14 +109,14 @@ func TestRPCGetLedger(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, sequence, uint32(actualLCM.V0.LedgerHeader.Header.LedgerSeq))
 
-	// Test not found response
+	// Test requested ledger is after oldest range in rpc but, was missing from response
 	notFoundSequnce := sequence + 1
 	expectedReq.StartLedger = notFoundSequnce
-	mockClient.On("GetLedgers", ctx, expectedReq).Return(mockNotFoundResponse, nil).Once()
+	mockClient.On("GetLedgers", ctx, expectedReq).Return(mockMissingLedgerResponse, nil).Once()
 	_, err = rpcBackend.GetLedger(ctx, notFoundSequnce)
-	var notFoundErr *RPCLedgerNotFoundError
-	assert.ErrorAs(t, err, &notFoundErr)
-	assert.Equal(t, notFoundSequnce, notFoundErr.Sequence)
+	var missingErr *RPCLedgerMissingError
+	assert.ErrorAs(t, err, &missingErr)
+	assert.Equal(t, notFoundSequnce, missingErr.Sequence)
 
 	// Test error response
 	expectedErr := fmt.Errorf("rpc connection error")
@@ -143,6 +156,14 @@ func TestGetLedgerBeyondLatest(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	requestedSequence := uint32(100)
+	mockHealth := protocol.GetHealthResponse{
+		OldestLedger: 100,
+		LatestLedger: 200,
+	}
+	mockClient.On("GetHealth", ctx).Return(mockHealth, nil).Once()
+
+	preparedRange := Range{from: requestedSequence, to: requestedSequence + 10, bounded: true}
+	rpcBackend.PrepareRange(ctx, preparedRange)
 	latestLedger := requestedSequence - 1 // Latest ledger is 1 behind requested
 
 	rpcGetLedgersRequest := protocol.GetLedgersRequest{
@@ -190,7 +211,7 @@ func TestGetLedgerBeyondLatest(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, requestedSequence, uint32(actualLCM.V0.LedgerHeader.Header.LedgerSeq))
 
-	// Verify timing - GetLedger should have waited one interval
+	// Verify timing - GetLedger should have waited one interval and then refetched ledgers from rpc on second call
 	assert.GreaterOrEqual(t, duration.Seconds(), float64(RPCBackendDefaultWaitIntervalSeconds))
 
 }
@@ -198,10 +219,18 @@ func TestGetLedgerBeyondLatest(t *testing.T) {
 func TestGetLedgerContextTimeout(t *testing.T) {
 	rpcBackend, mockClient := setupRPCTest(t)
 	sequence := uint32(100)
-
 	// Create context with short timeout
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
+
+	mockHealth := protocol.GetHealthResponse{
+		OldestLedger: 100,
+		LatestLedger: 200,
+	}
+	mockClient.On("GetHealth", ctx).Return(mockHealth, nil).Once()
+
+	preparedRange := Range{from: sequence, to: sequence + 10, bounded: true}
+	rpcBackend.PrepareRange(ctx, preparedRange)
 
 	// Setup mock to return "ledger beyond latest" response
 	expectedReq := protocol.GetLedgersRequest{
@@ -219,4 +248,182 @@ func TestGetLedgerContextTimeout(t *testing.T) {
 	// Call GetLedger and verify it returns context deadline exceeded
 	_, err := rpcBackend.GetLedger(ctx, sequence)
 	assert.ErrorIs(t, err, context.DeadlineExceeded)
+}
+
+func TestPrepareRange(t *testing.T) {
+	t.Run("bounded range", func(t *testing.T) {
+		backend, mockClient := setupRPCTest(t)
+		ctx := context.Background()
+
+		mockHealth := protocol.GetHealthResponse{
+			OldestLedger: 100,
+			LatestLedger: 200,
+		}
+		mockClient.On("GetHealth", ctx).Return(mockHealth, nil).Once()
+
+		err := backend.PrepareRange(ctx, Range{from: 150, to: 180, bounded: true})
+		assert.NoError(t, err)
+		assert.Equal(t, uint32(150), backend.nextLedger)
+	})
+
+	t.Run("unbounded range", func(t *testing.T) {
+		backend, mockClient := setupRPCTest(t)
+		ctx := context.Background()
+
+		mockHealth := protocol.GetHealthResponse{
+			OldestLedger: 100,
+			LatestLedger: 200,
+		}
+		mockClient.On("GetHealth", ctx).Return(mockHealth, nil).Once()
+
+		err := backend.PrepareRange(ctx, Range{from: 150, bounded: false})
+		assert.NoError(t, err)
+		assert.Equal(t, uint32(150), backend.nextLedger)
+	})
+
+	t.Run("error when start is before oldest ledger", func(t *testing.T) {
+		backend, mockClient := setupRPCTest(t)
+		ctx := context.Background()
+
+		mockHealth := protocol.GetHealthResponse{
+			OldestLedger: 100,
+			LatestLedger: 200,
+		}
+		mockClient.On("GetHealth", ctx).Return(mockHealth, nil).Once()
+
+		err := backend.PrepareRange(ctx, Range{from: 50, to: 150, bounded: true})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "before oldest available ledger")
+	})
+
+	t.Run("error when end is beyond latest ledger", func(t *testing.T) {
+		backend, mockClient := setupRPCTest(t)
+		ctx := context.Background()
+
+		mockHealth := protocol.GetHealthResponse{
+			OldestLedger: 100,
+			LatestLedger: 200,
+		}
+		mockClient.On("GetHealth", ctx).Return(mockHealth, nil).Once()
+
+		err := backend.PrepareRange(ctx, Range{from: 150, to: 250, bounded: true})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "beyond latest available ledger")
+	})
+
+	t.Run("error when backend is closed", func(t *testing.T) {
+		backend, _ := setupRPCTest(t)
+		backend.closed = true
+
+		err := backend.PrepareRange(context.Background(), Range{from: 1, to: 2})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "closed")
+	})
+
+	t.Run("error when already prepared", func(t *testing.T) {
+		backend, mockClient := setupRPCTest(t)
+		ctx := context.Background()
+
+		mockHealth := protocol.GetHealthResponse{
+			OldestLedger: 100,
+			LatestLedger: 200,
+		}
+		mockClient.On("GetHealth", ctx).Return(mockHealth, nil).Once()
+
+		// First prepare should succeed
+		err := backend.PrepareRange(ctx, Range{from: 150, to: 180, bounded: true})
+		assert.NoError(t, err)
+
+		// Second prepare should fail
+		err = backend.PrepareRange(ctx, Range{from: 160, to: 190, bounded: true})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "already prepared")
+	})
+
+	t.Run("error when GetHealth fails", func(t *testing.T) {
+		backend, mockClient := setupRPCTest(t)
+		ctx := context.Background()
+
+		expectedErr := fmt.Errorf("rpc connection error")
+		mockClient.On("GetHealth", ctx).Return(protocol.GetHealthResponse{}, expectedErr).Once()
+
+		err := backend.PrepareRange(ctx, Range{from: 150, to: 180, bounded: true})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), expectedErr.Error())
+	})
+}
+
+func TestIsPrepared(t *testing.T) {
+	t.Run("returns false when backend is not prepared", func(t *testing.T) {
+		backend, _ := setupRPCTest(t)
+
+		prepared, err := backend.IsPrepared(context.Background(), Range{from: 100, to: 200, bounded: true})
+		assert.NoError(t, err)
+		assert.False(t, prepared, "should return false when no range is prepared")
+	})
+
+	t.Run("returns true when ranges match exactly", func(t *testing.T) {
+		backend, mockClient := setupRPCTest(t)
+		ctx := context.Background()
+
+		// First prepare a range
+		mockHealth := protocol.GetHealthResponse{
+			OldestLedger: 1,
+			LatestLedger: 1000,
+		}
+		mockClient.On("GetHealth", ctx).Return(mockHealth, nil).Once()
+
+		// Prepare initial range
+		targetRange := Range{from: 100, to: 200, bounded: true}
+		err := backend.PrepareRange(ctx, targetRange)
+		assert.NoError(t, err)
+
+		// Check same range
+		prepared, err := backend.IsPrepared(ctx, targetRange)
+		assert.NoError(t, err)
+		assert.True(t, prepared, "should return true for exact range match")
+	})
+
+	t.Run("returns false when ranges differ", func(t *testing.T) {
+		backend, mockClient := setupRPCTest(t)
+		ctx := context.Background()
+
+		// Prepare initial range
+		mockHealth := protocol.GetHealthResponse{
+			OldestLedger: 1,
+			LatestLedger: 1000,
+		}
+		mockClient.On("GetHealth", ctx).Return(mockHealth, nil).Once()
+
+		err := backend.PrepareRange(ctx, Range{from: 100, to: 200, bounded: true})
+		assert.NoError(t, err)
+
+		// Test different range variations
+		testCases := []struct {
+			name   string
+			range_ Range
+		}{
+			{"different from", Range{from: 101, to: 200, bounded: true}},
+			{"different to", Range{from: 100, to: 201, bounded: true}},
+			{"different bounded", Range{from: 100, bounded: false}},
+		}
+
+		for _, tc := range testCases {
+			t.Run(tc.name, func(t *testing.T) {
+				prepared, err := backend.IsPrepared(ctx, tc.range_)
+				assert.NoError(t, err)
+				assert.False(t, prepared, "should return false when ranges don't match exactly")
+			})
+		}
+	})
+
+	t.Run("returns error when backend is closed", func(t *testing.T) {
+		backend, _ := setupRPCTest(t)
+		backend.closed = true
+
+		prepared, err := backend.IsPrepared(context.Background(), Range{from: 100, to: 200})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "closed")
+		assert.False(t, prepared)
+	})
 }
