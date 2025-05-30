@@ -40,7 +40,7 @@ type RPCClient interface {
 
 // RPCLedgerBackend does not support stateful range preparations.
 // The rpc backend is composed of ephermeral sliding window of ledgers and therefore
-// connot determinsitcally prepare a range of ledgers.
+// connot prepare a range of ledgers which remains consistent over time.
 // Callers should focus on using RPCLedgerBackend.GetLedger for the ledger range needed
 // and check the returned error for presence of a ledger.
 type RPCLedgerBackend struct {
@@ -53,7 +53,19 @@ type RPCLedgerBackend struct {
 	closed        bool
 }
 
-// Creates the RPCLedgerBackend with the given RPCClient.
+// NewRPCLedgerBackend creates a new RPCLedgerBackend instance that fetches ledger data
+// from a Stellar RPC server.
+//
+// Parameters:
+//   - client: The RPC client implementation used to communicate with the server
+//   - bufferSize: Size of the ledger retrieval buffer (in number of ledgers).
+//     If 0, defaults to 10.
+//
+// Returns:
+//   - *RPCLedgerBackend: A new backend instance ready for use
+//   - error: If initialization fails
+//
+// The returned backend must be prepared with PrepareRange before GetLedger can be called.
 func NewRPCLedgerBackend(client RPCClient, bufferSize uint32) (*RPCLedgerBackend, error) {
 	if bufferSize == 0 {
 		bufferSize = RPCBackendDefaultBufferSize
@@ -66,7 +78,18 @@ func NewRPCLedgerBackend(client RPCClient, bufferSize uint32) (*RPCLedgerBackend
 	return backend, nil
 }
 
-// Creates the RPCLedgerBackend with the given RPC URL and optional HTTP client.
+// NewRPCLedgerBackendFromURL creates a new RPCLedgerBackend instance using the provided RPC URL.
+//
+// Parameters:
+//   - rpcURL: URL of the Stellar RPC server - "https://rpc_host:8000")
+//   - httpClient: Optional custom HTTP client. If nil, a default client will be used
+//   - bufferSize: Size of the ledger buffer (in number of ledgers). If 0, defaults to 10
+//
+// Returns:
+//   - *RPCLedgerBackend: A new backend instance ready for use
+//   - error: If initialization fails
+//
+// The returned backend must be prepared with PrepareRange before GetLedger can be called.
 func NewRPCLedgerBackendFromURL(rpcURL string, httpClient *http.Client, bufferSize uint32) (*RPCLedgerBackend, error) {
 	return NewRPCLedgerBackend(rpc.NewClient(rpcURL, httpClient), bufferSize)
 }
@@ -96,11 +119,13 @@ func (b *RPCLedgerBackend) GetLatestLedgerSequence(ctx context.Context) (sequenc
 // Returns:
 //   - xdr.LedgerCloseMeta: The ledger meta data if found
 //   - error: One of:
-//   - nil if ledger is found
-//   - RPCLedgerNotFoundError if ledger is not in RPC's retention window
+//   - nil                      if ledger is found
+//   - RPCLedgerNotFoundError   if sequence falls within the RPC's retention window,
+//     but the ledger for sequence is not in RPC's retained history
 //   - context.DeadlineExceeded if context times out
-//   - context.Canceled if context is cancelled
-//   - Other errors that may be due to RPC usage or network issues
+//   - context.Canceled         if context is cancelled
+//   - Error                    if sequence falls outside of RPC's current retention window
+//     or due to any other error in general
 func (b *RPCLedgerBackend) GetLedger(ctx context.Context, sequence uint32) (xdr.LedgerCloseMeta, error) {
 	if err := b.checkClosed(); err != nil {
 		return xdr.LedgerCloseMeta{}, err
@@ -145,7 +170,9 @@ func (b *RPCLedgerBackend) GetLedger(ctx context.Context, sequence uint32) (xdr.
 }
 
 // PrepareRange validates that the requested ledger range is within the RPC server's
-// available history window by checking the health endpoint.
+// current history window by checking the RPC health endpoint.
+// It cannot gaurantee ledgers within this range will be available when requested later by GetLedger.
+// See Also: GetLedger for more details on how the RPCLedgerBackend handles ledger availability.
 func (b *RPCLedgerBackend) PrepareRange(ctx context.Context, ledgerRange Range) error {
 	if err := b.checkClosed(); err != nil {
 		return err
