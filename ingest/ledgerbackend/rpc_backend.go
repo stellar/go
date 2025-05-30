@@ -180,8 +180,8 @@ func (b *RPCLedgerBackend) GetLedger(ctx context.Context, sequence uint32) (xdr.
 // It cannot gaurantee ledgers within this range will be available when requested later by GetLedger.
 // See Also: GetLedger for more details on how the RPCLedgerBackend handles ledger availability.
 func (b *RPCLedgerBackend) PrepareRange(ctx context.Context, ledgerRange Range) error {
-	b.backendLock.RLock()
-	defer b.backendLock.RUnlock()
+	b.backendLock.Lock()
+	defer b.backendLock.Unlock()
 
 	if err := b.checkClosed(); err != nil {
 		return err
