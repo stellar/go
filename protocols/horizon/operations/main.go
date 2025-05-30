@@ -401,12 +401,15 @@ type RestoreFootprint struct {
 //
 // Amount - expressed as a signed decimal to 7 digits precision.
 // Asset  - the classic asset expressed as issuer and code.
+// DestinationMuxedId - If the event's destination was a muxed address, then include the that in the response as a string
 type AssetContractBalanceChange struct {
 	base.Asset
-	Type   string `json:"type"`
-	From   string `json:"from,omitempty"`
-	To     string `json:"to,omitempty"`
-	Amount string `json:"amount"`
+	Type                   string `json:"type"`
+	From                   string `json:"from,omitempty"`
+	To                     string `json:"to,omitempty"`
+	Amount                 string `json:"amount"`
+	DestinationMuxedIdType string `json:"destination_muxed_id_type,omitempty"`
+	DestinationMuxedId     string `json:"destination_muxed_id,omitempty"`
 }
 
 // Operation interface contains methods implemented by the operation types

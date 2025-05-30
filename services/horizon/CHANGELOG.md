@@ -12,6 +12,7 @@ In Protocol 23, Stellar Core removes in-memory mode and requires on-disk mode (u
 
 ### Added
 - Update default pubnet captive core configuration to replace Whalestack with Creit Technologies in the quorum set ([5564](https://github.com/stellar/go/pull/5564)).
+- Added 2 new optional string fields - `destination_muxed_id_type` and `destination_muxed_id`, in the `asset_balance_changes` section of the `/operations` endpoint. If operation is `InvokeHostFunction` and if the destination is a muxed address, then the `destination_muxed_id_type` represents the type of the muxed id -  `uint64`,`string` or `bytes`, and `destination_muxed_id` contains the value (hex encoded string, if the type is bytes )
 
 ## 22.0.3
 
