@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/stellar/go/xdr"
@@ -41,16 +42,19 @@ type RPCClient interface {
 // RPCLedgerBackend does not support stateful range preparations.
 // The rpc backend is composed of ephermeral sliding window of ledgers and therefore
 // connot prepare a range of ledgers which remains consistent over time.
+//
 // Callers should focus on using RPCLedgerBackend.GetLedger for the ledger range needed
 // and check the returned error for presence of a ledger.
+//
+// Instances of RPCLedgerBackend are thread-safe and can be used concurrently across goroutines.
 type RPCLedgerBackend struct {
 	client        RPCClient
 	buffer        map[uint32]xdr.LedgerCloseMeta
 	bufferSize    uint32
 	preparedRange *Range
 	nextLedger    uint32
-	Ledger        uint32
 	closed        bool
+	backendLock   sync.RWMutex
 }
 
 // NewRPCLedgerBackend creates a new RPCLedgerBackend instance that fetches ledger data
@@ -96,6 +100,9 @@ func NewRPCLedgerBackendFromURL(rpcURL string, httpClient *http.Client, bufferSi
 
 // GetLatestLedgerSequence queries the RPC server for the latest ledger sequence.
 func (b *RPCLedgerBackend) GetLatestLedgerSequence(ctx context.Context) (sequence uint32, err error) {
+	b.backendLock.RLock()
+	defer b.backendLock.RUnlock()
+
 	ledger, err := b.client.GetLatestLedger(ctx)
 	if err != nil {
 		return 0, fmt.Errorf("failed to get latest ledger sequence: %w", err)
@@ -127,16 +134,15 @@ func (b *RPCLedgerBackend) GetLatestLedgerSequence(ctx context.Context) (sequenc
 //   - Error                    if sequence falls outside of RPC's current retention window
 //     or due to any other error in general
 func (b *RPCLedgerBackend) GetLedger(ctx context.Context, sequence uint32) (xdr.LedgerCloseMeta, error) {
+	b.backendLock.RLock()
+	defer b.backendLock.RUnlock()
+
 	if err := b.checkClosed(); err != nil {
 		return xdr.LedgerCloseMeta{}, err
 	}
 
 	if b.preparedRange == nil {
 		return xdr.LedgerCloseMeta{}, fmt.Errorf("RPCLedgerBackend must be prepared before calling GetLedger")
-	}
-
-	if b.closed {
-		return xdr.LedgerCloseMeta{}, fmt.Errorf("RPCLedgerBackend is closed; cannot GetLedger")
 	}
 
 	if sequence < b.preparedRange.from || (b.preparedRange.bounded && sequence > b.preparedRange.to) {
@@ -174,6 +180,9 @@ func (b *RPCLedgerBackend) GetLedger(ctx context.Context, sequence uint32) (xdr.
 // It cannot gaurantee ledgers within this range will be available when requested later by GetLedger.
 // See Also: GetLedger for more details on how the RPCLedgerBackend handles ledger availability.
 func (b *RPCLedgerBackend) PrepareRange(ctx context.Context, ledgerRange Range) error {
+	b.backendLock.RLock()
+	defer b.backendLock.RUnlock()
+
 	if err := b.checkClosed(); err != nil {
 		return err
 	}
@@ -202,6 +211,9 @@ func (b *RPCLedgerBackend) PrepareRange(ctx context.Context, ledgerRange Range) 
 }
 
 func (b *RPCLedgerBackend) IsPrepared(ctx context.Context, ledgerRange Range) (bool, error) {
+	b.backendLock.RLock()
+	defer b.backendLock.RUnlock()
+
 	if err := b.checkClosed(); err != nil {
 		return false, err
 	}
@@ -218,6 +230,9 @@ func (b *RPCLedgerBackend) IsPrepared(ctx context.Context, ledgerRange Range) (b
 }
 
 func (b *RPCLedgerBackend) Close() error {
+	b.backendLock.RLock()
+	defer b.backendLock.RUnlock()
+
 	b.closed = true
 	return nil
 }
