@@ -36,7 +36,6 @@ func (e *RPCLedgerBeyondLatestError) Error() string {
 type RPCClient interface {
 	GetLatestLedger(ctx context.Context) (protocol.GetLatestLedgerResponse, error)
 	GetLedgers(ctx context.Context, req protocol.GetLedgersRequest) (protocol.GetLedgersResponse, error)
-	GetHealth(ctx context.Context) (protocol.GetHealthResponse, error)
 }
 
 // RPCLedgerBackend does not support stateful range preparations.
@@ -127,7 +126,7 @@ func (b *RPCLedgerBackend) GetLatestLedgerSequence(ctx context.Context) (sequenc
 //   - xdr.LedgerCloseMeta: The ledger meta data if found
 //   - error: One of:
 //   - nil                      if ledger is found
-//   - RPCLedgerNotFoundError   if sequence falls within the RPC's retention window,
+//   - RPCLedgerMissingError    if sequence falls within the RPC's retention window,
 //     but the ledger for sequence is not in RPC's retained history
 //   - context.DeadlineExceeded if context times out
 //   - context.Canceled         if context is cancelled
@@ -175,8 +174,9 @@ func (b *RPCLedgerBackend) GetLedger(ctx context.Context, sequence uint32) (xdr.
 	}
 }
 
-// PrepareRange validates that the requested ledger range is within the RPC server's
-// current history window by checking the RPC health endpoint.
+// PrepareRange initiates retrieval of requested ledger range
+// It does minimal validation of data on RPC up front.
+// It wil check if starting point of range is withing current history window of the RPC server.
 // It cannot gaurantee ledgers within this range will be available when requested later by GetLedger.
 // See Also: GetLedger for more details on how the RPCLedgerBackend handles ledger availability.
 func (b *RPCLedgerBackend) PrepareRange(ctx context.Context, ledgerRange Range) error {
@@ -190,21 +190,17 @@ func (b *RPCLedgerBackend) PrepareRange(ctx context.Context, ledgerRange Range) 
 	if b.preparedRange != nil {
 		return fmt.Errorf("RPCLedgerBackend is already prepared with range [%d, %d]", b.preparedRange.from, b.preparedRange.to)
 	}
-	health, err := b.client.GetHealth(ctx)
+
+	_, err := b.getBufferedLedger(ctx, ledgerRange.from)
 	if err != nil {
-		return fmt.Errorf("failed to get RPC health info: %w", err)
+		// these are handled at ensuing GetLedger time
+		_, isBeyondErr := err.(*RPCLedgerBeyondLatestError)
+		_, isMissingErr := err.(*RPCLedgerMissingError)
+		if !(isBeyondErr || isMissingErr) {
+			return err
+		}
 	}
 
-	if ledgerRange.from < health.OldestLedger {
-		return fmt.Errorf("requested range start ledger %d is before oldest available ledger %d",
-			ledgerRange.from, health.OldestLedger)
-	}
-
-	// Check bounded range end is not beyond latest ledger
-	if ledgerRange.bounded && ledgerRange.to > health.LatestLedger {
-		return fmt.Errorf("requested range end ledger %d is beyond latest available ledger %d",
-			ledgerRange.to, health.LatestLedger)
-	}
 	b.nextLedger = ledgerRange.from
 	b.preparedRange = &ledgerRange
 	return nil
