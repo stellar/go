@@ -34,7 +34,6 @@ func (e *RPCLedgerBeyondLatestError) Error() string {
 
 // The minimum required RPC client interface required for usage by RPCLedgerBackend.
 type RPCClient interface {
-	GetLatestLedger(ctx context.Context) (protocol.GetLatestLedgerResponse, error)
 	GetLedgers(ctx context.Context, req protocol.GetLedgersRequest) (protocol.GetLedgersResponse, error)
 }
 
@@ -97,16 +96,26 @@ func NewRPCLedgerBackendFromURL(rpcURL string, httpClient *http.Client, bufferSi
 	return NewRPCLedgerBackend(rpc.NewClient(rpcURL, httpClient), bufferSize)
 }
 
-// GetLatestLedgerSequence queries the RPC server for the latest ledger sequence.
+// GetLatestLedgerSequence returns the last ledger sequence returned by GetLedger.
 func (b *RPCLedgerBackend) GetLatestLedgerSequence(ctx context.Context) (sequence uint32, err error) {
 	b.backendLock.RLock()
 	defer b.backendLock.RUnlock()
 
-	ledger, err := b.client.GetLatestLedger(ctx)
-	if err != nil {
-		return 0, fmt.Errorf("failed to get latest ledger sequence: %w", err)
+	if err := b.checkClosed(); err != nil {
+		return 0, err
 	}
-	return ledger.Sequence, nil
+
+	if b.preparedRange == nil {
+		return 0, fmt.Errorf("RPCLedgerBackend must be prepared before calling GetLatestLedgerSequence")
+	}
+
+	// mimic the expected behavior for backend, get latest returns 0 if prepared
+	// but GetLedger is not called yet, as this means tha backend has not advanced into any ledgers yet
+	if b.nextLedger == b.preparedRange.from {
+		return 0, nil
+	}
+
+	return b.nextLedger - 1, nil
 }
 
 // GetLedger queries the RPC server for a specific ledger sequence and returns the meta data.

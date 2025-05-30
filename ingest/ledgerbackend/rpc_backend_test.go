@@ -17,11 +17,6 @@ type MockRPCClient struct {
 	mock.Mock
 }
 
-func (m *MockRPCClient) GetLatestLedger(ctx context.Context) (protocol.GetLatestLedgerResponse, error) {
-	args := m.Called(ctx)
-	return args.Get(0).(protocol.GetLatestLedgerResponse), args.Error(1)
-}
-
 func (m *MockRPCClient) GetLedgers(ctx context.Context, req protocol.GetLedgersRequest) (protocol.GetLedgersResponse, error) {
 	args := m.Called(ctx, req)
 	return args.Get(0).(protocol.GetLedgersResponse), args.Error(1)
@@ -34,19 +29,6 @@ func setupRPCTest(t *testing.T) (*RPCLedgerBackend, *MockRPCClient) {
 	return backend, mockClient
 }
 
-func TestRPCGetLatestLedgerSequence(t *testing.T) {
-	rpcBackend, mockClient := setupRPCTest(t)
-	ctx := context.Background()
-	expectedSequence := uint32(12345)
-	mockResponse := protocol.GetLatestLedgerResponse{
-		Sequence: expectedSequence,
-		Hash:     "hasge",
-	}
-	mockClient.On("GetLatestLedger", ctx).Return(mockResponse, nil)
-	sequence, err := rpcBackend.GetLatestLedgerSequence(ctx)
-	assert.NoError(t, err)
-	assert.Equal(t, expectedSequence, sequence)
-}
 func TestRPCGetLedger(t *testing.T) {
 	rpcBackend, mockClient := setupRPCTest(t)
 	ctx := context.Background()
@@ -456,5 +438,51 @@ func TestIsPrepared(t *testing.T) {
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "closed")
 		assert.False(t, prepared)
+	})
+}
+
+func TestRPCBackendGetLatestLedgerSequence(t *testing.T) {
+	t.Run("returns error when closed", func(t *testing.T) {
+		backend, _ := setupRPCTest(t)
+		backend.closed = true
+
+		seq, err := backend.GetLatestLedgerSequence(context.Background())
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "RPCLedgerBackend is closed")
+		assert.Equal(t, uint32(0), seq)
+	})
+
+	t.Run("returns error when not prepared", func(t *testing.T) {
+		backend, _ := setupRPCTest(t)
+
+		seq, err := backend.GetLatestLedgerSequence(context.Background())
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "must be prepared")
+		assert.Equal(t, uint32(0), seq)
+	})
+
+	t.Run("returns 0 when nextLedger equals range.from", func(t *testing.T) {
+		backend, _ := setupRPCTest(t)
+
+		// Directly set the prepared range and nextLedger
+		backend.preparedRange = &Range{from: 100, to: 200, bounded: true}
+		backend.nextLedger = 100
+
+		seq, err := backend.GetLatestLedgerSequence(context.Background())
+		assert.NoError(t, err)
+		assert.Equal(t, uint32(0), seq)
+	})
+
+	t.Run("returns last ledger read by GetLedger", func(t *testing.T) {
+		backend, _ := setupRPCTest(t)
+
+		// Directly set the prepared range and nextLedger
+		backend.preparedRange = &Range{from: 100, to: 200, bounded: true}
+		// Simulate that GetLedger has read up to sequence 104
+		backend.nextLedger = 105
+
+		seq, err := backend.GetLatestLedgerSequence(context.Background())
+		assert.NoError(t, err)
+		assert.Equal(t, uint32(104), seq)
 	})
 }
