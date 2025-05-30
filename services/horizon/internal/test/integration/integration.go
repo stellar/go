@@ -68,6 +68,7 @@ type Config struct {
 	StellarRPCDockerImage     string
 	SkipProtocolUpgrade       bool
 	QuickExpiration           bool
+	QuickEviction             bool
 	NetworkPassphrase         string
 
 	// Weird naming here because bools default to false, but we want to start
@@ -166,10 +167,16 @@ func NewTest(t *testing.T, config Config) *Test {
 		NetworkPassphrase:                     config.NetworkPassphrase,
 		TestingMinimumPersistentEntryLifetime: 65536,
 		TestingSorobanHighLimitOverride:       false,
+		OverrideEvictionParamsForTesting:      false,
 	}
 	if config.QuickExpiration {
 		validatorParams.TestingSorobanHighLimitOverride = true
 		validatorParams.TestingMinimumPersistentEntryLifetime = 10
+	}
+	if config.QuickEviction {
+		validatorParams.OverrideEvictionParamsForTesting = true
+		validatorParams.TestingStartingEvictionScanLevel = 2
+		validatorParams.TestingMaxEntriesToArchive = 100
 	}
 	var i *Test
 	if !config.SkipCoreContainerCreation {

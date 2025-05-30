@@ -113,6 +113,9 @@ type captiveCoreTomlValues struct {
 	BucketListDBMemoryForCaching          *uint                `toml:"BUCKETLIST_DB_MEMORY_FOR_CACHING,omitempty"`
 	EnableEmitClassicEvents               *bool                `toml:"EMIT_CLASSIC_EVENTS,omitempty"`
 	EnableBackfillStellarAssetEvents      *bool                `toml:"BACKFILL_STELLAR_ASSET_EVENTS,omitempty"`
+	OverrideEvictionParamsForTesting      *bool                `toml:"OVERRIDE_EVICTION_PARAMS_FOR_TESTING,omitempty"`
+	TestingStartingEvictionScanLevel      *uint                `toml:"TESTING_STARTING_EVICTION_SCAN_LEVEL,omitempty"`
+	TestingMaxEntriesToArchive            *uint                `toml:"TESTING_MAX_ENTRIES_TO_ARCHIVE,omitempty"`
 }
 
 // QuorumSetIsConfigured returns true if there is a quorum set defined in the configuration.
