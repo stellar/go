@@ -129,10 +129,12 @@ func (b *RPCLedgerBackend) GetLatestLedgerSequence(ctx context.Context) (sequenc
 // it will block and retry until either:
 //   - The ledger becomes available
 //   - The context is cancelled or times out
-//   - An error occurs
+//   - The backend is closed
+//   - An error occurs while fetching the ledger
 //
 // The caller can control the maximum wait time by setting a timeout or deadline on the provided context.
-//
+// Or by invoking the Close method from another goroutine.
+
 // Parameters:
 //   - ctx: Context for cancellation and timeout control
 //   - sequence: The ledger sequence number to retrieve meta data for
@@ -236,7 +238,7 @@ func (b *RPCLedgerBackend) IsPrepared(ctx context.Context, ledgerRange Range) (b
 }
 
 // Close cleans up the RPCLedgerBackend resources and closes the backend.
-// It will halt any ongoing GerLedger calls that may be in progress.
+// It will halt any ongoing GerLedger calls that may be in progress on other goroutines.
 func (b *RPCLedgerBackend) Close() error {
 	b.closedOnce.Do(func() {
 		close(b.closed)
