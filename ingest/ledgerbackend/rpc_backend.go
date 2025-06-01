@@ -13,8 +13,8 @@ import (
 	"github.com/stellar/stellar-rpc/protocol"
 )
 
-const RPCBackendDefaultBufferSize uint32 = 10
-const RPCBackendDefaultWaitIntervalSeconds uint32 = 2
+const rpcBackendDefaultBufferSize uint32 = 10
+const rpcBackendDefaultWaitIntervalSeconds uint32 = 2
 
 type RPCLedgerMissingError struct {
 	Sequence uint32
@@ -38,12 +38,6 @@ type RPCClient interface {
 	GetLedgers(ctx context.Context, req protocol.GetLedgersRequest) (protocol.GetLedgersResponse, error)
 }
 
-// RPCLedgerBackend does not support stateful range preparations.
-// The rpc backend is composed of ephermeral sliding window of ledgers and therefore
-// connot prepare a range of ledgers which remains consistent over time.
-//
-// Callers should focus on using RPCLedgerBackend.GetLedger for the ledger range needed
-// and check the returned error for presence of a ledger.
 type RPCLedgerBackend struct {
 	client        RPCClient
 	buffer        map[uint32]xdr.LedgerCloseMeta
@@ -70,7 +64,7 @@ type RPCLedgerBackend struct {
 // The returned backend must be prepared with PrepareRange before GetLedger can be called.
 func NewRPCLedgerBackend(client RPCClient, bufferSize uint32) (*RPCLedgerBackend, error) {
 	if bufferSize == 0 {
-		bufferSize = RPCBackendDefaultBufferSize
+		bufferSize = rpcBackendDefaultBufferSize
 	}
 	backend := &RPCLedgerBackend{
 		client:     client,
@@ -134,7 +128,7 @@ func (b *RPCLedgerBackend) GetLatestLedgerSequence(ctx context.Context) (sequenc
 //
 // The caller can control the maximum wait time by setting a timeout or deadline on the provided context.
 // Or by invoking the Close method from another goroutine.
-
+//
 // Parameters:
 //   - ctx: Context for cancellation and timeout control
 //   - sequence: The ledger sequence number to retrieve meta data for
@@ -181,16 +175,16 @@ func (b *RPCLedgerBackend) GetLedger(ctx context.Context, sequence uint32) (xdr.
 			return xdr.LedgerCloseMeta{}, fmt.Errorf("RPCLedgerBackend is closed: %w", err)
 		case <-ctx.Done():
 			return xdr.LedgerCloseMeta{}, ctx.Err()
-		case <-time.After(time.Duration(RPCBackendDefaultWaitIntervalSeconds) * time.Second):
+		case <-time.After(time.Duration(rpcBackendDefaultWaitIntervalSeconds) * time.Second):
 			continue
 		}
 	}
 }
 
-// PrepareRange initiates retrieval of requested ledger range
+// PrepareRange initiates retrieval of requested ledger range.
 // It does minimal validation of data on RPC up front.
-// It wil check if starting point of range is withing current history window of the RPC server.
-// It cannot gaurantee ledgers within this range will be available when requested later by GetLedger.
+// It wil check if starting point of range is withing current historical retention window of the RPC server.
+// It cannot gaurantee ledgers within historical ranges will be available when requested later by GetLedger.
 // See Also: GetLedger for more details on how the RPCLedgerBackend handles ledger availability.
 func (b *RPCLedgerBackend) PrepareRange(ctx context.Context, ledgerRange Range) error {
 	b.bufferLock.Lock()

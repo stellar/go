@@ -66,7 +66,7 @@ func TestRPCGetLedger(t *testing.T) {
 	expectedReq := protocol.GetLedgersRequest{
 		StartLedger: sequence,
 		Pagination: &protocol.LedgerPaginationOptions{
-			Limit: uint(RPCBackendDefaultBufferSize),
+			Limit: uint(rpcBackendDefaultBufferSize),
 		},
 	}
 	mockClient.On("GetLedgers", ctx, expectedReq).Return(mockSuccessResponse, nil).Once()
@@ -127,7 +127,7 @@ func TestNewRPCLedgerBackend(t *testing.T) {
 	t.Run("uses default buffer size when 0 provided", func(t *testing.T) {
 		backend, err := NewRPCLedgerBackend(mockClient, 0)
 		assert.NoError(t, err)
-		assert.Equal(t, RPCBackendDefaultBufferSize, backend.bufferSize)
+		assert.Equal(t, rpcBackendDefaultBufferSize, backend.bufferSize)
 		assert.Equal(t, mockClient, backend.client)
 	})
 
@@ -151,7 +151,7 @@ func TestGetLedgerBeyondLatest(t *testing.T) {
 	rpcGetLedgersRequest := protocol.GetLedgersRequest{
 		StartLedger: requestedSequence,
 		Pagination: &protocol.LedgerPaginationOptions{
-			Limit: uint(RPCBackendDefaultBufferSize),
+			Limit: uint(rpcBackendDefaultBufferSize),
 		},
 	}
 	// Setup first response indicating ledger is beyond latest
@@ -198,7 +198,7 @@ func TestGetLedgerBeyondLatest(t *testing.T) {
 	assert.Equal(t, requestedSequence, uint32(actualLCM.V0.LedgerHeader.Header.LedgerSeq))
 
 	// Verify timing - GetLedger should have waited one interval and then refetched ledgers from rpc on second call
-	assert.GreaterOrEqual(t, duration.Seconds(), float64(RPCBackendDefaultWaitIntervalSeconds))
+	assert.GreaterOrEqual(t, duration.Seconds(), float64(rpcBackendDefaultWaitIntervalSeconds))
 
 }
 
@@ -213,7 +213,7 @@ func TestGetLedgerContextTimeout(t *testing.T) {
 	expectedReq := protocol.GetLedgersRequest{
 		StartLedger: sequence,
 		Pagination: &protocol.LedgerPaginationOptions{
-			Limit: uint(RPCBackendDefaultBufferSize),
+			Limit: uint(rpcBackendDefaultBufferSize),
 		},
 	}
 	// represents request that is beyond latest on rpc
@@ -242,7 +242,7 @@ func TestGetLedgerWhileClosed(t *testing.T) {
 	expectedReq := protocol.GetLedgersRequest{
 		StartLedger: sequence,
 		Pagination: &protocol.LedgerPaginationOptions{
-			Limit: uint(RPCBackendDefaultBufferSize),
+			Limit: uint(rpcBackendDefaultBufferSize),
 		},
 	}
 	// represents request that is beyond latest on rpc
@@ -275,7 +275,7 @@ func TestPrepareRange(t *testing.T) {
 		expectedReq := protocol.GetLedgersRequest{
 			StartLedger: start,
 			Pagination: &protocol.LedgerPaginationOptions{
-				Limit: uint(RPCBackendDefaultBufferSize),
+				Limit: uint(rpcBackendDefaultBufferSize),
 			},
 		}
 		mockResponse := protocol.GetLedgersResponse{
@@ -297,7 +297,7 @@ func TestPrepareRange(t *testing.T) {
 		expectedReq := protocol.GetLedgersRequest{
 			StartLedger: start,
 			Pagination: &protocol.LedgerPaginationOptions{
-				Limit: uint(RPCBackendDefaultBufferSize),
+				Limit: uint(rpcBackendDefaultBufferSize),
 			},
 		}
 		mockResponse := protocol.GetLedgersResponse{
@@ -319,7 +319,7 @@ func TestPrepareRange(t *testing.T) {
 		expectedReq := protocol.GetLedgersRequest{
 			StartLedger: start,
 			Pagination: &protocol.LedgerPaginationOptions{
-				Limit: uint(RPCBackendDefaultBufferSize),
+				Limit: uint(rpcBackendDefaultBufferSize),
 			},
 		}
 		mockResponse := protocol.GetLedgersResponse{
@@ -348,7 +348,7 @@ func TestPrepareRange(t *testing.T) {
 		expectedReq := protocol.GetLedgersRequest{
 			StartLedger: start,
 			Pagination: &protocol.LedgerPaginationOptions{
-				Limit: uint(RPCBackendDefaultBufferSize),
+				Limit: uint(rpcBackendDefaultBufferSize),
 			},
 		}
 
