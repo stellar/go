@@ -234,6 +234,38 @@ func TestGetLedgerContextTimeout(t *testing.T) {
 	assert.ErrorIs(t, err, context.DeadlineExceeded)
 }
 
+func TestGetLedgerWhileClosed(t *testing.T) {
+	rpcBackend, mockClient := setupRPCTest(t)
+	sequence := uint32(100)
+	ctx := context.Background()
+
+	expectedReq := protocol.GetLedgersRequest{
+		StartLedger: sequence,
+		Pagination: &protocol.LedgerPaginationOptions{
+			Limit: uint(RPCBackendDefaultBufferSize),
+		},
+	}
+	// represents request that is beyond latest on rpc
+	// allows it to check for retry which will fail due to closed backend
+	mockResponse := protocol.GetLedgersResponse{
+		LatestLedger: sequence - 2,
+		Ledgers:      []protocol.LedgerInfo{},
+	}
+
+	mockClient.On("GetLedgers", ctx, expectedReq).
+		Run(func(args mock.Arguments) {
+			assert.NoError(t, rpcBackend.Close())
+		}).Return(mockResponse, nil).Once()
+
+	// Prepare the range first, it doesn't mind the beyond latest response
+	preparedRange := Range{from: sequence, to: sequence + 10, bounded: true}
+	rpcBackend.PrepareRange(ctx, preparedRange)
+
+	// Call GetLedger it will attempt to retry due to beyond latest, and detect closed
+	_, err := rpcBackend.GetLedger(ctx, sequence)
+	assert.ErrorContains(t, err, "RPCLedgerBackend is closed")
+}
+
 func TestPrepareRange(t *testing.T) {
 	t.Run("bounded range", func(t *testing.T) {
 		backend, mockClient := setupRPCTest(t)
@@ -248,7 +280,7 @@ func TestPrepareRange(t *testing.T) {
 		}
 		mockResponse := protocol.GetLedgersResponse{
 			LatestLedger: start + 10,
-			Ledgers:      []protocol.LedgerInfo{},
+			Ledgers:      []protocol.LedgerInfo{generateRPCInfo(start)},
 		}
 		mockClient.On("GetLedgers", ctx, expectedReq).Return(mockResponse, nil)
 
@@ -270,22 +302,13 @@ func TestPrepareRange(t *testing.T) {
 		}
 		mockResponse := protocol.GetLedgersResponse{
 			LatestLedger: start + 10,
-			Ledgers:      []protocol.LedgerInfo{},
+			Ledgers:      []protocol.LedgerInfo{generateRPCInfo(start)},
 		}
 		mockClient.On("GetLedgers", ctx, expectedReq).Return(mockResponse, nil)
 
 		err := backend.PrepareRange(ctx, Range{from: 150, bounded: false})
 		assert.NoError(t, err)
 		assert.Equal(t, uint32(150), backend.nextLedger)
-	})
-
-	t.Run("error when backend is closed", func(t *testing.T) {
-		backend, _ := setupRPCTest(t)
-		backend.closed = true
-
-		err := backend.PrepareRange(context.Background(), Range{from: 1, to: 2})
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "closed")
 	})
 
 	t.Run("error when already prepared", func(t *testing.T) {
@@ -301,7 +324,7 @@ func TestPrepareRange(t *testing.T) {
 		}
 		mockResponse := protocol.GetLedgersResponse{
 			LatestLedger: start + 10,
-			Ledgers:      []protocol.LedgerInfo{},
+			Ledgers:      []protocol.LedgerInfo{generateRPCInfo(start)},
 		}
 		mockClient.On("GetLedgers", ctx, expectedReq).Return(mockResponse, nil).Once()
 
@@ -360,56 +383,25 @@ func TestIsPrepared(t *testing.T) {
 	})
 
 	t.Run("returns true when ranges match exactly", func(t *testing.T) {
-		backend, mockClient := setupRPCTest(t)
+		backend, _ := setupRPCTest(t)
 		ctx := context.Background()
 
-		// First prepare a range
+		// establish a prepared range
 		start := uint32(150)
-
-		expectedReq := protocol.GetLedgersRequest{
-			StartLedger: start,
-			Pagination: &protocol.LedgerPaginationOptions{
-				Limit: uint(RPCBackendDefaultBufferSize),
-			},
-		}
-		mockResponse := protocol.GetLedgersResponse{
-			LatestLedger: start + 10,
-			Ledgers:      []protocol.LedgerInfo{},
-		}
-		mockClient.On("GetLedgers", ctx, expectedReq).Return(mockResponse, nil).Once()
-
-		// Prepare initial range
 		targetRange := Range{from: start, to: start + 10, bounded: true}
-		err := backend.PrepareRange(ctx, targetRange)
-		assert.NoError(t, err)
+		backend.preparedRange = &targetRange
 
-		// Check same range
 		prepared, err := backend.IsPrepared(ctx, targetRange)
 		assert.NoError(t, err)
 		assert.True(t, prepared, "should return true for exact range match")
 	})
 
 	t.Run("returns false when ranges differ", func(t *testing.T) {
-		backend, mockClient := setupRPCTest(t)
+		backend, _ := setupRPCTest(t)
 		ctx := context.Background()
 
-		// Prepare initial range
 		start := uint32(150)
-
-		expectedReq := protocol.GetLedgersRequest{
-			StartLedger: start,
-			Pagination: &protocol.LedgerPaginationOptions{
-				Limit: uint(RPCBackendDefaultBufferSize),
-			},
-		}
-		mockResponse := protocol.GetLedgersResponse{
-			LatestLedger: start + 10,
-			Ledgers:      []protocol.LedgerInfo{},
-		}
-		mockClient.On("GetLedgers", ctx, expectedReq).Return(mockResponse, nil).Once()
-
-		err := backend.PrepareRange(ctx, Range{from: start, to: start + 10, bounded: true})
-		assert.NoError(t, err)
+		backend.preparedRange = &Range{from: start, to: start + 10, bounded: true}
 
 		// Test different range variations
 		testCases := []struct {
@@ -432,7 +424,7 @@ func TestIsPrepared(t *testing.T) {
 
 	t.Run("returns error when backend is closed", func(t *testing.T) {
 		backend, _ := setupRPCTest(t)
-		backend.closed = true
+		assert.NoError(t, backend.Close())
 
 		prepared, err := backend.IsPrepared(context.Background(), Range{from: 100, to: 200})
 		assert.Error(t, err)
@@ -444,7 +436,7 @@ func TestIsPrepared(t *testing.T) {
 func TestRPCBackendGetLatestLedgerSequence(t *testing.T) {
 	t.Run("returns error when closed", func(t *testing.T) {
 		backend, _ := setupRPCTest(t)
-		backend.closed = true
+		assert.NoError(t, backend.Close())
 
 		seq, err := backend.GetLatestLedgerSequence(context.Background())
 		assert.Error(t, err)
@@ -461,28 +453,52 @@ func TestRPCBackendGetLatestLedgerSequence(t *testing.T) {
 		assert.Equal(t, uint32(0), seq)
 	})
 
-	t.Run("returns 0 when nextLedger equals range.from", func(t *testing.T) {
+	t.Run("returns 0 when buffer empty", func(t *testing.T) {
 		backend, _ := setupRPCTest(t)
 
 		// Directly set the prepared range and nextLedger
 		backend.preparedRange = &Range{from: 100, to: 200, bounded: true}
 		backend.nextLedger = 100
+		backend.buffer = make(map[uint32]xdr.LedgerCloseMeta)
 
 		seq, err := backend.GetLatestLedgerSequence(context.Background())
 		assert.NoError(t, err)
 		assert.Equal(t, uint32(0), seq)
 	})
 
-	t.Run("returns last ledger read by GetLedger", func(t *testing.T) {
+	t.Run("returns greatest ledger from bufferr", func(t *testing.T) {
 		backend, _ := setupRPCTest(t)
 
 		// Directly set the prepared range and nextLedger
 		backend.preparedRange = &Range{from: 100, to: 200, bounded: true}
 		// Simulate that GetLedger has read up to sequence 104
-		backend.nextLedger = 105
+		backend.nextLedger = 100
+		backend.buffer = make(map[uint32]xdr.LedgerCloseMeta)
+		for i := uint32(100); i <= 104; i++ {
+			lcm := xdr.LedgerCloseMeta{}
+			backend.buffer[i] = lcm
+		}
 
 		seq, err := backend.GetLatestLedgerSequence(context.Background())
 		assert.NoError(t, err)
 		assert.Equal(t, uint32(104), seq)
 	})
+}
+
+func generateRPCInfo(sequence uint32) protocol.LedgerInfo {
+	lcm := xdr.LedgerCloseMeta{
+		V: 0,
+		V0: &xdr.LedgerCloseMetaV0{
+			LedgerHeader: xdr.LedgerHeaderHistoryEntry{
+				Header: xdr.LedgerHeader{
+					LedgerSeq: xdr.Uint32(sequence),
+				},
+			},
+		},
+	}
+	encodedLCM, _ := xdr.MarshalBase64(lcm)
+	return protocol.LedgerInfo{
+		Sequence:       sequence,
+		LedgerMetadata: encodedLCM,
+	}
 }
