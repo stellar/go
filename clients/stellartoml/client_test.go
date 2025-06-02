@@ -66,16 +66,16 @@ func TestClient(t *testing.T) {
 	}
 }
 
-func TestGetStellarTomlPathFromEnv(t *testing.T) {
+func TestGetWellKnownPathFromEnv(t *testing.T) {
 	// Backup and defer restore
 	orig := os.Getenv("STELLAR_TOML_PATH")
 	defer os.Setenv("STELLAR_TOML_PATH", orig)
 
 	// Test default
 	os.Unsetenv("STELLAR_TOML_PATH")
-	assert.Equal(t, WellKnownPath, getStellarTomlPathFromEnv())
+	assert.Equal(t, WellKnownPath, getWellKnownPathFromEnv())
 
 	// Test custom path
 	os.Setenv("STELLAR_TOML_PATH", "/custom/path/stellar.toml")
-	assert.Equal(t, "/custom/path/stellar.toml", getStellarTomlPathFromEnv())
+	assert.Equal(t, "/custom/path/stellar.toml", getWellKnownPathFromEnv())
 }

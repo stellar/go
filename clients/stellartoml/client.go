@@ -56,7 +56,7 @@ func (c *Client) GetStellarTomlByAddress(addr string) (*Response, error) {
 	return c.GetStellarToml(domain)
 }
 
-func getStellarTomlPathFromEnv() string {
+func getWellKnownPathFromEnv() string {
 	path := os.Getenv("STELLAR_TOML_PATH")
 	if path == "" {
 		return WellKnownPath
@@ -75,7 +75,7 @@ func (c *Client) url(domain string) string {
 		scheme = "https"
 	}
 
-	tomlPath := getStellarTomlPathFromEnv()
+	tomlPath := getWellKnownPathFromEnv()
 
 	return fmt.Sprintf("%s://%s%s", scheme, domain, tomlPath)
 }
