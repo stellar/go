@@ -49,46 +49,39 @@ type RPCLedgerBackend struct {
 	bufferLock    sync.RWMutex
 }
 
+type RPCLedgerBackendOptions struct {
+	// Required, URL of the Stellar RPC server
+	RPCServerURL string
+
+	// Optional, size of the ledger retrieval buffer to use with RPC server requests.
+	// if not set, defaults to 10
+	BufferSize uint32
+
+	// Optional, custom HTTP client to use for RPC requests.
+	// If nil, the default http.Client will be used.
+	HttpClient *http.Client
+}
+
 // NewRPCLedgerBackend creates a new RPCLedgerBackend instance that fetches ledger data
 // from a Stellar RPC server.
 //
 // Parameters:
-//   - client: The RPC client implementation used to communicate with the server
-//   - bufferSize: Size of the ledger retrieval buffer (in number of ledgers).
-//     If 0, defaults to 10.
+//   - options: RPCLedgerBackendOptions
 //
 // Returns:
 //   - *RPCLedgerBackend: A new backend instance ready for use
-//   - error: If initialization fails
-//
-// The returned backend must be prepared with PrepareRange before GetLedger can be called.
-func NewRPCLedgerBackend(client RPCClient, bufferSize uint32) (*RPCLedgerBackend, error) {
-	if bufferSize == 0 {
-		bufferSize = rpcBackendDefaultBufferSize
-	}
+func NewRPCLedgerBackend(options RPCLedgerBackendOptions) *RPCLedgerBackend {
 	backend := &RPCLedgerBackend{
-		client:     client,
-		bufferSize: bufferSize,
 		closed:     make(chan struct{}),
+		client:     rpc.NewClient(options.RPCServerURL, options.HttpClient),
+		bufferSize: options.BufferSize,
+	}
+
+	if backend.bufferSize == 0 {
+		backend.bufferSize = rpcBackendDefaultBufferSize
 	}
 	backend.initBuffer()
-	return backend, nil
-}
-
-// NewRPCLedgerBackendFromURL creates a new RPCLedgerBackend instance using the provided RPC URL.
-//
-// Parameters:
-//   - rpcURL: URL of the Stellar RPC server - "https://rpc_host:8000")
-//   - httpClient: Optional custom HTTP client. If nil, a default client will be used
-//   - bufferSize: Size of the ledger buffer (in number of ledgers). If 0, defaults to 10
-//
-// Returns:
-//   - *RPCLedgerBackend: A new backend instance ready for use
-//   - error: If initialization fails
-//
-// The returned backend must be prepared with PrepareRange before GetLedger can be called.
-func NewRPCLedgerBackendFromURL(rpcURL string, httpClient *http.Client, bufferSize uint32) (*RPCLedgerBackend, error) {
-	return NewRPCLedgerBackend(rpc.NewClient(rpcURL, httpClient), bufferSize)
+	return backend
 }
 
 // GetLatestLedgerSequence returns the latest ledger sequence currently loaded by internal buffer.

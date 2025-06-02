@@ -24,8 +24,12 @@ func (m *MockRPCClient) GetLedgers(ctx context.Context, req protocol.GetLedgersR
 
 func setupRPCTest(t *testing.T) (*RPCLedgerBackend, *MockRPCClient) {
 	mockClient := new(MockRPCClient)
-	backend, err := NewRPCLedgerBackend(mockClient, 0)
-	assert.NoError(t, err)
+	backend := &RPCLedgerBackend{
+		client:     mockClient,
+		bufferSize: rpcBackendDefaultBufferSize,
+		closed:     make(chan struct{}),
+	}
+	backend.initBuffer()
 	return backend, mockClient
 }
 
@@ -122,21 +126,25 @@ func TestRPCBackendImplementsInterface(t *testing.T) {
 }
 
 func TestNewRPCLedgerBackend(t *testing.T) {
-	mockClient := new(MockRPCClient)
 
 	t.Run("uses default buffer size when 0 provided", func(t *testing.T) {
-		backend, err := NewRPCLedgerBackend(mockClient, 0)
-		assert.NoError(t, err)
+		opts := RPCLedgerBackendOptions{
+			RPCServerURL: "http://localhost:8000",
+			BufferSize:   0,
+		}
+		backend := NewRPCLedgerBackend(opts)
 		assert.Equal(t, rpcBackendDefaultBufferSize, backend.bufferSize)
-		assert.Equal(t, mockClient, backend.client)
+		assert.NotNil(t, backend.client)
 	})
 
 	t.Run("uses provided buffer size", func(t *testing.T) {
-		customSize := uint32(20)
-		backend, err := NewRPCLedgerBackend(mockClient, customSize)
-		assert.NoError(t, err)
-		assert.Equal(t, customSize, backend.bufferSize)
-		assert.Equal(t, mockClient, backend.client)
+		opts := RPCLedgerBackendOptions{
+			RPCServerURL: "http://localhost:8000",
+			BufferSize:   20,
+		}
+		backend := NewRPCLedgerBackend(opts)
+		assert.Equal(t, opts.BufferSize, backend.bufferSize)
+		assert.NotNil(t, backend.client)
 	})
 }
 
