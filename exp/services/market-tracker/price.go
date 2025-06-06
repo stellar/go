@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -117,7 +118,7 @@ func parseStellarExpertPriceHistory(body string) ([]xlmPrice, error) {
 	// with the most recent timestamp and price first. We split that array to get strings of only "timestamp,price".
 	// We then split each of those strings and define a struct containing the timestamp and price.
 	if len(body) < 5 {
-		return []xlmPrice{}, fmt.Errorf("got ill-formed response body from stellar expert")
+		return []xlmPrice{}, errors.New("got ill-formed response body from stellar expert")
 	}
 
 	body = body[2 : len(body)-2]
@@ -127,7 +128,7 @@ func parseStellarExpertPriceHistory(body string) ([]xlmPrice, error) {
 	for _, timePriceStr := range timePriceStrs {
 		timePrice := strings.Split(timePriceStr, ",")
 		if len(timePrice) != 2 {
-			return []xlmPrice{}, fmt.Errorf("got ill-formed time/price from stellar expert")
+			return []xlmPrice{}, errors.New("got ill-formed time/price from stellar expert")
 		}
 
 		ts, err := strconv.ParseInt(timePrice[0], 10, 64)
@@ -157,12 +158,12 @@ func parseStellarExpertLatestPrice(body string) (float64, error) {
 	// We format and return the most recent price.
 	lists := strings.Split(body, ",")
 	if len(lists) < 2 {
-		return 0.0, fmt.Errorf("mis-formed response from stellar expert")
+		return 0.0, errors.New("mis-formed response from stellar expert")
 	}
 
 	rawPriceStr := lists[1]
 	if len(rawPriceStr) < 2 {
-		return 0.0, fmt.Errorf("mis-formed price from stellar expert")
+		return 0.0, errors.New("mis-formed price from stellar expert")
 	}
 
 	priceStr := rawPriceStr[:len(rawPriceStr)-1]
@@ -227,7 +228,7 @@ func getAssetUSDPrice(body, currency string) (float64, error) {
 	rates := make(map[string]interface{})
 	var ok bool
 	if rates, ok = m["rates"].(map[string]interface{}); !ok {
-		return 0.0, fmt.Errorf("could not get rates from api response")
+		return 0.0, errors.New("could not get rates from api response")
 	}
 
 	var rate float64
