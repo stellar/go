@@ -464,32 +464,61 @@ func TestRPCBackendGetLatestLedgerSequence(t *testing.T) {
 	t.Run("returns 0 when buffer empty", func(t *testing.T) {
 		backend, _ := setupRPCTest(t)
 
-		// Directly set the prepared range and nextLedger
-		backend.preparedRange = &Range{from: 100, to: 200, bounded: true}
-		backend.nextLedger = 100
-		backend.buffer = make(map[uint32]xdr.LedgerCloseMeta)
+		backend, mockClient := setupRPCTest(t)
+		ctx := context.Background()
+		start := uint32(150)
 
+		expectedReq := protocol.GetLedgersRequest{
+			StartLedger: start,
+			Pagination: &protocol.LedgerPaginationOptions{
+				Limit: uint(rpcBackendDefaultBufferSize),
+			},
+		}
+		// Setup first response indicating ledger is beyond latest
+		mockResponse := protocol.GetLedgersResponse{
+			LatestLedger: start - 1,
+			Ledgers:      []protocol.LedgerInfo{}, // Empty ledgers array
+		}
+		mockClient.On("GetLedgers", ctx, expectedReq).Return(mockResponse, nil)
+
+		// establish a prepared, but empty buffer state
+		err := backend.PrepareRange(ctx, Range{from: start, to: start + 10, bounded: true})
+		assert.NoError(t, err)
+
+		// any attempts to get latest ledger should be zero
 		seq, err := backend.GetLatestLedgerSequence(context.Background())
 		assert.NoError(t, err)
 		assert.Equal(t, uint32(0), seq)
 	})
 
-	t.Run("returns greatest ledger from bufferr", func(t *testing.T) {
+	t.Run("returns greatest ledger from buffer", func(t *testing.T) {
 		backend, _ := setupRPCTest(t)
 
-		// Directly set the prepared range and nextLedger
-		backend.preparedRange = &Range{from: 100, to: 200, bounded: true}
-		// Simulate that GetLedger has read up to sequence 104
-		backend.nextLedger = 100
-		backend.buffer = make(map[uint32]xdr.LedgerCloseMeta)
-		for i := uint32(100); i <= 104; i++ {
-			lcm := xdr.LedgerCloseMeta{}
-			backend.buffer[i] = lcm
+		backend, mockClient := setupRPCTest(t)
+		ctx := context.Background()
+		start := uint32(150)
+
+		expectedReq := protocol.GetLedgersRequest{
+			StartLedger: start,
+			Pagination: &protocol.LedgerPaginationOptions{
+				Limit: uint(rpcBackendDefaultBufferSize),
+			},
 		}
+		ledgerInfos := []protocol.LedgerInfo{}
+		for i := start; i <= start+4; i++ {
+			ledgerInfos = append(ledgerInfos, generateRPCInfo(i))
+		}
+		mockResponse := protocol.GetLedgersResponse{
+			LatestLedger: start + 10,
+			Ledgers:      ledgerInfos,
+		}
+		mockClient.On("GetLedgers", ctx, expectedReq).Return(mockResponse, nil)
+
+		err := backend.PrepareRange(ctx, Range{from: start, to: start + 10, bounded: true})
 
 		seq, err := backend.GetLatestLedgerSequence(context.Background())
 		assert.NoError(t, err)
-		assert.Equal(t, uint32(104), seq)
+		assert.Equal(t, uint32(154), seq)
 	})
 }
 

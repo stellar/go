@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/stellar/go/xdr"
@@ -33,20 +34,21 @@ func (e *RPCLedgerBeyondLatestError) Error() string {
 	return fmt.Sprintf("ledger %d is beyond the RPC latest ledger is %d", e.Sequence, e.LatestLedger)
 }
 
-// The minimum required RPC client interface required for usage by RPCLedgerBackend.
-type RPCClient interface {
+// The minimum required RPC client methods used by RPCLedgerBackend.
+type RPCLedgerGetter interface {
 	GetLedgers(ctx context.Context, req protocol.GetLedgersRequest) (protocol.GetLedgersResponse, error)
 }
 
 type RPCLedgerBackend struct {
-	client        RPCClient
-	buffer        map[uint32]xdr.LedgerCloseMeta
-	bufferSize    uint32
-	preparedRange *Range
-	nextLedger    uint32
-	closed        chan struct{}
-	closedOnce    sync.Once
-	bufferLock    sync.RWMutex
+	client             RPCLedgerGetter
+	buffer             map[uint32]xdr.LedgerCloseMeta
+	bufferSize         uint32
+	preparedRange      *Range
+	nextLedger         uint32
+	latestBufferLedger atomic.Uint32
+	closed             chan struct{}
+	closedOnce         sync.Once
+	bufferLock         sync.RWMutex
 }
 
 type RPCLedgerBackendOptions struct {
@@ -86,9 +88,6 @@ func NewRPCLedgerBackend(options RPCLedgerBackendOptions) *RPCLedgerBackend {
 
 // GetLatestLedgerSequence returns the latest ledger sequence currently loaded by internal buffer.
 func (b *RPCLedgerBackend) GetLatestLedgerSequence(ctx context.Context) (sequence uint32, err error) {
-	b.bufferLock.RLock()
-	defer b.bufferLock.RUnlock()
-
 	if err := b.checkClosed(); err != nil {
 		return 0, err
 	}
@@ -97,18 +96,7 @@ func (b *RPCLedgerBackend) GetLatestLedgerSequence(ctx context.Context) (sequenc
 		return 0, fmt.Errorf("RPCLedgerBackend must be prepared before calling GetLatestLedgerSequence")
 	}
 
-	if len(b.buffer) == 0 {
-		return 0, nil
-	}
-
-	maxLedgerSequence := uint32(0)
-	for seq := range b.buffer {
-		if seq > maxLedgerSequence {
-			maxLedgerSequence = seq
-		}
-	}
-	return maxLedgerSequence, nil
-
+	return b.latestBufferLedger.Load(), nil
 }
 
 // GetLedger queries the RPC server for a specific ledger sequence and returns the meta data.
@@ -283,6 +271,12 @@ func (b *RPCLedgerBackend) getBufferedLedger(ctx context.Context, sequence uint3
 		}
 		b.buffer[ledger.Sequence] = lcm
 	}
+
+	latestSeq := uint32(0)
+	if size := len(ledgers.Ledgers); size > 0 {
+		latestSeq = ledgers.Ledgers[size-1].Sequence
+	}
+	b.latestBufferLedger.Store(latestSeq)
 
 	// Check if requested ledger is in new buffer
 	if lcm, exists := b.buffer[sequence]; exists {
