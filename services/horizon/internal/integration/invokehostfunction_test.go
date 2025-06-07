@@ -362,7 +362,18 @@ func TestContractInvokeHostFunctionInvokeStatelessContractFn(t *testing.T) {
 	expectedScVal := xdr.ScVal{Type: xdr.ScValTypeScvU64, U64: &invokeResult}
 	var transactionMeta xdr.TransactionMeta
 	assert.NoError(t, xdr.SafeUnmarshalBase64(tx.ResultMetaXdr, &transactionMeta))
-	assert.True(t, expectedScVal.Equals(transactionMeta.V3.SorobanMeta.ReturnValue))
+
+	var returnValue xdr.ScVal
+	switch transactionMeta.V {
+	case 3:
+		returnValue = transactionMeta.MustV3().SorobanMeta.ReturnValue
+	case 4:
+		returnValue = *transactionMeta.MustV4().SorobanMeta.ReturnValue
+	default:
+		t.Fatalf("Invalid meta version: %d", transactionMeta.V)
+	}
+
+	assert.True(t, expectedScVal.Equals(returnValue))
 
 	clientInvokeOp, err := itest.Client().Operations(horizonclient.OperationRequest{
 		ForTransaction: tx.Hash,
@@ -457,7 +468,16 @@ func TestContractInvokeHostFunctionInvokeStatefulContractFn(t *testing.T) {
 	expectedScVal := xdr.ScVal{Type: xdr.ScValTypeScvU32, U32: &invokeResult}
 	var transactionMeta xdr.TransactionMeta
 	assert.NoError(t, xdr.SafeUnmarshalBase64(clientTx.ResultMetaXdr, &transactionMeta))
-	assert.True(t, expectedScVal.Equals(transactionMeta.V3.SorobanMeta.ReturnValue))
+	var returnValue xdr.ScVal
+	switch transactionMeta.V {
+	case 3:
+		returnValue = transactionMeta.MustV3().SorobanMeta.ReturnValue
+	case 4:
+		returnValue = *transactionMeta.MustV4().SorobanMeta.ReturnValue
+	default:
+		t.Fatalf("Invalid meta version: %d", transactionMeta.V)
+	}
+	assert.True(t, expectedScVal.Equals(returnValue))
 
 	clientInvokeOp, err := itest.Client().Operations(horizonclient.OperationRequest{
 		ForTransaction: tx.Hash,
