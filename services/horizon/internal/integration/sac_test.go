@@ -1489,7 +1489,15 @@ func assertInvokeHostFnSucceeds(itest *integration.Test, signer *keypair.Full, o
 	assert.True(itest.CurrentTest(), ok)
 	assert.Equal(itest.CurrentTest(), invokeHostFunctionResult.Code, xdr.InvokeHostFunctionResultCodeInvokeHostFunctionSuccess)
 
-	returnValue := txMetaResult.MustV3().SorobanMeta.ReturnValue
+	var returnValue xdr.ScVal
+	switch txMetaResult.V {
+	case 3:
+		returnValue = txMetaResult.MustV3().SorobanMeta.ReturnValue
+	case 4:
+		returnValue = *txMetaResult.MustV4().SorobanMeta.ReturnValue
+	default:
+		itest.CurrentTest().Fatalf("Invalid meta version: %d", txMetaResult.V)
+	}
 
 	return &returnValue, clientTx.Hash, &preFlightOp
 }
