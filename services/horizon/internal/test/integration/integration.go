@@ -221,7 +221,7 @@ func NewTest(t *testing.T, config Config) *Test {
 
 		i.WaitForHorizonIngest()
 
-		//i.upgradeLimits()
+		i.upgradeLimits()
 	}
 
 	return i
