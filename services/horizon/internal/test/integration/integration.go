@@ -727,6 +727,10 @@ func (i *Test) waitForCore() {
 }
 
 func (i *Test) upgradeLimits() {
+	if GetCoreMaxSupportedProtocol() > 22 {
+		return
+	}
+
 	if i.config.ProtocolVersion < 22 || i.config.SkipCoreContainerCreation || i.config.QuickExpiration {
 		return
 	}
