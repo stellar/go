@@ -18,7 +18,6 @@ import (
 )
 
 func TestLoadTestLedgerBackend(t *testing.T) {
-	return
 	itest := integration.NewTest(t, integration.Config{
 		NetworkPassphrase: loadTestNetworkPassphrase,
 	})
