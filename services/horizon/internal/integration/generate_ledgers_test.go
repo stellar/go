@@ -37,7 +37,6 @@ type sorobanTransaction struct {
 }
 
 func TestGenerateLedgers(t *testing.T) {
-	return
 	var transactionsPerLedger, ledgers, transfersPerTx int
 	var output bool
 	var networkPassphrase string
