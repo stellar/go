@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/creachadair/jrpc2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
@@ -148,7 +149,7 @@ func TestNewRPCLedgerBackend(t *testing.T) {
 	})
 }
 
-func TestGetLedgerBeyondLatest(t *testing.T) {
+func TestGetLedgerBeyondLatestBasedOnEmptyResults(t *testing.T) {
 	rpcBackend, mockClient := setupRPCTest(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -207,7 +208,68 @@ func TestGetLedgerBeyondLatest(t *testing.T) {
 
 	// Verify timing - GetLedger should have waited one interval and then refetched ledgers from rpc on second call
 	assert.GreaterOrEqual(t, duration.Seconds(), float64(rpcBackendDefaultWaitIntervalSeconds))
+}
 
+func TestGetLedgerBeyondLatestBasedOnErr(t *testing.T) {
+	rpcBackend, mockClient := setupRPCTest(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	requestedSequence := uint32(100)
+
+	rpcGetLedgersRequest := protocol.GetLedgersRequest{
+		StartLedger: requestedSequence,
+		Pagination: &protocol.LedgerPaginationOptions{
+			Limit: uint(rpcBackendDefaultBufferSize),
+		},
+	}
+
+	invalidRequestErr := &jrpc2.Error{
+		Code: jrpc2.InvalidRequest,
+	}
+
+	// called by PrepareRange
+	mockClient.On("GetLedgers", ctx, rpcGetLedgersRequest).Return(protocol.GetLedgersResponse{}, invalidRequestErr).Once()
+	// called by GetLedger first time
+	mockClient.On("GetLedgers", ctx, rpcGetLedgersRequest).Return(protocol.GetLedgersResponse{}, invalidRequestErr).Once()
+
+	// Setup second call to return the requested ledger
+	lcm := xdr.LedgerCloseMeta{
+		V: 0,
+		V0: &xdr.LedgerCloseMetaV0{
+			LedgerHeader: xdr.LedgerHeaderHistoryEntry{
+				Header: xdr.LedgerHeader{
+					LedgerSeq: xdr.Uint32(requestedSequence),
+				},
+			},
+		},
+	}
+	encodedLCM, err := xdr.MarshalBase64(lcm)
+	assert.NoError(t, err)
+
+	secondResponse := protocol.GetLedgersResponse{
+		LatestLedger: requestedSequence,
+		Ledgers: []protocol.LedgerInfo{
+			{
+				Sequence:       requestedSequence,
+				LedgerMetadata: encodedLCM,
+			},
+		},
+	}
+	// called by GetLedger second time
+	mockClient.On("GetLedgers", ctx, rpcGetLedgersRequest).Return(secondResponse, nil).Once()
+
+	preparedRange := Range{from: requestedSequence, to: requestedSequence + 10, bounded: true}
+	rpcBackend.PrepareRange(ctx, preparedRange)
+
+	startTime := time.Now()
+	actualLCM, err := rpcBackend.GetLedger(ctx, requestedSequence)
+	duration := time.Since(startTime)
+
+	assert.NoError(t, err)
+	assert.Equal(t, requestedSequence, uint32(actualLCM.V0.LedgerHeader.Header.LedgerSeq))
+
+	// Verify timing - GetLedger should have waited one interval and then refetched ledgers from rpc on second call
+	assert.GreaterOrEqual(t, duration.Seconds(), float64(rpcBackendDefaultWaitIntervalSeconds))
 }
 
 func TestGetLedgerContextTimeout(t *testing.T) {

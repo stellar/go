@@ -9,6 +9,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/creachadair/jrpc2"
 	"github.com/stellar/go/xdr"
 	rpc "github.com/stellar/stellar-rpc/client"
 	"github.com/stellar/stellar-rpc/protocol"
@@ -25,13 +26,10 @@ func (e *RPCLedgerMissingError) Error() string {
 	return fmt.Sprintf("ledger %d was not present on rpc", e.Sequence)
 }
 
-type RPCLedgerBeyondLatestError struct {
-	Sequence     uint32
-	LatestLedger uint32
-}
+type RPCLedgerBeyondLatestError struct{}
 
-func (e *RPCLedgerBeyondLatestError) Error() string {
-	return fmt.Sprintf("ledger %d is beyond the RPC latest ledger is %d", e.Sequence, e.LatestLedger)
+func (e RPCLedgerBeyondLatestError) Error() string {
+	return "ledger is not available on the RPC server yet"
 }
 
 // The minimum required RPC client methods used by RPCLedgerBackend.
@@ -146,8 +144,8 @@ func (b *RPCLedgerBackend) GetLedger(ctx context.Context, sequence uint32) (xdr.
 			return lcm, nil
 		}
 
-		_, isBeyondErr := err.(*RPCLedgerBeyondLatestError)
-		if !isBeyondErr {
+		var beyondErr *RPCLedgerBeyondLatestError
+		if !(errors.As(err, &beyondErr)) {
 			return xdr.LedgerCloseMeta{}, err
 		}
 
@@ -250,6 +248,13 @@ func (b *RPCLedgerBackend) getBufferedLedger(ctx context.Context, sequence uint3
 
 	ledgers, err := b.client.GetLedgers(ctx, req)
 	if err != nil {
+		// InvalidRequest code is the most specific error code provided for invalid range requests.
+		// https://github.com/stellar/stellar-rpc/pull/407/
+		// if received, assume it's range problem to enable retry.
+		var rpcErr *jrpc2.Error
+		if errors.As(err, &rpcErr) && rpcErr.Code == jrpc2.InvalidRequest {
+			return xdr.LedgerCloseMeta{}, &RPCLedgerBeyondLatestError{}
+		}
 		return xdr.LedgerCloseMeta{}, fmt.Errorf("failed to get ledgers starting from %d: %w", sequence, err)
 	}
 
@@ -257,10 +262,7 @@ func (b *RPCLedgerBackend) getBufferedLedger(ctx context.Context, sequence uint3
 
 	// Check if requested ledger is beyond the RPC retention window
 	if sequence > ledgers.LatestLedger {
-		return xdr.LedgerCloseMeta{}, &RPCLedgerBeyondLatestError{
-			Sequence:     sequence,
-			LatestLedger: ledgers.LatestLedger,
-		}
+		return xdr.LedgerCloseMeta{}, &RPCLedgerBeyondLatestError{}
 	}
 
 	// Populate buffer with new ledgers
