@@ -166,7 +166,7 @@ func NewTest(t *testing.T, config Config) *Test {
 		Accelerate:                            CheckpointFrequency < historyarchive.DefaultCheckpointFrequency,
 		NetworkPassphrase:                     config.NetworkPassphrase,
 		TestingMinimumPersistentEntryLifetime: 65536,
-		TestingSorobanHighLimitOverride:       false,
+		TestingSorobanHighLimitOverride:       true,
 		OverrideEvictionParamsForTesting:      false,
 	}
 	if config.QuickExpiration {
@@ -727,10 +727,6 @@ func (i *Test) waitForCore() {
 }
 
 func (i *Test) upgradeLimits() {
-	if GetCoreMaxSupportedProtocol() > 22 {
-		return
-	}
-
 	if i.config.ProtocolVersion < 22 || i.config.SkipCoreContainerCreation || i.config.QuickExpiration {
 		return
 	}
