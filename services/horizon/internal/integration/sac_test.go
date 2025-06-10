@@ -260,7 +260,6 @@ func TestContractMintToContract(t *testing.T) {
 }
 
 func TestExpirationAndRestoration(t *testing.T) {
-	return
 	if integration.GetCoreMaxSupportedProtocol() < 20 {
 		t.Skip("This test run does not support less than Protocol 20")
 	}
