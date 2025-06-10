@@ -184,7 +184,6 @@ func TestContractInvokeHostFunctionCreateContractByAddress(t *testing.T) {
 }
 
 func TestContractInvokeHostFunctionCreateConstructorContract(t *testing.T) {
-	return
 	itest := integration.NewTest(t, integration.Config{
 		EnableStellarRPC: true,
 		QuickExpiration:  true,
@@ -267,9 +266,15 @@ func TestContractInvokeHostFunctionCreateConstructorContract(t *testing.T) {
 	assert.Len(t, invokeHostFunctionOpJson.AssetBalanceChanges, 1)
 	assetBalanceChange := invokeHostFunctionOpJson.AssetBalanceChanges[0]
 	assert.Equal(itest.CurrentTest(), assetBalanceChange.Amount, "10.0000000")
-	assert.Equal(itest.CurrentTest(), assetBalanceChange.From, issuer)
 	assert.Equal(itest.CurrentTest(), assetBalanceChange.To, strkey.MustEncode(strkey.VersionByteContract, contractID[:]))
-	assert.Equal(itest.CurrentTest(), assetBalanceChange.Type, "transfer")
+	if integration.GetCoreMaxSupportedProtocol() < 23 {
+		assert.Equal(itest.CurrentTest(), assetBalanceChange.From, issuer)
+		assert.Equal(itest.CurrentTest(), assetBalanceChange.Type, "transfer")
+	} else {
+		// see https://github.com/stellar/stellar-protocol/blob/master/core/cap-0067.md#protocol-upgrade-transition
+		assert.Equal(itest.CurrentTest(), assetBalanceChange.From, "")
+		assert.Equal(itest.CurrentTest(), assetBalanceChange.Type, "mint")
+	}
 	assert.Equal(itest.CurrentTest(), assetBalanceChange.Asset.Code, strings.TrimRight(asset.GetCode(), "\x00"))
 	assert.Equal(itest.CurrentTest(), assetBalanceChange.Asset.Issuer, asset.GetIssuer())
 }

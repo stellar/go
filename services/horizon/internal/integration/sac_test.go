@@ -103,6 +103,7 @@ func TestContractMintToAccount(t *testing.T) {
 			effects.EffectAccountCredited,
 			effects.EffectAccountDebited)
 	} else {
+		// see https://github.com/stellar/stellar-protocol/blob/master/core/cap-0067.md#remove-the-admin-from-the-sac-mint-and-clawback-events
 		assert.Len(t, fx, 1)
 		assertContainsEffect(t, fx,
 			effects.EffectAccountCredited)
