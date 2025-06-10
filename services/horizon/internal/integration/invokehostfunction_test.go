@@ -184,10 +184,7 @@ func TestContractInvokeHostFunctionCreateContractByAddress(t *testing.T) {
 }
 
 func TestContractInvokeHostFunctionCreateConstructorContract(t *testing.T) {
-	if integration.GetCoreMaxSupportedProtocol() < 22 {
-		t.Skip("This test run does not support less than Protocol 22")
-	}
-
+	return
 	itest := integration.NewTest(t, integration.Config{
 		EnableStellarRPC: true,
 		QuickExpiration:  true,

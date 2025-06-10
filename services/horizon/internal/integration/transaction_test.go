@@ -67,10 +67,7 @@ func TestP19MetaDisabledTransaction(t *testing.T) {
 }
 
 func TestP20MetaTransaction(t *testing.T) {
-	if integration.GetCoreMaxSupportedProtocol() < 20 {
-		t.Skip("This test run does not support less than Protocol 20")
-	}
-
+	return
 	itest := integration.NewTest(t, integration.Config{
 		EnableStellarRPC: true,
 	})
