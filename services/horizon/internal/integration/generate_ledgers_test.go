@@ -444,18 +444,8 @@ func merge(t *testing.T, networkPassphrase string, ledgers []xdr.LedgerCloseMeta
 	var curCount int
 	for _, ledger := range ledgers {
 		transactionCount := ledger.CountTransactions()
-
-		switch ledger.V {
-		case 1:
-			require.Empty(t, ledger.V1.EvictedKeys)
-			require.Empty(t, ledger.V1.UpgradesProcessing)
-		case 2:
-			require.Empty(t, ledger.V2.EvictedKeys)
-			require.Empty(t, ledger.V2.UpgradesProcessing)
-		default:
-			t.Fatalf("Invalid ledger meta version: %d", ledger.V)
-		}
-
+		require.Empty(t, ledger.V1.EvictedKeys)
+		require.Empty(t, ledger.V1.UpgradesProcessing)
 		if transactionCount == 0 {
 			continue
 		}
