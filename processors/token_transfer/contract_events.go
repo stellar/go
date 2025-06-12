@@ -47,9 +47,22 @@ func (p *EventsProcessor) parseEvent(tx ingest.LedgerTransaction, opIndex *uint3
 		return nil, errNotSep41TokenFromMsg("invalid function name")
 	}
 
+	// Determine if this is V3 or V4 based on transaction meta version
+	txMetaVersion := tx.UnsafeMeta.V
+
 	// First, try parsing as a standard SEP41 token contractEvent
 	var protoEvent *TokenTransferEvent
-	protoEvent, sepErr := parseCustomTokenEvent(string(fn), tx, opIndex, contractEvent)
+	var sepErr error
+
+	switch txMetaVersion {
+	case 3:
+		protoEvent, sepErr = parseCustomTokenEventV3(string(fn), tx, opIndex, contractEvent)
+	case 4:
+		protoEvent, sepErr = parseCustomTokenEventV4(string(fn), tx, opIndex, contractEvent)
+	default:
+		return nil, errNotSep41TokenFromMsg(fmt.Sprintf("unsupported transaction meta version: %d", txMetaVersion))
+	}
+
 	if sepErr != nil {
 		return nil, sepErr
 	}
@@ -59,13 +72,10 @@ func (p *EventsProcessor) parseEvent(tx ingest.LedgerTransaction, opIndex *uint3
 	// Attempt SAC validation if possible, to get asset name
 
 	// SAC validation requires a very strict check on len(topics)
-	// For transfer, mint and clawback - there will be exactly 4 elements
-	// For burn, there will be exactly 3 events
-	// transfer - "transfer", toAddr, fromAddr, sep11AssetString
-	// mint - "mint", admin, toAddr, sep11AssetString
-	// clawback - "clawback", admin, fromAddr, sep11AssetString
-	// burn - "burn", fromAddr, sep11AssetString
-	if len(topics) == 3 || len(topics) == 4 {
+	// For V3: transfer/mint/clawback have 4 topics, burn has 3
+	// For V4: transfer has 4 topics, mint/clawback/burn have 3
+	expectedTopics := getExpectedTopicsCount(string(fn), txMetaVersion)
+	if len(topics) == expectedTopics {
 		lastTopic := topics[len(topics)-1]
 		if assetStr, ok := lastTopic.GetStr(); ok && assetStr != "" {
 			// Try parsing the asset from its SEP-11 representation
@@ -78,7 +88,12 @@ func (p *EventsProcessor) parseEvent(tx ingest.LedgerTransaction, opIndex *uint3
 					// If contract ID matches, update with validated asset
 					protoEvent.SetAsset(asset)
 
-					// This is tricky. Burn and mint events currently show up as transfer in SAC events
+					// For TxMetaV4, this is all that needs to be validated. You can simply return the event as is
+					if tx.UnsafeMeta.V == 4 {
+						return protoEvent, nil
+					}
+
+					// This is tricky. Burn and mint events currently show up as transfer in SAC events in V3
 					// This will be fixed once CAP-67 unified events is released:
 					// https://github.com/stellar/stellar-protocol/blob/master/core/cap-0067.md#protocol-upgrade-transition
 					// Meanwhile, we fix it here manually by checking if src/dst is issuer of asset, and if it is, we issue mint/burn instead
@@ -95,7 +110,6 @@ func (p *EventsProcessor) parseEvent(tx ingest.LedgerTransaction, opIndex *uint3
 						if err != nil {
 							return nil, fmt.Errorf("contract transfer event error: %w", err)
 						}
-
 					}
 				}
 			}
@@ -105,11 +119,41 @@ func (p *EventsProcessor) parseEvent(tx ingest.LedgerTransaction, opIndex *uint3
 	return protoEvent, nil
 }
 
-// parseCustomTokenEvent attempts to parse a generic SEP41 token event
-func parseCustomTokenEvent(
+// getExpectedTopicsCount returns expected number of topics for each event type based on tx meta version
+func getExpectedTopicsCount(eventType string, txMetaVersion int32) int {
+	switch txMetaVersion {
+	case 3:
+		// V3 format includes admin addresses
+		switch eventType {
+		case TransferEvent:
+			return 4 // ["transfer", from, to, asset]
+		case MintEvent:
+			return 4 // ["mint", admin, to, asset]
+		case ClawbackEvent:
+			return 4 // ["clawback", admin, from, asset]
+		case BurnEvent:
+			return 3 // ["burn", from, asset]
+		}
+	case 4:
+		// V4 format removes admin addresses
+		switch eventType {
+		case TransferEvent:
+			return 4 // ["transfer", from, to, asset]
+		case MintEvent:
+			return 3 // ["mint", to, asset] - no admin
+		case ClawbackEvent:
+			return 3 // ["clawback", from, asset] - no admin
+		case BurnEvent:
+			return 3 // ["burn", from, asset]
+		}
+	}
+	return -1 // Invalid combination
+}
+
+// parseCustomTokenEventV3 attempts to parse a generic SEP41 token event for V3 format
+func parseCustomTokenEventV3(
 	eventType string, tx ingest.LedgerTransaction, opIndex *uint32, contractEvent xdr.ContractEvent,
 ) (*TokenTransferEvent, error) {
-
 	topics := contractEvent.Body.V0.Topics
 	value := contractEvent.Body.V0.Data
 
@@ -147,7 +191,7 @@ func parseCustomTokenEvent(
 		if lenTopics < 3 {
 			return nil, errNotSep41TokenFromMsg(fmt.Sprintf("mint event requires minimum 3 topics, found: %v", lenTopics))
 		}
-		// Dont care for admin when generating proto, but validating nonetheless
+		// Validate admin but don't use it
 		_, err := extractAddress(topics[1])
 		if err != nil {
 			return nil, errNotSep41TokenFromError(fmt.Errorf("invalid adminAddress. error: %w", err))
@@ -163,7 +207,7 @@ func parseCustomTokenEvent(
 		if lenTopics < 3 {
 			return nil, errNotSep41TokenFromMsg(fmt.Sprintf("clawback event requires minimum 3 topics, found: %v", lenTopics))
 		}
-		// Dont care for admin when generating proto, but validating nonetheless
+		// Validate admin but don't use it
 		_, err := extractAddress(topics[1])
 		if err != nil {
 			return nil, errNotSep41TokenFromError(fmt.Errorf("invalid adminAddress. error: %w", err))
@@ -190,4 +234,163 @@ func parseCustomTokenEvent(
 	}
 
 	return event, nil
+}
+
+// parseCustomTokenEventV4 attempts to parse a generic SEP41 token event for V4 format
+func parseCustomTokenEventV4(
+	eventType string, tx ingest.LedgerTransaction, opIndex *uint32, contractEvent xdr.ContractEvent,
+) (*TokenTransferEvent, error) {
+	topics := contractEvent.Body.V0.Topics
+	value := contractEvent.Body.V0.Data
+
+	// Parse amount and optional to_muxed_id from data
+	var amt xdr.Int128Parts
+	var destinationMemo *MuxedInfo
+
+	// V4 data format can be:
+	// 1. Direct i128 (when there's no memo)
+	// 2. ScMap with exactly 2 fields: "amount" (i128) + "to_muxed_id" (u64/bytes/string)
+	// If it's a map, at the very least "amount" should be present.
+	if mapData, ok := value.GetMap(); ok {
+		if mapData == nil {
+			return nil, errNotSep41TokenFromMsg("map is empty")
+		}
+		var err error
+		amt, destinationMemo, err = parseV4MapDataForTokenEvents(*mapData)
+		if err != nil {
+			return nil, errNotSep41TokenFromError(fmt.Errorf("failed to parse V4 map data: %w", err))
+		}
+	} else {
+		// Fall back to direct i128 parsing (V4 without to_muxed_id)
+		var ok bool
+		amt, ok = value.GetI128()
+		if !ok {
+			return nil, errNotSep41TokenFromMsg("invalid event amount")
+		}
+	}
+
+	amtRaw128 := amount.String128Raw(amt)
+	contractAddress := strkey.MustEncode(strkey.VersionByteContract, contractEvent.ContractId[:])
+	meta := NewEventMetaFromTx(tx, opIndex, contractAddress)
+
+	// Set destination memo if present
+	if destinationMemo != nil {
+		meta.ToMuxedInfo = destinationMemo
+	}
+
+	var event *TokenTransferEvent
+	lenTopics := len(topics)
+
+	switch eventType {
+	case TransferEvent:
+		// Transfer requires MINIMUM 3 topics: event type, fromAddr, toAddr (same as V3)
+		if lenTopics < 3 {
+			return nil, errNotSep41TokenFromMsg(fmt.Sprintf("transfer event requires minimum 3 topics, found: %v", lenTopics))
+		}
+		from, err := extractAddress(topics[1])
+		if err != nil {
+			return nil, errNotSep41TokenFromError(fmt.Errorf("invalid fromAddress. error: %w", err))
+		}
+		to, err := extractAddress(topics[2])
+		if err != nil {
+			return nil, errNotSep41TokenFromError(fmt.Errorf("invalid toAddress. error: %w", err))
+		}
+		event = NewTransferEvent(meta, from, to, amtRaw128, nil)
+
+	case MintEvent:
+		// Mint requires MINIMUM 2 topics - event type, toAddr (NO admin in V4)
+		if lenTopics < 2 {
+			return nil, errNotSep41TokenFromMsg(fmt.Sprintf("mint event requires minimum 2 topics, found: %v", lenTopics))
+		}
+		to, err := extractAddress(topics[1])
+		if err != nil {
+			return nil, errNotSep41TokenFromError(fmt.Errorf("invalid toAddress error: %w", err))
+		}
+		event = NewMintEvent(meta, to, amtRaw128, nil)
+
+	case ClawbackEvent:
+		// Clawback requires MINIMUM 2 topics - event type, fromAddr (NO admin in V4)
+		if lenTopics < 2 {
+			return nil, errNotSep41TokenFromMsg(fmt.Sprintf("clawback event requires minimum 2 topics, found: %v", lenTopics))
+		}
+		from, err := extractAddress(topics[1])
+		if err != nil {
+			return nil, errNotSep41TokenFromError(fmt.Errorf("invalid fromAddress error: %w", err))
+		}
+		event = NewClawbackEvent(meta, from, amtRaw128, nil)
+
+	case BurnEvent:
+		// Burn requires MINIMUM 2 topics - event type, fromAddr (same as V3)
+		if lenTopics < 2 {
+			return nil, errNotSep41TokenFromMsg(fmt.Sprintf("burn event requires minimum 2 topics, found: %v", lenTopics))
+		}
+		from, err := extractAddress(topics[1])
+		if err != nil {
+			return nil, errNotSep41TokenFromError(fmt.Errorf("invalid fromAddress error: %w", err))
+		}
+		event = NewBurnEvent(meta, from, amtRaw128, nil)
+
+	default:
+		return nil, errNotSep41TokenFromMsg(fmt.Sprintf("unsupported custom token event type: %v", eventType))
+	}
+
+	return event, nil
+}
+
+// parseV4MapDataForTokenEvents parses the ScMap data format used in V4 token events
+func parseV4MapDataForTokenEvents(mapData xdr.ScMap) (xdr.Int128Parts, *MuxedInfo, error) {
+	var foundAmount bool
+	var amt xdr.Int128Parts
+	var muxedInfo *MuxedInfo
+
+	for _, entry := range mapData {
+		key, ok := entry.Key.GetSym()
+		if !ok {
+			return amt, nil, fmt.Errorf("invalid key type in data map: %s", entry.Key.Type)
+		}
+
+		switch string(key) {
+		case "amount":
+			amt, ok = entry.Val.GetI128()
+			if !ok {
+				return amt, nil, fmt.Errorf("amt field is not i128")
+			}
+			foundAmount = true
+
+		case "to_muxed_id":
+			// Convert to_muxed_id to MuxedInfo based on type
+			switch entry.Val.Type {
+			case xdr.ScValTypeScvU64:
+				if val, ok := entry.Val.GetU64(); ok {
+					muxedInfo = NewMuxedInfoFromId(uint64(val))
+				}
+			case xdr.ScValTypeScvBytes:
+				if val, ok := entry.Val.GetBytes(); ok {
+					hashBytes := make([]byte, 32)
+					copy(hashBytes, val)
+					muxedInfo = &MuxedInfo{
+						Content: &MuxedInfo_Hash{
+							Hash: hashBytes,
+						},
+					}
+				}
+			case xdr.ScValTypeScvString:
+				if val, ok := entry.Val.GetStr(); ok {
+					muxedInfo = &MuxedInfo{
+						Content: &MuxedInfo_Text{
+							Text: string(val),
+						},
+					}
+				}
+			default:
+				return amt, nil, fmt.Errorf("invalid to_muxed_id type for data: %s", entry.Val.Type)
+			}
+		}
+	}
+
+	if !foundAmount {
+		return amt, nil, fmt.Errorf("amount field not found in map")
+	}
+
+	return amt, muxedInfo, nil
 }

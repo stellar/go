@@ -2,23 +2,24 @@ package token_transfer
 
 import (
 	"fmt"
+	"github.com/stellar/go/keypair"
+	"github.com/stellar/go/strkey"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/stellar/go/amount"
-	"github.com/stellar/go/keypair"
-	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/xdr"
 )
 
 var (
-	randomAccount     = keypair.MustRandom().Address()
-	someContractHash1 = xdr.ContractId([32]byte{1, 2, 3, 4})
-	someContract1     = strkey.MustEncode(strkey.VersionByteContract, someContractHash1[:])
-	someContractHash2 = xdr.ContractId([32]byte{4, 3, 2, 1})
-	someContract2     = strkey.MustEncode(strkey.VersionByteContract, someContractHash2[:])
+	randomAccount   = keypair.MustRandom().Address()
+	someContractId1 = xdr.ContractId([32]byte{1, 2, 3, 4}) // Needed for V3 tests, since they use xdr.ContractId
+	someContract1   = strkey.MustEncode(strkey.VersionByteContract, someContractId1[:])
+	someContractId2 = xdr.ContractId([32]byte{4, 3, 2, 1}) // Needed for V3 tests, since they use xdr.ContractId
+
+	someContract2 = strkey.MustEncode(strkey.VersionByteContract, someContractId2[:])
 
 	processor = &EventsProcessor{
 		networkPassphrase: someNetworkPassphrase,
@@ -133,7 +134,7 @@ func createContractEvent(
 	}
 }
 
-func TestValidContractEvents(t *testing.T) {
+func TestValidContractEventsV3(t *testing.T) {
 	testCases := []struct {
 		name          string
 		eventType     string
@@ -303,7 +304,7 @@ func TestValidContractEvents(t *testing.T) {
 				for _, asset := range []string{"someNonSep11AssetString", xlmAsset.StringCanonical(), usdcAsset.StringCanonical()} {
 					assets = append(assets, asset)
 				}
-				contractId = &someContractHash1
+				contractId = &someContractId1
 			}
 
 			for _, assetItem := range assets {
@@ -367,7 +368,7 @@ func TestValidContractEvents(t *testing.T) {
 					)
 				}
 
-				event, err := processor.parseEvent(someTx, &someOperationIndex, contractEvent)
+				event, err := processor.parseEvent(someTxV3, &someOperationIndex, contractEvent)
 
 				require.NoError(t, err)
 				require.NotNil(t, event)
@@ -384,7 +385,7 @@ func TestValidContractEvents(t *testing.T) {
 	}
 }
 
-func TestInvalidEvents(t *testing.T) {
+func TestInvalidEventsV3(t *testing.T) {
 	testCases := []struct {
 		name           string
 		setupEvent     func() xdr.ContractEvent
@@ -394,7 +395,7 @@ func TestInvalidEvents(t *testing.T) {
 			name: "Invalid contract event type",
 			setupEvent: func() xdr.ContractEvent {
 				// Use a non-contract event type
-				event := createContractEvent(TransferEvent, randomAccount, someContract1, 1000, nil, "asset", &someContractHash1)
+				event := createContractEvent(TransferEvent, randomAccount, someContract1, 1000, nil, "asset", &someContractId1)
 				event.Type = xdr.ContractEventTypeSystem // Invalid type
 				return event
 			},
@@ -411,7 +412,7 @@ func TestInvalidEvents(t *testing.T) {
 		{
 			name: "Invalid body version",
 			setupEvent: func() xdr.ContractEvent {
-				event := createContractEvent(TransferEvent, randomAccount, someContract1, 1000, nil, "asset", &someContractHash1)
+				event := createContractEvent(TransferEvent, randomAccount, someContract1, 1000, nil, "asset", &someContractId1)
 				event.Body.V = 1 // Invalid version
 				return event
 			},
@@ -427,7 +428,7 @@ func TestInvalidEvents(t *testing.T) {
 
 				return xdr.ContractEvent{
 					Type:       xdr.ContractEventTypeContract,
-					ContractId: &someContractHash1,
+					ContractId: &someContractId1,
 					Body: xdr.ContractEventBody{
 						V: 0,
 						V0: &xdr.ContractEventV0{
@@ -451,7 +452,7 @@ func TestInvalidEvents(t *testing.T) {
 
 				return xdr.ContractEvent{
 					Type:       xdr.ContractEventTypeContract,
-					ContractId: &someContractHash1,
+					ContractId: &someContractId1,
 					Body: xdr.ContractEventBody{
 						V: 0,
 						V0: &xdr.ContractEventV0{
@@ -466,7 +467,7 @@ func TestInvalidEvents(t *testing.T) {
 		{
 			name: "Invalid amount format",
 			setupEvent: func() xdr.ContractEvent {
-				event := createContractEvent(TransferEvent, randomAccount, someContract1, 1000, nil, "asset", &someContractHash1)
+				event := createContractEvent(TransferEvent, randomAccount, someContract1, 1000, nil, "asset", &someContractId1)
 				// Replace the amount with a string value instead of Int128
 				event.Body.V0.Data = createString("1000")
 				return event
@@ -485,7 +486,7 @@ func TestInvalidEvents(t *testing.T) {
 
 				return xdr.ContractEvent{
 					Type:       xdr.ContractEventTypeContract,
-					ContractId: &someContractHash1,
+					ContractId: &someContractId1,
 					Body: xdr.ContractEventBody{
 						V: 0,
 						V0: &xdr.ContractEventV0{
@@ -509,7 +510,7 @@ func TestInvalidEvents(t *testing.T) {
 
 				return xdr.ContractEvent{
 					Type:       xdr.ContractEventTypeContract,
-					ContractId: &someContractHash1,
+					ContractId: &someContractId1,
 					Body: xdr.ContractEventBody{
 						V: 0,
 						V0: &xdr.ContractEventV0{
@@ -533,7 +534,7 @@ func TestInvalidEvents(t *testing.T) {
 
 				return xdr.ContractEvent{
 					Type:       xdr.ContractEventTypeContract,
-					ContractId: &someContractHash1,
+					ContractId: &someContractId1,
 					Body: xdr.ContractEventBody{
 						V: 0,
 						V0: &xdr.ContractEventV0{
@@ -557,7 +558,7 @@ func TestInvalidEvents(t *testing.T) {
 
 				return xdr.ContractEvent{
 					Type:       xdr.ContractEventTypeContract,
-					ContractId: &someContractHash1,
+					ContractId: &someContractId1,
 					Body: xdr.ContractEventBody{
 						V: 0,
 						V0: &xdr.ContractEventV0{
@@ -581,7 +582,7 @@ func TestInvalidEvents(t *testing.T) {
 
 				return xdr.ContractEvent{
 					Type:       xdr.ContractEventTypeContract,
-					ContractId: &someContractHash1,
+					ContractId: &someContractId1,
 					Body: xdr.ContractEventBody{
 						V: 0,
 						V0: &xdr.ContractEventV0{
@@ -605,7 +606,7 @@ func TestInvalidEvents(t *testing.T) {
 
 				return xdr.ContractEvent{
 					Type:       xdr.ContractEventTypeContract,
-					ContractId: &someContractHash1,
+					ContractId: &someContractId1,
 					Body: xdr.ContractEventBody{
 						V: 0,
 						V0: &xdr.ContractEventV0{
@@ -629,7 +630,7 @@ func TestInvalidEvents(t *testing.T) {
 
 				return xdr.ContractEvent{
 					Type:       xdr.ContractEventTypeContract,
-					ContractId: &someContractHash1,
+					ContractId: &someContractId1,
 					Body: xdr.ContractEventBody{
 						V: 0,
 						V0: &xdr.ContractEventV0{
@@ -653,7 +654,7 @@ func TestInvalidEvents(t *testing.T) {
 
 				return xdr.ContractEvent{
 					Type:       xdr.ContractEventTypeContract,
-					ContractId: &someContractHash1,
+					ContractId: &someContractId1,
 					Body: xdr.ContractEventBody{
 						V: 0,
 						V0: &xdr.ContractEventV0{
@@ -677,7 +678,7 @@ func TestInvalidEvents(t *testing.T) {
 
 				return xdr.ContractEvent{
 					Type:       xdr.ContractEventTypeContract,
-					ContractId: &someContractHash1,
+					ContractId: &someContractId1,
 					Body: xdr.ContractEventBody{
 						V: 0,
 						V0: &xdr.ContractEventV0{
@@ -701,7 +702,7 @@ func TestInvalidEvents(t *testing.T) {
 
 				return xdr.ContractEvent{
 					Type:       xdr.ContractEventTypeContract,
-					ContractId: &someContractHash1,
+					ContractId: &someContractId1,
 					Body: xdr.ContractEventBody{
 						V: 0,
 						V0: &xdr.ContractEventV0{
@@ -724,7 +725,7 @@ func TestInvalidEvents(t *testing.T) {
 
 				return xdr.ContractEvent{
 					Type:       xdr.ContractEventTypeContract,
-					ContractId: &someContractHash1,
+					ContractId: &someContractId1,
 					Body: xdr.ContractEventBody{
 						V: 0,
 						V0: &xdr.ContractEventV0{
@@ -746,7 +747,7 @@ func TestInvalidEvents(t *testing.T) {
 					1000,
 					nil,
 					"asset",
-					&someContractHash1,
+					&someContractId1,
 				)
 			},
 			expectedErrMsg: "unsupported custom token event type",
@@ -764,7 +765,7 @@ func TestInvalidEvents(t *testing.T) {
 
 				return xdr.ContractEvent{
 					Type:       xdr.ContractEventTypeContract,
-					ContractId: &someContractHash1,
+					ContractId: &someContractId1,
 					Body: xdr.ContractEventBody{
 						V: 0,
 						V0: &xdr.ContractEventV0{
@@ -781,7 +782,7 @@ func TestInvalidEvents(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			contractEvent := tc.setupEvent()
-			event, err := processor.parseEvent(someTx, &someOperationIndex, contractEvent)
+			event, err := processor.parseEvent(someTxV3, &someOperationIndex, contractEvent)
 
 			if tc.expectedErrMsg == "" {
 				// If no error is expected, the test should pass
@@ -837,7 +838,7 @@ func TestSacAssetValidation(t *testing.T) {
 					1000,
 					nil,
 					xlmAsset.StringCanonical(),
-					&someContractHash2, // Different from xlmContractId
+					&someContractId2, // Different from xlmContractId
 				)
 			},
 			isAssetSetInEvent: false, // Asset should not be set due to mismatch
@@ -972,7 +973,7 @@ func TestSacAssetValidation(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			contractEvent := tc.setupEvent()
-			event, err := processor.parseEvent(someTx, &someOperationIndex, contractEvent)
+			event, err := processor.parseEvent(someTxV3, &someOperationIndex, contractEvent)
 
 			require.NoError(t, err, "Should not error for this test case")
 			require.NotNil(t, event, "Event should be returned")
@@ -988,6 +989,635 @@ func TestSacAssetValidation(t *testing.T) {
 				assert.Nil(t, eventAsset, "Asset should not be set for this event")
 			}
 
+		})
+	}
+}
+
+// ------ V4 Testing -----
+
+func TestValidContractEventsV4(t *testing.T) {
+	// Create V4 transaction
+	v4Tx := someTxV3
+	v4Tx.UnsafeMeta.V = 4
+	v4Tx.UnsafeMeta.V4 = &xdr.TransactionMetaV4{
+		Operations: []xdr.OperationMetaV2{{}},
+	}
+
+	thousand := int64(1000)
+	thousandStr := "1000"
+
+	testCases := []struct {
+		name          string
+		eventType     string
+		addr1         string // meaning depends on event type (from/admin)
+		addr2         string // meaning depends on event type (to/from/empty)
+		amount        int64
+		isSacEvent    bool
+		hasV4Memo     bool
+		memoType      string // "id", "text", "hash"
+		memoValue     interface{}
+		validateEvent func(t *testing.T, event *TokenTransferEvent)
+	}{
+		{
+			name:       "V4 Transfer SEP-41 Token Event - No Map (Direct i128)",
+			eventType:  TransferEvent,
+			addr1:      someContract1, // from
+			addr2:      someContract2, // to
+			amount:     thousand,
+			isSacEvent: false,
+			hasV4Memo:  false,
+			validateEvent: func(t *testing.T, event *TokenTransferEvent) {
+				assert.NotNil(t, event.GetTransfer())
+				assert.Equal(t, someContract1, event.GetTransfer().From)
+				assert.Equal(t, someContract2, event.GetTransfer().To)
+				assert.Equal(t, thousandStr, event.GetTransfer().Amount)
+				assert.Nil(t, event.GetAsset())       // asset is nil for non-SAC events
+				assert.Nil(t, event.Meta.ToMuxedInfo) // no memo
+			},
+		},
+		{
+			name:       "V4 Transfer SEP-41 Token Event - With Amount and ID Memo",
+			eventType:  TransferEvent,
+			addr1:      someContract1, // from
+			addr2:      someContract2, // to
+			amount:     1000,
+			isSacEvent: false,
+			hasV4Memo:  true,
+			memoType:   "id",
+			memoValue:  uint64(12345),
+			validateEvent: func(t *testing.T, event *TokenTransferEvent) {
+				assert.NotNil(t, event.GetTransfer())
+				assert.Equal(t, someContract1, event.GetTransfer().From)
+				assert.Equal(t, someContract2, event.GetTransfer().To)
+				assert.Equal(t, thousandStr, event.GetTransfer().Amount)
+				assert.Nil(t, event.GetAsset()) // asset is nil for non-SAC events
+				assert.NotNil(t, event.Meta.ToMuxedInfo)
+				assert.Equal(t, uint64(12345), event.Meta.ToMuxedInfo.GetId())
+			},
+		},
+		{
+			name:       "V4 Transfer SEP-41 Token Event - With Amount and Text Memo",
+			eventType:  TransferEvent,
+			addr1:      someContract1, // from
+			addr2:      someContract2, // to
+			amount:     1000,
+			isSacEvent: false,
+			hasV4Memo:  true,
+			memoType:   "text",
+			memoValue:  "hello world",
+			validateEvent: func(t *testing.T, event *TokenTransferEvent) {
+				assert.NotNil(t, event.GetTransfer())
+				assert.Equal(t, someContract1, event.GetTransfer().From)
+				assert.Equal(t, someContract2, event.GetTransfer().To)
+				assert.Equal(t, thousandStr, event.GetTransfer().Amount)
+				assert.Nil(t, event.GetAsset()) // asset is nil for non-SAC events
+				assert.NotNil(t, event.Meta.ToMuxedInfo)
+				assert.Equal(t, "hello world", event.Meta.ToMuxedInfo.GetText())
+			},
+		},
+		{
+			name:       "V4 Transfer SEP-41 Token Event - With Amount and Hash Memo",
+			eventType:  TransferEvent,
+			addr1:      someContract1, // from
+			addr2:      someContract2, // to
+			amount:     1000,
+			isSacEvent: false,
+			hasV4Memo:  true,
+			memoType:   "hash",
+			memoValue:  []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32},
+			validateEvent: func(t *testing.T, event *TokenTransferEvent) {
+				assert.NotNil(t, event.GetTransfer())
+				assert.Equal(t, someContract1, event.GetTransfer().From)
+				assert.Equal(t, someContract2, event.GetTransfer().To)
+				assert.Equal(t, thousandStr, event.GetTransfer().Amount)
+				assert.Nil(t, event.GetAsset()) // asset is nil for non-SAC events
+				assert.NotNil(t, event.Meta.ToMuxedInfo)
+				expectedHash := []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32}
+				assert.Equal(t, expectedHash, event.Meta.ToMuxedInfo.GetHash())
+			},
+		},
+		{
+			name:       "V4 Mint SEP-41 Token Event - No Admin Address",
+			eventType:  MintEvent,
+			addr1:      someContract1, // to
+			amount:     thousand,
+			isSacEvent: false,
+			hasV4Memo:  false,
+			validateEvent: func(t *testing.T, event *TokenTransferEvent) {
+				assert.NotNil(t, event.GetMint())
+				assert.Equal(t, someContract1, event.GetMint().To)
+				assert.Equal(t, thousandStr, event.GetMint().Amount)
+				assert.Nil(t, event.GetAsset()) // asset is nil for non-SAC events
+			},
+		},
+		{
+			name:       "V4 Clawback SEP-41 Token Event - No Admin Address",
+			eventType:  ClawbackEvent,
+			addr1:      someContract1, // from
+			amount:     thousand,
+			isSacEvent: false,
+			hasV4Memo:  false,
+			validateEvent: func(t *testing.T, event *TokenTransferEvent) {
+				assert.NotNil(t, event.GetClawback())
+				assert.Equal(t, someContract1, event.GetClawback().From)
+				assert.Equal(t, thousandStr, event.GetClawback().Amount)
+				assert.Nil(t, event.GetAsset()) // asset is nil for non-SAC events
+			},
+		},
+		{
+			name:       "V4 Burn SEP-41 Token Event - Same as V3",
+			eventType:  BurnEvent,
+			addr1:      randomAccount, // from
+			amount:     thousand,
+			isSacEvent: false,
+			hasV4Memo:  false,
+			validateEvent: func(t *testing.T, event *TokenTransferEvent) {
+				assert.NotNil(t, event.GetBurn())
+				assert.Equal(t, randomAccount, event.GetBurn().From)
+				assert.Equal(t, thousandStr, event.GetBurn().Amount)
+				assert.Nil(t, event.GetAsset()) // asset is nil for non-SAC events
+			},
+		},
+		{
+			name:       "V4 Transfer SAC Event - With direct amount",
+			eventType:  TransferEvent,
+			addr1:      randomAccount, // from
+			addr2:      someContract1, // to
+			amount:     thousand,
+			isSacEvent: true,
+			validateEvent: func(t *testing.T, event *TokenTransferEvent) {
+				assert.NotNil(t, event.GetTransfer())
+				assert.Equal(t, randomAccount, event.GetTransfer().From)
+				assert.Equal(t, someContract1, event.GetTransfer().To)
+				assert.Equal(t, thousandStr, event.GetTransfer().Amount)
+				assert.NotNil(t, event.GetAsset())
+				assert.Nil(t, event.Meta.ToMuxedInfo)
+			},
+		},
+		{
+			name:       "V4 Transfer SAC Event - With Memo",
+			eventType:  TransferEvent,
+			addr1:      randomAccount, // from
+			addr2:      someContract1, // to
+			amount:     thousand,
+			isSacEvent: true,
+			hasV4Memo:  true,
+			memoType:   "id",
+			memoValue:  uint64(99999),
+			validateEvent: func(t *testing.T, event *TokenTransferEvent) {
+				assert.NotNil(t, event.GetTransfer())
+				assert.Equal(t, randomAccount, event.GetTransfer().From)
+				assert.Equal(t, someContract1, event.GetTransfer().To)
+				assert.Equal(t, thousandStr, event.GetTransfer().Amount)
+				assert.NotNil(t, event.GetAsset())
+				assert.NotNil(t, event.Meta.ToMuxedInfo)
+				assert.Equal(t, uint64(99999), event.Meta.ToMuxedInfo.GetId())
+			},
+		},
+		{
+			name:       "V4 Mint SAC Event - With direct amount",
+			eventType:  MintEvent,
+			addr1:      randomAccount, // to
+			amount:     thousand,
+			isSacEvent: true,
+			validateEvent: func(t *testing.T, event *TokenTransferEvent) {
+				assert.NotNil(t, event.GetMint())
+				assert.Equal(t, randomAccount, event.GetMint().To)
+				assert.Equal(t, thousandStr, event.GetMint().Amount)
+				assert.NotNil(t, event.GetAsset())
+				assert.Nil(t, event.Meta.ToMuxedInfo)
+			},
+		},
+		{
+			name:       "V4 Mint SAC Event - With Memo",
+			eventType:  MintEvent,
+			addr1:      randomAccount, // to
+			amount:     thousand,
+			isSacEvent: true,
+			hasV4Memo:  true,
+			memoType:   "id",
+			memoValue:  uint64(99999),
+			validateEvent: func(t *testing.T, event *TokenTransferEvent) {
+				assert.NotNil(t, event.GetMint())
+				assert.Equal(t, randomAccount, event.GetMint().To)
+				assert.Equal(t, thousandStr, event.GetMint().Amount)
+				assert.NotNil(t, event.GetAsset())
+				assert.NotNil(t, event.Meta.ToMuxedInfo)
+				assert.Equal(t, uint64(99999), event.Meta.ToMuxedInfo.GetId())
+			},
+		},
+		{
+			name:       "V4 Burn SAC Event - With direct amount",
+			eventType:  BurnEvent,
+			addr1:      randomAccount, // from
+			amount:     thousand,
+			isSacEvent: true,
+			validateEvent: func(t *testing.T, event *TokenTransferEvent) {
+				assert.NotNil(t, event.GetBurn())
+				assert.Equal(t, randomAccount, event.GetBurn().From)
+				assert.Equal(t, thousandStr, event.GetBurn().Amount)
+				assert.NotNil(t, event.GetAsset())
+				assert.Nil(t, event.Meta.ToMuxedInfo)
+			},
+		},
+		{
+			name:       "V4 Burn SAC Event - With Memo",
+			eventType:  BurnEvent,
+			addr1:      randomAccount, // from
+			amount:     thousand,
+			isSacEvent: true,
+			hasV4Memo:  true,
+			memoType:   "id",
+			memoValue:  uint64(99999),
+			validateEvent: func(t *testing.T, event *TokenTransferEvent) {
+				assert.NotNil(t, event.GetBurn())
+				assert.Equal(t, randomAccount, event.GetBurn().From)
+				assert.Equal(t, thousandStr, event.GetBurn().Amount)
+				assert.NotNil(t, event.GetAsset())
+				assert.NotNil(t, event.Meta.ToMuxedInfo)
+				assert.Equal(t, uint64(99999), event.Meta.ToMuxedInfo.GetId())
+			},
+		},
+		{
+			name:       "V4 Clawback SAC Event - With direct amount",
+			eventType:  ClawbackEvent,
+			addr1:      randomAccount, // from
+			amount:     thousand,
+			isSacEvent: true,
+			validateEvent: func(t *testing.T, event *TokenTransferEvent) {
+				assert.NotNil(t, event.GetClawback())
+				assert.Equal(t, randomAccount, event.GetClawback().From)
+				assert.Equal(t, thousandStr, event.GetClawback().Amount)
+				assert.NotNil(t, event.GetAsset())
+				assert.Nil(t, event.Meta.ToMuxedInfo)
+			},
+		},
+		{
+			name:       "V4 Clawback SAC Event - With Memo",
+			eventType:  ClawbackEvent,
+			addr1:      randomAccount, // from
+			amount:     thousand,
+			isSacEvent: true,
+			hasV4Memo:  true,
+			memoType:   "id",
+			memoValue:  uint64(99999),
+			validateEvent: func(t *testing.T, event *TokenTransferEvent) {
+				assert.NotNil(t, event.GetClawback())
+				assert.Equal(t, randomAccount, event.GetClawback().From)
+				assert.Equal(t, thousandStr, event.GetClawback().Amount)
+				assert.NotNil(t, event.GetAsset())
+				assert.NotNil(t, event.Meta.ToMuxedInfo)
+				assert.Equal(t, uint64(99999), event.Meta.ToMuxedInfo.GetId())
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Create contract event for V4
+			var contractEvent xdr.ContractEvent
+			var contractId *xdr.ContractId
+			var assetStr string
+
+			if tc.isSacEvent {
+				// For SAC events, use asset-derived contract ID
+				asset := xlmAsset // Use XLM for simplicity
+				assetStr = asset.StringCanonical()
+				contractId = contractIdFromAsset(asset)
+			} else {
+				// For non-SAC events, use arbitrary contract ID and asset string
+				assetStr = "someNonSep11AssetString"
+				contractId = &someContractId1
+			}
+
+			// Build topics based on event type and V4 format (no admin for mint/clawback)
+			topics := []xdr.ScVal{createSymbol(tc.eventType)}
+
+			if tc.addr1 != "" {
+				topics = append(topics, createAddress(tc.addr1)) // from
+			}
+			if tc.addr2 != "" {
+				topics = append(topics, createAddress(tc.addr2)) // to
+			}
+
+			if assetStr != "" {
+				topics = append(topics, createString(assetStr))
+			}
+
+			// Create data - either direct i128 or ScMap with memo
+			var data xdr.ScVal
+			if tc.hasV4Memo {
+				// Create ScMap with amount + to_muxed_id
+				mapEntries := xdr.ScMap{}
+
+				// Add amount
+				amountVal := createInt128(tc.amount)
+
+				amountEntry := xdr.ScMapEntry{
+					Key: createSymbol("amount"),
+					Val: amountVal,
+				}
+				mapEntries = append(mapEntries, amountEntry)
+
+				// Add to_muxed_id based on memo type
+				var muxedIdVal xdr.ScVal
+				switch tc.memoType {
+				case "id":
+					id := tc.memoValue.(uint64)
+					val := xdr.Uint64(id)
+					muxedIdVal = xdr.ScVal{
+						Type: xdr.ScValTypeScvU64,
+						U64:  &val,
+					}
+				case "text":
+					text := tc.memoValue.(string)
+					str := xdr.ScString(text)
+					muxedIdVal = xdr.ScVal{
+						Type: xdr.ScValTypeScvString,
+						Str:  &str,
+					}
+				case "hash":
+					hashBytes := tc.memoValue.([]byte)
+					bytes := xdr.ScBytes(hashBytes)
+					muxedIdVal = xdr.ScVal{
+						Type:  xdr.ScValTypeScvBytes,
+						Bytes: &bytes,
+					}
+				}
+
+				muxedIdEntry := xdr.ScMapEntry{
+					Key: createSymbol("to_muxed_id"),
+					Val: muxedIdVal,
+				}
+				mapEntries = append(mapEntries, muxedIdEntry)
+
+				mapPtr := &mapEntries
+				data = xdr.ScVal{
+					Type: xdr.ScValTypeScvMap,
+					Map:  &mapPtr,
+				}
+			} else {
+				data = createInt128(tc.amount)
+			}
+
+			contractEvent = xdr.ContractEvent{
+				Type:       xdr.ContractEventTypeContract,
+				ContractId: contractId,
+				Body: xdr.ContractEventBody{
+					V: 0,
+					V0: &xdr.ContractEventV0{
+						Topics: topics,
+						Data:   data,
+					},
+				},
+			}
+
+			event, err := processor.parseEvent(v4Tx, &someOperationIndex, contractEvent)
+			require.NoError(t, err)
+			require.NotNil(t, event)
+
+			tc.validateEvent(t, event)
+		})
+	}
+}
+
+func TestV4InvalidEvents(t *testing.T) {
+	// Create V4 transaction
+	v4Tx := someTxV3
+	v4Tx.UnsafeMeta.V = 4
+	v4Tx.UnsafeMeta.V4 = &xdr.TransactionMetaV4{
+		Operations: []xdr.OperationMetaV2{{}},
+	}
+
+	testCases := []struct {
+		name           string
+		setupEvent     func() xdr.ContractEvent
+		expectedErrMsg string
+	}{
+		{
+			name: "V4 Map: Missing amount field",
+			setupEvent: func() xdr.ContractEvent {
+				// Create map with only to_muxed_id, missing amount
+				mapEntries := xdr.ScMap{
+					{
+						Key: createSymbol("to_muxed_id"),
+						Val: xdr.ScVal{Type: xdr.ScValTypeScvU64, U64: &[]xdr.Uint64{12345}[0]},
+					},
+				}
+
+				mapPtr := &mapEntries
+				return xdr.ContractEvent{
+					Type:       xdr.ContractEventTypeContract,
+					ContractId: &someContractId1,
+					Body: xdr.ContractEventBody{
+						V: 0,
+						V0: &xdr.ContractEventV0{
+							Topics: []xdr.ScVal{
+								createSymbol(TransferEvent),
+								createAddress(randomAccount),
+								createAddress(someContract1),
+							},
+							Data: xdr.ScVal{
+								Type: xdr.ScValTypeScvMap,
+								Map:  &mapPtr,
+							},
+						},
+					},
+				}
+			},
+			expectedErrMsg: "amount field not found in map",
+		},
+		{
+			name: "V4 Map: Invalid to_muxed_id type",
+			setupEvent: func() xdr.ContractEvent {
+				// Create map with invalid to_muxed_id type
+				mapEntries := xdr.ScMap{
+					{
+						Key: createSymbol("amount"),
+						Val: createInt128(1000),
+					},
+					{
+						Key: createSymbol("to_muxed_id"),
+						Val: createSymbol("invalid_type"), // Should be u64, bytes, or string
+					},
+				}
+
+				mapPtr := &mapEntries
+				return xdr.ContractEvent{
+					Type:       xdr.ContractEventTypeContract,
+					ContractId: &someContractId1,
+					Body: xdr.ContractEventBody{
+						V: 0,
+						V0: &xdr.ContractEventV0{
+							Topics: []xdr.ScVal{
+								createSymbol(TransferEvent),
+								createAddress(randomAccount),
+								createAddress(someContract1),
+							},
+							Data: xdr.ScVal{
+								Type: xdr.ScValTypeScvMap,
+								Map:  &mapPtr,
+							},
+						},
+					},
+				}
+			},
+			expectedErrMsg: "invalid to_muxed_id type for data",
+		},
+		{
+			name: "Unsupported Transaction Meta Version",
+			setupEvent: func() xdr.ContractEvent {
+				// This will be tested with a V5 transaction
+				return createContractEvent(
+					TransferEvent,
+					randomAccount,
+					someContract1,
+					1000,
+					nil,
+					"asset",
+					&someContractId1,
+				)
+			},
+			expectedErrMsg: "unsupported transaction meta version: 5",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			contractEvent := tc.setupEvent()
+
+			// Use V5 transaction for the unsupported version test
+			testTx := v4Tx
+			if tc.name == "Unsupported Transaction Meta Version" {
+				testTx.UnsafeMeta.V = 5
+			}
+
+			event, err := processor.parseEvent(testTx, &someOperationIndex, contractEvent)
+
+			require.Error(t, err)
+			assert.Nil(t, event)
+			assert.Contains(t, err.Error(), tc.expectedErrMsg, "Error message should contain expected text")
+
+			// Verify it's the right error type
+			_, ok := err.(ErrNotSep41TokenEvent)
+			assert.True(t, ok, "Error should be of type ErrNotSep41TokenEvent")
+		})
+	}
+}
+
+func TestVersionSpecificSACValidation(t *testing.T) {
+	testCases := []struct {
+		name              string
+		txMetaVersion     int32
+		eventType         string
+		topicCount        int
+		isAssetSetInEvent bool
+	}{
+		{
+			name:              "V3 transfer with correct topic count should set asset",
+			txMetaVersion:     3,
+			eventType:         TransferEvent,
+			topicCount:        4,
+			isAssetSetInEvent: true,
+		},
+		{
+			name:              "V3 mint with admin address should set asset",
+			txMetaVersion:     3,
+			eventType:         MintEvent,
+			topicCount:        4,
+			isAssetSetInEvent: true,
+		},
+		{
+			name:              "V4 mint without admin address should set asset",
+			txMetaVersion:     4,
+			eventType:         MintEvent,
+			topicCount:        3,
+			isAssetSetInEvent: true,
+		},
+		{
+			name:              "V4 mint with V3 format should not set asset",
+			txMetaVersion:     4,
+			eventType:         MintEvent,
+			topicCount:        4,
+			isAssetSetInEvent: false,
+		},
+		{
+			name:              "V3 clawback with admin address should set asset",
+			txMetaVersion:     3,
+			eventType:         ClawbackEvent,
+			topicCount:        4,
+			isAssetSetInEvent: true,
+		},
+		{
+			name:              "V4 clawback without admin address should set asset",
+			txMetaVersion:     4,
+			eventType:         ClawbackEvent,
+			topicCount:        3,
+			isAssetSetInEvent: true,
+		},
+		{
+			name:              "V3 burn should set asset (same as V4)",
+			txMetaVersion:     3,
+			eventType:         BurnEvent,
+			topicCount:        3,
+			isAssetSetInEvent: true,
+		},
+		{
+			name:              "V4 burn should set asset (same as V3)",
+			txMetaVersion:     4,
+			eventType:         BurnEvent,
+			topicCount:        3,
+			isAssetSetInEvent: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Create transaction with specified version
+			testTx := someTxV3
+			testTx.UnsafeMeta.V = tc.txMetaVersion
+			if tc.txMetaVersion == 4 {
+				testTx.UnsafeMeta.V4 = &xdr.TransactionMetaV4{
+					Operations: []xdr.OperationMetaV2{{}},
+				}
+			}
+
+			// Create contract event with specified topic count
+			xlmContractId := contractIdFromAsset(xlmAsset)
+			topics := []xdr.ScVal{createSymbol(tc.eventType)}
+
+			// Add topics to reach the desired count
+			for i := 1; i < tc.topicCount-1; i++ {
+				topics = append(topics, createAddress(randomAccount))
+			}
+			// Last topic is always the asset
+			topics = append(topics, createString(xlmAsset.StringCanonical()))
+
+			contractEvent := xdr.ContractEvent{
+				Type:       xdr.ContractEventTypeContract,
+				ContractId: xlmContractId,
+				Body: xdr.ContractEventBody{
+					V: 0,
+					V0: &xdr.ContractEventV0{
+						Topics: topics,
+						Data:   createInt128(1000),
+					},
+				},
+			}
+
+			event, err := processor.parseEvent(testTx, &someOperationIndex, contractEvent)
+
+			require.NoError(t, err, "Should not error for: %s", tc.name)
+			require.NotNil(t, event, "Event should be returned")
+
+			if tc.isAssetSetInEvent {
+				eventAsset := event.GetAsset()
+				assert.NotNil(t, eventAsset, "Asset should be set for: %s", tc.name)
+				assert.True(t, eventAsset.ToXdrAsset().Equals(xlmAsset))
+			} else {
+				eventAsset := event.GetAsset()
+				assert.Nil(t, eventAsset, "Asset should not be set for: %s", tc.name)
+			}
 		})
 	}
 }
