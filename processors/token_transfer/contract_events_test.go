@@ -29,6 +29,9 @@ var (
 		hash := xdr.ContractId(contractId)
 		return &hash
 	}
+
+	thousand    = int64(1000)
+	thousandStr = "1000"
 )
 
 // Helper function to create a ScVal symbol
@@ -82,6 +85,61 @@ func createInt128(val int64) xdr.ScVal {
 	return xdr.ScVal{
 		Type: xdr.ScValTypeScvI128,
 		I128: &parts,
+	}
+}
+
+// createScMap creates an xdr.ScVal of type ScvMap from key-value pairs
+// Usage: createScMap("key1", value1, "key2", value2, ...)
+func createScMap(keyValuePairs ...interface{}) xdr.ScVal {
+	mapEntries := xdr.ScMap{}
+
+	for i := 0; i < len(keyValuePairs); i += 2 {
+		key := keyValuePairs[i]
+		value := keyValuePairs[i+1]
+
+		// Convert key to ScVal (assuming string keys, but you can extend this)
+		var keyScVal xdr.ScVal
+		switch k := key.(type) {
+		case string:
+			keyScVal = createSymbol(k)
+		case xdr.ScVal:
+			keyScVal = k
+		default:
+			panic(fmt.Sprintf("unsupported key type: %T", key))
+		}
+
+		// Convert value to ScVal
+		var valueScVal xdr.ScVal
+		switch v := value.(type) {
+		case xdr.ScVal:
+			valueScVal = v
+		case string:
+			valueScVal = createString(v)
+		case int:
+			valueScVal = createInt128(int64(v))
+		case int64:
+			valueScVal = createInt128(v)
+		case uint64:
+			val := xdr.Uint64(v)
+			valueScVal = xdr.ScVal{
+				Type: xdr.ScValTypeScvU64,
+				U64:  &val,
+			}
+		default:
+			panic(fmt.Sprintf("unsupported value type: %T", value))
+		}
+
+		entry := xdr.ScMapEntry{
+			Key: keyScVal,
+			Val: valueScVal,
+		}
+		mapEntries = append(mapEntries, entry)
+	}
+
+	mapPtr := &mapEntries
+	return xdr.ScVal{
+		Type: xdr.ScValTypeScvMap,
+		Map:  &mapPtr,
 	}
 }
 
@@ -995,7 +1053,7 @@ func TestSacAssetValidation(t *testing.T) {
 
 // ------ V4 Testing -----
 
-func TestValidContractEventsV4(t *testing.T) {
+func TestValidSep41EventsWithExtraTopicsAndDataV4(t *testing.T) {
 	// Create V4 transaction
 	v4Tx := someTxV3
 	v4Tx.UnsafeMeta.V = 4
@@ -1003,8 +1061,311 @@ func TestValidContractEventsV4(t *testing.T) {
 		Operations: []xdr.OperationMetaV2{{}},
 	}
 
-	thousand := int64(1000)
-	thousandStr := "1000"
+	mapWithAmountMuxedInfoAndExtraFields := createScMap(
+		"amount", createInt128(thousand),
+		"to_muxed_id", uint64(999),
+		"some random key", "some random value",
+	)
+
+	mapWithJustAmount := createScMap("amount", createInt128(thousand))
+
+	createContract := func(contractId *xdr.ContractId, topics []xdr.ScVal, data xdr.ScVal) xdr.ContractEvent {
+		return xdr.ContractEvent{
+			Type:       xdr.ContractEventTypeContract,
+			ContractId: contractId,
+			Body: xdr.ContractEventBody{
+				V: 0,
+				V0: &xdr.ContractEventV0{
+					Topics: topics,
+					Data:   data,
+				},
+			},
+		}
+	}
+
+	testCases := []struct {
+		name          string
+		setupEvent    func() xdr.ContractEvent
+		validateEvent func(t *testing.T, event *TokenTransferEvent)
+	}{
+		{
+			name: "Transfer Event with extra topics and i128 amount - Valid SEP-41 token",
+			setupEvent: func() xdr.ContractEvent {
+				topics := []xdr.ScVal{
+					createSymbol(TransferEvent),
+					createAddress(randomAccount),              // from
+					createAddress(someContract1),              // to
+					createString("some random extra topic 1"), // extra
+					createString("some random extra topic 2"), // extra
+					createString(
+						fmt.Sprintf("%s,%s", xlmAsset.StringCanonical(), xlmAsset.StringCanonical()), // spoofing a SAC event
+					),
+				}
+				data := createInt128(thousand)
+				return createContract(&someContractId1, topics, data)
+			},
+			validateEvent: func(t *testing.T, event *TokenTransferEvent) {
+				assert.NotNil(t, event.GetTransfer())
+				assert.Equal(t, randomAccount, event.GetTransfer().From)
+				assert.Equal(t, someContract1, event.GetTransfer().To)
+				assert.Nil(t, event.GetAsset())
+				assert.Equal(t, thousandStr, event.GetTransfer().Amount)
+			},
+		},
+		{
+			name: "Transfer Event with extra topics and map data with extra fields - Valid Sep-41 token",
+			setupEvent: func() xdr.ContractEvent {
+				topics := []xdr.ScVal{
+					createSymbol(TransferEvent),
+					createAddress(randomAccount),              // from
+					createAddress(someContract1),              // to
+					createString("some random extra topic 1"), // extra
+					createString("some random extra topic 2"), // extra
+				}
+				data := mapWithAmountMuxedInfoAndExtraFields
+				return createContract(&someContractId1, topics, data)
+			},
+			validateEvent: func(t *testing.T, event *TokenTransferEvent) {
+				assert.NotNil(t, event.GetTransfer())
+				assert.Equal(t, randomAccount, event.GetTransfer().From)
+				assert.Equal(t, someContract1, event.GetTransfer().To)
+				assert.Nil(t, event.GetAsset())
+				assert.Equal(t, thousandStr, event.GetTransfer().Amount)
+				assert.NotNil(t, event.Meta.GetToMuxedInfo())
+				assert.Equal(t, uint64(999), event.Meta.GetToMuxedInfo().GetId())
+			},
+		}, {
+			name: "Transfer Event with extra topics and just amount as map data - Valid Sep-41 token",
+			setupEvent: func() xdr.ContractEvent {
+				topics := []xdr.ScVal{
+					createSymbol(TransferEvent),
+					createAddress(randomAccount),              // from
+					createAddress(someContract1),              // to
+					createString("some random extra topic 1"), // extra
+					createString("some random extra topic 2"), // extra
+				}
+				data := mapWithJustAmount
+				return createContract(&someContractId1, topics, data)
+			},
+			validateEvent: func(t *testing.T, event *TokenTransferEvent) {
+				assert.NotNil(t, event.GetTransfer())
+				assert.Equal(t, randomAccount, event.GetTransfer().From)
+				assert.Equal(t, someContract1, event.GetTransfer().To)
+				assert.Nil(t, event.GetAsset())
+				assert.Equal(t, thousandStr, event.GetTransfer().Amount)
+				assert.Nil(t, event.Meta.GetToMuxedInfo())
+			},
+		},
+
+		{
+			name: "Mint Event with extra topics and i128 amount - Valid SEP-41 token",
+			setupEvent: func() xdr.ContractEvent {
+				topics := []xdr.ScVal{
+					createSymbol(MintEvent),
+					createAddress(someContract1),              // to
+					createString("some random extra topic 1"), // extra
+					createString("some random extra topic 2"), // extra
+					createString(
+						fmt.Sprintf("%s,%s", xlmAsset.StringCanonical(), xlmAsset.StringCanonical()), // spoofing a SAC event
+					),
+				}
+				data := createInt128(thousand)
+				return createContract(&someContractId1, topics, data)
+			},
+			validateEvent: func(t *testing.T, event *TokenTransferEvent) {
+				assert.NotNil(t, event.GetMint())
+				assert.Equal(t, someContract1, event.GetMint().To)
+				assert.Nil(t, event.GetAsset())
+				assert.Equal(t, thousandStr, event.GetMint().Amount)
+			},
+		},
+		{
+			name: "Mint Event with extra topics and map data with extra fields - Valid Sep-41 token",
+			setupEvent: func() xdr.ContractEvent {
+				topics := []xdr.ScVal{
+					createSymbol(MintEvent),
+					createAddress(someContract1),              // to
+					createString("some random extra topic 1"), // extra
+					createString("some random extra topic 2"), // extra
+				}
+				data := mapWithAmountMuxedInfoAndExtraFields
+				return createContract(&someContractId1, topics, data)
+			},
+			validateEvent: func(t *testing.T, event *TokenTransferEvent) {
+				assert.NotNil(t, event.GetMint())
+				assert.Equal(t, someContract1, event.GetMint().To)
+				assert.Nil(t, event.GetAsset())
+				assert.Equal(t, thousandStr, event.GetMint().Amount)
+				assert.NotNil(t, event.Meta.GetToMuxedInfo())
+				assert.Equal(t, uint64(999), event.Meta.GetToMuxedInfo().GetId())
+			},
+		}, {
+			name: "Mint Event with extra topics and just amount as map data - Valid Sep-41 token",
+			setupEvent: func() xdr.ContractEvent {
+				topics := []xdr.ScVal{
+					createSymbol(MintEvent),
+					createAddress(someContract1),              // to
+					createString("some random extra topic 1"), // extra
+					createString("some random extra topic 2"), // extra
+				}
+				data := mapWithJustAmount
+				return createContract(&someContractId1, topics, data)
+			},
+			validateEvent: func(t *testing.T, event *TokenTransferEvent) {
+				assert.NotNil(t, event.GetMint())
+				assert.Equal(t, someContract1, event.GetMint().To)
+				assert.Nil(t, event.GetAsset())
+				assert.Equal(t, thousandStr, event.GetMint().Amount)
+				assert.Nil(t, event.Meta.GetToMuxedInfo())
+			},
+		},
+
+		{
+			name: "Burn Event with extra topics and i128 amount - Valid SEP-41 token",
+			setupEvent: func() xdr.ContractEvent {
+				topics := []xdr.ScVal{
+					createSymbol(BurnEvent),
+					createAddress(someContract1),              // from
+					createString("some random extra topic 1"), // extra
+					createString("some random extra topic 2"), // extra
+					createString(
+						fmt.Sprintf("%s,%s", xlmAsset.StringCanonical(), xlmAsset.StringCanonical()), // spoofing a SAC event
+					),
+				}
+				data := createInt128(thousand)
+				return createContract(&someContractId1, topics, data)
+			},
+			validateEvent: func(t *testing.T, event *TokenTransferEvent) {
+				assert.NotNil(t, event.GetBurn())
+				assert.Equal(t, someContract1, event.GetBurn().From)
+				assert.Nil(t, event.GetAsset())
+				assert.Equal(t, thousandStr, event.GetBurn().Amount)
+			},
+		},
+		{
+			name: "Burn Event with extra topics and map data with extra fields - Valid Sep-41 token",
+			setupEvent: func() xdr.ContractEvent {
+				topics := []xdr.ScVal{
+					createSymbol(BurnEvent),
+					createAddress(someContract1),              // from
+					createString("some random extra topic 1"), // extra
+					createString("some random extra topic 2"), // extra
+				}
+				data := mapWithAmountMuxedInfoAndExtraFields
+				return createContract(&someContractId1, topics, data)
+			},
+			validateEvent: func(t *testing.T, event *TokenTransferEvent) {
+				assert.NotNil(t, event.GetBurn())
+				assert.Equal(t, someContract1, event.GetBurn().From)
+				assert.Nil(t, event.GetAsset())
+				assert.Equal(t, thousandStr, event.GetBurn().Amount)
+				assert.NotNil(t, event.Meta.GetToMuxedInfo())
+				assert.Equal(t, uint64(999), event.Meta.GetToMuxedInfo().GetId())
+			},
+		}, {
+			name: "Burn Event with extra topics and just amount as map data - Valid Sep-41 token",
+			setupEvent: func() xdr.ContractEvent {
+				topics := []xdr.ScVal{
+					createSymbol(BurnEvent),
+					createAddress(someContract1),              // from
+					createString("some random extra topic 1"), // extra
+					createString("some random extra topic 2"), // extra
+				}
+				data := mapWithJustAmount
+				return createContract(&someContractId1, topics, data)
+			},
+			validateEvent: func(t *testing.T, event *TokenTransferEvent) {
+				assert.NotNil(t, event.GetBurn())
+				assert.Equal(t, someContract1, event.GetBurn().From)
+				assert.Nil(t, event.GetAsset())
+				assert.Equal(t, thousandStr, event.GetBurn().Amount)
+				assert.Nil(t, event.Meta.GetToMuxedInfo())
+			},
+		},
+
+		{
+			name: "Clawback Event with extra topics and i128 amount - Valid SEP-41 token",
+			setupEvent: func() xdr.ContractEvent {
+				topics := []xdr.ScVal{
+					createSymbol(ClawbackEvent),
+					createAddress(someContract1),              // from
+					createString("some random extra topic 1"), // extra
+					createString("some random extra topic 2"), // extra
+					createString(
+						fmt.Sprintf("%s,%s", xlmAsset.StringCanonical(), xlmAsset.StringCanonical()), // spoofing a SAC event
+					),
+				}
+				data := createInt128(thousand)
+				return createContract(&someContractId1, topics, data)
+			},
+			validateEvent: func(t *testing.T, event *TokenTransferEvent) {
+				assert.NotNil(t, event.GetClawback())
+				assert.Equal(t, someContract1, event.GetClawback().From)
+				assert.Nil(t, event.GetAsset())
+				assert.Equal(t, thousandStr, event.GetClawback().Amount)
+			},
+		},
+		{
+			name: "Clawback Event with extra topics and map data with extra fields - Valid Sep-41 token",
+			setupEvent: func() xdr.ContractEvent {
+				topics := []xdr.ScVal{
+					createSymbol(ClawbackEvent),
+					createAddress(someContract1),              // from
+					createString("some random extra topic 1"), // extra
+					createString("some random extra topic 2"), // extra
+				}
+				data := mapWithAmountMuxedInfoAndExtraFields
+				return createContract(&someContractId1, topics, data)
+			},
+			validateEvent: func(t *testing.T, event *TokenTransferEvent) {
+				assert.NotNil(t, event.GetClawback())
+				assert.Equal(t, someContract1, event.GetClawback().From)
+				assert.Nil(t, event.GetAsset())
+				assert.Equal(t, thousandStr, event.GetClawback().Amount)
+				assert.NotNil(t, event.Meta.GetToMuxedInfo())
+				assert.Equal(t, uint64(999), event.Meta.GetToMuxedInfo().GetId())
+			},
+		}, {
+			name: "Clawback Event with extra topics and just amount as map data - Valid Sep-41 token",
+			setupEvent: func() xdr.ContractEvent {
+				topics := []xdr.ScVal{
+					createSymbol(ClawbackEvent),
+					createAddress(someContract1),              // from
+					createString("some random extra topic 1"), // extra
+					createString("some random extra topic 2"), // extra
+				}
+				data := mapWithJustAmount
+				return createContract(&someContractId1, topics, data)
+			},
+			validateEvent: func(t *testing.T, event *TokenTransferEvent) {
+				assert.NotNil(t, event.GetClawback())
+				assert.Equal(t, someContract1, event.GetClawback().From)
+				assert.Nil(t, event.GetAsset())
+				assert.Equal(t, thousandStr, event.GetClawback().Amount)
+				assert.Nil(t, event.Meta.GetToMuxedInfo())
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			contractEvent := tc.setupEvent()
+			event, err := processor.parseEvent(v4Tx, &someOperationIndex, contractEvent)
+			require.NoError(t, err, "Should not error for this test case")
+			require.NotNil(t, event, "Event should be returned")
+			tc.validateEvent(t, event)
+		})
+	}
+
+}
+
+func TestValidContractEventsV4(t *testing.T) {
+	// Create V4 transaction
+	v4Tx := someTxV3
+	v4Tx.UnsafeMeta.V = 4
+	v4Tx.UnsafeMeta.V4 = &xdr.TransactionMetaV4{
+		Operations: []xdr.OperationMetaV2{{}},
+	}
 
 	testCases := []struct {
 		name          string
@@ -1040,7 +1401,7 @@ func TestValidContractEventsV4(t *testing.T) {
 			eventType:  TransferEvent,
 			addr1:      someContract1, // from
 			addr2:      someContract2, // to
-			amount:     1000,
+			amount:     thousand,
 			isSacEvent: false,
 			hasV4Memo:  true,
 			memoType:   "id",
@@ -1060,7 +1421,7 @@ func TestValidContractEventsV4(t *testing.T) {
 			eventType:  TransferEvent,
 			addr1:      someContract1, // from
 			addr2:      someContract2, // to
-			amount:     1000,
+			amount:     thousand,
 			isSacEvent: false,
 			hasV4Memo:  true,
 			memoType:   "text",
@@ -1080,7 +1441,7 @@ func TestValidContractEventsV4(t *testing.T) {
 			eventType:  TransferEvent,
 			addr1:      someContract1, // from
 			addr2:      someContract2, // to
-			amount:     1000,
+			amount:     thousand,
 			isSacEvent: false,
 			hasV4Memo:  true,
 			memoType:   "hash",
