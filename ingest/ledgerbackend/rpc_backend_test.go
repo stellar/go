@@ -259,7 +259,7 @@ func TestGetLedgerBeyondLatestBasedOnErr(t *testing.T) {
 	mockClient.On("GetLedgers", ctx, rpcGetLedgersRequest).Return(secondResponse, nil).Once()
 
 	preparedRange := Range{from: requestedSequence, to: requestedSequence + 10, bounded: true}
-	rpcBackend.PrepareRange(ctx, preparedRange)
+	assert.NoError(t, rpcBackend.PrepareRange(ctx, preparedRange))
 
 	startTime := time.Now()
 	actualLCM, err := rpcBackend.GetLedger(ctx, requestedSequence)
