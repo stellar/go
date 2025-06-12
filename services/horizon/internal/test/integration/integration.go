@@ -166,7 +166,7 @@ func NewTest(t *testing.T, config Config) *Test {
 		Accelerate:                            CheckpointFrequency < historyarchive.DefaultCheckpointFrequency,
 		NetworkPassphrase:                     config.NetworkPassphrase,
 		TestingMinimumPersistentEntryLifetime: 65536,
-		TestingSorobanHighLimitOverride:       false,
+		TestingSorobanHighLimitOverride:       true,
 		OverrideEvictionParamsForTesting:      false,
 	}
 	if config.QuickExpiration {

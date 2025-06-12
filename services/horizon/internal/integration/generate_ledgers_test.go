@@ -37,6 +37,11 @@ type sorobanTransaction struct {
 }
 
 func TestGenerateLedgers(t *testing.T) {
+	// TODO: Add support for LedgerCloseMetaV2 to run this test for Protocol 23 and above
+	if integration.GetCoreMaxSupportedProtocol() > 22 {
+		t.Skip("This test run does not support greater than Protocol 22")
+	}
+
 	var transactionsPerLedger, ledgers, transfersPerTx int
 	var output bool
 	var networkPassphrase string
