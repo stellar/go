@@ -9,7 +9,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/creachadair/jrpc2"
 	"github.com/stellar/go/xdr"
 	rpc "github.com/stellar/stellar-rpc/client"
 	"github.com/stellar/stellar-rpc/protocol"
@@ -26,15 +25,16 @@ func (e *RPCLedgerMissingError) Error() string {
 	return fmt.Sprintf("ledger %d was not present on rpc", e.Sequence)
 }
 
-type RPCLedgerBeyondLatestError struct{}
+type rpcLedgerBeyondLatestError struct{}
 
-func (e RPCLedgerBeyondLatestError) Error() string {
+func (e rpcLedgerBeyondLatestError) Error() string {
 	return "ledger is not available on the RPC server yet"
 }
 
 // The minimum required RPC client methods used by RPCLedgerBackend.
 type RPCLedgerGetter interface {
 	GetLedgers(ctx context.Context, req protocol.GetLedgersRequest) (protocol.GetLedgersResponse, error)
+	GetHealth(ctx context.Context) (protocol.GetHealthResponse, error) // <-- Added
 }
 
 type RPCLedgerBackend struct {
@@ -144,7 +144,7 @@ func (b *RPCLedgerBackend) GetLedger(ctx context.Context, sequence uint32) (xdr.
 			return lcm, nil
 		}
 
-		var beyondErr *RPCLedgerBeyondLatestError
+		var beyondErr *rpcLedgerBeyondLatestError
 		if !(errors.As(err, &beyondErr)) {
 			return xdr.LedgerCloseMeta{}, err
 		}
@@ -180,7 +180,7 @@ func (b *RPCLedgerBackend) PrepareRange(ctx context.Context, ledgerRange Range) 
 	_, err := b.getBufferedLedger(ctx, ledgerRange.from)
 	if err != nil {
 		// beyond latest is handled later in GetLedger
-		var beyondErr *RPCLedgerBeyondLatestError
+		var beyondErr *rpcLedgerBeyondLatestError
 		if !(errors.As(err, &beyondErr)) {
 			return err
 		}
@@ -238,7 +238,16 @@ func (b *RPCLedgerBackend) getBufferedLedger(ctx context.Context, sequence uint3
 		return lcm, nil
 	}
 
-	// Ledger not in buffer, fetch a small batch from RPC starting from the requested sequence
+	// Check if requested ledger is beyond the RPC retention window using GetHealth
+	health, err := b.client.GetHealth(ctx)
+	if err != nil {
+		return xdr.LedgerCloseMeta{}, fmt.Errorf("failed to get health from RPC: %w", err)
+	}
+	if sequence > health.LatestLedger {
+		return xdr.LedgerCloseMeta{}, &rpcLedgerBeyondLatestError{}
+	}
+
+	// attempt to fetch a small batch from RPC starting from the requested sequence
 	req := protocol.GetLedgersRequest{
 		StartLedger: sequence,
 		Pagination: &protocol.LedgerPaginationOptions{
@@ -248,22 +257,10 @@ func (b *RPCLedgerBackend) getBufferedLedger(ctx context.Context, sequence uint3
 
 	ledgers, err := b.client.GetLedgers(ctx, req)
 	if err != nil {
-		// InvalidRequest code is the most specific error code provided for invalid range requests.
-		// https://github.com/stellar/stellar-rpc/pull/407/
-		// if received, assume it's range problem to enable retry.
-		var rpcErr *jrpc2.Error
-		if errors.As(err, &rpcErr) && rpcErr.Code == jrpc2.InvalidRequest {
-			return xdr.LedgerCloseMeta{}, &RPCLedgerBeyondLatestError{}
-		}
-		return xdr.LedgerCloseMeta{}, fmt.Errorf("failed to get ledgers starting from %d: %w", sequence, err)
+		return xdr.LedgerCloseMeta{}, err
 	}
 
 	b.initBuffer()
-
-	// Check if requested ledger is beyond the RPC retention window
-	if sequence > ledgers.LatestLedger {
-		return xdr.LedgerCloseMeta{}, &RPCLedgerBeyondLatestError{}
-	}
 
 	// Populate buffer with new ledgers
 	for _, ledger := range ledgers.Ledgers {
