@@ -360,8 +360,6 @@ type CaptiveCoreTomlParams struct {
 	EnforceSorobanDiagnosticEvents bool
 	// Enforce EnableSorobanTransactionMetaExtV1 when not disabled explicitly
 	EnforceSorobanTransactionMetaExtV1 bool
-	// Emits unified events for all operations
-	EmitUnifiedEvents bool
 	// Fast HTTP Query Server parameters
 	HTTPQueryServerParams *HTTPQueryServerParams
 	// CoreBuildVersionFn is a function that returns the build version of the stellar-core binary.
