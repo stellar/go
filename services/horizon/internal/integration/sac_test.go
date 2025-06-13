@@ -464,15 +464,13 @@ func TestExpirationAndRestoration(t *testing.T) {
 		),
 	)
 	assertAssetStats(itest, assetStats{
-		code:                     code,
-		issuer:                   issuer,
-		numAccounts:              0,
-		balanceAccounts:          0,
-		balanceArchivedContracts: big.NewInt(37),
-		numArchivedContracts:     1,
-		numContracts:             0,
-		balanceContracts:         big.NewInt(0),
-		contractID:               storeContractID,
+		code:             code,
+		issuer:           issuer,
+		numAccounts:      0,
+		balanceAccounts:  0,
+		numContracts:     0,
+		balanceContracts: big.NewInt(0),
+		contractID:       storeContractID,
 	})
 }
 
