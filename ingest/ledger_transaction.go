@@ -625,7 +625,17 @@ func (t *LedgerTransaction) SorobanResourceFeeRefund() int64 {
 	if !t.IsSorobanTx() {
 		return 0
 	}
-	startingBal, endingBal := getAccountBalanceFromLedgerEntryChanges(t.UnsafeMeta.MustV3().TxChangesAfter, t.FeeAccount().ToAccountId().Address())
+	var txChangesAfter xdr.LedgerEntryChanges
+	switch t.UnsafeMeta.V {
+	case 3:
+		txChangesAfter = t.UnsafeMeta.MustV3().TxChangesAfter
+	case 4:
+		txChangesAfter = t.UnsafeMeta.MustV4().TxChangesAfter
+	default:
+		panic(fmt.Errorf("Invalid txMeta version: %d", t.UnsafeMeta.V))
+	}
+
+	startingBal, endingBal := getAccountBalanceFromLedgerEntryChanges(append(txChangesAfter, t.PostTxApplyFeeChanges...), t.FeeAccount().ToAccountId().Address())
 	if startingBal > endingBal {
 		panic("Invalid Soroban Resource Refund")
 	}
