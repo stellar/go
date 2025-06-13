@@ -13,7 +13,6 @@ require (
 	github.com/adjust/goautoneg v0.0.0-20150426214442-d788f35a0315
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2
 	github.com/aws/aws-sdk-go v1.45.27
-	github.com/creachadair/jrpc2 v1.2.0
 	github.com/djherbis/fscache v0.10.1
 	github.com/elazarl/go-bindata-assetfs v1.0.1
 	github.com/getsentry/raven-go v0.2.0
@@ -58,6 +57,7 @@ require (
 
 require (
 	github.com/cenkalti/backoff/v4 v4.3.0
+	github.com/creachadair/jrpc2 v1.2.0
 	github.com/dgryski/go-farm v0.0.0-20240924180020-3414d57e47da
 	github.com/docker/docker v27.3.1+incompatible
 	github.com/docker/go-connections v0.5.0

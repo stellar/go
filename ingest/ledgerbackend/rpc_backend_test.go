@@ -22,6 +22,11 @@ func (m *MockRPCClient) GetLedgers(ctx context.Context, req protocol.GetLedgersR
 	return args.Get(0).(protocol.GetLedgersResponse), args.Error(1)
 }
 
+func (m *MockRPCClient) GetHealth(ctx context.Context) (protocol.GetHealthResponse, error) {
+	args := m.Called(ctx)
+	return args.Get(0).(protocol.GetHealthResponse), args.Error(1)
+}
+
 func setupRPCTest(t *testing.T) (*RPCLedgerBackend, *MockRPCClient) {
 	mockClient := new(MockRPCClient)
 	backend := &RPCLedgerBackend{
@@ -37,6 +42,10 @@ func TestRPCGetLedger(t *testing.T) {
 	rpcBackend, mockClient := setupRPCTest(t)
 	ctx := context.Background()
 	sequence := uint32(12345)
+
+	mockClient.On("GetHealth", ctx).Return(protocol.GetHealthResponse{
+		LatestLedger: sequence + 10,
+	}, nil)
 
 	lcm := xdr.LedgerCloseMeta{
 		V: 0,
@@ -88,12 +97,12 @@ func TestRPCGetLedger(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "requested ledger 12345 is not the expected ledger 12346")
 
-	// Test requesteed ledger is outside of prepared range
+	// Test requested ledger is outside of prepared range
 	_, err = rpcBackend.GetLedger(ctx, sequence+50)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "requested ledger 12395 is outside prepared range")
 
-	// Test requested ledger is after oldest range in rpc but, was missing from response
+	// Test requested ledger is in valid range of rpc but was missing from response
 	notFoundSequnce := sequence + 1
 	expectedReq.StartLedger = notFoundSequnce
 	mockClient.On("GetLedgers", ctx, expectedReq).Return(mockMissingLedgerResponse, nil).Once()
@@ -103,10 +112,9 @@ func TestRPCGetLedger(t *testing.T) {
 	assert.Equal(t, notFoundSequnce, missingErr.Sequence)
 
 	// Test rpc error response
-	expectedErr := fmt.Errorf("rpc connection error")
+	expectedErr := fmt.Errorf("rpc error")
 	mockClient.On("GetLedgers", ctx, expectedReq).Return(protocol.GetLedgersResponse{}, expectedErr).Once()
 	_, err = rpcBackend.GetLedger(ctx, sequence+1)
-	assert.Error(t, err)
 	assert.Contains(t, err.Error(), expectedErr.Error())
 
 	// Verify Closed  backend
@@ -116,7 +124,6 @@ func TestRPCGetLedger(t *testing.T) {
 	_, err = rpcBackend.GetLedger(ctx, sequence)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "RPCLedgerBackend is closed")
-
 }
 
 func TestRPCBackendImplementsInterface(t *testing.T) {
@@ -148,13 +155,11 @@ func TestNewRPCLedgerBackend(t *testing.T) {
 	})
 }
 
-func TestGetLedgerBeyondLatest(t *testing.T) {
+func TestGetLedgerWaitsForLatest(t *testing.T) {
 	rpcBackend, mockClient := setupRPCTest(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	requestedSequence := uint32(100)
-
-	latestLedger := requestedSequence - 1 // Latest ledger is 1 behind requested
 
 	rpcGetLedgersRequest := protocol.GetLedgersRequest{
 		StartLedger: requestedSequence,
@@ -162,15 +167,14 @@ func TestGetLedgerBeyondLatest(t *testing.T) {
 			Limit: uint(rpcBackendDefaultBufferSize),
 		},
 	}
-	// Setup first response indicating ledger is beyond latest
-	firstResponse := protocol.GetLedgersResponse{
-		LatestLedger: latestLedger,
-		Ledgers:      []protocol.LedgerInfo{}, // Empty ledgers array
-	}
-	// gets called by preparerange, and test expects it to get called by GetLedger first time
-	mockClient.On("GetLedgers", ctx, rpcGetLedgersRequest).Return(firstResponse, nil).Twice()
 
-	// Setup second call to return the requested ledger
+	// this gets used on Prepared Range call and first call to GetLedger
+	// indicates requested ledger is beyond rpc latest
+	mockClient.On("GetHealth", ctx).Return(protocol.GetHealthResponse{
+		LatestLedger: requestedSequence - 1,
+	}, nil).Twice()
+
+	// Setup call to GetLedger return the requested ledger
 	lcm := xdr.LedgerCloseMeta{
 		V: 0,
 		V0: &xdr.LedgerCloseMetaV0{
@@ -184,7 +188,7 @@ func TestGetLedgerBeyondLatest(t *testing.T) {
 	encodedLCM, err := xdr.MarshalBase64(lcm)
 	assert.NoError(t, err)
 
-	secondResponse := protocol.GetLedgersResponse{
+	getResponse := protocol.GetLedgersResponse{
 		LatestLedger: requestedSequence,
 		Ledgers: []protocol.LedgerInfo{
 			{
@@ -193,24 +197,30 @@ func TestGetLedgerBeyondLatest(t *testing.T) {
 			},
 		},
 	}
-	mockClient.On("GetLedgers", ctx, rpcGetLedgersRequest).Return(secondResponse, nil).Once()
+	// called by GetLedger on second try, indicates rpc latest has advanced beyond requested
+	mockClient.On("GetHealth", ctx).Return(protocol.GetHealthResponse{
+		LatestLedger: requestedSequence + 10,
+	}, nil).Once()
+	// now it attempts GetLedgers call
+	mockClient.On("GetLedgers", ctx, rpcGetLedgersRequest).Return(getResponse, nil).Once()
 
 	preparedRange := Range{from: requestedSequence, to: requestedSequence + 10, bounded: true}
-	rpcBackend.PrepareRange(ctx, preparedRange)
+	assert.NoError(t, rpcBackend.PrepareRange(ctx, preparedRange))
 
 	startTime := time.Now()
+	// first call to GetLedger gets health status indicating requested ledger is beyond roc latest
+	// triggers retry logic
 	actualLCM, err := rpcBackend.GetLedger(ctx, requestedSequence)
 	duration := time.Since(startTime)
 
 	assert.NoError(t, err)
 	assert.Equal(t, requestedSequence, uint32(actualLCM.V0.LedgerHeader.Header.LedgerSeq))
 
-	// Verify timing - GetLedger should have waited one interval and then refetched ledgers from rpc on second call
+	// Verify timing - GetLedger should have waited one retry interval and then refetched ledgers from rpc on second call
 	assert.GreaterOrEqual(t, duration.Seconds(), float64(rpcBackendDefaultWaitIntervalSeconds))
-
 }
 
-func TestGetLedgerContextTimeout(t *testing.T) {
+func TestGetLedgerContextTimeoutInterrupt(t *testing.T) {
 	rpcBackend, mockClient := setupRPCTest(t)
 	sequence := uint32(100)
 	background := context.Background()
@@ -218,19 +228,9 @@ func TestGetLedgerContextTimeout(t *testing.T) {
 	ctx, cancel := context.WithTimeout(background, 100*time.Millisecond)
 	defer cancel()
 
-	expectedReq := protocol.GetLedgersRequest{
-		StartLedger: sequence,
-		Pagination: &protocol.LedgerPaginationOptions{
-			Limit: uint(rpcBackendDefaultBufferSize),
-		},
-	}
-	// represents request that is beyond latest on rpc
-	// in GetLLedger, this will trigger retry request after context deadline exceeded
-	mockResponse := protocol.GetLedgersResponse{
-		LatestLedger: sequence - 2,
-		Ledgers:      []protocol.LedgerInfo{},
-	}
-	mockClient.On("GetLedgers", mock.Anything, expectedReq).Return(mockResponse, nil)
+	mockClient.On("GetHealth", mock.Anything).Return(protocol.GetHealthResponse{
+		LatestLedger: sequence - 1,
+	}, nil).Twice()
 
 	// Prepare the range first, it doesn't mind the beyond latest response
 	preparedRange := Range{from: sequence, to: sequence + 10, bounded: true}
@@ -242,34 +242,30 @@ func TestGetLedgerContextTimeout(t *testing.T) {
 	assert.ErrorIs(t, err, context.DeadlineExceeded)
 }
 
-func TestGetLedgerWhileClosed(t *testing.T) {
+func TestGetLedgerClosedInterrupt(t *testing.T) {
 	rpcBackend, mockClient := setupRPCTest(t)
 	sequence := uint32(100)
 	ctx := context.Background()
 
-	expectedReq := protocol.GetLedgersRequest{
-		StartLedger: sequence,
-		Pagination: &protocol.LedgerPaginationOptions{
-			Limit: uint(rpcBackendDefaultBufferSize),
-		},
-	}
-	// represents request that is beyond latest on rpc
-	// allows it to check for retry which will fail due to closed backend
-	mockResponse := protocol.GetLedgersResponse{
-		LatestLedger: sequence - 2,
-		Ledgers:      []protocol.LedgerInfo{},
+	healthResponse := protocol.GetHealthResponse{
+		LatestLedger: sequence - 1,
 	}
 
-	mockClient.On("GetLedgers", ctx, expectedReq).
+	// prepare range calls it
+	mockClient.On("GetHealth", ctx).Return(healthResponse, nil).Once()
+
+	// get ledger calls it again,
+	// and artificallly simulate backedn being closed by caller
+	mockClient.On("GetHealth", ctx).
 		Run(func(args mock.Arguments) {
 			assert.NoError(t, rpcBackend.Close())
-		}).Return(mockResponse, nil).Once()
+		}).Return(healthResponse, nil).Once()
 
 	// Prepare the range first, it doesn't mind the beyond latest response
 	preparedRange := Range{from: sequence, to: sequence + 10, bounded: true}
 	rpcBackend.PrepareRange(ctx, preparedRange)
 
-	// Call GetLedger it will attempt to retry due to beyond latest, and detect closed
+	// Call GetLedger it will attempt roc retry and detect closed after
 	_, err := rpcBackend.GetLedger(ctx, sequence)
 	assert.ErrorContains(t, err, "RPCLedgerBackend is closed")
 }
@@ -280,6 +276,9 @@ func TestPrepareRange(t *testing.T) {
 		ctx := context.Background()
 		start := uint32(150)
 
+		mockClient.On("GetHealth", ctx).Return(protocol.GetHealthResponse{
+			LatestLedger: start + 10,
+		}, nil).Once()
 		expectedReq := protocol.GetLedgersRequest{
 			StartLedger: start,
 			Pagination: &protocol.LedgerPaginationOptions{
@@ -295,12 +294,21 @@ func TestPrepareRange(t *testing.T) {
 		err := backend.PrepareRange(ctx, Range{from: start, to: start + 30, bounded: true})
 		assert.NoError(t, err)
 		assert.Equal(t, uint32(150), backend.nextLedger)
+
+		// Second prepare should fail
+		err = backend.PrepareRange(ctx, Range{from: start, to: start + 30, bounded: true})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "already prepared")
 	})
 
 	t.Run("unbounded range", func(t *testing.T) {
 		backend, mockClient := setupRPCTest(t)
 		ctx := context.Background()
 		start := uint32(150)
+
+		mockClient.On("GetHealth", ctx).Return(protocol.GetHealthResponse{
+			LatestLedger: start + 10,
+		}, nil).Once()
 
 		expectedReq := protocol.GetLedgersRequest{
 			StartLedger: start,
@@ -319,39 +327,16 @@ func TestPrepareRange(t *testing.T) {
 		assert.Equal(t, uint32(150), backend.nextLedger)
 	})
 
-	t.Run("error when already prepared", func(t *testing.T) {
-		backend, mockClient := setupRPCTest(t)
-		ctx := context.Background()
-		start := uint32(150)
-
-		expectedReq := protocol.GetLedgersRequest{
-			StartLedger: start,
-			Pagination: &protocol.LedgerPaginationOptions{
-				Limit: uint(rpcBackendDefaultBufferSize),
-			},
-		}
-		mockResponse := protocol.GetLedgersResponse{
-			LatestLedger: start + 10,
-			Ledgers:      []protocol.LedgerInfo{generateRPCInfo(start)},
-		}
-		mockClient.On("GetLedgers", ctx, expectedReq).Return(mockResponse, nil).Once()
-
-		// First prepare should succeed
-		err := backend.PrepareRange(ctx, Range{from: start, to: start + 30, bounded: true})
-		assert.NoError(t, err)
-
-		// Second prepare should fail
-		err = backend.PrepareRange(ctx, Range{from: start + 10, to: start + 40, bounded: true})
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "already prepared")
-	})
-
 	t.Run("error when RPC returns error", func(t *testing.T) {
 		backend, mockClient := setupRPCTest(t)
 		ctx := context.Background()
 
 		expectedErr := fmt.Errorf("rpc server side reported error")
 		start := uint32(150)
+
+		mockClient.On("GetHealth", ctx).Return(protocol.GetHealthResponse{
+			LatestLedger: start + 10,
+		}, nil).Once()
 
 		expectedReq := protocol.GetLedgersRequest{
 			StartLedger: start,
@@ -468,20 +453,11 @@ func TestRPCBackendGetLatestLedgerSequence(t *testing.T) {
 		ctx := context.Background()
 		start := uint32(150)
 
-		expectedReq := protocol.GetLedgersRequest{
-			StartLedger: start,
-			Pagination: &protocol.LedgerPaginationOptions{
-				Limit: uint(rpcBackendDefaultBufferSize),
-			},
-		}
-		// Setup first response indicating ledger is beyond latest
-		mockResponse := protocol.GetLedgersResponse{
+		mockClient.On("GetHealth", ctx).Return(protocol.GetHealthResponse{
 			LatestLedger: start - 1,
-			Ledgers:      []protocol.LedgerInfo{}, // Empty ledgers array
-		}
-		mockClient.On("GetLedgers", ctx, expectedReq).Return(mockResponse, nil)
+		}, nil).Once()
 
-		// establish a prepared, but empty buffer state
+		// establish a prepared, but was beyond rpc latest, so empty buffer state
 		err := backend.PrepareRange(ctx, Range{from: start, to: start + 10, bounded: true})
 		assert.NoError(t, err)
 
@@ -497,6 +473,10 @@ func TestRPCBackendGetLatestLedgerSequence(t *testing.T) {
 		backend, mockClient := setupRPCTest(t)
 		ctx := context.Background()
 		start := uint32(150)
+
+		mockClient.On("GetHealth", ctx).Return(protocol.GetHealthResponse{
+			LatestLedger: start + 10,
+		}, nil).Once()
 
 		expectedReq := protocol.GetLedgersRequest{
 			StartLedger: start,
