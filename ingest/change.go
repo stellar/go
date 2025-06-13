@@ -113,10 +113,11 @@ func (c Change) String() string {
 		}
 	}
 	return fmt.Sprintf(
-		"Change{Type: %s, Pre: %s, Post: %s}",
+		"Change{Type: %s, Pre: %s, Post: %s, ChangeType: %s}",
 		c.Type.String(),
 		pre,
 		post,
+		c.ChangeType,
 	)
 }
 
