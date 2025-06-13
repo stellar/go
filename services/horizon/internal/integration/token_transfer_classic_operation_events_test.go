@@ -247,7 +247,7 @@ func TestTrustlineRevocationEvents(t *testing.T) {
 
 	// 2 operations - 100 stroops per operation
 	assertFeeEvent(t, events, master.Address(), "200")
-	assert.NoError(t, token_transfer.VerifyEvents(ledger, itest.GetPassPhrase()))
+	assert.NoError(t, token_transfer.VerifyEvents(ledger, itest.GetPassPhrase(), false))
 
 	// TODO - Add assertions for transfer with CB and LP, once Strkey support is added
 }
