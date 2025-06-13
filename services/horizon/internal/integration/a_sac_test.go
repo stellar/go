@@ -6,6 +6,7 @@ import (
 	"math/big"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -472,6 +473,133 @@ func TestExpirationAndRestoration(t *testing.T) {
 		balanceContracts: big.NewInt(0),
 		contractID:       storeContractID,
 	})
+
+	time.Sleep(60 * time.Second)
+
+}
+
+func TestEvictionAndRestoration(t *testing.T) {
+	itest := integration.NewTest(t, integration.Config{
+		EnableStellarRPC: true,
+		HorizonIngestParameters: map[string]string{
+			// disable state verification because we will insert
+			// a fake asset contract in the horizon db and we don't
+			// want state verification to detect this
+			"ingest-disable-state-verification": "true",
+		},
+		QuickExpiration: true,
+		QuickEviction:   true,
+	})
+
+	issuer := itest.Master().Address()
+	code := "USD"
+
+	// Create contract to store synthetic asset balances
+	storeContractID, _ := mustCreateAndInstallContract(
+		itest,
+		itest.Master(),
+		"a1",
+		"soroban_store.wasm",
+	)
+	syntheticAssetStat := history.ExpAssetStat{
+		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
+		AssetCode:   code,
+		AssetIssuer: issuer,
+		Accounts: history.ExpAssetStatAccounts{
+			Authorized:                      0,
+			AuthorizedToMaintainLiabilities: 0,
+			ClaimableBalances:               0,
+			LiquidityPools:                  0,
+			Unauthorized:                    0,
+		},
+		Balances: history.ExpAssetStatBalances{
+			Authorized:                      "0",
+			AuthorizedToMaintainLiabilities: "0",
+			ClaimableBalances:               "0",
+			LiquidityPools:                  "0",
+			Unauthorized:                    "0",
+		},
+		ContractID: nil,
+	}
+	syntheticAssetStat.SetContractID(storeContractID)
+	_, err := itest.HorizonIngest().HistoryQ().InsertAssetStat(
+		context.Background(),
+		syntheticAssetStat,
+	)
+	assert.NoError(t, err)
+
+	// create balance which we will expire
+	holder := [32]byte{2}
+	balanceToExpire := sac.BalanceToContractData(
+		storeContractID,
+		holder,
+		37,
+	)
+	assertInvokeHostFnSucceeds(
+		itest,
+		itest.Master(),
+		invokeStoreSet(
+			itest,
+			storeContractID,
+			balanceToExpire,
+		),
+	)
+	assertAssetStats(itest, assetStats{
+		code:             code,
+		issuer:           issuer,
+		numAccounts:      0,
+		balanceAccounts:  0,
+		numContracts:     1,
+		balanceContracts: big.NewInt(37),
+		contractID:       storeContractID,
+	})
+
+	balanceToExpireLedgerKey := xdr.LedgerKey{
+		Type: xdr.LedgerEntryTypeContractData,
+		ContractData: &xdr.LedgerKeyContractData{
+			Contract:   balanceToExpire.ContractData.Contract,
+			Key:        balanceToExpire.ContractData.Key,
+			Durability: balanceToExpire.ContractData.Durability,
+		},
+	}
+
+	itest.WaitUntilLedgerEntryTTL(balanceToExpireLedgerKey)
+	assertAssetStats(itest, assetStats{
+		code:             code,
+		issuer:           issuer,
+		numAccounts:      0,
+		balanceAccounts:  0,
+		numContracts:     0,
+		balanceContracts: big.NewInt(0),
+		contractID:       storeContractID,
+	})
+
+	// restore expired balance
+	restoreFootprint, err := txnbuild.NewAssetBalanceRestoration(txnbuild.AssetBalanceRestorationParams{
+		NetworkPassphrase: itest.GetPassPhrase(),
+		Contract:          strkey.MustEncode(strkey.VersionByteContract, holder[:]),
+		Asset: txnbuild.CreditAsset{
+			Code:   code,
+			Issuer: issuer,
+		},
+		SourceAccount: itest.Master().Address(),
+	})
+	assert.NoError(t, err)
+	// set the contract id to storeContractID because we are restoring a fake asset balance
+	restoreFootprint.Ext.SorobanData.Resources.Footprint.ReadWrite[0].ContractData.Contract.ContractId = &storeContractID
+	itest.MustSubmitOperations(itest.MasterAccount(), itest.Master(), &restoreFootprint)
+	assertAssetStats(itest, assetStats{
+		code:             code,
+		issuer:           issuer,
+		numAccounts:      0,
+		balanceAccounts:  0,
+		numContracts:     1,
+		balanceContracts: big.NewInt(37),
+		contractID:       storeContractID,
+	})
+
+	// expire the balance again
+	itest.WaitUntilLedgerEntryTTL(balanceToExpireLedgerKey)
 }
 
 func invokeStoreSet(
