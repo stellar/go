@@ -12,6 +12,21 @@ type ErrNotSep41TokenEvent struct {
 	Message string
 }
 
+type InvalidFeeEvent struct {
+	Message string
+}
+
+func errInvalidFeeEvent(msg string) InvalidFeeEvent {
+	return InvalidFeeEvent{Message: msg}
+}
+func errInvalidFeeEventFromError(err error) InvalidFeeEvent {
+	return InvalidFeeEvent{Message: err.Error()}
+}
+
+func (e InvalidFeeEvent) Error() string {
+	return e.Message
+}
+
 func (e ErrNotSep41TokenEvent) Error() string {
 	return e.Message
 }
@@ -22,6 +37,65 @@ func errNotSep41TokenFromMsg(msg string) ErrNotSep41TokenEvent {
 
 func errNotSep41TokenFromError(err error) ErrNotSep41TokenEvent {
 	return ErrNotSep41TokenEvent{err.Error()}
+}
+
+func (p *EventsProcessor) parseFeeEventsFromTransactionEvents(tx ingest.LedgerTransaction) ([]*TokenTransferEvent, error) {
+	txHash := tx.Hash.HexString()
+	txEvents, err := tx.GetTransactionEvents()
+	if err != nil {
+		return nil, fmt.Errorf("error parsing tx events for txHash: %v, error: %w", txHash, err)
+	}
+
+	var feeEvents []*TokenTransferEvent
+	for _, ev := range txEvents.TransactionEvents {
+		contractEvent := ev.Event
+		// Validate basic contract contractEvent structure
+		if contractEvent.Type != xdr.ContractEventTypeContract ||
+			contractEvent.ContractId == nil ||
+			contractEvent.Body.V != 0 {
+			return nil, errInvalidFeeEvent(fmt.Sprintf("Invalid feeEvent format"))
+		}
+		topics := contractEvent.Body.V0.Topics
+		value := contractEvent.Body.V0.Data
+		if len(topics) != 2 {
+			return nil, errInvalidFeeEvent(fmt.Sprintf("invalid topic length for fee event for txHash: %v, topicLength: %v", txHash, len(topics)))
+		}
+
+		// Extract the contractEvent function name
+		fn, ok := topics[0].GetSym()
+		if !ok {
+			return nil, errInvalidFeeEvent("invalid function name")
+		}
+		if string(fn) != FeeEvent {
+			return nil, errInvalidFeeEvent(fmt.Sprintf("invalid function name: %v", string(fn)))
+		}
+
+		// Parse token amount. If that fails, then no need to bother checking for eventType
+		amt, ok := value.GetI128()
+		if !ok {
+			return nil, errInvalidFeeEvent(fmt.Sprintf("invalid fee amount event amount: %v", value.String()))
+		}
+		amtRaw128 := amount.String128Raw(amt)
+
+		from, err := extractAddress(topics[1])
+		if err != nil {
+			return nil, errInvalidFeeEventFromError(fmt.Errorf("invalid fromAddress. error: %w", err))
+		}
+
+		// Verify contract ID matches expected native asset contract ID
+		expectedId, idErr := xlmAsset.ContractID(p.networkPassphrase)
+		if idErr != nil {
+			return nil, errInvalidFeeEventFromError(fmt.Errorf("invalid contract id error: %w", idErr))
+		} else if expectedId != *contractEvent.ContractId {
+			return nil, errInvalidFeeEventFromError(fmt.Errorf("contractId in event does not match xlm SAC contract Id, eventContractId: %v", contractEvent.ContractId))
+		}
+
+		meta := p.generateEventMeta(tx, nil, xlmAsset)
+		protoFeeEvent := NewFeeEvent(meta, from, amtRaw128, xlmProtoAsset)
+		feeEvents = append(feeEvents, protoFeeEvent)
+	}
+
+	return feeEvents, nil
 }
 
 // parseEvent is the main entry point for parsing contract events

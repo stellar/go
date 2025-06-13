@@ -195,9 +195,9 @@ func (p *EventsProcessor) EventsFromLedger(lcm xdr.LedgerCloseMeta) ([]*TokenTra
 
 // assembleEventOrder creates the final ordered list of events based on protocol version
 func (p *EventsProcessor) assembleEventOrder(feeEvents, operationEvents, feeRefundEvents []*TokenTransferEvent, isProtocol23Plus bool) []*TokenTransferEvent {
+	allEvents := make([]*TokenTransferEvent, 0, len(feeEvents)+len(operationEvents)+len(feeRefundEvents))
 	if isProtocol23Plus {
 		// Protocol 23+: Fee events → Operation events → Fee refund events
-		allEvents := make([]*TokenTransferEvent, 0, len(feeEvents)+len(operationEvents)+len(feeRefundEvents))
 		allEvents = append(allEvents, feeEvents...)
 		allEvents = append(allEvents, operationEvents...)
 		allEvents = append(allEvents, feeRefundEvents...)
@@ -205,7 +205,6 @@ func (p *EventsProcessor) assembleEventOrder(feeEvents, operationEvents, feeRefu
 	}
 
 	// Pre-protocol 23: Fee events → Operation events (with refunds interleaved)
-	allEvents := make([]*TokenTransferEvent, 0, len(feeEvents)+len(operationEvents))
 	allEvents = append(allEvents, feeEvents...)
 	allEvents = append(allEvents, operationEvents...)
 	return allEvents
@@ -228,7 +227,7 @@ func (p *EventsProcessor) EventsFromTransaction(tx ingest.LedgerTransaction) (Tr
 
 	feeEvents, err := p.generateFeeEvents(tx)
 	if err != nil {
-		return txEvents, fmt.Errorf("error generating fee event: %w", err)
+		return txEvents, err
 	}
 	txEvents.FeeEvents = feeEvents
 
@@ -237,20 +236,37 @@ func (p *EventsProcessor) EventsFromTransaction(tx ingest.LedgerTransaction) (Tr
 		return txEvents, nil
 	}
 
-	operations := tx.Envelope.Operations()
-	operationResults, _ := tx.Result.OperationResults()
-	for i := range operations {
-		op := operations[i]
-		opResult := operationResults[i]
-
-		// Process the operation and collect events
-		opEvents, err := p.EventsFromOperation(tx, uint32(i), op, opResult)
-		if err != nil {
-			return TransactionEvents{}, err
+	// Check if operationEvents need to be fetched from unified events stream OR (operation + operationResult + ledgerEntryChanges)
+	txMetaVersion := tx.UnsafeMeta.V
+	if p.readFromUnifiedEventsStream {
+		if txMetaVersion != 4 {
+			return txEvents, fmt.Errorf("invalid transaction metadata version for reading from unified events, expected: 4, found: %d", txMetaVersion)
 		}
+		operationMetaV2 := tx.UnsafeMeta.MustV4().Operations
+		for i := range operationMetaV2 {
+			events, err := p.contractEventsFromOperation(tx, uint32(i))
+			if err != nil {
+				return txEvents, fmt.Errorf("error reading operation events for operation: %v, txHash: %v, error:%w", i, tx.Hash.HexString(), err)
+			}
+			operationEvents = append(operationEvents, events...)
+		}
+	} else {
+		operations := tx.Envelope.Operations()
+		operationResults, _ := tx.Result.OperationResults()
+		for i := range operations {
+			op := operations[i]
+			opResult := operationResults[i]
 
-		operationEvents = append(operationEvents, opEvents...)
+			// Process the operation and collect events
+			opEvents, err := p.EventsFromOperation(tx, uint32(i), op, opResult)
+			if err != nil {
+				return TransactionEvents{}, err
+			}
+
+			operationEvents = append(operationEvents, opEvents...)
+		}
 	}
+
 	txEvents.OperationEvents = operationEvents
 
 	return txEvents, nil
@@ -453,6 +469,16 @@ func (p *EventsProcessor) generateEventMeta(tx ingest.LedgerTransaction, opIndex
 }
 
 func (p *EventsProcessor) generateFeeEvents(tx ingest.LedgerTransaction) ([]*TokenTransferEvent, error) {
+	// Check if we need to read from unified events OR derive fees from ledgerEntryChanges + FeeCharged field
+	txMetaVersion := tx.UnsafeMeta.V
+	if p.readFromUnifiedEventsStream {
+		// If processor is configured to read from unified events, then txMeta version MUST BE 4
+		if txMetaVersion != 4 {
+			return nil, fmt.Errorf("error reading from unified events stream, expected version 4 got %d", txMetaVersion)
+		}
+		return p.parseFeeEventsFromTransactionEvents(tx)
+	}
+
 	/*
 		For a feeBump transaction, this will be the outer transaction.
 		FeeAccount() gives the proper "muxed" account that paid the fees.
