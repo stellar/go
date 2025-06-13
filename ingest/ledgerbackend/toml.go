@@ -360,6 +360,8 @@ type CaptiveCoreTomlParams struct {
 	EnforceSorobanDiagnosticEvents bool
 	// Enforce EnableSorobanTransactionMetaExtV1 when not disabled explicitly
 	EnforceSorobanTransactionMetaExtV1 bool
+	// Emits unified events for all operations
+	EmitUnifiedEvents bool
 	// Fast HTTP Query Server parameters
 	HTTPQueryServerParams *HTTPQueryServerParams
 	// CoreBuildVersionFn is a function that returns the build version of the stellar-core binary.
@@ -528,6 +530,7 @@ func getCoreProtocolVersion(params CaptiveCoreTomlParams) (uint, error) {
 
 var minVersionForBucketlistCaching = coreVersion{major: 22, minor: 2}
 var minProtocolVersionForBackfillRestoreMeta uint = 23
+var minVersionForUnifiedEvents = coreVersion{major: 23, minor: 0}
 
 func (c *CaptiveCoreToml) setDefaults(params CaptiveCoreTomlParams) {
 	if !c.tree.Has("DATABASE") {
@@ -592,6 +595,10 @@ func (c *CaptiveCoreToml) setDefaults(params CaptiveCoreTomlParams) {
 	if params.EnforceSorobanTransactionMetaExtV1 {
 		enforceOption(&c.EnableEmitSorobanTransactionMetaExtV1)
 	}
+	if params.EmitUnifiedEvents {
+		enforceOption(&c.EnableBackfillStellarAssetEvents)
+		enforceOption(&c.EnableEmitClassicEvents)
+	}
 
 	if params.HTTPQueryServerParams != nil {
 		port := uint(params.HTTPQueryServerParams.Port)
@@ -602,7 +609,6 @@ func (c *CaptiveCoreToml) setDefaults(params CaptiveCoreTomlParams) {
 
 		poolSize := uint(params.HTTPQueryServerParams.ThreadPoolSize)
 		c.QueryThreadPoolSize = &poolSize
-
 	}
 
 	if !c.tree.Has("BUCKETLIST_DB_MEMORY_FOR_CACHING") &&
