@@ -18,6 +18,7 @@ In Protocol 23, Stellar Core removes in-memory mode and requires on-disk mode (u
 ### New Features
 * Create new package `ingest/cdp` for new components which will assist towards writing data transformation pipelines as part of [Composable Data Platform](https://stellar.org/blog/developers/composable-data-platform). 
 * Add new functional producer, `cdp.ApplyLedgerMetadata`. A new function which enables a private instance of `BufferedStorageBackend` to perfrom the role of a producer operator in streaming pipeline designs.  It will emit pre-computed `LedgerCloseMeta` from a chosen `DataStore`. The stream can use `ApplyLedgerMetadata` as the origin of `LedgerCloseMeta`, providing a callback function which acts as the next operator in the stream, receiving the `LedgerCloseMeta`. [5462](https://github.com/stellar/go/pull/5462).
+* Add new RPCLedgerBackend. [5571](https://github.com/stellar/go/issues/5571) - `ledgerbackend.RPCLedgerBackend` implements the stadard `ledgerbackend.LedgerBackend` interface. Provide the URL of the RPC server as configuration and this new ledger backend will proxy to the RPC to retrieve ledger metadata.
 
 ### Stellar Core Protocol 21 Configuration Update:
 * BucketlistDB is now the default database for stellar-core, replacing the experimental option. As a result, the `EXPERIMENTAL_BUCKETLIST_DB` configuration parameter has been deprecated.
