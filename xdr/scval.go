@@ -35,7 +35,8 @@ func (address ScAddress) String() (string, error) {
 		poolID := address.MustLiquidityPoolId()
 		result, err = strkey.Encode(strkey.VersionByteLiquidityPool, poolID[:])
 	case ScAddressTypeScAddressTypeClaimableBalance:
-		result, err = strkey.Encode(strkey.VersionByteClaimableBalance, address.MustClaimableBalanceId().V0[:])
+		cbId := address.MustClaimableBalanceId()
+		result, err = cbId.EncodeToStrkey()
 	default:
 		return "", fmt.Errorf("unfamiliar address type: %v", address.Type)
 	}
