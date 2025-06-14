@@ -514,8 +514,6 @@ func (r resumeState) run(s *system) (transition, error) {
 	stats, err :=
 		s.runner.RunAllProcessorsOnLedger(ledgerCloseMeta)
 	if err != nil {
-		lcm, _ := xdr.MarshalBase64(ledgerCloseMeta)
-		fmt.Printf("LCM:\n\n%v \n\n", lcm)
 		return retryResume(r), errors.Wrap(err, "Error running processors on ledger")
 	}
 

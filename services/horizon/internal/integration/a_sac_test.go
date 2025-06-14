@@ -35,7 +35,6 @@ const LongTermTTL = 10000
 // contract code if needed to new wasm.
 
 func TestContractMintToAccount(t *testing.T) {
-	return
 	itest := integration.NewTest(t, integration.Config{
 		HorizonEnvironment: map[string]string{"INGEST_DISABLE_STATE_VERIFICATION": "true", "CONNECTION_TIMEOUT": "360000"},
 		EnableStellarRPC:   true,
@@ -142,7 +141,6 @@ func createSAC(itest *integration.Test, asset xdr.Asset) {
 }
 
 func TestContractMintToContract(t *testing.T) {
-	return
 	itest := integration.NewTest(t, integration.Config{
 		EnableStellarRPC: true,
 	})
@@ -248,7 +246,6 @@ func TestContractMintToContract(t *testing.T) {
 }
 
 func TestExpirationAndRestoration(t *testing.T) {
-	return
 	itest := integration.NewTest(t, integration.Config{
 		EnableStellarRPC: true,
 		HorizonIngestParameters: map[string]string{
