@@ -519,6 +519,7 @@ func (c *CaptiveCoreToml) checkCoreVersion(params CaptiveCoreTomlParams) coreVer
 
 var minVersionForBucketlistCaching = coreVersion{major: 22, minor: 2}
 var minVersionForBackfillRestoreMeta = coreVersion{major: 23, minor: 0}
+var minVersionForUnifiedEvents = coreVersion{major: 23, minor: 0}
 
 func (c *CaptiveCoreToml) setDefaults(params CaptiveCoreTomlParams) {
 	if !c.tree.Has("DATABASE") {
@@ -588,7 +589,17 @@ func (c *CaptiveCoreToml) setDefaults(params CaptiveCoreTomlParams) {
 
 		poolSize := uint(params.HTTPQueryServerParams.ThreadPoolSize)
 		c.QueryThreadPoolSize = &poolSize
+	}
 
+	// Unified events and backfill should always be enabled for ingestion.
+	if c.checkCoreVersion(params).greaterThanOrEqual(minVersionForUnifiedEvents) {
+		enable := true
+		if !c.tree.Has("EMIT_CLASSIC_EVENTS") {
+			c.EnableEmitClassicEvents = &enable
+		}
+		if !c.tree.Has("BACKFILL_STELLAR_ASSET_EVENTS") {
+			c.EnableBackfillStellarAssetEvents = &enable
+		}
 	}
 
 	if !c.tree.Has("BUCKETLIST_DB_MEMORY_FOR_CACHING") &&
