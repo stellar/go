@@ -15,10 +15,14 @@ func (t *TransactionMeta) GetContractEventsForOperation(opIndex uint32) ([]Contr
 			return nil, nil
 		}
 		return sorobanMeta.Events, nil
-	// TxMetaV4 includes unified CAP-67 events that appear at the operation level
-	// To fetch soroban contract events from TxMetaV4, you will need to pass in the operationIndex 0.
 	case 4:
-		return t.MustV4().Operations[opIndex].Events, nil
+		txMeta := t.MustV4()
+		// For a failed transaction, txMeta.Operations slice will be nil.
+		// This length check helps prevent an index out of range error and you dont have to explicitly check if it's a failed tx
+		if len(txMeta.Operations) == 0 {
+			return nil, nil
+		}
+		return txMeta.Operations[opIndex].Events, nil
 	default:
 		return nil, fmt.Errorf("unsupported TransactionMeta version: %v", t.V)
 	}

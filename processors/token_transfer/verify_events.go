@@ -203,8 +203,13 @@ func findBalanceDeltasFromEvents(events []*TokenTransferEvent) map[balanceKey]in
 	return hashmap
 }
 
-func VerifyEvents(ledger xdr.LedgerCloseMeta, passphrase string) error {
-	ttp := NewEventsProcessor(passphrase)
+func VerifyEvents(ledger xdr.LedgerCloseMeta, passphrase string, readFromUnifiedEvents bool) error {
+	var ttp *EventsProcessor
+	if readFromUnifiedEvents {
+		ttp = NewEventsProcessorForUnifiedEvents(passphrase)
+	} else {
+		ttp = NewEventsProcessor(passphrase)
+	}
 	txReader, err := ingest.NewLedgerTransactionReaderFromLedgerCloseMeta(passphrase, ledger)
 	if err != nil {
 		return fmt.Errorf("error creating transaction reader: %w", err)
@@ -235,7 +240,11 @@ func VerifyEvents(ledger xdr.LedgerCloseMeta, passphrase string) error {
 		if err != nil {
 			return fmt.Errorf("verifyEventsError: %w", err)
 		}
+		postTxApplyFeeChanges := tx.GetPostApplyFeeChanges()
+
 		changes := append(feeChanges, txChanges...)
+		changes = append(changes, postTxApplyFeeChanges...)
+
 		txEventsMap := findBalanceDeltasFromEvents(events)
 		txChangesMap := findBalanceDeltasFromChanges(changes)
 

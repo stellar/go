@@ -81,7 +81,7 @@ func main() {
 		fmt.Printf("Processing ledger Seq: %d, ClosedAt: %v, Protocol Version: %v\n",
 			ledger.LedgerSequence(), ledger.ClosedAt(), ledger.ProtocolVersion())
 
-		verificationResult := token_transfer.VerifyEvents(ledger, networkPassphrase)
+		verificationResult := token_transfer.VerifyEvents(ledger, networkPassphrase, false)
 
 		verificationStatus := "success"
 		if verificationResult != nil {
