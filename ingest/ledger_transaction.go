@@ -58,7 +58,7 @@ func (t *LedgerTransaction) GetFeeChanges() []Change {
 }
 
 // GetPostApplyFeeChanges returns a developer friendly representation of LedgerEntryChanges
-// connected to fees / fee refunds which are applied after all transactions are executed.
+// connected to fee refunds which are applied after all transactions are executed.
 func (t *LedgerTransaction) GetPostApplyFeeChanges() []Change {
 	changes := GetChangesFromLedgerEntryChanges(t.PostTxApplyFeeChanges)
 	for i := range changes {
@@ -635,7 +635,13 @@ func (t *LedgerTransaction) SorobanResourceFeeRefund() int64 {
 		panic(fmt.Errorf("Invalid txMeta version: %d", t.UnsafeMeta.V))
 	}
 
-	startingBal, endingBal := getAccountBalanceFromLedgerEntryChanges(append(txChangesAfter, t.PostTxApplyFeeChanges...), t.FeeAccount().ToAccountId().Address())
+	// For soroban transactions before P23, the feeRefund changes will show up in TxMeta in the `TxChangesAfter` field
+	// From P23 onwards, they will show up in the PostTxApplyFeeChanges field and not in TxChangesAfter
+	// You can safely append the TxChangesAfter and PostTxApplyFeeChanges before passing it to getAccountBalanceFromLedgerEntryChanges,
+	// since only one of them will reflect balance changes
+	allChanges := append(txChangesAfter, t.PostTxApplyFeeChanges...)
+
+	startingBal, endingBal := getAccountBalanceFromLedgerEntryChanges(allChanges, t.FeeAccount().ToAccountId().Address())
 	if startingBal > endingBal {
 		panic("Invalid Soroban Resource Refund")
 	}

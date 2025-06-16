@@ -55,19 +55,22 @@ func (p *EventsProcessor) parseFeeEventsFromTransactionEvents(tx ingest.LedgerTr
 			contractEvent.Body.V != 0 {
 			return nil, errInvalidFeeEvent(fmt.Sprintf("Invalid feeEvent format"))
 		}
+
 		topics := contractEvent.Body.V0.Topics
 		value := contractEvent.Body.V0.Data
-		if len(topics) != 2 {
-			return nil, errInvalidFeeEvent(fmt.Sprintf("invalid topic length for fee event for txHash: %v, topicLength: %v", txHash, len(topics)))
-		}
 
 		// Extract the contractEvent function name
 		fn, ok := topics[0].GetSym()
 		if !ok {
-			return nil, errInvalidFeeEvent("invalid function name")
+			continue // this is to account for future proofing where xdr.TransactionEvents might be extended to include more than just fees.
 		}
 		if string(fn) != FeeEvent {
-			return nil, errInvalidFeeEvent(fmt.Sprintf("invalid function name: %v", string(fn)))
+			continue
+		}
+
+		// Now that we have established it is a Fee event, it will need to undergo stricter checks
+		if len(topics) != 2 {
+			return nil, errInvalidFeeEvent(fmt.Sprintf("invalid topic length for fee event for txHash: %v, topicLength: %v", txHash, len(topics)))
 		}
 
 		// Parse token amount. If that fails, then no need to bother checking for eventType
@@ -163,7 +166,7 @@ func (p *EventsProcessor) parseEvent(tx ingest.LedgerTransaction, opIndex *uint3
 					protoEvent.SetAsset(asset)
 
 					// For TxMetaV4, this is all that needs to be validated. You can simply return the event as is
-					if tx.UnsafeMeta.V == 4 {
+					if txMetaVersion == 4 {
 						return protoEvent, nil
 					}
 
@@ -199,26 +202,26 @@ func getExpectedTopicsCount(eventType string, txMetaVersion int32) int {
 	case 3:
 		// V3 format includes admin addresses
 		switch eventType {
-		case TransferEvent:
-			return 4 // ["transfer", from, to, asset]
-		case MintEvent:
-			return 4 // ["mint", admin, to, asset]
-		case ClawbackEvent:
-			return 4 // ["clawback", admin, from, asset]
 		case BurnEvent:
-			return 3 // ["burn", from, asset]
+			// ["burn", from, asset]
+			return 3
+		default:
+			// ["transfer", from, to, asset]
+			// ["mint", admin, to, asset]
+			// ["clawback", admin, from, asset]
+			return 4
 		}
 	case 4:
 		// V4 format removes admin addresses
 		switch eventType {
 		case TransferEvent:
-			return 4 // ["transfer", from, to, asset]
-		case MintEvent:
-			return 3 // ["mint", to, asset] - no admin
-		case ClawbackEvent:
-			return 3 // ["clawback", from, asset] - no admin
-		case BurnEvent:
-			return 3 // ["burn", from, asset]
+			// ["transfer", from, to, asset]
+			return 4
+		default:
+			// ["mint", to, asset] - no admin
+			// ["clawback", from, asset] - no admin
+			// ["burn", from, asset]
+			return 3
 		}
 	}
 	return -1 // Invalid combination

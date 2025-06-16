@@ -246,7 +246,7 @@ func (p *EventsProcessor) EventsFromTransaction(tx ingest.LedgerTransaction) (Tr
 		for i := range operationMetaV2 {
 			events, err := p.contractEventsFromOperation(tx, uint32(i))
 			if err != nil {
-				return txEvents, fmt.Errorf("error reading operation events for operation: %v, txHash: %v, error:%w", i, tx.Hash.HexString(), err)
+				return TransactionEvents{}, fmt.Errorf("error reading operation events for operation: %v, txHash: %v, error:%w", i, tx.Hash.HexString(), err)
 			}
 			operationEvents = append(operationEvents, events...)
 		}
@@ -260,7 +260,7 @@ func (p *EventsProcessor) EventsFromTransaction(tx ingest.LedgerTransaction) (Tr
 			// Process the operation and collect events
 			opEvents, err := p.EventsFromOperation(tx, uint32(i), op, opResult)
 			if err != nil {
-				return TransactionEvents{}, err
+				return TransactionEvents{}, fmt.Errorf("error reading operation events for operation: %v, txHash: %v, error:%w", i, tx.Hash.HexString(), err)
 			}
 
 			operationEvents = append(operationEvents, opEvents...)
@@ -282,8 +282,6 @@ func (p *EventsProcessor) EventsFromTransaction(tx ingest.LedgerTransaction) (Tr
 func (p *EventsProcessor) EventsFromOperation(tx ingest.LedgerTransaction, opIndex uint32, op xdr.Operation, opResult xdr.OperationResult) ([]*TokenTransferEvent, error) {
 	var events []*TokenTransferEvent
 	var err error
-
-	// If
 
 	switch op.Body.Type {
 	case xdr.OperationTypeCreateAccount:
