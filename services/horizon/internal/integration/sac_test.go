@@ -475,6 +475,9 @@ func TestExpirationAndRestoration(t *testing.T) {
 }
 
 func TestEvictionAndRestoration(t *testing.T) {
+	if integration.GetCoreMaxSupportedProtocol() < 23 {
+		t.Skip("This test run does not support less than Protocol 23")
+	}
 	itest := integration.NewTest(t, integration.Config{
 		EnableStellarRPC: true,
 		HorizonIngestParameters: map[string]string{
