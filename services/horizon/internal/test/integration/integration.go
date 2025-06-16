@@ -2,6 +2,7 @@
 package integration
 
 import (
+	"bytes"
 	"context"
 	stderrrors "errors"
 	"fmt"
@@ -17,6 +18,8 @@ import (
 	"testing"
 	"text/template"
 	"time"
+
+	"github.com/stellar/stellar-rpc/protocol"
 
 	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/ingest/ledgerbackend"
@@ -938,6 +941,68 @@ func (i *Test) WaitUntilLedgerEntryTTL(ledgerKey xdr.LedgerKey) {
 		time.Sleep(time.Second)
 	}
 	assert.True(i.t, ttled)
+}
+
+func (i *Test) WaitUntilLedgerEntryIsEvicted(ledgerKey xdr.LedgerKey) {
+	lk, err := ledgerKey.MarshalBinary()
+	assert.NoError(i.t, err)
+
+	evicted := false
+	for attempt := 0; attempt < 50; attempt++ {
+		sequence := i.getLatestLedgerSequenceRPC()
+		lcm := i.getLedgerRPC(sequence)
+
+		keys, err := lcm.EvictedLedgerKeys()
+		assert.NoError(i.t, err)
+
+		for _, key := range keys {
+			evictedKey, err := key.MarshalBinary()
+			assert.NoError(i.t, err)
+
+			if bytes.Equal(lk, evictedKey) {
+				i.t.Log("Ledger entry found in evicted ledger keys in ledger", sequence)
+				evicted = true
+				break
+			}
+		}
+		if evicted {
+			break
+		}
+		i.t.Log("Waiting for ledger entry to be evicted")
+		time.Sleep(time.Second)
+	}
+	assert.True(i.t, evicted)
+}
+
+func (i *Test) getLatestLedgerSequenceRPC() uint32 {
+	ch := jhttp.NewChannel("http://localhost:"+strconv.Itoa(StellarRPCPort), nil)
+	client := jrpc2.NewClient(ch, nil)
+
+	response := protocol.GetLatestLedgerResponse{}
+	err := client.CallResult(context.Background(), "getLatestLedger", nil, &response)
+	assert.NoError(i.t, err)
+
+	return response.Sequence
+}
+
+func (i *Test) getLedgerRPC(sequence uint32) xdr.LedgerCloseMeta {
+	ch := jhttp.NewChannel("http://localhost:"+strconv.Itoa(StellarRPCPort), nil)
+	client := jrpc2.NewClient(ch, nil)
+
+	response := protocol.GetLedgersResponse{}
+	err := client.CallResult(context.Background(), "getLedgers", protocol.GetLedgersRequest{
+		StartLedger: sequence,
+		Pagination: &protocol.LedgerPaginationOptions{
+			Limit: 1,
+		},
+	}, &response)
+	assert.NoError(i.t, err)
+
+	var lcm xdr.LedgerCloseMeta
+	err = xdr.SafeUnmarshalBase64(response.Ledgers[0].LedgerMetadata, &lcm)
+	assert.NoError(i.t, err)
+
+	return lcm
 }
 
 func (i *Test) PreflightExtendExpiration(
