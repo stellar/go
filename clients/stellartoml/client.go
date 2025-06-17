@@ -75,7 +75,7 @@ func (c *Client) url(domain string) string {
 		scheme = "https"
 	}
 
-	tomlPath := getWellKnownPathFromEnv()
+	wellKnownPath := getWellKnownPathFromEnv()
 
-	return fmt.Sprintf("%s://%s%s", scheme, domain, tomlPath)
+	return fmt.Sprintf("%s://%s%s", scheme, domain, wellKnownPath)
 }
