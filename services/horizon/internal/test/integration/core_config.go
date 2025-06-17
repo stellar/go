@@ -60,6 +60,7 @@ NETWORK_PASSPHRASE="{{ .NetworkPassphrase }}"
 TESTING_MINIMUM_PERSISTENT_ENTRY_LIFETIME={{ .TestingMinimumPersistentEntryLifetime }}
 TESTING_SOROBAN_HIGH_LIMIT_OVERRIDE={{ .TestingSorobanHighLimitOverride }}
 ENABLE_SOROBAN_DIAGNOSTIC_EVENTS=true
+BACKFILL_RESTORE_META=true
 
 {{if .OverrideEvictionParamsForTesting}}
 OVERRIDE_EVICTION_PARAMS_FOR_TESTING=true

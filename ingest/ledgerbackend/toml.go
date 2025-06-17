@@ -595,7 +595,8 @@ func (c *CaptiveCoreToml) setDefaults(params CaptiveCoreTomlParams) {
 	if params.EnforceSorobanTransactionMetaExtV1 {
 		enforceOption(&c.EnableEmitSorobanTransactionMetaExtV1)
 	}
-	if params.EmitUnifiedEvents {
+	if params.EmitUnifiedEvents &&
+		c.checkCoreVersion(params).greaterThanOrEqual(minVersionForUnifiedEvents) {
 		enforceOption(&c.EnableBackfillStellarAssetEvents)
 		enforceOption(&c.EnableEmitClassicEvents)
 	}
