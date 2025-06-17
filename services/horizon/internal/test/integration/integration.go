@@ -2,7 +2,6 @@
 package integration
 
 import (
-	"bytes"
 	"context"
 	stderrrors "errors"
 	"fmt"
@@ -20,7 +19,6 @@ import (
 	"time"
 
 	rpc "github.com/stellar/stellar-rpc/client"
-	"github.com/stellar/stellar-rpc/protocol"
 
 	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/ingest/ledgerbackend"
@@ -945,23 +943,25 @@ func (i *Test) WaitUntilLedgerEntryTTL(ledgerKey xdr.LedgerKey) {
 }
 
 func (i *Test) WaitUntilLedgerEntryIsEvicted(ledgerKey xdr.LedgerKey, waitTime time.Duration) {
-	lk, err := ledgerKey.MarshalBinary()
-	assert.NoError(i.t, err)
 	sequence := i.getLatestLedgerSequenceRPC()
-
-	assert.Eventually(i.t, func() bool {
+	require.Eventually(i.t, func() bool {
 		lcm := i.getLedgerRPC(sequence)
 		sequence += 1
 		keys, err := lcm.EvictedLedgerKeys()
-		assert.NoError(i.t, err)
-
+		require.NoError(i.t, err)
 		for _, key := range keys {
-			evictedKey, err := key.MarshalBinary()
-			assert.NoError(i.t, err)
-
-			if bytes.Equal(lk, evictedKey) {
+			if key.Equals(ledgerKey) {
 				i.t.Log("Ledger entry found in evicted ledger keys in ledger", sequence)
-				return true
+
+				// wait for horizon to catch up
+				for attempt := 0; attempt < 10; attempt++ {
+					root, err := i.horizonClient.Root()
+					require.NoError(i.t, err)
+					if uint32(root.HorizonSequence) >= sequence {
+						return true
+					}
+					time.Sleep(time.Second)
+				}
 			}
 		}
 		return false
@@ -971,24 +971,20 @@ func (i *Test) WaitUntilLedgerEntryIsEvicted(ledgerKey xdr.LedgerKey, waitTime t
 func (i *Test) getLatestLedgerSequenceRPC() uint32 {
 	client := rpc.NewClient("http://localhost:"+strconv.Itoa(StellarRPCPort), nil)
 	response, err := client.GetLatestLedger(context.Background())
-	assert.NoError(i.t, err)
+	require.NoError(i.t, err)
 	return response.Sequence
 }
 
 func (i *Test) getLedgerRPC(sequence uint32) xdr.LedgerCloseMeta {
-	client := rpc.NewClient("http://localhost:"+strconv.Itoa(StellarRPCPort), nil)
-	response, err := client.GetLedgers(context.Background(), protocol.GetLedgersRequest{
-		StartLedger: sequence,
-		Pagination: &protocol.LedgerPaginationOptions{
-			Limit: 1,
-		},
+	backend := ledgerbackend.NewRPCLedgerBackend(ledgerbackend.RPCLedgerBackendOptions{
+		RPCServerURL: "http://localhost:" + strconv.Itoa(StellarRPCPort),
 	})
-	assert.NoError(i.t, err)
 
-	var lcm xdr.LedgerCloseMeta
-	assert.Len(i.t, response.Ledgers, 1)
-	assert.NoError(i.t, xdr.SafeUnmarshalBase64(response.Ledgers[0].LedgerMetadata, &lcm))
-	return lcm
+	require.NoError(i.t, backend.PrepareRange(context.Background(), ledgerbackend.BoundedRange(sequence, sequence)))
+	ledger, err := backend.GetLedger(context.Background(), sequence)
+	require.NoError(i.t, err)
+	require.NoError(i.t, backend.Close())
+	return ledger
 }
 
 func (i *Test) PreflightExtendExpiration(

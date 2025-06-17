@@ -479,6 +479,7 @@ func TestEvictionAndRestoration(t *testing.T) {
 	if integration.GetCoreMaxSupportedProtocol() < 23 {
 		t.Skip("This test run does not support less than Protocol 23")
 	}
+
 	itest := integration.NewTest(t, integration.Config{
 		EnableStellarRPC: true,
 		HorizonIngestParameters: map[string]string{
@@ -530,7 +531,7 @@ func TestEvictionAndRestoration(t *testing.T) {
 
 	// create balance which we will expire and evicted
 	holder := [32]byte{2}
-	balanceToExpire := sac.BalanceToContractData(
+	balanceToEvict := sac.BalanceToContractData(
 		storeContractID,
 		holder,
 		37,
@@ -541,7 +542,7 @@ func TestEvictionAndRestoration(t *testing.T) {
 		invokeStoreSet(
 			itest,
 			storeContractID,
-			balanceToExpire,
+			balanceToEvict,
 		),
 	)
 	assertAssetStats(itest, assetStats{
@@ -554,18 +555,18 @@ func TestEvictionAndRestoration(t *testing.T) {
 		contractID:       storeContractID,
 	})
 
-	balanceToExpireLedgerKey := xdr.LedgerKey{
+	balanceToEvictLedgerKey := xdr.LedgerKey{
 		Type: xdr.LedgerEntryTypeContractData,
 		ContractData: &xdr.LedgerKeyContractData{
-			Contract:   balanceToExpire.ContractData.Contract,
-			Key:        balanceToExpire.ContractData.Key,
-			Durability: balanceToExpire.ContractData.Durability,
+			Contract:   balanceToEvict.ContractData.Contract,
+			Key:        balanceToEvict.ContractData.Key,
+			Durability: balanceToEvict.ContractData.Durability,
 		},
 	}
 	// Wait for the ledger entry to be evicted.
 	// The test runs with quickExpiry and quickEviction, so the
 	// entry will expire after 10 ledgers and be evicted within the next 16 ledgers.
-	itest.WaitUntilLedgerEntryIsEvicted(balanceToExpireLedgerKey, time.Second*30)
+	itest.WaitUntilLedgerEntryIsEvicted(balanceToEvictLedgerKey, time.Second*30)
 	assertAssetStats(itest, assetStats{
 		code:             code,
 		issuer:           issuer,
@@ -577,19 +578,9 @@ func TestEvictionAndRestoration(t *testing.T) {
 	})
 
 	// restore evicted balance
-	restoreFootprint, err := txnbuild.NewAssetBalanceRestoration(txnbuild.AssetBalanceRestorationParams{
-		NetworkPassphrase: itest.GetPassPhrase(),
-		Contract:          strkey.MustEncode(strkey.VersionByteContract, holder[:]),
-		Asset: txnbuild.CreditAsset{
-			Code:   code,
-			Issuer: issuer,
-		},
-		SourceAccount: itest.Master().Address(),
-	})
+	sourceAccount, restoreOp := itest.RestoreFootprint(issuer, balanceToEvictLedgerKey)
+	itest.MustSubmitOperations(&sourceAccount, itest.Master(), &restoreOp)
 	assert.NoError(t, err)
-	// set the contract id to storeContractID because we are restoring a fake asset balance
-	restoreFootprint.Ext.SorobanData.Resources.Footprint.ReadWrite[0].ContractData.Contract.ContractId = &storeContractID
-	itest.MustSubmitOperations(itest.MasterAccount(), itest.Master(), &restoreFootprint)
 
 	assertAssetStats(itest, assetStats{
 		code:             code,
