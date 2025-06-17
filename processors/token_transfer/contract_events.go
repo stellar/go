@@ -98,6 +98,11 @@ func (p *EventsProcessor) parseFeeEventsFromTransactionEvents(tx ingest.LedgerTr
 		feeEvents = append(feeEvents, protoFeeEvent)
 	}
 
+	if len(feeEvents) == 0 {
+		return nil, fmt.Errorf("no fee events found for txHash: %v", txHash)
+	} else if len(feeEvents) > 2 {
+		return nil, fmt.Errorf("too many fee events found for txHash: %v, feeEvents found: %v", txHash, len(feeEvents))
+	}
 	return feeEvents, nil
 }
 

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/strkey"
+	"google.golang.org/protobuf/proto"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -140,6 +141,20 @@ func createScMap(keyValuePairs ...interface{}) xdr.ScVal {
 	return xdr.ScVal{
 		Type: xdr.ScValTypeScvMap,
 		Map:  &mapPtr,
+	}
+}
+
+func createContractEventFromTopicsAndData(contractId *xdr.ContractId, topics []xdr.ScVal, data xdr.ScVal) xdr.ContractEvent {
+	return xdr.ContractEvent{
+		Type:       xdr.ContractEventTypeContract,
+		ContractId: contractId,
+		Body: xdr.ContractEventBody{
+			V: 0,
+			V0: &xdr.ContractEventV0{
+				Topics: topics,
+				Data:   data,
+			},
+		},
 	}
 }
 
@@ -1738,6 +1753,71 @@ func TestValidContractEventsV4(t *testing.T) {
 			require.NotNil(t, event)
 
 			tc.validateEvent(t, event)
+		})
+	}
+}
+
+func TestV4FeeEventParsing(t *testing.T) {
+	// Create V4 transaction
+	v4Tx := someTxV3
+	v4Tx.UnsafeMeta.V = 4
+	v4Tx.UnsafeMeta.V4 = &xdr.TransactionMetaV4{
+		Operations: []xdr.OperationMetaV2{{}},
+	}
+
+	xlmContractId := contractIdFromAsset(xlmAsset)
+	temp := *xlmContractId
+	xlmContractIdStr := strkey.MustEncode(strkey.VersionByteContract, temp[:])
+
+	tests := []struct {
+		name           string
+		contractId     *xdr.ContractId
+		topics         []xdr.ScVal
+		data           xdr.ScVal
+		hasError       bool
+		errorStr       string
+		expectedEvents []*TokenTransferEvent
+	}{
+		{
+			name:       "Valid Fee Event",
+			contractId: xlmContractId,
+			hasError:   false,
+			topics: []xdr.ScVal{
+				createSymbol("fee"),
+				createAddress(randomAccount),
+			},
+			data: createInt128(100),
+			expectedEvents: []*TokenTransferEvent{
+				NewFeeEvent(NewEventMetaFromTx(v4Tx, nil, xlmContractIdStr), randomAccount, "100", xlmProtoAsset),
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ttp := NewEventsProcessorForUnifiedEvents(someNetworkPassphrase)
+			txFeeEvent := createContractEventFromTopicsAndData(tc.contractId, tc.topics, tc.data)
+			txEvents := []xdr.TransactionEvent{{xdr.TransactionEventStageTransactionEventStageBeforeAllTxs, txFeeEvent}}
+			v4Tx.UnsafeMeta.V4.Events = txEvents
+			protoFeeEvents, err := ttp.parseFeeEventsFromTransactionEvents(v4Tx)
+			if !tc.hasError {
+				require.NoError(t, err)
+				assert.Equal(t, len(protoFeeEvents), len(tc.expectedEvents),
+					"length mismatch: got %d events, expected %d",
+					len(protoFeeEvents), len(tc.expectedEvents))
+
+				// For each expected event, try to find a matching actual event
+				for i := range tc.expectedEvents {
+					if !proto.Equal(protoFeeEvents[i], tc.expectedEvents[i]) {
+						assert.Fail(t, "result does not match expected event",
+							"index: %d\nExpected: %+v\nFound: %+v", i, tc.expectedEvents[i], protoFeeEvents[i])
+					}
+				}
+			} else {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tc.errorStr)
+			}
+
 		})
 	}
 }
