@@ -164,11 +164,12 @@ func makeAddress(address string) xdr.ScVal {
 		copy((*scAddress.LiquidityPoolId)[:], strkey.MustDecode(strkey.VersionByteLiquidityPool, address))
 	case 'B':
 		scAddress.Type = xdr.ScAddressTypeScAddressTypeClaimableBalance
-		scAddress.ClaimableBalanceId = &xdr.ClaimableBalanceId{
-			Type: xdr.ClaimableBalanceIdTypeClaimableBalanceIdTypeV0,
-			V0:   &xdr.Hash{},
+		var someCb xdr.ClaimableBalanceId
+		err := someCb.DecodeFromStrkey(address)
+		if err != nil {
+			panic(fmt.Errorf("error in decoding claimable balance id from strkey: %w", err))
 		}
-		copy((*scAddress.ClaimableBalanceId.V0)[:], strkey.MustDecode(strkey.VersionByteClaimableBalance, address))
+		scAddress.ClaimableBalanceId = &someCb
 	default:
 		panic(fmt.Errorf("unsupported address: %s", address))
 	}
