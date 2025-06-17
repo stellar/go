@@ -6,6 +6,7 @@ import (
 	"math/big"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -564,7 +565,7 @@ func TestEvictionAndRestoration(t *testing.T) {
 	// Wait for the ledger entry to be evicted.
 	// The test runs with quickExpiry and quickEviction, so the
 	// entry will expire after 10 ledgers and be evicted within the next 16 ledgers.
-	itest.WaitUntilLedgerEntryIsEvicted(balanceToExpireLedgerKey)
+	itest.WaitUntilLedgerEntryIsEvicted(balanceToExpireLedgerKey, time.Second*30)
 	assertAssetStats(itest, assetStats{
 		code:             code,
 		issuer:           issuer,

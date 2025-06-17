@@ -19,6 +19,7 @@ import (
 	"text/template"
 	"time"
 
+	rpc "github.com/stellar/stellar-rpc/client"
 	"github.com/stellar/stellar-rpc/protocol"
 
 	"github.com/stellar/go/historyarchive"
@@ -943,15 +944,14 @@ func (i *Test) WaitUntilLedgerEntryTTL(ledgerKey xdr.LedgerKey) {
 	assert.True(i.t, ttled)
 }
 
-func (i *Test) WaitUntilLedgerEntryIsEvicted(ledgerKey xdr.LedgerKey) {
+func (i *Test) WaitUntilLedgerEntryIsEvicted(ledgerKey xdr.LedgerKey, waitTime time.Duration) {
 	lk, err := ledgerKey.MarshalBinary()
 	assert.NoError(i.t, err)
+	sequence := i.getLatestLedgerSequenceRPC()
 
-	evicted := false
-	for attempt := 0; attempt < 50; attempt++ {
-		sequence := i.getLatestLedgerSequenceRPC()
+	assert.Eventually(i.t, func() bool {
 		lcm := i.getLedgerRPC(sequence)
-
+		sequence += 1
 		keys, err := lcm.EvictedLedgerKeys()
 		assert.NoError(i.t, err)
 
@@ -961,47 +961,33 @@ func (i *Test) WaitUntilLedgerEntryIsEvicted(ledgerKey xdr.LedgerKey) {
 
 			if bytes.Equal(lk, evictedKey) {
 				i.t.Log("Ledger entry found in evicted ledger keys in ledger", sequence)
-				evicted = true
-				break
+				return true
 			}
 		}
-		if evicted {
-			break
-		}
-		i.t.Log("Waiting for ledger entry to be evicted")
-		time.Sleep(time.Second)
-	}
-	assert.True(i.t, evicted)
+		return false
+	}, waitTime, time.Second)
 }
 
 func (i *Test) getLatestLedgerSequenceRPC() uint32 {
-	ch := jhttp.NewChannel("http://localhost:"+strconv.Itoa(StellarRPCPort), nil)
-	client := jrpc2.NewClient(ch, nil)
-
-	response := protocol.GetLatestLedgerResponse{}
-	err := client.CallResult(context.Background(), "getLatestLedger", nil, &response)
+	client := rpc.NewClient("http://localhost:"+strconv.Itoa(StellarRPCPort), nil)
+	response, err := client.GetLatestLedger(context.Background())
 	assert.NoError(i.t, err)
-
 	return response.Sequence
 }
 
 func (i *Test) getLedgerRPC(sequence uint32) xdr.LedgerCloseMeta {
-	ch := jhttp.NewChannel("http://localhost:"+strconv.Itoa(StellarRPCPort), nil)
-	client := jrpc2.NewClient(ch, nil)
-
-	response := protocol.GetLedgersResponse{}
-	err := client.CallResult(context.Background(), "getLedgers", protocol.GetLedgersRequest{
+	client := rpc.NewClient("http://localhost:"+strconv.Itoa(StellarRPCPort), nil)
+	response, err := client.GetLedgers(context.Background(), protocol.GetLedgersRequest{
 		StartLedger: sequence,
 		Pagination: &protocol.LedgerPaginationOptions{
 			Limit: 1,
 		},
-	}, &response)
+	})
 	assert.NoError(i.t, err)
 
 	var lcm xdr.LedgerCloseMeta
-	err = xdr.SafeUnmarshalBase64(response.Ledgers[0].LedgerMetadata, &lcm)
-	assert.NoError(i.t, err)
-
+	assert.Len(i.t, response.Ledgers, 1)
+	assert.NoError(i.t, xdr.SafeUnmarshalBase64(response.Ledgers[0].LedgerMetadata, &lcm))
 	return lcm
 }
 
