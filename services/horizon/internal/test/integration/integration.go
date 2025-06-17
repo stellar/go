@@ -946,7 +946,6 @@ func (i *Test) WaitUntilLedgerEntryIsEvicted(ledgerKey xdr.LedgerKey, waitTime t
 	sequence := i.getLatestLedgerSequenceRPC()
 	require.Eventually(i.t, func() bool {
 		lcm := i.getLedgerRPC(sequence)
-		sequence += 1
 		keys, err := lcm.EvictedLedgerKeys()
 		require.NoError(i.t, err)
 		for _, key := range keys {
@@ -954,16 +953,20 @@ func (i *Test) WaitUntilLedgerEntryIsEvicted(ledgerKey xdr.LedgerKey, waitTime t
 				i.t.Log("Ledger entry found in evicted ledger keys in ledger", sequence)
 
 				// wait for horizon to catch up
-				for attempt := 0; attempt < 10; attempt++ {
+				require.Eventually(i.t, func() bool {
 					root, err := i.horizonClient.Root()
 					require.NoError(i.t, err)
 					if uint32(root.HorizonSequence) >= sequence {
 						return true
 					}
-					time.Sleep(time.Second)
-				}
+					return false
+				}, time.Second*10, time.Second)
+
+				return true
 			}
 		}
+		sequence += 1
+
 		return false
 	}, waitTime, time.Second)
 }
