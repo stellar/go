@@ -233,6 +233,7 @@ func TestGenerateConfig(t *testing.T) {
 		enforceEmitMetaV1              bool
 		backfillRestoreMeta            *bool
 		coreVersion                    string
+		protocolVersion                uint
 	}{
 		{
 			name:         "offline config with no appendix",
@@ -304,6 +305,7 @@ func TestGenerateConfig(t *testing.T) {
 			logPath:             nil,
 			backfillRestoreMeta: newBool(false),
 			coreVersion:         "v23.0.0rc.1",
+			protocolVersion:     23,
 		},
 		{
 			name:                "online config with restore meta backfill set to true",
@@ -315,16 +317,18 @@ func TestGenerateConfig(t *testing.T) {
 			logPath:             nil,
 			backfillRestoreMeta: newBool(true),
 			coreVersion:         "v23.0.0rc.1",
+			protocolVersion:     23,
 		},
 		{
-			name:         "online config with restore meta backfill omitted",
-			mode:         stellarCoreRunnerModeOnline,
-			appendPath:   filepath.Join("testdata", "sample-appendix.cfg"),
-			expectedPath: filepath.Join("testdata", "expected-enable-backfill-restore-meta.cfg"),
-			httpPort:     newUint(6789),
-			peerPort:     newUint(12345),
-			logPath:      nil,
-			coreVersion:  "v23.0.0rc.1",
+			name:            "online config with restore meta backfill omitted",
+			mode:            stellarCoreRunnerModeOnline,
+			appendPath:      filepath.Join("testdata", "sample-appendix.cfg"),
+			expectedPath:    filepath.Join("testdata", "expected-enable-backfill-restore-meta.cfg"),
+			httpPort:        newUint(6789),
+			peerPort:        newUint(12345),
+			logPath:         nil,
+			coreVersion:     "v23.0.0rc.1",
+			protocolVersion: 23,
 		},
 		{
 			name:         "offline config with appendix",
@@ -417,6 +421,9 @@ func TestGenerateConfig(t *testing.T) {
 				CoreBinaryPath:                     "stellar-core",
 				CoreBuildVersionFn: func(string) (string, error) {
 					return testCase.coreVersion, nil
+				},
+				CoreProtocolVersionFn: func(string) (uint, error) {
+					return testCase.protocolVersion, nil
 				},
 				BackfillRestoreMeta: testCase.backfillRestoreMeta,
 			}
