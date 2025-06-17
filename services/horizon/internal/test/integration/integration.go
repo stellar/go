@@ -18,6 +18,8 @@ import (
 	"text/template"
 	"time"
 
+	rpc "github.com/stellar/stellar-rpc/client"
+
 	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/ingest/ledgerbackend"
 
@@ -938,6 +940,51 @@ func (i *Test) WaitUntilLedgerEntryTTL(ledgerKey xdr.LedgerKey) {
 		time.Sleep(time.Second)
 	}
 	assert.True(i.t, ttled)
+}
+
+func (i *Test) WaitUntilLedgerEntryIsEvicted(ledgerKey xdr.LedgerKey, waitTime time.Duration) {
+	sequence := i.getLatestLedgerSequenceRPC()
+	require.Eventually(i.t, func() bool {
+		lcm := i.getLedgerRPC(sequence)
+		keys, err := lcm.EvictedLedgerKeys()
+		require.NoError(i.t, err)
+		for _, key := range keys {
+			if key.Equals(ledgerKey) {
+				i.t.Log("Ledger entry found in evicted ledger keys in ledger", sequence)
+
+				// wait for horizon to catch up
+				require.Eventually(i.t, func() bool {
+					root, err := i.horizonClient.Root()
+					require.NoError(i.t, err)
+					return uint32(root.HorizonSequence) >= sequence
+				}, time.Second*10, time.Second)
+
+				return true
+			}
+		}
+		sequence += 1
+
+		return false
+	}, waitTime, time.Second)
+}
+
+func (i *Test) getLatestLedgerSequenceRPC() uint32 {
+	client := rpc.NewClient("http://localhost:"+strconv.Itoa(StellarRPCPort), nil)
+	response, err := client.GetLatestLedger(context.Background())
+	require.NoError(i.t, err)
+	return response.Sequence
+}
+
+func (i *Test) getLedgerRPC(sequence uint32) xdr.LedgerCloseMeta {
+	backend := ledgerbackend.NewRPCLedgerBackend(ledgerbackend.RPCLedgerBackendOptions{
+		RPCServerURL: "http://localhost:" + strconv.Itoa(StellarRPCPort),
+	})
+
+	require.NoError(i.t, backend.PrepareRange(context.Background(), ledgerbackend.BoundedRange(sequence, sequence)))
+	ledger, err := backend.GetLedger(context.Background(), sequence)
+	require.NoError(i.t, err)
+	require.NoError(i.t, backend.Close())
+	return ledger
 }
 
 func (i *Test) PreflightExtendExpiration(
