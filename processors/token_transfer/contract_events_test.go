@@ -79,10 +79,21 @@ func createString(str string) xdr.ScVal {
 
 // Helper function to create an Int128 ScVal
 func createInt128(val int64) xdr.ScVal {
-	parts := xdr.Int128Parts{
-		Lo: xdr.Uint64(val),
-		Hi: 0,
+	var parts xdr.Int128Parts
+
+	if val >= 0 {
+		parts = xdr.Int128Parts{
+			Lo: xdr.Uint64(val),
+			Hi: 0,
+		}
+	} else {
+		// For negative numbers, you need to do two's complement
+		parts = xdr.Int128Parts{
+			Lo: xdr.Uint64(val),
+			Hi: xdr.Int64(-1),
+		}
 	}
+
 	return xdr.ScVal{
 		Type: xdr.ScValTypeScvI128,
 		I128: &parts,
@@ -1771,34 +1782,189 @@ func TestV4FeeEventParsing(t *testing.T) {
 
 	tests := []struct {
 		name           string
-		contractId     *xdr.ContractId
-		topics         []xdr.ScVal
-		data           xdr.ScVal
+		txLevelEvents  []xdr.TransactionEvent
 		hasError       bool
 		errorStr       string
 		expectedEvents []*TokenTransferEvent
 	}{
 		{
-			name:       "Valid Fee Event",
-			contractId: xlmContractId,
-			hasError:   false,
-			topics: []xdr.ScVal{
-				createSymbol("fee"),
-				createAddress(randomAccount),
+			name: "Valid Fee Event - One Fee Event",
+			txLevelEvents: []xdr.TransactionEvent{
+				{xdr.TransactionEventStageTransactionEventStageBeforeAllTxs,
+					createContractEventFromTopicsAndData(
+						xlmContractId,
+						[]xdr.ScVal{
+							createSymbol("fee"),
+							createAddress(randomAccount),
+						},
+						createInt128(100),
+					),
+				},
 			},
-			data: createInt128(100),
+			hasError: false,
 			expectedEvents: []*TokenTransferEvent{
 				NewFeeEvent(NewEventMetaFromTx(v4Tx, nil, xlmContractIdStr), randomAccount, "100", xlmProtoAsset),
 			},
+		},
+		{
+			name: "Valid Fee Event - 2 Fee Events",
+			txLevelEvents: []xdr.TransactionEvent{
+				{xdr.TransactionEventStageTransactionEventStageBeforeAllTxs,
+					createContractEventFromTopicsAndData(
+						xlmContractId,
+						[]xdr.ScVal{
+							createSymbol("fee"),
+							createAddress(randomAccount),
+						},
+						createInt128(100),
+					),
+				},
+				{xdr.TransactionEventStageTransactionEventStageAfterAllTxs,
+					createContractEventFromTopicsAndData(
+						xlmContractId,
+						[]xdr.ScVal{
+							createSymbol("fee"),
+							createAddress(randomAccount),
+						},
+						createInt128(-20), // simulating a fee refund
+					),
+				},
+			},
+			hasError: false,
+			expectedEvents: []*TokenTransferEvent{
+				NewFeeEvent(NewEventMetaFromTx(v4Tx, nil, xlmContractIdStr), randomAccount, "100", xlmProtoAsset),
+				NewFeeEvent(NewEventMetaFromTx(v4Tx, nil, xlmContractIdStr), randomAccount, "-20", xlmProtoAsset),
+			},
+		},
+		{
+			name: "Valid Fee Event - One Fee Event and other nonsencial events",
+			txLevelEvents: []xdr.TransactionEvent{
+				{xdr.TransactionEventStageTransactionEventStageBeforeAllTxs,
+					createContractEventFromTopicsAndData(
+						xlmContractId,
+						[]xdr.ScVal{
+							createSymbol("fee"),
+							createAddress(randomAccount),
+						},
+						createInt128(100),
+					),
+				},
+				{xdr.TransactionEventStageTransactionEventStageBeforeAllTxs,
+					createContractEventFromTopicsAndData(
+						xlmContractId,
+						[]xdr.ScVal{
+							createSymbol("foo"),
+						},
+						createInt128(100),
+					),
+				},
+			},
+			hasError: false,
+			expectedEvents: []*TokenTransferEvent{
+				NewFeeEvent(NewEventMetaFromTx(v4Tx, nil, xlmContractIdStr), randomAccount, "100", xlmProtoAsset),
+			},
+		},
+		{
+			name:          "Error - No fee events",
+			txLevelEvents: []xdr.TransactionEvent{},
+			hasError:      true,
+			errorStr:      "no fee events found",
+		},
+		{
+			name: "Error - More than 2 Fee Events",
+			txLevelEvents: []xdr.TransactionEvent{
+				{xdr.TransactionEventStageTransactionEventStageBeforeAllTxs,
+					createContractEventFromTopicsAndData(
+						xlmContractId,
+						[]xdr.ScVal{
+							createSymbol("fee"),
+							createAddress(randomAccount),
+						},
+						createInt128(100),
+					),
+				},
+				{xdr.TransactionEventStageTransactionEventStageAfterTx,
+					createContractEventFromTopicsAndData(
+						xlmContractId,
+						[]xdr.ScVal{
+							createSymbol("fee"),
+							createAddress(randomAccount),
+						},
+						createInt128(-5),
+					),
+				},
+				{xdr.TransactionEventStageTransactionEventStageAfterAllTxs,
+					createContractEventFromTopicsAndData(
+						xlmContractId,
+						[]xdr.ScVal{
+							createSymbol("fee"),
+							createAddress(randomAccount),
+						},
+						createInt128(-10),
+					),
+				},
+			},
+			hasError: true,
+			errorStr: "too many fee events",
+		},
+		{
+			name: "Error - invalid fee event - extra topics",
+			txLevelEvents: []xdr.TransactionEvent{
+				{xdr.TransactionEventStageTransactionEventStageBeforeAllTxs,
+					createContractEventFromTopicsAndData(
+						xlmContractId,
+						[]xdr.ScVal{
+							createSymbol("fee"),
+							createAddress(randomAccount),
+							createString("extra field"),
+						},
+						createInt128(100),
+					),
+				},
+			},
+			hasError: true,
+			errorStr: "invalid topic length for fee event",
+		},
+		{
+			name: "Error - invalid fee event - invalid amount",
+			txLevelEvents: []xdr.TransactionEvent{
+				{xdr.TransactionEventStageTransactionEventStageBeforeAllTxs,
+					createContractEventFromTopicsAndData(
+						xlmContractId,
+						[]xdr.ScVal{
+							createSymbol("fee"),
+							createAddress(randomAccount),
+						},
+						createString("not a valid amount"),
+					),
+				},
+			},
+			hasError: true,
+			errorStr: "invalid fee amount",
+		},
+		{
+			name: "Error - invalid fee event - invalid contractId",
+			txLevelEvents: []xdr.TransactionEvent{
+				{xdr.TransactionEventStageTransactionEventStageBeforeAllTxs,
+					createContractEventFromTopicsAndData(
+						&someContractId1, // not xlm SAC contractId
+						[]xdr.ScVal{
+							createSymbol("fee"),
+							createAddress(randomAccount),
+						},
+						createInt128(100),
+					),
+				},
+			},
+			hasError: true,
+			errorStr: "contractId in event does not match xlm SAC contract Id",
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ttp := NewEventsProcessorForUnifiedEvents(someNetworkPassphrase)
-			txFeeEvent := createContractEventFromTopicsAndData(tc.contractId, tc.topics, tc.data)
-			txEvents := []xdr.TransactionEvent{{xdr.TransactionEventStageTransactionEventStageBeforeAllTxs, txFeeEvent}}
-			v4Tx.UnsafeMeta.V4.Events = txEvents
+			v4Tx.UnsafeMeta.V4.Events = tc.txLevelEvents
 			protoFeeEvents, err := ttp.parseFeeEventsFromTransactionEvents(v4Tx)
 			if !tc.hasError {
 				require.NoError(t, err)
