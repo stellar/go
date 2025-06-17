@@ -956,10 +956,7 @@ func (i *Test) WaitUntilLedgerEntryIsEvicted(ledgerKey xdr.LedgerKey, waitTime t
 				require.Eventually(i.t, func() bool {
 					root, err := i.horizonClient.Root()
 					require.NoError(i.t, err)
-					if uint32(root.HorizonSequence) >= sequence {
-						return true
-					}
-					return false
+					return uint32(root.HorizonSequence) >= sequence
 				}, time.Second*10, time.Second)
 
 				return true
