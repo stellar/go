@@ -101,7 +101,7 @@ func TestScAddressString(t *testing.T) {
 					V0:   &Hash{1},
 				},
 			},
-			expected: strkey.MustEncode(strkey.VersionByteClaimableBalance, cbID[:]),
+			expected: strkey.MustEncode(strkey.VersionByteClaimableBalance, append([]byte{0}, cbID[:]...)), // The Cb type is included when encoding in strkey
 		},
 		{
 			address: ScAddress{
