@@ -116,6 +116,10 @@ func TestContractMintToAccount(t *testing.T) {
 }
 
 func createSAC(itest *integration.Test, asset xdr.Asset) {
+	createSACWithTTL(itest, asset, LongTermTTL)
+}
+
+func createSACWithTTL(itest *integration.Test, asset xdr.Asset, ttl uint32) {
 	invokeHostFunction := &txnbuild.InvokeHostFunction{
 		HostFunction: xdr.HostFunction{
 			Type: xdr.HostFunctionTypeHostFunctionTypeCreateContract,
@@ -136,7 +140,7 @@ func createSAC(itest *integration.Test, asset xdr.Asset) {
 	sourceAccount, extendTTLOp := itest.PreflightExtendExpiration(
 		itest.Master().Address(),
 		preFlightOp.Ext.SorobanData.Resources.Footprint.ReadWrite,
-		LongTermTTL,
+		ttl,
 	)
 	itest.MustSubmitOperations(&sourceAccount, itest.Master(), &extendTTLOp)
 }
@@ -590,6 +594,192 @@ func TestEvictionAndRestoration(t *testing.T) {
 		numContracts:     1,
 		balanceContracts: big.NewInt(37),
 		contractID:       storeContractID,
+	})
+}
+
+func TestUnlinkContractIDFromAssetStat(t *testing.T) {
+	if integration.GetCoreMaxSupportedProtocol() < 23 {
+		t.Skip("This test run does not support less than Protocol 23")
+	}
+
+	itest := integration.NewTest(t, integration.Config{
+		EnableStellarRPC: true,
+		HorizonIngestParameters: map[string]string{
+			// disable state verification because we will insert
+			// a fake asset contract in the horizon db and we don't
+			// want state verification to detect this
+			"ingest-disable-state-verification": "true",
+		},
+		QuickExpiration: true,
+		QuickEviction:   true,
+	})
+
+	issuer := itest.Master().Address()
+	code := "USD"
+
+	// Create contract to store synthetic asset balances
+	storeContractID, _ := mustCreateAndInstallContractWithTTL(
+		itest,
+		itest.Master(),
+		"a1",
+		"soroban_store.wasm",
+		20,
+	)
+
+	syntheticAssetStat := history.ExpAssetStat{
+		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
+		AssetCode:   code,
+		AssetIssuer: issuer,
+		Accounts: history.ExpAssetStatAccounts{
+			Authorized:                      1,
+			AuthorizedToMaintainLiabilities: 0,
+			ClaimableBalances:               0,
+			LiquidityPools:                  0,
+			Unauthorized:                    0,
+		},
+		Balances: history.ExpAssetStatBalances{
+			Authorized:                      "0",
+			AuthorizedToMaintainLiabilities: "0",
+			ClaimableBalances:               "0",
+			LiquidityPools:                  "0",
+			Unauthorized:                    "0",
+		},
+		ContractID: nil,
+	}
+	syntheticAssetStat.SetContractID(storeContractID)
+	_, err := itest.HorizonIngest().HistoryQ().InsertAssetStat(
+		context.Background(),
+		syntheticAssetStat,
+	)
+	assert.NoError(t, err)
+
+	// create active balance
+	_, _, setOp := assertInvokeHostFnSucceeds(
+		itest,
+		itest.Master(),
+		invokeStoreSet(
+			itest,
+			storeContractID,
+			sac.BalanceToContractData(
+				storeContractID,
+				[32]byte{1},
+				23,
+			),
+		),
+	)
+	sourceAccount, extendTTLOp := itest.PreflightExtendExpiration(
+		itest.Master().Address(),
+		setOp.Ext.SorobanData.Resources.Footprint.ReadWrite,
+		LongTermTTL,
+	)
+	itest.MustSubmitOperations(&sourceAccount, itest.Master(), &extendTTLOp)
+	assertAssetStats(itest, assetStats{
+		code:             code,
+		issuer:           issuer,
+		numAccounts:      1,
+		balanceAccounts:  0,
+		numContracts:     1,
+		balanceContracts: big.NewInt(23),
+		contractID:       storeContractID,
+	})
+
+	contractToEvictLedgerKey := xdr.LedgerKey{
+		Type: xdr.LedgerEntryTypeContractData,
+		ContractData: &xdr.LedgerKeyContractData{
+			Contract: xdr.ScAddress{
+				Type:       xdr.ScAddressTypeScAddressTypeContract,
+				AccountId:  nil,
+				ContractId: &storeContractID,
+			},
+			Key: xdr.ScVal{
+				Type: xdr.ScValTypeScvLedgerKeyContractInstance,
+			},
+			Durability: xdr.ContractDataDurabilityPersistent,
+		},
+	}
+	itest.WaitUntilLedgerEntryIsEvicted(contractToEvictLedgerKey, time.Minute)
+
+	assertAssetStats(itest, assetStats{
+		code:             code,
+		issuer:           issuer,
+		numAccounts:      1,
+		balanceAccounts:  0,
+		numContracts:     0,
+		balanceContracts: big.NewInt(0),
+		contractID:       [32]byte{},
+	})
+}
+
+func TestEvictionOfSACAndRestoration(t *testing.T) {
+	if integration.GetCoreMaxSupportedProtocol() < 23 {
+		t.Skip("This test run does not support less than Protocol 23")
+	}
+
+	itest := integration.NewTest(t, integration.Config{
+		EnableStellarRPC: true,
+		HorizonIngestParameters: map[string]string{
+			// disable state verification because we will insert
+			// a fake asset contract in the horizon db and we don't
+			// want state verification to detect this
+			"ingest-disable-state-verification": "true",
+		},
+		QuickExpiration: true,
+		QuickEviction:   true,
+	})
+
+	issuer := itest.Master().Address()
+	code := "USD"
+	asset := xdr.MustNewCreditAsset(code, issuer)
+
+	createSACWithTTL(itest, asset, 30)
+	contractID := stellarAssetContractID(itest, asset)
+
+	assertAssetStats(itest, assetStats{
+		code:             code,
+		issuer:           issuer,
+		numAccounts:      0,
+		balanceAccounts:  0,
+		numContracts:     0,
+		balanceContracts: big.NewInt(0),
+		contractID:       contractID,
+	})
+
+	contractToEvictLedgerKey := xdr.LedgerKey{
+		Type: xdr.LedgerEntryTypeContractData,
+		ContractData: &xdr.LedgerKeyContractData{
+			Contract: xdr.ScAddress{
+				Type:       xdr.ScAddressTypeScAddressTypeContract,
+				AccountId:  nil,
+				ContractId: &contractID,
+			},
+			Key: xdr.ScVal{
+				Type: xdr.ScValTypeScvLedgerKeyContractInstance,
+			},
+			Durability: xdr.ContractDataDurabilityPersistent,
+		},
+	}
+	itest.WaitUntilLedgerEntryIsEvicted(contractToEvictLedgerKey, time.Minute)
+
+	assets, err := itest.Client().Assets(horizonclient.AssetRequest{
+		ForAssetCode:   code,
+		ForAssetIssuer: issuer,
+		Limit:          1,
+	})
+	assert.NoError(itest.CurrentTest(), err)
+	assert.Empty(itest.CurrentTest(), assets.Embedded.Records)
+
+	// restore evicted contract
+	sourceAccount, restoreOp := itest.RestoreFootprint(itest.Master().Address(), contractToEvictLedgerKey)
+	itest.MustSubmitOperations(&sourceAccount, itest.Master(), &restoreOp)
+
+	assertAssetStats(itest, assetStats{
+		code:             code,
+		issuer:           issuer,
+		numAccounts:      0,
+		balanceAccounts:  0,
+		numContracts:     0,
+		balanceContracts: big.NewInt(0),
+		contractID:       contractID,
 	})
 }
 
@@ -1222,7 +1412,11 @@ func assertAssetStats(itest *integration.Test, expected assetStats) {
 	assert.Equal(itest.CurrentTest(), expected.numAccounts, asset.Accounts.Authorized)
 	assert.Equal(itest.CurrentTest(), expected.numContracts, asset.NumContracts)
 	assert.Equal(itest.CurrentTest(), expected.balanceContracts.String(), parseBalance(itest, asset.ContractsAmount).String())
-	assert.Equal(itest.CurrentTest(), strkey.MustEncode(strkey.VersionByteContract, expected.contractID[:]), asset.ContractID)
+	if expected.contractID == [32]byte{} {
+		assert.Empty(itest.CurrentTest(), asset.ContractID)
+	} else {
+		assert.Equal(itest.CurrentTest(), strkey.MustEncode(strkey.VersionByteContract, expected.contractID[:]), asset.ContractID)
+	}
 }
 
 func parseBalance(itest *integration.Test, balance string) *big.Int {
@@ -1551,6 +1745,10 @@ func stellarAssetContractID(itest *integration.Test, asset xdr.Asset) xdr.Contra
 }
 
 func mustCreateAndInstallContract(itest *integration.Test, signer *keypair.Full, contractSalt string, wasmFileName string) (xdr.ContractId, xdr.Hash) {
+	return mustCreateAndInstallContractWithTTL(itest, signer, contractSalt, wasmFileName, LongTermTTL)
+}
+
+func mustCreateAndInstallContractWithTTL(itest *integration.Test, signer *keypair.Full, contractSalt string, wasmFileName string, ttl uint32) (xdr.ContractId, xdr.Hash) {
 	_, _, installContractOp := assertInvokeHostFnSucceeds(
 		itest,
 		signer,
@@ -1574,7 +1772,7 @@ func mustCreateAndInstallContract(itest *integration.Test, signer *keypair.Full,
 	sourceAccount, extendTTLOp := itest.PreflightExtendExpiration(
 		itest.Master().Address(),
 		keys,
-		LongTermTTL,
+		ttl,
 	)
 	itest.MustSubmitOperations(&sourceAccount, itest.Master(), &extendTTLOp)
 
