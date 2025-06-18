@@ -100,7 +100,6 @@ func (s *IngestCommandsTestSuite) TestIngestVerifyRangeCmd() {
 			args := append([]string{"ingest", "verify-range"}, tt.args...)
 			rootCmd.SetArgs(append([]string{
 				"--db-url", s.db.DSN,
-				"--stellar-core-binary-path", "/test/core/bin/path",
 			}, args...))
 
 			if tt.expectError {
