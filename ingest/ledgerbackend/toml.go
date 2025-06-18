@@ -530,7 +530,7 @@ func getCoreProtocolVersion(params CaptiveCoreTomlParams) (uint, error) {
 
 var minVersionForBucketlistCaching = coreVersion{major: 22, minor: 2}
 var minProtocolVersionForBackfillRestoreMeta uint = 23
-var minVersionForUnifiedEvents = coreVersion{major: 23, minor: 0}
+var minVersionForUnifiedEvents uint = 23
 
 func (c *CaptiveCoreToml) setDefaults(params CaptiveCoreTomlParams) {
 	if !c.tree.Has("DATABASE") {
@@ -595,10 +595,23 @@ func (c *CaptiveCoreToml) setDefaults(params CaptiveCoreTomlParams) {
 	if params.EnforceSorobanTransactionMetaExtV1 {
 		enforceOption(&c.EnableEmitSorobanTransactionMetaExtV1)
 	}
-	if params.EmitUnifiedEvents &&
-		c.checkCoreVersion(params).greaterThanOrEqual(minVersionForUnifiedEvents) {
-		enforceOption(&c.EnableBackfillStellarAssetEvents)
-		enforceOption(&c.EnableEmitClassicEvents)
+
+	// If caller opts in to unified events, enable both event emission and event
+	// backfilling, as long as the running Core binary supports the feature.
+	if params.EmitUnifiedEvents {
+		protocolVersion, err := getCoreProtocolVersion(params)
+		if err != nil {
+			log.Warnf("Error getting core protocol version: %v", err)
+		}
+		if protocolVersion < minVersionForUnifiedEvents {
+			log.Warnf(
+				"Core supported protocol version too low: %d < %d, "+
+					"unified events flag has no effect.",
+				protocolVersion, minVersionForUnifiedEvents)
+		} else {
+			enforceOption(&c.EnableBackfillStellarAssetEvents)
+			enforceOption(&c.EnableEmitClassicEvents)
+		}
 	}
 
 	if params.HTTPQueryServerParams != nil {
