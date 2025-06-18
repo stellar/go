@@ -3,7 +3,9 @@
 All notable changes to this project will be documented in this
 file. This project adheres to [Semantic Versioning](http://semver.org/).
 
-## Pending
+## 23.0.0-rc1
+
+**This release adds support for Protocol 23**
 
 ### Breaking Changes
 In Protocol 23, Stellar Core removes in-memory mode and requires on-disk mode (using BucketListDB) for captive core ([5627](https://github.com/stellar/go/pull/5627)). As a result, the following configurations are no longer supported and have been removed:
