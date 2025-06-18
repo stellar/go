@@ -54,7 +54,6 @@ mkdir="mkdir -p history/vs/{0}"
 
 const captiveCoreConfigTemplate = `
 ARTIFICIALLY_ACCELERATE_TIME_FOR_TESTING={{ .Accelerate }}
-BACKFILL_RESTORE_META=true
 
 NETWORK_PASSPHRASE="{{ .NetworkPassphrase }}"
 

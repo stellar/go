@@ -364,6 +364,8 @@ type CaptiveCoreTomlParams struct {
 	HTTPQueryServerParams *HTTPQueryServerParams
 	// CoreBuildVersionFn is a function that returns the build version of the stellar-core binary.
 	CoreBuildVersionFn CoreBuildVersionFunc
+	// CoreProtocolVersionFn is a function that returns the protocol version of the stellar-core binary.
+	CoreProtocolVersionFn CoreProtocolVersionFunc
 	// BackfillRestoreMeta is the value assigned to BACKFILL_RESTORE_META in the captive core toml file.
 	// If omitted we will default BACKFILL_RESTORE_META to true.
 	BackfillRestoreMeta *bool
@@ -517,8 +519,15 @@ func (c *CaptiveCoreToml) checkCoreVersion(params CaptiveCoreTomlParams) coreVer
 	}
 }
 
+func getCoreProtocolVersion(params CaptiveCoreTomlParams) (uint, error) {
+	if params.CoreProtocolVersionFn != nil {
+		return params.CoreProtocolVersionFn(params.CoreBinaryPath)
+	}
+	return CoreProtocolVersion(params.CoreBinaryPath)
+}
+
 var minVersionForBucketlistCaching = coreVersion{major: 22, minor: 2}
-var minVersionForBackfillRestoreMeta = coreVersion{major: 23, minor: 0}
+var minProtocolVersionForBackfillRestoreMeta uint = 23
 
 func (c *CaptiveCoreToml) setDefaults(params CaptiveCoreTomlParams) {
 	if !c.tree.Has("DATABASE") {
@@ -528,9 +537,14 @@ func (c *CaptiveCoreToml) setDefaults(params CaptiveCoreTomlParams) {
 	if !c.tree.Has("BACKFILL_RESTORE_META") {
 		if params.BackfillRestoreMeta != nil {
 			c.BackfillRestoreMeta = params.BackfillRestoreMeta
-		} else if c.checkCoreVersion(params).greaterThanOrEqual(minVersionForBackfillRestoreMeta) {
-			defaultVal := true
-			c.BackfillRestoreMeta = &defaultVal
+		} else {
+			protocolVersion, err := getCoreProtocolVersion(params)
+			if err != nil {
+				log.Warnf("Error getting core protocol version: %v", err)
+			} else if protocolVersion >= minProtocolVersionForBackfillRestoreMeta {
+				defaultVal := true
+				c.BackfillRestoreMeta = &defaultVal
+			}
 		}
 	}
 
