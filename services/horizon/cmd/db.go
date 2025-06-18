@@ -49,6 +49,33 @@ var (
 	ledgerBackendType        ingest.LedgerBackendType
 )
 
+// generateLedgerBackendOpt creates a reusable ConfigOption for ledgerbackend parameter
+func generateLedgerBackendOpt(configKey *string, backendTypeVar *ingest.LedgerBackendType) *support.ConfigOption {
+	return &support.ConfigOption{
+		Name:        "ledgerbackend",
+		ConfigKey:   configKey,
+		OptType:     types.String,
+		Required:    false,
+		FlagDefault: ingest.CaptiveCoreBackend.String(),
+		Usage: fmt.Sprintf("[optional] Specify the ledger backend type: '%s' (default) or '%s'",
+			ingest.CaptiveCoreBackend.String(),
+			ingest.BufferedStorageBackend.String()),
+		CustomSetValue: func(co *support.ConfigOption) error {
+			val := viper.GetString(co.Name)
+			switch val {
+			case ingest.CaptiveCoreBackend.String():
+				*backendTypeVar = ingest.CaptiveCoreBackend
+			case ingest.BufferedStorageBackend.String():
+				*backendTypeVar = ingest.BufferedStorageBackend
+			default:
+				return fmt.Errorf("invalid ledger backend: %s, must be 'captive-core' or 'datastore'", val)
+			}
+			*co.ConfigKey.(*string) = val
+			return nil
+		},
+	}
+}
+
 func requireAndSetFlags(horizonFlags config.ConfigOptions, names ...string) error {
 	set := map[string]bool{}
 	for _, name := range names {
@@ -133,29 +160,7 @@ func ingestRangeCmdOpts() support.ConfigOptions {
 			FlagDefault: uint(5),
 			Usage:       "[optional] backoff seconds between reingest retries",
 		},
-		{
-			Name:        "ledgerbackend",
-			ConfigKey:   &ledgerBackendStr,
-			OptType:     types.String,
-			Required:    false,
-			FlagDefault: ingest.CaptiveCoreBackend.String(),
-			Usage: fmt.Sprintf("[optional] Specify the ledger backend type: '%s' (default) or '%s'",
-				ingest.CaptiveCoreBackend.String(),
-				ingest.BufferedStorageBackend.String()),
-			CustomSetValue: func(co *support.ConfigOption) error {
-				val := viper.GetString(co.Name)
-				switch val {
-				case ingest.CaptiveCoreBackend.String():
-					ledgerBackendType = ingest.CaptiveCoreBackend
-				case ingest.BufferedStorageBackend.String():
-					ledgerBackendType = ingest.BufferedStorageBackend
-				default:
-					return fmt.Errorf("invalid ledger backend: %s, must be 'captive-core' or 'datastore'", val)
-				}
-				*co.ConfigKey.(*string) = val
-				return nil
-			},
-		},
+		generateLedgerBackendOpt(&ledgerBackendStr, &ledgerBackendType),
 		{
 			Name:      "datastore-config",
 			ConfigKey: &storageBackendConfigPath,
@@ -239,7 +244,7 @@ func runDBDetectGaps(config horizon.Config) ([]history.LedgerRange, error) {
 		return nil, err
 	}
 	defer horizonSession.Close()
-	q := &history.Q{horizonSession}
+	q := &history.Q{SessionInterface: horizonSession}
 	return q.GetLedgerGaps(context.Background())
 }
 
@@ -249,7 +254,7 @@ func runDBDetectGapsInRange(config horizon.Config, start, end uint32) ([]history
 		return nil, err
 	}
 	defer horizonSession.Close()
-	q := &history.Q{horizonSession}
+	q := &history.Q{SessionInterface: horizonSession}
 	return q.GetLedgerGapsInRange(context.Background(), start, end)
 }
 
