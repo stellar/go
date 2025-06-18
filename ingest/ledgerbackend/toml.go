@@ -530,7 +530,7 @@ func getCoreProtocolVersion(params CaptiveCoreTomlParams) (uint, error) {
 
 var minVersionForBucketlistCaching = coreVersion{major: 22, minor: 2}
 var minProtocolVersionForBackfillRestoreMeta uint = 23
-var minVersionForUnifiedEvents uint = 23
+var minProtocolVersionForUnifiedEvents uint = 23
 
 func (c *CaptiveCoreToml) setDefaults(params CaptiveCoreTomlParams) {
 	if !c.tree.Has("DATABASE") {
@@ -603,11 +603,11 @@ func (c *CaptiveCoreToml) setDefaults(params CaptiveCoreTomlParams) {
 		if err != nil {
 			log.Warnf("Error getting core protocol version: %v", err)
 		}
-		if protocolVersion < minVersionForUnifiedEvents {
+		if protocolVersion < minProtocolVersionForUnifiedEvents {
 			log.Warnf(
 				"Core supported protocol version too low: %d < %d, "+
 					"unified events flag has no effect.",
-				protocolVersion, minVersionForUnifiedEvents)
+				protocolVersion, minProtocolVersionForUnifiedEvents)
 		} else {
 			enforceOption(&c.EnableBackfillStellarAssetEvents)
 			enforceOption(&c.EnableEmitClassicEvents)
