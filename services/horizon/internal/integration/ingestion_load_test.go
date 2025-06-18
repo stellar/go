@@ -18,9 +18,8 @@ import (
 )
 
 func TestLoadTestLedgerBackend(t *testing.T) {
-	// TODO: Generate test data using LedgerCloseMetaV2 to run this test for Protocol 23 and above
-	if integration.GetCoreMaxSupportedProtocol() > 22 {
-		t.Skip("This test run does not support greater than Protocol 22")
+	if integration.GetCoreMaxSupportedProtocol() < 23 {
+		t.Skip("This test run does not support less than Protocol 23")
 	}
 
 	itest := integration.NewTest(t, integration.Config{
