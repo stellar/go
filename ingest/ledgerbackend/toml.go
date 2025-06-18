@@ -360,6 +360,8 @@ type CaptiveCoreTomlParams struct {
 	EnforceSorobanDiagnosticEvents bool
 	// Enforce EnableSorobanTransactionMetaExtV1 when not disabled explicitly
 	EnforceSorobanTransactionMetaExtV1 bool
+	// Emits unified events for all operations
+	EmitUnifiedEvents bool
 	// Fast HTTP Query Server parameters
 	HTTPQueryServerParams *HTTPQueryServerParams
 	// CoreBuildVersionFn is a function that returns the build version of the stellar-core binary.
@@ -528,6 +530,7 @@ func getCoreProtocolVersion(params CaptiveCoreTomlParams) (uint, error) {
 
 var minVersionForBucketlistCaching = coreVersion{major: 22, minor: 2}
 var minProtocolVersionForBackfillRestoreMeta uint = 23
+var minProtocolVersionForUnifiedEvents uint = 23
 
 func (c *CaptiveCoreToml) setDefaults(params CaptiveCoreTomlParams) {
 	if !c.tree.Has("DATABASE") {
@@ -593,6 +596,24 @@ func (c *CaptiveCoreToml) setDefaults(params CaptiveCoreTomlParams) {
 		enforceOption(&c.EnableEmitSorobanTransactionMetaExtV1)
 	}
 
+	// If caller opts in to unified events, enable both event emission and event
+	// backfilling, as long as the running Core binary supports the feature.
+	if params.EmitUnifiedEvents {
+		protocolVersion, err := getCoreProtocolVersion(params)
+		if err != nil {
+			log.Warnf("Error getting core protocol version: %v", err)
+		}
+		if protocolVersion < minProtocolVersionForUnifiedEvents {
+			log.Warnf(
+				"Core supported protocol version too low: %d < %d, "+
+					"unified events flag has no effect.",
+				protocolVersion, minProtocolVersionForUnifiedEvents)
+		} else {
+			enforceOption(&c.EnableBackfillStellarAssetEvents)
+			enforceOption(&c.EnableEmitClassicEvents)
+		}
+	}
+
 	if params.HTTPQueryServerParams != nil {
 		port := uint(params.HTTPQueryServerParams.Port)
 		c.HTTPQueryPort = &port
@@ -602,7 +623,6 @@ func (c *CaptiveCoreToml) setDefaults(params CaptiveCoreTomlParams) {
 
 		poolSize := uint(params.HTTPQueryServerParams.ThreadPoolSize)
 		c.QueryThreadPoolSize = &poolSize
-
 	}
 
 	if !c.tree.Has("BUCKETLIST_DB_MEMORY_FOR_CACHING") &&
