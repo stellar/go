@@ -150,7 +150,7 @@ func TestProcessorRunnerBuildChangeProcessor(t *testing.T) {
 		filters:  &MockFilters{},
 	}
 
-	stats := &ingest.StatsChangeProcessor{}
+	stats := &processors.StatsChangeProcessor{}
 	processor := buildChangeProcessor(runner.historyQ, stats, ledgerSource, 123, "")
 	assert.IsType(t, &groupChangeProcessors{}, processor)
 

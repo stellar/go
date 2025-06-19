@@ -9,9 +9,9 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/stellar/go/historyarchive"
-	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/services/horizon/internal/ingest/processors"
 	"github.com/stellar/go/support/errors"
 	logpkg "github.com/stellar/go/support/log"
 	"github.com/stellar/go/xdr"
@@ -375,7 +375,7 @@ func (b buildState) run(s *system) (transition, error) {
 	}).Info("Processing state")
 	startTime := time.Now()
 
-	var stats ingest.StatsChangeProcessorResults
+	var stats processors.StatsChangeProcessorResults
 
 	stats, err = s.runner.RunHistoryArchiveIngestion(
 		b.checkpointLedger,
