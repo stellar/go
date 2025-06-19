@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 
 	"github.com/BurntSushi/toml"
 	"github.com/stellar/go/address"
@@ -55,6 +56,14 @@ func (c *Client) GetStellarTomlByAddress(addr string) (*Response, error) {
 	return c.GetStellarToml(domain)
 }
 
+func getWellKnownPathFromEnv() string {
+	path := os.Getenv("STELLAR_TOML_PATH")
+	if path == "" {
+		return WellKnownPath
+	}
+	return path
+}
+
 // url returns the appropriate url to load for resolving domain's stellar.toml
 // file
 func (c *Client) url(domain string) string {
@@ -66,5 +75,7 @@ func (c *Client) url(domain string) string {
 		scheme = "https"
 	}
 
-	return fmt.Sprintf("%s://%s%s", scheme, domain, WellKnownPath)
+	wellKnownPath := getWellKnownPathFromEnv()
+
+	return fmt.Sprintf("%s://%s%s", scheme, domain, wellKnownPath)
 }

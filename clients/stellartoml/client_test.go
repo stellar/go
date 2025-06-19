@@ -1,6 +1,7 @@
 package stellartoml
 
 import (
+	"os"
 	"strings"
 	"testing"
 
@@ -63,4 +64,18 @@ func TestClient(t *testing.T) {
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "toml decode failed")
 	}
+}
+
+func TestGetWellKnownPathFromEnv(t *testing.T) {
+	// Backup and defer restore
+	orig := os.Getenv("STELLAR_TOML_PATH")
+	defer os.Setenv("STELLAR_TOML_PATH", orig)
+
+	// Test default
+	os.Unsetenv("STELLAR_TOML_PATH")
+	assert.Equal(t, WellKnownPath, getWellKnownPathFromEnv())
+
+	// Test custom path
+	os.Setenv("STELLAR_TOML_PATH", "/custom/path/stellar.toml")
+	assert.Equal(t, "/custom/path/stellar.toml", getWellKnownPathFromEnv())
 }
