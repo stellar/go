@@ -171,14 +171,11 @@ func (p *AssetStatsProcessor) addExpirationChange(change ingest.Change) error {
 		// because if the previous expiration ledger is less than the current ledger then it implies
 		// the ledger entry was archived. However, an archived ledger entry cannot be updated without
 		// first being restored.
+		// Alternatively, the TTL can be updated without being restored if it is a temporary ledger
+		// entry. However, in that case, we can ignore the ledger entry entirely because SAC
+		// ledger entries are always kept in persistent storage.
 		if uint32(pre.LiveUntilLedgerSeq) < p.currentLedger {
-			return errors.Errorf(
-				"pre expiration ledger is less than current ledger."+
-					" Pre: %v Post: %v current ledger: %v",
-				pre.LiveUntilLedgerSeq,
-				post.LiveUntilLedgerSeq,
-				p.currentLedger,
-			)
+			return nil
 		}
 		p.updatedExpirationEntries[pre.KeyHash] = [2]uint32{
 			uint32(pre.LiveUntilLedgerSeq),
