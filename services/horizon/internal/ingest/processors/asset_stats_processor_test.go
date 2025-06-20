@@ -1219,14 +1219,14 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestExpirationLedgerCannotDecrease(
 	)
 }
 
-func (s *AssetStatsProcessorTestSuiteLedger) TestExpirationLedgerCannotBeLessThanCurrentLedger() {
+func (s *AssetStatsProcessorTestSuiteLedger) TestExpirationLedgerIgnoredIfLessThanCurrentLedger() {
 	lastModifiedLedgerSeq := xdr.Uint32(1234)
 
 	eurID, err := xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()).ContractID("")
 	s.Assert().NoError(err)
 
 	keyHash := getKeyHashForBalance(s.T(), eurID, [32]byte{1})
-	s.Assert().EqualError(s.processor.ProcessChange(s.ctx, ingest.Change{
+	s.Assert().NoError(s.processor.ProcessChange(s.ctx, ingest.Change{
 		Type: xdr.LedgerEntryTypeTtl,
 		Pre: &xdr.LedgerEntry{
 			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
@@ -1248,9 +1248,20 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestExpirationLedgerCannotBeLessTha
 				},
 			},
 		},
-	}),
-		"pre expiration ledger is less than current ledger. Pre: 1230 Post: 1236 current ledger: 1235",
-	)
+	}))
+
+	s.mockQ.On("InsertContractAssetBalances", s.ctx, []history.ContractAssetBalance(nil)).
+		Return(nil).Once()
+	s.mockQ.On("RemoveContractAssetBalances", s.ctx, []xdr.Hash(nil)).
+		Return(nil).Once()
+	s.mockQ.On("UpdateContractAssetBalanceAmounts", s.ctx, []xdr.Hash{}, []string{}).
+		Return(nil).Once()
+	s.mockQ.On("UpdateContractAssetBalanceExpirations", s.ctx, []xdr.Hash{}, []uint32{}).
+		Return(nil).Once()
+	s.mockQ.On("DeleteContractAssetBalancesExpiringAt", s.ctx, uint32(1234)).
+		Return([]history.ContractAssetBalance{}, nil).Once()
+
+	s.Assert().NoError(s.processor.Commit(s.ctx))
 }
 
 func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateContractIDWithBalance() {
