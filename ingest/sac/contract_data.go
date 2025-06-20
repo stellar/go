@@ -451,6 +451,22 @@ func AssetToContractData(isNative bool, code, issuer string, contractID [32]byte
 	}, nil
 }
 
+func AssetToContractDataLedgerKey(contractID xdr.ContractId) xdr.LedgerKey {
+	return xdr.LedgerKey{
+		Type: xdr.LedgerEntryTypeContractData,
+		ContractData: &xdr.LedgerKeyContractData{
+			Contract: xdr.ScAddress{
+				Type:       xdr.ScAddressTypeScAddressTypeContract,
+				ContractId: &contractID,
+			},
+			Key: xdr.ScVal{
+				Type: xdr.ScValTypeScvLedgerKeyContractInstance,
+			},
+			Durability: xdr.ContractDataDurabilityPersistent,
+		},
+	}
+}
+
 // BalanceToContractData is the inverse of ContractBalanceFromContractData. It
 // creates a ledger entry containing the asset balance of a contract holder
 // written to contract storage by the Stellar Asset Contract.

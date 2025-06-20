@@ -223,6 +223,7 @@ func genAssetContractMetadata(tt *test.T, gen randxdr.Generator) []xdr.LedgerEnt
 	balance := balanceContractDataFromTrustline(tt, trustline)
 	otherBalance := balanceContractDataFromTrustline(tt, otherTrustline)
 	return []xdr.LedgerEntryChange{
+		ttlForContractData(tt, gen, assetContractMetadata),
 		assetContractMetadata,
 		trustline,
 		balance,
@@ -231,6 +232,7 @@ func genAssetContractMetadata(tt *test.T, gen randxdr.Generator) []xdr.LedgerEnt
 		otherBalance,
 		ttlForContractData(tt, gen, otherBalance),
 		balanceContractDataFromTrustline(tt, genTrustLine(tt, gen, assetPreset)),
+		ttlForContractData(tt, gen, otherAssetContractMetadata),
 	}
 }
 
@@ -295,7 +297,7 @@ func TestTruncateIngestStateTables(t *testing.T) {
 	// insert ledger entries of all types into the DB
 	tt.Assert.NoError(q.BeginTx(tt.Ctx, &sql.TxOptions{}))
 	checkpointLedger := uint32(63)
-	changeProcessor := buildChangeProcessor(q, &processors.StatsChangeProcessor{}, historyArchiveSource, checkpointLedger, "", nil)
+	changeProcessor := buildChangeProcessor(q, &processors.StatsChangeProcessor{}, historyArchiveSource, checkpointLedger, "")
 	for _, change := range ingest.GetChangesFromLedgerEntryChanges(ledgerEntries) {
 		tt.Assert.NoError(changeProcessor.ProcessChange(tt.Ctx, change))
 	}
@@ -307,7 +309,7 @@ func TestTruncateIngestStateTables(t *testing.T) {
 
 	// reinsert the same ledger entries from before
 	tt.Assert.NoError(q.BeginTx(tt.Ctx, &sql.TxOptions{}))
-	changeProcessor = buildChangeProcessor(q, &processors.StatsChangeProcessor{}, historyArchiveSource, checkpointLedger, "", nil)
+	changeProcessor = buildChangeProcessor(q, &processors.StatsChangeProcessor{}, historyArchiveSource, checkpointLedger, "")
 	for _, change := range ingest.GetChangesFromLedgerEntryChanges(ledgerEntries) {
 		tt.Assert.NoError(changeProcessor.ProcessChange(tt.Ctx, change))
 	}
@@ -327,7 +329,7 @@ func TestStateVerifierLockBusy(t *testing.T) {
 	tt.Assert.NoError(q.BeginTx(tt.Ctx, &sql.TxOptions{}))
 
 	checkpointLedger := uint32(63)
-	changeProcessor := buildChangeProcessor(q, &processors.StatsChangeProcessor{}, historyArchiveSource, checkpointLedger, "", nil)
+	changeProcessor := buildChangeProcessor(q, &processors.StatsChangeProcessor{}, historyArchiveSource, checkpointLedger, "")
 
 	for _, change := range ingest.GetChangesFromLedgerEntryChanges(generateRandomLedgerEntries(tt)) {
 		tt.Assert.NoError(changeProcessor.ProcessChange(tt.Ctx, change))
@@ -373,7 +375,7 @@ func TestStateVerifier(t *testing.T) {
 
 	ledger := rand.Int31()
 	checkpointLedger := uint32(ledger - (ledger % 64) - 1)
-	changeProcessor := buildChangeProcessor(q, &processors.StatsChangeProcessor{}, historyArchiveSource, checkpointLedger, "", nil)
+	changeProcessor := buildChangeProcessor(q, &processors.StatsChangeProcessor{}, historyArchiveSource, checkpointLedger, "")
 	mockChangeReader := &ingest.MockChangeReader{}
 
 	for _, change := range ingest.GetChangesFromLedgerEntryChanges(generateRandomLedgerEntries(tt)) {

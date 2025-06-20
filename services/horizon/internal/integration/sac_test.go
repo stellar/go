@@ -2,6 +2,7 @@ package integration
 
 import (
 	"context"
+	"crypto/sha256"
 	"math"
 	"math/big"
 	"strings"
@@ -250,6 +251,12 @@ func TestContractMintToContract(t *testing.T) {
 	})
 }
 
+func keyHashFromLedgerKey(t *testing.T, key xdr.LedgerKey) [32]byte {
+	payload, err := key.MarshalBinary()
+	require.NoError(t, err)
+	return sha256.Sum256(payload)
+}
+
 func TestExpirationAndRestoration(t *testing.T) {
 	itest := integration.NewTest(t, integration.Config{
 		EnableStellarRPC: true,
@@ -260,7 +267,6 @@ func TestExpirationAndRestoration(t *testing.T) {
 			"ingest-disable-state-verification": "true",
 		},
 		QuickExpiration: true,
-		QuickEviction:   true,
 	})
 
 	issuer := itest.Master().Address()
@@ -273,30 +279,18 @@ func TestExpirationAndRestoration(t *testing.T) {
 		"a1",
 		"soroban_store.wasm",
 	)
-	syntheticAssetStat := history.ExpAssetStat{
-		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
-		AssetCode:   code,
-		AssetIssuer: issuer,
-		Accounts: history.ExpAssetStatAccounts{
-			Authorized:                      0,
-			AuthorizedToMaintainLiabilities: 0,
-			ClaimableBalances:               0,
-			LiquidityPools:                  0,
-			Unauthorized:                    0,
-		},
-		Balances: history.ExpAssetStatBalances{
-			Authorized:                      "0",
-			AuthorizedToMaintainLiabilities: "0",
-			ClaimableBalances:               "0",
-			LiquidityPools:                  "0",
-			Unauthorized:                    "0",
-		},
-		ContractID: nil,
+	keyHash := keyHashFromLedgerKey(t, sac.AssetToContractDataLedgerKey(storeContractID))
+	syntheticAssetContract := history.AssetContract{
+		KeyHash:          keyHash[:],
+		ContractID:       storeContractID[:],
+		AssetType:        xdr.AssetTypeAssetTypeCreditAlphanum4,
+		AssetCode:        code,
+		AssetIssuer:      issuer,
+		ExpirationLedger: itest.GetLedgerEntryTTL(sac.AssetToContractDataLedgerKey(storeContractID)),
 	}
-	syntheticAssetStat.SetContractID(storeContractID)
-	_, err := itest.HorizonIngest().HistoryQ().InsertAssetStat(
+	err := itest.HorizonIngest().HistoryQ().InsertAssetContracts(
 		context.Background(),
-		syntheticAssetStat,
+		[]history.AssetContract{syntheticAssetContract},
 	)
 	assert.NoError(t, err)
 
@@ -506,32 +500,19 @@ func TestEvictionAndRestoration(t *testing.T) {
 		"a1",
 		"soroban_store.wasm",
 	)
-	syntheticAssetStat := history.ExpAssetStat{
-		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
-		AssetCode:   code,
-		AssetIssuer: issuer,
-		Accounts: history.ExpAssetStatAccounts{
-			Authorized:                      0,
-			AuthorizedToMaintainLiabilities: 0,
-			ClaimableBalances:               0,
-			LiquidityPools:                  0,
-			Unauthorized:                    0,
-		},
-		Balances: history.ExpAssetStatBalances{
-			Authorized:                      "0",
-			AuthorizedToMaintainLiabilities: "0",
-			ClaimableBalances:               "0",
-			LiquidityPools:                  "0",
-			Unauthorized:                    "0",
-		},
-		ContractID: nil,
+	keyHash := keyHashFromLedgerKey(t, sac.AssetToContractDataLedgerKey(storeContractID))
+	syntheticAssetContract := history.AssetContract{
+		KeyHash:          keyHash[:],
+		ContractID:       storeContractID[:],
+		AssetType:        xdr.AssetTypeAssetTypeCreditAlphanum4,
+		AssetCode:        code,
+		AssetIssuer:      issuer,
+		ExpirationLedger: itest.GetLedgerEntryTTL(sac.AssetToContractDataLedgerKey(storeContractID)),
 	}
-	syntheticAssetStat.SetContractID(storeContractID)
-	_, err := itest.HorizonIngest().HistoryQ().InsertAssetStat(
+	err := itest.HorizonIngest().HistoryQ().InsertAssetContracts(
 		context.Background(),
-		syntheticAssetStat,
+		[]history.AssetContract{syntheticAssetContract},
 	)
-	assert.NoError(t, err)
 
 	// create balance which we will expire and evicted
 	holder := [32]byte{2}
@@ -597,7 +578,7 @@ func TestEvictionAndRestoration(t *testing.T) {
 	})
 }
 
-func TestUnlinkContractIDFromAssetStat(t *testing.T) {
+func TestEvictionOfSACWithActiveBalance(t *testing.T) {
 	if integration.GetCoreMaxSupportedProtocol() < 23 {
 		t.Skip("This test run does not support less than Protocol 23")
 	}
@@ -617,6 +598,10 @@ func TestUnlinkContractIDFromAssetStat(t *testing.T) {
 	issuer := itest.Master().Address()
 	code := "USD"
 
+	asset := xdr.MustNewCreditAsset(code, issuer)
+	recipientKp, recipient := itest.CreateAccount("100")
+	itest.MustEstablishTrustline(recipientKp, recipient, txnbuild.MustAssetFromXDR(asset))
+
 	// Create contract to store synthetic asset balances
 	storeContractID, _ := mustCreateAndInstallContractWithTTL(
 		itest,
@@ -626,30 +611,18 @@ func TestUnlinkContractIDFromAssetStat(t *testing.T) {
 		20,
 	)
 
-	syntheticAssetStat := history.ExpAssetStat{
-		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
-		AssetCode:   code,
-		AssetIssuer: issuer,
-		Accounts: history.ExpAssetStatAccounts{
-			Authorized:                      1,
-			AuthorizedToMaintainLiabilities: 0,
-			ClaimableBalances:               0,
-			LiquidityPools:                  0,
-			Unauthorized:                    0,
-		},
-		Balances: history.ExpAssetStatBalances{
-			Authorized:                      "0",
-			AuthorizedToMaintainLiabilities: "0",
-			ClaimableBalances:               "0",
-			LiquidityPools:                  "0",
-			Unauthorized:                    "0",
-		},
-		ContractID: nil,
+	keyHash := keyHashFromLedgerKey(t, sac.AssetToContractDataLedgerKey(storeContractID))
+	syntheticAssetContract := history.AssetContract{
+		KeyHash:          keyHash[:],
+		ContractID:       storeContractID[:],
+		AssetType:        xdr.AssetTypeAssetTypeCreditAlphanum4,
+		AssetCode:        code,
+		AssetIssuer:      issuer,
+		ExpirationLedger: itest.GetLedgerEntryTTL(sac.AssetToContractDataLedgerKey(storeContractID)),
 	}
-	syntheticAssetStat.SetContractID(storeContractID)
-	_, err := itest.HorizonIngest().HistoryQ().InsertAssetStat(
+	err := itest.HorizonIngest().HistoryQ().InsertAssetContracts(
 		context.Background(),
-		syntheticAssetStat,
+		[]history.AssetContract{syntheticAssetContract},
 	)
 	assert.NoError(t, err)
 
@@ -707,6 +680,74 @@ func TestUnlinkContractIDFromAssetStat(t *testing.T) {
 		numContracts:     0,
 		balanceContracts: big.NewInt(0),
 		contractID:       [32]byte{},
+	})
+}
+
+func TestExpirationOfSACAndRestoration(t *testing.T) {
+	itest := integration.NewTest(t, integration.Config{
+		EnableStellarRPC: true,
+		HorizonIngestParameters: map[string]string{
+			// disable state verification because we will insert
+			// a fake asset contract in the horizon db and we don't
+			// want state verification to detect this
+			"ingest-disable-state-verification": "true",
+		},
+		QuickExpiration: true,
+	})
+
+	issuer := itest.Master().Address()
+	code := "USD"
+	asset := xdr.MustNewCreditAsset(code, issuer)
+
+	createSACWithTTL(itest, asset, 30)
+	contractID := stellarAssetContractID(itest, asset)
+
+	assertAssetStats(itest, assetStats{
+		code:             code,
+		issuer:           issuer,
+		numAccounts:      0,
+		balanceAccounts:  0,
+		numContracts:     0,
+		balanceContracts: big.NewInt(0),
+		contractID:       contractID,
+	})
+
+	contractToExpireLedgerKey := xdr.LedgerKey{
+		Type: xdr.LedgerEntryTypeContractData,
+		ContractData: &xdr.LedgerKeyContractData{
+			Contract: xdr.ScAddress{
+				Type:       xdr.ScAddressTypeScAddressTypeContract,
+				AccountId:  nil,
+				ContractId: &contractID,
+			},
+			Key: xdr.ScVal{
+				Type: xdr.ScValTypeScvLedgerKeyContractInstance,
+			},
+			Durability: xdr.ContractDataDurabilityPersistent,
+		},
+	}
+	itest.WaitUntilLedgerEntryTTL(contractToExpireLedgerKey)
+
+	assets, err := itest.Client().Assets(horizonclient.AssetRequest{
+		ForAssetCode:   code,
+		ForAssetIssuer: issuer,
+		Limit:          1,
+	})
+	assert.NoError(itest.CurrentTest(), err)
+	assert.Empty(itest.CurrentTest(), assets.Embedded.Records)
+
+	// restore expired contract
+	sourceAccount, restoreOp := itest.RestoreFootprint(itest.Master().Address(), contractToExpireLedgerKey)
+	itest.MustSubmitOperations(&sourceAccount, itest.Master(), &restoreOp)
+
+	assertAssetStats(itest, assetStats{
+		code:             code,
+		issuer:           issuer,
+		numAccounts:      0,
+		balanceAccounts:  0,
+		numContracts:     0,
+		balanceContracts: big.NewInt(0),
+		contractID:       contractID,
 	})
 }
 

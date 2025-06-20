@@ -139,9 +139,9 @@ func TestAddContractData(t *testing.T) {
 
 	assert.Empty(t, set.updatedBalances)
 	assert.Empty(t, set.removedBalances)
-	assert.Len(t, set.contractToAsset, 2)
-	assert.True(t, set.contractToAsset[usdcID].Equals(usdcAsset))
-	assert.True(t, set.contractToAsset[etherID].Equals(etherAsset))
+	assert.Len(t, set.createdAssetContracts, 2)
+	assert.True(t, set.createdAssetContracts[0].Equals(usdcAsset))
+	assert.True(t, set.createdAssetContracts[1].Equals(etherAsset))
 	assert.Equal(t, []history.ContractAssetBalance{
 		{
 			KeyHash:          uniBalanceKeyHash[:],
@@ -291,7 +291,7 @@ func TestUpdateContractBalance(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	assert.Empty(t, set.contractToAsset)
+	assert.Empty(t, set.createdAssetContracts)
 	assert.Empty(t, set.removedBalances)
 	assert.Empty(t, set.createdExpirationEntries)
 	for key, amt := range set.updatedBalances {
@@ -373,7 +373,7 @@ func TestRemoveContractData(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, []xdr.Hash{keyHash, keyHash1, keyHash2}, set.removedBalances)
-	assert.Empty(t, set.contractToAsset)
+	assert.Empty(t, set.createdAssetContracts)
 
 	assert.ElementsMatch(t, set.GetContractStats(), []history.ContractAssetStatRow{
 		{

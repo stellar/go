@@ -903,6 +903,28 @@ func (i *Test) syncWithStellarRPC(ledgerToWaitFor uint32) {
 	i.t.Fatal("Time out waiting for stellar-rpc to sync")
 }
 
+func (i *Test) GetLedgerEntryTTL(ledgerKey xdr.LedgerKey) uint32 {
+	ch := jhttp.NewChannel("http://localhost:"+strconv.Itoa(StellarRPCPort), nil)
+	client := jrpc2.NewClient(ch, nil)
+
+	keyB64, err := xdr.MarshalBase64(ledgerKey)
+	require.NoError(i.t, err)
+	request := struct {
+		Keys []string `json:"keys"`
+	}{
+		Keys: []string{keyB64},
+	}
+
+	var result struct {
+		Entries []struct {
+			LiveUntilLedgerSeq *uint32 `json:"liveUntilLedgerSeq,omitempty"`
+		} `json:"entries"`
+	}
+	require.NoError(i.t, client.CallResult(context.Background(), "getLedgerEntries", request, &result))
+	require.Len(i.t, result.Entries, 1)
+	return *result.Entries[0].LiveUntilLedgerSeq
+}
+
 func (i *Test) WaitUntilLedgerEntryTTL(ledgerKey xdr.LedgerKey) {
 	ch := jhttp.NewChannel("http://localhost:"+strconv.Itoa(StellarRPCPort), nil)
 	client := jrpc2.NewClient(ch, nil)

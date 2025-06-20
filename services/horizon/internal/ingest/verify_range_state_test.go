@@ -569,6 +569,10 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 					Unauthorized:                    "0",
 				},
 			},
+			Contracts: history.ContractStat{
+				ActiveBalance: "0",
+				ActiveHolders: 0,
+			},
 		},
 	}, nil).Once()
 	clonedQ.MockQAssetStats.On("GetAssetStats", s.ctx, "", "", db2.PageQuery{
