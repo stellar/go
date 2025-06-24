@@ -288,11 +288,7 @@ func TestExpirationAndRestoration(t *testing.T) {
 		AssetIssuer:      issuer,
 		ExpirationLedger: itest.GetLedgerEntryTTL(sac.AssetToContractDataLedgerKey(storeContractID)),
 	}
-	err := itest.HorizonIngest().HistoryQ().InsertAssetContracts(
-		context.Background(),
-		[]history.AssetContract{syntheticAssetContract},
-	)
-	assert.NoError(t, err)
+	insertAssetContract(itest, syntheticAssetContract)
 
 	// create active balance
 	_, _, setOp := assertInvokeHostFnSucceeds(
@@ -473,6 +469,15 @@ func TestExpirationAndRestoration(t *testing.T) {
 	})
 }
 
+func insertAssetContract(itest *integration.Test, syntheticAssetContract history.AssetContract) {
+	assert.NoError(itest.CurrentTest(), itest.HorizonIngest().HistoryQ().Begin(context.Background()))
+	assert.NoError(itest.CurrentTest(), itest.HorizonIngest().HistoryQ().InsertAssetContracts(
+		context.Background(),
+		[]history.AssetContract{syntheticAssetContract},
+	))
+	assert.NoError(itest.CurrentTest(), itest.HorizonIngest().HistoryQ().Commit())
+}
+
 func TestEvictionAndRestoration(t *testing.T) {
 	if integration.GetCoreMaxSupportedProtocol() < 23 {
 		t.Skip("This test run does not support less than Protocol 23")
@@ -509,10 +514,7 @@ func TestEvictionAndRestoration(t *testing.T) {
 		AssetIssuer:      issuer,
 		ExpirationLedger: itest.GetLedgerEntryTTL(sac.AssetToContractDataLedgerKey(storeContractID)),
 	}
-	err := itest.HorizonIngest().HistoryQ().InsertAssetContracts(
-		context.Background(),
-		[]history.AssetContract{syntheticAssetContract},
-	)
+	insertAssetContract(itest, syntheticAssetContract)
 
 	// create balance which we will expire and evicted
 	holder := [32]byte{2}
@@ -565,7 +567,6 @@ func TestEvictionAndRestoration(t *testing.T) {
 	// restore evicted balance
 	sourceAccount, restoreOp := itest.RestoreFootprint(issuer, balanceToEvictLedgerKey)
 	itest.MustSubmitOperations(&sourceAccount, itest.Master(), &restoreOp)
-	assert.NoError(t, err)
 
 	assertAssetStats(itest, assetStats{
 		code:             code,
@@ -620,11 +621,7 @@ func TestEvictionOfSACWithActiveBalance(t *testing.T) {
 		AssetIssuer:      issuer,
 		ExpirationLedger: itest.GetLedgerEntryTTL(sac.AssetToContractDataLedgerKey(storeContractID)),
 	}
-	err := itest.HorizonIngest().HistoryQ().InsertAssetContracts(
-		context.Background(),
-		[]history.AssetContract{syntheticAssetContract},
-	)
-	assert.NoError(t, err)
+	insertAssetContract(itest, syntheticAssetContract)
 
 	// create active balance
 	_, _, setOp := assertInvokeHostFnSucceeds(

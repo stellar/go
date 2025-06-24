@@ -94,7 +94,7 @@ func (s *ContractAssetStatSet) GetCreatedAssetContracts() ([]history.AssetContra
 		row := history.AssetContract{
 			ContractID: contractID[:],
 		}
-		if err := asset.Extract(&row.AssetType, &row.AssetCode, &row.AssetIssuer); err != nil {
+		if err = asset.Extract(&row.AssetType, &row.AssetCode, &row.AssetIssuer); err != nil {
 			return nil, errors.Wrap(err, "could not extract asset info from asset")
 		}
 

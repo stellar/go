@@ -777,7 +777,7 @@ func TestGetAssetStatsFiltersAndCursor(t *testing.T) {
 		usdAssetStat,
 	}
 	for _, assetStat := range assetStats {
-		numChanged, err := q.InsertAssetStat(tt.Ctx, assetStat.ExpAssetStat)
+		numChanged, err = q.InsertAssetStat(tt.Ctx, assetStat.ExpAssetStat)
 		tt.Assert.NoError(err)
 		tt.Assert.Equal(numChanged, int64(1))
 	}

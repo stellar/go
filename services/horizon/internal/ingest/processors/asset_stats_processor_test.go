@@ -1268,6 +1268,13 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestExpirationLedgerIgnoredIfLessTh
 		},
 	}))
 
+	s.mockQ.On("InsertAssetContracts", s.ctx, []history.AssetContract(nil)).
+		Return(nil).Once()
+	s.mockQ.On("UpdateAssetContractExpirations", s.ctx, []xdr.Hash{}, []uint32{}).
+		Return(nil).Once()
+	s.mockQ.On("DeleteAssetContractsExpiringAt", s.ctx, uint32(1234)).
+		Return(int64(0), nil).Once()
+
 	s.mockQ.On("InsertContractAssetBalances", s.ctx, []history.ContractAssetBalance(nil)).
 		Return(nil).Once()
 	s.mockQ.On("RemoveContractAssetBalances", s.ctx, []xdr.Hash(nil)).
