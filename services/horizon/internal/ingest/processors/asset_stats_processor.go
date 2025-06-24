@@ -8,7 +8,6 @@ import (
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/ingest/sac"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/support/collections/set"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
@@ -23,9 +22,6 @@ type AssetStatsProcessor struct {
 	updatedExpirationEntries map[xdr.Hash][2]uint32
 	ingestFromHistoryArchive bool
 	networkPassphrase        string
-	// possibleEvictedAssetContracts is a list of evicted contracts
-	// that are possibly SACs
-	possibleEvictedAssetContracts set.Set[xdr.ContractId]
 }
 
 // NewAssetStatsProcessor constructs a new AssetStatsProcessor instance.
