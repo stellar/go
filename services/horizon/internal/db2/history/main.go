@@ -3,6 +3,7 @@
 package history
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"database/sql/driver"
@@ -418,29 +419,19 @@ type AssetAndContractStat struct {
 	ContractID *[]byte `db:"contract_id"`
 }
 
-func (a *AssetAndContractStat) GetContractID() ([32]byte, bool) {
-	var val [32]byte
-	if a.ContractID == nil {
-		return val, false
-	}
-	if size := copy(val[:], (*a.ContractID)[:]); size != 32 {
-		panic("contract id is not 32 bytes")
-	}
-	return val, true
-}
-
 func (a *AssetAndContractStat) SetContractID(contractID [32]byte) {
 	contractIDBytes := contractID[:]
 	a.ContractID = &contractIDBytes
 }
 
 func (e *AssetAndContractStat) Equals(o AssetAndContractStat) bool {
-	contractID, ok := e.GetContractID()
-	otherContractID, otherOk := o.GetContractID()
+	if contractIDMatches := (e.ContractID == nil) == (o.ContractID == nil); !contractIDMatches {
+		return false
+	} else if e.ContractID != nil && !bytes.Equal(*e.ContractID, *o.ContractID) {
+		return false
+	}
 	return e.ExpAssetStat.Equals(o.ExpAssetStat) &&
-		e.Contracts == o.Contracts &&
-		ok == otherOk &&
-		contractID == otherContractID
+		e.Contracts == o.Contracts
 }
 
 // ExpAssetStat is a row in the exp_asset_stats table representing the stats per Asset

@@ -225,15 +225,17 @@ func (q *Q) updateExpirations(ctx context.Context, table string, keys []xdr.Hash
 		}
 
 		sql := fmt.Sprintf(`
-			UPDATE `+table+` 
+			UPDATE %s 
 			SET
 			  expiration_ledger = myvalues.expiration
 			FROM (
 			  VALUES
 				%s
 			) AS myvalues (key_hash, expiration)
-			WHERE `+table+`.key_hash = myvalues.key_hash`,
+			WHERE %s.key_hash = myvalues.key_hash`,
+			table,
 			strings.Join(values, ","),
+			table,
 		)
 
 		_, err := q.ExecRaw(ctx, sql, args...)
@@ -420,6 +422,21 @@ func parseAssetStatsCursor(cursor string) (string, string, error) {
 
 // GetAssetStats returns a page of exp_asset_stats rows.
 func (q *Q) GetAssetStats(ctx context.Context, assetCode, assetIssuer string, page db2.PageQuery) ([]AssetAndContractStat, error) {
+	// AssetAndContractStat contains the information listed below which is included in the /assets response:
+	//
+	// 1. amount of trustlines, liquidity pools, trustlines, and claimable balances which hold an asset.
+	// 2. the contract id of the SAC which corresponds to the asset, if it exists and is live.
+	// 3. amount of live contract balances which hold an asset.
+	//
+	// (1) is stored in the exp_asset_stats table and is derived by ingesting trustline, liquidity pool,
+	// and claimable balance ledger entries.
+	//
+	// (2) is stored in the asset_contracts table and is derived by ingesting SAC contracts.
+	//
+	// (3) is stored in the contract_asset_stats table and is derived by ingesting SAC contract balances.
+	//
+	// All 3 tables are joined in the query below to compute the desired list of AssetAndContractStat
+	// entries.
 	sql := sq.Select("COALESCE(exp_asset_stats.asset_type, asset_contracts.asset_type) as asset_type, " +
 		"COALESCE(exp_asset_stats.asset_code, asset_contracts.asset_code) as asset_code, " +
 		"COALESCE(exp_asset_stats.asset_issuer, asset_contracts.asset_issuer) as asset_issuer, " +
@@ -467,7 +484,8 @@ func (q *Q) GetAssetStats(ctx context.Context, assetCode, assetIssuer string, pa
 
 	var results []AssetAndContractStat
 	if err := q.Select(ctx, &results, sql); err != nil {
-		return nil, errors.Wrap(err, "could not run select query")
+		sqlString, _, _ := sql.ToSql()
+		return nil, errors.Wrapf(err, "could not run select query: %s", sqlString)
 	}
 
 	return results, nil
