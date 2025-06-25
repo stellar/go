@@ -47,10 +47,30 @@ func TestAddContractData(t *testing.T) {
 
 	xlmContractData, err := sac.AssetToContractData(true, "", "", xlmID)
 	assert.NoError(t, err)
+	xlmAssetKeyHash, err := getKeyHash(xdr.LedgerEntry{
+		Data: xlmContractData,
+	})
+	assert.NoError(t, err)
+	set.createdExpirationEntries[xlmAssetKeyHash] = 160
 	err = set.AddContractData(ingest.Change{
 		Type: xdr.LedgerEntryTypeContractData,
 		Post: &xdr.LedgerEntry{
 			Data: xlmContractData,
+		},
+	})
+	assert.NoError(t, err)
+
+	uniContractData, err := sac.AssetToContractData(false, "UNI", etherIssuer, uniID)
+	assert.NoError(t, err)
+	uniAssetKeyHash, err := getKeyHash(xdr.LedgerEntry{
+		Data: uniContractData,
+	})
+	assert.NoError(t, err)
+	set.createdExpirationEntries[uniAssetKeyHash] = 140
+	err = set.AddContractData(ingest.Change{
+		Type: xdr.LedgerEntryTypeContractData,
+		Post: &xdr.LedgerEntry{
+			Data: uniContractData,
 		},
 	})
 	assert.NoError(t, err)
@@ -78,6 +98,11 @@ func TestAddContractData(t *testing.T) {
 
 	usdcContractData, err := sac.AssetToContractData(false, "USDC", usdcIssuer, usdcID)
 	assert.NoError(t, err)
+	usdcAssetKeyHash, err := getKeyHash(xdr.LedgerEntry{
+		Data: usdcContractData,
+	})
+	assert.NoError(t, err)
+	set.createdExpirationEntries[usdcAssetKeyHash] = 150
 	err = set.AddContractData(ingest.Change{
 		Type: xdr.LedgerEntryTypeContractData,
 		Post: &xdr.LedgerEntry{
@@ -88,6 +113,11 @@ func TestAddContractData(t *testing.T) {
 
 	etherContractData, err := sac.AssetToContractData(false, "ETHER", etherIssuer, etherID)
 	assert.NoError(t, err)
+	etherAssetKeyHash, err := getKeyHash(xdr.LedgerEntry{
+		Data: etherContractData,
+	})
+	assert.NoError(t, err)
+	set.createdExpirationEntries[etherAssetKeyHash] = 150
 	err = set.AddContractData(ingest.Change{
 		Type: xdr.LedgerEntryTypeContractData,
 		Post: &xdr.LedgerEntry{

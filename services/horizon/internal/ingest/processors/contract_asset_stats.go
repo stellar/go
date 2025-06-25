@@ -136,6 +136,14 @@ func (s *ContractAssetStatSet) ingestAssetContractMetadata(change ingest.Change)
 	if !found {
 		return false, nil
 	}
+	keyHash, err := getKeyHash(*change.Post)
+	if err != nil {
+		return false, err
+	}
+	expirationLedger, ok := s.createdExpirationEntries[keyHash]
+	if !ok || expirationLedger < s.currentLedger {
+		return false, nil
+	}
 	if pContactID := change.Post.Data.MustContractData().Contract.ContractId; pContactID != nil {
 		s.createdAssetContracts = append(s.createdAssetContracts, asset)
 		return true, nil

@@ -696,10 +696,78 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestInsertAssetContractMissingTTL()
 	})
 	s.Assert().NoError(err)
 
-	s.Assert().ErrorContains(
-		s.processor.Commit(s.ctx),
-		"could not find expiration ledger entry for asset contract",
-	)
+	s.mockQ.On("InsertAssetContracts", s.ctx, []history.AssetContract(nil)).
+		Return(nil).Once()
+	s.mockQ.On("UpdateAssetContractExpirations", s.ctx, []xdr.Hash{}, []uint32{}).
+		Return(nil).Once()
+	s.mockQ.On("DeleteAssetContractsExpiringAt", s.ctx, uint32(1234)).
+		Return(int64(0), nil).Once()
+
+	s.mockQ.On("RemoveContractAssetBalances", s.ctx, []xdr.Hash(nil)).
+		Return(nil).Once()
+	s.mockQ.On("UpdateContractAssetBalanceAmounts", s.ctx, []xdr.Hash{}, []string{}).
+		Return(nil).Once()
+	s.mockQ.On("InsertContractAssetBalances", s.ctx, []history.ContractAssetBalance(nil)).
+		Return(nil).Once()
+	s.mockQ.On("UpdateContractAssetBalanceExpirations", s.ctx, []xdr.Hash{}, []uint32{}).
+		Return(nil).Once()
+	s.mockQ.On("DeleteContractAssetBalancesExpiringAt", s.ctx, uint32(1234)).
+		Return([]history.ContractAssetBalance{}, nil).Once()
+
+	s.Assert().NoError(s.processor.Commit(s.ctx))
+}
+
+func (s *AssetStatsProcessorTestSuiteLedger) TestInsertExpiredAssetContract() {
+	usdID, err := xdr.MustNewCreditAsset("USD", trustLineIssuer.Address()).ContractID("")
+	s.Assert().NoError(err)
+	usdContractData, err := sac.AssetToContractData(false, "USD", trustLineIssuer.Address(), usdID)
+	s.Assert().NoError(err)
+	lastModifiedLedgerSeq := xdr.Uint32(1234)
+
+	err = s.processor.ProcessChange(s.ctx, ingest.Change{
+		Type: xdr.LedgerEntryTypeContractData,
+		Pre:  nil,
+		Post: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+			Data:                  usdContractData,
+		},
+	})
+	s.Assert().NoError(err)
+
+	usdKeyHash := s.assetContractKeyHash(usdID)
+	s.Assert().NoError(s.processor.ProcessChange(s.ctx, ingest.Change{
+		Type: xdr.LedgerEntryTypeTtl,
+		Post: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeTtl,
+				Ttl: &xdr.TtlEntry{
+					KeyHash:            usdKeyHash,
+					LiveUntilLedgerSeq: xdr.Uint32(s.processor.currentLedger - 1),
+				},
+			},
+		},
+	}))
+
+	s.mockQ.On("InsertAssetContracts", s.ctx, []history.AssetContract(nil)).
+		Return(nil).Once()
+	s.mockQ.On("UpdateAssetContractExpirations", s.ctx, []xdr.Hash{}, []uint32{}).
+		Return(nil).Once()
+	s.mockQ.On("DeleteAssetContractsExpiringAt", s.ctx, uint32(1234)).
+		Return(int64(0), nil).Once()
+
+	s.mockQ.On("RemoveContractAssetBalances", s.ctx, []xdr.Hash(nil)).
+		Return(nil).Once()
+	s.mockQ.On("UpdateContractAssetBalanceAmounts", s.ctx, []xdr.Hash{}, []string{}).
+		Return(nil).Once()
+	s.mockQ.On("InsertContractAssetBalances", s.ctx, []history.ContractAssetBalance(nil)).
+		Return(nil).Once()
+	s.mockQ.On("UpdateContractAssetBalanceExpirations", s.ctx, []xdr.Hash{}, []uint32{}).
+		Return(nil).Once()
+	s.mockQ.On("DeleteContractAssetBalancesExpiringAt", s.ctx, uint32(1234)).
+		Return([]history.ContractAssetBalance{}, nil).Once()
+
+	s.Assert().NoError(s.processor.Commit(s.ctx))
 }
 
 func (s *AssetStatsProcessorTestSuiteLedger) TestInsertContractBalance() {
