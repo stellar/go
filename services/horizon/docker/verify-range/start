@@ -77,10 +77,11 @@ if [ ! -z "$GCP_SECRET" ]; then
 	echo "Configured GCP credentials"
 fi	
 
-if [ ! -z "$DATASTORE_SECRET" ] && [ "$LEDGERBACKEND" = "datastore" ]; then
-    echo "$DATASTORE_SECRET" > /tmp/datastore-config.json
-	export DATASTORE_CONFIG="/tmp/datastore-config.json"
+if [ ! -z "$DATASTORE_CONFIG_PLAIN" ] && [ "$LEDGERBACKEND" = "datastore" ]; then
+    echo "$DATASTORE_CONFIG_PLAIN" > /tmp/datastore-config.toml
+	export DATASTORE_CONFIG="/tmp/datastore-config.toml"
 	echo "Configured Datastore credentials"
+	cat /tmp/datastore-config.toml
 fi	
 
 # configure postgres
