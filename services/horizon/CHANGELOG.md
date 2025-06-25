@@ -7,6 +7,8 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 **This release adds support for Protocol 23**
 
+**Upgrading to this version will trigger a state rebuild. During this process, Horizon will not ingest new ledgers.**
+
 ### Breaking Changes
 In Protocol 23, Stellar Core removes in-memory mode and requires on-disk mode (using BucketListDB) for captive core ([5627](https://github.com/stellar/go/pull/5627)). As a result, the following configurations are no longer supported and have been removed:
 - `CAPTIVE_CORE_USE_DB`
@@ -14,7 +16,12 @@ In Protocol 23, Stellar Core removes in-memory mode and requires on-disk mode (u
 
 ### Added
 - Update default pubnet captive core configuration to replace Whalestack with Creit Technologies in the quorum set ([5564](https://github.com/stellar/go/pull/5564)).
-- Added 2 new optional string fields - `destination_muxed_id_type` and `destination_muxed_id`, in the `asset_balance_changes` section of the `/operations` endpoint. If operation is `InvokeHostFunction` and if the destination is a muxed address, then the `destination_muxed_id_type` represents the type of the muxed id -  `uint64`,`string` or `bytes`, and `destination_muxed_id` contains the value (hex encoded string, if the type is bytes )
+- Added 2 new optional string fields - `destination_muxed_id_type` and `destination_muxed_id`, in the `asset_balance_changes` section of the `/operations` endpoint. If operation is `InvokeHostFunction` and if the destination is a muxed address, then the `destination_muxed_id_type` represents the type of the muxed id -  `uint64`,`string` or `bytes`, and `destination_muxed_id` contains the value (hex encoded string, if the type is bytes ) ([5715](https://github.com/stellar/go/pull/5715)).
+
+### Removed
+
+- The `errorResultXdr` field from the response of the async transaction submission endpoint has been removed ([5737](https://github.com/stellar/go/pull/5737)).
+- The `num_archived_contracts` and `archived_contracts_amount` fields from the `/assets` response have been removed ([5611](https://github.com/stellar/go/pull/5611)).
 
 ## 22.0.3
 

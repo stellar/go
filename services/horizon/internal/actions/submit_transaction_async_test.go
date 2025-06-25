@@ -164,10 +164,9 @@ func TestAsyncSubmitTransactionHandler_TransactionStatusResponse(t *testing.T) {
 				DiagnosticEvents: "test-diagnostic-events",
 			},
 			expectedResponse: horizon.AsyncTransactionSubmissionResponse{
-				ErrorResultXDR:           "test-error",
-				DeprecatedErrorResultXDR: "test-error",
-				TxStatus:                 proto.TXStatusError,
-				Hash:                     TxHash,
+				ErrorResultXDR: "test-error",
+				TxStatus:       proto.TXStatusError,
+				Hash:           TxHash,
 			},
 		},
 		{
