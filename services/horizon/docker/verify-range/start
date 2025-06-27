@@ -173,7 +173,7 @@ git log -1 --pretty=oneline
 git clean -xfd
 git checkout "$BASE_BRANCH"
 git log -1 --pretty=oneline
-/usr/local/go/bin/go build -v -o /stellar-go/horizon_new ./services/horizon/.
+/usr/local/go/bin/go build -v -o /stellar-go/horizon_old ./services/horizon/.
 
 cd "$CONTAINER_WORKING_DIR"
 rm -rf "$CONTAINER_WORKING_DIR/compare"
