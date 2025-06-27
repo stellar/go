@@ -169,9 +169,26 @@ func TestAddContractData(t *testing.T) {
 
 	assert.Empty(t, set.updatedBalances)
 	assert.Empty(t, set.removedBalances)
-	assert.Len(t, set.createdAssetContracts, 2)
-	assert.True(t, set.createdAssetContracts[0].Equals(usdcAsset))
-	assert.True(t, set.createdAssetContracts[1].Equals(etherAsset))
+	createdAssetContracts, err := set.GetCreatedAssetContracts()
+	assert.NoError(t, err)
+	assert.Equal(t, []history.AssetContract{
+		{
+			KeyHash:          usdcAssetKeyHash[:],
+			ContractID:       usdcID[:],
+			AssetType:        xdr.AssetTypeAssetTypeCreditAlphanum4,
+			AssetCode:        "USDC",
+			AssetIssuer:      usdcIssuer,
+			ExpirationLedger: 150,
+		},
+		{
+			KeyHash:          etherAssetKeyHash[:],
+			ContractID:       etherID[:],
+			AssetType:        xdr.AssetTypeAssetTypeCreditAlphanum12,
+			AssetCode:        "ETHER",
+			AssetIssuer:      etherIssuer,
+			ExpirationLedger: 150,
+		},
+	}, createdAssetContracts)
 	assert.Equal(t, []history.ContractAssetBalance{
 		{
 			KeyHash:          uniBalanceKeyHash[:],
@@ -202,6 +219,41 @@ func TestAddContractData(t *testing.T) {
 			},
 		},
 	})
+}
+
+func TestGetCreatedAssetContractsRequiresExpiration(t *testing.T) {
+	usdcIssuer := keypair.MustRandom().Address()
+	usdcAsset := xdr.MustNewCreditAsset("USDC", usdcIssuer)
+	usdcID, err := usdcAsset.ContractID("passphrase")
+	assert.NoError(t, err)
+
+	set := NewContractAssetStatSet(
+		&history.MockQAssetStats{},
+		"passphrase",
+		map[xdr.Hash]uint32{},
+		map[xdr.Hash]uint32{},
+		map[xdr.Hash][2]uint32{},
+		150,
+	)
+
+	usdcContractData, err := sac.AssetToContractData(false, "USDC", usdcIssuer, usdcID)
+	assert.NoError(t, err)
+	usdcAssetKeyHash, err := getKeyHash(xdr.LedgerEntry{
+		Data: usdcContractData,
+	})
+	assert.NoError(t, err)
+	set.createdExpirationEntries[usdcAssetKeyHash] = 150
+	err = set.AddContractData(ingest.Change{
+		Type: xdr.LedgerEntryTypeContractData,
+		Post: &xdr.LedgerEntry{
+			Data: usdcContractData,
+		},
+	})
+	assert.NoError(t, err)
+
+	delete(set.createdExpirationEntries, usdcAssetKeyHash)
+	_, err = set.GetCreatedAssetContracts()
+	assert.ErrorContains(t, err, "could not find expiration ledger entry for asset contract")
 }
 
 func TestUpdateContractBalance(t *testing.T) {

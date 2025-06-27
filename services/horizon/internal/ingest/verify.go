@@ -355,7 +355,7 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool, checkpointSeque
 		return errors.Wrap(err, "verifier.Verify failed")
 	}
 
-	err = checkAssetStats(ctx, assetStats, contractAssetStatSet, historyQ, s.config.NetworkPassphrase)
+	err = checkAssetStats(ctx, assetStats, contractAssetStatSet, historyQ)
 	if err != nil {
 		return errors.Wrap(err, "checkAssetStats failed")
 	}
@@ -370,17 +370,69 @@ func checkAssetStats(
 	set processors.AssetStatSet,
 	contractAssetStatSet *processors.ContractAssetStatSet,
 	q history.IngestionQ,
-	networkPassphrase string,
 ) error {
+	all, balances, err := extractAssetStatsAndBalances(set, contractAssetStatSet)
+	if err != nil {
+		return err
+	}
+
 	page := db2.PageQuery{
 		Order: "asc",
 		Limit: assetStatsBatchSize,
 	}
+	for {
+		assetStats, err := q.GetAssetStats(ctx, "", "", page)
+		if err != nil {
+			return errors.Wrap(err, "could not fetch asset stats from db")
+		}
+		if len(assetStats) == 0 {
+			break
+		}
 
-	assetStats := set.All()
+		for _, assetStat := range assetStats {
+			key := assetStat.AssetCode + ":" + assetStat.AssetIssuer
+			fromSet, ok := all[key]
+			if !ok {
+				return ingest.NewStateError(
+					fmt.Errorf(
+						"db contains asset stat with code %s issuer %s which is missing from HAS",
+						assetStat.AssetCode, assetStat.AssetIssuer,
+					),
+				)
+			}
+			delete(all, key)
 
+			if !fromSet.Equals(assetStat) {
+				return ingest.NewStateError(
+					fmt.Errorf(
+						"db asset stat with code %s issuer %s does not match asset stat from HAS: expected=%v actual=%v",
+						assetStat.AssetCode, assetStat.AssetIssuer, fromSet, assetStat,
+					),
+				)
+			}
+		}
+
+		page.Cursor = assetStats[len(assetStats)-1].PagingToken()
+	}
+
+	if len(all) > 0 {
+		return ingest.NewStateError(
+			fmt.Errorf(
+				"HAS contains %d more asset stats than db",
+				len(all),
+			),
+		)
+	}
+
+	if err := checkContractBalances(ctx, balances, q); err != nil {
+		return err
+	}
+	return nil
+}
+
+func extractAssetStatsAndBalances(set processors.AssetStatSet, contractAssetStatSet *processors.ContractAssetStatSet) (map[string]history.AssetAndContractStat, []history.ContractAssetBalance, error) {
 	all := map[string]history.AssetAndContractStat{}
-	for _, assetStat := range assetStats {
+	for _, assetStat := range set.All() {
 		// no need to handle the native asset because asset stats only
 		// include non-native assets.
 		all[assetStat.AssetCode+":"+assetStat.AssetIssuer] = history.AssetAndContractStat{
@@ -389,7 +441,6 @@ func checkAssetStats(
 				ActiveBalance: "0",
 				ActiveHolders: 0,
 			},
-			ContractID: nil,
 		}
 	}
 
@@ -402,7 +453,7 @@ func checkAssetStats(
 
 	assetContracts, err := contractAssetStatSet.GetCreatedAssetContracts()
 	if err != nil {
-		return errors.Wrap(err, "Error getting created asset contracts")
+		return nil, nil, errors.Wrap(err, "Error getting created asset contracts")
 	}
 	for _, assetContract := range assetContracts {
 		key := assetContract.AssetCode + ":" + assetContract.AssetIssuer
@@ -454,55 +505,7 @@ func checkAssetStats(
 			filteredBalances = append(filteredBalances, balance)
 		}
 	}
-
-	for {
-		assetStats, err := q.GetAssetStats(ctx, "", "", page)
-		if err != nil {
-			return errors.Wrap(err, "could not fetch asset stats from db")
-		}
-		if len(assetStats) == 0 {
-			break
-		}
-
-		for _, assetStat := range assetStats {
-			key := assetStat.AssetCode + ":" + assetStat.AssetIssuer
-			fromSet, ok := all[key]
-			if !ok {
-				return ingest.NewStateError(
-					fmt.Errorf(
-						"db contains asset stat with code %s issuer %s which is missing from HAS",
-						assetStat.AssetCode, assetStat.AssetIssuer,
-					),
-				)
-			}
-			delete(all, key)
-
-			if !fromSet.Equals(assetStat) {
-				return ingest.NewStateError(
-					fmt.Errorf(
-						"db asset stat with code %s issuer %s does not match asset stat from HAS: expected=%v actual=%v",
-						assetStat.AssetCode, assetStat.AssetIssuer, fromSet, assetStat,
-					),
-				)
-			}
-		}
-
-		page.Cursor = assetStats[len(assetStats)-1].PagingToken()
-	}
-
-	if len(all) > 0 {
-		return ingest.NewStateError(
-			fmt.Errorf(
-				"HAS contains %d more asset stats than db",
-				len(all),
-			),
-		)
-	}
-
-	if err := checkContractBalances(ctx, filteredBalances, q); err != nil {
-		return err
-	}
-	return nil
+	return all, filteredBalances, nil
 }
 
 func checkContractBalances(

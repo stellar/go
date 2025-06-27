@@ -667,7 +667,7 @@ func (s *VerifyRangeStateTestSuite) TestVerifyFailsWhenAssetStatsMismatch() {
 		Limit:  assetStatsBatchSize,
 	}).Return([]history.AssetAndContractStat{}, nil).Once()
 
-	err := checkAssetStats(s.ctx, set, contractAssetStatsSet, s.historyQ, s.system.config.NetworkPassphrase)
+	err := checkAssetStats(s.ctx, set, contractAssetStatsSet, s.historyQ)
 	s.Assert().Contains(err.Error(), fmt.Sprintf("db asset stat with code EUR issuer %s does not match asset stat from HAS", trustLineIssuer.Address()))
 
 	// Satisfy the mock
