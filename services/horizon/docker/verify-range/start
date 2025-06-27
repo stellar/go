@@ -1,6 +1,17 @@
 #! /usr/bin/env bash
 set -e
 
+# the aws batch job provides a shared volume at /data, so we need to
+# partition it safely so each job worker(index) only uses it's sub-directory on the volume.
+CONTAINER_WORKING_DIR="/data/job_${AWS_BATCH_JOB_ARRAY_INDEX:-0}"
+
+# Ensure CONTAINER_WORKING_DIR exists and is empty
+if [ -d "$CONTAINER_WORKING_DIR" ]; then
+    rm -rf "$CONTAINER_WORKING_DIR"/*
+else
+    mkdir -p "$CONTAINER_WORKING_DIR"
+fi
+
 dump_horizon_db() {
 	echo "dumping history_effects"
 	psql "postgres://postgres:postgres@localhost:5432/horizon?sslmode=disable" -t -A -F"," --variable="FETCH_COUNT=100" -c "select history_effects.history_operation_id, history_effects.order, type, details, history_accounts.address, address_muxed from history_effects left join history_accounts on history_accounts.id = history_effects.history_account_id order by history_operation_id asc, \"order\" asc" > "${1}_effects"
@@ -56,8 +67,8 @@ function alter_tables_unlogged() {
 }
 
 function compare() {
-	local expected="/data/compare/old_$1"
-	local actual="/data/compare/new_$1"
+	local expected="$CONTAINER_WORKING_DIR/compare/old_$1"
+	local actual="$CONTAINER_WORKING_DIR/compare/new_$1"
 
 	# Files can be very large, leading to `diff` running out of memory.
 	# As a workaround, since files are expected to be identical,
@@ -86,7 +97,8 @@ fi
 
 # configure postgres
 if [ -z "${PGDATA}" ]; then
-    export PGDATA="/data"
+    export PGDATA="$CONTAINER_WORKING_DIR/postgres"
+    mkdir -p "$PGDATA"
 fi
 rm -rf "$PGDATA"/* 
 sudo chown -R postgres "$PGDATA"
@@ -95,9 +107,6 @@ sudo -u postgres --preserve-env=PGDATA /usr/lib/postgresql/14/bin/initdb
 sudo -u postgres --preserve-env=PGDATA /usr/lib/postgresql/14/bin/pg_ctl start
 sudo -u postgres createdb horizon
 sudo -u postgres psql -c "ALTER USER postgres PASSWORD 'postgres';"
-
-# setup a consistent mount point for temp files which can grow large, can't use tmpfs
-mkdir /data/working
 
 # Calculate params for AWS Batch
 if [ ! -z "$AWS_BATCH_JOB_ARRAY_INDEX" ]; then
@@ -151,17 +160,17 @@ git log -1 --pretty=oneline
 
 /usr/local/go/bin/go build -v ./services/horizon
 
-cd /data/working
+cd "$CONTAINER_WORKING_DIR"
 /stellar-go/horizon db migrate up
 alter_tables_unlogged
 /stellar-go/horizon ingest verify-range --from $FROM --to $TO --verify-state
 
 BASE_BRANCH=${BASE_BRANCH:-horizon-v2.0.0}
 
-rm -rf /data/compare
-mkdir /data/compare
+rm -rf "$CONTAINER_WORKING_DIR/compare"
+mkdir -p "$CONTAINER_WORKING_DIR/compare"
 if [ ! -z "$VERIFY_HISTORY" ]; then
-	dump_horizon_db "/data/compare/new_history"
+	dump_horizon_db "$CONTAINER_WORKING_DIR/compare/new_history"
 
 	echo "Done dump_horizon_db new_history"
 
@@ -172,13 +181,13 @@ if [ ! -z "$VERIFY_HISTORY" ]; then
 	git checkout "$BASE_BRANCH"
 	/usr/local/go/bin/go build -v ./services/horizon
 	
-	cd /data/working
+	cd "$CONTAINER_WORKING_DIR"
 	/stellar-go/horizon db migrate up
 	alter_tables_unlogged
 	REINGEST_FROM=$((FROM + 1)) # verify-range does not ingest starting ledger
 	/stellar-go/horizon db reingest range $REINGEST_FROM $TO
 
-	dump_horizon_db "/data/compare/old_history"
+	dump_horizon_db "$CONTAINER_WORKING_DIR/compare/old_history"
 	echo "Done dump_horizon_db old_history"
 
 	compare history_effects
