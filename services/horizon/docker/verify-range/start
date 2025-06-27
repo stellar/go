@@ -156,7 +156,7 @@ export DATABASE_URL_OLD="postgres://postgres:postgres@localhost:5432/horizon_old
 export CAPTIVE_CORE_CONFIG_APPEND_PATH="/captive-core-pubnet.cfg"
 export STELLAR_CORE_BINARY_PATH="/usr/bin/stellar-core"
 
-BASE_BRANCH=${BASE_BRANCH:-horizon-v2.0.0}
+BASE_BRANCH=${BASE_BRANCH:-master}
 cd stellar-go
 if [ ! -z "$BRANCH" ]; then
 	if [[ "$BRANCH" == pull/* ]]; then
