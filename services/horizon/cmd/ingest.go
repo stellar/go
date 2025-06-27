@@ -130,10 +130,6 @@ func DefineIngestCommands(rootCmd *cobra.Command, horizonConfig *horizon.Config,
 				return err
 			}
 
-			if err := horizon.ApplyFlags(horizonConfig, horizonFlags, horizon.ApplyOptions{RequireCaptiveCoreFullConfig: false}); err != nil {
-				return err
-			}
-
 			if ingestVerifyDebugServerPort != 0 {
 				go func() {
 					log.Infof("Starting debug server at: %d", ingestVerifyDebugServerPort)
@@ -157,6 +153,7 @@ func DefineIngestCommands(rootCmd *cobra.Command, horizonConfig *horizon.Config,
 			}
 
 			storageBackendConfig := ingest.StorageBackendConfig{}
+			noCaptiveCore := false
 			if ingestVerifyLedgerBackendType == ingest.BufferedStorageBackend {
 				if ingestVerifyStorageBackendConfigPath == "" {
 					return fmt.Errorf("datastore-config file path is required with datastore backend")
@@ -165,8 +162,12 @@ func DefineIngestCommands(rootCmd *cobra.Command, horizonConfig *horizon.Config,
 				if storageBackendConfig, err = loadStorageBackendConfig(ingestVerifyStorageBackendConfigPath); err != nil {
 					return err
 				}
+				noCaptiveCore = true
 			}
 
+			if err := horizon.ApplyFlags(horizonConfig, horizonFlags, horizon.ApplyOptions{NoCaptiveCore: noCaptiveCore, RequireCaptiveCoreFullConfig: false}); err != nil {
+				return err
+			}
 			err := processVerifyRangeFn(horizonConfig, horizonFlags, storageBackendConfig)
 			if err != nil {
 				return err
