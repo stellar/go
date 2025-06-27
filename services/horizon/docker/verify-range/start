@@ -179,23 +179,20 @@ cd "$CONTAINER_WORKING_DIR"
 rm -rf "$CONTAINER_WORKING_DIR/compare"
 mkdir -p "$CONTAINER_WORKING_DIR/compare"
 
-# Run the new horizon branch in background
-(
-	mkdir -p "$CONTAINER_WORKING_DIR"/new_runtime
-	cd "$CONTAINER_WORKING_DIR"/new_runtime
+run_new_horizon() {
+    mkdir -p "$CONTAINER_WORKING_DIR"/new_runtime
+    cd "$CONTAINER_WORKING_DIR"/new_runtime
     echo "Starting dump_horizon_db new_history"
     /stellar-go/horizon_new --db-url "$DATABASE_URL_NEW" db migrate up 
     alter_tables_unlogged "new"
     /stellar-go/horizon_new --db-url "$DATABASE_URL_NEW" ingest verify-range --from $FROM --to $TO --verify-state
     dump_horizon_db "new" "$CONTAINER_WORKING_DIR/compare/new_history"
     echo "Done dump_horizon_db new_history"
-) &
-NEW_PID=$!
+}
 
-# Run the old horizon branch in background
-(
-	mkdir -p "$CONTAINER_WORKING_DIR"/old_runtime
-	cd "$CONTAINER_WORKING_DIR"/old_runtime
+run_old_horizon() {
+    mkdir -p "$CONTAINER_WORKING_DIR"/old_runtime
+    cd "$CONTAINER_WORKING_DIR"/old_runtime
     echo "Starting dump_horizon_db old_history"
     /stellar-go/horizon_old --db-url "$DATABASE_URL_OLD" db migrate up
     alter_tables_unlogged "old"
@@ -203,12 +200,17 @@ NEW_PID=$!
     /stellar-go/horizon_old --db-url "$DATABASE_URL_OLD" db reingest range $REINGEST_FROM $TO
     dump_horizon_db "old" "$CONTAINER_WORKING_DIR/compare/old_history"
     echo "Done dump_horizon_db old_history"
-) &
-OLD_PID=$!
+}
 
-# Wait for both background jobs to finish
-wait $NEW_PID
-wait $OLD_PID
+if [ ! -z "$DATASTORE_CONFIG" ]; then
+    (run_new_horizon) &
+    (run_old_horizon) &
+    wait
+else
+    # don't attempt to run parallel with captive cores
+    run_new_horizon
+    run_old_horizon
+fi
 
 # Now run the compare functions
 compare history_effects
