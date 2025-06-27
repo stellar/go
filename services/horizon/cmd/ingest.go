@@ -14,20 +14,20 @@ import (
 	horizon "github.com/stellar/go/services/horizon/internal"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/ingest"
+	"github.com/stellar/go/support/config"
 	support "github.com/stellar/go/support/config"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/log"
 )
 
-var ingestCmd = &cobra.Command{
-	Use:   "ingest",
-	Short: "ingestion related commands",
-}
-
 var ingestBuildStateSequence uint32
 var ingestBuildStateSkipChecks bool
 var ingestVerifyFrom, ingestVerifyTo, ingestVerifyDebugServerPort uint32
 var ingestVerifyState bool
+var ingestVerifyLedgerBackendStr string
+var ingestVerifyStorageBackendConfigPath string
+var ingestVerifyLedgerBackendType ingest.LedgerBackendType
+var processVerifyRangeFn = processVerifyRange
 
 var ingestBuildStateCmdOpts = []*support.ConfigOption{
 	{
@@ -48,7 +48,7 @@ var ingestBuildStateCmdOpts = []*support.ConfigOption{
 	},
 }
 
-var ingestVerifyRangeCmdOpts = []*support.ConfigOption{
+var ingestVerifyRangeCmdOpts = support.ConfigOptions{
 	{
 		Name:        "from",
 		ConfigKey:   &ingestVerifyFrom,
@@ -81,79 +81,13 @@ var ingestVerifyRangeCmdOpts = []*support.ConfigOption{
 		FlagDefault: uint32(0),
 		Usage:       "[optional] opens a net/http/pprof server at given port",
 	},
-}
-
-var ingestVerifyRangeCmd = &cobra.Command{
-	Use:   "verify-range",
-	Short: "runs ingestion pipeline within a range. warning! requires clean DB.",
-	Long:  "runs ingestion pipeline between X and Y sequence number (inclusive)",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		for _, co := range ingestVerifyRangeCmdOpts {
-			if err := co.RequireE(); err != nil {
-				return err
-			}
-			co.SetValue()
-		}
-
-		if err := horizon.ApplyFlags(globalConfig, globalFlags, horizon.ApplyOptions{RequireCaptiveCoreFullConfig: false}); err != nil {
-			return err
-		}
-
-		if ingestVerifyDebugServerPort != 0 {
-			go func() {
-				log.Infof("Starting debug server at: %d", ingestVerifyDebugServerPort)
-				err := http.ListenAndServe(
-					fmt.Sprintf("localhost:%d", ingestVerifyDebugServerPort),
-					nil,
-				)
-				if err != nil {
-					log.Error(err)
-				}
-			}()
-		}
-
-		horizonSession, err := db.Open("postgres", globalConfig.DatabaseURL)
-		if err != nil {
-			return fmt.Errorf("cannot open Horizon DB: %v", err)
-		}
-		mngr := historyarchive.NewCheckpointManager(globalConfig.CheckpointFrequency)
-		if !mngr.IsCheckpoint(ingestVerifyFrom) && ingestVerifyFrom != 1 {
-			return fmt.Errorf("`--from` must be a checkpoint ledger")
-		}
-
-		if ingestVerifyState && !mngr.IsCheckpoint(ingestVerifyTo) {
-			return fmt.Errorf("`--to` must be a checkpoint ledger when `--verify-state` is set")
-		}
-
-		ingestConfig := ingest.Config{
-			NetworkPassphrase:      globalConfig.NetworkPassphrase,
-			HistorySession:         horizonSession,
-			HistoryArchiveURLs:     globalConfig.HistoryArchiveURLs,
-			HistoryArchiveCaching:  globalConfig.HistoryArchiveCaching,
-			CaptiveCoreBinaryPath:  globalConfig.CaptiveCoreBinaryPath,
-			CaptiveCoreConfigUseDB: globalConfig.CaptiveCoreConfigUseDB,
-			CheckpointFrequency:    globalConfig.CheckpointFrequency,
-			CaptiveCoreToml:        globalConfig.CaptiveCoreToml,
-			CaptiveCoreStoragePath: globalConfig.CaptiveCoreStoragePath,
-			RoundingSlippageFilter: globalConfig.RoundingSlippageFilter,
-		}
-
-		system, err := ingest.NewSystem(ingestConfig)
-		if err != nil {
-			return err
-		}
-
-		err = system.VerifyRange(
-			ingestVerifyFrom,
-			ingestVerifyTo,
-			ingestVerifyState,
-		)
-		if err != nil {
-			return err
-		}
-
-		log.Info("Range run successfully!")
-		return nil
+	generateLedgerBackendOpt(&ingestVerifyLedgerBackendStr, &ingestVerifyLedgerBackendType),
+	{
+		Name:      "datastore-config",
+		ConfigKey: &ingestVerifyStorageBackendConfigPath,
+		OptType:   types.String,
+		Required:  false,
+		Usage:     "[optional] Specify the path to the datastore config file (required for datastore backend)",
 	},
 }
 
@@ -178,156 +112,220 @@ var stressTestCmdOpts = []*support.ConfigOption{
 	},
 }
 
-var ingestStressTestCmd = &cobra.Command{
-	Use:   "stress-test",
-	Short: "runs ingestion pipeline on a ledger with many changes. warning! requires clean DB.",
-	Long:  "runs ingestion pipeline on a ledger with many changes. warning! requires clean DB.",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		for _, co := range stressTestCmdOpts {
-			if err := co.RequireE(); err != nil {
+func DefineIngestCommands(rootCmd *cobra.Command, horizonConfig *horizon.Config, horizonFlags config.ConfigOptions) {
+	var ingestCmd = &cobra.Command{
+		Use:   "ingest",
+		Short: "ingestion related commands",
+	}
+
+	var ingestVerifyRangeCmd = &cobra.Command{
+		Use:   "verify-range",
+		Short: "runs ingestion pipeline within a range. warning! requires clean DB.",
+		Long:  "runs ingestion pipeline between X and Y sequence number (inclusive)",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := ingestVerifyRangeCmdOpts.RequireE(); err != nil {
 				return err
 			}
-			co.SetValue()
-		}
-
-		if err := horizon.ApplyFlags(globalConfig, globalFlags, horizon.ApplyOptions{RequireCaptiveCoreFullConfig: false}); err != nil {
-			return err
-		}
-
-		horizonSession, err := db.Open("postgres", globalConfig.DatabaseURL)
-		if err != nil {
-			return fmt.Errorf("cannot open Horizon DB: %v", err)
-		}
-
-		if stressTestNumTransactions <= 0 {
-			return fmt.Errorf("`--transactions` must be positive")
-		}
-
-		if stressTestChangesPerTransaction <= 0 {
-			return fmt.Errorf("`--changes` must be positive")
-		}
-
-		ingestConfig := ingest.Config{
-			NetworkPassphrase:      globalConfig.NetworkPassphrase,
-			HistorySession:         horizonSession,
-			HistoryArchiveURLs:     globalConfig.HistoryArchiveURLs,
-			HistoryArchiveCaching:  globalConfig.HistoryArchiveCaching,
-			RoundingSlippageFilter: globalConfig.RoundingSlippageFilter,
-			CaptiveCoreBinaryPath:  globalConfig.CaptiveCoreBinaryPath,
-			CaptiveCoreConfigUseDB: globalConfig.CaptiveCoreConfigUseDB,
-		}
-
-		system, err := ingest.NewSystem(ingestConfig)
-		if err != nil {
-			return err
-		}
-
-		err = system.StressTest(
-			stressTestNumTransactions,
-			stressTestChangesPerTransaction,
-		)
-		if err != nil {
-			return err
-		}
-
-		log.Info("Stress test completed successfully!")
-		return nil
-	},
-}
-
-var ingestTriggerStateRebuildCmd = &cobra.Command{
-	Use:   "trigger-state-rebuild",
-	Short: "updates a database to trigger state rebuild, state will be rebuilt by a running Horizon instance, DO NOT RUN production DB, some endpoints will be unavailable until state is rebuilt",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		ctx := context.Background()
-		if err := horizon.ApplyFlags(globalConfig, globalFlags, horizon.ApplyOptions{RequireCaptiveCoreFullConfig: false}); err != nil {
-			return err
-		}
-
-		horizonSession, err := db.Open("postgres", globalConfig.DatabaseURL)
-		if err != nil {
-			return fmt.Errorf("cannot open Horizon DB: %v", err)
-		}
-
-		historyQ := &history.Q{SessionInterface: horizonSession}
-		if err := historyQ.UpdateIngestVersion(ctx, 0); err != nil {
-			return fmt.Errorf("cannot trigger state rebuild: %v", err)
-		}
-
-		log.Info("Triggered state rebuild")
-		return nil
-	},
-}
-
-var ingestBuildStateCmd = &cobra.Command{
-	Use:   "build-state",
-	Short: "builds state at a given checkpoint. warning! requires clean DB.",
-	Long:  "useful for debugging or starting Horizon at specific checkpoint.",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		for _, co := range ingestBuildStateCmdOpts {
-			if err := co.RequireE(); err != nil {
+			if err := ingestVerifyRangeCmdOpts.SetValues(); err != nil {
 				return err
 			}
-			co.SetValue()
-		}
 
-		if err := horizon.ApplyFlags(globalConfig, globalFlags, horizon.ApplyOptions{RequireCaptiveCoreFullConfig: false}); err != nil {
-			return err
-		}
+			if err := horizon.ApplyFlags(horizonConfig, horizonFlags, horizon.ApplyOptions{RequireCaptiveCoreFullConfig: false}); err != nil {
+				return err
+			}
 
-		horizonSession, err := db.Open("postgres", globalConfig.DatabaseURL)
-		if err != nil {
-			return fmt.Errorf("cannot open Horizon DB: %v", err)
-		}
+			if ingestVerifyDebugServerPort != 0 {
+				go func() {
+					log.Infof("Starting debug server at: %d", ingestVerifyDebugServerPort)
+					err := http.ListenAndServe(
+						fmt.Sprintf("localhost:%d", ingestVerifyDebugServerPort),
+						nil,
+					)
+					if err != nil {
+						log.Error(err)
+					}
+				}()
+			}
 
-		historyQ := &history.Q{SessionInterface: horizonSession}
+			mngr := historyarchive.NewCheckpointManager(horizonConfig.CheckpointFrequency)
+			if !mngr.IsCheckpoint(ingestVerifyFrom) && ingestVerifyFrom != 1 {
+				return fmt.Errorf("`--from` must be a checkpoint ledger")
+			}
 
-		lastIngestedLedger, err := historyQ.GetLastLedgerIngestNonBlocking(context.Background())
-		if err != nil {
-			return fmt.Errorf("cannot get last ledger value: %v", err)
-		}
+			if ingestVerifyState && !mngr.IsCheckpoint(ingestVerifyTo) {
+				return fmt.Errorf("`--to` must be a checkpoint ledger when `--verify-state` is set")
+			}
 
-		if lastIngestedLedger != 0 {
-			return fmt.Errorf("cannot run on non-empty DB")
-		}
+			storageBackendConfig := ingest.StorageBackendConfig{}
+			if ingestVerifyLedgerBackendType == ingest.BufferedStorageBackend {
+				if ingestVerifyStorageBackendConfigPath == "" {
+					return fmt.Errorf("datastore-config file path is required with datastore backend")
+				}
+				var err error
+				if storageBackendConfig, err = loadStorageBackendConfig(ingestVerifyStorageBackendConfigPath); err != nil {
+					return err
+				}
+			}
 
-		mngr := historyarchive.NewCheckpointManager(globalConfig.CheckpointFrequency)
-		if !mngr.IsCheckpoint(ingestBuildStateSequence) {
-			return fmt.Errorf("`--sequence` must be a checkpoint ledger")
-		}
+			err := processVerifyRangeFn(horizonConfig, horizonFlags, storageBackendConfig)
+			if err != nil {
+				return err
+			}
 
-		ingestConfig := ingest.Config{
-			NetworkPassphrase:      globalConfig.NetworkPassphrase,
-			HistorySession:         horizonSession,
-			HistoryArchiveURLs:     globalConfig.HistoryArchiveURLs,
-			HistoryArchiveCaching:  globalConfig.HistoryArchiveCaching,
-			CaptiveCoreBinaryPath:  globalConfig.CaptiveCoreBinaryPath,
-			CaptiveCoreConfigUseDB: globalConfig.CaptiveCoreConfigUseDB,
-			CheckpointFrequency:    globalConfig.CheckpointFrequency,
-			CaptiveCoreToml:        globalConfig.CaptiveCoreToml,
-			CaptiveCoreStoragePath: globalConfig.CaptiveCoreStoragePath,
-			RoundingSlippageFilter: globalConfig.RoundingSlippageFilter,
-		}
+			log.Info("Range run successfully!")
+			return nil
+		},
+	}
 
-		system, err := ingest.NewSystem(ingestConfig)
-		if err != nil {
-			return err
-		}
+	var ingestStressTestCmd = &cobra.Command{
+		Use:   "stress-test",
+		Short: "runs ingestion pipeline on a ledger with many changes. warning! requires clean DB.",
+		Long:  "runs ingestion pipeline on a ledger with many changes. warning! requires clean DB.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			for _, co := range stressTestCmdOpts {
+				if err := co.RequireE(); err != nil {
+					return err
+				}
+				co.SetValue()
+			}
 
-		err = system.BuildState(
-			ingestBuildStateSequence,
-			ingestBuildStateSkipChecks,
-		)
-		if err != nil {
-			return err
-		}
+			if err := horizon.ApplyFlags(horizonConfig, horizonFlags, horizon.ApplyOptions{RequireCaptiveCoreFullConfig: false}); err != nil {
+				return err
+			}
 
-		log.Info("State built successfully!")
-		return nil
-	},
-}
+			horizonSession, err := db.Open("postgres", horizonConfig.DatabaseURL)
+			if err != nil {
+				return fmt.Errorf("cannot open Horizon DB: %v", err)
+			}
 
-func init() {
+			if stressTestNumTransactions <= 0 {
+				return fmt.Errorf("`--transactions` must be positive")
+			}
+
+			if stressTestChangesPerTransaction <= 0 {
+				return fmt.Errorf("`--changes` must be positive")
+			}
+
+			ingestConfig := ingest.Config{
+				NetworkPassphrase:      horizonConfig.NetworkPassphrase,
+				HistorySession:         horizonSession,
+				HistoryArchiveURLs:     horizonConfig.HistoryArchiveURLs,
+				HistoryArchiveCaching:  horizonConfig.HistoryArchiveCaching,
+				RoundingSlippageFilter: horizonConfig.RoundingSlippageFilter,
+				CaptiveCoreBinaryPath:  horizonConfig.CaptiveCoreBinaryPath,
+				CaptiveCoreConfigUseDB: horizonConfig.CaptiveCoreConfigUseDB,
+			}
+
+			system, err := ingest.NewSystem(ingestConfig)
+			if err != nil {
+				return err
+			}
+
+			err = system.StressTest(
+				stressTestNumTransactions,
+				stressTestChangesPerTransaction,
+			)
+			if err != nil {
+				return err
+			}
+
+			log.Info("Stress test completed successfully!")
+			return nil
+		},
+	}
+
+	var ingestTriggerStateRebuildCmd = &cobra.Command{
+		Use:   "trigger-state-rebuild",
+		Short: "updates a database to trigger state rebuild, state will be rebuilt by a running Horizon instance, DO NOT RUN production DB, some endpoints will be unavailable until state is rebuilt",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := context.Background()
+			if err := horizon.ApplyFlags(horizonConfig, horizonFlags, horizon.ApplyOptions{RequireCaptiveCoreFullConfig: false}); err != nil {
+				return err
+			}
+
+			horizonSession, err := db.Open("postgres", horizonConfig.DatabaseURL)
+			if err != nil {
+				return fmt.Errorf("cannot open Horizon DB: %v", err)
+			}
+
+			historyQ := &history.Q{SessionInterface: horizonSession}
+			if err := historyQ.UpdateIngestVersion(ctx, 0); err != nil {
+				return fmt.Errorf("cannot trigger state rebuild: %v", err)
+			}
+
+			log.Info("Triggered state rebuild")
+			return nil
+		},
+	}
+
+	var ingestBuildStateCmd = &cobra.Command{
+		Use:   "build-state",
+		Short: "builds state at a given checkpoint. warning! requires clean DB.",
+		Long:  "useful for debugging or starting Horizon at specific checkpoint.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			for _, co := range ingestBuildStateCmdOpts {
+				if err := co.RequireE(); err != nil {
+					return err
+				}
+				co.SetValue()
+			}
+
+			if err := horizon.ApplyFlags(horizonConfig, horizonFlags, horizon.ApplyOptions{RequireCaptiveCoreFullConfig: false}); err != nil {
+				return err
+			}
+
+			horizonSession, err := db.Open("postgres", horizonConfig.DatabaseURL)
+			if err != nil {
+				return fmt.Errorf("cannot open Horizon DB: %v", err)
+			}
+
+			historyQ := &history.Q{SessionInterface: horizonSession}
+
+			lastIngestedLedger, err := historyQ.GetLastLedgerIngestNonBlocking(context.Background())
+			if err != nil {
+				return fmt.Errorf("cannot get last ledger value: %v", err)
+			}
+
+			if lastIngestedLedger != 0 {
+				return fmt.Errorf("cannot run on non-empty DB")
+			}
+
+			mngr := historyarchive.NewCheckpointManager(globalConfig.CheckpointFrequency)
+			if !mngr.IsCheckpoint(ingestBuildStateSequence) {
+				return fmt.Errorf("`--sequence` must be a checkpoint ledger")
+			}
+
+			ingestConfig := ingest.Config{
+				NetworkPassphrase:      horizonConfig.NetworkPassphrase,
+				HistorySession:         horizonSession,
+				HistoryArchiveURLs:     horizonConfig.HistoryArchiveURLs,
+				HistoryArchiveCaching:  horizonConfig.HistoryArchiveCaching,
+				CaptiveCoreBinaryPath:  horizonConfig.CaptiveCoreBinaryPath,
+				CaptiveCoreConfigUseDB: horizonConfig.CaptiveCoreConfigUseDB,
+				CheckpointFrequency:    horizonConfig.CheckpointFrequency,
+				CaptiveCoreToml:        horizonConfig.CaptiveCoreToml,
+				CaptiveCoreStoragePath: horizonConfig.CaptiveCoreStoragePath,
+				RoundingSlippageFilter: horizonConfig.RoundingSlippageFilter,
+			}
+
+			system, err := ingest.NewSystem(ingestConfig)
+			if err != nil {
+				return err
+			}
+
+			err = system.BuildState(
+				ingestBuildStateSequence,
+				ingestBuildStateSkipChecks,
+			)
+			if err != nil {
+				return err
+			}
+
+			log.Info("State built successfully!")
+			return nil
+		},
+	}
+
 	for _, co := range ingestVerifyRangeCmdOpts {
 		err := co.Init(ingestVerifyRangeCmd)
 		if err != nil {
@@ -350,12 +348,51 @@ func init() {
 	}
 
 	viper.BindPFlags(ingestVerifyRangeCmd.PersistentFlags())
+	viper.BindPFlags(ingestBuildStateCmd.PersistentFlags())
+	viper.BindPFlags(ingestStressTestCmd.PersistentFlags())
 
-	RootCmd.AddCommand(ingestCmd)
+	rootCmd.AddCommand(ingestCmd)
 	ingestCmd.AddCommand(
 		ingestVerifyRangeCmd,
 		ingestStressTestCmd,
 		ingestTriggerStateRebuildCmd,
 		ingestBuildStateCmd,
+	)
+}
+
+func init() {
+	DefineIngestCommands(RootCmd, globalConfig, globalFlags)
+}
+
+func processVerifyRange(horizonConfig *horizon.Config, horizonFlags config.ConfigOptions, backendConfig ingest.StorageBackendConfig) error {
+	horizonSession, err := db.Open("postgres", horizonConfig.DatabaseURL)
+	if err != nil {
+		return fmt.Errorf("cannot open Horizon DB: %v", err)
+	}
+
+	ingestConfig := ingest.Config{
+		NetworkPassphrase:      horizonConfig.NetworkPassphrase,
+		HistorySession:         horizonSession,
+		HistoryArchiveURLs:     horizonConfig.HistoryArchiveURLs,
+		HistoryArchiveCaching:  horizonConfig.HistoryArchiveCaching,
+		CaptiveCoreBinaryPath:  horizonConfig.CaptiveCoreBinaryPath,
+		CaptiveCoreConfigUseDB: horizonConfig.CaptiveCoreConfigUseDB,
+		CheckpointFrequency:    horizonConfig.CheckpointFrequency,
+		CaptiveCoreToml:        horizonConfig.CaptiveCoreToml,
+		CaptiveCoreStoragePath: horizonConfig.CaptiveCoreStoragePath,
+		RoundingSlippageFilter: horizonConfig.RoundingSlippageFilter,
+		LedgerBackendType:      ingestVerifyLedgerBackendType,
+		StorageBackendConfig:   backendConfig,
+	}
+
+	system, err := ingest.NewSystem(ingestConfig)
+	if err != nil {
+		return err
+	}
+
+	return system.VerifyRange(
+		ingestVerifyFrom,
+		ingestVerifyTo,
+		ingestVerifyState,
 	)
 }
