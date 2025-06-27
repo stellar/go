@@ -169,11 +169,11 @@ if [ ! -z "$BRANCH" ]; then
 	fi
 fi
 git log -1 --pretty=oneline
-/usr/local/go/bin/go build -v -o /stellar-go/horizon_new ./services/horizon/. 
+/usr/local/go/bin/go build -v -o "$CONTAINER_WORKING_DIR/horizon_new" ./services/horizon/. 
 git clean -xfd
 git checkout "$BASE_BRANCH"
 git log -1 --pretty=oneline
-/usr/local/go/bin/go build -v -o /stellar-go/horizon_old ./services/horizon/.
+/usr/local/go/bin/go build -v -o "$CONTAINER_WORKING_DIR/horizon_old" ./services/horizon/.
 
 cd "$CONTAINER_WORKING_DIR"
 rm -rf "$CONTAINER_WORKING_DIR/compare"
@@ -183,9 +183,9 @@ run_new_horizon() {
     mkdir -p "$CONTAINER_WORKING_DIR"/new_runtime
     cd "$CONTAINER_WORKING_DIR"/new_runtime
     echo "Starting dump_horizon_db new_history"
-    /stellar-go/horizon_new --db-url "$DATABASE_URL_NEW" db migrate up 
+    "$CONTAINER_WORKING_DIR/horizon_new" --db-url "$DATABASE_URL_NEW" db migrate up 
     alter_tables_unlogged "new"
-    /stellar-go/horizon_new --db-url "$DATABASE_URL_NEW" ingest verify-range --from $FROM --to $TO --verify-state
+    "$CONTAINER_WORKING_DIR/horizon_new" --db-url "$DATABASE_URL_NEW" ingest verify-range --from $FROM --to $TO --verify-state
     dump_horizon_db "new" "$CONTAINER_WORKING_DIR/compare/new_history"
     echo "Done dump_horizon_db new_history"
 }
@@ -194,10 +194,10 @@ run_old_horizon() {
     mkdir -p "$CONTAINER_WORKING_DIR"/old_runtime
     cd "$CONTAINER_WORKING_DIR"/old_runtime
     echo "Starting dump_horizon_db old_history"
-    /stellar-go/horizon_old --db-url "$DATABASE_URL_OLD" db migrate up
+    "$CONTAINER_WORKING_DIR/horizon_old" --db-url "$DATABASE_URL_OLD" db migrate up
     alter_tables_unlogged "old"
     REINGEST_FROM=$((FROM + 1)) # verify-range does not ingest starting ledger
-    /stellar-go/horizon_old --db-url "$DATABASE_URL_OLD" db reingest range $REINGEST_FROM $TO
+    "$CONTAINER_WORKING_DIR/horizon_old" --db-url "$DATABASE_URL_OLD" db reingest range $REINGEST_FROM $TO
     dump_horizon_db "old" "$CONTAINER_WORKING_DIR/compare/old_history"
     echo "Done dump_horizon_db old_history"
 }
