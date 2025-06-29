@@ -1460,103 +1460,53 @@ func (e *effectsWrapper) addInvokeHostFunctionEffects(events []xdr.ContractEvent
 		if err := addAssetDetails(details, evt.Asset, ""); err != nil {
 			return errors.Wrapf(err, "invokeHostFunction asset details had an error")
 		}
+		details["amount"] = amount.String128(evt.Amount)
+
+		// Helper function to add effect based on account type
+		addEffect := func(account string, effectType history.EffectType, effectDetails map[string]interface{}) error {
+			if strkey.IsValidEd25519PublicKey(account) {
+				return e.add(account, null.String{}, effectType, effectDetails)
+			} else {
+				effectDetails["contract"] = account
+				e.addMuxed(source, effectType, effectDetails)
+				return nil
+			}
+		}
 
 		//
 		// Note: We ignore effects that involve contracts (until the day we have
 		// contract_debited/credited effects, may it never come :pray:)
 		//
-
 		switch evt.Type {
 		// Transfer events generate an `account_debited` effect for the `from`
 		// (sender) and an `account_credited` effect for the `to` (recipient).
 		case contractevents.EventTypeTransfer:
-			details["amount"] = amount.String128(evt.Amount)
 			toDetails := map[string]interface{}{}
 			for key, val := range details {
 				toDetails[key] = val
 			}
 
-			if strkey.IsValidEd25519PublicKey(evt.From) {
-				if err := e.add(
-					evt.From,
-					null.String{},
-					history.EffectAccountDebited,
-					details,
-				); err != nil {
-					return errors.Wrapf(err, "invokeHostFunction asset details from contract xfr-from had an error")
-				}
-			} else {
-				details["contract"] = evt.From
-				e.addMuxed(source, history.EffectContractDebited, details)
+			if err := addEffect(evt.From, history.EffectAccountDebited, details); err != nil {
+				return errors.Wrapf(err, "invokeHostFunction asset details from contract xfr-from had an error")
 			}
-
-			if strkey.IsValidEd25519PublicKey(evt.To) {
-				if err := e.add(
-					evt.To,
-					null.String{},
-					history.EffectAccountCredited,
-					toDetails,
-				); err != nil {
-					return errors.Wrapf(err, "invokeHostFunction asset details from contract xfr-to had an error")
-				}
-			} else {
-				toDetails["contract"] = evt.To
-				e.addMuxed(source, history.EffectContractCredited, toDetails)
+			if err := addEffect(evt.To, history.EffectAccountCredited, toDetails); err != nil {
+				return errors.Wrapf(err, "invokeHostFunction asset details from contract xfr-to had an error")
 			}
 
 		// Mint events imply a non-native asset, and it results in a credit to
 		// the `to` recipient.
 		case contractevents.EventTypeMint:
-			details["amount"] = amount.String128(evt.Amount)
-			if strkey.IsValidEd25519PublicKey(evt.To) {
-				if err := e.add(
-					evt.To,
-					null.String{},
-					history.EffectAccountCredited,
-					details,
-				); err != nil {
-					return errors.Wrapf(err, "invokeHostFunction asset details from contract mint had an error")
-				}
-			} else {
-				details["contract"] = evt.To
-				e.addMuxed(source, history.EffectContractCredited, details)
+			if err := addEffect(evt.To, history.EffectAccountCredited, details); err != nil {
+				return errors.Wrapf(err, "invokeHostFunction asset details from contract mint had an error")
 			}
 
 		// Clawback events result in a debit to the `from` address, but acts
 		// like a burn to the recipient, so these are functionally equivalent
-		case contractevents.EventTypeClawback:
-			details["amount"] = amount.String128(evt.Amount)
-			if strkey.IsValidEd25519PublicKey(evt.From) {
-				if err := e.add(
-					evt.From,
-					null.String{},
-					history.EffectAccountDebited,
-					details,
-				); err != nil {
-					return errors.Wrapf(err, "invokeHostFunction asset details from contract clawback had an error")
-				}
-			} else {
-				details["contract"] = evt.From
-				e.addMuxed(source, history.EffectContractDebited, details)
-			}
-
-		case contractevents.EventTypeBurn:
-			details["amount"] = amount.String128(evt.Amount)
-			if strkey.IsValidEd25519PublicKey(evt.From) {
-				if err := e.add(
-					evt.From,
-					null.String{},
-					history.EffectAccountDebited,
-					details,
-				); err != nil {
-					return errors.Wrapf(err, "invokeHostFunction asset details from contract burn had an error")
-				}
-			} else {
-				details["contract"] = evt.From
-				e.addMuxed(source, history.EffectContractDebited, details)
+		case contractevents.EventTypeClawback, contractevents.EventTypeBurn:
+			if err := addEffect(evt.From, history.EffectAccountDebited, details); err != nil {
+				return errors.Wrapf(err, "invokeHostFunction asset details from contract %s had an error", evt.Type)
 			}
 		}
 	}
-
 	return nil
 }
