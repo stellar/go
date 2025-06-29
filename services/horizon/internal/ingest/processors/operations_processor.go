@@ -5,9 +5,8 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"sort"
-
 	"github.com/guregu/null"
+	"sort"
 
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/ingest"
@@ -797,16 +796,7 @@ func (operation *transactionOperationWrapper) parseAssetBalanceChangesFromContra
 
 		// has some convenience like to/from attributes are expressed in strkey format for accounts(G...) and contracts(C...)
 		if sacEvent, err := contractevents.NewStellarAssetContractEvent(tx, &contractEvent, operation.network); err == nil {
-			switch sacEvent.Type {
-			case contractevents.EventTypeTransfer:
-				balanceChanges = append(balanceChanges, createSACBalanceChangeEntry(sacEvent.From, sacEvent.To, sacEvent.Amount, sacEvent.Asset, "transfer"))
-			case contractevents.EventTypeMint:
-				balanceChanges = append(balanceChanges, createSACBalanceChangeEntry("", sacEvent.To, sacEvent.Amount, sacEvent.Asset, "mint"))
-			case contractevents.EventTypeClawback:
-				balanceChanges = append(balanceChanges, createSACBalanceChangeEntry(sacEvent.From, "", sacEvent.Amount, sacEvent.Asset, "clawback"))
-			case contractevents.EventTypeBurn:
-				balanceChanges = append(balanceChanges, createSACBalanceChangeEntry(sacEvent.From, "", sacEvent.Amount, sacEvent.Asset, "burn"))
-			}
+			balanceChanges = append(balanceChanges, createSACBalanceChangeEntry(sacEvent))
 		}
 	}
 
@@ -820,19 +810,47 @@ func (operation *transactionOperationWrapper) parseAssetBalanceChangesFromContra
 // changeType    - the type of source sac event that triggered this change
 //
 // return        - a balance changed record expressed as map of key/value's
-func createSACBalanceChangeEntry(fromAccount string, toAccount string, amountChanged xdr.Int128Parts, asset xdr.Asset, changeType string) map[string]interface{} {
+func createSACBalanceChangeEntry(sacEvent *contractevents.StellarAssetContractEvent) map[string]interface{} {
 	balanceChange := map[string]interface{}{}
 
-	if fromAccount != "" {
-		balanceChange["from"] = fromAccount
+	if sacEvent.From != "" {
+		balanceChange["from"] = sacEvent.From
 	}
-	if toAccount != "" {
-		balanceChange["to"] = toAccount
+	if sacEvent.To != "" {
+		balanceChange["to"] = sacEvent.To
 	}
 
-	balanceChange["type"] = changeType
-	balanceChange["amount"] = amount.String128(amountChanged)
-	addAssetDetails(balanceChange, asset, "")
+	balanceChange["type"] = sacEvent.Type
+	balanceChange["amount"] = amount.String128(sacEvent.Amount)
+	addAssetDetails(balanceChange, sacEvent.Asset, "")
+
+	// Derive muxed type and value from memo
+	memo := sacEvent.DestinationMemo
+	var memoType, memoVal string
+
+	switch memo.Type {
+	case xdr.MemoTypeMemoText:
+		memoType, memoVal = "string", memo.MustText()
+	case xdr.MemoTypeMemoId:
+		memoType, memoVal = "uint64", fmt.Sprintf("%d", memo.MustId())
+	case xdr.MemoTypeMemoHash:
+		memoType, memoVal = "bytes", memo.MustHash().HexString()
+	case xdr.MemoTypeMemoReturn:
+		memoType, memoVal = "bytes", memo.MustRetHash().HexString()
+	case xdr.MemoTypeMemoNone:
+		// Leave empty - no muxed fields will be added
+	default:
+		panic(fmt.Errorf("invalid memo type: %v", memo.Type))
+	}
+
+	if memoType != "" {
+		balanceChange["destination_muxed_id_type"] = memoType
+		balanceChange["destination_muxed_id"] = memoVal
+	}
+	fmt.Println("AM HEERE")
+	fmt.Printf("MemoType is : %s\n", memoType)
+	fmt.Printf("MemoVal is : %s\n", memoVal)
+
 	return balanceChange
 }
 
