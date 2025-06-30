@@ -786,15 +786,10 @@ func (operation *transactionOperationWrapper) parseAssetBalanceChangesFromContra
 
 	contractEvents, err := tx.GetContractEvents()
 	if err != nil {
-		// this operation in this context must be an InvokeHostFunctionOp, therefore V3Meta should be present
-		// as it's in same soroban model, so if any err, it's real,
 		return nil, err
 	}
 
 	for _, contractEvent := range contractEvents {
-		// Parse the xdr contract event to contractevents.StellarAssetContractEvent model
-
-		// has some convenience like to/from attributes are expressed in strkey format for accounts(G...) and contracts(C...)
 		if sacEvent, err := contractevents.NewStellarAssetContractEvent(tx, &contractEvent, operation.network); err == nil {
 			balanceChanges = append(balanceChanges, createSACBalanceChangeEntry(sacEvent))
 		}
@@ -820,7 +815,7 @@ func createSACBalanceChangeEntry(sacEvent *contractevents.StellarAssetContractEv
 		balanceChange["to"] = sacEvent.To
 	}
 
-	balanceChange["type"] = sacEvent.Type
+	balanceChange["type"] = string(sacEvent.Type)
 	balanceChange["amount"] = amount.String128(sacEvent.Amount)
 	addAssetDetails(balanceChange, sacEvent.Asset, "")
 

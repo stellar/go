@@ -161,15 +161,19 @@ func TestSacTransfertWithMuxedInfo(t *testing.T) {
 		Limit:      1,
 		Order:      "desc",
 	})
-	assert.NoError(itest.CurrentTest(), err)
+	assert.NoError(t, err)
 	result := ops.Embedded.Records[0]
-	assert.Equal(itest.CurrentTest(), result.GetType(), operations.TypeNames[xdr.OperationTypeInvokeHostFunction])
-	invokeHostFn := result.(operations.InvokeHostFunction)
-	assert.Equal(itest.CurrentTest(), invokeHostFn.Function, "HostFunctionTypeHostFunctionTypeInvokeContract")
-	assert.Equal(itest.CurrentTest(), destAcc, invokeHostFn.AssetBalanceChanges[0].To)
-	assert.Equal(itest.CurrentTest(), "20.0000000", invokeHostFn.AssetBalanceChanges[0].Amount)
-	assert.Equal(itest.CurrentTest(), "uint64", invokeHostFn.AssetBalanceChanges[0].DestinationMuxedIdType)
-	assert.Equal(itest.CurrentTest(), "111", invokeHostFn.AssetBalanceChanges[0].DestinationMuxedId)
+	assert.Equal(t, result.GetType(), operations.TypeNames[xdr.OperationTypeInvokeHostFunction])
+	fnType := result.(operations.InvokeHostFunction)
+	assert.Equal(t, fnType.Function, "HostFunctionTypeHostFunctionTypeInvokeContract")
+	balanceChanges := fnType.AssetBalanceChanges
+	assert.Len(t, balanceChanges, 1)
+
+	assert.Equal(t, balanceChanges[0].Type, "mint") // it's not a transfer.
+	assert.Equal(t, destAcc, balanceChanges[0].To)
+	assert.Equal(t, "20.0000000", balanceChanges[0].Amount)
+	assert.Equal(t, "uint64", balanceChanges[0].DestinationMuxedIdType)
+	assert.Equal(t, "111", balanceChanges[0].DestinationMuxedId)
 
 }
 

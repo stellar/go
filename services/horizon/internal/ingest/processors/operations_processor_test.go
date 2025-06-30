@@ -396,7 +396,7 @@ func (s *OperationsProcessorTestSuiteLedger) TestOperationTypeInvokeHostFunction
 				found++
 			}
 		}
-		s.Assert().Equal(found, 4, "should have one balance changed record for each of mint, burn, clawback, transfer")
+		s.Assert().Equal(4, found, "should have one balance changed record for each of mint, burn, clawback, transfer")
 	})
 }
 
