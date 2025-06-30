@@ -781,48 +781,43 @@ func extractFunctionArgs(args []xdr.ScVal) []map[string]string {
 // that value will not be signed as it represents a absolute delta, the event type can provide the
 // context of whether an amount was considered incremental or decremental, i.e. credit or debit to a balance.
 func (operation *transactionOperationWrapper) parseAssetBalanceChangesFromContractEvents() ([]map[string]interface{}, error) {
-	balanceChanges := []map[string]interface{}{}
 	tx := operation.transaction
-
 	contractEvents, err := tx.GetContractEvents()
 	if err != nil {
 		return nil, err
 	}
 
+	var balanceChanges []map[string]interface{}
 	for _, contractEvent := range contractEvents {
 		if sacEvent, err := contractevents.NewStellarAssetContractEvent(tx, &contractEvent, operation.network); err == nil {
-			balanceChanges = append(balanceChanges, createSACBalanceChangeEntry(sacEvent))
+			changes, err := createSACBalanceChangeEntry(sacEvent)
+			if err != nil {
+				return nil, err
+			}
+			balanceChanges = append(balanceChanges, changes)
 		}
 	}
-
 	return balanceChanges, nil
 }
 
-// fromAccount   - strkey format of contract or address
-// toAccount     - strkey format of contract or address, or nillable
-// amountChanged - absolute value that asset balance changed
-// asset         - the fully qualified issuer:code for asset that had balance change
-// changeType    - the type of source sac event that triggered this change
-//
-// return        - a balance changed record expressed as map of key/value's
-func createSACBalanceChangeEntry(sacEvent *contractevents.StellarAssetContractEvent) map[string]interface{} {
+func createSACBalanceChangeEntry(sacEvent *contractevents.StellarAssetContractEvent) (map[string]interface{}, error) {
 	balanceChange := map[string]interface{}{}
-
 	if sacEvent.From != "" {
 		balanceChange["from"] = sacEvent.From
 	}
 	if sacEvent.To != "" {
 		balanceChange["to"] = sacEvent.To
 	}
-
 	balanceChange["type"] = string(sacEvent.Type)
 	balanceChange["amount"] = amount.String128(sacEvent.Amount)
-	addAssetDetails(balanceChange, sacEvent.Asset, "")
+
+	if err := addAssetDetails(balanceChange, sacEvent.Asset, ""); err != nil {
+		return nil, err
+	}
 
 	// Derive muxed type and value from memo
 	memo := sacEvent.DestinationMemo
 	var memoType, memoVal string
-
 	switch memo.Type {
 	case xdr.MemoTypeMemoText:
 		memoType, memoVal = "string", memo.MustText()
@@ -835,7 +830,7 @@ func createSACBalanceChangeEntry(sacEvent *contractevents.StellarAssetContractEv
 	case xdr.MemoTypeMemoNone:
 		// Leave empty - no muxed fields will be added
 	default:
-		panic(fmt.Errorf("invalid memo type: %v", memo.Type))
+		return nil, fmt.Errorf("invalid memo type: %v", memo.Type)
 	}
 
 	if memoType != "" {
@@ -843,7 +838,7 @@ func createSACBalanceChangeEntry(sacEvent *contractevents.StellarAssetContractEv
 		balanceChange["destination_muxed_id"] = memoVal
 	}
 
-	return balanceChange
+	return balanceChange, nil
 }
 
 func addLiquidityPoolAssetDetails(result map[string]interface{}, lpp xdr.LiquidityPoolParameters) error {
