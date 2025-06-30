@@ -122,9 +122,8 @@ func TestSacTransfertWithMuxedInfo(t *testing.T) {
 	}
 
 	itest := integration.NewTest(t, integration.Config{
-		HorizonEnvironment: map[string]string{"INGEST_DISABLE_STATE_VERIFICATION": "true", "CONNECTION_TIMEOUT": "360000"},
+		HorizonEnvironment: map[string]string{"INGEST_DISABLE_STATE_VERIFICATION": "true"},
 		EnableStellarRPC:   true,
-		QuickExpiration:    true,
 	})
 
 	issuer := itest.Master().Address()
