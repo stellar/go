@@ -4,13 +4,13 @@ set -e
 # the aws batch job provides a shared volume at /data, so we need to
 # partition it safely so each job worker(index) only uses it's sub-directory on the volume.
 CONTAINER_WORKING_DIR="/data/job_${AWS_BATCH_JOB_ARRAY_INDEX:-0}"
+echo "Job working directory path on data volume: $CONTAINER_WORKING_DIR"
 
 # Ensure CONTAINER_WORKING_DIR exists and is empty
 if [ -d "$CONTAINER_WORKING_DIR" ]; then
-    rm -rf "$CONTAINER_WORKING_DIR"/*
-else
-    mkdir -p "$CONTAINER_WORKING_DIR"
-fi
+    rm -rf "$CONTAINER_WORKING_DIR"
+fi	
+mkdir -p "$CONTAINER_WORKING_DIR"
 
 dump_horizon_db() {
     local db_version="$1"
@@ -104,10 +104,14 @@ fi
 # configure postgres
 if [ -z "${PGDATA}" ]; then
     export PGDATA="$CONTAINER_WORKING_DIR/postgres"
-    mkdir -p "$PGDATA"
 fi
 
-rm -rf "$PGDATA"/* 
+if [ ! -d "$PGDATA" ]; then
+    mkdir -p "$PGDATA"
+else
+    rm -rf "$PGDATA"/*
+fi
+
 sudo chown -R postgres "$PGDATA"
 sudo chmod -R 775 "$PGDATA"
 
