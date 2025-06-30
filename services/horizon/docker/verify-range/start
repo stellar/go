@@ -157,13 +157,11 @@ export NETWORK_PASSPHRASE="Public Global Stellar Network ; September 2015"
 export HISTORY_ARCHIVE_URLS="https://s3-eu-west-1.amazonaws.com/history.stellar.org/prd/core-live/core_live_001"
 export DATABASE_URL_NEW="postgres://postgres:postgres@localhost:5432/horizon_new?sslmode=disable"
 export DATABASE_URL_OLD="postgres://postgres:postgres@localhost:5432/horizon_old?sslmode=disable"
+# if DATASTORE_CONFIG is set, horizon commands will ignore the captive core settings.
 export CAPTIVE_CORE_CONFIG_APPEND_PATH="/captive-core-pubnet.cfg"
 export STELLAR_CORE_BINARY_PATH="/usr/bin/stellar-core"
-# we configure captive-core storage path to job index specific working dir path.
-# horizon maps this env variable to a config setting which is 
-# referenced by the archive pool bucket cache configuration in ingestion system setup, 
-# temporary archive file content gets stored here.
 export CAPTIVE_CORE_STORAGE_PATH="$CONTAINER_WORKING_DIR"
+export HISTORY_ARCHIVE_CACHING="FALSE"
 
 BASE_BRANCH=${BASE_BRANCH:-master}
 cd stellar-go
