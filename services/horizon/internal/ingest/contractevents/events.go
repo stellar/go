@@ -270,7 +270,6 @@ func parseSacEventFromTxMetaV4(event *xdr.ContractEvent, networkPassphrase strin
 
 	// Try to parse as ScMap first (V4 format with to_muxed_id)
 	if mapData, ok := data.GetMap(); ok {
-		fmt.Println("Data is a map.....")
 		if mapData == nil {
 			return nil, errors.New("data map is empty")
 		}
@@ -280,7 +279,6 @@ func parseSacEventFromTxMetaV4(event *xdr.ContractEvent, networkPassphrase strin
 		}
 	} else {
 		// Fall back to direct i128 parsing (V4 without to_muxed_id)
-		fmt.Println("Data is not a map.....")
 		amount, ok = data.GetI128()
 		if !ok {
 			return nil, fmt.Errorf("invalid amount in event data: %v", data.String())

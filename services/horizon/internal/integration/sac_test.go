@@ -116,7 +116,11 @@ func TestContractMintToAccount(t *testing.T) {
 	})
 }
 
-func TestSacEventWithMuxedInfo(t *testing.T) {
+func TestSacTransfertWithMuxedInfo(t *testing.T) {
+	if integration.GetCoreMaxSupportedProtocol() < 23 {
+		t.Skip("This test run does not support less than Protocol 23")
+	}
+
 	itest := integration.NewTest(t, integration.Config{
 		HorizonEnvironment: map[string]string{"INGEST_DISABLE_STATE_VERIFICATION": "true", "CONNECTION_TIMEOUT": "360000"},
 		EnableStellarRPC:   true,
@@ -130,27 +134,28 @@ func TestSacEventWithMuxedInfo(t *testing.T) {
 	createSAC(itest, asset)
 
 	destAccKp, acc := itest.CreateAccount("100")
+	destAcc := destAccKp.Address()
 	itest.MustEstablishTrustline(destAccKp, acc, txnbuild.MustAssetFromXDR(asset))
 
-	destinationAcID := xdr.MustAddress(destAccKp.Address())
+	destinationAcID := xdr.MustAddress(destAcc)
 	muxedId := xdr.Uint64(111)
 	destinationMuxedAcc := xdr.MuxedAccount{
 		Type: xdr.CryptoKeyTypeKeyTypeMuxedEd25519,
 		Med25519: &xdr.MuxedAccountMed25519{
-			// Make sure we cover the full uint64 range
 			Id:      muxedId,
 			Ed25519: *destinationAcID.Ed25519,
 		},
 	}
 
-	//destinationAccMuxedStr := destinationMuxedAcc.Address()
 	assertInvokeHostFnSucceeds(
 		itest,
 		itest.Master(),
-		mint(itest, issuer, asset, "20", muxedAccountAddressParam(destinationMuxedAcc)),
+		// Transfer is the only SAC function that has support for destination MuxedAccount
+		// See https://github.com/stellar/stellar-protocol/blob/master/core/cap-0067.md#update-the-sac-transfer-function-to-support-muxed-addresses
+		// this test will fail simulateTransaction when called with mint.
+		transfer(itest, issuer, asset, "20", muxedAccountAddressParam(destinationMuxedAcc)),
 	)
 
-	destAcc := destAccKp.Address()
 	ops, err := itest.Client().Operations(horizonclient.OperationRequest{
 		ForAccount: destAcc,
 		Limit:      1,

@@ -201,10 +201,6 @@ func marshallBase64Bytes(e xdr.TransactionEnvelope, signatures []xdr.DecoratedSi
 	return encoded, nil
 }
 
-func (t *Transaction) GetEnvelope() xdr.TransactionEnvelope {
-	return t.envelope
-}
-
 // Transaction represents a Stellar transaction. See
 // https://developers.stellar.org/docs/glossary/transactions/
 // A Transaction may be wrapped by a FeeBumpTransaction in which case

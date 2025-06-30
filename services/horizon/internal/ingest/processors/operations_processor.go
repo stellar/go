@@ -847,9 +847,6 @@ func createSACBalanceChangeEntry(sacEvent *contractevents.StellarAssetContractEv
 		balanceChange["destination_muxed_id_type"] = memoType
 		balanceChange["destination_muxed_id"] = memoVal
 	}
-	fmt.Println("AM HEERE")
-	fmt.Printf("MemoType is : %s\n", memoType)
-	fmt.Printf("MemoVal is : %s\n", memoVal)
 
 	return balanceChange
 }

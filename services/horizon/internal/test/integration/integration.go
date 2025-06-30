@@ -147,17 +147,6 @@ func GetTestConfig() *Config {
 //
 // WARNING: This requires Docker Compose installed.
 func NewTest(t *testing.T, config Config) *Test {
-
-	/*
-		os.Setenv("HORIZON_INTEGRATION_TESTS_ENABLED", "true")
-		os.Setenv("NETWORK_PASSPHRASE", "Standalone Network ; February 2017")
-		os.Setenv("HORIZON_INTEGRATION_TESTS_CORE_MAX_SUPPORTED_PROTOCOL", "23")
-		os.Setenv("HORIZON_INTEGRATION_TESTS_DOCKER_IMG", "stellar/unsafe-stellar-core:22.3.1-2509.c2e465a3e.focal-do-not-use-in-prd")
-		os.Setenv("HORIZON_INTEGRATION_TESTS_STELLAR_RPC_DOCKER_IMG", "stellar/stellar-rpc:23.0.0-rc1-116")
-
-		// change this to your local path
-		os.Setenv("HORIZON_INTEGRATION_TESTS_CAPTIVE_CORE_BIN", "/Users/karthik/WS/stellar-core-2/src/stellar-core")
-	*/
 	if os.Getenv("HORIZON_INTEGRATION_TESTS_ENABLED") == "" {
 		t.Skip("skipping integration test: HORIZON_INTEGRATION_TESTS_ENABLED not set")
 	}
@@ -885,14 +874,11 @@ func (i *Test) simulateTransaction(
 	assert.NoError(i.t, err)
 	result := RPCSimulateTxResponse{}
 	fmt.Printf("Preflight TX:\n\n%v \n\n", base64)
-	envelope := tx.GetEnvelope()
-	b64EncodedEnvelope, _ := xdr.MarshalBase64(envelope)
-	fmt.Printf("TransactionEnvelope is:\n\n%v\n\n", b64EncodedEnvelope)
 	err = stellarRPCClient.CallResult(context.Background(), "simulateTransaction", struct {
 		Transaction string `json:"transaction"`
 	}{base64}, &result)
-	assert.NoError(i.t, err)
-	assert.Empty(i.t, result.Error)
+	require.NoError(i.t, err)
+	require.Empty(i.t, result.Error)
 	var transactionData xdr.SorobanTransactionData
 	err = xdr.SafeUnmarshalBase64(result.TransactionData, &transactionData)
 	assert.NoError(i.t, err)
