@@ -44,16 +44,14 @@ var (
 	parallelWorkers          uint
 	retries                  uint
 	retryBackoffSeconds      uint
-	ledgerBackendStr         string
 	storageBackendConfigPath string
 	ledgerBackendType        ingest.LedgerBackendType
 )
 
 // generateLedgerBackendOpt creates a reusable ConfigOption for ledgerbackend parameter
-func generateLedgerBackendOpt(configKey *string, backendTypeVar *ingest.LedgerBackendType) *support.ConfigOption {
+func generateLedgerBackendOpt(backendTypeVar *ingest.LedgerBackendType) *support.ConfigOption {
 	return &support.ConfigOption{
 		Name:        "ledgerbackend",
-		ConfigKey:   configKey,
 		OptType:     types.String,
 		Required:    false,
 		FlagDefault: ingest.CaptiveCoreBackend.String(),
@@ -70,7 +68,6 @@ func generateLedgerBackendOpt(configKey *string, backendTypeVar *ingest.LedgerBa
 			default:
 				return fmt.Errorf("invalid ledger backend: %s, must be 'captive-core' or 'datastore'", val)
 			}
-			*co.ConfigKey.(*string) = val
 			return nil
 		},
 	}
@@ -160,14 +157,8 @@ func ingestRangeCmdOpts() support.ConfigOptions {
 			FlagDefault: uint(5),
 			Usage:       "[optional] backoff seconds between reingest retries",
 		},
-		generateLedgerBackendOpt(&ledgerBackendStr, &ledgerBackendType),
-		{
-			Name:      "datastore-config",
-			ConfigKey: &storageBackendConfigPath,
-			OptType:   types.String,
-			Required:  false,
-			Usage:     "[optional] Specify the path to the datastore config file (required for datastore backend)",
-		},
+		generateLedgerBackendOpt(&ledgerBackendType),
+		generateDatastoreConfigOpt(&storageBackendConfigPath),
 	}
 }
 

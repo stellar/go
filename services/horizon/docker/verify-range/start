@@ -182,7 +182,7 @@ mkdir -p "$CONTAINER_WORKING_DIR/compare"
 run_new_horizon() {
     mkdir -p "$CONTAINER_WORKING_DIR"/new_runtime
     cd "$CONTAINER_WORKING_DIR"/new_runtime
-    echo "Starting dump_horizon_db new_history"
+    echo "Starting dump_horizon_db new_history with LEDGERBACKEND=$LEDGERBACKEND and DATASTORE_CONFIG=$DATASTORE_CONFIG"
     "$CONTAINER_WORKING_DIR/horizon_new" --db-url "$DATABASE_URL_NEW" db migrate up 
     alter_tables_unlogged "new"
     "$CONTAINER_WORKING_DIR/horizon_new" --db-url "$DATABASE_URL_NEW" ingest verify-range --from $FROM --to $TO --verify-state
@@ -193,7 +193,7 @@ run_new_horizon() {
 run_old_horizon() {
     mkdir -p "$CONTAINER_WORKING_DIR"/old_runtime
     cd "$CONTAINER_WORKING_DIR"/old_runtime
-    echo "Starting dump_horizon_db old_history"
+    echo "Starting dump_horizon_db old_history with LEDGERBACKEND=$LEDGERBACKEND and DATASTORE_CONFIG=$DATASTORE_CONFIG"
     "$CONTAINER_WORKING_DIR/horizon_old" --db-url "$DATABASE_URL_OLD" db migrate up
     alter_tables_unlogged "old"
     REINGEST_FROM=$((FROM + 1)) # verify-range does not ingest starting ledger
