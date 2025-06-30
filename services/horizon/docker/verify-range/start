@@ -159,6 +159,11 @@ export DATABASE_URL_NEW="postgres://postgres:postgres@localhost:5432/horizon_new
 export DATABASE_URL_OLD="postgres://postgres:postgres@localhost:5432/horizon_old?sslmode=disable"
 export CAPTIVE_CORE_CONFIG_APPEND_PATH="/captive-core-pubnet.cfg"
 export STELLAR_CORE_BINARY_PATH="/usr/bin/stellar-core"
+# we configure captive-core storage path to job index specific working dir path.
+# horizon maps this env variable to a config setting which is 
+# referenced by the archive pool bucket cache configuration in ingestion system setup, 
+# temporary archive file content gets stored here.
+export CAPTIVE_CORE_STORAGE_PATH="$CONTAINER_WORKING_DIR"
 
 BASE_BRANCH=${BASE_BRANCH:-master}
 cd stellar-go
