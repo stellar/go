@@ -8,7 +8,6 @@ import (
 )
 
 // EventType represents the type of Stellar asset Contract event
-// EventType represents the type of Stellar asset Contract event
 type EventType string
 
 const (
