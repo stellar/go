@@ -87,14 +87,14 @@ function compare() {
 	fi
 }
 
-if [ ! -z "$GCP_SECRET" ]; then
-    echo "$GCP_SECRET" > /tmp/gcp.json
+if [ ! -z "$GCP_CREDS" ]; then
+    echo "$GCP_CREDS" > /tmp/gcp.json
 	chmod 600 /tmp/gcp.json
 	export GOOGLE_APPLICATION_CREDENTIALS="/tmp/gcp.json"
 	echo "Configured GCP credentials"
 fi	
 
-if [ ! -z "$DATASTORE_CONFIG_PLAIN" ] && [ "$LEDGERBACKEND" = "datastore" ]; then
+if [ ! -z "$DATASTORE_CONFIG_PLAIN" ]; then
     echo "$DATASTORE_CONFIG_PLAIN" > /tmp/datastore-config.toml
 	export DATASTORE_CONFIG="/tmp/datastore-config.toml"
 	echo "Configured Datastore credentials"
@@ -152,11 +152,16 @@ fi
 export LEDGER_COUNT=`expr "$TO" - "$FROM" + "1"`
 echo "FROM: $FROM TO: $TO"
 
+if [ ! -z "$DATASTORE_CONFIG" ]; then
+    export LEDGERBACKEND=datastore
+fi
+
 # pubnet horizon config
 export NETWORK_PASSPHRASE="Public Global Stellar Network ; September 2015"
 export HISTORY_ARCHIVE_URLS="https://s3-eu-west-1.amazonaws.com/history.stellar.org/prd/core-live/core_live_001"
 export DATABASE_URL_NEW="postgres://postgres:postgres@localhost:5432/horizon_new?sslmode=disable"
 export DATABASE_URL_OLD="postgres://postgres:postgres@localhost:5432/horizon_old?sslmode=disable"
+# set the ccore settings by default, 
 # if DATASTORE_CONFIG is set, horizon commands will ignore the captive core settings.
 export CAPTIVE_CORE_CONFIG_APPEND_PATH="/captive-core-pubnet.cfg"
 export STELLAR_CORE_BINARY_PATH="/usr/bin/stellar-core"
