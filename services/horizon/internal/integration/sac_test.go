@@ -122,9 +122,9 @@ func TestSacTransfertWithMuxedInfo(t *testing.T) {
 	}
 
 	itest := integration.NewTest(t, integration.Config{
-		HorizonEnvironment: map[string]string{"INGEST_DISABLE_STATE_VERIFICATION": "true"},
-		EnableStellarRPC:   true,
-		QuickExpiration:    true,
+		//HorizonEnvironment: map[string]string{"INGEST_DISABLE_STATE_VERIFICATION": "true"},
+		EnableStellarRPC: true,
+		//QuickExpiration:    true,
 	})
 
 	issuer := itest.Master().Address()
@@ -172,7 +172,6 @@ func TestSacTransfertWithMuxedInfo(t *testing.T) {
 	assert.Equal(t, balanceChanges[0].Type, "mint") // it's not a transfer.
 	assert.Equal(t, destAcc, balanceChanges[0].To)
 	assert.Equal(t, "20.0000000", balanceChanges[0].Amount)
-	assert.Equal(t, "uint64", balanceChanges[0].DestinationMuxedIdType)
 	assert.Equal(t, "111", balanceChanges[0].DestinationMuxedId)
 
 }

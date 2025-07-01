@@ -3778,6 +3778,7 @@ func makeInvocationTransaction(
 			asset,
 			amount,
 			networkPassphrase,
+			nil,
 		)
 		meta.SorobanMeta.Events[idx] = event
 	}

@@ -817,25 +817,18 @@ func createSACBalanceChangeEntry(sacEvent *contractevents.StellarAssetContractEv
 
 	// Derive muxed type and value from memo
 	memo := sacEvent.DestinationMemo
-	var memoType, memoVal string
+	var muxedId string
 	switch memo.Type {
-	case xdr.MemoTypeMemoText:
-		memoType, memoVal = "string", memo.MustText()
 	case xdr.MemoTypeMemoId:
-		memoType, memoVal = "uint64", fmt.Sprintf("%d", memo.MustId())
-	case xdr.MemoTypeMemoHash:
-		memoType, memoVal = "bytes", memo.MustHash().HexString()
-	case xdr.MemoTypeMemoReturn:
-		memoType, memoVal = "bytes", memo.MustRetHash().HexString()
+		muxedId = fmt.Sprintf("%d", memo.MustId())
 	case xdr.MemoTypeMemoNone:
 		// Leave empty - no muxed fields will be added
 	default:
-		return nil, fmt.Errorf("invalid memo type: %v", memo.Type)
+		return nil, fmt.Errorf("invalid memo type in SAC event: %v", memo.Type)
 	}
 
-	if memoType != "" {
-		balanceChange["destination_muxed_id_type"] = memoType
-		balanceChange["destination_muxed_id"] = memoVal
+	if muxedId != "" {
+		balanceChange["destination_muxed_id"] = muxedId
 	}
 
 	return balanceChange, nil

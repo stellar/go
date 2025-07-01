@@ -298,6 +298,81 @@ func (s *OperationsProcessorTestSuiteLedger) TestOperationTypeInvokeHostFunction
 		s.Assert().Equal(details["function"], "HostFunctionTypeHostFunctionTypeUploadContractWasm")
 	})
 
+	s.T().Run("InvokeHostWithMuxInfoInSacEventsDetails", func(t *testing.T) {
+		randomIssuer := keypair.MustRandom()
+		randomAsset := xdr.MustNewCreditAsset("TESTING", randomIssuer.Address())
+		passphrase := "passphrase"
+		randomAccount := keypair.MustRandom().Address()
+		contractId := [32]byte{}
+		zeroContractStrKey, err := strkey.Encode(strkey.VersionByteContract, contractId[:])
+		s.Assert().NoError(err)
+		idMemo := xdr.MemoID(111)
+
+		transferContractEvent := contractevents.GenerateEvent(contractevents.EventTypeTransfer, randomAccount, zeroContractStrKey, "", randomAsset, big.NewInt(10000000), passphrase, &idMemo)
+
+		tx = ingest.LedgerTransaction{
+			Envelope: xdr.TransactionEnvelope{
+				Type: xdr.EnvelopeTypeEnvelopeTypeTx,
+				V1: &xdr.TransactionV1Envelope{
+					Tx: xdr.Transaction{
+						Ext: xdr.TransactionExt{
+							V:           1,
+							SorobanData: &xdr.SorobanTransactionData{},
+						},
+					},
+				},
+			},
+			UnsafeMeta: xdr.TransactionMeta{
+				V: 4, // To be consistent, this needs to be V4 so that we can include muxedInfo as a map
+				V4: &xdr.TransactionMetaV4{
+					Operations: []xdr.OperationMetaV2{
+						{
+							Events: []xdr.ContractEvent{
+								transferContractEvent,
+							},
+						},
+					},
+				},
+			},
+		}
+
+		wrapper := transactionOperationWrapper{
+			transaction: tx,
+			operation: xdr.Operation{
+				SourceAccount: &source,
+				Body: xdr.OperationBody{
+					Type: xdr.OperationTypeInvokeHostFunction,
+					InvokeHostFunctionOp: &xdr.InvokeHostFunctionOp{
+						HostFunction: xdr.HostFunction{
+							Type: xdr.HostFunctionTypeHostFunctionTypeInvokeContract,
+							InvokeContract: &xdr.InvokeContractArgs{
+								ContractAddress: xdr.ScAddress{
+									Type:       xdr.ScAddressTypeScAddressTypeContract,
+									ContractId: &xdr.ContractId{0x1, 0x2},
+								},
+								FunctionName: "foo",
+								Args:         xdr.ScVec{},
+							},
+						},
+					},
+				},
+			},
+			network: passphrase,
+		}
+
+		details, err := wrapper.Details()
+		s.Require().NoError(err)
+
+		s.Assert().Len(details["asset_balance_changes"], 1)
+		assetBalanceChanged := details["asset_balance_changes"].([]map[string]interface{})[0]
+		s.Assert().Equal(assetBalanceChanged["type"], "transfer")
+		s.Assert().Equal(assetBalanceChanged["from"], randomAccount)
+		s.Assert().Equal(assetBalanceChanged["to"], zeroContractStrKey)
+		s.Assert().Equal(assetBalanceChanged["amount"], "1.0000000")
+		s.Assert().Equal(assetBalanceChanged["destination_muxed_id"], "111")
+
+	})
+
 	s.T().Run("InvokeContractWithSACEventsInDetails", func(t *testing.T) {
 		randomIssuer := keypair.MustRandom()
 		randomAsset := xdr.MustNewCreditAsset("TESTING", randomIssuer.Address())
@@ -307,10 +382,10 @@ func (s *OperationsProcessorTestSuiteLedger) TestOperationTypeInvokeHostFunction
 		zeroContractStrKey, err := strkey.Encode(strkey.VersionByteContract, contractId[:])
 		s.Assert().NoError(err)
 
-		transferContractEvent := contractevents.GenerateEvent(contractevents.EventTypeTransfer, randomAccount, zeroContractStrKey, "", randomAsset, big.NewInt(10000000), passphrase)
-		burnContractEvent := contractevents.GenerateEvent(contractevents.EventTypeBurn, zeroContractStrKey, "", "", randomAsset, big.NewInt(10000000), passphrase)
-		mintContractEvent := contractevents.GenerateEvent(contractevents.EventTypeMint, "", zeroContractStrKey, randomAccount, randomAsset, big.NewInt(10000000), passphrase)
-		clawbackContractEvent := contractevents.GenerateEvent(contractevents.EventTypeClawback, zeroContractStrKey, "", randomAccount, randomAsset, big.NewInt(10000000), passphrase)
+		transferContractEvent := contractevents.GenerateEvent(contractevents.EventTypeTransfer, randomAccount, zeroContractStrKey, "", randomAsset, big.NewInt(10000000), passphrase, nil)
+		burnContractEvent := contractevents.GenerateEvent(contractevents.EventTypeBurn, zeroContractStrKey, "", "", randomAsset, big.NewInt(10000000), passphrase, nil)
+		mintContractEvent := contractevents.GenerateEvent(contractevents.EventTypeMint, "", zeroContractStrKey, randomAccount, randomAsset, big.NewInt(10000000), passphrase, nil)
+		clawbackContractEvent := contractevents.GenerateEvent(contractevents.EventTypeClawback, zeroContractStrKey, "", randomAccount, randomAsset, big.NewInt(10000000), passphrase, nil)
 
 		tx = ingest.LedgerTransaction{
 			Envelope: xdr.TransactionEnvelope{
