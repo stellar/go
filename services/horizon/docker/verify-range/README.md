@@ -70,3 +70,25 @@ it will run the following ranges:
 | 1                           | 127    | 191  |
 | 2                           | 191    | 255  |
 | 3                           | 255    | 319  |
+
+Running the image locally with `docker run`
+* example to run verify range with captive, same as before:
+  ```
+  docker run -e FROM=63 \
+                      -e TO=127 \
+                      -e BRANCH=<target version> \
+                      -e BASE_BRANCH=master \
+                      verify-range:latest
+  ```  
+* example to run verify range with gcs datastore:
+  ```
+  docker run -e FROM=63 \
+                      -e TO=127 \
+                      -e BRANCH=<target version> \
+                      -e BASE_BRANCH=master \
+                      -v /host/path/to/gcreds.json:/tmp/gcp.json \
+                      -e GOOGLE_APPLICATION_CREDENTIALS=/tmp/gcp.json \
+                      -v /host/path/to/datastore-config.tom:/tmp/datastore-config.toml \
+                      -e DATASTORE_CONFIG=/tmp/datastore-config.toml \
+                      verify-range:latest
+  ```  
