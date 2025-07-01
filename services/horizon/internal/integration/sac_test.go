@@ -38,9 +38,7 @@ const LongTermTTL = 10000
 
 func TestContractMintToAccount(t *testing.T) {
 	itest := integration.NewTest(t, integration.Config{
-		HorizonEnvironment: map[string]string{"INGEST_DISABLE_STATE_VERIFICATION": "true", "CONNECTION_TIMEOUT": "360000"},
-		EnableStellarRPC:   true,
-		QuickExpiration:    true,
+		EnableStellarRPC: true,
 	})
 
 	issuer := itest.Master().Address()
@@ -122,9 +120,7 @@ func TestSacTransfertWithMuxedInfo(t *testing.T) {
 	}
 
 	itest := integration.NewTest(t, integration.Config{
-		HorizonEnvironment: map[string]string{"INGEST_DISABLE_STATE_VERIFICATION": "true"},
-		EnableStellarRPC:   true,
-		QuickExpiration:    true,
+		EnableStellarRPC: true,
 	})
 
 	issuer := itest.Master().Address()
@@ -1134,7 +1130,6 @@ func TestContractTransferBetweenAccountAndContract(t *testing.T) {
 func TestContractTransferBetweenContracts(t *testing.T) {
 	itest := integration.NewTest(t, integration.Config{
 		EnableStellarRPC: true,
-		QuickExpiration:  true,
 	})
 
 	issuer := itest.Master().Address()
@@ -1210,7 +1205,6 @@ func TestContractTransferBetweenContracts(t *testing.T) {
 func TestContractBurnFromAccount(t *testing.T) {
 	itest := integration.NewTest(t, integration.Config{
 		EnableStellarRPC: true,
-		QuickExpiration:  true,
 	})
 
 	issuer := itest.Master().Address()
@@ -1279,7 +1273,6 @@ func TestContractBurnFromAccount(t *testing.T) {
 func TestContractBurnFromContract(t *testing.T) {
 	itest := integration.NewTest(t, integration.Config{
 		EnableStellarRPC: true,
-		QuickExpiration:  true,
 	})
 
 	issuer := itest.Master().Address()
@@ -1341,7 +1334,6 @@ func TestContractBurnFromContract(t *testing.T) {
 func TestContractClawbackFromAccount(t *testing.T) {
 	itest := integration.NewTest(t, integration.Config{
 		EnableStellarRPC: true,
-		QuickExpiration:  true,
 	})
 
 	// Give the master account the revocable flag (needed to set the clawback flag)
@@ -1412,7 +1404,6 @@ func TestContractClawbackFromAccount(t *testing.T) {
 func TestContractClawbackFromContract(t *testing.T) {
 	itest := integration.NewTest(t, integration.Config{
 		EnableStellarRPC: true,
-		QuickExpiration:  true,
 	})
 
 	// Give the master account the revocable flag (needed to set the clawback flag)
