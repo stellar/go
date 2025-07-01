@@ -877,8 +877,8 @@ func (i *Test) simulateTransaction(
 	err = stellarRPCClient.CallResult(context.Background(), "simulateTransaction", struct {
 		Transaction string `json:"transaction"`
 	}{base64}, &result)
-	assert.NoError(i.t, err)
-	assert.Empty(i.t, result.Error)
+	require.NoError(i.t, err)
+	require.Empty(i.t, result.Error)
 	var transactionData xdr.SorobanTransactionData
 	err = xdr.SafeUnmarshalBase64(result.TransactionData, &transactionData)
 	assert.NoError(i.t, err)

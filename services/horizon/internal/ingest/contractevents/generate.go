@@ -23,9 +23,16 @@ func GenerateEvent(
 	asset xdr.Asset,
 	amount *big.Int,
 	passphrase string,
+	muxedInfo *xdr.Memo,
 ) xdr.ContractEvent {
 	var topics []xdr.ScVal
-	data := makeBigAmount(amount)
+	var data xdr.ScVal
+	if muxedInfo != nil {
+		data = makeV4MapData(amount, *muxedInfo)
+	} else {
+		data = makeBigAmount(amount)
+
+	}
 
 	switch type_ {
 	case EventTypeTransfer:
@@ -150,5 +157,62 @@ func makeAsset(asset xdr.Asset) xdr.ScVal {
 	return xdr.ScVal{
 		Type: xdr.ScValTypeScvString,
 		Str:  &assetScStr,
+	}
+}
+
+func makeV4MapData(amount *big.Int, memo xdr.Memo) xdr.ScVal {
+	mapEntries := xdr.ScMap{}
+
+	// Add amount entry
+	amountEntry := xdr.ScMapEntry{
+		Key: xdr.ScVal{
+			Type: xdr.ScValTypeScvSymbol,
+			Sym:  &[]xdr.ScSymbol{"amount"}[0],
+		},
+		Val: makeBigAmount(amount),
+	}
+	mapEntries = append(mapEntries, amountEntry)
+
+	// Add to_muxed_id entry based on memo type
+	var muxedIdVal xdr.ScVal
+	switch memo.Type {
+	case xdr.MemoTypeMemoId:
+		id := memo.Id
+		val := *id
+		muxedIdVal = xdr.ScVal{
+			Type: xdr.ScValTypeScvU64,
+			U64:  &val,
+		}
+	case xdr.MemoTypeMemoText:
+		str := memo.Text
+		val := xdr.ScString(*str)
+		muxedIdVal = xdr.ScVal{
+			Type: xdr.ScValTypeScvString,
+			Str:  &val,
+		}
+	case xdr.MemoTypeMemoHash:
+		bytes := xdr.ScBytes(memo.Hash[:])
+		muxedIdVal = xdr.ScVal{
+			Type:  xdr.ScValTypeScvBytes,
+			Bytes: &bytes,
+		}
+	default:
+		panic(fmt.Errorf("unsupported memo type: %v", memo.Type))
+	}
+
+	muxedIdEntry := xdr.ScMapEntry{
+		Key: xdr.ScVal{
+			Type: xdr.ScValTypeScvSymbol,
+			Sym:  &[]xdr.ScSymbol{"to_muxed_id"}[0],
+		},
+		Val: muxedIdVal,
+	}
+	mapEntries = append(mapEntries, muxedIdEntry)
+	mapPtr := &mapEntries
+
+	// Need to use double pointer for Map field
+	return xdr.ScVal{
+		Type: xdr.ScValTypeScvMap,
+		Map:  &mapPtr,
 	}
 }

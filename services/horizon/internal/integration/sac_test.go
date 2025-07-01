@@ -38,9 +38,7 @@ const LongTermTTL = 10000
 
 func TestContractMintToAccount(t *testing.T) {
 	itest := integration.NewTest(t, integration.Config{
-		HorizonEnvironment: map[string]string{"INGEST_DISABLE_STATE_VERIFICATION": "true", "CONNECTION_TIMEOUT": "360000"},
-		EnableStellarRPC:   true,
-		QuickExpiration:    true,
+		EnableStellarRPC: true,
 	})
 
 	issuer := itest.Master().Address()
@@ -114,6 +112,63 @@ func TestContractMintToAccount(t *testing.T) {
 		balanceContracts: big.NewInt(0),
 		contractID:       stellarAssetContractID(itest, asset),
 	})
+}
+
+func TestTransfertWithMuxedInfo(t *testing.T) {
+	if integration.GetCoreMaxSupportedProtocol() < 23 {
+		t.Skip("This test run does not support less than Protocol 23")
+	}
+
+	itest := integration.NewTest(t, integration.Config{
+		EnableStellarRPC: true,
+	})
+
+	issuer := itest.Master().Address()
+	code := "USD"
+	asset := xdr.MustNewCreditAsset(code, issuer)
+
+	createSAC(itest, asset)
+
+	destAccKp, acc := itest.CreateAccount("100")
+	destAcc := destAccKp.Address()
+	itest.MustEstablishTrustline(destAccKp, acc, txnbuild.MustAssetFromXDR(asset))
+
+	destinationAcID := xdr.MustAddress(destAcc)
+	muxedId := xdr.Uint64(111)
+	destinationMuxedAcc := xdr.MuxedAccount{
+		Type: xdr.CryptoKeyTypeKeyTypeMuxedEd25519,
+		Med25519: &xdr.MuxedAccountMed25519{
+			Id:      muxedId,
+			Ed25519: *destinationAcID.Ed25519,
+		},
+	}
+
+	assertInvokeHostFnSucceeds(
+		itest,
+		itest.Master(),
+		// Transfer is the only SAC function that has support for destination MuxedAccount
+		// See https://github.com/stellar/stellar-protocol/blob/master/core/cap-0067.md#update-the-sac-transfer-function-to-support-muxed-addresses
+		// this test will fail simulateTransaction when called with mint.
+		transfer(itest, issuer, asset, "20", muxedAccountAddressParam(destinationMuxedAcc)),
+	)
+
+	ops, err := itest.Client().Operations(horizonclient.OperationRequest{
+		ForAccount: destAcc,
+		Limit:      1,
+		Order:      "desc",
+	})
+	assert.NoError(t, err)
+	result := ops.Embedded.Records[0]
+	assert.Equal(t, result.GetType(), operations.TypeNames[xdr.OperationTypeInvokeHostFunction])
+	fnType := result.(operations.InvokeHostFunction)
+	assert.Equal(t, fnType.Function, "HostFunctionTypeHostFunctionTypeInvokeContract")
+	balanceChanges := fnType.AssetBalanceChanges
+	assert.Len(t, balanceChanges, 1)
+
+	assert.Equal(t, balanceChanges[0].Type, "mint") // it's not a transfer.
+	assert.Equal(t, destAcc, balanceChanges[0].To)
+	assert.Equal(t, "20.0000000", balanceChanges[0].Amount)
+	assert.Equal(t, "111", balanceChanges[0].DestinationMuxedId)
 }
 
 func createSAC(itest *integration.Test, asset xdr.Asset) {
@@ -1073,7 +1128,6 @@ func TestContractTransferBetweenAccountAndContract(t *testing.T) {
 func TestContractTransferBetweenContracts(t *testing.T) {
 	itest := integration.NewTest(t, integration.Config{
 		EnableStellarRPC: true,
-		QuickExpiration:  true,
 	})
 
 	issuer := itest.Master().Address()
@@ -1149,7 +1203,6 @@ func TestContractTransferBetweenContracts(t *testing.T) {
 func TestContractBurnFromAccount(t *testing.T) {
 	itest := integration.NewTest(t, integration.Config{
 		EnableStellarRPC: true,
-		QuickExpiration:  true,
 	})
 
 	issuer := itest.Master().Address()
@@ -1218,7 +1271,6 @@ func TestContractBurnFromAccount(t *testing.T) {
 func TestContractBurnFromContract(t *testing.T) {
 	itest := integration.NewTest(t, integration.Config{
 		EnableStellarRPC: true,
-		QuickExpiration:  true,
 	})
 
 	issuer := itest.Master().Address()
@@ -1280,7 +1332,6 @@ func TestContractBurnFromContract(t *testing.T) {
 func TestContractClawbackFromAccount(t *testing.T) {
 	itest := integration.NewTest(t, integration.Config{
 		EnableStellarRPC: true,
-		QuickExpiration:  true,
 	})
 
 	// Give the master account the revocable flag (needed to set the clawback flag)
@@ -1351,7 +1402,6 @@ func TestContractClawbackFromAccount(t *testing.T) {
 func TestContractClawbackFromContract(t *testing.T) {
 	itest := integration.NewTest(t, integration.Config{
 		EnableStellarRPC: true,
-		QuickExpiration:  true,
 	})
 
 	// Give the master account the revocable flag (needed to set the clawback flag)
@@ -1545,6 +1595,23 @@ func contractIDParam(contractID xdr.ContractId) xdr.ScAddress {
 	return xdr.ScAddress{
 		Type:       xdr.ScAddressTypeScAddressTypeContract,
 		ContractId: &contractID,
+	}
+}
+
+func muxedAccountAddressParam(muxedAccount xdr.MuxedAccount) xdr.ScVal {
+	id := muxedAccount.Med25519.Id
+	ed25519 := muxedAccount.Med25519.Ed25519
+
+	address := xdr.ScAddress{
+		Type: xdr.ScAddressTypeScAddressTypeMuxedAccount,
+		MuxedAccount: &xdr.MuxedEd25519Account{
+			Id:      id,
+			Ed25519: ed25519,
+		},
+	}
+	return xdr.ScVal{
+		Type:    xdr.ScValTypeScvAddress,
+		Address: &address,
 	}
 }
 

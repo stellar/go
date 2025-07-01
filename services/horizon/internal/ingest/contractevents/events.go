@@ -8,21 +8,21 @@ import (
 )
 
 // EventType represents the type of Stellar asset Contract event
-type EventType int
+type EventType string
 
 const (
-	EventTypeTransfer EventType = iota
-	EventTypeMint
-	EventTypeClawback
-	EventTypeBurn
+	EventTypeTransfer EventType = "transfer"
+	EventTypeMint     EventType = "mint"
+	EventTypeClawback EventType = "clawback"
+	EventTypeBurn     EventType = "burn"
 )
 
 var (
 	eventTypeMap = map[xdr.ScSymbol]EventType{
-		xdr.ScSymbol("transfer"): EventTypeTransfer,
-		xdr.ScSymbol("mint"):     EventTypeMint,
-		xdr.ScSymbol("clawback"): EventTypeClawback,
-		xdr.ScSymbol("burn"):     EventTypeBurn,
+		xdr.ScSymbol(EventTypeTransfer): EventTypeTransfer,
+		xdr.ScSymbol(EventTypeMint):     EventTypeMint,
+		xdr.ScSymbol(EventTypeClawback): EventTypeClawback,
+		xdr.ScSymbol(EventTypeBurn):     EventTypeBurn,
 	}
 
 	ErrUnsupportedTxMetaVersion = errors.New("tx meta version not supported")
@@ -66,7 +66,7 @@ func NewStellarAssetContractEvent(tx ingest.LedgerTransaction, event *xdr.Contra
 func parseCommonEventValidation(event *xdr.ContractEvent, networkPassphrase string) (EventType, xdr.Asset, xdr.ScVec, xdr.ScVal, error) {
 	// Basic validation
 	if event.Type != xdr.ContractEventTypeContract || event.ContractId == nil || event.Body.V != 0 {
-		return 0, xdr.Asset{}, nil, xdr.ScVal{}, ErrNotStellarAssetContract
+		return "", xdr.Asset{}, nil, xdr.ScVal{}, ErrNotStellarAssetContract
 	}
 
 	topics := event.Body.V0.Topics
@@ -75,43 +75,43 @@ func parseCommonEventValidation(event *xdr.ContractEvent, networkPassphrase stri
 
 	// Check minimum topics
 	if len(topics) < 3 {
-		return 0, asset, topics, data, ErrNotStellarAssetContract
+		return "", asset, topics, data, ErrNotStellarAssetContract
 	}
 
-	// Parse function nname
+	// Parse function name
 	fn, ok := topics[0].GetSym()
 	if !ok {
-		return 0, asset, topics, data, ErrNotStellarAssetContract
+		return "", asset, topics, data, ErrNotStellarAssetContract
 	}
 
 	eventType, found := eventTypeMap[fn]
 	if !found {
-		return 0, asset, topics, data, ErrNotStellarAssetContract
+		return "", asset, topics, data, ErrNotStellarAssetContract
 	}
 
 	// Parse asset from last topic
 	assetStr, ok := topics[len(topics)-1].GetStr()
 	if !ok || assetStr == "" {
-		return 0, asset, topics, data, ErrNotStellarAssetContract
+		return "", asset, topics, data, ErrNotStellarAssetContract
 	}
 
 	// Try parsing the asset from its SEP-11 representation
 	assets, err := xdr.BuildAssets(string(assetStr))
 	if err != nil {
-		return 0, asset, topics, data, errors.Join(ErrNotStellarAssetContract, err)
+		return "", asset, topics, data, errors.Join(ErrNotStellarAssetContract, err)
 	} else if len(assets) > 1 {
-		return 0, asset, topics, data, errors.Join(ErrNotStellarAssetContract, fmt.Errorf("more than one asset found in SEP-11 asset string: %s", assetStr))
+		return "", asset, topics, data, errors.Join(ErrNotStellarAssetContract, fmt.Errorf("more than one asset found in SEP-11 asset string: %s", assetStr))
 	}
 
 	asset = assets[0]
 	// Verify contract ID matches asset
 	expectedId, err := asset.ContractID(networkPassphrase)
 	if err != nil {
-		return 0, asset, topics, data, errors.Join(ErrNotStellarAssetContract, err)
+		return "", asset, topics, data, errors.Join(ErrNotStellarAssetContract, err)
 	}
 
 	if expectedId != *event.ContractId {
-		return 0, asset, topics, data, ErrEventIntegrity
+		return "", asset, topics, data, ErrEventIntegrity
 	}
 
 	return eventType, asset, topics, data, nil

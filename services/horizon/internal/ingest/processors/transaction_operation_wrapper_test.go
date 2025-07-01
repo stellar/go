@@ -2323,10 +2323,10 @@ func TestTestInvokeHostFnOperationParticipants(t *testing.T) {
 	transferEvtFromAcc := keypair.MustRandom().Address()
 	transferEvtToAcc := keypair.MustRandom().Address()
 
-	transferContractEvent := contractevents.GenerateEvent(contractevents.EventTypeTransfer, transferEvtFromAcc, transferEvtToAcc, "", randomAsset, big.NewInt(10000000), passphrase)
-	mintContractEvent := contractevents.GenerateEvent(contractevents.EventTypeMint, "", mintEvtAcc, randomAccount, randomAsset, big.NewInt(10000000), passphrase)
-	burnContractEvent := contractevents.GenerateEvent(contractevents.EventTypeBurn, burnEvtAcc, "", randomAccount, randomAsset, big.NewInt(10000000), passphrase)
-	clawbackContractEvent := contractevents.GenerateEvent(contractevents.EventTypeClawback, clawbkEvtAcc, "", randomAccount, randomAsset, big.NewInt(10000000), passphrase)
+	transferContractEvent := contractevents.GenerateEvent(contractevents.EventTypeTransfer, transferEvtFromAcc, transferEvtToAcc, "", randomAsset, big.NewInt(10000000), passphrase, nil)
+	mintContractEvent := contractevents.GenerateEvent(contractevents.EventTypeMint, "", mintEvtAcc, randomAccount, randomAsset, big.NewInt(10000000), passphrase, nil)
+	burnContractEvent := contractevents.GenerateEvent(contractevents.EventTypeBurn, burnEvtAcc, "", randomAccount, randomAsset, big.NewInt(10000000), passphrase, nil)
+	clawbackContractEvent := contractevents.GenerateEvent(contractevents.EventTypeClawback, clawbkEvtAcc, "", randomAccount, randomAsset, big.NewInt(10000000), passphrase, nil)
 
 	tx1 := ingest.LedgerTransaction{
 		Envelope: xdr.TransactionEnvelope{
@@ -2384,10 +2384,10 @@ func TestTestInvokeHostFnOperationParticipants(t *testing.T) {
 	zeroContractStrKey, err := strkey.Encode(strkey.VersionByteContract, contractId[:])
 	assert.NoError(t, err)
 
-	transferContractEvent = contractevents.GenerateEvent(contractevents.EventTypeTransfer, zeroContractStrKey, zeroContractStrKey, "", randomAsset, big.NewInt(10000000), passphrase)
-	mintContractEvent = contractevents.GenerateEvent(contractevents.EventTypeMint, "", zeroContractStrKey, randomAccount, randomAsset, big.NewInt(10000000), passphrase)
-	burnContractEvent = contractevents.GenerateEvent(contractevents.EventTypeBurn, zeroContractStrKey, "", randomAccount, randomAsset, big.NewInt(10000000), passphrase)
-	clawbackContractEvent = contractevents.GenerateEvent(contractevents.EventTypeClawback, zeroContractStrKey, "", randomAccount, randomAsset, big.NewInt(10000000), passphrase)
+	transferContractEvent = contractevents.GenerateEvent(contractevents.EventTypeTransfer, zeroContractStrKey, zeroContractStrKey, "", randomAsset, big.NewInt(10000000), passphrase, nil)
+	mintContractEvent = contractevents.GenerateEvent(contractevents.EventTypeMint, "", zeroContractStrKey, randomAccount, randomAsset, big.NewInt(10000000), passphrase, nil)
+	burnContractEvent = contractevents.GenerateEvent(contractevents.EventTypeBurn, zeroContractStrKey, "", randomAccount, randomAsset, big.NewInt(10000000), passphrase, nil)
+	clawbackContractEvent = contractevents.GenerateEvent(contractevents.EventTypeClawback, zeroContractStrKey, "", randomAccount, randomAsset, big.NewInt(10000000), passphrase, nil)
 
 	tx2 := ingest.LedgerTransaction{
 		Envelope: xdr.TransactionEnvelope{
