@@ -171,14 +171,15 @@ func NewTest(t *testing.T, config Config) *Test {
 		TestingSorobanHighLimitOverride:       true,
 		OverrideEvictionParamsForTesting:      false,
 	}
-	if config.QuickExpiration {
-		validatorParams.TestingSorobanHighLimitOverride = true
-		validatorParams.TestingMinimumPersistentEntryLifetime = 10
-	}
 	if config.QuickEviction {
 		validatorParams.OverrideEvictionParamsForTesting = true
 		validatorParams.TestingStartingEvictionScanLevel = 2
 		validatorParams.TestingMaxEntriesToArchive = 100
+		// QuickEviction implies QuickExpiration
+		config.QuickExpiration = true
+	}
+	if config.QuickExpiration {
+		validatorParams.TestingMinimumPersistentEntryLifetime = 10
 	}
 	var i *Test
 	if !config.SkipCoreContainerCreation {

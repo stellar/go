@@ -546,8 +546,7 @@ func TestEvictionAndRestoration(t *testing.T) {
 			// want state verification to detect this
 			"ingest-disable-state-verification": "true",
 		},
-		QuickExpiration: true,
-		QuickEviction:   true,
+		QuickEviction: true,
 	})
 
 	issuer := itest.Master().Address()
@@ -647,8 +646,7 @@ func TestEvictionOfSACWithActiveBalance(t *testing.T) {
 			// want state verification to detect this
 			"ingest-disable-state-verification": "true",
 		},
-		QuickExpiration: true,
-		QuickEviction:   true,
+		QuickEviction: true,
 	})
 
 	issuer := itest.Master().Address()
@@ -816,8 +814,7 @@ func TestEvictionOfSACAndRestoration(t *testing.T) {
 			// want state verification to detect this
 			"ingest-disable-state-verification": "true",
 		},
-		QuickExpiration: true,
-		QuickEviction:   true,
+		QuickEviction: true,
 	})
 
 	issuer := itest.Master().Address()
