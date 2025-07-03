@@ -45,7 +45,7 @@ This image supports connecting to GCS buckets for ledger data instead of captive
       ```
 
 #### GCS Datastore settings
-- Purpose: Defines the GCS bucket name and ledger partioning used on the buckets.
+- Purpose: Defines the GCS bucket name and ledger partioning used on the buckets. These settings are referenced as a single toml file at runtime. Here is an example [datastore_config.toml](../../../galexie/config.example.toml)
 - Two options are available to provide this to container:
   - As an environment variable:
     - Pass the datastore TOML config as a string(including line breaks, tabs) in the `DATASTORE_CONFIG_PLAIN` environment variable:
