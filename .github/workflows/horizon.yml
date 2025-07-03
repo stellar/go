@@ -126,7 +126,7 @@ jobs:
     runs-on: ubuntu-22.04
     env:
       GO_VERSION: 1.23.4
-      STELLAR_CORE_VERSION: 22.3.0-2485.e643061a4.jammy
+      STELLAR_CORE_VERSION: 22.3.1-2509.c2e465a3e.jammy~do~not~use~in~prd
     steps:
       - uses: actions/checkout@v3
         with:
