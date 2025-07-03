@@ -24,7 +24,6 @@ var ingestBuildStateSequence uint32
 var ingestBuildStateSkipChecks bool
 var ingestVerifyFrom, ingestVerifyTo, ingestVerifyDebugServerPort uint32
 var ingestVerifyState bool
-var ingestVerifyLedgerBackendStr string
 var ingestVerifyStorageBackendConfigPath string
 var ingestVerifyLedgerBackendType ingest.LedgerBackendType
 var processVerifyRangeFn = processVerifyRange
@@ -81,14 +80,8 @@ var ingestVerifyRangeCmdOpts = support.ConfigOptions{
 		FlagDefault: uint32(0),
 		Usage:       "[optional] opens a net/http/pprof server at given port",
 	},
-	generateLedgerBackendOpt(&ingestVerifyLedgerBackendStr, &ingestVerifyLedgerBackendType),
-	{
-		Name:      "datastore-config",
-		ConfigKey: &ingestVerifyStorageBackendConfigPath,
-		OptType:   types.String,
-		Required:  false,
-		Usage:     "[optional] Specify the path to the datastore config file (required for datastore backend)",
-	},
+	generateLedgerBackendOpt(&ingestVerifyLedgerBackendType),
+	generateDatastoreConfigOpt(&ingestVerifyStorageBackendConfigPath),
 }
 
 var stressTestNumTransactions, stressTestChangesPerTransaction int
@@ -130,10 +123,6 @@ func DefineIngestCommands(rootCmd *cobra.Command, horizonConfig *horizon.Config,
 				return err
 			}
 
-			if err := horizon.ApplyFlags(horizonConfig, horizonFlags, horizon.ApplyOptions{RequireCaptiveCoreFullConfig: false}); err != nil {
-				return err
-			}
-
 			if ingestVerifyDebugServerPort != 0 {
 				go func() {
 					log.Infof("Starting debug server at: %d", ingestVerifyDebugServerPort)
@@ -157,6 +146,7 @@ func DefineIngestCommands(rootCmd *cobra.Command, horizonConfig *horizon.Config,
 			}
 
 			storageBackendConfig := ingest.StorageBackendConfig{}
+			noCaptiveCore := false
 			if ingestVerifyLedgerBackendType == ingest.BufferedStorageBackend {
 				if ingestVerifyStorageBackendConfigPath == "" {
 					return fmt.Errorf("datastore-config file path is required with datastore backend")
@@ -165,8 +155,12 @@ func DefineIngestCommands(rootCmd *cobra.Command, horizonConfig *horizon.Config,
 				if storageBackendConfig, err = loadStorageBackendConfig(ingestVerifyStorageBackendConfigPath); err != nil {
 					return err
 				}
+				noCaptiveCore = true
 			}
 
+			if err := horizon.ApplyFlags(horizonConfig, horizonFlags, horizon.ApplyOptions{NoCaptiveCore: noCaptiveCore, RequireCaptiveCoreFullConfig: false}); err != nil {
+				return err
+			}
 			err := processVerifyRangeFn(horizonConfig, horizonFlags, storageBackendConfig)
 			if err != nil {
 				return err
@@ -395,4 +389,15 @@ func processVerifyRange(horizonConfig *horizon.Config, horizonFlags config.Confi
 		ingestVerifyTo,
 		ingestVerifyState,
 	)
+}
+
+// generateDatastoreConfigOpt returns a *support.ConfigOption for the datastore-config flag
+func generateDatastoreConfigOpt(configKey *string) *support.ConfigOption {
+	return &support.ConfigOption{
+		Name:      "datastore-config",
+		ConfigKey: configKey,
+		OptType:   types.String,
+		Required:  false,
+		Usage:     "[optional] Specify the path to the datastore config file (required for datastore backend)",
+	}
 }

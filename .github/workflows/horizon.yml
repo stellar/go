@@ -124,8 +124,7 @@ jobs:
     runs-on: ubuntu-22.04
     env:
       GO_VERSION: 1.23.4
-      STELLAR_CORE_VERSION: 22.3.0-2485.e643061a4.focal
-      CAPTIVE_CORE_STORAGE_PATH: /tmp
+      STELLAR_CORE_VERSION: 22.3.0-2485.e643061a4.jammy
     steps:
       - uses: actions/checkout@v3
         with:
@@ -134,7 +133,7 @@ jobs:
 
       - name: Build and test the Verify Range Docker image
         run: |
-          docker build --build-arg="GO_VERSION=$GO_VERSION" -f services/horizon/docker/verify-range/Dockerfile -t stellar/horizon-verify-range services/horizon/docker/verify-range/
+          docker build --build-arg="GO_VERSION=$GO_VERSION" --build-arg="STELLAR_CORE_VERSION=$STELLAR_CORE_VERSION" -f services/horizon/docker/verify-range/Dockerfile -t stellar/horizon-verify-range services/horizon/docker/verify-range/
           # Any range should do for basic testing, this range was chosen pretty early in history so that it only takes a few mins to run
           docker run -e BRANCH=$(git rev-parse HEAD) -e FROM=10000063 -e TO=10000127 stellar/horizon-verify-range
 
