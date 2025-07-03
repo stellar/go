@@ -60,12 +60,17 @@ func initRootCmd(cmd *cobra.Command,
 	}
 }
 
-func NewRootCmd() *cobra.Command {
+func newRootBaseCmd() (*cobra.Command, *horizon.Config, config.ConfigOptions) {
 	horizonGlobalConfig, horizonGlobalFlags := horizon.Flags()
 	cmd := createRootCmd(horizonGlobalConfig, horizonGlobalFlags)
 	initRootCmd(cmd, cmd.HelpFunc(), cmd.UsageFunc(), horizonGlobalFlags)
-	DefineDBCommands(cmd, horizonGlobalConfig, horizonGlobalFlags)
-	return cmd
+	return cmd, horizonGlobalConfig, horizonGlobalFlags
+}
+
+func NewRootCmd() *cobra.Command {
+	rootCmd, horizonGlobalConfig, horizonGlobalFlags := newRootBaseCmd()
+	DefineDBCommands(rootCmd, horizonGlobalConfig, horizonGlobalFlags)
+	return rootCmd
 }
 
 // ErrUsage indicates we should print the usage string and exit with code 1

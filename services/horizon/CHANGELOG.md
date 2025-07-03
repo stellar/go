@@ -48,6 +48,9 @@ In Protocol 23, Stellar Core removes in-memory mode and requires on-disk mode (u
 - The `errorResultXdr` field from the response of the async transaction submission endpoint has been removed ([5737](https://github.com/stellar/go/pull/5737)).
 - The `num_archived_contracts` and `archived_contracts_amount` fields from the `/assets` response have been removed ([5611](https://github.com/stellar/go/pull/5611)).
 
+- Add `--ledgerbackend` and `--datastore-config` options to `ingest verify-range` command to support CDP datastore backend configuration ([5553](https://github.com/stellar/go/pull/5553)).
+
+
 ## 22.0.3
 
 ### Fixed
