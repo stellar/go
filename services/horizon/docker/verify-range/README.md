@@ -19,11 +19,11 @@ to provide an external volume mount to the container for `/data` of at least 300
 
 ### Running in AWS Batch
 
-| Name                 | Description                                                          |
-|----------------------|----------------------------------------------------------------------|
-| `BRANCH`             | Git branch to build (useful for testing PRs)                         |
-| `BATCH_START_LEDGER` | First ledger of the AWS Batch Job, must be a checkpoint ledger or 1. |
-| `BATCH_SIZE`         | Size of the batch, must be multiple of 64.                           |
+| Name                        | Description                                                          |
+|-----------------------------|----------------------------------------------------------------------|
+| `AWS_BATCH_JOB_ARRAY_INDEX` | The zero based index of a single batch Job.                          |
+| `BATCH_START_LEDGER`        | The `FROM` ledger of the requested ledger range to verify.           |
+| `BATCH_SIZE`                | Size of the batch, must be multiple of 64.                           |
 
 
 ### Datastore and GCP Credentials Usage
@@ -58,10 +58,12 @@ This image supports connecting to GCS buckets for ledger data instead of captive
       docker run -v /host/path/datastore-config.toml:/tmp/datastore-config.toml -e DATASTORE_CONFIG=/tmp/datastore-config.toml 
       ```
 
-### Example
+### Examples of running container
 
-When you start 10 jobs with `BATCH_START_LEDGER=63` and `BATCH_SIZE=64`
-it will run the following ranges:
+#### Batch jobs example
+When run from aws batch, given `BATCH_START_LEDGER=63` and `BATCH_SIZE=64`
+it will generate runner jobs and give them each a  `AWS_BATCH_JOB_ARRAY_INDEX`. 
+The verify-range container will then generate the associated ledger ranges per each job:
 
 | `AWS_BATCH_JOB_ARRAY_INDEX` | `FROM` | `TO` |
 |-----------------------------|--------|------|
@@ -70,8 +72,9 @@ it will run the following ranges:
 | 2                           | 191    | 255  |
 | 3                           | 255    | 319  |
 
-Running the image locally with `docker run`
-* example to run verify range with captive, same as before:
+#### `docker run` example
+Running the verify-range image as local container with `docker run`
+* run verify range and use captive core to get ledgers from pubnet:
   ```
   docker run -e FROM=63 \
                       -e TO=127 \
@@ -79,7 +82,7 @@ Running the image locally with `docker run`
                       -e BASE_BRANCH=master \
                       verify-range:latest
   ```  
-* example to run verify range with gcs datastore:
+* run verify range with gcs datastore to use precomputed ledger metadata from buckets, captive core is not used:
   ```
   docker run -e FROM=63 \
                       -e TO=127 \
