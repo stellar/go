@@ -28,33 +28,32 @@ to provide an external volume mount to the container for `/data` of at least 300
 
 ### Datastore and GCP Credentials Usage
 
-This image supports connecting to GCS buckets for ledger data instead of captive core. To use this feature, set three environment variables:
+This image supports connecting to GCS buckets for ledger data instead of captive core. To use this feature configure the container with these additional settings:
 
-#### 1. `GCP_CREDS`
-- **Purpose:** Provide GCP credentials to the container.
-- **Two ways to provide:**
-  - **As an environment variable:**
-    - Pass the JSON credentials as a string in the `GCP_CREDS` environment variable:
+#### GCP Credentials
+- Purpose: To access GCS buckets the image needs GCP credentials. 
+- Two options are available to provide this to container:
+  - As an environment variable:
+    - Pass the GCP JSON credentials as a string in a `GCP_CREDS` environment variable:
       ```sh
       docker run -e GCP_CREDS='{...}' ...
       ```
-  - **As a mounted file:**
-    - Mount a host file containing the credentials to the container, e.g.:
+  - As a volume mount:
+    - Mount the GCP json credentials file on host to the container, e.g.:
       ```sh
-      docker run -v /host/path/gcp.json:/tmp/gcp.json -e GOOGLE_APPLICATION_CREDENTIALS=/tmp/gcp.json ...
+      docker run -v /host/path/credentials.json:/tmp/credentials.json -e GOOGLE_APPLICATION_CREDENTIALS=/tmp/credentials.json ...
       ```
-    - The application will use the credentials from the mounted file.
 
-#### 2. `DATASTORE_CONFIG_PLAIN`
-- **Purpose:** Supplies GCS Datastore backend configuration for the container.
-- **Two ways to provide:**
-  - **As an environment variable:**
-    - Pass the TOML config as a string(including line breaks, tabs) in the `DATASTORE_CONFIG_PLAIN` environment variable:
+#### GCS Datastore settings
+- Purpose: Defines the GCS bucket name and ledger partioning used on the buckets.
+- Two options are available to provide this to container:
+  - As an environment variable:
+    - Pass the datastore TOML config as a string(including line breaks, tabs) in the `DATASTORE_CONFIG_PLAIN` environment variable:
       ```sh
-      docker run -e DATASTORE_CONFIG_PLAIN='[datastore]\nproject_id = "..."' 
+      docker run -e DATASTORE_CONFIG_PLAIN='[buffered_storage_backend_config]\nbuffer_size = 5\n ...' 
       ```
-  - **As a mounted file:**
-    - Mount a host file containing the datastore config file to the container, e.g.:
+  - As a volume mount:
+    - Mount the datastore toml config file from host to the container, e.g.:
       ```sh
       docker run -v /host/path/datastore-config.toml:/tmp/datastore-config.toml -e DATASTORE_CONFIG=/tmp/datastore-config.toml 
       ```
