@@ -114,7 +114,7 @@ func TestContractMintToAccount(t *testing.T) {
 	})
 }
 
-func TestTransfertWithMuxedInfo(t *testing.T) {
+func TestContractEventsWithMuxedInfo(t *testing.T) {
 	if integration.GetCoreMaxSupportedProtocol() < 23 {
 		t.Skip("This test run does not support less than Protocol 23")
 	}
@@ -124,14 +124,16 @@ func TestTransfertWithMuxedInfo(t *testing.T) {
 	})
 
 	issuer := itest.Master().Address()
-	code := "USD"
-	asset := xdr.MustNewCreditAsset(code, issuer)
+	usdCode := "USD"
+	usdAsset := xdr.MustNewCreditAsset(usdCode, issuer)
+	nativeAsset := xdr.MustNewNativeAsset()
 
-	createSAC(itest, asset)
+	createSAC(itest, usdAsset)
+	createSAC(itest, nativeAsset)
 
 	destAccKp, acc := itest.CreateAccount("100")
 	destAcc := destAccKp.Address()
-	itest.MustEstablishTrustline(destAccKp, acc, txnbuild.MustAssetFromXDR(asset))
+	itest.MustEstablishTrustline(destAccKp, acc, txnbuild.MustAssetFromXDR(usdAsset))
 
 	destinationAcID := xdr.MustAddress(destAcc)
 	muxedId := xdr.Uint64(111)
@@ -143,22 +145,22 @@ func TestTransfertWithMuxedInfo(t *testing.T) {
 		},
 	}
 
-	assertInvokeHostFnSucceeds(
+	_, mintTx, _ := assertInvokeHostFnSucceeds(
 		itest,
 		itest.Master(),
 		// Transfer is the only SAC function that has support for destination MuxedAccount
 		// See https://github.com/stellar/stellar-protocol/blob/master/core/cap-0067.md#update-the-sac-transfer-function-to-support-muxed-addresses
 		// this test will fail simulateTransaction when called with mint.
-		transfer(itest, issuer, asset, "20", muxedAccountAddressParam(destinationMuxedAcc)),
+		transfer(itest, issuer, usdAsset, "20", muxedAccountAddressParam(destinationMuxedAcc)),
 	)
 
-	ops, err := itest.Client().Operations(horizonclient.OperationRequest{
+	mintTxOperations, err := itest.Client().Operations(horizonclient.OperationRequest{
 		ForAccount: destAcc,
 		Limit:      1,
 		Order:      "desc",
 	})
 	assert.NoError(t, err)
-	result := ops.Embedded.Records[0]
+	result := mintTxOperations.Embedded.Records[0]
 	assert.Equal(t, result.GetType(), operations.TypeNames[xdr.OperationTypeInvokeHostFunction])
 	fnType := result.(operations.InvokeHostFunction)
 	assert.Equal(t, fnType.Function, "HostFunctionTypeHostFunctionTypeInvokeContract")
@@ -169,6 +171,53 @@ func TestTransfertWithMuxedInfo(t *testing.T) {
 	assert.Equal(t, destAcc, balanceChanges[0].To)
 	assert.Equal(t, "20.0000000", balanceChanges[0].Amount)
 	assert.Equal(t, "111", balanceChanges[0].DestinationMuxedId)
+
+	mintTxEffects := getTxEffects(itest, mintTx, usdAsset)
+	require.Len(t, mintTxEffects, 1)
+	creditEffect := assertContainsEffect(t, mintTxEffects,
+		effects.EffectAccountCredited)[0].(effects.AccountCredited)
+	assert.Equal(t, usdCode, creditEffect.Asset.Code)
+	assert.Equal(t, issuer, creditEffect.Asset.Issuer)
+	assert.Equal(t, "20.0000000", creditEffect.Amount)
+	assert.Equal(t, destAcc, creditEffect.Account)
+	assert.Equal(t, destAcc, creditEffect.Account)
+	assert.Equal(t, uint64(111), creditEffect.AccountMuxedID)
+	assert.Equal(t, destinationMuxedAcc.Address(), creditEffect.AccountMuxed)
+
+	_, transferTx, _ := assertInvokeHostFnSucceeds(
+		itest,
+		itest.Master(),
+		// this time, since asset is XLM, this will result in a transfer event with muxed info
+		transfer(itest, itest.Master().Address(), nativeAsset, "100", muxedAccountAddressParam(destinationMuxedAcc)),
+	)
+
+	transferTxOperations, err := itest.Client().Operations(horizonclient.OperationRequest{
+		ForAccount: destAcc,
+		Limit:      1,
+		Order:      "desc",
+	})
+	assert.NoError(t, err)
+	result = transferTxOperations.Embedded.Records[0]
+	assert.Equal(t, result.GetType(), operations.TypeNames[xdr.OperationTypeInvokeHostFunction])
+	fnType = result.(operations.InvokeHostFunction)
+	assert.Equal(t, fnType.Function, "HostFunctionTypeHostFunctionTypeInvokeContract")
+	balanceChanges = fnType.AssetBalanceChanges
+	assert.Len(t, balanceChanges, 1)
+	assert.Equal(t, balanceChanges[0].Type, "transfer")
+	assert.Equal(t, destAcc, balanceChanges[0].To)
+	assert.Equal(t, "100.0000000", balanceChanges[0].Amount)
+	assert.Equal(t, "111", balanceChanges[0].DestinationMuxedId)
+
+	transferTxEvents := getTxEffects(itest, transferTx, nativeAsset)
+	require.Len(t, transferTxEvents, 2)
+	creditEffect = assertContainsEffect(t, transferTxEvents,
+		effects.EffectAccountCredited)[0].(effects.AccountCredited)
+	assert.Equal(t, "native", creditEffect.Asset.Type)
+	assert.Equal(t, "100.0000000", creditEffect.Amount)
+	assert.Equal(t, destAcc, creditEffect.Account)
+	assert.Equal(t, destAcc, creditEffect.Account)
+	assert.Equal(t, uint64(111), creditEffect.AccountMuxedID)
+	assert.Equal(t, destinationMuxedAcc.Address(), creditEffect.AccountMuxed)
 }
 
 func createSAC(itest *integration.Test, asset xdr.Asset) {

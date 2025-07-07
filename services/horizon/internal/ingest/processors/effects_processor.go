@@ -1465,6 +1465,17 @@ func (e *effectsWrapper) addInvokeHostFunctionEffects(events []xdr.ContractEvent
 		// Note: We ignore effects that involve contracts (until the day we have
 		// contract_debited/credited effects, may it never come :pray:)
 		//
+		memo := evt.DestinationMemo
+		var memoId *uint64
+		switch memo.Type {
+		case xdr.MemoTypeMemoId:
+			m := uint64(memo.MustId())
+			memoId = &m
+		case xdr.MemoTypeMemoNone:
+		// do nothing
+		default:
+			return fmt.Errorf("invalid memo type in SAC Event: %v", memo.Type)
+		}
 
 		switch evt.Type {
 		// Transfer events generate an `account_debited` effect for the `from`
@@ -1491,12 +1502,34 @@ func (e *effectsWrapper) addInvokeHostFunctionEffects(events []xdr.ContractEvent
 			}
 
 			if strkey.IsValidEd25519PublicKey(evt.To) {
-				if err := e.add(
-					evt.To,
-					null.String{},
-					history.EffectAccountCredited,
-					toDetails,
-				); err != nil {
+				// Need to check if there is muxedId present in transfer SAC event
+				// The `To` in the SAC event will never be a M-address.
+				// If there is a muxedId, then you need to unpack it to an M-string and pass it to calling e.add()
+				var destMuxedAddress string
+				if memoId != nil {
+					muxedAcc, err := xdr.MuxedAccountFromAccountId(evt.To, *memoId)
+					if err != nil {
+						return errors.Wrapf(err, "invokeHostFunction asset details error in generating destination muxed address")
+					}
+					destMuxedAddress = muxedAcc.Address()
+				}
+				var err error
+				if destMuxedAddress == "" {
+					err = e.add(
+						evt.To,
+						null.String{},
+						history.EffectAccountCredited,
+						toDetails,
+					)
+				} else {
+					err = e.add(
+						evt.To,
+						null.StringFrom(destMuxedAddress),
+						history.EffectAccountCredited,
+						toDetails)
+				}
+
+				if err != nil {
 					return errors.Wrapf(err, "invokeHostFunction asset details from contract xfr-to had an error")
 				}
 			} else {
@@ -1509,13 +1542,34 @@ func (e *effectsWrapper) addInvokeHostFunctionEffects(events []xdr.ContractEvent
 		case contractevents.EventTypeMint:
 			details["amount"] = amount.String128(evt.Amount)
 			if strkey.IsValidEd25519PublicKey(evt.To) {
-				if err := e.add(
-					evt.To,
-					null.String{},
-					history.EffectAccountCredited,
-					details,
-				); err != nil {
-					return errors.Wrapf(err, "invokeHostFunction asset details from contract mint had an error")
+				// Need to check if there is muxedId present in mint SAC event
+				// The `To` in the SAC event will never be a M-address.
+				// If there is a muxedId, then you need to unpack it to an M-string and pass it to calling e.add()
+				var destMuxedAddress string
+				if memoId != nil {
+					muxedAcc, err := xdr.MuxedAccountFromAccountId(evt.To, *memoId)
+					if err != nil {
+						return errors.Wrapf(err, "invokeHostFunction asset details error in generating destination muxed address")
+					}
+					destMuxedAddress = muxedAcc.Address()
+				}
+				var err error
+				if destMuxedAddress == "" {
+					err = e.add(
+						evt.To,
+						null.String{},
+						history.EffectAccountCredited,
+						details)
+				} else {
+					err = e.add(
+						evt.To,
+						null.StringFrom(destMuxedAddress),
+						history.EffectAccountCredited,
+						details)
+				}
+
+				if err != nil {
+					return errors.Wrapf(err, "invokeHostFunction asset details from contract xfr-to had an error")
 				}
 			} else {
 				details["contract"] = evt.To
