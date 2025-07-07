@@ -1494,7 +1494,7 @@ func (e *effectsWrapper) addInvokeHostFunctionEffects(events []xdr.ContractEvent
 					history.EffectAccountDebited,
 					details,
 				); err != nil {
-					return errors.Wrapf(err, "invokeHostFunction asset details from contract xfr-from had an error")
+					return errors.Wrapf(err, "invokeHostFunction: failed to add account debit effect during contract transfer from %s", evt.From)
 				}
 			} else {
 				details["contract"] = evt.From
@@ -1509,7 +1509,7 @@ func (e *effectsWrapper) addInvokeHostFunctionEffects(events []xdr.ContractEvent
 				if memoId != nil {
 					muxedAcc, err := xdr.MuxedAccountFromAccountId(evt.To, *memoId)
 					if err != nil {
-						return errors.Wrapf(err, "invokeHostFunction asset details error in generating destination muxed address")
+						return errors.Wrapf(err, "invokeHostFunction: failed to generate muxedAddress during contract transfer for destination %s ", evt.To)
 					}
 					destMuxedAddress = muxedAcc.Address()
 				}
@@ -1530,7 +1530,7 @@ func (e *effectsWrapper) addInvokeHostFunctionEffects(events []xdr.ContractEvent
 				}
 
 				if err != nil {
-					return errors.Wrapf(err, "invokeHostFunction asset details from contract xfr-to had an error")
+					return errors.Wrapf(err, "invokeHostFunction: failed to add account credit effect during contract transfer to %s", evt.To)
 				}
 			} else {
 				toDetails["contract"] = evt.To
@@ -1549,7 +1549,7 @@ func (e *effectsWrapper) addInvokeHostFunctionEffects(events []xdr.ContractEvent
 				if memoId != nil {
 					muxedAcc, err := xdr.MuxedAccountFromAccountId(evt.To, *memoId)
 					if err != nil {
-						return errors.Wrapf(err, "invokeHostFunction asset details error in generating destination muxed address")
+						return errors.Wrapf(err, "invokeHostFunction: failed to generate muxedAddress during contract mint for destination %s ", evt.To)
 					}
 					destMuxedAddress = muxedAcc.Address()
 				}
@@ -1569,7 +1569,7 @@ func (e *effectsWrapper) addInvokeHostFunctionEffects(events []xdr.ContractEvent
 				}
 
 				if err != nil {
-					return errors.Wrapf(err, "invokeHostFunction asset details from contract xfr-to had an error")
+					return errors.Wrapf(err, "invokeHostFunction: failed to add account credit effect during contract mint to %s", evt.To)
 				}
 			} else {
 				details["contract"] = evt.To
