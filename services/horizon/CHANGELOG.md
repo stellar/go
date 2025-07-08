@@ -11,6 +11,8 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 **This release of Horizon requires stellar-core version [23.0.0rc.1](https://github.com/stellar/stellar-core/releases/tag/v23.0.0rc.1) or higher. Older versions of stellar-core are incompatible with this build of Horizon.**
 
+**This release of Horizon adds a lengthy database migration ([5745](https://github.com/stellar/go/pull/5745)) to improve the ingestion performance of trade aggregations. Horizon will not be able to ingest new ledgers while the migration is running.**
+
 ### Breaking Changes
 In Protocol 23, Stellar Core removes in-memory mode and requires on-disk mode (using BucketListDB) for captive core ([5627](https://github.com/stellar/go/pull/5627)). As a result, the following configurations are no longer supported and have been removed:
 - `CAPTIVE_CORE_USE_DB`
