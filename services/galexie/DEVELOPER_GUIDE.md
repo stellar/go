@@ -1,4 +1,3 @@
-
 # Galexie Developer Guide
 Galexie is a tool to export Stellar network transaction data to cloud storage in a way that is easy to access.
 
@@ -15,7 +14,7 @@ The goal of Galexie is to build an easy-to-use tool to export Stellar network le
 To achieve its goals, Galexie uses the following architecture, which consists of the 3 main components:
 - Captive-core to extract raw transaction metadata from the Stellar Network.
 - Export manager to bundles and organizes the ledgers to get them ready for export.
-- The cloud storage plugin writes to the cloud storage. This is specific to the type of cloud storage, GCS in this case.
+- The cloud storage plugin writes to the cloud storage. This supports multiple storage backends including Google Cloud Storage (GCS), Amazon S3, and S3-compatible storage services.
 
 
 ![Architecture](./architecture.png)
@@ -29,8 +28,19 @@ To achieve its goals, Galexie uses the following architecture, which consists of
 - Objects are compressed before uploading using the [zstd](http://facebook.github.io/zstd/) (zstandard) compression algorithm to optimize network usage and storage needs.
 
 ## Data Storage
-- An example implementation of `DataStore` for GCS, Google Cloud Storage. This plugin is located in the [support](https://github.com/stellar/go/tree/master/support/datastore) package. 
-- Galexie currently implements the interface only for Google Cloud Storage (GCS). The [GCS plugin](https://github.com/stellar/go/blob/master/support/datastore/gcs_datastore.go) uses GCS-specific behaviors like conditional puts, automatic retry, metadata, and CRC checksum.
+Galexie implements a pluggable data storage architecture through the `DataStore` interface. This plugin is located in the [support](https://github.com/stellar/go/tree/master/support/datastore) package and supports multiple storage backends:
+
+### Google Cloud Storage (GCS)
+- The [GCS plugin](https://github.com/stellar/go/blob/master/support/datastore/gcs_datastore.go) uses GCS-specific behaviors like conditional puts, automatic retry, metadata, and CRC checksum validation.
+
+### Amazon S3 and S3-Compatible Storage
+- The [S3 plugin](https://github.com/stellar/go/blob/master/support/datastore/s3_datastore.go) supports AWS S3 and S3-compatible storage services such as:
+  - Amazon S3
+  - Cloudflare R2
+  - MinIO
+  - DigitalOcean Spaces
+  - Any other S3-compatible object storage
+- Features include conditional puts using `If-None-Match` headers, metadata storage, CRC32C checksum validation, and automatic retry mechanisms.
 
 ## Build and Run using Docker
 The Dockerfile contains all the necessary dependencies (e.g., Stellar-core) required to run Galexie.
@@ -59,7 +69,7 @@ $ GALEXIE_INTEGRATION_TESTS_ENABLED=true go test -v -race -run TestGalexieTestSu
 ```
 
 ## Adding support for a new storage type
-Support for different data storage types are encapsulated as 'plugins', which are implementation of `DataStore` interface in a go package. To add a data storage plugin based on a new storage type (e.g. AWS S3), follow these steps:
+Support for different data storage types are encapsulated as 'plugins', which are implementation of `DataStore` interface in a go package. To add a data storage plugin based on a new storage type, follow these steps:
 
 - A data storage plugin must implement the [DataStore](https://github.com/stellar/go/blob/master/support/datastore/datastore.go) interface.
 - Add support for new datastore-specific features. Implement any datastore-specific custom logic. Different datastores have different ways of handling 

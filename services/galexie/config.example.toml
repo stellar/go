@@ -7,12 +7,23 @@ admin_port = 6061
 
 # Datastore Configuration
 [datastore_config]
-# Specifies the type of datastore. Currently, only Google Cloud Storage (GCS) is supported.
+# Specifies the type of datastore. Currently, Google Cloud Storage (GCS) and s3-compatible storage (S3) are supported.
 type = "GCS"
 
 [datastore_config.params]
+# params required for GCS storage
 # The Google Cloud Storage bucket path for storing data, with optional subpaths for organization.
 destination_bucket_path = "your-bucket-name/<optional_subpath1>/<optional_subpath2>/"
+
+# params required for S3-compatible storage
+# Check https://docs.aws.amazon.com/cli/latest/topic/config-vars.html#the-shared-credentials-file for more information on how to set up credentials.
+# The S3 bucket path for storing data, with optional subpaths for organization.
+#destination_bucket_path = "your-bucket-name/<optional_subpath1>/<optional_subpath2>/"
+# The region where the S3 bucket is located.
+#region = "us-west-1"  # Example region, change as needed.
+# The endpoint URL for the S3-compatible storage. If you are using Amazon S3, you can leave this commented out.
+# The below example is for Cloudflare R2, but you can replace it with your S3-compatible storage endpoint.
+#endpoint_url = "https://00000000000000000000000000000000.cloudflarestorage.com"
 
 [datastore_config.schema]
 # Configuration for data organization
