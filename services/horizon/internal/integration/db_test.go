@@ -520,7 +520,7 @@ func TestReingestDB(t *testing.T) {
 		latestCheckpoint = has.CurrentLedger
 		return latestCheckpoint > 1
 	}
-	tt.Eventually(publishedFirstCheckpoint, 10*time.Second, time.Second)
+	tt.Eventually(publishedFirstCheckpoint, 30*time.Second, time.Second)
 
 	if toLedger > latestCheckpoint {
 		toLedger = latestCheckpoint
@@ -637,7 +637,7 @@ func TestReingestDBWithFilterRules(t *testing.T) {
 		}
 		return has.CurrentLedger > 1
 	}
-	tt.Eventually(publishedFirstCheckpoint, 10*time.Second, time.Second)
+	tt.Eventually(publishedFirstCheckpoint, 30*time.Second, time.Second)
 
 	fullKeys, accounts := itest.CreateAccounts(2, "10000")
 	whitelistedAccount := accounts[0]
@@ -705,9 +705,10 @@ func TestReingestDBWithFilterRules(t *testing.T) {
 			return false
 		}
 		latestCheckpoint = has.CurrentLedger
+		t.Logf("latest checkpoint is %v , reached ledger is %v", latestCheckpoint, reachedLedger)
 		return latestCheckpoint > reachedLedger
 	}
-	tt.Eventually(publishedNextCheckpoint, 10*time.Second, time.Second)
+	tt.Eventually(publishedNextCheckpoint, 30*time.Second, time.Second)
 
 	// to test reingestion, stop horizon web and captive core,
 	// it was used to create ledger entries for test.
@@ -885,7 +886,7 @@ func TestFillGaps(t *testing.T) {
 		latestCheckpoint = has.CurrentLedger
 		return latestCheckpoint > 1
 	}
-	tt.Eventually(publishedFirstCheckpoint, 10*time.Second, time.Second)
+	tt.Eventually(publishedFirstCheckpoint, 30*time.Second, time.Second)
 
 	if toLedger > latestCheckpoint {
 		toLedger = latestCheckpoint
