@@ -377,11 +377,3 @@ func TestGCSGetFileValidatesCRC32C(t *testing.T) {
 	_, err = io.Copy(&buf, reader)
 	require.EqualError(t, err, "storage: bad CRC on read: got 985946173, want 2601510353")
 }
-
-func requireReaderContentEquals(t *testing.T, reader io.ReadCloser, expected []byte) {
-	var buf bytes.Buffer
-	_, err := io.Copy(&buf, reader)
-	require.NoError(t, err)
-	require.NoError(t, reader.Close())
-	require.Equal(t, expected, buf.Bytes())
-}
