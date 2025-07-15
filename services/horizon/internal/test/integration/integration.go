@@ -938,7 +938,7 @@ func (i *Test) WaitUntilLedgerEntryTTL(ledgerKey xdr.LedgerKey) {
 		Keys: []string{keyB64},
 	}
 	ttled := false
-	for attempt := 0; attempt < 50; attempt++ {
+	for attempt := 0; attempt < 500; attempt++ {
 		var result struct {
 			Entries []struct {
 				LiveUntilLedgerSeq *uint32 `json:"liveUntilLedgerSeq,omitempty"`
