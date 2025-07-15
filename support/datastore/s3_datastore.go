@@ -6,16 +6,19 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"path"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	awshttp "github.com/aws/aws-sdk-go-v2/aws/transport/http"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/aws/smithy-go"
+
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/support/url"
 )
@@ -50,6 +53,15 @@ func NewS3DataStore(ctx context.Context, datastoreConfig DataStoreConfig) (DataS
 		if endpointUrl != "" {
 			o.BaseEndpoint = aws.String(endpointUrl)
 		}
+
+		// Check if default credentials were successfully retrieved from the chain.
+		// If not, fall back to anonymous credentials for public S3 bucket access.
+		_, err := cfg.Credentials.Retrieve(ctx)
+		if err != nil {
+			log.Infof("No default AWS credentials found, configuring S3 client for anonymous access")
+			o.Credentials = aws.AnonymousCredentials{}
+		}
+
 		o.Region = region
 		o.UsePathStyle = true
 	})
@@ -68,10 +80,37 @@ func FromS3Client(ctx context.Context, client *s3.Client, bucketPath string, sch
 	bucketName := parsed.Host
 	uploader := manager.NewUploader(client)
 
-	input := &s3.HeadBucketInput{Bucket: aws.String(bucketName)}
-	_, err = client.HeadBucket(ctx, input)
+	log.Infof("Creating S3 client for bucket: %s, prefix: %s", bucketName, prefix)
+
+	listInput := &s3.ListObjectsV2Input{
+		Bucket:  aws.String(bucketName),
+		Prefix:  aws.String(prefix),
+		MaxKeys: aws.Int32(1),
+	}
+
+	_, err = client.ListObjectsV2(ctx, listInput)
+
 	if err != nil {
-		return nil, fmt.Errorf("failed to head bucket, the bucket may not exist or you may not have access: %w", err)
+		// check for http redirect specifically as it implies a region issue.
+		var responseError *awshttp.ResponseError
+		if errors.As(err, &responseError) {
+			if responseError.HTTPStatusCode() == http.StatusMovedPermanently {
+				return nil, fmt.Errorf("bucket '%s' requires a different endpoint (301 PermanentRedirect)."+
+					" Please ensure the correct region is configured: %w", bucketName, err)
+			}
+		}
+
+		var apiError smithy.APIError
+		if errors.As(err, &apiError) {
+			switch apiError.ErrorCode() {
+			case "NoSuchBucket":
+				return nil, fmt.Errorf("bucket '%s' does not exist (NoSuchBucket): %w", bucketName, err)
+			case "AccessDenied":
+				return nil, fmt.Errorf("access denied to bucket '%s' (AccessDenied): %w", bucketName, err)
+			default:
+			}
+		}
+		return nil, fmt.Errorf("failed to list objects in bucket '%s': %w", bucketName, err)
 	}
 
 	return S3DataStore{client: client, uploader: uploader, bucket: bucketName, prefix: prefix, schema: schema}, nil
@@ -107,12 +146,14 @@ func (b S3DataStore) GetFile(ctx context.Context, filePath string) (io.ReadClose
 
 	output, err := b.client.GetObject(ctx, input)
 	if err != nil {
+		log.Errorf("Error retrieving file '%s': %v", filePath, err)
 		if isNotFoundError(err) {
 			return nil, os.ErrNotExist
 		}
-		return nil, err
+		return nil, fmt.Errorf("error retrieving file %s: %w", filePath, err)
 	}
 
+	log.Infof("File retrieved successfully: %s", filePath)
 	return output.Body, nil
 }
 

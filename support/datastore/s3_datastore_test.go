@@ -41,12 +41,11 @@ func (s *mockS3Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	switch r.Method {
 	case http.MethodHead:
-		// See https://docs.aws.amazon.com/AmazonS3/latest/API/API_HeadBucket.html
 		// See https://docs.aws.amazon.com/AmazonS3/latest/API/API_HeadObject.html
 		s.handleHeadRequest(w, pathParts)
 	case http.MethodGet:
 		// See https://docs.aws.amazon.com/AmazonS3/latest/API/API_GetObject.html
-		s.handleGetRequest(w, pathParts)
+		s.handleGetRequest(w, r, pathParts)
 	case http.MethodPut:
 		// See https://docs.aws.amazon.com/AmazonS3/latest/API/API_PutObject.html
 		s.handlePutRequest(w, r, pathParts)
@@ -56,13 +55,6 @@ func (s *mockS3Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *mockS3Server) handleHeadRequest(w http.ResponseWriter, pathParts []string) {
-	// Handle HeadBucket: A request with no key part in the path.
-	// We assume the bucket always exists in the mock.
-	if len(pathParts) < 2 || pathParts[1] == "" {
-		w.WriteHeader(http.StatusOK)
-		return
-	}
-
 	// Handle HeadObject: A request with a key.
 	key := pathParts[1]
 	obj, exists := s.objects[key]
@@ -75,7 +67,13 @@ func (s *mockS3Server) handleHeadRequest(w http.ResponseWriter, pathParts []stri
 	w.WriteHeader(http.StatusOK)
 }
 
-func (s *mockS3Server) handleGetRequest(w http.ResponseWriter, pathParts []string) {
+func (s *mockS3Server) handleGetRequest(w http.ResponseWriter, r *http.Request, pathParts []string) {
+	// Check for query param for ListObjectsV2
+	if r.Method == http.MethodGet && r.URL.Query().Get("list-type") == "2" {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
 	if len(pathParts) < 2 {
 		http.Error(w, "Invalid path: Key is required for GET", http.StatusBadRequest)
 		return
