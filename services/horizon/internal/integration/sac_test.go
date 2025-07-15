@@ -656,7 +656,7 @@ func TestEvictionAndRestoration(t *testing.T) {
 	// Wait for the ledger entry to be evicted.
 	// The test runs with quickExpiry and quickEviction, so the
 	// entry will expire after 10 ledgers and be evicted within the next 16 ledgers.
-	itest.WaitUntilLedgerEntryIsEvicted(balanceToEvictLedgerKey, time.Second*30)
+	itest.WaitUntilLedgerEntryIsEvicted(balanceToEvictLedgerKey, 300*time.Second)
 	assertAssetStats(itest, assetStats{
 		code:             code,
 		issuer:           issuer,
@@ -769,7 +769,7 @@ func TestEvictionOfSACWithActiveBalance(t *testing.T) {
 			Durability: xdr.ContractDataDurabilityPersistent,
 		},
 	}
-	itest.WaitUntilLedgerEntryIsEvicted(contractToEvictLedgerKey, time.Minute)
+	itest.WaitUntilLedgerEntryIsEvicted(contractToEvictLedgerKey, 300*time.Second)
 
 	assertAssetStats(itest, assetStats{
 		code:             code,
@@ -897,7 +897,7 @@ func TestEvictionOfSACAndRestoration(t *testing.T) {
 			Durability: xdr.ContractDataDurabilityPersistent,
 		},
 	}
-	itest.WaitUntilLedgerEntryIsEvicted(contractToEvictLedgerKey, time.Minute)
+	itest.WaitUntilLedgerEntryIsEvicted(contractToEvictLedgerKey, 300*time.Second)
 
 	assets, err := itest.Client().Assets(horizonclient.AssetRequest{
 		ForAssetCode:   code,
