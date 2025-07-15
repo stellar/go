@@ -85,7 +85,15 @@ jobs:
           # message about why the installation fails)
           sudo apt list --installed | grep libc++
           sudo apt-get remove -y libc++1-* libc++abi1-* || true
-
+          
+          sudo apt-get install -y wget curl python-six python3-colorama python3-pip postgresql-client sqlite3 apt-transport-https gnupg2
+          
+          # purge stuff we don't directly need
+          sudo apt-get purge -y sgml-base ucf gcc g++ xz-utils libpod-latex-perl dbus
+          sudo apt-get autoremove -y
+          
+          sudo apt-get clean
+  
           sudo wget -qO - https://apt.stellar.org/SDF.asc | APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=true sudo apt-key add -
           sudo bash -c 'echo "deb https://apt.stellar.org focal unstable" > /etc/apt/sources.list.d/SDF-unstable.list'
           sudo apt-get update && sudo apt-get install -y stellar-core="$PROTOCOL_${{ matrix.protocol-version }}_CORE_DEBIAN_PKG_VERSION"
