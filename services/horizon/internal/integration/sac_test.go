@@ -1570,13 +1570,13 @@ func assertContainsEffect(t *testing.T, fx []effects.Effect, effectTypes ...effe
 		found[effect.GetType()] = idx
 	}
 
-	for _, type_ := range effectTypes {
-		assert.Containsf(t, found, effects.EffectTypeNames[type_], "effects: %v", fx)
-	}
-
 	var rv []effects.Effect
-	for _, i := range found {
-		rv = append(rv, fx[i])
+	for _, type_ := range effectTypes {
+		key := effects.EffectTypeNames[type_]
+		assert.Containsf(t, found, key, "effects: %v", fx)
+		if idx, exists := found[key]; exists {
+			rv = append(rv, fx[idx])
+		}
 	}
 
 	return rv
