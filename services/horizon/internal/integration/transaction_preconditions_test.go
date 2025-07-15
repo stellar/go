@@ -176,7 +176,7 @@ func TestTransactionPreconditionsMinSequenceNumberAge(t *testing.T) {
 	// Now the transaction should be submitted without problems, the min
 	// sequence age is set to be 1s more than the current difference between
 	// network time and account sequence time.
-	time.Sleep(time.Second)
+	time.Sleep(10 * time.Second)
 	txParams.Preconditions.MinSequenceNumberAge = 1
 	tx, err = itest.SubmitMultiSigTransaction([]*keypair.Full{master}, txParams)
 	itest.LogFailedTx(tx, err)
