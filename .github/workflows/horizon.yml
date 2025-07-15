@@ -32,10 +32,10 @@ jobs:
     env:
       HORIZON_INTEGRATION_TESTS_ENABLED: true
       HORIZON_INTEGRATION_TESTS_CORE_MAX_SUPPORTED_PROTOCOL: ${{ matrix.protocol-version }}
-      PROTOCOL_22_CORE_DEBIAN_PKG_VERSION: 23.0.0-2585.rc3.49136bf76.focal-perftests
+      PROTOCOL_22_CORE_DEBIAN_PKG_VERSION: 23.0.0-2585.rc3.49136bf76.focal~perftests
       PROTOCOL_22_CORE_DOCKER_IMG: stellar/unsafe-stellar-core:23.0.0-2585.rc3.49136bf76.focal-perftests
       PROTOCOL_22_STELLAR_RPC_DOCKER_IMG: stellar/stellar-rpc:23.0.0-rc2-122
-      PROTOCOL_23_CORE_DEBIAN_PKG_VERSION: 23.0.0-2585.rc3.49136bf76.focal-perftests
+      PROTOCOL_23_CORE_DEBIAN_PKG_VERSION: 23.0.0-2585.rc3.49136bf76.focal~perftests
       PROTOCOL_23_CORE_DOCKER_IMG: stellar/unsafe-stellar-core:23.0.0-2585.rc3.49136bf76.focal-perftests
       PROTOCOL_23_STELLAR_RPC_DOCKER_IMG: stellar/stellar-rpc:23.0.0-rc2-122
       PGHOST: localhost
