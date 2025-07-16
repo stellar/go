@@ -86,8 +86,6 @@ jobs:
           sudo apt list --installed | grep libc++
           sudo apt-get remove -y libc++1-* libc++abi1-* || true
 
-          sudo apt-get install libcapstone-dev libfreetype6-dev libglfw3-dev libgtk2.0-dev
-
           sudo wget -qO - https://apt.stellar.org/SDF.asc | APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=true sudo apt-key add -
           sudo bash -c 'echo "deb https://apt.stellar.org focal unstable" > /etc/apt/sources.list.d/SDF-unstable.list'
           sudo apt-get update && sudo apt-get install -y stellar-core="$PROTOCOL_${{ matrix.protocol-version }}_CORE_DEBIAN_PKG_VERSION"
@@ -114,7 +112,7 @@ jobs:
           key: ${{ env.COMBINED_SOURCE_HASH }}
 
       - if: ${{ steps.horizon_binary_tests_hash.outputs.cache-hit != 'true' }}
-        run: go test -race -timeout 400m -v ./services/horizon/internal/integration/...
+        run: go test -race -timeout 65m -v ./services/horizon/internal/integration/...
 
       - name: Save Horizon binary and integration tests source hash to cache
         if: ${{ success() && steps.horizon_binary_tests_hash.outputs.cache-hit != 'true' }}
@@ -128,7 +126,7 @@ jobs:
     runs-on: ubuntu-22.04
     env:
       GO_VERSION: 1.23.4
-      STELLAR_CORE_VERSION: 23.0.0-2585.rc3.49136bf76.jammy
+      STELLAR_CORE_VERSION: 23.0.0-2587.rc4.dcf366957.jammy
     steps:
       - uses: actions/checkout@v3
         with:
