@@ -10,7 +10,7 @@ jobs:
     name: Integration tests
     strategy:
       matrix:
-        os: [ubuntu-22.04]
+        os: [ubuntu-20.04]
         go: ["1.22", "1.23"]
         pg: [14, 16]
         protocol-version: [22,23]
@@ -81,13 +81,13 @@ jobs:
       - name: Install core
         run: |
           # Workaround for https://github.com/actions/virtual-environments/issues/5245,
-          # libc++1-8 won't be installed if another version is installed (but apt won't give you a helpul
-          # message about why the installation fails)
+          # libc++1-8 won't be installed if another version is installed (but
+          # apt won't give you a helpul message about why the installation fails)
           sudo apt list --installed | grep libc++
           sudo apt-get remove -y libc++1-* libc++abi1-* || true
-          
+
           sudo apt-get install libcapstone-dev libfreetype6-dev libglfw3-dev libgtk2.0-dev
-          
+
           sudo wget -qO - https://apt.stellar.org/SDF.asc | APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=true sudo apt-key add -
           sudo bash -c 'echo "deb https://apt.stellar.org focal unstable" > /etc/apt/sources.list.d/SDF-unstable.list'
           sudo apt-get update && sudo apt-get install -y stellar-core="$PROTOCOL_${{ matrix.protocol-version }}_CORE_DEBIAN_PKG_VERSION"
@@ -102,7 +102,7 @@ jobs:
       - name: Calculate the source hash
         id: calculate_source_hash
         run: |
-          combined_hash=$(echo "horizon-hash-${{ hashFiles('./horizon') }}-${{ hashFiles('./clients/horizonclient/**') }}-${{ hashFiles('./protocols/horizon/**') }}-${{ hashFiles('./txnbuild/**') }}-${{ hashFiles('./ingest/**') }}-${{ hashFiles('./xdr/**') }}-${{ hashFiles('./services/**') }}-${{ env.PROTOCOL_21_CORE_DOCKER_IMG }}-${{ env.PROTOCOL_21_RPC_DOCKER_IMG }}-${{ env.PROTOCOL_21_CORE_DEBIAN_PKG_VERSION }}-${{ env.PREFIX }}" | sha256sum | cut -d ' ' -f 1)
+          combined_hash=$(echo "horizon-hash-${{ hashFiles('./horizon') }}-${{ hashFiles('./clients/horizonclient/**') }}-${{ hashFiles('./protocols/horizon/**') }}-${{ hashFiles('./txnbuild/**') }}-${{ hashFiles('./ingest/**') }}-${{ hashFiles('./xdr/**') }}-${{ hashFiles('./services/**') }}-${{ env.PROTOCOL_23_CORE_DOCKER_IMG }}-${{ env.PROTOCOL_23_RPC_DOCKER_IMG }}-${{ env.PROTOCOL_23_CORE_DEBIAN_PKG_VERSION }}-${{ env.PREFIX }}" | sha256sum | cut -d ' ' -f 1)
           echo "COMBINED_SOURCE_HASH=$combined_hash" >> "$GITHUB_ENV"
 
       - name: Restore Horizon binary and integration tests source hash to cache
