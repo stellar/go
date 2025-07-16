@@ -571,6 +571,29 @@ func TestExpirationAndRestoration(t *testing.T) {
 		balanceContracts: big.NewInt(0),
 		contractID:       storeContractID,
 	})
+
+	// auto restoring archived ledger entries is only supported in protocol 23
+	if integration.GetCoreMaxSupportedProtocol() >= 23 {
+		// remove expired balance
+		assertInvokeHostFnSucceeds(
+			itest,
+			itest.Master(),
+			invokeStoreRemove(
+				itest,
+				storeContractID,
+				balanceToExpireLedgerKey,
+			),
+		)
+		assertAssetStats(itest, assetStats{
+			code:             code,
+			issuer:           issuer,
+			numAccounts:      0,
+			balanceAccounts:  0,
+			numContracts:     0,
+			balanceContracts: big.NewInt(0),
+			contractID:       storeContractID,
+		})
+	}
 }
 
 func insertAssetContract(itest *integration.Test, syntheticAssetContract history.AssetContract) {
@@ -678,6 +701,113 @@ func TestEvictionAndRestoration(t *testing.T) {
 		balanceAccounts:  0,
 		numContracts:     1,
 		balanceContracts: big.NewInt(37),
+		contractID:       storeContractID,
+	})
+}
+
+func TestEvictionAndDeletion(t *testing.T) {
+	if integration.GetCoreMaxSupportedProtocol() < 23 {
+		t.Skip("This test run does not support less than Protocol 23")
+	}
+
+	itest := integration.NewTest(t, integration.Config{
+		EnableStellarRPC: true,
+		HorizonIngestParameters: map[string]string{
+			// disable state verification because we will insert
+			// a fake asset contract in the horizon db and we don't
+			// want state verification to detect this
+			"ingest-disable-state-verification": "true",
+		},
+		QuickEviction: true,
+	})
+
+	issuer := itest.Master().Address()
+	code := "USD"
+
+	// Create contract to store synthetic asset balances
+	storeContractID, _ := mustCreateAndInstallContract(
+		itest,
+		itest.Master(),
+		"a1",
+		"soroban_store.wasm",
+	)
+	keyHash := keyHashFromLedgerKey(t, sac.AssetToContractDataLedgerKey(storeContractID))
+	syntheticAssetContract := history.AssetContract{
+		KeyHash:          keyHash[:],
+		ContractID:       storeContractID[:],
+		AssetType:        xdr.AssetTypeAssetTypeCreditAlphanum4,
+		AssetCode:        code,
+		AssetIssuer:      issuer,
+		ExpirationLedger: itest.GetLedgerEntryTTL(sac.AssetToContractDataLedgerKey(storeContractID)),
+	}
+	insertAssetContract(itest, syntheticAssetContract)
+
+	// create balance which we will expire and evicted
+	holder := [32]byte{2}
+	balanceToEvict := sac.BalanceToContractData(
+		storeContractID,
+		holder,
+		37,
+	)
+	assertInvokeHostFnSucceeds(
+		itest,
+		itest.Master(),
+		invokeStoreSet(
+			itest,
+			storeContractID,
+			balanceToEvict,
+		),
+	)
+	assertAssetStats(itest, assetStats{
+		code:             code,
+		issuer:           issuer,
+		numAccounts:      0,
+		balanceAccounts:  0,
+		numContracts:     1,
+		balanceContracts: big.NewInt(37),
+		contractID:       storeContractID,
+	})
+
+	balanceToEvictLedgerKey := xdr.LedgerKey{
+		Type: xdr.LedgerEntryTypeContractData,
+		ContractData: &xdr.LedgerKeyContractData{
+			Contract:   balanceToEvict.ContractData.Contract,
+			Key:        balanceToEvict.ContractData.Key,
+			Durability: balanceToEvict.ContractData.Durability,
+		},
+	}
+	// Wait for the ledger entry to be evicted.
+	// The test runs with quickExpiry and quickEviction, so the
+	// entry will expire after 10 ledgers and be evicted within the next 16 ledgers.
+	itest.WaitUntilLedgerEntryIsEvicted(balanceToEvictLedgerKey, time.Second*30)
+	assertAssetStats(itest, assetStats{
+		code:             code,
+		issuer:           issuer,
+		numAccounts:      0,
+		balanceAccounts:  0,
+		numContracts:     0,
+		balanceContracts: big.NewInt(0),
+		contractID:       storeContractID,
+	})
+
+	// remove evicted balance
+	assertInvokeHostFnSucceeds(
+		itest,
+		itest.Master(),
+		invokeStoreRemove(
+			itest,
+			storeContractID,
+			balanceToEvictLedgerKey,
+		),
+	)
+
+	assertAssetStats(itest, assetStats{
+		code:             code,
+		issuer:           issuer,
+		numAccounts:      0,
+		balanceAccounts:  0,
+		numContracts:     0,
+		balanceContracts: big.NewInt(0),
 		contractID:       storeContractID,
 	})
 }
