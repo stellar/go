@@ -572,25 +572,28 @@ func TestExpirationAndRestoration(t *testing.T) {
 		contractID:       storeContractID,
 	})
 
-	// remove expired balance
-	assertInvokeHostFnSucceeds(
-		itest,
-		itest.Master(),
-		invokeStoreRemove(
+	// auto restoring archived ledger entries is only supported in protocol 23
+	if integration.GetCoreMaxSupportedProtocol() >= 23 {
+		// remove expired balance
+		assertInvokeHostFnSucceeds(
 			itest,
-			storeContractID,
-			balanceToExpireLedgerKey,
-		),
-	)
-	assertAssetStats(itest, assetStats{
-		code:             code,
-		issuer:           issuer,
-		numAccounts:      0,
-		balanceAccounts:  0,
-		numContracts:     0,
-		balanceContracts: big.NewInt(0),
-		contractID:       storeContractID,
-	})
+			itest.Master(),
+			invokeStoreRemove(
+				itest,
+				storeContractID,
+				balanceToExpireLedgerKey,
+			),
+		)
+		assertAssetStats(itest, assetStats{
+			code:             code,
+			issuer:           issuer,
+			numAccounts:      0,
+			balanceAccounts:  0,
+			numContracts:     0,
+			balanceContracts: big.NewInt(0),
+			contractID:       storeContractID,
+		})
+	}
 }
 
 func insertAssetContract(itest *integration.Test, syntheticAssetContract history.AssetContract) {
