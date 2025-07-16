@@ -12,7 +12,7 @@ jobs:
       matrix:
         os: [ubuntu-22.04]
         go: ["1.22", "1.23"]
-        pg: [12, 16]
+        pg: [14, 16]
         protocol-version: [22,23]
     runs-on: ${{ matrix.os }}
     services:
@@ -32,12 +32,12 @@ jobs:
     env:
       HORIZON_INTEGRATION_TESTS_ENABLED: true
       HORIZON_INTEGRATION_TESTS_CORE_MAX_SUPPORTED_PROTOCOL: ${{ matrix.protocol-version }}
-      PROTOCOL_22_CORE_DEBIAN_PKG_VERSION: 22.3.1-2509.c2e465a3e.focal~do~not~use~in~prd
-      PROTOCOL_22_CORE_DOCKER_IMG: stellar/unsafe-stellar-core:22.3.1-2509.c2e465a3e.focal-do-not-use-in-prd
-      PROTOCOL_22_STELLAR_RPC_DOCKER_IMG: stellar/stellar-rpc:23.0.0-rc1-116
-      PROTOCOL_23_CORE_DEBIAN_PKG_VERSION: 22.3.1-2509.c2e465a3e.focal~do~not~use~in~prd
-      PROTOCOL_23_CORE_DOCKER_IMG: stellar/unsafe-stellar-core:22.3.1-2509.c2e465a3e.focal-do-not-use-in-prd
-      PROTOCOL_23_STELLAR_RPC_DOCKER_IMG: stellar/stellar-rpc:23.0.0-rc1-116
+      PROTOCOL_22_CORE_DEBIAN_PKG_VERSION: 23.0.0-2587.rc4.dcf366957.focal
+      PROTOCOL_22_CORE_DOCKER_IMG: stellar/unsafe-stellar-core:23.0.0-2587.rc4.dcf366957.focal
+      PROTOCOL_22_STELLAR_RPC_DOCKER_IMG: stellar/stellar-rpc:23.0.0-rc2-126
+      PROTOCOL_23_CORE_DEBIAN_PKG_VERSION: 23.0.0-2587.rc4.dcf366957.focal
+      PROTOCOL_23_CORE_DOCKER_IMG: stellar/unsafe-stellar-core:23.0.0-2587.rc4.dcf366957.focal
+      PROTOCOL_23_STELLAR_RPC_DOCKER_IMG: stellar/stellar-rpc:23.0.0-rc2-126
       PGHOST: localhost
       PGPORT: 5432
       PGUSER: postgres
@@ -81,8 +81,8 @@ jobs:
       - name: Install core
         run: |
           # Workaround for https://github.com/actions/virtual-environments/issues/5245,
-          # libc++1-8 won't be installed if another version is installed (but apt won't give you a helpul
-          # message about why the installation fails)
+          # libc++1-8 won't be installed if another version is installed (but
+          # apt won't give you a helpul message about why the installation fails)
           sudo apt list --installed | grep libc++
           sudo apt-get remove -y libc++1-* libc++abi1-* || true
 
@@ -100,7 +100,7 @@ jobs:
       - name: Calculate the source hash
         id: calculate_source_hash
         run: |
-          combined_hash=$(echo "horizon-hash-${{ hashFiles('./horizon') }}-${{ hashFiles('./clients/horizonclient/**') }}-${{ hashFiles('./protocols/horizon/**') }}-${{ hashFiles('./txnbuild/**') }}-${{ hashFiles('./ingest/**') }}-${{ hashFiles('./xdr/**') }}-${{ hashFiles('./services/**') }}-${{ env.PROTOCOL_21_CORE_DOCKER_IMG }}-${{ env.PROTOCOL_21_RPC_DOCKER_IMG }}-${{ env.PROTOCOL_21_CORE_DEBIAN_PKG_VERSION }}-${{ env.PREFIX }}" | sha256sum | cut -d ' ' -f 1)
+          combined_hash=$(echo "horizon-hash-${{ hashFiles('./horizon') }}-${{ hashFiles('./clients/horizonclient/**') }}-${{ hashFiles('./protocols/horizon/**') }}-${{ hashFiles('./txnbuild/**') }}-${{ hashFiles('./ingest/**') }}-${{ hashFiles('./xdr/**') }}-${{ hashFiles('./services/**') }}-${{ env.PROTOCOL_23_CORE_DOCKER_IMG }}-${{ env.PROTOCOL_23_RPC_DOCKER_IMG }}-${{ env.PROTOCOL_23_CORE_DEBIAN_PKG_VERSION }}-${{ env.PREFIX }}" | sha256sum | cut -d ' ' -f 1)
           echo "COMBINED_SOURCE_HASH=$combined_hash" >> "$GITHUB_ENV"
 
       - name: Restore Horizon binary and integration tests source hash to cache
@@ -126,7 +126,7 @@ jobs:
     runs-on: ubuntu-22.04
     env:
       GO_VERSION: 1.23.4
-      STELLAR_CORE_VERSION: 22.3.1-2509.c2e465a3e.jammy~do~not~use~in~prd
+      STELLAR_CORE_VERSION: 23.0.0-2587.rc4.dcf366957.jammy
     steps:
       - uses: actions/checkout@v3
         with:
@@ -137,8 +137,8 @@ jobs:
         run: |
           docker build --build-arg="GO_VERSION=$GO_VERSION" --build-arg="STELLAR_CORE_VERSION=$STELLAR_CORE_VERSION" -f services/horizon/docker/verify-range/Dockerfile -t stellar/horizon-verify-range services/horizon/docker/verify-range/
           # Any range should do for basic testing, this range was chosen pretty early in history so that it only takes a few mins to run
-          # TODO - remove the BASE_BRANCH override once protocol-23 merges to master, 
-          # this is fine while protocol-23 branch is active. 
+          # TODO - remove the BASE_BRANCH override once protocol-23 merges to master,
+          # this is fine while protocol-23 branch is active.
           # reason - master can't be used becaue the p23 version of core won't accept the same toml config params.
           # this is still effective at least to confirm verify-range image works. it just doesn't do the compare from master.
           docker run -e BASE_BRANCH=$(git rev-parse HEAD) -e BRANCH=$(git rev-parse HEAD) -e FROM=10000063 -e TO=10000127 stellar/horizon-verify-range
