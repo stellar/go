@@ -32,11 +32,11 @@ jobs:
     env:
       HORIZON_INTEGRATION_TESTS_ENABLED: true
       HORIZON_INTEGRATION_TESTS_CORE_MAX_SUPPORTED_PROTOCOL: ${{ matrix.protocol-version }}
-      PROTOCOL_22_CORE_DEBIAN_PKG_VERSION: 23.0.0-2585.rc3.49136bf76.focal~perftests
-      PROTOCOL_22_CORE_DOCKER_IMG: stellar/unsafe-stellar-core:23.0.0-2585.rc3.49136bf76.focal-perftests
+      PROTOCOL_22_CORE_DEBIAN_PKG_VERSION: 23.0.0-2585.rc3.49136bf76.jammy~perftests
+      PROTOCOL_22_CORE_DOCKER_IMG: stellar/unsafe-stellar-core:23.0.0-2585.rc3.49136bf76.jammy-perftests
       PROTOCOL_22_STELLAR_RPC_DOCKER_IMG: stellar/stellar-rpc:23.0.0-rc2-122
-      PROTOCOL_23_CORE_DEBIAN_PKG_VERSION: 23.0.0-2585.rc3.49136bf76.focal~perftests
-      PROTOCOL_23_CORE_DOCKER_IMG: stellar/unsafe-stellar-core:23.0.0-2585.rc3.49136bf76.focal-perftests
+      PROTOCOL_23_CORE_DEBIAN_PKG_VERSION: 23.0.0-2585.rc3.49136bf76.jammy~perftests
+      PROTOCOL_23_CORE_DOCKER_IMG: stellar/unsafe-stellar-core:23.0.0-2585.rc3.49136bf76.jammy-perftests
       PROTOCOL_23_STELLAR_RPC_DOCKER_IMG: stellar/stellar-rpc:23.0.0-rc2-122
       PGHOST: localhost
       PGPORT: 5432
@@ -102,7 +102,7 @@ jobs:
       - name: Calculate the source hash
         id: calculate_source_hash
         run: |
-          combined_hash=$(echo "horizon-hash-${{ hashFiles('./horizon') }}-${{ hashFiles('./clients/horizonclient/**') }}-${{ hashFiles('./protocols/horizon/**') }}-${{ hashFiles('./txnbuild/**') }}-${{ hashFiles('./ingest/**') }}-${{ hashFiles('./xdr/**') }}-${{ hashFiles('./services/**') }}-${{ env.PROTOCOL_21_CORE_DOCKER_IMG }}-${{ env.PROTOCOL_21_RPC_DOCKER_IMG }}-${{ env.PROTOCOL_21_CORE_DEBIAN_PKG_VERSION }}-${{ env.PREFIX }}" | sha256sum | cut -d ' ' -f 1)
+          combined_hash=$(echo "horizon-hash-${{ hashFiles('./horizon') }}-${{ hashFiles('./clients/horizonclient/**') }}-${{ hashFiles('./protocols/horizon/**') }}-${{ hashFiles('./txnbuild/**') }}-${{ hashFiles('./ingest/**') }}-${{ hashFiles('./xdr/**') }}-${{ hashFiles('./services/**') }}-${{ env.PROTOCOL_22_CORE_DOCKER_IMG }}-${{ env.PROTOCOL_22_RPC_DOCKER_IMG }}-${{ env.PROTOCOL_22_CORE_DEBIAN_PKG_VERSION }}--${{ env.PROTOCOL_23_CORE_DOCKER_IMG }}-${{ env.PROTOCOL_23_RPC_DOCKER_IMG }}-${{ env.PROTOCOL_23_CORE_DEBIAN_PKG_VERSION }}-${{ env.PREFIX }}" | sha256sum | cut -d ' ' -f 1)
           echo "COMBINED_SOURCE_HASH=$combined_hash" >> "$GITHUB_ENV"
 
       - name: Restore Horizon binary and integration tests source hash to cache
