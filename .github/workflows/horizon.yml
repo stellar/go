@@ -85,11 +85,11 @@ jobs:
           # message about why the installation fails)
           sudo apt list --installed | grep libc++
           sudo apt-get remove -y libc++1-* libc++abi1-* || true
-          
+
           sudo apt-get install libcapstone-dev libfreetype6-dev libglfw3-dev libgtk2.0-dev
-          
+
           sudo wget -qO - https://apt.stellar.org/SDF.asc | APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=true sudo apt-key add -
-          sudo bash -c 'echo "deb https://apt.stellar.org focal unstable" > /etc/apt/sources.list.d/SDF-unstable.list'
+          sudo bash -c 'echo "deb https://apt.stellar.org jammy unstable" > /etc/apt/sources.list.d/SDF-unstable.list'
           sudo apt-get update && sudo apt-get install -y stellar-core="$PROTOCOL_${{ matrix.protocol-version }}_CORE_DEBIAN_PKG_VERSION"
           echo "Using stellar core version $(stellar-core version)"
           echo 'HORIZON_INTEGRATION_TESTS_CAPTIVE_CORE_BIN=/usr/bin/stellar-core' >> $GITHUB_ENV
