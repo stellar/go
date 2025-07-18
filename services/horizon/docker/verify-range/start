@@ -13,7 +13,6 @@ cleanup() {
     # files can be significatn GB's in size and in a cloud batch environment
     # we don't want to keep them around after the job is done, i.e. pay for that space still.
     sudo -u postgres --preserve-env=PGDATA /usr/lib/postgresql/14/bin/pg_ctl stop -D "$PGDATA"
-    sudo chattr -R -i -a "$CONTAINER_WORKING_DIR"
     if [ -d "$CONTAINER_WORKING_DIR" ]; then
         sudo rm -rf "$CONTAINER_WORKING_DIR"
         echo "Purged working data files from $CONTAINER_WORKING_DIR"
