@@ -8,6 +8,7 @@ file.  This project adheres to [Semantic Versioning](http://semver.org/).
 ## [v11.0.0](https://github.com/stellar/go/releases/tag/horizonclient-v11.0.0) - 2023-03-29
 
 * Type of `AccountSequence` field in `protocols/horizon.Account` was changed to `int64`.
+* Fixed memory leak in `stream` function in `client.go` due to incorrect `resp.Body.Close` handling.
 
 ## [v10.0.0](https://github.com/stellar/go/releases/tag/horizonclient-v10.0.0) - 2022-04-18
 
