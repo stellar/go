@@ -708,10 +708,15 @@ func (s *system) runStateMachine(cur stateMachineNode) error {
 				// so we log these errors using the info log level
 				logger.Info("Error in ingestion state machine")
 			} else {
+				// next.node should never be nil, but we check defensively.
+				var nextStateName string
+				if next.node != nil {
+					nextStateName = next.node.GetState().Name()
+				}
 				s.Metrics().IngestionErrorCounter.
 					With(prometheus.Labels{
 						"current_state": cur.GetState().Name(),
-						"next_state":    next.node.GetState().Name(),
+						"next_state":    nextStateName,
 					}).Inc()
 				logger.Error("Error in ingestion state machine")
 			}
