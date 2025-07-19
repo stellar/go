@@ -68,7 +68,7 @@ func (b *Filesystem) PutFile(pth string, in io.ReadCloser) error {
 
 	if !exists {
 		if e := os.MkdirAll(dir, 0755); e != nil {
-			log.WithField("path", pth).WithError(err).Error("fs: put file (mkdir)")
+			log.WithField("path", pth).WithError(e).Error("fs: put file (mkdir)")
 			return e
 		}
 	}
@@ -76,14 +76,14 @@ func (b *Filesystem) PutFile(pth string, in io.ReadCloser) error {
 	pth = path.Join(b.prefix, pth)
 	out, e := os.Create(pth)
 	if e != nil {
-		log.WithField("path", pth).WithError(err).Error("fs: put file (create)")
+		log.WithField("path", pth).WithError(e).Error("fs: put file (create)")
 		return e
 	}
 	defer in.Close()
 	defer out.Close()
 	_, e = io.Copy(out, in)
 	if e != nil {
-		log.WithField("path", pth).WithError(err).Error("fs: put file (copy)")
+		log.WithField("path", pth).WithError(e).Error("fs: put file (copy)")
 	}
 	return e
 }
