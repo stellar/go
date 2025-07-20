@@ -1,2 +1,2 @@
-// Package exp houses experimental packages related to Stellar developement
+// Package exp houses experimental packages related to Stellar development
 package exp
