@@ -178,6 +178,7 @@ func (config *Config) GenerateCaptiveCoreConfig(coreBinFromPath string) (ledgerb
 	}
 
 	params := ledgerbackend.CaptiveCoreTomlParams{
+		CoreBinaryPath:     config.StellarCoreConfig.StellarCoreBinaryPath,
 		NetworkPassphrase:  config.StellarCoreConfig.NetworkPassphrase,
 		HistoryArchiveURLs: config.StellarCoreConfig.HistoryArchiveUrls,
 		EmitVerboseMeta:    true,
