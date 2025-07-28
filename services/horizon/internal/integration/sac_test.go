@@ -1228,24 +1228,21 @@ func TestEvictionOfSACAndAutoRestore(t *testing.T) {
 	}
 	itest.WaitUntilLedgerEntryIsEvicted(contractToEvictLedgerKey, time.Minute)
 
-	assets, err := itest.Client().Assets(horizonclient.AssetRequest{
-		ForAssetCode:   code,
-		ForAssetIssuer: issuer,
-		Limit:          1,
+	assertAssetStats(itest, assetStats{
+		code:             code,
+		issuer:           issuer,
+		numAccounts:      1,
+		balanceAccounts:  amount.MustParse("0"),
+		numContracts:     0,
+		balanceContracts: big.NewInt(0),
 	})
-	assert.NoError(itest.CurrentTest(), err)
-	assert.Empty(itest.CurrentTest(), assets.Embedded.Records)
 
-	_, mintTxResponse, _ := assertInvokeHostFnSucceeds(
+	// auto restore SAC via transfer()
+	assertInvokeHostFnSucceeds(
 		itest,
 		itest.Master(),
 		transfer(itest, itest.Master().Address(), asset, "6", accountAddressParam(recipient.GetAccountID())),
 	)
-	t.Log(mintTxResponse)
-
-	// auto-restore evicted contract
-	sourceAccount, restoreOp := itest.RestoreFootprint(itest.Master().Address(), contractToEvictLedgerKey)
-	itest.MustSubmitOperations(&sourceAccount, itest.Master(), &restoreOp)
 
 	assertAssetStats(itest, assetStats{
 		code:             code,
