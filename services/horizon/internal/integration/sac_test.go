@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"math"
 	"math/big"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -812,6 +813,129 @@ func TestEvictionAndDeletion(t *testing.T) {
 	})
 }
 
+func TestParallelSACTransfer(t *testing.T) {
+	if integration.GetCoreMaxSupportedProtocol() < 23 {
+		t.Skip("This test run does not support less than Protocol 23")
+	}
+
+	itest := integration.NewTest(t, integration.Config{
+		EnableStellarRPC: true,
+		HorizonIngestParameters: map[string]string{
+			// disable state verification because we will insert
+			// a fake asset contract in the horizon db and we don't
+			// want state verification to detect this
+			"ingest-disable-state-verification": "true",
+		},
+		QuickEviction: true,
+	})
+
+	issuer := itest.Master().Address()
+	code := "USD"
+	asset := xdr.MustNewCreditAsset(code, issuer)
+
+	createSAC(itest, asset)
+
+	accountKeys, accounts := itest.CreateAccounts(2, "100")
+	recipientKp, recipient := accountKeys[0], accounts[0]
+	senderKp, sender := accountKeys[1], accounts[1]
+	itest.MustEstablishTrustline(recipientKp, recipient, txnbuild.MustAssetFromXDR(asset))
+	itest.MustEstablishTrustline(senderKp, sender, txnbuild.MustAssetFromXDR(asset))
+
+	itest.MustSubmitOperations(
+		itest.MasterAccount(),
+		itest.Master(),
+		&txnbuild.Payment{
+			SourceAccount: issuer,
+			Destination:   senderKp.Address(),
+			Asset: txnbuild.CreditAsset{
+				Code:   code,
+				Issuer: issuer,
+			},
+			Amount: "2000",
+		},
+	)
+
+	assertAssetStats(itest, assetStats{
+		code:             code,
+		issuer:           issuer,
+		numAccounts:      2,
+		balanceAccounts:  0,
+		numContracts:     0,
+		balanceContracts: big.NewInt(0),
+		contractID:       stellarAssetContractID(itest, asset),
+	})
+
+	i := 0
+	for {
+		// tx to remove evicted balance
+		transferOp := itest.PreflightHostFunctions(sender,
+			*transfer(itest, senderKp.Address(), asset, "3", accountAddressParam(recipient.GetAccountID())),
+		)
+		mintOp := itest.PreflightHostFunctions(itest.MasterAccount(),
+			*transfer(itest, itest.Master().Address(), asset, "6", accountAddressParam(recipient.GetAccountID())),
+		)
+
+		mintTx, err := itest.CreateSignedTransactionFromOps(itest.MasterAccount(), []*keypair.Full{itest.Master()}, &mintOp)
+		require.NoError(t, err)
+
+		account := itest.MustGetAccount(senderKp)
+		transferTx, err := itest.CreateSignedTransactionFromOps(&account, []*keypair.Full{senderKp}, &transferOp)
+		require.NoError(t, err)
+
+		responses, err := itest.SubmitTransactions([]*txnbuild.Transaction{mintTx, transferTx})
+		require.NoError(t, err)
+		require.True(t, responses[0].Successful)
+		require.True(t, responses[1].Successful)
+
+		masterAccount := itest.MustGetAccount(itest.Master())
+		recipientAccount := itest.MustGetAccount(recipientKp)
+		senderAccount := itest.MustGetAccount(senderKp)
+
+		require.Equal(t, masterAccount.LastModifiedLedger, uint32(responses[0].Ledger))
+		require.Equal(t, senderAccount.LastModifiedLedger, uint32(responses[1].Ledger))
+
+		var found bool
+		for _, balance := range senderAccount.Balances {
+			if balance.Issuer != issuer || balance.Code != code {
+				continue
+			}
+			found = true
+			require.Equal(t, balance.LastModifiedLedger, uint32(responses[1].Ledger))
+		}
+		require.True(t, found)
+
+		found = false
+		for _, balance := range recipientAccount.Balances {
+			if balance.Issuer != issuer || balance.Code != code {
+				continue
+			}
+			found = true
+			require.Equal(t, balance.LastModifiedLedger, max(uint32(responses[1].Ledger), uint32(responses[0].Ledger)))
+		}
+		require.True(t, found)
+
+		if responses[0].Ledger == responses[1].Ledger {
+			break
+		}
+		if i >= 100 {
+			require.Fail(t, "could not produce ledger with both transfers")
+		}
+		i++
+		time.Sleep(time.Second)
+	}
+
+	expectedAmount := strconv.Itoa(90 * (i + 1))
+	assertAssetStats(itest, assetStats{
+		code:             code,
+		issuer:           issuer,
+		numAccounts:      2,
+		balanceAccounts:  amount.MustParse(expectedAmount),
+		numContracts:     0,
+		balanceContracts: big.NewInt(0),
+		contractID:       stellarAssetContractID(itest, asset),
+	})
+}
+
 func TestEvictionOfSACWithActiveBalance(t *testing.T) {
 	if integration.GetCoreMaxSupportedProtocol() < 23 {
 		t.Skip("This test run does not support less than Protocol 23")
@@ -1046,6 +1170,85 @@ func TestEvictionOfSACAndRestoration(t *testing.T) {
 		issuer:           issuer,
 		numAccounts:      0,
 		balanceAccounts:  0,
+		numContracts:     0,
+		balanceContracts: big.NewInt(0),
+		contractID:       contractID,
+	})
+}
+
+func TestEvictionOfSACAndAutoRestore(t *testing.T) {
+	if integration.GetCoreMaxSupportedProtocol() < 23 {
+		t.Skip("This test run does not support less than Protocol 23")
+	}
+
+	itest := integration.NewTest(t, integration.Config{
+		EnableStellarRPC: true,
+		HorizonIngestParameters: map[string]string{
+			// disable state verification because we will insert
+			// a fake asset contract in the horizon db and we don't
+			// want state verification to detect this
+			"ingest-disable-state-verification": "true",
+		},
+		QuickEviction: true,
+	})
+
+	issuer := itest.Master().Address()
+	code := "USD"
+	asset := xdr.MustNewCreditAsset(code, issuer)
+
+	recipientKp, recipient := itest.CreateAccount("100")
+	itest.MustEstablishTrustline(recipientKp, recipient, txnbuild.MustAssetFromXDR(asset))
+
+	createSACWithTTL(itest, asset, 30)
+	contractID := stellarAssetContractID(itest, asset)
+
+	assertAssetStats(itest, assetStats{
+		code:             code,
+		issuer:           issuer,
+		numAccounts:      1,
+		balanceAccounts:  0,
+		numContracts:     0,
+		balanceContracts: big.NewInt(0),
+		contractID:       contractID,
+	})
+
+	contractToEvictLedgerKey := xdr.LedgerKey{
+		Type: xdr.LedgerEntryTypeContractData,
+		ContractData: &xdr.LedgerKeyContractData{
+			Contract: xdr.ScAddress{
+				Type:       xdr.ScAddressTypeScAddressTypeContract,
+				AccountId:  nil,
+				ContractId: &contractID,
+			},
+			Key: xdr.ScVal{
+				Type: xdr.ScValTypeScvLedgerKeyContractInstance,
+			},
+			Durability: xdr.ContractDataDurabilityPersistent,
+		},
+	}
+	itest.WaitUntilLedgerEntryIsEvicted(contractToEvictLedgerKey, time.Minute)
+
+	assertAssetStats(itest, assetStats{
+		code:             code,
+		issuer:           issuer,
+		numAccounts:      1,
+		balanceAccounts:  amount.MustParse("0"),
+		numContracts:     0,
+		balanceContracts: big.NewInt(0),
+	})
+
+	// auto restore SAC via transfer()
+	assertInvokeHostFnSucceeds(
+		itest,
+		itest.Master(),
+		transfer(itest, itest.Master().Address(), asset, "6", accountAddressParam(recipient.GetAccountID())),
+	)
+
+	assertAssetStats(itest, assetStats{
+		code:             code,
+		issuer:           issuer,
+		numAccounts:      1,
+		balanceAccounts:  amount.MustParse("6"),
 		numContracts:     0,
 		balanceContracts: big.NewInt(0),
 		contractID:       contractID,

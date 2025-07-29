@@ -36,6 +36,7 @@ import (
 	"github.com/stellar/go/clients/stellarcore"
 	"github.com/stellar/go/keypair"
 	proto "github.com/stellar/go/protocols/horizon"
+	coreproto "github.com/stellar/go/protocols/stellarcore"
 	horizoncmd "github.com/stellar/go/services/horizon/cmd"
 	horizon "github.com/stellar/go/services/horizon/internal"
 	"github.com/stellar/go/services/horizon/internal/ingest"
@@ -173,7 +174,7 @@ func NewTest(t *testing.T, config Config) *Test {
 	}
 	if config.QuickEviction {
 		validatorParams.OverrideEvictionParamsForTesting = true
-		validatorParams.TestingStartingEvictionScanLevel = 2
+		validatorParams.TestingStartingEvictionScanLevel = 1
 		validatorParams.TestingMaxEntriesToArchive = 100
 		// QuickEviction implies QuickExpiration
 		config.QuickExpiration = true
@@ -1448,6 +1449,53 @@ func (i *Test) AsyncSubmitTransaction(
 		return proto.AsyncTransactionSubmissionResponse{}, err
 	}
 	return i.Client().AsyncSubmitTransaction(tx)
+}
+
+func (i *Test) SubmitTransactions(transactions []*txnbuild.Transaction) ([]proto.Transaction, error) {
+	var results []proto.Transaction
+	byHash := make(map[string]proto.Transaction)
+	for _, tx := range transactions {
+		response, err := i.Client().AsyncSubmitTransaction(tx)
+		if err != nil {
+			return nil, err
+		}
+		if response.TxStatus != coreproto.TXStatusPending {
+			return nil, fmt.Errorf("transaction status is %s", response.TxStatus)
+		}
+	}
+	require.Eventually(i.t, func() bool {
+		for _, tx := range transactions {
+			hash, err := tx.HashHex(i.passPhrase)
+			if err != nil {
+				continue
+			}
+			if _, ok := byHash[hash]; ok {
+				continue
+			}
+			response, err := i.Client().TransactionDetail(hash)
+			if err != nil {
+				continue
+			}
+			byHash[hash] = response
+		}
+		return len(byHash) == len(transactions)
+	}, time.Minute, time.Second)
+
+	if len(byHash) != len(transactions) {
+		return nil, fmt.Errorf("expected %d responses, got %d", len(transactions), len(byHash))
+	}
+	for _, tx := range transactions {
+		hash, err := tx.HashHex(i.passPhrase)
+		if err != nil {
+			return nil, err
+		}
+		response, ok := byHash[hash]
+		if !ok {
+			return nil, fmt.Errorf("transaction %s not found", hash)
+		}
+		results = append(results, response)
+	}
+	return results, nil
 }
 
 func (i *Test) MustSubmitMultiSigTransaction(
