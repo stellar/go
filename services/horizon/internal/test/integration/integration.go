@@ -36,6 +36,7 @@ import (
 	"github.com/stellar/go/clients/stellarcore"
 	"github.com/stellar/go/keypair"
 	proto "github.com/stellar/go/protocols/horizon"
+	coreproto "github.com/stellar/go/protocols/stellarcore"
 	horizoncmd "github.com/stellar/go/services/horizon/cmd"
 	horizon "github.com/stellar/go/services/horizon/internal"
 	"github.com/stellar/go/services/horizon/internal/ingest"
@@ -171,14 +172,15 @@ func NewTest(t *testing.T, config Config) *Test {
 		TestingSorobanHighLimitOverride:       true,
 		OverrideEvictionParamsForTesting:      false,
 	}
-	if config.QuickExpiration {
-		validatorParams.TestingSorobanHighLimitOverride = true
-		validatorParams.TestingMinimumPersistentEntryLifetime = 10
-	}
 	if config.QuickEviction {
 		validatorParams.OverrideEvictionParamsForTesting = true
-		validatorParams.TestingStartingEvictionScanLevel = 2
+		validatorParams.TestingStartingEvictionScanLevel = 1
 		validatorParams.TestingMaxEntriesToArchive = 100
+		// QuickEviction implies QuickExpiration
+		config.QuickExpiration = true
+	}
+	if config.QuickExpiration {
+		validatorParams.TestingMinimumPersistentEntryLifetime = 10
 	}
 	var i *Test
 	if !config.SkipCoreContainerCreation {
@@ -877,8 +879,8 @@ func (i *Test) simulateTransaction(
 	err = stellarRPCClient.CallResult(context.Background(), "simulateTransaction", struct {
 		Transaction string `json:"transaction"`
 	}{base64}, &result)
-	assert.NoError(i.t, err)
-	assert.Empty(i.t, result.Error)
+	require.NoError(i.t, err)
+	require.Empty(i.t, result.Error)
 	var transactionData xdr.SorobanTransactionData
 	err = xdr.SafeUnmarshalBase64(result.TransactionData, &transactionData)
 	assert.NoError(i.t, err)
@@ -901,6 +903,28 @@ func (i *Test) syncWithStellarRPC(ledgerToWaitFor uint32) {
 		time.Sleep(500 * time.Millisecond)
 	}
 	i.t.Fatal("Time out waiting for stellar-rpc to sync")
+}
+
+func (i *Test) GetLedgerEntryTTL(ledgerKey xdr.LedgerKey) uint32 {
+	ch := jhttp.NewChannel("http://localhost:"+strconv.Itoa(StellarRPCPort), nil)
+	client := jrpc2.NewClient(ch, nil)
+
+	keyB64, err := xdr.MarshalBase64(ledgerKey)
+	require.NoError(i.t, err)
+	request := struct {
+		Keys []string `json:"keys"`
+	}{
+		Keys: []string{keyB64},
+	}
+
+	var result struct {
+		Entries []struct {
+			LiveUntilLedgerSeq *uint32 `json:"liveUntilLedgerSeq,omitempty"`
+		} `json:"entries"`
+	}
+	require.NoError(i.t, client.CallResult(context.Background(), "getLedgerEntries", request, &result))
+	require.Len(i.t, result.Entries, 1)
+	return *result.Entries[0].LiveUntilLedgerSeq
 }
 
 func (i *Test) WaitUntilLedgerEntryTTL(ledgerKey xdr.LedgerKey) {
@@ -1425,6 +1449,53 @@ func (i *Test) AsyncSubmitTransaction(
 		return proto.AsyncTransactionSubmissionResponse{}, err
 	}
 	return i.Client().AsyncSubmitTransaction(tx)
+}
+
+func (i *Test) SubmitTransactions(transactions []*txnbuild.Transaction) ([]proto.Transaction, error) {
+	var results []proto.Transaction
+	byHash := make(map[string]proto.Transaction)
+	for _, tx := range transactions {
+		response, err := i.Client().AsyncSubmitTransaction(tx)
+		if err != nil {
+			return nil, err
+		}
+		if response.TxStatus != coreproto.TXStatusPending {
+			return nil, fmt.Errorf("transaction status is %s", response.TxStatus)
+		}
+	}
+	require.Eventually(i.t, func() bool {
+		for _, tx := range transactions {
+			hash, err := tx.HashHex(i.passPhrase)
+			if err != nil {
+				continue
+			}
+			if _, ok := byHash[hash]; ok {
+				continue
+			}
+			response, err := i.Client().TransactionDetail(hash)
+			if err != nil {
+				continue
+			}
+			byHash[hash] = response
+		}
+		return len(byHash) == len(transactions)
+	}, time.Minute, time.Second)
+
+	if len(byHash) != len(transactions) {
+		return nil, fmt.Errorf("expected %d responses, got %d", len(transactions), len(byHash))
+	}
+	for _, tx := range transactions {
+		hash, err := tx.HashHex(i.passPhrase)
+		if err != nil {
+			return nil, err
+		}
+		response, ok := byHash[hash]
+		if !ok {
+			return nil, fmt.Errorf("transaction %s not found", hash)
+		}
+		results = append(results, response)
+	}
+	return results, nil
 }
 
 func (i *Test) MustSubmitMultiSigTransaction(

@@ -152,7 +152,7 @@ func TestProcessorRunnerBuildChangeProcessor(t *testing.T) {
 	}
 
 	stats := &processors.StatsChangeProcessor{}
-	processor := buildChangeProcessor(runner.historyQ, stats, ledgerSource, 123, "", nil)
+	processor := buildChangeProcessor(runner.historyQ, stats, ledgerSource, 123, "")
 	assert.IsType(t, &groupChangeProcessors{}, processor)
 
 	assert.IsType(t, &statsChangeProcessor{}, processor.processors[0])
@@ -171,7 +171,7 @@ func TestProcessorRunnerBuildChangeProcessor(t *testing.T) {
 		filters:  &MockFilters{},
 	}
 
-	processor = buildChangeProcessor(runner.historyQ, stats, historyArchiveSource, 456, "", nil)
+	processor = buildChangeProcessor(runner.historyQ, stats, historyArchiveSource, 456, "")
 	assert.IsType(t, &groupChangeProcessors{}, processor)
 
 	assert.IsType(t, &statsChangeProcessor{}, processor.processors[0])
@@ -272,6 +272,13 @@ func TestProcessorRunnerRunAllProcessorsOnLedger(t *testing.T) {
 	).Return(nil).Once()
 
 	defer mock.AssertExpectationsForObjects(t, mockBatchInsertBuilder)
+
+	q.MockQAssetStats.On("InsertAssetContracts", ctx, []history.AssetContract(nil)).
+		Return(nil).Once()
+	q.MockQAssetStats.On("UpdateAssetContractExpirations", ctx, []xdr.Hash{}, []uint32{}).
+		Return(nil).Once()
+	q.MockQAssetStats.On("DeleteAssetContractsExpiringAt", ctx, uint32(22)).
+		Return(int64(0), nil).Once()
 
 	q.MockQAssetStats.On("RemoveContractAssetBalances", ctx, []xdr.Hash(nil)).
 		Return(nil).Once()

@@ -35,7 +35,7 @@ type contractAssetBalancesQ interface {
 // ContractAssetStatSet represents a collection of asset stats for
 // contract asset holders
 type ContractAssetStatSet struct {
-	contractToAsset          map[xdr.ContractId]xdr.Asset
+	createdAssetContracts    []xdr.Asset
 	contractAssetStats       map[xdr.ContractId]assetContractStatValue
 	createdBalances          []history.ContractAssetBalance
 	removedBalances          []xdr.Hash
@@ -58,7 +58,7 @@ func NewContractAssetStatSet(
 	currentLedger uint32,
 ) *ContractAssetStatSet {
 	return &ContractAssetStatSet{
-		contractToAsset:          map[xdr.ContractId]xdr.Asset{},
+		createdAssetContracts:    []xdr.Asset{},
 		contractAssetStats:       map[xdr.ContractId]assetContractStatValue{},
 		networkPassphrase:        networkPassphrase,
 		assetStatsQ:              assetStatsQ,
@@ -84,6 +84,38 @@ func (s *ContractAssetStatSet) AddContractData(change ingest.Change) error {
 	return s.ingestContractAssetBalance(change)
 }
 
+func (s *ContractAssetStatSet) GetCreatedAssetContracts() ([]history.AssetContract, error) {
+	var rows []history.AssetContract
+	for _, asset := range s.createdAssetContracts {
+		contractID, err := asset.ContractID(s.networkPassphrase)
+		if err != nil {
+			return nil, err
+		}
+		row := history.AssetContract{
+			ContractID: contractID[:],
+		}
+		if err = asset.Extract(&row.AssetType, &row.AssetCode, &row.AssetIssuer); err != nil {
+			return nil, errors.Wrap(err, "could not extract asset info from asset")
+		}
+
+		ledgerKey := sac.AssetToContractDataLedgerKey(contractID)
+		bin, err := ledgerKey.MarshalBinary()
+		if err != nil {
+			return nil, errors.Wrap(err, "could not marshal key")
+		}
+		keyHash := sha256.Sum256(bin)
+		row.KeyHash = keyHash[:]
+		var ok bool
+		row.ExpirationLedger, ok = s.createdExpirationEntries[keyHash]
+		if !ok {
+			return nil, errors.Errorf("could not find expiration ledger entry for asset contract %d", contractID)
+		}
+		rows = append(rows, row)
+	}
+
+	return rows, nil
+}
+
 func (s *ContractAssetStatSet) GetContractStats() []history.ContractAssetStatRow {
 	var contractStats []history.ContractAssetStatRow
 	for _, contractStat := range s.contractAssetStats {
@@ -96,10 +128,6 @@ func (s *ContractAssetStatSet) GetCreatedBalances() []history.ContractAssetBalan
 	return s.createdBalances
 }
 
-func (s *ContractAssetStatSet) GetAssetToContractMap() map[xdr.ContractId]xdr.Asset {
-	return s.contractToAsset
-}
-
 func (s *ContractAssetStatSet) ingestAssetContractMetadata(change ingest.Change) (bool, error) {
 	if change.Pre != nil || change.Post == nil {
 		return false, nil
@@ -108,8 +136,16 @@ func (s *ContractAssetStatSet) ingestAssetContractMetadata(change ingest.Change)
 	if !found {
 		return false, nil
 	}
+	keyHash, err := getKeyHash(*change.Post)
+	if err != nil {
+		return false, err
+	}
+	expirationLedger, ok := s.createdExpirationEntries[keyHash]
+	if !ok || expirationLedger < s.currentLedger {
+		return false, nil
+	}
 	if pContactID := change.Post.Data.MustContractData().Contract.ContractId; pContactID != nil {
-		s.contractToAsset[*pContactID] = asset
+		s.createdAssetContracts = append(s.createdAssetContracts, asset)
 		return true, nil
 	}
 	return false, nil

@@ -129,7 +129,7 @@ func (r *LedgerBackend) PrepareRange(ctx context.Context, ledgerRange ledgerback
 		})
 	}
 	var flag xdr.Uint32 = 1
-	firstLedger.V1.UpgradesProcessing = append(firstLedger.V1.UpgradesProcessing, xdr.UpgradeEntryMeta{
+	firstLedger.V2.UpgradesProcessing = append(firstLedger.V2.UpgradesProcessing, xdr.UpgradeEntryMeta{
 		Upgrade: xdr.LedgerUpgrade{
 			Type:     xdr.LedgerUpgradeTypeLedgerUpgradeFlags,
 			NewFlags: &flag,
@@ -279,11 +279,11 @@ func (r *LedgerBackend) Close() error {
 }
 
 func validLedger(ledger xdr.LedgerCloseMeta) error {
-	if _, ok := ledger.GetV1(); !ok {
+	if _, ok := ledger.GetV2(); !ok {
 		return fmt.Errorf("ledger version %v is not supported", ledger.V)
 	}
-	if _, ok := ledger.MustV1().TxSet.GetV1TxSet(); !ok {
-		return fmt.Errorf("ledger txset %v is not supported", ledger.MustV1().TxSet.V)
+	if _, ok := ledger.MustV2().TxSet.GetV1TxSet(); !ok {
+		return fmt.Errorf("ledger txset %v is not supported", ledger.MustV2().TxSet.V)
 	}
 	return nil
 }
@@ -380,10 +380,10 @@ func MergeLedgers(networkPassphrase string, dst *xdr.LedgerCloseMeta, src xdr.Le
 	// src is merged into dst by appending all the transactions from src into dst,
 	// appending all the upgrades from src into dst, and appending all the evictions
 	// from src into dst
-	dst.V1.TxSet.V1TxSet.Phases = append(dst.V1.TxSet.V1TxSet.Phases, src.V1.TxSet.V1TxSet.Phases...)
-	dst.V1.TxProcessing = append(dst.V1.TxProcessing, src.V1.TxProcessing...)
-	dst.V1.UpgradesProcessing = append(dst.V1.UpgradesProcessing, src.V1.UpgradesProcessing...)
-	dst.V1.EvictedKeys = append(dst.V1.EvictedKeys, src.V1.EvictedKeys...)
+	dst.V2.TxSet.V1TxSet.Phases = append(dst.V2.TxSet.V1TxSet.Phases, src.V2.TxSet.V1TxSet.Phases...)
+	dst.V2.TxProcessing = append(dst.V2.TxProcessing, src.V2.TxProcessing...)
+	dst.V2.UpgradesProcessing = append(dst.V2.UpgradesProcessing, src.V2.UpgradesProcessing...)
+	dst.V2.EvictedKeys = append(dst.V2.EvictedKeys, src.V2.EvictedKeys...)
 
 	mergedChangesByKey := map[string][]ingest.Change{}
 	if err := extractChanges(networkPassphrase, mergedChangesByKey, *dst); err != nil {

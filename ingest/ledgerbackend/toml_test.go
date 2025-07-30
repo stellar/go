@@ -560,3 +560,125 @@ func TestHTTPQueryParameters(t *testing.T) {
 	require.NotNil(t, *toml.QuerySnapshotLedgers)
 	assert.Equal(t, *toml.QuerySnapshotLedgers, uint(300))
 }
+
+func TestTomlParamsFlags(t *testing.T) {
+	params := CaptiveCoreTomlParams{
+		NetworkPassphrase:  "Public Global Stellar Network ; September 2015",
+		HistoryArchiveURLs: []string{"http://localhost:1170"},
+		CoreBinaryPath:     "stellar-core",
+		CoreProtocolVersionFn: func(string) (uint, error) {
+			return 23, nil
+		},
+		CoreBuildVersionFn: func(string) (string, error) {
+			return "v23.0.0rc.1", nil
+		},
+	}
+	captiveCoreToml, err := NewCaptiveCoreToml(params)
+	require.NoError(t, err)
+
+	require.Equal(t, captiveCoreToml.NetworkPassphrase, "Public Global Stellar Network ; September 2015")
+
+	require.NotNil(t, captiveCoreToml.BackfillRestoreMeta)
+	assert.True(t, *captiveCoreToml.BackfillRestoreMeta)
+
+	require.NotNil(t, captiveCoreToml.BucketListDBMemoryForCaching)
+	assert.Equal(t, *captiveCoreToml.BucketListDBMemoryForCaching, uint(0))
+
+	require.Nil(t, captiveCoreToml.EnableSorobanDiagnosticEvents)
+	require.Nil(t, captiveCoreToml.EnableDiagnosticsForTxSubmission)
+	require.Nil(t, captiveCoreToml.EnableEmitSorobanTransactionMetaExtV1)
+	require.Nil(t, captiveCoreToml.EnableEmitLedgerCloseMetaExtV1)
+	require.Nil(t, captiveCoreToml.EnableBackfillStellarAssetEvents)
+
+	require.Nil(t, captiveCoreToml.EnableEmitClassicEvents)
+	require.Nil(t, captiveCoreToml.EnableBackfillStellarAssetEvents)
+
+}
+
+func TestTomlParamsEmitEventFlags(t *testing.T) {
+	params := CaptiveCoreTomlParams{
+		NetworkPassphrase:  "Public Global Stellar Network ; September 2015",
+		HistoryArchiveURLs: []string{"http://localhost:1170"},
+		CoreBinaryPath:     "stellar-core",
+		CoreProtocolVersionFn: func(string) (uint, error) {
+			return 23, nil
+		},
+		EmitUnifiedEvents: true,
+	}
+
+	// assert config for emit events going forward
+	captiveCoreToml, err := NewCaptiveCoreToml(params)
+	require.NoError(t, err)
+
+	require.NotNil(t, captiveCoreToml.EnableEmitClassicEvents)
+	assert.True(t, *captiveCoreToml.EnableEmitClassicEvents)
+	require.Nil(t, captiveCoreToml.EnableBackfillStellarAssetEvents)
+
+	// assert config for emit events for pre-protocol 22
+	params.EmitUnifiedEvents = false
+	params.EmitUnifiedEventsBeforeProtocol22 = true
+	captiveCoreToml, err = NewCaptiveCoreToml(params)
+	require.NoError(t, err)
+
+	require.Nil(t, captiveCoreToml.EnableEmitClassicEvents)
+	require.NotNil(t, captiveCoreToml.EnableBackfillStellarAssetEvents)
+	assert.True(t, *captiveCoreToml.EnableBackfillStellarAssetEvents)
+}
+
+func TestTomlParamsVerboseMetaP23Flags(t *testing.T) {
+	params := CaptiveCoreTomlParams{
+		NetworkPassphrase:  "Public Global Stellar Network ; September 2015",
+		HistoryArchiveURLs: []string{"http://localhost:1170"},
+		EmitVerboseMeta:    true,
+		CoreBinaryPath:     "stellar-core",
+		CoreProtocolVersionFn: func(string) (uint, error) {
+			return 23, nil
+		},
+	}
+	captiveCoreToml, err := NewCaptiveCoreToml(params)
+	require.NoError(t, err)
+
+	// These should be set to true when EmitVerboseMeta is enabled
+	require.NotNil(t, captiveCoreToml.EnableSorobanDiagnosticEvents)
+	assert.True(t, *captiveCoreToml.EnableSorobanDiagnosticEvents)
+	require.NotNil(t, captiveCoreToml.EnableDiagnosticsForTxSubmission)
+	assert.True(t, *captiveCoreToml.EnableDiagnosticsForTxSubmission)
+	require.NotNil(t, captiveCoreToml.EnableEmitSorobanTransactionMetaExtV1)
+	assert.True(t, *captiveCoreToml.EnableEmitSorobanTransactionMetaExtV1)
+	require.NotNil(t, captiveCoreToml.EnableEmitLedgerCloseMetaExtV1)
+	assert.True(t, *captiveCoreToml.EnableEmitLedgerCloseMetaExtV1)
+
+	require.NotNil(t, captiveCoreToml.EnableBackfillStellarAssetEvents)
+	assert.True(t, *captiveCoreToml.EnableBackfillStellarAssetEvents)
+
+	require.NotNil(t, captiveCoreToml.EnableEmitClassicEvents)
+	assert.True(t, *captiveCoreToml.EnableEmitClassicEvents)
+}
+
+func TestTomlParamsVerboseMetaPreP23Flags(t *testing.T) {
+	params := CaptiveCoreTomlParams{
+		NetworkPassphrase:  "Public Global Stellar Network ; September 2015",
+		HistoryArchiveURLs: []string{"http://localhost:1170"},
+		EmitVerboseMeta:    true,
+		CoreBinaryPath:     "stellar-core",
+		CoreProtocolVersionFn: func(string) (uint, error) {
+			return 22, nil
+		},
+	}
+	captiveCoreToml, err := NewCaptiveCoreToml(params)
+	require.NoError(t, err)
+
+	// These should be set to true when EmitVerboseMeta is enabled
+	require.NotNil(t, captiveCoreToml.EnableSorobanDiagnosticEvents)
+	assert.True(t, *captiveCoreToml.EnableSorobanDiagnosticEvents)
+	require.NotNil(t, captiveCoreToml.EnableDiagnosticsForTxSubmission)
+	assert.True(t, *captiveCoreToml.EnableDiagnosticsForTxSubmission)
+	require.NotNil(t, captiveCoreToml.EnableEmitSorobanTransactionMetaExtV1)
+	assert.True(t, *captiveCoreToml.EnableEmitSorobanTransactionMetaExtV1)
+	require.NotNil(t, captiveCoreToml.EnableEmitLedgerCloseMetaExtV1)
+	assert.True(t, *captiveCoreToml.EnableEmitLedgerCloseMetaExtV1)
+
+	// Unified events flags should not be set
+	require.Nil(t, captiveCoreToml.EnableBackfillStellarAssetEvents)
+	require.Nil(t, captiveCoreToml.EnableEmitClassicEvents)
+}

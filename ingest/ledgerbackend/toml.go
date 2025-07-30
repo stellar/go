@@ -362,6 +362,8 @@ type CaptiveCoreTomlParams struct {
 	EnforceSorobanTransactionMetaExtV1 bool
 	// Emits unified events for all operations
 	EmitUnifiedEvents bool
+	// Enable backfilled events
+	EmitUnifiedEventsBeforeProtocol22 bool
 	// Fast HTTP Query Server parameters
 	HTTPQueryServerParams *HTTPQueryServerParams
 	// CoreBuildVersionFn is a function that returns the build version of the stellar-core binary.
@@ -371,6 +373,8 @@ type CaptiveCoreTomlParams struct {
 	// BackfillRestoreMeta is the value assigned to BACKFILL_RESTORE_META in the captive core toml file.
 	// If omitted we will default BACKFILL_RESTORE_META to true.
 	BackfillRestoreMeta *bool
+	// This will enable a series of core configurations to generate the most verbose meta possible.
+	EmitVerboseMeta bool
 }
 
 // NewCaptiveCoreTomlFromFile constructs a new CaptiveCoreToml instance by merging configuration
@@ -588,17 +592,20 @@ func (c *CaptiveCoreToml) setDefaults(params CaptiveCoreTomlParams) {
 		}
 	}
 
-	if params.EnforceSorobanDiagnosticEvents {
+	if params.EmitVerboseMeta || params.EnforceSorobanDiagnosticEvents {
 		enforceOption(&c.EnableSorobanDiagnosticEvents)
 		enforceOption(&c.EnableDiagnosticsForTxSubmission)
 	}
-	if params.EnforceSorobanTransactionMetaExtV1 {
+	if params.EmitVerboseMeta || params.EnforceSorobanTransactionMetaExtV1 {
 		enforceOption(&c.EnableEmitSorobanTransactionMetaExtV1)
 	}
+	if params.EmitVerboseMeta {
+		enforceOption(&c.EnableEmitLedgerCloseMetaExtV1)
+	}
 
-	// If caller opts in to unified events, enable both event emission and event
-	// backfilling, as long as the running Core binary supports the feature.
-	if params.EmitUnifiedEvents {
+	// enable event emission
+	// as long as the running Core binary supports the feature.
+	if params.EmitVerboseMeta || params.EmitUnifiedEvents {
 		protocolVersion, err := getCoreProtocolVersion(params)
 		if err != nil {
 			log.Warnf("Error getting core protocol version: %v", err)
@@ -609,8 +616,24 @@ func (c *CaptiveCoreToml) setDefaults(params CaptiveCoreTomlParams) {
 					"unified events flag has no effect.",
 				protocolVersion, minProtocolVersionForUnifiedEvents)
 		} else {
-			enforceOption(&c.EnableBackfillStellarAssetEvents)
 			enforceOption(&c.EnableEmitClassicEvents)
+		}
+	}
+
+	// enable classic events to be generated prior to p22
+	// as long as the running Core binary supports the feature.
+	if params.EmitVerboseMeta || params.EmitUnifiedEventsBeforeProtocol22 {
+		protocolVersion, err := getCoreProtocolVersion(params)
+		if err != nil {
+			log.Warnf("Error getting core protocol version: %v", err)
+		}
+		if protocolVersion < minProtocolVersionForUnifiedEvents {
+			log.Warnf(
+				"Core supported protocol version too low: %d < %d, "+
+					"flag for backfilled classic events before p22 has no effect.",
+				protocolVersion, minProtocolVersionForUnifiedEvents)
+		} else {
+			enforceOption(&c.EnableBackfillStellarAssetEvents)
 		}
 	}
 

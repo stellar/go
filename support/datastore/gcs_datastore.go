@@ -27,13 +27,18 @@ type GCSDataStore struct {
 	schema DataStoreSchema
 }
 
-func NewGCSDataStore(ctx context.Context, bucketPath string, schema DataStoreSchema) (DataStore, error) {
+func NewGCSDataStore(ctx context.Context, dataStoreConfig DataStoreConfig) (DataStore, error) {
+	destinationBucketPath, ok := dataStoreConfig.Params["destination_bucket_path"]
+	if !ok {
+		return nil, errors.New("invalid GCS config, no destination_bucket_path")
+	}
+
 	client, err := storage.NewClient(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	return FromGCSClient(ctx, client, bucketPath, schema)
+	return FromGCSClient(ctx, client, destinationBucketPath, dataStoreConfig.Schema)
 }
 
 func FromGCSClient(ctx context.Context, client *storage.Client, bucketPath string, schema DataStoreSchema) (DataStore, error) {

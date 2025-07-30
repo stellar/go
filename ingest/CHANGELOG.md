@@ -6,7 +6,9 @@ All notable changes to this project will be documented in this file. This projec
 
 ### Protocol 23 Support
 * Added support for the new `RESTORE` ledger entry change type [5587](https://github.com/stellar/go/pull/5587).
-
+* Added new captive core toml config parameters to `CaptiveCoreTomlParams`:
+  * `EmitUnifiedEventsBeforeProtocol22` , defaults to false, when true, sets `ENABLE_BACKFILL_STELLAR_ASSET_EVENTS` will enable emission of classic events in the transaction metadata for ledgers that were created prior to Protocol 22. 
+  * `EmitVerboseMeta` is convenience flag, when set to true it will enable all config flags related to emitting more verbose transaction metadata: `ENABLE_SOROBAN_DIAGNOSTIC_EVENTS`, `ENABLE_DIAGNOSTICS_FOR_TX_SUBMISSION`, `ENABLE_EMIT_SOROBAN_TRANSACTION_META_EXT_V1`, `ENABLE_EMIT_LEDGER_CLOSE_META_EXT_V1`, `ENABLE_EMIT_CLASSIC_EVENTS`, `ENABLE_EMIT_CLASSIC_EVENTS`
 ### Breaking Changes
 In Protocol 23, Stellar Core removes in-memory mode and requires on-disk mode (using BucketListDB) for captive core ([5627](https://github.com/stellar/go/pull/5627)). As a result, the following configurations are no longer supported and have been removed:
 - `CAPTIVE_CORE_USE_DB`

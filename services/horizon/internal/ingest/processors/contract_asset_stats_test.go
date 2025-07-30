@@ -47,10 +47,30 @@ func TestAddContractData(t *testing.T) {
 
 	xlmContractData, err := sac.AssetToContractData(true, "", "", xlmID)
 	assert.NoError(t, err)
+	xlmAssetKeyHash, err := getKeyHash(xdr.LedgerEntry{
+		Data: xlmContractData,
+	})
+	assert.NoError(t, err)
+	set.createdExpirationEntries[xlmAssetKeyHash] = 160
 	err = set.AddContractData(ingest.Change{
 		Type: xdr.LedgerEntryTypeContractData,
 		Post: &xdr.LedgerEntry{
 			Data: xlmContractData,
+		},
+	})
+	assert.NoError(t, err)
+
+	uniContractData, err := sac.AssetToContractData(false, "UNI", etherIssuer, uniID)
+	assert.NoError(t, err)
+	uniAssetKeyHash, err := getKeyHash(xdr.LedgerEntry{
+		Data: uniContractData,
+	})
+	assert.NoError(t, err)
+	set.createdExpirationEntries[uniAssetKeyHash] = 140
+	err = set.AddContractData(ingest.Change{
+		Type: xdr.LedgerEntryTypeContractData,
+		Post: &xdr.LedgerEntry{
+			Data: uniContractData,
 		},
 	})
 	assert.NoError(t, err)
@@ -78,6 +98,11 @@ func TestAddContractData(t *testing.T) {
 
 	usdcContractData, err := sac.AssetToContractData(false, "USDC", usdcIssuer, usdcID)
 	assert.NoError(t, err)
+	usdcAssetKeyHash, err := getKeyHash(xdr.LedgerEntry{
+		Data: usdcContractData,
+	})
+	assert.NoError(t, err)
+	set.createdExpirationEntries[usdcAssetKeyHash] = 150
 	err = set.AddContractData(ingest.Change{
 		Type: xdr.LedgerEntryTypeContractData,
 		Post: &xdr.LedgerEntry{
@@ -88,6 +113,11 @@ func TestAddContractData(t *testing.T) {
 
 	etherContractData, err := sac.AssetToContractData(false, "ETHER", etherIssuer, etherID)
 	assert.NoError(t, err)
+	etherAssetKeyHash, err := getKeyHash(xdr.LedgerEntry{
+		Data: etherContractData,
+	})
+	assert.NoError(t, err)
+	set.createdExpirationEntries[etherAssetKeyHash] = 150
 	err = set.AddContractData(ingest.Change{
 		Type: xdr.LedgerEntryTypeContractData,
 		Post: &xdr.LedgerEntry{
@@ -139,9 +169,26 @@ func TestAddContractData(t *testing.T) {
 
 	assert.Empty(t, set.updatedBalances)
 	assert.Empty(t, set.removedBalances)
-	assert.Len(t, set.contractToAsset, 2)
-	assert.True(t, set.contractToAsset[usdcID].Equals(usdcAsset))
-	assert.True(t, set.contractToAsset[etherID].Equals(etherAsset))
+	createdAssetContracts, err := set.GetCreatedAssetContracts()
+	assert.NoError(t, err)
+	assert.Equal(t, []history.AssetContract{
+		{
+			KeyHash:          usdcAssetKeyHash[:],
+			ContractID:       usdcID[:],
+			AssetType:        xdr.AssetTypeAssetTypeCreditAlphanum4,
+			AssetCode:        "USDC",
+			AssetIssuer:      usdcIssuer,
+			ExpirationLedger: 150,
+		},
+		{
+			KeyHash:          etherAssetKeyHash[:],
+			ContractID:       etherID[:],
+			AssetType:        xdr.AssetTypeAssetTypeCreditAlphanum12,
+			AssetCode:        "ETHER",
+			AssetIssuer:      etherIssuer,
+			ExpirationLedger: 150,
+		},
+	}, createdAssetContracts)
 	assert.Equal(t, []history.ContractAssetBalance{
 		{
 			KeyHash:          uniBalanceKeyHash[:],
@@ -172,6 +219,41 @@ func TestAddContractData(t *testing.T) {
 			},
 		},
 	})
+}
+
+func TestGetCreatedAssetContractsRequiresExpiration(t *testing.T) {
+	usdcIssuer := keypair.MustRandom().Address()
+	usdcAsset := xdr.MustNewCreditAsset("USDC", usdcIssuer)
+	usdcID, err := usdcAsset.ContractID("passphrase")
+	assert.NoError(t, err)
+
+	set := NewContractAssetStatSet(
+		&history.MockQAssetStats{},
+		"passphrase",
+		map[xdr.Hash]uint32{},
+		map[xdr.Hash]uint32{},
+		map[xdr.Hash][2]uint32{},
+		150,
+	)
+
+	usdcContractData, err := sac.AssetToContractData(false, "USDC", usdcIssuer, usdcID)
+	assert.NoError(t, err)
+	usdcAssetKeyHash, err := getKeyHash(xdr.LedgerEntry{
+		Data: usdcContractData,
+	})
+	assert.NoError(t, err)
+	set.createdExpirationEntries[usdcAssetKeyHash] = 150
+	err = set.AddContractData(ingest.Change{
+		Type: xdr.LedgerEntryTypeContractData,
+		Post: &xdr.LedgerEntry{
+			Data: usdcContractData,
+		},
+	})
+	assert.NoError(t, err)
+
+	delete(set.createdExpirationEntries, usdcAssetKeyHash)
+	_, err = set.GetCreatedAssetContracts()
+	assert.ErrorContains(t, err, "could not find expiration ledger entry for asset contract")
 }
 
 func TestUpdateContractBalance(t *testing.T) {
@@ -291,7 +373,7 @@ func TestUpdateContractBalance(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	assert.Empty(t, set.contractToAsset)
+	assert.Empty(t, set.createdAssetContracts)
 	assert.Empty(t, set.removedBalances)
 	assert.Empty(t, set.createdExpirationEntries)
 	for key, amt := range set.updatedBalances {
@@ -373,7 +455,7 @@ func TestRemoveContractData(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, []xdr.Hash{keyHash, keyHash1, keyHash2}, set.removedBalances)
-	assert.Empty(t, set.contractToAsset)
+	assert.Empty(t, set.createdAssetContracts)
 
 	assert.ElementsMatch(t, set.GetContractStats(), []history.ContractAssetStatRow{
 		{

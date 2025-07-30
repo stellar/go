@@ -37,9 +37,8 @@ type sorobanTransaction struct {
 }
 
 func TestGenerateLedgers(t *testing.T) {
-	// TODO: Add support for LedgerCloseMetaV2 to run this test for Protocol 23 and above
-	if integration.GetCoreMaxSupportedProtocol() > 22 {
-		t.Skip("This test run does not support greater than Protocol 22")
+	if integration.GetCoreMaxSupportedProtocol() < 23 {
+		t.Skip("This test run does not support less than Protocol 23")
 	}
 
 	var transactionsPerLedger, ledgers, transfersPerTx int
@@ -444,8 +443,10 @@ func merge(t *testing.T, networkPassphrase string, ledgers []xdr.LedgerCloseMeta
 	var curCount int
 	for _, ledger := range ledgers {
 		transactionCount := ledger.CountTransactions()
-		require.Empty(t, ledger.V1.EvictedKeys)
-		require.Empty(t, ledger.V1.UpgradesProcessing)
+		evictedKeys, err := ledger.EvictedLedgerKeys()
+		require.NoError(t, err)
+		require.Empty(t, evictedKeys)
+		require.Empty(t, ledger.UpgradesProcessing())
 		if transactionCount == 0 {
 			continue
 		}

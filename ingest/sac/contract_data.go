@@ -79,6 +79,9 @@ func AssetFromContractData(ledgerEntry xdr.LedgerEntry, passphrase string) (xdr.
 	if contractData.Key.Type != xdr.ScValTypeScvLedgerKeyContractInstance {
 		return xdr.Asset{}, false
 	}
+	if contractData.Durability != xdr.ContractDataDurabilityPersistent {
+		return xdr.Asset{}, false
+	}
 	contractInstanceData, ok := contractData.Val.GetInstance()
 	if !ok || contractInstanceData.Storage == nil {
 		return xdr.Asset{}, false
@@ -187,7 +190,9 @@ func ContractBalanceFromContractData(ledgerEntry xdr.LedgerEntry, passphrase str
 	if !ok {
 		return [32]byte{}, nil, false
 	}
-
+	if contractData.Durability != xdr.ContractDataDurabilityPersistent {
+		return [32]byte{}, nil, false
+	}
 	// we don't support asset stats for lumens
 	nativeAssetContractID, err := xdr.MustNewNativeAsset().ContractID(passphrase)
 	if err != nil || (contractData.Contract.ContractId != nil && *contractData.Contract.ContractId == nativeAssetContractID) {
@@ -444,6 +449,22 @@ func AssetToContractData(isNative bool, code, issuer string, contractID [32]byte
 			},
 		},
 	}, nil
+}
+
+func AssetToContractDataLedgerKey(contractID xdr.ContractId) xdr.LedgerKey {
+	return xdr.LedgerKey{
+		Type: xdr.LedgerEntryTypeContractData,
+		ContractData: &xdr.LedgerKeyContractData{
+			Contract: xdr.ScAddress{
+				Type:       xdr.ScAddressTypeScAddressTypeContract,
+				ContractId: &contractID,
+			},
+			Key: xdr.ScVal{
+				Type: xdr.ScValTypeScvLedgerKeyContractInstance,
+			},
+			Durability: xdr.ContractDataDurabilityPersistent,
+		},
+	}
 }
 
 // BalanceToContractData is the inverse of ContractBalanceFromContractData. It
