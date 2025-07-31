@@ -120,7 +120,7 @@ var (
 		return resp
 	}
 
-	someSorobanTxV3 = func(feeChanges xdr.LedgerEntryChanges, txApplyAfterChanges xdr.LedgerEntryChanges) ingest.LedgerTransaction {
+	someSorobanTxV3 = func(feeChanges xdr.LedgerEntryChanges, txApplyAfterChanges xdr.LedgerEntryChanges, memo *xdr.Memo) ingest.LedgerTransaction {
 		resp := someTxV3()
 		resp.FeeChanges = feeChanges
 		resp.Envelope.V1.Tx.Ext = xdr.TransactionExt{
@@ -142,6 +142,9 @@ var (
 			TxChangesAfter: txApplyAfterChanges,
 		}
 		resp.Result.Result.Result.Code = xdr.TransactionResultCodeTxFailed
+		if memo != nil {
+			resp.Envelope.V1.Tx.Memo = *memo
+		}
 		return resp
 	}
 
@@ -643,7 +646,7 @@ func TestSorobanFeeEvents(t *testing.T) {
 					generateAccountEntryUpdatedChange(accountEntry(someTxAccount, 1000*oneUnit), 999*oneUnit),
 				},
 				// This is txApplyAfterChanges
-				nil),
+				nil, nil),
 			expected: []*TokenTransferEvent{
 				expectedFeeEvent(unitsToStr(oneUnit)),
 			},
@@ -663,6 +666,7 @@ func TestSorobanFeeEvents(t *testing.T) {
 					generateAccountEntryChangState(accountEntry(someTxAccount, 700*oneUnit)),
 					generateAccountEntryUpdatedChange(accountEntry(someTxAccount, 700*oneUnit), 730*oneUnit),
 				},
+				nil,
 			),
 			expected: []*TokenTransferEvent{
 				expectedFeeEvent(unitsToStr(300 * oneUnit)),

@@ -2228,3 +2228,30 @@ func TestVersionSpecificSACValidation(t *testing.T) {
 		})
 	}
 }
+
+func TestNoMuxedInfoInPreProtocol23SorobanTxEvents(t *testing.T) {
+	// This test is specifically to test this edge case - https://github.com/stellar/go/issues/5770
+	someEvent := createContractEvent(
+		TransferEvent,
+		someContract1,
+		randomAccount,
+		1000,
+		nil,
+		xlmAsset.StringCanonical(),
+		contractIdFromAsset(xlmAsset),
+	)
+
+	// Just reusing the someTxV3WithOperationChangesAndMemo to get a V3 SorobanTx
+	memo := xdr.MemoID(999)
+	// The fixture Tx needs to have a TxMemo set
+	somePreProtocol23SorobanTxAndMemo := someSorobanTxV3(nil, nil, &memo)
+
+	event, err := processor.parseEvent(somePreProtocol23SorobanTxAndMemo, &someOperationIndex, someEvent)
+	assert.NoError(t, err, "Should not error parsing event")
+	assert.NotNil(t, event.GetTransfer())
+	assert.Equal(t, someContract1, event.GetTransfer().From)
+	assert.Equal(t, randomAccount, event.GetTransfer().To)
+	assert.Equal(t, thousandStr, event.GetTransfer().Amount)
+	// there shudnt be muxedInfo here.
+	assert.Nil(t, event.GetMeta().ToMuxedInfo)
+}

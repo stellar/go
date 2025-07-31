@@ -165,11 +165,6 @@ func (e *TokenTransferEvent) setDestinationMuxedInfo(to string, tx ingest.Ledger
 		return nil
 	}
 
-	// For smart contract transactions prior to P23, there will not be any muxed information emitted.
-	if tx.IsSorobanTx() && tx.Ledger.ProtocolVersion() < 23 {
-		return nil
-	}
-
 	if strkey.IsValidMuxedAccountEd25519PublicKey(to) {
 		muxedAcc := xdr.MustMuxedAddress(to)
 		muxedId, err := muxedAcc.GetId()
