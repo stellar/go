@@ -188,9 +188,3 @@ func extractAddress(val xdr.ScVal) (string, error) {
 func isAccountAddress(addr string) bool {
 	return strkey.IsValidEd25519PublicKey(addr) || strkey.IsValidMuxedAccountEd25519PublicKey(addr)
 }
-
-func panicIfErr(err error) {
-	if err != nil {
-		panic(err)
-	}
-}
