@@ -405,7 +405,6 @@ func (p *EventsProcessor) mintOrBurnOrTransferEvent(tx ingest.LedgerTransaction,
 	// Keep in mind though that this wont show up in operationMeta as a balance change
 	// This has happened in ledgerSequence: 4522126 on pubnet
 	if isFromIssuer && isToIssuer {
-		// There is no need to check or set muxed info here.
 		transferEvent := NewTransferEvent(meta, fromAddress, toAddress, amt, protoAsset)
 		// set mux information here as well
 		// See txHash - 53a2cb344383bb6c3e521d773199fbfffe9463c34c61e6cb7b0f729d4a4e0e29 in ledger - 53738108
