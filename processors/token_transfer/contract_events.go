@@ -187,7 +187,9 @@ func (p *EventsProcessor) parseEvent(tx ingest.LedgerTransaction, opIndex *uint3
 							maybeTransferEvent.From,
 							maybeTransferEvent.To,
 							maybeTransferEvent.Amount,
-							true,
+							// For smart contract transactions prior to P23, there will not be any muxed information emitted.
+							// So set the includeMuxedInfo flag to false here. Better than having  to add unnecessary checks in the setDestinationMuxedInfo functions
+							false,
 						)
 						if err != nil {
 							return nil, fmt.Errorf("contract transfer event error: %w", err)

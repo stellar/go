@@ -452,7 +452,7 @@ func TestValidContractEventsV3(t *testing.T) {
 					)
 				}
 
-				event, err := processor.parseEvent(someTxV3, &someOperationIndex, contractEvent)
+				event, err := processor.parseEvent(someTxV3(), &someOperationIndex, contractEvent)
 
 				require.NoError(t, err)
 				require.NotNil(t, event)
@@ -866,7 +866,7 @@ func TestInvalidEventsV3(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			contractEvent := tc.setupEvent()
-			event, err := processor.parseEvent(someTxV3, &someOperationIndex, contractEvent)
+			event, err := processor.parseEvent(someTxV3(), &someOperationIndex, contractEvent)
 
 			if tc.expectedErrMsg == "" {
 				// If no error is expected, the test should pass
@@ -1057,7 +1057,7 @@ func TestSacAssetValidation(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			contractEvent := tc.setupEvent()
-			event, err := processor.parseEvent(someTxV3, &someOperationIndex, contractEvent)
+			event, err := processor.parseEvent(someTxV3(), &someOperationIndex, contractEvent)
 
 			require.NoError(t, err, "Should not error for this test case")
 			require.NotNil(t, event, "Event should be returned")
@@ -1081,7 +1081,7 @@ func TestSacAssetValidation(t *testing.T) {
 
 func TestValidSep41EventsWithExtraTopicsAndDataV4(t *testing.T) {
 	// Create V4 transaction
-	v4Tx := someTxV3
+	v4Tx := someTxV3()
 	v4Tx.UnsafeMeta.V = 4
 	v4Tx.UnsafeMeta.V4 = &xdr.TransactionMetaV4{
 		Operations: []xdr.OperationMetaV2{{}},
@@ -1387,7 +1387,7 @@ func TestValidSep41EventsWithExtraTopicsAndDataV4(t *testing.T) {
 
 func TestValidContractEventsV4(t *testing.T) {
 	// Create V4 transaction
-	v4Tx := someTxV3
+	v4Tx := someTxV3()
 	v4Tx.UnsafeMeta.V = 4
 	v4Tx.UnsafeMeta.V4 = &xdr.TransactionMetaV4{
 		Operations: []xdr.OperationMetaV2{{}},
@@ -1770,7 +1770,7 @@ func TestValidContractEventsV4(t *testing.T) {
 
 func TestV4FeeEventParsing(t *testing.T) {
 	// Create V4 transaction
-	v4Tx := someTxV3
+	v4Tx := someTxV3()
 	v4Tx.UnsafeMeta.V = 4
 	v4Tx.UnsafeMeta.V4 = &xdr.TransactionMetaV4{
 		Operations: []xdr.OperationMetaV2{{}},
@@ -1990,7 +1990,7 @@ func TestV4FeeEventParsing(t *testing.T) {
 
 func TestV4InvalidEvents(t *testing.T) {
 	// Create V4 transaction
-	v4Tx := someTxV3
+	v4Tx := someTxV3()
 	v4Tx.UnsafeMeta.V = 4
 	v4Tx.UnsafeMeta.V4 = &xdr.TransactionMetaV4{
 		Operations: []xdr.OperationMetaV2{{}},
@@ -2181,7 +2181,7 @@ func TestVersionSpecificSACValidation(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			// Create transaction with specified version
-			testTx := someTxV3
+			testTx := someTxV3()
 			testTx.UnsafeMeta.V = tc.txMetaVersion
 			if tc.txMetaVersion == 4 {
 				testTx.UnsafeMeta.V4 = &xdr.TransactionMetaV4{
@@ -2227,4 +2227,31 @@ func TestVersionSpecificSACValidation(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestNoMuxedInfoInPreProtocol23SorobanTxEvents(t *testing.T) {
+	// This test is specifically to test this edge case - https://github.com/stellar/go/issues/5770
+	someEvent := createContractEvent(
+		TransferEvent,
+		someContract1,
+		randomAccount,
+		1000,
+		nil,
+		xlmAsset.StringCanonical(),
+		contractIdFromAsset(xlmAsset),
+	)
+
+	// Just reusing the someTxV3WithOperationChangesAndMemo to get a V3 SorobanTx
+	memo := xdr.MemoID(999)
+	// The fixture Tx needs to have a TxMemo set
+	somePreProtocol23SorobanTxAndMemo := someSorobanTxV3(nil, nil, &memo)
+
+	event, err := processor.parseEvent(somePreProtocol23SorobanTxAndMemo, &someOperationIndex, someEvent)
+	assert.NoError(t, err, "Should not error parsing event")
+	assert.NotNil(t, event.GetTransfer())
+	assert.Equal(t, someContract1, event.GetTransfer().From)
+	assert.Equal(t, randomAccount, event.GetTransfer().To)
+	assert.Equal(t, thousandStr, event.GetTransfer().Amount)
+	// there shudnt be muxedInfo here.
+	assert.Nil(t, event.GetMeta().ToMuxedInfo)
 }
