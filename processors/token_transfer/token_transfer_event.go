@@ -154,7 +154,7 @@ func (event *TokenTransferEvent) SetAsset(asset xdr.Asset) {
 	case *TokenTransferEvent_Transfer:
 		event.GetTransfer().Asset = protoAsset
 	default:
-		panic(fmt.Errorf("unkown event type:%v", event))
+		panic(fmt.Errorf("unknown event type:%v", event))
 	}
 }
 
