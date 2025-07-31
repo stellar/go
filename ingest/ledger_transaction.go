@@ -891,3 +891,140 @@ func (t *LedgerTransaction) contractIdFromContractData(ledgerKey xdr.LedgerKey) 
 
 	return contractId, true
 }
+
+func DeepCopyLedgerTransaction(src LedgerTransaction) (LedgerTransaction, error) {
+	var dst LedgerTransaction
+
+	// Copy primitive fields
+	dst.Index = src.Index
+	dst.LedgerVersion = src.LedgerVersion
+	dst.Hash = src.Hash
+
+	// Deep copy Envelope
+	envBytes, err := src.Envelope.MarshalBinary()
+	if err != nil {
+		return dst, fmt.Errorf("failed to marshal Envelope: %w", err)
+	}
+	if err := dst.Envelope.UnmarshalBinary(envBytes); err != nil {
+		return dst, fmt.Errorf("failed to unmarshal Envelope: %w", err)
+	}
+
+	// Deep copy Result
+	resultBytes, err := src.Result.MarshalBinary()
+	if err != nil {
+		return dst, fmt.Errorf("failed to marshal Result: %w", err)
+	}
+	if err := dst.Result.UnmarshalBinary(resultBytes); err != nil {
+		return dst, fmt.Errorf("failed to unmarshal Result: %w", err)
+	}
+
+	// Deep copy FeeChanges
+	feeChangesBytes, err := src.FeeChanges.MarshalBinary()
+	if err != nil {
+		return dst, fmt.Errorf("failed to marshal FeeChanges: %w", err)
+	}
+	if err := dst.FeeChanges.UnmarshalBinary(feeChangesBytes); err != nil {
+		return dst, fmt.Errorf("failed to unmarshal FeeChanges: %w", err)
+	}
+
+	// Deep copy UnsafeMeta
+	metaBytes, err := src.UnsafeMeta.MarshalBinary()
+	if err != nil {
+		return dst, fmt.Errorf("failed to marshal UnsafeMeta: %w", err)
+	}
+	if err := dst.UnsafeMeta.UnmarshalBinary(metaBytes); err != nil {
+		return dst, fmt.Errorf("failed to unmarshal UnsafeMeta: %w", err)
+	}
+
+	// Deep copy PostTxApplyFeeChanges
+	postFeeChangesBytes, err := src.PostTxApplyFeeChanges.MarshalBinary()
+	if err != nil {
+		return dst, fmt.Errorf("failed to marshal PostTxApplyFeeChanges: %w", err)
+	}
+	if err := dst.PostTxApplyFeeChanges.UnmarshalBinary(postFeeChangesBytes); err != nil {
+		return dst, fmt.Errorf("failed to unmarshal PostTxApplyFeeChanges: %w", err)
+	}
+
+	// Deep copy Ledger (read-only field, but clone anyway)
+	ledgerBytes, err := src.Ledger.MarshalBinary()
+	if err != nil {
+		return dst, fmt.Errorf("failed to marshal Ledger: %w", err)
+	}
+	if err := dst.Ledger.UnmarshalBinary(ledgerBytes); err != nil {
+		return dst, fmt.Errorf("failed to unmarshal Ledger: %w", err)
+	}
+
+	return dst, nil
+}
+
+// DeepCopyLedgerTransaction creates a deep copy of a LedgerTransaction
+// using XDR serialization/deserialization to ensure all nested structures are copied
+func DeepCopyLedgerTransaction2(original *LedgerTransaction) (*LedgerTransaction, error) {
+	if original == nil {
+		return nil, nil
+	}
+
+	deepcopy := &LedgerTransaction{
+		Index:         original.Index,
+		LedgerVersion: original.LedgerVersion,
+	}
+
+	// Deep copy Envelope
+	envelopeBytes, err := original.Envelope.MarshalBinary()
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal Envelope: %w", err)
+	}
+	if err := deepcopy.Envelope.UnmarshalBinary(envelopeBytes); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal Envelope: %w", err)
+	}
+
+	// Deep copy Result
+	resultBytes, err := original.Result.MarshalBinary()
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal Result: %w", err)
+	}
+	if err := deepcopy.Result.UnmarshalBinary(resultBytes); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal Result: %w", err)
+	}
+
+	// Deep copy FeeChanges
+	feeChangesBytes, err := original.FeeChanges.MarshalBinary()
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal FeeChanges: %w", err)
+	}
+	if err := deepcopy.FeeChanges.UnmarshalBinary(feeChangesBytes); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal FeeChanges: %w", err)
+	}
+
+	// Deep copy UnsafeMeta
+	unsafeMetaBytes, err := original.UnsafeMeta.MarshalBinary()
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal UnsafeMeta: %w", err)
+	}
+	if err := deepcopy.UnsafeMeta.UnmarshalBinary(unsafeMetaBytes); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal UnsafeMeta: %w", err)
+	}
+
+	// Deep copy PostTxApplyFeeChanges
+	postTxBytes, err := original.PostTxApplyFeeChanges.MarshalBinary()
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal PostTxApplyFeeChanges: %w", err)
+	}
+	if err := deepcopy.PostTxApplyFeeChanges.UnmarshalBinary(postTxBytes); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal PostTxApplyFeeChanges: %w", err)
+	}
+
+	// Deep copy Ledger
+	ledgerBytes, err := original.Ledger.MarshalBinary()
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal Ledger: %w", err)
+	}
+	if err := deepcopy.Ledger.UnmarshalBinary(ledgerBytes); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal Ledger: %w", err)
+	}
+
+	// Deep copy Hash (it's a byte array, so we need to copy the bytes)
+	deepcopy.Hash = original.Hash
+
+	return deepcopy, nil
+}
