@@ -158,6 +158,25 @@ func (event *TokenTransferEvent) SetAsset(asset xdr.Asset) {
 	}
 }
 
+func (event *TokenTransferEvent) GetAmount() string {
+	var amount string
+	switch event.GetEvent().(type) {
+	case *TokenTransferEvent_Mint:
+		amount = event.GetMint().GetAmount()
+	case *TokenTransferEvent_Burn:
+		amount = event.GetBurn().GetAmount()
+	case *TokenTransferEvent_Clawback:
+		amount = event.GetClawback().GetAmount()
+	case *TokenTransferEvent_Fee:
+		amount = event.GetFee().GetAmount()
+	case *TokenTransferEvent_Transfer:
+		amount = event.GetTransfer().GetAmount()
+	default:
+		panic(fmt.Errorf("unkown event type:%v", event))
+	}
+	return amount
+}
+
 func (e *TokenTransferEvent) setDestinationMuxedInfo(to string, tx ingest.LedgerTransaction) error {
 	// Destination Mux info needs to be set only for accountAddresses, and not for LPs or CBs.
 	// This is as per CAP-67

@@ -1043,6 +1043,15 @@ func TestMuxedInformation(t *testing.T) {
 			},
 		},
 		{
+			// See this Tx on pubnet - https://stellar.expert/explorer/public/tx/230803416409317376
+			name: "Weird Payment - Issuer sends USDC to themself - USDC transfer (not burn)",
+			tx:   someTxV3WithMemo(xdr.MemoText(":fire: burn :fire:")),
+			op:   paymentOp(&usdcAccount, usdcAccount, usdcAsset, 100*oneUnit),
+			expected: []*TokenTransferEvent{
+				transferEventWithDestMux(protoAddressFromAccount(usdcAccount), protoAddressFromAccount(usdcAccount), unitsToStr(100*oneUnit), usdcProtoAsset, NewMuxedInfoFromText(":fire: burn :fire:")),
+			},
+		},
+		{
 			name: "Path Payment - BTC Issuer to M Account - BTC mint",
 			tx:   someTxV3(),
 			op:   strictSendOp(&btcAccount, muxedAccountB, btcAsset, btcAsset),
