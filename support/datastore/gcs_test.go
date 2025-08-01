@@ -178,6 +178,33 @@ func TestGCSPutFileIfNotExists(t *testing.T) {
 	require.Equal(t, map[string]string(nil), metadata)
 }
 
+func TestGCSGetFileLastModified(t *testing.T) {
+	server := fakestorage.NewServer([]fakestorage.Object{})
+	defer server.Stop()
+	server.CreateBucketWithOpts(fakestorage.CreateBucketOpts{
+		Name:                  "test-bucket",
+		VersioningEnabled:     false,
+		DefaultEventBasedHold: false,
+	})
+
+	store, err := FromGCSClient(context.Background(), server.Client(), "test-bucket/objects/testnet", DataStoreSchema{})
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		require.NoError(t, store.Close())
+	})
+
+	content := []byte("inside the file")
+	writerTo := &writerToRecorder{
+		WriterTo: bytes.NewReader(content),
+	}
+	err = store.PutFile(context.Background(), "file.txt", writerTo, nil)
+	require.NoError(t, err)
+
+	lastModified, err := store.GetFileLastModified(context.Background(), "file.txt")
+	require.NoError(t, err)
+	require.NotZero(t, lastModified)
+}
+
 func TestGCSPutFileWithMetadata(t *testing.T) {
 	server := fakestorage.NewServer([]fakestorage.Object{})
 	defer server.Stop()

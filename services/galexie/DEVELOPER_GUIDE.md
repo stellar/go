@@ -65,7 +65,8 @@ Optional, can override the version of quickstart used to run standalone stellar 
 Note, the version of stellar core in `GALEXIE_INTEGRATION_TESTS_QUICKSTART_IMAGE` and `GALEXIE_INTEGRATION_TESTS_CAPTIVE_CORE_BIN` needs to be on the same major rev or the captive core process may not be able to join or parse ledger meta from the `local` network created by `GALEXIE_INTEGRATION_TESTS_QUICKSTART_IMAGE`
 
 ```
-$ GALEXIE_INTEGRATION_TESTS_ENABLED=true go test -v -race -run TestGalexieTestSuite ./services/galexie/...
+$ GALEXIE_INTEGRATION_TESTS_ENABLED=true go test -v -race -run TestGalexieGCSTestSuite ./services/galexie/...
+$ GALEXIE_INTEGRATION_TESTS_ENABLED=true go test -v -race -run TestGalexieS3TestSuite ./services/galexie/...
 ```
 
 ## Adding support for a new storage type

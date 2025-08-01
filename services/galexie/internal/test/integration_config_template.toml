@@ -2,7 +2,11 @@
 type = "GCS"
 
 [datastore_config.params]
+# for both GCS and S3 storage
 destination_bucket_path = "integration-test/standalone"
+# for S3 only
+region = "us-east-1"
+endpoint_url = "http://localhost:4566"
 
 [datastore_config.schema]
 ledgers_per_file = 1
