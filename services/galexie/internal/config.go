@@ -15,7 +15,6 @@ import (
 
 	"github.com/stellar/go/support/datastore"
 	"github.com/stellar/go/support/errors"
-	"github.com/stellar/go/support/ordered"
 	"github.com/stellar/go/support/storage"
 )
 
@@ -282,7 +281,7 @@ func (config *Config) adjustLedgerRange() {
 	config.StartLedger = config.DataStoreConfig.Schema.GetSequenceNumberStartBoundary(config.StartLedger)
 
 	// Ensure that the adjusted start ledger is at least 2.
-	config.StartLedger = ordered.Max(2, config.StartLedger)
+	config.StartLedger = max(2, config.StartLedger)
 
 	// Align the end ledger (for bounded cases) to the nearest "LedgersPerFile" boundary.
 	if config.EndLedger != 0 {

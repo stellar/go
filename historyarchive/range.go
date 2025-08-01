@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/stellar/go/support/ordered"
 	"golang.org/x/exp/slices"
 )
 
@@ -59,7 +58,7 @@ func (c CheckpointManager) NextCheckpoint(i uint32) uint32 {
 	v := uint64(i)
 	n := (((v + freq) / freq) * freq) - 1
 
-	return uint32(ordered.Min(n, 0xffffffff))
+	return uint32(min(n, 0xffffffff))
 }
 
 // GetCheckPoint gets the checkpoint containing information about the given ledger sequence
@@ -82,7 +81,7 @@ func (c CheckpointManager) GetCheckpointRange(i uint32) Range {
 }
 
 func (c CheckpointManager) MakeRange(low uint32, high uint32) Range {
-	high = ordered.Max(high, low)
+	high = max(high, low)
 	return Range{
 		Low:  c.PrevCheckpoint(low),
 		High: c.NextCheckpoint(high),
@@ -90,8 +89,8 @@ func (c CheckpointManager) MakeRange(low uint32, high uint32) Range {
 }
 
 func (r Range) clamp(other Range, cManager CheckpointManager) Range {
-	low := ordered.Max(r.Low, other.Low)
-	high := ordered.Min(r.High, other.High)
+	low := max(r.Low, other.Low)
+	high := min(r.High, other.High)
 	return cManager.MakeRange(low, high)
 }
 
