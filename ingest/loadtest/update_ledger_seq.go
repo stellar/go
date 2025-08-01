@@ -42,6 +42,9 @@ type XDR interface {
 	encoding.BinaryMarshaler
 }
 
+// UpdateLedgerSeq will traverse the ledger entries contained within dest and update
+// any ledger sequence values that are found in the ledger entries. The new
+// ledger sequence values will be determined by calling getUpdatedLedger().
 func UpdateLedgerSeq(dest XDR, getUpdatedLedger func(uint32) uint32) error {
 	raw, err := dest.MarshalBinary()
 	if err != nil {
