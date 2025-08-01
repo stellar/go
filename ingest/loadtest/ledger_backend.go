@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"time"
 
@@ -122,10 +123,18 @@ func (r *LedgerBackend) PrepareRange(ctx context.Context, ledgerRange ledgerback
 		return err
 	}
 	var changes xdr.LedgerEntryChanges
+	// attach all ledger entry fixtures to the first ledger in the range
 	for i := 0; i < len(generatedLedgerEntries); i++ {
+		entry := generatedLedgerEntries[i]
+		err = UpdateLedgerSeq(&entry, func(uint32) uint32 {
+			return cur
+		})
+		if err != nil {
+			return err
+		}
 		changes = append(changes, xdr.LedgerEntryChange{
 			Type:    xdr.LedgerEntryChangeTypeLedgerEntryCreated,
-			Created: &generatedLedgerEntries[i],
+			Created: &entry,
 		})
 	}
 	var flag xdr.Uint32 = 1
@@ -165,7 +174,25 @@ func (r *LedgerBackend) PrepareRange(ctx context.Context, ledgerRange ledgerback
 		} else if err != nil {
 			return err
 		}
-		if err = MergeLedgers(r.config.NetworkPassphrase, &ledger, generatedLedger); err != nil {
+		ledgerDiff := int64(ledger.LedgerSequence()) - int64(generatedLedger.LedgerSequence())
+		if err = MergeLedgers(r.config.NetworkPassphrase, &ledger, generatedLedger, func(cur uint32) uint32 {
+			newLedgerSeq := int64(cur) + ledgerDiff
+			if newLedgerSeq > math.MaxUint32 {
+				panic(fmt.Sprintf(
+					"value %v overflows when applying ledger diff %v",
+					cur, ledgerDiff,
+				))
+			}
+			minLedger := ledgerRange.From()
+			if newLedgerSeq <= int64(minLedger) {
+				// All ledger entry fixtures are attached to the very first ledger in the range.
+				// Any new or updated ledger entry will occur in a later ledger sequence.
+				// So, the smallest possible ledger sequence associated with any ledger entry we merge is
+				// ledgerRange.From()
+				return minLedger
+			}
+			return uint32(newLedgerSeq)
+		}); err != nil {
 			return err
 		}
 		if err = xdr.MarshalFramed(writer, ledger); err != nil {
@@ -361,11 +388,16 @@ func changesAreEqual(a, b map[string][]ingest.Change) (bool, error) {
 }
 
 // MergeLedgers merges two xdr.LedgerCloseMeta instances.
-func MergeLedgers(networkPassphrase string, dst *xdr.LedgerCloseMeta, src xdr.LedgerCloseMeta) error {
+// getLedgerSeq is used to determine the ledger sequence value for all ledger entries
+// contained in src during the merge.
+func MergeLedgers(networkPassphrase string, dst *xdr.LedgerCloseMeta, src xdr.LedgerCloseMeta, getLedgerSeq func(cur uint32) uint32) error {
 	if err := validLedger(*dst); err != nil {
 		return err
 	}
 	if err := validLedger(src); err != nil {
+		return err
+	}
+	if err := UpdateLedgerSeq(&src, getLedgerSeq); err != nil {
 		return err
 	}
 
