@@ -16,7 +16,7 @@ jobs:
       # this is the multi-arch index sha, get it by 'docker buildx imagetools inspect stellar/quickstart:future'
       GALEXIE_INTEGRATION_TESTS_QUICKSTART_IMAGE: docker.io/stellar/quickstart:future@sha256:ea7f4dd4c8e1dc4eb69194ef5b9659aa73e08a89146ea80acfc2fdc073fffb32
       GALEXIE_INTEGRATION_TESTS_QUICKSTART_IMAGE_PULL: "false"
-      STELLAR_CORE_VERSION: 23.0.0-2587.rc4.dcf366957.focal
+      STELLAR_CORE_VERSION: 23.0.0-2621.rc5.d8e968030.focal
     steps:
       - name: Set VERSION
         run: |
