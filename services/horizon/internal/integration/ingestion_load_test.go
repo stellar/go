@@ -18,8 +18,8 @@ import (
 )
 
 func TestLoadTestLedgerBackend(t *testing.T) {
-	if integration.GetCoreMaxSupportedProtocol() < 23 {
-		t.Skip("This test run does not support less than Protocol 23")
+	if integration.GetCoreMaxSupportedProtocol() < 22 {
+		t.Skip("This test run does not support less than Protocol 22")
 	}
 
 	itest := integration.NewTest(t, integration.Config{
@@ -48,8 +48,8 @@ func TestLoadTestLedgerBackend(t *testing.T) {
 
 	replayConfig := loadtest.LedgerBackendConfig{
 		NetworkPassphrase:     itest.Config().NetworkPassphrase,
-		LedgersFilePath:       filepath.Join("testdata", "load-test-ledgers.xdr.zstd"),
-		LedgerEntriesFilePath: filepath.Join("testdata", "load-test-accounts.xdr.zstd"),
+		LedgersFilePath:       filepath.Join("testdata", fmt.Sprintf("load-test-ledgers-v%d.xdr.zstd", itest.Config().ProtocolVersion)),
+		LedgerEntriesFilePath: filepath.Join("testdata", fmt.Sprintf("load-test-accounts-v%d.xdr.zstd", itest.Config().ProtocolVersion)),
 		LedgerCloseDuration:   3 * time.Second / 2,
 		LedgerBackend:         captiveCore,
 	}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding"
 	"flag"
+	"fmt"
 	"io"
 	"math"
 	"math/rand"
@@ -38,8 +39,8 @@ type sorobanTransaction struct {
 }
 
 func TestGenerateLedgers(t *testing.T) {
-	if integration.GetCoreMaxSupportedProtocol() < 23 {
-		t.Skip("This test run does not support less than Protocol 23")
+	if integration.GetCoreMaxSupportedProtocol() < 22 {
+		t.Skip("This test run does not support less than Protocol 22")
 	}
 
 	var transactionsPerLedger, ledgers, transfersPerTx int
@@ -51,10 +52,6 @@ func TestGenerateLedgers(t *testing.T) {
 	flag.BoolVar(&output, "output", false, "overwrite the generated output files")
 	flag.StringVar(&networkPassphrase, "network-passphrase", loadTestNetworkPassphrase, "network passphrase")
 	flag.Parse()
-
-	if integration.GetCoreMaxSupportedProtocol() < 22 {
-		t.Skip("This test run does not support less than Protocol 22")
-	}
 
 	itest := integration.NewTest(t, integration.Config{
 		EnableStellarRPC:  true,
@@ -196,7 +193,7 @@ func TestGenerateLedgers(t *testing.T) {
 	require.Len(t, accountLedgerEntries, 2*transactionsPerLedger)
 
 	if output {
-		writeFile(t, filepath.Join("testdata", "load-test-accounts.xdr.zstd"), accountLedgerEntries)
+		writeFile(t, filepath.Join("testdata", fmt.Sprintf("load-test-accounts-v%d.xdr.zstd", itest.Config().ProtocolVersion)), accountLedgerEntries)
 	}
 
 	merged := merge(t, itest.Config().NetworkPassphrase, sortedLegers, transactionsPerLedger)
@@ -219,7 +216,7 @@ func TestGenerateLedgers(t *testing.T) {
 	}
 
 	if output {
-		writeFile(t, filepath.Join("testdata", "load-test-ledgers.xdr.zstd"), merged)
+		writeFile(t, filepath.Join("testdata", fmt.Sprintf("load-test-ledgers-v%d.xdr.zstd", itest.Config().ProtocolVersion)), merged)
 	}
 }
 
