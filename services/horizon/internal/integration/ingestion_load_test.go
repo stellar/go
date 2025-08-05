@@ -166,7 +166,8 @@ func TestLoadTestLedgerBackend(t *testing.T) {
 			Reason: ingest.LedgerEntryChangeReasonUpgrade,
 		})
 	}
-	checkChanges(t, expectedChanges, changes, startLedger)
+	checkLedgerSequenceInChanges(t, changes, startLedger)
+	requireChangesAreEqual(t, expectedChanges, changes)
 
 	for cur := startLedger + 1; cur <= endLedger; cur++ {
 		i := int(cur - startLedger)
@@ -174,50 +175,21 @@ func TestLoadTestLedgerBackend(t *testing.T) {
 		expectedChanges = extractChanges(
 			t, itest.Config().NetworkPassphrase, []xdr.LedgerCloseMeta{originalLedgers[cur], generatedLedgers[i-1]},
 		)
-		checkChanges(t, expectedChanges, changes, cur)
+		checkLedgerSequenceInChanges(t, changes, cur)
+		requireChangesAreEqual(t, expectedChanges, changes)
 	}
 }
 
-func checkChanges(t *testing.T, expected []ingest.Change, actual []ingest.Change, ledger uint32) {
-	aByLedgerKey := groupChangesByLedgerKey(t, expected)
-	bByLedgerKey := groupChangesByLedgerKey(t, actual)
-
-	require.Equal(t, len(aByLedgerKey), len(bByLedgerKey))
-	for key, aChanges := range aByLedgerKey {
-		bChanges := bByLedgerKey[key]
-		require.Equal(t, len(aChanges), len(bChanges))
-		for i, aChange := range aChanges {
-			bChange := bChanges[i]
-			require.Equal(t, aChange.Reason, bChange.Reason)
-			require.Equal(t, aChange.Type, bChange.Type)
-			if aChange.Pre == nil {
-				require.Nil(t, bChange.Pre)
-			} else {
-				checkChange(t, aChange.Pre, bChange.Pre, ledger, true)
-			}
-			if aChange.Post == nil {
-				require.Nil(t, bChange.Post)
-			} else {
-				checkChange(t, aChange.Post, bChange.Post, ledger, false)
+func checkLedgerSequenceInChanges(t *testing.T, changes []ingest.Change, ledger uint32) {
+	for _, change := range changes {
+		if change.Pre != nil {
+			require.LessOrEqual(t, change.Pre.LastModifiedLedgerSeq, ledger)
+		}
+		if change.Post != nil {
+			require.Equal(t, uint32(change.Post.LastModifiedLedgerSeq), ledger)
+			if change.Post.Data.Type == xdr.LedgerEntryTypeTtl {
+				require.GreaterOrEqual(t, change.Post.Data.Ttl.LiveUntilLedgerSeq, ledger)
 			}
 		}
 	}
-}
-
-func checkChange(t *testing.T, expected, actual *xdr.LedgerEntry, curLedger uint32, pre bool) {
-	if pre {
-		require.LessOrEqual(t, actual.LastModifiedLedgerSeq, curLedger)
-	} else {
-		require.Equal(t, uint32(actual.LastModifiedLedgerSeq), curLedger)
-		if actual.Data.Type == xdr.LedgerEntryTypeTtl {
-			require.GreaterOrEqual(t, actual.Data.Ttl.LiveUntilLedgerSeq, curLedger)
-		}
-	}
-	require.NoError(t, loadtest.UpdateLedgerSeq(expected, func(u uint32) uint32 {
-		return 0
-	}))
-	require.NoError(t, loadtest.UpdateLedgerSeq(actual, func(u uint32) uint32 {
-		return 0
-	}))
-	requireXDREquals(t, expected, actual)
 }
