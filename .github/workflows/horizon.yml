@@ -32,11 +32,11 @@ jobs:
     env:
       HORIZON_INTEGRATION_TESTS_ENABLED: true
       HORIZON_INTEGRATION_TESTS_CORE_MAX_SUPPORTED_PROTOCOL: ${{ matrix.protocol-version }}
-      PROTOCOL_22_CORE_DEBIAN_PKG_VERSION: 22.4.2-2603.136aea451.focal
-      PROTOCOL_22_CORE_DOCKER_IMG: stellar/unsafe-stellar-core:22.4.2-2603.136aea451.focal
+      PROTOCOL_22_CORE_DEBIAN_PKG_VERSION: 23.0.0-2621.rc5.d8e968030.focal
+      PROTOCOL_22_CORE_DOCKER_IMG: stellar/stellar-core:23.0.0-2621.rc5.d8e968030.focal
       PROTOCOL_22_STELLAR_RPC_DOCKER_IMG: stellar/stellar-rpc:23.0.0-rc2-126
-      PROTOCOL_23_CORE_DEBIAN_PKG_VERSION: 22.4.2-2603.136aea451.focal
-      PROTOCOL_23_CORE_DOCKER_IMG: stellar/unsafe-stellar-core:22.4.2-2603.136aea451.focal
+      PROTOCOL_23_CORE_DEBIAN_PKG_VERSION: 23.0.0-2621.rc5.d8e968030.focal
+      PROTOCOL_23_CORE_DOCKER_IMG: stellar/stellar-core:23.0.0-2621.rc5.d8e968030.focal
       PROTOCOL_23_STELLAR_RPC_DOCKER_IMG: stellar/stellar-rpc:23.0.0-rc2-126
       PGHOST: localhost
       PGPORT: 5432
@@ -126,7 +126,7 @@ jobs:
     runs-on: ubuntu-22.04
     env:
       GO_VERSION: 1.23.4
-      STELLAR_CORE_VERSION: 22.4.2-2603.136aea451.jammy
+      STELLAR_CORE_VERSION: 23.0.0-2621.rc5.d8e968030.jammy
     steps:
       - uses: actions/checkout@v3
         with:

@@ -10,7 +10,7 @@ jobs:
     name: Test
     runs-on: ubuntu-22.04
     env:
-      CAPTIVE_CORE_DEBIAN_PKG_VERSION: 23.0.0-2587.rc4.dcf366957.focal
+      CAPTIVE_CORE_DEBIAN_PKG_VERSION: 23.0.0-2621.rc5.d8e968030.focal
       GALEXIE_INTEGRATION_TESTS_ENABLED: "true"
       GALEXIE_INTEGRATION_TESTS_CAPTIVE_CORE_BIN: /usr/bin/stellar-core
       # this pins to a version of quickstart:testing that has the same version as GALEXIE_INTEGRATION_TESTS_CAPTIVE_CORE_BIN
