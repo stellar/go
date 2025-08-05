@@ -189,10 +189,8 @@ func (r *LedgerBackend) PrepareRange(ctx context.Context, ledgerRange ledgerback
 		}
 		if checkNetworkPassphrase {
 			// Here we validate that the generated ledgers have the same network passphrase as the
-			// generated ledgers. This check only needs to be done once because we assume all the
-			// generated ledgers have the same network passphrase.
-			// If the network passphrase which is passed into ingest.NewLedgerChangeReaderFromLedgerCloseMeta()
-			// is invalid, the function will return an error.
+			// ledgers sourced from the real network. This check only needs to be done once because
+			// we assume all the generated ledgers have the same network passphrase.
 			if err = validateNetworkPassphrase(r.config.NetworkPassphrase, ledger); err != nil {
 				return err
 			}
@@ -260,6 +258,8 @@ func (r *LedgerBackend) PrepareRange(ctx context.Context, ledgerRange ledgerback
 }
 
 func validateNetworkPassphrase(networkPassphrase string, ledger xdr.LedgerCloseMeta) error {
+	// If the network passphrase which is passed into ingest.NewLedgerChangeReaderFromLedgerCloseMeta()
+	// is invalid, the reader will encounter an error at some point while streaming changes.
 	reader, err := ingest.NewLedgerChangeReaderFromLedgerCloseMeta(networkPassphrase, ledger)
 	if err != nil {
 		return err

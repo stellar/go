@@ -202,15 +202,15 @@ func newCaptiveCore(itest *integration.Test) *ledgerbackend.CaptiveStellarCore {
 	return captiveCore
 }
 
-func checkLedgerSequenceInChanges(t *testing.T, changes []ingest.Change, ledger uint32) {
+func checkLedgerSequenceInChanges(t *testing.T, changes []ingest.Change, curLedger uint32) {
 	for _, change := range changes {
 		if change.Pre != nil {
-			require.LessOrEqual(t, change.Pre.LastModifiedLedgerSeq, ledger)
+			require.LessOrEqual(t, change.Pre.LastModifiedLedgerSeq, curLedger)
 		}
 		if change.Post != nil {
-			require.Equal(t, uint32(change.Post.LastModifiedLedgerSeq), ledger)
+			require.Equal(t, uint32(change.Post.LastModifiedLedgerSeq), curLedger)
 			if change.Post.Data.Type == xdr.LedgerEntryTypeTtl {
-				require.GreaterOrEqual(t, change.Post.Data.Ttl.LiveUntilLedgerSeq, ledger)
+				require.GreaterOrEqual(t, change.Post.Data.Ttl.LiveUntilLedgerSeq, curLedger)
 			}
 		}
 	}
