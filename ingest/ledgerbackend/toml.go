@@ -511,9 +511,20 @@ func (c *CaptiveCoreToml) checkCoreVersion(params CaptiveCoreTomlParams) coreVer
 	}
 }
 
-var minVersionForBucketlistCaching = coreVersion{major: 22, minor: 2}
+var (
+	minVersionForBucketlistCaching        = coreVersion{major: 22, minor: 2}
+	maxVersionForDeprecatedSqlLedgerState = coreVersion{major: 23, minor: 0}
+)
 
 func (c *CaptiveCoreToml) setDefaults(params CaptiveCoreTomlParams) {
+	if len(params.CoreBinaryPath) == 0 {
+		if path := os.Getenv("STELLAR_CORE_BINARY_PATH"); len(path) > 0 {
+			params.CoreBinaryPath = path
+		} else {
+			params.CoreBinaryPath = "/usr/bin/stellar-core"
+		}
+	}
+
 	if params.UseDB && !c.tree.Has("DATABASE") {
 		c.Database = "sqlite3://stellar.db"
 	}
@@ -590,6 +601,10 @@ func (c *CaptiveCoreToml) setDefaults(params CaptiveCoreTomlParams) {
 		// in captive core
 		var disable uint = 0
 		c.BucketListDBMemoryForCaching = &disable
+	}
+
+	if c.checkCoreVersion(params).greaterThanOrEqual(maxVersionForDeprecatedSqlLedgerState) {
+		c.DeprecatedSqlLedgerState = nil
 	}
 }
 
