@@ -206,6 +206,10 @@ func TestGenerateLedgers(t *testing.T) {
 		require.NoError(t, err)
 		require.True(t, accountSet[ledgerKey.MustAccount().AccountId.Address()])
 	}
+	// a merge is valid if the ordered list of changes emitted by the merged ledger is equal to
+	// the list of changes emitted by dst concatenated by the list of changes emitted by src, or
+	// in other words:
+	// extractChanges(merge(dst, src)) == concat(extractChanges(dst), extractChanges(src))
 	requireChangesAreEqual(t, changes, extractChanges(t, itest.Config().NetworkPassphrase, merged))
 
 	originalTransactions := extractTransactions(t, itest.Config().NetworkPassphrase, sortedLegers)
@@ -481,7 +485,7 @@ func merge(t *testing.T, networkPassphrase string, ledgers []xdr.LedgerCloseMeta
 			cur = copyLedger(t, ledger)
 		} else {
 			ledgerDiff := int64(cur.LedgerSequence()) - int64(ledger.LedgerSequence())
-			require.NoError(t, loadtest.MergeLedgers(networkPassphrase, &cur, ledger, func(cur uint32) uint32 {
+			require.NoError(t, loadtest.MergeLedgers(&cur, ledger, func(cur uint32) uint32 {
 				newLedgerSeq := int64(cur) + ledgerDiff
 				require.Less(t, newLedgerSeq, int64(math.MaxUint32))
 				require.Positive(t, newLedgerSeq)
