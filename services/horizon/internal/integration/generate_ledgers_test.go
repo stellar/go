@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding"
 	"flag"
+	"fmt"
 	"io"
+	"math"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -37,8 +39,8 @@ type sorobanTransaction struct {
 }
 
 func TestGenerateLedgers(t *testing.T) {
-	if integration.GetCoreMaxSupportedProtocol() < 23 {
-		t.Skip("This test run does not support less than Protocol 23")
+	if integration.GetCoreMaxSupportedProtocol() < 22 {
+		t.Skip("This test run does not support less than Protocol 22")
 	}
 
 	var transactionsPerLedger, ledgers, transfersPerTx int
@@ -50,10 +52,6 @@ func TestGenerateLedgers(t *testing.T) {
 	flag.BoolVar(&output, "output", false, "overwrite the generated output files")
 	flag.StringVar(&networkPassphrase, "network-passphrase", loadTestNetworkPassphrase, "network passphrase")
 	flag.Parse()
-
-	if integration.GetCoreMaxSupportedProtocol() < 22 {
-		t.Skip("This test run does not support less than Protocol 22")
-	}
 
 	itest := integration.NewTest(t, integration.Config{
 		EnableStellarRPC:  true,
@@ -195,7 +193,7 @@ func TestGenerateLedgers(t *testing.T) {
 	require.Len(t, accountLedgerEntries, 2*transactionsPerLedger)
 
 	if output {
-		writeFile(t, filepath.Join("testdata", "load-test-accounts.xdr.zstd"), accountLedgerEntries)
+		writeFile(t, filepath.Join("testdata", fmt.Sprintf("load-test-accounts-v%d.xdr.zstd", itest.Config().ProtocolVersion)), accountLedgerEntries)
 	}
 
 	merged := merge(t, itest.Config().NetworkPassphrase, sortedLegers, transactionsPerLedger)
@@ -208,17 +206,21 @@ func TestGenerateLedgers(t *testing.T) {
 		require.NoError(t, err)
 		require.True(t, accountSet[ledgerKey.MustAccount().AccountId.Address()])
 	}
+	// a merge is valid if the ordered list of changes emitted by the merged ledger is equal to
+	// the list of changes emitted by dst concatenated by the list of changes emitted by src, or
+	// in other words:
+	// extractChanges(merge(dst, src)) == concat(extractChanges(dst), extractChanges(src))
 	requireChangesAreEqual(t, changes, extractChanges(t, itest.Config().NetworkPassphrase, merged))
 
-	orignalTransactions := extractTransactions(t, itest.Config().NetworkPassphrase, sortedLegers)
+	originalTransactions := extractTransactions(t, itest.Config().NetworkPassphrase, sortedLegers)
 	mergedTransactions := extractTransactions(t, itest.Config().NetworkPassphrase, merged)
-	require.Equal(t, len(orignalTransactions), len(mergedTransactions))
-	for i, original := range orignalTransactions {
+	require.Equal(t, len(originalTransactions), len(mergedTransactions))
+	for i, original := range originalTransactions {
 		requireTransactionsMatch(t, original, mergedTransactions[i])
 	}
 
 	if output {
-		writeFile(t, filepath.Join("testdata", "load-test-ledgers.xdr.zstd"), merged)
+		writeFile(t, filepath.Join("testdata", fmt.Sprintf("load-test-ledgers-v%d.xdr.zstd", itest.Config().ProtocolVersion)), merged)
 	}
 }
 
@@ -341,11 +343,23 @@ func requireChangesAreEqual(t *testing.T, a, b []ingest.Change) {
 			if aChange.Pre == nil {
 				require.Nil(t, bChange.Pre)
 			} else {
+				require.NoError(t, loadtest.UpdateLedgerSeq(aChange.Pre, func(u uint32) uint32 {
+					return 0
+				}))
+				require.NoError(t, loadtest.UpdateLedgerSeq(bChange.Pre, func(u uint32) uint32 {
+					return 0
+				}))
 				requireXDREquals(t, aChange.Pre, bChange.Pre)
 			}
 			if aChange.Post == nil {
 				require.Nil(t, bChange.Post)
 			} else {
+				require.NoError(t, loadtest.UpdateLedgerSeq(aChange.Post, func(u uint32) uint32 {
+					return 0
+				}))
+				require.NoError(t, loadtest.UpdateLedgerSeq(bChange.Post, func(u uint32) uint32 {
+					return 0
+				}))
 				requireXDREquals(t, aChange.Post, bChange.Post)
 			}
 		}
@@ -354,10 +368,26 @@ func requireChangesAreEqual(t *testing.T, a, b []ingest.Change) {
 
 func requireTransactionsMatch(t *testing.T, a, b ingest.LedgerTransaction) {
 	requireXDREquals(t, a.Hash, b.Hash)
+	require.NoError(t, loadtest.UpdateLedgerSeq(&a.UnsafeMeta, func(u uint32) uint32 {
+		return 0
+	}))
+	require.NoError(t, loadtest.UpdateLedgerSeq(&b.UnsafeMeta, func(u uint32) uint32 {
+		return 0
+	}))
 	requireXDREquals(t, a.UnsafeMeta, b.UnsafeMeta)
 	requireXDREquals(t, a.Result, b.Result)
 	requireXDREquals(t, a.Envelope, b.Envelope)
-	requireXDREquals(t, a.FeeChanges, b.FeeChanges)
+	require.Equal(t, len(a.FeeChanges), len(b.FeeChanges))
+	for i := range a.FeeChanges {
+		aChange, bChange := a.FeeChanges[i], b.FeeChanges[i]
+		require.NoError(t, loadtest.UpdateLedgerSeq(&aChange, func(u uint32) uint32 {
+			return 0
+		}))
+		require.NoError(t, loadtest.UpdateLedgerSeq(&bChange, func(u uint32) uint32 {
+			return 0
+		}))
+		requireXDREquals(t, aChange, bChange)
+	}
 	require.Equal(t, a.LedgerVersion, b.LedgerVersion)
 }
 
@@ -454,7 +484,13 @@ func merge(t *testing.T, networkPassphrase string, ledgers []xdr.LedgerCloseMeta
 		if curCount == 0 {
 			cur = copyLedger(t, ledger)
 		} else {
-			require.NoError(t, loadtest.MergeLedgers(networkPassphrase, &cur, ledger))
+			ledgerDiff := int64(cur.LedgerSequence()) - int64(ledger.LedgerSequence())
+			require.NoError(t, loadtest.MergeLedgers(&cur, ledger, func(cur uint32) uint32 {
+				newLedgerSeq := int64(cur) + ledgerDiff
+				require.Less(t, newLedgerSeq, int64(math.MaxUint32))
+				require.Positive(t, newLedgerSeq)
+				return uint32(newLedgerSeq)
+			}))
 		}
 
 		require.LessOrEqual(t, curCount+transactionCount, transactionsPerLedger)

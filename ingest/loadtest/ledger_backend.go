@@ -2,9 +2,9 @@ package loadtest
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"time"
 
@@ -122,20 +122,41 @@ func (r *LedgerBackend) PrepareRange(ctx context.Context, ledgerRange ledgerback
 		return err
 	}
 	var changes xdr.LedgerEntryChanges
+	// attach all ledger entry fixtures to the first ledger in the range
 	for i := 0; i < len(generatedLedgerEntries); i++ {
+		entry := generatedLedgerEntries[i]
+		err = UpdateLedgerSeq(&entry, func(uint32) uint32 {
+			return cur
+		})
+		if err != nil {
+			return err
+		}
 		changes = append(changes, xdr.LedgerEntryChange{
 			Type:    xdr.LedgerEntryChangeTypeLedgerEntryCreated,
-			Created: &generatedLedgerEntries[i],
+			Created: &entry,
 		})
 	}
 	var flag xdr.Uint32 = 1
-	firstLedger.V2.UpgradesProcessing = append(firstLedger.V2.UpgradesProcessing, xdr.UpgradeEntryMeta{
-		Upgrade: xdr.LedgerUpgrade{
-			Type:     xdr.LedgerUpgradeTypeLedgerUpgradeFlags,
-			NewFlags: &flag,
-		},
-		Changes: changes,
-	})
+	switch firstLedger.V {
+	case 1:
+		firstLedger.V1.UpgradesProcessing = append(firstLedger.V1.UpgradesProcessing, xdr.UpgradeEntryMeta{
+			Upgrade: xdr.LedgerUpgrade{
+				Type:     xdr.LedgerUpgradeTypeLedgerUpgradeFlags,
+				NewFlags: &flag,
+			},
+			Changes: changes,
+		})
+	case 2:
+		firstLedger.V2.UpgradesProcessing = append(firstLedger.V2.UpgradesProcessing, xdr.UpgradeEntryMeta{
+			Upgrade: xdr.LedgerUpgrade{
+				Type:     xdr.LedgerUpgradeTypeLedgerUpgradeFlags,
+				NewFlags: &flag,
+			},
+			Changes: changes,
+		})
+	default:
+		return fmt.Errorf("unsupported ledger version %d", firstLedger.V)
+	}
 
 	mergedLedgersFile, err := os.CreateTemp("", "merged-ledgers")
 	if err != nil {
@@ -153,6 +174,7 @@ func (r *LedgerBackend) PrepareRange(ctx context.Context, ledgerRange ledgerback
 	}
 
 	var latestLedgerSeq uint32
+	checkNetworkPassphrase := true
 	for cur = cur + 1; !ledgerRange.Bounded() || cur <= ledgerRange.To(); cur++ {
 		var ledger xdr.LedgerCloseMeta
 		ledger, err = r.config.LedgerBackend.GetLedger(ctx, cur)
@@ -165,7 +187,37 @@ func (r *LedgerBackend) PrepareRange(ctx context.Context, ledgerRange ledgerback
 		} else if err != nil {
 			return err
 		}
-		if err = MergeLedgers(r.config.NetworkPassphrase, &ledger, generatedLedger); err != nil {
+		if checkNetworkPassphrase {
+			// Here we validate that the generated ledgers have the same network passphrase as the
+			// ledgers sourced from the real network. This check only needs to be done once because
+			// we assume all the generated ledgers have the same network passphrase.
+			if err = validateNetworkPassphrase(r.config.NetworkPassphrase, ledger); err != nil {
+				return err
+			}
+			if err = validateNetworkPassphrase(r.config.NetworkPassphrase, generatedLedger); err != nil {
+				return err
+			}
+			checkNetworkPassphrase = false
+		}
+		ledgerDiff := int64(ledger.LedgerSequence()) - int64(generatedLedger.LedgerSequence())
+		if err = MergeLedgers(&ledger, generatedLedger, func(cur uint32) uint32 {
+			newLedgerSeq := int64(cur) + ledgerDiff
+			if newLedgerSeq > math.MaxUint32 {
+				panic(fmt.Sprintf(
+					"value %v overflows when applying ledger diff %v",
+					cur, ledgerDiff,
+				))
+			}
+			minLedger := ledgerRange.From()
+			if newLedgerSeq <= int64(minLedger) {
+				// All ledger entry fixtures are attached to the very first ledger in the range.
+				// Any new or updated ledger entry will occur in a later ledger sequence.
+				// So, the smallest possible ledger sequence associated with any ledger entry we merge is
+				// ledgerRange.From()
+				return minLedger
+			}
+			return uint32(newLedgerSeq)
+		}); err != nil {
 			return err
 		}
 		if err = xdr.MarshalFramed(writer, ledger); err != nil {
@@ -202,6 +254,23 @@ func (r *LedgerBackend) PrepareRange(ctx context.Context, ledgerRange ledgerback
 	r.latestLedgerSeq = latestLedgerSeq
 	r.cachedLedger = firstLedger
 	r.preparedRange = ledgerRange
+	return nil
+}
+
+func validateNetworkPassphrase(networkPassphrase string, ledger xdr.LedgerCloseMeta) error {
+	// If the network passphrase which is passed into ingest.NewLedgerChangeReaderFromLedgerCloseMeta()
+	// is invalid, the reader will encounter an error at some point while streaming changes.
+	reader, err := ingest.NewLedgerChangeReaderFromLedgerCloseMeta(networkPassphrase, ledger)
+	if err != nil {
+		return err
+	}
+	for {
+		if _, err = reader.Read(); err == io.EOF {
+			break
+		} else if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -279,125 +348,54 @@ func (r *LedgerBackend) Close() error {
 }
 
 func validLedger(ledger xdr.LedgerCloseMeta) error {
-	if _, ok := ledger.GetV2(); !ok {
+	switch ledger.V {
+	case 1:
+		if _, ok := ledger.MustV1().TxSet.GetV1TxSet(); !ok {
+			return fmt.Errorf("ledger txset %v is not supported", ledger.MustV2().TxSet.V)
+		}
+	case 2:
+		if _, ok := ledger.MustV2().TxSet.GetV1TxSet(); !ok {
+			return fmt.Errorf("ledger txset %v is not supported", ledger.MustV2().TxSet.V)
+		}
+	default:
 		return fmt.Errorf("ledger version %v is not supported", ledger.V)
 	}
-	if _, ok := ledger.MustV2().TxSet.GetV1TxSet(); !ok {
-		return fmt.Errorf("ledger txset %v is not supported", ledger.MustV2().TxSet.V)
-	}
 	return nil
-}
-
-func extractChanges(networkPassphrase string, changeMap map[string][]ingest.Change, ledger xdr.LedgerCloseMeta) error {
-	reader, err := ingest.NewLedgerChangeReaderFromLedgerCloseMeta(networkPassphrase, ledger)
-	if err != nil {
-		return err
-	}
-	for {
-		var change ingest.Change
-		var ledgerKey xdr.LedgerKey
-		var b64 string
-		change, err = reader.Read()
-		if err == io.EOF {
-			break
-		} else if err != nil {
-			return err
-		}
-		ledgerKey, err = change.LedgerKey()
-		if err != nil {
-			return err
-		}
-		b64, err = ledgerKey.MarshalBinaryBase64()
-		if err != nil {
-			return err
-		}
-		changeMap[b64] = append(changeMap[b64], change)
-	}
-	return nil
-}
-
-func changeIsEqual(a, b ingest.Change) (bool, error) {
-	if a.Type != b.Type || a.Reason != b.Reason {
-		return false, nil
-	}
-	if a.Pre == nil {
-		if b.Pre != nil {
-			return false, nil
-		}
-	} else {
-		if ok, err := xdr.Equals(a.Pre, b.Pre); err != nil || !ok {
-			return ok, err
-		}
-	}
-	if a.Post == nil {
-		if b.Post != nil {
-			return false, nil
-		}
-	} else {
-		if ok, err := xdr.Equals(a.Post, b.Post); err != nil || !ok {
-			return ok, err
-		}
-	}
-	return true, nil
-}
-
-func changesAreEqual(a, b map[string][]ingest.Change) (bool, error) {
-	if len(a) != len(b) {
-		return false, nil
-	}
-	for key, aChanges := range a {
-		bChanges := b[key]
-		if len(aChanges) != len(bChanges) {
-			return false, nil
-		}
-		for i, aChange := range aChanges {
-			bChange := bChanges[i]
-			if ok, err := changeIsEqual(aChange, bChange); !ok || err != nil {
-				return ok, err
-			}
-		}
-	}
-	return true, nil
 }
 
 // MergeLedgers merges two xdr.LedgerCloseMeta instances.
-func MergeLedgers(networkPassphrase string, dst *xdr.LedgerCloseMeta, src xdr.LedgerCloseMeta) error {
+// getLedgerSeq is used to determine the ledger sequence value for all ledger entries
+// contained in src during the merge.
+func MergeLedgers(dst *xdr.LedgerCloseMeta, src xdr.LedgerCloseMeta, getLedgerSeq func(cur uint32) uint32) error {
 	if err := validLedger(*dst); err != nil {
 		return err
 	}
 	if err := validLedger(src); err != nil {
 		return err
 	}
-
-	combinedChangesByKey := map[string][]ingest.Change{}
-	if err := extractChanges(networkPassphrase, combinedChangesByKey, *dst); err != nil {
-		return err
+	if src.V != dst.V {
+		return fmt.Errorf("src ledger version %v is incompatible with dst ledger version %v", src.V, dst.V)
 	}
-	if err := extractChanges(networkPassphrase, combinedChangesByKey, src); err != nil {
+	if err := UpdateLedgerSeq(&src, getLedgerSeq); err != nil {
 		return err
 	}
 
 	// src is merged into dst by appending all the transactions from src into dst,
 	// appending all the upgrades from src into dst, and appending all the evictions
 	// from src into dst
-	dst.V2.TxSet.V1TxSet.Phases = append(dst.V2.TxSet.V1TxSet.Phases, src.V2.TxSet.V1TxSet.Phases...)
-	dst.V2.TxProcessing = append(dst.V2.TxProcessing, src.V2.TxProcessing...)
-	dst.V2.UpgradesProcessing = append(dst.V2.UpgradesProcessing, src.V2.UpgradesProcessing...)
-	dst.V2.EvictedKeys = append(dst.V2.EvictedKeys, src.V2.EvictedKeys...)
-
-	mergedChangesByKey := map[string][]ingest.Change{}
-	if err := extractChanges(networkPassphrase, mergedChangesByKey, *dst); err != nil {
-		return err
-	}
-
-	// a merge is valid if the ordered list of changes emitted by the merged ledger is equal to
-	// the list of changes emitted by dst concatenated by the list of changes emitted by src, or
-	// in other words:
-	// extractChanges(merge(dst, src)) == concat(extractChanges(dst), extractChanges(src))
-	if ok, err := changesAreEqual(combinedChangesByKey, mergedChangesByKey); err != nil {
-		return err
-	} else if !ok {
-		return errors.New("order of changes are not preserved")
+	switch dst.V {
+	case 1:
+		dst.V1.TxSet.V1TxSet.Phases = append(dst.V1.TxSet.V1TxSet.Phases, src.V1.TxSet.V1TxSet.Phases...)
+		dst.V1.TxProcessing = append(dst.V1.TxProcessing, src.V1.TxProcessing...)
+		dst.V1.UpgradesProcessing = append(dst.V1.UpgradesProcessing, src.V1.UpgradesProcessing...)
+		dst.V1.EvictedKeys = append(dst.V1.EvictedKeys, src.V1.EvictedKeys...)
+	case 2:
+		dst.V2.TxSet.V1TxSet.Phases = append(dst.V2.TxSet.V1TxSet.Phases, src.V2.TxSet.V1TxSet.Phases...)
+		dst.V2.TxProcessing = append(dst.V2.TxProcessing, src.V2.TxProcessing...)
+		dst.V2.UpgradesProcessing = append(dst.V2.UpgradesProcessing, src.V2.UpgradesProcessing...)
+		dst.V2.EvictedKeys = append(dst.V2.EvictedKeys, src.V2.EvictedKeys...)
+	default:
+		return fmt.Errorf("unexpected ledger version %v", dst.V)
 	}
 
 	return nil

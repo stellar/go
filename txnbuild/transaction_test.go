@@ -7,13 +7,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/network"
 	"github.com/stellar/go/price"
 	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/xdr"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestMissingTimebounds(t *testing.T) {
@@ -2597,7 +2598,7 @@ func TestReadChallengeTransaction_forbidsMemoWithMuxedClientAccount(t *testing.T
 	randomNonce, _ := generateRandomNonce(48)
 	randomNonceToString := base64.StdEncoding.EncodeToString(randomNonce)
 	currentTime := time.Now().UTC()
-	maxTime := currentTime.Add(300)
+	maxTime := currentTime.Add(time.Second * 300)
 
 	tx, err := NewTransaction(
 		TransactionParams{

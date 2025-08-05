@@ -15,6 +15,10 @@ func Dump(v goxdr.XdrType) []byte {
 	return buf.Bytes()
 }
 
+func Parse(val goxdr.XdrType, in []byte) {
+	val.XdrMarshal(&goxdr.XdrIn{bytes.NewBuffer(in)}, "")
+}
+
 // Convert serializes the given goxdr value into another destination value
 // which supports binary unmarshaling.
 //
