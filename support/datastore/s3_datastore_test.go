@@ -11,6 +11,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -21,9 +22,10 @@ import (
 
 // mockS3Object stores object data and metadata within the mock server.
 type mockS3Object struct {
-	body     []byte
-	metadata map[string]string
-	crc32c   string
+	body         []byte
+	metadata     map[string]string
+	crc32c       string
+	lastModified time.Time
 }
 
 // mockS3Server is our mock S3 server, holding an in-memory "bucket".
@@ -115,7 +117,12 @@ func (s *mockS3Server) handlePutRequest(w http.ResponseWriter, r *http.Request, 
 
 	metadata := s.extractMetadata(r.Header)
 	crc32c := r.Header.Get("x-amz-checksum-crc32c")
-	s.objects[key] = mockS3Object{body: body, metadata: metadata, crc32c: crc32c}
+	s.objects[key] = mockS3Object{
+		body:         body,
+		metadata:     metadata,
+		crc32c:       crc32c,
+		lastModified: time.Now(),
+	}
 	w.WriteHeader(http.StatusOK)
 }
 
@@ -126,6 +133,9 @@ func (s *mockS3Server) setObjectHeaders(w http.ResponseWriter, obj mockS3Object)
 	}
 	if obj.crc32c != "" {
 		w.Header().Set("x-amz-checksum-crc32c", obj.crc32c)
+	}
+	if !obj.lastModified.IsZero() {
+		w.Header().Set("Last-Modified", obj.lastModified.UTC().Format(http.TimeFormat))
 	}
 }
 
@@ -155,6 +165,10 @@ func setupTestS3DataStore(t *testing.T, ctx context.Context, bucketPath string, 
 	}
 	// Initialize the mock server with provided objects.
 	for key, obj := range initObjects {
+		// Ensure lastModified is set if not already set
+		if obj.lastModified.IsZero() {
+			obj.lastModified = time.Now()
+		}
 		mockServer.objects[key] = obj
 	}
 	server := httptest.NewServer(mockServer)
@@ -251,6 +265,20 @@ func TestS3PutFile(t *testing.T) {
 	metadata, err = store.GetFileMetadata(ctx, "file.txt")
 	require.NoError(t, err)
 	require.Equal(t, map[string]string(nil), metadata)
+}
+
+func TestS3GetFileLastModified(t *testing.T) {
+	ctx := context.Background()
+	store, teardown := setupTestS3DataStore(t, ctx, "test-bucket/objects/testnet", map[string]mockS3Object{})
+	defer teardown()
+
+	content := []byte("inside the file")
+	err := store.PutFile(ctx, "file.txt", bytes.NewReader(content), nil)
+	require.NoError(t, err)
+
+	lastModified, err := store.GetFileLastModified(context.Background(), "file.txt")
+	require.NoError(t, err)
+	require.NotZero(t, lastModified)
 }
 
 func TestS3PutFileIfNotExists(t *testing.T) {
@@ -422,9 +450,10 @@ func TestS3GetFileValidatesCRC32C(t *testing.T) {
 	ctx := context.Background()
 	store, teardown := setupTestS3DataStore(t, ctx, "test-bucket/objects/testnet", map[string]mockS3Object{
 		"objects/testnet/file.txt": {
-			body:     []byte("hello"),
-			metadata: map[string]string{},
-			crc32c:   "VLn+tw==", // invalid CRC32C for the content
+			body:         []byte("hello"),
+			metadata:     map[string]string{},
+			crc32c:       "VLn+tw==", // invalid CRC32C for the content
+			lastModified: time.Now(),
 		}})
 	defer teardown()
 

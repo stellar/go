@@ -11,6 +11,7 @@ import (
 	"os"
 	"path"
 	"strings"
+	"time"
 
 	"cloud.google.com/go/storage"
 	"google.golang.org/api/googleapi"
@@ -65,8 +66,7 @@ func FromGCSClient(ctx context.Context, client *storage.Client, bucketPath strin
 	return &GCSDataStore{client: client, bucket: bucket, prefix: prefix, schema: schema}, nil
 }
 
-// GetFileMetadata retrieves the metadata for the specified file in the GCS bucket.
-func (b GCSDataStore) GetFileMetadata(ctx context.Context, filePath string) (map[string]string, error) {
+func (b GCSDataStore) GetFileAttrs(ctx context.Context, filePath string) (*storage.ObjectAttrs, error) {
 	filePath = path.Join(b.prefix, filePath)
 	attrs, err := b.bucket.Object(filePath).Attrs(ctx)
 	if err != nil {
@@ -74,7 +74,25 @@ func (b GCSDataStore) GetFileMetadata(ctx context.Context, filePath string) (map
 			return nil, os.ErrNotExist
 		}
 	}
+	return attrs, nil
+}
+
+// GetFileMetadata retrieves the metadata for the specified file in the GCS bucket.
+func (b GCSDataStore) GetFileMetadata(ctx context.Context, filePath string) (map[string]string, error) {
+	attrs, err := b.GetFileAttrs(ctx, filePath)
+	if err != nil {
+		return nil, err
+	}
 	return attrs.Metadata, nil
+}
+
+// GetFileLastModified retrieves the last modified time of a file in the GCS bucket.
+func (b GCSDataStore) GetFileLastModified(ctx context.Context, filePath string) (time.Time, error) {
+	attrs, err := b.GetFileAttrs(ctx, filePath)
+	if err != nil {
+		return time.Time{}, err
+	}
+	return attrs.Updated, nil
 }
 
 // GetFile retrieves a file from the GCS bucket.
