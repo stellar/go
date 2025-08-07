@@ -3,6 +3,7 @@ package horizon
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"testing"
 	"time"
 
@@ -335,6 +336,65 @@ func horizonEnvVars() map[string]string {
 		"PORT":                     "8001",
 		"CAPTIVE_CORE_BINARY_PATH": os.Getenv("HORIZON_INTEGRATION_TESTS_CAPTIVE_CORE_BIN"),
 		"CAPTIVE_CORE_CONFIG_PATH": "../docker/captive-core-integration-tests.cfg",
+	}
+}
+
+func TestSkipTxMetaAndEmitVerboseMetaCombination(t *testing.T) {
+	tests := []struct {
+		name            string
+		skipTxMeta      bool
+		emitVerboseMeta bool
+		errStr          string
+	}{
+		{
+			name:            "Only SKIP_TXMETA enabled",
+			skipTxMeta:      true,
+			emitVerboseMeta: false,
+		},
+		{
+			name:            "Only EMIT_VERBOSE_META enabled",
+			skipTxMeta:      false,
+			emitVerboseMeta: true,
+		},
+		{
+			name:            "SKIP_TXMETA and EMIT_VERBOSE_META enabled",
+			skipTxMeta:      true,
+			emitVerboseMeta: true,
+			errStr:          "Only one of SKIP_TXMETA and EMIT_VERBOSE_META can be set to TRUE, not both",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			envVars := horizonEnvVars()
+			envVars["SKIP_TXMETA"] = strconv.FormatBool(tt.skipTxMeta)
+			envVars["EMIT_VERBOSE_META"] = strconv.FormatBool(tt.emitVerboseMeta)
+
+			envManager := test.NewEnvironmentManager()
+			defer func() {
+				envManager.Restore()
+			}()
+			require.NoError(t, envManager.InitializeEnvironmentVariables(envVars))
+			config, flags := Flags()
+			horizonCmd := &cobra.Command{
+				Use:           "horizon",
+				Short:         "Client-facing api server for the Stellar network",
+				SilenceErrors: true,
+				SilenceUsage:  true,
+				Long:          "Client-facing API server for the Stellar network.",
+			}
+			require.NoError(t, flags.Init(horizonCmd))
+
+			err := ApplyFlags(config, flags, ApplyOptions{RequireCaptiveCoreFullConfig: true})
+			if tt.errStr == "" {
+				assert.NoError(t, err)
+				assert.Equal(t, config.SkipTxmeta, tt.skipTxMeta)
+				assert.Equal(t, config.EmitVerboseMeta, tt.emitVerboseMeta)
+			} else {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tt.errStr)
+			}
+		})
 	}
 }
 
