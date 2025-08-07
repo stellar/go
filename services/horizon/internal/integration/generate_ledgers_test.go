@@ -27,6 +27,7 @@ import (
 	"github.com/stellar/go/network"
 	proto "github.com/stellar/go/protocols/stellarcore"
 	"github.com/stellar/go/services/horizon/internal/test/integration"
+	supportlog "github.com/stellar/go/support/log"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stellar/go/xdr"
 )
@@ -57,7 +58,11 @@ func TestGenerateLedgers(t *testing.T) {
 	itest := integration.NewTest(t, integration.Config{
 		EnableStellarRPC:  true,
 		NetworkPassphrase: networkPassphrase,
+		HorizonEnvironment: map[string]string{
+			"LOG_LEVEL": "error",
+		},
 	})
+	supportlog.SetLevel(supportlog.ErrorLevel)
 
 	maxAccountsPerTransaction := 100
 	// transactionsPerLedger should be a multiple of maxAccountsPerTransaction
