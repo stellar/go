@@ -24,6 +24,7 @@ import (
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/ingest/loadtest"
 	"github.com/stellar/go/keypair"
+	"github.com/stellar/go/network"
 	proto "github.com/stellar/go/protocols/stellarcore"
 	"github.com/stellar/go/services/horizon/internal/test/integration"
 	"github.com/stellar/go/txnbuild"
@@ -46,11 +47,11 @@ func TestGenerateLedgers(t *testing.T) {
 	var transactionsPerLedger, ledgers, transfersPerTx int
 	var output bool
 	var networkPassphrase string
-	flag.IntVar(&transactionsPerLedger, "transactions-per-ledger", 100, "number of transactions per ledger")
+	flag.IntVar(&transactionsPerLedger, "transactions-per-ledger", 1000, "number of transactions per ledger")
 	flag.IntVar(&transfersPerTx, "transfers-per-tx", 10, "number of asset transfers for each transaction")
-	flag.IntVar(&ledgers, "ledgers", 2, "number of ledgers to generate")
-	flag.BoolVar(&output, "output", false, "overwrite the generated output files")
-	flag.StringVar(&networkPassphrase, "network-passphrase", loadTestNetworkPassphrase, "network passphrase")
+	flag.IntVar(&ledgers, "ledgers", 450, "number of ledgers to generate")
+	flag.BoolVar(&output, "output", true, "overwrite the generated output files")
+	flag.StringVar(&networkPassphrase, "network-passphrase", network.PublicNetworkPassphrase, "network passphrase")
 	flag.Parse()
 
 	itest := integration.NewTest(t, integration.Config{
@@ -152,6 +153,7 @@ func TestGenerateLedgers(t *testing.T) {
 		}
 		wg.Wait()
 	}
+	itest.StopHorizon()
 
 	start, end := int32(-1), int32(-1)
 	for ledgerSeq := range ledgerMap {
@@ -191,12 +193,15 @@ func TestGenerateLedgers(t *testing.T) {
 		}
 	}
 	require.Len(t, accountLedgerEntries, 2*transactionsPerLedger)
-
 	if output {
 		writeFile(t, filepath.Join("testdata", fmt.Sprintf("load-test-accounts-v%d.xdr.zstd", itest.Config().ProtocolVersion)), accountLedgerEntries)
 	}
 
-	merged := merge(t, itest.Config().NetworkPassphrase, sortedLegers, transactionsPerLedger)
+	merged := merge(t, sortedLegers, transactionsPerLedger)
+	if output {
+		writeFile(t, filepath.Join("testdata", fmt.Sprintf("load-test-ledgers-v%d.xdr.zstd", itest.Config().ProtocolVersion)), merged)
+	}
+
 	changes := extractChanges(t, itest.Config().NetworkPassphrase, sortedLegers)
 	for _, change := range changes {
 		if change.Type != xdr.LedgerEntryTypeAccount {
@@ -219,9 +224,6 @@ func TestGenerateLedgers(t *testing.T) {
 		requireTransactionsMatch(t, original, mergedTransactions[i])
 	}
 
-	if output {
-		writeFile(t, filepath.Join("testdata", fmt.Sprintf("load-test-ledgers-v%d.xdr.zstd", itest.Config().ProtocolVersion)), merged)
-	}
 }
 
 func writeFile[T any](t *testing.T, path string, data []T) {
@@ -464,7 +466,7 @@ func waitForTransactions(
 	}, time.Second*90, time.Millisecond*100)
 }
 
-func merge(t *testing.T, networkPassphrase string, ledgers []xdr.LedgerCloseMeta, transactionsPerLedger int) []xdr.LedgerCloseMeta {
+func merge(t *testing.T, ledgers []xdr.LedgerCloseMeta, transactionsPerLedger int) []xdr.LedgerCloseMeta {
 	var merged []xdr.LedgerCloseMeta
 	if len(ledgers) == 0 {
 		return merged
