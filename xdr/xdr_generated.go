@@ -33,7 +33,7 @@ import (
 // XdrFilesSHA256 is the SHA256 hashes of source files.
 var XdrFilesSHA256 = map[string]string{
 	"xdr/Stellar-SCP.x":                     "8f32b04d008f8bc33b8843d075e69837231a673691ee41d8b821ca229a6e802a",
-	"xdr/Stellar-contract-config-setting.x": "880f56f0a367f8f0e1b155a8f755fe4a9f909bdd22b0d4615aabc75a81ecff7d",
+	"xdr/Stellar-contract-config-setting.x": "5d1d926e4288b0f2d1ce9f891ca2cab97de9246381d57fca22e25a0d276c6682",
 	"xdr/Stellar-contract-env-meta.x":       "75a271414d852096fea3283c63b7f2a702f2905f78fc28eb60ec7d7bd366a780",
 	"xdr/Stellar-contract-meta.x":           "f01532c11ca044e19d9f9f16fe373e9af64835da473be556b9a807ee3319ae0d",
 	"xdr/Stellar-contract-spec.x":           "7bd048e1b008c274f667a4f9b8fcf5ae848e301aca0073cdc8b266ecd2c5f2f9",
@@ -59986,22 +59986,22 @@ var _ xdrType = (*ConfigSettingContractLedgerCostV0)(nil)
 //
 //	struct ConfigSettingContractLedgerCostExtV0
 //	 {
-//	     // Maximum number of in-memory ledger entry read operations per transaction
-//	     uint32 txMaxInMemoryReadEntries;
+//	     // Maximum number of RO+RW entries in the transaction footprint.
+//	     uint32 txMaxFootprintEntries;
 //	     // Fee per 1 KB of data written to the ledger.
 //	     // Unlike the rent fee, this is a flat fee that is charged for any ledger
 //	     // write, independent of the type of the entry being written.
 //	     int64 feeWrite1KB;
 //	 };
 type ConfigSettingContractLedgerCostExtV0 struct {
-	TxMaxInMemoryReadEntries Uint32
-	FeeWrite1Kb              Int64
+	TxMaxFootprintEntries Uint32
+	FeeWrite1Kb           Int64
 }
 
 // EncodeTo encodes this value using the Encoder.
 func (s *ConfigSettingContractLedgerCostExtV0) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	if err = s.TxMaxInMemoryReadEntries.EncodeTo(e); err != nil {
+	if err = s.TxMaxFootprintEntries.EncodeTo(e); err != nil {
 		return err
 	}
 	if err = s.FeeWrite1Kb.EncodeTo(e); err != nil {
@@ -60020,7 +60020,7 @@ func (s *ConfigSettingContractLedgerCostExtV0) DecodeFrom(d *xdr.Decoder, maxDep
 	maxDepth -= 1
 	var err error
 	var n, nTmp int
-	nTmp, err = s.TxMaxInMemoryReadEntries.DecodeFrom(d, maxDepth)
+	nTmp, err = s.TxMaxFootprintEntries.DecodeFrom(d, maxDepth)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %w", err)
