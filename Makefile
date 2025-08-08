@@ -17,7 +17,7 @@ xdr/Stellar-exporter.x
 
 
 XDRGEN_COMMIT=af107f07237a15fcf5f9aea71b2bebfcc1113b45
-XDR_COMMIT=1334181994a7c00fd44456f1b38d707652c202c6
+XDR_COMMIT=4b7a2ef7931ab2ca2499be68d849f38190b443ca
 
 .PHONY: xdr xdr-clean xdr-update
 
