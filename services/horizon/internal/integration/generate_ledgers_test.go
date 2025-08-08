@@ -200,9 +200,12 @@ func TestGenerateLedgers(t *testing.T) {
 	require.Len(t, accountLedgerEntries, 2*transactionsPerLedger)
 	if output {
 		writeFile(t, filepath.Join("testdata", fmt.Sprintf("load-test-accounts-v%d.xdr.zstd", itest.Config().ProtocolVersion)), accountLedgerEntries)
+		writeFile(t, filepath.Join("testdata", fmt.Sprintf("load-test-sorted-ledgers-v%d.xdr.zstd", itest.Config().ProtocolVersion)), sortedLegers)
 	}
 
+	t.Log("merging ledgers")
 	merged := merge(t, sortedLegers, transactionsPerLedger)
+	t.Logf("merged %d ledgers into %d", len(sortedLegers), len(merged))
 	if output {
 		writeFile(t, filepath.Join("testdata", fmt.Sprintf("load-test-ledgers-v%d.xdr.zstd", itest.Config().ProtocolVersion)), merged)
 	}

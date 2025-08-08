@@ -12,11 +12,13 @@ func Dump(v goxdr.XdrType) []byte {
 	var buf bytes.Buffer
 	writer := goxdr.XdrOut{Out: &buf}
 	writer.Marshal("", v)
-	return buf.Bytes()
+	output := buf.Bytes()
+	buf.Reset()
+	return output
 }
 
 func Parse(val goxdr.XdrType, in []byte) {
-	val.XdrMarshal(&goxdr.XdrIn{bytes.NewBuffer(in)}, "")
+	val.XdrMarshal(&goxdr.XdrIn{bytes.NewReader(in)}, "")
 }
 
 // Convert serializes the given goxdr value into another destination value

@@ -18,10 +18,12 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/sirupsen/logrus"
 	rpc "github.com/stellar/stellar-rpc/client"
 
 	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/ingest/ledgerbackend"
+	"github.com/stellar/go/support/log"
 
 	"github.com/stellar/go/services/horizon/internal/test"
 
@@ -668,6 +670,14 @@ func (i *Test) CreateCaptiveCoreConfig() (ledgerbackend.CaptiveCoreConfig, error
 		NetworkPassphrase:   i.config.NetworkPassphrase,
 		CheckpointFrequency: CheckpointFrequency, // This is required for accelerated archive creation for integration test
 		StoragePath:         i.CurrentTest().TempDir(),
+	}
+	if logLevel := i.getIngestParameter("log-level", "LOG_LEVEL"); logLevel != "" {
+		captiveCoreConfig.Log = log.New()
+		ll, err := logrus.ParseLevel(logLevel)
+		if err != nil {
+			return ledgerbackend.CaptiveCoreConfig{}, err
+		}
+		captiveCoreConfig.Log.SetLevel(ll)
 	}
 
 	tomlParams := ledgerbackend.CaptiveCoreTomlParams{
