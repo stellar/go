@@ -124,4 +124,7 @@ type Config struct {
 	DisableTxSub bool
 	// SkipTxmeta, when enabled, will not store meta xdr in history transaction table
 	SkipTxmeta bool
+	// EmitVerboseMeta, when enabled will include all kinds of events in txMeta - diagnosticEvents/classicEvents
+	// SkipTxMeta and EmitVerboseMeta dont go hand in hand. i.e EmitVerboseMeta cannot be TRUE if SkipTxMeta is set to TRUE
+	EmitVerboseMeta bool
 }

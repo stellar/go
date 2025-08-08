@@ -60,6 +60,8 @@ const (
 	DisableTxSubFlagName = "disable-tx-sub"
 	// SkipTxmeta is the command line flag for disabling persistence of tx meta in history transaction table
 	SkipTxmeta = "skip-txmeta"
+	// EmitVerboseMeta is the command line flag for enabling all kinds of verbose events - diagnosticEvents, classicEvents during ingestion
+	EmitVerboseMeta = "emit-verbose-meta"
 
 	// StellarPubnet is a constant representing the Stellar public network
 	StellarPubnet = "pubnet"
@@ -801,6 +803,15 @@ func Flags() (*Config, support.ConfigOptions) {
 			Usage:          "excludes tx meta from persistence on transaction history",
 			UsedInCommands: IngestionCommands,
 		},
+		&support.ConfigOption{
+			Name:           EmitVerboseMeta,
+			ConfigKey:      &config.EmitVerboseMeta,
+			OptType:        types.Bool,
+			FlagDefault:    false,
+			Required:       false,
+			Usage:          "enables all events to be present in txMeta. Do not set SKIP_TXMETA and EMIT_VERBOSE_META to true at the same time.",
+			UsedInCommands: IngestionCommands,
+		},
 	}
 
 	return config, flags
@@ -865,6 +876,7 @@ func setCaptiveCoreConfiguration(config *Config, options ApplyOptions) error {
 	config.CaptiveCoreTomlParams.CoreBinaryPath = config.CaptiveCoreBinaryPath
 	config.CaptiveCoreTomlParams.HistoryArchiveURLs = config.HistoryArchiveURLs
 	config.CaptiveCoreTomlParams.NetworkPassphrase = config.NetworkPassphrase
+	config.CaptiveCoreTomlParams.EmitVerboseMeta = config.EmitVerboseMeta
 
 	if config.CaptiveCoreConfigPath != "" {
 		config.CaptiveCoreToml, err = ledgerbackend.NewCaptiveCoreTomlFromFile(config.CaptiveCoreConfigPath,
@@ -921,6 +933,10 @@ func ApplyFlags(config *Config, flags support.ConfigOptions, options ApplyOption
 	// Validate options that should be provided together
 	if err := validateBothOrNeither("tls-cert", "tls-key"); err != nil {
 		return err
+	}
+
+	if config.SkipTxmeta && config.EmitVerboseMeta {
+		return fmt.Errorf("invalid config: Only one of SKIP_TXMETA and EMIT_VERBOSE_META can be set to TRUE, not both")
 	}
 
 	if config.Ingest {
