@@ -4634,8 +4634,8 @@ type ConfigSettingContractLedgerCostV0 struct {
 
 // Ledger access settings for contracts.
 type ConfigSettingContractLedgerCostExtV0 struct {
-	// Maximum number of in-memory ledger entry read operations per transaction
-	TxMaxInMemoryReadEntries Uint32
+	// Maximum number of RO+RW entries in the transaction footprint.
+	TxMaxFootprintEntries Uint32
 	// Fee per 1 KB of data written to the ledger.
 	// Unlike the rent fee, this is a flat fee that is charged for any ledger
 	// write, independent of the type of the entry being written.
@@ -31112,7 +31112,7 @@ func (v *ConfigSettingContractLedgerCostExtV0) XdrRecurse(x XDR, name string) {
 	if name != "" {
 		name = x.Sprintf("%s.", name)
 	}
-	x.Marshal(x.Sprintf("%stxMaxInMemoryReadEntries", name), XDR_Uint32(&v.TxMaxInMemoryReadEntries))
+	x.Marshal(x.Sprintf("%stxMaxFootprintEntries", name), XDR_Uint32(&v.TxMaxFootprintEntries))
 	x.Marshal(x.Sprintf("%sfeeWrite1KB", name), XDR_Int64(&v.FeeWrite1KB))
 }
 func XDR_ConfigSettingContractLedgerCostExtV0(v *ConfigSettingContractLedgerCostExtV0) *ConfigSettingContractLedgerCostExtV0 {
