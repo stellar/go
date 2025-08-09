@@ -3,6 +3,11 @@
 All notable changes to this project will be documented in this
 file. This project adheres to [Semantic Versioning](http://semver.org/).
 
+## 23.0.0
+
+### Added
+- Added support for a new config parameter - `EMIT_VERBOSE_META` ([5766](https://github.com/stellar/go/issues/5766)). Defaults to `FALSE`. When set to `TRUE`, the transaction-meta will contain diagnostic events (in smart contract transactions). Additionally, unified events will appear in the tx-meta, as per [CAP-67](https://stellar.org/protocol/cap-67).
+
 ## 23.0.0-rc2
 
 **This release adds support for Protocol 23**
@@ -23,7 +28,6 @@ In Protocol 23, Stellar Core removes in-memory mode and requires on-disk mode (u
 - Added 1 new optional string field `destination_muxed_id` in the `asset_balance_changes` section of the `/operations` endpoint which represents the muxed id in the case where an asset is transferred to a muxed account destination ([5715](https://github.com/stellar/go/pull/5715), [5739](https://github.com/stellar/go/pull/5739)). Note that the `destination_muxed_id_type` field was introduced in the `23.0.0-rc1` release, however, the field turned out to be unnecessary and was removed.
 
 ### Removed
-
 - The `errorResultXdr` field from the response of the async transaction submission endpoint has been removed ([5737](https://github.com/stellar/go/pull/5737)).
 - The `num_archived_contracts` and `archived_contracts_amount` fields from the `/assets` response have been removed ([5611](https://github.com/stellar/go/pull/5611)).
 
