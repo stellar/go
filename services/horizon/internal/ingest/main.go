@@ -17,7 +17,6 @@ import (
 	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/ingest/ledgerbackend"
-	"github.com/stellar/go/ingest/loadtest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/ingest/filters"
 	apkg "github.com/stellar/go/support/app"
@@ -154,10 +153,6 @@ type Config struct {
 
 	LedgerBackendType    LedgerBackendType
 	StorageBackendConfig StorageBackendConfig
-
-	LoadTestFixturesPath  string
-	LoadTestLedgersPath   string
-	LoadTestCloseDuration time.Duration
 }
 
 const (
@@ -338,20 +333,6 @@ func NewSystem(config Config) (System, error) {
 			cancel()
 			return nil, errors.Wrap(err, "error creating captive core backend")
 		}
-	}
-
-	if config.LoadTestLedgersPath != "" {
-		if !config.DisableStateVerification {
-			cancel()
-			return nil, fmt.Errorf("state verication cannot be enabled during ingestion load tests")
-		}
-		ledgerBackend = loadtest.NewLedgerBackend(loadtest.LedgerBackendConfig{
-			NetworkPassphrase:     config.NetworkPassphrase,
-			LedgerBackend:         ledgerBackend,
-			LedgersFilePath:       config.LoadTestLedgersPath,
-			LedgerEntriesFilePath: config.LoadTestFixturesPath,
-			LedgerCloseDuration:   config.LoadTestCloseDuration,
-		})
 	}
 
 	historyQ := &history.Q{config.HistorySession.Clone()}
