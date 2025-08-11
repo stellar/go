@@ -24,7 +24,6 @@ import (
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/ingest/loadtest"
 	"github.com/stellar/go/keypair"
-	"github.com/stellar/go/network"
 	proto "github.com/stellar/go/protocols/stellarcore"
 	"github.com/stellar/go/services/horizon/internal/test/integration"
 	supportlog "github.com/stellar/go/support/log"
@@ -48,11 +47,11 @@ func TestGenerateLedgers(t *testing.T) {
 	var transactionsPerLedger, ledgers, transfersPerTx int
 	var output bool
 	var networkPassphrase string
-	flag.IntVar(&transactionsPerLedger, "transactions-per-ledger", 1000, "number of transactions per ledger")
+	flag.IntVar(&transactionsPerLedger, "transactions-per-ledger", 100, "number of transactions per ledger")
 	flag.IntVar(&transfersPerTx, "transfers-per-tx", 10, "number of asset transfers for each transaction")
-	flag.IntVar(&ledgers, "ledgers", 450, "number of ledgers to generate")
-	flag.BoolVar(&output, "output", true, "overwrite the generated output files")
-	flag.StringVar(&networkPassphrase, "network-passphrase", network.PublicNetworkPassphrase, "network passphrase")
+	flag.IntVar(&ledgers, "ledgers", 2, "number of ledgers to generate")
+	flag.BoolVar(&output, "output", false, "overwrite the generated output files")
+	flag.StringVar(&networkPassphrase, "network-passphrase", loadTestNetworkPassphrase, "network passphrase")
 	flag.Parse()
 
 	itest := integration.NewTest(t, integration.Config{
