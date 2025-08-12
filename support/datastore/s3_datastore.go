@@ -282,10 +282,9 @@ func (b S3DataStore) ListFilePaths(ctx context.Context, prefix string, limit int
 	// We page through until we collect 'limit' or exhaust results
 	var keys []string
 	var continuationToken *string
-	// Enforce an effective cap of 1000 total results and default to 1000 if <= 0
 	remaining := limit
-	if remaining <= 0 || remaining > 1000 {
-		remaining = 1000
+	if remaining <= 0 || remaining > listFilePathsMaxLimit {
+		remaining = listFilePathsMaxLimit
 	}
 	for remaining > 0 {
 		maxKeys := int32(remaining)

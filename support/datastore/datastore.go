@@ -13,6 +13,8 @@ type DataStoreConfig struct {
 	Schema DataStoreSchema   `toml:"schema"`
 }
 
+const listFilePathsMaxLimit = 1000
+
 // DataStore defines an interface for interacting with data storage
 type DataStore interface {
 	GetFileMetadata(ctx context.Context, path string) (map[string]string, error)
