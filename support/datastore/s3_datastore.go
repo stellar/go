@@ -270,6 +270,52 @@ func (b S3DataStore) putFile(ctx context.Context, filePath string, in io.WriterT
 	return err
 }
 
+// ListFilePaths lists up to 'limit' file paths under the provided prefix.
+// Returned paths are absolute within the datastore (including the given prefix)
+// and ordered lexicographically ascending as provided by the backend.
+// If limit <= 0, implementations default to a cap of 1,000; values > 1,000 are capped to 1,000.
+func (b S3DataStore) ListFilePaths(ctx context.Context, prefix string, limit int) ([]string, error) {
+	// Join the caller-provided prefix with the datastore prefix
+	fullPrefix := path.Join(b.prefix, prefix)
+
+	// S3 returns lexicographically ordered keys by default
+	// We page through until we collect 'limit' or exhaust results
+	var keys []string
+	var continuationToken *string
+	remaining := limit
+	if remaining <= 0 || remaining > listFilePathsMaxLimit {
+		remaining = listFilePathsMaxLimit
+	}
+	for remaining > 0 {
+		maxKeys := int32(remaining)
+		out, err := b.client.ListObjectsV2(ctx, &s3.ListObjectsV2Input{
+			Bucket:            aws.String(b.bucket),
+			Prefix:            aws.String(fullPrefix),
+			ContinuationToken: continuationToken,
+			MaxKeys:           aws.Int32(maxKeys),
+			FetchOwner:        aws.Bool(false),
+		})
+		if err != nil {
+			return nil, err
+		}
+		for _, obj := range out.Contents {
+			name := aws.ToString(obj.Key)
+			// Return full path (including the configured prefix)
+			keys = append(keys, name)
+			remaining--
+			if remaining == 0 {
+				break
+			}
+		}
+		if out.IsTruncated != nil && *out.IsTruncated {
+			continuationToken = out.NextContinuationToken
+		} else {
+			break
+		}
+	}
+	return keys, nil
+}
+
 func isNotFoundError(err error) bool {
 	var noSuchKeyErr *types.NoSuchKey // for getObject
 	var notFoundErr *types.NotFound   // for headObject

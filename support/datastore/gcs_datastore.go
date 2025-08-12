@@ -14,6 +14,7 @@ import (
 
 	"cloud.google.com/go/storage"
 	"google.golang.org/api/googleapi"
+	"google.golang.org/api/iterator"
 
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/support/url"
@@ -189,4 +190,40 @@ func (b GCSDataStore) putFile(ctx context.Context, filePath string, in io.Writer
 // and organization of data in the datastore.
 func (b GCSDataStore) GetSchema() DataStoreSchema {
 	return b.schema
+}
+
+// ListFilePaths lists up to 'limit' file paths under the provided prefix.
+// Returned paths are absolute within the datastore (including the given prefix)
+// and ordered lexicographically ascending as provided by the backend.
+// If limit <= 0, implementations default to a cap of 1,000; values > 1,000 are capped to 1,000.
+func (b GCSDataStore) ListFilePaths(ctx context.Context, prefix string, limit int) ([]string, error) {
+	// Join the caller-provided prefix with the datastore prefix
+	fullPrefix := path.Join(b.prefix, prefix)
+	query := &storage.Query{Prefix: fullPrefix}
+	// Only request the object name to minimize payload
+	query.SetAttrSelection([]string{"Name"})
+	it := b.bucket.Objects(ctx, query)
+
+	keys := make([]string, 0)
+	// Enforce an effective cap of 1000 total results and default to 1000 if <= 0
+	remaining := limit
+	if remaining <= 0 || remaining > listFilePathsMaxLimit {
+		remaining = listFilePathsMaxLimit
+	}
+	for {
+		if remaining == 0 {
+			break
+		}
+		attrs, err := it.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		// Return full path (including the configured prefix)
+		keys = append(keys, attrs.Name)
+		remaining--
+	}
+	return keys, nil
 }
