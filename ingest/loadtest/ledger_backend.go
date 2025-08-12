@@ -240,7 +240,7 @@ func (r *LedgerBackend) PrepareRange(ctx context.Context, ledgerRange ledgerback
 	}
 
 	if _, err = mergedLedgersFile.Seek(0, 0); err != nil {
-		return fmt.Errorf("could not seek to begining of merged ledgers file: %w", err)
+		return fmt.Errorf("could not seek to beginning of merged ledgers file: %w", err)
 	}
 	mergedLedgersStream, err := xdr.NewZstdStream(mergedLedgersFile)
 	if err != nil {
