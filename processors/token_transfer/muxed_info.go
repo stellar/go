@@ -44,3 +44,11 @@ func NewMuxedInfoFromId(id uint64) *MuxedInfo {
 		},
 	}
 }
+
+func NewMuxedInfoFromText(text string) *MuxedInfo {
+	return &MuxedInfo{
+		Content: &MuxedInfo_Text{
+			Text: text,
+		},
+	}
+}

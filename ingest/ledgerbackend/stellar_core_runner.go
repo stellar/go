@@ -14,7 +14,7 @@ import (
 
 type stellarCoreRunnerInterface interface {
 	catchup(from, to uint32) error
-	runFrom(from uint32, hash string) error
+	runFrom(from uint32) error
 	getMetaPipe() (<-chan metaResult, bool)
 	context() context.Context
 	getProcessExitError() (error, bool)
@@ -67,7 +67,6 @@ type stellarCoreRunner struct {
 
 	storagePath string
 	toml        *CaptiveCoreToml
-	useDB       bool
 
 	captiveCoreNewDBCounter prometheus.Counter
 
@@ -91,7 +90,6 @@ func newStellarCoreRunner(config CaptiveCoreConfig, captiveCoreNewDBCounter prom
 		ctx:            ctx,
 		cancel:         cancel,
 		storagePath:    config.StoragePath,
-		useDB:          config.UseDB,
 		log:            config.Log,
 		toml:           config.Toml,
 
@@ -108,8 +106,8 @@ func (r *stellarCoreRunner) context() context.Context {
 }
 
 // runFrom executes the run command with a starting ledger on the captive core subprocess
-func (r *stellarCoreRunner) runFrom(from uint32, hash string) error {
-	return r.startMetaStream(newRunFromStream(r, from, hash, r.captiveCoreNewDBCounter))
+func (r *stellarCoreRunner) runFrom(from uint32) error {
+	return r.startMetaStream(newRunFromStream(r, from, r.captiveCoreNewDBCounter))
 }
 
 // catchup executes the catchup command on the captive core subprocess

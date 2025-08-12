@@ -31,7 +31,7 @@ import (
 const (
 	// MaxSupportedProtocolVersion defines the maximum supported version of
 	// the Stellar protocol.
-	MaxSupportedProtocolVersion uint32 = 22
+	MaxSupportedProtocolVersion uint32 = 23
 
 	// CurrentVersion reflects the latest version of the ingestion
 	// algorithm. This value is stored in KV store and is used to decide
@@ -64,7 +64,10 @@ const (
 	//       contract data ledger entries.
 	// - 18: Ingest contract asset balances so we can keep track of expired / restore asset
 	//       balances for asset stats.
-	CurrentVersion = 18
+	// - 19: Archived contract asset balances are no longer stored in the horizon db.
+	// - 20: Mapping of asset to its contract instance is stored in a new
+	//       table (asset_contracts) in the horizon db.
+	CurrentVersion = 20
 
 	// MaxDBConnections is the size of the postgres connection pool dedicated to Horizon ingestion:
 	//  * Ledger ingestion,
@@ -120,7 +123,6 @@ type Config struct {
 	CaptiveCoreBinaryPath  string
 	CaptiveCoreStoragePath string
 	CaptiveCoreToml        *ledgerbackend.CaptiveCoreToml
-	CaptiveCoreConfigUseDB bool
 	NetworkPassphrase      string
 
 	HistorySession        db.SessionInterface
@@ -316,12 +318,10 @@ func NewSystem(config Config) (System, error) {
 			ledgerbackend.CaptiveCoreConfig{
 				BinaryPath:            config.CaptiveCoreBinaryPath,
 				StoragePath:           config.CaptiveCoreStoragePath,
-				UseDB:                 config.CaptiveCoreConfigUseDB,
 				Toml:                  config.CaptiveCoreToml,
 				NetworkPassphrase:     config.NetworkPassphrase,
 				HistoryArchiveURLs:    config.HistoryArchiveURLs,
 				CheckpointFrequency:   config.CheckpointFrequency,
-				LedgerHashStore:       ledgerbackend.NewHorizonDBLedgerHashStore(config.HistorySession),
 				Log:                   logger,
 				Context:               ctx,
 				UserAgent:             fmt.Sprintf("captivecore horizon/%s golang/%s", apkg.Version(), runtime.Version()),

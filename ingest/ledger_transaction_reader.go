@@ -87,15 +87,21 @@ func (reader *LedgerTransactionReader) Read() (LedgerTransaction, error) {
 		return LedgerTransaction{}, errors.Errorf("unknown tx hash in LedgerCloseMeta: %v", hexHash)
 	}
 
+	var postTxApplyFeeChanges xdr.LedgerEntryChanges
+	if lcmV2, ok := reader.lcm.GetV2(); ok {
+		postTxApplyFeeChanges = lcmV2.TxProcessing[i].PostTxApplyFeeProcessing
+	}
+
 	return LedgerTransaction{
-		Index:         uint32(i + 1), // Transactions start at '1'
-		Envelope:      envelope,
-		Result:        reader.lcm.TransactionResultPair(i),
-		UnsafeMeta:    reader.lcm.TxApplyProcessing(i),
-		FeeChanges:    reader.lcm.FeeProcessing(i),
-		LedgerVersion: uint32(reader.lcm.LedgerHeaderHistoryEntry().Header.LedgerVersion),
-		Ledger:        reader.lcm,
-		Hash:          hash,
+		Index:                 uint32(i + 1), // Transactions start at '1'
+		Envelope:              envelope,
+		Result:                reader.lcm.TransactionResultPair(i),
+		UnsafeMeta:            reader.lcm.TxApplyProcessing(i),
+		FeeChanges:            reader.lcm.FeeProcessing(i),
+		PostTxApplyFeeChanges: postTxApplyFeeChanges,
+		LedgerVersion:         uint32(reader.lcm.LedgerHeaderHistoryEntry().Header.LedgerVersion),
+		Ledger:                reader.lcm,
+		Hash:                  hash,
 	}, nil
 }
 

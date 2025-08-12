@@ -569,6 +569,10 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 					Unauthorized:                    "0",
 				},
 			},
+			Contracts: history.ContractStat{
+				ActiveBalance: "0",
+				ActiveHolders: 0,
+			},
 		},
 	}, nil).Once()
 	clonedQ.MockQAssetStats.On("GetAssetStats", s.ctx, "", "", db2.PageQuery{
@@ -663,7 +667,7 @@ func (s *VerifyRangeStateTestSuite) TestVerifyFailsWhenAssetStatsMismatch() {
 		Limit:  assetStatsBatchSize,
 	}).Return([]history.AssetAndContractStat{}, nil).Once()
 
-	err := checkAssetStats(s.ctx, set, contractAssetStatsSet, s.historyQ, s.system.config.NetworkPassphrase)
+	err := checkAssetStats(s.ctx, set, contractAssetStatsSet, s.historyQ)
 	s.Assert().Contains(err.Error(), fmt.Sprintf("db asset stat with code EUR issuer %s does not match asset stat from HAS", trustLineIssuer.Address()))
 
 	// Satisfy the mock

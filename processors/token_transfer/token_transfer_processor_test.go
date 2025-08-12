@@ -71,31 +71,33 @@ var (
 		V1: nil,
 	}
 
-	someTx = ingest.LedgerTransaction{
-		Index: 1,
-		Envelope: xdr.TransactionEnvelope{
-			Type: xdr.EnvelopeTypeEnvelopeTypeTx,
-			V1: &xdr.TransactionV1Envelope{
-				Tx: xdr.Transaction{
-					SourceAccount: someTxAccount,
-					SeqNum:        xdr.SequenceNumber(54321), // need this for generating CbIds from LPIds for revokeTrustline tests
+	someTxV3 = func() ingest.LedgerTransaction {
+		return ingest.LedgerTransaction{
+			Index: 1,
+			Envelope: xdr.TransactionEnvelope{
+				Type: xdr.EnvelopeTypeEnvelopeTypeTx,
+				V1: &xdr.TransactionV1Envelope{
+					Tx: xdr.Transaction{
+						SourceAccount: someTxAccount,
+						SeqNum:        xdr.SequenceNumber(54321), // need this for generating CbIds from LPIds for revokeTrustline tests
+					},
 				},
 			},
-		},
-		Result: xdr.TransactionResultPair{},
-		UnsafeMeta: xdr.TransactionMeta{
-			V: 3,
-			V3: &xdr.TransactionMetaV3{
-				Operations: []xdr.OperationMeta{{}},
+			Result: xdr.TransactionResultPair{},
+			UnsafeMeta: xdr.TransactionMeta{
+				V: 3,
+				V3: &xdr.TransactionMetaV3{
+					Operations: []xdr.OperationMeta{{}},
+				},
 			},
-		},
-		LedgerVersion: 1234,
-		Ledger:        someLcm,
-		Hash:          someTxHash,
+			LedgerVersion: 1234,
+			Ledger:        someLcm,
+			Hash:          someTxHash,
+		}
 	}
 
-	someTxWithMemo = func(memo xdr.Memo) ingest.LedgerTransaction {
-		resp := someTx
+	someTxV3WithMemo = func(memo xdr.Memo) ingest.LedgerTransaction {
+		resp := someTxV3()
 		resp.Envelope.V1 = &xdr.TransactionV1Envelope{
 			Tx: xdr.Transaction{
 				SourceAccount: someTxAccount,
@@ -106,9 +108,8 @@ var (
 		return resp
 	}
 
-	someTxWithOperationChanges = func(changes xdr.LedgerEntryChanges) ingest.LedgerTransaction {
-		resp := someTx
-		resp.UnsafeMeta.V = 3
+	someTxV3WithOperationChanges = func(changes xdr.LedgerEntryChanges) ingest.LedgerTransaction {
+		resp := someTxV3()
 		resp.UnsafeMeta.V3 = &xdr.TransactionMetaV3{
 			Operations: []xdr.OperationMeta{
 				{
@@ -119,14 +120,13 @@ var (
 		return resp
 	}
 
-	someSorobanTx = func(feeChanges xdr.LedgerEntryChanges, txApplyAfterChanges xdr.LedgerEntryChanges) ingest.LedgerTransaction {
-		resp := someTx
-		resp.UnsafeMeta.V = 3
+	someSorobanTxV3 = func(feeChanges xdr.LedgerEntryChanges, txApplyAfterChanges xdr.LedgerEntryChanges, memo *xdr.Memo) ingest.LedgerTransaction {
+		resp := someTxV3()
 		resp.FeeChanges = feeChanges
 		resp.Envelope.V1.Tx.Ext = xdr.TransactionExt{
 			V: 1,
 			SorobanData: &xdr.SorobanTransactionData{
-				Ext: xdr.ExtensionPoint{
+				Ext: xdr.SorobanTransactionDataExt{
 					V: 0,
 				},
 				Resources: xdr.SorobanResources{
@@ -142,11 +142,14 @@ var (
 			TxChangesAfter: txApplyAfterChanges,
 		}
 		resp.Result.Result.Result.Code = xdr.TransactionResultCodeTxFailed
+		if memo != nil {
+			resp.Envelope.V1.Tx.Memo = *memo
+		}
 		return resp
 	}
 
-	someTxWithOperationChangesAndMemo = func(changes xdr.LedgerEntryChanges, memo xdr.Memo) ingest.LedgerTransaction {
-		resp := someTxWithOperationChanges(changes)
+	someTxV3WithOperationChangesAndMemo = func(changes xdr.LedgerEntryChanges, memo xdr.Memo) ingest.LedgerTransaction {
+		resp := someTxV3WithOperationChanges(changes)
 		resp.Envelope.V1 = &xdr.TransactionV1Envelope{
 			Tx: xdr.Transaction{
 				SourceAccount: someTxAccount,
@@ -158,7 +161,7 @@ var (
 	}
 
 	someOldTxWithOperationChanges = func(changes xdr.LedgerEntryChanges) ingest.LedgerTransaction {
-		resp := someTxWithOperationChanges(changes)
+		resp := someTxV3WithOperationChanges(changes)
 		someOldLcm := someLcm
 		someOldLcm.V0 =
 			&xdr.LedgerCloseMetaV0{
@@ -188,7 +191,7 @@ var (
 	// Some global anonymous functions.
 	mintEvent = func(to string, amt string, asset *assetProto.Asset) *TokenTransferEvent {
 		return &TokenTransferEvent{
-			Meta: NewEventMetaFromTx(someTx, &someOperationIndex, contractIdStrFromAsset(asset.ToXdrAsset())),
+			Meta: NewEventMetaFromTx(someTxV3(), &someOperationIndex, contractIdStrFromAsset(asset.ToXdrAsset())),
 			Event: &TokenTransferEvent_Mint{
 				Mint: &Mint{
 					To:     to,
@@ -207,7 +210,7 @@ var (
 
 	burnEvent = func(from string, amt string, asset *assetProto.Asset) *TokenTransferEvent {
 		return &TokenTransferEvent{
-			Meta: NewEventMetaFromTx(someTx, &someOperationIndex, contractIdStrFromAsset(asset.ToXdrAsset())),
+			Meta: NewEventMetaFromTx(someTxV3(), &someOperationIndex, contractIdStrFromAsset(asset.ToXdrAsset())),
 			Event: &TokenTransferEvent_Burn{
 				Burn: &Burn{
 					From:   from,
@@ -221,7 +224,7 @@ var (
 
 	transferEvent = func(from string, to string, amt string, asset *assetProto.Asset) *TokenTransferEvent {
 		return &TokenTransferEvent{
-			Meta: NewEventMetaFromTx(someTx, &someOperationIndex, contractIdStrFromAsset(asset.ToXdrAsset())),
+			Meta: NewEventMetaFromTx(someTxV3(), &someOperationIndex, contractIdStrFromAsset(asset.ToXdrAsset())),
 			Event: &TokenTransferEvent_Transfer{
 				Transfer: &Transfer{
 					From:   from,
@@ -249,7 +252,7 @@ var (
 
 	clawbackEvent = func(from string, amt string, asset *assetProto.Asset) *TokenTransferEvent {
 		return &TokenTransferEvent{
-			Meta: NewEventMetaFromTx(someTx, &someOperationIndex, contractIdStrFromAsset(asset.ToXdrAsset())),
+			Meta: NewEventMetaFromTx(someTxV3(), &someOperationIndex, contractIdStrFromAsset(asset.ToXdrAsset())),
 			Event: &TokenTransferEvent_Clawback{
 				Clawback: &Clawback{
 					From:   from,
@@ -294,7 +297,7 @@ var (
 	}
 
 	expectedFeeEvent = func(feeAmt string) *TokenTransferEvent {
-		return NewFeeEvent(NewEventMetaFromTx(someTx, nil, contractIdStrFromAsset(xlmAsset)),
+		return NewFeeEvent(NewEventMetaFromTx(someTxV3(), nil, contractIdStrFromAsset(xlmAsset)),
 			protoAddressFromAccount(someTxAccount), feeAmt, xlmProtoAsset)
 	}
 
@@ -636,21 +639,21 @@ func TestSorobanFeeEvents(t *testing.T) {
 	tests := []testFixture{
 		{
 			name: "Soroban Failed Tx with no refund",
-			tx: someSorobanTx(
+			tx: someSorobanTxV3(
 				// this is FeeChanges
 				xdr.LedgerEntryChanges{
 					generateAccountEntryChangState(accountEntry(someTxAccount, 1000*oneUnit)),
 					generateAccountEntryUpdatedChange(accountEntry(someTxAccount, 1000*oneUnit), 999*oneUnit),
 				},
 				// This is txApplyAfterChanges
-				nil),
+				nil, nil),
 			expected: []*TokenTransferEvent{
 				expectedFeeEvent(unitsToStr(oneUnit)),
 			},
 		},
 		{
 			name: "Soroban Failed Tx with some refund",
-			tx: someSorobanTx(
+			tx: someSorobanTxV3(
 				// this is FeeChanges
 				xdr.LedgerEntryChanges{
 					// Fee is 300 units
@@ -663,6 +666,7 @@ func TestSorobanFeeEvents(t *testing.T) {
 					generateAccountEntryChangState(accountEntry(someTxAccount, 700*oneUnit)),
 					generateAccountEntryUpdatedChange(accountEntry(someTxAccount, 700*oneUnit), 730*oneUnit),
 				},
+				nil,
 			),
 			expected: []*TokenTransferEvent{
 				expectedFeeEvent(unitsToStr(300 * oneUnit)),
@@ -776,7 +780,7 @@ func TestAccountCreateEvents(t *testing.T) {
 	tests := []testFixture{
 		{
 			name:     "successful account creation",
-			tx:       someTx,
+			tx:       someTxV3(),
 			op:       createAccountOp(accountA, accountB.ToAccountId(), 100*oneUnit),
 			opResult: xdr.OperationResult{},
 			expected: []*TokenTransferEvent{
@@ -924,7 +928,7 @@ func TestInflationEvents(t *testing.T) {
 	tests := []testFixture{
 		{
 			name: "inflation payout to multiple recipients - multiple mints",
-			tx:   someTx,
+			tx:   someTxV3(),
 			op:   inflationOp,
 			opResult: inflationResults([]xdr.InflationPayout{
 				{Destination: accountA.ToAccountId(), Amount: 111 * oneUnit},
@@ -965,7 +969,7 @@ func TestMergeAccountEvents(t *testing.T) {
 	tests := []testFixture{
 		{
 			name:     "successful account merge",
-			tx:       someTx,
+			tx:       someTxV3(),
 			op:       mergeAccountOp,
 			opResult: mergedAccountResultWithBalance(&hundredUnits),
 			expected: []*TokenTransferEvent{
@@ -974,7 +978,7 @@ func TestMergeAccountEvents(t *testing.T) {
 		},
 		{
 			name:     "empty account merge - no events",
-			tx:       someTx,
+			tx:       someTxV3(),
 			op:       mergeAccountOp,
 			opResult: mergedAccountResultWithBalance(nil),
 			expected: nil,
@@ -990,7 +994,7 @@ func TestMuxedInformation(t *testing.T) {
 	tests := []testFixture{
 		{
 			name: "Simple Payment - G account to M Account - USDC transfer",
-			tx:   someTx,
+			tx:   someTxV3(),
 			op:   paymentOp(&accountA, muxedAccountB, usdcAsset, 100*oneUnit),
 			expected: []*TokenTransferEvent{
 				transferEventWithDestMux(protoAddressFromAccount(accountA), protoAddressFromAccount(muxedAccountB), unitsToStr(100*oneUnit), usdcProtoAsset, muxedinfoFromMuxedAccount(muxedAccountB)),
@@ -998,7 +1002,7 @@ func TestMuxedInformation(t *testing.T) {
 		},
 		{
 			name: "Simple Payment - G (issuer account) to M account - USDC mint",
-			tx:   someTx,
+			tx:   someTxV3(),
 			op:   paymentOp(&usdcAccount, muxedAccountB, usdcAsset, 100*oneUnit),
 			expected: []*TokenTransferEvent{
 				mintEventWithDestMux(protoAddressFromAccount(muxedAccountB), unitsToStr(100*oneUnit), usdcProtoAsset, muxedinfoFromMuxedAccount(muxedAccountB)),
@@ -1006,7 +1010,7 @@ func TestMuxedInformation(t *testing.T) {
 		},
 		{
 			name: "Simple Payment - G account to G Account with Tx Memo - USDC transfer",
-			tx:   someTxWithMemo(someTextMemo),
+			tx:   someTxV3WithMemo(someTextMemo),
 			op:   paymentOp(&accountA, accountB, usdcAsset, 100*oneUnit),
 			expected: []*TokenTransferEvent{
 				transferEventWithDestMux(protoAddressFromAccount(accountA), protoAddressFromAccount(accountB), unitsToStr(100*oneUnit), usdcProtoAsset, NewMuxedInfoFromMemo(someTextMemo)),
@@ -1014,7 +1018,7 @@ func TestMuxedInformation(t *testing.T) {
 		},
 		{
 			name: "Simple Payment - G (issuer account) to G account with Tx Memo - USDC mint",
-			tx:   someTxWithMemo(someHashMemo),
+			tx:   someTxV3WithMemo(someHashMemo),
 			op:   paymentOp(&usdcAccount, accountB, usdcAsset, 100*oneUnit),
 			expected: []*TokenTransferEvent{
 				mintEventWithDestMux(protoAddressFromAccount(accountB), unitsToStr(100*oneUnit), usdcProtoAsset, NewMuxedInfoFromMemo(someHashMemo)),
@@ -1022,7 +1026,7 @@ func TestMuxedInformation(t *testing.T) {
 		},
 		{
 			name: "Simple Payment - G account to M Account + Tx Memo - USDC transfer",
-			tx:   someTxWithMemo(someTextMemo),
+			tx:   someTxV3WithMemo(someTextMemo),
 			op:   paymentOp(&accountA, muxedAccountB, usdcAsset, 100*oneUnit),
 			expected: []*TokenTransferEvent{
 				// the muxedAccountId will take preference over txMemo in the output
@@ -1031,7 +1035,7 @@ func TestMuxedInformation(t *testing.T) {
 		},
 		{
 			name: "Simple Payment - G (issuer account) to M account + Tx Memo - USDC mint",
-			tx:   someTxWithMemo(someHashMemo),
+			tx:   someTxV3WithMemo(someHashMemo),
 			op:   paymentOp(&usdcAccount, muxedAccountB, usdcAsset, 100*oneUnit),
 			expected: []*TokenTransferEvent{
 				// the muxedAccountId will take preference over txMemo in the output
@@ -1039,8 +1043,17 @@ func TestMuxedInformation(t *testing.T) {
 			},
 		},
 		{
+			// See this Tx on pubnet - https://stellar.expert/explorer/public/tx/230803416409317376
+			name: "Weird Payment - Issuer sends USDC to themself - USDC transfer (not burn)",
+			tx:   someTxV3WithMemo(xdr.MemoText(":fire: burn :fire:")),
+			op:   paymentOp(&usdcAccount, usdcAccount, usdcAsset, 100*oneUnit),
+			expected: []*TokenTransferEvent{
+				transferEventWithDestMux(protoAddressFromAccount(usdcAccount), protoAddressFromAccount(usdcAccount), unitsToStr(100*oneUnit), usdcProtoAsset, NewMuxedInfoFromText(":fire: burn :fire:")),
+			},
+		},
+		{
 			name: "Path Payment - BTC Issuer to M Account - BTC mint",
-			tx:   someTx,
+			tx:   someTxV3(),
 			op:   strictSendOp(&btcAccount, muxedAccountB, btcAsset, btcAsset),
 			opResult: strictSendResult(
 				[]xdr.ClaimAtom{}, // empty path
@@ -1052,7 +1065,7 @@ func TestMuxedInformation(t *testing.T) {
 		},
 		{
 			name: "Path Payment - G account to M Account - BTC Transfer",
-			tx:   someTx,
+			tx:   someTxV3(),
 			op:   strictReceiveOp(&accountA, muxedAccountB, btcAsset, btcAsset, 100*oneUnit),
 			opResult: strictReceiveResult(
 				[]xdr.ClaimAtom{}, // empty path
@@ -1063,7 +1076,7 @@ func TestMuxedInformation(t *testing.T) {
 		},
 		{
 			name: "Path Payment - G account to G Account with Tx Memo - BTC Transfer",
-			tx:   someTxWithMemo(someIdMemo),
+			tx:   someTxV3WithMemo(someIdMemo),
 			op:   strictReceiveOp(&accountA, accountB, btcAsset, btcAsset, 100*oneUnit),
 			opResult: strictReceiveResult(
 				[]xdr.ClaimAtom{}, // empty path
@@ -1074,7 +1087,7 @@ func TestMuxedInformation(t *testing.T) {
 		},
 		{
 			name: "ManageSellOffer with Tx Memo - Transfer - No MuxInfo in event",
-			tx:   someTxWithMemo(xdr.MemoText("wont appear in output")),
+			tx:   someTxV3WithMemo(xdr.MemoText("wont appear in output")),
 			op:   manageSellOfferOp(nil), // don't care for anything in xdr.Operation other than source account
 			opResult: manageSellOfferResult(
 				[]xdr.ClaimAtom{
@@ -1089,7 +1102,7 @@ func TestMuxedInformation(t *testing.T) {
 		{
 			name: "Claim XLM claimable balance with TxMemo - Claimable Balance removed - Transfer",
 			op:   claimCbop(someBalanceId, &accountA), // money moves from CB to the source account of operation
-			tx: someTxWithOperationChangesAndMemo(
+			tx: someTxV3WithOperationChangesAndMemo(
 				xdr.LedgerEntryChanges{
 					// pre != nil, post = nil
 					generateCbEntryChangeState(cbLedgerEntry(someBalanceId, xlmAsset, oneUnit)),
@@ -1105,7 +1118,7 @@ func TestMuxedInformation(t *testing.T) {
 		{
 			name: "Liquidity Pool Withdraw Operation with Tx Memo - LP Removed - Transfer",
 			op:   lpWithdrawOp(lpBtcEthId, nil), // source account = Tx account
-			tx: someTxWithOperationChangesAndMemo(
+			tx: someTxV3WithOperationChangesAndMemo(
 				xdr.LedgerEntryChanges{
 					// pre != nil, post = nil
 					generateLpEntryChangeState(lpLedgerEntry(lpBtcEthId, btcAsset, ethAsset, 5*oneUnit, 10*oneUnit)),
@@ -1128,7 +1141,7 @@ func TestPaymentEvents(t *testing.T) {
 	tests := []testFixture{
 		{
 			name: "G account to G account - XLM transfer",
-			tx:   someTx,
+			tx:   someTxV3(),
 			op:   paymentOp(&accountA, accountB, xlmAsset, 100*oneUnit),
 			expected: []*TokenTransferEvent{
 				transferEvent(protoAddressFromAccount(accountA), protoAddressFromAccount(accountB), unitsToStr(100*oneUnit), xlmProtoAsset),
@@ -1136,7 +1149,7 @@ func TestPaymentEvents(t *testing.T) {
 		},
 		{
 			name: "G account to G account - USDC transfer",
-			tx:   someTx,
+			tx:   someTxV3(),
 			op:   paymentOp(&accountA, accountB, usdcAsset, 100*oneUnit),
 			expected: []*TokenTransferEvent{
 				transferEvent(protoAddressFromAccount(accountA), protoAddressFromAccount(accountB), unitsToStr(100*oneUnit), usdcProtoAsset),
@@ -1144,7 +1157,7 @@ func TestPaymentEvents(t *testing.T) {
 		},
 		{
 			name: "M account to G Account - USDC transfer",
-			tx:   someTx,
+			tx:   someTxV3(),
 			op:   paymentOp(&muxedAccountA, accountB, usdcAsset, 100*oneUnit),
 			expected: []*TokenTransferEvent{
 				transferEvent(protoAddressFromAccount(muxedAccountA), protoAddressFromAccount(accountB), unitsToStr(100*oneUnit), usdcProtoAsset),
@@ -1152,7 +1165,7 @@ func TestPaymentEvents(t *testing.T) {
 		},
 		{
 			name: "G (issuer account) to G account - USDC mint",
-			tx:   someTx,
+			tx:   someTxV3(),
 			op:   paymentOp(&usdcAccount, accountB, usdcAsset, 100*oneUnit),
 			expected: []*TokenTransferEvent{
 				mintEvent(protoAddressFromAccount(accountB), unitsToStr(100*oneUnit), usdcProtoAsset),
@@ -1160,7 +1173,7 @@ func TestPaymentEvents(t *testing.T) {
 		},
 		{
 			name: "G account to G (issuer account) - USDC burn",
-			tx:   someTx,
+			tx:   someTxV3(),
 			op:   paymentOp(&accountA, usdcAccount, usdcAsset, 100*oneUnit),
 			expected: []*TokenTransferEvent{
 				burnEvent(protoAddressFromAccount(accountA), unitsToStr(100*oneUnit), usdcProtoAsset),
@@ -1168,7 +1181,7 @@ func TestPaymentEvents(t *testing.T) {
 		},
 		{
 			name: "M account to G (issuer account) - USDC burn",
-			tx:   someTx,
+			tx:   someTxV3(),
 			op:   paymentOp(&muxedAccountA, usdcAccount, usdcAsset, 100*oneUnit),
 			expected: []*TokenTransferEvent{
 				burnEvent(protoAddressFromAccount(muxedAccountA), unitsToStr(100*oneUnit), usdcProtoAsset),
@@ -1183,7 +1196,7 @@ func TestManageOfferEvents(t *testing.T) {
 	tests := []testFixture{
 		{
 			name: "ManageBuyOffer - Buy USDC for XLM (2 claim atoms, Transfer events)",
-			tx:   someTx,
+			tx:   someTxV3(),
 			op:   manageBuyOfferOp(nil), // don't care for anything in xdr.Operation other than source account
 			opResult: manageBuyOfferResult(
 				[]xdr.ClaimAtom{
@@ -1202,7 +1215,7 @@ func TestManageOfferEvents(t *testing.T) {
 		},
 		{
 			name: "ManageSellOffer - Sell USDC for XLM (2 claim atoms, Transfer events)",
-			tx:   someTxWithMemo(xdr.MemoText("this is awesome")),
+			tx:   someTxV3WithMemo(xdr.MemoText("this is awesome")),
 			op:   manageSellOfferOp(nil), // don't care for anything in xdr.Operation other than source account
 			opResult: manageSellOfferResult(
 				[]xdr.ClaimAtom{
@@ -1220,7 +1233,7 @@ func TestManageOfferEvents(t *testing.T) {
 		},
 		{
 			name: "ManageBuyOffer - Buy USDC for XLM (Source is USDC issuer, 2 claim atoms, BURN events)",
-			tx:   someTx,
+			tx:   someTxV3(),
 			op:   manageBuyOfferOp(&usdcAccount), // don't care for anything in xdr.Operation other than source account
 			opResult: manageBuyOfferResult([]xdr.ClaimAtom{
 				// 1 USDC == 5 XLM
@@ -1237,7 +1250,7 @@ func TestManageOfferEvents(t *testing.T) {
 		},
 		{
 			name: "ManageSellOffer - Sell USDC for XLM (Source is USDC issuer, 2 claim atoms, MINT events)",
-			tx:   someTx,
+			tx:   someTxV3(),
 			op:   manageSellOfferOp(&usdcAccount), // don't care for anything in xdr.Operation other than source account
 			opResult: manageSellOfferResult([]xdr.ClaimAtom{
 				// 1 USDC = 3 XLM
@@ -1267,7 +1280,7 @@ func TestPathPaymentEvents(t *testing.T) {
 	tests := []testFixture{
 		{
 			name: "Strict Send - A (BTC Issuer) sends BTC to B as ETH - 2 Offers (BTC/XLM, XLM/ETH) - Mint and Transfer events",
-			tx:   someTx,
+			tx:   someTxV3(),
 			op:   strictSendOp(&btcAccount, accountB, btcAsset, ethAsset),
 			opResult: strictSendResult(
 				[]xdr.ClaimAtom{
@@ -1292,7 +1305,7 @@ func TestPathPaymentEvents(t *testing.T) {
 		},
 		{
 			name: "Strict Receive - A (BTC Issuer) sends BTC to B (ETH Issuer) as ETH - 2 Offers (BTC/XLM, XLM/ETH) - Mint, Transfer and Burn events",
-			tx:   someTx,
+			tx:   someTxV3(),
 			op:   strictReceiveOp(&btcAccount, ethAccount, btcAsset, ethAsset, 6*oneUnit),
 			opResult: strictReceiveResult(
 				[]xdr.ClaimAtom{
@@ -1315,7 +1328,7 @@ func TestPathPaymentEvents(t *testing.T) {
 		},
 		{
 			name: "Strict Send - A (BTC Issuer) sends BTC to B as USDC - 2 LP sweeps (BTC/ETH, ETH/USDC) - Mint and Transfer events",
-			tx:   someTx,
+			tx:   someTxV3(),
 			op:   strictSendOp(&btcAccount, accountB, btcAsset, usdcAsset),
 			opResult: strictSendResult(
 				[]xdr.ClaimAtom{
@@ -1340,7 +1353,7 @@ func TestPathPaymentEvents(t *testing.T) {
 		},
 		{
 			name: "Strict Receive - A (BTC Issuer) sends BTC to B (USDC Issuer) as USDC - 2 LP sweeps (BTC/ETH, ETH/USDC) - Mint, Transfer and Burn events",
-			tx:   someTx,
+			tx:   someTxV3(),
 			op:   strictReceiveOp(&btcAccount, usdcAccount, btcAsset, usdcAsset, 6*oneUnit),
 			opResult: strictReceiveResult(
 				[]xdr.ClaimAtom{
@@ -1370,7 +1383,7 @@ func TestLiquidityPoolEvents(t *testing.T) {
 		{
 			name: "Liquidity Pool Deposit Operation - New LP Creation - Transfer",
 			op:   lpDepositOp(lpBtcEthId, nil), // source account = Tx account
-			tx: someTxWithOperationChanges(
+			tx: someTxV3WithOperationChanges(
 				xdr.LedgerEntryChanges{
 					// pre = nil, post = new
 					generateLpEntryCreatedChange(lpLedgerEntry(lpBtcEthId, btcAsset, ethAsset, oneUnit, 3*oneUnit)),
@@ -1383,7 +1396,7 @@ func TestLiquidityPoolEvents(t *testing.T) {
 		{
 			name: "Liquidity Pool Deposit Operation - Existing LP Update - Transfer",
 			op:   lpDepositOp(lpBtcEthId, nil), // source account = Tx account
-			tx: someTxWithOperationChanges(
+			tx: someTxV3WithOperationChanges(
 				xdr.LedgerEntryChanges{
 					generateLpEntryChangeState(lpLedgerEntry(lpBtcEthId, btcAsset, ethAsset, oneUnit, 3*oneUnit)), // pre state
 					// Increase BTC from 1 -> 5, ETH from 3 -> 10
@@ -1397,7 +1410,7 @@ func TestLiquidityPoolEvents(t *testing.T) {
 		{
 			name: "Liquidity Pool Deposit Operation - New LP Creation - Mint",
 			op:   lpDepositOp(lpBtcEthId, &btcAccount), //operation source account = BTC Asset Issuer
-			tx: someTxWithOperationChanges(
+			tx: someTxV3WithOperationChanges(
 				xdr.LedgerEntryChanges{
 					// pre = nil, post = new
 					generateLpEntryCreatedChange(lpLedgerEntry(lpBtcEthId, btcAsset, ethAsset, oneUnit, 3*oneUnit)),
@@ -1410,7 +1423,7 @@ func TestLiquidityPoolEvents(t *testing.T) {
 		{
 			name: "Liquidity Pool Withdraw Operation - Existing LP Update - Transfer",
 			op:   lpWithdrawOp(lpBtcEthId, nil), // source account = Tx account
-			tx: someTxWithOperationChanges(
+			tx: someTxV3WithOperationChanges(
 				xdr.LedgerEntryChanges{
 					generateLpEntryChangeState(lpLedgerEntry(lpBtcEthId, btcAsset, ethAsset, 5*oneUnit, 10*oneUnit)), // pre state
 					// Decrease BTC from 5 -> 2, ETH from 10 -> 2
@@ -1424,7 +1437,7 @@ func TestLiquidityPoolEvents(t *testing.T) {
 		{
 			name: "Liquidity Pool Withdraw Operation - LP Removed - Transfer",
 			op:   lpWithdrawOp(lpBtcEthId, nil), // source account = Tx account
-			tx: someTxWithOperationChanges(
+			tx: someTxV3WithOperationChanges(
 				xdr.LedgerEntryChanges{
 					// pre != nil, post = nil
 					generateLpEntryChangeState(lpLedgerEntry(lpBtcEthId, btcAsset, ethAsset, 5*oneUnit, 10*oneUnit)),
@@ -1438,7 +1451,7 @@ func TestLiquidityPoolEvents(t *testing.T) {
 		{
 			name: "Liquidity Pool Withdraw Operation - LP Removed - Burn",
 			op:   lpWithdrawOp(lpBtcEthId, &ethAccount), // operation Source Account = EthIssuer
-			tx: someTxWithOperationChanges(
+			tx: someTxV3WithOperationChanges(
 				xdr.LedgerEntryChanges{
 					// pre != nil, post = nil
 					generateLpEntryChangeState(lpLedgerEntry(lpBtcEthId, btcAsset, ethAsset, 5*oneUnit, 10*oneUnit)),
@@ -1471,7 +1484,7 @@ func TestClawbackEvents(t *testing.T) {
 		{
 			name: "Clawback XLM from some account",
 			op:   clawbackOp(accountA, xlmAsset, 100*oneUnit),
-			tx:   someTx,
+			tx:   someTxV3(),
 			expected: []*TokenTransferEvent{
 				clawbackEvent(protoAddressFromAccount(accountA), unitsToStr(100*oneUnit), xlmProtoAsset),
 			},
@@ -1479,7 +1492,7 @@ func TestClawbackEvents(t *testing.T) {
 		{
 			name: "Clawback USDC from some account",
 			op:   clawbackOp(accountB, usdcAsset, oneUnit/1e2),
-			tx:   someTx,
+			tx:   someTxV3(),
 			expected: []*TokenTransferEvent{
 				clawbackEvent(protoAddressFromAccount(accountB), unitsToStr(oneUnit/1e2), usdcProtoAsset),
 			},
@@ -1504,7 +1517,7 @@ func TestClawbackClaimableBalanceEvents(t *testing.T) {
 		{
 			name: "Clawback XLM claimable balance - Claimable Balance removed",
 			op:   clawbackCbOp(someBalanceId),
-			tx: someTxWithOperationChanges(
+			tx: someTxV3WithOperationChanges(
 				xdr.LedgerEntryChanges{
 					// pre != nil, post = nil
 					generateCbEntryChangeState(cbLedgerEntry(someBalanceId, xlmAsset, 100*oneUnit)),
@@ -1518,7 +1531,7 @@ func TestClawbackClaimableBalanceEvents(t *testing.T) {
 		{
 			name: "Clawback USDC claimable balance - Claimable Balance removed",
 			op:   clawbackCbOp(someBalanceId),
-			tx: someTxWithOperationChanges(
+			tx: someTxV3WithOperationChanges(
 				xdr.LedgerEntryChanges{
 					// pre != nil, post = nil
 					generateCbEntryChangeState(cbLedgerEntry(someBalanceId, usdcAsset, oneUnit/1e3)),
@@ -1538,7 +1551,7 @@ func TestClaimClaimableBalanceEvents(t *testing.T) {
 		{
 			name: "Claim XLM claimable balance - Claimable Balance removed - Transfer Event",
 			op:   claimCbop(someBalanceId, &accountA), // money moves from CB to the source account of operation
-			tx: someTxWithOperationChanges(
+			tx: someTxV3WithOperationChanges(
 				xdr.LedgerEntryChanges{
 					// pre != nil, post = nil
 					generateCbEntryChangeState(cbLedgerEntry(someBalanceId, xlmAsset, oneUnit)),
@@ -1552,7 +1565,7 @@ func TestClaimClaimableBalanceEvents(t *testing.T) {
 		{
 			name: "Claim USDC claimable balance back by issuer - Claimable Balance removed - Burn Event",
 			op:   claimCbop(someBalanceId, &usdcAccount), // money moves from CB to the source account of operation
-			tx: someTxWithOperationChanges(
+			tx: someTxV3WithOperationChanges(
 				xdr.LedgerEntryChanges{
 					// pre != nil, post = nil
 					generateCbEntryChangeState(cbLedgerEntry(someBalanceId, usdcAsset, oneUnit/1e3)),
@@ -1580,20 +1593,20 @@ func TestAllowTrustAndSetTrustlineFlagsRevokeTrustlineTest(t *testing.T) {
 		},
 	}
 
-	generatedCbIdForBtc, _ := ClaimableBalanceIdFromRevocation(lpBtcEthId, btcAsset, xdr.SequenceNumber(someTx.Envelope.SeqNum()), someTx.Envelope.SourceAccount().ToAccountId(), 0)
-	generatedCbIdForEth, _ := ClaimableBalanceIdFromRevocation(lpBtcEthId, ethAsset, xdr.SequenceNumber(someTx.Envelope.SeqNum()), someTx.Envelope.SourceAccount().ToAccountId(), 0)
+	generatedCbIdForBtc, _ := ClaimableBalanceIdFromRevocation(lpBtcEthId, btcAsset, xdr.SequenceNumber(someTxV3().Envelope.SeqNum()), someTxV3().Envelope.SourceAccount().ToAccountId(), 0)
+	generatedCbIdForEth, _ := ClaimableBalanceIdFromRevocation(lpBtcEthId, ethAsset, xdr.SequenceNumber(someTxV3().Envelope.SeqNum()), someTxV3().Envelope.SourceAccount().ToAccountId(), 0)
 
 	tests := []testFixture{
 		{
 			name:     "Trustline Revoked - No Liquidity pool ledger entry changes - no events",
 			op:       trustlineRevokeOp,
-			tx:       someTxWithOperationChanges([]xdr.LedgerEntryChange{}),
+			tx:       someTxV3WithOperationChanges([]xdr.LedgerEntryChange{}),
 			expected: nil,
 		},
 		{
 			name: "Trustline Revoked - LP entries present, but no CB entries - no events",
 			op:   trustlineRevokeOp,
-			tx: someTxWithOperationChanges([]xdr.LedgerEntryChange{
+			tx: someTxV3WithOperationChanges([]xdr.LedgerEntryChange{
 				// a realistic case where the reserveA and reserveB were 0, so no CBs were created
 				generateLpEntryChangeState(lpLedgerEntry(lpBtcEthId, btcAsset, ethAsset, 0, 0)),
 				generateLpEntryRemovedChange(lpBtcEthId),
@@ -1603,7 +1616,7 @@ func TestAllowTrustAndSetTrustlineFlagsRevokeTrustlineTest(t *testing.T) {
 		{
 			name: "Trustline Revoked - LP entries present, CB entries for the both assets in LP - 2 transfer events",
 			op:   trustlineRevokeOp,
-			tx: someTxWithOperationChanges([]xdr.LedgerEntryChange{
+			tx: someTxV3WithOperationChanges([]xdr.LedgerEntryChange{
 				// 1 unit of BTC and 2 units of ETH need to go from LPId to a claimable balance
 				generateLpEntryChangeState(lpLedgerEntry(lpBtcEthId, btcAsset, ethAsset, oneUnit, 2*oneUnit)),
 				generateLpEntryRemovedChange(lpBtcEthId),
@@ -1621,7 +1634,7 @@ func TestAllowTrustAndSetTrustlineFlagsRevokeTrustlineTest(t *testing.T) {
 		{
 			name: "Trustline Revoked - LP entries present, only 1 CB entry created -1 transfer event, 1 mint event",
 			op:   trustlineRevokeOp,
-			tx: someTxWithOperationChanges([]xdr.LedgerEntryChange{
+			tx: someTxV3WithOperationChanges([]xdr.LedgerEntryChange{
 				// 1 unit of BTC and 2 units of ETH need to go from LPId to a claimable balance
 				generateLpEntryChangeState(lpLedgerEntry(lpBtcEthId, btcAsset, ethAsset, oneUnit, 2*oneUnit)),
 				generateLpEntryRemovedChange(lpBtcEthId),

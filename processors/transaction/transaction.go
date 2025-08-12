@@ -49,7 +49,7 @@ type TransactionOutput struct {
 	ClosedAt                             time.Time      `json:"closed_at"`
 	ResourceFee                          int64          `json:"resource_fee"`
 	SorobanResourcesInstructions         uint32         `json:"soroban_resources_instructions"`
-	SorobanResourcesReadBytes            uint32         `json:"soroban_resources_read_bytes"`
+	SorobanResourcesDiskReadBytes        uint32         `json:"soroban_resources_disk_read_bytes"`
 	SorobanResourcesWriteBytes           uint32         `json:"soroban_resources_write_bytes"`
 	TransactionResultCode                string         `json:"transaction_result_code"`
 	InclusionFeeBid                      int64          `json:"inclusion_fee_bid"`
@@ -181,7 +181,7 @@ func TransformTransaction(transaction ingest.LedgerTransaction, lhe xdr.LedgerHe
 	var hasSorobanData bool
 	var outputResourceFee int64
 	var outputSorobanResourcesInstructions uint32
-	var outputSorobanResourcesReadBytes uint32
+	var outputSorobanResourcesDiskReadBytes uint32
 	var outputSorobanResourcesWriteBytes uint32
 	var outputInclusionFeeBid int64
 	var outputInclusionFeeCharged int64
@@ -205,7 +205,7 @@ func TransformTransaction(transaction ingest.LedgerTransaction, lhe xdr.LedgerHe
 	if hasSorobanData {
 		outputResourceFee = int64(sorobanData.ResourceFee)
 		outputSorobanResourcesInstructions = uint32(sorobanData.Resources.Instructions)
-		outputSorobanResourcesReadBytes = uint32(sorobanData.Resources.ReadBytes)
+		outputSorobanResourcesDiskReadBytes = uint32(sorobanData.Resources.DiskReadBytes)
 		outputSorobanResourcesWriteBytes = uint32(sorobanData.Resources.WriteBytes)
 		outputInclusionFeeBid = int64(transaction.Envelope.Fee()) - outputResourceFee
 
@@ -274,7 +274,7 @@ func TransformTransaction(transaction ingest.LedgerTransaction, lhe xdr.LedgerHe
 		ClosedAt:                             outputCloseTime,
 		ResourceFee:                          outputResourceFee,
 		SorobanResourcesInstructions:         outputSorobanResourcesInstructions,
-		SorobanResourcesReadBytes:            outputSorobanResourcesReadBytes,
+		SorobanResourcesDiskReadBytes:        outputSorobanResourcesDiskReadBytes,
 		SorobanResourcesWriteBytes:           outputSorobanResourcesWriteBytes,
 		TransactionResultCode:                outputTxResultCode,
 		InclusionFeeBid:                      outputInclusionFeeBid,

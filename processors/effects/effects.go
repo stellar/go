@@ -248,14 +248,14 @@ func Effects(operation *operations.TransactionOperationWrapper) ([]EffectOutput,
 	case xdr.OperationTypeInvokeHostFunction:
 		// If there's an invokeHostFunction operation, there's definitely V3
 		// meta in the transaction, which means this error is real.
-		diagnosticEvents, innerErr := operation.Transaction.GetDiagnosticEvents()
+		contractEvents, innerErr := operation.Transaction.GetContractEvents()
 		if innerErr != nil {
 			return nil, innerErr
 		}
 
 		// For now, the only effects are related to the events themselves.
 		// Possible add'l work: https://github.com/stellar/go/issues/4585
-		err = wrapper.addInvokeHostFunctionEffects(operations.FilterEvents(diagnosticEvents))
+		err = wrapper.addInvokeHostFunctionEffects(contractEvents)
 	case xdr.OperationTypeExtendFootprintTtl:
 		err = wrapper.addExtendFootprintTtlEffect()
 	case xdr.OperationTypeRestoreFootprint:

@@ -20,7 +20,6 @@ func assetStatToMap(assetStat ExpAssetStat) map[string]interface{} {
 		"asset_issuer": assetStat.AssetIssuer,
 		"accounts":     assetStat.Accounts,
 		"balances":     assetStat.Balances,
-		"contract_id":  assetStat.ContractID,
 	}
 }
 
@@ -80,6 +79,62 @@ func (q *Q) InsertContractAssetStats(ctx context.Context, rows []ContractAssetSt
 	}
 
 	return nil
+}
+
+// AssetContract represents a row in the asset_contracts table
+type AssetContract struct {
+	// KeyHash is a hash of the asset contract's ledger entry key
+	KeyHash []byte `db:"key_hash"`
+	// ContractID is the contract id of the stellar asset contract
+	ContractID []byte `db:"contract_id"`
+	// AssetType is the type of asset
+	AssetType xdr.AssetType `db:"asset_type"`
+	// AssetCode is the code for the asset
+	AssetCode string `db:"asset_code"`
+	// AssetIssuer is the issuer for the asset
+	AssetIssuer string `db:"asset_issuer"`
+	// ExpirationLedger is the latest ledger for which this stellar
+	// asset contract is active
+	ExpirationLedger uint32 `db:"expiration_ledger"`
+}
+
+// InsertAssetContracts will insert the given list of rows into the asset_contracts table
+func (q *Q) InsertAssetContracts(ctx context.Context, rows []AssetContract) error {
+	if len(rows) == 0 {
+		return nil
+	}
+	builder := &db.FastBatchInsertBuilder{}
+
+	for _, row := range rows {
+		if err := builder.RowStruct(row); err != nil {
+			return errors.Wrap(err, "could not insert asset contract row")
+		}
+	}
+
+	if err := builder.Exec(ctx, q, "asset_contracts"); err != nil {
+		return errors.Wrap(err, "could not exec asset contract insert builder")
+	}
+
+	return nil
+}
+
+// UpdateAssetContractExpirations will update the expiration ledgers for the given list of keys
+// (if they exist in the db).
+func (q *Q) UpdateAssetContractExpirations(ctx context.Context, keys []xdr.Hash, expirationLedgers []uint32) error {
+	return q.updateExpirations(ctx, "asset_contracts", keys, expirationLedgers)
+}
+
+// DeleteAssetContractsExpiringAt deletes all contract asset contract rows which are active
+// at `ledger` and expired at `ledger+1`
+func (q *Q) DeleteAssetContractsExpiringAt(ctx context.Context, ledger uint32) (int64, error) {
+	sql := sq.Delete("asset_contracts").
+		Where(map[string]interface{}{"expiration_ledger": ledger})
+	result, err := q.Exec(ctx, sql)
+	if err != nil {
+		return 0, err
+	}
+
+	return result.RowsAffected()
 }
 
 // ContractAssetBalance represents a row in the contract_asset_balances table
@@ -154,6 +209,10 @@ func (q *Q) UpdateContractAssetBalanceAmounts(ctx context.Context, keys []xdr.Ha
 // UpdateContractAssetBalanceExpirations will update the expiration ledgers for the given list of keys
 // (if they exist in the db).
 func (q *Q) UpdateContractAssetBalanceExpirations(ctx context.Context, keys []xdr.Hash, expirationLedgers []uint32) error {
+	return q.updateExpirations(ctx, "contract_asset_balances", keys, expirationLedgers)
+}
+
+func (q *Q) updateExpirations(ctx context.Context, table string, keys []xdr.Hash, expirationLedgers []uint32) error {
 	for len(keys) > 0 {
 		var args []interface{}
 		var values []string
@@ -166,15 +225,17 @@ func (q *Q) UpdateContractAssetBalanceExpirations(ctx context.Context, keys []xd
 		}
 
 		sql := fmt.Sprintf(`
-			UPDATE contract_asset_balances
+			UPDATE %s 
 			SET
 			  expiration_ledger = myvalues.expiration
 			FROM (
 			  VALUES
 				%s
 			) AS myvalues (key_hash, expiration)
-			WHERE contract_asset_balances.key_hash = myvalues.key_hash`,
+			WHERE %s.key_hash = myvalues.key_hash`,
+			table,
 			strings.Join(values, ","),
+			table,
 		)
 
 		_, err := q.ExecRaw(ctx, sql, args...)
@@ -186,11 +247,11 @@ func (q *Q) UpdateContractAssetBalanceExpirations(ctx context.Context, keys []xd
 	return nil
 }
 
-// GetContractAssetBalancesExpiringAt returns all contract asset balances which are active
+// DeleteContractAssetBalancesExpiringAt deletes and returns all contract asset balances which are active
 // at `ledger` and expired at `ledger+1`
-func (q *Q) GetContractAssetBalancesExpiringAt(ctx context.Context, ledger uint32) ([]ContractAssetBalance, error) {
-	sql := sq.Select("contract_asset_balances.*").From("contract_asset_balances").
-		Where(map[string]interface{}{"expiration_ledger": ledger})
+func (q *Q) DeleteContractAssetBalancesExpiringAt(ctx context.Context, ledger uint32) ([]ContractAssetBalance, error) {
+	sql := sq.Delete("contract_asset_balances").
+		Where(map[string]interface{}{"expiration_ledger": ledger}).Suffix("RETURNING *")
 	var balances []ContractAssetBalance
 	err := q.Select(ctx, &balances, sql)
 	return balances, err
@@ -328,15 +389,6 @@ func (q *Q) GetContractAssetStat(ctx context.Context, contractID []byte) (Contra
 	return assetStat, err
 }
 
-// GetAssetStatByContract returns the row in the exp_asset_stats table corresponding
-// to the given contract id
-func (q *Q) GetAssetStatByContract(ctx context.Context, contractID xdr.Hash) (ExpAssetStat, error) {
-	sql := selectAssetStats.Where("contract_id = ?", contractID[:])
-	var assetStat ExpAssetStat
-	err := q.Get(ctx, &assetStat, sql)
-	return assetStat, err
-}
-
 func parseAssetStatsCursor(cursor string) (string, string, error) {
 	parts := strings.SplitN(cursor, "_", 3)
 	if len(parts) != 3 {
@@ -370,15 +422,39 @@ func parseAssetStatsCursor(cursor string) (string, string, error) {
 
 // GetAssetStats returns a page of exp_asset_stats rows.
 func (q *Q) GetAssetStats(ctx context.Context, assetCode, assetIssuer string, page db2.PageQuery) ([]AssetAndContractStat, error) {
-	sql := sq.Select("exp_asset_stats.*, contract_asset_stats.stat as contracts").
+	// AssetAndContractStat contains the information listed below which is included in the /assets response:
+	//
+	// 1. amount of trustlines, liquidity pools, trustlines, and claimable balances which hold an asset.
+	// 2. the contract id of the SAC which corresponds to the asset, if it exists and is live.
+	// 3. amount of live contract balances which hold an asset.
+	//
+	// (1) is stored in the exp_asset_stats table and is derived by ingesting trustline, liquidity pool,
+	// and claimable balance ledger entries.
+	//
+	// (2) is stored in the asset_contracts table and is derived by ingesting SAC contracts.
+	//
+	// (3) is stored in the contract_asset_stats table and is derived by ingesting SAC contract balances.
+	//
+	// All 3 tables are joined in the query below to compute the desired list of AssetAndContractStat
+	// entries.
+	sql := sq.Select("COALESCE(exp_asset_stats.asset_type, asset_contracts.asset_type) as asset_type, " +
+		"COALESCE(exp_asset_stats.asset_code, asset_contracts.asset_code) as asset_code, " +
+		"COALESCE(exp_asset_stats.asset_issuer, asset_contracts.asset_issuer) as asset_issuer, " +
+		"exp_asset_stats.accounts, " +
+		"exp_asset_stats.balances, " +
+		"asset_contracts.contract_id as contract_id, contract_asset_stats.stat as contracts").
 		From("exp_asset_stats").
-		LeftJoin("contract_asset_stats ON exp_asset_stats.contract_id = contract_asset_stats.contract_id")
+		JoinClause("FULL OUTER JOIN asset_contracts ON " +
+			"exp_asset_stats.asset_type = asset_contracts.asset_type AND " +
+			"exp_asset_stats.asset_code = asset_contracts.asset_code AND " +
+			"exp_asset_stats.asset_issuer = asset_contracts.asset_issuer").
+		LeftJoin("contract_asset_stats ON asset_contracts.contract_id = contract_asset_stats.contract_id")
 	filters := map[string]interface{}{}
 	if assetCode != "" {
-		filters["asset_code"] = assetCode
+		filters["COALESCE(exp_asset_stats.asset_code, asset_contracts.asset_code)"] = assetCode
 	}
 	if assetIssuer != "" {
-		filters["asset_issuer"] = assetIssuer
+		filters["COALESCE(exp_asset_stats.asset_issuer, asset_contracts.asset_issuer)"] = assetIssuer
 	}
 
 	if len(filters) > 0 {
@@ -401,14 +477,15 @@ func (q *Q) GetAssetStats(ctx context.Context, assetCode, assetIssuer string, pa
 			return nil, err
 		}
 
-		sql = sql.Where("((asset_code, asset_issuer) "+cursorComparison+" (?,?))", cursorCode, cursorIssuer)
+		sql = sql.Where("((COALESCE(exp_asset_stats.asset_code, asset_contracts.asset_code), COALESCE(exp_asset_stats.asset_issuer, asset_contracts.asset_issuer)) "+cursorComparison+" (?,?))", cursorCode, cursorIssuer)
 	}
 
-	sql = sql.OrderBy("(asset_code, asset_issuer) " + orderBy).Limit(page.Limit)
+	sql = sql.OrderBy("(COALESCE(exp_asset_stats.asset_code, asset_contracts.asset_code), COALESCE(exp_asset_stats.asset_issuer, asset_contracts.asset_issuer)) " + orderBy).Limit(page.Limit)
 
 	var results []AssetAndContractStat
 	if err := q.Select(ctx, &results, sql); err != nil {
-		return nil, errors.Wrap(err, "could not run select query")
+		sqlString, _, _ := sql.ToSql()
+		return nil, errors.Wrapf(err, "could not run select query: %s", sqlString)
 	}
 
 	return results, nil

@@ -18,6 +18,10 @@ import (
 )
 
 func TestLoadTestLedgerBackend(t *testing.T) {
+	if integration.GetCoreMaxSupportedProtocol() < 22 {
+		t.Skip("This test run does not support less than Protocol 22")
+	}
+
 	itest := integration.NewTest(t, integration.Config{
 		NetworkPassphrase: loadTestNetworkPassphrase,
 	})
@@ -36,21 +40,13 @@ func TestLoadTestLedgerBackend(t *testing.T) {
 	)
 	require.True(t, tx.Successful)
 
-	ccConfig, err := itest.CreateCaptiveCoreConfig()
-	require.NoError(t, err)
-
-	captiveCore, err := ledgerbackend.NewCaptive(ccConfig)
-	require.NoError(t, err)
-
 	replayConfig := loadtest.LedgerBackendConfig{
-		NetworkPassphrase:     itest.Config().NetworkPassphrase,
-		LedgersFilePath:       filepath.Join("testdata", "load-test-ledgers.xdr.zstd"),
-		LedgerEntriesFilePath: filepath.Join("testdata", "load-test-accounts.xdr.zstd"),
+		NetworkPassphrase:     "invalid passphrase",
+		LedgersFilePath:       filepath.Join("testdata", fmt.Sprintf("load-test-ledgers-v%d.xdr.zstd", itest.Config().ProtocolVersion)),
+		LedgerEntriesFilePath: filepath.Join("testdata", fmt.Sprintf("load-test-accounts-v%d.xdr.zstd", itest.Config().ProtocolVersion)),
 		LedgerCloseDuration:   3 * time.Second / 2,
-		LedgerBackend:         captiveCore,
+		LedgerBackend:         newCaptiveCore(itest),
 	}
-	loadTestBackend := loadtest.NewLedgerBackend(replayConfig)
-
 	var generatedLedgers []xdr.LedgerCloseMeta
 	var generatedLedgerEntries []xdr.LedgerEntry
 
@@ -70,14 +66,31 @@ func TestLoadTestLedgerBackend(t *testing.T) {
 	startLedger := uint32(tx.Ledger - 1)
 	endLedger := startLedger + uint32(len(generatedLedgers))
 
-	_, err = loadTestBackend.GetLatestLedgerSequence(context.Background())
+	itest.WaitForLedgerInArchive(6*time.Minute, endLedger)
+
+	loadTestBackend := loadtest.NewLedgerBackend(replayConfig)
+	// PrepareRange() is expected to fail because of the invalid network passphrase which
+	// is validated by the loadtest ledger backend
+	require.ErrorContains(
+		t,
+		loadTestBackend.PrepareRange(context.Background(), ledgerbackend.BoundedRange(startLedger, endLedger)),
+		"unknown tx hash in LedgerCloseMeta",
+	)
+	require.NoError(t, loadTestBackend.Close())
+
+	// now, we recreate the loadtest ledger backend with the
+	// correct network passphrase
+	replayConfig.NetworkPassphrase = itest.Config().NetworkPassphrase
+	replayConfig.LedgerBackend = newCaptiveCore(itest)
+	loadTestBackend = loadtest.NewLedgerBackend(replayConfig)
+
+	_, err := loadTestBackend.GetLatestLedgerSequence(context.Background())
 	require.EqualError(t, err, "PrepareRange() must be called before GetLatestLedgerSequence()")
 
 	prepared, err := loadTestBackend.IsPrepared(context.Background(), ledgerbackend.BoundedRange(startLedger, endLedger))
 	require.NoError(t, err)
 	require.False(t, prepared)
 
-	itest.WaitForLedgerInArchive(6*time.Minute, endLedger)
 	require.NoError(t, loadTestBackend.PrepareRange(context.Background(), ledgerbackend.BoundedRange(startLedger, endLedger)))
 
 	latest, err := loadTestBackend.GetLatestLedgerSequence(context.Background())
@@ -162,6 +175,7 @@ func TestLoadTestLedgerBackend(t *testing.T) {
 			Reason: ingest.LedgerEntryChangeReasonUpgrade,
 		})
 	}
+	checkLedgerSequenceInChanges(t, changes, startLedger)
 	requireChangesAreEqual(t, expectedChanges, changes)
 
 	for cur := startLedger + 1; cur <= endLedger; cur++ {
@@ -170,6 +184,34 @@ func TestLoadTestLedgerBackend(t *testing.T) {
 		expectedChanges = extractChanges(
 			t, itest.Config().NetworkPassphrase, []xdr.LedgerCloseMeta{originalLedgers[cur], generatedLedgers[i-1]},
 		)
+		checkLedgerSequenceInChanges(t, changes, cur)
+		// a merge is valid if the ordered list of changes emitted by the merged ledger is equal to
+		// the list of changes emitted by dst concatenated by the list of changes emitted by src, or
+		// in other words:
+		// extractChanges(merge(dst, src)) == concat(extractChanges(dst), extractChanges(src))
 		requireChangesAreEqual(t, expectedChanges, changes)
+	}
+}
+
+func newCaptiveCore(itest *integration.Test) *ledgerbackend.CaptiveStellarCore {
+	ccConfig, err := itest.CreateCaptiveCoreConfig()
+	require.NoError(itest.CurrentTest(), err)
+
+	captiveCore, err := ledgerbackend.NewCaptive(ccConfig)
+	require.NoError(itest.CurrentTest(), err)
+	return captiveCore
+}
+
+func checkLedgerSequenceInChanges(t *testing.T, changes []ingest.Change, curLedger uint32) {
+	for _, change := range changes {
+		if change.Pre != nil {
+			require.LessOrEqual(t, change.Pre.LastModifiedLedgerSeq, curLedger)
+		}
+		if change.Post != nil {
+			require.Equal(t, uint32(change.Post.LastModifiedLedgerSeq), curLedger)
+			if change.Post.Data.Type == xdr.LedgerEntryTypeTtl {
+				require.GreaterOrEqual(t, change.Post.Data.Ttl.LiveUntilLedgerSeq, curLedger)
+			}
+		}
 	}
 }
