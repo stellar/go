@@ -782,8 +782,6 @@ func command(t *testing.T, horizonConfig horizon.Config, args ...string) []strin
 		horizonConfig.CaptiveCoreBinaryPath,
 		"--captive-core-config-path",
 		horizonConfig.CaptiveCoreConfigPath,
-		"--captive-core-use-db=" +
-			strconv.FormatBool(horizonConfig.CaptiveCoreConfigUseDB),
 		"--network-passphrase",
 		horizonConfig.NetworkPassphrase,
 		// due to ARTIFICIALLY_ACCELERATE_TIME_FOR_TESTING

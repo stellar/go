@@ -107,7 +107,7 @@ func (s *DBTestSuite) SetupTest() {
 		HistoryArchiveURLs:       []string{"http://ignore.test"},
 		DisableStateVerification: false,
 		CheckpointFrequency:      64,
-		CoreProtocolVersionFn:    func(string) (uint, error) { return 21, nil },
+		CoreProtocolVersionFn:    func(string) (uint, error) { return 23, nil },
 	})
 	s.Assert().NoError(err)
 	s.system = sIface.(*system)

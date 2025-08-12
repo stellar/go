@@ -132,7 +132,7 @@ func TestSACEventCreation(t *testing.T) {
 		// change the ID but keep the asset
 		rawNativeContractId, err := xdr.MustNewNativeAsset().ContractID(passphrase)
 		require.NoError(t, err)
-		nativeContractId := xdr.Hash(rawNativeContractId)
+		nativeContractId := xdr.ContractId(rawNativeContractId)
 		xdrEvent.ContractId = &nativeContractId
 		_, err = NewStellarAssetContractEvent(&xdrEvent, passphrase)
 		require.Error(t, err)
@@ -226,7 +226,7 @@ func makeEvent() xdr.ContractEvent {
 	if err != nil {
 		panic(err)
 	}
-	contractId := xdr.Hash(rawContractId)
+	contractId := xdr.ContractId(rawContractId)
 
 	baseXdrEvent := xdr.ContractEvent{
 		Ext:        xdr.ExtensionPoint{V: 0},

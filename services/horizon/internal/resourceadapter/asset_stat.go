@@ -38,7 +38,6 @@ func PopulateAssetStat(
 	res.NumClaimableBalances = row.Accounts.ClaimableBalances
 	res.NumLiquidityPools = row.Accounts.LiquidityPools
 	res.NumContracts = row.Contracts.ActiveHolders
-	res.NumArchivedContracts = row.Contracts.ArchivedHolders
 	err = populateAssetStatBalances(res, row)
 	if err != nil {
 		return err
@@ -94,11 +93,6 @@ func populateAssetStatBalances(res *protocol.AssetStat, row history.AssetAndCont
 	res.ContractsAmount, err = amount.IntStringToAmount(row.Contracts.ActiveBalance)
 	if err != nil {
 		return errors.Wrapf(err, "Invalid amount in PopulateAssetStatBalances: %q", row.Contracts.ActiveBalance)
-	}
-
-	res.ArchivedContractsAmount, err = amount.IntStringToAmount(row.Contracts.ArchivedBalance)
-	if err != nil {
-		return errors.Wrapf(err, "Invalid amount in PopulateAssetStatBalances: %q", row.Contracts.ArchivedBalance)
 	}
 
 	return nil

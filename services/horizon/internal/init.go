@@ -94,7 +94,6 @@ func initIngester(app *App) {
 		StellarCoreURL:                       app.config.StellarCoreURL,
 		CaptiveCoreBinaryPath:                app.config.CaptiveCoreBinaryPath,
 		CaptiveCoreStoragePath:               app.config.CaptiveCoreStoragePath,
-		CaptiveCoreConfigUseDB:               app.config.CaptiveCoreConfigUseDB,
 		CaptiveCoreToml:                      app.config.CaptiveCoreToml,
 		DisableStateVerification:             app.config.IngestDisableStateVerification,
 		StateVerificationCheckpointFrequency: uint32(app.config.IngestStateVerificationCheckpointFrequency),

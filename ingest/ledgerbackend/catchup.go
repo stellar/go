@@ -13,7 +13,6 @@ type catchupStream struct {
 	to             uint32
 	coreCmdFactory coreCmdFactory
 	log            *log.Entry
-	useDB          bool
 }
 
 func newCatchupStream(r *stellarCoreRunner, from, to uint32) catchupStream {
@@ -29,7 +28,6 @@ func newCatchupStream(r *stellarCoreRunner, from, to uint32) catchupStream {
 		to:             to,
 		coreCmdFactory: newCoreCmdFactory(r, dir),
 		log:            r.log,
-		useDB:          r.useDB,
 	}
 }
 
@@ -45,21 +43,12 @@ func (s catchupStream) start(ctx context.Context) (cmdI, pipe, error) {
 	rangeArg := fmt.Sprintf("%d/%d", s.to, s.to-s.from+1)
 	params := []string{"catchup", rangeArg, "--metadata-output-stream", s.coreCmdFactory.getPipeName()}
 
-	// horizon operator has specified to use external storage for captive core ledger state
-	// instruct captive core invocation to not use memory, and in that case
-	// cc will look at DATABASE property in cfg toml for the external storage source to use.
-	// when using external storage of ledgers, use new-db to first set the state of
-	// remote db storage to genesis to purge any prior state and reset.
-	if s.useDB {
-		cmd, err = s.coreCmdFactory.newCmd(ctx, stellarCoreRunnerModeOffline, true, "new-db")
-		if err != nil {
-			return nil, pipe{}, fmt.Errorf("error creating command: %w", err)
-		}
-		if err = cmd.Run(); err != nil {
-			return nil, pipe{}, fmt.Errorf("error initializing core db: %w", err)
-		}
-	} else {
-		params = append(params, "--in-memory")
+	cmd, err = s.coreCmdFactory.newCmd(ctx, stellarCoreRunnerModeOffline, true, "new-db")
+	if err != nil {
+		return nil, pipe{}, fmt.Errorf("error creating command: %w", err)
+	}
+	if err = cmd.Run(); err != nil {
+		return nil, pipe{}, fmt.Errorf("error initializing core db: %w", err)
 	}
 
 	cmd, err = s.coreCmdFactory.newCmd(ctx, stellarCoreRunnerModeOffline, true, params...)

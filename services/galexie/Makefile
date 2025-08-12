@@ -42,4 +42,6 @@ docker-test-fake-gcs: docker-clean
 
 docker-push:
 	$(SUDO) docker push $(DOCKER_IMAGE):$(VERSION)
+ifneq ($(findstring -rc, $(VERSION)), -rc)
 	$(SUDO) docker push $(DOCKER_IMAGE):latest
+endif

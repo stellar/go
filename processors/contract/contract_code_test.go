@@ -90,9 +90,10 @@ func makeContractCodeTestInput() []ingest.Change {
 
 	return []ingest.Change{
 		{
-			Type: xdr.LedgerEntryTypeContractCode,
-			Pre:  &xdr.LedgerEntry{},
-			Post: &contractCodeLedgerEntry,
+			ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
+			Type:       xdr.LedgerEntryTypeContractCode,
+			Pre:        &xdr.LedgerEntry{},
+			Post:       &contractCodeLedgerEntry,
 		},
 	}
 }

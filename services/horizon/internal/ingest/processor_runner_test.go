@@ -3,10 +3,11 @@ package ingest
 import (
 	"context"
 	"fmt"
-	"github.com/stellar/go/amount"
 	"io"
 	"reflect"
 	"testing"
+
+	"github.com/stellar/go/amount"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -272,6 +273,13 @@ func TestProcessorRunnerRunAllProcessorsOnLedger(t *testing.T) {
 
 	defer mock.AssertExpectationsForObjects(t, mockBatchInsertBuilder)
 
+	q.MockQAssetStats.On("InsertAssetContracts", ctx, []history.AssetContract(nil)).
+		Return(nil).Once()
+	q.MockQAssetStats.On("UpdateAssetContractExpirations", ctx, []xdr.Hash{}, []uint32{}).
+		Return(nil).Once()
+	q.MockQAssetStats.On("DeleteAssetContractsExpiringAt", ctx, uint32(22)).
+		Return(int64(0), nil).Once()
+
 	q.MockQAssetStats.On("RemoveContractAssetBalances", ctx, []xdr.Hash(nil)).
 		Return(nil).Once()
 	q.MockQAssetStats.On("UpdateContractAssetBalanceAmounts", ctx, []xdr.Hash{}, []string{}).
@@ -280,7 +288,7 @@ func TestProcessorRunnerRunAllProcessorsOnLedger(t *testing.T) {
 		Return(nil).Once()
 	q.MockQAssetStats.On("UpdateContractAssetBalanceExpirations", ctx, []xdr.Hash{}, []uint32{}).
 		Return(nil).Once()
-	q.MockQAssetStats.On("GetContractAssetBalancesExpiringAt", ctx, uint32(22)).
+	q.MockQAssetStats.On("DeleteContractAssetBalancesExpiringAt", ctx, uint32(22)).
 		Return([]history.ContractAssetBalance{}, nil).Once()
 
 	runner := ProcessorRunner{
@@ -373,7 +381,7 @@ func TestProcessorRunnerRunTransactionsProcessorsOnLedgers(t *testing.T) {
 		Return(nil).Once()
 	q.MockQAssetStats.On("UpdateContractAssetBalanceExpirations", ctx, []xdr.Hash{}, []uint32{}).
 		Return(nil).Once()
-	q.MockQAssetStats.On("GetContractAssetBalancesExpiringAt", ctx, uint32(22)).
+	q.MockQAssetStats.On("DeleteContractAssetBalancesExpiringAt", ctx, uint32(22)).
 		Return([]history.ContractAssetBalance{}, nil).Once()
 
 	runner := ProcessorRunner{

@@ -30,7 +30,7 @@ const assetStatsBatchSize = 500
 // check them.
 // There is a test that checks it, to fix it: update the actual `verifyState`
 // method instead of just updating this value!
-const stateVerifierExpectedIngestionVersion = 18
+const stateVerifierExpectedIngestionVersion = 20
 
 // verifyState is called as a go routine from pipeline post hook every 64
 // ledgers. It checks if the state is correct. If another go routine is already
@@ -307,7 +307,7 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool, checkpointSeque
 	)
 	for i := range contractDataEntries {
 		entry := contractDataEntries[i]
-		if err = contractAssetStatSet.AddContractData(ctx, ingest.Change{
+		if err = contractAssetStatSet.AddContractData(ingest.Change{
 			Type: xdr.LedgerEntryTypeContractData,
 			Post: &entry,
 		}); err != nil {
@@ -355,7 +355,7 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool, checkpointSeque
 		return errors.Wrap(err, "verifier.Verify failed")
 	}
 
-	err = checkAssetStats(ctx, assetStats, contractAssetStatSet, historyQ, s.config.NetworkPassphrase)
+	err = checkAssetStats(ctx, assetStats, contractAssetStatSet, historyQ)
 	if err != nil {
 		return errors.Wrap(err, "checkAssetStats failed")
 	}
@@ -370,46 +370,16 @@ func checkAssetStats(
 	set processors.AssetStatSet,
 	contractAssetStatSet *processors.ContractAssetStatSet,
 	q history.IngestionQ,
-	networkPassphrase string,
 ) error {
-	page := db2.PageQuery{
-		Order: "asc",
-		Limit: assetStatsBatchSize,
-	}
-
-	contractToAsset := contractAssetStatSet.GetAssetToContractMap()
-	assetStats := set.All()
-	var err error
-	assetStats, err = processors.IncludeContractIDsInAssetStats(networkPassphrase, assetStats, contractToAsset)
+	all, balances, err := extractAssetStatsAndBalances(set, contractAssetStatSet)
 	if err != nil {
 		return err
 	}
 
-	all := map[string]history.ExpAssetStat{}
-	for _, assetStat := range assetStats {
-		// no need to handle the native asset because asset stats only
-		// include non-native assets.
-		all[assetStat.AssetCode+":"+assetStat.AssetIssuer] = assetStat
+	page := db2.PageQuery{
+		Order: "asc",
+		Limit: assetStatsBatchSize,
 	}
-
-	contractToStats := map[xdr.Hash]history.ContractAssetStatRow{}
-	for _, row := range contractAssetStatSet.GetContractStats() {
-		var contractID xdr.Hash
-		copy(contractID[:], row.ContractID)
-		contractToStats[contractID] = row
-	}
-
-	// only check contract asset balances which belong to stellar asset contracts
-	// because other balances may be forged.
-	var filteredBalances []history.ContractAssetBalance
-	for _, balance := range contractAssetStatSet.GetCreatedBalances() {
-		var contractID xdr.Hash
-		copy(contractID[:], balance.ContractID)
-		if _, ok := contractToAsset[contractID]; ok {
-			filteredBalances = append(filteredBalances, balance)
-		}
-	}
-
 	for {
 		assetStats, err := q.GetAssetStats(ctx, "", "", page)
 		if err != nil {
@@ -432,75 +402,13 @@ func checkAssetStats(
 			}
 			delete(all, key)
 
-			if !fromSet.Equals(assetStat.ExpAssetStat) {
+			if !fromSet.Equals(assetStat) {
 				return ingest.NewStateError(
 					fmt.Errorf(
 						"db asset stat with code %s issuer %s does not match asset stat from HAS: expected=%v actual=%v",
 						assetStat.AssetCode, assetStat.AssetIssuer, fromSet, assetStat,
 					),
 				)
-			}
-
-			if contractID, ok := assetStat.GetContractID(); ok {
-				asset := contractToAsset[contractID]
-				if asset == nil {
-					return ingest.NewStateError(
-						fmt.Errorf(
-							"asset %v has contract id %v in db but contract id is not in HAS",
-							key,
-							contractID,
-						),
-					)
-				}
-
-				var assetType xdr.AssetType
-				var code, issuer string
-				if err := asset.Extract(&assetType, &code, &issuer); err != nil {
-					return ingest.NewStateError(
-						fmt.Errorf(
-							"could not parse asset %v",
-							asset,
-						),
-					)
-				}
-
-				if assetType != assetStat.AssetType ||
-					assetStat.AssetCode != code ||
-					assetStat.AssetIssuer != issuer {
-					return ingest.NewStateError(
-						fmt.Errorf(
-							"contract id %v mapped to asset %v in db does not match HAS %v",
-							contractID,
-							key,
-							code+":"+issuer,
-						),
-					)
-				}
-
-				entry, ok := contractToStats[contractID]
-				if !ok {
-					entry = history.ContractAssetStatRow{
-						ContractID: contractID[:],
-						Stat: history.ContractStat{
-							ActiveBalance:   "0",
-							ActiveHolders:   0,
-							ArchivedBalance: "0",
-							ArchivedHolders: 0,
-						},
-					}
-				}
-				if assetStat.Contracts != entry.Stat {
-					return ingest.NewStateError(
-						fmt.Errorf(
-							"contract stats for contract id %v in db %v does not match HAS %v",
-							contractID,
-							assetStat.Contracts,
-							entry.Stat,
-						),
-					)
-				}
-
-				delete(contractToAsset, contractID)
 			}
 		}
 
@@ -516,10 +424,88 @@ func checkAssetStats(
 		)
 	}
 
-	if err := checkContractBalances(ctx, filteredBalances, q); err != nil {
+	if err := checkContractBalances(ctx, balances, q); err != nil {
 		return err
 	}
 	return nil
+}
+
+func extractAssetStatsAndBalances(set processors.AssetStatSet, contractAssetStatSet *processors.ContractAssetStatSet) (map[string]history.AssetAndContractStat, []history.ContractAssetBalance, error) {
+	all := map[string]history.AssetAndContractStat{}
+	for _, assetStat := range set.All() {
+		// no need to handle the native asset because asset stats only
+		// include non-native assets.
+		all[assetStat.AssetCode+":"+assetStat.AssetIssuer] = history.AssetAndContractStat{
+			ExpAssetStat: assetStat,
+			Contracts: history.ContractStat{
+				ActiveBalance: "0",
+				ActiveHolders: 0,
+			},
+		}
+	}
+
+	contractToStats := map[xdr.ContractId]history.ContractAssetStatRow{}
+	for _, row := range contractAssetStatSet.GetContractStats() {
+		var contractID xdr.ContractId
+		copy(contractID[:], row.ContractID)
+		contractToStats[contractID] = row
+	}
+
+	assetContracts, err := contractAssetStatSet.GetCreatedAssetContracts()
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "Error getting created asset contracts")
+	}
+	for _, assetContract := range assetContracts {
+		key := assetContract.AssetCode + ":" + assetContract.AssetIssuer
+		entry, ok := all[key]
+		if !ok {
+			assetType := xdr.AssetTypeAssetTypeCreditAlphanum4
+			if len(assetContract.AssetCode) > 4 {
+				assetType = xdr.AssetTypeAssetTypeCreditAlphanum12
+			}
+			entry = history.AssetAndContractStat{
+				ExpAssetStat: history.ExpAssetStat{
+					AssetType:   assetType,
+					AssetCode:   assetContract.AssetCode,
+					AssetIssuer: assetContract.AssetIssuer,
+					Accounts:    history.ExpAssetStatAccounts{},
+					Balances: history.ExpAssetStatBalances{
+						Authorized:                      "0",
+						AuthorizedToMaintainLiabilities: "0",
+						ClaimableBalances:               "0",
+						LiquidityPools:                  "0",
+						Unauthorized:                    "0",
+					},
+				},
+			}
+		}
+		contractID := assetContract.ContractID
+		entry.ContractID = &contractID
+		var contractIDHash xdr.ContractId
+		copy(contractIDHash[:], assetContract.ContractID)
+		contractStats, ok := contractToStats[contractIDHash]
+		if !ok {
+			entry.Contracts = history.ContractStat{
+				ActiveBalance: "0",
+				ActiveHolders: 0,
+			}
+		} else {
+			entry.Contracts = contractStats.Stat
+		}
+		all[key] = entry
+	}
+
+	// only check contract asset balances which belong to stellar asset contracts
+	// because other balances may be forged.
+	var filteredBalances []history.ContractAssetBalance
+	for _, balance := range contractAssetStatSet.GetCreatedBalances() {
+		var contractID xdr.ContractId
+		copy(contractID[:], balance.ContractID)
+		if _, ok := contractToStats[contractID]; ok {
+			filteredBalances = append(filteredBalances, balance)
+		}
+	}
+	return all, filteredBalances, nil
 }
 
 func checkContractBalances(

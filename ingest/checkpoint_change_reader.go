@@ -325,9 +325,18 @@ func (r *CheckpointChangeReader) streamBucketContents(hash historyarchive.Hash, 
 				)
 				return false
 			}
-			// We can't use MustMetaEntry() here. Check:
-			// https://github.com/golang/go/issues/32560
-			bucketProtocolVersion = uint32(entry.MetaEntry.LedgerVersion)
+			metaEntry := entry.MustMetaEntry()
+			bucketProtocolVersion = uint32(metaEntry.LedgerVersion)
+			bucketListType, ok := metaEntry.Ext.GetBucketListType()
+			if ok && bucketListType != xdr.BucketListTypeLive {
+				r.readChan <- r.error(
+					errors.Errorf(
+						"expected bucket list type to be live (instead got %s) in the bucket hash '%s'",
+						bucketListType.String(), hash.String(),
+					),
+				)
+				return false
+			}
 			continue
 		}
 

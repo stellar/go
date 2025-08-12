@@ -177,9 +177,10 @@ func (config *Config) GenerateCaptiveCoreConfig(coreBinFromPath string) (ledgerb
 	}
 
 	params := ledgerbackend.CaptiveCoreTomlParams{
+		CoreBinaryPath:     config.StellarCoreConfig.StellarCoreBinaryPath,
 		NetworkPassphrase:  config.StellarCoreConfig.NetworkPassphrase,
 		HistoryArchiveURLs: config.StellarCoreConfig.HistoryArchiveUrls,
-		UseDB:              true,
+		EmitVerboseMeta:    true,
 	}
 
 	captiveCoreToml, err := ledgerbackend.NewCaptiveCoreTomlFromData(config.SerializedCaptiveCoreToml, params)
@@ -199,7 +200,6 @@ func (config *Config) GenerateCaptiveCoreConfig(coreBinFromPath string) (ledgerb
 		Log:                 logger.WithField("subservice", "stellar-core"),
 		Toml:                captiveCoreToml,
 		UserAgent:           config.UserAgent,
-		UseDB:               true,
 		StoragePath:         config.StellarCoreConfig.StoragePath,
 	}, nil
 }

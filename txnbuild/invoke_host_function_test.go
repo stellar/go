@@ -40,14 +40,14 @@ func TestPaymentToContract(t *testing.T) {
 	require.NoError(t, op.Validate())
 	require.Equal(t, int64(op.Ext.SorobanData.ResourceFee), defaultPaymentToContractFees.ResourceFee)
 	require.Equal(t, uint32(op.Ext.SorobanData.Resources.WriteBytes), defaultPaymentToContractFees.WriteBytes)
-	require.Equal(t, uint32(op.Ext.SorobanData.Resources.ReadBytes), defaultPaymentToContractFees.ReadBytes)
+	require.Equal(t, uint32(op.Ext.SorobanData.Resources.DiskReadBytes), defaultPaymentToContractFees.DiskReadBytes)
 	require.Equal(t, uint32(op.Ext.SorobanData.Resources.Instructions), defaultPaymentToContractFees.Instructions)
 
 	params.Fees = &SorobanFees{
-		Instructions: 1,
-		ReadBytes:    2,
-		WriteBytes:   3,
-		ResourceFee:  4,
+		Instructions:  1,
+		DiskReadBytes: 2,
+		WriteBytes:    3,
+		ResourceFee:   4,
 	}
 
 	op, err = NewPaymentToContract(params)
@@ -55,7 +55,7 @@ func TestPaymentToContract(t *testing.T) {
 	require.NoError(t, op.Validate())
 	require.Equal(t, int64(op.Ext.SorobanData.ResourceFee), int64(4))
 	require.Equal(t, uint32(op.Ext.SorobanData.Resources.WriteBytes), uint32(3))
-	require.Equal(t, uint32(op.Ext.SorobanData.Resources.ReadBytes), uint32(2))
+	require.Equal(t, uint32(op.Ext.SorobanData.Resources.DiskReadBytes), uint32(2))
 	require.Equal(t, uint32(op.Ext.SorobanData.Resources.Instructions), uint32(1))
 }
 
@@ -99,7 +99,7 @@ func TestInvokeHostFunctionRoundTrip(t *testing.T) {
 			InvokeContract: &xdr.InvokeContractArgs{
 				ContractAddress: xdr.ScAddress{
 					Type:       xdr.ScAddressTypeScAddressTypeContract,
-					ContractId: &xdr.Hash{0x1, 0x2},
+					ContractId: &xdr.ContractId{0x1, 0x2},
 				},
 				FunctionName: "foo",
 				Args: xdr.ScVec{
@@ -133,7 +133,7 @@ func TestInvokeHostFunctionRoundTrip(t *testing.T) {
 						ContractFn: &xdr.InvokeContractArgs{
 							ContractAddress: xdr.ScAddress{
 								Type:       xdr.ScAddressTypeScAddressTypeContract,
-								ContractId: &xdr.Hash{0x1, 0x2},
+								ContractId: &xdr.ContractId{0x1, 0x2},
 							},
 							FunctionName: "foo",
 							Args: xdr.ScVec{
@@ -160,7 +160,7 @@ func TestInvokeHostFunctionRoundTrip(t *testing.T) {
 								ContractData: &xdr.LedgerKeyContractData{
 									Contract: xdr.ScAddress{
 										Type:       xdr.ScAddressTypeScAddressTypeContract,
-										ContractId: &xdr.Hash{1, 2, 3},
+										ContractId: &xdr.ContractId{1, 2, 3},
 									},
 									Key: xdr.ScVal{
 										Type: xdr.ScValTypeScvContractInstance,
@@ -180,7 +180,7 @@ func TestInvokeHostFunctionRoundTrip(t *testing.T) {
 								ContractData: &xdr.LedgerKeyContractData{
 									Contract: xdr.ScAddress{
 										Type:       xdr.ScAddressTypeScAddressTypeContract,
-										ContractId: &xdr.Hash{1, 2, 3},
+										ContractId: &xdr.ContractId{1, 2, 3},
 									},
 									Key: xdr.ScVal{
 										Type: xdr.ScValTypeScvI64,
@@ -190,12 +190,12 @@ func TestInvokeHostFunctionRoundTrip(t *testing.T) {
 							},
 						},
 					},
-					Instructions: 0,
-					ReadBytes:    0,
-					WriteBytes:   0,
+					Instructions:  0,
+					DiskReadBytes: 0,
+					WriteBytes:    0,
 				},
 				ResourceFee: 1,
-				Ext: xdr.ExtensionPoint{
+				Ext: xdr.SorobanTransactionDataExt{
 					V: 0,
 				},
 			},

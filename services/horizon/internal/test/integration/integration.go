@@ -3,6 +3,7 @@ package integration
 
 import (
 	"context"
+	stderrrors "errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -17,8 +18,12 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/sirupsen/logrus"
+	rpc "github.com/stellar/stellar-rpc/client"
+
 	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/ingest/ledgerbackend"
+	"github.com/stellar/go/support/log"
 
 	"github.com/stellar/go/services/horizon/internal/test"
 
@@ -33,6 +38,7 @@ import (
 	"github.com/stellar/go/clients/stellarcore"
 	"github.com/stellar/go/keypair"
 	proto "github.com/stellar/go/protocols/horizon"
+	coreproto "github.com/stellar/go/protocols/stellarcore"
 	horizoncmd "github.com/stellar/go/services/horizon/cmd"
 	horizon "github.com/stellar/go/services/horizon/internal"
 	"github.com/stellar/go/services/horizon/internal/ingest"
@@ -48,7 +54,6 @@ const (
 	HorizonDefaultPort          = "8000"
 	AdminPort                   = 6060
 	StellarCorePort             = 11626
-	HistoryArchivePort          = 1570
 	StellarRPCPort              = 8080
 	HistoryArchiveUrl           = "http://localhost:1570"
 	CheckpointFrequency         = 8
@@ -65,10 +70,10 @@ type Config struct {
 	EnableStellarRPC          bool
 	LogContainers             bool
 	SkipCoreContainerCreation bool
-	CoreDockerImage           string
 	StellarRPCDockerImage     string
 	SkipProtocolUpgrade       bool
 	QuickExpiration           bool
+	QuickEviction             bool
 	NetworkPassphrase         string
 
 	// Weird naming here because bools default to false, but we want to start
@@ -166,10 +171,17 @@ func NewTest(t *testing.T, config Config) *Test {
 		Accelerate:                            CheckpointFrequency < historyarchive.DefaultCheckpointFrequency,
 		NetworkPassphrase:                     config.NetworkPassphrase,
 		TestingMinimumPersistentEntryLifetime: 65536,
-		TestingSorobanHighLimitOverride:       false,
+		TestingSorobanHighLimitOverride:       true,
+		OverrideEvictionParamsForTesting:      false,
+	}
+	if config.QuickEviction {
+		validatorParams.OverrideEvictionParamsForTesting = true
+		validatorParams.TestingStartingEvictionScanLevel = 1
+		validatorParams.TestingMaxEntriesToArchive = 100
+		// QuickEviction implies QuickExpiration
+		config.QuickExpiration = true
 	}
 	if config.QuickExpiration {
-		validatorParams.TestingSorobanHighLimitOverride = true
 		validatorParams.TestingMinimumPersistentEntryLifetime = 10
 	}
 	var i *Test
@@ -310,8 +322,9 @@ func (i *Test) runComposeCommand(envVars []string, args ...string) {
 	if len(out) > 0 {
 		fmt.Printf("stdout:\n%s\n", string(out))
 	}
-	if exitErr, ok := innerErr.(*exec.ExitError); ok {
-		fmt.Printf("stderr:\n%s\n", string(exitErr.Stderr))
+	var exitError *exec.ExitError
+	if stderrrors.As(innerErr, &exitError) {
+		fmt.Printf("stderr:\n%s\n", string(exitError.Stderr))
 	}
 
 	if innerErr != nil {
@@ -321,14 +334,7 @@ func (i *Test) runComposeCommand(envVars []string, args ...string) {
 
 func (i *Test) startCoreValidator() {
 	var envVars []string
-	var coreImageOverride string
-
-	if i.config.CoreDockerImage != "" {
-		coreImageOverride = i.config.CoreDockerImage
-	} else if img := os.Getenv("HORIZON_INTEGRATION_TESTS_DOCKER_IMG"); img != "" {
-		coreImageOverride = img
-	}
-	if coreImageOverride != "" {
+	if coreImageOverride := i.coreValidatorDockerImage(); coreImageOverride != "" {
 		envVars = append(
 			envVars,
 			fmt.Sprintf("CORE_IMAGE=%s", coreImageOverride),
@@ -338,16 +344,13 @@ func (i *Test) startCoreValidator() {
 	i.runComposeCommand(envVars, "up", "--detach", "--quiet-pull", "--no-color", "core")
 }
 
+func (i *Test) coreValidatorDockerImage() string {
+	return os.Getenv("HORIZON_INTEGRATION_TESTS_DOCKER_IMG")
+}
+
 func (i *Test) startRPC() {
 	var envVars []string
-	var stellarRPCOverride string
-
-	if i.config.StellarRPCDockerImage != "" {
-		stellarRPCOverride = i.config.CoreDockerImage
-	} else if img := os.Getenv("HORIZON_INTEGRATION_TESTS_STELLAR_RPC_DOCKER_IMG"); img != "" {
-		stellarRPCOverride = img
-	}
-	if stellarRPCOverride != "" {
+	if stellarRPCOverride := i.rpcDockerImage(); stellarRPCOverride != "" {
 		envVars = append(
 			envVars,
 			fmt.Sprintf("STELLAR_RPC_IMAGE=%s", stellarRPCOverride),
@@ -356,6 +359,11 @@ func (i *Test) startRPC() {
 	}
 
 	i.runComposeCommand(envVars, "up", "--detach", "--quiet-pull", "--no-color", "stellar-rpc")
+}
+
+func (i *Test) rpcDockerImage() string {
+	img := os.Getenv("HORIZON_INTEGRATION_TESTS_STELLAR_RPC_DOCKER_IMG")
+	return img
 }
 
 func (i *Test) removeContainers(containers ...string) {
@@ -570,7 +578,6 @@ func (i *Test) getDefaultIngestArgs() map[string]string {
 		"stellar-core-binary-path":  i.coreConfig.binaryPath,
 		"captive-core-config-path":  i.coreConfig.configPath,
 		"captive-core-http-port":    "21626",
-		"captive-core-use-db":       "true",
 		"captive-core-storage-path": i.coreConfig.storagePath,
 		"ingest":                    "true"})
 }
@@ -662,14 +669,20 @@ func (i *Test) CreateCaptiveCoreConfig() (ledgerbackend.CaptiveCoreConfig, error
 		HistoryArchiveURLs:  []string{HistoryArchiveUrl},
 		NetworkPassphrase:   i.config.NetworkPassphrase,
 		CheckpointFrequency: CheckpointFrequency, // This is required for accelerated archive creation for integration test
-		UseDB:               true,
 		StoragePath:         i.CurrentTest().TempDir(),
+	}
+	if logLevel := i.getIngestParameter("log-level", "LOG_LEVEL"); logLevel != "" {
+		captiveCoreConfig.Log = log.New()
+		ll, err := logrus.ParseLevel(logLevel)
+		if err != nil {
+			return ledgerbackend.CaptiveCoreConfig{}, err
+		}
+		captiveCoreConfig.Log.SetLevel(ll)
 	}
 
 	tomlParams := ledgerbackend.CaptiveCoreTomlParams{
 		NetworkPassphrase:  i.config.NetworkPassphrase,
 		HistoryArchiveURLs: []string{HistoryArchiveUrl},
-		UseDB:              true,
 	}
 
 	toml, err := ledgerbackend.NewCaptiveCoreTomlFromFile(i.coreConfig.configPath, tomlParams)
@@ -743,13 +756,22 @@ func (i *Test) upgradeLimits() {
 	var configSet xdr.ConfigUpgradeSet
 	err = xdr.SafeUnmarshalBase64(string(contents), &configSet)
 	require.NoError(i.t, err)
-
+	coreImage := fmt.Sprintf("stellar/stellar-core:%v", i.config.ProtocolVersion)
+	if i.config.ProtocolVersion == 23 {
+		// protocol 23 docker image is not yet published with 23 tag because it's still an rc
+		// so in this case, we use the rc docker image
+		coreImage = i.coreValidatorDockerImage()
+	}
 	upgradeTransactions, upgradeKey, err := stellarcore.GenSorobanConfigUpgradeTxAndKey(stellarcore.GenSorobanConfig{
 		BaseSeqNum:        0,
 		NetworkPassphrase: i.Config().NetworkPassphrase,
 		SigningKey:        i.Master(),
-		StellarCorePath:   i.CoreBinaryPath(),
+		StellarCoreImage:  coreImage,
 	}, configSet)
+	var exitError *exec.ExitError
+	if stderrrors.As(err, &exitError) {
+		i.CurrentTest().Log(string(exitError.Stderr))
+	}
 	require.NoError(i.t, err)
 
 	for _, transaction := range upgradeTransactions {
@@ -867,8 +889,8 @@ func (i *Test) simulateTransaction(
 	err = stellarRPCClient.CallResult(context.Background(), "simulateTransaction", struct {
 		Transaction string `json:"transaction"`
 	}{base64}, &result)
-	assert.NoError(i.t, err)
-	assert.Empty(i.t, result.Error)
+	require.NoError(i.t, err)
+	require.Empty(i.t, result.Error)
 	var transactionData xdr.SorobanTransactionData
 	err = xdr.SafeUnmarshalBase64(result.TransactionData, &transactionData)
 	assert.NoError(i.t, err)
@@ -891,6 +913,28 @@ func (i *Test) syncWithStellarRPC(ledgerToWaitFor uint32) {
 		time.Sleep(500 * time.Millisecond)
 	}
 	i.t.Fatal("Time out waiting for stellar-rpc to sync")
+}
+
+func (i *Test) GetLedgerEntryTTL(ledgerKey xdr.LedgerKey) uint32 {
+	ch := jhttp.NewChannel("http://localhost:"+strconv.Itoa(StellarRPCPort), nil)
+	client := jrpc2.NewClient(ch, nil)
+
+	keyB64, err := xdr.MarshalBase64(ledgerKey)
+	require.NoError(i.t, err)
+	request := struct {
+		Keys []string `json:"keys"`
+	}{
+		Keys: []string{keyB64},
+	}
+
+	var result struct {
+		Entries []struct {
+			LiveUntilLedgerSeq *uint32 `json:"liveUntilLedgerSeq,omitempty"`
+		} `json:"entries"`
+	}
+	require.NoError(i.t, client.CallResult(context.Background(), "getLedgerEntries", request, &result))
+	require.Len(i.t, result.Entries, 1)
+	return *result.Entries[0].LiveUntilLedgerSeq
 }
 
 func (i *Test) WaitUntilLedgerEntryTTL(ledgerKey xdr.LedgerKey) {
@@ -932,6 +976,51 @@ func (i *Test) WaitUntilLedgerEntryTTL(ledgerKey xdr.LedgerKey) {
 	assert.True(i.t, ttled)
 }
 
+func (i *Test) WaitUntilLedgerEntryIsEvicted(ledgerKey xdr.LedgerKey, waitTime time.Duration) {
+	sequence := i.getLatestLedgerSequenceRPC()
+	require.Eventually(i.t, func() bool {
+		lcm := i.getLedgerRPC(sequence)
+		keys, err := lcm.EvictedLedgerKeys()
+		require.NoError(i.t, err)
+		for _, key := range keys {
+			if key.Equals(ledgerKey) {
+				i.t.Log("Ledger entry found in evicted ledger keys in ledger", sequence)
+
+				// wait for horizon to catch up
+				require.Eventually(i.t, func() bool {
+					root, err := i.horizonClient.Root()
+					require.NoError(i.t, err)
+					return uint32(root.HorizonSequence) >= sequence
+				}, time.Second*10, time.Second)
+
+				return true
+			}
+		}
+		sequence += 1
+
+		return false
+	}, waitTime, time.Second)
+}
+
+func (i *Test) getLatestLedgerSequenceRPC() uint32 {
+	client := rpc.NewClient("http://localhost:"+strconv.Itoa(StellarRPCPort), nil)
+	response, err := client.GetLatestLedger(context.Background())
+	require.NoError(i.t, err)
+	return response.Sequence
+}
+
+func (i *Test) getLedgerRPC(sequence uint32) xdr.LedgerCloseMeta {
+	backend := ledgerbackend.NewRPCLedgerBackend(ledgerbackend.RPCLedgerBackendOptions{
+		RPCServerURL: "http://localhost:" + strconv.Itoa(StellarRPCPort),
+	})
+
+	require.NoError(i.t, backend.PrepareRange(context.Background(), ledgerbackend.BoundedRange(sequence, sequence)))
+	ledger, err := backend.GetLedger(context.Background(), sequence)
+	require.NoError(i.t, err)
+	require.NoError(i.t, backend.Close())
+	return ledger
+}
+
 func (i *Test) PreflightExtendExpiration(
 	account string, ledgerKeys []xdr.LedgerKey, extendAmt uint32,
 ) (proto.Account, txnbuild.ExtendFootprintTtl) {
@@ -946,7 +1035,7 @@ func (i *Test) PreflightExtendExpiration(
 		Ext: xdr.TransactionExt{
 			V: 1,
 			SorobanData: &xdr.SorobanTransactionData{
-				Ext: xdr.ExtensionPoint{},
+				Ext: xdr.SorobanTransactionDataExt{},
 				Resources: xdr.SorobanResources{
 					Footprint: xdr.LedgerFootprint{
 						ReadOnly:  ledgerKeys,
@@ -979,7 +1068,7 @@ func (i *Test) RestoreFootprint(
 		Ext: xdr.TransactionExt{
 			V: 1,
 			SorobanData: &xdr.SorobanTransactionData{
-				Ext: xdr.ExtensionPoint{},
+				Ext: xdr.SorobanTransactionDataExt{},
 				Resources: xdr.SorobanResources{
 					Footprint: xdr.LedgerFootprint{
 						ReadWrite: []xdr.LedgerKey{ledgerKey},
@@ -1370,6 +1459,53 @@ func (i *Test) AsyncSubmitTransaction(
 		return proto.AsyncTransactionSubmissionResponse{}, err
 	}
 	return i.Client().AsyncSubmitTransaction(tx)
+}
+
+func (i *Test) SubmitTransactions(transactions []*txnbuild.Transaction) ([]proto.Transaction, error) {
+	var results []proto.Transaction
+	byHash := make(map[string]proto.Transaction)
+	for _, tx := range transactions {
+		response, err := i.Client().AsyncSubmitTransaction(tx)
+		if err != nil {
+			return nil, err
+		}
+		if response.TxStatus != coreproto.TXStatusPending {
+			return nil, fmt.Errorf("transaction status is %s", response.TxStatus)
+		}
+	}
+	require.Eventually(i.t, func() bool {
+		for _, tx := range transactions {
+			hash, err := tx.HashHex(i.passPhrase)
+			if err != nil {
+				continue
+			}
+			if _, ok := byHash[hash]; ok {
+				continue
+			}
+			response, err := i.Client().TransactionDetail(hash)
+			if err != nil {
+				continue
+			}
+			byHash[hash] = response
+		}
+		return len(byHash) == len(transactions)
+	}, time.Minute, time.Second)
+
+	if len(byHash) != len(transactions) {
+		return nil, fmt.Errorf("expected %d responses, got %d", len(transactions), len(byHash))
+	}
+	for _, tx := range transactions {
+		hash, err := tx.HashHex(i.passPhrase)
+		if err != nil {
+			return nil, err
+		}
+		response, ok := byHash[hash]
+		if !ok {
+			return nil, fmt.Errorf("transaction %s not found", hash)
+		}
+		results = append(results, response)
+	}
+	return results, nil
 }
 
 func (i *Test) MustSubmitMultiSigTransaction(

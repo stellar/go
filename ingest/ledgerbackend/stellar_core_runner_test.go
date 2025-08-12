@@ -33,6 +33,9 @@ func TestCloseOffline(t *testing.T) {
 	cmdMock := simpleCommandMock()
 	cmdMock.On("Wait").Return(nil)
 
+	newDBCmdMock := simpleCommandMock()
+	newDBCmdMock.On("Run").Return(nil)
+
 	// Replace system calls with a mock
 	scMock := &mockSystemCaller{}
 	defer scMock.AssertExpectations(t)
@@ -44,11 +47,18 @@ func TestCloseOffline(t *testing.T) {
 		"--conf",
 		mock.Anything,
 		"--console",
+		"new-db",
+	).Return(newDBCmdMock)
+	scMock.On("command",
+		runner.ctx,
+		"/usr/bin/stellar-core",
+		"--conf",
+		mock.Anything,
+		"--console",
 		"catchup",
 		"200/101",
 		"--metadata-output-stream",
 		"fd:3",
-		"--in-memory",
 	).Return(cmdMock)
 	scMock.On("removeAll", mock.Anything).Return(nil).Once()
 	runner.systemCaller = scMock
@@ -75,6 +85,13 @@ func TestCloseOnline(t *testing.T) {
 	cmdMock := simpleCommandMock()
 	cmdMock.On("Wait").Return(nil)
 
+	offlineInfoCmdMock := simpleCommandMock()
+	infoResponse := stellarcore.InfoResponse{}
+	infoResponse.Info.Ledger.Num = 100
+	infoResponseBytes, err := json.Marshal(infoResponse)
+	offlineInfoCmdMock.On("Output").Return(infoResponseBytes, nil)
+	offlineInfoCmdMock.On("Wait").Return(nil)
+
 	// Replace system calls with a mock
 	scMock := &mockSystemCaller{}
 	defer scMock.AssertExpectations(t)
@@ -85,19 +102,21 @@ func TestCloseOnline(t *testing.T) {
 		"/usr/bin/stellar-core",
 		"--conf",
 		mock.Anything,
+		"offline-info",
+	).Return(offlineInfoCmdMock)
+	scMock.On("command",
+		runner.ctx,
+		"/usr/bin/stellar-core",
+		"--conf",
+		mock.Anything,
 		"--console",
 		"run",
-		"--in-memory",
-		"--start-at-ledger",
-		"100",
-		"--start-at-hash",
-		"hash",
 		"--metadata-output-stream",
 		"fd:3",
 	).Return(cmdMock)
 	runner.systemCaller = scMock
 
-	assert.NoError(t, runner.runFrom(100, "hash"))
+	assert.NoError(t, runner.runFrom(100))
 	assert.NoError(t, runner.close())
 }
 
@@ -119,6 +138,13 @@ func TestCloseOnlineWithError(t *testing.T) {
 	cmdMock := simpleCommandMock()
 	cmdMock.On("Wait").Return(errors.New("wait error"))
 
+	offlineInfoCmdMock := simpleCommandMock()
+	infoResponse := stellarcore.InfoResponse{}
+	infoResponse.Info.Ledger.Num = 100
+	infoResponseBytes, err := json.Marshal(infoResponse)
+	offlineInfoCmdMock.On("Output").Return(infoResponseBytes, nil)
+	offlineInfoCmdMock.On("Wait").Return(nil)
+
 	// Replace system calls with a mock
 	scMock := &mockSystemCaller{}
 	defer scMock.AssertExpectations(t)
@@ -129,20 +155,22 @@ func TestCloseOnlineWithError(t *testing.T) {
 		"/usr/bin/stellar-core",
 		"--conf",
 		mock.Anything,
+		"offline-info",
+	).Return(offlineInfoCmdMock)
+	scMock.On("command",
+		runner.ctx,
+		"/usr/bin/stellar-core",
+		"--conf",
+		mock.Anything,
 		"--console",
 		"run",
-		"--in-memory",
-		"--start-at-ledger",
-		"100",
-		"--start-at-hash",
-		"hash",
 		"--metadata-output-stream",
 		"fd:3",
 	).Return(cmdMock)
 	scMock.On("removeAll", mock.Anything).Return(nil).Once()
 	runner.systemCaller = scMock
 
-	assert.NoError(t, runner.runFrom(100, "hash"))
+	assert.NoError(t, runner.runFrom(100))
 
 	// Wait with calling close until r.processExitError is set to Wait() error
 	for {
@@ -174,6 +202,9 @@ func TestCloseConcurrency(t *testing.T) {
 	cmdMock.On("Wait").Return(errors.New("wait error")).WaitUntil(time.After(time.Millisecond * 300))
 	defer cmdMock.AssertExpectations(t)
 
+	newDBCmdMock := simpleCommandMock()
+	newDBCmdMock.On("Run").Return(nil)
+
 	// Replace system calls with a mock
 	scMock := &mockSystemCaller{}
 	defer scMock.AssertExpectations(t)
@@ -185,11 +216,18 @@ func TestCloseConcurrency(t *testing.T) {
 		"--conf",
 		mock.Anything,
 		"--console",
+		"new-db",
+	).Return(newDBCmdMock)
+	scMock.On("command",
+		runner.ctx,
+		"/usr/bin/stellar-core",
+		"--conf",
+		mock.Anything,
+		"--console",
 		"catchup",
 		"200/101",
 		"--metadata-output-stream",
 		"fd:3",
-		"--in-memory",
 	).Return(cmdMock)
 	scMock.On("removeAll", mock.Anything).Return(nil).Once()
 	runner.systemCaller = scMock
@@ -224,7 +262,6 @@ func TestRunFromUseDBLedgersMatch(t *testing.T) {
 		Context:            context.Background(),
 		Toml:               captiveCoreToml,
 		StoragePath:        "/tmp/captive-core",
-		UseDB:              true,
 	}, createNewDBCounter())
 
 	cmdMock := simpleCommandMock()
@@ -263,7 +300,7 @@ func TestRunFromUseDBLedgersMatch(t *testing.T) {
 	// removeAll not called
 	runner.systemCaller = scMock
 
-	assert.NoError(t, runner.runFrom(100, "hash"))
+	assert.NoError(t, runner.runFrom(100))
 	assert.NoError(t, runner.close())
 
 	assert.Equal(t, float64(0), getNewDBCounterMetric(runner))
@@ -282,7 +319,6 @@ func TestRunFromUseDBLedgersBehind(t *testing.T) {
 		Context:            context.Background(),
 		Toml:               captiveCoreToml,
 		StoragePath:        "/tmp/captive-core",
-		UseDB:              true,
 	}, createNewDBCounter())
 
 	newDBCmdMock := simpleCommandMock()
@@ -327,7 +363,7 @@ func TestRunFromUseDBLedgersBehind(t *testing.T) {
 	).Return(cmdMock)
 	runner.systemCaller = scMock
 
-	assert.NoError(t, runner.runFrom(100, "hash"))
+	assert.NoError(t, runner.runFrom(100))
 	assert.NoError(t, runner.close())
 
 	assert.Equal(t, float64(0), getNewDBCounterMetric(runner))
@@ -361,7 +397,6 @@ func TestRunFromUseDBLedgersInFront(t *testing.T) {
 		Context:            context.Background(),
 		Toml:               captiveCoreToml,
 		StoragePath:        "/tmp/captive-core",
-		UseDB:              true,
 	}, createNewDBCounter())
 
 	newDBCmdMock := simpleCommandMock()
@@ -424,7 +459,7 @@ func TestRunFromUseDBLedgersInFront(t *testing.T) {
 	).Return(cmdMock)
 	runner.systemCaller = scMock
 
-	assert.NoError(t, runner.runFrom(100, "hash"))
+	assert.NoError(t, runner.runFrom(100))
 	assert.NoError(t, runner.close())
 	assert.Equal(t, float64(1), getNewDBCounterMetric(runner))
 }

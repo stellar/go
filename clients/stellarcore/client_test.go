@@ -2,12 +2,11 @@ package stellarcore
 
 import (
 	"context"
+	"crypto/rand"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
-	"os"
-	"os/exec"
 	"testing"
 
 	"github.com/jarcoal/httpmock"
@@ -143,23 +142,53 @@ func TestGetLedgerEntries(t *testing.T) {
 	hmock := httptest.NewClient()
 	c := &Client{HTTP: hmock, URL: "http://localhost:11626"}
 
-	// build a fake response body
-	mockResp := proto.GetLedgerEntryResponse{
-		Ledger: 1215, // checkpoint align on expected request
-		Entries: []proto.LedgerEntryResponse{{
-			Entry: "pretend this is XDR lol",
-			State: "live",
-			Ttl:   1234,
-		}, {
-			Entry: "pretend this is another XDR lol",
-			State: "archived",
-		}},
+	var hash xdr.ContractId
+	_, err := rand.Read(hash[:])
+	require.NoError(t, err)
+
+	tr, err := xdr.NewScVal(xdr.ScValTypeScvBool, true)
+	require.NoError(t, err)
+	fl, err := xdr.NewScVal(xdr.ScValTypeScvBool, false)
+	require.NoError(t, err)
+
+	rawEntry := xdr.ContractDataEntry{
+		Ext:        xdr.ExtensionPoint{},
+		Contract:   xdr.ScAddress{Type: xdr.ScAddressTypeScAddressTypeContract, ContractId: &hash},
+		Key:        tr,
+		Durability: xdr.ContractDataDurabilityPersistent,
+		Val:        fl,
 	}
+	entry := xdr.LedgerEntry{
+		LastModifiedLedgerSeq: 1210,
+		Data: xdr.LedgerEntryData{
+			Type:         xdr.LedgerEntryTypeContractData,
+			ContractData: &rawEntry,
+		},
+	}
+	entryB64, err := xdr.MarshalBase64(entry)
+	require.NoError(t, err)
 
 	var key xdr.LedgerKey
 	acc, err := xdr.AddressToAccountId(keypair.MustRandom().Address())
 	require.NoError(t, err)
 	key.SetAccount(acc)
+	keyB64, err := key.MarshalBinaryBase64()
+	require.NoError(t, err)
+
+	// build a fake response body
+	mockResp := proto.GetLedgerEntryResponse{
+		Ledger: 1215, // checkpoint align on expected request
+		Entries: []proto.LedgerEntryResponse{{
+			Entry:              entryB64,
+			State:              "live",
+			LiveUntilLedgerSeq: 1234,
+		}, {
+			Entry: entryB64,
+			State: "archived",
+		}, {
+			State: "new",
+		}},
+	}
 
 	// happy path - fetch an entry
 	ce := hmock.On("POST", "http://localhost:11626/getledgerentry")
@@ -171,9 +200,11 @@ func TestGetLedgerEntries(t *testing.T) {
 			requestData, ierr := io.ReadAll(r.Body)
 			require.NoError(t, ierr)
 
-			keyB64, ierr := key.MarshalBinaryBase64()
-			require.NoError(t, ierr)
-			expected := fmt.Sprintf("key=%s&ledgerSeq=1234", url.QueryEscape(keyB64))
+			expected := fmt.Sprintf(
+				"key=%s&key=%s&key=%s&ledgerSeq=1234",
+				url.QueryEscape(keyB64),
+				url.QueryEscape(keyB64),
+				url.QueryEscape(keyB64))
 			require.Equal(t, expected, string(requestData))
 
 			resp, ierr := httpmock.NewJsonResponse(http.StatusOK, &mockResp)
@@ -182,39 +213,36 @@ func TestGetLedgerEntries(t *testing.T) {
 			return resp, nil
 		})
 
-	resp, err := c.GetLedgerEntries(context.Background(), 1234, key)
+	resp, err := c.GetLedgerEntries(context.Background(), 1234, key, key, key)
 	require.NoError(t, err)
 	require.NotNil(t, resp)
 
 	require.EqualValues(t, 1215, resp.Ledger)
-	require.Len(t, resp.Entries, 2)
-	require.Equal(t, "pretend this is XDR lol", resp.Entries[0].Entry)
-	require.Equal(t, "pretend this is another XDR lol", resp.Entries[1].Entry)
-	require.EqualValues(t, 1234, resp.Entries[0].Ttl)
+	require.Len(t, resp.Entries, 3)
+	require.Equal(t, entryB64, resp.Entries[0].Entry)
+	require.Equal(t, entryB64, resp.Entries[1].Entry)
+	require.Empty(t, resp.Entries[2].Entry)
+	require.EqualValues(t, 1234, resp.Entries[0].LiveUntilLedgerSeq)
+	require.EqualValues(t, 0, resp.Entries[1].LiveUntilLedgerSeq)
+	require.EqualValues(t, 0, resp.Entries[2].LiveUntilLedgerSeq)
 	require.EqualValues(t, "live", resp.Entries[0].State)
 	require.EqualValues(t, "archived", resp.Entries[1].State)
+	require.EqualValues(t, "new", resp.Entries[2].State)
 
+	// TTL keys aren't returned
 	key.Type = xdr.LedgerEntryTypeTtl
 	_, err = c.GetLedgerEntries(context.Background(), 1234, key)
 	require.Error(t, err)
 }
 
 func TestGenSorobanConfigUpgradeTxAndKey(t *testing.T) {
-	coreBinary := os.Getenv("STELLAR_CORE_BINARY_PATH")
-	if coreBinary == "" {
-		var err error
-		coreBinary, err = exec.LookPath("stellar-core")
-		if err != nil {
-			t.Skip("couldn't find stellar core binary")
-		}
-	}
 	key, err := keypair.ParseFull("SB6VZS57IY25334Y6F6SPGFUNESWS7D2OSJHKDPIZ354BK3FN5GBTS6V")
 	require.NoError(t, err)
 	funcConfig := GenSorobanConfig{
 		BaseSeqNum:        1,
 		NetworkPassphrase: network.TestNetworkPassphrase,
 		SigningKey:        key,
-		StellarCorePath:   coreBinary,
+		StellarCoreImage:  "stellar/stellar-core:22",
 	}
 	config := xdr.ConfigUpgradeSet{
 		UpdatedEntry: []xdr.ConfigSettingEntry{

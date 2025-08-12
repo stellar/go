@@ -376,10 +376,8 @@ type Asset struct {
 }
 
 type ContractStat struct {
-	ActiveBalance   string `json:"balance"`
-	ActiveHolders   int32  `json:"holders"`
-	ArchivedBalance string `json:"archived_balance"`
-	ArchivedHolders int32  `json:"archived_holders"`
+	ActiveBalance string `json:"balance"`
+	ActiveHolders int32  `json:"holders"`
 }
 
 func (c ContractStat) Value() (driver.Value, error) {
@@ -393,7 +391,6 @@ func (c ContractStat) Value() (driver.Value, error) {
 func (c *ContractStat) Scan(src interface{}) error {
 	if src == nil {
 		c.ActiveBalance = "0"
-		c.ArchivedBalance = "0"
 		return nil
 	}
 
@@ -411,9 +408,6 @@ func (c *ContractStat) Scan(src interface{}) error {
 	if c.ActiveBalance == "" {
 		c.ActiveBalance = "0"
 	}
-	if c.ArchivedBalance == "" {
-		c.ArchivedBalance = "0"
-	}
 
 	return nil
 }
@@ -421,6 +415,23 @@ func (c *ContractStat) Scan(src interface{}) error {
 type AssetAndContractStat struct {
 	ExpAssetStat
 	Contracts ContractStat `db:"contracts"`
+	// ContractID is the contract id of the stellar asset contract
+	ContractID *[]byte `db:"contract_id"`
+}
+
+func (a *AssetAndContractStat) SetContractID(contractID [32]byte) {
+	contractIDBytes := contractID[:]
+	a.ContractID = &contractIDBytes
+}
+
+func (e *AssetAndContractStat) Equals(o AssetAndContractStat) bool {
+	if contractIDMatches := (e.ContractID == nil) == (o.ContractID == nil); !contractIDMatches {
+		return false
+	} else if e.ContractID != nil && !bytes.Equal(*e.ContractID, *o.ContractID) {
+		return false
+	}
+	return e.ExpAssetStat.Equals(o.ExpAssetStat) &&
+		e.Contracts == o.Contracts
 }
 
 // ExpAssetStat is a row in the exp_asset_stats table representing the stats per Asset
@@ -430,7 +441,6 @@ type ExpAssetStat struct {
 	AssetIssuer string               `db:"asset_issuer"`
 	Accounts    ExpAssetStatAccounts `db:"accounts"`
 	Balances    ExpAssetStatBalances `db:"balances"`
-	ContractID  *[]byte              `db:"contract_id"`
 	// make sure to update Equals() when adding new fields to ExpAssetStat
 }
 
@@ -462,43 +472,23 @@ func (e ExpAssetStatAccounts) Value() (driver.Value, error) {
 }
 
 func (e *ExpAssetStatAccounts) Scan(src interface{}) error {
-	source, ok := src.([]byte)
-	if !ok {
-		return errors.New("Type assertion .([]byte) failed.")
-	}
+	if src != nil {
+		source, ok := src.([]byte)
+		if !ok {
+			return errors.New("Type assertion .([]byte) failed.")
+		}
 
-	return json.Unmarshal(source, &e)
+		return json.Unmarshal(source, &e)
+	}
+	return nil
 }
 
 func (e *ExpAssetStat) Equals(o ExpAssetStat) bool {
-	if (e.ContractID == nil) != (o.ContractID == nil) {
-		return false
-	}
-	if e.ContractID != nil && !bytes.Equal(*e.ContractID, *o.ContractID) {
-		return false
-	}
-
 	return e.AssetType == o.AssetType &&
 		e.AssetCode == o.AssetCode &&
 		e.AssetIssuer == o.AssetIssuer &&
 		e.Accounts == o.Accounts &&
 		e.Balances == o.Balances
-}
-
-func (e *ExpAssetStat) GetContractID() ([32]byte, bool) {
-	var val [32]byte
-	if e.ContractID == nil {
-		return val, false
-	}
-	if size := copy(val[:], (*e.ContractID)[:]); size != 32 {
-		panic("contract id is not 32 bytes")
-	}
-	return val, true
-}
-
-func (e *ExpAssetStat) SetContractID(contractID [32]byte) {
-	contractIDBytes := contractID[:]
-	e.ContractID = &contractIDBytes
 }
 
 func (a ExpAssetStatAccounts) Add(b ExpAssetStatAccounts) ExpAssetStatAccounts {
@@ -544,14 +534,16 @@ func (e ExpAssetStatBalances) Value() (driver.Value, error) {
 }
 
 func (e *ExpAssetStatBalances) Scan(src interface{}) error {
-	source, ok := src.([]byte)
-	if !ok {
-		return errors.New("Type assertion .([]byte) failed.")
-	}
+	if src != nil {
+		source, ok := src.([]byte)
+		if !ok {
+			return errors.New("Type assertion .([]byte) failed.")
+		}
 
-	err := json.Unmarshal(source, &e)
-	if err != nil {
-		return err
+		err := json.Unmarshal(source, &e)
+		if err != nil {
+			return err
+		}
 	}
 
 	// Sets zero values for empty balances
@@ -576,12 +568,15 @@ func (e *ExpAssetStatBalances) Scan(src interface{}) error {
 
 // QAssetStats defines exp_asset_stats related queries.
 type QAssetStats interface {
+	InsertAssetContracts(ctx context.Context, rows []AssetContract) error
+	UpdateAssetContractExpirations(ctx context.Context, keys []xdr.Hash, expirationLedgers []uint32) error
+	DeleteAssetContractsExpiringAt(ctx context.Context, ledger uint32) (int64, error)
 	InsertContractAssetBalances(ctx context.Context, rows []ContractAssetBalance) error
 	RemoveContractAssetBalances(ctx context.Context, keys []xdr.Hash) error
 	UpdateContractAssetBalanceAmounts(ctx context.Context, keys []xdr.Hash, amounts []string) error
 	UpdateContractAssetBalanceExpirations(ctx context.Context, keys []xdr.Hash, expirationLedgers []uint32) error
 	GetContractAssetBalances(ctx context.Context, keys []xdr.Hash) ([]ContractAssetBalance, error)
-	GetContractAssetBalancesExpiringAt(ctx context.Context, ledger uint32) ([]ContractAssetBalance, error)
+	DeleteContractAssetBalancesExpiringAt(ctx context.Context, ledger uint32) ([]ContractAssetBalance, error)
 	InsertAssetStats(ctx context.Context, stats []ExpAssetStat) error
 	InsertContractAssetStats(ctx context.Context, rows []ContractAssetStatRow) error
 	InsertAssetStat(ctx context.Context, stat ExpAssetStat) (int64, error)
@@ -589,7 +584,6 @@ type QAssetStats interface {
 	UpdateAssetStat(ctx context.Context, stat ExpAssetStat) (int64, error)
 	UpdateContractAssetStat(ctx context.Context, row ContractAssetStatRow) (int64, error)
 	GetAssetStat(ctx context.Context, assetType xdr.AssetType, assetCode, assetIssuer string) (ExpAssetStat, error)
-	GetAssetStatByContract(ctx context.Context, contractID xdr.Hash) (ExpAssetStat, error)
 	GetContractAssetStat(ctx context.Context, contractID []byte) (ContractAssetStatRow, error)
 	RemoveAssetStat(ctx context.Context, assetType xdr.AssetType, assetCode, assetIssuer string) (int64, error)
 	RemoveAssetContractStat(ctx context.Context, contractID []byte) (int64, error)

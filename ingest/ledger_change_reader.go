@@ -27,8 +27,8 @@ const (
 	feeChangesState ledgerChangeReaderState = iota
 	// metaChangesState is active when LedgerChangeReader is reading transaction meta changes.
 	metaChangesState
-	// evictionChangesState is active when LedgerChangeReader is reading ledger entry evictions.
-	evictionChangesState
+	// postTxApplyState is active when LedgerChangeReader is reading postTxApplyFeeProcessing changes
+	postTxApplyState
 	// upgradeChanges is active when LedgerChangeReader is reading upgrade changes.
 	upgradeChangesState
 )
@@ -80,10 +80,11 @@ type compactingChangeReader struct {
 	input     ChangeReader
 	changes   []Change
 	compacted bool
+	config    ChangeCompactorConfig
 }
 
 func (c *compactingChangeReader) compact() error {
-	compactor := NewChangeCompactor()
+	compactor := NewChangeCompactor(c.config)
 	for {
 		change, err := c.input.Read()
 		if err == io.EOF {
@@ -121,9 +122,10 @@ func (c *compactingChangeReader) Close() error {
 
 // NewCompactingChangeReader wraps a given ChangeReader and returns a ChangeReader
 // which compacts all the the Changes extracted from the input.
-func NewCompactingChangeReader(input ChangeReader) ChangeReader {
+func NewCompactingChangeReader(input ChangeReader, config ChangeCompactorConfig) ChangeReader {
 	return &compactingChangeReader{
-		input: input,
+		input:  input,
+		config: config,
 	}
 }
 
@@ -133,6 +135,7 @@ func (r *LedgerChangeReader) Read() (Change, error) {
 	// Changes within a ledger should be read in the following order:
 	// - fee changes of all transactions,
 	// - transaction meta changes of all transactions,
+	// - post tx apply fee changes for all transactions,
 	// - upgrade changes.
 	// Because a single transaction can introduce many changes we read all the
 	// changes from a single transaction  and save them in r.pending.
@@ -150,12 +153,14 @@ func (r *LedgerChangeReader) Read() (Change, error) {
 	}
 
 	switch r.state {
-	case feeChangesState, metaChangesState:
+	case feeChangesState, metaChangesState, postTxApplyState:
 		tx, err := r.LedgerTransactionReader.Read()
 		if err != nil {
 			if err == io.EOF {
 				// If done streaming fee changes rewind to stream meta changes
-				if r.state == feeChangesState {
+				// If done streaming meta changes rewind to stream postTxApply changes
+				// If done streaming postTxApply changes then we progress to the next state (upgrade changes)
+				if r.state != postTxApplyState {
 					r.LedgerTransactionReader.Rewind()
 				}
 				r.state++
@@ -173,29 +178,9 @@ func (r *LedgerChangeReader) Read() (Change, error) {
 				return Change{}, err
 			}
 			r.pending = append(r.pending, metaChanges...)
+		case postTxApplyState:
+			r.pending = append(r.pending, tx.GetPostApplyFeeChanges()...)
 		}
-		return r.Read()
-
-	case evictionChangesState:
-		entries, err := r.lcm.EvictedPersistentLedgerEntries()
-		if err != nil {
-			return Change{}, err
-		}
-		changes := make([]Change, len(entries))
-		for i := range entries {
-			entry := entries[i]
-			// when a ledger entry is evicted it is removed from the ledger
-			changes[i] = Change{
-				Type:   entry.Data.Type,
-				Pre:    &entry,
-				Post:   nil,
-				Reason: LedgerEntryChangeReasonEviction,
-				Ledger: &r.lcm,
-			}
-		}
-		sortChanges(changes)
-		r.pending = append(r.pending, changes...)
-		r.state++
 		return r.Read()
 
 	case upgradeChangesState:

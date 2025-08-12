@@ -11,6 +11,8 @@ func (l LedgerCloseMeta) LedgerHeaderHistoryEntry() LedgerHeaderHistoryEntry {
 		return l.MustV0().LedgerHeader
 	case 1:
 		return l.MustV1().LedgerHeader
+	case 2:
+		return l.MustV2().LedgerHeader
 	default:
 		panic(fmt.Sprintf("Unsupported LedgerCloseMeta.V: %d", l.V))
 	}
@@ -50,27 +52,45 @@ func (l LedgerCloseMeta) CountTransactions() int {
 		return len(l.MustV0().TxProcessing)
 	case 1:
 		return len(l.MustV1().TxProcessing)
-
+	case 2:
+		return len(l.MustV2().TxProcessing)
 	default:
 		panic(fmt.Sprintf("Unsupported LedgerCloseMeta.V: %d", l.V))
 	}
 }
 
 func (l LedgerCloseMeta) TransactionEnvelopes() []TransactionEnvelope {
+	var phases []TransactionPhase
 	switch l.V {
 	case 0:
 		return l.MustV0().TxSet.Txs
 	case 1:
-		var envelopes = make([]TransactionEnvelope, 0, l.CountTransactions())
-		for _, phase := range l.MustV1().TxSet.V1TxSet.Phases {
-			for _, component := range *phase.V0Components {
-				envelopes = append(envelopes, component.TxsMaybeDiscountedFee.Txs...)
-			}
-		}
-		return envelopes
+		phases = l.MustV1().TxSet.V1TxSet.Phases
+	case 2:
+		phases = l.MustV2().TxSet.V1TxSet.Phases
 	default:
 		panic(fmt.Sprintf("Unsupported LedgerCloseMeta.V: %d", l.V))
 	}
+	envelopes := make([]TransactionEnvelope, 0, l.CountTransactions())
+	for _, phase := range phases {
+		switch phase.V {
+		case 0:
+			for _, component := range *phase.V0Components {
+				envelopes = append(envelopes, component.TxsMaybeDiscountedFee.Txs...)
+			}
+		case 1:
+			for _, stage := range phase.ParallelTxsComponent.ExecutionStages {
+				for _, cluster := range stage {
+					for _, envelope := range cluster {
+						envelopes = append(envelopes, envelope)
+					}
+				}
+			}
+		default:
+			panic(fmt.Sprintf("Unsupported phase type: %d", phase.V))
+		}
+	}
+	return envelopes
 }
 
 // TransactionHash returns Hash for tx at index i in processing order..
@@ -80,6 +100,8 @@ func (l LedgerCloseMeta) TransactionHash(i int) Hash {
 		return l.MustV0().TxProcessing[i].Result.TransactionHash
 	case 1:
 		return l.MustV1().TxProcessing[i].Result.TransactionHash
+	case 2:
+		return l.MustV2().TxProcessing[i].Result.TransactionHash
 	default:
 		panic(fmt.Sprintf("Unsupported LedgerCloseMeta.V: %d", l.V))
 	}
@@ -92,6 +114,8 @@ func (l LedgerCloseMeta) TransactionResultPair(i int) TransactionResultPair {
 		return l.MustV0().TxProcessing[i].Result
 	case 1:
 		return l.MustV1().TxProcessing[i].Result
+	case 2:
+		return l.MustV2().TxProcessing[i].Result
 	default:
 		panic(fmt.Sprintf("Unsupported LedgerCloseMeta.V: %d", l.V))
 	}
@@ -104,6 +128,8 @@ func (l LedgerCloseMeta) FeeProcessing(i int) LedgerEntryChanges {
 		return l.MustV0().TxProcessing[i].FeeProcessing
 	case 1:
 		return l.MustV1().TxProcessing[i].FeeProcessing
+	case 2:
+		return l.MustV2().TxProcessing[i].FeeProcessing
 	default:
 		panic(fmt.Sprintf("Unsupported LedgerCloseMeta.V: %d", l.V))
 	}
@@ -115,10 +141,9 @@ func (l LedgerCloseMeta) TxApplyProcessing(i int) TransactionMeta {
 	case 0:
 		return l.MustV0().TxProcessing[i].TxApplyProcessing
 	case 1:
-		if l.MustV1().TxProcessing[i].TxApplyProcessing.V != 3 {
-			panic("TransactionResult unavailable because LedgerCloseMeta.V = 1 and TransactionMeta.V != 3")
-		}
 		return l.MustV1().TxProcessing[i].TxApplyProcessing
+	case 2:
+		return l.MustV2().TxProcessing[i].TxApplyProcessing
 	default:
 		panic(fmt.Sprintf("Unsupported LedgerCloseMeta.V: %d", l.V))
 	}
@@ -131,45 +156,24 @@ func (l LedgerCloseMeta) UpgradesProcessing() []UpgradeEntryMeta {
 		return l.MustV0().UpgradesProcessing
 	case 1:
 		return l.MustV1().UpgradesProcessing
+	case 2:
+		return l.MustV2().UpgradesProcessing
 	default:
 		panic(fmt.Sprintf("Unsupported LedgerCloseMeta.V: %d", l.V))
 	}
 }
 
-// EvictedTemporaryLedgerKeys returns a slice of ledger keys for
-// temporary ledger entries that have been evicted in this ledger.
-func (l LedgerCloseMeta) EvictedTemporaryLedgerKeys() ([]LedgerKey, error) {
+// EvictedLedgerKeys returns a slice of ledger keys for entries that have been
+// evicted in this ledger.
+func (l LedgerCloseMeta) EvictedLedgerKeys() ([]LedgerKey, error) {
 	switch l.V {
 	case 0:
 		return nil, nil
 	case 1:
-		return l.MustV1().EvictedTemporaryLedgerKeys, nil
+		return l.MustV1().EvictedKeys, nil
+	case 2:
+		return l.MustV2().EvictedKeys, nil
 	default:
 		panic(fmt.Sprintf("Unsupported LedgerCloseMeta.V: %d", l.V))
-	}
-}
-
-// EvictedPersistentLedgerEntries returns the persistent ledger entries
-// which have been evicted in this ledger.
-func (l LedgerCloseMeta) EvictedPersistentLedgerEntries() ([]LedgerEntry, error) {
-	switch l.V {
-	case 0:
-		return nil, nil
-	case 1:
-		return l.MustV1().EvictedPersistentLedgerEntries, nil
-	default:
-		panic(fmt.Sprintf("Unsupported LedgerCloseMeta.V: %d", l.V))
-	}
-}
-
-// TxProcessing returns the TransactionResultMeta in this ledger
-func (l LedgerCloseMeta) TxProcessing() ([]TransactionResultMeta, error) {
-	switch l.V {
-	case 0:
-		return l.MustV0().TxProcessing, nil
-	case 1:
-		return l.MustV1().TxProcessing, nil
-	default:
-		return []TransactionResultMeta{}, fmt.Errorf("Unsupported LedgerCloseMeta.V: %d", l.V)
 	}
 }

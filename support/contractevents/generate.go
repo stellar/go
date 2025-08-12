@@ -69,7 +69,7 @@ func GenerateEvent(
 	if err != nil {
 		panic(err)
 	}
-	contractId := xdr.Hash(rawContractId)
+	contractId := xdr.ContractId(rawContractId)
 
 	event := xdr.ContractEvent{
 		Type:       xdr.ContractEventTypeContract,
@@ -86,7 +86,7 @@ func GenerateEvent(
 	return event
 }
 
-func contractIdToHash(contractId string) *xdr.Hash {
+func contractIdToHash(contractId string) *xdr.ContractId {
 	idBytes := [32]byte{}
 	rawBytes, err := hex.DecodeString(contractId)
 	if err != nil {
@@ -96,7 +96,7 @@ func contractIdToHash(contractId string) *xdr.Hash {
 		panic("couldn't copy 32 bytes to contract hash")
 	}
 
-	hash := xdr.Hash(idBytes)
+	hash := xdr.ContractId(idBytes)
 	return &hash
 }
 
@@ -148,7 +148,28 @@ func makeAddress(address string) xdr.ScVal {
 	case 'G':
 		scAddress.Type = xdr.ScAddressTypeScAddressTypeAccount
 		scAddress.AccountId = xdr.MustAddressPtr(address)
-
+	case 'M':
+		acct, err := strkey.DecodeMuxedAccount(address)
+		if err != nil {
+			panic(fmt.Errorf("address is not a valid muxed account: %s", address))
+		}
+		scAddress.Type = xdr.ScAddressTypeScAddressTypeMuxedAccount
+		scAddress.MuxedAccount = &xdr.MuxedEd25519Account{
+			Id:      xdr.Uint64(acct.ID()),
+			Ed25519: acct.Ed25519(),
+		}
+	case 'L':
+		scAddress.Type = xdr.ScAddressTypeScAddressTypeLiquidityPool
+		scAddress.LiquidityPoolId = &xdr.PoolId{}
+		copy((*scAddress.LiquidityPoolId)[:], strkey.MustDecode(strkey.VersionByteLiquidityPool, address))
+	case 'B':
+		scAddress.Type = xdr.ScAddressTypeScAddressTypeClaimableBalance
+		var someCb xdr.ClaimableBalanceId
+		err := someCb.DecodeFromStrkey(address)
+		if err != nil {
+			panic(fmt.Errorf("error in decoding claimable balance id from strkey: %w", err))
+		}
+		scAddress.ClaimableBalanceId = &someCb
 	default:
 		panic(fmt.Errorf("unsupported address: %s", address))
 	}

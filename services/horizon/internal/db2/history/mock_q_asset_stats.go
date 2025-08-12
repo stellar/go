@@ -14,6 +14,21 @@ type MockQAssetStats struct {
 	mock.Mock
 }
 
+func (m *MockQAssetStats) InsertAssetContracts(ctx context.Context, rows []AssetContract) error {
+	a := m.Called(ctx, rows)
+	return a.Error(0)
+}
+
+func (m *MockQAssetStats) UpdateAssetContractExpirations(ctx context.Context, keys []xdr.Hash, expirationLedgers []uint32) error {
+	a := m.Called(ctx, keys, expirationLedgers)
+	return a.Error(0)
+}
+
+func (m *MockQAssetStats) DeleteAssetContractsExpiringAt(ctx context.Context, ledger uint32) (int64, error) {
+	a := m.Called(ctx, ledger)
+	return a.Get(0).(int64), a.Error(1)
+}
+
 func (m *MockQAssetStats) InsertContractAssetBalances(ctx context.Context, rows []ContractAssetBalance) error {
 	a := m.Called(ctx, rows)
 	return a.Error(0)
@@ -39,7 +54,7 @@ func (m *MockQAssetStats) GetContractAssetBalances(ctx context.Context, keys []x
 	return a.Get(0).([]ContractAssetBalance), a.Error(1)
 }
 
-func (m *MockQAssetStats) GetContractAssetBalancesExpiringAt(ctx context.Context, ledger uint32) ([]ContractAssetBalance, error) {
+func (m *MockQAssetStats) DeleteContractAssetBalancesExpiringAt(ctx context.Context, ledger uint32) ([]ContractAssetBalance, error) {
 	a := m.Called(ctx, ledger)
 	return a.Get(0).([]ContractAssetBalance), a.Error(1)
 }
@@ -89,11 +104,6 @@ func (m *MockQAssetStats) GetAssetStat(ctx context.Context, assetType xdr.AssetT
 	return a.Get(0).(ExpAssetStat), a.Error(1)
 }
 
-func (m *MockQAssetStats) GetAssetStatByContract(ctx context.Context, contractID xdr.Hash) (ExpAssetStat, error) {
-	a := m.Called(ctx, contractID)
-	return a.Get(0).(ExpAssetStat), a.Error(1)
-}
-
 func (m *MockQAssetStats) RemoveAssetStat(ctx context.Context, assetType xdr.AssetType, assetCode, assetIssuer string) (int64, error) {
 	a := m.Called(ctx, assetType, assetCode, assetIssuer)
 	return a.Get(0).(int64), a.Error(1)
@@ -102,11 +112,6 @@ func (m *MockQAssetStats) RemoveAssetStat(ctx context.Context, assetType xdr.Ass
 func (m *MockQAssetStats) GetAssetStats(ctx context.Context, assetCode, assetIssuer string, page db2.PageQuery) ([]AssetAndContractStat, error) {
 	a := m.Called(ctx, assetCode, assetIssuer, page)
 	return a.Get(0).([]AssetAndContractStat), a.Error(1)
-}
-
-func (m *MockQAssetStats) GetAssetStatByContracts(ctx context.Context, contractIDs []xdr.Hash) ([]ExpAssetStat, error) {
-	a := m.Called(ctx, contractIDs)
-	return a.Get(0).([]ExpAssetStat), a.Error(1)
 }
 
 func (m *MockQAssetStats) CountTrustLines(ctx context.Context) (int, error) {

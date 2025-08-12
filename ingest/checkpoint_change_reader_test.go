@@ -18,11 +18,11 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-func TestSingleLedgerStateReaderTestSuite(t *testing.T) {
-	suite.Run(t, new(SingleLedgerStateReaderTestSuite))
+func TestCheckpointChangeReaderTestSuite(t *testing.T) {
+	suite.Run(t, new(CheckpointChangeReaderTestSuite))
 }
 
-type SingleLedgerStateReaderTestSuite struct {
+type CheckpointChangeReaderTestSuite struct {
 	suite.Suite
 	mockArchive          *historyarchive.MockArchive
 	reader               *CheckpointChangeReader
@@ -31,7 +31,7 @@ type SingleLedgerStateReaderTestSuite struct {
 	mockBucketSizeCall   *mock.Call
 }
 
-func (s *SingleLedgerStateReaderTestSuite) SetupTest() {
+func (s *CheckpointChangeReaderTestSuite) SetupTest() {
 	s.mockArchive = &historyarchive.MockArchive{}
 
 	err := json.Unmarshal([]byte(hasExample), &s.has)
@@ -71,14 +71,20 @@ func (s *SingleLedgerStateReaderTestSuite) SetupTest() {
 	s.reader.disableBucketListHashValidation = true
 }
 
-func (s *SingleLedgerStateReaderTestSuite) TearDownTest() {
+func (s *CheckpointChangeReaderTestSuite) TearDownTest() {
 	s.mockArchive.AssertExpectations(s.T())
 }
 
 // TestSimple test reading buckets with a single live entry.
-func (s *SingleLedgerStateReaderTestSuite) TestSimple() {
+func (s *CheckpointChangeReaderTestSuite) TestSimple() {
+	meta := metaEntry(23)
+	liveArchiveType := xdr.BucketListTypeLive
+	meta.MetaEntry.Ext = xdr.BucketMetadataExt{
+		V:              1,
+		BucketListType: &liveArchiveType,
+	}
 	curr1 := createXdrStream(
-		metaEntry(11),
+		meta,
 		entryAccount(xdr.BucketEntryTypeLiveentry, "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML", 1),
 	)
 
@@ -109,7 +115,7 @@ func (s *SingleLedgerStateReaderTestSuite) TestSimple() {
 }
 
 // TestRemoved test reading buckets with a single live entry that was removed.
-func (s *SingleLedgerStateReaderTestSuite) TestRemoved() {
+func (s *CheckpointChangeReaderTestSuite) TestRemoved() {
 	curr1 := createXdrStream(
 		entryAccount(xdr.BucketEntryTypeDeadentry, "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML", 1),
 	)
@@ -141,7 +147,7 @@ func (s *SingleLedgerStateReaderTestSuite) TestRemoved() {
 }
 
 // TestConcurrentRead test concurrent reads for race conditions
-func (s *SingleLedgerStateReaderTestSuite) TestConcurrentRead() {
+func (s *CheckpointChangeReaderTestSuite) TestConcurrentRead() {
 	curr1 := createXdrStream(
 		entryAccount(xdr.BucketEntryTypeDeadentry, "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML", 1),
 	)
@@ -191,7 +197,7 @@ func (s *SingleLedgerStateReaderTestSuite) TestConcurrentRead() {
 }
 
 // TestEnsureLatestLiveEntry tests if a live entry overrides an older initentry
-func (s *SingleLedgerStateReaderTestSuite) TestEnsureLatestLiveEntry() {
+func (s *CheckpointChangeReaderTestSuite) TestEnsureLatestLiveEntry() {
 	curr1 := createXdrStream(
 		metaEntry(11),
 		entryAccount(xdr.BucketEntryTypeLiveentry, "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML", 1),
@@ -221,7 +227,7 @@ func (s *SingleLedgerStateReaderTestSuite) TestEnsureLatestLiveEntry() {
 	s.Require().Equal(err, io.EOF)
 }
 
-func (s *SingleLedgerStateReaderTestSuite) TestUniqueInitEntryOptimization() {
+func (s *CheckpointChangeReaderTestSuite) TestUniqueInitEntryOptimization() {
 	curr1 := createXdrStream(
 		metaEntry(20),
 		entryAccount(xdr.BucketEntryTypeLiveentry, "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML", 1),
@@ -349,7 +355,7 @@ func (s *SingleLedgerStateReaderTestSuite) TestUniqueInitEntryOptimization() {
 	s.Require().Equal(err, io.EOF)
 }
 
-func (s *SingleLedgerStateReaderTestSuite) assertVisitedLedgerKeysContains(key xdr.LedgerKey) {
+func (s *CheckpointChangeReaderTestSuite) assertVisitedLedgerKeysContains(key xdr.LedgerKey) {
 	encodingBuffer := xdr.NewEncodingBuffer()
 	keyBytes, err := encodingBuffer.LedgerKeyUnsafeMarshalBinaryCompress(key)
 	s.Require().NoError(err)
@@ -357,7 +363,7 @@ func (s *SingleLedgerStateReaderTestSuite) assertVisitedLedgerKeysContains(key x
 }
 
 // TestMalformedProtocol11Bucket tests a buggy protocol 11 bucket (meta not the first entry)
-func (s *SingleLedgerStateReaderTestSuite) TestMalformedProtocol11Bucket() {
+func (s *CheckpointChangeReaderTestSuite) TestMalformedProtocol11Bucket() {
 	curr1 := createXdrStream(
 		entryAccount(xdr.BucketEntryTypeLiveentry, "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML", 1),
 		metaEntry(11),
@@ -381,7 +387,7 @@ func (s *SingleLedgerStateReaderTestSuite) TestMalformedProtocol11Bucket() {
 }
 
 // TestMalformedProtocol11BucketNoMeta tests a buggy protocol 11 bucket (no meta entry)
-func (s *SingleLedgerStateReaderTestSuite) TestMalformedProtocol11BucketNoMeta() {
+func (s *CheckpointChangeReaderTestSuite) TestMalformedProtocol11BucketNoMeta() {
 	curr1 := createXdrStream(
 		entryAccount(xdr.BucketEntryTypeInitentry, "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML", 1),
 	)
@@ -397,6 +403,32 @@ func (s *SingleLedgerStateReaderTestSuite) TestMalformedProtocol11BucketNoMeta()
 	_, err := s.reader.Read()
 	s.Require().NotNil(err)
 	s.Assert().Equal("Error while reading from buckets: Read INITENTRY from version <11 bucket: 0@517bea4c6627a688a8ce501febd8c562e737e3d86b29689d9956217640f3c74b", err.Error())
+}
+
+// TestMalformedBucketListType ensures the checkpoint change reader asserts its reading from the live bucketlist
+func (s *CheckpointChangeReaderTestSuite) TestMalformedBucketListType() {
+	meta := metaEntry(23)
+	hotArchiveType := xdr.BucketListTypeHotArchive
+	meta.MetaEntry.Ext = xdr.BucketMetadataExt{
+		V:              1,
+		BucketListType: &hotArchiveType,
+	}
+	curr1 := createXdrStream(
+		meta,
+		entryAccount(xdr.BucketEntryTypeLiveentry, "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML", 1),
+	)
+
+	nextBucket := s.getNextBucketChannel()
+
+	// Return curr1 stream, rest won't be read due to an error
+	s.mockArchive.
+		On("GetXdrStreamForHash", <-nextBucket).
+		Return(curr1, nil).Once()
+
+	// Meta entry
+	_, err := s.reader.Read()
+	s.Require().NotNil(err)
+	s.Assert().EqualError(err, "Error while reading from buckets: expected bucket list type to be live (instead got BucketListTypeHotArchive) in the bucket hash '517bea4c6627a688a8ce501febd8c562e737e3d86b29689d9956217640f3c74b'")
 }
 
 func TestBucketExistsTestSuite(t *testing.T) {
@@ -984,7 +1016,7 @@ func xdrStreamFromBuffer(b *bytes.Buffer) *xdr.Stream {
 // getNextBucket is a helper that returns next bucket hash in the order of processing.
 // This allows to write simpler test code that ensures that mocked calls are in a
 // correct order.
-func (s *SingleLedgerStateReaderTestSuite) getNextBucketChannel() <-chan (historyarchive.Hash) {
+func (s *CheckpointChangeReaderTestSuite) getNextBucketChannel() <-chan (historyarchive.Hash) {
 	// 11 levels with 2 buckets each = buffer of 22
 	c := make(chan (historyarchive.Hash), 22)
 

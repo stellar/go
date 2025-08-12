@@ -4,10 +4,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stellar/go/xdr"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestLedger(t *testing.T) {
@@ -32,7 +33,7 @@ func TestLedger(t *testing.T) {
 	assert.Equal(t, int64(12), freeWrite)
 
 	var bucketSize uint64
-	bucketSize, ok = TotalByteSizeOfBucketList(ledger)
+	bucketSize, ok = TotalByteSizeOfLiveSorobanState(ledger)
 	assert.Equal(t, true, ok)
 	assert.Equal(t, uint64(56), bucketSize)
 
@@ -94,7 +95,7 @@ func ledgerTestInput() (lcm xdr.LedgerCloseMeta) {
 					},
 				},
 			},
-			TotalByteSizeOfBucketList: xdr.Uint64(56),
+			TotalByteSizeOfLiveSorobanState: xdr.Uint64(56),
 			TxSet: xdr.GeneralizedTransactionSet{
 				V: 0,
 				V1TxSet: &xdr.TransactionSetV1{

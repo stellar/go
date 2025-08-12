@@ -86,8 +86,7 @@ type GenSorobanConfig struct {
 	BaseSeqNum        uint32
 	NetworkPassphrase string
 	SigningKey        *keypair.Full
-	// looks for `stellar-core` in the system PATH if empty
-	StellarCorePath string
+	StellarCoreImage  string
 }
 
 func GenSorobanConfigUpgradeTxAndKey(
@@ -96,11 +95,18 @@ func GenSorobanConfigUpgradeTxAndKey(
 	if err != nil {
 		return nil, xdr.ConfigUpgradeSetKey{}, err
 	}
-	corePath := config.StellarCorePath
-	if corePath == "" {
-		corePath = "stellar-core"
+
+	cmd := exec.Command("docker", "pull", config.StellarCoreImage)
+	_, err = cmd.Output()
+	if err != nil {
+		return nil, xdr.ConfigUpgradeSetKey{}, err
 	}
-	cmd := exec.Command(corePath, "get-settings-upgrade-txs",
+
+	cmd = exec.Command("docker",
+		"run",
+		"-i",
+		config.StellarCoreImage,
+		"get-settings-upgrade-txs",
 		config.SigningKey.Address(),
 		strconv.FormatUint(uint64(config.BaseSeqNum), 10),
 		config.NetworkPassphrase,

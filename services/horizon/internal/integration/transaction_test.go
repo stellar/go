@@ -89,10 +89,22 @@ func TestP20MetaTransaction(t *testing.T) {
 	err = xdr.SafeUnmarshalBase64(clientTx.ResultMetaXdr, &txMetaResult)
 	require.NoError(t, err)
 
-	assert.Greater(t, len(txMetaResult.MustV3().Operations), 0)
-	assert.NotNil(t, txMetaResult.MustV3().SorobanMeta)
-	assert.Greater(t, len(txMetaResult.MustV3().TxChangesAfter), 0)
-	assert.Greater(t, len(txMetaResult.MustV3().TxChangesBefore), 0)
+	switch txMetaResult.V {
+	case 3:
+		assert.Greater(t, len(txMetaResult.MustV3().Operations), 0)
+		assert.NotNil(t, txMetaResult.MustV3().SorobanMeta)
+		assert.Greater(t, len(txMetaResult.MustV3().TxChangesAfter), 0)
+		assert.Greater(t, len(txMetaResult.MustV3().TxChangesBefore), 0)
+	case 4:
+		assert.Greater(t, len(txMetaResult.MustV4().Operations), 0)
+		assert.NotNil(t, txMetaResult.MustV4().SorobanMeta)
+		// Soroban fee refund was moved from txChangesAfter to postTxApplyFeeProcessing in LedgerCloseMetaV2
+		// see https://github.com/stellar/stellar-protocol/blob/master/core/cap-0063.md
+		assert.Greater(t, len(txMetaResult.MustV4().TxChangesBefore), 0)
+	default:
+		itest.CurrentTest().Fatalf("Invalid meta version: %d", txMetaResult.V)
+	}
+
 }
 
 func TestP20MetaDisabledTransaction(t *testing.T) {

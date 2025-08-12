@@ -207,7 +207,6 @@ func DefineIngestCommands(rootCmd *cobra.Command, horizonConfig *horizon.Config,
 				HistoryArchiveCaching:  horizonConfig.HistoryArchiveCaching,
 				RoundingSlippageFilter: horizonConfig.RoundingSlippageFilter,
 				CaptiveCoreBinaryPath:  horizonConfig.CaptiveCoreBinaryPath,
-				CaptiveCoreConfigUseDB: horizonConfig.CaptiveCoreConfigUseDB,
 			}
 
 			system, err := ingest.NewSystem(ingestConfig)
@@ -295,7 +294,6 @@ func DefineIngestCommands(rootCmd *cobra.Command, horizonConfig *horizon.Config,
 				HistoryArchiveURLs:     horizonConfig.HistoryArchiveURLs,
 				HistoryArchiveCaching:  horizonConfig.HistoryArchiveCaching,
 				CaptiveCoreBinaryPath:  horizonConfig.CaptiveCoreBinaryPath,
-				CaptiveCoreConfigUseDB: horizonConfig.CaptiveCoreConfigUseDB,
 				CheckpointFrequency:    horizonConfig.CheckpointFrequency,
 				CaptiveCoreToml:        horizonConfig.CaptiveCoreToml,
 				CaptiveCoreStoragePath: horizonConfig.CaptiveCoreStoragePath,
@@ -370,7 +368,6 @@ func processVerifyRange(horizonConfig *horizon.Config, horizonFlags config.Confi
 		HistoryArchiveURLs:     horizonConfig.HistoryArchiveURLs,
 		HistoryArchiveCaching:  horizonConfig.HistoryArchiveCaching,
 		CaptiveCoreBinaryPath:  horizonConfig.CaptiveCoreBinaryPath,
-		CaptiveCoreConfigUseDB: horizonConfig.CaptiveCoreConfigUseDB,
 		CheckpointFrequency:    horizonConfig.CheckpointFrequency,
 		CaptiveCoreToml:        horizonConfig.CaptiveCoreToml,
 		CaptiveCoreStoragePath: horizonConfig.CaptiveCoreStoragePath,

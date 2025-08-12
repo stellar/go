@@ -154,8 +154,27 @@ func (event *TokenTransferEvent) SetAsset(asset xdr.Asset) {
 	case *TokenTransferEvent_Transfer:
 		event.GetTransfer().Asset = protoAsset
 	default:
+		panic(fmt.Errorf("unknown event type:%v", event))
+	}
+}
+
+func (event *TokenTransferEvent) GetAmount() string {
+	var amount string
+	switch event.GetEvent().(type) {
+	case *TokenTransferEvent_Mint:
+		amount = event.GetMint().GetAmount()
+	case *TokenTransferEvent_Burn:
+		amount = event.GetBurn().GetAmount()
+	case *TokenTransferEvent_Clawback:
+		amount = event.GetClawback().GetAmount()
+	case *TokenTransferEvent_Fee:
+		amount = event.GetFee().GetAmount()
+	case *TokenTransferEvent_Transfer:
+		amount = event.GetTransfer().GetAmount()
+	default:
 		panic(fmt.Errorf("unkown event type:%v", event))
 	}
+	return amount
 }
 
 func (e *TokenTransferEvent) setDestinationMuxedInfo(to string, tx ingest.LedgerTransaction) error {
