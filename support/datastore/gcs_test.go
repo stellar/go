@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"fmt"
 	"io"
 	"os"
 	"testing"
@@ -376,4 +377,81 @@ func TestGCSGetFileValidatesCRC32C(t *testing.T) {
 	buf.Reset()
 	_, err = io.Copy(&buf, reader)
 	require.EqualError(t, err, "storage: bad CRC on read: got 985946173, want 2601510353")
+}
+
+func TestGCSListFilePaths(t *testing.T) {
+	server := fakestorage.NewServer([]fakestorage.Object{
+		{
+			ObjectAttrs: fakestorage.ObjectAttrs{BucketName: "test-bucket", Name: "objects/testnet/a"},
+			Content:     []byte("1"),
+		},
+		{
+			ObjectAttrs: fakestorage.ObjectAttrs{BucketName: "test-bucket", Name: "objects/testnet/b"},
+			Content:     []byte("1"),
+		},
+		{
+			ObjectAttrs: fakestorage.ObjectAttrs{BucketName: "test-bucket", Name: "objects/testnet/c"},
+			Content:     []byte("1"),
+		},
+	})
+	defer server.Stop()
+
+	store, err := FromGCSClient(context.Background(), server.Client(), "test-bucket/objects/testnet", DataStoreSchema{})
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = store.Close() })
+
+	paths, err := store.ListFilePaths(context.Background(), "", 2)
+	require.NoError(t, err)
+
+	require.Equal(t, []string{"objects/testnet/a", "objects/testnet/b"}, paths)
+}
+
+func TestGCSListFilePaths_WithPrefix(t *testing.T) {
+	server := fakestorage.NewServer([]fakestorage.Object{
+		{
+			ObjectAttrs: fakestorage.ObjectAttrs{BucketName: "test-bucket", Name: "objects/testnet/a/x"},
+			Content:     []byte("1"),
+		},
+		{
+			ObjectAttrs: fakestorage.ObjectAttrs{BucketName: "test-bucket", Name: "objects/testnet/a/y"},
+			Content:     []byte("1"),
+		},
+		{
+			ObjectAttrs: fakestorage.ObjectAttrs{BucketName: "test-bucket", Name: "objects/testnet/b/z"},
+			Content:     []byte("1"),
+		},
+	})
+	defer server.Stop()
+
+	store, err := FromGCSClient(context.Background(), server.Client(), "test-bucket/objects/testnet", DataStoreSchema{})
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = store.Close() })
+
+	paths, err := store.ListFilePaths(context.Background(), "a", 10)
+	require.NoError(t, err)
+	require.Equal(t, []string{"objects/testnet/a/x", "objects/testnet/a/y"}, paths)
+}
+
+func TestGCSListFilePaths_LimitDefaultAndCap(t *testing.T) {
+	objects := make([]fakestorage.Object, 0, 1200)
+	for i := 0; i < 1200; i++ {
+		objects = append(objects, fakestorage.Object{
+			ObjectAttrs: fakestorage.ObjectAttrs{BucketName: "test-bucket", Name: fmt.Sprintf("objects/testnet/%04d", i)},
+			Content:     []byte("1"),
+		})
+	}
+	server := fakestorage.NewServer(objects)
+	defer server.Stop()
+
+	store, err := FromGCSClient(context.Background(), server.Client(), "test-bucket/objects/testnet", DataStoreSchema{})
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = store.Close() })
+
+	paths, err := store.ListFilePaths(context.Background(), "", 0)
+	require.NoError(t, err)
+	require.Equal(t, 1000, len(paths))
+
+	paths, err = store.ListFilePaths(context.Background(), "", 5000)
+	require.NoError(t, err)
+	require.Equal(t, 1000, len(paths))
 }
