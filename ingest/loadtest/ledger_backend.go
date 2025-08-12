@@ -12,6 +12,7 @@ import (
 
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/ingest/ledgerbackend"
+	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/xdr"
 )
 
@@ -66,11 +67,11 @@ func (r *LedgerBackend) GetLatestLedgerSequence(ctx context.Context) (uint32, er
 func readLedgerEntries(path string) ([]xdr.LedgerEntry, error) {
 	file, err := os.Open(path)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("could not open file: %w", err)
 	}
 	stream, err := xdr.NewZstdStream(file)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("could not open zstd read stream: %w", err)
 	}
 
 	var entries []xdr.LedgerEntry
@@ -81,13 +82,13 @@ func readLedgerEntries(path string) ([]xdr.LedgerEntry, error) {
 			break
 		}
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("could not read from zstd stream: %w", err)
 		}
 		entries = append(entries, entry)
 	}
 
 	if err = stream.Close(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("could not close zstd stream: %w", err)
 	}
 	return entries, nil
 }
@@ -101,25 +102,25 @@ func (r *LedgerBackend) PrepareRange(ctx context.Context, ledgerRange ledgerback
 	}
 	generatedLedgerEntries, err := readLedgerEntries(r.config.LedgerEntriesFilePath)
 	if err != nil {
-		return err
+		return fmt.Errorf("could not parse ledger entries file: %w", err)
 	}
 	generatedLedgersFile, err := os.Open(r.config.LedgersFilePath)
 	if err != nil {
-		return err
+		return fmt.Errorf("could not open ledgers file: %w", err)
 	}
 	generatedLedgers, err := xdr.NewZstdStream(generatedLedgersFile)
 	if err != nil {
-		return err
+		return fmt.Errorf("could not open zstd stream for ledgers file: %w", err)
 	}
 
 	err = r.config.LedgerBackend.PrepareRange(ctx, ledgerRange)
 	if err != nil {
-		return err
+		return fmt.Errorf("could not prepare range using real ledger backend: %w", err)
 	}
 	cur := ledgerRange.From()
 	firstLedger, err := r.config.LedgerBackend.GetLedger(ctx, cur)
 	if err != nil {
-		return err
+		return fmt.Errorf("could not get ledger %v from real ledger backend: %w", cur, err)
 	}
 	var changes xdr.LedgerEntryChanges
 	// attach all ledger entry fixtures to the first ledger in the range
@@ -160,8 +161,11 @@ func (r *LedgerBackend) PrepareRange(ctx context.Context, ledgerRange ledgerback
 
 	mergedLedgersFile, err := os.CreateTemp("", "merged-ledgers")
 	if err != nil {
-		return err
+		return fmt.Errorf("could not create merged ledgers file: %w", err)
 	}
+	log.WithField("path", mergedLedgersFile.Name()).
+		Info("creating temporary merged ledgers file")
+
 	cleanup := true
 	defer func() {
 		if cleanup {
@@ -170,7 +174,7 @@ func (r *LedgerBackend) PrepareRange(ctx context.Context, ledgerRange ledgerback
 	}()
 	writer, err := zstd.NewWriter(mergedLedgersFile)
 	if err != nil {
-		return err
+		return fmt.Errorf("could not create zstd writer for merged ledgers file: %w", err)
 	}
 
 	var latestLedgerSeq uint32
@@ -179,13 +183,13 @@ func (r *LedgerBackend) PrepareRange(ctx context.Context, ledgerRange ledgerback
 		var ledger xdr.LedgerCloseMeta
 		ledger, err = r.config.LedgerBackend.GetLedger(ctx, cur)
 		if err != nil {
-			return err
+			return fmt.Errorf("could not get ledger %v from real ledger backend: %w", cur, err)
 		}
 		var generatedLedger xdr.LedgerCloseMeta
 		if err = generatedLedgers.ReadOne(&generatedLedger); err == io.EOF {
 			break
 		} else if err != nil {
-			return err
+			return fmt.Errorf("could not get generated ledger: %w", err)
 		}
 		if checkNetworkPassphrase {
 			// Here we validate that the generated ledgers have the same network passphrase as the
@@ -218,29 +222,29 @@ func (r *LedgerBackend) PrepareRange(ctx context.Context, ledgerRange ledgerback
 			}
 			return uint32(newLedgerSeq)
 		}); err != nil {
-			return err
+			return fmt.Errorf("could not merge ledgers: %w", err)
 		}
 		if err = xdr.MarshalFramed(writer, ledger); err != nil {
-			return err
+			return fmt.Errorf("could not marshal ledger to stream: %w", err)
 		}
 		latestLedgerSeq = cur
 	}
 	if err = generatedLedgers.Close(); err != nil {
-		return err
+		return fmt.Errorf("could not close generated ledgers xdr stream: %w", err)
 	}
 	if err = writer.Close(); err != nil {
-		return err
+		return fmt.Errorf("could not close zstd writer: %w", err)
 	}
 	if err = mergedLedgersFile.Sync(); err != nil {
-		return err
+		return fmt.Errorf("could not sync merged ledgers file: %w", err)
 	}
 
 	if _, err = mergedLedgersFile.Seek(0, 0); err != nil {
-		return err
+		return fmt.Errorf("could not seek to beginning of merged ledgers file: %w", err)
 	}
 	mergedLedgersStream, err := xdr.NewZstdStream(mergedLedgersFile)
 	if err != nil {
-		return err
+		return fmt.Errorf("could not open zstd read stream for merged ledgers file: %w", err)
 	}
 	cleanup = false
 
@@ -254,6 +258,9 @@ func (r *LedgerBackend) PrepareRange(ctx context.Context, ledgerRange ledgerback
 	r.latestLedgerSeq = latestLedgerSeq
 	r.cachedLedger = firstLedger
 	r.preparedRange = ledgerRange
+	log.WithField("start", r.startLedgerSeq).
+		WithField("end", latestLedgerSeq).
+		Info("ingesting ledgers from loadtest ledger backend")
 	return nil
 }
 
@@ -313,7 +320,7 @@ func (r *LedgerBackend) GetLedger(ctx context.Context, sequence uint32) (xdr.Led
 				sequence,
 			)
 		} else if err != nil {
-			return ledger, err
+			return ledger, fmt.Errorf("could read ledger from merged ledgers stream: %w", err)
 		}
 		if ledger.LedgerSequence() != r.nextLedgerSeq {
 			return ledger, fmt.Errorf(
@@ -333,15 +340,15 @@ func (r *LedgerBackend) GetLedger(ctx context.Context, sequence uint32) (xdr.Led
 
 func (r *LedgerBackend) Close() error {
 	if err := r.config.LedgerBackend.Close(); err != nil {
-		return err
+		return fmt.Errorf("could not close real ledger backend: %w", err)
 	}
 	if r.mergedLedgersStream != nil {
 		// closing the stream will also close the ledgers file
 		if err := r.mergedLedgersStream.Close(); err != nil {
-			return err
+			return fmt.Errorf("could not close merged ledgers xdr stream: %w", err)
 		}
 		if err := os.Remove(r.mergedLedgersFilePath); err != nil {
-			return err
+			return fmt.Errorf("could not remove merged ledgers file: %w", err)
 		}
 	}
 	return nil
