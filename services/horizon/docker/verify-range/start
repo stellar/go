@@ -8,6 +8,18 @@ set -e
 CONTAINER_WORKING_DIR="/data/job_${AWS_BATCH_JOB_ARRAY_INDEX:-0}"
 echo "Job working directory path on data volume: $CONTAINER_WORKING_DIR"
 
+cleanup() {
+    # need to purge these files at end as the db and the downloaed datastore
+    # files can be significatn GB's in size and in a cloud batch environment
+    # we don't want to keep them around after the job is done, i.e. pay for that space still.
+    sudo -u postgres --preserve-env=PGDATA /usr/lib/postgresql/14/bin/pg_ctl stop -D "$PGDATA"
+    if [ -d "$CONTAINER_WORKING_DIR" ]; then
+        sudo rm -rf "$CONTAINER_WORKING_DIR"
+        echo "Purged working data files from $CONTAINER_WORKING_DIR"
+    fi
+}
+trap cleanup EXIT
+
 # Ensure CONTAINER_WORKING_DIR exists and is empty
 rm -rf "$CONTAINER_WORKING_DIR"/*
 mkdir -p "$CONTAINER_WORKING_DIR"

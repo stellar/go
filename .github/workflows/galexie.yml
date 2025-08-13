@@ -7,8 +7,11 @@ on:
 
 jobs:
   galexie:
-    name: Test
+    name: Test ${{ matrix.storage_type }} integration
     runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        storage_type: [ GCS, S3 ]
     env:
       CAPTIVE_CORE_DEBIAN_PKG_VERSION: 23.0.0-2634.d5cbc0793.focal
       GALEXIE_INTEGRATION_TESTS_ENABLED: "true"
@@ -17,6 +20,8 @@ jobs:
       # this is the multi-arch index sha, get it by 'docker buildx imagetools inspect stellar/quickstart:future'
       GALEXIE_INTEGRATION_TESTS_QUICKSTART_IMAGE: docker.io/stellar/quickstart:future@sha256:ea7f4dd4c8e1dc4eb69194ef5b9659aa73e08a89146ea80acfc2fdc073fffb32
       GALEXIE_INTEGRATION_TESTS_QUICKSTART_IMAGE_PULL: "false"
+      GALEXIE_INTEGRATION_TESTS_LOCALSTACK_IMAGE_TAG: "4.6.0"
+      GALEXIE_INTEGRATION_TESTS_LOCALSTACK_IMAGE_PULL: "false"
     steps:
       - name: Install captive core
         run: |
@@ -36,10 +41,16 @@ jobs:
         run: |
           docker pull "$GALEXIE_INTEGRATION_TESTS_QUICKSTART_IMAGE"
 
+      - name: Pull LocalStack image (for S3)
+        if: ${{ matrix.storage_type == 'S3' }}
+        shell: bash
+        run: docker pull localstack/localstack:${GALEXIE_INTEGRATION_TESTS_LOCALSTACK_IMAGE_TAG}
+
       - uses: actions/checkout@v3
         with:
           # For pull requests, build and test the PR head not a merge of the PR with the destination.
-          ref:  ${{ github.event.pull_request.head.sha || github.ref }}
-          
-      - name: Run test
-        run: go test -v -race -run TestGalexieTestSuite ./services/galexie/... 
+          ref: ${{ github.event.pull_request.head.sha || github.ref }}
+
+      - name: Run tests - ${{ matrix.storage_type }} integration
+        run: |
+          go test -v -race -run "TestGalexie${{ matrix.storage_type }}TestSuite" ./services/galexie/...

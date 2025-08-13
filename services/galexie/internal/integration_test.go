@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -24,13 +25,15 @@ import (
 	"github.com/fsouza/fake-gcs-server/fakestorage"
 
 	"github.com/stellar/go/historyarchive"
+	"github.com/stellar/go/support/compressxdr"
 	"github.com/stellar/go/support/datastore"
 	"github.com/stellar/go/support/storage"
 )
 
 const (
-	maxWaitForCoreStartup   = (180 * time.Second)
-	coreStartupPingInterval = time.Second
+	maxWaitForCoreStartup       = 180 * time.Second
+	maxWaitForLocalStackStartup = 60 * time.Second
+	coreStartupPingInterval     = time.Second
 	// set the max ledger we want the standalone network to emit
 	// tests then refer to ledger sequences only up to this, therefore
 	// don't have to do complex waiting within test for a sequence to exist.
@@ -38,25 +41,42 @@ const (
 	configTemplate            = "test/integration_config_template.toml"
 )
 
-func TestGalexieTestSuite(t *testing.T) {
+// TestGalexieGCSTestSuite runs tests with GCS backend
+func TestGalexieGCSTestSuite(t *testing.T) {
 	if os.Getenv("GALEXIE_INTEGRATION_TESTS_ENABLED") != "true" {
 		t.Skip("skipping integration test: GALEXIE_INTEGRATION_TESTS_ENABLED not true")
 	}
 
-	galexieSuite := &GalexieTestSuite{}
-	suite.Run(t, galexieSuite)
+	galexieGCSSuite := &GalexieTestSuite{
+		storageType: "GCS",
+	}
+	suite.Run(t, galexieGCSSuite)
+}
+
+// TestGalexieS3TestSuite runs tests with S3 backend
+func TestGalexieS3TestSuite(t *testing.T) {
+	if os.Getenv("GALEXIE_INTEGRATION_TESTS_ENABLED") != "true" {
+		t.Skip("skipping integration test: GALEXIE_INTEGRATION_TESTS_ENABLED not true")
+	}
+
+	galexieS3Suite := &GalexieTestSuite{
+		storageType: "S3",
+	}
+	suite.Run(t, galexieS3Suite)
 }
 
 type GalexieTestSuite struct {
 	suite.Suite
-	tempConfigFile  string
-	ctx             context.Context
-	ctxStop         context.CancelFunc
-	coreContainerID string
-	dockerCli       *client.Client
-	gcsServer       *fakestorage.Server
-	finishedSetup   bool
-	config          Config
+	tempConfigFile        string
+	ctx                   context.Context
+	ctxStop               context.CancelFunc
+	coreContainerID       string
+	localStackContainerID string
+	dockerCli             *client.Client
+	gcsServer             *fakestorage.Server
+	finishedSetup         bool
+	config                Config
+	storageType           string // "GCS" or "S3"
 }
 
 func (s *GalexieTestSuite) TestScanAndFill() {
@@ -80,20 +100,48 @@ func (s *GalexieTestSuite) TestScanAndFill() {
 	datastore, err := datastore.NewDataStore(s.ctx, s.config.DataStoreConfig)
 	require.NoError(err)
 
-	_, err = datastore.GetFile(s.ctx, "FFFFFFFF--0-9/FFFFFFFA--5.xdr.zst")
+	_, err = datastore.GetFile(s.ctx, "FFFFFFFF--0-9/FFFFFFFA--5.xdr."+compressxdr.DefaultCompressor.Name())
+	require.NoError(err)
+
+	lastModified, err := datastore.GetFileLastModified(s.ctx, "FFFFFFFF--0-9/FFFFFFFA--5.xdr."+compressxdr.DefaultCompressor.Name())
+	require.NoError(err)
+
+	// now run an scan-and-fill on an overlapping range, it will skip over existing ledgers
+	rootCmd.SetArgs([]string{"scan-and-fill", "--start", "4", "--end", "9", "--config-file", s.tempConfigFile})
+	errWriter.Reset()
+	rootCmd.SetErr(&errWriter)
+	outWriter.Reset()
+	rootCmd.SetOut(&outWriter)
+	err = rootCmd.ExecuteContext(s.ctx)
+	require.NoError(err)
+
+	s.T().Log(outWriter.String())
+	s.T().Log(errWriter.String())
+
+	newLastModified, err := datastore.GetFileLastModified(s.ctx, "FFFFFFFF--0-9/FFFFFFFA--5.xdr."+compressxdr.DefaultCompressor.Name())
+	require.NoError(err)
+	require.Equal(lastModified, newLastModified)
+
+	_, err = datastore.GetFile(s.ctx, "FFFFFFFF--0-9/FFFFFFF6--9.xdr."+compressxdr.DefaultCompressor.Name())
 	require.NoError(err)
 }
 
 func (s *GalexieTestSuite) TestAppend() {
 	require := s.Require()
 
-	// first populate ledgers 4-5
+	// first populate ledgers 6-7
 	rootCmd := defineCommands()
 	rootCmd.SetArgs([]string{"scan-and-fill", "--start", "6", "--end", "7", "--config-file", s.tempConfigFile})
 	err := rootCmd.ExecuteContext(s.ctx)
 	require.NoError(err)
 
-	// now run an append of overalapping range, it will resume past existing ledgers
+	datastore, err := datastore.NewDataStore(s.ctx, s.config.DataStoreConfig)
+	require.NoError(err)
+
+	lastModified, err := datastore.GetFileLastModified(s.ctx, "FFFFFFFF--0-9/FFFFFFF9--6.xdr."+compressxdr.DefaultCompressor.Name())
+	require.NoError(err)
+
+	// now run an append on an overlapping range, it will resume past existing ledgers
 	rootCmd.SetArgs([]string{"append", "--start", "6", "--end", "9", "--config-file", s.tempConfigFile})
 	var errWriter bytes.Buffer
 	var outWriter bytes.Buffer
@@ -107,10 +155,12 @@ func (s *GalexieTestSuite) TestAppend() {
 	s.T().Log(output)
 	s.T().Log(errOutput)
 
-	datastore, err := datastore.NewDataStore(s.ctx, s.config.DataStoreConfig)
+	// check that the file was not modified
+	newLastModified, err := datastore.GetFileLastModified(s.ctx, "FFFFFFFF--0-9/FFFFFFF9--6.xdr."+compressxdr.DefaultCompressor.Name())
 	require.NoError(err)
+	require.Equal(lastModified, newLastModified, "file should not be modified on append of overlapping range")
 
-	_, err = datastore.GetFile(s.ctx, "FFFFFFFF--0-9/FFFFFFF6--9.xdr.zst")
+	_, err = datastore.GetFile(s.ctx, "FFFFFFFF--0-9/FFFFFFF6--9.xdr."+compressxdr.DefaultCompressor.Name())
 	require.NoError(err)
 }
 
@@ -143,7 +193,7 @@ func (s *GalexieTestSuite) TestAppendUnbounded() {
 	require.EventuallyWithT(func(c *assert.CollectT) {
 		// this checks every 50ms up to 180s total
 		assert := assert.New(c)
-		_, err = datastore.GetFile(s.ctx, "FFFFFFF5--10-19/FFFFFFF0--15.xdr.zst")
+		_, err = datastore.GetFile(s.ctx, "FFFFFFF5--10-19/FFFFFFF0--15.xdr."+compressxdr.DefaultCompressor.Name())
 		assert.NoError(err)
 	}, 180*time.Second, 50*time.Millisecond, "append unbounded did not work")
 }
@@ -172,6 +222,7 @@ func (s *GalexieTestSuite) SetupSuite() {
 		os.Getenv("GALEXIE_INTEGRATION_TESTS_CAPTIVE_CORE_BIN"))
 
 	galexieConfigTemplate.Set("stellar_core_config.storage_path", filepath.Join(testTempDir, "captive-core"))
+	galexieConfigTemplate.Set("datastore_config.type", s.storageType)
 
 	tomlBytes, err := toml.Marshal(galexieConfigTemplate)
 	if err != nil {
@@ -182,36 +233,22 @@ func (s *GalexieTestSuite) SetupSuite() {
 	}
 	s.config.DataStoreConfig.NetworkPassphrase = s.config.StellarCoreConfig.NetworkPassphrase
 
-	tempSeedDataPath := filepath.Join(testTempDir, "data")
-	if err = os.MkdirAll(filepath.Join(tempSeedDataPath, "integration-test"), 0777); err != nil {
-		t.Fatalf("unable to create seed data in temp path, %v", err)
-	}
-
 	s.tempConfigFile = filepath.Join(testTempDir, "config.toml")
 	err = os.WriteFile(s.tempConfigFile, tomlBytes, 0777)
 	if err != nil {
 		t.Fatalf("unable to write temp config file %v, %v", s.tempConfigFile, err)
 	}
 
-	testWriter := &testWriter{test: t}
-	opts := fakestorage.Options{
-		Scheme:      "http",
-		Host:        "127.0.0.1",
-		Port:        uint16(0),
-		Writer:      testWriter,
-		Seed:        tempSeedDataPath,
-		StorageRoot: filepath.Join(testTempDir, "bucket"),
-		PublicHost:  "127.0.0.1",
-	}
-
-	s.gcsServer, err = fakestorage.NewServerWithOptions(opts)
-
+	s.dockerCli, err = client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
-		t.Fatalf("couldn't start the fake gcs http server %v", err)
+		t.Fatalf("could not create docker client, %v", err)
 	}
 
-	t.Logf("fake gcs server started at %v", s.gcsServer.URL())
-	t.Setenv("STORAGE_EMULATOR_HOST", s.gcsServer.URL())
+	if s.storageType == "GCS" {
+		s.setupGCS(t, testTempDir)
+	} else if s.storageType == "S3" {
+		s.setupS3(t)
+	}
 
 	quickstartImage := os.Getenv("GALEXIE_INTEGRATION_TESTS_QUICKSTART_IMAGE")
 	if quickstartImage == "" {
@@ -228,38 +265,98 @@ func (s *GalexieTestSuite) SetupSuite() {
 	s.finishedSetup = true
 }
 
-func (s *GalexieTestSuite) TearDownSuite() {
-	if s.coreContainerID != "" {
-		s.T().Logf("Stopping the quickstart container %v", s.coreContainerID)
-		containerLogs, err := s.dockerCli.ContainerLogs(s.ctx, s.coreContainerID, container.LogsOptions{ShowStdout: true, ShowStderr: true})
-
-		if err == nil {
-			var errWriter bytes.Buffer
-			var outWriter bytes.Buffer
-			stdcopy.StdCopy(&outWriter, &errWriter, containerLogs)
-			s.T().Log(outWriter.String())
-			s.T().Log(errWriter.String())
-		}
-		if err := s.dockerCli.ContainerStop(context.Background(), s.coreContainerID, container.StopOptions{}); err != nil {
-			s.T().Logf("unable to stop core container, %v, %v", s.coreContainerID, err)
-		}
+func (s *GalexieTestSuite) setupGCS(t *testing.T, testTempDir string) {
+	tempSeedDataPath := filepath.Join(testTempDir, "data")
+	if err := os.MkdirAll(filepath.Join(tempSeedDataPath, "integration-test"), 0777); err != nil {
+		t.Fatalf("unable to create seed data in temp path, %v", err)
 	}
+
+	testWriter := &testWriter{test: t}
+	opts := fakestorage.Options{
+		Scheme:      "http",
+		Host:        "127.0.0.1",
+		Port:        uint16(0),
+		Writer:      testWriter,
+		Seed:        tempSeedDataPath,
+		StorageRoot: filepath.Join(testTempDir, "bucket"),
+		PublicHost:  "127.0.0.1",
+	}
+
+	var err error
+	s.gcsServer, err = fakestorage.NewServerWithOptions(opts)
+
+	if err != nil {
+		t.Fatalf("couldn't start the fake gcs http server %v", err)
+	}
+
+	t.Logf("fake gcs server started at %v", s.gcsServer.URL())
+	t.Setenv("STORAGE_EMULATOR_HOST", s.gcsServer.URL())
+}
+
+func (s *GalexieTestSuite) setupS3(t *testing.T) {
+	s.mustStartLocalStack(t)
+	s.mustWaitForLocalStack(t)
+	s.createLocalStackBucket(t)
+
+	t.Setenv("AWS_ACCESS_KEY_ID", "KEY_ID")
+	t.Setenv("AWS_SECRET_ACCESS_KEY", "ACCESS_KEY")
+}
+
+func (s *GalexieTestSuite) TearDownSuite() {
+	t := s.T()
+
+	if s.coreContainerID != "" {
+		t.Logf("Stopping the quickstart container %v", s.coreContainerID)
+		s.stopAndLogContainer(s.coreContainerID, "quickstart")
+		s.coreContainerID = ""
+	}
+
+	if s.localStackContainerID != "" {
+		t.Logf("Stopping the localstack container %v", s.localStackContainerID)
+		s.stopAndLogContainer(s.localStackContainerID, "localstack")
+		s.localStackContainerID = ""
+	}
+
 	if s.dockerCli != nil {
 		s.dockerCli.Close()
+		s.dockerCli = nil
 	}
+
 	if s.gcsServer != nil {
 		s.gcsServer.Stop()
+		s.gcsServer = nil
 	}
-	s.ctxStop()
+
+	if s.ctxStop != nil {
+		s.ctxStop()
+	}
+}
+
+func (s *GalexieTestSuite) stopAndLogContainer(containerID, containerType string) {
+	if s.dockerCli == nil {
+		return
+	}
+
+	containerLogs, err := s.dockerCli.ContainerLogs(s.ctx, containerID, container.LogsOptions{
+		ShowStdout: true,
+		ShowStderr: true,
+	})
+	if err == nil {
+		var errWriter bytes.Buffer
+		var outWriter bytes.Buffer
+		stdcopy.StdCopy(&outWriter, &errWriter, containerLogs)
+		s.T().Logf("%s container stdout: %s", containerType, outWriter.String())
+		s.T().Logf("%s container stderr: %s", containerType, errWriter.String())
+		containerLogs.Close()
+	}
+
+	if err := s.dockerCli.ContainerStop(context.Background(), containerID, container.StopOptions{}); err != nil {
+		s.T().Logf("unable to stop %s container %v: %v", containerType, containerID, err)
+	}
 }
 
 func (s *GalexieTestSuite) mustStartCore(t *testing.T, quickstartImage string, pullImage bool) {
 	var err error
-	s.dockerCli, err = client.NewClientWithOpts(client.WithAPIVersionNegotiation())
-	if err != nil {
-		t.Fatalf("could not create docker client, %v", err)
-	}
-
 	if pullImage {
 		imgReader, imgErr := s.dockerCli.ImagePull(s.ctx, quickstartImage, image.PullOptions{})
 		if imgErr != nil {
@@ -344,6 +441,106 @@ func (s *GalexieTestSuite) mustWaitForCore(t *testing.T, archiveUrls []string, p
 		}
 	}
 	t.Fatalf("core did not progress ledgers within %v seconds", maxWaitForCoreStartup)
+}
+
+func (s *GalexieTestSuite) mustStartLocalStack(t *testing.T) {
+	t.Log("Starting LocalStack container...")
+	imageTag := os.Getenv("GALEXIE_INTEGRATION_TESTS_LOCALSTACK_IMAGE_TAG")
+	if imageTag == "" {
+		imageTag = "latest"
+	}
+	imageName := "localstack/localstack:" + imageTag
+	pullImage := os.Getenv("GALEXIE_INTEGRATION_TESTS_LOCALSTACK_IMAGE_PULL") != "false"
+	if pullImage {
+		imgReader, err := s.dockerCli.ImagePull(s.ctx, imageName, image.PullOptions{})
+		if err != nil {
+			t.Fatalf("could not pull docker image %s: %v", imageName, err)
+		}
+		defer imgReader.Close()
+		_, err = io.Copy(io.Discard, imgReader)
+		if err != nil {
+			t.Fatalf("could not read docker image pull response %s: %v", imageName, err)
+		}
+	}
+
+	resp, err := s.dockerCli.ContainerCreate(s.ctx,
+		&container.Config{
+			Image: imageName,
+			ExposedPorts: nat.PortSet{
+				"4566/tcp": {},
+			},
+		},
+		&container.HostConfig{
+			PortBindings: nat.PortMap{
+				"4566/tcp": {nat.PortBinding{HostIP: "127.0.0.1", HostPort: "4566"}},
+			},
+			AutoRemove: true,
+		},
+		nil, nil, "")
+	if err != nil {
+		t.Fatalf("could not create localstack container: %v", err)
+	}
+	s.localStackContainerID = resp.ID
+
+	if err := s.dockerCli.ContainerStart(s.ctx, resp.ID, container.StartOptions{}); err != nil {
+		t.Fatalf("could not run localstack container: %v", err)
+	}
+	t.Logf("Started LocalStack container %v", s.localStackContainerID)
+}
+
+func (s *GalexieTestSuite) mustWaitForLocalStack(t *testing.T) {
+	t.Log("Waiting for LocalStack to be up...")
+	healthURL := "http://localhost:4566/_localstack/health"
+	startTime := time.Now()
+
+	httpClient := &http.Client{Timeout: 5 * time.Second}
+
+	for time.Since(startTime) < maxWaitForLocalStackStartup {
+		req, err := http.NewRequestWithContext(s.ctx, "GET", healthURL, nil)
+		if err != nil {
+			t.Logf("failed to create http request to localstack: %v", err)
+			time.Sleep(2 * time.Second)
+			continue
+		}
+
+		resp, err := httpClient.Do(req)
+		if err != nil {
+			t.Logf("failed to connect to localstack: %v", err)
+			time.Sleep(2 * time.Second)
+			continue
+		}
+
+		if resp.StatusCode == http.StatusOK {
+			body, _ := io.ReadAll(resp.Body)
+			resp.Body.Close()
+			t.Logf("LocalStack is ready. Health check response: %s", string(body))
+			return
+		}
+		resp.Body.Close()
+		t.Logf("LocalStack health check failed with status: %s. Retrying...", resp.Status)
+		time.Sleep(2 * time.Second)
+	}
+
+	t.Fatalf("LocalStack did not become ready within %v", maxWaitForLocalStackStartup)
+}
+
+func (s *GalexieTestSuite) createLocalStackBucket(t *testing.T) {
+	bucketName := "integration-test"
+	url := "http://localhost:4566/" + bucketName
+	req, err := http.NewRequestWithContext(s.ctx, "PUT", url, nil)
+	if err != nil {
+		t.Fatalf("failed to create request to create bucket: %v", err)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("failed to create bucket %s: %v", bucketName, err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
+		body, _ := io.ReadAll(resp.Body)
+		t.Fatalf("failed to create bucket %s: %s", bucketName, string(body))
+	}
+	t.Logf("Bucket %s created successfully", bucketName)
 }
 
 type testWriter struct {

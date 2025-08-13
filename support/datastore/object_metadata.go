@@ -63,7 +63,7 @@ func NewMetaDataFromMap(data map[string]string) (MetaData, error) {
 	}
 
 	if val, ok := data["protocol-version"]; ok {
-		protocolVersion, err := strconv.ParseInt(val, 10, 32)
+		protocolVersion, err := strconv.ParseUint(val, 10, 32)
 		if err != nil {
 			return metaData, err
 		}

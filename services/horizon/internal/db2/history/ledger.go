@@ -14,7 +14,6 @@ import (
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
-	"github.com/stellar/go/support/ordered"
 	"github.com/stellar/go/toid"
 	"github.com/stellar/go/xdr"
 )
@@ -212,7 +211,7 @@ func (q *Q) GetLedgerGapsInRange(ctx context.Context, start, end uint32) ([]Ledg
 	if start < oldestLedger {
 		result = append(result, LedgerRange{
 			StartSequence: start,
-			EndSequence:   ordered.Min(end, oldestLedger-1),
+			EndSequence:   min(end, oldestLedger-1),
 		})
 	}
 	if end <= oldestLedger {
@@ -232,14 +231,14 @@ func (q *Q) GetLedgerGapsInRange(ctx context.Context, start, end uint32) ([]Ledg
 			break
 		}
 		result = append(result, LedgerRange{
-			StartSequence: ordered.Max(gap.StartSequence, start),
-			EndSequence:   ordered.Min(gap.EndSequence, end),
+			StartSequence: max(gap.StartSequence, start),
+			EndSequence:   min(gap.EndSequence, end),
 		})
 	}
 
 	if latestLedger < end {
 		result = append(result, LedgerRange{
-			StartSequence: ordered.Max(latestLedger+1, start),
+			StartSequence: max(latestLedger+1, start),
 			EndSequence:   end,
 		})
 	}

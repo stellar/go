@@ -3,6 +3,7 @@ package datastore
 import (
 	"context"
 	"io"
+	"time"
 
 	"github.com/stretchr/testify/mock"
 )
@@ -25,6 +26,14 @@ func (m *MockDataStore) Size(ctx context.Context, path string) (int64, error) {
 func (m *MockDataStore) GetFileMetadata(ctx context.Context, path string) (map[string]string, error) {
 	args := m.Called(ctx, path)
 	return args.Get(0).(map[string]string), args.Error(1)
+}
+
+func (m *MockDataStore) GetFileLastModified(ctx context.Context, filePath string) (time.Time, error) {
+	args := m.Called(ctx, filePath)
+	if args.Get(0) != nil {
+		return args.Get(0).(time.Time), args.Error(1)
+	}
+	return time.Time{}, args.Error(1)
 }
 
 func (m *MockDataStore) GetFile(ctx context.Context, path string) (io.ReadCloser, error) {
