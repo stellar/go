@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"time"
 )
 
 const (
@@ -25,6 +26,7 @@ const listFilePathsMaxLimit = 1000
 // DataStore defines an interface for interacting with data storage
 type DataStore interface {
 	GetFileMetadata(ctx context.Context, path string) (map[string]string, error)
+	GetFileLastModified(ctx context.Context, filePath string) (time.Time, error)
 	GetFile(ctx context.Context, path string) (io.ReadCloser, error)
 	PutFile(ctx context.Context, path string, in io.WriterTo, metaData map[string]string) error
 	PutFileIfNotExists(ctx context.Context, path string, in io.WriterTo, metaData map[string]string) (bool, error)

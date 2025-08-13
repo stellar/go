@@ -10,6 +10,7 @@ import (
 	"os"
 	"path"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awshttp "github.com/aws/aws-sdk-go-v2/aws/transport/http"
@@ -115,8 +116,7 @@ func FromS3Client(ctx context.Context, client *s3.Client, bucketPath string) (Da
 	return S3DataStore{client: client, uploader: uploader, bucket: bucketName, prefix: prefix}, nil
 }
 
-// GetFileMetadata retrieves the metadata for the specified file in the S3-compatible bucket.
-func (b S3DataStore) GetFileMetadata(ctx context.Context, filePath string) (map[string]string, error) {
+func (b S3DataStore) HeadObject(ctx context.Context, filePath string) (*s3.HeadObjectOutput, error) {
 	filePath = path.Join(b.prefix, filePath)
 	input := &s3.HeadObjectInput{
 		Bucket: aws.String(b.bucket),
@@ -131,7 +131,25 @@ func (b S3DataStore) GetFileMetadata(ctx context.Context, filePath string) (map[
 		return nil, err
 	}
 
-	return output.Metadata, nil
+	return output, nil
+}
+
+// GetFileMetadata retrieves the metadata for the specified file in the S3-compatible bucket.
+func (b S3DataStore) GetFileMetadata(ctx context.Context, filePath string) (map[string]string, error) {
+	attrs, err := b.HeadObject(ctx, filePath)
+	if err != nil {
+		return nil, err
+	}
+	return attrs.Metadata, nil
+}
+
+// GetFileLastModified retrieves the last modified time of a file in the S3-compatible bucket.
+func (b S3DataStore) GetFileLastModified(ctx context.Context, filePath string) (time.Time, error) {
+	attrs, err := b.HeadObject(ctx, filePath)
+	if err != nil {
+		return time.Time{}, err
+	}
+	return *attrs.LastModified, nil
 }
 
 // GetFile retrieves a file from the S3-compatible bucket.

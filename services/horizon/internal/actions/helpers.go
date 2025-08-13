@@ -21,7 +21,6 @@ import (
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/ledger"
 	hProblem "github.com/stellar/go/services/horizon/internal/render/problem"
-	"github.com/stellar/go/support/ordered"
 	"github.com/stellar/go/support/render/problem"
 	"github.com/stellar/go/toid"
 	"github.com/stellar/go/xdr"
@@ -560,7 +559,7 @@ func validateAndAdjustCursor(ledgerState *ledger.State, pq *db2.PageQuery) error
 		// that are removed as part of reaping to maintain the retention window.
 		if pq.Cursor == "" || errors.Is(err, &hProblem.BeforeHistory) {
 			pq.Cursor = toid.AfterLedger(
-				ordered.Max(0, ledgerState.CurrentStatus().HistoryElder-1),
+				max(0, ledgerState.CurrentStatus().HistoryElder-1),
 			).String()
 			return nil
 		}
