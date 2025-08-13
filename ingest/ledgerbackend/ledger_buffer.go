@@ -13,6 +13,7 @@ import (
 	"github.com/stellar/go/support/collections/heap"
 	"github.com/stellar/go/support/compressxdr"
 	"github.com/stellar/go/support/datastore"
+	"github.com/stellar/go/support/galexie"
 	"github.com/stellar/go/support/ordered"
 
 	"github.com/stellar/go/xdr"
@@ -27,7 +28,7 @@ type ledgerBuffer struct {
 	// Passed through from BufferedStorageBackend to control lifetime of ledgerBuffer instance
 	config    BufferedStorageBackendConfig
 	dataStore datastore.DataStore
-	schema    datastore.DataStoreSchema
+	schema    galexie.Schema
 
 	// context used to cancel workers within the ledgerBuffer
 	context context.Context

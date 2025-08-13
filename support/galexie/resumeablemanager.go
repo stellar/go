@@ -1,4 +1,4 @@
-package datastore
+package galexie
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/stellar/go/historyarchive"
+	"github.com/stellar/go/support/datastore"
 	"github.com/stellar/go/support/log"
 )
 
@@ -37,13 +38,13 @@ type ResumableManager interface {
 }
 
 type resumableManagerService struct {
-	ledgerBatchConfig DataStoreSchema
-	dataStore         DataStore
+	ledgerBatchConfig Schema
+	dataStore         datastore.DataStore
 	archive           historyarchive.ArchiveInterface
 }
 
-func NewResumableManager(dataStore DataStore,
-	ledgerBatchConfig DataStoreSchema,
+func NewResumableManager(dataStore datastore.DataStore,
+	ledgerBatchConfig Schema,
 	archive historyarchive.ArchiveInterface) ResumableManager {
 	return &resumableManagerService{
 		ledgerBatchConfig: ledgerBatchConfig,

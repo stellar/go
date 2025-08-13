@@ -6,18 +6,10 @@ import (
 	"io"
 )
 
-const (
-	manifestFilename = ".config.json"
-	Version          = "1.0"
-)
-
 // DataStoreConfig defines user-provided configuration used to initialize a DataStore.
 type DataStoreConfig struct {
-	Type              string            `toml:"type"`
-	Params            map[string]string `toml:"params"`
-	Schema            DataStoreSchema   `toml:"schema"`
-	NetworkPassphrase string
-	Compression       string
+	Type   string            `toml:"type"`
+	Params map[string]string `toml:"params"`
 }
 
 const listFilePathsMaxLimit = 1000

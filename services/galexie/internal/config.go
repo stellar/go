@@ -9,13 +9,13 @@ import (
 	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/network"
+	"github.com/stellar/go/support/galexie"
 	"github.com/stellar/go/support/log"
 
 	"github.com/pelletier/go-toml"
 
 	"github.com/stellar/go/support/datastore"
 	"github.com/stellar/go/support/errors"
-	"github.com/stellar/go/support/ordered"
 	"github.com/stellar/go/support/storage"
 )
 
@@ -67,6 +67,7 @@ type StellarCoreConfig struct {
 type Config struct {
 	AdminPort int `toml:"admin_port"`
 
+	Schema            *galexie.Schema           `toml:"schema"`
 	DataStoreConfig   datastore.DataStoreConfig `toml:"datastore_config"`
 	StellarCoreConfig StellarCoreConfig         `toml:"stellar_core_config"`
 	UserAgent         string                    `toml:"user_agent"`
@@ -114,9 +115,8 @@ func (config *Config) Resumable() bool {
 	return config.Mode == Append
 }
 
-// Validates requested ledger range, and will automatically adjust it
-// to be ledgers-per-file boundary aligned
-func (config *Config) ValidateAndSetLedgerRange(ctx context.Context, archive historyarchive.ArchiveInterface) error {
+// Validates requested ledger range
+func (config *Config) ValidateLedgerRange(ctx context.Context, archive historyarchive.ArchiveInterface) error {
 
 	if config.StartLedger < 2 {
 		return errors.New("invalid start value, must be greater than one.")
@@ -148,7 +148,6 @@ func (config *Config) ValidateAndSetLedgerRange(ctx context.Context, archive his
 			config.EndLedger, latestNetworkLedger)
 	}
 
-	config.adjustLedgerRange()
 	return nil
 }
 
@@ -275,26 +274,5 @@ func (config *Config) processToml(tomlPath string) error {
 		}
 	}
 
-	// Populate the datastore config with the network passphrase for datastore manifest.
-	config.DataStoreConfig.NetworkPassphrase = config.StellarCoreConfig.NetworkPassphrase
-	config.DataStoreConfig.Compression = compressionType
-
 	return nil
-}
-
-func (config *Config) adjustLedgerRange() {
-	// Check if either the start or end ledger does not fall on the "LedgersPerFile" boundary
-	// and adjust the start and end ledger accordingly.
-	// Align the start ledger to the nearest "LedgersPerFile" boundary.
-	config.StartLedger = config.DataStoreConfig.Schema.GetSequenceNumberStartBoundary(config.StartLedger)
-
-	// Ensure that the adjusted start ledger is at least 2.
-	config.StartLedger = ordered.Max(2, config.StartLedger)
-
-	// Align the end ledger (for bounded cases) to the nearest "LedgersPerFile" boundary.
-	if config.EndLedger != 0 {
-		config.EndLedger = config.DataStoreConfig.Schema.GetSequenceNumberEndBoundary(config.EndLedger)
-	}
-
-	logger.Infof("Computed effective export boundary ledger range: start=%d, end=%d", config.StartLedger, config.EndLedger)
 }

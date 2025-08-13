@@ -24,12 +24,38 @@ func TestNewConfig(t *testing.T) {
 		RuntimeSettings{StartLedger: 2, EndLedger: 3, ConfigFilePath: "test/test.toml", Mode: Append}, nil)
 
 	require.NoError(t, err)
-	err = config.ValidateAndSetLedgerRange(ctx, mockArchive)
+	err = config.ValidateLedgerRange(ctx, mockArchive)
 	require.NoError(t, err)
 	require.Equal(t, config.StellarCoreConfig.Network, "pubnet")
 	require.Equal(t, config.DataStoreConfig.Type, "ABC")
-	require.Equal(t, config.DataStoreConfig.Schema.FilesPerPartition, uint32(1))
-	require.Equal(t, config.DataStoreConfig.Schema.LedgersPerFile, uint32(3))
+	require.Equal(t, config.Schema.FilesPerPartition, uint32(1))
+	require.Equal(t, config.Schema.LedgersPerFile, uint32(3))
+	require.Equal(t, config.UserAgent, "galexie")
+	require.True(t, config.Resumable())
+	url, ok := config.DataStoreConfig.Params["destination_bucket_path"]
+	require.True(t, ok)
+	require.Equal(t, url, "your-bucket-name/subpath/testnet")
+	mockArchive.AssertExpectations(t)
+}
+
+func TestNewConfigNoSchema(t *testing.T) {
+	ctx := context.Background()
+
+	mockArchive := &historyarchive.MockArchive{}
+	mockArchive.On("GetLatestLedgerSequence").Return(uint32(5), nil).Once()
+	mockArchive.On("GetCheckpointManager").
+		Return(historyarchive.NewCheckpointManager(
+			historyarchive.DefaultCheckpointFrequency)).Once()
+
+	config, err := NewConfig(
+		RuntimeSettings{StartLedger: 2, EndLedger: 3, ConfigFilePath: "test/no_schema.toml", Mode: Append}, nil)
+
+	require.NoError(t, err)
+	err = config.ValidateLedgerRange(ctx, mockArchive)
+	require.NoError(t, err)
+	require.Equal(t, config.StellarCoreConfig.Network, "pubnet")
+	require.Equal(t, config.DataStoreConfig.Type, "ABC")
+	require.Nil(t, config.Schema)
 	require.Equal(t, config.UserAgent, "galexie")
 	require.True(t, config.Resumable())
 	url, ok := config.DataStoreConfig.Params["destination_bucket_path"]
@@ -297,7 +323,7 @@ func TestValidateStartAndEndLedger(t *testing.T) {
 			config, err := NewConfig(
 				RuntimeSettings{StartLedger: tt.startLedger, EndLedger: tt.endLedger, ConfigFilePath: "test/validate_start_end.toml", Mode: tt.mode}, nil)
 			require.NoError(t, err)
-			err = config.ValidateAndSetLedgerRange(ctx, mockArchive)
+			err = config.ValidateLedgerRange(ctx, mockArchive)
 			if tt.errMsg != "" {
 				require.Error(t, err)
 				require.Equal(t, tt.errMsg, err.Error())
@@ -373,8 +399,10 @@ func TestAdjustedLedgerRangeBoundedMode(t *testing.T) {
 				RuntimeSettings{StartLedger: tt.start, EndLedger: tt.end, ConfigFilePath: tt.configFile, Mode: ScanFill}, nil)
 
 			require.NoError(t, err)
-			err = config.ValidateAndSetLedgerRange(ctx, mockArchive)
+			err = config.ValidateLedgerRange(ctx, mockArchive)
 			require.NoError(t, err)
+
+			adjustLedgerRange(config, *config.Schema)
 			require.EqualValues(t, tt.expectedStart, config.StartLedger)
 			require.EqualValues(t, tt.expectedEnd, config.EndLedger)
 		})
@@ -438,8 +466,10 @@ func TestAdjustedLedgerRangeUnBoundedMode(t *testing.T) {
 			config, err := NewConfig(
 				RuntimeSettings{StartLedger: tt.start, EndLedger: tt.end, ConfigFilePath: tt.configFile, Mode: Append}, nil)
 			require.NoError(t, err)
-			err = config.ValidateAndSetLedgerRange(ctx, mockArchive)
+			err = config.ValidateLedgerRange(ctx, mockArchive)
 			require.NoError(t, err)
+
+			adjustLedgerRange(config, *config.Schema)
 			require.EqualValues(t, tt.expectedStart, config.StartLedger)
 			require.EqualValues(t, tt.expectedEnd, config.EndLedger)
 		})

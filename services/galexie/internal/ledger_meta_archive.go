@@ -2,7 +2,6 @@ package galexie
 
 import (
 	"github.com/stellar/go/support/compressxdr"
-	"github.com/stellar/go/support/datastore"
 	"github.com/stellar/go/xdr"
 )
 
@@ -10,7 +9,7 @@ import (
 type LedgerMetaArchive struct {
 	ObjectKey string
 	Data      xdr.LedgerCloseMetaBatch
-	metaData  datastore.MetaData
+	metaData  MetaData
 }
 
 // NewLedgerMetaArchiveFromXDR creates a new LedgerMetaArchive instance.
@@ -28,7 +27,7 @@ func NewLedgerMetaArchiveFromXDR(networkPassPhrase string, coreVersion string, k
 	return &LedgerMetaArchive{
 		ObjectKey: key,
 		Data:      data,
-		metaData: datastore.MetaData{
+		metaData: MetaData{
 			StartLedger:          startLedger.LedgerSequence(),
 			EndLedger:            endLedger.LedgerSequence(),
 			StartLedgerCloseTime: startLedger.LedgerCloseTime(),

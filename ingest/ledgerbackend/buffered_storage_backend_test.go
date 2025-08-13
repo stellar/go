@@ -16,6 +16,7 @@ import (
 
 	"github.com/stellar/go/support/compressxdr"
 	"github.com/stellar/go/support/datastore"
+	"github.com/stellar/go/support/galexie"
 	"github.com/stellar/go/xdr"
 )
 
@@ -59,7 +60,7 @@ func createBufferedStorageBackendForTesting() BufferedStorageBackend {
 	return BufferedStorageBackend{
 		config:    config,
 		dataStore: dataStore,
-		schema: datastore.DataStoreSchema{
+		schema: galexie.Schema{
 			LedgersPerFile:    ledgerPerFileCount,
 			FilesPerPartition: partitionSize,
 			FileExtension:     "zstd",
@@ -71,7 +72,7 @@ func createMockdataStore(t *testing.T, start, end, partitionSize, count uint32) 
 	mockDataStore := new(datastore.MockDataStore)
 	partition := count*partitionSize - 1
 
-	schema := datastore.DataStoreSchema{
+	schema := galexie.Schema{
 		LedgersPerFile:    count,
 		FilesPerPartition: partitionSize,
 		FileExtension:     "zstd",
@@ -134,7 +135,7 @@ func createLCMBatchReader(start, end, count uint32) io.ReadCloser {
 func TestNewBufferedStorageBackend(t *testing.T) {
 	config := createBufferedStorageBackendConfigForTesting()
 	mockDataStore := new(datastore.MockDataStore)
-	bsb, err := NewBufferedStorageBackend(config, mockDataStore, datastore.DataStoreSchema{
+	bsb, err := NewBufferedStorageBackend(config, mockDataStore, galexie.Schema{
 		LedgersPerFile:    1,
 		FilesPerPartition: 64000,
 	})

@@ -8,7 +8,6 @@ type = "ABC"
 [datastore_config.params]
 destination_bucket_path = "your-bucket-name/subpath/testnet"
 
-[datastore_config.schema]
+[schema]
 ledgers_per_file = 3
 files_per_partition = 1
-file_extension = "xyz"

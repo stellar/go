@@ -180,7 +180,6 @@ func (s *GalexieTestSuite) SetupSuite() {
 	if err = toml.Unmarshal(tomlBytes, &s.config); err != nil {
 		t.Fatalf("unable to marshal config file toml into struct, %v", err)
 	}
-	s.config.DataStoreConfig.NetworkPassphrase = s.config.StellarCoreConfig.NetworkPassphrase
 
 	tempSeedDataPath := filepath.Join(testTempDir, "data")
 	if err = os.MkdirAll(filepath.Join(tempSeedDataPath, "integration-test"), 0777); err != nil {

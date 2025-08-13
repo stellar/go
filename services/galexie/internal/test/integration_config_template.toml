@@ -4,7 +4,7 @@ type = "GCS"
 [datastore_config.params]
 destination_bucket_path = "integration-test/standalone"
 
-[datastore_config.schema]
+[schema]
 ledgers_per_file = 1
 files_per_partition = 10
 

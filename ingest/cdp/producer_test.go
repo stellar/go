@@ -19,6 +19,7 @@ import (
 	"github.com/stellar/go/support/compressxdr"
 	"github.com/stellar/go/support/datastore"
 	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/support/galexie"
 	"github.com/stellar/go/xdr"
 )
 
@@ -116,7 +117,7 @@ func TestBSBProducerFnConfigError(t *testing.T) {
 	}
 	mockDataStore.On("GetFile", mock.Anything, ".config.json").
 		Return(io.NopCloser(bytes.NewReader(configManifestJSON(t))), nil).Once()
-	mockDataStore.On("ListFilePaths", mock.Anything, "", 2).Return(nil, nil)
+	mockDataStore.On("ListFilePaths", mock.Anything, "", 0).Return(nil, nil)
 
 	datastoreFactory = func(_ context.Context, _ datastore.DataStoreConfig) (datastore.DataStore, error) {
 		return mockDataStore, nil
@@ -136,7 +137,7 @@ func TestBSBProducerFnInvalidRange(t *testing.T) {
 	mockDataStore := new(datastore.MockDataStore)
 	mockDataStore.On("GetFile", mock.Anything, ".config.json").
 		Return(io.NopCloser(bytes.NewReader(configManifestJSON(t))), nil).Once()
-	mockDataStore.On("ListFilePaths", mock.Anything, "", 2).Return(nil, nil)
+	mockDataStore.On("ListFilePaths", mock.Anything, "", 0).Return(nil, nil)
 
 	appCallback := func(lcm xdr.LedgerCloseMeta) error {
 		return nil
@@ -168,7 +169,7 @@ func TestBSBProducerFnGetLedgerError(t *testing.T) {
 	// since buffer is multi-worker async, it may get to this on other worker, but not deterministic,
 	// don't assert on it
 	mockDataStore.On("GetFile", mock.Anything, "FFFFFFFC--3.xdr.zst").Return(makeSingleLCMBatch(3), nil).Maybe()
-	mockDataStore.On("ListFilePaths", mock.Anything, "", 2).Return(nil, nil)
+	mockDataStore.On("ListFilePaths", mock.Anything, "", 0).Return(nil, nil)
 
 	appCallback := func(lcm xdr.LedgerCloseMeta) error {
 		return nil
@@ -185,12 +186,12 @@ func TestBSBProducerFnGetLedgerError(t *testing.T) {
 }
 
 func configManifestJSON(t *testing.T) []byte {
-	var expectedManifest = datastore.DatastoreManifest{
-		NetworkPassphrase: "passphrase",
-		Version:           "1.0",
-		Compression:       "xyz",
-		LedgersPerFile:    1,
-		FilesPerPartition: 1,
+	var expectedManifest = galexie.Manifest{
+		NetworkPassphrase:   "passphrase",
+		Version:             "1.0",
+		Compression:         "xyz",
+		LedgersPerBatch:     1,
+		BatchesPerPartition: 1,
 	}
 	configJSON, err := json.Marshal(expectedManifest)
 	require.NoError(t, err)
@@ -220,19 +221,19 @@ func TestBSBProducerFnCallbackError(t *testing.T) {
 func createMockdataStore(t *testing.T, start, end, partitionSize uint32) *datastore.MockDataStore {
 	mockDataStore := new(datastore.MockDataStore)
 
-	var expectedManifest = datastore.DatastoreManifest{
-		NetworkPassphrase: "passphrase",
-		Version:           "1.0",
-		Compression:       "xyz",
-		LedgersPerFile:    1,
-		FilesPerPartition: partitionSize,
+	var expectedManifest = galexie.Manifest{
+		NetworkPassphrase:   "passphrase",
+		Version:             "1.0",
+		Compression:         "xyz",
+		LedgersPerBatch:     1,
+		BatchesPerPartition: partitionSize,
 	}
 	configJSON, err := json.Marshal(expectedManifest)
 	require.NoError(t, err)
 
 	mockDataStore.On("GetFile", mock.Anything, ".config.json").
 		Return(io.NopCloser(bytes.NewReader(configJSON)), nil).Once()
-	mockDataStore.On("ListFilePaths", mock.Anything, "", 2).Return(nil, nil)
+	mockDataStore.On("ListFilePaths", mock.Anything, "", 0).Return(nil, nil)
 
 	partition := partitionSize - 1
 	for i := start; i <= end; i++ {

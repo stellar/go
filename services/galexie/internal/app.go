@@ -20,8 +20,10 @@ import (
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/support/compressxdr"
 	"github.com/stellar/go/support/datastore"
+	"github.com/stellar/go/support/galexie"
 	supporthttp "github.com/stellar/go/support/http"
 	"github.com/stellar/go/support/log"
+	"github.com/stellar/go/support/ordered"
 )
 
 const (
@@ -84,6 +86,7 @@ type App struct {
 	ledgerBackend ledgerbackend.LedgerBackend
 	dataStore     datastore.DataStore
 	exportManager *ExportManager
+	manifest      galexie.Manifest
 	uploader      Uploader
 	adminServer   *http.Server
 }
@@ -112,7 +115,7 @@ func (a *App) init(ctx context.Context, runtimeSettings RuntimeSettings) error {
 	if archive, err = a.config.GenerateHistoryArchive(ctx, logger); err != nil {
 		return err
 	}
-	if err = a.config.ValidateAndSetLedgerRange(ctx, archive); err != nil {
+	if err = a.config.ValidateLedgerRange(ctx, archive); err != nil {
 		return err
 	}
 
@@ -125,20 +128,26 @@ func (a *App) init(ctx context.Context, runtimeSettings RuntimeSettings) error {
 	}
 
 	logger.Infof("Attempting to configure datastore...")
-	manifest, created, err := datastore.PublishConfig(ctx, a.dataStore, a.config.DataStoreConfig)
+	var created bool
+	a.manifest, created, err = a.createManifestIfNotExists(ctx)
 	if err != nil {
 		return fmt.Errorf("could not configure datastore %w", err)
 	}
 
 	if created {
-		logger.WithField("manifest", manifest).Infof("Successfully created datastore config manifest.")
+		logger.WithField("manifest", a.manifest).Infof("Successfully created datastore config manifest.")
 	} else {
-		logger.WithField("manifest", manifest).Infof("Datastore config manifest already exists.")
+		logger.WithField("manifest", a.manifest).Infof("Datastore config manifest already exists.")
+	}
+	schema := galexie.Schema{
+		LedgersPerFile:    a.manifest.LedgersPerBatch,
+		FilesPerPartition: a.manifest.BatchesPerPartition,
 	}
 
+	adjustLedgerRange(a.config, schema)
+
 	if a.config.Resumable() {
-		if err = a.applyResumability(ctx,
-			datastore.NewResumableManager(a.dataStore, a.config.DataStoreConfig.Schema, archive)); err != nil {
+		if err = a.applyResumability(ctx, schema, galexie.NewResumableManager(a.dataStore, schema, archive)); err != nil {
 			return err
 		}
 	}
@@ -151,7 +160,7 @@ func (a *App) init(ctx context.Context, runtimeSettings RuntimeSettings) error {
 	}
 
 	queue := NewUploadQueue(uploadQueueCapacity, registry)
-	if a.exportManager, err = NewExportManager(a.config.DataStoreConfig.Schema,
+	if a.exportManager, err = NewExportManager(schema,
 		a.ledgerBackend, queue, registry,
 		a.config.StellarCoreConfig.NetworkPassphrase,
 		a.config.CoreVersion); err != nil {
@@ -166,9 +175,9 @@ func (a *App) init(ctx context.Context, runtimeSettings RuntimeSettings) error {
 }
 
 func validateExistingFileExtension(ctx context.Context, ds datastore.DataStore) error {
-	fileExt, err := datastore.GetLedgerFileExtension(ctx, ds)
+	fileExt, err := galexie.GetLedgerFileExtension(ctx, ds)
 	if err != nil {
-		if errors.Is(err, datastore.ErrNoLedgerFiles) {
+		if errors.Is(err, galexie.ErrNoLedgerFiles) {
 			// Empty data lake is OK. will bootstrap with .zst going forward.
 			log.Infof("no existing ledger files found in data store")
 			return nil
@@ -184,7 +193,7 @@ func validateExistingFileExtension(ctx context.Context, ds datastore.DataStore) 
 	return nil
 }
 
-func (a *App) applyResumability(ctx context.Context, resumableManager datastore.ResumableManager) error {
+func (a *App) applyResumability(ctx context.Context, schema galexie.Schema, resumableManager galexie.ResumableManager) error {
 	absentLedger, ok, err := resumableManager.FindStart(ctx, a.config.StartLedger, a.config.EndLedger)
 	if err != nil {
 		return err
@@ -194,9 +203,9 @@ func (a *App) applyResumability(ctx context.Context, resumableManager datastore.
 	}
 
 	// TODO - evaluate a more robust validation of remote data for ledgers-per-file consistency
-	// this assumes ValidateAndSetLedgerRange() has conditioned the a.config.StartLedger to be at least > 1
-	if absentLedger > 2 && absentLedger != a.config.DataStoreConfig.Schema.GetSequenceNumberStartBoundary(absentLedger) {
-		return NewInvalidDataStoreError(absentLedger, a.config.DataStoreConfig.Schema.LedgersPerFile)
+	// this assumes ValidateLedgerRange() has conditioned the a.config.StartLedger to be at least > 1
+	if absentLedger > 2 && absentLedger != schema.GetSequenceNumberStartBoundary(absentLedger) {
+		return NewInvalidDataStoreError(absentLedger, schema.LedgersPerFile)
 	}
 	logger.Infof("For export ledger range start=%d, end=%d, the remote storage has some of this data already, will resume at later start ledger of %d", a.config.StartLedger, a.config.EndLedger, absentLedger)
 	a.config.StartLedger = absentLedger
@@ -300,6 +309,77 @@ func (a *App) Run(runtimeSettings RuntimeSettings) error {
 		}
 	}
 	return nil
+}
+
+func (a *App) createManifestIfNotExists(ctx context.Context) (galexie.Manifest, bool, error) {
+	manifest, err := galexie.GetManifest(ctx, a.dataStore)
+	if err == nil {
+		// Validate that the existing manifest matches the provided config
+		if manifest.NetworkPassphrase != a.config.StellarCoreConfig.NetworkPassphrase {
+			return galexie.Manifest{}, false, fmt.Errorf(
+				"network passphrase in manifest (%s) does not match configured network passphrase (%s)",
+				a.config.StellarCoreConfig.NetworkPassphrase,
+				manifest.NetworkPassphrase,
+			)
+		}
+		if manifest.Compression != compressionType {
+			return galexie.Manifest{}, false, fmt.Errorf(
+				"compression type in manifest (%s) does not match configured compression type (%s)",
+				manifest.Compression,
+				compressionType,
+			)
+		}
+		if a.config.Schema != nil {
+			if manifest.BatchesPerPartition != a.config.Schema.FilesPerPartition {
+				return galexie.Manifest{}, false, fmt.Errorf(
+					"files per partition in manifest (%d) does not match configured files per partition (%d)",
+					manifest.BatchesPerPartition,
+					a.config.Schema.FilesPerPartition,
+				)
+			}
+			if manifest.LedgersPerBatch != a.config.Schema.LedgersPerFile {
+				return galexie.Manifest{}, false, fmt.Errorf(
+					"ledgers per file in manifest (%d) does not match configured ledgers per file (%d)",
+					manifest.LedgersPerBatch,
+					a.config.Schema.LedgersPerFile,
+				)
+			}
+		}
+		return manifest, false, nil
+	}
+	if !errors.Is(err, os.ErrNotExist) {
+		return galexie.Manifest{}, false, fmt.Errorf("failed to read manifest: %w", err)
+	}
+
+	if a.config.Schema == nil {
+		return galexie.Manifest{}, false, fmt.Errorf("no schema provided, cannot create manifest")
+	}
+
+	manifest = galexie.Manifest{
+		NetworkPassphrase:   a.config.StellarCoreConfig.NetworkPassphrase,
+		Version:             galexie.ManifestVersion,
+		Compression:         compressionType,
+		LedgersPerBatch:     a.config.Schema.LedgersPerFile,
+		BatchesPerPartition: a.config.Schema.FilesPerPartition,
+	}
+	return manifest, true, galexie.WriteManifest(ctx, a.dataStore, manifest)
+}
+
+func adjustLedgerRange(config *Config, schema galexie.Schema) {
+	// Check if either the start or end ledger does not fall on the "LedgersPerFile" boundary
+	// and adjust the start and end ledger accordingly.
+	// Align the start ledger to the nearest "LedgersPerFile" boundary.
+	config.StartLedger = schema.GetSequenceNumberStartBoundary(config.StartLedger)
+
+	// Ensure that the adjusted start ledger is at least 2.
+	config.StartLedger = ordered.Max(2, config.StartLedger)
+
+	// Align the end ledger (for bounded cases) to the nearest "LedgersPerFile" boundary.
+	if config.EndLedger != 0 {
+		config.EndLedger = schema.GetSequenceNumberEndBoundary(config.EndLedger)
+	}
+
+	logger.Infof("Computed effective export boundary ledger range: start=%d, end=%d", config.StartLedger, config.EndLedger)
 }
 
 // newLedgerBackend Creates and initializes captive core ledger backend

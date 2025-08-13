@@ -5,7 +5,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/stellar/go/support/datastore"
 	"github.com/stellar/go/xdr"
 )
 
@@ -24,7 +23,7 @@ func TestNewLedgerMetaArchiveFromXDR(t *testing.T) {
 	require.NotNil(t, archive)
 
 	// Check if the metadata fields are correctly populated
-	expectedMetaData := datastore.MetaData{
+	expectedMetaData := MetaData{
 		StartLedger:          1234,
 		EndLedger:            1234,
 		StartLedgerCloseTime: 1234 * 100,
@@ -55,7 +54,7 @@ func TestNewLedgerMetaArchiveFromXDR(t *testing.T) {
 	require.NotNil(t, archive)
 
 	// Check if the metadata fields are correctly populated
-	expectedMetaData = datastore.MetaData{
+	expectedMetaData = MetaData{
 		StartLedger:          1234,
 		EndLedger:            1237,
 		StartLedgerCloseTime: 1234 * 100,

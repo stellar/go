@@ -11,6 +11,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/stellar/go/support/datastore"
+	"github.com/stellar/go/support/galexie"
 	"github.com/stellar/go/xdr"
 )
 
@@ -35,7 +36,7 @@ type BufferedStorageBackend struct {
 	ledgerBuffer *ledgerBuffer
 
 	dataStore  datastore.DataStore
-	schema     datastore.DataStoreSchema
+	schema     galexie.Schema
 	prepared   *Range // Non-nil if any range is prepared
 	closed     bool   // False until the core is closed
 	lcmBatch   xdr.LedgerCloseMetaBatch
@@ -44,7 +45,7 @@ type BufferedStorageBackend struct {
 }
 
 // NewBufferedStorageBackend returns a new BufferedStorageBackend instance.
-func NewBufferedStorageBackend(config BufferedStorageBackendConfig, dataStore datastore.DataStore, schema datastore.DataStoreSchema) (*BufferedStorageBackend, error) {
+func NewBufferedStorageBackend(config BufferedStorageBackendConfig, dataStore datastore.DataStore, schema galexie.Schema) (*BufferedStorageBackend, error) {
 	if config.BufferSize == 0 {
 		return nil, errors.New("buffer size must be > 0")
 	}

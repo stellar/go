@@ -9,6 +9,7 @@ import (
 
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/support/datastore"
+	"github.com/stellar/go/support/galexie"
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/support/ordered"
 	"github.com/stellar/go/xdr"
@@ -56,6 +57,7 @@ type PublisherConfig struct {
 	BufferedStorageConfig ledgerbackend.BufferedStorageBackendConfig
 	//DataStoreConfig, required
 	DataStoreConfig datastore.DataStoreConfig
+	Schema          *galexie.Schema
 	// Log, optional, if nil uses go default logger
 	Log *log.Entry
 }
@@ -98,9 +100,17 @@ func ApplyLedgerMetadata(ledgerRange ledgerbackend.Range,
 		return fmt.Errorf("failed to create datastore: %w", err)
 	}
 
-	schema, err := datastore.LoadSchema(context.Background(), dataStore, publisherConfig.DataStoreConfig)
-	if err != nil {
-		return fmt.Errorf("failed to retrieve datastore schema: %w", err)
+	var schema galexie.Schema
+	if publisherConfig.Schema != nil {
+		if err = publisherConfig.Schema.Validate(ctx, dataStore); err != nil {
+			return fmt.Errorf("failed to validate schema against datastore: %w", err)
+		}
+		schema = *publisherConfig.Schema
+	} else {
+		schema, err = galexie.LoadSchema(ctx, dataStore)
+		if err != nil {
+			return fmt.Errorf("failed to load schema from datastore: %w", err)
+		}
 	}
 
 	var ledgerBackend ledgerbackend.LedgerBackend

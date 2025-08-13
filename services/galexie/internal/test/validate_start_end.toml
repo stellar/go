@@ -1,4 +1,4 @@
-[datastore_config.schema]
+[schema]
 ledgers_per_file = 1
 
 [stellar_core_config]

@@ -13,7 +13,7 @@ type = "GCS"
 # The Google Cloud Storage bucket path for storing data, with optional subpaths for organization.
 destination_bucket_path = "path/to/my/bucket"
 
-[datastore_config.schema]
+[schema]
 # Configuration for data organization
 ledgers_per_file = 1      # Number of ledgers stored in each file.
 files_per_partition = 64000   # Number of files per partition/directory.

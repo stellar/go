@@ -14,7 +14,7 @@ import (
 
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/support/collections/set"
-	"github.com/stellar/go/support/datastore"
+	"github.com/stellar/go/support/galexie"
 	"github.com/stellar/go/xdr"
 )
 
@@ -59,7 +59,7 @@ func (s *ExportManagerSuite) TearDownTest() {
 }
 
 func (s *ExportManagerSuite) TestInvalidExportConfig() {
-	config := datastore.DataStoreSchema{LedgersPerFile: 0, FilesPerPartition: 10}
+	config := galexie.Schema{LedgersPerFile: 0, FilesPerPartition: 10}
 	registry := prometheus.NewRegistry()
 	queue := NewUploadQueue(1, registry)
 	_, err := NewExportManager(config, &s.mockBackend, queue, registry, "passphrase", "coreversion")
@@ -67,7 +67,7 @@ func (s *ExportManagerSuite) TestInvalidExportConfig() {
 }
 
 func (s *ExportManagerSuite) TestRun() {
-	config := datastore.DataStoreSchema{LedgersPerFile: 64, FilesPerPartition: 10}
+	config := galexie.Schema{LedgersPerFile: 64, FilesPerPartition: 10}
 	registry := prometheus.NewRegistry()
 	queue := NewUploadQueue(1, registry)
 	exporter, err := NewExportManager(config, &s.mockBackend, queue, registry, "passphrase", "coreversion")
@@ -117,7 +117,7 @@ func (s *ExportManagerSuite) TestRun() {
 }
 
 func (s *ExportManagerSuite) TestRunContextCancel() {
-	config := datastore.DataStoreSchema{LedgersPerFile: 1, FilesPerPartition: 1}
+	config := galexie.Schema{LedgersPerFile: 1, FilesPerPartition: 1}
 
 	registry := prometheus.NewRegistry()
 	queue := NewUploadQueue(1, registry)
@@ -148,7 +148,7 @@ func (s *ExportManagerSuite) TestRunContextCancel() {
 }
 
 func (s *ExportManagerSuite) TestRunWithCanceledContext() {
-	config := datastore.DataStoreSchema{LedgersPerFile: 1, FilesPerPartition: 10}
+	config := galexie.Schema{LedgersPerFile: 1, FilesPerPartition: 10}
 
 	registry := prometheus.NewRegistry()
 	queue := NewUploadQueue(1, registry)
@@ -168,7 +168,7 @@ func (s *ExportManagerSuite) TestRunWithCanceledContext() {
 }
 
 func (s *ExportManagerSuite) TestAddLedgerCloseMeta() {
-	config := datastore.DataStoreSchema{LedgersPerFile: 1, FilesPerPartition: 10}
+	config := galexie.Schema{LedgersPerFile: 1, FilesPerPartition: 10}
 
 	registry := prometheus.NewRegistry()
 	queue := NewUploadQueue(1, registry)
@@ -207,7 +207,7 @@ func (s *ExportManagerSuite) TestAddLedgerCloseMeta() {
 }
 
 func (s *ExportManagerSuite) TestAddLedgerCloseMetaContextCancel() {
-	config := datastore.DataStoreSchema{LedgersPerFile: 1, FilesPerPartition: 10}
+	config := galexie.Schema{LedgersPerFile: 1, FilesPerPartition: 10}
 	registry := prometheus.NewRegistry()
 	queue := NewUploadQueue(1, registry)
 	exporter, err := NewExportManager(config, &s.mockBackend, queue, registry, "passphrase", "coreversion")

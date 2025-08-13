@@ -195,53 +195,54 @@ func TestGCSPutFileWithMetadata(t *testing.T) {
 	})
 
 	// Initial metadata
-	metadataObj := MetaData{StartLedger: 1234,
-		EndLedger:            1234,
-		StartLedgerCloseTime: 1234,
-		EndLedgerCloseTime:   1234,
-		NetworkPassPhrase:    "testnet",
-		CompressionType:      "zstd",
-		ProtocolVersion:      21,
-		CoreVersion:          "v1.2.3",
-		Version:              "1.0.0",
+	metadataObj := map[string]string{
+		"start_ledger":            "1234",
+		"end_ledger":              "1234",
+		"start_ledger_close_time": "1234",
+		"end_ledger_close_time":   "1234",
+		"network_pass_phrase":     "testnet",
+		"compression_type":        "zstd",
+		"protocol_version":        "21",
+		"core_version":            "v1.2.3",
+		"version":                 "1.0.0",
 	}
 
 	content := []byte("inside the file")
 	writerTo := &writerToRecorder{
 		WriterTo: bytes.NewReader(content),
 	}
-	err = store.PutFile(context.Background(), "file.txt", writerTo, metadataObj.ToMap())
+	err = store.PutFile(context.Background(), "file.txt", writerTo, metadataObj)
 	require.NoError(t, err)
 	require.Equal(t, int64(len(content)), writerTo.total)
 
 	metadata, err := store.GetFileMetadata(context.Background(), "file.txt")
 	require.NoError(t, err)
-	require.Equal(t, metadataObj.ToMap(), metadata)
+	require.Equal(t, metadataObj, metadata)
 
 	// Update metadata
-	modifiedMetadataObj := MetaData{
-		StartLedger:          5678,
-		EndLedger:            6789,
-		StartLedgerCloseTime: 1622547800,
-		EndLedgerCloseTime:   1622548900,
-		NetworkPassPhrase:    "mainnet",
-		CompressionType:      "gzip",
-		ProtocolVersion:      23,
-		CoreVersion:          "v1.4.0",
-		Version:              "2.0.0",
+	modifiedMetadataObj := map[string]string{
+		"start_ledger":            "5678",
+		"end_ledger":              "6789",
+		"start_ledger_close_time": "1622547800",
+		"end_ledger_close_time":   "1622548900",
+		"network_pass_phrase":     "mainnet",
+		"compression_type":        "gzip",
+		"protocol_version":        "23",
+		"core_version":            "v1.4.0",
+		"version":                 "2.0.0",
 	}
 
 	otherContent := []byte("other text")
 	writerTo = &writerToRecorder{
 		WriterTo: bytes.NewReader(otherContent),
 	}
-	err = store.PutFile(context.Background(), "file.txt", writerTo, modifiedMetadataObj.ToMap())
+	err = store.PutFile(context.Background(), "file.txt", writerTo, modifiedMetadataObj)
 	require.NoError(t, err)
 	require.Equal(t, int64(len(otherContent)), writerTo.total)
 
 	metadata, err = store.GetFileMetadata(context.Background(), "file.txt")
 	require.NoError(t, err)
-	require.Equal(t, modifiedMetadataObj.ToMap(), metadata)
+	require.Equal(t, modifiedMetadataObj, metadata)
 }
 
 func TestGCSPutFileIfNotExistsWithMetadata(t *testing.T) {
@@ -262,53 +263,54 @@ func TestGCSPutFileIfNotExistsWithMetadata(t *testing.T) {
 		require.NoError(t, store.Close())
 	})
 
-	metadataObj := MetaData{StartLedger: 1234,
-		EndLedger:            1234,
-		StartLedgerCloseTime: 1234,
-		EndLedgerCloseTime:   1234,
-		NetworkPassPhrase:    "testnet",
-		CompressionType:      "zstd",
-		ProtocolVersion:      21,
-		CoreVersion:          "v1.2.3",
-		Version:              "1.0.0",
+	metadataObj := map[string]string{
+		"start_ledger":            "1234",
+		"end_ledger":              "1234",
+		"start_ledger_close_time": "1234",
+		"end_ledger_close_time":   "1234",
+		"network_pass_phrase":     "testnet",
+		"compression_type":        "zstd",
+		"protocol_version":        "21",
+		"core_version":            "v1.2.3",
+		"version":                 "1.0.0",
 	}
 
 	newContent := []byte("overwrite the file")
 	writerTo := &writerToRecorder{
 		WriterTo: bytes.NewReader(newContent),
 	}
-	ok, err := store.PutFileIfNotExists(context.Background(), "file.txt", writerTo, metadataObj.ToMap())
+	ok, err := store.PutFileIfNotExists(context.Background(), "file.txt", writerTo, metadataObj)
 	require.NoError(t, err)
 	require.True(t, ok)
 	require.Equal(t, int64(len(newContent)), writerTo.total)
 
 	metadata, err := store.GetFileMetadata(context.Background(), "file.txt")
 	require.NoError(t, err)
-	require.Equal(t, metadataObj.ToMap(), metadata)
+	require.Equal(t, metadataObj, metadata)
 
-	modifiedMetadataObj := MetaData{
-		StartLedger:          5678,
-		EndLedger:            6789,
-		StartLedgerCloseTime: 1622547800,
-		EndLedgerCloseTime:   1622548900,
-		NetworkPassPhrase:    "mainnet",
-		CompressionType:      "gzip",
-		ProtocolVersion:      23,
-		CoreVersion:          "v1.4.0",
-		Version:              "2.0.0",
+	modifiedMetadataObj := map[string]string{
+		"start_ledger":            "5678",
+		"end_ledger":              "6789",
+		"start_ledger_close_time": "1622547800",
+		"end_ledger_close_time":   "1622548900",
+		"network_pass_phrase":     "mainnet",
+		"compression_type":        "gzip",
+		"protocol_version":        "23",
+		"core_version":            "v1.4.0",
+		"version":                 "2.0.0",
 	}
 
 	writerTo = &writerToRecorder{
 		WriterTo: bytes.NewReader(newContent),
 	}
-	ok, err = store.PutFileIfNotExists(context.Background(), "file.txt", writerTo, modifiedMetadataObj.ToMap())
+	ok, err = store.PutFileIfNotExists(context.Background(), "file.txt", writerTo, modifiedMetadataObj)
 	require.NoError(t, err)
 	require.False(t, ok)
 	require.Equal(t, int64(len(newContent)), writerTo.total)
 
 	metadata, err = store.GetFileMetadata(context.Background(), "file.txt")
 	require.NoError(t, err)
-	require.Equal(t, metadataObj.ToMap(), metadata)
+	require.Equal(t, metadataObj, metadata)
 }
 
 func TestGCSGetNonExistentFile(t *testing.T) {

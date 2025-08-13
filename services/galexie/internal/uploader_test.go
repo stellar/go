@@ -52,7 +52,7 @@ func (s *UploaderSuite) TestUploadWithMetadata() {
 	for i := start; i <= end; i++ {
 		_ = archive.Data.AddLedger(createLedgerCloseMeta(i))
 	}
-	metadata := datastore.MetaData{
+	metadata := MetaData{
 		StartLedger:          start,
 		EndLedger:            end,
 		StartLedgerCloseTime: 123456789,
@@ -88,7 +88,7 @@ func (s *UploaderSuite) testUpload(putOkReturnVal bool) {
 
 	var capturedBuf bytes.Buffer
 	var capturedKey string
-	s.mockDataStore.On("PutFileIfNotExists", mock.Anything, key, mock.Anything, datastore.MetaData{}.ToMap()).
+	s.mockDataStore.On("PutFileIfNotExists", mock.Anything, key, mock.Anything, MetaData{}.ToMap()).
 		Run(func(args mock.Arguments) {
 			capturedKey = args.Get(1).(string)
 			_, err := args.Get(2).(io.WriterTo).WriteTo(&capturedBuf)
@@ -201,7 +201,7 @@ func (s *UploaderSuite) testUploadPutError(putOkReturnVal bool) {
 	archive := NewLedgerMetaArchive(key, start, end)
 
 	s.mockDataStore.On("PutFileIfNotExists", context.Background(), key,
-		mock.Anything, datastore.MetaData{}.ToMap()).Return(putOkReturnVal, errors.New("error in PutFileIfNotExists")).Once()
+		mock.Anything, MetaData{}.ToMap()).Return(putOkReturnVal, errors.New("error in PutFileIfNotExists")).Once()
 
 	registry := prometheus.NewRegistry()
 	queue := NewUploadQueue(1, registry)
@@ -276,11 +276,11 @@ func (s *UploaderSuite) TestRunContextCancel() {
 	registry := prometheus.NewRegistry()
 	queue := NewUploadQueue(1, registry)
 
-	first := s.mockDataStore.On("PutFileIfNotExists", mock.Anything, "test", mock.Anything, datastore.MetaData{}.ToMap()).
+	first := s.mockDataStore.On("PutFileIfNotExists", mock.Anything, "test", mock.Anything, MetaData{}.ToMap()).
 		Return(true, nil).Once().Run(func(args mock.Arguments) {
 		cancel()
 	})
-	s.mockDataStore.On("PutFileIfNotExists", mock.Anything, "test1", mock.Anything, datastore.MetaData{}.ToMap()).
+	s.mockDataStore.On("PutFileIfNotExists", mock.Anything, "test1", mock.Anything, MetaData{}.ToMap()).
 		Return(true, nil).Once().NotBefore(first).Run(func(args mock.Arguments) {
 		ctxArg := args.Get(0).(context.Context)
 		s.Require().NoError(ctxArg.Err())
@@ -321,6 +321,6 @@ func NewLedgerMetaArchive(key string, startSeq uint32, endSeq uint32) *LedgerMet
 			StartSequence: xdr.Uint32(startSeq),
 			EndSequence:   xdr.Uint32(endSeq),
 		},
-		metaData: datastore.MetaData{},
+		metaData: MetaData{},
 	}
 }

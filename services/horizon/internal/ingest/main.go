@@ -23,6 +23,7 @@ import (
 	"github.com/stellar/go/support/datastore"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/support/galexie"
 	logpkg "github.com/stellar/go/support/log"
 	"github.com/stellar/go/support/storage"
 	"github.com/stellar/go/xdr"
@@ -116,6 +117,7 @@ const (
 type StorageBackendConfig struct {
 	DataStoreConfig              datastore.DataStoreConfig                  `toml:"datastore_config"`
 	BufferedStorageBackendConfig ledgerbackend.BufferedStorageBackendConfig `toml:"buffered_storage_backend_config"`
+	Schema                       *galexie.Schema                            `toml:"schema"`
 }
 
 type Config struct {
@@ -306,11 +308,19 @@ func NewSystem(config Config) (System, error) {
 			return nil, fmt.Errorf("failed to create datastore: %w", err)
 		}
 
-		var schema datastore.DataStoreSchema
-		schema, err = datastore.LoadSchema(context.Background(), dataStore, config.StorageBackendConfig.DataStoreConfig)
-		if err != nil {
-			cancel()
-			return nil, fmt.Errorf("failed to retrieve datastore schema: %w", err)
+		var schema galexie.Schema
+		if config.StorageBackendConfig.Schema != nil {
+			if err = config.StorageBackendConfig.Schema.Validate(ctx, dataStore); err != nil {
+				cancel()
+				return nil, fmt.Errorf("failed to validate schema against datastore: %w", err)
+			}
+			schema = *config.StorageBackendConfig.Schema
+		} else {
+			schema, err = galexie.LoadSchema(ctx, dataStore)
+			if err != nil {
+				cancel()
+				return nil, fmt.Errorf("failed to load schema from datastore: %w", err)
+			}
 		}
 
 		ledgerBackend, err = ledgerbackend.NewBufferedStorageBackend(config.StorageBackendConfig.BufferedStorageBackendConfig, dataStore, schema)

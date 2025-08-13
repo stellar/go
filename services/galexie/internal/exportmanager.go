@@ -8,12 +8,12 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/stellar/go/ingest/ledgerbackend"
-	"github.com/stellar/go/support/datastore"
+	"github.com/stellar/go/support/galexie"
 	"github.com/stellar/go/xdr"
 )
 
 type ExportManager struct {
-	dataStoreSchema    datastore.DataStoreSchema
+	dataStoreSchema    galexie.Schema
 	ledgerBackend      ledgerbackend.LedgerBackend
 	currentMetaArchive *xdr.LedgerCloseMetaBatch
 	queue              UploadQueue
@@ -23,7 +23,7 @@ type ExportManager struct {
 }
 
 // NewExportManager creates a new ExportManager with the provided configuration.
-func NewExportManager(dataStoreSchema datastore.DataStoreSchema,
+func NewExportManager(dataStoreSchema galexie.Schema,
 	backend ledgerbackend.LedgerBackend,
 	queue UploadQueue,
 	prometheusRegistry *prometheus.Registry,
