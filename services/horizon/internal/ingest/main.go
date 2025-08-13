@@ -305,7 +305,15 @@ func NewSystem(config Config) (System, error) {
 			cancel()
 			return nil, fmt.Errorf("failed to create datastore: %w", err)
 		}
-		ledgerBackend, err = ledgerbackend.NewBufferedStorageBackend(config.StorageBackendConfig.BufferedStorageBackendConfig, dataStore)
+
+		var schema datastore.DataStoreSchema
+		schema, err = datastore.LoadSchema(context.Background(), dataStore, config.StorageBackendConfig.DataStoreConfig)
+		if err != nil {
+			cancel()
+			return nil, fmt.Errorf("failed to retrieve datastore schema: %w", err)
+		}
+
+		ledgerBackend, err = ledgerbackend.NewBufferedStorageBackend(config.StorageBackendConfig.BufferedStorageBackendConfig, dataStore, schema)
 		if err != nil {
 			cancel()
 			return nil, fmt.Errorf("failed to create buffered storage backend: %w", err)

@@ -35,6 +35,7 @@ type BufferedStorageBackend struct {
 	ledgerBuffer *ledgerBuffer
 
 	dataStore  datastore.DataStore
+	schema     datastore.DataStoreSchema
 	prepared   *Range // Non-nil if any range is prepared
 	closed     bool   // False until the core is closed
 	lcmBatch   xdr.LedgerCloseMetaBatch
@@ -43,7 +44,7 @@ type BufferedStorageBackend struct {
 }
 
 // NewBufferedStorageBackend returns a new BufferedStorageBackend instance.
-func NewBufferedStorageBackend(config BufferedStorageBackendConfig, dataStore datastore.DataStore) (*BufferedStorageBackend, error) {
+func NewBufferedStorageBackend(config BufferedStorageBackendConfig, dataStore datastore.DataStore, schema datastore.DataStoreSchema) (*BufferedStorageBackend, error) {
 	if config.BufferSize == 0 {
 		return nil, errors.New("buffer size must be > 0")
 	}
@@ -52,13 +53,14 @@ func NewBufferedStorageBackend(config BufferedStorageBackendConfig, dataStore da
 		return nil, errors.New("number of workers must be <= BufferSize")
 	}
 
-	if dataStore.GetSchema().LedgersPerFile <= 0 {
+	if schema.LedgersPerFile <= 0 {
 		return nil, errors.New("ledgersPerFile must be > 0")
 	}
 
 	bsBackend := &BufferedStorageBackend{
 		config:    config,
 		dataStore: dataStore,
+		schema:    schema,
 	}
 
 	return bsBackend, nil

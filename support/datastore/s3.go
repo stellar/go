@@ -29,7 +29,6 @@ type S3DataStore struct {
 	uploader *manager.Uploader
 	bucket   string
 	prefix   string
-	schema   DataStoreSchema
 }
 
 func NewS3DataStore(ctx context.Context, datastoreConfig DataStoreConfig) (DataStore, error) {
@@ -66,10 +65,10 @@ func NewS3DataStore(ctx context.Context, datastoreConfig DataStoreConfig) (DataS
 		o.UsePathStyle = true
 	})
 
-	return FromS3Client(ctx, client, destinationBucketPath, datastoreConfig.Schema)
+	return FromS3Client(ctx, client, destinationBucketPath)
 }
 
-func FromS3Client(ctx context.Context, client *s3.Client, bucketPath string, schema DataStoreSchema) (DataStore, error) {
+func FromS3Client(ctx context.Context, client *s3.Client, bucketPath string) (DataStore, error) {
 	s3BucketURL := fmt.Sprintf("s3://%s", bucketPath)
 	parsed, err := url.Parse(s3BucketURL)
 	if err != nil {
@@ -113,7 +112,7 @@ func FromS3Client(ctx context.Context, client *s3.Client, bucketPath string, sch
 		return nil, fmt.Errorf("failed to list objects in bucket '%s': %w", bucketName, err)
 	}
 
-	return S3DataStore{client: client, uploader: uploader, bucket: bucketName, prefix: prefix, schema: schema}, nil
+	return S3DataStore{client: client, uploader: uploader, bucket: bucketName, prefix: prefix}, nil
 }
 
 // GetFileMetadata retrieves the metadata for the specified file in the S3-compatible bucket.
@@ -232,13 +231,7 @@ func (b S3DataStore) Size(ctx context.Context, filePath string) (int64, error) {
 	return *output.ContentLength, nil
 }
 
-// GetSchema returns the schema information which defines the structure
-// and organization of data in the datastore.
-func (b S3DataStore) GetSchema() DataStoreSchema {
-	return b.schema
-}
-
-// Close does nothing for S3DataStore as it does not maintain a persistent connection.
+// Close does nothing for S3ObjectStore as it does not maintain a persistent connection.
 func (b S3DataStore) Close() error {
 	return nil
 }

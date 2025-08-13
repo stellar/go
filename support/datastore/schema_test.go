@@ -17,16 +17,16 @@ func TestGetObjectKeyFromSequenceNumber(t *testing.T) {
 		ledgersPerFile    uint32
 		expectedKey       string
 	}{
-		{0, 5, 1, "FFFFFFFA--5.xdr.zstd"},
-		{0, 5, 10, "FFFFFFFF--0-9.xdr.zstd"},
-		{2, 10, 100, "FFFFFFFF--0-199/FFFFFFFF--0-99.xdr.zstd"},
-		{2, 150, 50, "FFFFFF9B--100-199/FFFFFF69--150-199.xdr.zstd"},
-		{2, 300, 200, "FFFFFFFF--0-399/FFFFFF37--200-399.xdr.zstd"},
-		{2, 1, 1, "FFFFFFFF--0-1/FFFFFFFE--1.xdr.zstd"},
-		{4, 10, 100, "FFFFFFFF--0-399/FFFFFFFF--0-99.xdr.zstd"},
-		{4, 250, 50, "FFFFFF37--200-399/FFFFFF05--250-299.xdr.zstd"},
-		{1, 300, 200, "FFFFFF37--200-399.xdr.zstd"},
-		{1, 1, 1, "FFFFFFFE--1.xdr.zstd"},
+		{0, 5, 1, "FFFFFFFA--5.xdr.zst"},
+		{0, 5, 10, "FFFFFFFF--0-9.xdr.zst"},
+		{2, 10, 100, "FFFFFFFF--0-199/FFFFFFFF--0-99.xdr.zst"},
+		{2, 150, 50, "FFFFFF9B--100-199/FFFFFF69--150-199.xdr.zst"},
+		{2, 300, 200, "FFFFFFFF--0-399/FFFFFF37--200-399.xdr.zst"},
+		{2, 1, 1, "FFFFFFFF--0-1/FFFFFFFE--1.xdr.zst"},
+		{4, 10, 100, "FFFFFFFF--0-399/FFFFFFFF--0-99.xdr.zst"},
+		{4, 250, 50, "FFFFFF37--200-399/FFFFFF05--250-299.xdr.zst"},
+		{1, 300, 200, "FFFFFF37--200-399.xdr.zst"},
+		{1, 1, 1, "FFFFFFFE--1.xdr.zst"},
 	}
 
 	for _, tc := range testCases {

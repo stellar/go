@@ -10,6 +10,7 @@ import (
 type DataStoreSchema struct {
 	LedgersPerFile    uint32 `toml:"ledgers_per_file"`
 	FilesPerPartition uint32 `toml:"files_per_partition"`
+	FileExtension     string // Optional – for backward (zstd) compatibility only
 }
 
 func (ec DataStoreSchema) GetSequenceNumberStartBoundary(ledgerSeq uint32) uint32 {
@@ -43,7 +44,12 @@ func (ec DataStoreSchema) GetObjectKeyFromSequenceNumber(ledgerSeq uint32) strin
 	if fileStart != fileEnd {
 		objectKey += fmt.Sprintf("-%d", fileEnd)
 	}
-	objectKey += fmt.Sprintf(".xdr.%s", compressxdr.DefaultCompressor.Name())
+
+	if ec.FileExtension == "" {
+		ec.FileExtension = compressxdr.DefaultCompressor.Name()
+	}
+
+	objectKey += fmt.Sprintf(".xdr.%s", ec.FileExtension)
 
 	return objectKey
 }

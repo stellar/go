@@ -11,3 +11,4 @@ destination_bucket_path = "your-bucket-name/subpath/testnet"
 [datastore_config.schema]
 ledgers_per_file = 3
 files_per_partition = 1
+file_extension = "xyz"

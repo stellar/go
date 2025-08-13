@@ -25,7 +25,6 @@ type GCSDataStore struct {
 	client *storage.Client
 	bucket *storage.BucketHandle
 	prefix string
-	schema DataStoreSchema
 }
 
 func NewGCSDataStore(ctx context.Context, dataStoreConfig DataStoreConfig) (DataStore, error) {
@@ -39,10 +38,10 @@ func NewGCSDataStore(ctx context.Context, dataStoreConfig DataStoreConfig) (Data
 		return nil, err
 	}
 
-	return FromGCSClient(ctx, client, destinationBucketPath, dataStoreConfig.Schema)
+	return FromGCSClient(ctx, client, destinationBucketPath)
 }
 
-func FromGCSClient(ctx context.Context, client *storage.Client, bucketPath string, schema DataStoreSchema) (DataStore, error) {
+func FromGCSClient(ctx context.Context, client *storage.Client, bucketPath string) (DataStore, error) {
 	// append the gcs:// scheme to enable usage of the url package reliably to
 	// get parse bucket name which is first path segment as URL.Host
 	gcsBucketURL := fmt.Sprintf("gcs://%s", bucketPath)
@@ -62,8 +61,7 @@ func FromGCSClient(ctx context.Context, client *storage.Client, bucketPath strin
 		return nil, fmt.Errorf("failed to retrieve bucket attributes: %w", err)
 	}
 
-	// TODO: Datastore schema to be fetched from the datastore https://stellarorg.atlassian.net/browse/HUBBLE-397
-	return &GCSDataStore{client: client, bucket: bucket, prefix: prefix, schema: schema}, nil
+	return &GCSDataStore{client: client, bucket: bucket, prefix: prefix}, nil
 }
 
 // GetFileMetadata retrieves the metadata for the specified file in the GCS bucket.
@@ -184,12 +182,6 @@ func (b GCSDataStore) putFile(ctx context.Context, filePath string, in io.Writer
 
 	}
 	return w.Close()
-}
-
-// GetSchema returns the schema information which defines the structure
-// and organization of data in the datastore.
-func (b GCSDataStore) GetSchema() DataStoreSchema {
-	return b.schema
 }
 
 // ListFilePaths lists up to 'limit' file paths under the provided prefix.

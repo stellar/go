@@ -22,6 +22,7 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/fsouza/fake-gcs-server/fakestorage"
+
 	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/support/datastore"
 	"github.com/stellar/go/support/storage"
@@ -79,7 +80,7 @@ func (s *GalexieTestSuite) TestScanAndFill() {
 	datastore, err := datastore.NewDataStore(s.ctx, s.config.DataStoreConfig)
 	require.NoError(err)
 
-	_, err = datastore.GetFile(s.ctx, "FFFFFFFF--0-9/FFFFFFFA--5.xdr.zstd")
+	_, err = datastore.GetFile(s.ctx, "FFFFFFFF--0-9/FFFFFFFA--5.xdr.zst")
 	require.NoError(err)
 }
 
@@ -109,7 +110,7 @@ func (s *GalexieTestSuite) TestAppend() {
 	datastore, err := datastore.NewDataStore(s.ctx, s.config.DataStoreConfig)
 	require.NoError(err)
 
-	_, err = datastore.GetFile(s.ctx, "FFFFFFFF--0-9/FFFFFFF6--9.xdr.zstd")
+	_, err = datastore.GetFile(s.ctx, "FFFFFFFF--0-9/FFFFFFF6--9.xdr.zst")
 	require.NoError(err)
 }
 
@@ -142,7 +143,7 @@ func (s *GalexieTestSuite) TestAppendUnbounded() {
 	require.EventuallyWithT(func(c *assert.CollectT) {
 		// this checks every 50ms up to 180s total
 		assert := assert.New(c)
-		_, err = datastore.GetFile(s.ctx, "FFFFFFF5--10-19/FFFFFFF0--15.xdr.zstd")
+		_, err = datastore.GetFile(s.ctx, "FFFFFFF5--10-19/FFFFFFF0--15.xdr.zst")
 		assert.NoError(err)
 	}, 180*time.Second, 50*time.Millisecond, "append unbounded did not work")
 }
@@ -179,6 +180,7 @@ func (s *GalexieTestSuite) SetupSuite() {
 	if err = toml.Unmarshal(tomlBytes, &s.config); err != nil {
 		t.Fatalf("unable to marshal config file toml into struct, %v", err)
 	}
+	s.config.DataStoreConfig.NetworkPassphrase = s.config.StellarCoreConfig.NetworkPassphrase
 
 	tempSeedDataPath := filepath.Join(testTempDir, "data")
 	if err = os.MkdirAll(filepath.Join(tempSeedDataPath, "integration-test"), 0777); err != nil {

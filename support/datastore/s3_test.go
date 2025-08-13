@@ -204,7 +204,7 @@ func setupTestS3DataStore(t *testing.T, ctx context.Context, bucketPath string, 
 		o.UsePathStyle = true
 	})
 
-	store, err := FromS3Client(ctx, client, bucketPath, DataStoreSchema{})
+	store, err := FromS3Client(ctx, client, bucketPath)
 	require.NoError(t, err)
 
 	teardown := func() {

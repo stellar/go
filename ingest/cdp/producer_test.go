@@ -3,6 +3,7 @@ package cdp
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"math"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/support/compressxdr"
@@ -112,6 +114,9 @@ func TestBSBProducerFnConfigError(t *testing.T) {
 	appCallback := func(lcm xdr.LedgerCloseMeta) error {
 		return nil
 	}
+	mockDataStore.On("GetFile", mock.Anything, ".config.json").
+		Return(io.NopCloser(bytes.NewReader(configManifestJSON(t))), nil).Once()
+	mockDataStore.On("ListFilePaths", mock.Anything, "", 2).Return(nil, nil)
 
 	datastoreFactory = func(_ context.Context, _ datastore.DataStoreConfig) (datastore.DataStore, error) {
 		return mockDataStore, nil
@@ -129,10 +134,9 @@ func TestBSBProducerFnInvalidRange(t *testing.T) {
 		BufferedStorageConfig: DefaultBufferedStorageBackendConfig(1),
 	}
 	mockDataStore := new(datastore.MockDataStore)
-	mockDataStore.On("GetSchema").Return(datastore.DataStoreSchema{
-		LedgersPerFile:    1,
-		FilesPerPartition: 1,
-	})
+	mockDataStore.On("GetFile", mock.Anything, ".config.json").
+		Return(io.NopCloser(bytes.NewReader(configManifestJSON(t))), nil).Once()
+	mockDataStore.On("ListFilePaths", mock.Anything, "", 2).Return(nil, nil)
 
 	appCallback := func(lcm xdr.LedgerCloseMeta) error {
 		return nil
@@ -157,15 +161,14 @@ func TestBSBProducerFnGetLedgerError(t *testing.T) {
 	// we don't want to let buffer do real retries, force the first error to propagate
 	pubConfig.BufferedStorageConfig.RetryLimit = 0
 	mockDataStore := new(datastore.MockDataStore)
-	mockDataStore.On("GetSchema").Return(datastore.DataStoreSchema{
-		LedgersPerFile:    1,
-		FilesPerPartition: 1,
-	})
+	mockDataStore.On("GetFile", mock.Anything, ".config.json").
+		Return(io.NopCloser(bytes.NewReader(configManifestJSON(t))), nil).Once()
 
-	mockDataStore.On("GetFile", mock.Anything, "FFFFFFFD--2.xdr.zstd").Return(nil, os.ErrNotExist).Once()
+	mockDataStore.On("GetFile", mock.Anything, "FFFFFFFD--2.xdr.zst").Return(nil, os.ErrNotExist).Once()
 	// since buffer is multi-worker async, it may get to this on other worker, but not deterministic,
 	// don't assert on it
-	mockDataStore.On("GetFile", mock.Anything, "FFFFFFFC--3.xdr.zstd").Return(makeSingleLCMBatch(3), nil).Maybe()
+	mockDataStore.On("GetFile", mock.Anything, "FFFFFFFC--3.xdr.zst").Return(makeSingleLCMBatch(3), nil).Maybe()
+	mockDataStore.On("ListFilePaths", mock.Anything, "", 2).Return(nil, nil)
 
 	appCallback := func(lcm xdr.LedgerCloseMeta) error {
 		return nil
@@ -179,6 +182,19 @@ func TestBSBProducerFnGetLedgerError(t *testing.T) {
 		"error getting ledger")
 
 	mockDataStore.AssertExpectations(t)
+}
+
+func configManifestJSON(t *testing.T) []byte {
+	var expectedManifest = datastore.DatastoreManifest{
+		NetworkPassphrase: "passphrase",
+		Version:           "1.0",
+		Compression:       "xyz",
+		LedgersPerFile:    1,
+		FilesPerPartition: 1,
+	}
+	configJSON, err := json.Marshal(expectedManifest)
+	require.NoError(t, err)
+	return configJSON
 }
 
 func TestBSBProducerFnCallbackError(t *testing.T) {
@@ -203,15 +219,26 @@ func TestBSBProducerFnCallbackError(t *testing.T) {
 
 func createMockdataStore(t *testing.T, start, end, partitionSize uint32) *datastore.MockDataStore {
 	mockDataStore := new(datastore.MockDataStore)
-	partition := partitionSize - 1
-	for i := start; i <= end; i++ {
-		objectName := fmt.Sprintf("FFFFFFFF--0-%d/%08X--%d.xdr.zstd", partition, math.MaxUint32-i, i)
-		mockDataStore.On("GetFile", mock.Anything, objectName).Return(makeSingleLCMBatch(i), nil).Once()
-	}
-	mockDataStore.On("GetSchema").Return(datastore.DataStoreSchema{
+
+	var expectedManifest = datastore.DatastoreManifest{
+		NetworkPassphrase: "passphrase",
+		Version:           "1.0",
+		Compression:       "xyz",
 		LedgersPerFile:    1,
 		FilesPerPartition: partitionSize,
-	})
+	}
+	configJSON, err := json.Marshal(expectedManifest)
+	require.NoError(t, err)
+
+	mockDataStore.On("GetFile", mock.Anything, ".config.json").
+		Return(io.NopCloser(bytes.NewReader(configJSON)), nil).Once()
+	mockDataStore.On("ListFilePaths", mock.Anything, "", 2).Return(nil, nil)
+
+	partition := partitionSize - 1
+	for i := start; i <= end; i++ {
+		objectName := fmt.Sprintf("FFFFFFFF--0-%d/%08X--%d.xdr.zst", partition, math.MaxUint32-i, i)
+		mockDataStore.On("GetFile", mock.Anything, objectName).Return(makeSingleLCMBatch(i), nil).Once()
+	}
 
 	t.Cleanup(func() {
 		mockDataStore.AssertExpectations(t)

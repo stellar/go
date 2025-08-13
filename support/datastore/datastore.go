@@ -2,15 +2,22 @@ package datastore
 
 import (
 	"context"
+	"fmt"
 	"io"
-
-	"github.com/stellar/go/support/errors"
 )
 
+const (
+	manifestFilename = ".config.json"
+	Version          = "1.0"
+)
+
+// DataStoreConfig defines user-provided configuration used to initialize a DataStore.
 type DataStoreConfig struct {
-	Type   string            `toml:"type"`
-	Params map[string]string `toml:"params"`
-	Schema DataStoreSchema   `toml:"schema"`
+	Type              string            `toml:"type"`
+	Params            map[string]string `toml:"params"`
+	Schema            DataStoreSchema   `toml:"schema"`
+	NetworkPassphrase string
+	Compression       string
 }
 
 const listFilePathsMaxLimit = 1000
@@ -23,12 +30,7 @@ type DataStore interface {
 	PutFileIfNotExists(ctx context.Context, path string, in io.WriterTo, metaData map[string]string) (bool, error)
 	Exists(ctx context.Context, path string) (bool, error)
 	Size(ctx context.Context, path string) (int64, error)
-	// ListFilePaths lists up to 'limit' file paths under the provided prefix.
-	// Returned paths are absolute within the datastore (including the given prefix)
-	// and ordered lexicographically ascending as provided by the backend.
-	// If limit <= 0, implementations default to a cap of 1,000; values > 1,000 are capped to 1,000.
 	ListFilePaths(ctx context.Context, prefix string, limit int) ([]string, error)
-	GetSchema() DataStoreSchema
 	Close() error
 }
 
@@ -41,6 +43,6 @@ func NewDataStore(ctx context.Context, datastoreConfig DataStoreConfig) (DataSto
 		return NewS3DataStore(ctx, datastoreConfig)
 
 	default:
-		return nil, errors.Errorf("Invalid datastore type %v, not supported", datastoreConfig.Type)
+		return nil, fmt.Errorf("invalid datastore type %v, not supported", datastoreConfig.Type)
 	}
 }

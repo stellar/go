@@ -20,7 +20,7 @@ type ZstdCompressor struct{}
 
 // GetName returns the name of the compression algorithm.
 func (z ZstdCompressor) Name() string {
-	return "zstd"
+	return "zst"
 }
 
 // NewWriter creates a new Zstd writer.
