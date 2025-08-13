@@ -158,7 +158,7 @@ func TestValidateExistingFileExtension(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			ds := new(datastore.MockDataStore)
-			ds.On("ListFilePaths", context.Background(), "", 2).Return(tc.files, tc.getExtError)
+			ds.On("ListFilePaths", context.Background(), "", 0).Return(tc.files, tc.getExtError)
 
 			actualErr := validateExistingFileExtension(context.Background(), ds)
 
