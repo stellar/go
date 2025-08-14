@@ -19,4 +19,4 @@ This release includes a breaking change to the datastore.
    After restarting, confirm the following:
 
  - New ledger files are being written with the `.zst` extension.
- - A `.config.json` manifest file has been created in your datastore location (this happens automatically).
+ - A `.config.json` manifest file has been created in `destination_bucket_path` (this happens automatically).
