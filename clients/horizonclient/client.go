@@ -16,7 +16,7 @@ import (
 	"github.com/stellar/go/txnbuild"
 	"github.com/stellar/go/xdr"
 
-	"github.com/manucorporat/sse"
+	"github.com/gin-contrib/sse"
 
 	hProtocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/protocols/horizon/effects"
@@ -175,7 +175,7 @@ func (c *Client) stream(
 			// as many bytes as possible and forward them to sse.Decode. However this
 			// requires much more complicated code.
 			// We could also write our own `sse` package that works fine with streams directly
-			// (github.com/manucorporat/sse is just using io/ioutils.ReadAll).
+			// (github.com/gin-contrib/sse is just using io/ioutils.ReadAll).
 			var buffer bytes.Buffer
 			nonEmptylinesRead := 0
 			for {
