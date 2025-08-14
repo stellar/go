@@ -6,7 +6,7 @@ This release includes a breaking change to the datastore.
 #### 1. The Change
    The ledger file extension has been updated from `.zstd` to the standard `.zst` for Zstandard compression.
 
-#### 2. Datastore Update Options
+#### 2. Upgrade Options
    You have two options to upgrade Galexie. Both will require you to start fresh and repopulate your entire data lake, as old files are no longer compatible with this version of Galexie. ⚠️ Galexie will refuse to upload files to any `destination_bucket_path` that still contains `.zstd` files.
 
 **Option 1**: Use a New Datastore Location (Recommended)\
