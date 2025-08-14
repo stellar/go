@@ -16,7 +16,7 @@ This release includes a breaking change to how ledger files are stored in the da
    If you want to use the same `destination_bucket_path`, you must manually delete all the contents contained in that folder before upgrading Galexie. This will permanently remove your existing data history.
 
 #### 3. Post-Upgrade Verification
-   After restarting, confirm the following:
+   After upgrading Galexie, confirm the following:
 
  - New ledger files are being written with the `.zst` extension.
  - A `.config.json` manifest file has been created in `destination_bucket_path` (this happens automatically).
