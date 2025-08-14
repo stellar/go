@@ -22,3 +22,4 @@ debug
 *.conf
 *.lock
 .proto_checksums
+!services/horizon/docker/bootstrap/**

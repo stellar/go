@@ -3,6 +3,9 @@ package integration
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	stderrrors "errors"
 	"fmt"
 	"io/ioutil"
@@ -118,24 +121,19 @@ type Test struct {
 	horizonAdminClient *sdk.AdminClient
 	coreClient         *stellarcore.Client
 
-	webNode          *horizon.App
-	ingestNode       *horizon.App
-	appStopped       *sync.WaitGroup
-	shutdownOnce     sync.Once
-	shutdownCalls    []func()
-	masterKey        *keypair.Full
-	passPhrase       string
-	coreUpgradeState *CoreUpgradeState
-}
-
-type CoreUpgradeState struct {
-	maxUpgradeLedger uint32
+	webNode       *horizon.App
+	ingestNode    *horizon.App
+	appStopped    *sync.WaitGroup
+	shutdownOnce  sync.Once
+	shutdownCalls []func()
+	masterKey     *keypair.Full
+	passPhrase    string
 }
 
 // GetTestConfig returns the default test Config required to run NewTest.
 func GetTestConfig() *Config {
 	return &Config{
-		ProtocolVersion:           17,
+		ProtocolVersion:           23,
 		SkipHorizonStart:          true,
 		SkipCoreContainerCreation: false,
 		HorizonIngestParameters:   map[string]string{},
@@ -167,6 +165,55 @@ func NewTest(t *testing.T, config Config) *Test {
 	if config.NetworkPassphrase == "" {
 		config.NetworkPassphrase = StandaloneNetworkPassphrase
 	}
+	if config.QuickEviction {
+		// QuickEviction implies QuickExpiration
+		config.QuickExpiration = true
+	}
+	validatorParams := validatorParamsFromConfig(config)
+	var i *Test
+	if !config.SkipCoreContainerCreation {
+		composePath := findDockerComposePath()
+		i = &Test{
+			t:           t,
+			config:      config,
+			composePath: composePath,
+			passPhrase:  config.NetworkPassphrase,
+			environment: test.NewEnvironmentManager(),
+			coreClient:  &stellarcore.Client{URL: "http://localhost:" + strconv.Itoa(StellarCorePort)},
+		}
+		i.validatorConfPath = i.createCoreValidatorConf(validatorParams)
+		i.rpcCoreConfPath = i.createCaptiveCoreConf(captiveCoreConfigTemplatePrams{
+			validatorCoreConfigTemplatePrams: validatorParams,
+			ValidatorAddress:                 "core",
+		})
+		i.prepareShutdownHandlers()
+		// Only run Stellar Core container and its dependencies.
+		i.startCoreValidator(validatorParams)
+		i.configureCaptiveCore(validatorParams, true)
+		if i.config.EnableStellarRPC {
+			i.startRPC()
+		}
+		if !config.SkipHorizonStart {
+			require.NoError(i.CurrentTest(), i.StartHorizon(true))
+			i.WaitForHorizonIngest()
+		}
+		if i.config.EnableStellarRPC {
+			i.waitForStellarRPC()
+		}
+	} else {
+		i = &Test{
+			t:           t,
+			config:      config,
+			environment: test.NewEnvironmentManager(),
+			coreClient:  &stellarcore.Client{URL: "http://localhost:" + strconv.Itoa(StellarCorePort)},
+		}
+		i.prepareShutdownHandlers()
+	}
+
+	return i
+}
+
+func validatorParamsFromConfig(config Config) validatorCoreConfigTemplatePrams {
 	validatorParams := validatorCoreConfigTemplatePrams{
 		Accelerate:                            CheckpointFrequency < historyarchive.DefaultCheckpointFrequency,
 		NetworkPassphrase:                     config.NetworkPassphrase,
@@ -178,68 +225,31 @@ func NewTest(t *testing.T, config Config) *Test {
 		validatorParams.OverrideEvictionParamsForTesting = true
 		validatorParams.TestingStartingEvictionScanLevel = 1
 		validatorParams.TestingMaxEntriesToArchive = 100
-		// QuickEviction implies QuickExpiration
-		config.QuickExpiration = true
 	}
 	if config.QuickExpiration {
 		validatorParams.TestingMinimumPersistentEntryLifetime = 10
 	}
-	var i *Test
-	if !config.SkipCoreContainerCreation {
-		composePath := findDockerComposePath()
-		i = &Test{
-			t:           t,
-			config:      config,
-			composePath: composePath,
-			passPhrase:  config.NetworkPassphrase,
-			environment: test.NewEnvironmentManager(),
-		}
-		i.validatorConfPath = i.createCoreValidatorConf(validatorParams)
-		i.rpcCoreConfPath = i.createCaptiveCoreConf(captiveCoreConfigTemplatePrams{
-			validatorCoreConfigTemplatePrams: validatorParams,
-			ValidatorAddress:                 "core",
-		})
-		// Only run Stellar Core container and its dependencies.
-		i.startCoreValidator()
-	} else {
-		i = &Test{
-			t:           t,
-			config:      config,
-			environment: test.NewEnvironmentManager(),
-		}
-	}
-	i.configureCaptiveCore(validatorParams)
-
-	i.prepareShutdownHandlers()
-	i.coreClient = &stellarcore.Client{URL: "http://localhost:" + strconv.Itoa(StellarCorePort)}
-	if !config.SkipCoreContainerCreation {
-		i.waitForCore()
-		if i.config.EnableStellarRPC {
-			i.startRPC()
-			i.waitForStellarRPC()
-		}
-	}
-
-	if !config.SkipHorizonStart {
-		if innerErr := i.StartHorizon(true); innerErr != nil {
-			t.Fatalf("Failed to start Horizon: %v", innerErr)
-		}
-
-		i.WaitForHorizonIngest()
-
-		i.upgradeLimits()
-	}
-
-	return i
+	return validatorParams
 }
 
-func (i *Test) configureCaptiveCore(validatorParams validatorCoreConfigTemplatePrams) {
+func (i *Test) configureCaptiveCore(validatorParams validatorCoreConfigTemplatePrams, useBootstrapDir bool) {
 	i.coreConfig.binaryPath = os.Getenv("HORIZON_INTEGRATION_TESTS_CAPTIVE_CORE_BIN")
 	i.coreConfig.configPath = i.createCaptiveCoreConf(captiveCoreConfigTemplatePrams{
 		validatorCoreConfigTemplatePrams: validatorParams,
 		ValidatorAddress:                 "localhost",
 	})
 	i.coreConfig.storagePath = i.CurrentTest().TempDir()
+
+	if useBootstrapDir {
+		bootstrapDir := filepath.Join(i.composePath, "bootstrap", i.getBootstrapDir())
+		require.NoError(
+			i.CurrentTest(),
+			os.CopyFS(
+				filepath.Join(i.coreConfig.storagePath, "captive-core"),
+				os.DirFS(filepath.Join(bootstrapDir, "captive-core")),
+			),
+		)
+	}
 
 	if value := i.getIngestParameter(
 		horizon.StellarCoreBinaryPathName,
@@ -309,13 +319,12 @@ func (i *Test) runComposeCommand(envVars []string, args ...string) {
 		},
 		args...,
 	)
-	cmd := exec.Command("docker", cmdline...)
+	i.execCommand(envVars, "docker", cmdline...)
+}
 
-	cmd.Env = append(
-		envVars,
-		fmt.Sprintf("CAPTIVE_CORE_CONFIG_FILE=%s", i.rpcCoreConfPath),
-		fmt.Sprintf("CORE_CONFIG_FILE=%s", i.validatorConfPath),
-	)
+func (i *Test) execCommand(envVars []string, command string, args ...string) string {
+	cmd := exec.Command(command, args...)
+	cmd.Env = envVars
 
 	i.t.Log("Running", cmd.Args)
 	out, innerErr := cmd.Output()
@@ -330,18 +339,145 @@ func (i *Test) runComposeCommand(envVars []string, args ...string) {
 	if innerErr != nil {
 		i.t.Fatalf("Compose command failed: %v", innerErr)
 	}
+	return string(out)
 }
 
-func (i *Test) startCoreValidator() {
+func dirExists(path string) (bool, error) {
+	fi, err := os.Stat(path)
+	if err == nil {
+		return fi.IsDir(), nil
+	}
+	if stderrrors.Is(err, os.ErrNotExist) {
+		return false, nil
+	}
+	return false, err
+}
+
+func (i *Test) getBootstrapDir() string {
+	serialized, err := json.Marshal(validatorParamsFromConfig(i.config))
+	require.NoError(i.CurrentTest(), err)
+	parts := []string{
+		string(serialized),
+		i.coreValidatorDockerImage(),
+		fmt.Sprintf("%d", i.config.ProtocolVersion),
+		"v23.0.0",
+		//strings.Split(
+		//	strings.TrimSpace(i.execCommand(nil, i.CoreBinaryPath(), "version")),
+		//	"\n",
+		//)[0],
+	}
+	state := strings.Join(parts, "\n")
+	i.CurrentTest().Logf("state: %s", state)
+	hash := sha256.Sum256([]byte(state))
+	return hex.EncodeToString(hash[:])
+}
+
+func (i *Test) startCoreValidator(validatorParams validatorCoreConfigTemplatePrams) {
 	var envVars []string
 	if coreImageOverride := i.coreValidatorDockerImage(); coreImageOverride != "" {
-		envVars = append(
-			envVars,
-			fmt.Sprintf("CORE_IMAGE=%s", coreImageOverride),
-		)
+		envVars = append(envVars, fmt.Sprintf("CORE_IMAGE=%s", coreImageOverride))
 	}
+	i.runComposeCommand(envVars, "create", "--quiet-pull", "core")
+	i.runComposeCommand(
+		nil,
+		"cp",
+		i.validatorConfPath,
+		"core:/stellar-core.cfg",
+	)
 
-	i.runComposeCommand(envVars, "up", "--detach", "--quiet-pull", "--no-color", "core")
+	bootstrapDir := filepath.Join(i.composePath, "bootstrap", i.getBootstrapDir())
+	exists, err := dirExists(bootstrapDir)
+	require.NoError(i.CurrentTest(), err)
+	if exists {
+		i.runComposeCommand(
+			nil,
+			"cp",
+			bootstrapDir,
+			"core:/bootstrap",
+		)
+		i.runComposeCommand(envVars, "up", "--detach", "--no-color", "core")
+	} else {
+		containerWorkingDir := strings.TrimSpace(i.execCommand(
+			nil,
+			"docker",
+			"image",
+			"inspect",
+			"-f",
+			"{{.Config.WorkingDir}}",
+			i.coreValidatorDockerImage(),
+		))
+		i.runComposeCommand(envVars, "up", "--detach", "--no-color", "core")
+		i.waitForCore()
+		i.configureCaptiveCore(validatorParams, false)
+		require.NoError(i.CurrentTest(), i.StartHorizon(true))
+		i.WaitForHorizonIngest()
+		i.upgradeLimits()
+		info, err := i.coreClient.Info(context.Background())
+		require.NoError(i.CurrentTest(), err)
+		nextCheckpointLedger := historyarchive.NewCheckpointManager(CheckpointFrequency).NextCheckpoint(uint32(info.Info.Ledger.Num))
+		require.NoError(i.CurrentTest(), os.Mkdir(bootstrapDir, 0755))
+		checkpoint := i.WaitForLedgerInArchive(time.Minute*6, nextCheckpointLedger)
+		i.CurrentTest().Logf("Latest checkpoint %d", checkpoint)
+		i.writeCaptiveCoreBootstrapData(validatorParams, filepath.Join(bootstrapDir, "captive-core"), checkpoint-1)
+		i.runComposeCommand(nil, "stop", "core")
+		i.runComposeCommand(
+			nil,
+			"cp",
+			"core:"+filepath.Join(containerWorkingDir, "history"),
+			filepath.Join(bootstrapDir, "history"),
+		)
+		i.runComposeCommand(
+			nil,
+			"cp",
+			"core:"+filepath.Join(containerWorkingDir, "buckets"),
+			filepath.Join(bootstrapDir, "buckets"),
+		)
+		i.runComposeCommand(
+			nil,
+			"cp",
+			"core:"+filepath.Join(containerWorkingDir, "stellar.db"),
+			filepath.Join(bootstrapDir, "stellar.db"),
+		)
+		i.removeContainers("core")
+		i.t.Logf("history archives dir %s not found", bootstrapDir)
+		i.t.FailNow()
+	}
+}
+
+func (i *Test) writeCaptiveCoreBootstrapData(
+	validatorParams validatorCoreConfigTemplatePrams, captiveCoreDir string, ledger uint32,
+) {
+	require.NoError(i.CurrentTest(), os.MkdirAll(captiveCoreDir, 0755))
+
+	tomlParams := ledgerbackend.CaptiveCoreTomlParams{
+		NetworkPassphrase:  i.config.NetworkPassphrase,
+		HistoryArchiveURLs: []string{HistoryArchiveUrl},
+	}
+	toml, err := ledgerbackend.NewCaptiveCoreTomlFromFile(i.createCaptiveCoreConf(captiveCoreConfigTemplatePrams{
+		validatorCoreConfigTemplatePrams: validatorParams,
+		ValidatorAddress:                 "localhost",
+	}), tomlParams)
+	require.NoError(i.CurrentTest(), err)
+
+	toml, err = toml.CatchupToml()
+	require.NoError(i.CurrentTest(), err)
+
+	output, err := toml.Marshal()
+	require.NoError(i.CurrentTest(), err)
+	confPath := filepath.Join(i.CurrentTest().TempDir(), "captive-core.toml")
+	require.NoError(i.CurrentTest(), os.WriteFile(confPath, output, 0644))
+
+	cmd := exec.Command(i.CoreBinaryPath(), "--conf", confPath, "--console", "new-db")
+	cmd.Dir = captiveCoreDir
+	output, err = cmd.CombinedOutput()
+	i.CurrentTest().Logf("Captive core new-db output: %s", string(output))
+	require.NoError(i.CurrentTest(), err)
+
+	cmd = exec.Command(i.CoreBinaryPath(), "--conf", confPath, "--console", "catchup", fmt.Sprintf("%d/0", ledger))
+	cmd.Dir = captiveCoreDir
+	output, err = cmd.CombinedOutput()
+	i.CurrentTest().Logf("Captive core catchup output: %s", string(output))
+	require.NoError(i.CurrentTest(), err)
 }
 
 func (i *Test) coreValidatorDockerImage() string {
@@ -357,8 +493,21 @@ func (i *Test) startRPC() {
 			fmt.Sprintf("NETWORK_PASSPHRASE=%s", i.config.NetworkPassphrase),
 		)
 	}
-
-	i.runComposeCommand(envVars, "up", "--detach", "--quiet-pull", "--no-color", "stellar-rpc")
+	i.runComposeCommand(envVars, "create", "--quiet-pull", "stellar-rpc")
+	i.runComposeCommand(
+		nil,
+		"cp",
+		i.rpcCoreConfPath,
+		"stellar-rpc:/captive-core.cfg",
+	)
+	bootstrapDir := filepath.Join(i.composePath, "bootstrap", i.getBootstrapDir())
+	i.runComposeCommand(
+		nil,
+		"cp",
+		filepath.Join(bootstrapDir, "captive-core"),
+		"stellar-rpc:/captive-core",
+	)
+	i.runComposeCommand(envVars, "up", "--detach", "--no-color", "stellar-rpc")
 }
 
 func (i *Test) rpcDockerImage() string {
@@ -421,9 +570,7 @@ func (i *Test) prepareShutdownHandlers() {
 func (i *Test) RestartHorizon(restartIngestProcess bool) error {
 	i.StopHorizon()
 
-	if err := i.StartHorizon(restartIngestProcess); err != nil {
-		return err
-	}
+	require.NoError(i.CurrentTest(), i.StartHorizon(restartIngestProcess))
 
 	i.WaitForHorizonIngest()
 	return nil
@@ -1111,10 +1258,6 @@ func (i *Test) UpgradeProtocol(version uint32) {
 		if info.Info.Ledger.Version == int(version) {
 			i.t.Logf("Protocol upgraded to: %d, in ledger sequence number: %v, hash: %v",
 				info.Info.Ledger.Version, ledgerSeq, info.Info.Ledger.Hash)
-			// Mark the fact that the core has been upgraded as of this ledger sequence
-			// It could have been earlier than this, but certainly no later.
-			// The core upgrade could have happened in any ledger since the coreClient.Upgrade was issued
-			i.coreUpgradeState = &CoreUpgradeState{maxUpgradeLedger: uint32(ledgerSeq)}
 			return
 		}
 		time.Sleep(time.Second)
@@ -1684,15 +1827,7 @@ func (i *Test) GetHistoryArchive() (*historyarchive.Archive, error) {
 		})
 }
 
-// This is approximate becuase the upgrade could have happened at a leger before this as well.
-func (i *Test) GetUpgradedLedgerSeqAppx() (uint32, error) {
-	if i.coreUpgradeState == nil {
-		return 0, errors.Errorf("Core has not been upgraded yet")
-	}
-	return i.coreUpgradeState.maxUpgradeLedger, nil
-}
-
-func (i *Test) WaitForLedgerInArchive(waitTime time.Duration, ledgerSeq uint32) {
+func (i *Test) WaitForLedgerInArchive(waitTime time.Duration, ledgerSeq uint32) uint32 {
 	archive, err := i.GetHistoryArchive()
 	if err != nil {
 		i.t.Fatalf("could not get history archive: %v", err)
@@ -1713,4 +1848,5 @@ func (i *Test) WaitForLedgerInArchive(waitTime time.Duration, ledgerSeq uint32) 
 		},
 		waitTime,
 		1*time.Second)
+	return latestCheckpoint
 }

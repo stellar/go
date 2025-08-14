@@ -17,7 +17,6 @@ services:
     entrypoint: /usr/bin/env
     command: /start standalone
     volumes:
-      - ${CORE_CONFIG_FILE}:/stellar-core.cfg
       - ./core-start.sh:/start
   stellar-rpc:
     platform: linux/amd64
@@ -29,8 +28,7 @@ services:
       - ENDPOINT=:8080
       - NETWORK_PASSPHRASE=${NETWORK_PASSPHRASE}
       - CAPTIVE_CORE_CONFIG_PATH=/captive-core.cfg
+      - CAPTIVE_CORE_STORAGE_PATH=/
       - HISTORY_ARCHIVE_URLS=http://core:1570
       - CHECKPOINT_FREQUENCY=8
       - LOG_LEVEL=debug
-    volumes:
-      - ${CAPTIVE_CORE_CONFIG_FILE}:/captive-core.cfg
