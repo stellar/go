@@ -13,7 +13,7 @@ This release includes a breaking change to the datastore.
     This is the safest method to ensure no issues with the old files. Update the `destination_bucket_path` in your configuration file to a new location which does not contain any ledger files before upgrading Galexie.
 
 **Option 2**: Clean Your Existing Datastore \
-   If you want to use your current datastore, you must manually delete all files with the .zstd extension. This will permanently remove your existing data history. Then, restart Galexie.
+   If you want to use the same `destination_bucket_path`, you must manually delete all the contents contained in that folder before upgrading Galexie. This will permanently remove your existing data history.
 
 #### 3. Post-Upgrade Verification
    After restarting, confirm the following:
