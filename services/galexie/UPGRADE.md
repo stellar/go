@@ -1,7 +1,7 @@
 # Upgrade Guide
 
 ## v23.0.0
-This release includes a breaking change to the datastore.
+This release includes a breaking change to how ledger files are stored in the data lake.
 
 #### 1. The Change
    The ledger file extension has been updated from `.zstd` to the standard `.zst` for Zstandard compression.
