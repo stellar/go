@@ -13,7 +13,7 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
  - Galexie now complies with [SEP-0054](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0054.md) ([#5773](https://github.com/stellar/go/pull/5773))
     - Ledger file extension changed from `.zstd` to `.zst` (standard Zstandard compression extension).
-    - Galexie will create a new .config.json manifest file in the datastore on its first run if one doesn't already exist.
+    - Galexie will create a new .config.json manifest file in the data lake on its first run if one doesn't already exist.
 
 ## [v1.0.0] 
 
