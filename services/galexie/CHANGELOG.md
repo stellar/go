@@ -6,7 +6,7 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 ## [v23.0.0]
 
 ### New Features
- - S3 and S3-compatible datastore support ([#5748](https://github.com/stellar/go/pull/5748))
+ - Galexie can be configured to use S3 (or services which have an S3 compatible API) instead of GCS for storage ([#5748](https://github.com/stellar/go/pull/5748))
 
 ### Breaking Changes
 ⚠ This is a breaking change that requires a one-time update to your bucket. For detailed instructions, please see [UPGRADE.md](./UPGRADE.md).
