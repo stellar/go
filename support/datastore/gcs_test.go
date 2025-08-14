@@ -409,6 +409,10 @@ func TestGCSGetFileValidatesCRC32C(t *testing.T) {
 func TestGCSListFilePaths(t *testing.T) {
 	server := fakestorage.NewServer([]fakestorage.Object{
 		{
+			ObjectAttrs: fakestorage.ObjectAttrs{BucketName: "test-bucket", Name: "objects/testnet-1/a"},
+			Content:     []byte("1"),
+		},
+		{
 			ObjectAttrs: fakestorage.ObjectAttrs{BucketName: "test-bucket", Name: "objects/testnet/a"},
 			Content:     []byte("1"),
 		},

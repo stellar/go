@@ -231,9 +231,10 @@ func setupTestS3DataStore(t *testing.T, ctx context.Context, bucketPath string, 
 func TestS3ListFilePaths(t *testing.T) {
 	ctx := context.Background()
 	store, teardown := setupTestS3DataStore(t, ctx, "test-bucket/objects/testnet", map[string]mockS3Object{
-		"objects/testnet/a": {body: []byte("1")},
-		"objects/testnet/b": {body: []byte("1")},
-		"objects/testnet/c": {body: []byte("1")},
+		"objects/testnet-1/a": {body: []byte("1")},
+		"objects/testnet/a":   {body: []byte("1")},
+		"objects/testnet/b":   {body: []byte("1")},
+		"objects/testnet/c":   {body: []byte("1")},
 	})
 	defer teardown()
 

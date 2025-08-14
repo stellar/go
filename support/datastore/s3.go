@@ -286,8 +286,19 @@ func (b S3DataStore) putFile(ctx context.Context, filePath string, in io.WriterT
 // and ordered lexicographically ascending as provided by the backend.
 // If limit <= 0, implementations default to a cap of 1,000; values > 1,000 are capped to 1,000.
 func (b S3DataStore) ListFilePaths(ctx context.Context, prefix string, limit int) ([]string, error) {
-	// Join the caller-provided prefix with the datastore prefix
-	fullPrefix := path.Join(b.prefix, prefix)
+	var fullPrefix string
+
+	// When 'prefix' is empty, ensure the base prefix ends with a slash (e.g., "a/b/")
+	// so the query returns only objects within that directory, not similarly named paths like "a/b-1".
+	if prefix == "" {
+		fullPrefix = b.prefix
+		if !strings.HasSuffix(fullPrefix, "/") {
+			fullPrefix += "/"
+		}
+	} else {
+		// Join the caller-provided prefix with the datastore prefix
+		fullPrefix = path.Join(b.prefix, prefix)
+	}
 
 	// S3 returns lexicographically ordered keys by default
 	// We page through until we collect 'limit' or exhaust results
