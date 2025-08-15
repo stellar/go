@@ -5,6 +5,9 @@ type validatorCoreConfigTemplatePrams struct {
 	NetworkPassphrase                     string
 	TestingMinimumPersistentEntryLifetime int
 	TestingSorobanHighLimitOverride       bool
+	OverrideEvictionParamsForTesting      bool
+	TestingStartingEvictionScanLevel      uint
+	TestingMaxEntriesToArchive            uint
 }
 
 type captiveCoreConfigTemplatePrams struct {
@@ -13,13 +16,18 @@ type captiveCoreConfigTemplatePrams struct {
 }
 
 const validatorCoreConfigTemplate = `
-DEPRECATED_SQL_LEDGER_STATE=false
 ARTIFICIALLY_ACCELERATE_TIME_FOR_TESTING={{ .Accelerate }}
 
 NETWORK_PASSPHRASE="{{ .NetworkPassphrase }}"
 
 TESTING_MINIMUM_PERSISTENT_ENTRY_LIFETIME={{ .TestingMinimumPersistentEntryLifetime }}
 TESTING_SOROBAN_HIGH_LIMIT_OVERRIDE={{ .TestingSorobanHighLimitOverride }}
+
+{{if .OverrideEvictionParamsForTesting}}
+OVERRIDE_EVICTION_PARAMS_FOR_TESTING=true
+TESTING_MAX_ENTRIES_TO_ARCHIVE={{ .TestingMaxEntriesToArchive }}
+TESTING_STARTING_EVICTION_SCAN_LEVEL={{ .TestingStartingEvictionScanLevel }}
+{{end}}
 
 PEER_PORT=11625
 HTTP_PORT=11626
@@ -45,7 +53,6 @@ mkdir="mkdir -p history/vs/{0}"
 `
 
 const captiveCoreConfigTemplate = `
-DEPRECATED_SQL_LEDGER_STATE=false
 ARTIFICIALLY_ACCELERATE_TIME_FOR_TESTING={{ .Accelerate }}
 
 NETWORK_PASSPHRASE="{{ .NetworkPassphrase }}"
@@ -53,6 +60,12 @@ NETWORK_PASSPHRASE="{{ .NetworkPassphrase }}"
 TESTING_MINIMUM_PERSISTENT_ENTRY_LIFETIME={{ .TestingMinimumPersistentEntryLifetime }}
 TESTING_SOROBAN_HIGH_LIMIT_OVERRIDE={{ .TestingSorobanHighLimitOverride }}
 ENABLE_SOROBAN_DIAGNOSTIC_EVENTS=true
+
+{{if .OverrideEvictionParamsForTesting}}
+OVERRIDE_EVICTION_PARAMS_FOR_TESTING=true
+TESTING_MAX_ENTRIES_TO_ARCHIVE={{ .TestingMaxEntriesToArchive }}
+TESTING_STARTING_EVICTION_SCAN_LEVEL={{ .TestingStartingEvictionScanLevel }}
+{{end}}
 
 PEER_PORT=11725
 

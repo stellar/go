@@ -223,6 +223,7 @@ func genAssetContractMetadata(tt *test.T, gen randxdr.Generator) []xdr.LedgerEnt
 	balance := balanceContractDataFromTrustline(tt, trustline)
 	otherBalance := balanceContractDataFromTrustline(tt, otherTrustline)
 	return []xdr.LedgerEntryChange{
+		ttlForContractData(tt, gen, assetContractMetadata),
 		assetContractMetadata,
 		trustline,
 		balance,
@@ -231,6 +232,7 @@ func genAssetContractMetadata(tt *test.T, gen randxdr.Generator) []xdr.LedgerEnt
 		otherBalance,
 		ttlForContractData(tt, gen, otherBalance),
 		balanceContractDataFromTrustline(tt, genTrustLine(tt, gen, assetPreset)),
+		ttlForContractData(tt, gen, otherAssetContractMetadata),
 	}
 }
 

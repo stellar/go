@@ -66,13 +66,14 @@ func SorobanFeeWrite1Kb(l xdr.LedgerCloseMeta) (int64, bool) {
 	return int64(extV1.SorobanFeeWrite1Kb), true
 }
 
-func TotalByteSizeOfBucketList(l xdr.LedgerCloseMeta) (uint64, bool) {
-	lcmV1, ok := l.GetV1()
-	if !ok {
-		return 0, false
+func TotalByteSizeOfLiveSorobanState(l xdr.LedgerCloseMeta) (uint64, bool) {
+	switch l.V {
+	case 1:
+		return uint64(l.MustV1().TotalByteSizeOfLiveSorobanState), true
+	case 2:
+		return uint64(l.MustV2().TotalByteSizeOfLiveSorobanState), true
 	}
-
-	return uint64(lcmV1.TotalByteSizeOfBucketList), true
+	return 0, false
 }
 
 func NodeID(l xdr.LedgerCloseMeta) (string, error) {
@@ -96,18 +97,11 @@ func Signature(l xdr.LedgerCloseMeta) (string, bool) {
 // TransactionCounts calculates and returns the number of successful and total transactions
 func TransactionCounts(l xdr.LedgerCloseMeta) (successTxCount, totalTxCount uint32) {
 	transactions := l.TransactionEnvelopes()
-	results, err := l.TxProcessing()
-	if err != nil {
-		panic(err)
-	}
 
 	txCount := len(transactions)
-	if txCount != len(results) {
-		panic("transaction count and number of TransactionResultMeta not equal")
-	}
 
 	for i := 0; i < txCount; i++ {
-		if results[i].Result.Successful() {
+		if l.TransactionResultPair(i).Result.Successful() {
 			successTxCount++
 		}
 	}
@@ -119,18 +113,14 @@ func TransactionCounts(l xdr.LedgerCloseMeta) (successTxCount, totalTxCount uint
 // a LedgerCloseMeta
 func OperationCounts(l xdr.LedgerCloseMeta) (successfulOperationCount, totalOperationCount uint32) {
 	transactions := l.TransactionEnvelopes()
-	results, err := l.TxProcessing()
-	if err != nil {
-		panic(err)
-	}
 
-	for i, result := range results {
-		operations := transactions[i].OperationsCount()
+	for i, envelope := range transactions {
+		operations := envelope.OperationsCount()
 		totalOperationCount += operations
 
 		// for successful transactions, the operation count is based on the operations results slice
-		if result.Result.Successful() {
-			operationResults, ok := result.Result.OperationResults()
+		if result := l.TransactionResultPair(i).Result; result.Successful() {
+			operationResults, ok := result.OperationResults()
 			if !ok {
 				panic("could not get OperationResults")
 			}

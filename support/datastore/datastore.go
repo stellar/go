@@ -2,17 +2,26 @@ package datastore
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"time"
-
-	"github.com/stellar/go/support/errors"
 )
 
+const (
+	manifestFilename = ".config.json"
+	Version          = "1.0"
+)
+
+// DataStoreConfig defines user-provided configuration used to initialize a DataStore.
 type DataStoreConfig struct {
-	Type   string            `toml:"type"`
-	Params map[string]string `toml:"params"`
-	Schema DataStoreSchema   `toml:"schema"`
+	Type              string            `toml:"type"`
+	Params            map[string]string `toml:"params"`
+	Schema            DataStoreSchema   `toml:"schema"`
+	NetworkPassphrase string
+	Compression       string
 }
+
+const listFilePathsMaxLimit = 1000
 
 // DataStore defines an interface for interacting with data storage
 type DataStore interface {
@@ -23,7 +32,7 @@ type DataStore interface {
 	PutFileIfNotExists(ctx context.Context, path string, in io.WriterTo, metaData map[string]string) (bool, error)
 	Exists(ctx context.Context, path string) (bool, error)
 	Size(ctx context.Context, path string) (int64, error)
-	GetSchema() DataStoreSchema
+	ListFilePaths(ctx context.Context, prefix string, limit int) ([]string, error)
 	Close() error
 }
 
@@ -36,6 +45,6 @@ func NewDataStore(ctx context.Context, datastoreConfig DataStoreConfig) (DataSto
 		return NewS3DataStore(ctx, datastoreConfig)
 
 	default:
-		return nil, errors.Errorf("Invalid datastore type %v, not supported", datastoreConfig.Type)
+		return nil, fmt.Errorf("invalid datastore type %v, not supported", datastoreConfig.Type)
 	}
 }

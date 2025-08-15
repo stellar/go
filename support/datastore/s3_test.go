@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -72,7 +74,39 @@ func (s *mockS3Server) handleHeadRequest(w http.ResponseWriter, pathParts []stri
 func (s *mockS3Server) handleGetRequest(w http.ResponseWriter, r *http.Request, pathParts []string) {
 	// Check for query param for ListObjectsV2
 	if r.Method == http.MethodGet && r.URL.Query().Get("list-type") == "2" {
+		// Minimal ListObjectsV2 XML response
+		prefix := r.URL.Query().Get("prefix")
+		maxKeys := 1000
+		if mk := r.URL.Query().Get("max-keys"); mk != "" {
+			if v, err := strconv.Atoi(mk); err == nil {
+				maxKeys = v
+			}
+		}
+		// Collect and sort keys matching prefix
+		keys := make([]string, 0)
+		for k := range s.objects {
+			if strings.HasPrefix(k, prefix) {
+				keys = append(keys, k)
+			}
+		}
+		sort.Strings(keys)
+		if len(keys) > maxKeys {
+			keys = keys[:maxKeys]
+		}
+		// Build XML response
+		var b strings.Builder
+		b.WriteString(`<?xml version="1.0" encoding="UTF-8"?>`)
+		b.WriteString(`<ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">`)
+		b.WriteString(`<IsTruncated>false</IsTruncated>`)
+		for _, k := range keys {
+			b.WriteString(`<Contents><Key>`)
+			b.WriteString(k)
+			b.WriteString(`</Key></Contents>`)
+		}
+		b.WriteString(`</ListBucketResult>`)
+		w.Header().Set("Content-Type", "application/xml")
 		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(b.String()))
 		return
 	}
 
@@ -184,7 +218,7 @@ func setupTestS3DataStore(t *testing.T, ctx context.Context, bucketPath string, 
 		o.UsePathStyle = true
 	})
 
-	store, err := FromS3Client(ctx, client, bucketPath, DataStoreSchema{})
+	store, err := FromS3Client(ctx, client, bucketPath)
 	require.NoError(t, err)
 
 	teardown := func() {
@@ -192,6 +226,56 @@ func setupTestS3DataStore(t *testing.T, ctx context.Context, bucketPath string, 
 	}
 
 	return store, teardown
+}
+
+func TestS3ListFilePaths(t *testing.T) {
+	ctx := context.Background()
+	store, teardown := setupTestS3DataStore(t, ctx, "test-bucket/objects/testnet", map[string]mockS3Object{
+		"objects/testnet-1/a": {body: []byte("1")},
+		"objects/testnet/a":   {body: []byte("1")},
+		"objects/testnet/b":   {body: []byte("1")},
+		"objects/testnet/c":   {body: []byte("1")},
+	})
+	defer teardown()
+
+	paths, err := store.ListFilePaths(ctx, "", 2)
+	require.NoError(t, err)
+	require.Equal(t, []string{"objects/testnet/a", "objects/testnet/b"}, paths)
+}
+
+func TestS3ListFilePaths_WithPrefix(t *testing.T) {
+	ctx := context.Background()
+	store, teardown := setupTestS3DataStore(t, ctx, "test-bucket/objects/testnet", map[string]mockS3Object{
+		"objects/testnet/a/x": {body: []byte("1")},
+		"objects/testnet/a/y": {body: []byte("1")},
+		"objects/testnet/b/z": {body: []byte("1")},
+	})
+	defer teardown()
+
+	paths, err := store.ListFilePaths(ctx, "a", 10)
+	require.NoError(t, err)
+	require.Equal(t, []string{"objects/testnet/a/x", "objects/testnet/a/y"}, paths)
+}
+
+func TestS3ListFilePaths_LimitDefaultAndCap(t *testing.T) {
+	ctx := context.Background()
+	init := map[string]mockS3Object{}
+	for i := 0; i < 1200; i++ {
+		key := fmt.Sprintf("objects/testnet/%04d", i)
+		init[key] = mockS3Object{body: []byte("1")}
+	}
+	store, teardown := setupTestS3DataStore(t, ctx, "test-bucket/objects/testnet", init)
+	defer teardown()
+
+	// limit <= 0 defaults to 1000
+	paths, err := store.ListFilePaths(ctx, "", 0)
+	require.NoError(t, err)
+	require.Equal(t, 1000, len(paths))
+
+	// limit > 1000 is capped at 1000
+	paths, err = store.ListFilePaths(ctx, "", 5000)
+	require.NoError(t, err)
+	require.Equal(t, 1000, len(paths))
 }
 
 func TestS3Exists(t *testing.T) {

@@ -98,9 +98,9 @@ type captiveCoreTomlValues struct {
 	Validators                            []Validator          `toml:"VALIDATORS,omitempty"`
 	HistoryEntries                        map[string]History   `toml:"-"`
 	QuorumSetEntries                      map[string]QuorumSet `toml:"-"`
+	BackfillRestoreMeta                   *bool                `toml:"BACKFILL_RESTORE_META,omitempty"`
 	BucketListDBPageSizeExp               *uint                `toml:"BUCKETLIST_DB_INDEX_PAGE_SIZE_EXPONENT,omitempty"`
 	BucketListDBCutoff                    *uint                `toml:"BUCKETLIST_DB_INDEX_CUTOFF,omitempty"`
-	DeprecatedSqlLedgerState              *bool                `toml:"DEPRECATED_SQL_LEDGER_STATE,omitempty"`
 	EnableSorobanDiagnosticEvents         *bool                `toml:"ENABLE_SOROBAN_DIAGNOSTIC_EVENTS,omitempty"`
 	TestingMinimumPersistentEntryLifetime *uint                `toml:"TESTING_MINIMUM_PERSISTENT_ENTRY_LIFETIME,omitempty"`
 	TestingSorobanHighLimitOverride       *bool                `toml:"TESTING_SOROBAN_HIGH_LIMIT_OVERRIDE,omitempty"`
@@ -111,6 +111,11 @@ type captiveCoreTomlValues struct {
 	QueryThreadPoolSize                   *uint                `toml:"QUERY_THREAD_POOL_SIZE,omitempty"`
 	QuerySnapshotLedgers                  *uint                `toml:"QUERY_SNAPSHOT_LEDGERS,omitempty"`
 	BucketListDBMemoryForCaching          *uint                `toml:"BUCKETLIST_DB_MEMORY_FOR_CACHING,omitempty"`
+	EnableEmitClassicEvents               *bool                `toml:"EMIT_CLASSIC_EVENTS,omitempty"`
+	EnableBackfillStellarAssetEvents      *bool                `toml:"BACKFILL_STELLAR_ASSET_EVENTS,omitempty"`
+	OverrideEvictionParamsForTesting      *bool                `toml:"OVERRIDE_EVICTION_PARAMS_FOR_TESTING,omitempty"`
+	TestingStartingEvictionScanLevel      *uint                `toml:"TESTING_STARTING_EVICTION_SCAN_LEVEL,omitempty"`
+	TestingMaxEntriesToArchive            *uint                `toml:"TESTING_MAX_ENTRIES_TO_ARCHIVE,omitempty"`
 }
 
 // QuorumSetIsConfigured returns true if there is a quorum set defined in the configuration.
@@ -349,18 +354,27 @@ type CaptiveCoreTomlParams struct {
 	LogPath *string
 	// Strict is a flag which, if enabled, rejects Stellar Core toml fields which are not supported by captive core.
 	Strict bool
-	// If true, specifies that captive core should be invoked with on-disk rather than in-memory option for ledger state
-	UseDB bool
 	// the path to the core binary, used to introspect core at runtime, determine some toml capabilities
 	CoreBinaryPath string
 	// Enforce EnableSorobanDiagnosticEvents and EnableDiagnosticsForTxSubmission when not disabled explicitly
 	EnforceSorobanDiagnosticEvents bool
-	// Enfore EnableSorobanTransactionMetaExtV1 when not disabled explicitly
+	// Enforce EnableSorobanTransactionMetaExtV1 when not disabled explicitly
 	EnforceSorobanTransactionMetaExtV1 bool
+	// Emits unified events for all operations
+	EmitUnifiedEvents bool
+	// Enable backfilled events
+	EmitUnifiedEventsBeforeProtocol22 bool
 	// Fast HTTP Query Server parameters
 	HTTPQueryServerParams *HTTPQueryServerParams
 	// CoreBuildVersionFn is a function that returns the build version of the stellar-core binary.
 	CoreBuildVersionFn CoreBuildVersionFunc
+	// CoreProtocolVersionFn is a function that returns the protocol version of the stellar-core binary.
+	CoreProtocolVersionFn CoreProtocolVersionFunc
+	// BackfillRestoreMeta is the value assigned to BACKFILL_RESTORE_META in the captive core toml file.
+	// If omitted we will default BACKFILL_RESTORE_META to true.
+	BackfillRestoreMeta *bool
+	// This will enable a series of core configurations to generate the most verbose meta possible.
+	EmitVerboseMeta bool
 }
 
 // NewCaptiveCoreTomlFromFile constructs a new CaptiveCoreToml instance by merging configuration
@@ -511,22 +525,39 @@ func (c *CaptiveCoreToml) checkCoreVersion(params CaptiveCoreTomlParams) coreVer
 	}
 }
 
+func getCoreProtocolVersion(params CaptiveCoreTomlParams) (uint, error) {
+	if params.CoreProtocolVersionFn != nil {
+		return params.CoreProtocolVersionFn(params.CoreBinaryPath)
+	}
+	return CoreProtocolVersion(params.CoreBinaryPath)
+}
+
 var minVersionForBucketlistCaching = coreVersion{major: 22, minor: 2}
+var minProtocolVersionForBackfillRestoreMeta uint = 23
+var minProtocolVersionForUnifiedEvents uint = 23
 
 func (c *CaptiveCoreToml) setDefaults(params CaptiveCoreTomlParams) {
-	if params.UseDB && !c.tree.Has("DATABASE") {
+	if !c.tree.Has("DATABASE") {
 		c.Database = "sqlite3://stellar.db"
 	}
 
-	deprecatedSqlLedgerState := false
-	if !params.UseDB {
-		deprecatedSqlLedgerState = true
-	} else {
-		if !c.tree.Has("BUCKETLIST_DB_INDEX_PAGE_SIZE_EXPONENT") {
-			c.BucketListDBPageSizeExp = &defaultBucketListDBPageSize
+	if !c.tree.Has("BACKFILL_RESTORE_META") {
+		if params.BackfillRestoreMeta != nil {
+			c.BackfillRestoreMeta = params.BackfillRestoreMeta
+		} else {
+			protocolVersion, err := getCoreProtocolVersion(params)
+			if err != nil {
+				log.Warnf("Error getting core protocol version: %v", err)
+			} else if protocolVersion >= minProtocolVersionForBackfillRestoreMeta {
+				defaultVal := true
+				c.BackfillRestoreMeta = &defaultVal
+			}
 		}
 	}
-	c.DeprecatedSqlLedgerState = &deprecatedSqlLedgerState
+
+	if !c.tree.Has("BUCKETLIST_DB_INDEX_PAGE_SIZE_EXPONENT") {
+		c.BucketListDBPageSizeExp = &defaultBucketListDBPageSize
+	}
 
 	if !c.tree.Has("NETWORK_PASSPHRASE") {
 		c.NetworkPassphrase = params.NetworkPassphrase
@@ -561,12 +592,49 @@ func (c *CaptiveCoreToml) setDefaults(params CaptiveCoreTomlParams) {
 		}
 	}
 
-	if params.EnforceSorobanDiagnosticEvents {
+	if params.EmitVerboseMeta || params.EnforceSorobanDiagnosticEvents {
 		enforceOption(&c.EnableSorobanDiagnosticEvents)
 		enforceOption(&c.EnableDiagnosticsForTxSubmission)
 	}
-	if params.EnforceSorobanTransactionMetaExtV1 {
+	if params.EmitVerboseMeta || params.EnforceSorobanTransactionMetaExtV1 {
 		enforceOption(&c.EnableEmitSorobanTransactionMetaExtV1)
+	}
+	if params.EmitVerboseMeta {
+		enforceOption(&c.EnableEmitLedgerCloseMetaExtV1)
+	}
+
+	// enable event emission
+	// as long as the running Core binary supports the feature.
+	if params.EmitVerboseMeta || params.EmitUnifiedEvents {
+		protocolVersion, err := getCoreProtocolVersion(params)
+		if err != nil {
+			log.Warnf("Error getting core protocol version: %v", err)
+		}
+		if protocolVersion < minProtocolVersionForUnifiedEvents {
+			log.Warnf(
+				"Core supported protocol version too low: %d < %d, "+
+					"unified events flag has no effect.",
+				protocolVersion, minProtocolVersionForUnifiedEvents)
+		} else {
+			enforceOption(&c.EnableEmitClassicEvents)
+		}
+	}
+
+	// enable classic events to be generated prior to p22
+	// as long as the running Core binary supports the feature.
+	if params.EmitVerboseMeta || params.EmitUnifiedEventsBeforeProtocol22 {
+		protocolVersion, err := getCoreProtocolVersion(params)
+		if err != nil {
+			log.Warnf("Error getting core protocol version: %v", err)
+		}
+		if protocolVersion < minProtocolVersionForUnifiedEvents {
+			log.Warnf(
+				"Core supported protocol version too low: %d < %d, "+
+					"flag for backfilled classic events before p22 has no effect.",
+				protocolVersion, minProtocolVersionForUnifiedEvents)
+		} else {
+			enforceOption(&c.EnableBackfillStellarAssetEvents)
+		}
 	}
 
 	if params.HTTPQueryServerParams != nil {
@@ -578,7 +646,6 @@ func (c *CaptiveCoreToml) setDefaults(params CaptiveCoreTomlParams) {
 
 		poolSize := uint(params.HTTPQueryServerParams.ThreadPoolSize)
 		c.QueryThreadPoolSize = &poolSize
-
 	}
 
 	if !c.tree.Has("BUCKETLIST_DB_MEMORY_FOR_CACHING") &&
@@ -639,6 +706,14 @@ func (c *CaptiveCoreToml) validate(params CaptiveCoreTomlParams) error {
 		)
 	}
 
+	if def := c.tree.Has("BACKFILL_RESTORE_META"); def && params.BackfillRestoreMeta != nil && *c.BackfillRestoreMeta != *params.BackfillRestoreMeta {
+		return fmt.Errorf(
+			"BACKFILL_RESTORE_META in captive core config file: %v does not match passed configuration (%v)",
+			*c.BackfillRestoreMeta,
+			*params.BackfillRestoreMeta,
+		)
+	}
+
 	if params.HTTPQueryServerParams != nil {
 		if c.HTTPQueryPort != nil && *c.HTTPQueryPort != uint(params.HTTPQueryServerParams.Port) {
 			return fmt.Errorf(
@@ -662,16 +737,6 @@ func (c *CaptiveCoreToml) validate(params CaptiveCoreTomlParams) error {
 				c.PeerPort,
 				*params.PeerPort,
 			)
-		}
-	}
-
-	if c.tree.Has("DEPRECATED_SQL_LEDGER_STATE") {
-		if params.UseDB && *c.DeprecatedSqlLedgerState {
-			return fmt.Errorf("CAPTIVE_CORE_USE_DB parameter is set to true, indicating stellar-core on-disk mode," +
-				" in which DEPRECATED_SQL_LEDGER_STATE must be set to false")
-		} else if !params.UseDB && !*c.DeprecatedSqlLedgerState {
-			return fmt.Errorf("CAPTIVE_CORE_USE_DB parameter is set to false, indicating stellar-core in-memory mode," +
-				" in which DEPRECATED_SQL_LEDGER_STATE must be set to true")
 		}
 	}
 

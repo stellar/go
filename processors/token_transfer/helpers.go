@@ -90,7 +90,7 @@ func getClaimableBalanceEntriesFromOperationChanges(changeType xdr.LedgerEntryCh
 	*/
 	var cb xdr.ClaimableBalanceEntry
 	for _, change := range changes {
-		if change.Type != xdr.LedgerEntryTypeClaimableBalance || change.LedgerEntryChangeType() != changeType {
+		if change.Type != xdr.LedgerEntryTypeClaimableBalance || change.ChangeType != changeType {
 			continue
 		}
 		if change.Pre != nil {

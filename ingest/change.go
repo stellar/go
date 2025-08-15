@@ -42,6 +42,9 @@ type Change struct {
 	// The type of the ledger entry being changed.
 	Type xdr.LedgerEntryType
 
+	// The specific type of change, such as Created, Updated, Removed or Restored.
+	ChangeType xdr.LedgerEntryChangeType
+
 	// The state of the LedgerEntry before the change. This will be nil if the entry was created.
 	Pre *xdr.LedgerEntry
 
@@ -63,10 +66,8 @@ type Change struct {
 	Transaction *LedgerTransaction
 
 	// The LedgerCloseMeta that precipitated the change.
-	// This is useful only when the Change is caused by an upgrade or by an eviction, i.e. outside a transaction
-	// This field is populated only when the Reason is one of:
-	// LedgerEntryChangeReasonUpgrade or LedgerEntryChangeReasonEviction
-	// For changes caused by transaction or operations, look at the Transaction field
+	// This field is not populated when the Change is obtained from enumerating
+	// ledger entries from a history archive snapshot (e.g. via CheckpointChangeReader).
 	Ledger *xdr.LedgerCloseMeta
 
 	// Information about the upgrade, if the change occurred as part of an upgrade
@@ -90,11 +91,11 @@ const (
 	// LedgerEntryChangeReasonFee indicates a change related to transaction fees.
 	LedgerEntryChangeReasonFee
 
+	// LedgerEntryChangeReasonFeeRefund indicates a change related to transaction fee refunds.
+	LedgerEntryChangeReasonFeeRefund
+
 	// LedgerEntryChangeReasonUpgrade indicates a change caused by a ledger upgrade.
 	LedgerEntryChangeReasonUpgrade
-
-	// LedgerEntryChangeReasonEviction indicates a change caused by entry eviction.
-	LedgerEntryChangeReasonEviction
 )
 
 // String returns a best effort string representation of the change.
@@ -112,10 +113,11 @@ func (c Change) String() string {
 		}
 	}
 	return fmt.Sprintf(
-		"Change{Type: %s, Pre: %s, Post: %s}",
+		"Change{Type: %s, Pre: %s, Post: %s, ChangeType: %s}",
 		c.Type.String(),
 		pre,
 		post,
+		c.ChangeType,
 	)
 }
 
@@ -134,6 +136,7 @@ func (c Change) LedgerKey() (xdr.LedgerKey, error) {
 // - for create, pre is null and post is a new entry,
 // - for update, pre is previous state and post is the current state,
 // - for removed, pre is previous state and post is null.
+// - for restored, pre is null and post is a new/restored entry
 //
 // stellar-core source:
 // https://github.com/stellar/stellar-core/blob/e584b43/src/ledger/LedgerTxn.cpp#L582
@@ -144,24 +147,49 @@ func GetChangesFromLedgerEntryChanges(ledgerEntryChanges xdr.LedgerEntryChanges)
 		case xdr.LedgerEntryChangeTypeLedgerEntryCreated:
 			created := entryChange.MustCreated()
 			changes = append(changes, Change{
-				Type: created.Data.Type,
-				Pre:  nil,
-				Post: &created,
+				Type:       created.Data.Type,
+				Pre:        nil,
+				Post:       &created,
+				ChangeType: entryChange.Type,
 			})
 		case xdr.LedgerEntryChangeTypeLedgerEntryUpdated:
-			state := ledgerEntryChanges[i-1].MustState()
+			// Update entries always have a previous state entry [state, updated]
+			// except for contract entries that are restored and updated within the same
+			// transaction, which appear as [restored, updated]
+			// For details, see https://github.com/stellar/stellar-protocol/blob/master/core/cap-0062.md
 			updated := entryChange.MustUpdated()
+			state, ok := ledgerEntryChanges[i-1].GetState()
+			if !ok {
+				state = ledgerEntryChanges[i-1].MustRestored()
+			}
 			changes = append(changes, Change{
-				Type: state.Data.Type,
-				Pre:  &state,
-				Post: &updated,
+				Type:       state.Data.Type,
+				Pre:        &state,
+				Post:       &updated,
+				ChangeType: entryChange.Type,
 			})
 		case xdr.LedgerEntryChangeTypeLedgerEntryRemoved:
-			state := ledgerEntryChanges[i-1].MustState()
+			// Removed entries always have an associated state entry [state, updated]
+			// except for contract entries that are restored and removed within the same
+			// transaction, which appear as [restored, removed]
+			// For details, see https://github.com/stellar/stellar-protocol/blob/master/core/cap-0062.md
+			state, ok := ledgerEntryChanges[i-1].GetState()
+			if !ok {
+				state = ledgerEntryChanges[i-1].MustRestored()
+			}
 			changes = append(changes, Change{
-				Type: state.Data.Type,
-				Pre:  &state,
-				Post: nil,
+				Type:       state.Data.Type,
+				Pre:        &state,
+				Post:       nil,
+				ChangeType: entryChange.Type,
+			})
+		case xdr.LedgerEntryChangeTypeLedgerEntryRestored:
+			restored := entryChange.MustRestored()
+			changes = append(changes, Change{
+				Type:       restored.Data.Type,
+				Pre:        nil,
+				Post:       &restored,
+				ChangeType: entryChange.Type,
 			})
 		case xdr.LedgerEntryChangeTypeLedgerEntryState:
 			continue
@@ -219,20 +247,6 @@ func (s sortableChanges) Swap(i, j int) {
 // by using a stable sorting algorithm.
 func sortChanges(changes []Change) {
 	sort.Stable(newSortableChanges(changes))
-}
-
-// LedgerEntryChangeType returns type in terms of LedgerEntryChangeType.
-func (c Change) LedgerEntryChangeType() xdr.LedgerEntryChangeType {
-	switch {
-	case c.Pre == nil && c.Post != nil:
-		return xdr.LedgerEntryChangeTypeLedgerEntryCreated
-	case c.Pre != nil && c.Post == nil:
-		return xdr.LedgerEntryChangeTypeLedgerEntryRemoved
-	case c.Pre != nil && c.Post != nil:
-		return xdr.LedgerEntryChangeTypeLedgerEntryUpdated
-	default:
-		panic("Invalid state of Change (Pre == nil && Post == nil)")
-	}
 }
 
 // getLiquidityPool gets the most recent state of the LiquidityPool that exists or existed.

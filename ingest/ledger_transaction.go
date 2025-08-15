@@ -17,15 +17,24 @@ type LedgerTransaction struct {
 	Index    uint32 // this index is 1-indexed as opposed to zero. Refer Read() in ledger_transaction_reader.go
 	Envelope xdr.TransactionEnvelope
 	Result   xdr.TransactionResultPair
-	// FeeChanges and UnsafeMeta are low level values, do not use them directly unless
+
+	// FeeChanges, UnsafeMeta, and PostTxApplyFeeChanges are low level values, do not use them directly unless
 	// you know what you are doing.
 	// Use LedgerTransaction.GetChanges() for higher level access to ledger
 	// entry changes.
-	FeeChanges    xdr.LedgerEntryChanges
-	UnsafeMeta    xdr.TransactionMeta
+	FeeChanges            xdr.LedgerEntryChanges
+	UnsafeMeta            xdr.TransactionMeta
+	PostTxApplyFeeChanges xdr.LedgerEntryChanges
+
 	LedgerVersion uint32
 	Ledger        xdr.LedgerCloseMeta // This is read-only and not to be modified by downstream functions
 	Hash          xdr.Hash
+}
+
+type TransactionEvents struct {
+	TransactionEvents []xdr.TransactionEvent
+	OperationEvents   [][]xdr.ContractEvent
+	DiagnosticEvents  []xdr.DiagnosticEvent
 }
 
 func (t *LedgerTransaction) txInternalError() bool {
@@ -43,6 +52,19 @@ func (t *LedgerTransaction) GetFeeChanges() []Change {
 	for i := range changes {
 		changes[i].Reason = LedgerEntryChangeReasonFee
 		changes[i].Transaction = t
+		changes[i].Ledger = &t.Ledger
+	}
+	return changes
+}
+
+// GetPostApplyFeeChanges returns a developer friendly representation of LedgerEntryChanges
+// connected to fee refunds which are applied after all transactions are executed.
+func (t *LedgerTransaction) GetPostApplyFeeChanges() []Change {
+	changes := GetChangesFromLedgerEntryChanges(t.PostTxApplyFeeChanges)
+	for i := range changes {
+		changes[i].Reason = LedgerEntryChangeReasonFeeRefund
+		changes[i].Transaction = t
+		changes[i].Ledger = &t.Ledger
 	}
 	return changes
 }
@@ -52,6 +74,7 @@ func (t *LedgerTransaction) getTransactionChanges(ledgerEntryChanges xdr.LedgerE
 	for i := range changes {
 		changes[i].Reason = LedgerEntryChangeReasonTransaction
 		changes[i].Transaction = t
+		changes[i].Ledger = &t.Ledger
 	}
 	return changes
 }
@@ -86,13 +109,13 @@ func (t *LedgerTransaction) GetChanges() ([]Change, error) {
 		//	Each element in operationMeta is a list of ledgerEntryChanges
 		//	caused by the operation at that index of the element
 		for opIdx := range operationMeta {
-			opChanges := t.operationChanges(v1Meta.Operations, uint32(opIdx))
+			opChanges := t.operationChanges(operationsMetaV1(v1Meta.Operations), uint32(opIdx))
 			changes = append(changes, opChanges...)
 		}
-	case 2, 3:
+	case 2, 3, 4:
 		var (
 			txBeforeChanges, txAfterChanges xdr.LedgerEntryChanges
-			operationMeta                   []xdr.OperationMeta
+			meta                            operationsMeta
 		)
 
 		switch t.UnsafeMeta.V {
@@ -100,14 +123,19 @@ func (t *LedgerTransaction) GetChanges() ([]Change, error) {
 			v2Meta := t.UnsafeMeta.MustV2()
 			txBeforeChanges = v2Meta.TxChangesBefore
 			txAfterChanges = v2Meta.TxChangesAfter
-			operationMeta = v2Meta.Operations
+			meta = operationsMetaV1(v2Meta.Operations)
 		case 3:
 			v3Meta := t.UnsafeMeta.MustV3()
 			txBeforeChanges = v3Meta.TxChangesBefore
 			txAfterChanges = v3Meta.TxChangesAfter
-			operationMeta = v3Meta.Operations
+			meta = operationsMetaV1(v3Meta.Operations)
+		case 4:
+			v4Meta := t.UnsafeMeta.MustV4()
+			txBeforeChanges = v4Meta.TxChangesBefore
+			txAfterChanges = v4Meta.TxChangesAfter
+			meta = operationsMetaV2(v4Meta.Operations)
 		default:
-			panic("Invalid meta version, expected 2 or 3")
+			panic("Invalid meta version, expected 2, 3, or 4")
 		}
 
 		txChangesBefore := t.getTransactionChanges(txBeforeChanges)
@@ -122,15 +150,15 @@ func (t *LedgerTransaction) GetChanges() ([]Change, error) {
 		//	operationMeta is a list of lists.
 		//	Each element in operationMeta is a list of ledgerEntryChanges
 		//	caused by the operation at that index of the element
-		for opIdx := range operationMeta {
-			opChanges := t.operationChanges(operationMeta, uint32(opIdx))
+		for opIdx := 0; opIdx < meta.len(); opIdx++ {
+			opChanges := t.operationChanges(meta, uint32(opIdx))
 			changes = append(changes, opChanges...)
 		}
 
 		txChangesAfter := t.getTransactionChanges(txAfterChanges)
 		changes = append(changes, txChangesAfter...)
 	default:
-		return changes, errors.New("Unsupported TransactionMeta version")
+		return changes, fmt.Errorf("unsupported TransactionMeta version: %v", t.UnsafeMeta.V)
 	}
 
 	return changes, nil
@@ -157,44 +185,131 @@ func (t *LedgerTransaction) GetOperationChanges(operationIndex uint32) ([]Change
 		return []Change{}, nil
 	}
 
-	var operationMeta []xdr.OperationMeta
+	var meta operationsMeta
 	switch t.UnsafeMeta.V {
 	case 1:
-		operationMeta = t.UnsafeMeta.MustV1().Operations
+		meta = operationsMetaV1(t.UnsafeMeta.MustV1().Operations)
 	case 2:
-		operationMeta = t.UnsafeMeta.MustV2().Operations
+		meta = operationsMetaV1(t.UnsafeMeta.MustV2().Operations)
 	case 3:
-		operationMeta = t.UnsafeMeta.MustV3().Operations
+		meta = operationsMetaV1(t.UnsafeMeta.MustV3().Operations)
+	case 4:
+		meta = operationsMetaV2(t.UnsafeMeta.MustV4().Operations)
 	default:
-		return []Change{}, errors.New("Unsupported TransactionMeta version")
+		return []Change{}, fmt.Errorf("unsupported TransactionMeta version: %v", t.UnsafeMeta.V)
 	}
-
-	return t.operationChanges(operationMeta, operationIndex), nil
+	return t.operationChanges(meta, operationIndex), nil
 }
 
-func (t *LedgerTransaction) operationChanges(ops []xdr.OperationMeta, index uint32) []Change {
-	if int(index) >= len(ops) {
+type operationsMeta interface {
+	getChanges(op uint32) xdr.LedgerEntryChanges
+	len() int
+}
+
+type operationsMetaV1 []xdr.OperationMeta
+
+func (ops operationsMetaV1) getChanges(op uint32) xdr.LedgerEntryChanges {
+	return ops[op].Changes
+}
+
+func (ops operationsMetaV1) len() int {
+	return len(ops)
+}
+
+type operationsMetaV2 []xdr.OperationMetaV2
+
+func (ops operationsMetaV2) getChanges(op uint32) xdr.LedgerEntryChanges {
+	return ops[op].Changes
+}
+
+func (ops operationsMetaV2) len() int {
+	return len(ops)
+}
+
+func (t *LedgerTransaction) operationChanges(ops operationsMeta, index uint32) []Change {
+	if int(index) >= ops.len() {
 		return []Change{}
 	}
 
-	operationMeta := ops[index]
-	changes := GetChangesFromLedgerEntryChanges(operationMeta.Changes)
+	changes := GetChangesFromLedgerEntryChanges(ops.getChanges(index))
 
 	for i := range changes {
 		changes[i].Reason = LedgerEntryChangeReasonOperation
 		changes[i].Transaction = t
 		changes[i].OperationIndex = index
+		changes[i].Ledger = &t.Ledger
 	}
 	return changes
 }
 
-func (t *LedgerTransaction) GetContractEvents() ([]xdr.ContractEvent, error) {
-	return t.UnsafeMeta.GetContractEvents()
+func (t *LedgerTransaction) GetContractEventsForOperation(opIndex uint32) ([]xdr.ContractEvent, error) {
+	return t.UnsafeMeta.GetContractEventsForOperation(opIndex)
 }
 
-// GetDiagnosticEvents returns all contract events emitted by a given operation.
+// GetContractEvents returns a []xdr.ContractEvent for pnly smart contract transaction.
+// If it is not a smart contract transaction, it throws an error
+// For getting events from classic operations/transaction, use GetContractEventsForOperation
+// For getting soroban smart contract events,we rely on the fact that there will only be one operation present in the transaction
+func (t *LedgerTransaction) GetContractEvents() ([]xdr.ContractEvent, error) {
+	if !t.IsSorobanTx() {
+		return nil, errors.New("not a soroban transaction")
+	}
+	return t.GetContractEventsForOperation(0)
+}
+
+// GetDiagnosticEvents returns strictly diagnostic events emitted by a given transaction.
+// Please note that, depending on the configuration with which txMeta may be generated,
+// it is possible that, for smart contract transactions, the list of generated diagnostic events MAY include contract events as well
+// Users of this function (horizon, rpc, etc) should be careful not to double count diagnostic events and contract events in that case
 func (t *LedgerTransaction) GetDiagnosticEvents() ([]xdr.DiagnosticEvent, error) {
 	return t.UnsafeMeta.GetDiagnosticEvents()
+}
+
+// GetTransactionEvents gives the breakdown of xdr.ContractEvent, xdr.TransactionEvent, xdr.Disgnostic event as they appea in the TxMeta
+// In TransactionMetaV3, for soroban transactions, contract events and diagnostic events appear in the SorobanMeta struct in TransactionMetaV3, i.e. at the transaction level
+// In TransactionMetaV4 and onwards, there is a more granular breakdown, because of CAP-67 unified events
+//   - Classic operations will also have contract events.
+//   - Contract events will now be present in the "operation []OperationMetaV2" in the TransactionMetaV4 structure, instead of at the transaction level as in TxMetaV3.
+//     This is true for soroban transactions as well, which will only have one operation and thus contract events will appear at index 0 in the []OperationMetaV2 structure
+//   - Additionally, if its a soroban  transaction, the diagnostic events will also be included in the "DiagnosticEvents []DiagnosticEvent" structure
+//   - Non soroban transactions will have an empty list for DiagnosticEvents
+//
+// It is preferred to use this function in horizon and rpc
+func (t *LedgerTransaction) GetTransactionEvents() (TransactionEvents, error) {
+	txEvents := TransactionEvents{}
+	switch t.UnsafeMeta.V {
+	case 1, 2:
+		return txEvents, nil
+	case 3:
+		// There wont be any events for classic operations in TxMetaV3
+		if !t.IsSorobanTx() {
+			return txEvents, nil
+		}
+		contractEvents, err := t.GetContractEvents()
+		if err != nil {
+			return txEvents, err
+		}
+		diagnosticEvents, err := t.GetDiagnosticEvents()
+		if err != nil {
+			return txEvents, err
+		}
+		// There  will only ever be 1 smart contract operation per tx.
+		txEvents.OperationEvents = make([][]xdr.ContractEvent, 1)
+		txEvents.OperationEvents[0] = contractEvents
+		txEvents.DiagnosticEvents = diagnosticEvents
+	case 4:
+		txMeta := t.UnsafeMeta.MustV4()
+		txEvents.TransactionEvents = txMeta.Events
+		txEvents.DiagnosticEvents = txMeta.DiagnosticEvents
+		txEvents.OperationEvents = make([][]xdr.ContractEvent, len(txMeta.Operations))
+		for i, op := range txMeta.Operations {
+			txEvents.OperationEvents[i] = op.Events
+		}
+	default:
+		return txEvents, fmt.Errorf("unsupported TransactionMeta version: %v", t.UnsafeMeta.V)
+	}
+	return txEvents, nil
+
 }
 
 func (t *LedgerTransaction) ID() int64 {
@@ -364,13 +479,13 @@ func (t *LedgerTransaction) SorobanResourcesInstructions() (uint32, bool) {
 	return uint32(sorobanData.Resources.Instructions), true
 }
 
-func (t *LedgerTransaction) SorobanResourcesReadBytes() (uint32, bool) {
+func (t *LedgerTransaction) SorobanResourcesDiskReadBytes() (uint32, bool) {
 	sorobanData, ok := t.GetSorobanData()
 	if !ok {
 		return 0, false
 	}
 
-	return uint32(sorobanData.Resources.ReadBytes), true
+	return uint32(sorobanData.Resources.DiskReadBytes), true
 }
 
 func (t *LedgerTransaction) SorobanResourcesWriteBytes() (uint32, bool) {
@@ -510,7 +625,23 @@ func (t *LedgerTransaction) SorobanResourceFeeRefund() int64 {
 	if !t.IsSorobanTx() {
 		return 0
 	}
-	startingBal, endingBal := getAccountBalanceFromLedgerEntryChanges(t.UnsafeMeta.MustV3().TxChangesAfter, t.FeeAccount().ToAccountId().Address())
+	var txChangesAfter xdr.LedgerEntryChanges
+	switch t.UnsafeMeta.V {
+	case 3:
+		txChangesAfter = t.UnsafeMeta.MustV3().TxChangesAfter
+	case 4:
+		txChangesAfter = t.UnsafeMeta.MustV4().TxChangesAfter
+	default:
+		panic(fmt.Errorf("Invalid txMeta version: %d", t.UnsafeMeta.V))
+	}
+
+	// For soroban transactions before P23, the feeRefund changes will show up in TxMeta in the `TxChangesAfter` field
+	// From P23 onwards, they will show up in the PostTxApplyFeeChanges field and not in TxChangesAfter
+	// You can safely append the TxChangesAfter and PostTxApplyFeeChanges before passing it to getAccountBalanceFromLedgerEntryChanges,
+	// since only one of them will reflect balance changes
+	allChanges := append(txChangesAfter, t.PostTxApplyFeeChanges...)
+
+	startingBal, endingBal := getAccountBalanceFromLedgerEntryChanges(allChanges, t.FeeAccount().ToAccountId().Address())
 	if startingBal > endingBal {
 		panic("Invalid Soroban Resource Refund")
 	}

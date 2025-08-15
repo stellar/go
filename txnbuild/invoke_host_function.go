@@ -16,17 +16,17 @@ type InvokeHostFunction struct {
 }
 
 type SorobanFees struct {
-	Instructions uint32
-	ReadBytes    uint32
-	WriteBytes   uint32
-	ResourceFee  int64
+	Instructions  uint32
+	DiskReadBytes uint32
+	WriteBytes    uint32
+	ResourceFee   int64
 }
 
 var defaultPaymentToContractFees = SorobanFees{
-	Instructions: 400_000,
-	ReadBytes:    1_000,
-	WriteBytes:   1_000,
-	ResourceFee:  5_000_000,
+	Instructions:  400_000,
+	DiskReadBytes: 1_000,
+	WriteBytes:    1_000,
+	ResourceFee:   5_000_000,
 }
 
 // PaymentToContractParams configures the payment returned by NewPaymentToContract
@@ -57,7 +57,7 @@ func NewPaymentToContract(params PaymentToContractParams) (InvokeHostFunction, e
 		return InvokeHostFunction{}, err
 	}
 
-	var assetContractID xdr.Hash
+	var assetContractID xdr.ContractId
 	assetContractID, err = asset.ContractID(params.NetworkPassphrase)
 	if err != nil {
 		return InvokeHostFunction{}, err
@@ -72,7 +72,7 @@ func NewPaymentToContract(params PaymentToContractParams) (InvokeHostFunction, e
 	if err != nil {
 		return InvokeHostFunction{}, err
 	}
-	var destinationContractID xdr.Hash
+	var destinationContractID xdr.ContractId
 	copy(destinationContractID[:], decoded)
 
 	parsedAmount, err := amount.Parse(params.Amount)
@@ -208,10 +208,10 @@ func NewPaymentToContract(params PaymentToContractParams) (InvokeHostFunction, e
 			V: 1,
 			SorobanData: &xdr.SorobanTransactionData{
 				Resources: xdr.SorobanResources{
-					Footprint:    footprint,
-					Instructions: xdr.Uint32(resources.Instructions),
-					ReadBytes:    xdr.Uint32(resources.ReadBytes),
-					WriteBytes:   xdr.Uint32(resources.WriteBytes),
+					Footprint:     footprint,
+					Instructions:  xdr.Uint32(resources.Instructions),
+					DiskReadBytes: xdr.Uint32(resources.DiskReadBytes),
+					WriteBytes:    xdr.Uint32(resources.WriteBytes),
 				},
 				ResourceFee: xdr.Int64(resources.ResourceFee),
 			},

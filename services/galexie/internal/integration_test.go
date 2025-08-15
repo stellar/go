@@ -25,6 +25,7 @@ import (
 	"github.com/fsouza/fake-gcs-server/fakestorage"
 
 	"github.com/stellar/go/historyarchive"
+	"github.com/stellar/go/support/compressxdr"
 	"github.com/stellar/go/support/datastore"
 	"github.com/stellar/go/support/storage"
 )
@@ -99,10 +100,10 @@ func (s *GalexieTestSuite) TestScanAndFill() {
 	datastore, err := datastore.NewDataStore(s.ctx, s.config.DataStoreConfig)
 	require.NoError(err)
 
-	_, err = datastore.GetFile(s.ctx, "FFFFFFFF--0-9/FFFFFFFA--5.xdr.zstd")
+	_, err = datastore.GetFile(s.ctx, "FFFFFFFF--0-9/FFFFFFFA--5.xdr."+compressxdr.DefaultCompressor.Name())
 	require.NoError(err)
 
-	lastModified, err := datastore.GetFileLastModified(s.ctx, "FFFFFFFF--0-9/FFFFFFFA--5.xdr.zstd")
+	lastModified, err := datastore.GetFileLastModified(s.ctx, "FFFFFFFF--0-9/FFFFFFFA--5.xdr."+compressxdr.DefaultCompressor.Name())
 	require.NoError(err)
 
 	// now run an scan-and-fill on an overlapping range, it will skip over existing ledgers
@@ -117,11 +118,11 @@ func (s *GalexieTestSuite) TestScanAndFill() {
 	s.T().Log(outWriter.String())
 	s.T().Log(errWriter.String())
 
-	newLastModified, err := datastore.GetFileLastModified(s.ctx, "FFFFFFFF--0-9/FFFFFFFA--5.xdr.zstd")
+	newLastModified, err := datastore.GetFileLastModified(s.ctx, "FFFFFFFF--0-9/FFFFFFFA--5.xdr."+compressxdr.DefaultCompressor.Name())
 	require.NoError(err)
 	require.Equal(lastModified, newLastModified)
 
-	_, err = datastore.GetFile(s.ctx, "FFFFFFFF--0-9/FFFFFFF6--9.xdr.zstd")
+	_, err = datastore.GetFile(s.ctx, "FFFFFFFF--0-9/FFFFFFF6--9.xdr."+compressxdr.DefaultCompressor.Name())
 	require.NoError(err)
 }
 
@@ -137,7 +138,7 @@ func (s *GalexieTestSuite) TestAppend() {
 	datastore, err := datastore.NewDataStore(s.ctx, s.config.DataStoreConfig)
 	require.NoError(err)
 
-	lastModified, err := datastore.GetFileLastModified(s.ctx, "FFFFFFFF--0-9/FFFFFFF9--6.xdr.zstd")
+	lastModified, err := datastore.GetFileLastModified(s.ctx, "FFFFFFFF--0-9/FFFFFFF9--6.xdr."+compressxdr.DefaultCompressor.Name())
 	require.NoError(err)
 
 	// now run an append on an overlapping range, it will resume past existing ledgers
@@ -155,11 +156,11 @@ func (s *GalexieTestSuite) TestAppend() {
 	s.T().Log(errOutput)
 
 	// check that the file was not modified
-	newLastModified, err := datastore.GetFileLastModified(s.ctx, "FFFFFFFF--0-9/FFFFFFF9--6.xdr.zstd")
+	newLastModified, err := datastore.GetFileLastModified(s.ctx, "FFFFFFFF--0-9/FFFFFFF9--6.xdr."+compressxdr.DefaultCompressor.Name())
 	require.NoError(err)
 	require.Equal(lastModified, newLastModified, "file should not be modified on append of overlapping range")
 
-	_, err = datastore.GetFile(s.ctx, "FFFFFFFF--0-9/FFFFFFF6--9.xdr.zstd")
+	_, err = datastore.GetFile(s.ctx, "FFFFFFFF--0-9/FFFFFFF6--9.xdr."+compressxdr.DefaultCompressor.Name())
 	require.NoError(err)
 }
 
@@ -192,7 +193,7 @@ func (s *GalexieTestSuite) TestAppendUnbounded() {
 	require.EventuallyWithT(func(c *assert.CollectT) {
 		// this checks every 50ms up to 180s total
 		assert := assert.New(c)
-		_, err = datastore.GetFile(s.ctx, "FFFFFFF5--10-19/FFFFFFF0--15.xdr.zstd")
+		_, err = datastore.GetFile(s.ctx, "FFFFFFF5--10-19/FFFFFFF0--15.xdr."+compressxdr.DefaultCompressor.Name())
 		assert.NoError(err)
 	}, 180*time.Second, 50*time.Millisecond, "append unbounded did not work")
 }
@@ -230,6 +231,7 @@ func (s *GalexieTestSuite) SetupSuite() {
 	if err = toml.Unmarshal(tomlBytes, &s.config); err != nil {
 		t.Fatalf("unable to marshal config file toml into struct, %v", err)
 	}
+	s.config.DataStoreConfig.NetworkPassphrase = s.config.StellarCoreConfig.NetworkPassphrase
 
 	s.tempConfigFile = filepath.Join(testTempDir, "config.toml")
 	err = os.WriteFile(s.tempConfigFile, tomlBytes, 0777)
@@ -237,7 +239,7 @@ func (s *GalexieTestSuite) SetupSuite() {
 		t.Fatalf("unable to write temp config file %v, %v", s.tempConfigFile, err)
 	}
 
-	s.dockerCli, err = client.NewClientWithOpts(client.WithAPIVersionNegotiation())
+	s.dockerCli, err = client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		t.Fatalf("could not create docker client, %v", err)
 	}

@@ -15,6 +15,7 @@ import (
 
 	"cloud.google.com/go/storage"
 	"google.golang.org/api/googleapi"
+	"google.golang.org/api/iterator"
 
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/support/url"
@@ -25,7 +26,6 @@ type GCSDataStore struct {
 	client *storage.Client
 	bucket *storage.BucketHandle
 	prefix string
-	schema DataStoreSchema
 }
 
 func NewGCSDataStore(ctx context.Context, dataStoreConfig DataStoreConfig) (DataStore, error) {
@@ -39,10 +39,10 @@ func NewGCSDataStore(ctx context.Context, dataStoreConfig DataStoreConfig) (Data
 		return nil, err
 	}
 
-	return FromGCSClient(ctx, client, destinationBucketPath, dataStoreConfig.Schema)
+	return FromGCSClient(ctx, client, destinationBucketPath)
 }
 
-func FromGCSClient(ctx context.Context, client *storage.Client, bucketPath string, schema DataStoreSchema) (DataStore, error) {
+func FromGCSClient(ctx context.Context, client *storage.Client, bucketPath string) (DataStore, error) {
 	// append the gcs:// scheme to enable usage of the url package reliably to
 	// get parse bucket name which is first path segment as URL.Host
 	gcsBucketURL := fmt.Sprintf("gcs://%s", bucketPath)
@@ -62,8 +62,7 @@ func FromGCSClient(ctx context.Context, client *storage.Client, bucketPath strin
 		return nil, fmt.Errorf("failed to retrieve bucket attributes: %w", err)
 	}
 
-	// TODO: Datastore schema to be fetched from the datastore https://stellarorg.atlassian.net/browse/HUBBLE-397
-	return &GCSDataStore{client: client, bucket: bucket, prefix: prefix, schema: schema}, nil
+	return &GCSDataStore{client: client, bucket: bucket, prefix: prefix}, nil
 }
 
 func (b GCSDataStore) GetFileAttrs(ctx context.Context, filePath string) (*storage.ObjectAttrs, error) {
@@ -203,8 +202,50 @@ func (b GCSDataStore) putFile(ctx context.Context, filePath string, in io.Writer
 	return w.Close()
 }
 
-// GetSchema returns the schema information which defines the structure
-// and organization of data in the datastore.
-func (b GCSDataStore) GetSchema() DataStoreSchema {
-	return b.schema
+// ListFilePaths lists up to 'limit' file paths under the provided prefix.
+// Returned paths are absolute within the datastore (including the given prefix)
+// and ordered lexicographically ascending as provided by the backend.
+// If limit <= 0, implementations default to a cap of 1,000; values > 1,000 are capped to 1,000.
+func (b GCSDataStore) ListFilePaths(ctx context.Context, prefix string, limit int) ([]string, error) {
+	var fullPrefix string
+
+	// When 'prefix' is empty, ensure the base prefix ends with a slash (e.g., "a/b/")
+	// so the query returns only objects within that directory, not similarly named paths like "a/b-1".
+	if prefix == "" {
+		fullPrefix = b.prefix
+		if !strings.HasSuffix(fullPrefix, "/") {
+			fullPrefix += "/"
+		}
+	} else {
+		// Join the caller-provided prefix with the datastore prefix
+		fullPrefix = path.Join(b.prefix, prefix)
+	}
+
+	query := &storage.Query{Prefix: fullPrefix}
+	// Only request the object name to minimize payload
+	query.SetAttrSelection([]string{"Name"})
+	it := b.bucket.Objects(ctx, query)
+
+	keys := make([]string, 0)
+	// Enforce an effective cap of 1000 total results and default to 1000 if <= 0
+	remaining := limit
+	if remaining <= 0 || remaining > listFilePathsMaxLimit {
+		remaining = listFilePathsMaxLimit
+	}
+	for {
+		if remaining == 0 {
+			break
+		}
+		attrs, err := it.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		// Return full path (including the configured prefix)
+		keys = append(keys, attrs.Name)
+		remaining--
+	}
+	return keys, nil
 }

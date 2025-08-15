@@ -18,6 +18,7 @@ import (
 
 	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/ingest/ledgerbackend"
+	"github.com/stellar/go/support/compressxdr"
 	"github.com/stellar/go/support/datastore"
 	supporthttp "github.com/stellar/go/support/http"
 	"github.com/stellar/go/support/log"
@@ -116,8 +117,25 @@ func (a *App) init(ctx context.Context, runtimeSettings RuntimeSettings) error {
 	}
 
 	if a.dataStore, err = datastore.NewDataStore(ctx, a.config.DataStoreConfig); err != nil {
-		return errors.Wrap(err, "Could not connect to destination data store")
+		return fmt.Errorf("could not connect to destination data store %w", err)
 	}
+
+	if err = validateExistingFileExtension(ctx, a.dataStore); err != nil {
+		return err
+	}
+
+	logger.Infof("Attempting to configure datastore...")
+	manifest, created, err := datastore.PublishConfig(ctx, a.dataStore, a.config.DataStoreConfig)
+	if err != nil {
+		return fmt.Errorf("could not configure datastore %w", err)
+	}
+
+	if created {
+		logger.WithField("manifest", manifest).Infof("Successfully created datastore config manifest.")
+	} else {
+		logger.WithField("manifest", manifest).Infof("Datastore config manifest already exists.")
+	}
+
 	if a.config.Resumable() {
 		if err = a.applyResumability(ctx,
 			datastore.NewResumableManager(a.dataStore, a.config.DataStoreConfig.Schema, archive)); err != nil {
@@ -125,7 +143,8 @@ func (a *App) init(ctx context.Context, runtimeSettings RuntimeSettings) error {
 		}
 	}
 
-	logger.Infof("Final computed ledger range for backend retrieval and export, start=%d, end=%d", a.config.StartLedger, a.config.EndLedger)
+	logger.Infof("Final computed ledger range for backend retrieval and export, start=%d, end=%d",
+		a.config.StartLedger, a.config.EndLedger)
 
 	if a.ledgerBackend, err = newLedgerBackend(a.config, registry); err != nil {
 		return err
@@ -143,6 +162,25 @@ func (a *App) init(ctx context.Context, runtimeSettings RuntimeSettings) error {
 	if a.config.AdminPort != 0 {
 		a.adminServer = newAdminServer(a.config.AdminPort, registry)
 	}
+	return nil
+}
+
+func validateExistingFileExtension(ctx context.Context, ds datastore.DataStore) error {
+	fileExt, err := datastore.GetLedgerFileExtension(ctx, ds)
+	if err != nil {
+		if errors.Is(err, datastore.ErrNoLedgerFiles) {
+			// Empty data lake is OK. will bootstrap with .zst going forward.
+			log.Infof("no existing ledger files found in data store")
+			return nil
+		}
+		return fmt.Errorf("unable to determine ledger file extension from data store: %w", err)
+	}
+
+	if fileExt != compressxdr.DefaultCompressor.Name() {
+		return fmt.Errorf("detected older incompatible ledger files in the data store (extension %q). "+
+			"Galexie v23.0+ requires starting with an empty datastore", fileExt)
+	}
+
 	return nil
 }
 

@@ -555,52 +555,10 @@ func TestReingestDatastore(t *testing.T) {
 
 	testTempDir := t.TempDir()
 	fakeBucketFilesSource := "testdata/testbucket"
-	fakeBucketFiles := []fakestorage.Object{}
+	fakeBucketFiles := loadTestBucketObjects(t, fakeBucketFilesSource, "to/my/bucket/", false)
 
-	if err = filepath.WalkDir(fakeBucketFilesSource, func(path string, entry fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-
-		if entry.Type().IsRegular() {
-			contents, err := os.ReadFile(fmt.Sprintf("%s/%s", fakeBucketFilesSource, entry.Name()))
-			if err != nil {
-				return err
-			}
-
-			fakeBucketFiles = append(fakeBucketFiles, fakestorage.Object{
-				ObjectAttrs: fakestorage.ObjectAttrs{
-					BucketName: "path",
-					Name:       fmt.Sprintf("to/my/bucket/FFFFFFFF--0-63999/%s", entry.Name()),
-				},
-				Content: contents,
-			})
-		}
-		return nil
-	}); err != nil {
-		t.Fatalf("unable to setup fake bucket files: %v", err)
-	}
-
-	testWriter := &testWriter{test: t}
-	opts := fakestorage.Options{
-		Scheme:         "http",
-		Host:           "127.0.0.1",
-		Port:           uint16(0),
-		Writer:         testWriter,
-		StorageRoot:    filepath.Join(testTempDir, "bucket"),
-		PublicHost:     "127.0.0.1",
-		InitialObjects: fakeBucketFiles,
-	}
-
-	gcsServer, err := fakestorage.NewServerWithOptions(opts)
-
-	if err != nil {
-		t.Fatalf("couldn't start the fake gcs http server %v", err)
-	}
-
+	gcsServer := startFakeGCSServer(t, testTempDir, fakeBucketFiles)
 	defer gcsServer.Stop()
-	t.Logf("fake gcs server started at %v", gcsServer.URL())
-	t.Setenv("STORAGE_EMULATOR_HOST", gcsServer.URL())
 
 	rootCmd := horizoncmd.NewRootCmd()
 	rootCmd.SetArgs([]string{"db",
@@ -618,6 +576,128 @@ func TestReingestDatastore(t *testing.T) {
 
 	_, err = test.Client().LedgerDetail(998)
 	require.NoError(t, err)
+}
+
+func TestReingestDatastoreWithZstdFiles(t *testing.T) {
+	test := integration.NewTest(t, integration.Config{
+		SkipHorizonStart:          true,
+		SkipCoreContainerCreation: true,
+	})
+	err := test.StartHorizon(false)
+	assert.NoError(t, err)
+	test.WaitForHorizonWeb()
+
+	testTempDir := t.TempDir()
+	fakeBucketFilesSource := "testdata/testbucket_zstd"
+	fakeBucketFiles := loadTestBucketObjects(t, fakeBucketFilesSource, "to/my/bucket/", false)
+
+	gcsServer := startFakeGCSServer(t, testTempDir, fakeBucketFiles)
+	defer gcsServer.Stop()
+
+	rootCmd := horizoncmd.NewRootCmd()
+	rootCmd.SetArgs([]string{"db",
+		"reingest",
+		"range",
+		"--db-url", test.GetTestDB().DSN,
+		"--network", "testnet",
+		"--parallel-workers", "1",
+		"--ledgerbackend", "datastore",
+		"--datastore-config", "../ingest/testdata/config.storagebackend.toml",
+		"997",
+		"999"})
+
+	require.NoError(t, rootCmd.Execute())
+
+	_, err = test.Client().LedgerDetail(998)
+	require.NoError(t, err)
+}
+
+func TestReingestDatastoreConfigManifest(t *testing.T) {
+	test := integration.NewTest(t, integration.Config{
+		SkipHorizonStart:          true,
+		SkipCoreContainerCreation: true,
+	})
+	err := test.StartHorizon(false)
+	assert.NoError(t, err)
+	test.WaitForHorizonWeb()
+
+	testTempDir := t.TempDir()
+	fakeBucketFilesSource := "testdata/testbucket"
+	fakeBucketFiles := loadTestBucketObjects(t, fakeBucketFilesSource, "to/my/bucket/", true)
+
+	gcsServer := startFakeGCSServer(t, testTempDir, fakeBucketFiles)
+	defer gcsServer.Stop()
+
+	rootCmd := horizoncmd.NewRootCmd()
+	rootCmd.SetArgs([]string{"db",
+		"reingest",
+		"range",
+		"--db-url", test.GetTestDB().DSN,
+		"--network", "testnet",
+		"--parallel-workers", "1",
+		"--ledgerbackend", "datastore",
+		"--datastore-config", "../ingest/testdata/config.storagebackend.toml.manifest",
+		"997",
+		"999"})
+
+	require.NoError(t, rootCmd.Execute())
+
+	_, err = test.Client().LedgerDetail(998)
+	require.NoError(t, err)
+}
+
+func startFakeGCSServer(t *testing.T, tempDir string, initialObjects []fakestorage.Object) *fakestorage.Server {
+	testWriter := &testWriter{test: t}
+	server, err := fakestorage.NewServerWithOptions(fakestorage.Options{
+		Scheme:         "http",
+		Host:           "127.0.0.1",
+		Port:           0,
+		Writer:         testWriter,
+		StorageRoot:    filepath.Join(tempDir, "bucket"),
+		PublicHost:     "127.0.0.1",
+		InitialObjects: initialObjects,
+	})
+	require.NoError(t, err)
+	t.Logf("fake gcs server started at %v", server.URL())
+	t.Setenv("STORAGE_EMULATOR_HOST", server.URL())
+	return server
+}
+
+func loadTestBucketObjects(t *testing.T, srcDir, bucketPrefix string, includeConfigManifest bool) []fakestorage.Object {
+	var objects []fakestorage.Object
+
+	err := filepath.WalkDir(srcDir, func(path string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if entry.Type().IsRegular() {
+			if entry.Name() == ".config.json" && !includeConfigManifest {
+				return nil
+			}
+
+			content, err := os.ReadFile(path)
+			require.NoError(t, err)
+
+			var objectName string
+			if entry.Name() == ".config.json" {
+				objectName = fmt.Sprintf("%s/.config.json", bucketPrefix)
+			} else {
+				objectName = fmt.Sprintf("%s/FFFFFFFF--0-63999/%s", bucketPrefix, entry.Name())
+			}
+
+			objects = append(objects, fakestorage.Object{
+				ObjectAttrs: fakestorage.ObjectAttrs{
+					BucketName: "path",
+					Name:       objectName,
+				},
+				Content: content,
+			})
+		}
+		return nil
+	})
+	require.NoError(t, err)
+
+	return objects
 }
 
 func TestReingestDBWithFilterRules(t *testing.T) {
@@ -782,8 +862,6 @@ func command(t *testing.T, horizonConfig horizon.Config, args ...string) []strin
 		horizonConfig.CaptiveCoreBinaryPath,
 		"--captive-core-config-path",
 		horizonConfig.CaptiveCoreConfigPath,
-		"--captive-core-use-db=" +
-			strconv.FormatBool(horizonConfig.CaptiveCoreConfigUseDB),
 		"--network-passphrase",
 		horizonConfig.NetworkPassphrase,
 		// due to ARTIFICIALLY_ACCELERATE_TIME_FOR_TESTING

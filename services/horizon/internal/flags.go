@@ -41,9 +41,6 @@ const (
 	captiveCoreConfigAppendPathName = "captive-core-config-append-path"
 	// CaptiveCoreConfigPathName is the command line flag for configuring the path to the captive core configuration file
 	CaptiveCoreConfigPathName = "captive-core-config-path"
-	// CaptiveCoreConfigUseDB is the command line flag for enabling captive core runtime to use an external db url
-	// connection rather than RAM for ledger states
-	CaptiveCoreConfigUseDB = "captive-core-use-db"
 	// CaptiveCoreHTTPPortFlagName is the commandline flag for specifying captive core HTTP port
 	CaptiveCoreHTTPPortFlagName = "captive-core-http-port"
 	// EnableCaptiveCoreIngestionFlagName is the commandline flag for enabling captive core ingestion
@@ -63,6 +60,8 @@ const (
 	DisableTxSubFlagName = "disable-tx-sub"
 	// SkipTxmeta is the command line flag for disabling persistence of tx meta in history transaction table
 	SkipTxmeta = "skip-txmeta"
+	// EmitVerboseMeta is the command line flag for enabling all kinds of verbose events - diagnosticEvents, classicEvents during ingestion
+	EmitVerboseMeta = "emit-verbose-meta"
 
 	// StellarPubnet is a constant representing the Stellar public network
 	StellarPubnet = "pubnet"
@@ -233,25 +232,6 @@ func Flags() (*Config, support.ConfigOptions) {
 				}
 				return nil
 			},
-			UsedInCommands: IngestionCommands,
-		},
-		&support.ConfigOption{
-			Name:        CaptiveCoreConfigUseDB,
-			OptType:     types.Bool,
-			FlagDefault: true,
-			Required:    false,
-			Usage:       `when enabled, Horizon ingestion will instruct the captive core invocation to use an external db url for ledger states rather than in memory(RAM). Will result in several GB of space shifting out of RAM and to the external db persistence. The external db url is determined by the presence of DATABASE parameter in the captive-core-config-path or if absent, the db will default to sqlite and the db file will be stored at location derived from captive-core-storage-path parameter.`,
-			CustomSetValue: func(opt *support.ConfigOption) error {
-				if val := viper.GetBool(opt.Name); val {
-					stdLog.Printf("The usage of the flag --captive-core-use-db has been deprecated. " +
-						"Setting it to false to achieve in-memory functionality on captive core will be removed in " +
-						"future releases. We recommend removing usage of this flag now in preparation.")
-					config.CaptiveCoreConfigUseDB = val
-					config.CaptiveCoreTomlParams.UseDB = val
-				}
-				return nil
-			},
-			ConfigKey:      &config.CaptiveCoreConfigUseDB,
 			UsedInCommands: IngestionCommands,
 		},
 		&support.ConfigOption{
@@ -823,6 +803,15 @@ func Flags() (*Config, support.ConfigOptions) {
 			Usage:          "excludes tx meta from persistence on transaction history",
 			UsedInCommands: IngestionCommands,
 		},
+		&support.ConfigOption{
+			Name:           EmitVerboseMeta,
+			ConfigKey:      &config.EmitVerboseMeta,
+			OptType:        types.Bool,
+			FlagDefault:    false,
+			Required:       false,
+			Usage:          "enables all events to be present in txMeta. Do not set SKIP_TXMETA and EMIT_VERBOSE_META to true at the same time.",
+			UsedInCommands: IngestionCommands,
+		},
 	}
 
 	return config, flags
@@ -887,6 +876,7 @@ func setCaptiveCoreConfiguration(config *Config, options ApplyOptions) error {
 	config.CaptiveCoreTomlParams.CoreBinaryPath = config.CaptiveCoreBinaryPath
 	config.CaptiveCoreTomlParams.HistoryArchiveURLs = config.HistoryArchiveURLs
 	config.CaptiveCoreTomlParams.NetworkPassphrase = config.NetworkPassphrase
+	config.CaptiveCoreTomlParams.EmitVerboseMeta = config.EmitVerboseMeta
 
 	if config.CaptiveCoreConfigPath != "" {
 		config.CaptiveCoreToml, err = ledgerbackend.NewCaptiveCoreTomlFromFile(config.CaptiveCoreConfigPath,
@@ -943,6 +933,10 @@ func ApplyFlags(config *Config, flags support.ConfigOptions, options ApplyOption
 	// Validate options that should be provided together
 	if err := validateBothOrNeither("tls-cert", "tls-key"); err != nil {
 		return err
+	}
+
+	if config.SkipTxmeta && config.EmitVerboseMeta {
+		return fmt.Errorf("invalid config: Only one of SKIP_TXMETA and EMIT_VERBOSE_META can be set to TRUE, not both")
 	}
 
 	if config.Ingest {

@@ -42,6 +42,9 @@ func (mode Mode) Name() string {
 	return "none"
 }
 
+// user-configurable in the future.
+const compressionType = "zstd"
+
 type RuntimeSettings struct {
 	StartLedger    uint32
 	EndLedger      uint32
@@ -177,9 +180,10 @@ func (config *Config) GenerateCaptiveCoreConfig(coreBinFromPath string) (ledgerb
 	}
 
 	params := ledgerbackend.CaptiveCoreTomlParams{
+		CoreBinaryPath:     config.StellarCoreConfig.StellarCoreBinaryPath,
 		NetworkPassphrase:  config.StellarCoreConfig.NetworkPassphrase,
 		HistoryArchiveURLs: config.StellarCoreConfig.HistoryArchiveUrls,
-		UseDB:              true,
+		EmitVerboseMeta:    true,
 	}
 
 	captiveCoreToml, err := ledgerbackend.NewCaptiveCoreTomlFromData(config.SerializedCaptiveCoreToml, params)
@@ -199,7 +203,6 @@ func (config *Config) GenerateCaptiveCoreConfig(coreBinFromPath string) (ledgerb
 		Log:                 logger.WithField("subservice", "stellar-core"),
 		Toml:                captiveCoreToml,
 		UserAgent:           config.UserAgent,
-		UseDB:               true,
 		StoragePath:         config.StellarCoreConfig.StoragePath,
 	}, nil
 }
@@ -270,6 +273,10 @@ func (config *Config) processToml(tomlPath string) error {
 			return errors.Wrap(err, "Failed to load captive-core-toml-path file")
 		}
 	}
+
+	// Populate the datastore config with the network passphrase for datastore manifest.
+	config.DataStoreConfig.NetworkPassphrase = config.StellarCoreConfig.NetworkPassphrase
+	config.DataStoreConfig.Compression = compressionType
 
 	return nil
 }

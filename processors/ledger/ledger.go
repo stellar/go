@@ -15,27 +15,27 @@ import (
 
 // LedgerOutput is a representation of a ledger that aligns with the BigQuery table history_ledgers
 type LedgerOutput struct {
-	Sequence                   uint32    `json:"sequence"` // sequence number of the ledger
-	LedgerHash                 string    `json:"ledger_hash"`
-	PreviousLedgerHash         string    `json:"previous_ledger_hash"`
-	LedgerHeader               string    `json:"ledger_header"` // base 64 encoding of the ledger header
-	TransactionCount           int32     `json:"transaction_count"`
-	OperationCount             int32     `json:"operation_count"` // counts only operations that were a part of successful transactions
-	SuccessfulTransactionCount int32     `json:"successful_transaction_count"`
-	FailedTransactionCount     int32     `json:"failed_transaction_count"`
-	TxSetOperationCount        string    `json:"tx_set_operation_count"` // counts all operations, even those that are part of failed transactions
-	ClosedAt                   time.Time `json:"closed_at"`              // UTC timestamp
-	TotalCoins                 int64     `json:"total_coins"`
-	FeePool                    int64     `json:"fee_pool"`
-	BaseFee                    uint32    `json:"base_fee"`
-	BaseReserve                uint32    `json:"base_reserve"`
-	MaxTxSetSize               uint32    `json:"max_tx_set_size"`
-	ProtocolVersion            uint32    `json:"protocol_version"`
-	LedgerID                   int64     `json:"id"`
-	SorobanFeeWrite1Kb         int64     `json:"soroban_fee_write_1kb"`
-	NodeID                     string    `json:"node_id"`
-	Signature                  string    `json:"signature"`
-	TotalByteSizeOfBucketList  uint64    `json:"total_byte_size_of_bucket_list"`
+	Sequence                        uint32    `json:"sequence"` // sequence number of the ledger
+	LedgerHash                      string    `json:"ledger_hash"`
+	PreviousLedgerHash              string    `json:"previous_ledger_hash"`
+	LedgerHeader                    string    `json:"ledger_header"` // base 64 encoding of the ledger header
+	TransactionCount                int32     `json:"transaction_count"`
+	OperationCount                  int32     `json:"operation_count"` // counts only operations that were a part of successful transactions
+	SuccessfulTransactionCount      int32     `json:"successful_transaction_count"`
+	FailedTransactionCount          int32     `json:"failed_transaction_count"`
+	TxSetOperationCount             string    `json:"tx_set_operation_count"` // counts all operations, even those that are part of failed transactions
+	ClosedAt                        time.Time `json:"closed_at"`              // UTC timestamp
+	TotalCoins                      int64     `json:"total_coins"`
+	FeePool                         int64     `json:"fee_pool"`
+	BaseFee                         uint32    `json:"base_fee"`
+	BaseReserve                     uint32    `json:"base_reserve"`
+	MaxTxSetSize                    uint32    `json:"max_tx_set_size"`
+	ProtocolVersion                 uint32    `json:"protocol_version"`
+	LedgerID                        int64     `json:"id"`
+	SorobanFeeWrite1Kb              int64     `json:"soroban_fee_write_1kb"`
+	NodeID                          string    `json:"node_id"`
+	Signature                       string    `json:"signature"`
+	TotalByteSizeOfLiveSorobanState uint64    `json:"total_byte_size_of_live_soroban_state"`
 }
 
 // TransformLedger converts a ledger from the history archive ingestion system into a form suitable for BigQuery
@@ -83,7 +83,7 @@ func TransformLedger(inputLedger historyarchive.Ledger, lcm xdr.LedgerCloseMeta)
 	outputProtocolVersion := uint32(ledgerHeader.LedgerVersion)
 
 	var outputSorobanFeeWrite1Kb int64
-	var outputTotalByteSizeOfBucketList uint64
+	var outputTotalByteSizeOfLiveSorobanState uint64
 
 	lcmV1, ok := lcm.GetV1()
 	if ok {
@@ -92,8 +92,8 @@ func TransformLedger(inputLedger historyarchive.Ledger, lcm xdr.LedgerCloseMeta)
 		if ok {
 			outputSorobanFeeWrite1Kb = int64(extV1.SorobanFeeWrite1Kb)
 		}
-		totalByteSizeOfBucketList := lcmV1.TotalByteSizeOfBucketList
-		outputTotalByteSizeOfBucketList = uint64(totalByteSizeOfBucketList)
+		totalByteSizeOfLiveSorobanState := lcmV1.TotalByteSizeOfLiveSorobanState
+		outputTotalByteSizeOfLiveSorobanState = uint64(totalByteSizeOfLiveSorobanState)
 	}
 
 	var outputNodeID string
@@ -108,40 +108,29 @@ func TransformLedger(inputLedger historyarchive.Ledger, lcm xdr.LedgerCloseMeta)
 	}
 
 	transformedLedger := LedgerOutput{
-		Sequence:                   outputSequence,
-		LedgerID:                   outputLedgerID,
-		LedgerHash:                 outputLedgerHash,
-		PreviousLedgerHash:         outputPreviousHash,
-		LedgerHeader:               outputLedgerHeader,
-		TransactionCount:           outputTransactionCount,
-		OperationCount:             outputOperationCount,
-		SuccessfulTransactionCount: outputSuccessfulCount,
-		FailedTransactionCount:     outputFailedCount,
-		TxSetOperationCount:        outputTxSetOperationCount,
-		ClosedAt:                   outputCloseTime,
-		TotalCoins:                 outputTotalCoins,
-		FeePool:                    outputFeePool,
-		BaseFee:                    outputBaseFee,
-		BaseReserve:                outputBaseReserve,
-		MaxTxSetSize:               outputMaxTxSetSize,
-		ProtocolVersion:            outputProtocolVersion,
-		SorobanFeeWrite1Kb:         outputSorobanFeeWrite1Kb,
-		NodeID:                     outputNodeID,
-		Signature:                  outputSignature,
-		TotalByteSizeOfBucketList:  outputTotalByteSizeOfBucketList,
+		Sequence:                        outputSequence,
+		LedgerID:                        outputLedgerID,
+		LedgerHash:                      outputLedgerHash,
+		PreviousLedgerHash:              outputPreviousHash,
+		LedgerHeader:                    outputLedgerHeader,
+		TransactionCount:                outputTransactionCount,
+		OperationCount:                  outputOperationCount,
+		SuccessfulTransactionCount:      outputSuccessfulCount,
+		FailedTransactionCount:          outputFailedCount,
+		TxSetOperationCount:             outputTxSetOperationCount,
+		ClosedAt:                        outputCloseTime,
+		TotalCoins:                      outputTotalCoins,
+		FeePool:                         outputFeePool,
+		BaseFee:                         outputBaseFee,
+		BaseReserve:                     outputBaseReserve,
+		MaxTxSetSize:                    outputMaxTxSetSize,
+		ProtocolVersion:                 outputProtocolVersion,
+		SorobanFeeWrite1Kb:              outputSorobanFeeWrite1Kb,
+		NodeID:                          outputNodeID,
+		Signature:                       outputSignature,
+		TotalByteSizeOfLiveSorobanState: outputTotalByteSizeOfLiveSorobanState,
 	}
 	return transformedLedger, nil
-}
-
-func TransactionProcessing(l xdr.LedgerCloseMeta) []xdr.TransactionResultMeta {
-	switch l.V {
-	case 0:
-		return l.MustV0().TxProcessing
-	case 1:
-		return l.MustV1().TxProcessing
-	default:
-		panic(fmt.Sprintf("Unsupported LedgerCloseMeta.V: %d", l.V))
-	}
 }
 
 func extractCounts(ledger historyarchive.Ledger) (transactionCount int32, operationCount int32, successTxCount int32, failedTxCount int32, txSetOperationCount string, err error) {
@@ -200,7 +189,14 @@ func getTransactionPhase(transactionPhase []xdr.TransactionPhase) (transactionEn
 				switch component.Type {
 				case 0:
 					transactionSlice = append(transactionSlice, component.TxsMaybeDiscountedFee.Txs...)
-
+				case 1:
+					for _, stage := range phase.ParallelTxsComponent.ExecutionStages {
+						for _, cluster := range stage {
+							for _, envelope := range cluster {
+								transactionSlice = append(transactionSlice, envelope)
+							}
+						}
+					}
 				default:
 					panic(fmt.Sprintf("Unsupported TxSetComponentType: %d", component.Type))
 				}

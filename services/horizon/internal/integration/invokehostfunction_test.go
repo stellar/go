@@ -30,10 +30,6 @@ const constructor_contract = "soroban_constructor_contract.wasm"
 // contract code if needed to new wasm.
 
 func TestContractInvokeHostFunctionInstallContract(t *testing.T) {
-	if integration.GetCoreMaxSupportedProtocol() < 20 {
-		t.Skip("This test run does not support less than Protocol 20")
-	}
-
 	itest := integration.NewTest(t, integration.Config{
 		EnableStellarRPC: true,
 	})
@@ -79,10 +75,6 @@ func TestContractInvokeHostFunctionInstallContract(t *testing.T) {
 }
 
 func TestSorobanFeeBumpTransaction(t *testing.T) {
-	if integration.GetCoreMaxSupportedProtocol() < 20 {
-		t.Skip("This test run does not support less than Protocol 20")
-	}
-
 	itest := integration.NewTest(t, integration.Config{
 		EnableStellarRPC: true,
 	})
@@ -131,10 +123,6 @@ func TestSorobanFeeBumpTransaction(t *testing.T) {
 }
 
 func TestContractInvokeHostFunctionCreateContractByAddress(t *testing.T) {
-	if integration.GetCoreMaxSupportedProtocol() < 20 {
-		t.Skip("This test run does not support less than Protocol 20")
-	}
-
 	itest := integration.NewTest(t, integration.Config{
 		EnableStellarRPC: true,
 	})
@@ -184,10 +172,6 @@ func TestContractInvokeHostFunctionCreateContractByAddress(t *testing.T) {
 }
 
 func TestContractInvokeHostFunctionCreateConstructorContract(t *testing.T) {
-	if integration.GetCoreMaxSupportedProtocol() < 22 {
-		t.Skip("This test run does not support less than Protocol 22")
-	}
-
 	itest := integration.NewTest(t, integration.Config{
 		EnableStellarRPC: true,
 		QuickExpiration:  true,
@@ -270,18 +254,20 @@ func TestContractInvokeHostFunctionCreateConstructorContract(t *testing.T) {
 	assert.Len(t, invokeHostFunctionOpJson.AssetBalanceChanges, 1)
 	assetBalanceChange := invokeHostFunctionOpJson.AssetBalanceChanges[0]
 	assert.Equal(itest.CurrentTest(), assetBalanceChange.Amount, "10.0000000")
-	assert.Equal(itest.CurrentTest(), assetBalanceChange.From, issuer)
 	assert.Equal(itest.CurrentTest(), assetBalanceChange.To, strkey.MustEncode(strkey.VersionByteContract, contractID[:]))
-	assert.Equal(itest.CurrentTest(), assetBalanceChange.Type, "transfer")
+	if integration.GetCoreMaxSupportedProtocol() < 23 {
+		assert.Equal(itest.CurrentTest(), assetBalanceChange.From, issuer)
+		assert.Equal(itest.CurrentTest(), assetBalanceChange.Type, "transfer")
+	} else {
+		// see https://github.com/stellar/stellar-protocol/blob/master/core/cap-0067.md#protocol-upgrade-transition
+		assert.Equal(itest.CurrentTest(), assetBalanceChange.From, "")
+		assert.Equal(itest.CurrentTest(), assetBalanceChange.Type, "mint")
+	}
 	assert.Equal(itest.CurrentTest(), assetBalanceChange.Asset.Code, strings.TrimRight(asset.GetCode(), "\x00"))
 	assert.Equal(itest.CurrentTest(), assetBalanceChange.Asset.Issuer, asset.GetIssuer())
 }
 
 func TestContractInvokeHostFunctionInvokeStatelessContractFn(t *testing.T) {
-	if integration.GetCoreMaxSupportedProtocol() < 20 {
-		t.Skip("This test run does not support less than Protocol 20")
-	}
-
 	itest := integration.NewTest(t, integration.Config{
 		EnableStellarRPC: true,
 	})
@@ -362,7 +348,8 @@ func TestContractInvokeHostFunctionInvokeStatelessContractFn(t *testing.T) {
 	expectedScVal := xdr.ScVal{Type: xdr.ScValTypeScvU64, U64: &invokeResult}
 	var transactionMeta xdr.TransactionMeta
 	assert.NoError(t, xdr.SafeUnmarshalBase64(tx.ResultMetaXdr, &transactionMeta))
-	assert.True(t, expectedScVal.Equals(transactionMeta.V3.SorobanMeta.ReturnValue))
+
+	assert.True(t, expectedScVal.Equals(mustGetSorobanMetaReturnValue(t, transactionMeta)))
 
 	clientInvokeOp, err := itest.Client().Operations(horizonclient.OperationRequest{
 		ForTransaction: tx.Hash,
@@ -385,11 +372,20 @@ func TestContractInvokeHostFunctionInvokeStatelessContractFn(t *testing.T) {
 	assert.Equal(t, invokeHostFunctionOpJson.Parameters[3].Type, "U64")
 }
 
-func TestContractInvokeHostFunctionInvokeStatefulContractFn(t *testing.T) {
-	if integration.GetCoreMaxSupportedProtocol() < 20 {
-		t.Skip("This test run does not support less than Protocol 20")
+func mustGetSorobanMetaReturnValue(t *testing.T, meta xdr.TransactionMeta) xdr.ScVal {
+	var returnValue xdr.ScVal
+	switch meta.V {
+	case 3:
+		returnValue = meta.MustV3().SorobanMeta.ReturnValue
+	case 4:
+		returnValue = *meta.MustV4().SorobanMeta.ReturnValue
+	default:
+		t.Fatalf("Invalid meta version: %d", meta.V)
 	}
+	return returnValue
+}
 
+func TestContractInvokeHostFunctionInvokeStatefulContractFn(t *testing.T) {
 	itest := integration.NewTest(t, integration.Config{
 		EnableStellarRPC: true,
 	})
@@ -457,7 +453,8 @@ func TestContractInvokeHostFunctionInvokeStatefulContractFn(t *testing.T) {
 	expectedScVal := xdr.ScVal{Type: xdr.ScValTypeScvU32, U32: &invokeResult}
 	var transactionMeta xdr.TransactionMeta
 	assert.NoError(t, xdr.SafeUnmarshalBase64(clientTx.ResultMetaXdr, &transactionMeta))
-	assert.True(t, expectedScVal.Equals(transactionMeta.V3.SorobanMeta.ReturnValue))
+
+	assert.True(t, expectedScVal.Equals(mustGetSorobanMetaReturnValue(t, transactionMeta)))
 
 	clientInvokeOp, err := itest.Client().Operations(horizonclient.OperationRequest{
 		ForTransaction: tx.Hash,

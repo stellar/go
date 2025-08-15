@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/support/datastore"
 	"github.com/stellar/go/support/log"
@@ -96,8 +97,13 @@ func ApplyLedgerMetadata(ledgerRange ledgerbackend.Range,
 		return fmt.Errorf("failed to create datastore: %w", err)
 	}
 
+	schema, err := datastore.LoadSchema(context.Background(), dataStore, publisherConfig.DataStoreConfig)
+	if err != nil {
+		return fmt.Errorf("failed to retrieve datastore schema: %w", err)
+	}
+
 	var ledgerBackend ledgerbackend.LedgerBackend
-	ledgerBackend, err = ledgerbackend.NewBufferedStorageBackend(publisherConfig.BufferedStorageConfig, dataStore)
+	ledgerBackend, err = ledgerbackend.NewBufferedStorageBackend(publisherConfig.BufferedStorageConfig, dataStore, schema)
 	if err != nil {
 		return fmt.Errorf("failed to create buffered storage backend: %w", err)
 	}

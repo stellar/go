@@ -79,7 +79,7 @@ func TestOneTxOneOperationChanges(t *testing.T) {
 	for _, change := range changes {
 		tt.Equal(change.Transaction.Hash.HexString(), txResp.Hash)
 		tt.Equal(change.Transaction.Ledger.LedgerSequence(), ledgerSeq)
-		tt.Empty(change.Ledger)
+		tt.Equal(change.Ledger.LedgerSequence(), ledgerSeq)
 		tt.Empty(change.LedgerUpgrade)
 	}
 
@@ -149,6 +149,7 @@ func getChangesFromLedger(itest *integration.Test, ledger xdr.LedgerCloseMeta) [
 
 func getLedgers(itest *integration.Test, startingLedger uint32, endLedger uint32) map[uint32]xdr.LedgerCloseMeta {
 	t := itest.CurrentTest()
+	t.Logf("fetching ledgers [%v, %v]", startingLedger, endLedger)
 
 	ccConfig, err := itest.CreateCaptiveCoreConfig()
 	require.NoError(t, err)
@@ -172,6 +173,7 @@ func getLedgers(itest *integration.Test, startingLedger uint32, endLedger uint32
 	}
 
 	require.NoError(t, captiveCore.Close())
+	t.Logf("finished fetching ledgers [%v, %v]", startingLedger, endLedger)
 	return seqToLedgersMap
 }
 
