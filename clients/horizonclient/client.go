@@ -143,114 +143,136 @@ func (c *Client) stream(
 	}
 
 	for {
-		// updates the url with new cursor
-		su.RawQuery = query.Encode()
-		req, err := http.NewRequest("GET", su.String(), nil)
-		if err != nil {
-			return errors.Wrap(err, "error creating HTTP request")
-		}
-		req.Header.Set("Accept", "text/event-stream")
-		c.setDefaultClient()
-		c.setClientAppHeaders(req)
-
-		// We can use c.HTTP here because we set Timeout per request not on the client. See sendRequest()
-		resp, err := c.HTTP.Do(req)
-		if err != nil {
-			return errors.Wrap(err, "error sending HTTP request")
-		}
-		defer resp.Body.Close()
-
-		// Expected statusCode are 200-299
-		if !(resp.StatusCode >= 200 && resp.StatusCode < 300) {
-			return fmt.Errorf("got bad HTTP status code %d", resp.StatusCode)
+		// Check if ctx is not canceled
+		select {
+		case <-ctx.Done():
+			return nil
+		default:
+			// Continue
 		}
 
-		reader := bufio.NewReader(resp.Body)
+		// If err is nil, reconnect and try again.
+		if err = c.streamConnection(ctx, su, query, handler); err != nil {
+			return err
+		}
+	}
+}
 
-		// Read events one by one. Break this loop when there is no more data to be
-		// read from resp.Body (io.EOF).
-	Events:
+func (c *Client) streamConnection(
+	ctx context.Context,
+	su *url.URL,
+	query url.Values,
+	handler func(data []byte) error,
+) error {
+	// updates the url with a new cursor
+	su.RawQuery = query.Encode()
+	req, err := http.NewRequest("GET", su.String(), nil)
+	if err != nil {
+		return errors.Wrap(err, "error creating HTTP request")
+	}
+	req.Header.Set("Accept", "text/event-stream")
+	c.setDefaultClient()
+	c.setClientAppHeaders(req)
+
+	// We can use c.HTTP here because we set Timeout per request not on the client. See sendRequest()
+	resp, err := c.HTTP.Do(req)
+	if err != nil {
+		return errors.Wrap(err, "error sending HTTP request")
+	}
+	defer resp.Body.Close()
+
+	// Expected statusCode are 200-299
+	if !(resp.StatusCode >= 200 && resp.StatusCode < 300) {
+		return fmt.Errorf("got bad HTTP status code %d", resp.StatusCode)
+	}
+
+	reader := bufio.NewReader(resp.Body)
+
+	// Read events one by one. Break this loop when there is no more data to be
+	// read from resp.Body (io.EOF).
+Events:
+	for {
+		// Read until empty line = event delimiter. The perfect solution would be to read
+		// as many bytes as possible and forward them to sse.Decode. However this
+		// requires much more complicated code.
+		// We could also write our own `sse` package that works fine with streams directly
+		// (github.com/manucorporat/sse is just using io/ioutils.ReadAll).
+		var buffer bytes.Buffer
+		nonEmptylinesRead := 0
 		for {
-			// Read until empty line = event delimiter. The perfect solution would be to read
-			// as many bytes as possible and forward them to sse.Decode. However this
-			// requires much more complicated code.
-			// We could also write our own `sse` package that works fine with streams directly
-			// (github.com/manucorporat/sse is just using io/ioutils.ReadAll).
-			var buffer bytes.Buffer
-			nonEmptylinesRead := 0
-			for {
-				// Check if ctx is not canceled
-				select {
-				case <-ctx.Done():
-					return nil
-				default:
-					// Continue
-				}
-
-				line, err := reader.ReadString('\n')
-				if err != nil {
-					if err == io.EOF || err == io.ErrUnexpectedEOF {
-						// We catch EOF errors to handle two possible situations:
-						// - The last line before closing the stream was not empty. This should never
-						//   happen in Horizon as it always sends an empty line after each event.
-						// - The stream was closed by the server/proxy because the connection was idle.
-						//
-						// In the former case, that (again) should never happen in Horizon, we need to
-						// check if there are any events we need to decode. We do this in the `if`
-						// statement below just in case if Horizon behavior changes in a future.
-						//
-						// From spec:
-						// > Once the end of the file is reached, the user agent must dispatch the
-						// > event one final time, as defined below.
-						if nonEmptylinesRead == 0 {
-							break Events
-						}
-					} else {
-						return errors.Wrap(err, "error reading line")
-					}
-				}
-				buffer.WriteString(line)
-
-				if strings.TrimRight(line, "\n\r") == "" {
-					break
-				}
-
-				nonEmptylinesRead++
+			// Check if ctx is not canceled
+			select {
+			case <-ctx.Done():
+				return nil
+			default:
+				// Continue
 			}
 
-			events, err := sse.Decode(strings.NewReader(buffer.String()))
+			line, err := reader.ReadString('\n')
 			if err != nil {
-				return errors.Wrap(err, "error decoding event")
+				if err == io.EOF || err == io.ErrUnexpectedEOF {
+					// We catch EOF errors to handle two possible situations:
+					// - The last line before closing the stream was not empty. This should never
+					//   happen in Horizon as it always sends an empty line after each event.
+					// - The stream was closed by the server/proxy because the connection was idle.
+					//
+					// In the former case, that (again) should never happen in Horizon, we need to
+					// check if there are any events we need to decode. We do this in the `if`
+					// statement below just in case if Horizon behavior changes in a future.
+					//
+					// From spec:
+					// > Once the end of the file is reached, the user agent must dispatch the
+					// > event one final time, as defined below.
+					if nonEmptylinesRead == 0 {
+						break Events
+					}
+				} else {
+					return errors.Wrap(err, "error reading line")
+				}
+			}
+			buffer.WriteString(line)
+
+			if strings.TrimRight(line, "\n\r") == "" {
+				break
 			}
 
-			// Right now len(events) should always be 1. This loop will be helpful after writing
-			// new SSE decoder that can handle io.Reader without using ioutils.ReadAll().
-			for _, event := range events {
-				if event.Event != "message" {
-					continue
-				}
+			nonEmptylinesRead++
+		}
 
-				// Update cursor with event ID
-				if event.Id != "" {
-					query.Set("cursor", event.Id)
-				}
+		events, err := sse.Decode(strings.NewReader(buffer.String()))
+		if err != nil {
+			return errors.Wrap(err, "error decoding event")
+		}
 
-				switch data := event.Data.(type) {
-				case string:
-					err = handler([]byte(data))
-					err = errors.Wrap(err, "handler error")
-				case []byte:
-					err = handler(data)
-					err = errors.Wrap(err, "handler error")
-				default:
-					err = errors.New("invalid event.Data type")
-				}
-				if err != nil {
-					return err
-				}
+		// Right now len(events) should always be 1. This loop will be helpful after writing
+		// new SSE decoder that can handle io.Reader without using ioutils.ReadAll().
+		for _, event := range events {
+			if event.Event != "message" {
+				continue
+			}
+
+			// Update cursor with event ID
+			if event.Id != "" {
+				query.Set("cursor", event.Id)
+			}
+
+			switch data := event.Data.(type) {
+			case string:
+				err = handler([]byte(data))
+				err = errors.Wrap(err, "handler error")
+			case []byte:
+				err = handler(data)
+				err = errors.Wrap(err, "handler error")
+			default:
+				err = errors.New("invalid event.Data type")
+			}
+			if err != nil {
+				return err
 			}
 		}
 	}
+
+	return nil
 }
 
 func (c *Client) setClientAppHeaders(req *http.Request) {
