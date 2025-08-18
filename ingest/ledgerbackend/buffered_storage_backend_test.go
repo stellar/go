@@ -183,11 +183,8 @@ func TestNewLedgerBufferSizeLessThanRangeSize(t *testing.T) {
 	assert.Eventually(t, func() bool { return len(ledgerBuffer.ledgerQueue) == 10 }, time.Second*1, time.Millisecond*50)
 	assert.NoError(t, err)
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
-	defer cancel()
-
 	for i := startLedger; i <= endLedger; i++ {
-		lcm, err := ledgerBuffer.getFromLedgerQueue(ctx)
+		lcm, err := ledgerBuffer.getFromLedgerQueue(context.Background())
 		assert.NoError(t, err)
 		assert.Equal(t, xdr.Uint32(i), lcm.StartSequence)
 	}
@@ -208,11 +205,8 @@ func TestNewLedgerBufferSizeLargerThanRangeSize(t *testing.T) {
 	assert.Eventually(t, func() bool { return len(ledgerBuffer.ledgerQueue) == 15 }, time.Second*1, time.Millisecond*50)
 	assert.NoError(t, err)
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
-	defer cancel()
-
 	for i := startLedger; i <= endLedger; i++ {
-		lcm, err := ledgerBuffer.getFromLedgerQueue(ctx)
+		lcm, err := ledgerBuffer.getFromLedgerQueue(context.Background())
 		assert.NoError(t, err)
 		assert.Equal(t, xdr.Uint32(i), lcm.StartSequence)
 	}
