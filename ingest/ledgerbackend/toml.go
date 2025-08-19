@@ -211,7 +211,7 @@ func unflattenTables(text string, tablePlaceHolders *placeholders) string {
 	})
 }
 
-// AddExamplePubnetQuorum adds example pubnet validators to toml file
+// AddExamplePubnetValidators adds example pubnet validators to toml file
 func (c *CaptiveCoreToml) AddExamplePubnetValidators() {
 	c.captiveCoreTomlValues.Validators = []Validator{
 		{
