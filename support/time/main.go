@@ -49,7 +49,7 @@ func (t Millis) RoundUp(d int64) Millis {
 	return t
 }
 
-// RoundUp returns a new ToInt64 instance with a down to d millis
+// RoundDown returns a new ToInt64 instance with a down to d millis
 func (t Millis) RoundDown(d int64) Millis {
 	//round down to the nearest d
 	return Millis(int64(int64(t)/d) * d)
