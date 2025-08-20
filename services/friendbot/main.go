@@ -106,8 +106,7 @@ func run(cmd *cobra.Command, args []string) {
 
 func initRouter(cfg Config, fb *internal.Bot) *chi.Mux {
 	mux := newMux(cfg)
-
-	handler := &internal.FriendbotHandler{Friendbot: fb}
+	handler := internal.NewFriendbotHandler(fb, cfg.OtelEnabled)
 	mux.Get("/", handler.Handle)
 	mux.Post("/", handler.Handle)
 	mux.NotFound(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
