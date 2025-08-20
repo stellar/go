@@ -22,10 +22,18 @@ func TestProtocolUpgradeChanges(t *testing.T) {
 	tt := assert.New(t)
 	itest := integration.NewTest(t, integration.Config{SkipHorizonStart: true})
 
-	upgradedLedgerAppx, _ := itest.GetUpgradedLedgerSeqAppx()
-	itest.WaitForLedgerInArchive(6*time.Minute, upgradedLedgerAppx)
+	var curLedger uint32
+	require.Eventually(t, func() bool {
+		info, err := itest.CoreClient().Info(context.Background())
+		if err != nil {
+			return false
+		}
+		curLedger = uint32(info.Info.Ledger.Num)
+		return curLedger > 0
 
-	ledgerSeqToLedgers := getLedgers(itest, 2, upgradedLedgerAppx)
+	}, 30*time.Second, 500*time.Millisecond, "core is not ready")
+	itest.WaitForLedgerInArchive(6*time.Minute, curLedger)
+	ledgerSeqToLedgers := getLedgers(itest, 2, curLedger)
 
 	// It is important to find the "exact" ledger which is representative of protocol upgrade
 	// and the one before it, to check for upgrade related changes
