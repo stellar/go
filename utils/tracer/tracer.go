@@ -43,6 +43,7 @@ func (stellarTracer *StellarTracer) InitializeTracer() (func(), error) {
 		otlptracehttp.NewClient(
 			otlptracehttp.WithEndpoint(stellarTracer.OtelEndpoint),
 			otlptracehttp.WithHeaders(headers),
+			otlptracehttp.WithInsecure(),
 		),
 	)
 	if err != nil {
