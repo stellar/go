@@ -68,6 +68,7 @@ require (
 	github.com/docker/docker v27.3.1+incompatible
 	github.com/docker/go-connections v0.5.0
 	github.com/fsouza/fake-gcs-server v1.49.2
+	github.com/go-chi/chi/v5 v5.1.0
 	github.com/riandyrn/otelchi v0.12.1
 	github.com/stellar/stellar-rpc v0.9.6-0.20250130160539-be7702aa01ba
 	go.opentelemetry.io/otel v1.34.0
@@ -105,7 +106,6 @@ require (
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
-	github.com/go-chi/chi/v5 v5.1.0 // indirect
 	github.com/go-gorp/gorp/v3 v3.1.0 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
