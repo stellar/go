@@ -39,7 +39,6 @@ type Config struct {
 	MinionBatchSize        int         `toml:"minion_batch_size" valid:"optional"`
 	SubmitTxRetriesAllowed int         `toml:"submit_tx_retries_allowed" valid:"optional"`
 	UseCloudflareIP        bool        `toml:"use_cloudflare_ip" valid:"optional"`
-	OtelEnabled            bool        `toml:"otel_enabled" valid:"optional"`
 	OtelEndpoint           string      `toml:"otel_endpoint" valid:"optional"`
 }
 
@@ -106,7 +105,7 @@ func run(cmd *cobra.Command, args []string) {
 
 func initRouter(cfg Config, fb *internal.Bot) *chi.Mux {
 	mux := newMux(cfg)
-	handler := internal.NewFriendbotHandler(fb, cfg.OtelEnabled)
+	handler := internal.NewFriendbotHandler(fb)
 	mux.Get("/", handler.Handle)
 	mux.Post("/", handler.Handle)
 	mux.NotFound(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
@@ -123,15 +122,12 @@ func newMux(cfg Config) *chi.Mux {
 	mux.Use(http.XFFMiddleware(http.XFFMiddlewareConfig{BehindCloudflare: cfg.UseCloudflareIP}))
 	mux.Use(http.NewAPIMux(log.DefaultLogger).Middlewares()...)
 
-	// Add OpenTelemetry middleware if enabled
-	if cfg.OtelEnabled {
-		// Extract information using middleware
-		mux.Use(middleware.RequestID)
-		mux.Use(middleware.RealIP)
-		mux.Use(middleware.Logger)
-		mux.Use(middleware.Recoverer)
-		mux.Use(otelchi.Middleware(serviceName, otelchi.WithChiRoutes(mux)))
-	}
+	// Add OpenTelemetry middleware
+	mux.Use(middleware.RequestID)
+	mux.Use(middleware.RealIP)
+	mux.Use(middleware.Logger)
+	mux.Use(middleware.Recoverer)
+	mux.Use(otelchi.Middleware(serviceName, otelchi.WithChiRoutes(mux)))
 
 	return mux
 }

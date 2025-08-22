@@ -1,11 +1,15 @@
 package internal
 
 import (
+	"context"
 	"log"
 	"sync"
 
 	hProtocol "github.com/stellar/go/protocols/horizon"
+	"go.opentelemetry.io/otel"
 )
+
+var botTracer = otel.Tracer("bot_tracer")
 
 // Bot represents the friendbot subsystem and primarily delegates work
 // to its Minions.
@@ -22,14 +26,14 @@ type SubmitResult struct {
 }
 
 // Pay funds the account at `destAddress`.
-func (bot *Bot) Pay(destAddress string) (*hProtocol.Transaction, error) {
+func (bot *Bot) Pay(ctx context.Context, destAddress string) (*hProtocol.Transaction, error) {
 	bot.indexMux.Lock()
 	log.Printf("Selecting minion at index %d of max length %d", bot.nextMinionIndex, len(bot.Minions))
 	minion := bot.Minions[bot.nextMinionIndex]
 	bot.nextMinionIndex = (bot.nextMinionIndex + 1) % len(bot.Minions)
 	bot.indexMux.Unlock()
 	resultChan := make(chan SubmitResult)
-	go minion.Run(destAddress, resultChan)
+	go minion.Run(ctx, destAddress, resultChan)
 	maybeSubmitResult := <-resultChan
 	close(resultChan)
 	return maybeSubmitResult.maybeTransactionSuccess, maybeSubmitResult.maybeErr
