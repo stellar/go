@@ -49,7 +49,7 @@ func (l *LoadTestSnapshot) Save(ctx context.Context) error {
 	if errors.Is(err, sql.ErrNoRows) {
 		// No active load test state; create one with a random runID
 		buf := make([]byte, 16)
-		if _, err := rand.Read(buf); err != nil {
+		if _, err = rand.Read(buf); err != nil {
 			return fmt.Errorf("Error generating runID: %w", err)
 		}
 		runID = hex.EncodeToString(buf)
