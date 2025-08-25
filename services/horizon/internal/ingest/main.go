@@ -244,11 +244,11 @@ type system struct {
 
 	config Config
 
-	historyQ history.IngestionQ
-	runner   ProcessorRunnerInterface
-
-	ledgerBackend  ledgerbackend.LedgerBackend
-	historyAdapter historyArchiveAdapterInterface
+	historyQ         history.IngestionQ
+	runner           ProcessorRunnerInterface
+	loadtestSnapshot *LoadTestSnapshot
+	ledgerBackend    ledgerbackend.LedgerBackend
+	historyAdapter   historyArchiveAdapterInterface
 
 	stellarCoreClient stellarCoreClient
 
@@ -348,6 +348,11 @@ func NewSystem(config Config) (System, error) {
 		}
 	}
 
+	historyQ := &history.Q{config.HistorySession.Clone()}
+	historyAdapter := newHistoryArchiveAdapter(archive)
+	filters := filters.NewFilters()
+	loadtestSnapshot := &LoadTestSnapshot{HistoryQ: historyQ}
+
 	if config.LoadTestLedgersPath != "" {
 		if !config.DisableStateVerification {
 			return nil, fmt.Errorf("state verication cannot be enabled during ingestion load tests")
@@ -358,12 +363,9 @@ func NewSystem(config Config) (System, error) {
 			LedgersFilePath:       config.LoadTestLedgersPath,
 			LedgerEntriesFilePath: config.LoadTestFixturesPath,
 			LedgerCloseDuration:   config.LoadTestCloseDuration,
+			Snapshot:              loadtestSnapshot,
 		})
 	}
-
-	historyQ := &history.Q{config.HistorySession.Clone()}
-	historyAdapter := newHistoryArchiveAdapter(archive)
-	filters := filters.NewFilters()
 
 	maxLedgersPerFlush := config.MaxLedgerPerFlush
 	if maxLedgersPerFlush < 1 {
@@ -378,6 +380,7 @@ func NewSystem(config Config) (System, error) {
 		disableStateVerification:    config.DisableStateVerification,
 		historyAdapter:              historyAdapter,
 		historyQ:                    historyQ,
+		loadtestSnapshot:            loadtestSnapshot,
 		ledgerBackend:               ledgerBackend,
 		maxReingestRetries:          config.MaxReingestRetries,
 		reingestRetryBackoffSeconds: config.ReingestRetryBackoffSeconds,

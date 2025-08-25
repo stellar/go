@@ -325,8 +325,9 @@ func TestMaybeVerifyInternalDBErrCancelOrContextCanceled(t *testing.T) {
 func TestCurrentStateRaceCondition(t *testing.T) {
 	historyQ := &mockDBQ{}
 	s := &system{
-		historyQ: historyQ,
-		ctx:      context.Background(),
+		historyQ:         historyQ,
+		loadtestSnapshot: &LoadTestSnapshot{HistoryQ: historyQ},
+		ctx:              context.Background(),
 	}
 	reg := setupMetrics(s)
 
@@ -335,6 +336,8 @@ func TestCurrentStateRaceCondition(t *testing.T) {
 	historyQ.On("Rollback").Return(nil)
 	historyQ.On("GetLastLedgerIngest", s.ctx).Return(uint32(1), nil)
 	historyQ.On("GetIngestVersion", s.ctx).Return(CurrentVersion, nil)
+	historyQ.On("GetLoadTestRestoreState", s.ctx).
+		Return("", uint32(0), sql.ErrNoRows).Maybe()
 
 	timer := time.NewTimer(2000 * time.Millisecond)
 	getCh := make(chan bool, 1)
@@ -420,6 +423,20 @@ type mockDBQ struct {
 	history.MockQSigners
 	history.MockQTransactions
 	history.MockQTrustLines
+}
+
+func (m *mockDBQ) GetLoadTestRestoreState(ctx context.Context) (string, uint32, error) {
+	args := m.Called(ctx)
+	return args.Get(0).(string), args.Get(1).(uint32), args.Error(2)
+}
+
+func (m *mockDBQ) SetLoadTestRestoreState(ctx context.Context, runID string, restoreLedger uint32) error {
+	args := m.Called(ctx, runID, restoreLedger)
+	return args.Error(0)
+}
+func (m *mockDBQ) ClearLoadTestRestoreState(ctx context.Context) error {
+	args := m.Called(ctx)
+	return args.Error(0)
 }
 
 func (m *mockDBQ) Begin(ctx context.Context) error {

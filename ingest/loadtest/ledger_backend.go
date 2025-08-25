@@ -6,6 +6,7 @@ import (
 	"io"
 	"math"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/klauspost/compress/zstd"
@@ -15,6 +16,21 @@ import (
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/xdr"
 )
+
+// Snapshot models a reversible checkpoint used by the LedgerBackend
+// to manage side effects against the load test is running.
+type Snapshot interface {
+	// Save establishes a restorable checkpoint and marks the
+	// environment as under load test. It must capture enough
+	// information to enable a later Rollback to restore the
+	// prior state.
+	Save(ctx context.Context) error
+
+	// Restore restores the system to the state that existed at the time of
+	// Save and cleans up any artifacts introduced by the load test.
+	// Implementations should make this method idempotent.
+	Restore(ctx context.Context) error
+}
 
 // LedgerBackend is used to load test ingestion.
 // LedgerBackend will take a file of synthetically generated ledgers (see
@@ -31,6 +47,8 @@ type LedgerBackend struct {
 	latestLedgerSeq       uint32
 	preparedRange         ledgerbackend.Range
 	cachedLedger          xdr.LedgerCloseMeta
+	done                  bool
+	lock                  sync.RWMutex
 }
 
 // LedgerBackendConfig configures LedgerBackend
@@ -47,6 +65,8 @@ type LedgerBackendConfig struct {
 	LedgerEntriesFilePath string
 	// LedgerCloseDuration is the rate at which ledgers will be replayed from LedgerBackend
 	LedgerCloseDuration time.Duration
+	// Snapshot is used to manage side effects while ingesting from LedgerBackend
+	Snapshot Snapshot
 }
 
 // NewLedgerBackend constructs an LedgerBackend instance
@@ -57,6 +77,9 @@ func NewLedgerBackend(config LedgerBackendConfig) *LedgerBackend {
 }
 
 func (r *LedgerBackend) GetLatestLedgerSequence(ctx context.Context) (uint32, error) {
+	r.lock.RLock()
+	defer r.lock.RUnlock()
+
 	if r.nextLedgerSeq == 0 {
 		return 0, fmt.Errorf("PrepareRange() must be called before GetLatestLedgerSequence()")
 	}
@@ -94,6 +117,9 @@ func readLedgerEntries(path string) ([]xdr.LedgerEntry, error) {
 }
 
 func (r *LedgerBackend) PrepareRange(ctx context.Context, ledgerRange ledgerbackend.Range) error {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
 	if r.nextLedgerSeq != 0 {
 		if r.isPrepared(ledgerRange) {
 			return nil
@@ -248,6 +274,9 @@ func (r *LedgerBackend) PrepareRange(ctx context.Context, ledgerRange ledgerback
 	}
 	cleanup = false
 
+	if err = r.config.Snapshot.Save(ctx); err != nil {
+		return fmt.Errorf("could not save snapshot: %w", err)
+	}
 	r.mergedLedgersFilePath = mergedLedgersFile.Name()
 	r.mergedLedgersStream = mergedLedgersStream
 	// from this point, ledgers will be available at a rate of once
@@ -282,6 +311,9 @@ func validateNetworkPassphrase(networkPassphrase string, ledger xdr.LedgerCloseM
 }
 
 func (r *LedgerBackend) IsPrepared(ctx context.Context, ledgerRange ledgerbackend.Range) (bool, error) {
+	r.lock.RLock()
+	defer r.lock.RUnlock()
+
 	return r.isPrepared(ledgerRange), nil
 }
 
@@ -302,6 +334,15 @@ func (r *LedgerBackend) isPrepared(ledgerRange ledgerbackend.Range) bool {
 }
 
 func (r *LedgerBackend) GetLedger(ctx context.Context, sequence uint32) (xdr.LedgerCloseMeta, error) {
+	r.lock.RLock()
+	closeLedgerBackend := false
+	defer func() {
+		r.lock.RUnlock()
+		if closeLedgerBackend {
+			r.Close()
+		}
+	}()
+
 	if r.nextLedgerSeq == 0 {
 		return xdr.LedgerCloseMeta{}, fmt.Errorf("PrepareRange() must be called before GetLedger()")
 	}
@@ -310,6 +351,16 @@ func (r *LedgerBackend) GetLedger(ctx context.Context, sequence uint32) (xdr.Led
 			"sequence number %v is behind the ledger stream sequence %d",
 			sequence,
 			r.cachedLedger.LedgerSequence(),
+		)
+	}
+	if r.done {
+		return xdr.LedgerCloseMeta{}, fmt.Errorf("ledger backend is closed")
+	}
+	if sequence > r.latestLedgerSeq {
+		closeLedgerBackend = true
+		return xdr.LedgerCloseMeta{}, fmt.Errorf(
+			"sequence number %v is greater than the latest ledger available",
+			sequence,
 		)
 	}
 	for ; r.nextLedgerSeq <= sequence; r.nextLedgerSeq++ {
@@ -339,6 +390,10 @@ func (r *LedgerBackend) GetLedger(ctx context.Context, sequence uint32) (xdr.Led
 }
 
 func (r *LedgerBackend) Close() error {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
+	r.done = true
 	if err := r.config.LedgerBackend.Close(); err != nil {
 		return fmt.Errorf("could not close real ledger backend: %w", err)
 	}
@@ -347,9 +402,16 @@ func (r *LedgerBackend) Close() error {
 		if err := r.mergedLedgersStream.Close(); err != nil {
 			return fmt.Errorf("could not close merged ledgers xdr stream: %w", err)
 		}
+		r.mergedLedgersStream = nil
+	}
+	if r.mergedLedgersFilePath != "" {
 		if err := os.Remove(r.mergedLedgersFilePath); err != nil {
 			return fmt.Errorf("could not remove merged ledgers file: %w", err)
 		}
+		r.mergedLedgersFilePath = ""
+	}
+	if err := r.config.Snapshot.Restore(context.Background()); err != nil {
+		return fmt.Errorf("could not rollback snapshot: %w", err)
 	}
 	return nil
 }
