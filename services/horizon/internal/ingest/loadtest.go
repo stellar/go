@@ -94,7 +94,8 @@ func (l *LoadTestSnapshot) Restore(ctx context.Context) error {
 	}
 
 	if restoreLedger < lastIngestedLedger {
-		start, end, err := toid.LedgerRangeInclusive(
+		var start, end int64
+		start, end, err = toid.LedgerRangeInclusive(
 			int32(restoreLedger+1),
 			int32(lastIngestedLedger),
 		)
