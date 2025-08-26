@@ -5,7 +5,11 @@ All notable changes to this project will be documented in this file. This projec
 ## Pending
 
 ### Breaking Changes
-* Consolidated `github.com/stellar/go/ingest/cdp` package into `github.com/stellar/go/ingest`. This affects references to the functional helper component `cdp.ApplyLedgerMetadata` which is now relocated to `ingest.ApplyLedgerMetadata`. Will need to change references in existing code.
+* Remvoed the `ingest/cdp` pacakge and consolidated components into `github.com/stellar/go/ingest`. This affects references to a few components:
+  - `ApplyLedgerMetadata`
+  - `DefaultBufferedStorageBackendConfig`
+  - `PublisherConfig` 
+  These are now relocated to `ingest` package. Will need to change references in existing code.
 
 
 ## v23.0.0
