@@ -9,6 +9,7 @@ import (
 	"fmt"
 
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/toid"
 )
 
 type LoadTestSnapshot struct {
@@ -92,12 +93,22 @@ func (l *LoadTestSnapshot) Restore(ctx context.Context) error {
 		return fmt.Errorf("load test restore ledger: %d is greater than last ingested ledger: %d", restoreLedger, lastIngestedLedger)
 	}
 
-	if _, err = l.HistoryQ.DeleteRangeAll(ctx, int64(restoreLedger+1), int64(lastIngestedLedger)); err != nil {
-		return fmt.Errorf("Error deleting range all: %w", err)
-	}
+	if restoreLedger < lastIngestedLedger {
+		start, end, err := toid.LedgerRangeInclusive(
+			int32(restoreLedger+1),
+			int32(lastIngestedLedger),
+		)
+		if err != nil {
+			return fmt.Errorf("Invalid range: %w", err)
+		}
 
-	if err = l.HistoryQ.UpdateIngestVersion(ctx, 0); err != nil {
-		return fmt.Errorf("Error updating ingestion version: %w", err)
+		if _, err = l.HistoryQ.DeleteRangeAll(ctx, start, end); err != nil {
+			return fmt.Errorf("Error deleting range all: %w", err)
+		}
+
+		if err = l.HistoryQ.UpdateIngestVersion(ctx, 0); err != nil {
+			return fmt.Errorf("Error updating ingestion version: %w", err)
+		}
 	}
 
 	if err = l.HistoryQ.ClearLoadTestRestoreState(ctx); err != nil {
