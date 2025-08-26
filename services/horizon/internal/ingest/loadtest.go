@@ -16,10 +16,10 @@ type LoadTestSnapshot struct {
 	runId    string
 }
 
-func (l *LoadTestSnapshot) CheckRunState(ctx context.Context) error {
+func (l *LoadTestSnapshot) CheckPendingLoadTest(ctx context.Context) error {
 	if runID, _, err := l.HistoryQ.GetLoadTestRestoreState(ctx); errors.Is(err, sql.ErrNoRows) {
 		if l.runId != "" {
-			return fmt.Errorf("load test is active with run id: %s", l.runId)
+			return fmt.Errorf("expected load test to be active with run id: %s", l.runId)
 		}
 		return nil
 	} else if err != nil {
@@ -83,10 +83,7 @@ func (l *LoadTestSnapshot) Restore(ctx context.Context) error {
 
 	_, restoreLedger, err := l.HistoryQ.GetLoadTestRestoreState(ctx)
 	if errors.Is(err, sql.ErrNoRows) {
-		if l.runId == "" {
-			return nil
-		}
-		return fmt.Errorf("no restore state found, run id: %s", l.runId)
+		return nil
 	} else if err != nil {
 		return fmt.Errorf("Error getting load test restore ledger: %w", err)
 	}
@@ -110,6 +107,5 @@ func (l *LoadTestSnapshot) Restore(ctx context.Context) error {
 	if err = l.HistoryQ.Commit(); err != nil {
 		return fmt.Errorf("Error committing a transaction: %w", err)
 	}
-	l.runId = ""
 	return nil
 }

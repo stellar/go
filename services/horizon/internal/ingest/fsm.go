@@ -180,7 +180,7 @@ func (state startState) run(s *system) (transition, error) {
 		return start(), errors.Wrap(err, getLastIngestedErrMsg)
 	}
 
-	if err = s.loadtestSnapshot.CheckRunState(s.ctx); err != nil {
+	if err = s.loadtestSnapshot.CheckPendingLoadTest(s.ctx); err != nil {
 		return start(), errors.Wrap(err, "Error checking loadtest snapshot")
 	}
 
@@ -340,7 +340,7 @@ func (b buildState) run(s *system) (transition, error) {
 		return nextFailState, errors.Wrap(err, getLastIngestedErrMsg)
 	}
 
-	if err = s.loadtestSnapshot.CheckRunState(s.ctx); err != nil {
+	if err = s.loadtestSnapshot.CheckPendingLoadTest(s.ctx); err != nil {
 		return nextFailState, errors.Wrap(err, "Error checking loadtest snapshot")
 	}
 
@@ -481,7 +481,7 @@ func (r resumeState) run(s *system) (transition, error) {
 		return resumeImmediately(lastIngestedLedger), nil
 	}
 
-	if err = s.loadtestSnapshot.CheckRunState(s.ctx); err != nil {
+	if err = s.loadtestSnapshot.CheckPendingLoadTest(s.ctx); err != nil {
 		return retryResume(r), errors.Wrap(err, "Error checking loadtest snapshot")
 	}
 
