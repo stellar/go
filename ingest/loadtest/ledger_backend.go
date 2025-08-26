@@ -17,12 +17,11 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-// Snapshot models a reversible checkpoint used by the LedgerBackend
-// to manage side effects against the load test is running.
+// Snapshot manages side effects of a running ingestion load test.
 type Snapshot interface {
 	// Save establishes a restorable checkpoint and marks the
 	// environment as under load test. It must capture enough
-	// information to enable a later Rollback to restore the
+	// information to enable a later restoration of the
 	// prior state.
 	Save(ctx context.Context) error
 
