@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file. This projec
 ## Pending
 
 ### Breaking Changes
-* Remvoed the `ingest/cdp` pacakge and consolidated components into `github.com/stellar/go/ingest`. This affects references to a few components:
+* Removed the `ingest/cdp` pacakge and consolidated components into `github.com/stellar/go/ingest`. This affects references to a few components:
   - `ApplyLedgerMetadata`
   - `DefaultBufferedStorageBackendConfig`
   - `PublisherConfig` 
