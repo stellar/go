@@ -23,6 +23,12 @@ type DataStoreConfig struct {
 
 const listFilePathsMaxLimit = 1000
 
+type ListFileOptions struct {
+	Prefix      string
+	StartOffset string
+	Limit       int
+}
+
 // DataStore defines an interface for interacting with data storage
 type DataStore interface {
 	GetFileMetadata(ctx context.Context, path string) (map[string]string, error)
@@ -32,7 +38,7 @@ type DataStore interface {
 	PutFileIfNotExists(ctx context.Context, path string, in io.WriterTo, metaData map[string]string) (bool, error)
 	Exists(ctx context.Context, path string) (bool, error)
 	Size(ctx context.Context, path string) (int64, error)
-	ListFilePaths(ctx context.Context, prefix string, limit int) ([]string, error)
+	ListFilePaths(ctx context.Context, options ListFileOptions) ([]string, error)
 	Close() error
 }
 

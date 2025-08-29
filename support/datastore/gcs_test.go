@@ -431,10 +431,10 @@ func TestGCSListFilePaths(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = store.Close() })
 
-	paths, err := store.ListFilePaths(context.Background(), "", 2)
+	paths, err := store.ListFilePaths(context.Background(), ListFileOptions{Limit: 2})
 	require.NoError(t, err)
 
-	require.Equal(t, []string{"objects/testnet/a", "objects/testnet/b"}, paths)
+	require.Equal(t, []string{"a", "b"}, paths)
 }
 
 func TestGCSListFilePaths_WithPrefix(t *testing.T) {
@@ -458,9 +458,9 @@ func TestGCSListFilePaths_WithPrefix(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = store.Close() })
 
-	paths, err := store.ListFilePaths(context.Background(), "a", 10)
+	paths, err := store.ListFilePaths(context.Background(), ListFileOptions{Prefix: "a", Limit: 10})
 	require.NoError(t, err)
-	require.Equal(t, []string{"objects/testnet/a/x", "objects/testnet/a/y"}, paths)
+	require.Equal(t, []string{"a/x", "a/y"}, paths)
 }
 
 func TestGCSListFilePaths_LimitDefaultAndCap(t *testing.T) {
@@ -478,11 +478,11 @@ func TestGCSListFilePaths_LimitDefaultAndCap(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = store.Close() })
 
-	paths, err := store.ListFilePaths(context.Background(), "", 0)
+	paths, err := store.ListFilePaths(context.Background(), ListFileOptions{})
 	require.NoError(t, err)
 	require.Equal(t, 1000, len(paths))
 
-	paths, err = store.ListFilePaths(context.Background(), "", 5000)
+	paths, err = store.ListFilePaths(context.Background(), ListFileOptions{Limit: 5000})
 	require.NoError(t, err)
 	require.Equal(t, 1000, len(paths))
 }

@@ -238,7 +238,7 @@ func TestS3ListFilePaths(t *testing.T) {
 	})
 	defer teardown()
 
-	paths, err := store.ListFilePaths(ctx, "", 2)
+	paths, err := store.ListFilePaths(context.Background(), ListFileOptions{Limit: 2})
 	require.NoError(t, err)
 	require.Equal(t, []string{"objects/testnet/a", "objects/testnet/b"}, paths)
 }
@@ -252,7 +252,7 @@ func TestS3ListFilePaths_WithPrefix(t *testing.T) {
 	})
 	defer teardown()
 
-	paths, err := store.ListFilePaths(ctx, "a", 10)
+	paths, err := store.ListFilePaths(context.Background(), ListFileOptions{Prefix: "a", Limit: 10})
 	require.NoError(t, err)
 	require.Equal(t, []string{"objects/testnet/a/x", "objects/testnet/a/y"}, paths)
 }
@@ -268,12 +268,12 @@ func TestS3ListFilePaths_LimitDefaultAndCap(t *testing.T) {
 	defer teardown()
 
 	// limit <= 0 defaults to 1000
-	paths, err := store.ListFilePaths(ctx, "", 0)
+	paths, err := store.ListFilePaths(context.Background(), ListFileOptions{})
 	require.NoError(t, err)
 	require.Equal(t, 1000, len(paths))
 
 	// limit > 1000 is capped at 1000
-	paths, err = store.ListFilePaths(ctx, "", 5000)
+	paths, err = store.ListFilePaths(context.Background(), ListFileOptions{Limit: 5000})
 	require.NoError(t, err)
 	require.Equal(t, 1000, len(paths))
 }
