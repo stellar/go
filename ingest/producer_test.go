@@ -116,7 +116,7 @@ func TestBSBProducerFnConfigError(t *testing.T) {
 	}
 	mockDataStore.On("GetFile", mock.Anything, ".config.json").
 		Return(io.NopCloser(bytes.NewReader(configManifestJSON(t))), nil).Once()
-	mockDataStore.On("ListFilePaths", mock.Anything, "", 0).Return(nil, nil)
+	mockDataStore.On("ListFilePaths", mock.Anything, datastore.ListFileOptions{}).Return(nil, nil)
 
 	datastoreFactory = func(_ context.Context, _ datastore.DataStoreConfig) (datastore.DataStore, error) {
 		return mockDataStore, nil
@@ -136,7 +136,7 @@ func TestBSBProducerFnInvalidRange(t *testing.T) {
 	mockDataStore := new(datastore.MockDataStore)
 	mockDataStore.On("GetFile", mock.Anything, ".config.json").
 		Return(io.NopCloser(bytes.NewReader(configManifestJSON(t))), nil).Once()
-	mockDataStore.On("ListFilePaths", mock.Anything, "", 0).Return(nil, nil)
+	mockDataStore.On("ListFilePaths", mock.Anything, datastore.ListFileOptions{}).Return(nil, nil)
 
 	appCallback := func(lcm xdr.LedgerCloseMeta) error {
 		return nil
@@ -168,7 +168,7 @@ func TestBSBProducerFnGetLedgerError(t *testing.T) {
 	// since buffer is multi-worker async, it may get to this on other worker, but not deterministic,
 	// don't assert on it
 	mockDataStore.On("GetFile", mock.Anything, "FFFFFFFC--3.xdr.zst").Return(makeSingleLCMBatch(3), nil).Maybe()
-	mockDataStore.On("ListFilePaths", mock.Anything, "", 0).Return(nil, nil)
+	mockDataStore.On("ListFilePaths", mock.Anything, datastore.ListFileOptions{}).Return(nil, nil)
 
 	appCallback := func(lcm xdr.LedgerCloseMeta) error {
 		return nil
@@ -232,7 +232,7 @@ func createMockdataStore(t *testing.T, start, end, partitionSize uint32) *datast
 
 	mockDataStore.On("GetFile", mock.Anything, ".config.json").
 		Return(io.NopCloser(bytes.NewReader(configJSON)), nil).Once()
-	mockDataStore.On("ListFilePaths", mock.Anything, "", 0).Return(nil, nil)
+	mockDataStore.On("ListFilePaths", mock.Anything, datastore.ListFileOptions{}).Return(nil, nil)
 
 	partition := partitionSize - 1
 	for i := start; i <= end; i++ {

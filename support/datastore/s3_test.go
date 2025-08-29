@@ -240,7 +240,7 @@ func TestS3ListFilePaths(t *testing.T) {
 
 	paths, err := store.ListFilePaths(context.Background(), ListFileOptions{Limit: 2})
 	require.NoError(t, err)
-	require.Equal(t, []string{"objects/testnet/a", "objects/testnet/b"}, paths)
+	require.Equal(t, []string{"a", "b"}, paths)
 }
 
 func TestS3ListFilePaths_WithPrefix(t *testing.T) {
@@ -254,7 +254,7 @@ func TestS3ListFilePaths_WithPrefix(t *testing.T) {
 
 	paths, err := store.ListFilePaths(context.Background(), ListFileOptions{Prefix: "a", Limit: 10})
 	require.NoError(t, err)
-	require.Equal(t, []string{"objects/testnet/a/x", "objects/testnet/a/y"}, paths)
+	require.Equal(t, []string{"a/x", "a/y"}, paths)
 }
 
 func TestS3ListFilePaths_LimitDefaultAndCap(t *testing.T) {
