@@ -356,7 +356,7 @@ func NewSystem(config Config) (System, error) {
 	if config.LoadTestLedgersPath != "" {
 		if !config.DisableStateVerification {
 			cancel()
-			return nil, fmt.Errorf("state verication cannot be enabled during ingestion load tests")
+			return nil, fmt.Errorf("state verification cannot be enabled during ingestion load tests")
 		}
 		ledgerBackend = loadtest.NewLedgerBackend(loadtest.LedgerBackendConfig{
 			NetworkPassphrase:     config.NetworkPassphrase,
