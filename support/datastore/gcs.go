@@ -221,12 +221,14 @@ func (b GCSDataStore) ListFilePaths(ctx context.Context, options ListFileOptions
 		fullPrefix = path.Join(b.prefix, options.Prefix)
 	}
 
-	query := &storage.Query{
-		Prefix: fullPrefix,
+	var StartAfter string
+	if options.StartAfter != "" {
+		StartAfter = path.Join(b.prefix, options.StartAfter)
 	}
 
-	if options.StartOffset != "" {
-		query.StartOffset = path.Join(b.prefix, options.StartOffset)
+	query := &storage.Query{
+		Prefix:      fullPrefix,
+		StartOffset: StartAfter, // inclusive in GCS; we normalize to exclusive below
 	}
 
 	// Only request the object name to minimize payload
@@ -249,6 +251,12 @@ func (b GCSDataStore) ListFilePaths(ctx context.Context, options ListFileOptions
 		}
 		if err != nil {
 			return nil, err
+		}
+
+		// GCS StartOffset is inclusive, so if the key same as StartAfter,
+		// skip it so results begin strictly after that key.
+		if attrs.Name == StartAfter {
+			continue
 		}
 
 		// Trim the configured prefix and any leading slash before appending

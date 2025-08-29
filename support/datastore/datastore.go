@@ -24,9 +24,9 @@ type DataStoreConfig struct {
 const listFilePathsMaxLimit = 1000
 
 type ListFileOptions struct {
-	Prefix      string
-	StartOffset string
-	Limit       int
+	Prefix     string
+	StartAfter string
+	Limit      int
 }
 
 // DataStore defines an interface for interacting with data storage

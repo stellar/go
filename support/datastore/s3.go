@@ -300,9 +300,9 @@ func (b S3DataStore) ListFilePaths(ctx context.Context, options ListFileOptions)
 		fullPrefix = path.Join(b.prefix, options.Prefix)
 	}
 
-	var startOffset string
-	if options.StartOffset != "" {
-		startOffset = path.Join(b.prefix, options.StartOffset)
+	var StartAfter string
+	if options.StartAfter != "" {
+		StartAfter = path.Join(b.prefix, options.StartAfter)
 	}
 	// S3 returns lexicographically ordered keys by default
 	// We page through until we collect 'limit' or exhaust results
@@ -320,7 +320,7 @@ func (b S3DataStore) ListFilePaths(ctx context.Context, options ListFileOptions)
 			ContinuationToken: continuationToken,
 			MaxKeys:           aws.Int32(maxKeys),
 			FetchOwner:        aws.Bool(false),
-			StartAfter:        aws.String(startOffset),
+			StartAfter:        aws.String(StartAfter),
 		})
 		if err != nil {
 			return nil, err

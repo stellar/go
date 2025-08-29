@@ -111,7 +111,6 @@ func TestFindLatestLedger_BadMetadataParse(t *testing.T) {
 
 	mds.On("ListFilePaths", ctx, ListFileOptions{}).
 		Return([]string{name}, nil).Once()
-	// Missing expected keys -> NewMetaDataFromMap should fail in your code
 	mds.On("GetFileMetadata", ctx, name).
 		Return(map[string]string{"unexpected": "value"}, nil).Once()
 
@@ -127,10 +126,9 @@ func TestFindLatestLedgerUpToSequence_Success(t *testing.T) {
 	mds := new(MockDataStore)
 
 	end := uint32(50)
-	startOffset := schema.GetObjectKeyFromSequenceNumber(end)
 	name := schema.GetObjectKeyFromSequenceNumber(50)
 
-	mds.On("ListFilePaths", ctx, ListFileOptions{StartOffset: startOffset}).
+	mds.On("ListFilePaths", ctx, ListFileOptions{StartAfter: schema.GetObjectKeyFromSequenceNumber(end + 1)}).
 		Return([]string{name}, nil).Once()
 	mds.On("GetFileMetadata", ctx, name).
 		Return(map[string]string{"end-ledger": "50"}, nil).Once()

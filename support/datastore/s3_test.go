@@ -90,6 +90,19 @@ func (s *mockS3Server) handleGetRequest(w http.ResponseWriter, r *http.Request, 
 			}
 		}
 		sort.Strings(keys)
+
+		// Apply start-after
+		startAfter := r.URL.Query().Get("start-after")
+		if startAfter != "" {
+			filtered := make([]string, 0, len(keys))
+			// binary search to first index with key > boundary
+			i := sort.Search(len(keys), func(i int) bool { return keys[i] > startAfter })
+			if i < len(keys) {
+				filtered = keys[i:]
+			}
+			keys = filtered
+		}
+
 		if len(keys) > maxKeys {
 			keys = keys[:maxKeys]
 		}
@@ -276,6 +289,110 @@ func TestS3ListFilePaths_LimitDefaultAndCap(t *testing.T) {
 	paths, err = store.ListFilePaths(context.Background(), ListFileOptions{Limit: 5000})
 	require.NoError(t, err)
 	require.Equal(t, 1000, len(paths))
+}
+
+func TestS3ListFilePaths_StartAfter(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("basic start-after (no Prefix)", func(t *testing.T) {
+		init := map[string]mockS3Object{}
+		for i := 0; i < 10; i++ {
+			key := fmt.Sprintf("objects/testnet/%04d", i)
+			init[key] = mockS3Object{body: []byte("x")}
+		}
+		// decoy keys under a similar-but-different prefix; should NOT be returned
+		init["objects/testnet-foo/0000"] = mockS3Object{body: []byte("x")}
+
+		store, teardown := setupTestS3DataStore(t, ctx, "test-bucket/objects/testnet", init)
+		defer teardown()
+
+		paths, err := store.ListFilePaths(ctx, ListFileOptions{
+			StartAfter: "0005",
+		})
+		require.NoError(t, err)
+		require.Equal(t, []string{"0006", "0007", "0008", "0009"}, paths, "should start strictly after 0005 and trim prefix")
+	})
+
+	t.Run("with Prefix directory and start-after inside it", func(t *testing.T) {
+		init := map[string]mockS3Object{
+			"objects/testnet/a/0001": {body: []byte("x")},
+			"objects/testnet/a/0002": {body: []byte("x")},
+			"objects/testnet/b/0001": {body: []byte("x")}, // different subdir; should be filtered by Prefix
+		}
+		store, teardown := setupTestS3DataStore(t, ctx, "test-bucket/objects/testnet", init)
+		defer teardown()
+
+		paths, err := store.ListFilePaths(ctx, ListFileOptions{
+			Prefix:     "a/",     // ensure we only list under a/
+			StartAfter: "a/0001", // start strictly after this key
+		})
+		require.NoError(t, err)
+		require.Equal(t, []string{"a/0002"}, paths)
+	})
+
+	t.Run("start-after equals last key -> empty", func(t *testing.T) {
+		init := map[string]mockS3Object{
+			"objects/testnet/0000": {body: []byte("x")},
+			"objects/testnet/0001": {body: []byte("x")},
+			"objects/testnet/0002": {body: []byte("x")},
+		}
+		store, teardown := setupTestS3DataStore(t, ctx, "test-bucket/objects/testnet", init)
+		defer teardown()
+
+		paths, err := store.ListFilePaths(ctx, ListFileOptions{
+			StartAfter: "0002",
+		})
+		require.NoError(t, err)
+		require.Empty(t, paths)
+	})
+
+	t.Run("start-after before first key -> all returned", func(t *testing.T) {
+		init := map[string]mockS3Object{
+			"objects/testnet/0001": {body: []byte("x")},
+			"objects/testnet/0002": {body: []byte("x")},
+			"objects/testnet/0003": {body: []byte("x")},
+		}
+		store, teardown := setupTestS3DataStore(t, ctx, "test-bucket/objects/testnet", init)
+		defer teardown()
+
+		paths, err := store.ListFilePaths(ctx, ListFileOptions{
+			StartAfter: "0000",
+		})
+		require.NoError(t, err)
+		require.Equal(t, []string{"0001", "0002", "0003"}, paths)
+	})
+
+	t.Run("start-after missing-but-between keys -> starts at next greater", func(t *testing.T) {
+		init := map[string]mockS3Object{
+			"objects/testnet/0002": {body: []byte("x")},
+			"objects/testnet/0004": {body: []byte("x")},
+			"objects/testnet/0006": {body: []byte("x")},
+		}
+		store, teardown := setupTestS3DataStore(t, ctx, "test-bucket/objects/testnet", init)
+		defer teardown()
+
+		paths, err := store.ListFilePaths(ctx, ListFileOptions{
+			StartAfter: "0003", // not present, should start at 0004
+		})
+		require.NoError(t, err)
+		require.Equal(t, []string{"0004", "0006"}, paths)
+	})
+
+	t.Run("respects limit together with start-after", func(t *testing.T) {
+		init := map[string]mockS3Object{}
+		for i := 0; i < 10; i++ {
+			init[fmt.Sprintf("objects/testnet/%04d", i)] = mockS3Object{body: []byte("x")}
+		}
+		store, teardown := setupTestS3DataStore(t, ctx, "test-bucket/objects/testnet", init)
+		defer teardown()
+
+		paths, err := store.ListFilePaths(ctx, ListFileOptions{
+			StartAfter: "0004",
+			Limit:      3, // only the next 3 after 0004
+		})
+		require.NoError(t, err)
+		require.Equal(t, []string{"0005", "0006", "0007"}, paths)
+	})
 }
 
 func TestS3Exists(t *testing.T) {

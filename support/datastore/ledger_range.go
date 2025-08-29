@@ -55,11 +55,14 @@ func FindLatestLedgerSequence(ctx context.Context, datastore DataStore) (uint32,
 
 // FindLatestLedgerUpToSequence finds the latest ledger sequence number
 // that is less than or equal to a given 'end' sequence.
-func FindLatestLedgerUpToSequence(ctx context.Context, datastore DataStore, end uint32, schema DataStoreSchema) (uint32, error) {
+func FindLatestLedgerUpToSequence(ctx context.Context, datastore DataStore,
+	end uint32, schema DataStoreSchema) (uint32, error) {
 	if end < 2 {
 		return 0, errors.New("end sequence must be greater than or equal to 2")
 	}
-	return findLatestLedger(ctx, datastore, ListFileOptions{StartOffset: schema.GetObjectKeyFromSequenceNumber(end)})
+	return findLatestLedger(ctx, datastore, ListFileOptions{
+		StartAfter: schema.GetObjectKeyFromSequenceNumber(end + 1),
+	})
 }
 
 // FindOldestLedgerSequence finds the oldest existing ledger in the datastore.
