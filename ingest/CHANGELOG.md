@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file. This projec
 
 ## Pending
 
+### Breaking Changes
+* Removed the `ingest/cdp` pacakge and consolidated components into `github.com/stellar/go/ingest`. This affects references to a few components:
+  - `ApplyLedgerMetadata`
+  - `DefaultBufferedStorageBackendConfig`
+  - `PublisherConfig` 
+  These are now relocated to `ingest` package. Will need to change references in existing code.
+
+
+## v23.0.0
+
 ### Protocol 23 Support
 * Added support for the new `RESTORE` ledger entry change type [5587](https://github.com/stellar/go/pull/5587).
 * Added new captive core toml config parameters to `CaptiveCoreTomlParams`:
