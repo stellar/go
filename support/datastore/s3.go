@@ -58,7 +58,7 @@ func NewS3DataStore(ctx context.Context, datastoreConfig DataStoreConfig) (DataS
 		// If not, fall back to anonymous credentials for public S3 bucket access.
 		_, err := cfg.Credentials.Retrieve(ctx)
 		if err != nil {
-			log.Infof("No default AWS credentials found, configuring S3 client for anonymous access")
+			log.Debugf("No default AWS credentials found, configuring S3 client for anonymous access")
 			o.Credentials = aws.AnonymousCredentials{}
 		}
 
@@ -80,7 +80,7 @@ func FromS3Client(ctx context.Context, client *s3.Client, bucketPath string) (Da
 	bucketName := parsed.Host
 	uploader := manager.NewUploader(client)
 
-	log.Infof("Creating S3 client for bucket: %s, prefix: %s", bucketName, prefix)
+	log.Debugf("Creating S3 client for bucket: %s, prefix: %s", bucketName, prefix)
 
 	listInput := &s3.ListObjectsV2Input{
 		Bucket:  aws.String(bucketName),
@@ -163,14 +163,14 @@ func (b S3DataStore) GetFile(ctx context.Context, filePath string) (io.ReadClose
 
 	output, err := b.client.GetObject(ctx, input)
 	if err != nil {
-		log.Errorf("Error retrieving file '%s': %v", filePath, err)
+		log.Debugf("Error retrieving file '%s': %v", filePath, err)
 		if isNotFoundError(err) {
 			return nil, os.ErrNotExist
 		}
 		return nil, fmt.Errorf("error retrieving file %s: %w", filePath, err)
 	}
 
-	log.Infof("File retrieved successfully: %s", filePath)
+	log.Debugf("File retrieved successfully: %s", filePath)
 	return output.Body, nil
 }
 
@@ -181,12 +181,12 @@ func (b S3DataStore) PutFile(ctx context.Context, filePath string, in io.WriterT
 	if err != nil {
 		var apiErr smithy.APIError
 		if errors.As(err, &apiErr) {
-			log.Errorf("S3 error: %s %s %s", apiErr.ErrorCode(), apiErr.ErrorMessage(), apiErr.Error())
+			log.Debugf("S3 error: %s %s %s", apiErr.ErrorCode(), apiErr.ErrorMessage(), apiErr.Error())
 		}
 		return fmt.Errorf("error uploading file %s: %w", filePath, err)
 	}
 
-	log.Infof("File uploaded successfully: %s", filePath)
+	log.Debugf("File uploaded successfully: %s", filePath)
 	return nil
 }
 
@@ -197,16 +197,16 @@ func (b S3DataStore) PutFileIfNotExists(ctx context.Context, filePath string, in
 		var apiErr smithy.APIError
 		if errors.As(err, &apiErr) {
 			if apiErr.ErrorCode() == "PreconditionFailed" {
-				log.Infof("Precondition failed: %s already exists in the bucket", filePath)
+				log.Debugf("Precondition failed: %s already exists in the bucket", filePath)
 				return false, nil // Treat as success
 			} else {
-				log.Errorf("S3 error: %s %s %s", apiErr.ErrorCode(), apiErr.ErrorMessage(), apiErr.Error())
+				log.Debugf("S3 error: %s %s %s", apiErr.ErrorCode(), apiErr.ErrorMessage(), apiErr.Error())
 			}
 		}
 		return false, fmt.Errorf("error uploading file %s: %w", filePath, err)
 	}
 
-	log.Infof("File uploaded successfully: %s", filePath)
+	log.Debugf("File uploaded successfully: %s", filePath)
 	return true, nil
 }
 
