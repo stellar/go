@@ -685,88 +685,64 @@ type XDRValueConverter struct{}
 func (c *XDRValueConverter) ConvertScValToGoCode(varName, targetType string) string {
 	switch targetType {
 	case "string":
-		return fmt.Sprintf(`
-	var %sValue string
-	if %s.Str() != nil {
-		%sValue = string(*%s.Str())
-	} else if %s.Sym() != nil {
-		%sValue = string(*%s.Sym())
-	} else {
-		return nil, fmt.Errorf("expected string value for %s")
-	}`, varName, varName, varName, varName, varName, varName, varName, varName)
+		return fmt.Sprintf(`	%sValue, ok := %s.GetSym()
+	if !ok {
+		return nil, fmt.Errorf("invalid event format: expected string value for %s")
+	}
+	%sValueConverted := string(%sValue)`, varName, varName, varName, varName, varName)
 
 	case "bool":
-		return fmt.Sprintf(`
-	var %sValue bool
-	if %s.B() != nil {
-		%sValue = bool(*%s.B())
-	} else {
-		return nil, fmt.Errorf("expected bool value for %s")
-	}`, varName, varName, varName, varName, varName)
+		return fmt.Sprintf(`	%sValue, ok := %s.GetB()
+	if !ok {
+		return nil, fmt.Errorf("invalid event format: expected bool value for %s")
+	}
+	%sValueConverted := bool(%sValue)`, varName, varName, varName, varName, varName)
 
 	case "int32":
-		return fmt.Sprintf(`
-	var %sValue int32
-	if %s.I32() != nil {
-		%sValue = int32(*%s.I32())
-	} else {
-		return nil, fmt.Errorf("expected int32 value for %s")
-	}`, varName, varName, varName, varName, varName)
+		return fmt.Sprintf(`	%sValue, ok := %s.GetI32()
+	if !ok {
+		return nil, fmt.Errorf("invalid event format: expected int32 value for %s")
+	}
+	%sValueConverted := int32(%sValue)`, varName, varName, varName, varName, varName)
 
 	case "uint32":
-		return fmt.Sprintf(`
-	var %sValue uint32
-	if %s.U32() != nil {
-		%sValue = uint32(*%s.U32())
-	} else {
-		return nil, fmt.Errorf("expected uint32 value for %s")
-	}`, varName, varName, varName, varName, varName)
+		return fmt.Sprintf(`	%sValue, ok := %s.GetU32()
+	if !ok {
+		return nil, fmt.Errorf("invalid event format: expected uint32 value for %s")
+	}
+	%sValueConverted := uint32(%sValue)`, varName, varName, varName, varName, varName)
 
 	case "int64":
-		return fmt.Sprintf(`
-	var %sValue int64
-	if %s.I64() != nil {
-		%sValue = int64(*%s.I64())
-	} else {
-		return nil, fmt.Errorf("expected int64 value for %s")
-	}`, varName, varName, varName, varName, varName)
+		return fmt.Sprintf(`	%sValue, ok := %s.GetI64()
+	if !ok {
+		return nil, fmt.Errorf("invalid event format: expected int64 value for %s")
+	}
+	%sValueConverted := int64(%sValue)`, varName, varName, varName, varName, varName)
 
 	case "uint64":
-		return fmt.Sprintf(`
-	var %sValue uint64
-	if %s.U64() != nil {
-		%sValue = uint64(*%s.U64())
-	} else {
-		return nil, fmt.Errorf("expected uint64 value for %s")
-	}`, varName, varName, varName, varName, varName)
+		return fmt.Sprintf(`	%sValue, ok := %s.GetU64()
+	if !ok {
+		return nil, fmt.Errorf("invalid event format: expected uint64 value for %s")
+	}
+	%sValueConverted := uint64(%sValue)`, varName, varName, varName, varName, varName)
 
 	case "*big.Int":
-		return fmt.Sprintf(`
-	var %sValue *big.Int
-	if %s.I128() != nil {
-		%sValue = new(big.Int)
-		%sValue.SetBytes((*%s.I128())[:])
-	} else if %s.U128() != nil {
-		%sValue = new(big.Int)
-		%sValue.SetBytes((*%s.U128())[:])
-	} else {
-		return nil, fmt.Errorf("expected 128-bit int value for %s")
-	}`, varName, varName, varName, varName, varName, varName, varName, varName, varName)
+		return fmt.Sprintf(`	%sValue, ok := %s.GetI128()
+	if !ok {
+		return nil, fmt.Errorf("invalid event format: expected i128 value for %s")
+	}
+	%sValueConverted := new(big.Int).SetBytes(%sValue[:])`, varName, varName, varName, varName, varName)
 
 	case "[]byte":
-		return fmt.Sprintf(`
-	var %sValue []byte
-	if %s.Bytes() != nil {
-		%sValue = []byte(*%s.Bytes())
-	} else {
-		return nil, fmt.Errorf("expected bytes value for %s")
-	}`, varName, varName, varName, varName, varName)
+		return fmt.Sprintf(`	%sValue, ok := %s.GetBytes()
+	if !ok {
+		return nil, fmt.Errorf("invalid event format: expected bytes value for %s")
+	}
+	%sValueConverted := []byte(%sValue)`, varName, varName, varName, varName, varName)
 
 	default:
-		return fmt.Sprintf(`
-	// TODO: Convert %s to %s
-	// This requires custom conversion logic for user-defined types
-	%sValue := %s // Placeholder`, varName, targetType, varName, varName)
+		return fmt.Sprintf(`	// TODO: Convert %s to %s using appropriate GetXXX() method
+	%sValueConverted := %s // Placeholder`, varName, targetType, varName, varName)
 	}
 }
 
@@ -900,7 +876,6 @@ func generateCompleteEventStruct(output *strings.Builder, event EventSpec) {
 func generateCompleteEventParser(output *strings.Builder, event EventSpec) {
 	eventName := strings.Title(event.Name) + "Event"
 	expectedTopicCount := len(event.PrefixTopics) + len(event.TopicParams)
-	converter := &XDRValueConverter{}
 
 	// Function signature and documentation
 	fmt.Fprintf(output, "// Parse%s parses a '%s' event from Stellar ContractEvent XDR\n", eventName, event.Name)
@@ -914,10 +889,10 @@ func generateCompleteEventParser(output *strings.Builder, event EventSpec) {
 	fmt.Fprintf(output, "// Returns: (*%s, error)\n", eventName)
 	fmt.Fprintf(output, "func Parse%s(contractEvent xdr.ContractEvent) (*%s, error) {\n", eventName, eventName)
 
-	// Extract topics and data from XDR
+	// Extract topics and data from XDR (FIXED: Body is a field, not method)
 	output.WriteString("\t// Extract event components from XDR\n")
-	output.WriteString("\ttopics := contractEvent.Body().V0.Topics\n")
-	output.WriteString("\tdata := contractEvent.Body().V0.Data\n\n")
+	output.WriteString("\ttopics := contractEvent.Body.V0.Topics\n")
+	output.WriteString("\tdata := contractEvent.Body.V0.Data\n\n")
 
 	// Validate topic count
 	fmt.Fprintf(output, "\t// Validate topic structure\n")
@@ -925,30 +900,33 @@ func generateCompleteEventParser(output *strings.Builder, event EventSpec) {
 	fmt.Fprintf(output, "\t\treturn nil, fmt.Errorf(\"invalid '%s' event: expected at least %d topics, got %%d\", len(topics))\n", event.Name, expectedTopicCount)
 	output.WriteString("\t}\n\n")
 
-	// Validate prefix topics
+	// Validate prefix topics using GetSym()
 	if len(event.PrefixTopics) > 0 {
 		output.WriteString("\t// Validate prefix topics (event signature)\n")
 		for i, prefix := range event.PrefixTopics {
-			fmt.Fprintf(output, "\tif topics[%d].Str() == nil || string(*topics[%d].Str()) != \"%s\" {\n", i, i, prefix)
-			fmt.Fprintf(output, "\t\treturn nil, fmt.Errorf(\"invalid event signature: expected '%s' at topic[%d]\")\n", prefix, i)
+			fmt.Fprintf(output, "\ttopic%d, ok%d := topics[%d].GetSym()\n", i, i, i)
+			fmt.Fprintf(output, "\tif !ok%d {\n", i)
+			fmt.Fprintf(output, "\t\treturn nil, fmt.Errorf(\"invalid event format: topic%d does not exist\")\n", i)
 			output.WriteString("\t}\n")
+			fmt.Fprintf(output, "\tif string(topic%d) != \"%s\" {\n", i, prefix)
+			fmt.Fprintf(output, "\t\treturn nil, fmt.Errorf(\"invalid event signature: expected '%s' at topic[%d]\")\n", prefix, i)
+			output.WriteString("\t}\n\n")
 		}
-		output.WriteString("\n")
 	}
 
-	// Validate data format
+	// Validate data format using GetMap()/GetVec()
 	fmt.Fprintf(output, "\t// Validate data format (expected: %s)\n", event.DataFormat)
 	switch event.DataFormat {
 	case "Map":
-		output.WriteString("\tif data.Map() == nil {\n")
-		output.WriteString("\t\treturn nil, fmt.Errorf(\"invalid event data: expected Map format\")\n")
-		output.WriteString("\t}\n")
-		output.WriteString("\tdataMap := data.Map()\n\n")
+		output.WriteString("\tdataMap, ok := data.GetMap()\n")
+		output.WriteString("\tif !ok {\n")
+		output.WriteString("\t\treturn nil, fmt.Errorf(\"invalid event format: data does not exist\")\n")
+		output.WriteString("\t}\n\n")
 	case "Vec":
-		output.WriteString("\tif data.Vec() == nil {\n")
-		output.WriteString("\t\treturn nil, fmt.Errorf(\"invalid event data: expected Vec format\")\n")
-		output.WriteString("\t}\n")
-		output.WriteString("\tdataVec := data.Vec()\n\n")
+		output.WriteString("\tdataVec, ok := data.GetVec()\n")
+		output.WriteString("\tif !ok {\n")
+		output.WriteString("\t\treturn nil, fmt.Errorf(\"invalid event format: expected Vec data format\")\n")
+		output.WriteString("\t}\n\n")
 	case "SingleValue":
 		output.WriteString("\t// Single value data format\n")
 		output.WriteString("\tdataValue := data\n\n")
@@ -965,76 +943,75 @@ func generateCompleteEventParser(output *strings.Builder, event EventSpec) {
 	}
 	output.WriteString("\t}\n\n")
 
-	// Extract topic parameters with proper XDR conversion
+	// Extract topic parameters with proper GetXXX() calls
 	if len(event.TopicParams) > 0 {
 		output.WriteString("\t// Extract and convert topic parameters\n")
 		for i, param := range event.TopicParams {
 			topicIndex := len(event.PrefixTopics) + i
-			paramVarName := fmt.Sprintf("topic%d", topicIndex)
 
 			fmt.Fprintf(output, "\t// Topic parameter: %s (%s)\n", param.Name, param.Type)
-			fmt.Fprintf(output, "\t%s := topics[%d]\n", paramVarName, topicIndex)
 
-			// Generate type conversion code
-			conversionCode := converter.ConvertScValToGoCode(paramVarName, param.Type)
-			output.WriteString(conversionCode)
-			fmt.Fprintf(output, "\tevent.%s = %sValue\n\n", strings.Title(param.Name), paramVarName)
+			// Generate proper GetXXX() calls based on type
+			switch param.Type {
+			case "string":
+				fmt.Fprintf(output, "\ttopic%dValue, ok := topics[%d].GetSym()\n", topicIndex, topicIndex)
+				fmt.Fprintf(output, "\tif !ok {\n")
+				fmt.Fprintf(output, "\t\treturn nil, fmt.Errorf(\"invalid event format: topic%d\")\n", topicIndex)
+				output.WriteString("\t}\n")
+				fmt.Fprintf(output, "\tevent.%s = string(topic%dValue)\n\n", strings.Title(param.Name), topicIndex)
+
+			case "uint32":
+				fmt.Fprintf(output, "\ttopic%dValue, ok := topics[%d].GetU32()\n", topicIndex, topicIndex)
+				fmt.Fprintf(output, "\tif !ok {\n")
+				fmt.Fprintf(output, "\t\treturn nil, fmt.Errorf(\"invalid event format: expected uint32 value for topic%d\")\n", topicIndex)
+				output.WriteString("\t}\n")
+				fmt.Fprintf(output, "\tevent.%s = uint32(topic%dValue)\n\n", strings.Title(param.Name), topicIndex)
+
+			case "int32":
+				fmt.Fprintf(output, "\ttopic%dValue, ok := topics[%d].GetI32()\n", topicIndex, topicIndex)
+				fmt.Fprintf(output, "\tif !ok {\n")
+				fmt.Fprintf(output, "\t\treturn nil, fmt.Errorf(\"invalid event format: expected int32 value for topic%d\")\n", topicIndex)
+				output.WriteString("\t}\n")
+				fmt.Fprintf(output, "\tevent.%s = int32(topic%dValue)\n\n", strings.Title(param.Name), topicIndex)
+
+			// Add more cases as needed for other types
+			default:
+				fmt.Fprintf(output, "\t// TODO: Handle %s type conversion for topic%d\n", param.Type, topicIndex)
+				fmt.Fprintf(output, "\t// topic%dValue, ok := topics[%d].GetXXX()\n", topicIndex, topicIndex)
+				fmt.Fprintf(output, "\tevent.%s = topic%dValue // Placeholder\n\n", strings.Title(param.Name), topicIndex)
+			}
 		}
 	}
 
-	// Extract data parameters with proper XDR conversion
-	if len(event.DataParams) > 0 {
-		output.WriteString("\t// Extract and convert data parameters\n")
+	// Extract data parameters with proper GetXXX() calls
+	if len(event.DataParams) > 0 && event.DataFormat == "Map" {
+		output.WriteString("\t// Extract and convert data parameters from map\n")
+		for _, param := range event.DataParams {
+			fmt.Fprintf(output, "\t// Data parameter: %s (%s)\n", param.Name, param.Type)
+			fmt.Fprintf(output, "\tif %sVal, exists := dataMap[\"%s\"]; exists {\n", param.Name, param.Name)
 
-		switch event.DataFormat {
-		case "Map":
-			// Map format: extract by key
-			output.WriteString("\t// Extract parameters from data map\n")
-			for _, param := range event.DataParams {
-				fmt.Fprintf(output, "\t// Data parameter: %s (%s)\n", param.Name, param.Type)
-				fmt.Fprintf(output, "\tif %sVal, exists := (*dataMap)[\"%s\"]; exists {\n", param.Name, param.Name)
+			// Generate proper GetXXX() calls based on type
+			switch param.Type {
+			case "*big.Int":
+				fmt.Fprintf(output, "\t\t%sValue, ok := %sVal.GetI128()\n", param.Name, param.Name)
+				fmt.Fprintf(output, "\t\tif !ok {\n")
+				fmt.Fprintf(output, "\t\t\treturn nil, fmt.Errorf(\"invalid event format: expected i128 value for %s\")\n", param.Name)
+				output.WriteString("\t\t}\n")
+				fmt.Fprintf(output, "\t\tevent.%s = new(big.Int).SetBytes(%sValue[:])\n", strings.Title(param.Name), param.Name)
 
-				// Generate conversion code
-				conversionCode := converter.ConvertScValToGoCode(fmt.Sprintf("%sVal", param.Name), param.Type)
-				indentedCode := strings.ReplaceAll(conversionCode, "\n", "\n\t")
-				output.WriteString("\t" + indentedCode)
-				fmt.Fprintf(output, "\t\tevent.%s = %sValValue\n", strings.Title(param.Name), param.Name)
-				output.WriteString("\t} else {\n")
-				fmt.Fprintf(output, "\t\treturn nil, fmt.Errorf(\"missing required data parameter: %s\")\n", param.Name)
-				output.WriteString("\t}\n\n")
+			case "interface{}":
+				fmt.Fprintf(output, "\t\t// Keep %s as raw ScVal for interface{} type\n", param.Name)
+				fmt.Fprintf(output, "\t\tevent.%s = %sVal\n", strings.Title(param.Name), param.Name)
+
+			default:
+				fmt.Fprintf(output, "\t\t// TODO: Convert %sVal to %s\n", param.Name, param.Type)
+				fmt.Fprintf(output, "\t\t// This requires custom conversion logic for complex types\n")
+				fmt.Fprintf(output, "\t\tevent.%s = %sVal // Placeholder\n", strings.Title(param.Name), param.Name)
 			}
 
-		case "Vec":
-			// Vec format: extract by index
-			output.WriteString("\t// Extract parameters from data vector\n")
-			fmt.Fprintf(output, "\tif len(*dataVec) < %d {\n", len(event.DataParams))
-			fmt.Fprintf(output, "\t\treturn nil, fmt.Errorf(\"insufficient data parameters: expected %d, got %%d\", len(*dataVec))\n", len(event.DataParams))
+			output.WriteString("\t} else {\n")
+			fmt.Fprintf(output, "\t\treturn nil, fmt.Errorf(\"missing required data parameter: %s\")\n", param.Name)
 			output.WriteString("\t}\n\n")
-
-			for i, param := range event.DataParams {
-				fmt.Fprintf(output, "\t// Data parameter[%d]: %s (%s)\n", i, param.Name, param.Type)
-				paramVarName := fmt.Sprintf("dataParam%d", i)
-				fmt.Fprintf(output, "\t%s := (*dataVec)[%d]\n", paramVarName, i)
-
-				// Generate conversion code
-				conversionCode := converter.ConvertScValToGoCode(paramVarName, param.Type)
-				output.WriteString(conversionCode)
-				fmt.Fprintf(output, "\tevent.%s = %sValue\n\n", strings.Title(param.Name), paramVarName)
-			}
-
-		case "SingleValue":
-			// Single value format: only one data parameter allowed
-			if len(event.DataParams) > 1 {
-				output.WriteString("\t// ERROR: SingleValue format supports only one data parameter\n")
-			} else if len(event.DataParams) == 1 {
-				param := event.DataParams[0]
-				fmt.Fprintf(output, "\t// Single data parameter: %s (%s)\n", param.Name, param.Type)
-
-				// Generate conversion code
-				conversionCode := converter.ConvertScValToGoCode("dataValue", param.Type)
-				output.WriteString(conversionCode)
-				fmt.Fprintf(output, "\tevent.%s = dataValueValue\n\n", strings.Title(param.Name))
-			}
 		}
 	}
 
@@ -1047,19 +1024,21 @@ func generateEventDispatcher(output *strings.Builder, events []EventSpec) {
 	output.WriteString("// ParseContractEvent attempts to parse any contract event\n")
 	output.WriteString("// Returns the parsed event as an interface{} or an error\n")
 	output.WriteString("func ParseContractEvent(contractEvent xdr.ContractEvent) (interface{}, error) {\n")
-	output.WriteString("\ttopics := contractEvent.Body().V0.Topics\n")
+
+	// Extract topics using corrected field access
+	output.WriteString("\t// Extract event components from XDR\n")
+	output.WriteString("\ttopics := contractEvent.Body.V0.Topics\n")
 	output.WriteString("\tif len(topics) == 0 {\n")
 	output.WriteString("\t\treturn nil, fmt.Errorf(\"event has no topics\")\n")
 	output.WriteString("\t}\n\n")
 
+	// Get first topic using GetSym() method
 	output.WriteString("\t// Try to identify event by first topic (event name/prefix)\n")
-	output.WriteString("\tfirstTopic := topics[0]\n")
-	output.WriteString("\tvar eventName string\n")
-	output.WriteString("\tif firstTopic.Str() != nil {\n")
-	output.WriteString("\t\teventName = string(*firstTopic.Str())\n")
-	output.WriteString("\t} else {\n")
-	output.WriteString("\t\treturn nil, fmt.Errorf(\"cannot identify event: first topic is not a string\")\n")
-	output.WriteString("\t}\n\n")
+	output.WriteString("\tfirstTopic, ok := topics[0].GetSym()\n")
+	output.WriteString("\tif !ok {\n")
+	output.WriteString("\t\treturn nil, fmt.Errorf(\"invalid event format: first topic is not a symbol\")\n")
+	output.WriteString("\t}\n")
+	output.WriteString("\teventName := string(firstTopic)\n\n")
 
 	output.WriteString("\t// Dispatch to appropriate parser based on event signature\n")
 	output.WriteString("\tswitch eventName {\n")
@@ -1231,7 +1210,7 @@ func main() {
 	goCode := generateGoCode(analysis)
 
 	// Step 6: Save generated code to file
-	outputFile := fmt.Sprintf("contract_%s_bindings.go", strings.ToLower(contractId[:8]))
+	outputFile := fmt.Sprintf("contract_%s_bindings.go", contractId)
 	if err := os.WriteFile(outputFile, []byte(goCode), 0644); err != nil {
 		fmt.Printf("❌ Failed to save bindings: %v\n", err)
 		os.Exit(1)
