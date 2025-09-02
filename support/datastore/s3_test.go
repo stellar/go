@@ -300,7 +300,7 @@ func TestS3ListFilePaths_StartAfter(t *testing.T) {
 			key := fmt.Sprintf("objects/testnet/%04d", i)
 			init[key] = mockS3Object{body: []byte("x")}
 		}
-		// decoy keys under a similar-but-different prefix; should NOT be returned
+		// decoy outside the prefix directory style
 		init["objects/testnet-foo/0000"] = mockS3Object{body: []byte("x")}
 
 		store, teardown := setupTestS3DataStore(t, ctx, "test-bucket/objects/testnet", init)
@@ -318,6 +318,8 @@ func TestS3ListFilePaths_StartAfter(t *testing.T) {
 			"objects/testnet/a/0001": {body: []byte("x")},
 			"objects/testnet/a/0002": {body: []byte("x")},
 			"objects/testnet/b/0001": {body: []byte("x")}, // different subdir; should be filtered by Prefix
+			// decoy outside the prefix directory style
+			"objects/testnet-foo/a/0001": {body: []byte("x")},
 		}
 		store, teardown := setupTestS3DataStore(t, ctx, "test-bucket/objects/testnet", init)
 		defer teardown()
@@ -335,6 +337,8 @@ func TestS3ListFilePaths_StartAfter(t *testing.T) {
 			"objects/testnet/0000": {body: []byte("x")},
 			"objects/testnet/0001": {body: []byte("x")},
 			"objects/testnet/0002": {body: []byte("x")},
+			// decoy outside the prefix directory style
+			"objects/testnet-foo/0001": {body: []byte("x")},
 		}
 		store, teardown := setupTestS3DataStore(t, ctx, "test-bucket/objects/testnet", init)
 		defer teardown()
@@ -351,6 +355,8 @@ func TestS3ListFilePaths_StartAfter(t *testing.T) {
 			"objects/testnet/0001": {body: []byte("x")},
 			"objects/testnet/0002": {body: []byte("x")},
 			"objects/testnet/0003": {body: []byte("x")},
+			// decoy outside the prefix directory style
+			"objects/testnet-foo/0001": {body: []byte("x")},
 		}
 		store, teardown := setupTestS3DataStore(t, ctx, "test-bucket/objects/testnet", init)
 		defer teardown()
@@ -367,6 +373,8 @@ func TestS3ListFilePaths_StartAfter(t *testing.T) {
 			"objects/testnet/0002": {body: []byte("x")},
 			"objects/testnet/0004": {body: []byte("x")},
 			"objects/testnet/0006": {body: []byte("x")},
+			// decoy outside the prefix directory style
+			"objects/testnet-foo/0001": {body: []byte("x")},
 		}
 		store, teardown := setupTestS3DataStore(t, ctx, "test-bucket/objects/testnet", init)
 		defer teardown()

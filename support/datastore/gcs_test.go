@@ -524,6 +524,8 @@ func TestGCSListFilePaths_StartAfter(t *testing.T) {
 			{ObjectAttrs: fakestorage.ObjectAttrs{BucketName: "test-bucket", Name: "objects/testnet/a/0001"}},
 			{ObjectAttrs: fakestorage.ObjectAttrs{BucketName: "test-bucket", Name: "objects/testnet/a/0002"}},
 			{ObjectAttrs: fakestorage.ObjectAttrs{BucketName: "test-bucket", Name: "objects/testnet/b/0002"}}, // different subdir
+			// decoy outside the prefix directory style
+			{ObjectAttrs: fakestorage.ObjectAttrs{BucketName: "test-bucket", Name: "objects/testnet-foo/0002"}},
 		}
 		server := fakestorage.NewServer(objects)
 		defer server.Stop()
@@ -545,6 +547,8 @@ func TestGCSListFilePaths_StartAfter(t *testing.T) {
 			{ObjectAttrs: fakestorage.ObjectAttrs{BucketName: "test-bucket", Name: "objects/testnet/0000"}},
 			{ObjectAttrs: fakestorage.ObjectAttrs{BucketName: "test-bucket", Name: "objects/testnet/0001"}},
 			{ObjectAttrs: fakestorage.ObjectAttrs{BucketName: "test-bucket", Name: "objects/testnet/0002"}},
+			// decoy outside the prefix directory style
+			{ObjectAttrs: fakestorage.ObjectAttrs{BucketName: "test-bucket", Name: "objects/testnet-foo/0002"}},
 		}
 		server := fakestorage.NewServer(objects)
 		defer server.Stop()
@@ -565,6 +569,8 @@ func TestGCSListFilePaths_StartAfter(t *testing.T) {
 			{ObjectAttrs: fakestorage.ObjectAttrs{BucketName: "test-bucket", Name: "objects/testnet/0001"}},
 			{ObjectAttrs: fakestorage.ObjectAttrs{BucketName: "test-bucket", Name: "objects/testnet/0002"}},
 			{ObjectAttrs: fakestorage.ObjectAttrs{BucketName: "test-bucket", Name: "objects/testnet/0003"}},
+			// decoy outside the prefix directory style
+			{ObjectAttrs: fakestorage.ObjectAttrs{BucketName: "test-bucket", Name: "objects/testnet-foo/0002"}},
 		}
 		server := fakestorage.NewServer(objects)
 		defer server.Stop()
@@ -585,6 +591,8 @@ func TestGCSListFilePaths_StartAfter(t *testing.T) {
 			{ObjectAttrs: fakestorage.ObjectAttrs{BucketName: "test-bucket", Name: "objects/testnet/0002"}},
 			{ObjectAttrs: fakestorage.ObjectAttrs{BucketName: "test-bucket", Name: "objects/testnet/0004"}},
 			{ObjectAttrs: fakestorage.ObjectAttrs{BucketName: "test-bucket", Name: "objects/testnet/0006"}},
+			// decoy outside the prefix directory style
+			{ObjectAttrs: fakestorage.ObjectAttrs{BucketName: "test-bucket", Name: "objects/testnet-foo/0002"}},
 		}
 		server := fakestorage.NewServer(objects)
 		defer server.Stop()
@@ -610,6 +618,12 @@ func TestGCSListFilePaths_StartAfter(t *testing.T) {
 				Content: []byte("x"),
 			})
 		}
+		// decoy outside the prefix directory style
+		objects = append(objects, fakestorage.Object{
+			ObjectAttrs: fakestorage.ObjectAttrs{BucketName: "test-bucket", Name: "objects/testnet-foo/0002"},
+			Content:     []byte("x"),
+		})
+
 		server := fakestorage.NewServer(objects)
 		defer server.Stop()
 

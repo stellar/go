@@ -288,6 +288,19 @@ func TestFindOldestLedgerSequence_NoLedgersExist(t *testing.T) {
 	mds.AssertExpectations(t)
 }
 
+func TestFindOldestLedgerSequence_EmptyListFilePaths(t *testing.T) {
+	ctx := context.Background()
+	mds := new(MockDataStore)
+
+	mds.On("ListFilePaths", ctx, ListFileOptions{}).
+		Return([]string{}, nil).Once()
+
+	_, err := FindOldestLedgerSequence(ctx, mds, schema)
+	assert.ErrorIs(t, err, ErrNoValidLedgerFiles)
+
+	mds.AssertExpectations(t)
+}
+
 func TestFindOldestLedgerSequence_InvalidLatestLedger(t *testing.T) {
 	ctx := context.Background()
 	mds := new(MockDataStore)

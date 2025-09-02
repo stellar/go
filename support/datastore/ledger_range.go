@@ -2,11 +2,10 @@ package datastore
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"sort"
-
-	"github.com/stellar/go/support/errors"
 )
 
 var ErrNoValidLedgerFiles = errors.New("no valid ledger files found on the data store")
