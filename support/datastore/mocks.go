@@ -55,8 +55,8 @@ func (m *MockDataStore) PutFileIfNotExists(ctx context.Context, path string, in 
 	return args.Get(0).(bool), args.Error(1)
 }
 
-func (m *MockDataStore) ListFilePaths(ctx context.Context, prefix string, limit int) ([]string, error) {
-	args := m.Called(ctx, prefix, limit)
+func (m *MockDataStore) ListFilePaths(ctx context.Context, options ListFileOptions) ([]string, error) {
+	args := m.Called(ctx, options)
 	var keys []string
 	if v := args.Get(0); v != nil {
 		keys = v.([]string)

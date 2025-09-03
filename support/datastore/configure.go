@@ -187,7 +187,7 @@ func LoadSchema(ctx context.Context, dataStore DataStore, cfg DataStoreConfig) (
 var ErrNoLedgerFiles = errors.New("no ledger files found")
 
 func GetLedgerFileExtension(ctx context.Context, dataStore DataStore) (string, error) {
-	files, err := dataStore.ListFilePaths(ctx, "", 0)
+	files, err := dataStore.ListFilePaths(ctx, ListFileOptions{})
 	if err != nil {
 		return "", fmt.Errorf("failed to list ledger files: %w", err)
 	}

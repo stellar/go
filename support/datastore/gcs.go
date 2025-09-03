@@ -55,7 +55,7 @@ func FromGCSClient(ctx context.Context, client *storage.Client, bucketPath strin
 	prefix := strings.TrimPrefix(parsed.Path, "/")
 	bucketName := parsed.Host
 
-	log.Infof("creating GCS client for bucket: %s, prefix: %s", bucketName, prefix)
+	log.Debugf("creating GCS client for bucket: %s, prefix: %s", bucketName, prefix)
 	// Check the bucket exists
 	bucket := client.Bucket(bucketName)
 	if _, err := bucket.Attrs(ctx); err != nil {
@@ -109,11 +109,11 @@ func (b GCSDataStore) GetFile(ctx context.Context, filePath string) (io.ReadClos
 			return nil, os.ErrNotExist
 		}
 		if gcsError, ok := err.(*googleapi.Error); ok {
-			log.Errorf("GCS error: %s %s", gcsError.Message, gcsError.Body)
+			log.Debugf("GCS error: %s %s", gcsError.Message, gcsError.Body)
 		}
 		return nil, fmt.Errorf("error retrieving file %s: %w", filePath, err)
 	}
-	log.Infof("File retrieved successfully: %s", filePath)
+	log.Debugf("File retrieved successfully: %s", filePath)
 	return r, nil
 }
 
@@ -124,15 +124,15 @@ func (b GCSDataStore) PutFileIfNotExists(ctx context.Context, filePath string, i
 		if gcsError, ok := err.(*googleapi.Error); ok {
 			switch gcsError.Code {
 			case http.StatusPreconditionFailed:
-				log.Infof("Precondition failed: %s already exists in the bucket", filePath)
+				log.Debugf("Precondition failed: %s already exists in the bucket", filePath)
 				return false, nil // Treat as success
 			default:
-				log.Errorf("GCS error: %s %s", gcsError.Message, gcsError.Body)
+				log.Debugf("GCS error: %s %s", gcsError.Message, gcsError.Body)
 			}
 		}
 		return false, fmt.Errorf("error uploading file %s: %w", filePath, err)
 	}
-	log.Infof("File uploaded successfully: %s", filePath)
+	log.Debugf("File uploaded successfully: %s", filePath)
 	return true, nil
 }
 
@@ -142,11 +142,11 @@ func (b GCSDataStore) PutFile(ctx context.Context, filePath string, in io.Writer
 
 	if err != nil {
 		if gcsError, ok := err.(*googleapi.Error); ok {
-			log.Errorf("GCS error: %s %s", gcsError.Message, gcsError.Body)
+			log.Debugf("GCS error: %s %s", gcsError.Message, gcsError.Body)
 		}
 		return fmt.Errorf("error uploading file %s: %w", filePath, err)
 	}
-	log.Infof("File uploaded successfully: %s", filePath)
+	log.Debugf("File uploaded successfully: %s", filePath)
 	return nil
 }
 
@@ -203,32 +203,41 @@ func (b GCSDataStore) putFile(ctx context.Context, filePath string, in io.Writer
 }
 
 // ListFilePaths lists up to 'limit' file paths under the provided prefix.
-// Returned paths are absolute within the datastore (including the given prefix)
+// Returned paths are relative to the bucket prefix.
 // and ordered lexicographically ascending as provided by the backend.
 // If limit <= 0, implementations default to a cap of 1,000; values > 1,000 are capped to 1,000.
-func (b GCSDataStore) ListFilePaths(ctx context.Context, prefix string, limit int) ([]string, error) {
+func (b GCSDataStore) ListFilePaths(ctx context.Context, options ListFileOptions) ([]string, error) {
 	var fullPrefix string
 
 	// When 'prefix' is empty, ensure the base prefix ends with a slash (e.g., "a/b/")
 	// so the query returns only objects within that directory, not similarly named paths like "a/b-1".
-	if prefix == "" {
+	if options.Prefix == "" {
 		fullPrefix = b.prefix
 		if !strings.HasSuffix(fullPrefix, "/") {
 			fullPrefix += "/"
 		}
 	} else {
 		// Join the caller-provided prefix with the datastore prefix
-		fullPrefix = path.Join(b.prefix, prefix)
+		fullPrefix = path.Join(b.prefix, options.Prefix)
 	}
 
-	query := &storage.Query{Prefix: fullPrefix}
+	var StartAfter string
+	if options.StartAfter != "" {
+		StartAfter = path.Join(b.prefix, options.StartAfter)
+	}
+
+	query := &storage.Query{
+		Prefix:      fullPrefix,
+		StartOffset: StartAfter, // inclusive in GCS; we normalize to exclusive below
+	}
+
 	// Only request the object name to minimize payload
 	query.SetAttrSelection([]string{"Name"})
 	it := b.bucket.Objects(ctx, query)
 
 	keys := make([]string, 0)
 	// Enforce an effective cap of 1000 total results and default to 1000 if <= 0
-	remaining := limit
+	remaining := options.Limit
 	if remaining <= 0 || remaining > listFilePathsMaxLimit {
 		remaining = listFilePathsMaxLimit
 	}
@@ -243,8 +252,17 @@ func (b GCSDataStore) ListFilePaths(ctx context.Context, prefix string, limit in
 		if err != nil {
 			return nil, err
 		}
-		// Return full path (including the configured prefix)
-		keys = append(keys, attrs.Name)
+
+		// GCS StartOffset is inclusive, so if the key same as StartAfter,
+		// skip it so results begin strictly after that key.
+		if attrs.Name == StartAfter {
+			continue
+		}
+
+		// Trim the configured prefix and any leading slash before appending
+		relative := strings.TrimPrefix(attrs.Name, b.prefix+"/")
+		keys = append(keys, relative)
+
 		remaining--
 	}
 	return keys, nil

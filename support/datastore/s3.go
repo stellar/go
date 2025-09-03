@@ -58,7 +58,7 @@ func NewS3DataStore(ctx context.Context, datastoreConfig DataStoreConfig) (DataS
 		// If not, fall back to anonymous credentials for public S3 bucket access.
 		_, err := cfg.Credentials.Retrieve(ctx)
 		if err != nil {
-			log.Infof("No default AWS credentials found, configuring S3 client for anonymous access")
+			log.Debugf("No default AWS credentials found, configuring S3 client for anonymous access")
 			o.Credentials = aws.AnonymousCredentials{}
 		}
 
@@ -80,7 +80,7 @@ func FromS3Client(ctx context.Context, client *s3.Client, bucketPath string) (Da
 	bucketName := parsed.Host
 	uploader := manager.NewUploader(client)
 
-	log.Infof("Creating S3 client for bucket: %s, prefix: %s", bucketName, prefix)
+	log.Debugf("Creating S3 client for bucket: %s, prefix: %s", bucketName, prefix)
 
 	listInput := &s3.ListObjectsV2Input{
 		Bucket:  aws.String(bucketName),
@@ -163,14 +163,14 @@ func (b S3DataStore) GetFile(ctx context.Context, filePath string) (io.ReadClose
 
 	output, err := b.client.GetObject(ctx, input)
 	if err != nil {
-		log.Errorf("Error retrieving file '%s': %v", filePath, err)
+		log.Debugf("Error retrieving file '%s': %v", filePath, err)
 		if isNotFoundError(err) {
 			return nil, os.ErrNotExist
 		}
 		return nil, fmt.Errorf("error retrieving file %s: %w", filePath, err)
 	}
 
-	log.Infof("File retrieved successfully: %s", filePath)
+	log.Debugf("File retrieved successfully: %s", filePath)
 	return output.Body, nil
 }
 
@@ -181,12 +181,12 @@ func (b S3DataStore) PutFile(ctx context.Context, filePath string, in io.WriterT
 	if err != nil {
 		var apiErr smithy.APIError
 		if errors.As(err, &apiErr) {
-			log.Errorf("S3 error: %s %s %s", apiErr.ErrorCode(), apiErr.ErrorMessage(), apiErr.Error())
+			log.Debugf("S3 error: %s %s %s", apiErr.ErrorCode(), apiErr.ErrorMessage(), apiErr.Error())
 		}
 		return fmt.Errorf("error uploading file %s: %w", filePath, err)
 	}
 
-	log.Infof("File uploaded successfully: %s", filePath)
+	log.Debugf("File uploaded successfully: %s", filePath)
 	return nil
 }
 
@@ -197,16 +197,16 @@ func (b S3DataStore) PutFileIfNotExists(ctx context.Context, filePath string, in
 		var apiErr smithy.APIError
 		if errors.As(err, &apiErr) {
 			if apiErr.ErrorCode() == "PreconditionFailed" {
-				log.Infof("Precondition failed: %s already exists in the bucket", filePath)
+				log.Debugf("Precondition failed: %s already exists in the bucket", filePath)
 				return false, nil // Treat as success
 			} else {
-				log.Errorf("S3 error: %s %s %s", apiErr.ErrorCode(), apiErr.ErrorMessage(), apiErr.Error())
+				log.Debugf("S3 error: %s %s %s", apiErr.ErrorCode(), apiErr.ErrorMessage(), apiErr.Error())
 			}
 		}
 		return false, fmt.Errorf("error uploading file %s: %w", filePath, err)
 	}
 
-	log.Infof("File uploaded successfully: %s", filePath)
+	log.Debugf("File uploaded successfully: %s", filePath)
 	return true, nil
 }
 
@@ -282,29 +282,33 @@ func (b S3DataStore) putFile(ctx context.Context, filePath string, in io.WriterT
 }
 
 // ListFilePaths lists up to 'limit' file paths under the provided prefix.
-// Returned paths are absolute within the datastore (including the given prefix)
+// Returned paths are relative to the bucket prefix.
 // and ordered lexicographically ascending as provided by the backend.
 // If limit <= 0, implementations default to a cap of 1,000; values > 1,000 are capped to 1,000.
-func (b S3DataStore) ListFilePaths(ctx context.Context, prefix string, limit int) ([]string, error) {
+func (b S3DataStore) ListFilePaths(ctx context.Context, options ListFileOptions) ([]string, error) {
 	var fullPrefix string
 
 	// When 'prefix' is empty, ensure the base prefix ends with a slash (e.g., "a/b/")
 	// so the query returns only objects within that directory, not similarly named paths like "a/b-1".
-	if prefix == "" {
+	if options.Prefix == "" {
 		fullPrefix = b.prefix
 		if !strings.HasSuffix(fullPrefix, "/") {
 			fullPrefix += "/"
 		}
 	} else {
 		// Join the caller-provided prefix with the datastore prefix
-		fullPrefix = path.Join(b.prefix, prefix)
+		fullPrefix = path.Join(b.prefix, options.Prefix)
 	}
 
+	var StartAfter string
+	if options.StartAfter != "" {
+		StartAfter = path.Join(b.prefix, options.StartAfter)
+	}
 	// S3 returns lexicographically ordered keys by default
 	// We page through until we collect 'limit' or exhaust results
 	var keys []string
 	var continuationToken *string
-	remaining := limit
+	remaining := options.Limit
 	if remaining <= 0 || remaining > listFilePathsMaxLimit {
 		remaining = listFilePathsMaxLimit
 	}
@@ -316,14 +320,19 @@ func (b S3DataStore) ListFilePaths(ctx context.Context, prefix string, limit int
 			ContinuationToken: continuationToken,
 			MaxKeys:           aws.Int32(maxKeys),
 			FetchOwner:        aws.Bool(false),
+			StartAfter:        aws.String(StartAfter),
 		})
 		if err != nil {
 			return nil, err
 		}
 		for _, obj := range out.Contents {
 			name := aws.ToString(obj.Key)
-			// Return full path (including the configured prefix)
-			keys = append(keys, name)
+
+			// Trim the configured prefix and any leading slash before appending
+			relative := strings.TrimPrefix(name, b.prefix)
+			relative = strings.TrimLeft(relative, "/")
+			keys = append(keys, relative)
+
 			remaining--
 			if remaining == 0 {
 				break

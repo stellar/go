@@ -193,7 +193,7 @@ func TestLoadSchema(t *testing.T) {
 	t.Run("Manifest found and valid", func(t *testing.T) {
 		mockOS := new(MockDataStore)
 		mockOS.On("GetFile", ctx, manifestFilename).Return(io.NopCloser(bytes.NewReader(validManifestBytes)), nil).Once()
-		mockOS.On("ListFilePaths", ctx, "", 0).Return(nil, nil)
+		mockOS.On("ListFilePaths", ctx, ListFileOptions{}).Return(nil, nil)
 		schema, err := LoadSchema(ctx, mockOS, defaultCfg)
 		require.NoError(t, err)
 		require.NotNil(t, schema)
@@ -206,7 +206,7 @@ func TestLoadSchema(t *testing.T) {
 	t.Run("Manifest not found", func(t *testing.T) {
 		mockOS := new(MockDataStore)
 		mockOS.On("GetFile", ctx, manifestFilename).Return(nil, os.ErrNotExist).Once()
-		mockOS.On("ListFilePaths", ctx, "", 0).Return(nil, nil)
+		mockOS.On("ListFilePaths", ctx, ListFileOptions{}).Return(nil, nil)
 
 		schema, err := LoadSchema(ctx, mockOS, defaultCfg)
 		require.NoError(t, err)
@@ -219,7 +219,7 @@ func TestLoadSchema(t *testing.T) {
 	t.Run("Manifest found but invalid JSON", func(t *testing.T) {
 		mockOS := new(MockDataStore)
 		mockOS.On("GetFile", ctx, manifestFilename).Return(io.NopCloser(bytes.NewReader([]byte(`{"invalid": "json"`))), nil).Once()
-		mockOS.On("ListFilePaths", ctx, "", 0).Return(nil, nil)
+		mockOS.On("ListFilePaths", ctx, ListFileOptions{}).Return(nil, nil)
 
 		schema, err := LoadSchema(ctx, mockOS, defaultCfg)
 		require.Error(t, err)
@@ -237,7 +237,7 @@ func TestLoadSchema(t *testing.T) {
 		require.NoError(t, err)
 
 		mockOS.On("GetFile", ctx, manifestFilename).Return(io.NopCloser(bytes.NewReader(invalidManifestBytes)), nil).Once()
-		mockOS.On("ListFilePaths", ctx, "", 0).Return(nil, nil)
+		mockOS.On("ListFilePaths", ctx, ListFileOptions{}).Return(nil, nil)
 
 		schema, err := LoadSchema(ctx, mockOS, defaultCfg)
 		require.Error(t, err)
@@ -249,7 +249,7 @@ func TestLoadSchema(t *testing.T) {
 	t.Run("Manifest not found, and incomplete config", func(t *testing.T) {
 		mockOS := new(MockDataStore)
 		mockOS.On("GetFile", ctx, manifestFilename).Return(nil, os.ErrNotExist).Once()
-		mockOS.On("ListFilePaths", ctx, "", 0).Return(nil, nil)
+		mockOS.On("ListFilePaths", ctx, ListFileOptions{}).Return(nil, nil)
 
 		schema, err := LoadSchema(ctx, mockOS, DataStoreConfig{})
 		require.Error(t, err)
@@ -311,7 +311,7 @@ func TestGetLedgerFileExtension(t *testing.T) {
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
 			ds := new(MockDataStore)
-			ds.On("ListFilePaths", mock.Anything, "", 0).Return(tt.files, tt.listErr).Once()
+			ds.On("ListFilePaths", mock.Anything, ListFileOptions{}).Return(tt.files, tt.listErr).Once()
 
 			ext, err := GetLedgerFileExtension(context.Background(), ds)
 			require.Equal(t, tt.ExpectedExt, ext)
