@@ -282,29 +282,33 @@ func (b S3DataStore) putFile(ctx context.Context, filePath string, in io.WriterT
 }
 
 // ListFilePaths lists up to 'limit' file paths under the provided prefix.
-// Returned paths are absolute within the datastore (including the given prefix)
+// Returned paths are relative to the bucket prefix.
 // and ordered lexicographically ascending as provided by the backend.
 // If limit <= 0, implementations default to a cap of 1,000; values > 1,000 are capped to 1,000.
-func (b S3DataStore) ListFilePaths(ctx context.Context, prefix string, limit int) ([]string, error) {
+func (b S3DataStore) ListFilePaths(ctx context.Context, options ListFileOptions) ([]string, error) {
 	var fullPrefix string
 
 	// When 'prefix' is empty, ensure the base prefix ends with a slash (e.g., "a/b/")
 	// so the query returns only objects within that directory, not similarly named paths like "a/b-1".
-	if prefix == "" {
+	if options.Prefix == "" {
 		fullPrefix = b.prefix
 		if !strings.HasSuffix(fullPrefix, "/") {
 			fullPrefix += "/"
 		}
 	} else {
 		// Join the caller-provided prefix with the datastore prefix
-		fullPrefix = path.Join(b.prefix, prefix)
+		fullPrefix = path.Join(b.prefix, options.Prefix)
 	}
 
+	var StartAfter string
+	if options.StartAfter != "" {
+		StartAfter = path.Join(b.prefix, options.StartAfter)
+	}
 	// S3 returns lexicographically ordered keys by default
 	// We page through until we collect 'limit' or exhaust results
 	var keys []string
 	var continuationToken *string
-	remaining := limit
+	remaining := options.Limit
 	if remaining <= 0 || remaining > listFilePathsMaxLimit {
 		remaining = listFilePathsMaxLimit
 	}
@@ -316,14 +320,19 @@ func (b S3DataStore) ListFilePaths(ctx context.Context, prefix string, limit int
 			ContinuationToken: continuationToken,
 			MaxKeys:           aws.Int32(maxKeys),
 			FetchOwner:        aws.Bool(false),
+			StartAfter:        aws.String(StartAfter),
 		})
 		if err != nil {
 			return nil, err
 		}
 		for _, obj := range out.Contents {
 			name := aws.ToString(obj.Key)
-			// Return full path (including the configured prefix)
-			keys = append(keys, name)
+
+			// Trim the configured prefix and any leading slash before appending
+			relative := strings.TrimPrefix(name, b.prefix)
+			relative = strings.TrimLeft(relative, "/")
+			keys = append(keys, relative)
+
 			remaining--
 			if remaining == 0 {
 				break

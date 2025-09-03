@@ -431,10 +431,10 @@ func TestGCSListFilePaths(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = store.Close() })
 
-	paths, err := store.ListFilePaths(context.Background(), "", 2)
+	paths, err := store.ListFilePaths(context.Background(), ListFileOptions{Limit: 2})
 	require.NoError(t, err)
 
-	require.Equal(t, []string{"objects/testnet/a", "objects/testnet/b"}, paths)
+	require.Equal(t, []string{"a", "b"}, paths)
 }
 
 func TestGCSListFilePaths_WithPrefix(t *testing.T) {
@@ -458,9 +458,9 @@ func TestGCSListFilePaths_WithPrefix(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = store.Close() })
 
-	paths, err := store.ListFilePaths(context.Background(), "a", 10)
+	paths, err := store.ListFilePaths(context.Background(), ListFileOptions{Prefix: "a", Limit: 10})
 	require.NoError(t, err)
-	require.Equal(t, []string{"objects/testnet/a/x", "objects/testnet/a/y"}, paths)
+	require.Equal(t, []string{"a/x", "a/y"}, paths)
 }
 
 func TestGCSListFilePaths_LimitDefaultAndCap(t *testing.T) {
@@ -478,11 +478,164 @@ func TestGCSListFilePaths_LimitDefaultAndCap(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = store.Close() })
 
-	paths, err := store.ListFilePaths(context.Background(), "", 0)
+	paths, err := store.ListFilePaths(context.Background(), ListFileOptions{})
 	require.NoError(t, err)
 	require.Equal(t, 1000, len(paths))
 
-	paths, err = store.ListFilePaths(context.Background(), "", 5000)
+	paths, err = store.ListFilePaths(context.Background(), ListFileOptions{Limit: 5000})
 	require.NoError(t, err)
 	require.Equal(t, 1000, len(paths))
+}
+
+func TestGCSListFilePaths_StartAfter(t *testing.T) {
+	t.Run("basic start-after (no Prefix)", func(t *testing.T) {
+		objects := make([]fakestorage.Object, 0, 11)
+		for i := 0; i < 10; i++ {
+			objects = append(objects, fakestorage.Object{
+				ObjectAttrs: fakestorage.ObjectAttrs{
+					BucketName: "test-bucket",
+					Name:       fmt.Sprintf("objects/testnet/%04d", i)},
+				Content: []byte("x"),
+			})
+		}
+		// decoy outside the prefix directory style
+		objects = append(objects, fakestorage.Object{
+			ObjectAttrs: fakestorage.ObjectAttrs{BucketName: "test-bucket", Name: "objects/testnet-foo/0000"},
+			Content:     []byte("x"),
+		})
+
+		server := fakestorage.NewServer(objects)
+		defer server.Stop()
+
+		store, err := FromGCSClient(context.Background(), server.Client(), "test-bucket/objects/testnet")
+		require.NoError(t, err)
+		t.Cleanup(func() { _ = store.Close() })
+
+		paths, err := store.ListFilePaths(context.Background(), ListFileOptions{
+			StartAfter: "0005",
+		})
+		require.NoError(t, err)
+		require.Equal(t, []string{"0006", "0007", "0008", "0009"}, paths,
+			"should start strictly after 0005 and trim prefix")
+	})
+
+	t.Run("with Prefix directory and start-after inside it", func(t *testing.T) {
+		objects := []fakestorage.Object{
+			{ObjectAttrs: fakestorage.ObjectAttrs{BucketName: "test-bucket", Name: "objects/testnet/a/0001"}},
+			{ObjectAttrs: fakestorage.ObjectAttrs{BucketName: "test-bucket", Name: "objects/testnet/a/0002"}},
+			{ObjectAttrs: fakestorage.ObjectAttrs{BucketName: "test-bucket", Name: "objects/testnet/b/0002"}}, // different subdir
+			// decoy outside the prefix directory style
+			{ObjectAttrs: fakestorage.ObjectAttrs{BucketName: "test-bucket", Name: "objects/testnet-foo/0002"}},
+		}
+		server := fakestorage.NewServer(objects)
+		defer server.Stop()
+
+		store, err := FromGCSClient(context.Background(), server.Client(), "test-bucket/objects/testnet")
+		require.NoError(t, err)
+		t.Cleanup(func() { _ = store.Close() })
+
+		paths, err := store.ListFilePaths(context.Background(), ListFileOptions{
+			Prefix:     "a/",
+			StartAfter: "a/0001",
+		})
+		require.NoError(t, err)
+		require.Equal(t, []string{"a/0002"}, paths)
+	})
+
+	t.Run("start-after equals last key -> empty", func(t *testing.T) {
+		objects := []fakestorage.Object{
+			{ObjectAttrs: fakestorage.ObjectAttrs{BucketName: "test-bucket", Name: "objects/testnet/0000"}},
+			{ObjectAttrs: fakestorage.ObjectAttrs{BucketName: "test-bucket", Name: "objects/testnet/0001"}},
+			{ObjectAttrs: fakestorage.ObjectAttrs{BucketName: "test-bucket", Name: "objects/testnet/0002"}},
+			// decoy outside the prefix directory style
+			{ObjectAttrs: fakestorage.ObjectAttrs{BucketName: "test-bucket", Name: "objects/testnet-foo/0002"}},
+		}
+		server := fakestorage.NewServer(objects)
+		defer server.Stop()
+
+		store, err := FromGCSClient(context.Background(), server.Client(), "test-bucket/objects/testnet")
+		require.NoError(t, err)
+		t.Cleanup(func() { _ = store.Close() })
+
+		paths, err := store.ListFilePaths(context.Background(), ListFileOptions{
+			StartAfter: "0002",
+		})
+		require.NoError(t, err)
+		require.Empty(t, paths)
+	})
+
+	t.Run("start-after before first key -> all returned", func(t *testing.T) {
+		objects := []fakestorage.Object{
+			{ObjectAttrs: fakestorage.ObjectAttrs{BucketName: "test-bucket", Name: "objects/testnet/0001"}},
+			{ObjectAttrs: fakestorage.ObjectAttrs{BucketName: "test-bucket", Name: "objects/testnet/0002"}},
+			{ObjectAttrs: fakestorage.ObjectAttrs{BucketName: "test-bucket", Name: "objects/testnet/0003"}},
+			// decoy outside the prefix directory style
+			{ObjectAttrs: fakestorage.ObjectAttrs{BucketName: "test-bucket", Name: "objects/testnet-foo/0002"}},
+		}
+		server := fakestorage.NewServer(objects)
+		defer server.Stop()
+
+		store, err := FromGCSClient(context.Background(), server.Client(), "test-bucket/objects/testnet")
+		require.NoError(t, err)
+		t.Cleanup(func() { _ = store.Close() })
+
+		paths, err := store.ListFilePaths(context.Background(), ListFileOptions{
+			StartAfter: "0000",
+		})
+		require.NoError(t, err)
+		require.Equal(t, []string{"0001", "0002", "0003"}, paths)
+	})
+
+	t.Run("start-after missing-but-between keys -> next greater", func(t *testing.T) {
+		objects := []fakestorage.Object{
+			{ObjectAttrs: fakestorage.ObjectAttrs{BucketName: "test-bucket", Name: "objects/testnet/0002"}},
+			{ObjectAttrs: fakestorage.ObjectAttrs{BucketName: "test-bucket", Name: "objects/testnet/0004"}},
+			{ObjectAttrs: fakestorage.ObjectAttrs{BucketName: "test-bucket", Name: "objects/testnet/0006"}},
+			// decoy outside the prefix directory style
+			{ObjectAttrs: fakestorage.ObjectAttrs{BucketName: "test-bucket", Name: "objects/testnet-foo/0002"}},
+		}
+		server := fakestorage.NewServer(objects)
+		defer server.Stop()
+
+		store, err := FromGCSClient(context.Background(), server.Client(), "test-bucket/objects/testnet")
+		require.NoError(t, err)
+		t.Cleanup(func() { _ = store.Close() })
+
+		paths, err := store.ListFilePaths(context.Background(), ListFileOptions{
+			StartAfter: "0003",
+		})
+		require.NoError(t, err)
+		require.Equal(t, []string{"0004", "0006"}, paths)
+	})
+
+	t.Run("respects limit together with start-after", func(t *testing.T) {
+		objects := make([]fakestorage.Object, 0, 10)
+		for i := 0; i < 10; i++ {
+			objects = append(objects, fakestorage.Object{
+				ObjectAttrs: fakestorage.ObjectAttrs{
+					BucketName: "test-bucket",
+					Name:       fmt.Sprintf("objects/testnet/%04d", i)},
+				Content: []byte("x"),
+			})
+		}
+		// decoy outside the prefix directory style
+		objects = append(objects, fakestorage.Object{
+			ObjectAttrs: fakestorage.ObjectAttrs{BucketName: "test-bucket", Name: "objects/testnet-foo/0002"},
+			Content:     []byte("x"),
+		})
+
+		server := fakestorage.NewServer(objects)
+		defer server.Stop()
+
+		store, err := FromGCSClient(context.Background(), server.Client(), "test-bucket/objects/testnet")
+		require.NoError(t, err)
+		t.Cleanup(func() { _ = store.Close() })
+
+		paths, err := store.ListFilePaths(context.Background(), ListFileOptions{
+			StartAfter: "0004",
+			Limit:      3,
+		})
+		require.NoError(t, err)
+		require.Equal(t, []string{"0005", "0006", "0007"}, paths)
+	})
 }
