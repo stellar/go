@@ -6,7 +6,9 @@ import (
 	stdhttp "net/http"
 	"os"
 
-	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/middleware"
+	"github.com/go-chi/chi/v5"
+	"github.com/riandyrn/otelchi"
 	"github.com/spf13/cobra"
 
 	"github.com/stellar/go/services/friendbot/internal"
@@ -16,6 +18,12 @@ import (
 	"github.com/stellar/go/support/http"
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/support/render/problem"
+	"github.com/stellar/go/utils/tracer"
+)
+
+const (
+	serviceName    = "stellar-friendbot"
+	serviceVersion = "1.0.0" //TODO: Change version
 )
 
 // Config represents the configuration of a friendbot server
@@ -31,6 +39,7 @@ type Config struct {
 	MinionBatchSize        int         `toml:"minion_batch_size" valid:"optional"`
 	SubmitTxRetriesAllowed int         `toml:"submit_tx_retries_allowed" valid:"optional"`
 	UseCloudflareIP        bool        `toml:"use_cloudflare_ip" valid:"optional"`
+	OtelEndpoint           string      `toml:"otel_endpoint" valid:"optional"`
 }
 
 func main() {
@@ -63,6 +72,15 @@ func run(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
+	//Setup and intialize tracer
+	stellarTracer := tracer.NewStellarTracer(cfg.OtelEndpoint, serviceName, serviceVersion)
+	tracer, err := stellarTracer.InitializeTracer()
+	if err != nil {
+		log.Error("Failed to initialize tracer:", err)
+	}
+	log.Infof("Tracer initialized")
+	defer tracer()
+
 	fb, err := initFriendbot(cfg.FriendbotSecret, cfg.NetworkPassphrase, cfg.HorizonURL, cfg.StartingBalance,
 		cfg.NumMinions, cfg.BaseFee, cfg.MinionBatchSize, cfg.SubmitTxRetriesAllowed)
 	if err != nil {
@@ -87,8 +105,7 @@ func run(cmd *cobra.Command, args []string) {
 
 func initRouter(cfg Config, fb *internal.Bot) *chi.Mux {
 	mux := newMux(cfg)
-
-	handler := &internal.FriendbotHandler{Friendbot: fb}
+	handler := internal.NewFriendbotHandler(fb)
 	mux.Get("/", handler.Handle)
 	mux.Post("/", handler.Handle)
 	mux.NotFound(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
@@ -104,6 +121,14 @@ func newMux(cfg Config) *chi.Mux {
 	// middlewares
 	mux.Use(http.XFFMiddleware(http.XFFMiddlewareConfig{BehindCloudflare: cfg.UseCloudflareIP}))
 	mux.Use(http.NewAPIMux(log.DefaultLogger).Middlewares()...)
+
+	// Add OpenTelemetry middleware
+	mux.Use(middleware.RequestID)
+	mux.Use(middleware.RealIP)
+	mux.Use(middleware.Logger)
+	mux.Use(middleware.Recoverer)
+	mux.Use(otelchi.Middleware(serviceName, otelchi.WithChiRoutes(mux)))
+
 	return mux
 }
 
