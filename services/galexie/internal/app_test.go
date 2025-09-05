@@ -17,7 +17,7 @@ func TestApplyResumeHasStartError(t *testing.T) {
 	app := &App{}
 	app.config = &Config{StartLedger: 10, EndLedger: 19, Mode: Append}
 	mockResumableManager := &datastore.MockResumableManager{}
-	mockResumableManager.On("FindStart", ctx, uint32(10), uint32(19)).Return(uint32(0), false, errors.New("start error")).Once()
+	mockResumableManager.On("FindStart", ctx, uint32(10), uint32(19)).Return(uint32(0), errors.New("start error")).Once()
 
 	err := app.applyResumability(ctx, mockResumableManager)
 	require.ErrorContains(t, err, "start error")
@@ -29,7 +29,7 @@ func TestApplyResumeDatastoreComplete(t *testing.T) {
 	app := &App{}
 	app.config = &Config{StartLedger: 10, EndLedger: 19, Mode: Append}
 	mockResumableManager := &datastore.MockResumableManager{}
-	mockResumableManager.On("FindStart", ctx, uint32(10), uint32(19)).Return(uint32(0), false, nil).Once()
+	mockResumableManager.On("FindStart", ctx, uint32(10), uint32(19)).Return(uint32(0), nil).Once()
 
 	var alreadyExported *DataAlreadyExportedError
 	err := app.applyResumability(ctx, mockResumableManager)
@@ -49,7 +49,7 @@ func TestApplyResumeInvalidDataStoreLedgersPerFileBoundary(t *testing.T) {
 	mockResumableManager := &datastore.MockResumableManager{}
 	// simulate the datastore has inconsistent data,
 	// with last ledger not aligned to starting boundary
-	mockResumableManager.On("FindStart", ctx, uint32(3), uint32(9)).Return(uint32(6), true, nil).Once()
+	mockResumableManager.On("FindStart", ctx, uint32(3), uint32(9)).Return(uint32(6), nil).Once()
 
 	var invalidStore *InvalidDataStoreError
 	err := app.applyResumability(ctx, mockResumableManager)
@@ -68,7 +68,7 @@ func TestApplyResumeWithPartialRemoteDataPresent(t *testing.T) {
 	}
 	mockResumableManager := &datastore.MockResumableManager{}
 	// simulates a data store that had ledger files populated up to seq=49, so the first absent ledger would be 50
-	mockResumableManager.On("FindStart", ctx, uint32(10), uint32(99)).Return(uint32(50), true, nil).Once()
+	mockResumableManager.On("FindStart", ctx, uint32(10), uint32(99)).Return(uint32(50), nil).Once()
 
 	err := app.applyResumability(ctx, mockResumableManager)
 	require.NoError(t, err)
@@ -87,7 +87,7 @@ func TestApplyResumeWithNoRemoteDataPresent(t *testing.T) {
 	}
 	mockResumableManager := &datastore.MockResumableManager{}
 	// simulates a data store that had no data in the requested range
-	mockResumableManager.On("FindStart", ctx, uint32(10), uint32(99)).Return(uint32(2), true, nil).Once()
+	mockResumableManager.On("FindStart", ctx, uint32(10), uint32(99)).Return(uint32(2), nil).Once()
 
 	err := app.applyResumability(ctx, mockResumableManager)
 	require.NoError(t, err)
@@ -109,7 +109,7 @@ func TestApplyResumeWithNoRemoteDataAndRequestFromGenesis(t *testing.T) {
 	}
 	mockResumableManager := &datastore.MockResumableManager{}
 	// simulates a data store that had no data in the requested range
-	mockResumableManager.On("FindStart", ctx, uint32(2), uint32(99)).Return(uint32(2), true, nil).Once()
+	mockResumableManager.On("FindStart", ctx, uint32(2), uint32(99)).Return(uint32(2), nil).Once()
 
 	err := app.applyResumability(ctx, mockResumableManager)
 	require.NoError(t, err)
