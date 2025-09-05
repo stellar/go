@@ -399,7 +399,7 @@ func DefineIngestCommands(rootCmd *cobra.Command, horizonConfig *horizon.Config,
 				options.NoCaptiveCore = true
 			}
 
-			if err := horizon.ApplyFlags(horizonConfig, horizonFlags, options); err != nil {
+			if err = horizon.ApplyFlags(horizonConfig, horizonFlags, options); err != nil {
 				return err
 			}
 
