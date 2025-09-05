@@ -21,6 +21,8 @@ const (
 	offerCompactionSequence         = "offer_compaction_sequence"
 	liquidityPoolCompactionSequence = "liquidity_pool_compaction_sequence"
 	lookupTableReapOffsetSuffix     = "_reap_offset"
+	loadTestLedgerKey               = "load_test_ledger"
+	loadTestRunID                   = "load_test_run_id"
 )
 
 // GetLastLedgerIngestNonBlocking works like GetLastLedgerIngest but
@@ -38,7 +40,7 @@ func (q *Q) GetLastLedgerIngestNonBlocking(ctx context.Context) (uint32, error) 
 	} else {
 		ledgerSequence, err := strconv.ParseUint(lastIngestedLedger, 10, 32)
 		if err != nil {
-			return 0, errors.Wrap(err, "Error converting lastIngestedLedger value")
+			return 0, errors.Wrap(err, "error converting lastIngestedLedger value")
 		}
 
 		return uint32(ledgerSequence), nil
@@ -64,11 +66,67 @@ func (q *Q) GetLastLedgerIngest(ctx context.Context) (uint32, error) {
 	} else {
 		ledgerSequence, err := strconv.ParseUint(lastIngestedLedger, 10, 32)
 		if err != nil {
-			return 0, errors.Wrap(err, "Error converting lastIngestedLedger value")
+			return 0, errors.Wrap(err, "error converting lastIngestedLedger value")
 		}
 
 		return uint32(ledgerSequence), nil
 	}
+}
+
+func (q *Q) GetLoadTestRestoreState(ctx context.Context) (string, uint32, error) {
+	restoreLedger, err := q.getValueFromStore(ctx, loadTestLedgerKey, false)
+	if err != nil {
+		return "", 0, err
+	}
+
+	runID, err := q.getValueFromStore(ctx, loadTestRunID, false)
+	if err != nil {
+		return "", 0, err
+	}
+
+	if (restoreLedger == "") != (runID == "") {
+		return "", 0, errors.Errorf("load test restore state is inconsistent: %s, %s", restoreLedger, runID)
+	}
+
+	if restoreLedger == "" {
+		return "", 0, sql.ErrNoRows
+	} else {
+		ledgerSequence, err := strconv.ParseUint(restoreLedger, 10, 32)
+		if err != nil {
+			return "", 0, errors.Wrap(err, "error converting lastIngestedLedger value")
+		}
+
+		return runID, uint32(ledgerSequence), nil
+	}
+}
+
+func (q *Q) SetLoadTestRestoreState(ctx context.Context, runID string, restoreLedger uint32) error {
+	err := q.updateValueInStore(
+		ctx,
+		loadTestLedgerKey,
+		strconv.FormatUint(uint64(restoreLedger), 10),
+	)
+	if err != nil {
+		return err
+	}
+
+	err = q.updateValueInStore(
+		ctx,
+		loadTestRunID,
+		runID,
+	)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (q *Q) ClearLoadTestRestoreState(ctx context.Context) error {
+	query := sq.Delete("key_value_store").
+		Where(map[string]interface{}{"key_value_store.key": []string{loadTestLedgerKey, loadTestRunID}})
+	_, err := q.Exec(ctx, query)
+	return err
 }
 
 // UpdateLastLedgerIngest updates the last ledger ingested by ingest system.
@@ -86,7 +144,7 @@ func (q *Q) UpdateLastLedgerIngest(ctx context.Context, ledgerSequence uint32) e
 func (q *Q) GetIngestVersion(ctx context.Context) (int, error) {
 	parsed, err := q.getIntValueFromStore(ctx, ingestVersion, 32)
 	if err != nil {
-		return 0, errors.Wrap(err, "Error converting sequence value")
+		return 0, errors.Wrap(err, "error converting sequence value")
 	}
 	return int(parsed), nil
 }
@@ -113,7 +171,7 @@ func (q *Q) GetExpStateInvalid(ctx context.Context) (bool, error) {
 	} else {
 		val, err := strconv.ParseBool(invalid)
 		if err != nil {
-			return false, errors.Wrap(err, "Error converting invalid value")
+			return false, errors.Wrap(err, "error converting invalid value")
 		}
 
 		return val, nil
@@ -134,7 +192,7 @@ func (q *Q) UpdateExpStateInvalid(ctx context.Context, val bool) error {
 func (q *Q) GetOfferCompactionSequence(ctx context.Context) (uint32, error) {
 	parsed, err := q.getIntValueFromStore(ctx, offerCompactionSequence, 32)
 	if err != nil {
-		return 0, errors.Wrap(err, "Error converting sequence value")
+		return 0, errors.Wrap(err, "error converting sequence value")
 	}
 	return uint32(parsed), nil
 }
@@ -144,7 +202,7 @@ func (q *Q) GetOfferCompactionSequence(ctx context.Context) (uint32, error) {
 func (q *Q) GetLiquidityPoolCompactionSequence(ctx context.Context) (uint32, error) {
 	parsed, err := q.getIntValueFromStore(ctx, liquidityPoolCompactionSequence, 32)
 	if err != nil {
-		return 0, errors.Wrap(err, "Error converting sequence value")
+		return 0, errors.Wrap(err, "error converting sequence value")
 	}
 
 	return uint32(parsed), nil
@@ -161,7 +219,7 @@ func (q *Q) getIntValueFromStore(ctx context.Context, key string, bitSize int) (
 	}
 	parsed, err := strconv.ParseInt(sequence, 10, bitSize)
 	if err != nil {
-		return 0, errors.Wrap(err, "Error converting value")
+		return 0, errors.Wrap(err, "error converting value")
 	}
 	return parsed, nil
 }

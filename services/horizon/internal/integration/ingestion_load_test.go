@@ -13,6 +13,7 @@ import (
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/ingest/loadtest"
 	"github.com/stellar/go/services/horizon/internal/test/integration"
+	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stellar/go/xdr"
 )
@@ -40,6 +41,7 @@ func TestLoadTestLedgerBackend(t *testing.T) {
 	)
 	require.True(t, tx.Successful)
 
+	session := &db.Session{DB: itest.GetTestDB().Open()}
 	replayConfig := loadtest.LedgerBackendConfig{
 		NetworkPassphrase:     "invalid passphrase",
 		LedgersFilePath:       filepath.Join("testdata", fmt.Sprintf("load-test-ledgers-v%d.xdr.zstd", itest.Config().ProtocolVersion)),
@@ -67,6 +69,7 @@ func TestLoadTestLedgerBackend(t *testing.T) {
 	endLedger := startLedger + uint32(len(generatedLedgers))
 
 	itest.WaitForLedgerInArchive(6*time.Minute, endLedger)
+	itest.StopHorizon()
 
 	loadTestBackend := loadtest.NewLedgerBackend(replayConfig)
 	// PrepareRange() is expected to fail because of the invalid network passphrase which
@@ -156,11 +159,10 @@ func TestLoadTestLedgerBackend(t *testing.T) {
 	require.False(t, prepared)
 
 	_, err = loadTestBackend.GetLedger(context.Background(), endLedger+1)
-	require.EqualError(t, err,
-		fmt.Sprintf("sequence number %v is greater than the latest ledger available", endLedger+1),
-	)
+	require.ErrorIs(t, err, loadtest.ErrLoadTestDone)
 
 	require.NoError(t, loadTestBackend.Close())
+	require.NoError(t, session.Close())
 
 	originalLedgers := getLedgers(itest, startLedger, endLedger)
 

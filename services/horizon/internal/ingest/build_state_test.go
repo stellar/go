@@ -4,13 +4,15 @@ package ingest
 
 import (
 	"context"
+	"database/sql"
 	"testing"
+
+	"github.com/stretchr/testify/suite"
 
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/services/horizon/internal/ingest/processors"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
-	"github.com/stretchr/testify/suite"
 )
 
 func TestBuildStateTestSuite(t *testing.T) {
@@ -41,6 +43,7 @@ func (s *BuildStateTestSuite) SetupTest() {
 	s.lastLedger = 0
 	s.system = &system{
 		ctx:               s.ctx,
+		loadTestSnapshot:  &loadTestSnapshot{HistoryQ: s.historyQ},
 		historyQ:          s.historyQ,
 		historyAdapter:    s.historyAdapter,
 		ledgerBackend:     s.ledgerBackend,
@@ -51,6 +54,8 @@ func (s *BuildStateTestSuite) SetupTest() {
 
 	s.historyQ.On("Begin", s.ctx).Return(nil).Once()
 	s.historyQ.On("Rollback").Return(nil).Once()
+	s.historyQ.On("GetLoadTestRestoreState", s.ctx).
+		Return("", uint32(0), sql.ErrNoRows).Maybe()
 
 	s.ledgerBackend.On("IsPrepared", s.ctx, ledgerbackend.UnboundedRange(63)).Return(false, nil).Once()
 	s.ledgerBackend.On("PrepareRange", s.ctx, ledgerbackend.UnboundedRange(63)).Return(nil).Once()

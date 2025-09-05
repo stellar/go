@@ -6,6 +6,7 @@ import (
 	"go/types"
 	"net/http"
 	_ "net/http/pprof"
+	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -82,6 +83,41 @@ var ingestVerifyRangeCmdOpts = support.ConfigOptions{
 	},
 	generateLedgerBackendOpt(&ingestVerifyLedgerBackendType),
 	generateDatastoreConfigOpt(&ingestVerifyStorageBackendConfigPath),
+}
+
+var ingestionLoadTestFixturesPath, ingestionLoadTestLedgersPath string
+var ingestionLoadTestCloseDuration time.Duration
+var ingestLoadTestCmdOpts = support.ConfigOptions{
+	{
+		Name:        "fixtures-path",
+		OptType:     types.String,
+		FlagDefault: "",
+		Required:    false,
+		Usage:       "path to ledger entries file which will be used as fixtures for the ingestion load test.",
+		ConfigKey:   &ingestionLoadTestFixturesPath,
+	},
+	{
+		Name:        "ledgers-path",
+		OptType:     types.String,
+		FlagDefault: "",
+		Required:    false,
+		Usage:       "path to ledgers file which will be replayed in the ingestion load test.",
+		ConfigKey:   &ingestionLoadTestLedgersPath,
+	},
+	{
+		Name:        "close-duration",
+		OptType:     types.Float64,
+		FlagDefault: 2.0,
+		Required:    false,
+		CustomSetValue: func(co *support.ConfigOption) error {
+			*(co.ConfigKey.(*time.Duration)) = time.Duration(viper.GetFloat64(co.Name)) * time.Second
+			return nil
+		},
+		Usage:     "the time (in seconds) it takes to close ledgers in the ingestion load test.",
+		ConfigKey: &ingestionLoadTestCloseDuration,
+	},
+	generateLedgerBackendOpt(&ledgerBackendType),
+	generateDatastoreConfigOpt(&storageBackendConfigPath),
 }
 
 var stressTestNumTransactions, stressTestChangesPerTransaction int
@@ -251,6 +287,29 @@ func DefineIngestCommands(rootCmd *cobra.Command, horizonConfig *horizon.Config,
 		},
 	}
 
+	var ingestLoadTestRestoreCmd = &cobra.Command{
+		Use:   "load-test-restore",
+		Short: "restores the horizon db if it is in a dirty state after an interrupted load test",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := horizon.ApplyFlags(horizonConfig, horizonFlags, horizon.ApplyOptions{RequireCaptiveCoreFullConfig: false}); err != nil {
+				return err
+			}
+
+			horizonSession, err := db.Open("postgres", horizonConfig.DatabaseURL)
+			if err != nil {
+				return fmt.Errorf("cannot open Horizon DB: %v", err)
+			}
+
+			historyQ := &history.Q{SessionInterface: horizonSession}
+			if err := ingest.RestoreSnapshot(context.Background(), historyQ); err != nil {
+				return fmt.Errorf("cannot restore snapshot: %v", err)
+			}
+
+			log.Info("Horizon DB restored")
+			return nil
+		},
+	}
+
 	var ingestBuildStateCmd = &cobra.Command{
 		Use:   "build-state",
 		Short: "builds state at a given checkpoint. warning! requires clean DB.",
@@ -318,6 +377,79 @@ func DefineIngestCommands(rootCmd *cobra.Command, horizonConfig *horizon.Config,
 		},
 	}
 
+	var ingestLoadTestCmd = &cobra.Command{
+		Use:   "load-test",
+		Short: "runs an ingestion load test.",
+		Long:  "useful for analyzing ingestion performance at configurable transactions per second.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := ingestLoadTestCmdOpts.RequireE(); err != nil {
+				return err
+			}
+			if err := ingestLoadTestCmdOpts.SetValues(); err != nil {
+				return err
+			}
+
+			var err error
+			var storageBackendConfig ingest.StorageBackendConfig
+			options := horizon.ApplyOptions{RequireCaptiveCoreFullConfig: true}
+			if ledgerBackendType == ingest.BufferedStorageBackend {
+				if storageBackendConfig, err = loadStorageBackendConfig(storageBackendConfigPath); err != nil {
+					return err
+				}
+				options.NoCaptiveCore = true
+			}
+
+			if err = horizon.ApplyFlags(horizonConfig, horizonFlags, options); err != nil {
+				return err
+			}
+
+			horizonSession, err := db.Open("postgres", horizonConfig.DatabaseURL)
+			if err != nil {
+				return fmt.Errorf("cannot open Horizon DB: %v", err)
+			}
+
+			ingestConfig := ingest.Config{
+				CaptiveCoreBinaryPath:                horizonConfig.CaptiveCoreBinaryPath,
+				CaptiveCoreStoragePath:               horizonConfig.CaptiveCoreStoragePath,
+				CaptiveCoreToml:                      horizonConfig.CaptiveCoreToml,
+				NetworkPassphrase:                    horizonConfig.NetworkPassphrase,
+				HistorySession:                       horizonSession,
+				HistoryArchiveURLs:                   horizonConfig.HistoryArchiveURLs,
+				HistoryArchiveCaching:                horizonConfig.HistoryArchiveCaching,
+				DisableStateVerification:             horizonConfig.IngestDisableStateVerification,
+				ReapLookupTables:                     horizonConfig.ReapLookupTables,
+				EnableExtendedLogLedgerStats:         horizonConfig.IngestEnableExtendedLogLedgerStats,
+				CheckpointFrequency:                  horizonConfig.CheckpointFrequency,
+				StateVerificationCheckpointFrequency: uint32(horizonConfig.IngestStateVerificationCheckpointFrequency),
+				StateVerificationTimeout:             horizonConfig.IngestStateVerificationTimeout,
+				RoundingSlippageFilter:               horizonConfig.RoundingSlippageFilter,
+				SkipTxmeta:                           horizonConfig.SkipTxmeta,
+				ReapConfig: ingest.ReapConfig{
+					Frequency:      horizonConfig.ReapFrequency,
+					RetentionCount: uint32(horizonConfig.HistoryRetentionCount),
+					BatchSize:      uint32(horizonConfig.HistoryRetentionReapCount),
+				},
+				LedgerBackendType:    ledgerBackendType,
+				StorageBackendConfig: storageBackendConfig,
+			}
+
+			system, err := ingest.NewSystem(ingestConfig)
+			if err != nil {
+				return err
+			}
+
+			err = system.LoadTest(
+				ingestionLoadTestLedgersPath,
+				ingestionLoadTestCloseDuration,
+				ingestionLoadTestFixturesPath,
+			)
+			if err != nil {
+				return err
+			}
+			return nil
+		},
+	}
+
 	for _, co := range ingestVerifyRangeCmdOpts {
 		err := co.Init(ingestVerifyRangeCmd)
 		if err != nil {
@@ -332,6 +464,13 @@ func DefineIngestCommands(rootCmd *cobra.Command, horizonConfig *horizon.Config,
 		}
 	}
 
+	for _, co := range ingestLoadTestCmdOpts {
+		err := co.Init(ingestLoadTestCmd)
+		if err != nil {
+			log.Fatal(err.Error())
+		}
+	}
+
 	for _, co := range ingestBuildStateCmdOpts {
 		err := co.Init(ingestBuildStateCmd)
 		if err != nil {
@@ -341,6 +480,7 @@ func DefineIngestCommands(rootCmd *cobra.Command, horizonConfig *horizon.Config,
 
 	viper.BindPFlags(ingestVerifyRangeCmd.PersistentFlags())
 	viper.BindPFlags(ingestBuildStateCmd.PersistentFlags())
+	viper.BindPFlags(ingestLoadTestCmd.PersistentFlags())
 	viper.BindPFlags(ingestStressTestCmd.PersistentFlags())
 
 	rootCmd.AddCommand(ingestCmd)
@@ -349,6 +489,8 @@ func DefineIngestCommands(rootCmd *cobra.Command, horizonConfig *horizon.Config,
 		ingestStressTestCmd,
 		ingestTriggerStateRebuildCmd,
 		ingestBuildStateCmd,
+		ingestLoadTestCmd,
+		ingestLoadTestRestoreCmd,
 	)
 }
 
