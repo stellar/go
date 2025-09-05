@@ -179,7 +179,7 @@ func TestContextCancel(t *testing.T) {
 	historyQ.On("Begin", mock.AnythingOfType("*context.cancelCtx")).Return(context.Canceled).Once()
 
 	cancel()
-	assert.NoError(t, system.runStateMachine(startState{}))
+	assert.NoError(t, system.runStateMachine(startState{}, runOptions{}))
 	assertErrorRestartMetrics(reg, "", "", 0, t)
 }
 
@@ -197,7 +197,7 @@ func TestStateMachineRunReturnsErrorWhenNextStateIsShutdownWithError(t *testing.
 
 	historyQ.On("GetTx").Return(nil).Once()
 
-	err := system.runStateMachine(verifyRangeState{})
+	err := system.runStateMachine(verifyRangeState{}, runOptions{})
 	assert.Error(t, err)
 	assert.EqualError(t, err, "invalid range: [0, 0]")
 	assertErrorRestartMetrics(reg, "verifyrange", "stop", 1, t)
@@ -240,7 +240,7 @@ func TestStateMachineRestartEmitsMetric(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		system.runStateMachine(resumeState{latestSuccessfullyProcessedLedger: 100})
+		system.runStateMachine(resumeState{latestSuccessfullyProcessedLedger: 100}, runOptions{})
 	}()
 
 	assert.EventuallyWithT(t, func(c *assert.CollectT) {
@@ -326,7 +326,7 @@ func TestCurrentStateRaceCondition(t *testing.T) {
 	historyQ := &mockDBQ{}
 	s := &system{
 		historyQ:         historyQ,
-		loadtestSnapshot: &LoadTestSnapshot{HistoryQ: historyQ},
+		loadTestSnapshot: &loadTestSnapshot{HistoryQ: historyQ},
 		ctx:              context.Background(),
 	}
 	reg := setupMetrics(s)
@@ -347,7 +347,7 @@ func TestCurrentStateRaceCondition(t *testing.T) {
 			skipChecks: true,
 			stop:       true}
 		for range getCh {
-			_ = s.runStateMachine(state)
+			_ = s.runStateMachine(state, runOptions{})
 		}
 		close(doneCh)
 	}()
@@ -725,6 +725,11 @@ func (m *mockSystem) VerifyRange(fromLedger, toLedger uint32, verifyState bool) 
 
 func (m *mockSystem) BuildState(sequence uint32, skipChecks bool) error {
 	args := m.Called(sequence, skipChecks)
+	return args.Error(0)
+}
+
+func (m *mockSystem) LoadTest(ledgersFilePath string, closeDuration time.Duration, ledgerEntriesFilePath string) error {
+	args := m.Called(ledgersFilePath, closeDuration, ledgerEntriesFilePath)
 	return args.Error(0)
 }
 

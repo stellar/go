@@ -43,7 +43,7 @@ func (s *BuildStateTestSuite) SetupTest() {
 	s.lastLedger = 0
 	s.system = &system{
 		ctx:               s.ctx,
-		loadtestSnapshot:  &LoadTestSnapshot{HistoryQ: s.historyQ},
+		loadTestSnapshot:  &loadTestSnapshot{HistoryQ: s.historyQ},
 		historyQ:          s.historyQ,
 		historyAdapter:    s.historyAdapter,
 		ledgerBackend:     s.ledgerBackend,

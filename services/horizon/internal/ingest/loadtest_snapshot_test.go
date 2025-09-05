@@ -22,8 +22,8 @@ func TestLoadTestSaveSnapshot(t *testing.T) {
 	q.On("Commit").Return(nil).Once()
 	q.On("Rollback").Return(nil).Once()
 
-	l := &LoadTestSnapshot{HistoryQ: q}
-	require.NoError(t, l.Save(ctx))
+	l := &loadTestSnapshot{HistoryQ: q}
+	require.NoError(t, l.save(ctx))
 	require.NotEmpty(t, l.runId)
 
 	q.AssertExpectations(t)
@@ -37,8 +37,8 @@ func TestLoadTestSaveSnapshotAlreadyActiveLocal(t *testing.T) {
 	q.On("Begin", ctx).Return(nil).Once()
 	q.On("Rollback").Return(nil).Once()
 
-	l := &LoadTestSnapshot{HistoryQ: q, runId: "existing"}
-	require.ErrorContains(t, l.Save(ctx), "already active")
+	l := &loadTestSnapshot{HistoryQ: q, runId: "existing"}
+	require.ErrorContains(t, l.save(ctx), "already active")
 
 	q.AssertExpectations(t)
 }
@@ -52,8 +52,8 @@ func TestLoadTestSaveSnapshotAlreadyActiveRemote(t *testing.T) {
 	q.On("GetLoadTestRestoreState", ctx).Return("rid", uint32(150), nil).Once()
 	q.On("Rollback").Return(nil).Once()
 
-	l := &LoadTestSnapshot{HistoryQ: q}
-	require.ErrorContains(t, l.Save(ctx), "already active")
+	l := &loadTestSnapshot{HistoryQ: q}
+	require.ErrorContains(t, l.save(ctx), "already active")
 	require.Empty(t, l.runId)
 
 	q.AssertExpectations(t)
@@ -68,8 +68,7 @@ func TestLoadTestRestoreNoop(t *testing.T) {
 	q.On("GetLoadTestRestoreState", ctx).Return("", uint32(0), sql.ErrNoRows).Once()
 	q.On("Rollback").Return(nil).Once()
 
-	l := &LoadTestSnapshot{HistoryQ: q}
-	require.NoError(t, l.Restore(ctx))
+	require.NoError(t, RestoreSnapshot(ctx, q))
 
 	q.AssertExpectations(t)
 }
@@ -97,8 +96,7 @@ func TestLoadTestRestore(t *testing.T) {
 	q.On("Commit").Return(nil).Once()
 	q.On("Rollback").Return(nil).Once()
 
-	l := &LoadTestSnapshot{HistoryQ: q}
-	require.NoError(t, l.Restore(ctx))
+	require.NoError(t, RestoreSnapshot(ctx, q))
 
 	expectedStart, expectedEnd, err := toid.LedgerRangeInclusive(int32(restore+1), int32(last))
 	require.NoError(t, err)
@@ -117,8 +115,7 @@ func TestLoadTestRestoreInvalidLastLedger(t *testing.T) {
 	q.On("GetLoadTestRestoreState", ctx).Return("rid", uint32(150), nil).Once()
 	q.On("Rollback").Return(nil).Once()
 
-	l := &LoadTestSnapshot{HistoryQ: q}
-	require.ErrorContains(t, l.Restore(ctx), "greater than last ingested")
+	require.ErrorContains(t, RestoreSnapshot(ctx, q), "greater than last ingested")
 
 	q.AssertExpectations(t)
 }
@@ -140,8 +137,7 @@ func TestLoadTestRestoreEqualLedger(t *testing.T) {
 	q.On("Commit").Return(nil).Once()
 	q.On("Rollback").Return(nil).Once()
 
-	l := &LoadTestSnapshot{HistoryQ: q}
-	require.NoError(t, l.Restore(ctx))
+	require.NoError(t, RestoreSnapshot(ctx, q))
 
 	q.AssertExpectations(t)
 }
@@ -152,28 +148,28 @@ func TestCheckPendingLoadTest(t *testing.T) {
 	// Case 1: no state, no run id -> ok
 	q := &mockDBQ{}
 	q.On("GetLoadTestRestoreState", ctx).Return("", uint32(0), sql.ErrNoRows).Once()
-	l := &LoadTestSnapshot{HistoryQ: q}
-	require.NoError(t, l.CheckPendingLoadTest(ctx))
+	l := &loadTestSnapshot{HistoryQ: q}
+	require.NoError(t, l.checkPendingLoadTest(ctx))
 	q.AssertExpectations(t)
 
 	// Case 2: no state but local run id set -> error
 	q = &mockDBQ{}
 	q.On("GetLoadTestRestoreState", ctx).Return("", uint32(0), sql.ErrNoRows).Once()
-	l = &LoadTestSnapshot{HistoryQ: q, runId: "rid"}
-	require.ErrorContains(t, l.CheckPendingLoadTest(ctx), "expected load test to be active")
+	l = &loadTestSnapshot{HistoryQ: q, runId: "rid"}
+	require.ErrorContains(t, l.checkPendingLoadTest(ctx), "expected load test to be active")
 	q.AssertExpectations(t)
 
 	// Case 3: state exists with same run id -> ok
 	q = &mockDBQ{}
 	q.On("GetLoadTestRestoreState", ctx).Return("rid", uint32(123), nil).Once()
-	l = &LoadTestSnapshot{HistoryQ: q, runId: "rid"}
-	require.NoError(t, l.CheckPendingLoadTest(ctx))
+	l = &loadTestSnapshot{HistoryQ: q, runId: "rid"}
+	require.NoError(t, l.checkPendingLoadTest(ctx))
 	q.AssertExpectations(t)
 
 	// Case 4: state exists with different run id -> error
 	q = &mockDBQ{}
 	q.On("GetLoadTestRestoreState", ctx).Return("other", uint32(123), nil).Once()
-	l = &LoadTestSnapshot{HistoryQ: q, runId: "rid"}
-	require.ErrorContains(t, l.CheckPendingLoadTest(ctx), "expected: rid")
+	l = &loadTestSnapshot{HistoryQ: q, runId: "rid"}
+	require.ErrorContains(t, l.checkPendingLoadTest(ctx), "expected: rid")
 	q.AssertExpectations(t)
 }

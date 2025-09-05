@@ -12,28 +12,28 @@ import (
 	"github.com/stellar/go/toid"
 )
 
-type LoadTestSnapshot struct {
+type loadTestSnapshot struct {
 	HistoryQ history.IngestionQ
 	runId    string
 }
 
-func (l *LoadTestSnapshot) CheckPendingLoadTest(ctx context.Context) error {
+func (l *loadTestSnapshot) checkPendingLoadTest(ctx context.Context) error {
 	if runID, _, err := l.HistoryQ.GetLoadTestRestoreState(ctx); errors.Is(err, sql.ErrNoRows) {
 		if l.runId != "" {
 			return fmt.Errorf("expected load test to be active with run id: %s", l.runId)
 		}
 		return nil
 	} else if err != nil {
-		return fmt.Errorf("Error getting load test restore state: %w", err)
+		return fmt.Errorf("error getting load test restore state: %w", err)
 	} else if runID != l.runId {
 		return fmt.Errorf("load test run id is %s, expected: %s", runID, l.runId)
 	}
 	return nil
 }
 
-func (l *LoadTestSnapshot) Save(ctx context.Context) error {
+func (l *loadTestSnapshot) save(ctx context.Context) error {
 	if err := l.HistoryQ.Begin(ctx); err != nil {
-		return fmt.Errorf("Error starting a transaction: %w", err)
+		return fmt.Errorf("error starting a transaction: %w", err)
 	}
 	defer l.HistoryQ.Rollback()
 	if l.runId != "" {
@@ -43,7 +43,7 @@ func (l *LoadTestSnapshot) Save(ctx context.Context) error {
 	// This will get the value `FOR UPDATE`, blocking it for other nodes.
 	lastIngestedLedger, err := l.HistoryQ.GetLastLedgerIngest(ctx)
 	if err != nil {
-		return fmt.Errorf("Error getting last ledger ingested: %w", err)
+		return fmt.Errorf("error getting last ledger ingested: %w", err)
 	}
 
 	runID, restoreLedger, err := l.HistoryQ.GetLoadTestRestoreState(ctx)
@@ -51,42 +51,44 @@ func (l *LoadTestSnapshot) Save(ctx context.Context) error {
 		// No active load test state; create one with a random runID
 		buf := make([]byte, 16)
 		if _, err = rand.Read(buf); err != nil {
-			return fmt.Errorf("Error generating runID: %w", err)
+			return fmt.Errorf("error generating runID: %w", err)
 		}
 		runID = hex.EncodeToString(buf)
 		if err = l.HistoryQ.SetLoadTestRestoreState(ctx, runID, lastIngestedLedger); err != nil {
-			return fmt.Errorf("Error setting load test restore state: %w", err)
+			return fmt.Errorf("error setting load test restore state: %w", err)
 		}
 	} else if err != nil {
-		return fmt.Errorf("Error getting load test restore state: %w", err)
+		return fmt.Errorf("error getting load test restore state: %w", err)
 	} else {
 		return fmt.Errorf("load test already active, restore ledger: %d, run id: %s", restoreLedger, runID)
 	}
 
 	if err = l.HistoryQ.Commit(); err != nil {
-		return fmt.Errorf("Error committing a transaction: %w", err)
+		return fmt.Errorf("error committing a transaction: %w", err)
 	}
 	l.runId = runID
 	return nil
 }
 
-func (l *LoadTestSnapshot) Restore(ctx context.Context) error {
-	if err := l.HistoryQ.Begin(ctx); err != nil {
-		return fmt.Errorf("Error starting a transaction: %w", err)
+// RestoreSnapshot reverts the state of the horizon db to a previous snapshot recorded at the start of an
+// ingestion load test.
+func RestoreSnapshot(ctx context.Context, historyQ history.IngestionQ) error {
+	if err := historyQ.Begin(ctx); err != nil {
+		return fmt.Errorf("error starting a transaction: %w", err)
 	}
-	defer l.HistoryQ.Rollback()
+	defer historyQ.Rollback()
 
 	// This will get the value `FOR UPDATE`, blocking it for other nodes.
-	lastIngestedLedger, err := l.HistoryQ.GetLastLedgerIngest(ctx)
+	lastIngestedLedger, err := historyQ.GetLastLedgerIngest(ctx)
 	if err != nil {
-		return fmt.Errorf("Error getting last ledger ingested: %w", err)
+		return fmt.Errorf("error getting last ledger ingested: %w", err)
 	}
 
-	_, restoreLedger, err := l.HistoryQ.GetLoadTestRestoreState(ctx)
+	_, restoreLedger, err := historyQ.GetLoadTestRestoreState(ctx)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil
 	} else if err != nil {
-		return fmt.Errorf("Error getting load test restore ledger: %w", err)
+		return fmt.Errorf("error getting load test restore ledger: %w", err)
 	}
 
 	if restoreLedger > lastIngestedLedger {
@@ -100,24 +102,24 @@ func (l *LoadTestSnapshot) Restore(ctx context.Context) error {
 			int32(lastIngestedLedger),
 		)
 		if err != nil {
-			return fmt.Errorf("Invalid range: %w", err)
+			return fmt.Errorf("invalid range: %w", err)
 		}
 
-		if _, err = l.HistoryQ.DeleteRangeAll(ctx, start, end); err != nil {
-			return fmt.Errorf("Error deleting range all: %w", err)
+		if _, err = historyQ.DeleteRangeAll(ctx, start, end); err != nil {
+			return fmt.Errorf("error deleting range all: %w", err)
 		}
 
-		if err = l.HistoryQ.UpdateIngestVersion(ctx, 0); err != nil {
-			return fmt.Errorf("Error updating ingestion version: %w", err)
+		if err = historyQ.UpdateIngestVersion(ctx, 0); err != nil {
+			return fmt.Errorf("error updating ingestion version: %w", err)
 		}
 	}
 
-	if err = l.HistoryQ.ClearLoadTestRestoreState(ctx); err != nil {
-		return fmt.Errorf("Error clearing load test restore ledger: %w", err)
+	if err = historyQ.ClearLoadTestRestoreState(ctx); err != nil {
+		return fmt.Errorf("error clearing load test restore ledger: %w", err)
 	}
 
-	if err = l.HistoryQ.Commit(); err != nil {
-		return fmt.Errorf("Error committing a transaction: %w", err)
+	if err = historyQ.Commit(); err != nil {
+		return fmt.Errorf("error committing a transaction: %w", err)
 	}
 	return nil
 }

@@ -12,8 +12,6 @@ import (
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/ingest/loadtest"
-	"github.com/stellar/go/services/horizon/internal/db2/history"
-	horizoningest "github.com/stellar/go/services/horizon/internal/ingest"
 	"github.com/stellar/go/services/horizon/internal/test/integration"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/txnbuild"
@@ -50,9 +48,6 @@ func TestLoadTestLedgerBackend(t *testing.T) {
 		LedgerEntriesFilePath: filepath.Join("testdata", fmt.Sprintf("load-test-accounts-v%d.xdr.zstd", itest.Config().ProtocolVersion)),
 		LedgerCloseDuration:   3 * time.Second / 2,
 		LedgerBackend:         newCaptiveCore(itest),
-		Snapshot: &horizoningest.LoadTestSnapshot{
-			HistoryQ: &history.Q{SessionInterface: session},
-		},
 	}
 	var generatedLedgers []xdr.LedgerCloseMeta
 	var generatedLedgerEntries []xdr.LedgerEntry
@@ -164,9 +159,7 @@ func TestLoadTestLedgerBackend(t *testing.T) {
 	require.False(t, prepared)
 
 	_, err = loadTestBackend.GetLedger(context.Background(), endLedger+1)
-	require.EqualError(t, err,
-		fmt.Sprintf("sequence number %v is greater than the latest ledger available", endLedger+1),
-	)
+	require.ErrorIs(t, err, loadtest.ErrLoadTestDone)
 
 	require.NoError(t, loadTestBackend.Close())
 	require.NoError(t, session.Close())

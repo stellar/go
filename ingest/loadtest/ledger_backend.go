@@ -17,19 +17,8 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-// Snapshot manages side effects of a running ingestion load test.
-type Snapshot interface {
-	// Save establishes a restorable checkpoint and marks the
-	// environment as under load test. It must capture enough
-	// information to enable a later restoration of the
-	// prior state.
-	Save(ctx context.Context) error
-
-	// Restore restores the system to the state that existed at the time of
-	// Save and cleans up any artifacts introduced by the load test.
-	// Implementations should make this method idempotent.
-	Restore(ctx context.Context) error
-}
+// ErrLoadTestDone indicates that the load test has run to completion.
+var ErrLoadTestDone = fmt.Errorf("the load test is done")
 
 // LedgerBackend is used to load test ingestion.
 // LedgerBackend will take a file of synthetically generated ledgers (see
@@ -64,8 +53,6 @@ type LedgerBackendConfig struct {
 	LedgerEntriesFilePath string
 	// LedgerCloseDuration is the rate at which ledgers will be replayed from LedgerBackend
 	LedgerCloseDuration time.Duration
-	// Snapshot is used to manage side effects while ingesting from LedgerBackend
-	Snapshot Snapshot
 }
 
 // NewLedgerBackend constructs an LedgerBackend instance
@@ -119,6 +106,9 @@ func (r *LedgerBackend) PrepareRange(ctx context.Context, ledgerRange ledgerback
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
+	if r.done {
+		return ErrLoadTestDone
+	}
 	if r.nextLedgerSeq != 0 {
 		if r.isPrepared(ledgerRange) {
 			return nil
@@ -273,9 +263,6 @@ func (r *LedgerBackend) PrepareRange(ctx context.Context, ledgerRange ledgerback
 	}
 	cleanup = false
 
-	if err = r.config.Snapshot.Save(ctx); err != nil {
-		return fmt.Errorf("could not save snapshot: %w", err)
-	}
 	r.mergedLedgersFilePath = mergedLedgersFile.Name()
 	r.mergedLedgersStream = mergedLedgersStream
 	// from this point, ledgers will be available at a rate of once
@@ -353,14 +340,11 @@ func (r *LedgerBackend) GetLedger(ctx context.Context, sequence uint32) (xdr.Led
 		)
 	}
 	if r.done {
-		return xdr.LedgerCloseMeta{}, fmt.Errorf("ledger backend is closed")
+		return xdr.LedgerCloseMeta{}, ErrLoadTestDone
 	}
 	if sequence > r.latestLedgerSeq {
 		closeLedgerBackend = true
-		return xdr.LedgerCloseMeta{}, fmt.Errorf(
-			"sequence number %v is greater than the latest ledger available",
-			sequence,
-		)
+		return xdr.LedgerCloseMeta{}, ErrLoadTestDone
 	}
 	for ; r.nextLedgerSeq <= sequence; r.nextLedgerSeq++ {
 		var ledger xdr.LedgerCloseMeta
@@ -408,9 +392,6 @@ func (r *LedgerBackend) Close() error {
 			return fmt.Errorf("could not remove merged ledgers file: %w", err)
 		}
 		r.mergedLedgersFilePath = ""
-	}
-	if err := r.config.Snapshot.Restore(context.Background()); err != nil {
-		return fmt.Errorf("could not rollback snapshot: %w", err)
 	}
 	return nil
 }

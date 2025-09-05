@@ -41,7 +41,7 @@ func (s *ResumeTestTestSuite) SetupTest() {
 	s.system = &system{
 		ctx:                          s.ctx,
 		historyQ:                     s.historyQ,
-		loadtestSnapshot:             &LoadTestSnapshot{HistoryQ: s.historyQ},
+		loadTestSnapshot:             &loadTestSnapshot{HistoryQ: s.historyQ},
 		historyAdapter:               s.historyAdapter,
 		runner:                       s.runner,
 		ledgerBackend:                s.ledgerBackend,

@@ -30,7 +30,7 @@ func (s *InitStateTestSuite) SetupTest() {
 	s.historyAdapter = &mockHistoryArchiveAdapter{}
 	s.system = &system{
 		ctx:              s.ctx,
-		loadtestSnapshot: &LoadTestSnapshot{HistoryQ: s.historyQ},
+		loadTestSnapshot: &loadTestSnapshot{HistoryQ: s.historyQ},
 		historyQ:         s.historyQ,
 		historyAdapter:   s.historyAdapter,
 	}
