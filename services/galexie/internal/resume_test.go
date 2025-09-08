@@ -1,4 +1,4 @@
-package datastore
+package galexie
 
 import (
 	"context"
@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/stellar/go/support/datastore"
 )
 
 func TestResumability(t *testing.T) {
@@ -14,23 +16,23 @@ func TestResumability(t *testing.T) {
 		name              string
 		startLedger       uint32
 		endLedger         uint32
-		dataStoreSchema   DataStoreSchema
+		dataStoreSchema   datastore.DataStoreSchema
 		absentLedger      uint32
 		latestLedger      uint32
 		errorSnippet      string
-		registerMockCalls func(*MockDataStore)
+		registerMockCalls func(*datastore.MockDataStore)
 	}{
 		{
 			name:         "End ledger same as start, data store has it",
 			startLedger:  4,
 			endLedger:    4,
 			absentLedger: 0,
-			dataStoreSchema: DataStoreSchema{
+			dataStoreSchema: datastore.DataStoreSchema{
 				FilesPerPartition: uint32(1),
 				LedgersPerFile:    uint32(10),
 			},
-			registerMockCalls: func(mockDataStore *MockDataStore) {
-				mockDataStore.On("ListFilePaths", ctx, ListFileOptions{
+			registerMockCalls: func(mockDataStore *datastore.MockDataStore) {
+				mockDataStore.On("ListFilePaths", ctx, datastore.ListFileOptions{
 					StartAfter: "FFFFFFF5--10-19.xdr.zst"}).Return([]string{"FFFFFFFF--0-9.xdr.zst"}, nil).Once()
 				mockDataStore.On("GetFileMetadata", ctx, "FFFFFFFF--0-9.xdr.zst").
 					Return(map[string]string{"end-ledger": "9"}, nil).Once()
@@ -41,12 +43,12 @@ func TestResumability(t *testing.T) {
 			startLedger:  14,
 			endLedger:    14,
 			absentLedger: 14,
-			dataStoreSchema: DataStoreSchema{
+			dataStoreSchema: datastore.DataStoreSchema{
 				FilesPerPartition: uint32(1),
 				LedgersPerFile:    uint32(10),
 			},
-			registerMockCalls: func(mockDataStore *MockDataStore) {
-				mockDataStore.On("ListFilePaths", ctx, ListFileOptions{
+			registerMockCalls: func(mockDataStore *datastore.MockDataStore) {
+				mockDataStore.On("ListFilePaths", ctx, datastore.ListFileOptions{
 					StartAfter: "FFFFFFEB--20-29.xdr.zst"}).Return([]string{""}, nil).Once()
 			},
 		},
@@ -55,12 +57,12 @@ func TestResumability(t *testing.T) {
 			startLedger:  64,
 			endLedger:    68,
 			absentLedger: 64,
-			dataStoreSchema: DataStoreSchema{
+			dataStoreSchema: datastore.DataStoreSchema{
 				FilesPerPartition: uint32(100),
 				LedgersPerFile:    uint32(64),
 			},
-			registerMockCalls: func(mockDataStore *MockDataStore) {
-				mockDataStore.On("ListFilePaths", ctx, ListFileOptions{
+			registerMockCalls: func(mockDataStore *datastore.MockDataStore) {
+				mockDataStore.On("ListFilePaths", ctx, datastore.ListFileOptions{
 					StartAfter: "FFFFFFFF--0-6399/FFFFFF7F--128-191.xdr.zst"}).Return([]string{""}, nil).Once()
 			},
 		},
@@ -69,12 +71,12 @@ func TestResumability(t *testing.T) {
 			startLedger:  128,
 			endLedger:    130,
 			absentLedger: 0,
-			dataStoreSchema: DataStoreSchema{
+			dataStoreSchema: datastore.DataStoreSchema{
 				FilesPerPartition: uint32(100),
 				LedgersPerFile:    uint32(64),
 			},
-			registerMockCalls: func(mockDataStore *MockDataStore) {
-				mockDataStore.On("ListFilePaths", ctx, ListFileOptions{
+			registerMockCalls: func(mockDataStore *datastore.MockDataStore) {
+				mockDataStore.On("ListFilePaths", ctx, datastore.ListFileOptions{
 					StartAfter: "FFFFFFFF--0-6399/FFFFFF3F--192-255.xdr.zst"}).
 					Return([]string{"FFFFFFFF--0-6399/FFFFFF7F--128-191.xdr.zst"}, nil).Once()
 				mockDataStore.On("GetFileMetadata", ctx, "FFFFFFFF--0-6399/FFFFFF7F--128-191.xdr.zst").
@@ -86,12 +88,12 @@ func TestResumability(t *testing.T) {
 			startLedger:  2,
 			endLedger:    127,
 			absentLedger: 0,
-			dataStoreSchema: DataStoreSchema{
+			dataStoreSchema: datastore.DataStoreSchema{
 				FilesPerPartition: uint32(100),
 				LedgersPerFile:    uint32(64),
 			},
-			registerMockCalls: func(mockDataStore *MockDataStore) {
-				mockDataStore.On("ListFilePaths", ctx, ListFileOptions{
+			registerMockCalls: func(mockDataStore *datastore.MockDataStore) {
+				mockDataStore.On("ListFilePaths", ctx, datastore.ListFileOptions{
 					StartAfter: "FFFFFFFF--0-6399/FFFFFF7F--128-191.xdr.zst"}).
 					Return([]string{"FFFFFFFF--0-6399/FFFFFF7F--128-191.xdr.zst"}, nil).Once()
 				mockDataStore.On("GetFileMetadata", ctx, "FFFFFFFF--0-6399/FFFFFF7F--128-191.xdr.zst").
@@ -103,13 +105,13 @@ func TestResumability(t *testing.T) {
 			startLedger:  24,
 			endLedger:    24,
 			absentLedger: 0,
-			dataStoreSchema: DataStoreSchema{
+			dataStoreSchema: datastore.DataStoreSchema{
 				FilesPerPartition: uint32(1),
 				LedgersPerFile:    uint32(10),
 			},
 			errorSnippet: "datastore error happened",
-			registerMockCalls: func(mockDataStore *MockDataStore) {
-				mockDataStore.On("ListFilePaths", ctx, ListFileOptions{
+			registerMockCalls: func(mockDataStore *datastore.MockDataStore) {
+				mockDataStore.On("ListFilePaths", ctx, datastore.ListFileOptions{
 					StartAfter: "FFFFFFE1--30-39.xdr.zst"}).
 					Return([]string{""}, errors.New("datastore error happened")).Once()
 			},
@@ -119,12 +121,12 @@ func TestResumability(t *testing.T) {
 			startLedger:  20,
 			endLedger:    50,
 			absentLedger: 40,
-			dataStoreSchema: DataStoreSchema{
+			dataStoreSchema: datastore.DataStoreSchema{
 				FilesPerPartition: uint32(1),
 				LedgersPerFile:    uint32(10),
 			},
-			registerMockCalls: func(mockDataStore *MockDataStore) {
-				mockDataStore.On("ListFilePaths", ctx, ListFileOptions{
+			registerMockCalls: func(mockDataStore *datastore.MockDataStore) {
+				mockDataStore.On("ListFilePaths", ctx, datastore.ListFileOptions{
 					StartAfter: "FFFFFFC3--60-69.xdr.zst"}).Return([]string{"FFFFFFE1--30-39.xdr.zst"}, nil).Once()
 				mockDataStore.On("GetFileMetadata", ctx, "FFFFFFE1--30-39.xdr.zst").
 					Return(map[string]string{"end-ledger": "39"}, nil).Once()
@@ -135,12 +137,12 @@ func TestResumability(t *testing.T) {
 			startLedger:  55,
 			endLedger:    85,
 			absentLedger: 80,
-			dataStoreSchema: DataStoreSchema{
+			dataStoreSchema: datastore.DataStoreSchema{
 				FilesPerPartition: uint32(1),
 				LedgersPerFile:    uint32(10),
 			},
-			registerMockCalls: func(mockDataStore *MockDataStore) {
-				mockDataStore.On("ListFilePaths", ctx, ListFileOptions{
+			registerMockCalls: func(mockDataStore *datastore.MockDataStore) {
+				mockDataStore.On("ListFilePaths", ctx, datastore.ListFileOptions{
 					StartAfter: "FFFFFFA5--90-99.xdr.zst"}).Return([]string{"FFFFFFB9--70-79.xdr.zst"}, nil).Once()
 				mockDataStore.On("GetFileMetadata", ctx, "FFFFFFB9--70-79.xdr.zst").
 					Return(map[string]string{"end-ledger": "79"}, nil).Once()
@@ -151,12 +153,12 @@ func TestResumability(t *testing.T) {
 			startLedger:  255,
 			endLedger:    275,
 			absentLedger: 0,
-			dataStoreSchema: DataStoreSchema{
+			dataStoreSchema: datastore.DataStoreSchema{
 				FilesPerPartition: uint32(1),
 				LedgersPerFile:    uint32(10),
 			},
-			registerMockCalls: func(mockDataStore *MockDataStore) {
-				mockDataStore.On("ListFilePaths", ctx, ListFileOptions{
+			registerMockCalls: func(mockDataStore *datastore.MockDataStore) {
+				mockDataStore.On("ListFilePaths", ctx, datastore.ListFileOptions{
 					StartAfter: "FFFFFEE7--280-289.xdr.zst"}).
 					Return([]string{"FFFFFEF1--270-279.xdr.zst", "FFFFFEFB--260-269.xdr.zst"}, nil).Once()
 				mockDataStore.On("GetFileMetadata", ctx, "FFFFFEF1--270-279.xdr.zst").
@@ -168,12 +170,12 @@ func TestResumability(t *testing.T) {
 			startLedger:  95,
 			endLedger:    125,
 			absentLedger: 95,
-			dataStoreSchema: DataStoreSchema{
+			dataStoreSchema: datastore.DataStoreSchema{
 				FilesPerPartition: uint32(1),
 				LedgersPerFile:    uint32(10),
 			},
-			registerMockCalls: func(mockDataStore *MockDataStore) {
-				mockDataStore.On("ListFilePaths", ctx, ListFileOptions{
+			registerMockCalls: func(mockDataStore *datastore.MockDataStore) {
+				mockDataStore.On("ListFilePaths", ctx, datastore.ListFileOptions{
 					StartAfter: "FFFFFF7D--130-139.xdr.zst"}).Return([]string{""}, nil).Once()
 			},
 		},
@@ -182,25 +184,25 @@ func TestResumability(t *testing.T) {
 			startLedger:  0,
 			endLedger:    10,
 			absentLedger: 0,
-			dataStoreSchema: DataStoreSchema{
+			dataStoreSchema: datastore.DataStoreSchema{
 				FilesPerPartition: uint32(1),
 				LedgersPerFile:    uint32(10),
 			},
 			errorSnippet:      "Invalid start value",
-			registerMockCalls: func(store *MockDataStore) {},
+			registerMockCalls: func(store *datastore.MockDataStore) {},
 		},
 		{
 			name:         "No end ledger provided, data store not beyond start",
 			startLedger:  1145,
 			endLedger:    0,
 			absentLedger: 1145,
-			dataStoreSchema: DataStoreSchema{
+			dataStoreSchema: datastore.DataStoreSchema{
 				FilesPerPartition: uint32(1),
 				LedgersPerFile:    uint32(10),
 			},
 			latestLedger: uint32(2000),
-			registerMockCalls: func(mockDataStore *MockDataStore) {
-				mockDataStore.On("ListFilePaths", ctx, ListFileOptions{}).
+			registerMockCalls: func(mockDataStore *datastore.MockDataStore) {
+				mockDataStore.On("ListFilePaths", ctx, datastore.ListFileOptions{}).
 					Return([]string{"FFFFFEF1--270-279.xdr.zst", "FFFFFEFB--260-269.xdr.zst"}, nil).Once()
 				mockDataStore.On("GetFileMetadata", ctx, "FFFFFEF1--270-279.xdr.zst").
 					Return(map[string]string{"end-ledger": "279"}, nil).Once()
@@ -211,13 +213,13 @@ func TestResumability(t *testing.T) {
 			startLedger:  2145,
 			endLedger:    0,
 			absentLedger: 2250,
-			dataStoreSchema: DataStoreSchema{
+			dataStoreSchema: datastore.DataStoreSchema{
 				FilesPerPartition: uint32(1),
 				LedgersPerFile:    uint32(10),
 			},
 			latestLedger: uint32(3000),
-			registerMockCalls: func(mockDataStore *MockDataStore) {
-				mockDataStore.On("ListFilePaths", ctx, ListFileOptions{}).
+			registerMockCalls: func(mockDataStore *datastore.MockDataStore) {
+				mockDataStore.On("ListFilePaths", ctx, datastore.ListFileOptions{}).
 					Return([]string{"FFFFF73F--2240-2249.xdr.zst", "FFFFF749--2230-2239.xdr.zst"}, nil).Once()
 				mockDataStore.On("GetFileMetadata", ctx, "FFFFF73F--2240-2249.xdr.zst").
 					Return(map[string]string{"end-ledger": "2249"}, nil).Once()
@@ -226,11 +228,10 @@ func TestResumability(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockDataStore := &MockDataStore{}
+			mockDataStore := &datastore.MockDataStore{}
 			tt.registerMockCalls(mockDataStore)
 
-			resumableManager := NewResumableManager(mockDataStore, tt.dataStoreSchema)
-			absentLedger, err := resumableManager.FindStart(ctx, tt.startLedger, tt.endLedger)
+			absentLedger, err := findResumeLedger(ctx, mockDataStore, tt.dataStoreSchema, tt.startLedger, tt.endLedger)
 			if tt.errorSnippet != "" {
 				require.ErrorContains(t, err, tt.errorSnippet)
 			} else {

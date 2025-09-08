@@ -34,7 +34,7 @@ type ListFileOptions struct {
 
 	// Limit restricts the number of keys returned. A value of 0 will use the default limit,
 	// and any value above listFilePathsMaxLimit will be automatically capped.
-	Limit int
+	Limit uint32
 }
 
 // DataStore defines an interface for interacting with data storage

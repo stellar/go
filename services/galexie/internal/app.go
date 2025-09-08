@@ -137,8 +137,7 @@ func (a *App) init(ctx context.Context, runtimeSettings RuntimeSettings) error {
 	}
 
 	if a.config.Resumable() {
-		if err = a.applyResumability(ctx,
-			datastore.NewResumableManager(a.dataStore, a.config.DataStoreConfig.Schema)); err != nil {
+		if err = a.applyResumability(ctx); err != nil {
 			return err
 		}
 	}
@@ -184,8 +183,9 @@ func validateExistingFileExtension(ctx context.Context, ds datastore.DataStore) 
 	return nil
 }
 
-func (a *App) applyResumability(ctx context.Context, resumableManager datastore.ResumableManager) error {
-	absentLedger, err := resumableManager.FindStart(ctx, a.config.StartLedger, a.config.EndLedger)
+func (a *App) applyResumability(ctx context.Context) error {
+	absentLedger, err := findResumeLedger(ctx, a.dataStore, a.config.DataStoreConfig.Schema,
+		a.config.StartLedger, a.config.EndLedger)
 	if err != nil {
 		return err
 	}
