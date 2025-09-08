@@ -60,7 +60,7 @@ func FindLatestLedgerUpToSequence(ctx context.Context, datastore DataStore,
 		return 0, errors.New("end sequence must be greater than or equal to 2")
 	}
 	return findLatestLedger(ctx, datastore, ListFileOptions{
-		StartAfter: schema.GetObjectKeyFromSequenceNumber(end + 1),
+		StartAfter: schema.GetObjectKeyFromSequenceNumber(schema.GetSequenceNumberEndBoundary(end) + 1),
 	})
 }
 

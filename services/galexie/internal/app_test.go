@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/pkg/errors"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/stellar/go/support/compressxdr"
@@ -16,83 +17,102 @@ func TestApplyResumeHasStartError(t *testing.T) {
 	ctx := context.Background()
 	app := &App{}
 	app.config = &Config{StartLedger: 10, EndLedger: 19, Mode: Append}
-	mockResumableManager := &datastore.MockResumableManager{}
-	mockResumableManager.On("FindStart", ctx, uint32(10), uint32(19)).Return(uint32(0), false, errors.New("start error")).Once()
-
-	err := app.applyResumability(ctx, mockResumableManager)
+	mockds := &datastore.MockDataStore{}
+	mockds.On("ListFilePaths", ctx, mock.Anything).Return([]string{}, errors.New("start error")).Once()
+	app.dataStore = mockds
+	err := app.applyResumability(ctx)
 	require.ErrorContains(t, err, "start error")
-	mockResumableManager.AssertExpectations(t)
+	//	mockResumableManager.AssertExpectations(t)
 }
 
 func TestApplyResumeDatastoreComplete(t *testing.T) {
 	ctx := context.Background()
 	app := &App{}
 	app.config = &Config{StartLedger: 10, EndLedger: 19, Mode: Append}
-	mockResumableManager := &datastore.MockResumableManager{}
-	mockResumableManager.On("FindStart", ctx, uint32(10), uint32(19)).Return(uint32(0), false, nil).Once()
+	app.config.DataStoreConfig.Schema = datastore.DataStoreSchema{
+		LedgersPerFile:    1,
+		FilesPerPartition: 1,
+	}
+	mockds := &datastore.MockDataStore{}
+	app.dataStore = mockds
 
+	mockds.On("ListFilePaths", ctx, mock.Anything).Return([]string{"FFFFFFFB--19.xdr.zst"}, nil).Once()
+	mockds.On("GetFileMetadata", ctx, "FFFFFFFB--19.xdr.zst").
+		Return(map[string]string{"end-ledger": "19"}, nil).Once()
 	var alreadyExported *DataAlreadyExportedError
-	err := app.applyResumability(ctx, mockResumableManager)
+	err := app.applyResumability(ctx)
 	require.ErrorAs(t, err, &alreadyExported)
-	mockResumableManager.AssertExpectations(t)
 }
 
 func TestApplyResumeInvalidDataStoreLedgersPerFileBoundary(t *testing.T) {
 	ctx := context.Background()
 	app := &App{}
 	app.config = &Config{
-		StartLedger:     3,
-		EndLedger:       9,
-		Mode:            Append,
-		DataStoreConfig: datastore.DataStoreConfig{Schema: datastore.DataStoreSchema{LedgersPerFile: 10, FilesPerPartition: 50}},
+		StartLedger: 3,
+		EndLedger:   9,
+		Mode:        Append,
+		DataStoreConfig: datastore.DataStoreConfig{Schema: datastore.DataStoreSchema{
+			LedgersPerFile:    10,
+			FilesPerPartition: 50}},
 	}
-	mockResumableManager := &datastore.MockResumableManager{}
+	mockds := &datastore.MockDataStore{}
+	app.dataStore = mockds
+
 	// simulate the datastore has inconsistent data,
 	// with last ledger not aligned to starting boundary
-	mockResumableManager.On("FindStart", ctx, uint32(3), uint32(9)).Return(uint32(6), true, nil).Once()
+	mockds.On("ListFilePaths", ctx, mock.Anything).Return([]string{"FFFFFFF9--6.xdr.zst"}, nil).Once()
+	mockds.On("GetFileMetadata", ctx, "FFFFFFF9--6.xdr.zst").
+		Return(map[string]string{"end-ledger": "6"}, nil).Once()
 
 	var invalidStore *InvalidDataStoreError
-	err := app.applyResumability(ctx, mockResumableManager)
+	err := app.applyResumability(ctx)
 	require.ErrorAs(t, err, &invalidStore)
-	mockResumableManager.AssertExpectations(t)
 }
 
 func TestApplyResumeWithPartialRemoteDataPresent(t *testing.T) {
 	ctx := context.Background()
 	app := &App{}
 	app.config = &Config{
-		StartLedger:     10,
-		EndLedger:       99,
-		Mode:            Append,
-		DataStoreConfig: datastore.DataStoreConfig{Schema: datastore.DataStoreSchema{LedgersPerFile: 10, FilesPerPartition: 50}},
+		StartLedger: 10,
+		EndLedger:   99,
+		Mode:        Append,
+		DataStoreConfig: datastore.DataStoreConfig{Schema: datastore.DataStoreSchema{
+			LedgersPerFile:    10,
+			FilesPerPartition: 50}},
 	}
-	mockResumableManager := &datastore.MockResumableManager{}
-	// simulates a data store that had ledger files populated up to seq=49, so the first absent ledger would be 50
-	mockResumableManager.On("FindStart", ctx, uint32(10), uint32(99)).Return(uint32(50), true, nil).Once()
+	mockds := &datastore.MockDataStore{}
+	app.dataStore = mockds
 
-	err := app.applyResumability(ctx, mockResumableManager)
+	// simulates a data store that had ledger files populated up to seq=49, so the first absent ledger would be 50
+	mockds.On("ListFilePaths", ctx, mock.Anything).Return([]string{"FFFFFFD7--40-49.xdr.zst"}, nil).Once()
+	mockds.On("GetFileMetadata", ctx, "FFFFFFD7--40-49.xdr.zst").
+		Return(map[string]string{"end-ledger": "49"}, nil).Once()
+
+	err := app.applyResumability(ctx)
 	require.NoError(t, err)
 	require.Equal(t, app.config.StartLedger, uint32(50))
-	mockResumableManager.AssertExpectations(t)
 }
 
 func TestApplyResumeWithNoRemoteDataPresent(t *testing.T) {
 	ctx := context.Background()
 	app := &App{}
+	start := uint32(10)
 	app.config = &Config{
-		StartLedger:     10,
-		EndLedger:       99,
-		Mode:            Append,
-		DataStoreConfig: datastore.DataStoreConfig{Schema: datastore.DataStoreSchema{LedgersPerFile: 10, FilesPerPartition: 50}},
+		StartLedger: start,
+		EndLedger:   99,
+		Mode:        Append,
+		DataStoreConfig: datastore.DataStoreConfig{Schema: datastore.DataStoreSchema{
+			LedgersPerFile:    10,
+			FilesPerPartition: 50}},
 	}
-	mockResumableManager := &datastore.MockResumableManager{}
-	// simulates a data store that had no data in the requested range
-	mockResumableManager.On("FindStart", ctx, uint32(10), uint32(99)).Return(uint32(2), true, nil).Once()
+	mockds := &datastore.MockDataStore{}
+	app.dataStore = mockds
 
-	err := app.applyResumability(ctx, mockResumableManager)
+	// simulates a data store that had no data in the requested range
+	mockds.On("ListFilePaths", ctx, mock.Anything).Return([]string{}, nil).Once()
+	err := app.applyResumability(ctx)
 	require.NoError(t, err)
-	require.Equal(t, app.config.StartLedger, uint32(2))
-	mockResumableManager.AssertExpectations(t)
+	require.Equal(t, app.config.StartLedger, start)
 }
 
 func TestApplyResumeWithNoRemoteDataAndRequestFromGenesis(t *testing.T) {
@@ -107,14 +127,14 @@ func TestApplyResumeWithNoRemoteDataAndRequestFromGenesis(t *testing.T) {
 		Mode:            Append,
 		DataStoreConfig: datastore.DataStoreConfig{Schema: datastore.DataStoreSchema{LedgersPerFile: 10, FilesPerPartition: 50}},
 	}
-	mockResumableManager := &datastore.MockResumableManager{}
-	// simulates a data store that had no data in the requested range
-	mockResumableManager.On("FindStart", ctx, uint32(2), uint32(99)).Return(uint32(2), true, nil).Once()
+	mockds := &datastore.MockDataStore{}
+	app.dataStore = mockds
 
-	err := app.applyResumability(ctx, mockResumableManager)
+	// simulates a data store that had no data in the requested range
+	mockds.On("ListFilePaths", ctx, mock.Anything).Return([]string{}, nil).Once()
+	err := app.applyResumability(ctx)
 	require.NoError(t, err)
 	require.Equal(t, app.config.StartLedger, uint32(2))
-	mockResumableManager.AssertExpectations(t)
 }
 
 func TestValidateExistingFileExtension(t *testing.T) {

@@ -121,7 +121,7 @@ func TestFindLatestLedger_BadMetadataParse(t *testing.T) {
 	mds.AssertExpectations(t)
 }
 
-func TestFindLatestLedgerUpToSequence_Success(t *testing.T) {
+func TestFindLatestLedgerUpToSequence(t *testing.T) {
 	ctx := context.Background()
 	mds := new(MockDataStore)
 
@@ -134,6 +134,30 @@ func TestFindLatestLedgerUpToSequence_Success(t *testing.T) {
 		Return(map[string]string{"end-ledger": "50"}, nil).Once()
 
 	got, err := FindLatestLedgerUpToSequence(ctx, mds, end, schema)
+	assert.NoError(t, err)
+	assert.Equal(t, uint32(50), got)
+
+	mds.AssertExpectations(t)
+}
+
+func TestFindLatestLedgerUpToSequence_MultipleLedgersPerFile(t *testing.T) {
+	ctx := context.Background()
+	mds := new(MockDataStore)
+
+	testSchema := DataStoreSchema{
+		LedgersPerFile:    10,
+		FilesPerPartition: 10,
+	}
+
+	end := uint32(50)
+	name := schema.GetObjectKeyFromSequenceNumber(50)
+
+	mds.On("ListFilePaths", ctx, ListFileOptions{StartAfter: "FFFFFFFF--0-99/FFFFFFC3--60-69.xdr.zst"}).
+		Return([]string{name}, nil).Once()
+	mds.On("GetFileMetadata", ctx, name).
+		Return(map[string]string{"end-ledger": "50"}, nil).Once()
+
+	got, err := FindLatestLedgerUpToSequence(ctx, mds, end, testSchema)
 	assert.NoError(t, err)
 	assert.Equal(t, uint32(50), got)
 

@@ -74,15 +74,5 @@ func (m *MockDataStore) GetSchema() DataStoreSchema {
 	return args.Get(0).(DataStoreSchema)
 }
 
-type MockResumableManager struct {
-	mock.Mock
-}
-
-func (m *MockResumableManager) FindStart(ctx context.Context, start, end uint32) (absentLedger uint32, ok bool, err error) {
-	a := m.Called(ctx, start, end)
-	return a.Get(0).(uint32), a.Get(1).(bool), a.Error(2)
-}
-
 // ensure that the MockClient implements ClientInterface
-var _ ResumableManager = &MockResumableManager{}
 var _ DataStore = &MockDataStore{}
