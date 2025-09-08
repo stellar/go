@@ -5,6 +5,7 @@ package ingest
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"path"
 	"runtime"
@@ -19,6 +20,8 @@ import (
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/ingest/filters"
+	"github.com/stellar/go/services/horizon/internal/ingest/processors"
+	"github.com/stellar/go/services/horizon/internal/verify"
 	apkg "github.com/stellar/go/support/app"
 	"github.com/stellar/go/support/datastore"
 	"github.com/stellar/go/support/db"
@@ -854,6 +857,339 @@ func (s *system) Shutdown() {
 	if err := s.ledgerBackend.Close(); err != nil {
 		log.WithError(err).Info("could not close ledger backend")
 	}
+}
+
+// verifyState is called as a go routine from pipeline post hook every 64
+// ledgers. It checks if the state is correct. If another go routine is already
+// running it exits.
+func (s *system) verifyState(verifyAgainstLatestCheckpoint bool, checkpointSequence uint32, expectedBucketListHash xdr.Hash) error {
+	s.stateVerificationMutex.Lock()
+	if s.stateVerificationRunning {
+		log.Warn("State verification is already running...")
+		s.stateVerificationMutex.Unlock()
+		return nil
+	}
+	s.stateVerificationRunning = true
+	s.stateVerificationMutex.Unlock()
+	defer func() {
+		s.stateVerificationMutex.Lock()
+		s.stateVerificationRunning = false
+		s.stateVerificationMutex.Unlock()
+	}()
+
+	updateMetrics := false
+
+	if verify.StateVerifierExpectedIngestionVersion != CurrentVersion {
+		log.Errorf(
+			"State verification expected version is %d but actual is: %d",
+			verify.StateVerifierExpectedIngestionVersion,
+			CurrentVersion,
+		)
+		return nil
+	}
+
+	historyQ := s.historyQ.CloneIngestionQ()
+	defer historyQ.Rollback()
+	err := historyQ.BeginTx(s.ctx, &sql.TxOptions{
+		Isolation: sql.LevelRepeatableRead,
+		ReadOnly:  true,
+	})
+	if err != nil {
+		return errors.Wrap(err, "Error starting transaction")
+	}
+
+	ctx := s.ctx
+	if s.config.StateVerificationTimeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(s.ctx, s.config.StateVerificationTimeout)
+		defer cancel()
+	}
+
+	// Ensure the ledger is a checkpoint ledger
+	ledgerSequence, err := historyQ.GetLastLedgerIngestNonBlocking(ctx)
+	if err != nil {
+		return errors.Wrap(err, "Error running historyQ.GetLastLedgerIngestNonBlocking")
+	}
+
+	localLog := log.WithFields(logpkg.F{
+		"subservice": "state_verify",
+		"sequence":   ledgerSequence,
+	})
+
+	if !s.runStateVerificationOnLedger(ledgerSequence) {
+		localLog.Info("Current ledger is not eligible for state verification. Canceling...")
+		return nil
+	}
+
+	if ledgerSequence != checkpointSequence {
+		localLog.WithField("checkpointSequence", checkpointSequence).
+			Info("Current ledger does not match checkpoint sequence. Canceling...")
+		return nil
+	}
+
+	ok, err := historyQ.TryStateVerificationLock(ctx)
+	if err != nil {
+		return errors.Wrap(err, "Error acquiring state verification lock")
+	}
+	if !ok {
+		localLog.Info("State verification is already in progress. Canceling...")
+		return nil
+	}
+
+	localLog.Info("Starting state verification")
+
+	if verifyAgainstLatestCheckpoint {
+		retries := 0
+		for {
+			// Get root HAS to check if we're checking one of the latest ledgers or
+			// Horizon is catching up. It doesn't make sense to verify old ledgers as
+			// we want to check the latest state.
+			var historyLatestSequence uint32
+			historyLatestSequence, err = s.historyAdapter.GetLatestLedgerSequence()
+			if err != nil {
+				return errors.Wrap(err, "Error getting the latest ledger sequence")
+			}
+
+			if ledgerSequence < historyLatestSequence {
+				localLog.Info("Current ledger is old. Canceling...")
+				return nil
+			}
+
+			if ledgerSequence == historyLatestSequence {
+				break
+			}
+
+			localLog.Info("Waiting for stellar-core to publish HAS...")
+			select {
+			case <-ctx.Done():
+				localLog.Info("State verifier shut down...")
+				return nil
+			case <-time.After(5 * time.Second):
+				// Wait for stellar-core to publish HAS
+				retries++
+				if retries == 12 {
+					localLog.Info("Checkpoint not published. Canceling...")
+					return nil
+				}
+			}
+		}
+	}
+
+	totalByType := map[string]int64{}
+
+	startTime := time.Now()
+	defer func() {
+		duration := time.Since(startTime).Seconds()
+		if updateMetrics {
+			// Don't update metrics if context canceled.
+			if ctx.Err() != context.Canceled {
+				s.Metrics().StateVerifyDuration.Observe(float64(duration))
+				for typ, tot := range totalByType {
+					s.Metrics().StateVerifyLedgerEntriesCount.
+						With(prometheus.Labels{"type": typ}).Set(float64(tot))
+				}
+			}
+		}
+
+		localLog.WithField("duration", duration).Info("State verification finished")
+	}()
+
+	localLog.Info("Creating state reader...")
+
+	stateReader, err := s.historyAdapter.GetState(ctx, ledgerSequence)
+	if err != nil {
+		return errors.Wrap(err, "Error running GetState")
+	}
+	defer stateReader.Close()
+	if err = stateReader.VerifyBucketList(expectedBucketListHash); err != nil {
+		return ingest.NewStateError(err)
+	}
+
+	verifier := verify.NewStateVerifier(stateReader, func(entry xdr.LedgerEntry) (bool, xdr.LedgerEntry) {
+		entryType := entry.Data.Type
+		// Won't be persisting protocol 20 ContractData ledger entries (except for Stellar Asset Contract
+		// ledger entries) to the history db, therefore must not allow it
+		// to be counted in history state-verifier accumulators.
+		if entryType == xdr.LedgerEntryTypeConfigSetting || entryType == xdr.LedgerEntryTypeContractCode {
+			return true, entry
+		}
+
+		return false, entry
+	})
+
+	assetStats := processors.NewAssetStatSet()
+	createdExpirationEntries := map[xdr.Hash]uint32{}
+	var contractDataEntries []xdr.LedgerEntry
+	total := int64(0)
+	for {
+		var entries []xdr.LedgerEntry
+		entries, err = verifier.GetLedgerEntries(verifyBatchSize)
+		if err != nil {
+			return errors.Wrap(err, "verifier.GetLedgerEntries")
+		}
+
+		if len(entries) == 0 {
+			break
+		}
+
+		accounts := make([]string, 0, verifyBatchSize)
+		data := make([]xdr.LedgerKeyData, 0, verifyBatchSize)
+		offers := make([]int64, 0, verifyBatchSize)
+		trustLines := make([]xdr.LedgerKeyTrustLine, 0, verifyBatchSize)
+		cBalances := make([]xdr.ClaimableBalanceId, 0, verifyBatchSize)
+		lPools := make([]xdr.PoolId, 0, verifyBatchSize)
+		for _, entry := range entries {
+			switch entry.Data.Type {
+			case xdr.LedgerEntryTypeAccount:
+				accounts = append(accounts, entry.Data.MustAccount().AccountId.Address())
+				totalByType["accounts"]++
+			case xdr.LedgerEntryTypeData:
+				key, keyErr := entry.LedgerKey()
+				if keyErr != nil {
+					return errors.Wrap(keyErr, "entry.LedgerKey")
+				}
+				data = append(data, *key.Data)
+				totalByType["data"]++
+			case xdr.LedgerEntryTypeOffer:
+				offers = append(offers, int64(entry.Data.MustOffer().OfferId))
+				totalByType["offers"]++
+			case xdr.LedgerEntryTypeTrustline:
+				key, keyErr := entry.LedgerKey()
+				if keyErr != nil {
+					return errors.Wrap(keyErr, "TrustlineEntry.LedgerKey")
+				}
+				trustLines = append(trustLines, key.MustTrustLine())
+				totalByType["trust_lines"]++
+			case xdr.LedgerEntryTypeClaimableBalance:
+				cBalances = append(cBalances, entry.Data.MustClaimableBalance().BalanceId)
+				totalByType["claimable_balances"]++
+			case xdr.LedgerEntryTypeLiquidityPool:
+				lPools = append(lPools, entry.Data.MustLiquidityPool().LiquidityPoolId)
+				totalByType["liquidity_pools"]++
+			case xdr.LedgerEntryTypeContractData:
+				// contract data is a special case.
+				// we don't store contract data entries in the db,
+				// however, we ingest contract data entries for asset stats.
+				if err = verifier.Write(entry); err != nil {
+					return err
+				}
+				contractDataEntries = append(contractDataEntries, entry)
+				totalByType["contract_data"]++
+			case xdr.LedgerEntryTypeTtl:
+				// we don't store all expiration entries in the db,
+				// we will only verify expiration of contract balances in the horizon db.
+				if err = verifier.Write(entry); err != nil {
+					return err
+				}
+				totalByType["ttl"]++
+				ttl := entry.Data.MustTtl()
+				createdExpirationEntries[ttl.KeyHash] = uint32(ttl.LiveUntilLedgerSeq)
+				totalByType["expiration"]++
+			default:
+				return errors.New("GetLedgerEntries return unexpected type")
+			}
+		}
+
+		err = addAccountsToStateVerifier(ctx, verifier, historyQ, accounts)
+		if err != nil {
+			return errors.Wrap(err, "addAccountsToStateVerifier failed")
+		}
+
+		err = addDataToStateVerifier(ctx, verifier, historyQ, data)
+		if err != nil {
+			return errors.Wrap(err, "addDataToStateVerifier failed")
+		}
+
+		err = addOffersToStateVerifier(ctx, verifier, historyQ, offers)
+		if err != nil {
+			return errors.Wrap(err, "addOffersToStateVerifier failed")
+		}
+
+		err = addTrustLinesToStateVerifier(ctx, verifier, assetStats, historyQ, trustLines)
+		if err != nil {
+			return errors.Wrap(err, "addTrustLinesToStateVerifier failed")
+		}
+
+		err = addClaimableBalanceToStateVerifier(ctx, verifier, assetStats, historyQ, cBalances)
+		if err != nil {
+			return errors.Wrap(err, "addClaimableBalanceToStateVerifier failed")
+		}
+
+		err = addLiquidityPoolsToStateVerifier(ctx, verifier, assetStats, historyQ, lPools)
+		if err != nil {
+			return errors.Wrap(err, "addLiquidityPoolsToStateVerifier failed")
+		}
+
+		total += int64(len(entries))
+		localLog.WithField("total", total).Info("Batch added to StateVerifier")
+	}
+
+	contractAssetStatSet := processors.NewContractAssetStatSet(
+		historyQ,
+		s.config.NetworkPassphrase,
+		map[xdr.Hash]uint32{},
+		createdExpirationEntries,
+		map[xdr.Hash][2]uint32{},
+		ledgerSequence,
+	)
+	for i := range contractDataEntries {
+		entry := contractDataEntries[i]
+		if err = contractAssetStatSet.AddContractData(ingest.Change{
+			Type: xdr.LedgerEntryTypeContractData,
+			Post: &entry,
+		}); err != nil {
+			return errors.Wrap(err, "Error ingesting contract data")
+		}
+	}
+
+	localLog.WithField("total", total).Info("Finished writing to StateVerifier")
+
+	countAccounts, err := historyQ.CountAccounts(ctx)
+	if err != nil {
+		return errors.Wrap(err, "Error running historyQ.CountAccounts")
+	}
+
+	countData, err := historyQ.CountAccountsData(ctx)
+	if err != nil {
+		return errors.Wrap(err, "Error running historyQ.CountData")
+	}
+
+	countOffers, err := historyQ.CountOffers(ctx)
+	if err != nil {
+		return errors.Wrap(err, "Error running historyQ.CountOffers")
+	}
+
+	countTrustLines, err := historyQ.CountTrustLines(ctx)
+	if err != nil {
+		return errors.Wrap(err, "Error running historyQ.CountTrustLines")
+	}
+
+	countClaimableBalances, err := historyQ.CountClaimableBalances(ctx)
+	if err != nil {
+		return errors.Wrap(err, "Error running historyQ.CountClaimableBalances")
+	}
+
+	countLiquidityPools, err := historyQ.CountLiquidityPools(ctx)
+	if err != nil {
+		return errors.Wrap(err, "Error running historyQ.CountLiquidityPools")
+	}
+
+	err = verifier.Verify(
+		countAccounts + countData + countOffers + countTrustLines + countClaimableBalances +
+			countLiquidityPools + int(totalByType["contract_data"]) + int(totalByType["ttl"]),
+	)
+	if err != nil {
+		return errors.Wrap(err, "verifier.Verify failed")
+	}
+
+	err = checkAssetStats(ctx, assetStats, contractAssetStatSet, historyQ)
+	if err != nil {
+		return errors.Wrap(err, "checkAssetStats failed")
+	}
+
+	localLog.Info("State correct")
+	updateMetrics = true
+	return nil
 }
 
 func markStateInvalid(ctx context.Context, historyQ history.IngestionQ, err error) {

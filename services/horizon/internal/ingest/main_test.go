@@ -17,6 +17,7 @@ import (
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/ingest/processors"
+	"github.com/stellar/go/services/horizon/internal/verify"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 	logpkg "github.com/stellar/go/support/log"
@@ -75,8 +76,8 @@ func TestCheckVerifyStateVersion(t *testing.T) {
 	assert.Equal(
 		t,
 		CurrentVersion,
-		stateVerifierExpectedIngestionVersion,
-		"State verifier is outdated, update it, then update stateVerifierExpectedIngestionVersion value",
+		verify.StateVerifierExpectedIngestionVersion,
+		"State verifier is outdated, update it, then update StateVerifierExpectedIngestionVersion value",
 	)
 }
 

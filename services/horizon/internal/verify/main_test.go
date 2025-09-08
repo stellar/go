@@ -10,13 +10,13 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/stellar/go/ingest"
+	ingestsdk "github.com/stellar/go/ingest"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
 
 func assertStateError(t *testing.T, err error, expectStateError bool) {
-	_, ok := err.(ingest.StateError)
+	_, ok := err.(ingestsdk.StateError)
 	if expectStateError {
 		assert.True(t, ok, "err should be StateError")
 	} else {
@@ -31,11 +31,11 @@ func TestStateVerifierTestSuite(t *testing.T) {
 type StateVerifierTestSuite struct {
 	suite.Suite
 	verifier        *StateVerifier
-	mockStateReader *ingest.MockChangeReader
+	mockStateReader *ingestsdk.MockChangeReader
 }
 
 func (s *StateVerifierTestSuite) SetupTest() {
-	s.mockStateReader = &ingest.MockChangeReader{}
+	s.mockStateReader = &ingestsdk.MockChangeReader{}
 	s.verifier = NewStateVerifier(s.mockStateReader, nil)
 }
 
@@ -44,7 +44,7 @@ func (s *StateVerifierTestSuite) TearDownTest() {
 }
 
 func (s *StateVerifierTestSuite) TestNoEntries() {
-	s.mockStateReader.On("Read").Return(ingest.Change{}, io.EOF).Once()
+	s.mockStateReader.On("Read").Return(ingestsdk.Change{}, io.EOF).Once()
 
 	entries, err := s.verifier.GetLedgerEntries(10)
 	s.Assert().NoError(err)
@@ -52,7 +52,7 @@ func (s *StateVerifierTestSuite) TestNoEntries() {
 }
 
 func (s *StateVerifierTestSuite) TestReturnErrorOnStateReaderError() {
-	s.mockStateReader.On("Read").Return(ingest.Change{}, errors.New("Read error")).Once()
+	s.mockStateReader.On("Read").Return(ingestsdk.Change{}, errors.New("Read error")).Once()
 
 	_, err := s.verifier.GetLedgerEntries(10)
 	s.Assert().EqualError(err, "Read error")
@@ -87,7 +87,7 @@ func (s *StateVerifierTestSuite) TestTransformFunction() {
 	accountEntry := makeAccountLedgerEntry()
 	s.mockStateReader.
 		On("Read").
-		Return(ingest.Change{
+		Return(ingestsdk.Change{
 			Type: xdr.LedgerEntryTypeAccount,
 			Post: &accountEntry,
 		}, nil).Once()
@@ -95,12 +95,12 @@ func (s *StateVerifierTestSuite) TestTransformFunction() {
 	offerEntry := makeOfferLedgerEntry()
 	s.mockStateReader.
 		On("Read").
-		Return(ingest.Change{
+		Return(ingestsdk.Change{
 			Type: xdr.LedgerEntryTypeOffer,
 			Post: &offerEntry,
 		}, nil).Once()
 
-	s.mockStateReader.On("Read").Return(ingest.Change{}, io.EOF).Once()
+	s.mockStateReader.On("Read").Return(ingestsdk.Change{}, io.EOF).Once()
 
 	s.verifier.transformFunction =
 		func(entry xdr.LedgerEntry) (ignore bool, newEntry xdr.LedgerEntry) {
@@ -140,7 +140,7 @@ func (s *StateVerifierTestSuite) TestOnlyRequestedNumberOfKeysReturned() {
 	accountEntry := makeAccountLedgerEntry()
 	s.mockStateReader.
 		On("Read").
-		Return(ingest.Change{
+		Return(ingestsdk.Change{
 			Type: xdr.LedgerEntryTypeAccount,
 			Post: &accountEntry,
 		}, nil).Once()
@@ -187,7 +187,7 @@ func (s *StateVerifierTestSuite) TestTransformFunctionBuggyIgnore() {
 	accountEntry := makeAccountLedgerEntry()
 	s.mockStateReader.
 		On("Read").
-		Return(ingest.Change{
+		Return(ingestsdk.Change{
 			Type: xdr.LedgerEntryTypeAccount,
 			Post: &accountEntry,
 		}, nil).Once()
@@ -221,7 +221,7 @@ func (s *StateVerifierTestSuite) TestActualExpectedEntryNotEqualWrite() {
 	expectedEntry := makeAccountLedgerEntry()
 	s.mockStateReader.
 		On("Read").
-		Return(ingest.Change{
+		Return(ingestsdk.Change{
 			Type: xdr.LedgerEntryTypeAccount,
 			Post: &expectedEntry,
 		}, nil).Once()
@@ -255,12 +255,12 @@ func (s *StateVerifierTestSuite) TestVerifyCountersMatch() {
 	accountEntry := makeAccountLedgerEntry()
 	s.mockStateReader.
 		On("Read").
-		Return(ingest.Change{
+		Return(ingestsdk.Change{
 			Type: xdr.LedgerEntryTypeAccount,
 			Post: &accountEntry,
 		}, nil).Once()
 
-	s.mockStateReader.On("Read").Return(ingest.Change{}, io.EOF).Once()
+	s.mockStateReader.On("Read").Return(ingestsdk.Change{}, io.EOF).Once()
 
 	entries, err := s.verifier.GetLedgerEntries(2)
 	s.Assert().NoError(err)
