@@ -232,5 +232,3 @@ func (v *StateVerifier) checkUnreadEntries() error {
 
 	return nil
 }
-
-
