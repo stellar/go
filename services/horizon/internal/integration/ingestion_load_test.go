@@ -292,9 +292,10 @@ func TestIngestLoadTestCmd(t *testing.T) {
 	// what was ingested during the load test)
 	endLedger := restoreLedger + uint32(numSyntheticLedgers+2)
 	require.Eventually(t, func() bool {
-		latestLedger, err := q.GetLastLedgerIngestNonBlocking(context.Background())
+		var latestLedger, latestHistoryLedger uint32
+		latestLedger, err = q.GetLastLedgerIngestNonBlocking(context.Background())
 		require.NoError(t, err)
-		latestHistoryLedger, err := q.GetLatestHistoryLedger(context.Background())
+		latestHistoryLedger, err = q.GetLatestHistoryLedger(context.Background())
 		require.NoError(t, err)
 		return latestLedger >= endLedger && latestHistoryLedger >= endLedger
 	}, time.Minute*5, time.Second)
@@ -315,7 +316,8 @@ func TestIngestLoadTestCmd(t *testing.T) {
 	_, _, err = q.GetLoadTestRestoreState(context.Background())
 	require.ErrorIs(t, err, sql.ErrNoRows)
 
-	version, err := q.GetIngestVersion(context.Background())
+	var version int
+	version, err = q.GetIngestVersion(context.Background())
 	require.NoError(t, err)
 	require.Positive(t, version)
 
@@ -388,10 +390,11 @@ func TestIngestLoadTestRestoreCmd(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, runID)
 	expectedCurrentLedger := restoreLedger + uint32(numSyntheticLedgers)
-	curLedger, err := q.GetLastLedgerIngestNonBlocking(context.Background())
+	var curLedger, curHistoryLedger uint32
+	curLedger, err = q.GetLastLedgerIngestNonBlocking(context.Background())
 	require.NoError(t, err)
 	require.Equal(t, expectedCurrentLedger, curLedger)
-	curHistoryLedger, err := q.GetLatestHistoryLedger(context.Background())
+	curHistoryLedger, err = q.GetLatestHistoryLedger(context.Background())
 	require.NoError(t, err)
 	require.Equal(t, curLedger, curHistoryLedger)
 
@@ -408,7 +411,8 @@ func TestIngestLoadTestRestoreCmd(t *testing.T) {
 	curHistoryLedger, err = q.GetLatestHistoryLedger(context.Background())
 	require.NoError(t, err)
 	require.Equal(t, restoreLedger, curHistoryLedger)
-	version, err := q.GetIngestVersion(context.Background())
+	var version int
+	version, err = q.GetIngestVersion(context.Background())
 	require.NoError(t, err)
 	require.Zero(t, version)
 }
