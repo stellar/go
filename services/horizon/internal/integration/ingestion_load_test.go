@@ -258,10 +258,11 @@ func TestIngestLoadTestCmd(t *testing.T) {
 		require.NoError(t, err)
 		require.NotEmpty(t, runID)
 		expectedCurrentLedger := restoreLedger + uint32(numSyntheticLedgers)
-		curLedger, err := q.GetLastLedgerIngestNonBlocking(context.Background())
+		var curLedger, curHistoryLedger uint32
+		curLedger, err = q.GetLastLedgerIngestNonBlocking(context.Background())
 		require.NoError(t, err)
 		require.Equal(t, expectedCurrentLedger, curLedger)
-		curHistoryLedger, err := q.GetLatestHistoryLedger(context.Background())
+		curHistoryLedger, err = q.GetLatestHistoryLedger(context.Background())
 		require.NoError(t, err)
 		require.Equal(t, curLedger, curHistoryLedger)
 
@@ -276,7 +277,8 @@ func TestIngestLoadTestCmd(t *testing.T) {
 		curHistoryLedger, err = q.GetLatestHistoryLedger(context.Background())
 		require.NoError(t, err)
 		require.Equal(t, restoreLedger, curHistoryLedger)
-		version, err := q.GetIngestVersion(ctx)
+		var version int
+		version, err = q.GetIngestVersion(ctx)
 		require.NoError(t, err)
 		require.Zero(t, version)
 		return nil
@@ -416,7 +418,8 @@ func checkLedgerIngested(itest *integration.Test, historyQ *history.Q, ledger xd
 	require.NoError(itest.CurrentTest(), err)
 	txCount := 0
 	for {
-		tx, err := txReader.Read()
+		var tx ingest.LedgerTransaction
+		tx, err = txReader.Read()
 		if err == io.EOF {
 			break
 		}
@@ -426,7 +429,8 @@ func checkLedgerIngested(itest *integration.Test, historyQ *history.Q, ledger xd
 		var ingestedTx history.Transaction
 		err = historyQ.TransactionByHash(context.Background(), &ingestedTx, hex.EncodeToString(tx.Hash[:]))
 		require.NoError(itest.CurrentTest(), err)
-		expectedEnvelope, err := xdr.MarshalBase64(tx.Envelope)
+		var expectedEnvelope string
+		expectedEnvelope, err = xdr.MarshalBase64(tx.Envelope)
 		require.NoError(itest.CurrentTest(), err)
 		require.Equal(itest.CurrentTest(), expectedEnvelope, ingestedTx.TxEnvelope)
 	}
