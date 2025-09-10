@@ -756,7 +756,8 @@ func (s *system) runStateMachine(cur stateMachineNode, options runOptions) error
 				"current_state": cur,
 				"next_state":    next.node,
 			})
-			if isCancelledError(s.ctx, err) {
+			if isCancelledError(s.ctx, err) ||
+				(options.isTerminalError != nil && options.isTerminalError(err)) {
 				// We only expect context.Canceled errors to occur when horizon is shutting down
 				// so we log these errors using the info log level
 				logger.Info("Error in ingestion state machine")

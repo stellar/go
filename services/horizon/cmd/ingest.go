@@ -92,7 +92,7 @@ var ingestLoadTestCmdOpts = support.ConfigOptions{
 		Name:        "fixtures-path",
 		OptType:     types.String,
 		FlagDefault: "",
-		Required:    false,
+		Required:    true,
 		Usage:       "path to ledger entries file which will be used as fixtures for the ingestion load test.",
 		ConfigKey:   &ingestionLoadTestFixturesPath,
 	},
@@ -100,7 +100,7 @@ var ingestLoadTestCmdOpts = support.ConfigOptions{
 		Name:        "ledgers-path",
 		OptType:     types.String,
 		FlagDefault: "",
-		Required:    false,
+		Required:    true,
 		Usage:       "path to ledgers file which will be replayed in the ingestion load test.",
 		ConfigKey:   &ingestionLoadTestLedgersPath,
 	},
@@ -291,7 +291,7 @@ func DefineIngestCommands(rootCmd *cobra.Command, horizonConfig *horizon.Config,
 		Use:   "load-test-restore",
 		Short: "restores the horizon db if it is in a dirty state after an interrupted load test",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := horizon.ApplyFlags(horizonConfig, horizonFlags, horizon.ApplyOptions{RequireCaptiveCoreFullConfig: false}); err != nil {
+			if err := requireAndSetFlags(horizonFlags, horizon.DatabaseURLFlagName); err != nil {
 				return err
 			}
 
@@ -299,6 +299,7 @@ func DefineIngestCommands(rootCmd *cobra.Command, horizonConfig *horizon.Config,
 			if err != nil {
 				return fmt.Errorf("cannot open Horizon DB: %v", err)
 			}
+			defer horizonSession.Close()
 
 			historyQ := &history.Q{SessionInterface: horizonSession}
 			if err := ingest.RestoreSnapshot(context.Background(), historyQ); err != nil {
@@ -407,6 +408,11 @@ func DefineIngestCommands(rootCmd *cobra.Command, horizonConfig *horizon.Config,
 			if err != nil {
 				return fmt.Errorf("cannot open Horizon DB: %v", err)
 			}
+			defer horizonSession.Close()
+
+			if !horizonConfig.IngestDisableStateVerification {
+				log.Info("Overriding state verification to be disabled")
+			}
 
 			ingestConfig := ingest.Config{
 				CaptiveCoreBinaryPath:                horizonConfig.CaptiveCoreBinaryPath,
@@ -416,7 +422,7 @@ func DefineIngestCommands(rootCmd *cobra.Command, horizonConfig *horizon.Config,
 				HistorySession:                       horizonSession,
 				HistoryArchiveURLs:                   horizonConfig.HistoryArchiveURLs,
 				HistoryArchiveCaching:                horizonConfig.HistoryArchiveCaching,
-				DisableStateVerification:             horizonConfig.IngestDisableStateVerification,
+				DisableStateVerification:             true,
 				ReapLookupTables:                     horizonConfig.ReapLookupTables,
 				EnableExtendedLogLedgerStats:         horizonConfig.IngestEnableExtendedLogLedgerStats,
 				CheckpointFrequency:                  horizonConfig.CheckpointFrequency,

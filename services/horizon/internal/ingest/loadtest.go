@@ -72,7 +72,9 @@ func (l *loadTestSnapshot) save(ctx context.Context) error {
 
 // RestoreSnapshot reverts the state of the horizon db to a previous snapshot recorded at the start of an
 // ingestion load test.
-func RestoreSnapshot(ctx context.Context, historyQ history.IngestionQ) error {
+var RestoreSnapshot = restoreSnapshot
+
+func restoreSnapshot(ctx context.Context, historyQ history.IngestionQ) error {
 	if err := historyQ.Begin(ctx); err != nil {
 		return fmt.Errorf("error starting a transaction: %w", err)
 	}
