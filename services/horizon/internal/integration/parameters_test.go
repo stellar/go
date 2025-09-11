@@ -43,6 +43,15 @@ func TestEnvironmentPreserved(t *testing.T) {
 	// running an integration test.
 
 	// Note that we ALSO need to make sure we don't modify parent env state.
+	value, isSet := os.LookupEnv("STELLAR_CORE_URL")
+	defer func() {
+		if isSet {
+			_ = os.Setenv("STELLAR_CORE_URL", value)
+		} else {
+			_ = os.Unsetenv("STELLAR_CORE_URL")
+		}
+	}()
+
 	err := os.Setenv("STELLAR_CORE_URL", "original value")
 	assert.NoError(t, err)
 
