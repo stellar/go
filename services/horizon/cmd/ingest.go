@@ -444,15 +444,11 @@ func DefineIngestCommands(rootCmd *cobra.Command, horizonConfig *horizon.Config,
 				return err
 			}
 
-			err = system.LoadTest(
+			return system.LoadTest(
 				ingestionLoadTestLedgersPath,
 				ingestionLoadTestCloseDuration,
 				ingestionLoadTestFixturesPath,
 			)
-			if err != nil {
-				return err
-			}
-			return nil
 		},
 	}
 

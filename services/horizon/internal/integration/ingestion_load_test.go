@@ -74,7 +74,6 @@ func TestLoadTestLedgerBackend(t *testing.T) {
 	endLedger := startLedger + uint32(len(generatedLedgers))
 
 	itest.WaitForLedgerInArchive(6*time.Minute, endLedger)
-	itest.StopHorizon()
 
 	loadTestBackend := loadtest.NewLedgerBackend(replayConfig)
 	// PrepareRange() is expected to fail because of the invalid network passphrase which
