@@ -4,10 +4,12 @@ package ingest
 
 import (
 	"context"
+	"database/sql"
 	"testing"
 
-	"github.com/stellar/go/support/errors"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/stellar/go/support/errors"
 )
 
 func TestInitStateTestSuite(t *testing.T) {
@@ -27,12 +29,14 @@ func (s *InitStateTestSuite) SetupTest() {
 	s.historyQ = &mockDBQ{}
 	s.historyAdapter = &mockHistoryArchiveAdapter{}
 	s.system = &system{
-		ctx:            s.ctx,
-		historyQ:       s.historyQ,
-		historyAdapter: s.historyAdapter,
+		ctx:              s.ctx,
+		loadTestSnapshot: &loadTestSnapshot{HistoryQ: s.historyQ},
+		historyQ:         s.historyQ,
+		historyAdapter:   s.historyAdapter,
 	}
 	s.system.initMetrics()
-
+	s.historyQ.On("GetLoadTestRestoreState", s.ctx).
+		Return("", uint32(0), sql.ErrNoRows).Maybe()
 	s.historyQ.On("Rollback").Return(nil).Once()
 }
 

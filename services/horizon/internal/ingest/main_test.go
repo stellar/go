@@ -179,7 +179,7 @@ func TestContextCancel(t *testing.T) {
 	historyQ.On("Begin", mock.AnythingOfType("*context.cancelCtx")).Return(context.Canceled).Once()
 
 	cancel()
-	assert.NoError(t, system.runStateMachine(startState{}))
+	assert.NoError(t, system.runStateMachine(startState{}, runOptions{}))
 	assertErrorRestartMetrics(reg, "", "", 0, t)
 }
 
@@ -197,7 +197,7 @@ func TestStateMachineRunReturnsErrorWhenNextStateIsShutdownWithError(t *testing.
 
 	historyQ.On("GetTx").Return(nil).Once()
 
-	err := system.runStateMachine(verifyRangeState{})
+	err := system.runStateMachine(verifyRangeState{}, runOptions{})
 	assert.Error(t, err)
 	assert.EqualError(t, err, "invalid range: [0, 0]")
 	assertErrorRestartMetrics(reg, "verifyrange", "stop", 1, t)
@@ -240,7 +240,7 @@ func TestStateMachineRestartEmitsMetric(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		system.runStateMachine(resumeState{latestSuccessfullyProcessedLedger: 100})
+		system.runStateMachine(resumeState{latestSuccessfullyProcessedLedger: 100}, runOptions{})
 	}()
 
 	assert.EventuallyWithT(t, func(c *assert.CollectT) {
@@ -325,8 +325,9 @@ func TestMaybeVerifyInternalDBErrCancelOrContextCanceled(t *testing.T) {
 func TestCurrentStateRaceCondition(t *testing.T) {
 	historyQ := &mockDBQ{}
 	s := &system{
-		historyQ: historyQ,
-		ctx:      context.Background(),
+		historyQ:         historyQ,
+		loadTestSnapshot: &loadTestSnapshot{HistoryQ: historyQ},
+		ctx:              context.Background(),
 	}
 	reg := setupMetrics(s)
 
@@ -335,6 +336,8 @@ func TestCurrentStateRaceCondition(t *testing.T) {
 	historyQ.On("Rollback").Return(nil)
 	historyQ.On("GetLastLedgerIngest", s.ctx).Return(uint32(1), nil)
 	historyQ.On("GetIngestVersion", s.ctx).Return(CurrentVersion, nil)
+	historyQ.On("GetLoadTestRestoreState", s.ctx).
+		Return("", uint32(0), sql.ErrNoRows).Maybe()
 
 	timer := time.NewTimer(2000 * time.Millisecond)
 	getCh := make(chan bool, 1)
@@ -344,7 +347,7 @@ func TestCurrentStateRaceCondition(t *testing.T) {
 			skipChecks: true,
 			stop:       true}
 		for range getCh {
-			_ = s.runStateMachine(state)
+			_ = s.runStateMachine(state, runOptions{})
 		}
 		close(doneCh)
 	}()
@@ -420,6 +423,20 @@ type mockDBQ struct {
 	history.MockQSigners
 	history.MockQTransactions
 	history.MockQTrustLines
+}
+
+func (m *mockDBQ) GetLoadTestRestoreState(ctx context.Context) (string, uint32, error) {
+	args := m.Called(ctx)
+	return args.Get(0).(string), args.Get(1).(uint32), args.Error(2)
+}
+
+func (m *mockDBQ) SetLoadTestRestoreState(ctx context.Context, runID string, restoreLedger uint32) error {
+	args := m.Called(ctx, runID, restoreLedger)
+	return args.Error(0)
+}
+func (m *mockDBQ) ClearLoadTestRestoreState(ctx context.Context) error {
+	args := m.Called(ctx)
+	return args.Error(0)
 }
 
 func (m *mockDBQ) Begin(ctx context.Context) error {
@@ -708,6 +725,11 @@ func (m *mockSystem) VerifyRange(fromLedger, toLedger uint32, verifyState bool) 
 
 func (m *mockSystem) BuildState(sequence uint32, skipChecks bool) error {
 	args := m.Called(sequence, skipChecks)
+	return args.Error(0)
+}
+
+func (m *mockSystem) LoadTest(ledgersFilePath string, closeDuration time.Duration, ledgerEntriesFilePath string) error {
+	args := m.Called(ledgersFilePath, closeDuration, ledgerEntriesFilePath)
 	return args.Error(0)
 }
 
