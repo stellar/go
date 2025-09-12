@@ -6,6 +6,7 @@ import (
 	stderrrors "errors"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -108,6 +109,7 @@ type Test struct {
 	rpcCoreConfPath   string
 
 	config              Config
+	validatorParams     validatorCoreConfigTemplatePrams
 	coreConfig          CaptiveConfig
 	horizonIngestConfig horizon.Config
 	horizonWebConfig    horizon.Config
@@ -188,27 +190,30 @@ func NewTest(t *testing.T, config Config) *Test {
 	if !config.SkipCoreContainerCreation {
 		composePath := findDockerComposePath()
 		i = &Test{
-			t:           t,
-			config:      config,
-			composePath: composePath,
-			passPhrase:  config.NetworkPassphrase,
-			environment: test.NewEnvironmentManager(),
+			t:               t,
+			config:          config,
+			composePath:     composePath,
+			passPhrase:      config.NetworkPassphrase,
+			environment:     test.NewEnvironmentManager(),
+			validatorParams: validatorParams,
 		}
 		i.validatorConfPath = i.createCoreValidatorConf(validatorParams)
 		i.rpcCoreConfPath = i.createCaptiveCoreConf(captiveCoreConfigTemplatePrams{
 			validatorCoreConfigTemplatePrams: validatorParams,
 			ValidatorAddress:                 "core",
+			PeerPort:                         11725,
 		})
 		// Only run Stellar Core container and its dependencies.
 		i.startCoreValidator()
 	} else {
 		i = &Test{
-			t:           t,
-			config:      config,
-			environment: test.NewEnvironmentManager(),
+			t:               t,
+			config:          config,
+			environment:     test.NewEnvironmentManager(),
+			validatorParams: validatorParams,
 		}
 	}
-	i.configureCaptiveCore(validatorParams)
+	i.configureCaptiveCore()
 
 	i.prepareShutdownHandlers()
 	i.coreClient = &stellarcore.Client{URL: "http://localhost:" + strconv.Itoa(StellarCorePort)}
@@ -233,12 +238,15 @@ func NewTest(t *testing.T, config Config) *Test {
 	return i
 }
 
-func (i *Test) configureCaptiveCore(validatorParams validatorCoreConfigTemplatePrams) {
-	i.coreConfig.binaryPath = os.Getenv("HORIZON_INTEGRATION_TESTS_CAPTIVE_CORE_BIN")
-	i.coreConfig.configPath = i.createCaptiveCoreConf(captiveCoreConfigTemplatePrams{
-		validatorCoreConfigTemplatePrams: validatorParams,
+func (i *Test) WriteCaptiveCoreConfig() string {
+	return i.createCaptiveCoreConf(captiveCoreConfigTemplatePrams{
+		validatorCoreConfigTemplatePrams: i.validatorParams,
 		ValidatorAddress:                 "localhost",
 	})
+}
+func (i *Test) configureCaptiveCore() {
+	i.coreConfig.binaryPath = os.Getenv("HORIZON_INTEGRATION_TESTS_CAPTIVE_CORE_BIN")
+	i.coreConfig.configPath = i.WriteCaptiveCoreConfig()
 	i.coreConfig.storagePath = i.CurrentTest().TempDir()
 
 	if value := i.getIngestParameter(
@@ -282,9 +290,25 @@ func (i *Test) createCoreValidatorConf(params validatorCoreConfigTemplatePrams) 
 	return tomlFile.Name()
 }
 
+func getFreePort() (port int, err error) {
+	var a *net.TCPAddr
+	if a, err = net.ResolveTCPAddr("tcp", "localhost:0"); err == nil {
+		var l *net.TCPListener
+		if l, err = net.ListenTCP("tcp", a); err == nil {
+			defer l.Close()
+			return l.Addr().(*net.TCPAddr).Port, nil
+		}
+	}
+	return
+}
+
 func (i *Test) createCaptiveCoreConf(params captiveCoreConfigTemplatePrams) string {
 	tomlFile, err := os.CreateTemp("", "captive-core-integration-test-*.toml")
 	require.NoError(i.t, err)
+	if params.PeerPort == 0 {
+		params.PeerPort, err = getFreePort()
+		require.NoError(i.t, err)
+	}
 
 	tmpl, err := template.New("captive-core").Parse(captiveCoreConfigTemplate)
 	require.NoError(i.t, err)
@@ -401,7 +425,6 @@ func (i *Test) prepareShutdownHandlers() {
 				}
 			}
 		},
-		i.environment.Restore,
 	)
 
 	// Register cleanup handlers (on panic and ctrl+c) so the containers are
@@ -488,6 +511,7 @@ func (i *Test) StartHorizon(startIngestProcess bool) error {
 		return err
 	}
 
+	defer i.environment.Restore()
 	if err = i.initializeEnvironmentVariables(); err != nil {
 		return err
 	}

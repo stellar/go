@@ -112,7 +112,7 @@ jobs:
           key: ${{ env.COMBINED_SOURCE_HASH }}
 
       - if: ${{ steps.horizon_binary_tests_hash.outputs.cache-hit != 'true' }}
-        run: go test -race -timeout 65m -v ./services/horizon/internal/integration/...
+        run: go test -race -timeout 75m -v ./services/horizon/internal/integration/...
 
       - name: Save Horizon binary and integration tests source hash to cache
         if: ${{ success() && steps.horizon_binary_tests_hash.outputs.cache-hit != 'true' }}

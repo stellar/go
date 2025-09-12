@@ -13,6 +13,7 @@ type validatorCoreConfigTemplatePrams struct {
 type captiveCoreConfigTemplatePrams struct {
 	validatorCoreConfigTemplatePrams
 	ValidatorAddress string
+	PeerPort         int
 }
 
 const validatorCoreConfigTemplate = `
@@ -67,7 +68,7 @@ TESTING_MAX_ENTRIES_TO_ARCHIVE={{ .TestingMaxEntriesToArchive }}
 TESTING_STARTING_EVICTION_SCAN_LEVEL={{ .TestingStartingEvictionScanLevel }}
 {{end}}
 
-PEER_PORT=11725
+PEER_PORT={{ .PeerPort }}
 
 UNSAFE_QUORUM=true
 FAILURE_SAFETY=0

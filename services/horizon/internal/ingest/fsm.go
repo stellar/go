@@ -180,6 +180,10 @@ func (state startState) run(s *system) (transition, error) {
 		return start(), errors.Wrap(err, getLastIngestedErrMsg)
 	}
 
+	if err = s.loadTestSnapshot.checkPendingLoadTest(s.ctx); err != nil {
+		return start(), errors.Wrap(err, "Error checking loadtest snapshot")
+	}
+
 	ingestVersion, err := s.historyQ.GetIngestVersion(s.ctx)
 	if err != nil {
 		return start(), errors.Wrap(err, getIngestVersionErrMsg)
@@ -336,6 +340,10 @@ func (b buildState) run(s *system) (transition, error) {
 		return nextFailState, errors.Wrap(err, getLastIngestedErrMsg)
 	}
 
+	if err = s.loadTestSnapshot.checkPendingLoadTest(s.ctx); err != nil {
+		return nextFailState, errors.Wrap(err, "Error checking loadtest snapshot")
+	}
+
 	ingestVersion, err := s.historyQ.GetIngestVersion(s.ctx)
 	if err != nil {
 		return nextFailState, errors.Wrap(err, getIngestVersionErrMsg)
@@ -471,6 +479,10 @@ func (r resumeState) run(s *system) (transition, error) {
 
 		// resume immediately so Captive-Core catchup is not slowed down
 		return resumeImmediately(lastIngestedLedger), nil
+	}
+
+	if err = s.loadTestSnapshot.checkPendingLoadTest(s.ctx); err != nil {
+		return retryResume(r), errors.Wrap(err, "Error checking loadtest snapshot")
 	}
 
 	ingestVersion, err := s.historyQ.GetIngestVersion(s.ctx)

@@ -5,6 +5,7 @@ package ingest
 
 import (
 	"context"
+	stderrors "errors"
 	"fmt"
 	"path"
 	"runtime"
@@ -17,6 +18,7 @@ import (
 	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/ingest/ledgerbackend"
+	"github.com/stellar/go/ingest/loadtest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/ingest/filters"
 	apkg "github.com/stellar/go/support/app"
@@ -226,6 +228,7 @@ type System interface {
 	StressTest(numTransactions, changesPerTransaction int) error
 	VerifyRange(fromLedger, toLedger uint32, verifyState bool) error
 	BuildState(sequence uint32, skipChecks bool) error
+	LoadTest(ledgersFilePath string, closeDuration time.Duration, ledgerEntriesFilePath string) error
 	ReingestRange(ledgerRanges []history.LedgerRange, force bool, rebuildTradeAgg bool) error
 	Shutdown()
 	GetCurrentState() State
@@ -239,11 +242,11 @@ type system struct {
 
 	config Config
 
-	historyQ history.IngestionQ
-	runner   ProcessorRunnerInterface
-
-	ledgerBackend  ledgerbackend.LedgerBackend
-	historyAdapter historyArchiveAdapterInterface
+	historyQ         history.IngestionQ
+	runner           ProcessorRunnerInterface
+	loadTestSnapshot *loadTestSnapshot
+	ledgerBackend    ledgerbackend.LedgerBackend
+	historyAdapter   historyArchiveAdapterInterface
 
 	stellarCoreClient stellarCoreClient
 
@@ -346,6 +349,7 @@ func NewSystem(config Config) (System, error) {
 	historyQ := &history.Q{config.HistorySession.Clone()}
 	historyAdapter := newHistoryArchiveAdapter(archive)
 	filters := filters.NewFilters()
+	loadtestSnapshot := &loadTestSnapshot{HistoryQ: historyQ}
 
 	maxLedgersPerFlush := config.MaxLedgerPerFlush
 	if maxLedgersPerFlush < 1 {
@@ -360,6 +364,7 @@ func NewSystem(config Config) (System, error) {
 		disableStateVerification:    config.DisableStateVerification,
 		historyAdapter:              historyAdapter,
 		historyQ:                    historyQ,
+		loadTestSnapshot:            loadtestSnapshot,
 		ledgerBackend:               ledgerBackend,
 		maxReingestRetries:          config.MaxReingestRetries,
 		reingestRetryBackoffSeconds: config.ReingestRetryBackoffSeconds,
@@ -587,7 +592,7 @@ func (s *system) RegisterMetrics(registry *prometheus.Registry) {
 //   - If instances is a NOT leader, it runs ledger pipeline without updating a
 //     a database so order book graph is updated but database is not overwritten.
 func (s *system) Run() {
-	s.runStateMachine(startState{})
+	s.runStateMachine(startState{}, runOptions{})
 }
 
 func (s *system) StressTest(numTransactions, changesPerTransaction int) error {
@@ -603,7 +608,7 @@ func (s *system) StressTest(numTransactions, changesPerTransaction int) error {
 		numTransactions:       numTransactions,
 		changesPerTransaction: changesPerTransaction,
 	}
-	return s.runStateMachine(stressTestState{})
+	return s.runStateMachine(stressTestState{}, runOptions{})
 }
 
 // VerifyRange runs the ingestion pipeline on the range of ledgers. When
@@ -613,7 +618,7 @@ func (s *system) VerifyRange(fromLedger, toLedger uint32, verifyState bool) erro
 		fromLedger:  fromLedger,
 		toLedger:    toLedger,
 		verifyState: verifyState,
-	})
+	}, runOptions{})
 }
 
 // BuildState runs the state ingestion on selected checkpoint ledger then exits.
@@ -623,7 +628,43 @@ func (s *system) BuildState(sequence uint32, skipChecks bool) error {
 		checkpointLedger: sequence,
 		skipChecks:       skipChecks,
 		stop:             true,
+	}, runOptions{})
+}
+
+// LoadTest initializes and runs an ingestion load test.
+// It takes paths for ledgers and ledger entries files, as well as a specified ledger close duration.
+func (s *system) LoadTest(ledgersFilePath string, closeDuration time.Duration, ledgerEntriesFilePath string) error {
+	if !s.config.DisableStateVerification {
+		return fmt.Errorf("state verification cannot be enabled during ingestion load tests")
+	}
+	s.ledgerBackend = loadtest.NewLedgerBackend(loadtest.LedgerBackendConfig{
+		NetworkPassphrase:     s.config.NetworkPassphrase,
+		LedgerBackend:         s.ledgerBackend,
+		LedgersFilePath:       ledgersFilePath,
+		LedgerEntriesFilePath: ledgerEntriesFilePath,
+		LedgerCloseDuration:   closeDuration,
 	})
+
+	if saveErr := s.loadTestSnapshot.save(s.ctx); saveErr != nil {
+		return errors.Wrap(saveErr, "failed to save loadtest snapshot")
+	}
+
+	runErr := s.runStateMachine(startState{}, runOptions{
+		isTerminalError: func(err error) bool {
+			return stderrors.Is(err, loadtest.ErrLoadTestDone)
+		},
+	})
+	if stderrors.Is(runErr, loadtest.ErrLoadTestDone) {
+		runErr = nil
+	}
+	restoreErr := RestoreSnapshot(s.ctx, s.historyQ)
+	return stderrors.Join(
+		runErr,
+		errors.Wrap(
+			restoreErr,
+			"failed to restore loadtest snapshot",
+		),
+	)
 }
 
 func validateRanges(ledgerRanges []history.LedgerRange) error {
@@ -657,7 +698,7 @@ func (s *system) ReingestRange(ledgerRanges []history.LedgerRange, force bool, r
 				fromLedger: cur.StartSequence,
 				toLedger:   cur.EndSequence,
 				force:      force,
-			})
+			}, runOptions{})
 		}
 		err := run()
 		for retry := 0; err != nil && retry < s.maxReingestRetries; retry++ {
@@ -682,7 +723,11 @@ func (s *system) RebuildTradeAggregationBuckets(fromLedger, toLedger uint32) err
 	return s.historyQ.RebuildTradeAggregationBuckets(s.ctx, fromLedger, toLedger, s.config.RoundingSlippageFilter)
 }
 
-func (s *system) runStateMachine(cur stateMachineNode) error {
+type runOptions struct {
+	isTerminalError func(error) bool
+}
+
+func (s *system) runStateMachine(cur stateMachineNode, options runOptions) error {
 	s.wg.Add(1)
 	defer func() {
 		s.wg.Done()
@@ -711,7 +756,8 @@ func (s *system) runStateMachine(cur stateMachineNode) error {
 				"current_state": cur,
 				"next_state":    next.node,
 			})
-			if isCancelledError(s.ctx, err) {
+			if isCancelledError(s.ctx, err) ||
+				(options.isTerminalError != nil && options.isTerminalError(err)) {
 				// We only expect context.Canceled errors to occur when horizon is shutting down
 				// so we log these errors using the info log level
 				logger.Info("Error in ingestion state machine")
@@ -731,7 +777,8 @@ func (s *system) runStateMachine(cur stateMachineNode) error {
 		}
 
 		// Exit after processing shutdownState
-		if next.node == (stopState{}) {
+		if next.node == (stopState{}) ||
+			(options.isTerminalError != nil && options.isTerminalError(err)) {
 			log.Info("Shut down")
 			return err
 		}

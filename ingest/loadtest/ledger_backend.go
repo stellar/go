@@ -6,6 +6,7 @@ import (
 	"io"
 	"math"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/klauspost/compress/zstd"
@@ -15,6 +16,9 @@ import (
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/xdr"
 )
+
+// ErrLoadTestDone indicates that the load test has run to completion.
+var ErrLoadTestDone = fmt.Errorf("the load test is done")
 
 // LedgerBackend is used to load test ingestion.
 // LedgerBackend will take a file of synthetically generated ledgers (see
@@ -31,6 +35,8 @@ type LedgerBackend struct {
 	latestLedgerSeq       uint32
 	preparedRange         ledgerbackend.Range
 	cachedLedger          xdr.LedgerCloseMeta
+	done                  bool
+	lock                  sync.RWMutex
 }
 
 // LedgerBackendConfig configures LedgerBackend
@@ -57,6 +63,9 @@ func NewLedgerBackend(config LedgerBackendConfig) *LedgerBackend {
 }
 
 func (r *LedgerBackend) GetLatestLedgerSequence(ctx context.Context) (uint32, error) {
+	r.lock.RLock()
+	defer r.lock.RUnlock()
+
 	if r.nextLedgerSeq == 0 {
 		return 0, fmt.Errorf("PrepareRange() must be called before GetLatestLedgerSequence()")
 	}
@@ -94,6 +103,12 @@ func readLedgerEntries(path string) ([]xdr.LedgerEntry, error) {
 }
 
 func (r *LedgerBackend) PrepareRange(ctx context.Context, ledgerRange ledgerbackend.Range) error {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
+	if r.done {
+		return ErrLoadTestDone
+	}
 	if r.nextLedgerSeq != 0 {
 		if r.isPrepared(ledgerRange) {
 			return nil
@@ -282,6 +297,9 @@ func validateNetworkPassphrase(networkPassphrase string, ledger xdr.LedgerCloseM
 }
 
 func (r *LedgerBackend) IsPrepared(ctx context.Context, ledgerRange ledgerbackend.Range) (bool, error) {
+	r.lock.RLock()
+	defer r.lock.RUnlock()
+
 	return r.isPrepared(ledgerRange), nil
 }
 
@@ -302,6 +320,15 @@ func (r *LedgerBackend) isPrepared(ledgerRange ledgerbackend.Range) bool {
 }
 
 func (r *LedgerBackend) GetLedger(ctx context.Context, sequence uint32) (xdr.LedgerCloseMeta, error) {
+	r.lock.RLock()
+	closeLedgerBackend := false
+	defer func() {
+		r.lock.RUnlock()
+		if closeLedgerBackend {
+			r.Close()
+		}
+	}()
+
 	if r.nextLedgerSeq == 0 {
 		return xdr.LedgerCloseMeta{}, fmt.Errorf("PrepareRange() must be called before GetLedger()")
 	}
@@ -311,6 +338,13 @@ func (r *LedgerBackend) GetLedger(ctx context.Context, sequence uint32) (xdr.Led
 			sequence,
 			r.cachedLedger.LedgerSequence(),
 		)
+	}
+	if r.done {
+		return xdr.LedgerCloseMeta{}, ErrLoadTestDone
+	}
+	if sequence > r.latestLedgerSeq {
+		closeLedgerBackend = true
+		return xdr.LedgerCloseMeta{}, ErrLoadTestDone
 	}
 	for ; r.nextLedgerSeq <= sequence; r.nextLedgerSeq++ {
 		var ledger xdr.LedgerCloseMeta
@@ -339,6 +373,10 @@ func (r *LedgerBackend) GetLedger(ctx context.Context, sequence uint32) (xdr.Led
 }
 
 func (r *LedgerBackend) Close() error {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
+	r.done = true
 	if err := r.config.LedgerBackend.Close(); err != nil {
 		return fmt.Errorf("could not close real ledger backend: %w", err)
 	}
@@ -347,9 +385,13 @@ func (r *LedgerBackend) Close() error {
 		if err := r.mergedLedgersStream.Close(); err != nil {
 			return fmt.Errorf("could not close merged ledgers xdr stream: %w", err)
 		}
+		r.mergedLedgersStream = nil
+	}
+	if r.mergedLedgersFilePath != "" {
 		if err := os.Remove(r.mergedLedgersFilePath); err != nil {
 			return fmt.Errorf("could not remove merged ledgers file: %w", err)
 		}
+		r.mergedLedgersFilePath = ""
 	}
 	return nil
 }

@@ -4,6 +4,7 @@ package ingest
 
 import (
 	"context"
+	"database/sql"
 	"testing"
 
 	"github.com/stretchr/testify/mock"
@@ -40,6 +41,7 @@ func (s *ResumeTestTestSuite) SetupTest() {
 	s.system = &system{
 		ctx:                          s.ctx,
 		historyQ:                     s.historyQ,
+		loadTestSnapshot:             &loadTestSnapshot{HistoryQ: s.historyQ},
 		historyAdapter:               s.historyAdapter,
 		runner:                       s.runner,
 		ledgerBackend:                s.ledgerBackend,
@@ -50,6 +52,8 @@ func (s *ResumeTestTestSuite) SetupTest() {
 	s.system.initMetrics()
 
 	s.historyQ.On("Rollback").Return(nil).Once()
+	s.historyQ.On("GetLoadTestRestoreState", s.ctx).
+		Return("", uint32(0), sql.ErrNoRows).Maybe()
 
 	s.ledgerBackend.On("IsPrepared", s.ctx, ledgerbackend.UnboundedRange(101)).Return(false, nil).Once()
 	s.ledgerBackend.On("PrepareRange", s.ctx, ledgerbackend.UnboundedRange(101)).Return(nil).Once()

@@ -63,15 +63,13 @@ func TestEnvironmentPreserved(t *testing.T) {
 
 	err = test.StartHorizon(true)
 	assert.NoError(t, err)
+	assert.Equal(t,
+		integration.StellarCoreURL,
+		test.HorizonIngest().Config().StellarCoreURL,
+	)
+	assert.Equal(t, "original value", os.Getenv("STELLAR_CORE_URL"))
+
 	test.WaitForHorizonIngest()
-
-	envValue := os.Getenv("STELLAR_CORE_URL")
-	assert.Equal(t, integration.StellarCoreURL, envValue)
-
-	test.Shutdown()
-
-	envValue = os.Getenv("STELLAR_CORE_URL")
-	assert.Equal(t, "original value", envValue)
 }
 
 // TestInvalidNetworkParameters Ensure that Horizon returns an error when

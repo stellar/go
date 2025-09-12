@@ -311,6 +311,9 @@ type IngestionQ interface {
 	TryReaperLock(context.Context) (bool, error)
 	TryLookupTableReaperLock(ctx context.Context) (bool, error)
 	ElderLedger(context.Context, interface{}) error
+	GetLoadTestRestoreState(ctx context.Context) (string, uint32, error)
+	SetLoadTestRestoreState(ctx context.Context, runID string, restoreLedger uint32) error
+	ClearLoadTestRestoreState(ctx context.Context) error
 }
 
 // QAccounts defines account related queries.

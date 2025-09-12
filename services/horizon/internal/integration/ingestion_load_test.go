@@ -2,7 +2,10 @@ package integration
 
 import (
 	"context"
+	"database/sql"
+	"encoding/hex"
 	"fmt"
+	"io"
 	"path/filepath"
 	"testing"
 	"time"
@@ -12,7 +15,11 @@ import (
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/ingest/loadtest"
+	horizoncmd "github.com/stellar/go/services/horizon/cmd"
+	"github.com/stellar/go/services/horizon/internal/db2/history"
+	horizoningest "github.com/stellar/go/services/horizon/internal/ingest"
 	"github.com/stellar/go/services/horizon/internal/test/integration"
+	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stellar/go/xdr"
 )
@@ -156,9 +163,7 @@ func TestLoadTestLedgerBackend(t *testing.T) {
 	require.False(t, prepared)
 
 	_, err = loadTestBackend.GetLedger(context.Background(), endLedger+1)
-	require.EqualError(t, err,
-		fmt.Sprintf("sequence number %v is greater than the latest ledger available", endLedger+1),
-	)
+	require.ErrorIs(t, err, loadtest.ErrLoadTestDone)
 
 	require.NoError(t, loadTestBackend.Close())
 
@@ -191,6 +196,253 @@ func TestLoadTestLedgerBackend(t *testing.T) {
 		// extractChanges(merge(dst, src)) == concat(extractChanges(dst), extractChanges(src))
 		requireChangesAreEqual(t, expectedChanges, changes)
 	}
+}
+
+func TestIngestLoadTestCmd(t *testing.T) {
+	if integration.GetCoreMaxSupportedProtocol() < 22 {
+		t.Skip("This test run does not support less than Protocol 22")
+	}
+	itest := integration.NewTest(t, integration.Config{
+		NetworkPassphrase: loadTestNetworkPassphrase,
+	})
+
+	ledgersFilePath := filepath.Join("testdata", fmt.Sprintf("load-test-ledgers-v%d.xdr.zstd", itest.Config().ProtocolVersion))
+	ledgerEntriesFilePath := filepath.Join("testdata", fmt.Sprintf("load-test-accounts-v%d.xdr.zstd", itest.Config().ProtocolVersion))
+	var generatedLedgers []xdr.LedgerCloseMeta
+	var generatedLedgerEntries []xdr.LedgerEntry
+
+	readFile(t, ledgersFilePath,
+		func() *xdr.LedgerCloseMeta { return &xdr.LedgerCloseMeta{} },
+		func(ledger *xdr.LedgerCloseMeta) {
+			generatedLedgers = append(generatedLedgers, *ledger)
+		},
+	)
+	readFile(t, ledgerEntriesFilePath,
+		func() *xdr.LedgerEntry { return &xdr.LedgerEntry{} },
+		func(ledgerEntry *xdr.LedgerEntry) {
+			generatedLedgerEntries = append(generatedLedgerEntries, *ledgerEntry)
+		},
+	)
+
+	session := &db.Session{DB: itest.GetTestDB().Open()}
+	t.Cleanup(func() { session.Close() })
+	q := &history.Q{session}
+
+	var oldestLedger uint32
+	require.NoError(itest.CurrentTest(), q.ElderLedger(context.Background(), &oldestLedger))
+
+	horizoncmd.RootCmd.SetArgs([]string{
+		"ingest", "load-test",
+		"--db-url=" + itest.GetTestDB().DSN,
+		"--stellar-core-binary-path=" + itest.CoreBinaryPath(),
+		"--captive-core-config-path=" + itest.WriteCaptiveCoreConfig(),
+		"--captive-core-storage-path=" + t.TempDir(),
+		"--captive-core-http-port=0",
+		"--network-passphrase=" + itest.Config().NetworkPassphrase,
+		"--history-archive-urls=" + integration.HistoryArchiveUrl,
+		"--fixtures-path=" + ledgerEntriesFilePath,
+		"--ledgers-path=" + ledgersFilePath,
+		"--close-duration=0.1",
+		"--skip-txmeta=false",
+	})
+	var restoreLedger uint32
+	var runID string
+	var err error
+	originalRestore := horizoningest.RestoreSnapshot
+	t.Cleanup(func() { horizoningest.RestoreSnapshot = originalRestore })
+	// the loadtest will ingest 1 ledger to install the ledger entry fixtures
+	// then it will ingest all the synthetic ledgers for a total of: len(generatedLedgers)+1
+	numSyntheticLedgers := len(generatedLedgers) + 1
+	horizoningest.RestoreSnapshot = func(ctx context.Context, historyQ history.IngestionQ) error {
+		runID, restoreLedger, err = q.GetLoadTestRestoreState(ctx)
+		require.NoError(t, err)
+		require.NotEmpty(t, runID)
+		expectedCurrentLedger := restoreLedger + uint32(numSyntheticLedgers)
+		var curLedger, curHistoryLedger uint32
+		curLedger, err = q.GetLastLedgerIngestNonBlocking(context.Background())
+		require.NoError(t, err)
+		require.Equal(t, expectedCurrentLedger, curLedger)
+		curHistoryLedger, err = q.GetLatestHistoryLedger(context.Background())
+		require.NoError(t, err)
+		require.Equal(t, curLedger, curHistoryLedger)
+
+		sequence := int(restoreLedger) + 2
+		for _, ledger := range generatedLedgers {
+			checkLedgerIngested(itest, q, ledger, sequence)
+			sequence++
+		}
+
+		require.NoError(t, originalRestore(ctx, historyQ))
+
+		curHistoryLedger, err = q.GetLatestHistoryLedger(context.Background())
+		require.NoError(t, err)
+		require.Equal(t, restoreLedger, curHistoryLedger)
+		var version int
+		version, err = q.GetIngestVersion(ctx)
+		require.NoError(t, err)
+		require.Zero(t, version)
+		return nil
+	}
+	require.NoError(t, horizoncmd.RootCmd.Execute())
+
+	_, _, err = q.GetLoadTestRestoreState(context.Background())
+	require.ErrorIs(t, err, sql.ErrNoRows)
+
+	// check that all ledgers ingested are correct (including ledgers beyond
+	// what was ingested during the load test)
+	endLedger := restoreLedger + uint32(numSyntheticLedgers+2)
+	require.Eventually(t, func() bool {
+		var latestLedger, latestHistoryLedger uint32
+		latestLedger, err = q.GetLastLedgerIngestNonBlocking(context.Background())
+		require.NoError(t, err)
+		latestHistoryLedger, err = q.GetLatestHistoryLedger(context.Background())
+		require.NoError(t, err)
+		return latestLedger >= endLedger && latestHistoryLedger >= endLedger
+	}, time.Minute*5, time.Second)
+
+	realLedgers := getLedgers(itest, oldestLedger, endLedger)
+	for _, ledger := range realLedgers {
+		checkLedgerIngested(itest, q, ledger, int(ledger.LedgerSequence()))
+	}
+
+	// restoring is a no-op if there is no load test which is active
+	horizoningest.RestoreSnapshot = originalRestore
+	horizoncmd.RootCmd.SetArgs([]string{
+		"ingest", "load-test-restore",
+		"--db-url=" + itest.GetTestDB().DSN,
+	})
+	require.NoError(t, horizoncmd.RootCmd.Execute())
+
+	_, _, err = q.GetLoadTestRestoreState(context.Background())
+	require.ErrorIs(t, err, sql.ErrNoRows)
+
+	var version int
+	version, err = q.GetIngestVersion(context.Background())
+	require.NoError(t, err)
+	require.Positive(t, version)
+
+	for _, ledger := range realLedgers {
+		checkLedgerIngested(itest, q, ledger, int(ledger.LedgerSequence()))
+	}
+}
+
+func TestIngestLoadTestRestoreCmd(t *testing.T) {
+	if integration.GetCoreMaxSupportedProtocol() < 22 {
+		t.Skip("This test run does not support less than Protocol 22")
+	}
+	itest := integration.NewTest(t, integration.Config{
+		NetworkPassphrase: loadTestNetworkPassphrase,
+	})
+
+	ledgersFilePath := filepath.Join("testdata", fmt.Sprintf("load-test-ledgers-v%d.xdr.zstd", itest.Config().ProtocolVersion))
+	ledgerEntriesFilePath := filepath.Join("testdata", fmt.Sprintf("load-test-accounts-v%d.xdr.zstd", itest.Config().ProtocolVersion))
+	var generatedLedgers []xdr.LedgerCloseMeta
+	var generatedLedgerEntries []xdr.LedgerEntry
+
+	readFile(t, ledgersFilePath,
+		func() *xdr.LedgerCloseMeta { return &xdr.LedgerCloseMeta{} },
+		func(ledger *xdr.LedgerCloseMeta) {
+			generatedLedgers = append(generatedLedgers, *ledger)
+		},
+	)
+	readFile(t, ledgerEntriesFilePath,
+		func() *xdr.LedgerEntry { return &xdr.LedgerEntry{} },
+		func(ledgerEntry *xdr.LedgerEntry) {
+			generatedLedgerEntries = append(generatedLedgerEntries, *ledgerEntry)
+		},
+	)
+
+	session := &db.Session{DB: itest.GetTestDB().Open()}
+	t.Cleanup(func() { session.Close() })
+	q := &history.Q{session}
+
+	var oldestLedger uint32
+	require.NoError(itest.CurrentTest(), q.ElderLedger(context.Background(), &oldestLedger))
+	itest.StopHorizon()
+
+	horizoncmd.RootCmd.SetArgs([]string{
+		"ingest", "load-test",
+		"--db-url=" + itest.GetTestDB().DSN,
+		"--stellar-core-binary-path=" + itest.CoreBinaryPath(),
+		"--captive-core-config-path=" + itest.WriteCaptiveCoreConfig(),
+		"--captive-core-storage-path=" + t.TempDir(),
+		"--captive-core-http-port=0",
+		"--network-passphrase=" + itest.Config().NetworkPassphrase,
+		"--history-archive-urls=" + integration.HistoryArchiveUrl,
+		"--fixtures-path=" + ledgerEntriesFilePath,
+		"--ledgers-path=" + ledgersFilePath,
+		"--close-duration=0.1",
+		"--skip-txmeta=false",
+	})
+	var restoreLedger uint32
+	var runID string
+	var err error
+	originalRestore := horizoningest.RestoreSnapshot
+	t.Cleanup(func() { horizoningest.RestoreSnapshot = originalRestore })
+	// the loadtest will ingest 1 ledger to install the ledger entry fixtures
+	// then it will ingest all the synthetic ledgers for a total of: len(generatedLedgers)+1
+	numSyntheticLedgers := len(generatedLedgers) + 1
+	horizoningest.RestoreSnapshot = func(ctx context.Context, historyQ history.IngestionQ) error {
+		return fmt.Errorf("transient error")
+	}
+	require.ErrorContains(t, horizoncmd.RootCmd.Execute(), "transient error")
+
+	runID, restoreLedger, err = q.GetLoadTestRestoreState(context.Background())
+	require.NoError(t, err)
+	require.NotEmpty(t, runID)
+	expectedCurrentLedger := restoreLedger + uint32(numSyntheticLedgers)
+	var curLedger, curHistoryLedger uint32
+	curLedger, err = q.GetLastLedgerIngestNonBlocking(context.Background())
+	require.NoError(t, err)
+	require.Equal(t, expectedCurrentLedger, curLedger)
+	curHistoryLedger, err = q.GetLatestHistoryLedger(context.Background())
+	require.NoError(t, err)
+	require.Equal(t, curLedger, curHistoryLedger)
+
+	horizoningest.RestoreSnapshot = originalRestore
+	horizoncmd.RootCmd.SetArgs([]string{
+		"ingest", "load-test-restore",
+		"--db-url=" + itest.GetTestDB().DSN,
+	})
+	require.NoError(t, horizoncmd.RootCmd.Execute())
+
+	_, _, err = q.GetLoadTestRestoreState(context.Background())
+	require.ErrorIs(t, err, sql.ErrNoRows)
+
+	curHistoryLedger, err = q.GetLatestHistoryLedger(context.Background())
+	require.NoError(t, err)
+	require.Equal(t, restoreLedger, curHistoryLedger)
+	var version int
+	version, err = q.GetIngestVersion(context.Background())
+	require.NoError(t, err)
+	require.Zero(t, version)
+}
+
+func checkLedgerIngested(itest *integration.Test, historyQ *history.Q, ledger xdr.LedgerCloseMeta, sequence int) {
+	txReader, err := ingest.NewLedgerTransactionReaderFromLedgerCloseMeta(itest.Config().NetworkPassphrase, ledger)
+	require.NoError(itest.CurrentTest(), err)
+	txCount := 0
+	for {
+		var tx ingest.LedgerTransaction
+		tx, err = txReader.Read()
+		if err == io.EOF {
+			break
+		}
+		require.NoError(itest.CurrentTest(), err)
+		txCount++
+
+		var ingestedTx history.Transaction
+		err = historyQ.TransactionByHash(context.Background(), &ingestedTx, hex.EncodeToString(tx.Hash[:]))
+		require.NoError(itest.CurrentTest(), err)
+		var expectedEnvelope string
+		expectedEnvelope, err = xdr.MarshalBase64(tx.Envelope)
+		require.NoError(itest.CurrentTest(), err)
+		require.Equal(itest.CurrentTest(), expectedEnvelope, ingestedTx.TxEnvelope)
+	}
+	var ingestedLedger history.Ledger
+	err = historyQ.LedgerBySequence(context.Background(), &ingestedLedger, int32(sequence))
+	require.NoError(itest.CurrentTest(), err)
+	require.Equal(itest.CurrentTest(), txCount, int(ingestedLedger.TransactionCount))
 }
 
 func newCaptiveCore(itest *integration.Test) *ledgerbackend.CaptiveStellarCore {
