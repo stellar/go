@@ -3,6 +3,9 @@
 All notable changes to this project will be documented in this
 file. This project adheres to [Semantic Versioning](http://semver.org/).
 
+### Added
+- moved ingest/verify to be internally located at services/horizon/internal/ingest package. [5670](https://github.com/stellar/go/issues/5670)
+
 ## 23.0.0
 
 **This release adds support for Protocol 23**

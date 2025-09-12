@@ -75,8 +75,8 @@ func TestCheckVerifyStateVersion(t *testing.T) {
 	assert.Equal(
 		t,
 		CurrentVersion,
-		stateVerifierExpectedIngestionVersion,
-		"State verifier is outdated, update it, then update stateVerifierExpectedIngestionVersion value",
+		StateVerifierExpectedIngestionVersion,
+		"State verifier is outdated, update it, then update StateVerifierExpectedIngestionVersion value",
 	)
 }
 

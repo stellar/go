@@ -10,6 +10,7 @@ All notable changes to this project will be documented in this file. This projec
   - `DefaultBufferedStorageBackendConfig`
   - `PublisherConfig` 
   These are now relocated to `ingest` package. Will need to change references in existing code.
+* Moved the `ingest/verify` package to be internally located at `services/horizon/internal/ingest` package in `verify.go` for overall go repo restructuring. [5670](https://github.com/stellar/go/issues/5670)  
 
 
 ## v23.0.0

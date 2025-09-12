@@ -4,15 +4,17 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
+	"encoding/base64"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"time"
 
 	"github.com/guregu/null"
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/stellar/go/ingest"
-	"github.com/stellar/go/ingest/verify"
+	ingestsdk "github.com/stellar/go/ingest"
+
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/ingest/processors"
@@ -21,16 +23,229 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-const verifyBatchSize = 50000
 const assetStatsBatchSize = 500
+const verifyBatchSize = 50000
 
-// stateVerifierExpectedIngestionVersion defines a version of ingestion system
+// TransformLedgerEntryFunction is a function that transforms ledger entry
+// into a form that should be compared to checkpoint state. It can be also used
+// to decide if the given entry should be ignored during verification.
+// Sometimes the application needs only specific type entries or specific fields
+// for a given entry type. Use this function to create a common form of an entry
+// that will be used for equality check.
+type TransformLedgerEntryFunction func(xdr.LedgerEntry) (ignore bool, newEntry xdr.LedgerEntry)
+
+// StateVerifier verifies if ledger entries provided by Add method are the same
+// as in the checkpoint ledger entries provided by CheckpointChangeReader.
+// The algorithm works in the following way:
+//  0. Develop `transformFunction`. It should remove all fields and objects not
+//     stored in your app. For example, if you only store accounts, all other
+//     ledger entry types should be ignored (return ignore = true).
+//  1. In a loop, get entries from history archive by calling GetEntries()
+//     and Write() your version of entries found in the batch (in any order).
+//  2. When GetEntries() return no more entries, call Verify with a number of
+//     entries in your storage (to find if some extra entires exist in your
+//     storage).
+//
+// Functions will return StateError type if state is found to be incorrect.
+// It's user responsibility to call `stateReader.Close()` when reading is done.
+// Check Horizon for an example how to use this tool.
+type StateVerifier struct {
+	stateReader ingestsdk.ChangeReader
+	// transformFunction transforms (or ignores) ledger entries streamed from
+	// checkpoint buckets to match the form added by `Write`. Read
+	// TransformLedgerEntryFunction godoc for more information.
+	transformFunction TransformLedgerEntryFunction
+
+	readEntries int
+	readingDone bool
+
+	currentEntries map[string]xdr.LedgerEntry
+	encodingBuffer *xdr.EncodingBuffer
+}
+
+// StateVerifierExpectedIngestionVersion defines a version of ingestion system
 // required by state verifier. This is done to prevent situations where
 // ingestion has been updated with new features but state verifier does not
 // check them.
 // There is a test that checks it, to fix it: update the actual `verifyState`
 // method instead of just updating this value!
-const stateVerifierExpectedIngestionVersion = 20
+const StateVerifierExpectedIngestionVersion = 20
+
+func NewStateVerifier(stateReader ingestsdk.ChangeReader, tf TransformLedgerEntryFunction) *StateVerifier {
+	return &StateVerifier{
+		stateReader:       stateReader,
+		transformFunction: tf,
+		encodingBuffer:    xdr.NewEncodingBuffer(),
+	}
+}
+
+// GetLedgerEntries returns up to `count` ledger entries from history buckets
+// and stores the entries in cache to compare in Write.
+func (v *StateVerifier) GetLedgerEntries(count int) ([]xdr.LedgerEntry, error) {
+	err := v.checkUnreadEntries()
+	if err != nil {
+		return nil, err
+	}
+
+	entries := make([]xdr.LedgerEntry, 0, count)
+	v.currentEntries = make(map[string]xdr.LedgerEntry, count)
+
+	for count > 0 {
+		entryChange, err := v.stateReader.Read()
+		if err != nil {
+			if err == io.EOF {
+				v.readingDone = true
+				return entries, nil
+			}
+			return entries, err
+		}
+
+		entry := *entryChange.Post
+
+		if v.transformFunction != nil {
+			ignore, _ := v.transformFunction(entry)
+			if ignore {
+				continue
+			}
+		}
+
+		ledgerKey, err := entry.LedgerKey()
+		if err != nil {
+			return entries, errors.Wrap(err, "Error marshaling ledgerKey")
+		}
+		key, err := v.encodingBuffer.MarshalBinary(ledgerKey)
+		if err != nil {
+			return entries, errors.Wrap(err, "Error marshaling ledgerKey")
+		}
+
+		entry.Normalize()
+		entries = append(entries, entry)
+		v.currentEntries[string(key)] = entry
+
+		count--
+		v.readEntries++
+	}
+
+	return entries, nil
+}
+
+// Write compares the entry with entries in the latest batch of entries fetched
+// using `GetEntries`. Entries don't need to follow the order in entries returned
+// by `GetEntries`.
+// Warning: Write will call Normalize() on `entry` that can modify it!
+// Any `StateError` returned by this method indicates invalid state!
+func (v *StateVerifier) Write(entry xdr.LedgerEntry) error {
+	actualEntry := entry.Normalize()
+	actualEntryMarshaled, err := v.encodingBuffer.MarshalBinary(actualEntry)
+	if err != nil {
+		return errors.Wrap(err, "Error marshaling actualEntry")
+	}
+
+	// safe, since we convert to string right away (causing a copy)
+	key, err := actualEntry.LedgerKey()
+	if err != nil {
+		return errors.Wrap(err, "Error marshaling ledgerKey")
+	}
+	keyBinary, err := v.encodingBuffer.UnsafeMarshalBinary(key)
+	if err != nil {
+		return errors.Wrap(err, "Error marshaling ledgerKey")
+	}
+	keyString := string(keyBinary)
+	expectedEntry, exist := v.currentEntries[keyString]
+	if !exist {
+		return ingestsdk.NewStateError(errors.Errorf(
+			"Cannot find entry in currentEntries map: %s (key = %s)",
+			base64.StdEncoding.EncodeToString(actualEntryMarshaled),
+			base64.StdEncoding.EncodeToString(keyBinary),
+		))
+	}
+	delete(v.currentEntries, keyString)
+
+	preTransformExpectedEntry := expectedEntry
+	preTransformExpectedEntryMarshaled, err := v.encodingBuffer.MarshalBinary(&preTransformExpectedEntry)
+	if err != nil {
+		return errors.Wrap(err, "Error marshaling preTransformExpectedEntry")
+	}
+
+	if v.transformFunction != nil {
+		var ignore bool
+		ignore, expectedEntry = v.transformFunction(expectedEntry)
+		// Extra check: if entry was ignored in GetEntries, it shouldn't be
+		// ignored here.
+		if ignore {
+			return errors.Errorf(
+				"Entry ignored in GetEntries but not ignored in Write: %s. Possibly transformFunction is buggy.",
+				base64.StdEncoding.EncodeToString(preTransformExpectedEntryMarshaled),
+			)
+		}
+	}
+
+	expectedEntryMarshaled, err := v.encodingBuffer.MarshalBinary(&expectedEntry)
+	if err != nil {
+		return errors.Wrap(err, "Error marshaling expectedEntry")
+	}
+
+	if !bytes.Equal(actualEntryMarshaled, expectedEntryMarshaled) {
+		return ingestsdk.NewStateError(errors.Errorf(
+			"Entry does not match the fetched entry. Expected (history archive): %s (pretransform = %s), actual (horizon): %s",
+			base64.StdEncoding.EncodeToString(expectedEntryMarshaled),
+			base64.StdEncoding.EncodeToString(preTransformExpectedEntryMarshaled),
+			base64.StdEncoding.EncodeToString(actualEntryMarshaled),
+		))
+	}
+
+	return nil
+}
+
+// Verify should be run after all GetEntries/Write calls. If there were no errors
+// so far it means that all entries present in history buckets matches the entries
+// in application storage. However, it's still possible that state is invalid when:
+//   - Not all entries have been read from history buckets (ex. due to a bug).
+//   - Some entries were not compared using Write.
+//   - There are some extra entries in application storage not present in history
+//     buckets.
+//
+// Any `StateError` returned by this method indicates invalid state!
+func (v *StateVerifier) Verify(countAll int) error {
+	err := v.checkUnreadEntries()
+	if err != nil {
+		return err
+	}
+
+	if !v.readingDone {
+		return errors.New("There are unread entries in state reader. Process all entries before calling Verify.")
+	}
+
+	if v.readEntries != countAll {
+		return ingestsdk.NewStateError(errors.Errorf(
+			"Number of entries read using GetEntries (%d) does not match number of entries in your storage (%d).",
+			v.readEntries,
+			countAll,
+		))
+	}
+
+	return nil
+}
+
+func (v *StateVerifier) checkUnreadEntries() error {
+	if len(v.currentEntries) > 0 {
+		var entry xdr.LedgerEntry
+		for _, e := range v.currentEntries {
+			entry = e
+			break
+		}
+
+		// Ignore error as StateError below is more important
+		entryString, _ := v.encodingBuffer.MarshalBase64(&entry)
+		return ingestsdk.NewStateError(errors.Errorf(
+			"Entries (%d) not found locally, example: %s",
+			len(v.currentEntries),
+			entryString,
+		))
+	}
+
+	return nil
+}
 
 // verifyState is called as a go routine from pipeline post hook every 64
 // ledgers. It checks if the state is correct. If another go routine is already
@@ -52,10 +267,10 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool, checkpointSeque
 
 	updateMetrics := false
 
-	if stateVerifierExpectedIngestionVersion != CurrentVersion {
+	if StateVerifierExpectedIngestionVersion != CurrentVersion {
 		log.Errorf(
 			"State verification expected version is %d but actual is: %d",
-			stateVerifierExpectedIngestionVersion,
+			StateVerifierExpectedIngestionVersion,
 			CurrentVersion,
 		)
 		return nil
@@ -175,10 +390,10 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool, checkpointSeque
 	}
 	defer stateReader.Close()
 	if err = stateReader.VerifyBucketList(expectedBucketListHash); err != nil {
-		return ingest.NewStateError(err)
+		return ingestsdk.NewStateError(err)
 	}
 
-	verifier := verify.NewStateVerifier(stateReader, func(entry xdr.LedgerEntry) (bool, xdr.LedgerEntry) {
+	verifier := NewStateVerifier(stateReader, func(entry xdr.LedgerEntry) (bool, xdr.LedgerEntry) {
 		entryType := entry.Data.Type
 		// Won't be persisting protocol 20 ContractData ledger entries (except for Stellar Asset Contract
 		// ledger entries) to the history db, therefore must not allow it
@@ -307,7 +522,7 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool, checkpointSeque
 	)
 	for i := range contractDataEntries {
 		entry := contractDataEntries[i]
-		if err = contractAssetStatSet.AddContractData(ingest.Change{
+		if err = contractAssetStatSet.AddContractData(ingestsdk.Change{
 			Type: xdr.LedgerEntryTypeContractData,
 			Post: &entry,
 		}); err != nil {
@@ -393,7 +608,7 @@ func checkAssetStats(
 			key := assetStat.AssetCode + ":" + assetStat.AssetIssuer
 			fromSet, ok := all[key]
 			if !ok {
-				return ingest.NewStateError(
+				return ingestsdk.NewStateError(
 					fmt.Errorf(
 						"db contains asset stat with code %s issuer %s which is missing from HAS",
 						assetStat.AssetCode, assetStat.AssetIssuer,
@@ -403,7 +618,7 @@ func checkAssetStats(
 			delete(all, key)
 
 			if !fromSet.Equals(assetStat) {
-				return ingest.NewStateError(
+				return ingestsdk.NewStateError(
 					fmt.Errorf(
 						"db asset stat with code %s issuer %s does not match asset stat from HAS: expected=%v actual=%v",
 						assetStat.AssetCode, assetStat.AssetIssuer, fromSet, assetStat,
@@ -416,7 +631,7 @@ func checkAssetStats(
 	}
 
 	if len(all) > 0 {
-		return ingest.NewStateError(
+		return ingestsdk.NewStateError(
 			fmt.Errorf(
 				"HAS contains %d more asset stats than db",
 				len(all),
@@ -540,7 +755,7 @@ func checkContractBalances(
 			expected := byKey[key]
 
 			if !bytes.Equal(row.ContractID, expected.ContractID) {
-				return ingest.NewStateError(
+				return ingestsdk.NewStateError(
 					fmt.Errorf(
 						"contract balance %v has contract %v in HAS but is %v in db",
 						key,
@@ -551,7 +766,7 @@ func checkContractBalances(
 			}
 
 			if row.ExpirationLedger != expected.ExpirationLedger {
-				return ingest.NewStateError(
+				return ingestsdk.NewStateError(
 					fmt.Errorf(
 						"contract balance %v has expiration %v in HAS but is %v in db",
 						key,
@@ -562,7 +777,7 @@ func checkContractBalances(
 			}
 
 			if row.Amount != expected.Amount {
-				return ingest.NewStateError(
+				return ingestsdk.NewStateError(
 					fmt.Errorf(
 						"contract balance %v has amount %v in HAS but is %v in db",
 						key,
@@ -578,7 +793,7 @@ func checkContractBalances(
 	return nil
 }
 
-func addAccountsToStateVerifier(ctx context.Context, verifier *verify.StateVerifier, q history.IngestionQ, ids []string) error {
+func addAccountsToStateVerifier(ctx context.Context, verifier *StateVerifier, q history.IngestionQ, ids []string) error {
 	if len(ids) == 0 {
 		return nil
 	}
@@ -624,7 +839,7 @@ func addAccountsToStateVerifier(ctx context.Context, verifier *verify.StateVerif
 
 		// Ensure master weight matches, if not it's a state error!
 		if int32(row.MasterWeight) != masterWeightMap[row.AccountID] {
-			return ingest.NewStateError(
+			return ingestsdk.NewStateError(
 				fmt.Errorf(
 					"Master key weight in account %s does not match (expected=%d, actual=%d)",
 					row.AccountID,
@@ -707,7 +922,7 @@ func addAccountsToStateVerifier(ctx context.Context, verifier *verify.StateVerif
 	return nil
 }
 
-func addDataToStateVerifier(ctx context.Context, verifier *verify.StateVerifier, q history.IngestionQ, lkeys []xdr.LedgerKeyData) error {
+func addDataToStateVerifier(ctx context.Context, verifier *StateVerifier, q history.IngestionQ, lkeys []xdr.LedgerKeyData) error {
 	if len(lkeys) == 0 {
 		return nil
 	}
@@ -747,7 +962,7 @@ func addDataToStateVerifier(ctx context.Context, verifier *verify.StateVerifier,
 
 func addOffersToStateVerifier(
 	ctx context.Context,
-	verifier *verify.StateVerifier,
+	verifier *StateVerifier,
 	q history.IngestionQ,
 	ids []int64,
 ) error {
@@ -796,7 +1011,7 @@ func offerToXDR(row history.Offer) xdr.OfferEntry {
 
 func addTrustLinesToStateVerifier(
 	ctx context.Context,
-	verifier *verify.StateVerifier,
+	verifier *StateVerifier,
 	assetStats processors.AssetStatSet,
 	q history.IngestionQ,
 	keys []xdr.LedgerKeyTrustLine,
@@ -834,11 +1049,11 @@ func addTrustLinesToStateVerifier(
 			return err
 		}
 		if err = assetStats.AddTrustline(
-			ingest.Change{
+			ingestsdk.Change{
 				Post: &entry,
 			},
 		); err != nil {
-			return ingest.NewStateError(
+			return ingestsdk.NewStateError(
 				errors.Wrap(err, "could not add trustline to asset stats"),
 			)
 		}
@@ -898,7 +1113,7 @@ func trustLineToXDR(row history.TrustLine) (xdr.LedgerEntry, error) {
 
 func addClaimableBalanceToStateVerifier(
 	ctx context.Context,
-	verifier *verify.StateVerifier,
+	verifier *StateVerifier,
 	assetStats processors.AssetStatSet,
 	q history.IngestionQ,
 	ids []xdr.ClaimableBalanceId,
@@ -941,7 +1156,7 @@ func addClaimableBalanceToStateVerifier(
 
 		// Check if balances in claimable_balance_claimants table match.
 		if len(claimants) != len(cBalancesClaimants[row.BalanceID]) {
-			return ingest.NewStateError(
+			return ingestsdk.NewStateError(
 				fmt.Errorf(
 					"claimable_balance_claimants length (%d) for claimants doesn't match claimable_balance table (%d)",
 					len(cBalancesClaimants[row.BalanceID]), len(claimants),
@@ -994,11 +1209,11 @@ func addClaimableBalanceToStateVerifier(
 		}
 
 		if err := assetStats.AddClaimableBalance(
-			ingest.Change{
+			ingestsdk.Change{
 				Post: &entry,
 			},
 		); err != nil {
-			return ingest.NewStateError(
+			return ingestsdk.NewStateError(
 				errors.Wrap(err, "could not add claimable balance to asset stats"),
 			)
 		}
@@ -1009,7 +1224,7 @@ func addClaimableBalanceToStateVerifier(
 
 func addLiquidityPoolsToStateVerifier(
 	ctx context.Context,
-	verifier *verify.StateVerifier,
+	verifier *StateVerifier,
 	assetStats processors.AssetStatSet,
 	q history.IngestionQ,
 	ids []xdr.PoolId,
@@ -1045,11 +1260,11 @@ func addLiquidityPoolsToStateVerifier(
 		}
 
 		if err := assetStats.AddLiquidityPool(
-			ingest.Change{
+			ingestsdk.Change{
 				Post: &entry,
 			},
 		); err != nil {
-			return ingest.NewStateError(
+			return ingestsdk.NewStateError(
 				errors.Wrap(err, "could not add claimable balance to asset stats"),
 			)
 		}
