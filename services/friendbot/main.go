@@ -72,7 +72,7 @@ func run(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
-	//Setup and intialize tracer
+	//Setup and initialize tracer
 	stellarTracer := tracer.NewStellarTracer(cfg.OtelEndpoint, serviceName, serviceVersion)
 	tracer, err := stellarTracer.InitializeTracer()
 	if err != nil {
