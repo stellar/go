@@ -23,7 +23,7 @@ import (
 
 const (
 	serviceName    = "stellar-friendbot"
-	serviceVersion = "1.0.0" //TODO: Change version
+	serviceVersion = "1.0.0"
 )
 
 // Config represents the configuration of a friendbot server
