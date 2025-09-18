@@ -59,7 +59,7 @@ func (stellarTracer *StellarTracer) InitializeTracer() (func(), error) {
 	)
 
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to create exporter")
+		return nil, errors.Wrap(err, "Error while creating resource")
 	}
 
 	traceProvider := sdktrace.NewTracerProvider(
