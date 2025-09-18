@@ -96,8 +96,10 @@ func (minion *Minion) Run(ctx context.Context, destAddress string, resultChan ch
 		maybeTransactionSuccess: succ,
 		maybeErr:                errors.Wrapf(err, "submitting tx to minion %x", txHash),
 	}
-	span.SetAttributes(attribute.Bool("minion.tx_success_status", succ.Successful))
-	span.SetStatus(codes.Ok, codes.Ok.String())
+	if succ != nil {
+		span.SetAttributes(attribute.Bool("minion.tx_success_status", succ.Successful))
+		span.SetStatus(codes.Ok, codes.Ok.String())
+	}
 }
 
 // SubmitTransaction should be passed to the Minion.
