@@ -2,6 +2,7 @@ package serve
 
 import (
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -45,14 +46,7 @@ func (h challengeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if homeDomain != "" {
 		// In some cases the full stop (period) character is used at the end of a FQDN.
 		homeDomain = strings.TrimSuffix(homeDomain, ".")
-		matched := false
-		for _, supportedDomain := range h.HomeDomains {
-			if homeDomain == supportedDomain {
-				matched = true
-				break
-			}
-		}
-		if !matched {
+		if !slices.Contains(h.HomeDomains, homeDomain) {
 			badRequest.Render(w)
 			return
 		}
