@@ -6,10 +6,7 @@ import (
 	"sync"
 
 	hProtocol "github.com/stellar/go/protocols/horizon"
-	"go.opentelemetry.io/otel"
 )
-
-var botTracer = otel.Tracer("bot_tracer")
 
 // Bot represents the friendbot subsystem and primarily delegates work
 // to its Minions.

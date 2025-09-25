@@ -40,6 +40,7 @@ type Config struct {
 	SubmitTxRetriesAllowed int         `toml:"submit_tx_retries_allowed" valid:"optional"`
 	UseCloudflareIP        bool        `toml:"use_cloudflare_ip" valid:"optional"`
 	OtelEndpoint           string      `toml:"otel_endpoint" valid:"optional"`
+	OtelEnabled            bool        `toml:"otel_enabled" valid:"optional"`
 }
 
 func main() {
@@ -73,8 +74,7 @@ func run(cmd *cobra.Command, args []string) {
 	}
 
 	//Setup and initialize tracer
-	stellarTracer := tracer.NewStellarTracer(cfg.OtelEndpoint, serviceName, serviceVersion)
-	tracer, err := stellarTracer.InitializeTracer()
+	tracer, err := tracer.InitializeTracer(cfg.OtelEnabled, cfg.OtelEndpoint, serviceName, serviceVersion)
 	if err != nil {
 		log.Error("Failed to initialize tracer:", err)
 	}

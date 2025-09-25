@@ -10,6 +10,7 @@ import (
 	hProtocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/txnbuild"
+	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 )
@@ -19,6 +20,8 @@ const createAccountAlreadyExistXDR = "AAAAAAAAAGT/////AAAAAQAAAAAAAAAA/////AAAAA
 var ErrAccountExists error = errors.New(fmt.Sprintf("createAccountAlreadyExist (%s)", createAccountAlreadyExistXDR))
 
 var ErrAccountFunded error = errors.New("account already funded to starting balance")
+
+var botTracer = otel.Tracer("bot_tracer")
 
 // Minion contains a Stellar channel account and Go channels to communicate with friendbot.
 type Minion struct {
@@ -63,9 +66,9 @@ func (minion *Minion) Run(ctx context.Context, destAddress string, resultChan ch
 		return
 	}
 	if exists {
-		span.AddEvent("Minion account exists")
-		span.SetAttributes(attribute.String("minion.account_exists", minion.Account.AccountID),
-			attribute.String("minion.account_balance", balance))
+		span.AddEvent("Destination account exists")
+		span.SetAttributes(attribute.String("destination.account_address", destAddress),
+			attribute.String("destination.account_balance", balance))
 	}
 	err = minion.checkBalance(balance)
 	if err != nil {

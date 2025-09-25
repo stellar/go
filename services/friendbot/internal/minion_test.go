@@ -17,7 +17,7 @@ import (
 // in which Minion.Run() will try to send multiple messages to a channel that gets closed
 // immediately after receiving one message.
 func TestMinion_NoChannelErrors(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	mockSubmitTransaction := func(ctx context.Context, minion *Minion, hclient horizonclient.ClientInterface, tx string) (txn *hProtocol.Transaction, err error) {
 		return txn, nil
 	}
@@ -80,7 +80,7 @@ func TestMinion_NoChannelErrors(t *testing.T) {
 }
 
 func TestMinion_CorrectNumberOfTxSubmissions(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	var (
 		numTxSubmits int

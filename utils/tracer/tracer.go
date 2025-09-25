@@ -14,25 +14,21 @@ import (
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
+	"go.opentelemetry.io/otel/trace/noop"
 )
 
-type StellarTracer struct {
-	OtelEndpoint   string
-	ServiceName    string
-	ServiceVersion string
-}
+// InitializeTracer sets up traceProvider and returns a function to shutdown traceprovider
+func InitializeTracer(enabled bool, OtelEndpoint, ServiceName, ServiceVersion string) (func(), error) {
+	if !enabled {
+		log.Info("Tracing disabled - using no-op tracer")
+		// Set no-op tracer provider
+		otel.SetTracerProvider(noop.NewTracerProvider())
+		otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator())
 
-// NewStellarTracer returns updated stellar tracer object with service and endpoint details
-func NewStellarTracer(OtelEndpoint, ServiceName, ServiceVersion string) *StellarTracer {
-	return &StellarTracer{
-		OtelEndpoint:   OtelEndpoint,
-		ServiceName:    ServiceName,
-		ServiceVersion: ServiceVersion,
+		// Return a no-op shutdown function
+		return func() {}, nil
 	}
-}
 
-// InitializeTracer sets up traceProvider and returns a function to handle traceprovider
-func (stellarTracer *StellarTracer) InitializeTracer() (func(), error) {
 	log.Infof("Initializing tracer")
 	headers := map[string]string{
 		"content-type": "application/json",
@@ -41,7 +37,7 @@ func (stellarTracer *StellarTracer) InitializeTracer() (func(), error) {
 	exporter, err := otlptrace.New(
 		context.Background(),
 		otlptracehttp.NewClient(
-			otlptracehttp.WithEndpoint(stellarTracer.OtelEndpoint),
+			otlptracehttp.WithEndpoint(OtelEndpoint),
 			otlptracehttp.WithHeaders(headers),
 			otlptracehttp.WithInsecure(),
 		),
@@ -53,8 +49,8 @@ func (stellarTracer *StellarTracer) InitializeTracer() (func(), error) {
 	res, err := resource.New(
 		context.Background(),
 		resource.WithAttributes(
-			semconv.ServiceName(stellarTracer.ServiceName),
-			semconv.ServiceVersion(stellarTracer.ServiceVersion),
+			semconv.ServiceName(ServiceName),
+			semconv.ServiceVersion(ServiceVersion),
 		),
 	)
 

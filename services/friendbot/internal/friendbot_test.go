@@ -14,7 +14,7 @@ import (
 )
 
 func TestFriendbot_Pay_accountDoesNotExist(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	mockSubmitTransaction := func(ctx context.Context, minion *Minion, hclient horizonclient.ClientInterface, tx string) (*hProtocol.Transaction, error) {
 		// Instead of submitting the tx, we emulate a success.
 		txSuccess := hProtocol.Transaction{EnvelopeXdr: tx, Successful: true}
@@ -82,7 +82,7 @@ func TestFriendbot_Pay_accountDoesNotExist(t *testing.T) {
 }
 
 func TestFriendbot_Pay_accountExists(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	mockSubmitTransaction := func(ctx context.Context, minion *Minion, hclient horizonclient.ClientInterface, tx string) (*hProtocol.Transaction, error) {
 		// Instead of submitting the tx, we emulate a success.
 		txSuccess := hProtocol.Transaction{EnvelopeXdr: tx, Successful: true}
@@ -150,7 +150,7 @@ func TestFriendbot_Pay_accountExists(t *testing.T) {
 }
 
 func TestFriendbot_Pay_accountExistsAlreadyFunded(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	mockSubmitTransaction := func(ctx context.Context, minion *Minion, hclient horizonclient.ClientInterface, tx string) (*hProtocol.Transaction, error) {
 		// Instead of submitting the tx, we emulate a success.
 		txSuccess := hProtocol.Transaction{EnvelopeXdr: tx, Successful: true}
