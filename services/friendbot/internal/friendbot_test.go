@@ -153,7 +153,8 @@ func TestFriendbot_Pay_accountExists(t *testing.T) {
 }
 
 func TestFriendbot_Pay_accountExistsAlreadyFunded(t *testing.T) {
-	ctx := t.Context()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 	mockSubmitTransaction := func(ctx context.Context, minion *Minion, hclient horizonclient.ClientInterface, tx string) (*hProtocol.Transaction, error) {
 		// Instead of submitting the tx, we emulate a success.
 		txSuccess := hProtocol.Transaction{EnvelopeXdr: tx, Successful: true}
