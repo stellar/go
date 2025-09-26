@@ -506,14 +506,16 @@ func runWithMetrics(metricsPort uint, system ingest.System, f func() error) erro
 		}
 		go func() {
 			if err := adminServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-				log.Warnf("error running admin server: %v", err)
+				log.Warnf("error running metrics server: %v", err)
 			}
 		}()
 		defer func() {
 			if err := adminServer.Shutdown(context.Background()); err != nil {
-				log.Warnf("error shutting down admin server: %v", err)
+				log.Warnf("error shutting down metrics server: %v", err)
 			}
 		}()
+	} else {
+		log.Info("Metrics server disabled")
 	}
 	return f()
 }
