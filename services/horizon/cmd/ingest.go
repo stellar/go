@@ -26,7 +26,7 @@ import (
 
 var ingestBuildStateSequence uint32
 var ingestBuildStateSkipChecks bool
-var ingestVerifyFrom, ingestVerifyTo, ingestVerifyDebugServerPort uint32
+var ingestVerifyFrom, ingestVerifyTo uint32
 var ingestVerifyState bool
 var ingestVerifyStorageBackendConfigPath string
 var ingestVerifyLedgerBackendType ingest.LedgerBackendType
@@ -75,14 +75,6 @@ var ingestVerifyRangeCmdOpts = support.ConfigOptions{
 		Required:    false,
 		FlagDefault: false,
 		Usage:       "[optional] verifies state at the last ledger of the range when true",
-	},
-	{
-		Name:        "debug-server-port",
-		ConfigKey:   &ingestVerifyDebugServerPort,
-		OptType:     types.Uint32,
-		Required:    false,
-		FlagDefault: uint32(0),
-		Usage:       "[optional] opens a net/http/pprof server at given port",
 	},
 	generateLedgerBackendOpt(&ingestVerifyLedgerBackendType),
 	generateDatastoreConfigOpt(&ingestVerifyStorageBackendConfigPath),
@@ -160,19 +152,6 @@ func DefineIngestCommands(rootCmd *cobra.Command, horizonConfig *horizon.Config,
 			}
 			if err := ingestVerifyRangeCmdOpts.SetValues(); err != nil {
 				return err
-			}
-
-			if ingestVerifyDebugServerPort != 0 {
-				go func() {
-					log.Infof("Starting debug server at: %d", ingestVerifyDebugServerPort)
-					err := http.ListenAndServe(
-						fmt.Sprintf("localhost:%d", ingestVerifyDebugServerPort),
-						nil,
-					)
-					if err != nil {
-						log.Error(err)
-					}
-				}()
 			}
 
 			mngr := historyarchive.NewCheckpointManager(horizonConfig.CheckpointFrequency)
@@ -499,18 +478,18 @@ func runWithMetrics(metricsPort uint, system ingest.System, f func() error) erro
 		registry := prometheus.NewRegistry()
 		system.RegisterMetrics(registry)
 		httpx.AddMetricRoutes(mux, registry)
-		adminServer := &http.Server{
+		metricsServer := &http.Server{
 			Addr:        fmt.Sprintf(":%d", metricsPort),
 			Handler:     mux,
 			ReadTimeout: 5 * time.Second,
 		}
 		go func() {
-			if err := adminServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			if err := metricsServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 				log.Warnf("error running metrics server: %v", err)
 			}
 		}()
 		defer func() {
-			if err := adminServer.Shutdown(context.Background()); err != nil {
+			if err := metricsServer.Shutdown(context.Background()); err != nil {
 				log.Warnf("error shutting down metrics server: %v", err)
 			}
 		}()
