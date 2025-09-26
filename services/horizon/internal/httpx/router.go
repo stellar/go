@@ -394,9 +394,7 @@ func (r *Router) addRoutes(config *RouterConfig, rateLimiter *throttled.HTTPRate
 		w.Header().Set("Content-Type", "application/openapi+yaml")
 		w.Write(p)
 	})
-	r.Internal.Get("/metrics", promhttp.HandlerFor(config.PrometheusRegistry, promhttp.HandlerOpts{}).ServeHTTP)
-	r.Internal.Get("/debug/pprof/heap", pprof.Index)
-	r.Internal.Get("/debug/pprof/profile", pprof.Profile)
+	AddMetricRoutes(r.Internal, config.PrometheusRegistry)
 	r.Internal.Route("/ingestion/filters", func(r chi.Router) {
 		handler := actions.FilterConfigHandler{}
 		r.With(historyMiddleware).Put("/asset", handler.UpdateAssetConfig)
@@ -404,4 +402,10 @@ func (r *Router) addRoutes(config *RouterConfig, rateLimiter *throttled.HTTPRate
 		r.With(historyMiddleware).Get("/asset", handler.GetAssetConfig)
 		r.With(historyMiddleware).Get("/account", handler.GetAccountConfig)
 	})
+}
+
+func AddMetricRoutes(mux *chi.Mux, metrics *prometheus.Registry) {
+	mux.Get("/metrics", promhttp.HandlerFor(metrics, promhttp.HandlerOpts{}).ServeHTTP)
+	mux.Get("/debug/pprof/heap", pprof.Index)
+	mux.Get("/debug/pprof/profile", pprof.Profile)
 }

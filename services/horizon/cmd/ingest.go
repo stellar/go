@@ -8,12 +8,15 @@ import (
 	_ "net/http/pprof"
 	"time"
 
+	"github.com/go-chi/chi"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
 	"github.com/stellar/go/historyarchive"
 	horizon "github.com/stellar/go/services/horizon/internal"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/services/horizon/internal/httpx"
 	"github.com/stellar/go/services/horizon/internal/ingest"
 	"github.com/stellar/go/support/config"
 	support "github.com/stellar/go/support/config"
@@ -249,17 +252,12 @@ func DefineIngestCommands(rootCmd *cobra.Command, horizonConfig *horizon.Config,
 			if err != nil {
 				return err
 			}
-
-			err = system.StressTest(
-				stressTestNumTransactions,
-				stressTestChangesPerTransaction,
-			)
-			if err != nil {
-				return err
-			}
-
-			log.Info("Stress test completed successfully!")
-			return nil
+			return runWithMetrics(horizonConfig.AdminPort, system, func() error {
+				return system.StressTest(
+					stressTestNumTransactions,
+					stressTestChangesPerTransaction,
+				)
+			})
 		},
 	}
 
@@ -365,16 +363,12 @@ func DefineIngestCommands(rootCmd *cobra.Command, horizonConfig *horizon.Config,
 				return err
 			}
 
-			err = system.BuildState(
-				ingestBuildStateSequence,
-				ingestBuildStateSkipChecks,
-			)
-			if err != nil {
-				return err
-			}
-
-			log.Info("State built successfully!")
-			return nil
+			return runWithMetrics(horizonConfig.AdminPort, system, func() error {
+				return system.BuildState(
+					ingestBuildStateSequence,
+					ingestBuildStateSkipChecks,
+				)
+			})
 		},
 	}
 
@@ -444,11 +438,13 @@ func DefineIngestCommands(rootCmd *cobra.Command, horizonConfig *horizon.Config,
 				return err
 			}
 
-			return system.LoadTest(
-				ingestionLoadTestLedgersPath,
-				ingestionLoadTestCloseDuration,
-				ingestionLoadTestFixturesPath,
-			)
+			return runWithMetrics(horizonConfig.AdminPort, system, func() error {
+				return system.LoadTest(
+					ingestionLoadTestLedgersPath,
+					ingestionLoadTestCloseDuration,
+					ingestionLoadTestFixturesPath,
+				)
+			})
 		},
 	}
 
@@ -496,6 +492,32 @@ func DefineIngestCommands(rootCmd *cobra.Command, horizonConfig *horizon.Config,
 	)
 }
 
+func runWithMetrics(metricsPort uint, system ingest.System, f func() error) error {
+	if metricsPort != 0 {
+		log.Infof("Starting metrics server at: %d", metricsPort)
+		mux := chi.NewMux()
+		registry := prometheus.NewRegistry()
+		system.RegisterMetrics(registry)
+		httpx.AddMetricRoutes(mux, registry)
+		adminServer := &http.Server{
+			Addr:        fmt.Sprintf(":%d", metricsPort),
+			Handler:     mux,
+			ReadTimeout: 5 * time.Second,
+		}
+		go func() {
+			if err := adminServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				log.Warnf("error running admin server: %v", err)
+			}
+		}()
+		defer func() {
+			if err := adminServer.Shutdown(context.Background()); err != nil {
+				log.Warnf("error shutting down admin server: %v", err)
+			}
+		}()
+	}
+	return f()
+}
+
 func init() {
 	DefineIngestCommands(RootCmd, globalConfig, globalFlags)
 }
@@ -525,11 +547,13 @@ func processVerifyRange(horizonConfig *horizon.Config, horizonFlags config.Confi
 		return err
 	}
 
-	return system.VerifyRange(
-		ingestVerifyFrom,
-		ingestVerifyTo,
-		ingestVerifyState,
-	)
+	return runWithMetrics(horizonConfig.AdminPort, system, func() error {
+		return system.VerifyRange(
+			ingestVerifyFrom,
+			ingestVerifyTo,
+			ingestVerifyState,
+		)
+	})
 }
 
 // generateDatastoreConfigOpt returns a *support.ConfigOption for the datastore-config flag

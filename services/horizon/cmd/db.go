@@ -211,21 +211,23 @@ func runDBReingestRange(ledgerRanges []history.LedgerRange, reingestForce bool, 
 	}
 	defer system.Shutdown()
 
-	err = system.ReingestRange(ledgerRanges, reingestForce, true)
-	if err != nil {
-		if _, ok := errors.Cause(err).(ingest.ErrReingestRangeConflict); ok {
-			return fmt.Errorf(`The range you have provided overlaps with Horizon's most recently ingested ledger.
+	return runWithMetrics(config.AdminPort, system, func() error {
+		err = system.ReingestRange(ledgerRanges, reingestForce, true)
+		if err != nil {
+			if _, ok := errors.Cause(err).(ingest.ErrReingestRangeConflict); ok {
+				return fmt.Errorf(`The range you have provided overlaps with Horizon's most recently ingested ledger.
 It is not possible to run the reingest command on this range in parallel with
 Horizon's ingestion system.
 Either reduce the range so that it doesn't overlap with Horizon's ingestion system,
 or, use the force flag to ensure that Horizon's ingestion system is blocked until
 the reingest command completes.`)
-		}
+			}
 
-		return err
-	}
-	hlog.Info("Range run successfully!")
-	return nil
+			return err
+		}
+		hlog.Info("Range run successfully!")
+		return nil
+	})
 }
 
 func runDBDetectGaps(config horizon.Config) ([]history.LedgerRange, error) {
