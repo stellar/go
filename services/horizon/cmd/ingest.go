@@ -479,7 +479,8 @@ func runWithMetrics(metricsPort uint, system ingest.System, f func() error) erro
 		mux.Use(chimiddleware.StripSlashes)
 		mux.Use(chimiddleware.RequestID)
 		mux.Use(chimiddleware.RequestLogger(&chimiddleware.DefaultLogFormatter{
-			Logger: log.DefaultLogger,
+			Logger:  log.DefaultLogger,
+			NoColor: true,
 		}))
 		registry := prometheus.NewRegistry()
 		system.RegisterMetrics(registry)
