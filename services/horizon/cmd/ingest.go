@@ -496,6 +496,9 @@ func runWithMetrics(metricsPort uint, system ingest.System, f func() error) erro
 			}
 		}()
 		defer func() {
+			log.Info("Waiting for metrics to be flushed")
+			time.Sleep(time.Minute)
+			log.Info("Shutting down metrics server...")
 			if err := metricsServer.Shutdown(context.Background()); err != nil {
 				log.Warnf("error shutting down metrics server: %v", err)
 			}
