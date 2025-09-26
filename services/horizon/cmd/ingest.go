@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi"
+	chimiddleware "github.com/go-chi/chi/middleware"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -475,6 +476,11 @@ func runWithMetrics(metricsPort uint, system ingest.System, f func() error) erro
 	if metricsPort != 0 {
 		log.Infof("Starting metrics server at: %d", metricsPort)
 		mux := chi.NewMux()
+		mux.Use(chimiddleware.StripSlashes)
+		mux.Use(chimiddleware.RequestID)
+		mux.Use(chimiddleware.RequestLogger(&chimiddleware.DefaultLogFormatter{
+			Logger: log.DefaultLogger,
+		}))
 		registry := prometheus.NewRegistry()
 		system.RegisterMetrics(registry)
 		httpx.AddMetricRoutes(mux, registry)
