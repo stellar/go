@@ -492,7 +492,7 @@ func runWithMetrics(metricsPort uint, system ingest.System, f func() error) erro
 		}
 		go func() {
 			if err := metricsServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-				log.Warnf("error running metrics server: %v", err)
+				log.Fatalf("error running metrics server: %v", err)
 			}
 		}()
 		defer func() {
