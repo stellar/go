@@ -81,17 +81,10 @@ var ingestVerifyRangeCmdOpts = support.ConfigOptions{
 	generateDatastoreConfigOpt(&ingestVerifyStorageBackendConfigPath),
 }
 
-var ingestionLoadTestFixturesPath, ingestionLoadTestLedgersPath string
+var ingestionLoadTestLedgersPath string
 var ingestionLoadTestCloseDuration time.Duration
+var ingestionLoadTestMerge bool
 var ingestLoadTestCmdOpts = support.ConfigOptions{
-	{
-		Name:        "fixtures-path",
-		OptType:     types.String,
-		FlagDefault: "",
-		Required:    true,
-		Usage:       "path to ledger entries file which will be used as fixtures for the ingestion load test.",
-		ConfigKey:   &ingestionLoadTestFixturesPath,
-	},
 	{
 		Name:        "ledgers-path",
 		OptType:     types.String,
@@ -99,6 +92,14 @@ var ingestLoadTestCmdOpts = support.ConfigOptions{
 		Required:    true,
 		Usage:       "path to ledgers file which will be replayed in the ingestion load test.",
 		ConfigKey:   &ingestionLoadTestLedgersPath,
+	},
+	{
+		Name:        "merge",
+		ConfigKey:   &ingestionLoadTestMerge,
+		OptType:     types.Bool,
+		Required:    false,
+		FlagDefault: false,
+		Usage:       "[optional] set to merge real ledgers with the synthetic ledgers in the ingestion load test.",
 	},
 	{
 		Name:        "close-duration",
@@ -421,8 +422,8 @@ func DefineIngestCommands(rootCmd *cobra.Command, horizonConfig *horizon.Config,
 			return runWithMetrics(horizonConfig.AdminPort, system, func() error {
 				return system.LoadTest(
 					ingestionLoadTestLedgersPath,
+					ingestionLoadTestMerge,
 					ingestionLoadTestCloseDuration,
-					ingestionLoadTestFixturesPath,
 				)
 			})
 		},
