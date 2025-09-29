@@ -497,7 +497,10 @@ func runWithMetrics(metricsPort uint, system ingest.System, f func() error) erro
 		}()
 		defer func() {
 			log.Info("Waiting for metrics to be flushed")
-			time.Sleep(time.Minute)
+			// by default, the scrape_interval for prometheus is 1 minute
+			// so if we sleep for 1.5 minutes we ensure that all remaining metrics
+			// will be picked up by the prometheus scraper
+			time.Sleep(time.Minute + time.Second*30)
 			log.Info("Shutting down metrics server...")
 			if err := metricsServer.Shutdown(context.Background()); err != nil {
 				log.Warnf("error shutting down metrics server: %v", err)
