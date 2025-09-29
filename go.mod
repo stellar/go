@@ -3,7 +3,6 @@ module github.com/stellar/go
 go 1.23
 
 require (
-	cloud.google.com/go/firestore v1.15.0 // indirect
 	cloud.google.com/go/storage v1.42.0
 	firebase.google.com/go v3.12.0+incompatible
 	github.com/2opremio/pretty v0.2.2-0.20230601220618-e1d5758b2a95
@@ -18,7 +17,7 @@ require (
 	github.com/getsentry/raven-go v0.2.0
 	github.com/go-chi/chi v4.1.2+incompatible
 	github.com/go-errors/errors v1.5.1
-	github.com/golang-jwt/jwt v3.2.2+incompatible
+	github.com/golang-jwt/jwt/v4 v4.5.2
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/schema v1.4.1
 	github.com/graph-gophers/graphql-go v1.3.0
@@ -75,6 +74,7 @@ require (
 	cloud.google.com/go/auth v0.5.1 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.2 // indirect
 	cloud.google.com/go/compute/metadata v0.3.0 // indirect
+	cloud.google.com/go/firestore v1.15.0 // indirect
 	cloud.google.com/go/iam v1.1.8 // indirect
 	cloud.google.com/go/longrunning v0.5.7 // indirect
 	cloud.google.com/go/pubsub v1.38.0 // indirect
