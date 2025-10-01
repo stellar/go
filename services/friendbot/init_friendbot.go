@@ -84,10 +84,7 @@ func createMinionAccounts(botAccount internal.Account, botKeypair *keypair.Full,
 			return minions, errors.Wrap(rerr, "refreshing bot seqnum")
 		}
 		// The tx will create min(numRemainingMinions, minionBatchSize) Minion accounts.
-		numCreateMinions := minionBatchSize
-		if numRemainingMinions < minionBatchSize {
-			numCreateMinions = numRemainingMinions
-		}
+		numCreateMinions := min(numRemainingMinions, minionBatchSize)
 		log.Printf("Creating %d new minion accounts", numCreateMinions)
 		for i := 0; i < numCreateMinions; i++ {
 			minionKeypair, err := keypair.Random()
