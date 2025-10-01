@@ -21,7 +21,7 @@ var ErrAccountExists error = errors.New(fmt.Sprintf("createAccountAlreadyExist (
 
 var ErrAccountFunded error = errors.New("account already funded to starting balance")
 
-var botTracer = otel.Tracer("bot_tracer")
+var botTracer = otel.Tracer("stellar_friendbot_minion")
 
 // Minion contains a Stellar channel account and Go channels to communicate with friendbot.
 type Minion struct {
