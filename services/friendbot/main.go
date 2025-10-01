@@ -6,7 +6,6 @@ import (
 	stdhttp "net/http"
 	"os"
 
-	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/chi/v5"
 	"github.com/riandyrn/otelchi"
 	"github.com/spf13/cobra"
@@ -121,12 +120,6 @@ func newMux(cfg Config) *chi.Mux {
 	// middlewares
 	mux.Use(http.XFFMiddleware(http.XFFMiddlewareConfig{BehindCloudflare: cfg.UseCloudflareIP}))
 	mux.Use(http.NewAPIMux(log.DefaultLogger).Middlewares()...)
-
-	// Add OpenTelemetry middleware
-	mux.Use(middleware.RequestID)
-	mux.Use(middleware.RealIP)
-	mux.Use(middleware.Logger)
-	mux.Use(middleware.Recoverer)
 	mux.Use(otelchi.Middleware(serviceName, otelchi.WithChiRoutes(mux)))
 
 	return mux
