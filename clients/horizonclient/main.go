@@ -35,7 +35,7 @@ type limit uint
 // Order represents `order` param in queries
 type Order string
 
-// assetCode represets `asset_code` param in queries
+// assetCode represents `asset_code` param in queries
 type assetCode string
 
 // assetIssuer represents `asset_issuer` param in queries
