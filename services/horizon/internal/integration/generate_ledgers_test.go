@@ -48,9 +48,10 @@ type sorobanTransaction struct {
 //   - Set LOADTEST_OUTPUT_PATH to the desired destination path (will be created/overwritten).
 //
 // Example:
-//   LOADTEST_OUTPUT=true \
-//   LOADTEST_OUTPUT_PATH=./output/my-ledgers.xdr.zstd \
-//   go test ./services/horizon/internal/integration -run TestGenerateLedgers -count=1 -timeout=30m
+//
+//	LOADTEST_OUTPUT=true \
+//	LOADTEST_OUTPUT_PATH=./output/my-ledgers.xdr.zstd \
+//	go test ./services/horizon/internal/integration -run TestGenerateLedgers -count=1 -timeout=30m
 //
 // Optional env vars:
 //   - LOADTEST_TRANSACTIONS_PER_LEDGER (default 100)
