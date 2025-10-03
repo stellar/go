@@ -4,12 +4,15 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
+	"io"
 	"os"
+	"time"
 
 	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/network"
 	"github.com/stellar/go/support/log"
+	"github.com/stellar/go/xdr"
 
 	"github.com/pelletier/go-toml"
 
@@ -30,6 +33,7 @@ const (
 	_        Mode = iota
 	ScanFill Mode = iota
 	Append
+	LoadTest
 )
 
 func (mode Mode) Name() string {
@@ -38,6 +42,8 @@ func (mode Mode) Name() string {
 		return "Scan and Fill"
 	case Append:
 		return "Append"
+	case LoadTest:
+		return "Load Test"
 	}
 	return "none"
 }
@@ -51,6 +57,10 @@ type RuntimeSettings struct {
 	ConfigFilePath string
 	Mode           Mode
 	Ctx            context.Context
+	// Load test specific fields
+	LoadTestFixturesPath  string
+	LoadTestLedgersPath   string
+	LoadTestCloseDuration time.Duration
 }
 
 type StellarCoreConfig struct {
@@ -74,6 +84,11 @@ type Config struct {
 	EndLedger   uint32
 	Mode        Mode
 
+	// Load test specific fields
+	LoadTestFixturesPath  string
+	LoadTestLedgersPath   string
+	LoadTestCloseDuration time.Duration
+
 	CoreVersion               string
 	SerializedCaptiveCoreToml []byte
 	CoreBuildVersionFn        ledgerbackend.CoreBuildVersionFunc
@@ -90,6 +105,9 @@ func NewConfig(settings RuntimeSettings, getCoreVersionFn ledgerbackend.CoreBuil
 	config.StartLedger = uint32(settings.StartLedger)
 	config.EndLedger = uint32(settings.EndLedger)
 	config.Mode = settings.Mode
+	config.LoadTestFixturesPath = settings.LoadTestFixturesPath
+	config.LoadTestLedgersPath = settings.LoadTestLedgersPath
+	config.LoadTestCloseDuration = settings.LoadTestCloseDuration
 	config.CoreBuildVersionFn = ledgerbackend.CoreBuildVersion
 	if getCoreVersionFn != nil {
 		config.CoreBuildVersionFn = getCoreVersionFn
@@ -116,6 +134,34 @@ func (config *Config) Resumable() bool {
 // Validates requested ledger range, and will automatically adjust it
 // to be ledgers-per-file boundary aligned
 func (config *Config) ValidateAndSetLedgerRange(ctx context.Context, archive historyarchive.ArchiveInterface) error {
+
+	if config.Mode == LoadTest {
+		if config.LoadTestFixturesPath == "" {
+			return errors.New("fixtures-path is required for load test mode")
+		}
+		if config.LoadTestLedgersPath == "" {
+			return errors.New("ledgers-path is required for load test mode")
+		}
+
+		// configure load-test as a bounded range starting from curret network ledger and including up to
+		// ledgers available from fixtures files
+		ledgersCount, err := countLoadTestLedgers(config.LoadTestLedgersPath)
+		if err != nil {
+			return errors.Wrap(err, "failed to count ledgers in ledgers-path file for load test mode")
+		}
+		if ledgersCount == 0 {
+			return errors.New("ledgers-path file contains no ledgers for load test mode")
+		}
+
+		if config.EndLedger != 0 {
+			if config.EndLedger-config.StartLedger > ledgersCount {
+				return errors.Errorf("invalid end value, the range of ledgers between start and end of %d must not exceed the number of ledgers in ledgers-path file of %d", config.EndLedger-config.StartLedger, ledgersCount)
+			}
+			logger.Infof("Detected %d ledgers in load test ledgers-path file, setting the load test mode ledger range to %d-%d", ledgersCount, config.StartLedger, config.EndLedger)
+		}
+
+		return nil
+	}
 
 	if config.StartLedger < 2 {
 		return errors.New("invalid start value, must be greater than one.")
@@ -296,4 +342,36 @@ func (config *Config) adjustLedgerRange() {
 	}
 
 	logger.Infof("Computed effective export boundary ledger range: start=%d, end=%d", config.StartLedger, config.EndLedger)
+}
+
+func countLoadTestLedgers(path string) (uint32, error) {
+	ledgersCount := uint32(0)
+	file, err := os.Open(path)
+	if err != nil {
+		return ledgersCount, err
+	}
+
+	stream, err := xdr.NewZstdStream(file)
+	if err != nil {
+		return ledgersCount, err
+	}
+
+	defer func() {
+		if closeErr := stream.Close(); closeErr != nil {
+			logger.WithError(closeErr).Warn("Failed to close load test ledgers file stream")
+		}
+	}()
+
+	for {
+		var lcm xdr.LedgerCloseMeta
+		if err = stream.ReadOne(&lcm); err == io.EOF {
+			break
+		}
+		if err != nil {
+			return ledgersCount, err
+		}
+		ledgersCount++
+	}
+
+	return ledgersCount, nil
 }
