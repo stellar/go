@@ -3,7 +3,6 @@ package integration
 import (
 	"context"
 	"encoding"
-	"flag"
 	"fmt"
 	"io"
 	"math"
@@ -13,6 +12,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/spf13/viper"
 
 	"github.com/klauspost/compress/zstd"
 	"github.com/stretchr/testify/require"
@@ -39,6 +40,26 @@ type sorobanTransaction struct {
 	sequenceNumber int64
 }
 
+// TestGenerateLedgers generates a sequence of ledgers for load testing and can optionally
+// write the produced ledgers to a compressed XDR file.
+//
+// Running with a custom output path:
+//   - Set LOADTEST_OUTPUT=true to enable writing the file.
+//   - Set LOADTEST_OUTPUT_PATH to the desired destination path (will be created/overwritten).
+//
+// Example:
+//   LOADTEST_OUTPUT=true \
+//   LOADTEST_OUTPUT_PATH=./output/my-ledgers.xdr.zstd \
+//   go test ./services/horizon/internal/integration -run TestGenerateLedgers -count=1 -timeout=30m
+//
+// Optional env vars:
+//   - LOADTEST_TRANSACTIONS_PER_LEDGER (default 100)
+//   - LOADTEST_TRANSFERS_PER_TX (default 10)
+//   - LOADTEST_LEDGERS (default 2)
+//   - LOADTEST_NETWORK_PASSPHRASE (default "load test network")
+//
+// Note: If LOADTEST_OUTPUT_PATH is not set, a default path is derived as
+// testdata/load-test-ledgers-v<protocol>.xdr.zstd.
 func TestGenerateLedgers(t *testing.T) {
 	if integration.GetCoreMaxSupportedProtocol() < 23 {
 		t.Skip("This test run does not support less than Protocol 23")
@@ -46,13 +67,33 @@ func TestGenerateLedgers(t *testing.T) {
 
 	var transactionsPerLedger, ledgers, transfersPerTx int
 	var output bool
-	var networkPassphrase string
-	flag.IntVar(&transactionsPerLedger, "transactions-per-ledger", 100, "number of transactions per ledger")
-	flag.IntVar(&transfersPerTx, "transfers-per-tx", 10, "number of asset transfers for each transaction")
-	flag.IntVar(&ledgers, "ledgers", 2, "number of ledgers to generate")
-	flag.BoolVar(&output, "output", false, "overwrite the generated output files")
-	flag.StringVar(&networkPassphrase, "network-passphrase", loadTestNetworkPassphrase, "network passphrase")
-	flag.Parse()
+	var networkPassphrase, outputPath string
+
+	// Read testing parameters from environment variables with defaults using viper
+	viper.BindEnv("transactions_per_ledger", "LOADTEST_TRANSACTIONS_PER_LEDGER")
+	viper.SetDefault("transactions_per_ledger", 100)
+	transactionsPerLedger = viper.GetInt("transactions_per_ledger")
+
+	viper.BindEnv("transfers_per_tx", "LOADTEST_TRANSFERS_PER_TX")
+	viper.SetDefault("transfers_per_tx", 10)
+	transfersPerTx = viper.GetInt("transfers_per_tx")
+
+	viper.BindEnv("ledgers", "LOADTEST_LEDGERS")
+	viper.SetDefault("ledgers", 2)
+	ledgers = viper.GetInt("ledgers")
+
+	viper.BindEnv("output", "LOADTEST_OUTPUT")
+	viper.SetDefault("output", false)
+	output = viper.GetBool("output")
+
+	viper.BindEnv("network_passphrase", "LOADTEST_NETWORK_PASSPHRASE")
+	viper.SetDefault("network_passphrase", loadTestNetworkPassphrase)
+	networkPassphrase = viper.GetString("network_passphrase")
+
+	viper.BindEnv("output_path", "LOADTEST_OUTPUT_PATH")
+	viper.SetDefault("output_path", "")
+	// If empty, outputPath will be derived later
+	outputPath = viper.GetString("output_path")
 
 	itest := integration.NewTest(t, integration.Config{
 		EnableStellarRPC:  true,
@@ -62,6 +103,19 @@ func TestGenerateLedgers(t *testing.T) {
 		},
 	})
 	supportlog.SetLevel(supportlog.ErrorLevel)
+
+	if outputPath == "" {
+		outputPath = filepath.Join(
+			"testdata",
+			fmt.Sprintf("load-test-ledgers-v%d.xdr.zstd", itest.Config().ProtocolVersion),
+		)
+	}
+
+	if output {
+		t.Log("ledger file will be written to ", outputPath)
+	} else {
+		t.Log("ledgers file will not be written")
+	}
 
 	maxAccountsPerTransaction := 100
 	// transactionsPerLedger should be a multiple of maxAccountsPerTransaction
@@ -196,7 +250,7 @@ func TestGenerateLedgers(t *testing.T) {
 		}
 	}
 	require.Len(t, accountLedgerEntries, 2*transactionsPerLedger)
-	merge(itest, accountLedgerEntries, output, uint32(start), uint32(end), transactionsPerLedger)
+	merge(itest, accountLedgerEntries, output, outputPath, uint32(start), uint32(end), transactionsPerLedger)
 }
 
 func readFile[T xdr.DecoderFrom](t *testing.T, path string, constructor func() T, consume func(T)) {
@@ -427,7 +481,7 @@ func waitForTransactions(
 	}, time.Second*90, time.Millisecond*100)
 }
 
-func merge(itest *integration.Test, accountEntries []xdr.LedgerEntry, output bool, start, end uint32, transactionsPerLedger int) {
+func merge(itest *integration.Test, accountEntries []xdr.LedgerEntry, output bool, outputPath string, start, end uint32, transactionsPerLedger int) {
 	ccConfig, err := itest.CreateCaptiveCoreConfig()
 	require.NoError(itest.CurrentTest(), err)
 
@@ -442,10 +496,6 @@ func merge(itest *integration.Test, accountEntries []xdr.LedgerEntry, output boo
 
 	var writer *zstd.Encoder
 	if output {
-		outputPath := filepath.Join(
-			"testdata",
-			fmt.Sprintf("load-test-ledgers-v%d.xdr.zstd", itest.Config().ProtocolVersion),
-		)
 		file, err := os.Create(outputPath)
 		require.NoError(itest.CurrentTest(), err)
 		writer, err = zstd.NewWriter(file)
