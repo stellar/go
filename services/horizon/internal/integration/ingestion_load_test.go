@@ -25,8 +25,8 @@ import (
 )
 
 func TestLoadTestLedgerBackend(t *testing.T) {
-	if integration.GetCoreMaxSupportedProtocol() < 22 {
-		t.Skip("This test run does not support less than Protocol 22")
+	if integration.GetCoreMaxSupportedProtocol() < 23 {
+		t.Skip("This test run does not support less than Protocol 23")
 	}
 
 	itest := integration.NewTest(t, integration.Config{
@@ -48,14 +48,12 @@ func TestLoadTestLedgerBackend(t *testing.T) {
 	require.True(t, tx.Successful)
 
 	replayConfig := loadtest.LedgerBackendConfig{
-		NetworkPassphrase:     "invalid passphrase",
-		LedgersFilePath:       filepath.Join("testdata", fmt.Sprintf("load-test-ledgers-v%d.xdr.zstd", itest.Config().ProtocolVersion)),
-		LedgerEntriesFilePath: filepath.Join("testdata", fmt.Sprintf("load-test-accounts-v%d.xdr.zstd", itest.Config().ProtocolVersion)),
-		LedgerCloseDuration:   3 * time.Second / 2,
-		LedgerBackend:         newCaptiveCore(itest),
+		NetworkPassphrase:   "invalid passphrase",
+		LedgersFilePath:     filepath.Join("testdata", fmt.Sprintf("load-test-ledgers-v%d.xdr.zstd", itest.Config().ProtocolVersion)),
+		LedgerCloseDuration: 3 * time.Second / 2,
+		LedgerBackend:       newCaptiveCore(itest),
 	}
 	var generatedLedgers []xdr.LedgerCloseMeta
-	var generatedLedgerEntries []xdr.LedgerEntry
 
 	readFile(t, replayConfig.LedgersFilePath,
 		func() *xdr.LedgerCloseMeta { return &xdr.LedgerCloseMeta{} },
@@ -63,15 +61,9 @@ func TestLoadTestLedgerBackend(t *testing.T) {
 			generatedLedgers = append(generatedLedgers, *ledger)
 		},
 	)
-	readFile(t, replayConfig.LedgerEntriesFilePath,
-		func() *xdr.LedgerEntry { return &xdr.LedgerEntry{} },
-		func(ledgerEntry *xdr.LedgerEntry) {
-			generatedLedgerEntries = append(generatedLedgerEntries, *ledgerEntry)
-		},
-	)
 
 	startLedger := uint32(tx.Ledger - 1)
-	endLedger := startLedger + uint32(len(generatedLedgers))
+	endLedger := startLedger + uint32(len(generatedLedgers)-1)
 
 	itest.WaitForLedgerInArchive(6*time.Minute, endLedger)
 
@@ -156,6 +148,7 @@ func TestLoadTestLedgerBackend(t *testing.T) {
 		require.NoError(t, err)
 		ledgers = append(ledgers, ledger)
 		require.WithinDuration(t, startTime.Add(replayConfig.LedgerCloseDuration), startTime.Add(duration), time.Millisecond*100)
+		require.Equal(t, cur, ledger.LedgerSequence())
 	}
 
 	prepared, err = loadTestBackend.IsPrepared(context.Background(), ledgerbackend.BoundedRange(startLedger, endLedger))
@@ -170,24 +163,20 @@ func TestLoadTestLedgerBackend(t *testing.T) {
 	originalLedgers := getLedgers(itest, startLedger, endLedger)
 
 	changes := extractChanges(t, itest.Config().NetworkPassphrase, ledgers[0:1])
-	expectedChanges := extractChanges(
-		t, itest.Config().NetworkPassphrase, []xdr.LedgerCloseMeta{originalLedgers[startLedger]},
-	)
-	for i := range generatedLedgerEntries {
-		expectedChanges = append(expectedChanges, ingest.Change{
-			Type:   generatedLedgerEntries[i].Data.Type,
-			Post:   &generatedLedgerEntries[i],
-			Reason: ingest.LedgerEntryChangeReasonUpgrade,
-		})
+	accountSet := map[string]bool{}
+	for _, change := range changes {
+		if change.Reason == ingest.LedgerEntryChangeReasonUpgrade && change.Type == xdr.LedgerEntryTypeAccount {
+			require.Nil(t, change.Pre)
+			accountSet[change.Post.Data.MustAccount().AccountId.Address()] = true
+		}
 	}
 	checkLedgerSequenceInChanges(t, changes, startLedger)
-	requireChangesAreEqual(t, expectedChanges, changes)
 
 	for cur := startLedger + 1; cur <= endLedger; cur++ {
 		i := int(cur - startLedger)
 		changes = extractChanges(t, itest.Config().NetworkPassphrase, ledgers[i:i+1])
-		expectedChanges = extractChanges(
-			t, itest.Config().NetworkPassphrase, []xdr.LedgerCloseMeta{originalLedgers[cur], generatedLedgers[i-1]},
+		expectedChanges := extractChanges(
+			t, itest.Config().NetworkPassphrase, []xdr.LedgerCloseMeta{originalLedgers[cur], generatedLedgers[i]},
 		)
 		checkLedgerSequenceInChanges(t, changes, cur)
 		// a merge is valid if the ordered list of changes emitted by the merged ledger is equal to
@@ -195,32 +184,176 @@ func TestLoadTestLedgerBackend(t *testing.T) {
 		// in other words:
 		// extractChanges(merge(dst, src)) == concat(extractChanges(dst), extractChanges(src))
 		requireChangesAreEqual(t, expectedChanges, changes)
+		generatedChanges := extractChanges(t, itest.Config().NetworkPassphrase, []xdr.LedgerCloseMeta{generatedLedgers[i]})
+		for _, change := range generatedChanges {
+			if change.Type != xdr.LedgerEntryTypeAccount {
+				continue
+			}
+			ledgerKey, err := change.LedgerKey()
+			require.NoError(itest.CurrentTest(), err)
+			require.True(itest.CurrentTest(), accountSet[ledgerKey.MustAccount().AccountId.Address()])
+		}
+	}
+}
+
+func TestLoadTestLedgerBackendWithoutMerge(t *testing.T) {
+	replayConfig := loadtest.LedgerBackendConfig{
+		NetworkPassphrase:   "invalid passphrase",
+		LedgersFilePath:     filepath.Join("testdata", fmt.Sprintf("load-test-ledgers-v%d.xdr.zstd", horizoningest.MaxSupportedProtocolVersion)),
+		LedgerCloseDuration: 3 * time.Second / 2,
+	}
+	var generatedLedgers []xdr.LedgerCloseMeta
+
+	readFile(t, replayConfig.LedgersFilePath,
+		func() *xdr.LedgerCloseMeta { return &xdr.LedgerCloseMeta{} },
+		func(ledger *xdr.LedgerCloseMeta) {
+			generatedLedgers = append(generatedLedgers, *ledger)
+		},
+	)
+
+	startLedger := uint32(100_000_005)
+	endLedger := startLedger + uint32(len(generatedLedgers)-1)
+
+	loadTestBackend := loadtest.NewLedgerBackend(replayConfig)
+	// PrepareRange() is expected to fail because of the invalid network passphrase which
+	// is validated by the loadtest ledger backend
+	require.ErrorContains(
+		t,
+		loadTestBackend.PrepareRange(context.Background(), ledgerbackend.BoundedRange(startLedger, endLedger)),
+		"unknown tx hash in LedgerCloseMeta",
+	)
+	require.NoError(t, loadTestBackend.Close())
+
+	// now, we recreate the loadtest ledger backend with the
+	// correct network passphrase
+	replayConfig.NetworkPassphrase = loadTestNetworkPassphrase
+	loadTestBackend = loadtest.NewLedgerBackend(replayConfig)
+
+	_, err := loadTestBackend.GetLatestLedgerSequence(context.Background())
+	require.EqualError(t, err, "PrepareRange() must be called before GetLatestLedgerSequence()")
+
+	prepared, err := loadTestBackend.IsPrepared(context.Background(), ledgerbackend.BoundedRange(startLedger, endLedger))
+	require.NoError(t, err)
+	require.False(t, prepared)
+
+	require.NoError(t, loadTestBackend.PrepareRange(context.Background(), ledgerbackend.BoundedRange(startLedger, endLedger)))
+
+	latest, err := loadTestBackend.GetLatestLedgerSequence(context.Background())
+	require.NoError(t, err)
+	require.Equal(t, endLedger, latest)
+
+	prepared, err = loadTestBackend.IsPrepared(context.Background(), ledgerbackend.BoundedRange(startLedger, endLedger))
+	require.NoError(t, err)
+	require.True(t, prepared)
+
+	prepared, err = loadTestBackend.IsPrepared(context.Background(), ledgerbackend.BoundedRange(startLedger+1, endLedger))
+	require.NoError(t, err)
+	require.True(t, prepared)
+
+	prepared, err = loadTestBackend.IsPrepared(context.Background(), ledgerbackend.BoundedRange(startLedger-1, endLedger))
+	require.NoError(t, err)
+	require.False(t, prepared)
+
+	prepared, err = loadTestBackend.IsPrepared(context.Background(), ledgerbackend.BoundedRange(endLedger+1, endLedger+2))
+	require.NoError(t, err)
+	require.False(t, prepared)
+
+	prepared, err = loadTestBackend.IsPrepared(context.Background(), ledgerbackend.UnboundedRange(startLedger))
+	require.NoError(t, err)
+	require.False(t, prepared)
+
+	require.NoError(
+		t,
+		loadTestBackend.PrepareRange(context.Background(), ledgerbackend.BoundedRange(startLedger, endLedger)),
+	)
+	require.NoError(
+		t,
+		loadTestBackend.PrepareRange(context.Background(), ledgerbackend.BoundedRange(startLedger+1, endLedger)),
+	)
+	require.EqualError(
+		t,
+		loadTestBackend.PrepareRange(context.Background(), ledgerbackend.UnboundedRange(startLedger)),
+		"PrepareRange() already called",
+	)
+
+	_, err = loadTestBackend.GetLedger(context.Background(), startLedger-1)
+	require.EqualError(t, err,
+		fmt.Sprintf(
+			"sequence number %v is behind the ledger stream sequence %v",
+			startLedger-1,
+			startLedger,
+		),
+	)
+
+	var ledgers []xdr.LedgerCloseMeta
+	for cur := startLedger; cur <= endLedger; cur++ {
+		startTime := time.Now()
+		var ledger xdr.LedgerCloseMeta
+		ledger, err = loadTestBackend.GetLedger(context.Background(), cur)
+		duration := time.Since(startTime)
+		require.NoError(t, err)
+		ledgers = append(ledgers, ledger)
+		require.WithinDuration(t, startTime.Add(replayConfig.LedgerCloseDuration), startTime.Add(duration), time.Millisecond*100)
+		require.Equal(t, cur, ledger.LedgerSequence())
+	}
+
+	prepared, err = loadTestBackend.IsPrepared(context.Background(), ledgerbackend.BoundedRange(startLedger, endLedger))
+	require.NoError(t, err)
+	require.False(t, prepared)
+
+	_, err = loadTestBackend.GetLedger(context.Background(), endLedger+1)
+	require.ErrorIs(t, err, loadtest.ErrLoadTestDone)
+
+	require.NoError(t, loadTestBackend.Close())
+
+	changes := extractChanges(t, loadTestNetworkPassphrase, ledgers[0:1])
+	accountSet := map[string]bool{}
+	for _, change := range changes {
+		if change.Reason == ingest.LedgerEntryChangeReasonUpgrade && change.Type == xdr.LedgerEntryTypeAccount {
+			require.Nil(t, change.Pre)
+			accountSet[change.Post.Data.MustAccount().AccountId.Address()] = true
+		}
+	}
+	checkLedgerSequenceInChanges(t, changes, startLedger)
+
+	for cur := startLedger + 1; cur <= endLedger; cur++ {
+		i := int(cur - startLedger)
+		changes = extractChanges(t, loadTestNetworkPassphrase, ledgers[i:i+1])
+		expectedChanges := extractChanges(
+			t, loadTestNetworkPassphrase, []xdr.LedgerCloseMeta{generatedLedgers[i]},
+		)
+		checkLedgerSequenceInChanges(t, changes, cur)
+		// a merge is valid if the ordered list of changes emitted by the merged ledger is equal to
+		// the list of changes emitted by dst concatenated by the list of changes emitted by src, or
+		// in other words:
+		// extractChanges(merge(dst, src)) == concat(extractChanges(dst), extractChanges(src))
+		requireChangesAreEqual(t, expectedChanges, changes)
+		for _, change := range changes {
+			if change.Type != xdr.LedgerEntryTypeAccount {
+				continue
+			}
+			ledgerKey, err := change.LedgerKey()
+			require.NoError(t, err)
+			require.True(t, accountSet[ledgerKey.MustAccount().AccountId.Address()])
+		}
 	}
 }
 
 func TestIngestLoadTestCmd(t *testing.T) {
-	if integration.GetCoreMaxSupportedProtocol() < 22 {
-		t.Skip("This test run does not support less than Protocol 22")
+	if integration.GetCoreMaxSupportedProtocol() < 23 {
+		t.Skip("This test run does not support less than Protocol 23")
 	}
 	itest := integration.NewTest(t, integration.Config{
 		NetworkPassphrase: loadTestNetworkPassphrase,
 	})
 
 	ledgersFilePath := filepath.Join("testdata", fmt.Sprintf("load-test-ledgers-v%d.xdr.zstd", itest.Config().ProtocolVersion))
-	ledgerEntriesFilePath := filepath.Join("testdata", fmt.Sprintf("load-test-accounts-v%d.xdr.zstd", itest.Config().ProtocolVersion))
 	var generatedLedgers []xdr.LedgerCloseMeta
-	var generatedLedgerEntries []xdr.LedgerEntry
 
 	readFile(t, ledgersFilePath,
 		func() *xdr.LedgerCloseMeta { return &xdr.LedgerCloseMeta{} },
 		func(ledger *xdr.LedgerCloseMeta) {
 			generatedLedgers = append(generatedLedgers, *ledger)
-		},
-	)
-	readFile(t, ledgerEntriesFilePath,
-		func() *xdr.LedgerEntry { return &xdr.LedgerEntry{} },
-		func(ledgerEntry *xdr.LedgerEntry) {
-			generatedLedgerEntries = append(generatedLedgerEntries, *ledgerEntry)
 		},
 	)
 
@@ -240,7 +373,6 @@ func TestIngestLoadTestCmd(t *testing.T) {
 		"--captive-core-http-port=0",
 		"--network-passphrase=" + itest.Config().NetworkPassphrase,
 		"--history-archive-urls=" + integration.HistoryArchiveUrl,
-		"--fixtures-path=" + ledgerEntriesFilePath,
 		"--ledgers-path=" + ledgersFilePath,
 		"--close-duration=0.1",
 		"--skip-txmeta=false",
@@ -250,14 +382,11 @@ func TestIngestLoadTestCmd(t *testing.T) {
 	var err error
 	originalRestore := horizoningest.RestoreSnapshot
 	t.Cleanup(func() { horizoningest.RestoreSnapshot = originalRestore })
-	// the loadtest will ingest 1 ledger to install the ledger entry fixtures
-	// then it will ingest all the synthetic ledgers for a total of: len(generatedLedgers)+1
-	numSyntheticLedgers := len(generatedLedgers) + 1
 	horizoningest.RestoreSnapshot = func(ctx context.Context, historyQ history.IngestionQ) error {
 		runID, restoreLedger, err = q.GetLoadTestRestoreState(ctx)
 		require.NoError(t, err)
 		require.NotEmpty(t, runID)
-		expectedCurrentLedger := restoreLedger + uint32(numSyntheticLedgers)
+		expectedCurrentLedger := restoreLedger + uint32(len(generatedLedgers))
 		var curLedger, curHistoryLedger uint32
 		curLedger, err = q.GetLastLedgerIngestNonBlocking(context.Background())
 		require.NoError(t, err)
@@ -266,7 +395,7 @@ func TestIngestLoadTestCmd(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, curLedger, curHistoryLedger)
 
-		sequence := int(restoreLedger) + 2
+		sequence := int(restoreLedger) + 1
 		for _, ledger := range generatedLedgers {
 			checkLedgerIngested(itest, q, ledger, sequence)
 			sequence++
@@ -290,7 +419,7 @@ func TestIngestLoadTestCmd(t *testing.T) {
 
 	// check that all ledgers ingested are correct (including ledgers beyond
 	// what was ingested during the load test)
-	endLedger := restoreLedger + uint32(numSyntheticLedgers+2)
+	endLedger := restoreLedger + uint32(len(generatedLedgers)+1)
 	require.Eventually(t, func() bool {
 		var latestLedger, latestHistoryLedger uint32
 		latestLedger, err = q.GetLastLedgerIngestNonBlocking(context.Background())
@@ -327,28 +456,20 @@ func TestIngestLoadTestCmd(t *testing.T) {
 }
 
 func TestIngestLoadTestRestoreCmd(t *testing.T) {
-	if integration.GetCoreMaxSupportedProtocol() < 22 {
-		t.Skip("This test run does not support less than Protocol 22")
+	if integration.GetCoreMaxSupportedProtocol() < 23 {
+		t.Skip("This test run does not support less than Protocol 23")
 	}
 	itest := integration.NewTest(t, integration.Config{
 		NetworkPassphrase: loadTestNetworkPassphrase,
 	})
 
 	ledgersFilePath := filepath.Join("testdata", fmt.Sprintf("load-test-ledgers-v%d.xdr.zstd", itest.Config().ProtocolVersion))
-	ledgerEntriesFilePath := filepath.Join("testdata", fmt.Sprintf("load-test-accounts-v%d.xdr.zstd", itest.Config().ProtocolVersion))
 	var generatedLedgers []xdr.LedgerCloseMeta
-	var generatedLedgerEntries []xdr.LedgerEntry
 
 	readFile(t, ledgersFilePath,
 		func() *xdr.LedgerCloseMeta { return &xdr.LedgerCloseMeta{} },
 		func(ledger *xdr.LedgerCloseMeta) {
 			generatedLedgers = append(generatedLedgers, *ledger)
-		},
-	)
-	readFile(t, ledgerEntriesFilePath,
-		func() *xdr.LedgerEntry { return &xdr.LedgerEntry{} },
-		func(ledgerEntry *xdr.LedgerEntry) {
-			generatedLedgerEntries = append(generatedLedgerEntries, *ledgerEntry)
 		},
 	)
 
@@ -369,7 +490,6 @@ func TestIngestLoadTestRestoreCmd(t *testing.T) {
 		"--captive-core-http-port=0",
 		"--network-passphrase=" + itest.Config().NetworkPassphrase,
 		"--history-archive-urls=" + integration.HistoryArchiveUrl,
-		"--fixtures-path=" + ledgerEntriesFilePath,
 		"--ledgers-path=" + ledgersFilePath,
 		"--close-duration=0.1",
 		"--skip-txmeta=false",
@@ -379,9 +499,6 @@ func TestIngestLoadTestRestoreCmd(t *testing.T) {
 	var err error
 	originalRestore := horizoningest.RestoreSnapshot
 	t.Cleanup(func() { horizoningest.RestoreSnapshot = originalRestore })
-	// the loadtest will ingest 1 ledger to install the ledger entry fixtures
-	// then it will ingest all the synthetic ledgers for a total of: len(generatedLedgers)+1
-	numSyntheticLedgers := len(generatedLedgers) + 1
 	horizoningest.RestoreSnapshot = func(ctx context.Context, historyQ history.IngestionQ) error {
 		return fmt.Errorf("transient error")
 	}
@@ -390,7 +507,7 @@ func TestIngestLoadTestRestoreCmd(t *testing.T) {
 	runID, restoreLedger, err = q.GetLoadTestRestoreState(context.Background())
 	require.NoError(t, err)
 	require.NotEmpty(t, runID)
-	expectedCurrentLedger := restoreLedger + uint32(numSyntheticLedgers)
+	expectedCurrentLedger := restoreLedger + uint32(len(generatedLedgers))
 	var curLedger, curHistoryLedger uint32
 	curLedger, err = q.GetLastLedgerIngestNonBlocking(context.Background())
 	require.NoError(t, err)

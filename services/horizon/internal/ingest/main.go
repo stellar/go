@@ -228,7 +228,7 @@ type System interface {
 	StressTest(numTransactions, changesPerTransaction int) error
 	VerifyRange(fromLedger, toLedger uint32, verifyState bool) error
 	BuildState(sequence uint32, skipChecks bool) error
-	LoadTest(ledgersFilePath string, closeDuration time.Duration, ledgerEntriesFilePath string) error
+	LoadTest(ledgersFilePath string, merge bool, closeDuration time.Duration) error
 	ReingestRange(ledgerRanges []history.LedgerRange, force bool, rebuildTradeAgg bool) error
 	Shutdown()
 	GetCurrentState() State
@@ -633,17 +633,19 @@ func (s *system) BuildState(sequence uint32, skipChecks bool) error {
 
 // LoadTest initializes and runs an ingestion load test.
 // It takes paths for ledgers and ledger entries files, as well as a specified ledger close duration.
-func (s *system) LoadTest(ledgersFilePath string, closeDuration time.Duration, ledgerEntriesFilePath string) error {
+func (s *system) LoadTest(ledgersFilePath string, merge bool, closeDuration time.Duration) error {
 	if !s.config.DisableStateVerification {
 		return fmt.Errorf("state verification cannot be enabled during ingestion load tests")
 	}
-	s.ledgerBackend = loadtest.NewLedgerBackend(loadtest.LedgerBackendConfig{
-		NetworkPassphrase:     s.config.NetworkPassphrase,
-		LedgerBackend:         s.ledgerBackend,
-		LedgersFilePath:       ledgersFilePath,
-		LedgerEntriesFilePath: ledgerEntriesFilePath,
-		LedgerCloseDuration:   closeDuration,
-	})
+	config := loadtest.LedgerBackendConfig{
+		NetworkPassphrase:   s.config.NetworkPassphrase,
+		LedgersFilePath:     ledgersFilePath,
+		LedgerCloseDuration: closeDuration,
+	}
+	if merge {
+		config.LedgerBackend = s.ledgerBackend
+	}
+	s.ledgerBackend = loadtest.NewLedgerBackend(config)
 
 	if saveErr := s.loadTestSnapshot.save(s.ctx); saveErr != nil {
 		return errors.Wrap(saveErr, "failed to save loadtest snapshot")

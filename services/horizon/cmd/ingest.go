@@ -8,12 +8,16 @@ import (
 	_ "net/http/pprof"
 	"time"
 
+	"github.com/go-chi/chi"
+	chimiddleware "github.com/go-chi/chi/middleware"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
 	"github.com/stellar/go/historyarchive"
 	horizon "github.com/stellar/go/services/horizon/internal"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/services/horizon/internal/httpx"
 	"github.com/stellar/go/services/horizon/internal/ingest"
 	"github.com/stellar/go/support/config"
 	support "github.com/stellar/go/support/config"
@@ -23,7 +27,7 @@ import (
 
 var ingestBuildStateSequence uint32
 var ingestBuildStateSkipChecks bool
-var ingestVerifyFrom, ingestVerifyTo, ingestVerifyDebugServerPort uint32
+var ingestVerifyFrom, ingestVerifyTo uint32
 var ingestVerifyState bool
 var ingestVerifyStorageBackendConfigPath string
 var ingestVerifyLedgerBackendType ingest.LedgerBackendType
@@ -73,29 +77,14 @@ var ingestVerifyRangeCmdOpts = support.ConfigOptions{
 		FlagDefault: false,
 		Usage:       "[optional] verifies state at the last ledger of the range when true",
 	},
-	{
-		Name:        "debug-server-port",
-		ConfigKey:   &ingestVerifyDebugServerPort,
-		OptType:     types.Uint32,
-		Required:    false,
-		FlagDefault: uint32(0),
-		Usage:       "[optional] opens a net/http/pprof server at given port",
-	},
 	generateLedgerBackendOpt(&ingestVerifyLedgerBackendType),
 	generateDatastoreConfigOpt(&ingestVerifyStorageBackendConfigPath),
 }
 
-var ingestionLoadTestFixturesPath, ingestionLoadTestLedgersPath string
+var ingestionLoadTestLedgersPath string
 var ingestionLoadTestCloseDuration time.Duration
+var ingestionLoadTestMerge bool
 var ingestLoadTestCmdOpts = support.ConfigOptions{
-	{
-		Name:        "fixtures-path",
-		OptType:     types.String,
-		FlagDefault: "",
-		Required:    true,
-		Usage:       "path to ledger entries file which will be used as fixtures for the ingestion load test.",
-		ConfigKey:   &ingestionLoadTestFixturesPath,
-	},
 	{
 		Name:        "ledgers-path",
 		OptType:     types.String,
@@ -103,6 +92,14 @@ var ingestLoadTestCmdOpts = support.ConfigOptions{
 		Required:    true,
 		Usage:       "path to ledgers file which will be replayed in the ingestion load test.",
 		ConfigKey:   &ingestionLoadTestLedgersPath,
+	},
+	{
+		Name:        "merge",
+		ConfigKey:   &ingestionLoadTestMerge,
+		OptType:     types.Bool,
+		Required:    false,
+		FlagDefault: false,
+		Usage:       "[optional] set to merge real ledgers with the synthetic ledgers in the ingestion load test.",
 	},
 	{
 		Name:        "close-duration",
@@ -157,19 +154,6 @@ func DefineIngestCommands(rootCmd *cobra.Command, horizonConfig *horizon.Config,
 			}
 			if err := ingestVerifyRangeCmdOpts.SetValues(); err != nil {
 				return err
-			}
-
-			if ingestVerifyDebugServerPort != 0 {
-				go func() {
-					log.Infof("Starting debug server at: %d", ingestVerifyDebugServerPort)
-					err := http.ListenAndServe(
-						fmt.Sprintf("localhost:%d", ingestVerifyDebugServerPort),
-						nil,
-					)
-					if err != nil {
-						log.Error(err)
-					}
-				}()
 			}
 
 			mngr := historyarchive.NewCheckpointManager(horizonConfig.CheckpointFrequency)
@@ -249,17 +233,12 @@ func DefineIngestCommands(rootCmd *cobra.Command, horizonConfig *horizon.Config,
 			if err != nil {
 				return err
 			}
-
-			err = system.StressTest(
-				stressTestNumTransactions,
-				stressTestChangesPerTransaction,
-			)
-			if err != nil {
-				return err
-			}
-
-			log.Info("Stress test completed successfully!")
-			return nil
+			return runWithMetrics(horizonConfig.AdminPort, system, func() error {
+				return system.StressTest(
+					stressTestNumTransactions,
+					stressTestChangesPerTransaction,
+				)
+			})
 		},
 	}
 
@@ -365,16 +344,12 @@ func DefineIngestCommands(rootCmd *cobra.Command, horizonConfig *horizon.Config,
 				return err
 			}
 
-			err = system.BuildState(
-				ingestBuildStateSequence,
-				ingestBuildStateSkipChecks,
-			)
-			if err != nil {
-				return err
-			}
-
-			log.Info("State built successfully!")
-			return nil
+			return runWithMetrics(horizonConfig.AdminPort, system, func() error {
+				return system.BuildState(
+					ingestBuildStateSequence,
+					ingestBuildStateSkipChecks,
+				)
+			})
 		},
 	}
 
@@ -444,11 +419,13 @@ func DefineIngestCommands(rootCmd *cobra.Command, horizonConfig *horizon.Config,
 				return err
 			}
 
-			return system.LoadTest(
-				ingestionLoadTestLedgersPath,
-				ingestionLoadTestCloseDuration,
-				ingestionLoadTestFixturesPath,
-			)
+			return runWithMetrics(horizonConfig.AdminPort, system, func() error {
+				return system.LoadTest(
+					ingestionLoadTestLedgersPath,
+					ingestionLoadTestMerge,
+					ingestionLoadTestCloseDuration,
+				)
+			})
 		},
 	}
 
@@ -496,6 +473,46 @@ func DefineIngestCommands(rootCmd *cobra.Command, horizonConfig *horizon.Config,
 	)
 }
 
+func runWithMetrics(metricsPort uint, system ingest.System, f func() error) error {
+	if metricsPort != 0 {
+		log.Infof("Starting metrics server at: %d", metricsPort)
+		mux := chi.NewMux()
+		mux.Use(chimiddleware.StripSlashes)
+		mux.Use(chimiddleware.RequestID)
+		mux.Use(chimiddleware.RequestLogger(&chimiddleware.DefaultLogFormatter{
+			Logger:  log.DefaultLogger,
+			NoColor: true,
+		}))
+		registry := prometheus.NewRegistry()
+		system.RegisterMetrics(registry)
+		httpx.AddMetricRoutes(mux, registry)
+		metricsServer := &http.Server{
+			Addr:        fmt.Sprintf(":%d", metricsPort),
+			Handler:     mux,
+			ReadTimeout: 5 * time.Second,
+		}
+		go func() {
+			if err := metricsServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				log.Fatalf("error running metrics server: %v", err)
+			}
+		}()
+		defer func() {
+			log.Info("Waiting for metrics to be flushed")
+			// by default, the scrape_interval for prometheus is 1 minute
+			// so if we sleep for 1.5 minutes we ensure that all remaining metrics
+			// will be picked up by the prometheus scraper
+			time.Sleep(time.Minute + time.Second*30)
+			log.Info("Shutting down metrics server...")
+			if err := metricsServer.Shutdown(context.Background()); err != nil {
+				log.Warnf("error shutting down metrics server: %v", err)
+			}
+		}()
+	} else {
+		log.Info("Metrics server disabled")
+	}
+	return f()
+}
+
 func init() {
 	DefineIngestCommands(RootCmd, globalConfig, globalFlags)
 }
@@ -525,11 +542,13 @@ func processVerifyRange(horizonConfig *horizon.Config, horizonFlags config.Confi
 		return err
 	}
 
-	return system.VerifyRange(
-		ingestVerifyFrom,
-		ingestVerifyTo,
-		ingestVerifyState,
-	)
+	return runWithMetrics(horizonConfig.AdminPort, system, func() error {
+		return system.VerifyRange(
+			ingestVerifyFrom,
+			ingestVerifyTo,
+			ingestVerifyState,
+		)
+	})
 }
 
 // generateDatastoreConfigOpt returns a *support.ConfigOption for the datastore-config flag

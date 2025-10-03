@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	stdLog "log"
+	"slices"
 
 	"github.com/spf13/cobra"
 	horizon "github.com/stellar/go/services/horizon/internal"
@@ -125,10 +126,8 @@ func enableGlobalOptionsInHelp(cmd *cobra.Command, cos config.ConfigOptions) {
 // check if this command or any of it's sub-level parents match
 // supportedCommands
 func contains(supportedCommands []string, cmd *cobra.Command) bool {
-	for _, supportedCommand := range supportedCommands {
-		if supportedCommand == cmd.Name() {
-			return true
-		}
+	if slices.Contains(supportedCommands, cmd.Name()) {
+		return true
 	}
 
 	// don't do inheritance matching on the top most sub-commands.
