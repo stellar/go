@@ -22,9 +22,11 @@ var ErrLoadTestDone = fmt.Errorf("the load test is done")
 
 // LedgerBackend is used to load test ingestion.
 // LedgerBackend will take a file of synthetically generated ledgers (see
-// services/horizon/internal/integration/generate_ledgers_test.go) and merge those ledgers
-// with real ledgers from the Stellar network. The merged ledgers will then be replayed to
-// the ingesting down stream system at a configurable rate.
+// services/horizon/internal/integration/generate_ledgers_test.go) and replay
+// them to the downstream ingesting system at a configurable rate.
+// It is also possible to merge the synthetically generated ledgers with real
+// ledgers from the network. To enable the merging behavior, configure the
+// LedgerBackend field in LedgerBackendConfig.
 type LedgerBackend struct {
 	config                LedgerBackendConfig
 	mergedLedgersFilePath string
@@ -44,13 +46,12 @@ type LedgerBackendConfig struct {
 	// NetworkPassphrase is the passphrase of the Stellar network from where the real ledgers
 	// will be obtained
 	NetworkPassphrase string
-	// LedgerBackend is the source of the real ledgers
+	// LedgerBackend is an optional parameter. When LedgerBackend is configured, ledgers from
+	// LedgerBackend will be merged with the synthetic ledgers from LedgersFilePath.
 	LedgerBackend ledgerbackend.LedgerBackend
-	// LedgersFilePath is a file containing the synthetic ledgers that will be combined with the
-	// real ledgers and then replayed by LedgerBackend
+	// LedgersFilePath is a file containing the synthetic ledgers that will be replayed to
+	// the downstream ingesting system.
 	LedgersFilePath string
-	// LedgerEntriesFilePath is a file containing the ledger entry fixtures for the synthetic ledgers
-	LedgerEntriesFilePath string
 	// LedgerCloseDuration is the rate at which ledgers will be replayed from LedgerBackend
 	LedgerCloseDuration time.Duration
 }
@@ -73,35 +74,6 @@ func (r *LedgerBackend) GetLatestLedgerSequence(ctx context.Context) (uint32, er
 	return r.latestLedgerSeq, nil
 }
 
-func readLedgerEntries(path string) ([]xdr.LedgerEntry, error) {
-	file, err := os.Open(path)
-	if err != nil {
-		return nil, fmt.Errorf("could not open file: %w", err)
-	}
-	stream, err := xdr.NewZstdStream(file)
-	if err != nil {
-		return nil, fmt.Errorf("could not open zstd read stream: %w", err)
-	}
-
-	var entries []xdr.LedgerEntry
-	for {
-		var entry xdr.LedgerEntry
-		err = stream.ReadOne(&entry)
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return nil, fmt.Errorf("could not read from zstd stream: %w", err)
-		}
-		entries = append(entries, entry)
-	}
-
-	if err = stream.Close(); err != nil {
-		return nil, fmt.Errorf("could not close zstd stream: %w", err)
-	}
-	return entries, nil
-}
-
 func (r *LedgerBackend) PrepareRange(ctx context.Context, ledgerRange ledgerbackend.Range) error {
 	r.lock.Lock()
 	defer r.lock.Unlock()
@@ -115,10 +87,6 @@ func (r *LedgerBackend) PrepareRange(ctx context.Context, ledgerRange ledgerback
 		}
 		return fmt.Errorf("PrepareRange() already called")
 	}
-	generatedLedgerEntries, err := readLedgerEntries(r.config.LedgerEntriesFilePath)
-	if err != nil {
-		return fmt.Errorf("could not parse ledger entries file: %w", err)
-	}
 	generatedLedgersFile, err := os.Open(r.config.LedgersFilePath)
 	if err != nil {
 		return fmt.Errorf("could not open ledgers file: %w", err)
@@ -126,52 +94,6 @@ func (r *LedgerBackend) PrepareRange(ctx context.Context, ledgerRange ledgerback
 	generatedLedgers, err := xdr.NewZstdStream(generatedLedgersFile)
 	if err != nil {
 		return fmt.Errorf("could not open zstd stream for ledgers file: %w", err)
-	}
-
-	err = r.config.LedgerBackend.PrepareRange(ctx, ledgerRange)
-	if err != nil {
-		return fmt.Errorf("could not prepare range using real ledger backend: %w", err)
-	}
-	cur := ledgerRange.From()
-	firstLedger, err := r.config.LedgerBackend.GetLedger(ctx, cur)
-	if err != nil {
-		return fmt.Errorf("could not get ledger %v from real ledger backend: %w", cur, err)
-	}
-	var changes xdr.LedgerEntryChanges
-	// attach all ledger entry fixtures to the first ledger in the range
-	for i := 0; i < len(generatedLedgerEntries); i++ {
-		entry := generatedLedgerEntries[i]
-		err = UpdateLedgerSeq(&entry, func(uint32) uint32 {
-			return cur
-		})
-		if err != nil {
-			return err
-		}
-		changes = append(changes, xdr.LedgerEntryChange{
-			Type:    xdr.LedgerEntryChangeTypeLedgerEntryCreated,
-			Created: &entry,
-		})
-	}
-	var flag xdr.Uint32 = 1
-	switch firstLedger.V {
-	case 1:
-		firstLedger.V1.UpgradesProcessing = append(firstLedger.V1.UpgradesProcessing, xdr.UpgradeEntryMeta{
-			Upgrade: xdr.LedgerUpgrade{
-				Type:     xdr.LedgerUpgradeTypeLedgerUpgradeFlags,
-				NewFlags: &flag,
-			},
-			Changes: changes,
-		})
-	case 2:
-		firstLedger.V2.UpgradesProcessing = append(firstLedger.V2.UpgradesProcessing, xdr.UpgradeEntryMeta{
-			Upgrade: xdr.LedgerUpgrade{
-				Type:     xdr.LedgerUpgradeTypeLedgerUpgradeFlags,
-				NewFlags: &flag,
-			},
-			Changes: changes,
-		})
-	default:
-		return fmt.Errorf("unsupported ledger version %d", firstLedger.V)
 	}
 
 	mergedLedgersFile, err := os.CreateTemp("", "merged-ledgers")
@@ -193,33 +115,27 @@ func (r *LedgerBackend) PrepareRange(ctx context.Context, ledgerRange ledgerback
 	}
 
 	var latestLedgerSeq uint32
-	checkNetworkPassphrase := true
-	for cur = cur + 1; !ledgerRange.Bounded() || cur <= ledgerRange.To(); cur++ {
-		var ledger xdr.LedgerCloseMeta
-		ledger, err = r.config.LedgerBackend.GetLedger(ctx, cur)
-		if err != nil {
-			return fmt.Errorf("could not get ledger %v from real ledger backend: %w", cur, err)
-		}
+	var firstLedger xdr.LedgerCloseMeta
+	var validatedGeneratedLedgers, validatedNetworkLedgers bool
+	for cur := ledgerRange.From(); !ledgerRange.Bounded() || cur <= ledgerRange.To(); cur++ {
 		var generatedLedger xdr.LedgerCloseMeta
 		if err = generatedLedgers.ReadOne(&generatedLedger); err == io.EOF {
 			break
 		} else if err != nil {
 			return fmt.Errorf("could not get generated ledger: %w", err)
 		}
-		if checkNetworkPassphrase {
+		if !validatedGeneratedLedgers && generatedLedger.CountTransactions() > 0 {
 			// Here we validate that the generated ledgers have the same network passphrase as the
 			// ledgers sourced from the real network. This check only needs to be done once because
 			// we assume all the generated ledgers have the same network passphrase.
-			if err = validateNetworkPassphrase(r.config.NetworkPassphrase, ledger); err != nil {
-				return err
-			}
 			if err = validateNetworkPassphrase(r.config.NetworkPassphrase, generatedLedger); err != nil {
 				return err
 			}
-			checkNetworkPassphrase = false
+			validatedGeneratedLedgers = true
 		}
-		ledgerDiff := int64(ledger.LedgerSequence()) - int64(generatedLedger.LedgerSequence())
-		if err = MergeLedgers(&ledger, generatedLedger, func(cur uint32) uint32 {
+
+		ledgerDiff := int64(cur) - int64(generatedLedger.LedgerSequence())
+		setLedgerSeq := func(cur uint32) uint32 {
 			newLedgerSeq := int64(cur) + ledgerDiff
 			if newLedgerSeq > math.MaxUint32 {
 				panic(fmt.Sprintf(
@@ -236,11 +152,52 @@ func (r *LedgerBackend) PrepareRange(ctx context.Context, ledgerRange ledgerback
 				return minLedger
 			}
 			return uint32(newLedgerSeq)
-		}); err != nil {
-			return fmt.Errorf("could not merge ledgers: %w", err)
 		}
-		if err = xdr.MarshalFramed(writer, ledger); err != nil {
-			return fmt.Errorf("could not marshal ledger to stream: %w", err)
+
+		var ledger xdr.LedgerCloseMeta
+		if r.config.LedgerBackend != nil {
+			if cur == ledgerRange.From() {
+				err = r.config.LedgerBackend.PrepareRange(ctx, ledgerRange)
+				if err != nil {
+					return fmt.Errorf("could not prepare range using real ledger backend: %w", err)
+				}
+			}
+			ledger, err = r.config.LedgerBackend.GetLedger(ctx, cur)
+			if err != nil {
+				return fmt.Errorf("could not get ledger %v from real ledger backend: %w", cur, err)
+			}
+			if !validatedNetworkLedgers && ledger.CountTransactions() > 0 {
+				if err = validateNetworkPassphrase(r.config.NetworkPassphrase, ledger); err != nil {
+					return err
+				}
+				validatedNetworkLedgers = true
+			}
+			if err = MergeLedgers(&ledger, generatedLedger, setLedgerSeq); err != nil {
+				return fmt.Errorf("could not merge ledgers: %w", err)
+			}
+		} else {
+			ledger = generatedLedger
+			if err = UpdateLedgerSeqInLedgerEntries(&ledger, setLedgerSeq); err != nil {
+				return fmt.Errorf("could not update ledger seq: %w", err)
+			}
+			switch ledger.V {
+			case 0:
+				ledger.V0.LedgerHeader.Header.LedgerSeq = xdr.Uint32(cur)
+			case 1:
+				ledger.V1.LedgerHeader.Header.LedgerSeq = xdr.Uint32(cur)
+			case 2:
+				ledger.V2.LedgerHeader.Header.LedgerSeq = xdr.Uint32(cur)
+			default:
+				return fmt.Errorf("ledger version %v is not supported", ledger.V)
+			}
+		}
+
+		if cur == ledgerRange.From() {
+			firstLedger = ledger
+		} else {
+			if err = xdr.MarshalFramed(writer, ledger); err != nil {
+				return fmt.Errorf("could not marshal ledger to stream: %w", err)
+			}
 		}
 		latestLedgerSeq = cur
 	}
@@ -377,8 +334,10 @@ func (r *LedgerBackend) Close() error {
 	defer r.lock.Unlock()
 
 	r.done = true
-	if err := r.config.LedgerBackend.Close(); err != nil {
-		return fmt.Errorf("could not close real ledger backend: %w", err)
+	if r.config.LedgerBackend != nil {
+		if err := r.config.LedgerBackend.Close(); err != nil {
+			return fmt.Errorf("could not close real ledger backend: %w", err)
+		}
 	}
 	if r.mergedLedgersStream != nil {
 		// closing the stream will also close the ledgers file
@@ -425,7 +384,7 @@ func MergeLedgers(dst *xdr.LedgerCloseMeta, src xdr.LedgerCloseMeta, getLedgerSe
 	if src.V != dst.V {
 		return fmt.Errorf("src ledger version %v is incompatible with dst ledger version %v", src.V, dst.V)
 	}
-	if err := UpdateLedgerSeq(&src, getLedgerSeq); err != nil {
+	if err := UpdateLedgerSeqInLedgerEntries(&src, getLedgerSeq); err != nil {
 		return err
 	}
 

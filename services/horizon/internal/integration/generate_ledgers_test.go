@@ -3,16 +3,15 @@ package integration
 import (
 	"context"
 	"encoding"
-	"flag"
-	"fmt"
 	"io"
 	"math"
 	"math/rand"
 	"os"
-	"path/filepath"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/spf13/viper"
 
 	"github.com/klauspost/compress/zstd"
 	"github.com/stretchr/testify/require"
@@ -39,20 +38,56 @@ type sorobanTransaction struct {
 	sequenceNumber int64
 }
 
+// TestGenerateLedgers generates a sequence of ledgers for load testing and can optionally
+// write the produced ledgers to a compressed XDR file.
+//
+// Running with a custom output path:
+//   - Set LOADTEST_OUTPUT=true to enable writing the file.
+//   - Set LOADTEST_OUTPUT_PATH to the desired destination path (will be created/overwritten).
+//
+// Example:
+//
+//	LOADTEST_OUTPUT=true \
+//	LOADTEST_OUTPUT_PATH=./output/my-ledgers.xdr.zstd \
+//	go test ./services/horizon/internal/integration -run TestGenerateLedgers -count=1 -timeout=30m
+//
+// Optional env vars:
+//   - LOADTEST_TRANSACTIONS_PER_LEDGER (default 100)
+//   - LOADTEST_TRANSFERS_PER_TX (default 10)
+//   - LOADTEST_LEDGERS (default 2)
+//   - LOADTEST_NETWORK_PASSPHRASE (default "load test network")
+//
+// Note: If LOADTEST_OUTPUT_PATH is not set, a default path is derived as
+// testdata/load-test-ledgers-v<protocol>.xdr.zstd.
 func TestGenerateLedgers(t *testing.T) {
-	if integration.GetCoreMaxSupportedProtocol() < 22 {
-		t.Skip("This test run does not support less than Protocol 22")
+	if integration.GetCoreMaxSupportedProtocol() < 23 {
+		t.Skip("This test run does not support less than Protocol 23")
 	}
 
 	var transactionsPerLedger, ledgers, transfersPerTx int
-	var output bool
-	var networkPassphrase string
-	flag.IntVar(&transactionsPerLedger, "transactions-per-ledger", 100, "number of transactions per ledger")
-	flag.IntVar(&transfersPerTx, "transfers-per-tx", 10, "number of asset transfers for each transaction")
-	flag.IntVar(&ledgers, "ledgers", 2, "number of ledgers to generate")
-	flag.BoolVar(&output, "output", false, "overwrite the generated output files")
-	flag.StringVar(&networkPassphrase, "network-passphrase", loadTestNetworkPassphrase, "network passphrase")
-	flag.Parse()
+	var networkPassphrase, outputPath string
+
+	// Read testing parameters from environment variables with defaults using viper
+	viper.BindEnv("transactions_per_ledger", "LOADTEST_TRANSACTIONS_PER_LEDGER")
+	viper.SetDefault("transactions_per_ledger", 100)
+	transactionsPerLedger = viper.GetInt("transactions_per_ledger")
+
+	viper.BindEnv("transfers_per_tx", "LOADTEST_TRANSFERS_PER_TX")
+	viper.SetDefault("transfers_per_tx", 10)
+	transfersPerTx = viper.GetInt("transfers_per_tx")
+
+	viper.BindEnv("ledgers", "LOADTEST_LEDGERS")
+	viper.SetDefault("ledgers", 2)
+	ledgers = viper.GetInt("ledgers")
+
+	viper.BindEnv("network_passphrase", "LOADTEST_NETWORK_PASSPHRASE")
+	viper.SetDefault("network_passphrase", loadTestNetworkPassphrase)
+	networkPassphrase = viper.GetString("network_passphrase")
+
+	viper.BindEnv("output_path", "LOADTEST_OUTPUT_PATH")
+	viper.SetDefault("output_path", "")
+	// If empty, outputPath will be derived later
+	outputPath = viper.GetString("output_path")
 
 	itest := integration.NewTest(t, integration.Config{
 		EnableStellarRPC:  true,
@@ -62,6 +97,10 @@ func TestGenerateLedgers(t *testing.T) {
 		},
 	})
 	supportlog.SetLevel(supportlog.ErrorLevel)
+
+	if outputPath != "" {
+		t.Log("ledger file will be written to ", outputPath)
+	}
 
 	maxAccountsPerTransaction := 100
 	// transactionsPerLedger should be a multiple of maxAccountsPerTransaction
@@ -132,6 +171,15 @@ func TestGenerateLedgers(t *testing.T) {
 		})
 	}
 
+	// wait until we have one empty ledger before we start generating load
+	require.Eventually(t, func() bool {
+		root, err := itest.Client().Root()
+		if err != nil {
+			return false
+		}
+		return uint32(root.HorizonSequence) > accountLedgers[len(accountLedgers)-1]+1
+	}, time.Second*20, time.Second)
+
 	lock := &sync.Mutex{}
 	ledgerMap := map[int32]int{}
 	wg := &sync.WaitGroup{}
@@ -168,45 +216,26 @@ func TestGenerateLedgers(t *testing.T) {
 			end = ledgerSeq
 		}
 	}
+	if start <= 2 {
+		t.Fatalf("expected there to be an empty ledger preceding the load generated ledgers: %v", start)
+	}
+	start--
 	t.Logf("waiting for ledgers [%v, %v] to be in history archive", start, end)
 	itest.WaitForLedgerInArchive(6*time.Minute, uint32(end))
 
 	ledgersForAccounts := getLedgers(itest, accountLedgers[0], accountLedgers[len(accountLedgers)-1])
 	var accountLedgerEntries []xdr.LedgerEntry
-	accountSet := map[string]bool{}
 	for _, seq := range accountLedgers {
 		for _, change := range extractChanges(
 			t, itest.Config().NetworkPassphrase, []xdr.LedgerCloseMeta{ledgersForAccounts[seq]},
 		) {
 			if change.Type == xdr.LedgerEntryTypeAccount && change.Post != nil && change.Pre == nil {
-				account := *change.Post
-				accountSet[account.Data.MustAccount().AccountId.Address()] = true
 				accountLedgerEntries = append(accountLedgerEntries, *change.Post)
 			}
 		}
 	}
 	require.Len(t, accountLedgerEntries, 2*transactionsPerLedger)
-	if output {
-		writeFile(
-			t,
-			filepath.Join("testdata", fmt.Sprintf("load-test-accounts-v%d.xdr.zstd", itest.Config().ProtocolVersion)),
-			accountLedgerEntries,
-		)
-	}
-
-	merge(itest, accountSet, output, uint32(start), uint32(end), transactionsPerLedger)
-}
-
-func writeFile[T any](t *testing.T, path string, data []T) {
-	file, err := os.Create(path)
-	require.NoError(t, err)
-	writer, err := zstd.NewWriter(file)
-	require.NoError(t, err)
-	for _, entry := range data {
-		require.NoError(t, xdr.MarshalFramed(writer, entry))
-	}
-	require.NoError(t, writer.Close())
-	require.NoError(t, file.Close())
+	merge(itest, accountLedgerEntries, outputPath, uint32(start), uint32(end), transactionsPerLedger)
 }
 
 func readFile[T xdr.DecoderFrom](t *testing.T, path string, constructor func() T, consume func(T)) {
@@ -316,10 +345,10 @@ func requireChangesAreEqual(t *testing.T, a, b []ingest.Change) {
 			if aChange.Pre == nil {
 				require.Nil(t, bChange.Pre)
 			} else {
-				require.NoError(t, loadtest.UpdateLedgerSeq(aChange.Pre, func(u uint32) uint32 {
+				require.NoError(t, loadtest.UpdateLedgerSeqInLedgerEntries(aChange.Pre, func(u uint32) uint32 {
 					return 0
 				}))
-				require.NoError(t, loadtest.UpdateLedgerSeq(bChange.Pre, func(u uint32) uint32 {
+				require.NoError(t, loadtest.UpdateLedgerSeqInLedgerEntries(bChange.Pre, func(u uint32) uint32 {
 					return 0
 				}))
 				requireXDREquals(t, aChange.Pre, bChange.Pre)
@@ -327,10 +356,10 @@ func requireChangesAreEqual(t *testing.T, a, b []ingest.Change) {
 			if aChange.Post == nil {
 				require.Nil(t, bChange.Post)
 			} else {
-				require.NoError(t, loadtest.UpdateLedgerSeq(aChange.Post, func(u uint32) uint32 {
+				require.NoError(t, loadtest.UpdateLedgerSeqInLedgerEntries(aChange.Post, func(u uint32) uint32 {
 					return 0
 				}))
-				require.NoError(t, loadtest.UpdateLedgerSeq(bChange.Post, func(u uint32) uint32 {
+				require.NoError(t, loadtest.UpdateLedgerSeqInLedgerEntries(bChange.Post, func(u uint32) uint32 {
 					return 0
 				}))
 				requireXDREquals(t, aChange.Post, bChange.Post)
@@ -341,10 +370,10 @@ func requireChangesAreEqual(t *testing.T, a, b []ingest.Change) {
 
 func requireTransactionsMatch(t *testing.T, a, b ingest.LedgerTransaction) {
 	requireXDREquals(t, a.Hash, b.Hash)
-	require.NoError(t, loadtest.UpdateLedgerSeq(&a.UnsafeMeta, func(u uint32) uint32 {
+	require.NoError(t, loadtest.UpdateLedgerSeqInLedgerEntries(&a.UnsafeMeta, func(u uint32) uint32 {
 		return 0
 	}))
-	require.NoError(t, loadtest.UpdateLedgerSeq(&b.UnsafeMeta, func(u uint32) uint32 {
+	require.NoError(t, loadtest.UpdateLedgerSeqInLedgerEntries(&b.UnsafeMeta, func(u uint32) uint32 {
 		return 0
 	}))
 	requireXDREquals(t, a.UnsafeMeta, b.UnsafeMeta)
@@ -353,10 +382,10 @@ func requireTransactionsMatch(t *testing.T, a, b ingest.LedgerTransaction) {
 	require.Equal(t, len(a.FeeChanges), len(b.FeeChanges))
 	for i := range a.FeeChanges {
 		aChange, bChange := a.FeeChanges[i], b.FeeChanges[i]
-		require.NoError(t, loadtest.UpdateLedgerSeq(&aChange, func(u uint32) uint32 {
+		require.NoError(t, loadtest.UpdateLedgerSeqInLedgerEntries(&aChange, func(u uint32) uint32 {
 			return 0
 		}))
-		require.NoError(t, loadtest.UpdateLedgerSeq(&bChange, func(u uint32) uint32 {
+		require.NoError(t, loadtest.UpdateLedgerSeqInLedgerEntries(&bChange, func(u uint32) uint32 {
 			return 0
 		}))
 		requireXDREquals(t, aChange, bChange)
@@ -437,7 +466,7 @@ func waitForTransactions(
 	}, time.Second*90, time.Millisecond*100)
 }
 
-func merge(itest *integration.Test, accountSet map[string]bool, output bool, start, end uint32, transactionsPerLedger int) {
+func merge(itest *integration.Test, accountEntries []xdr.LedgerEntry, outputPath string, start, end uint32, transactionsPerLedger int) {
 	ccConfig, err := itest.CreateCaptiveCoreConfig()
 	require.NoError(itest.CurrentTest(), err)
 
@@ -451,11 +480,7 @@ func merge(itest *integration.Test, accountSet map[string]bool, output bool, sta
 	)
 
 	var writer *zstd.Encoder
-	if output {
-		outputPath := filepath.Join(
-			"testdata",
-			fmt.Sprintf("load-test-ledgers-v%d.xdr.zstd", itest.Config().ProtocolVersion),
-		)
+	if outputPath != "" {
 		file, err := os.Create(outputPath)
 		require.NoError(itest.CurrentTest(), err)
 		writer, err = zstd.NewWriter(file)
@@ -466,12 +491,61 @@ func merge(itest *integration.Test, accountSet map[string]bool, output bool, sta
 		}()
 	}
 
+	accountSet := map[string]bool{}
+	for _, entry := range accountEntries {
+		accountSet[entry.Data.MustAccount().AccountId.Address()] = true
+	}
+
 	var merged xdr.LedgerCloseMeta
 	var curBatch []xdr.LedgerCloseMeta
 	var curCount int
 	for ledgerSeq := start; ledgerSeq <= end; ledgerSeq++ {
 		ledger, err := captiveCore.GetLedger(ctx, ledgerSeq)
 		require.NoError(itest.CurrentTest(), err)
+
+		if ledgerSeq == start {
+			// the first ledger is a special case where we attach all the
+			// ledger entry fixtures involved in the generated ledgers
+			var changes xdr.LedgerEntryChanges
+			for i := 0; i < len(accountEntries); i++ {
+				entry := accountEntries[i]
+				require.NoError(
+					itest.CurrentTest(),
+					loadtest.UpdateLedgerSeqInLedgerEntries(&entry, func(uint32) uint32 {
+						return start
+					}),
+				)
+				changes = append(changes, xdr.LedgerEntryChange{
+					Type:    xdr.LedgerEntryChangeTypeLedgerEntryCreated,
+					Created: &entry,
+				})
+			}
+			var flag xdr.Uint32 = 1
+			switch ledger.V {
+			case 1:
+				ledger.V1.UpgradesProcessing = append(ledger.V1.UpgradesProcessing, xdr.UpgradeEntryMeta{
+					Upgrade: xdr.LedgerUpgrade{
+						Type:     xdr.LedgerUpgradeTypeLedgerUpgradeFlags,
+						NewFlags: &flag,
+					},
+					Changes: changes,
+				})
+			case 2:
+				ledger.V2.UpgradesProcessing = append(ledger.V2.UpgradesProcessing, xdr.UpgradeEntryMeta{
+					Upgrade: xdr.LedgerUpgrade{
+						Type:     xdr.LedgerUpgradeTypeLedgerUpgradeFlags,
+						NewFlags: &flag,
+					},
+					Changes: changes,
+				})
+			default:
+				itest.CurrentTest().Fatalf("unsupported ledger version %d", ledger.V)
+			}
+			if outputPath != "" {
+				require.NoError(itest.CurrentTest(), xdr.MarshalFramed(writer, ledger))
+			}
+			continue
+		}
 
 		transactionCount := ledger.CountTransactions()
 		evictedKeys, err := ledger.EvictedLedgerKeys()
@@ -499,7 +573,7 @@ func merge(itest *integration.Test, accountSet map[string]bool, output bool, sta
 		require.LessOrEqual(itest.CurrentTest(), curCount+transactionCount, transactionsPerLedger)
 		curCount += transactionCount
 		if curCount == transactionsPerLedger {
-			if output {
+			if outputPath != "" {
 				require.NoError(itest.CurrentTest(), xdr.MarshalFramed(writer, merged))
 			}
 			verifyMerge(itest, accountSet, merged, curBatch)
