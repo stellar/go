@@ -3,12 +3,10 @@ package integration
 import (
 	"context"
 	"encoding"
-	"fmt"
 	"io"
 	"math"
 	"math/rand"
 	"os"
-	"path/filepath"
 	"sync"
 	"testing"
 	"time"
@@ -67,7 +65,6 @@ func TestGenerateLedgers(t *testing.T) {
 	}
 
 	var transactionsPerLedger, ledgers, transfersPerTx int
-	var output bool
 	var networkPassphrase, outputPath string
 
 	// Read testing parameters from environment variables with defaults using viper
@@ -82,10 +79,6 @@ func TestGenerateLedgers(t *testing.T) {
 	viper.BindEnv("ledgers", "LOADTEST_LEDGERS")
 	viper.SetDefault("ledgers", 2)
 	ledgers = viper.GetInt("ledgers")
-
-	viper.BindEnv("output", "LOADTEST_OUTPUT")
-	viper.SetDefault("output", false)
-	output = viper.GetBool("output")
 
 	viper.BindEnv("network_passphrase", "LOADTEST_NETWORK_PASSPHRASE")
 	viper.SetDefault("network_passphrase", loadTestNetworkPassphrase)
@@ -105,17 +98,8 @@ func TestGenerateLedgers(t *testing.T) {
 	})
 	supportlog.SetLevel(supportlog.ErrorLevel)
 
-	if outputPath == "" {
-		outputPath = filepath.Join(
-			"testdata",
-			fmt.Sprintf("load-test-ledgers-v%d.xdr.zstd", itest.Config().ProtocolVersion),
-		)
-	}
-
-	if output {
+	if outputPath != "" {
 		t.Log("ledger file will be written to ", outputPath)
-	} else {
-		t.Log("ledgers file will not be written")
 	}
 
 	maxAccountsPerTransaction := 100
@@ -251,7 +235,7 @@ func TestGenerateLedgers(t *testing.T) {
 		}
 	}
 	require.Len(t, accountLedgerEntries, 2*transactionsPerLedger)
-	merge(itest, accountLedgerEntries, output, outputPath, uint32(start), uint32(end), transactionsPerLedger)
+	merge(itest, accountLedgerEntries, outputPath, uint32(start), uint32(end), transactionsPerLedger)
 }
 
 func readFile[T xdr.DecoderFrom](t *testing.T, path string, constructor func() T, consume func(T)) {
@@ -482,7 +466,7 @@ func waitForTransactions(
 	}, time.Second*90, time.Millisecond*100)
 }
 
-func merge(itest *integration.Test, accountEntries []xdr.LedgerEntry, output bool, outputPath string, start, end uint32, transactionsPerLedger int) {
+func merge(itest *integration.Test, accountEntries []xdr.LedgerEntry, outputPath string, start, end uint32, transactionsPerLedger int) {
 	ccConfig, err := itest.CreateCaptiveCoreConfig()
 	require.NoError(itest.CurrentTest(), err)
 
@@ -496,7 +480,7 @@ func merge(itest *integration.Test, accountEntries []xdr.LedgerEntry, output boo
 	)
 
 	var writer *zstd.Encoder
-	if output {
+	if outputPath != "" {
 		file, err := os.Create(outputPath)
 		require.NoError(itest.CurrentTest(), err)
 		writer, err = zstd.NewWriter(file)
@@ -557,7 +541,7 @@ func merge(itest *integration.Test, accountEntries []xdr.LedgerEntry, output boo
 			default:
 				itest.CurrentTest().Fatalf("unsupported ledger version %d", ledger.V)
 			}
-			if output {
+			if outputPath != "" {
 				require.NoError(itest.CurrentTest(), xdr.MarshalFramed(writer, ledger))
 			}
 			continue
@@ -589,7 +573,7 @@ func merge(itest *integration.Test, accountEntries []xdr.LedgerEntry, output boo
 		require.LessOrEqual(itest.CurrentTest(), curCount+transactionCount, transactionsPerLedger)
 		curCount += transactionCount
 		if curCount == transactionsPerLedger {
-			if output {
+			if outputPath != "" {
 				require.NoError(itest.CurrentTest(), xdr.MarshalFramed(writer, merged))
 			}
 			verifyMerge(itest, accountSet, merged, curBatch)
