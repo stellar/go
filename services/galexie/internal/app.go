@@ -123,12 +123,12 @@ func (a *App) init(ctx context.Context, runtimeSettings RuntimeSettings) error {
 
 	// For load test mode, ensure datastore is empty
 	if a.config.Mode == LoadTest {
-		files, listErr := a.dataStore.ListFilePaths(ctx, datastore.ListFileOptions{Limit: 1})
+		files, listErr := a.dataStore.ListFilePaths(ctx, datastore.ListFileOptions{Limit: 5})
 		if listErr != nil {
 			return fmt.Errorf("could not list datastore files for load test validation: %w", listErr)
 		}
 		if len(files) > 0 {
-			return fmt.Errorf("load test mode requires an empty datastore, found existing files")
+			return fmt.Errorf("load test mode requires an empty datastore, however, found existing files.")
 		}
 	}
 
