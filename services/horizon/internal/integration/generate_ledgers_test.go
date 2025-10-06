@@ -57,7 +57,6 @@ type sorobanTransaction struct {
 //   - LOADTEST_NETWORK_PASSPHRASE (default "load test network")
 //   - LOADTEST_OUTPUT_PATH (default empty) - set to the destination path on local o/s (will be created/overwritten).
 //     default is empty string, which means no output file will be written.
-//   - HORIZON_INTEGRATION_TESTS_CORE_MAX_SUPPORTED_PROTOCOL - explicitly set protocol version for generated ledgers
 //
 // Example command to run the test and write output file (adjust values as needed):
 // LOADTEST_OUTPUT_PATH=/full/path/my-load-test-ledgers-xdr.zstd \
@@ -71,8 +70,9 @@ func TestGenerateLedgers(t *testing.T) {
 	envMaxSupportedProtocol := integration.GetCoreMaxSupportedProtocol()
 	// if HORIZON_INTEGRATION_TESTS_CORE_MAX_SUPPORTED_PROTOCOL not set for a specific protocol
 	// means this is zero and test will assume the protocol version based on horizon ingestion 'MaxSupportedProtocolVersion'
-	if envMaxSupportedProtocol > 0 && envMaxSupportedProtocol < internalingest.MaxSupportedProtocolVersion {
-		t.Skipf("This test run does not support less than Protocol %d", internalingest.MaxSupportedProtocolVersion)
+	// otherwise if protocol is set, it must match horizon's current supported protocol version
+	if envMaxSupportedProtocol > 0 && envMaxSupportedProtocol != internalingest.MaxSupportedProtocolVersion {
+		t.Skipf("This test run only supports the current Protocol %d", internalingest.MaxSupportedProtocolVersion)
 	}
 
 	var transactionsPerLedger, ledgers, transfersPerTx int
