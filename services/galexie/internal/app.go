@@ -341,11 +341,14 @@ func newLedgerBackend(config *Config, prometheusRegistry *prometheus.Registry) (
 }
 
 func newLoadTestBackend(config *Config, backend ledgerbackend.LedgerBackend) *loadtest.LedgerBackend {
+
+	if !config.LoadTestMerge {
+		backend = nil
+	}
 	return loadtest.NewLedgerBackend(loadtest.LedgerBackendConfig{
-		NetworkPassphrase:     config.StellarCoreConfig.NetworkPassphrase,
-		LedgerBackend:         backend,
-		LedgersFilePath:       config.LoadTestLedgersPath,
-		LedgerEntriesFilePath: config.LoadTestFixturesPath,
-		LedgerCloseDuration:   config.LoadTestCloseDuration,
+		NetworkPassphrase:   config.StellarCoreConfig.NetworkPassphrase,
+		LedgerBackend:       backend,
+		LedgersFilePath:     config.LoadTestLedgersPath,
+		LedgerCloseDuration: config.LoadTestCloseDuration,
 	})
 }

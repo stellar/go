@@ -58,7 +58,7 @@ type RuntimeSettings struct {
 	Mode           Mode
 	Ctx            context.Context
 	// Load test specific fields
-	LoadTestFixturesPath  string
+	LoadTestMerge         bool
 	LoadTestLedgersPath   string
 	LoadTestCloseDuration time.Duration
 }
@@ -85,9 +85,9 @@ type Config struct {
 	Mode        Mode
 
 	// Load test specific fields
-	LoadTestFixturesPath  string
 	LoadTestLedgersPath   string
 	LoadTestCloseDuration time.Duration
+	LoadTestMerge         bool
 
 	CoreVersion               string
 	SerializedCaptiveCoreToml []byte
@@ -105,7 +105,7 @@ func NewConfig(settings RuntimeSettings, getCoreVersionFn ledgerbackend.CoreBuil
 	config.StartLedger = uint32(settings.StartLedger)
 	config.EndLedger = uint32(settings.EndLedger)
 	config.Mode = settings.Mode
-	config.LoadTestFixturesPath = settings.LoadTestFixturesPath
+	config.LoadTestMerge = settings.LoadTestMerge
 	config.LoadTestLedgersPath = settings.LoadTestLedgersPath
 	config.LoadTestCloseDuration = settings.LoadTestCloseDuration
 	config.CoreBuildVersionFn = ledgerbackend.CoreBuildVersion
@@ -136,9 +136,6 @@ func (config *Config) Resumable() bool {
 func (config *Config) ValidateAndSetLedgerRange(ctx context.Context, archive historyarchive.ArchiveInterface) error {
 
 	if config.Mode == LoadTest {
-		if config.LoadTestFixturesPath == "" {
-			return errors.New("fixtures-path is required for load test mode")
-		}
 		if config.LoadTestLedgersPath == "" {
 			return errors.New("ledgers-path is required for load test mode")
 		}

@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this
 file. This project adheres to [Semantic Versioning](http://semver.org/).
 
+## Pending
+
+### New Features
+ - Added new sub-commmand `load-test` to perform load testing on Galexie export. It uses the (ingest/loadtest)[https://github.com/stellar/go/tree/master/ingest/loadtest] sdk tool which generates synthetic ledgers with configurable amount of transactions per ledger. 
+   ```
+   ./galexie load-test --help
+   ```
+
 ## [v23.0.0]
 
 ### New Features

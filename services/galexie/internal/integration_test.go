@@ -47,35 +47,6 @@ const (
 
 // TestGalexieGCSTestSuite runs tests with GCS backend
 func TestGalexieGCSTestSuite(t *testing.T) {
-
-	// Set required environment variables for the test
-	originalEnvVars := make(map[string]string)
-	envVars := map[string]string{
-		"GALEXIE_INTEGRATION_TESTS_ENABLED":               "true",
-		"GALEXIE_INTEGRATION_TESTS_CAPTIVE_CORE_BIN":      "/usr/local/bin/stellar-core",
-		"GALEXIE_INTEGRATION_TESTS_QUICKSTART_IMAGE":      "docker.io/stellar/quickstart:future@sha256:ea7f4dd4c8e1dc4eb69194ef5b9659aa73e08a89146ea80acfc2fdc073fffb32",
-		"GALEXIE_INTEGRATION_TESTS_QUICKSTART_IMAGE_PULL": "false",
-		"GALEXIE_INTEGRATION_TESTS_LOCALSTACK_IMAGE_TAG":  "4.6.0",
-		"GALEXIE_INTEGRATION_TESTS_LOCALSTACK_IMAGE_PULL": "false",
-	}
-
-	// Store original values and set new ones
-	for key, value := range envVars {
-		originalEnvVars[key] = os.Getenv(key)
-		os.Setenv(key, value)
-	}
-
-	// Restore original environment variables after test
-	defer func() {
-		for key, originalValue := range originalEnvVars {
-			if originalValue == "" {
-				os.Unsetenv(key)
-			} else {
-				os.Setenv(key, originalValue)
-			}
-		}
-	}()
-
 	if os.Getenv("GALEXIE_INTEGRATION_TESTS_ENABLED") != "true" {
 		t.Skip("skipping integration test: GALEXIE_INTEGRATION_TESTS_ENABLED not true")
 	}
@@ -258,11 +229,9 @@ func (s *GalexieTestSuite) TestIngestionLoadInvalidRange() {
 
 	// Get the path to the test data files
 	ledgersFilePath := filepath.Join("test", "load-test-ledgers-v23-standalone.xdr.zstd")
-	ledgerEntriesFilePath := filepath.Join("test", "load-test-accounts-v23-standalone.xdr.zstd")
 
 	// Verify test files exist
 	require.FileExists(ledgersFilePath, "Test ledgers file should exist")
-	require.FileExists(ledgerEntriesFilePath, "Test ledger entries file should exist")
 
 	rootCmd := defineCommands()
 
@@ -270,8 +239,7 @@ func (s *GalexieTestSuite) TestIngestionLoadInvalidRange() {
 	rootCmd.SetArgs([]string{
 		"load-test",
 		"--start=8",
-		"--end=11",
-		"--fixtures-path=" + ledgerEntriesFilePath,
+		"--end=12",
 		"--ledgers-path=" + ledgersFilePath,
 		"--close-duration=2.0", // Fast execution for testing
 		"--config-file=" + s.tempConfigFile,
@@ -279,19 +247,17 @@ func (s *GalexieTestSuite) TestIngestionLoadInvalidRange() {
 
 	// Run the load test command
 	err := rootCmd.Execute()
-	require.Error(err, "Load test command should have error because not enough fixture ledgers for requested range")
+	require.ErrorContains(err, "the range of ledgers between start and end of 4 must not exceed the number of ledgers in ledgers-path file of 3")
 }
 
-func (s *GalexieTestSuite) TestIngestionLoadTestBoundedCmd() {
+func (s *GalexieTestSuite) TestIngestionLoadBoundedCmd() {
 	require := s.Require()
 
 	// Get the path to the test data files
 	ledgersFilePath := filepath.Join("test", "load-test-ledgers-v23-standalone.xdr.zstd")
-	ledgerEntriesFilePath := filepath.Join("test", "load-test-accounts-v23-standalone.xdr.zstd")
 
 	// Verify test files exist
 	require.FileExists(ledgersFilePath, "Test ledgers file should exist")
-	require.FileExists(ledgerEntriesFilePath, "Test ledger entries file should exist")
 
 	rootCmd := defineCommands()
 
@@ -300,7 +266,7 @@ func (s *GalexieTestSuite) TestIngestionLoadTestBoundedCmd() {
 		"load-test",
 		"--start=8",
 		"--end=10",
-		"--fixtures-path=" + ledgerEntriesFilePath,
+		"--merge=true",
 		"--ledgers-path=" + ledgersFilePath,
 		"--close-duration=2.0", // Fast execution for testing
 		"--config-file=" + s.tempConfigFile,
@@ -311,8 +277,7 @@ func (s *GalexieTestSuite) TestIngestionLoadTestBoundedCmd() {
 	rootCmd.SetErr(&errWriter)
 	rootCmd.SetOut(&outWriter)
 
-	// Create a context with timeout for the load test
-	loadTestCtx, loadTestCancel := context.WithTimeout(s.ctx, 1660*time.Second)
+	loadTestCtx, loadTestCancel := context.WithCancel(s.ctx)
 	defer loadTestCancel()
 
 	// Run the load test command
@@ -354,8 +319,13 @@ func (s *GalexieTestSuite) TestIngestionLoadTestBoundedCmd() {
 	}()
 
 	require.EventuallyWithT(func(c *assert.CollectT) {
-		assert.Equal(c, loadTestCtx.Err(), context.Canceled)
-	}, 30*time.Second, time.Second, "Load test should create files in datastore")
+		select {
+		case <-loadTestCtx.Done():
+			assert.True(c, errors.Is(loadTestCtx.Err(), context.Canceled))
+		default:
+			assert.Fail(c, "Load test has not completed yet")
+		}
+	}, 120*time.Second, time.Second, "Load test should create files in datastore")
 
 	// now that the datastore has files,
 	// verify that load test mode correctly validates this as a non-empty error case
@@ -365,7 +335,6 @@ func (s *GalexieTestSuite) TestIngestionLoadTestBoundedCmd() {
 		"load-test",
 		"--start=8",
 		"--end=10",
-		"--fixtures-path=" + ledgerEntriesFilePath,
 		"--ledgers-path=" + ledgersFilePath,
 		"--close-duration=2.0", // Fast execution for testing
 		"--config-file=" + s.tempConfigFile,
@@ -373,6 +342,98 @@ func (s *GalexieTestSuite) TestIngestionLoadTestBoundedCmd() {
 
 	err = rootCmd.Execute()
 	require.ErrorContains(err, "load test mode requires an empty datastore")
+}
+
+func (s *GalexieTestSuite) TestIngestionLoadUnBoundedCmd() {
+	require := s.Require()
+
+	// Get the path to the test data files
+	ledgersFilePath := filepath.Join("test", "load-test-ledgers-v23-standalone.xdr.zstd")
+
+	// Verify test files exist
+	require.FileExists(ledgersFilePath, "Test ledgers file should exist")
+
+	rootCmd := defineCommands()
+
+	// Set up the load-test command with required flags
+	rootCmd.SetArgs([]string{
+		"load-test",
+		"--start=8",
+		"--end=0",
+		"--merge=true",
+		"--ledgers-path=" + ledgersFilePath,
+		"--close-duration=2.0", // Fast execution for testing
+		"--config-file=" + s.tempConfigFile,
+	})
+
+	var errWriter bytes.Buffer
+	var outWriter bytes.Buffer
+	rootCmd.SetErr(&errWriter)
+	rootCmd.SetOut(&outWriter)
+
+	loadTestCtx, loadTestCancel := context.WithCancel(s.ctx)
+	defer loadTestCancel()
+
+	// Run the load test command
+	var loadTestErr error
+	cmdFinished := make(chan struct{})
+	go func() {
+		defer close(cmdFinished)
+		loadTestErr = rootCmd.ExecuteContext(loadTestCtx)
+	}()
+
+	output := outWriter.String()
+	errOutput := errWriter.String()
+	s.T().Log("Load test output:", output)
+	s.T().Log("Load test errors:", errOutput)
+
+	// The load test should have generated exported ledger files to datastore
+	// for a total of 2 ledgers as the test ledgers fixture file contains 2 ledgers and we specifed start ledger 8
+	ledgerRange := ledgerbackend.UnboundedRange(uint32(8))
+	pubConfig := ingest.PublisherConfig{
+		DataStoreConfig:       s.config.DataStoreConfig,
+		BufferedStorageConfig: ingest.DefaultBufferedStorageBackendConfig(s.config.DataStoreConfig.Schema.LedgersPerFile),
+	}
+
+	appCallback := func(lcm xdr.LedgerCloseMeta) error {
+		isSynthetic := false
+		// any ledgers with 100 tx's means it's synthetic load test data
+		switch lcm.V {
+		case 1:
+			isSynthetic = len(lcm.V1.TxProcessing) == 100
+		case 2:
+			isSynthetic = len(lcm.V2.TxProcessing) == 100
+		default:
+			isSynthetic = false
+		}
+		if isSynthetic {
+			loadTestCancel()
+		}
+		return nil
+	}
+
+	go func() {
+		ingest.ApplyLedgerMetadata(ledgerRange, pubConfig, loadTestCtx, appCallback)
+	}()
+
+	require.EventuallyWithT(func(c *assert.CollectT) {
+		var successCmd bool
+		var successDatastore bool
+		select {
+		case <-cmdFinished:
+			successCmd = loadTestErr == nil
+		default:
+		}
+
+		select {
+		case <-loadTestCtx.Done():
+			successDatastore = errors.Is(loadTestCtx.Err(), context.Canceled)
+		default:
+		}
+
+		assert.True(c, successCmd && successDatastore, "Load test command should complete successfully and create files in datastore")
+
+	}, 120*time.Second, time.Second, "Load test should create files during unbounded in datastore")
 }
 
 func (s *GalexieTestSuite) SetupSuite() {

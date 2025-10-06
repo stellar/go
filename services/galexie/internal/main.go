@@ -77,7 +77,7 @@ func defineCommands() *cobra.Command {
 			settings := bindLoadTestCliParameters(
 				cmd.PersistentFlags().Lookup("start"),
 				cmd.PersistentFlags().Lookup("end"),
-				cmd.PersistentFlags().Lookup("fixtures-path"),
+				cmd.PersistentFlags().Lookup("merge"),
 				cmd.PersistentFlags().Lookup("ledgers-path"),
 				cmd.PersistentFlags().Lookup("close-duration"),
 				cmd.PersistentFlags().Lookup("config-file"),
@@ -109,7 +109,7 @@ func defineCommands() *cobra.Command {
 
 	loadTestCmd.PersistentFlags().Uint32P("start", "s", 0, "Starting ledger (inclusive), which load test will use as the starting point from live network upon which synthetic ledger changes are generated. Must be greater than 1")
 	loadTestCmd.PersistentFlags().Uint32P("end", "e", 0, "Ending ledger (inclusive), optional, must be greater than 'start' if specified. If 'end' is absent or '0' means unbounded mode, load test will continue to run indefintely and replay all the ledgers in ledgers-path file in a loop.")
-	loadTestCmd.PersistentFlags().String("fixtures-path", "", "path to ledger entries file which will be used as fixtures for the ingestion load test.")
+	loadTestCmd.PersistentFlags().Bool("merge", false, "whether to merge ledger entries from real ledger backend into the ingestion load test.")
 	loadTestCmd.PersistentFlags().String("ledgers-path", "", "path to ledgers file which will be replayed in the ingestion load test.")
 	loadTestCmd.PersistentFlags().Float64("close-duration", 2.0, "the time (in seconds) it takes to close ledgers in the ingestion load test.")
 	loadTestCmd.PersistentFlags().String("config-file", "config.toml", "Path to the TOML config file. Defaults to 'config.toml' on runtime working directory path.")
@@ -136,7 +136,7 @@ func bindCliParameters(startFlag *pflag.Flag, endFlag *pflag.Flag, configFileFla
 	return settings
 }
 
-func bindLoadTestCliParameters(startFlag *pflag.Flag, endFlag *pflag.Flag, fixturesPathFlag *pflag.Flag, ledgersPathFlag *pflag.Flag, closeDurationFlag *pflag.Flag, configFileFlag *pflag.Flag) RuntimeSettings {
+func bindLoadTestCliParameters(startFlag *pflag.Flag, endFlag *pflag.Flag, mergeFlag *pflag.Flag, ledgersPathFlag *pflag.Flag, closeDurationFlag *pflag.Flag, configFileFlag *pflag.Flag) RuntimeSettings {
 	settings := RuntimeSettings{}
 
 	viper.BindPFlag(startFlag.Name, startFlag)
@@ -147,9 +147,9 @@ func bindLoadTestCliParameters(startFlag *pflag.Flag, endFlag *pflag.Flag, fixtu
 	viper.BindEnv(endFlag.Name, strutils.KebabToConstantCase(endFlag.Name))
 	settings.EndLedger = viper.GetUint32(endFlag.Name)
 
-	viper.BindPFlag(fixturesPathFlag.Name, fixturesPathFlag)
-	viper.BindEnv(fixturesPathFlag.Name, strutils.KebabToConstantCase(fixturesPathFlag.Name))
-	settings.LoadTestFixturesPath = viper.GetString(fixturesPathFlag.Name)
+	viper.BindPFlag(mergeFlag.Name, mergeFlag)
+	viper.BindEnv(mergeFlag.Name, strutils.KebabToConstantCase(mergeFlag.Name))
+	settings.LoadTestMerge = viper.GetBool(mergeFlag.Name)
 
 	viper.BindPFlag(ledgersPathFlag.Name, ledgersPathFlag)
 	viper.BindEnv(ledgersPathFlag.Name, strutils.KebabToConstantCase(ledgersPathFlag.Name))

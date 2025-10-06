@@ -102,7 +102,7 @@ func TestFlagsOutput(t *testing.T) {
 		},
 		{
 			name:              "load-test sub-command with all parameters",
-			commandArgs:       []string{"load-test", "--start", "4", "--end", "5", "--fixtures-path", "fixtures.xdr", "--ledgers-path", "ledgers.xdr", "--close-duration", "3.5", "--config-file", "myfile"},
+			commandArgs:       []string{"load-test", "--start", "4", "--end", "5", "--merge", "--ledgers-path", "ledgers.xdr", "--close-duration", "3.5", "--config-file", "myfile"},
 			expectedErrOutput: "",
 			appRunner:         appRunnerSuccess,
 			expectedSettings: RuntimeSettings{
@@ -111,14 +111,14 @@ func TestFlagsOutput(t *testing.T) {
 				ConfigFilePath:        "myfile",
 				Mode:                  LoadTest,
 				Ctx:                   ctx,
-				LoadTestFixturesPath:  "fixtures.xdr",
+				LoadTestMerge:         true,
 				LoadTestLedgersPath:   "ledgers.xdr",
 				LoadTestCloseDuration: 3500 * time.Millisecond,
 			},
 		},
 		{
-			name:              "load-test sub-command with default close duration",
-			commandArgs:       []string{"load-test", "--start", "4", "--end", "5", "--fixtures-path", "fixtures.xdr", "--ledgers-path", "ledgers.xdr", "--config-file", "myfile"},
+			name:              "load-test sub-command with defaults",
+			commandArgs:       []string{"load-test", "--start", "4", "--end", "5", "--ledgers-path", "ledgers.xdr", "--config-file", "myfile"},
 			expectedErrOutput: "",
 			appRunner:         appRunnerSuccess,
 			expectedSettings: RuntimeSettings{
@@ -127,14 +127,14 @@ func TestFlagsOutput(t *testing.T) {
 				ConfigFilePath:        "myfile",
 				Mode:                  LoadTest,
 				Ctx:                   ctx,
-				LoadTestFixturesPath:  "fixtures.xdr",
+				LoadTestMerge:         false,
 				LoadTestLedgersPath:   "ledgers.xdr",
 				LoadTestCloseDuration: 2 * time.Second,
 			},
 		},
 		{
 			name:              "load-test sub-command prints app error",
-			commandArgs:       []string{"load-test", "--start", "4", "--fixtures-path", "fixtures.xdr", "--ledgers-path", "ledgers.xdr", "--config-file", "myfile"},
+			commandArgs:       []string{"load-test", "--start", "4", "--merge", "--ledgers-path", "ledgers.xdr", "--config-file", "myfile"},
 			expectedErrOutput: "test error",
 			appRunner:         appRunnerError,
 		},
