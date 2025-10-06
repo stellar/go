@@ -70,9 +70,9 @@ func defineCommands() *cobra.Command {
 
 	var loadTestCmd = &cobra.Command{
 		Use: "load-test",
-		Short: "runs an ingestion load test for galexie, the range of ledgers to be processed " +
-			"during load test is determined as the specified start and end for bounded and there " +
-			"must be at least that many ledgers in ledgers-path, for unbounded need at least one ledger in ledgers-path",
+		Short: "runs an ingestion load test for galexie. the range of ledgers to be processed " +
+			"during load test is determined as the specified start and end.  For bounded ranges " +
+			"there must be at least that many ledgers in ledgers-path, for unbounded the load test will stop after it replays all ledgers from ledgers-path",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			settings := bindLoadTestCliParameters(
 				cmd.PersistentFlags().Lookup("start"),
