@@ -6,7 +6,7 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 ## Pending
 
 ### New Features
- - Added new sub-commmand `load-test` to perform load testing on Galexie export. It uses the (ingest/loadtest)[https://github.com/stellar/go/tree/master/ingest/loadtest] sdk tool which generates synthetic ledgers with configurable amount of transactions per ledger. 
+ - Added new sub-commmand `load-test` to perform load testing on Galexie export. It uses the (ingest/loadtest)[https://github.com/stellar/go/tree/master/ingest/loadtest] sdk tool which generates synthetic ledgers at runtime from a pre-built synthetic ledgers data file. You must create the synthetic ledgers data file first with (ingest/loadtest generator tool)[../horizon/internal/integration/generate_ledgers_test.go] 
    ```
    ./galexie load-test --help
    ```
