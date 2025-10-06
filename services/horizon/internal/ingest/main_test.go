@@ -728,8 +728,8 @@ func (m *mockSystem) BuildState(sequence uint32, skipChecks bool) error {
 	return args.Error(0)
 }
 
-func (m *mockSystem) LoadTest(ledgersFilePath string, closeDuration time.Duration, ledgerEntriesFilePath string) error {
-	args := m.Called(ledgersFilePath, closeDuration, ledgerEntriesFilePath)
+func (m *mockSystem) LoadTest(ledgersFilePath string, merge bool, closeDuration time.Duration) error {
+	args := m.Called(ledgersFilePath, merge, closeDuration)
 	return args.Error(0)
 }
 
