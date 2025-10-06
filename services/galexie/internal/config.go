@@ -140,7 +140,7 @@ func (config *Config) ValidateAndSetLedgerRange(ctx context.Context, archive his
 			return errors.New("ledgers-path is required for load test mode")
 		}
 
-		// configure load-test as a bounded range starting from curret network ledger and including up to
+		// configure load-test as a bounded range starting from current network ledger and including up to
 		// ledgers available from fixtures files
 		ledgersCount, err := countLoadTestLedgers(config.LoadTestLedgersPath)
 		if err != nil {
