@@ -108,7 +108,7 @@ func defineCommands() *cobra.Command {
 	viper.BindPFlags(appendCmd.PersistentFlags())
 
 	loadTestCmd.PersistentFlags().Uint32P("start", "s", 0, "Starting ledger (inclusive), which load test will use as the starting point from live network upon which synthetic ledger changes are generated. Must be greater than 1")
-	loadTestCmd.PersistentFlags().Uint32P("end", "e", 0, "Ending ledger (inclusive), optional, must be greater than 'start' if specified. If 'end' is absent or '0' means unbounded mode, load test will continue to run indefintely and replay all the ledgers in ledgers-path file in a loop.")
+	loadTestCmd.PersistentFlags().Uint32P("end", "e", 0, "Ending ledger (inclusive), optional, must be greater than 'start' if specified. If 'end' is absent or '0' means unbounded mode, load test will continue to run indefinitely and replay all the ledgers in ledgers-path file in a loop.")
 	loadTestCmd.PersistentFlags().Bool("merge", false, "whether to merge ledger entries from real ledger backend into the ingestion load test.")
 	loadTestCmd.PersistentFlags().String("ledgers-path", "", "path to ledgers file which will be replayed in the ingestion load test.")
 	loadTestCmd.PersistentFlags().Float64("close-duration", 2.0, "the time (in seconds) it takes to close ledgers in the ingestion load test.")
