@@ -47,6 +47,35 @@ const (
 
 // TestGalexieGCSTestSuite runs tests with GCS backend
 func TestGalexieGCSTestSuite(t *testing.T) {
+
+	// Set required environment variables for the galexie integration test
+	originalEnvVars := make(map[string]string)
+	envVars := map[string]string{
+		"GALEXIE_INTEGRATION_TESTS_ENABLED":               "true",
+		"GALEXIE_INTEGRATION_TESTS_CAPTIVE_CORE_BIN":      "/usr/local/bin/stellar-core",
+		"GALEXIE_INTEGRATION_TESTS_QUICKSTART_IMAGE":      "docker.io/stellar/quickstart:future@sha256:ea7f4dd4c8e1dc4eb69194ef5b9659aa73e08a89146ea80acfc2fdc073fffb32",
+		"GALEXIE_INTEGRATION_TESTS_QUICKSTART_IMAGE_PULL": "false",
+		"GALEXIE_INTEGRATION_TESTS_LOCALSTACK_IMAGE_TAG":  "4.6.0",
+		"GALEXIE_INTEGRATION_TESTS_LOCALSTACK_IMAGE_PULL": "false",
+	}
+
+	// Store original values and set new ones
+	for key, value := range envVars {
+		originalEnvVars[key] = os.Getenv(key)
+		os.Setenv(key, value)
+	}
+
+	// Restore original environment variables after test
+	defer func() {
+		for key, originalValue := range originalEnvVars {
+			if originalValue == "" {
+				os.Unsetenv(key)
+			} else {
+				os.Setenv(key, originalValue)
+			}
+		}
+	}()
+
 	if os.Getenv("GALEXIE_INTEGRATION_TESTS_ENABLED") != "true" {
 		t.Skip("skipping integration test: GALEXIE_INTEGRATION_TESTS_ENABLED not true")
 	}
@@ -483,7 +512,7 @@ func (s *GalexieTestSuite) getLoadTestDataFile() string {
 	require := s.Require()
 	// this file of synthetic ledger data should be built ahead of time using services/horizon/internal/integration/generate_ledgers_test.go
 	// test will only be done for current protocol version which should be stamped on the filename.
-	datapath := filepath.Join("test", "load-test-ledgers-v23-standalone.xdr.zstd")
+	datapath := filepath.Join("testdata", "load-test-ledgers-v23-standalone.xdr.zstd")
 	require.FileExists(datapath, "Test ledgers file should exist")
 	return datapath
 }

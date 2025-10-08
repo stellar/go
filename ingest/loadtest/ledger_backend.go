@@ -327,14 +327,9 @@ func (r *LedgerBackend) GetLedger(ctx context.Context, sequence uint32) (xdr.Led
 	closeTime := r.startTime.Add(time.Duration(i+1) * r.config.LedgerCloseDuration)
 
 	// Sleep until closeTime or context is cancelled
-	sleepDuration := time.Until(closeTime)
-	if sleepDuration > 0 {
-		timer := time.NewTimer(sleepDuration)
-		defer timer.Stop()
-
+	if sleepDuration := time.Until(closeTime); sleepDuration > 0 {
 		select {
-		case <-timer.C:
-			// Normal completion - closeTime reached
+		case <-time.After(sleepDuration):
 		case <-ctx.Done():
 			return xdr.LedgerCloseMeta{}, ctx.Err()
 		}

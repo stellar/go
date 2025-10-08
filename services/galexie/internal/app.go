@@ -259,7 +259,7 @@ func (a *App) Run(runtimeSettings RuntimeSettings) error {
 		defer wg.Done()
 
 		err := a.uploader.Run(ctx, uploadShutdownTimeout)
-		if err != nil && !errors.Is(err, context.Canceled) {
+		if err != nil {
 			logger.WithError(err).Error("Error executing Uploader")
 			cancel()
 		}
@@ -269,8 +269,12 @@ func (a *App) Run(runtimeSettings RuntimeSettings) error {
 		defer wg.Done()
 
 		err := a.exportManager.Run(ctx, a.config.StartLedger, a.config.EndLedger)
-		if err != nil && !errors.Is(err, context.Canceled) && !errors.Is(err, loadtest.ErrLoadTestDone) {
-			logger.WithError(err).Error("Error executing ExportManager")
+		if err != nil {
+			if !errors.Is(err, loadtest.ErrLoadTestDone) {
+				logger.WithError(err).Error("Error executing ExportManager")
+			} else {
+				logger.Info("Load test completed.")
+			}
 			cancel()
 		}
 	}()
@@ -330,14 +334,13 @@ func newLedgerBackend(config *Config, prometheusRegistry *prometheus.Registry) (
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to create captive-core instance")
 	}
-	captiveCoreBackend = ledgerbackend.WithMetrics(captiveCoreBackend, prometheusRegistry, nameSpace)
 
 	// For load test mode, wrap the backend with loadtest backend
 	if config.Mode == LoadTest {
 		captiveCoreBackend = newLoadTestBackend(config, captiveCoreBackend)
 	}
 
-	return captiveCoreBackend, nil
+	return ledgerbackend.WithMetrics(captiveCoreBackend, prometheusRegistry, nameSpace), nil
 }
 
 func newLoadTestBackend(config *Config, backend ledgerbackend.LedgerBackend) *loadtest.LedgerBackend {
