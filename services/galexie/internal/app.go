@@ -18,6 +18,7 @@ import (
 
 	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/ingest/ledgerbackend"
+	"github.com/stellar/go/ingest/loadtest"
 	"github.com/stellar/go/support/compressxdr"
 	"github.com/stellar/go/support/datastore"
 	supporthttp "github.com/stellar/go/support/http"
@@ -118,6 +119,17 @@ func (a *App) init(ctx context.Context, runtimeSettings RuntimeSettings) error {
 
 	if a.dataStore, err = datastore.NewDataStore(ctx, a.config.DataStoreConfig); err != nil {
 		return fmt.Errorf("could not connect to destination data store %w", err)
+	}
+
+	// For load test mode, ensure datastore is empty
+	if a.config.Mode == LoadTest {
+		files, listErr := a.dataStore.ListFilePaths(ctx, datastore.ListFileOptions{Limit: 5})
+		if listErr != nil {
+			return fmt.Errorf("could not list datastore files for load test validation: %w", listErr)
+		}
+		if len(files) > 0 {
+			return fmt.Errorf("load test mode requires an empty datastore, however, found existing files.")
+		}
 	}
 
 	if err = validateExistingFileExtension(ctx, a.dataStore); err != nil {
@@ -247,7 +259,7 @@ func (a *App) Run(runtimeSettings RuntimeSettings) error {
 		defer wg.Done()
 
 		err := a.uploader.Run(ctx, uploadShutdownTimeout)
-		if err != nil && !errors.Is(err, context.Canceled) {
+		if err != nil {
 			logger.WithError(err).Error("Error executing Uploader")
 			cancel()
 		}
@@ -257,8 +269,12 @@ func (a *App) Run(runtimeSettings RuntimeSettings) error {
 		defer wg.Done()
 
 		err := a.exportManager.Run(ctx, a.config.StartLedger, a.config.EndLedger)
-		if err != nil && !errors.Is(err, context.Canceled) {
-			logger.WithError(err).Error("Error executing ExportManager")
+		if err != nil {
+			if !errors.Is(err, loadtest.ErrLoadTestDone) {
+				logger.WithError(err).Error("Error executing ExportManager")
+			} else {
+				logger.Info("Load test completed.")
+			}
 			cancel()
 		}
 	}()
@@ -302,8 +318,7 @@ func (a *App) Run(runtimeSettings RuntimeSettings) error {
 	return nil
 }
 
-// newLedgerBackend Creates and initializes captive core ledger backend
-// Currently, only supports captive-core as ledger backend
+// newLedgerBackend Creates and initializes a captive core ledger backend
 func newLedgerBackend(config *Config, prometheusRegistry *prometheus.Registry) (ledgerbackend.LedgerBackend, error) {
 	// best effort check on a core bin available from PATH to provide as default if
 	// no core bin is provided from config.
@@ -313,13 +328,30 @@ func newLedgerBackend(config *Config, prometheusRegistry *prometheus.Registry) (
 		return nil, err
 	}
 
-	var backend ledgerbackend.LedgerBackend
+	var captiveCoreBackend ledgerbackend.LedgerBackend
 	// Create a new captive core backend
-	backend, err = ledgerbackend.NewCaptive(captiveConfig)
+	captiveCoreBackend, err = ledgerbackend.NewCaptive(captiveConfig)
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to create captive-core instance")
 	}
-	backend = ledgerbackend.WithMetrics(backend, prometheusRegistry, nameSpace)
 
-	return backend, nil
+	// For load test mode, wrap the backend with loadtest backend
+	if config.Mode == LoadTest {
+		captiveCoreBackend = newLoadTestBackend(config, captiveCoreBackend)
+	}
+
+	return ledgerbackend.WithMetrics(captiveCoreBackend, prometheusRegistry, nameSpace), nil
+}
+
+func newLoadTestBackend(config *Config, backend ledgerbackend.LedgerBackend) *loadtest.LedgerBackend {
+
+	if !config.LoadTestMerge {
+		backend = nil
+	}
+	return loadtest.NewLedgerBackend(loadtest.LedgerBackendConfig{
+		NetworkPassphrase:   config.StellarCoreConfig.NetworkPassphrase,
+		LedgerBackend:       backend,
+		LedgersFilePath:     config.LoadTestLedgersPath,
+		LedgerCloseDuration: config.LoadTestCloseDuration,
+	})
 }

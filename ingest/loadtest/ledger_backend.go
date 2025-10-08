@@ -303,7 +303,7 @@ func (r *LedgerBackend) GetLedger(ctx context.Context, sequence uint32) (xdr.Led
 		closeLedgerBackend = true
 		return xdr.LedgerCloseMeta{}, ErrLoadTestDone
 	}
-	for ; r.nextLedgerSeq <= sequence; r.nextLedgerSeq++ {
+	for ; r.nextLedgerSeq <= sequence && ctx.Err() == nil; r.nextLedgerSeq++ {
 		var ledger xdr.LedgerCloseMeta
 		if err := r.mergedLedgersStream.ReadOne(&ledger); err == io.EOF {
 			return ledger, fmt.Errorf(
@@ -325,7 +325,16 @@ func (r *LedgerBackend) GetLedger(ctx context.Context, sequence uint32) (xdr.Led
 	i := int(sequence - r.startLedgerSeq)
 	// the i'th ledger will only be available after (i+1) * r.ledgerCloseDuration time has elapsed
 	closeTime := r.startTime.Add(time.Duration(i+1) * r.config.LedgerCloseDuration)
-	time.Sleep(time.Until(closeTime))
+
+	// Sleep until closeTime or context is cancelled
+	if sleepDuration := time.Until(closeTime); sleepDuration > 0 {
+		select {
+		case <-time.After(sleepDuration):
+		case <-ctx.Done():
+			return xdr.LedgerCloseMeta{}, ctx.Err()
+		}
+	}
+
 	return r.cachedLedger, nil
 }
 

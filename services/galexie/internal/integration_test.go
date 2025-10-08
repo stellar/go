@@ -20,14 +20,18 @@ import (
 
 	"github.com/pelletier/go-toml"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/fsouza/fake-gcs-server/fakestorage"
 
 	"github.com/stellar/go/historyarchive"
+	"github.com/stellar/go/ingest"
+	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/support/compressxdr"
 	"github.com/stellar/go/support/datastore"
 	"github.com/stellar/go/support/storage"
+	"github.com/stellar/go/xdr"
 )
 
 const (
@@ -68,6 +72,7 @@ func TestGalexieS3TestSuite(t *testing.T) {
 type GalexieTestSuite struct {
 	suite.Suite
 	tempConfigFile        string
+	testTempDir           string
 	ctx                   context.Context
 	ctxStop               context.CancelFunc
 	coreContainerID       string
@@ -198,6 +203,221 @@ func (s *GalexieTestSuite) TestAppendUnbounded() {
 	}, 180*time.Second, 50*time.Millisecond, "append unbounded did not work")
 }
 
+func (s *GalexieTestSuite) SetupTest() {
+	t := s.T()
+
+	if s.storageType == "GCS" {
+		s.setupGCS(t)
+	} else if s.storageType == "S3" {
+		s.setupS3(t)
+	}
+}
+
+func (s *GalexieTestSuite) TearDownTest() {
+	if s.storageType == "GCS" && s.gcsServer != nil {
+		s.gcsServer.Stop()
+		s.gcsServer = nil
+	} else if s.storageType == "S3" && s.localStackContainerID != "" {
+		s.T().Logf("Stopping the localstack container %v", s.localStackContainerID)
+		s.stopAndLogContainer(s.localStackContainerID, "localstack")
+		s.localStackContainerID = ""
+	}
+}
+
+func (s *GalexieTestSuite) TestIngestionLoadInvalidRange() {
+	require := s.Require()
+	ledgersFilePath := s.getLoadTestDataFile()
+	rootCmd := defineCommands()
+
+	// Set up the load-test command with required flags
+	rootCmd.SetArgs([]string{
+		"load-test",
+		"--start=8",
+		"--end=12",
+		"--ledgers-path=" + ledgersFilePath,
+		"--close-duration=2.0", // Fast execution for testing
+		"--config-file=" + s.tempConfigFile,
+	})
+
+	// Run the load test command
+	err := rootCmd.Execute()
+	require.ErrorContains(err, "the range of ledgers between start and end of 4 must not exceed the number of ledgers in ledgers-path file of 3")
+}
+
+func (s *GalexieTestSuite) TestIngestionLoadBoundedCmd() {
+	require := s.Require()
+	ledgersFilePath := s.getLoadTestDataFile()
+	rootCmd := defineCommands()
+
+	// Set up the load-test command with required flags
+	rootCmd.SetArgs([]string{
+		"load-test",
+		"--start=8",
+		"--end=10",
+		"--merge=true",
+		"--ledgers-path=" + ledgersFilePath,
+		"--close-duration=2.0", // Fast execution for testing
+		"--config-file=" + s.tempConfigFile,
+	})
+
+	var errWriter bytes.Buffer
+	var outWriter bytes.Buffer
+	rootCmd.SetErr(&errWriter)
+	rootCmd.SetOut(&outWriter)
+
+	loadTestCtx, loadTestCancel := context.WithCancel(s.ctx)
+	defer loadTestCancel()
+
+	// Run the load test command
+	err := rootCmd.ExecuteContext(loadTestCtx)
+	require.NoError(err, "Load test command should complete the bounded range without error")
+
+	output := outWriter.String()
+	errOutput := errWriter.String()
+	s.T().Log("Load test output:", output)
+	s.T().Log("Load test errors:", errOutput)
+
+	// The load test should have generated exported ledger files to datastore
+	// for a total of 2 ledgers as the test ledgers fixture file contains 2 ledgers and we specifed start ledger 8
+	ledgerRange := ledgerbackend.BoundedRange(uint32(8), uint32(10))
+	pubConfig := ingest.PublisherConfig{
+		DataStoreConfig:       s.config.DataStoreConfig,
+		BufferedStorageConfig: ingest.DefaultBufferedStorageBackendConfig(s.config.DataStoreConfig.Schema.LedgersPerFile),
+	}
+
+	appCallback := func(lcm xdr.LedgerCloseMeta) error {
+		isSynthetic := false
+		// any ledgers with 100 tx's means it's synthetic load test data
+		switch lcm.V {
+		case 1:
+			isSynthetic = len(lcm.V1.TxProcessing) == 100
+		case 2:
+			isSynthetic = len(lcm.V2.TxProcessing) == 100
+		default:
+			isSynthetic = false
+		}
+		if isSynthetic {
+			loadTestCancel()
+		}
+		return nil
+	}
+
+	go func() {
+		ingest.ApplyLedgerMetadata(ledgerRange, pubConfig, loadTestCtx, appCallback)
+	}()
+
+	require.EventuallyWithT(func(c *assert.CollectT) {
+		select {
+		case <-loadTestCtx.Done():
+			assert.True(c, errors.Is(loadTestCtx.Err(), context.Canceled))
+		default:
+			assert.Fail(c, "Load test has not completed yet")
+		}
+	}, 120*time.Second, time.Second, "Load test should create files in datastore")
+
+	// now that the datastore has files,
+	// verify that load test mode correctly validates this as a non-empty error case
+	rootCmd = defineCommands()
+
+	rootCmd.SetArgs([]string{
+		"load-test",
+		"--start=8",
+		"--end=10",
+		"--ledgers-path=" + ledgersFilePath,
+		"--close-duration=2.0", // Fast execution for testing
+		"--config-file=" + s.tempConfigFile,
+	})
+
+	err = rootCmd.Execute()
+	require.ErrorContains(err, "load test mode requires an empty datastore")
+}
+
+func (s *GalexieTestSuite) TestIngestionLoadUnBoundedCmd() {
+	require := s.Require()
+	ledgersFilePath := s.getLoadTestDataFile()
+	rootCmd := defineCommands()
+
+	// Set up the load-test command with required flags
+	rootCmd.SetArgs([]string{
+		"load-test",
+		"--start=8",
+		"--end=0",
+		"--merge=true",
+		"--ledgers-path=" + ledgersFilePath,
+		"--close-duration=2.0", // Fast execution for testing
+		"--config-file=" + s.tempConfigFile,
+	})
+
+	var errWriter bytes.Buffer
+	var outWriter bytes.Buffer
+	rootCmd.SetErr(&errWriter)
+	rootCmd.SetOut(&outWriter)
+
+	loadTestCtx, loadTestCancel := context.WithCancel(s.ctx)
+	defer loadTestCancel()
+
+	// Run the load test command
+	var loadTestErr error
+	cmdFinished := make(chan struct{})
+	go func() {
+		defer close(cmdFinished)
+		loadTestErr = rootCmd.ExecuteContext(loadTestCtx)
+	}()
+
+	output := outWriter.String()
+	errOutput := errWriter.String()
+	s.T().Log("Load test output:", output)
+	s.T().Log("Load test errors:", errOutput)
+
+	// The load test should have generated exported ledger files to datastore
+	// for a total of 2 ledgers as the test ledgers fixture file contains 2 ledgers and we specifed start ledger 8
+	ledgerRange := ledgerbackend.UnboundedRange(uint32(8))
+	pubConfig := ingest.PublisherConfig{
+		DataStoreConfig:       s.config.DataStoreConfig,
+		BufferedStorageConfig: ingest.DefaultBufferedStorageBackendConfig(s.config.DataStoreConfig.Schema.LedgersPerFile),
+	}
+
+	appCallback := func(lcm xdr.LedgerCloseMeta) error {
+		isSynthetic := false
+		// any ledgers with 100 tx's means it's synthetic load test data
+		switch lcm.V {
+		case 1:
+			isSynthetic = len(lcm.V1.TxProcessing) == 100
+		case 2:
+			isSynthetic = len(lcm.V2.TxProcessing) == 100
+		default:
+			isSynthetic = false
+		}
+		if isSynthetic {
+			loadTestCancel()
+		}
+		return nil
+	}
+
+	go func() {
+		ingest.ApplyLedgerMetadata(ledgerRange, pubConfig, loadTestCtx, appCallback)
+	}()
+
+	require.EventuallyWithT(func(c *assert.CollectT) {
+		var successCmd bool
+		var successDatastore bool
+		select {
+		case <-cmdFinished:
+			successCmd = loadTestErr == nil
+		default:
+		}
+
+		select {
+		case <-loadTestCtx.Done():
+			successDatastore = errors.Is(loadTestCtx.Err(), context.Canceled)
+		default:
+		}
+
+		assert.True(c, successCmd && successDatastore, "Load test command should complete successfully and create files in datastore")
+
+	}, 120*time.Second, time.Second, "Load test should create files during unbounded in datastore")
+}
+
 func (s *GalexieTestSuite) SetupSuite() {
 	var err error
 	t := s.T()
@@ -209,7 +429,7 @@ func (s *GalexieTestSuite) SetupSuite() {
 			s.TearDownSuite()
 		}
 	}()
-	testTempDir := t.TempDir()
+	s.testTempDir = t.TempDir()
 
 	galexieConfigTemplate, err := toml.LoadFile(configTemplate)
 	if err != nil {
@@ -221,7 +441,7 @@ func (s *GalexieTestSuite) SetupSuite() {
 	galexieConfigTemplate.Set("stellar_core_config.stellar_core_binary_path",
 		os.Getenv("GALEXIE_INTEGRATION_TESTS_CAPTIVE_CORE_BIN"))
 
-	galexieConfigTemplate.Set("stellar_core_config.storage_path", filepath.Join(testTempDir, "captive-core"))
+	galexieConfigTemplate.Set("stellar_core_config.storage_path", filepath.Join(s.testTempDir, "captive-core"))
 	galexieConfigTemplate.Set("datastore_config.type", s.storageType)
 
 	tomlBytes, err := toml.Marshal(galexieConfigTemplate)
@@ -233,7 +453,7 @@ func (s *GalexieTestSuite) SetupSuite() {
 	}
 	s.config.DataStoreConfig.NetworkPassphrase = s.config.StellarCoreConfig.NetworkPassphrase
 
-	s.tempConfigFile = filepath.Join(testTempDir, "config.toml")
+	s.tempConfigFile = filepath.Join(s.testTempDir, "config.toml")
 	err = os.WriteFile(s.tempConfigFile, tomlBytes, 0777)
 	if err != nil {
 		t.Fatalf("unable to write temp config file %v, %v", s.tempConfigFile, err)
@@ -242,12 +462,6 @@ func (s *GalexieTestSuite) SetupSuite() {
 	s.dockerCli, err = client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		t.Fatalf("could not create docker client, %v", err)
-	}
-
-	if s.storageType == "GCS" {
-		s.setupGCS(t, testTempDir)
-	} else if s.storageType == "S3" {
-		s.setupS3(t)
 	}
 
 	quickstartImage := os.Getenv("GALEXIE_INTEGRATION_TESTS_QUICKSTART_IMAGE")
@@ -265,11 +479,23 @@ func (s *GalexieTestSuite) SetupSuite() {
 	s.finishedSetup = true
 }
 
-func (s *GalexieTestSuite) setupGCS(t *testing.T, testTempDir string) {
-	tempSeedDataPath := filepath.Join(testTempDir, "data")
-	if err := os.MkdirAll(filepath.Join(tempSeedDataPath, "integration-test"), 0777); err != nil {
-		t.Fatalf("unable to create seed data in temp path, %v", err)
-	}
+func (s *GalexieTestSuite) getLoadTestDataFile() string {
+	require := s.Require()
+	// this file of synthetic ledger data should be built ahead of time using services/horizon/internal/integration/generate_ledgers_test.go
+	// test will only be done for current protocol version which should be stamped on the filename.
+	datapath := filepath.Join("testdata", "load-test-ledgers-v23-standalone.xdr.zstd")
+	require.FileExists(datapath, "Test ledgers file should exist")
+	return datapath
+}
+
+func (s *GalexieTestSuite) setupGCS(t *testing.T) {
+	tempSeedDataPath := filepath.Join(s.testTempDir, "data")
+	require.NoError(t, os.RemoveAll(tempSeedDataPath))
+	require.NoError(t, os.MkdirAll(filepath.Join(tempSeedDataPath, "integration-test"), 0777))
+
+	tempBucketPath := filepath.Join(s.testTempDir, "bucket")
+	require.NoError(t, os.RemoveAll(tempBucketPath))
+	require.NoError(t, os.MkdirAll(tempBucketPath, 0777))
 
 	testWriter := &testWriter{test: t}
 	opts := fakestorage.Options{
@@ -278,7 +504,7 @@ func (s *GalexieTestSuite) setupGCS(t *testing.T, testTempDir string) {
 		Port:        uint16(0),
 		Writer:      testWriter,
 		Seed:        tempSeedDataPath,
-		StorageRoot: filepath.Join(testTempDir, "bucket"),
+		StorageRoot: tempBucketPath,
 		PublicHost:  "127.0.0.1",
 	}
 
@@ -311,20 +537,9 @@ func (s *GalexieTestSuite) TearDownSuite() {
 		s.coreContainerID = ""
 	}
 
-	if s.localStackContainerID != "" {
-		t.Logf("Stopping the localstack container %v", s.localStackContainerID)
-		s.stopAndLogContainer(s.localStackContainerID, "localstack")
-		s.localStackContainerID = ""
-	}
-
 	if s.dockerCli != nil {
 		s.dockerCli.Close()
 		s.dockerCli = nil
-	}
-
-	if s.gcsServer != nil {
-		s.gcsServer.Stop()
-		s.gcsServer = nil
 	}
 
 	if s.ctxStop != nil {
