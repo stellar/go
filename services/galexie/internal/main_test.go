@@ -5,6 +5,7 @@ import (
 	"context"
 	"io"
 	"testing"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
@@ -96,6 +97,44 @@ func TestFlagsOutput(t *testing.T) {
 		{
 			name:              "scanfill sub-command prints app error",
 			commandArgs:       []string{"scan-and-fill", "--start", "4", "--end", "5", "--config-file", "myfile"},
+			expectedErrOutput: "test error",
+			appRunner:         appRunnerError,
+		},
+		{
+			name:              "load-test sub-command with all parameters",
+			commandArgs:       []string{"load-test", "--start", "4", "--end", "5", "--merge", "--ledgers-path", "ledgers.xdr", "--close-duration", "3.5", "--config-file", "myfile"},
+			expectedErrOutput: "",
+			appRunner:         appRunnerSuccess,
+			expectedSettings: RuntimeSettings{
+				StartLedger:           4,
+				EndLedger:             5,
+				ConfigFilePath:        "myfile",
+				Mode:                  LoadTest,
+				Ctx:                   ctx,
+				LoadTestMerge:         true,
+				LoadTestLedgersPath:   "ledgers.xdr",
+				LoadTestCloseDuration: 3500 * time.Millisecond,
+			},
+		},
+		{
+			name:              "load-test sub-command with defaults",
+			commandArgs:       []string{"load-test", "--start", "4", "--end", "5", "--ledgers-path", "ledgers.xdr", "--config-file", "myfile"},
+			expectedErrOutput: "",
+			appRunner:         appRunnerSuccess,
+			expectedSettings: RuntimeSettings{
+				StartLedger:           4,
+				EndLedger:             5,
+				ConfigFilePath:        "myfile",
+				Mode:                  LoadTest,
+				Ctx:                   ctx,
+				LoadTestMerge:         false,
+				LoadTestLedgersPath:   "ledgers.xdr",
+				LoadTestCloseDuration: 2 * time.Second,
+			},
+		},
+		{
+			name:              "load-test sub-command prints app error",
+			commandArgs:       []string{"load-test", "--start", "4", "--merge", "--ledgers-path", "ledgers.xdr", "--config-file", "myfile"},
 			expectedErrOutput: "test error",
 			appRunner:         appRunnerError,
 		},
