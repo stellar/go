@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"context"
 	"sync"
 	"testing"
 
@@ -13,7 +14,9 @@ import (
 )
 
 func TestFriendbot_Pay_accountDoesNotExist(t *testing.T) {
-	mockSubmitTransaction := func(minion *Minion, hclient horizonclient.ClientInterface, tx string) (*hProtocol.Transaction, error) {
+	ctx := context.Background()
+
+	mockSubmitTransaction := func(ctx context.Context, minion *Minion, hclient horizonclient.ClientInterface, tx string) (*hProtocol.Transaction, error) {
 		// Instead of submitting the tx, we emulate a success.
 		txSuccess := hProtocol.Transaction{EnvelopeXdr: tx, Successful: true}
 		return &txSuccess, nil
@@ -56,7 +59,7 @@ func TestFriendbot_Pay_accountDoesNotExist(t *testing.T) {
 	fb := &Bot{Minions: []Minion{minion}}
 
 	recipientAddress := "GDJIN6W6PLTPKLLM57UW65ZH4BITUXUMYQHIMAZFYXF45PZVAWDBI77Z"
-	txSuccess, err := fb.Pay(recipientAddress)
+	txSuccess, err := fb.Pay(ctx, recipientAddress)
 	if !assert.NoError(t, err) {
 		return
 	}
@@ -67,12 +70,12 @@ func TestFriendbot_Pay_accountDoesNotExist(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(2)
 	go func() {
-		_, err := fb.Pay(recipientAddress)
+		_, err := fb.Pay(ctx, recipientAddress)
 		assert.NoError(t, err)
 		wg.Done()
 	}()
 	go func() {
-		_, err := fb.Pay(recipientAddress)
+		_, err := fb.Pay(ctx, recipientAddress)
 		assert.NoError(t, err)
 		wg.Done()
 	}()
@@ -80,7 +83,8 @@ func TestFriendbot_Pay_accountDoesNotExist(t *testing.T) {
 }
 
 func TestFriendbot_Pay_accountExists(t *testing.T) {
-	mockSubmitTransaction := func(minion *Minion, hclient horizonclient.ClientInterface, tx string) (*hProtocol.Transaction, error) {
+	ctx := context.Background()
+	mockSubmitTransaction := func(ctx context.Context, minion *Minion, hclient horizonclient.ClientInterface, tx string) (*hProtocol.Transaction, error) {
 		// Instead of submitting the tx, we emulate a success.
 		txSuccess := hProtocol.Transaction{EnvelopeXdr: tx, Successful: true}
 		return &txSuccess, nil
@@ -123,7 +127,7 @@ func TestFriendbot_Pay_accountExists(t *testing.T) {
 	fb := &Bot{Minions: []Minion{minion}}
 
 	recipientAddress := "GDJIN6W6PLTPKLLM57UW65ZH4BITUXUMYQHIMAZFYXF45PZVAWDBI77Z"
-	txSuccess, err := fb.Pay(recipientAddress)
+	txSuccess, err := fb.Pay(ctx, recipientAddress)
 	if !assert.NoError(t, err) {
 		return
 	}
@@ -134,12 +138,12 @@ func TestFriendbot_Pay_accountExists(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(2)
 	go func() {
-		_, err := fb.Pay(recipientAddress)
+		_, err := fb.Pay(ctx, recipientAddress)
 		assert.NoError(t, err)
 		wg.Done()
 	}()
 	go func() {
-		_, err := fb.Pay(recipientAddress)
+		_, err := fb.Pay(ctx, recipientAddress)
 		assert.NoError(t, err)
 		wg.Done()
 	}()
@@ -147,7 +151,8 @@ func TestFriendbot_Pay_accountExists(t *testing.T) {
 }
 
 func TestFriendbot_Pay_accountExistsAlreadyFunded(t *testing.T) {
-	mockSubmitTransaction := func(minion *Minion, hclient horizonclient.ClientInterface, tx string) (*hProtocol.Transaction, error) {
+	ctx := context.Background()
+	mockSubmitTransaction := func(ctx context.Context, minion *Minion, hclient horizonclient.ClientInterface, tx string) (*hProtocol.Transaction, error) {
 		// Instead of submitting the tx, we emulate a success.
 		txSuccess := hProtocol.Transaction{EnvelopeXdr: tx, Successful: true}
 		return &txSuccess, nil
@@ -190,6 +195,6 @@ func TestFriendbot_Pay_accountExistsAlreadyFunded(t *testing.T) {
 	fb := &Bot{Minions: []Minion{minion}}
 
 	recipientAddress := "GDJIN6W6PLTPKLLM57UW65ZH4BITUXUMYQHIMAZFYXF45PZVAWDBI77Z"
-	_, err = fb.Pay(recipientAddress)
+	_, err = fb.Pay(ctx, recipientAddress)
 	assert.ErrorIs(t, err, ErrAccountFunded)
 }
