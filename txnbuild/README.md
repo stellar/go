@@ -38,19 +38,21 @@ This project is maintained by the Stellar Development Foundation.
             IncrementSequenceNum: true,
             Operations:           []txnbuild.Operation{&op},
             BaseFee:              txnbuild.MinBaseFee,
-            Timebounds:           txnbuild.NewTimeout(300),
+            Preconditions: txnbuild.Preconditions{
+                TimeBounds: txnbuild.NewTimeout(300),
+            },
         },
     )
     if err != nil {
         log.Fatalln(err)
-    )
     
+    }
     // Sign the transaction
     tx, err = tx.Sign(network.TestNetworkPassphrase, kp.(*keypair.Full))
     if err != nil {
         log.Fatalln(err)
-    )
     
+    }
     // Get the base 64 encoded transaction envelope
     txe, err := tx.Base64()
     if err != nil {
