@@ -123,8 +123,8 @@ func (s *UploaderSuite) TestUploadPaths() {
 			expectedCompressedLength := capturedBuf.Len()
 			var decodedArchive LedgerMetaArchive
 			xdrDecoder := compressxdr.NewXDRDecoder(compressxdr.DefaultCompressor, &decodedArchive.Data)
-			_, err := xdrDecoder.ReadFrom(&capturedBuf)
-			s.Require().NoError(err)
+			_, e := xdrDecoder.ReadFrom(&capturedBuf)
+			s.Require().NoError(e)
 
 			s.Require().Equal(key, capturedKey)
 			s.Require().Equal(archive.Data, decodedArchive.Data)
