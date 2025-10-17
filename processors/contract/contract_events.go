@@ -1,13 +1,11 @@
 package contract
 
 import (
-	"encoding/base64"
 	"fmt"
 	"time"
 
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/processors/utils"
-	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/toid"
 	"github.com/stellar/go/xdr"
 )
@@ -65,20 +63,17 @@ func TransformContractEvent(transaction ingest.LedgerTransaction, lhe xdr.Ledger
 		outputType := event.Type
 		outputTypeString := event.Type.String()
 
-		eventTopics := getEventTopics(event.Body)
-		outputTopics, outputTopicsDecoded := SerializeScValArray(eventTopics)
+		eventTopics := event.Body.GetTopics()
+		outputTopics, outputTopicsDecoded := xdr.SerializeScValArray(eventTopics)
 		outputTopicsJson["topics"] = outputTopics
 		outputTopicsDecodedJson["topics_decoded"] = outputTopicsDecoded
 
-		eventData := getEventData(event.Body)
-		outputData, outputDataDecoded := SerializeScVal(eventData)
+		eventData := event.Body.GetData()
+		outputData, outputDataDecoded := eventData.Serialize()
 
-		// Convert the xdrContactId to string
-		// TODO: https://stellarorg.atlassian.net/browse/HUBBLE-386 this should be a stellar/go/xdr function
+		// Convert the xdr ContractId to string
 		if event.ContractId != nil {
-			contractId := *event.ContractId
-			contractIdByte, _ := contractId.MarshalBinary()
-			outputContractId, _ = strkey.Encode(strkey.VersionByteContract, contractIdByte)
+			outputContractId, _ = event.ContractId.ToContractAddress()
 		}
 
 		outputContractEventXDR, err := xdr.MarshalBase64(contractEvent)
@@ -112,60 +107,8 @@ func TransformContractEvent(transaction ingest.LedgerTransaction, lhe xdr.Ledger
 	return transformedContractEvents, nil
 }
 
-// TODO this should be a stellar/go/xdr function
-func getEventTopics(eventBody xdr.ContractEventBody) []xdr.ScVal {
-	switch eventBody.V {
-	case 0:
-		contractEventV0 := eventBody.MustV0()
-		return contractEventV0.Topics
-	default:
-		panic("unsupported event body version: " + string(eventBody.V))
-	}
-}
+// getEventTopics and getEventData functions have been moved to xdr/event.go
+// as GetTopics() and GetData() methods on ContractEventBody
 
-// TODO this should be a stellar/go/xdr function
-func getEventData(eventBody xdr.ContractEventBody) xdr.ScVal {
-	switch eventBody.V {
-	case 0:
-		contractEventV0 := eventBody.MustV0()
-		return contractEventV0.Data
-	default:
-		panic("unsupported event body version: " + string(eventBody.V))
-	}
-}
-
-// TODO this should also be used in the operations processor
-func SerializeScVal(scVal xdr.ScVal) (map[string]string, map[string]string) {
-	serializedData := map[string]string{}
-	serializedData["value"] = "n/a"
-	serializedData["type"] = "n/a"
-
-	serializedDataDecoded := map[string]string{}
-	serializedDataDecoded["value"] = "n/a"
-	serializedDataDecoded["type"] = "n/a"
-
-	if scValTypeName, ok := scVal.ArmForSwitch(int32(scVal.Type)); ok {
-		serializedData["type"] = scValTypeName
-		serializedDataDecoded["type"] = scValTypeName
-		if raw, err := scVal.MarshalBinary(); err == nil {
-			serializedData["value"] = base64.StdEncoding.EncodeToString(raw)
-			serializedDataDecoded["value"] = scVal.String()
-		}
-	}
-
-	return serializedData, serializedDataDecoded
-}
-
-// TODO this should also be used in the operations processor
-func SerializeScValArray(scVals []xdr.ScVal) ([]map[string]string, []map[string]string) {
-	data := make([]map[string]string, 0, len(scVals))
-	dataDecoded := make([]map[string]string, 0, len(scVals))
-
-	for _, scVal := range scVals {
-		serializedData, serializedDataDecoded := SerializeScVal(scVal)
-		data = append(data, serializedData)
-		dataDecoded = append(dataDecoded, serializedDataDecoded)
-	}
-
-	return data, dataDecoded
-}
+// SerializeScVal and SerializeScValArray have been moved to xdr/scval_helpers.go
+// as methods on ScVal for better reusability across processors
