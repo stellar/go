@@ -162,6 +162,7 @@ func (s *GalexieTestSuite) TestScanAndReplace() {
 	time.Sleep(1 * time.Second)
 
 	// now run scan-and-replace on an overlapping range, it will overwrite existing ledgers
+	rootCmd = defineCommands()
 	rootCmd.SetArgs([]string{"scan-and-replace", "--start", "4", "--end", "9", "--config-file", s.tempConfigFile})
 	errWriter.Reset()
 	rootCmd.SetErr(&errWriter)

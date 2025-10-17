@@ -115,10 +115,16 @@ func defineCommands() *cobra.Command {
 	rootCmd.AddCommand(scanAndReplaceCmd)
 	rootCmd.AddCommand(loadTestCmd)
 
-	scanAndFillCmd.PersistentFlags().Uint32P("start", "s", 0, "Starting ledger (inclusive), must be set to a value greater than 1")
-	scanAndFillCmd.PersistentFlags().Uint32P("end", "e", 0, "Ending ledger (inclusive), must be set to value greater than 'start' and less than the network's current ledger")
-	scanAndFillCmd.PersistentFlags().String("config-file", "config.toml", "Path to the TOML config file. Defaults to 'config.toml' on runtime working directory path.")
+	commonFlags := pflag.NewFlagSet("common_flags", pflag.ExitOnError)
+	commonFlags.Uint32P("start", "s", 0, "Starting ledger (inclusive), must be set to a value greater than 1")
+	commonFlags.Uint32P("end", "e", 0, "Ending ledger (inclusive), must be set to value greater than 'start' and less than the network's current ledger")
+	commonFlags.String("config-file", "config.toml", "Path to the TOML config file. Defaults to 'config.toml' on runtime working directory path.")
+
+	scanAndFillCmd.PersistentFlags().AddFlagSet(commonFlags)
 	viper.BindPFlags(scanAndFillCmd.PersistentFlags())
+
+	scanAndReplaceCmd.PersistentFlags().AddFlagSet(commonFlags)
+	viper.BindPFlags(scanAndReplaceCmd.PersistentFlags())
 
 	appendCmd.PersistentFlags().Uint32P("start", "s", 0, "Starting ledger (inclusive), must be set to a value greater than 1")
 	appendCmd.PersistentFlags().Uint32P("end", "e", 0, "Ending ledger (inclusive), optional, setting to non-zero means bounded mode, "+
@@ -126,11 +132,6 @@ func defineCommands() *cobra.Command {
 		"If 'end' is absent or '0' means unbounded mode, exporter will continue to run indefintely and export the latest closed ledgers from network as they are generated in real time.")
 	appendCmd.PersistentFlags().String("config-file", "config.toml", "Path to the TOML config file. Defaults to 'config.toml' on runtime working directory path.")
 	viper.BindPFlags(appendCmd.PersistentFlags())
-
-	scanAndReplaceCmd.PersistentFlags().Uint32P("start", "s", 0, "Starting ledger (inclusive), must be set to a value greater than 1")
-	scanAndReplaceCmd.PersistentFlags().Uint32P("end", "e", 0, "Ending ledger (inclusive), must be set to value greater than 'start' and less than the network's current ledger")
-	scanAndReplaceCmd.PersistentFlags().String("config-file", "config.toml", "Path to the TOML config file. Defaults to 'config.toml' on runtime working directory path.")
-	viper.BindPFlags(scanAndReplaceCmd.PersistentFlags())
 
 	loadTestCmd.PersistentFlags().Uint32P("start", "s", 0, "Starting ledger (inclusive). load test will use as the starting point from live network upon which synthetic ledger changes are generated. Must be greater than 1")
 	loadTestCmd.PersistentFlags().Uint32P("end", "e", 0, "Ending ledger (inclusive), optional. must be greater than 'start' if present. If 'end' is absent or set to '0' load test will replay all ledgers in ledgers-path file. otherwise load test will stop after reaching 'end' ledger regardless of any additional ledgers in ledgers-path file.")

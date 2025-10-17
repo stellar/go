@@ -41,11 +41,6 @@ func (s *UploaderSuite) TearDownTest() {
 	s.mockDataStore.AssertExpectations(s.T())
 }
 
-func (s *UploaderSuite) TestUpload() {
-	s.testUpload(false)
-	s.testUpload(true)
-}
-
 func (s *UploaderSuite) TestUploadWithMetadata() {
 	key, start, end := "test-1-100", uint32(1), uint32(100)
 	archive := NewLedgerMetaArchive(key, start, end)
@@ -79,228 +74,143 @@ func (s *UploaderSuite) TestUploadWithMetadata() {
 
 }
 
-func (s *UploaderSuite) testUpload(putOkReturnVal bool) {
+func (s *UploaderSuite) TestUploadPaths() {
 	key, start, end := "test-1-100", uint32(1), uint32(100)
 	archive := NewLedgerMetaArchive(key, start, end)
 	for i := start; i <= end; i++ {
 		_ = archive.Data.AddLedger(createLedgerCloseMeta(i))
 	}
 
-	var capturedBuf bytes.Buffer
-	var capturedKey string
-	s.mockDataStore.On("PutFileIfNotExists", mock.Anything, key, mock.Anything, datastore.MetaData{}.ToMap()).
-		Run(func(args mock.Arguments) {
-			capturedKey = args.Get(1).(string)
-			_, err := args.Get(2).(io.WriterTo).WriteTo(&capturedBuf)
-			s.Require().NoError(err)
-		}).Return(putOkReturnVal, nil).Once()
-
-	registry := prometheus.NewRegistry()
-	queue := NewUploadQueue(1, registry)
-	dataUploader := NewUploader(&s.mockDataStore, queue, registry, false)
-	s.Require().NoError(dataUploader.Upload(context.Background(), archive))
-
-	expectedCompressedLength := capturedBuf.Len()
-	var decodedArchive LedgerMetaArchive
-	xdrDecoder := compressxdr.NewXDRDecoder(compressxdr.DefaultCompressor, &decodedArchive.Data)
-
-	decoder := xdrDecoder
-	_, err := decoder.ReadFrom(&capturedBuf)
-	s.Require().NoError(err)
-
-	// require that the decoded data matches the original test data
-	s.Require().Equal(key, capturedKey)
-	s.Require().Equal(archive.Data, decodedArchive.Data)
-
-	alreadyExists := !putOkReturnVal
-	metric, err := dataUploader.uploadDurationMetric.MetricVec.GetMetricWith(prometheus.Labels{
-		"ledgers":        "100",
-		"already_exists": strconv.FormatBool(alreadyExists),
-	})
-	s.Require().NoError(err)
-	s.Require().Equal(
-		uint64(1),
-		getMetricValue(metric).GetSummary().GetSampleCount(),
-	)
-	s.Require().Positive(getMetricValue(metric).GetSummary().GetSampleSum())
-	metric, err = dataUploader.uploadDurationMetric.MetricVec.GetMetricWith(prometheus.Labels{
-		"ledgers":        "100",
-		"already_exists": strconv.FormatBool(!alreadyExists),
-	})
-	s.Require().NoError(err)
-	s.Require().Equal(
-		uint64(0),
-		getMetricValue(metric).GetSummary().GetSampleCount(),
-	)
-
-	metric, err = dataUploader.objectSizeMetrics.MetricVec.GetMetricWith(prometheus.Labels{
-		"ledgers":        "100",
-		"compression":    decoder.Compressor.Name(),
-		"already_exists": strconv.FormatBool(alreadyExists),
-	})
-	s.Require().NoError(err)
-	s.Require().Equal(
-		uint64(1),
-		getMetricValue(metric).GetSummary().GetSampleCount(),
-	)
-	s.Require().Equal(
-		float64(expectedCompressedLength),
-		getMetricValue(metric).GetSummary().GetSampleSum(),
-	)
-	metric, err = dataUploader.objectSizeMetrics.MetricVec.GetMetricWith(prometheus.Labels{
-		"ledgers":        "100",
-		"compression":    decoder.Compressor.Name(),
-		"already_exists": strconv.FormatBool(!alreadyExists),
-	})
-	s.Require().NoError(err)
-	s.Require().Equal(
-		uint64(0),
-		getMetricValue(metric).GetSummary().GetSampleCount(),
-	)
-
-	metric, err = dataUploader.objectSizeMetrics.MetricVec.GetMetricWith(prometheus.Labels{
-		"ledgers":        "100",
-		"compression":    "none",
-		"already_exists": strconv.FormatBool(alreadyExists),
-	})
-	s.Require().NoError(err)
-	s.Require().Equal(
-		uint64(1),
-		getMetricValue(metric).GetSummary().GetSampleCount(),
-	)
-	uncompressedPayload, err := decodedArchive.Data.MarshalBinary()
-	s.Require().NoError(err)
-	s.Require().Equal(
-		float64(len(uncompressedPayload)),
-		getMetricValue(metric).GetSummary().GetSampleSum(),
-	)
-	metric, err = dataUploader.objectSizeMetrics.MetricVec.GetMetricWith(prometheus.Labels{
-		"ledgers":        "100",
-		"compression":    "none",
-		"already_exists": strconv.FormatBool(!alreadyExists),
-	})
-	s.Require().NoError(err)
-	s.Require().Equal(
-		uint64(0),
-		getMetricValue(metric).GetSummary().GetSampleCount(),
-	)
-
-	s.Require().Equal(
-		float64(100),
-		getMetricValue(dataUploader.latestLedgerMetric).GetGauge().GetValue(),
-	)
-}
-
-func (s *UploaderSuite) TestUploadReplace() {
-	key, start, end := "test-1-100", uint32(1), uint32(100)
-	archive := NewLedgerMetaArchive(key, start, end)
-	for i := start; i <= end; i++ {
-		_ = archive.Data.AddLedger(createLedgerCloseMeta(i))
+	type tc struct {
+		name          string
+		overwrite     bool
+		alreadyExists bool
+	}
+	cases := []tc{
+		{name: "scan-and-fill: created (not exists)", overwrite: false, alreadyExists: false},
+		{name: "scan-and-fill: skipped (already exists)", overwrite: false, alreadyExists: true},
+		{name: "scan-and-replace: always write", overwrite: true, alreadyExists: false},
 	}
 
-	var capturedBuf bytes.Buffer
-	var capturedKey string
-	s.mockDataStore.On("PutFile", mock.Anything, key, mock.Anything, datastore.MetaData{}.ToMap()).
-		Run(func(args mock.Arguments) {
-			capturedKey = args.Get(1).(string)
-			_, err := args.Get(2).(io.WriterTo).WriteTo(&capturedBuf)
+	for _, c := range cases {
+		s.Run(c.name, func() {
+			var capturedBuf bytes.Buffer
+			var capturedKey string
+
+			if c.overwrite {
+				s.mockDataStore.
+					On("PutFile", mock.Anything, key, mock.Anything, datastore.MetaData{}.ToMap()).
+					Run(func(args mock.Arguments) {
+						capturedKey = args.Get(1).(string)
+						_, err := args.Get(2).(io.WriterTo).WriteTo(&capturedBuf)
+						s.Require().NoError(err)
+					}).Return(nil).Once()
+			} else {
+				s.mockDataStore.
+					On("PutFileIfNotExists", mock.Anything, key, mock.Anything, datastore.MetaData{}.ToMap()).
+					Run(func(args mock.Arguments) {
+						capturedKey = args.Get(1).(string)
+						_, err := args.Get(2).(io.WriterTo).WriteTo(&capturedBuf)
+						s.Require().NoError(err)
+					}).Return(!c.alreadyExists, nil).Once()
+			}
+
+			registry := prometheus.NewRegistry()
+			queue := NewUploadQueue(1, registry)
+			uploader := NewUploader(&s.mockDataStore, queue, registry, c.overwrite)
+			s.Require().NoError(uploader.Upload(context.Background(), archive))
+
+			expectedCompressedLength := capturedBuf.Len()
+			var decodedArchive LedgerMetaArchive
+			xdrDecoder := compressxdr.NewXDRDecoder(compressxdr.DefaultCompressor, &decodedArchive.Data)
+			_, err := xdrDecoder.ReadFrom(&capturedBuf)
 			s.Require().NoError(err)
-		}).Return(nil).Once()
 
-	registry := prometheus.NewRegistry()
-	queue := NewUploadQueue(1, registry)
-	dataUploader := NewUploader(&s.mockDataStore, queue, registry, true)
-	s.Require().NoError(dataUploader.Upload(context.Background(), archive))
+			s.Require().Equal(key, capturedKey)
+			s.Require().Equal(archive.Data, decodedArchive.Data)
 
-	expectedCompressedLength := capturedBuf.Len()
-	var decodedArchive LedgerMetaArchive
-	xdrDecoder := compressxdr.NewXDRDecoder(compressxdr.DefaultCompressor, &decodedArchive.Data)
+			assertMetrics := func(ledgers string, compressor string, compressedBytes int, uncompressedBytes int,
+				alreadyExists bool) {
 
-	decoder := xdrDecoder
-	_, err := decoder.ReadFrom(&capturedBuf)
-	s.Require().NoError(err)
+				m, err := uploader.uploadDurationMetric.MetricVec.GetMetricWith(
+					prometheus.Labels{
+						"ledgers":        ledgers,
+						"already_exists": strconv.FormatBool(alreadyExists),
+					},
+				)
+				s.Require().NoError(err)
+				s.Require().Equal(uint64(1), getMetricValue(m).GetSummary().GetSampleCount())
+				s.Require().Positive(getMetricValue(m).GetSummary().GetSampleSum())
 
-	// require that the decoded data matches the original test data
-	s.Require().Equal(key, capturedKey)
-	s.Require().Equal(archive.Data, decodedArchive.Data)
+				m, err = uploader.uploadDurationMetric.MetricVec.GetMetricWith(
+					prometheus.Labels{
+						"ledgers":        ledgers,
+						"already_exists": strconv.FormatBool(!alreadyExists),
+					},
+				)
+				s.Require().NoError(err)
+				s.Require().Equal(uint64(0), getMetricValue(m).GetSummary().GetSampleCount())
 
-	alreadyExists := false
-	metric, err := dataUploader.uploadDurationMetric.MetricVec.GetMetricWith(prometheus.Labels{
-		"ledgers":        "100",
-		"already_exists": strconv.FormatBool(alreadyExists),
-	})
-	s.Require().NoError(err)
-	s.Require().Equal(
-		uint64(1),
-		getMetricValue(metric).GetSummary().GetSampleCount(),
-	)
-	s.Require().Positive(getMetricValue(metric).GetSummary().GetSampleSum())
-	metric, err = dataUploader.uploadDurationMetric.MetricVec.GetMetricWith(prometheus.Labels{
-		"ledgers":        "100",
-		"already_exists": strconv.FormatBool(!alreadyExists),
-	})
-	s.Require().NoError(err)
-	s.Require().Equal(
-		uint64(0),
-		getMetricValue(metric).GetSummary().GetSampleCount(),
-	)
+				m, err = uploader.objectSizeMetrics.MetricVec.GetMetricWith(
+					prometheus.Labels{
+						"ledgers":        ledgers,
+						"compression":    compressor,
+						"already_exists": strconv.FormatBool(alreadyExists),
+					},
+				)
+				s.Require().NoError(err)
+				s.Require().Equal(uint64(1), getMetricValue(m).GetSummary().GetSampleCount())
+				s.Require().Equal(float64(compressedBytes), getMetricValue(m).GetSummary().GetSampleSum())
 
-	metric, err = dataUploader.objectSizeMetrics.MetricVec.GetMetricWith(prometheus.Labels{
-		"ledgers":        "100",
-		"compression":    decoder.Compressor.Name(),
-		"already_exists": strconv.FormatBool(alreadyExists),
-	})
-	s.Require().NoError(err)
-	s.Require().Equal(
-		uint64(1),
-		getMetricValue(metric).GetSummary().GetSampleCount(),
-	)
-	s.Require().Equal(
-		float64(expectedCompressedLength),
-		getMetricValue(metric).GetSummary().GetSampleSum(),
-	)
-	metric, err = dataUploader.objectSizeMetrics.MetricVec.GetMetricWith(prometheus.Labels{
-		"ledgers":        "100",
-		"compression":    decoder.Compressor.Name(),
-		"already_exists": strconv.FormatBool(!alreadyExists),
-	})
-	s.Require().NoError(err)
-	s.Require().Equal(
-		uint64(0),
-		getMetricValue(metric).GetSummary().GetSampleCount(),
-	)
+				m, err = uploader.objectSizeMetrics.MetricVec.GetMetricWith(
+					prometheus.Labels{
+						"ledgers":        ledgers,
+						"compression":    compressor,
+						"already_exists": strconv.FormatBool(!alreadyExists),
+					},
+				)
+				s.Require().NoError(err)
+				s.Require().Equal(uint64(0), getMetricValue(m).GetSummary().GetSampleCount())
 
-	metric, err = dataUploader.objectSizeMetrics.MetricVec.GetMetricWith(prometheus.Labels{
-		"ledgers":        "100",
-		"compression":    "none",
-		"already_exists": strconv.FormatBool(alreadyExists),
-	})
-	s.Require().NoError(err)
-	s.Require().Equal(
-		uint64(1),
-		getMetricValue(metric).GetSummary().GetSampleCount(),
-	)
-	uncompressedPayload, err := decodedArchive.Data.MarshalBinary()
-	s.Require().NoError(err)
-	s.Require().Equal(
-		float64(len(uncompressedPayload)),
-		getMetricValue(metric).GetSummary().GetSampleSum(),
-	)
-	metric, err = dataUploader.objectSizeMetrics.MetricVec.GetMetricWith(prometheus.Labels{
-		"ledgers":        "100",
-		"compression":    "none",
-		"already_exists": strconv.FormatBool(!alreadyExists),
-	})
-	s.Require().NoError(err)
-	s.Require().Equal(
-		uint64(0),
-		getMetricValue(metric).GetSummary().GetSampleCount(),
-	)
+				m, err = uploader.objectSizeMetrics.MetricVec.GetMetricWith(
+					prometheus.Labels{
+						"ledgers":        ledgers,
+						"compression":    "none",
+						"already_exists": strconv.FormatBool(alreadyExists),
+					},
+				)
+				s.Require().NoError(err)
+				s.Require().Equal(uint64(1), getMetricValue(m).GetSummary().GetSampleCount())
+				s.Require().Equal(float64(uncompressedBytes), getMetricValue(m).GetSummary().GetSampleSum())
 
-	s.Require().Equal(
-		float64(100),
-		getMetricValue(dataUploader.latestLedgerMetric).GetGauge().GetValue(),
-	)
+				m, err = uploader.objectSizeMetrics.MetricVec.GetMetricWith(
+					prometheus.Labels{
+						"ledgers":        ledgers,
+						"compression":    "none",
+						"already_exists": strconv.FormatBool(!alreadyExists),
+					},
+				)
+				s.Require().NoError(err)
+				s.Require().Equal(uint64(0), getMetricValue(m).GetSummary().GetSampleCount())
+			}
+
+			uncompressedPayload, err := decodedArchive.Data.MarshalBinary()
+			s.Require().NoError(err)
+
+			assertMetrics(
+				"100",
+				xdrDecoder.Compressor.Name(),
+				expectedCompressedLength,
+				len(uncompressedPayload),
+				c.alreadyExists,
+			)
+
+			s.Require().Equal(
+				float64(end),
+				getMetricValue(uploader.latestLedgerMetric).GetGauge().GetValue(),
+			)
+		})
+	}
 }
 
 func (s *UploaderSuite) TestUploadPutError() {
