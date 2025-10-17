@@ -1110,9 +1110,9 @@ func BuildChallengeTxWithClientDomain(serverSignerSecret, clientAccountID, webAu
 	}
 
 	if clientDomain != nil && clientDomainAccountID != nil {
-		clientAccountId, err := xdr.AddressToAccountId(*clientDomainAccountID)
-		if err != nil {
-			return nil, errors.Wrapf(err, "%s is not a valid account id or muxed account", *clientDomainAccountID)
+		clientAccountId, addressToAccountIdErr := xdr.AddressToAccountId(*clientDomainAccountID)
+		if addressToAccountIdErr != nil {
+			return nil, errors.Wrapf(addressToAccountIdErr, "%s is not a valid account id or muxed account", *clientDomainAccountID)
 		}
 
 		txParams.Operations = append(txParams.Operations, &ManageData{
