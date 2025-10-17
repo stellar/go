@@ -1296,6 +1296,9 @@ func ReadChallengeTxWithClientDomain(challengeTx, serverAccountID, network, webA
 			if clientDomain != nil && !bytes.Equal(op.Value, []byte(*clientDomain)) {
 				return tx, clientAccountID, matchedHomeDomain, memo, errors.Errorf("client domain operation value is %q but expect %q", string(op.Value), *clientDomain)
 			}
+			if clientDomainAccountID == nil {
+				return tx, clientAccountID, matchedHomeDomain, memo, errors.Errorf("client domain account id is required")
+			}
 			err = verifyTxSignature(tx, network, *clientDomainAccountID)
 			if err != nil {
 				return tx, clientAccountID, matchedHomeDomain, memo, errors.New("client domain operation is present but txn not signed by client")

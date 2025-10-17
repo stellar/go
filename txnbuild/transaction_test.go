@@ -1171,10 +1171,10 @@ func TestBuildChallengeTxWithClientDomain(t *testing.T) {
 		err = xdr.SafeUnmarshalBase64(txeBase64, &txXDR)
 		assert.NoError(t, err)
 		assert.Equal(t, int64(0), txXDR.SeqNum(), "sequence number should be 0")
-		assert.Equal(t, uint32(300), txXDR.Fee(), "Fee should be 100")
+		assert.Equal(t, uint32(300), txXDR.Fee(), "Fee should be 300")
 		assert.Equal(t, 3, len(txXDR.Operations()), "number operations should be 3")
 		timeDiff := txXDR.TimeBounds().MaxTime - txXDR.TimeBounds().MinTime
-		assert.Equal(t, int64(60), int64(timeDiff), "time difference should be 300 seconds")
+		assert.Equal(t, int64(60), int64(timeDiff), "time difference should be 60 seconds")
 		op := txXDR.Operations()[0]
 		assert.Equal(t, xdr.OperationTypeManageData, op.Body.Type, "operation type should be manage data")
 		assert.Equal(t, xdr.String64("testanchor.stellar.org auth"), op.Body.ManageDataOp.DataName, "DataName should be 'testanchor.stellar.org auth'")
