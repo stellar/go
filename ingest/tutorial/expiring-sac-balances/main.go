@@ -18,13 +18,15 @@ import (
 )
 
 type balance struct {
-	assetAddress  string
+	ledgerKey     string
+	asset         string
 	holderAddress string
 	amount        string
+	ttl           string
 }
 
-func findEvictedBalances(ctx context.Context, arch historyarchive.ArchiveInterface, seq uint32, targetAssets map[string]bool) []balance {
-	reader, err := ingest.NewEvictedEntriesReader(ctx, arch, seq)
+func findEvictedBalances(ctx context.Context, arch historyarchive.ArchiveInterface, checkpointLedger uint32, targetAssets map[string]string) []balance {
+	reader, err := ingest.NewHotArchiveReader(ctx, arch, checkpointLedger)
 	if err != nil {
 		log.Fatalf("failed to create evicted checkpoint change reader: %v", err)
 	}
@@ -49,7 +51,8 @@ func findEvictedBalances(ctx context.Context, arch historyarchive.ArchiveInterfa
 			continue
 		}
 		sacAddress := strkey.MustEncode(strkey.VersionByteContract, contractID[:])
-		if !targetAssets[sacAddress] {
+		asset, ok := targetAssets[sacAddress]
+		if !ok {
 			continue
 		}
 
@@ -58,58 +61,37 @@ func findEvictedBalances(ctx context.Context, arch historyarchive.ArchiveInterfa
 			continue
 		}
 
+		ledgerKey, err := le.LedgerKey()
+		if err != nil {
+			log.Fatalf("error while extracting ledger key: %v", err)
+		}
+		ledgerKeyBase64, err := ledgerKey.MarshalBinaryBase64()
+		if err != nil {
+			log.Fatalf("error while marshaling ledger key: %v", err)
+		}
+
 		balances = append(balances, balance{
-			assetAddress:  sacAddress,
+			ledgerKey:     ledgerKeyBase64,
+			asset:         asset,
 			holderAddress: strkey.MustEncode(strkey.VersionByteContract, holder[:]),
 			amount:        amt.String(),
+			ttl:           "evicted",
 		})
 	}
 	return balances
 }
 
-func main() {
-	arch, err := historyarchive.NewArchivePool(
-		[]string{
-			"https://history.stellar.org/prd/core-live/core_live_001",
-			"https://history.stellar.org/prd/core-live/core_live_002",
-			"https://history.stellar.org/prd/core-live/core_live_003",
-		},
-		historyarchive.ArchiveOptions{},
-	)
-	if err != nil {
-		log.Fatalf("failed to connect to pubnet archives: %v", err)
-	}
+func findExpiringBalances(ctx context.Context, arch historyarchive.ArchiveInterface, checkpointLedger, expirationLedger uint32, targetAssets map[string]string) []balance {
+	var balances []balance
+	byKeyHash := map[xdr.Hash]balance{}
+	ttls := map[xdr.Hash]uint32{}
 
-	// Determine the latest published checkpoint ledger sequence
-	seq, err := arch.GetLatestLedgerSequence()
-	if err != nil {
-		log.Fatalf("failed to get latest checkpoint sequence: %v", err)
-	}
-
-	// Initialize checkpoint change reader
-	ctx := context.Background()
-	reader, err := ingest.NewCheckpointChangeReader(ctx, arch, seq)
+	reader, err := ingest.NewCheckpointChangeReader(ctx, arch, checkpointLedger)
 	if err != nil {
 		log.Fatalf("failed to create checkpoint change reader: %v", err)
 	}
 	defer reader.Close()
 
-	targetAssets := map[string]bool{
-		"CDTKPWPLOURQA2SGTKTUQOWRCBZEORB4BWBOMJ3D3ZTQQSGE5F6JBQLV": true, // EURC
-		"CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75": true, // USDC
-	}
-	var cutoffLedger uint32 = 60739011
-
-	// Always write to stdout
-	csvw := csv.NewWriter(os.Stdout)
-	defer csvw.Flush()
-	// header
-	_ = csvw.Write([]string{"contract_id", "holder_contract_id", "amount"})
-
-	byKeyHash := map[xdr.Hash]balance{}
-	ttls := map[xdr.Hash]uint32{}
-
-	records := 0
 	for {
 		change, err := reader.Read()
 		if err == io.EOF {
@@ -134,7 +116,8 @@ func main() {
 			continue
 		}
 		sacAddress := strkey.MustEncode(strkey.VersionByteContract, contractID[:])
-		if !targetAssets[sacAddress] {
+		asset, ok := targetAssets[sacAddress]
+		if !ok {
 			continue
 		}
 
@@ -156,35 +139,84 @@ func main() {
 			log.Fatalf("duplicate key hash: %v", keyHash)
 		}
 
+		ledgerKeyBase64, err := ledgerKey.MarshalBinaryBase64()
+		if err != nil {
+			log.Fatalf("error while marshaling ledger key: %v", err)
+		}
+
 		byKeyHash[keyHash] = balance{
-			assetAddress:  sacAddress,
+			ledgerKey:     ledgerKeyBase64,
+			asset:         asset,
 			holderAddress: strkey.MustEncode(strkey.VersionByteContract, holder[:]),
 			amount:        amt.String(),
 		}
 	}
 
-	for keyHash, balance := range byKeyHash {
+	for keyHash, b := range byKeyHash {
 		ttl, ok := ttls[keyHash]
 		if !ok {
 			log.Fatalf("missing ttl for key hash: %v", keyHash)
 		}
-		if ttl > cutoffLedger {
+		if ttl > expirationLedger {
 			continue
 		}
+		b.ttl = strconv.FormatUint(uint64(ttl), 10)
+		balances = append(balances, b)
+	}
+	return balances
+}
+
+// finds all SAC balances for a given list of assets that are either archived
+// or close to being archived
+func main() {
+	arch, err := historyarchive.NewArchivePool(
+		[]string{
+			"https://history.stellar.org/prd/core-live/core_live_001",
+			"https://history.stellar.org/prd/core-live/core_live_002",
+			"https://history.stellar.org/prd/core-live/core_live_003",
+		},
+		historyarchive.ArchiveOptions{},
+	)
+	if err != nil {
+		log.Fatalf("failed to connect to pubnet archives: %v", err)
+	}
+
+	// Determine the latest published checkpoint ledger sequence
+	seq, err := arch.GetLatestLedgerSequence()
+	if err != nil {
+		log.Fatalf("failed to get latest checkpoint sequence: %v", err)
+	}
+
+	targetAssets := map[string]string{
+		"CDTKPWPLOURQA2SGTKTUQOWRCBZEORB4BWBOMJ3D3ZTQQSGE5F6JBQLV": "EURC",
+		"CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75": "USDC",
+	}
+	var cutoffLedger uint32 = 60739011
+
+	// Always write to stdout
+	csvw := csv.NewWriter(os.Stdout)
+	// header
+	if err = csvw.Write([]string{"asset", "ledger_key", "holder_contract_id", "amount", "ttl"}); err != nil {
+		log.Fatalf("failed writing CSV: %v", err)
+	}
+
+	for _, b := range findExpiringBalances(context.Background(), arch, seq, cutoffLedger, targetAssets) {
 		csvw.Write([]string{
-			balance.assetAddress,
-			balance.holderAddress,
-			balance.amount,
-			strconv.FormatUint(uint64(ttl), 10),
+			b.asset,
+			b.ledgerKey,
+			b.holderAddress,
+			b.amount,
+			b.ttl,
 		})
 	}
 
-	for _, balance := range findEvictedBalances(ctx, arch, seq, targetAssets) {
+	for _, b := range findEvictedBalances(context.Background(), arch, seq, targetAssets) {
 		csvw.Write([]string{
-			balance.assetAddress,
-			balance.holderAddress,
-			balance.amount,
-			"evicted",
+			b.asset,
+			b.ledgerKey,
+			b.holderAddress,
+			b.amount,
+			b.ttl,
 		})
 	}
 
@@ -192,5 +224,4 @@ func main() {
 	if err := csvw.Error(); err != nil {
 		log.Fatalf("failed writing CSV: %v", err)
 	}
-	log.Printf("done. wrote %d records", records)
 }
