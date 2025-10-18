@@ -198,9 +198,8 @@ func TestLoadTestLedgerBackend(t *testing.T) {
 
 func TestLoadTestLedgerBackendWithoutMerge(t *testing.T) {
 	replayConfig := loadtest.LedgerBackendConfig{
-		NetworkPassphrase: "invalid passphrase",
-		// TODO: update ledgers file path to v24 once core build becomes available
-		LedgersFilePath:     filepath.Join("testdata", fmt.Sprintf("load-test-ledgers-v%d.xdr.zstd", 23)),
+		NetworkPassphrase:   "invalid passphrase",
+		LedgersFilePath:     filepath.Join("testdata", fmt.Sprintf("load-test-ledgers-v%d.xdr.zstd", horizoningest.MaxSupportedProtocolVersion)),
 		LedgerCloseDuration: 3 * time.Second / 2,
 	}
 	var generatedLedgers []xdr.LedgerCloseMeta
