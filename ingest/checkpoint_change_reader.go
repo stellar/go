@@ -315,10 +315,8 @@ func (r *CheckpointChangeReader) newXDRStream(hash historyarchive.Hash) (
 }
 
 func (r *CheckpointChangeReader) hotArchiveIterator(rdr *xdr.Stream, hash historyarchive.Hash, oldestBucket bool) iter.Seq2[xdr.LedgerEntry, error] {
-	n := 0
-	seenMeta := false
 	return func(yield func(xdr.LedgerEntry, error) bool) {
-		for {
+		for n := 0; ; n++ {
 			var entry xdr.HotArchiveBucketEntry
 			if err := r.readBucketRecord(rdr, hash, &entry); err != nil {
 				if err != io.EOF {
@@ -328,78 +326,78 @@ func (r *CheckpointChangeReader) hotArchiveIterator(rdr *xdr.Stream, hash histor
 			}
 
 			if entry.Type == xdr.HotArchiveBucketEntryTypeHotArchiveMetaentry {
-				if n != 0 || seenMeta {
+				if n != 0 {
 					yield(xdr.LedgerEntry{}, errors.Errorf(
 						"METAENTRY not the first entry (n=%d) in the bucket hash '%s'",
 						n, hash.String(),
 					))
 					return
 				}
-				seenMeta = true
 				meta := entry.MustMetaEntry()
-				if bucketListType, ok := meta.Ext.GetBucketListType(); ok && bucketListType != xdr.BucketListTypeHotArchive {
+				if bucketListType, ok := meta.Ext.GetBucketListType(); !ok {
+					yield(xdr.LedgerEntry{},
+						errors.Errorf("METAENTRY missing bucket list type in the bucket hash '%s'", hash.String()),
+					)
+					return
+				} else if bucketListType != xdr.BucketListTypeHotArchive {
 					yield(xdr.LedgerEntry{}, errors.Errorf(
 						"expected bucket list type to be hot-archive (instead got %s) in the bucket hash '%s'",
 						bucketListType.String(), hash.String(),
 					))
 					return
 				}
-				n++
 				continue
 			}
 
 			var key xdr.LedgerKey
 			switch entry.Type {
 			case xdr.HotArchiveBucketEntryTypeHotArchiveArchived:
-				liveEntry := entry.MustArchivedEntry()
-				k, err := liveEntry.LedgerKey()
+				ledgerEntry := entry.MustArchivedEntry()
+				k, err := ledgerEntry.LedgerKey()
 				if err != nil {
 					yield(xdr.LedgerEntry{}, errors.Wrapf(err, "Error generating ledger key for XDR record %d of hash '%s'", n, hash.String()))
 					return
 				}
 				key = k
-				keyBytes, err := r.encodingBuffer.LedgerKeyUnsafeMarshalBinaryCompress(key)
-				if err != nil {
-					yield(xdr.LedgerEntry{}, errors.Wrapf(err, "Error marshaling XDR record %d of hash '%s'", n, hash.String()))
-					return
-				}
-				h := string(keyBytes)
-				if !r.visitedLedgerKeys.Contains(h) {
-					if !oldestBucket {
-						r.visitedLedgerKeys.Add(h)
-					}
-					n++
-					if !yield(liveEntry, nil) {
-						return
-					}
-				}
 			case xdr.HotArchiveBucketEntryTypeHotArchiveLive:
 				key = entry.MustKey()
-				keyBytes, err := r.encodingBuffer.LedgerKeyUnsafeMarshalBinaryCompress(key)
-				if err != nil {
-					yield(xdr.LedgerEntry{}, errors.Wrapf(err, "Error marshaling XDR record %d of hash '%s'", n, hash.String()))
-					return
-				}
-				h := string(keyBytes)
-				r.visitedLedgerKeys.Add(h)
-				if key.Type == xdr.LedgerEntryTypeClaimableBalance || key.Type == xdr.LedgerEntryTypeOffer {
-					r.visitedLedgerKeys.Remove(h)
-				}
 			default:
 				yield(xdr.LedgerEntry{}, errors.Errorf("Unknown HotArchiveBucketEntryType=%d: %d@%s", entry.Type, n, hash.String()))
 				return
 			}
-			n++
+
+			// We're using compressed keys here
+			// Safe, since we are converting to string right away
+			keyBytes, err := r.encodingBuffer.LedgerKeyUnsafeMarshalBinaryCompress(key)
+			if err != nil {
+				yield(xdr.LedgerEntry{}, errors.Wrapf(err, "Error marshaling XDR record %d of hash '%s'", n, hash.String()))
+				return
+			}
+			h := string(keyBytes)
+			if !r.visitedLedgerKeys.Contains(h) {
+				// We skip adding entries from the last bucket to visitedLedgerKeys because:
+				// 1. Ledger keys are unique within a single bucket.
+				// 2. This is the last bucket we process so there's no need to track
+				//    seen last entries in this bucket.
+				if !oldestBucket {
+					r.visitedLedgerKeys.Add(h)
+				}
+				if entry.Type == xdr.HotArchiveBucketEntryTypeHotArchiveArchived {
+					if !yield(entry.MustArchivedEntry(), nil) {
+						return
+					}
+				}
+			}
 		}
 	}
 }
 
 func (r *CheckpointChangeReader) liveIterator(rdr *xdr.Stream, hash historyarchive.Hash, oldestBucket bool) iter.Seq2[xdr.LedgerEntry, error] {
+	// bucketProtocolVersion is a protocol version read from METAENTRY or 0 when no METAENTRY.
+	// No METAENTRY means that bucket originates from before protocol version 11.
 	bucketProtocolVersion := uint32(0)
-	seenMeta := false
-	n := 0
 	return func(yield func(xdr.LedgerEntry, error) bool) {
-		for {
+		for n := 0; ; n++ {
 			var entry xdr.BucketEntry
 			if err := r.readBucketRecord(rdr, hash, &entry); err != nil {
 				if err != io.EOF {
@@ -409,14 +407,13 @@ func (r *CheckpointChangeReader) liveIterator(rdr *xdr.Stream, hash historyarchi
 			}
 
 			if entry.Type == xdr.BucketEntryTypeMetaentry {
-				if n != 0 || seenMeta {
+				if n != 0 {
 					yield(xdr.LedgerEntry{}, errors.Errorf(
 						"METAENTRY not the first entry (n=%d) in the bucket hash '%s'",
 						n, hash.String(),
 					))
 					return
 				}
-				seenMeta = true
 				metaEntry := entry.MustMetaEntry()
 				bucketProtocolVersion = uint32(metaEntry.LedgerVersion)
 				if bucketListType, ok := metaEntry.Ext.GetBucketListType(); ok && bucketListType != xdr.BucketListTypeLive {
@@ -426,7 +423,6 @@ func (r *CheckpointChangeReader) liveIterator(rdr *xdr.Stream, hash historyarchi
 					))
 					return
 				}
-				n++
 				continue
 			}
 
@@ -447,6 +443,8 @@ func (r *CheckpointChangeReader) liveIterator(rdr *xdr.Stream, hash historyarchi
 				return
 			}
 
+			// We're using compressed keys here
+			// Safe, since we are converting to string right away
 			keyBytes, err := r.encodingBuffer.LedgerKeyUnsafeMarshalBinaryCompress(key)
 			if err != nil {
 				yield(xdr.LedgerEntry{}, errors.Wrapf(
@@ -454,9 +452,13 @@ func (r *CheckpointChangeReader) liveIterator(rdr *xdr.Stream, hash historyarchi
 				))
 				return
 			}
-
 			h := string(keyBytes)
-			unique := key.Type == xdr.LedgerEntryTypeClaimableBalance || key.Type == xdr.LedgerEntryTypeOffer
+			// claimable balances and offers have unique ids
+			// once a claimable balance or offer is created we can assume that
+			// the id can never be recreated again, unlike, for example, trustlines
+			// which can be deleted and then recreated
+			unique := key.Type == xdr.LedgerEntryTypeClaimableBalance ||
+				key.Type == xdr.LedgerEntryTypeOffer
 
 			switch entry.Type {
 			case xdr.BucketEntryTypeLiveentry, xdr.BucketEntryTypeInitentry:
@@ -469,13 +471,23 @@ func (r *CheckpointChangeReader) liveIterator(rdr *xdr.Stream, hash historyarchi
 					if !yield(liveEntry, nil) {
 						return
 					}
+					// We don't update `visitedLedgerKeys` for INITENTRY because CAP-20 says:
+					// > a bucket entry marked INITENTRY implies that either no entry
+					// > with the same ledger key exists in an older bucket, or else
+					// > that the (chronologically) preceding entry with the same ledger
+					// > key was DEADENTRY.
 					if entry.Type == xdr.BucketEntryTypeLiveentry {
+						// We skip adding entries from the last bucket to visitedLedgerKeys because:
+						// 1. Ledger keys are unique within a single bucket.
+						// 2. This is the last bucket we process so there's no need to track
+						//    seen last entries in this bucket.
 						if !oldestBucket {
 							r.visitedLedgerKeys.Add(h)
 						}
 					}
 				} else if entry.Type == xdr.BucketEntryTypeInitentry && unique {
-					// unique ids can be recreated after deletion; drop from visited
+					// we can remove the ledger key because we know that it's unique in the ledger
+					// and cannot be recreated
 					r.visitedLedgerKeys.Remove(h)
 				}
 			case xdr.BucketEntryTypeDeadentry:
@@ -484,7 +496,6 @@ func (r *CheckpointChangeReader) liveIterator(rdr *xdr.Stream, hash historyarchi
 				yield(xdr.LedgerEntry{}, errors.Errorf("Unexpected entry type %d: %d@%s", entry.Type, n, hash.String()))
 				return
 			}
-			n++
 		}
 	}
 }
