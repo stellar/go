@@ -13,7 +13,7 @@ jobs:
       matrix:
         storage_type: [ GCS, S3 ]
     env:
-      CAPTIVE_CORE_DEBIAN_PKG_VERSION: 23.0.3-4.0d7b4345d.focal
+      CAPTIVE_CORE_DEBIAN_PKG_VERSION: 24.0.0-2802.0d7b4345d.focal
       GALEXIE_INTEGRATION_TESTS_ENABLED: "true"
       GALEXIE_INTEGRATION_TESTS_CAPTIVE_CORE_BIN: /usr/bin/stellar-core
       # this pins to a version of quickstart:testing that has the same version as GALEXIE_INTEGRATION_TESTS_CAPTIVE_CORE_BIN
