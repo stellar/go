@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"context"
 	"sync"
 	"testing"
 
@@ -16,7 +17,9 @@ import (
 // in which Minion.Run() will try to send multiple messages to a channel that gets closed
 // immediately after receiving one message.
 func TestMinion_NoChannelErrors(t *testing.T) {
-	mockSubmitTransaction := func(minion *Minion, hclient horizonclient.ClientInterface, tx string) (txn *hProtocol.Transaction, err error) {
+	ctx := context.Background()
+
+	mockSubmitTransaction := func(ctx context.Context, minion *Minion, hclient horizonclient.ClientInterface, tx string) (txn *hProtocol.Transaction, err error) {
 		return txn, nil
 	}
 
@@ -70,7 +73,7 @@ func TestMinion_NoChannelErrors(t *testing.T) {
 
 	for i := 0; i < numTests; i++ {
 		go func() {
-			fb.Pay(recipientAddress)
+			fb.Pay(ctx, recipientAddress)
 			wg.Done()
 		}()
 	}
@@ -78,12 +81,14 @@ func TestMinion_NoChannelErrors(t *testing.T) {
 }
 
 func TestMinion_CorrectNumberOfTxSubmissions(t *testing.T) {
+	ctx := context.Background()
+
 	var (
 		numTxSubmits int
 		mux          sync.Mutex
 	)
 
-	mockSubmitTransaction := func(minion *Minion, hclient horizonclient.ClientInterface, tx string) (txn *hProtocol.Transaction, err error) {
+	mockSubmitTransaction := func(ctx context.Context, minion *Minion, hclient horizonclient.ClientInterface, tx string) (txn *hProtocol.Transaction, err error) {
 		mux.Lock()
 		numTxSubmits++
 		mux.Unlock()
@@ -138,7 +143,7 @@ func TestMinion_CorrectNumberOfTxSubmissions(t *testing.T) {
 
 	for i := 0; i < numTests; i++ {
 		go func() {
-			fb.Pay(recipientAddress)
+			fb.Pay(ctx, recipientAddress)
 			wg.Done()
 		}()
 	}

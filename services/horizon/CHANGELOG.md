@@ -3,8 +3,14 @@
 All notable changes to this project will be documented in this
 file. This project adheres to [Semantic Versioning](http://semver.org/).
 
+## 24.0.0
+
+**This release adds support for Protocol 24**
+
 ### Added
-- moved ingest/verify to be internally located at services/horizon/internal/ingest package. [5670](https://github.com/stellar/go/issues/5670)
+- moved ingest/verify to be internally located at services/horizon/internal/ingest package ([5670](https://github.com/stellar/go/issues/5670)).
+- Added the `horizon ingest load-test` command to load test Horizon's ingestion capabilities. Also added the `horizon ingest load-test-restore` command to restore the Horizon DB if a previous load test did not terminate gracefully ([5794](https://github.com/stellar/go/pull/5794)).
+- Keep the admin server running while executing Horizon ingestion commands so that Horizon can export prometheus metrics during long running ingestion operations ([5816](https://github.com/stellar/go/pull/5816)).
 
 ## 23.0.0
 

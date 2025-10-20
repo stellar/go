@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/stellar/go/amount"
@@ -9,6 +10,9 @@ import (
 	hProtocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/txnbuild"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 )
 
 const createAccountAlreadyExistXDR = "AAAAAAAAAGT/////AAAAAQAAAAAAAAAA/////AAAAAA="
@@ -16,6 +20,8 @@ const createAccountAlreadyExistXDR = "AAAAAAAAAGT/////AAAAAQAAAAAAAAAA/////AAAAA
 var ErrAccountExists error = errors.New(fmt.Sprintf("createAccountAlreadyExist (%s)", createAccountAlreadyExistXDR))
 
 var ErrAccountFunded error = errors.New("account already funded to starting balance")
+
+var botTracer = otel.Tracer("stellar_friendbot_minion")
 
 // Minion contains a Stellar channel account and Go channels to communicate with friendbot.
 type Minion struct {
@@ -29,7 +35,7 @@ type Minion struct {
 	BaseFee         int64
 
 	// Mockable functions
-	SubmitTransaction    func(minion *Minion, hclient horizonclient.ClientInterface, tx string) (*hProtocol.Transaction, error)
+	SubmitTransaction    func(ctx context.Context, minion *Minion, hclient horizonclient.ClientInterface, tx string) (*hProtocol.Transaction, error)
 	CheckSequenceRefresh func(minion *Minion, hclient horizonclient.ClientInterface) error
 	CheckAccountExists   func(minion *Minion, hclient horizonclient.ClientInterface, destAddress string) (bool, string, error)
 
@@ -39,7 +45,10 @@ type Minion struct {
 
 // Run reads a payment destination address and an output channel. It attempts
 // to pay that address and submits the result to the channel.
-func (minion *Minion) Run(destAddress string, resultChan chan SubmitResult) {
+func (minion *Minion) Run(ctx context.Context, destAddress string, resultChan chan SubmitResult) {
+	ctx, span := botTracer.Start(ctx, "minion.run.pay_minion")
+	defer span.End()
+	span.SetAttributes(attribute.String("minion.account_id", minion.Account.AccountID))
 	err := minion.CheckSequenceRefresh(minion, minion.Horizon)
 	if err != nil {
 		resultChan <- SubmitResult{
@@ -55,6 +64,11 @@ func (minion *Minion) Run(destAddress string, resultChan chan SubmitResult) {
 			maybeErr:                errors.Wrap(err, "checking account exists"),
 		}
 		return
+	}
+	if exists {
+		span.AddEvent("Destination account exists")
+		span.SetAttributes(attribute.String("destination.account_address", destAddress),
+			attribute.String("destination.account_balance", balance))
 	}
 	err = minion.checkBalance(balance)
 	if err != nil {
@@ -80,15 +94,22 @@ func (minion *Minion) Run(destAddress string, resultChan chan SubmitResult) {
 		}
 		return
 	}
-	succ, err := minion.SubmitTransaction(minion, minion.Horizon, txStr)
+	succ, err := minion.SubmitTransaction(ctx, minion, minion.Horizon, txStr)
 	resultChan <- SubmitResult{
 		maybeTransactionSuccess: succ,
 		maybeErr:                errors.Wrapf(err, "submitting tx to minion %x", txHash),
 	}
+	if succ != nil {
+		span.SetAttributes(attribute.Bool("minion.tx_success_status", succ.Successful))
+		span.SetStatus(codes.Ok, codes.Ok.String())
+	}
 }
 
 // SubmitTransaction should be passed to the Minion.
-func SubmitTransaction(minion *Minion, hclient horizonclient.ClientInterface, tx string) (*hProtocol.Transaction, error) {
+func SubmitTransaction(ctx context.Context, minion *Minion, hclient horizonclient.ClientInterface, tx string) (*hProtocol.Transaction, error) {
+	_, span := botTracer.Start(ctx, "minion.submit_transaction")
+	defer span.End()
+
 	result, err := hclient.SubmitTransactionXDR(tx)
 	if err != nil {
 		errStr := "submitting tx to horizon"
@@ -99,14 +120,23 @@ func SubmitTransaction(minion *Minion, hclient horizonclient.ClientInterface, tx
 			if resErr != nil {
 				errStr += ": error getting horizon error code: " + resErr.Error()
 			} else if resStr == createAccountAlreadyExistXDR {
+				span.SetStatus(codes.Error, errStr)
+				span.AddEvent("transaction submission failed")
 				return nil, errors.Wrap(ErrAccountExists, errStr)
 			} else {
 				errStr += ": horizon error string: " + resStr
 			}
+			span.SetStatus(codes.Error, errStr)
+			span.AddEvent("transaction submission failed")
 			return nil, errors.New(errStr)
 		}
+		span.SetStatus(codes.Error, err.Error())
+		span.AddEvent("transaction submission failed")
 		return nil, errors.Wrap(err, errStr)
 	}
+	span.SetAttributes(attribute.String("minion.tx_hash", result.Hash))
+	span.AddEvent("transaction submission success")
+	span.SetStatus(codes.Ok, codes.Ok.String())
 	return &result, nil
 }
 
