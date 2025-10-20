@@ -263,8 +263,12 @@ func (r *CheckpointChangeReader) readBucketRecord(stream *xdr.Stream, hash histo
 
 	for attempts := 0; ; attempts++ {
 		if r.ctx.Err() != nil {
-			err = r.ctx.Err()
-			break
+			return r.ctx.Err()
+		}
+		select {
+		case <-r.done:
+			return errors.New("reader is closed")
+		default:
 		}
 		if err == nil {
 			err = stream.ReadOne(entry)
@@ -535,16 +539,16 @@ func (r *CheckpointChangeReader) streamBucketList(hash historyarchive.Hash, olde
 			r.readChan <- r.error(err)
 			return false
 		}
-		r.readChan <- readResult{
+
+		select {
+		case r.readChan <- readResult{
 			xdr.LedgerEntryChange{
 				Type:  xdr.LedgerEntryChangeTypeLedgerEntryState,
 				State: &ledgerEntry,
 			}, nil,
-		}
-		select {
+		}:
 		case <-r.done:
 			return false
-		default:
 		}
 	}
 	return true
