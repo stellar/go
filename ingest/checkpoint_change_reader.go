@@ -52,7 +52,7 @@ const (
 )
 
 // NewCheckpointChangeReader constructs a new CheckpointChangeReader instance
-// which enumerates ledger entries from the live bucketlist.
+// which enumerates ledger entries from the live bucket list.
 //
 // The ledger sequence must be a checkpoint ledger. By default (see
 // `historyarchive.ConnectOptions.CheckpointFrequency` for configuring this),
@@ -67,7 +67,7 @@ func NewCheckpointChangeReader(
 }
 
 // NewHotArchiveReader constructs a new CheckpointChangeReader instance
-// which enumerates ledger entries from the hot archive bucketlist.
+// which enumerates ledger entries from the hot archive bucket list.
 //
 // The ledger sequence must be a checkpoint ledger. By default (see
 // `historyarchive.ConnectOptions.CheckpointFrequency` for configuring this),

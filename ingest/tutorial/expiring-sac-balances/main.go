@@ -17,6 +17,19 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
+var (
+	archiveURLs = []string{
+		"https://history.stellar.org/prd/core-live/core_live_001",
+		"https://history.stellar.org/prd/core-live/core_live_002",
+		"https://history.stellar.org/prd/core-live/core_live_003",
+	}
+	targetAssets = map[string]string{
+		"CDTKPWPLOURQA2SGTKTUQOWRCBZEORB4BWBOMJ3D3ZTQQSGE5F6JBQLV": "EURC",
+		"CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75": "USDC",
+	}
+	cutoffLedger uint32 = 60739011
+)
+
 type balance struct {
 	ledgerKey     string
 	asset         string
@@ -169,14 +182,7 @@ func findExpiringBalances(ctx context.Context, arch historyarchive.ArchiveInterf
 // finds all SAC balances for a given list of assets that are either archived
 // or close to being archived
 func main() {
-	arch, err := historyarchive.NewArchivePool(
-		[]string{
-			"https://history.stellar.org/prd/core-live/core_live_001",
-			"https://history.stellar.org/prd/core-live/core_live_002",
-			"https://history.stellar.org/prd/core-live/core_live_003",
-		},
-		historyarchive.ArchiveOptions{},
-	)
+	arch, err := historyarchive.NewArchivePool(archiveURLs, historyarchive.ArchiveOptions{})
 	if err != nil {
 		log.Fatalf("failed to connect to pubnet archives: %v", err)
 	}
@@ -186,12 +192,6 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to get latest checkpoint sequence: %v", err)
 	}
-
-	targetAssets := map[string]string{
-		"CDTKPWPLOURQA2SGTKTUQOWRCBZEORB4BWBOMJ3D3ZTQQSGE5F6JBQLV": "EURC",
-		"CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75": "USDC",
-	}
-	var cutoffLedger uint32 = 60739011
 
 	// Always write to stdout
 	csvw := csv.NewWriter(os.Stdout)
