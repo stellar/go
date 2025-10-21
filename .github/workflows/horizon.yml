@@ -32,9 +32,9 @@ jobs:
     env:
       HORIZON_INTEGRATION_TESTS_ENABLED: true
       HORIZON_INTEGRATION_TESTS_CORE_MAX_SUPPORTED_PROTOCOL: ${{ matrix.protocol-version }}
-      PROTOCOL_24_CORE_DEBIAN_PKG_VERSION: 23.0.3-4.0d7b4345d.focal
-      PROTOCOL_24_CORE_DOCKER_IMG: stellar/unsafe-stellar-core:23.0.3-4.0d7b4345d.focal
-      PROTOCOL_24_STELLAR_RPC_DOCKER_IMG: sreuland/stellar-rpc-p24
+      PROTOCOL_24_CORE_DEBIAN_PKG_VERSION: 24.0.0-2802.0d7b4345d.focal
+      PROTOCOL_24_CORE_DOCKER_IMG: stellar/stellar-core:24.0.0-2802.0d7b4345d.focal
+      PROTOCOL_24_STELLAR_RPC_DOCKER_IMG: stellar/stellar-rpc:24.0.0
       PGHOST: localhost
       PGPORT: 5432
       PGUSER: postgres
@@ -123,7 +123,7 @@ jobs:
     runs-on: ubuntu-22.04
     env:
       GO_VERSION: 1.23.4
-      STELLAR_CORE_VERSION: 23.0.3-4.0d7b4345d.jammy
+      STELLAR_CORE_VERSION: 24.0.0-2802.0d7b4345d.jammy
     steps:
       - uses: actions/checkout@v3
         with:
