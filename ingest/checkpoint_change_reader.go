@@ -559,7 +559,7 @@ func (r *CheckpointChangeReader) Read() (Change, error) {
 		}
 		return Change{
 			Type:       entry.Data.Type,
-			ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryState,
+			ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryCreated,
 			Post:       &entry,
 		}, nil
 	}
