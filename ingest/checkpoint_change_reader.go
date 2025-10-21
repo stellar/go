@@ -15,12 +15,6 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-// readResult is the result of reading a bucket value
-type readResult struct {
-	entryChange xdr.LedgerEntryChange
-	e           error
-}
-
 // CheckpointChangeReader is a ChangeReader which returns Changes from a history archive
 // snapshot. The Changes produced by a CheckpointChangeReader reflect the state of the Stellar
 // network at a particular checkpoint ledger sequence.
@@ -30,10 +24,9 @@ type CheckpointChangeReader struct {
 	archive           historyarchive.ArchiveInterface
 	visitedLedgerKeys set.Set[string]
 	sequence          uint32
-	readChan          chan readResult
+	readChan          chan xdr.LedgerEntry
 	streamOnce        sync.Once
-	closeOnce         sync.Once
-	done              chan bool
+	cancel            context.CancelCauseFunc
 
 	readBytesMutex sync.RWMutex
 	totalRead      int64
@@ -112,16 +105,17 @@ func newCheckpointChangeReaderWithBucketList(
 		return nil, errors.Wrapf(err, "unable to get checkpoint HAS at ledger sequence %d", sequence)
 	}
 
+	var cancel context.CancelCauseFunc
+	ctx, cancel = context.WithCancelCause(ctx)
 	return &CheckpointChangeReader{
 		ctx:               ctx,
 		has:               &has,
 		archive:           archive,
 		visitedLedgerKeys: set.Set[string]{},
 		sequence:          sequence,
-		readChan:          make(chan readResult, msrBufferSize),
+		readChan:          make(chan xdr.LedgerEntry, msrBufferSize),
 		streamOnce:        sync.Once{},
-		closeOnce:         sync.Once{},
-		done:              make(chan bool),
+		cancel:            cancel,
 		encodingBuffer:    xdr.NewEncodingBuffer(),
 		bucketListType:    bucketListType,
 		sleep:             time.Sleep,
@@ -181,9 +175,6 @@ func (r *CheckpointChangeReader) bucketExists(hash historyarchive.Hash) (bool, e
 func (r *CheckpointChangeReader) streamBuckets() {
 	defer func() {
 		r.visitedLedgerKeys = nil
-
-		r.closeOnce.Do(r.close)
-		close(r.readChan)
 	}()
 
 	var buckets []historyarchive.Hash
@@ -195,7 +186,7 @@ func (r *CheckpointChangeReader) streamBuckets() {
 	case xdr.BucketListTypeHotArchive:
 		list = r.has.HotArchiveBuckets
 	default:
-		r.readChan <- r.error(errors.Errorf("Unsupported bucket list type: %d", r.bucketListType))
+		r.cancel(errors.Errorf("Unsupported bucket list type: %d", r.bucketListType))
 		return
 	}
 	for i := 0; i < len(list); i++ {
@@ -203,7 +194,7 @@ func (r *CheckpointChangeReader) streamBuckets() {
 		for _, hashString := range []string{b.Curr, b.Snap} {
 			hash, err := historyarchive.DecodeHash(hashString)
 			if err != nil {
-				r.readChan <- r.error(errors.Wrap(err, "Error decoding bucket hash"))
+				r.cancel(errors.Wrap(err, "Error decoding bucket hash"))
 				return
 			}
 
@@ -218,24 +209,18 @@ func (r *CheckpointChangeReader) streamBuckets() {
 	for _, hash := range buckets {
 		exists, err := r.bucketExists(hash)
 		if err != nil {
-			r.readChan <- r.error(
-				errors.Wrapf(err, "error checking if bucket exists: %s", hash),
-			)
+			r.cancel(errors.Wrapf(err, "error checking if bucket exists: %s", hash))
 			return
 		}
 
 		if !exists {
-			r.readChan <- r.error(
-				errors.Errorf("bucket hash does not exist: %s", hash),
-			)
+			r.cancel(errors.Errorf("bucket hash does not exist: %s", hash))
 			return
 		}
 
 		size, err := r.archive.BucketSize(hash)
 		if err != nil {
-			r.readChan <- r.error(
-				errors.Wrapf(err, "error checking bucket size: %s", hash),
-			)
+			r.cancel(errors.Wrapf(err, "error checking bucket size: %s", hash))
 			return
 		}
 
@@ -246,10 +231,21 @@ func (r *CheckpointChangeReader) streamBuckets() {
 
 	for i, hash := range buckets {
 		oldestBucket := i == len(buckets)-1
-		if shouldContinue := r.streamBucketList(hash, oldestBucket); !shouldContinue {
-			break
+		for ledgerEntry, err := range r.streamBucketList(hash, oldestBucket) {
+			if err != nil {
+				r.cancel(err)
+				return
+			}
+
+			select {
+			case r.readChan <- ledgerEntry:
+			case <-r.ctx.Done():
+				return
+			}
 		}
 	}
+
+	close(r.readChan)
 }
 
 // readBucketRecord attempts to read a single XDR record of type T from `stream`.
@@ -264,11 +260,6 @@ func (r *CheckpointChangeReader) readBucketRecord(stream *xdr.Stream, hash histo
 	for attempts := 0; ; attempts++ {
 		if r.ctx.Err() != nil {
 			return r.ctx.Err()
-		}
-		select {
-		case <-r.done:
-			return errors.New("reader is closed")
-		default:
 		}
 		if err == nil {
 			err = stream.ReadOne(entry)
@@ -504,54 +495,52 @@ func (r *CheckpointChangeReader) liveIterator(rdr *xdr.Stream, hash historyarchi
 	}
 }
 
-// streamBucketList pushes value onto the read channel, returning false when the channel needs to be closed otherwise true
-func (r *CheckpointChangeReader) streamBucketList(hash historyarchive.Hash, oldestBucket bool) bool {
-	rdr, e := r.newXDRStream(hash)
-	if e != nil {
-		r.readChan <- r.error(
-			errors.Wrapf(e, "cannot get xdr stream for hash '%s'", hash.String()),
-		)
-		return false
-	}
-
-	defer func() {
-		err := rdr.Close()
-		if err != nil {
-			r.readChan <- r.error(errors.Wrap(err, "Error closing xdr stream"))
-			// Stop streaming from the rest of the files.
-			r.Close()
+// streamBucketList returns an iterator over ledger entries for the given bucket hash.
+// Any errors encountered during setup or iteration will be yielded via the iterator
+// as an error value alongside a zero xdr.LedgerEntry.
+func (r *CheckpointChangeReader) streamBucketList(hash historyarchive.Hash, oldestBucket bool) iter.Seq2[xdr.LedgerEntry, error] {
+	return func(yield func(xdr.LedgerEntry, error) bool) {
+		rdr, e := r.newXDRStream(hash)
+		if e != nil {
+			yield(xdr.LedgerEntry{}, errors.Wrapf(e, "cannot get xdr stream for hash '%s'", hash.String()))
+			return
 		}
-	}()
+		var closed bool
+		closeRdr := func() error {
+			if !closed {
+				closed = true
+				return rdr.Close()
+			}
+			return nil
+		}
+		defer closeRdr()
 
-	var iterator iter.Seq2[xdr.LedgerEntry, error]
-	switch r.bucketListType {
-	case xdr.BucketListTypeLive:
-		iterator = r.liveIterator(rdr, hash, oldestBucket)
-	case xdr.BucketListTypeHotArchive:
-		iterator = r.hotArchiveIterator(rdr, hash, oldestBucket)
-	default:
-		r.readChan <- r.error(errors.Errorf("Unsupported bucket list type: %d", r.bucketListType))
-		return false
-	}
-
-	for ledgerEntry, err := range iterator {
-		if err != nil {
-			r.readChan <- r.error(err)
-			return false
+		var iterator iter.Seq2[xdr.LedgerEntry, error]
+		switch r.bucketListType {
+		case xdr.BucketListTypeLive:
+			iterator = r.liveIterator(rdr, hash, oldestBucket)
+		case xdr.BucketListTypeHotArchive:
+			iterator = r.hotArchiveIterator(rdr, hash, oldestBucket)
+		default:
+			yield(xdr.LedgerEntry{}, errors.Errorf("Unsupported bucket list type: %d", r.bucketListType))
+			return
 		}
 
-		select {
-		case r.readChan <- readResult{
-			xdr.LedgerEntryChange{
-				Type:  xdr.LedgerEntryChangeTypeLedgerEntryState,
-				State: &ledgerEntry,
-			}, nil,
-		}:
-		case <-r.done:
-			return false
+		// Enumerate inner iterator and forward values.
+		for ledgerEntry, err := range iterator {
+			if !yield(ledgerEntry, err) {
+				return
+			}
+			if err != nil {
+				return
+			}
+		}
+
+		// After iteration completes, close the stream and propagate close error if any.
+		if err := closeRdr(); err != nil {
+			_ = yield(xdr.LedgerEntry{}, errors.Wrap(err, "Error closing xdr stream"))
 		}
 	}
-	return true
 }
 
 // Read returns a new ledger entry change on each call, returning io.EOF when the stream ends.
@@ -560,32 +549,20 @@ func (r *CheckpointChangeReader) Read() (Change, error) {
 		go r.streamBuckets()
 	})
 
-	// blocking call. anytime we consume from this channel, the background goroutine will stream in the next value
-	result, ok := <-r.readChan
-	if !ok {
-		// when channel is closed then return io.EOF
-		return Change{}, io.EOF
+	select {
+	case <-r.ctx.Done():
+		return Change{}, context.Cause(r.ctx)
+	case entry, ok := <-r.readChan:
+		if !ok {
+			// when channel is closed then return io.EOF
+			return Change{}, io.EOF
+		}
+		return Change{
+			Type:       entry.Data.Type,
+			ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryState,
+			Post:       &entry,
+		}, nil
 	}
-
-	if result.e != nil {
-		return Change{}, errors.Wrap(result.e, "Error while reading from buckets")
-	}
-	entryType, err := result.entryChange.EntryType()
-	if err != nil {
-		return Change{}, errors.Wrap(err, "Error getting entry type")
-	}
-	return Change{
-		Type: entryType,
-		Post: result.entryChange.State,
-	}, nil
-}
-
-func (r *CheckpointChangeReader) error(err error) readResult {
-	return readResult{xdr.LedgerEntryChange{}, err}
-}
-
-func (r *CheckpointChangeReader) close() {
-	close(r.done)
 }
 
 // Progress returns progress reading all buckets in percents.
@@ -597,6 +574,6 @@ func (r *CheckpointChangeReader) Progress() float64 {
 
 // Close should be called when reading is finished.
 func (r *CheckpointChangeReader) Close() error {
-	r.closeOnce.Do(r.close)
+	r.cancel(errors.New("reader is closed"))
 	return nil
 }
