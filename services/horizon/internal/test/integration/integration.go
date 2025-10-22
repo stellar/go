@@ -781,8 +781,8 @@ func (i *Test) upgradeLimits() {
 	err = xdr.SafeUnmarshalBase64(string(contents), &configSet)
 	require.NoError(i.t, err)
 	coreImage := fmt.Sprintf("stellar/stellar-core:%v", i.config.ProtocolVersion)
-	if i.config.ProtocolVersion == 23 {
-		// protocol 23 docker image is not yet published with 23 tag because it's still an rc
+	if i.config.ProtocolVersion == 24 {
+		// protocol 24 docker image is not yet published with 24 tag because it's still an rc
 		// so in this case, we use the rc docker image
 		coreImage = i.coreValidatorDockerImage()
 	}
