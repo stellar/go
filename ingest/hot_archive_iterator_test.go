@@ -234,12 +234,76 @@ func (h *HotArchiveIteratorTestSuite) TestIteration() {
 		context.Background(),
 		h.mockArchive,
 		h.ledgerSeq,
-		false,
+		DisableBucketListValidation,
 	) {
 		h.Require().NoError(err)
 		h.Require().Less(i, len(expectedAccounts))
 		h.Require().Equal(expectedAccounts[i], ledgerEntry.Data.Account.AccountId.Address())
 		h.Require().Equal(expectedBalances[i], uint32(ledgerEntry.Data.Account.Balance))
+		i++
+	}
+}
+
+// TestFilter exercises WithFilter for the hot archive iterator by ignoring a
+// HotArchiveLive key in a newer bucket so that an older ArchivedEntry is yielded.
+func (h *HotArchiveIteratorTestSuite) TestFilter() {
+	curr1 := createXdrStream(
+		hotArchiveMetaEntry(24),
+		// Newest bucket contains only a live key for A
+		archivedLiveEntry("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+		archivedBucketEntry("GALPCCZN4YXA3YMJHKL6CVIECKPLJJCTVMSNYWBTKJW4K5HQLYLDMZTB", 100),
+	)
+
+	snap1 := createXdrStream(
+		hotArchiveMetaEntry(24),
+		// Older bucket contains the archived entry we expect to receive
+		archivedBucketEntry("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML", 50),
+	)
+
+	nextBucket := createBucketChannel(h.has.HotArchiveBuckets)
+
+	// Return curr1 and snap1 for the first two buckets...
+	h.mockArchive.
+		On("GetXdrStreamForHash", <-nextBucket).
+		Return(curr1, nil).Once()
+	h.mockArchive.
+		On("GetXdrStreamForHash", <-nextBucket).
+		Return(snap1, nil).Once()
+
+	// ...and empty streams for the rest of the buckets.
+	for hash := range nextBucket {
+		h.mockArchive.
+			On("GetXdrStreamForHash", hash).
+			Return(createXdrStream(), nil).Once()
+	}
+
+	i := 0
+	for ledgerEntry, err := range NewHotArchiveIterator(
+		context.Background(),
+		h.mockArchive,
+		h.ledgerSeq,
+		DisableBucketListValidation,
+		WithFilter(
+			// accept all archived entries
+			func(le xdr.LedgerEntry) bool {
+				if le.Data.Type != xdr.LedgerEntryTypeAccount {
+					return true
+				}
+				return le.Data.Account.AccountId.Address() != "GALPCCZN4YXA3YMJHKL6CVIECKPLJJCTVMSNYWBTKJW4K5HQLYLDMZTB"
+			},
+			// ignore the live key for our target account so the older archived entry is not suppressed
+			func(key xdr.LedgerKey) bool {
+				if key.Type != xdr.LedgerEntryTypeAccount {
+					return true
+				}
+				return key.Account.AccountId.Address() != "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"
+			},
+		),
+	) {
+		h.Require().NoError(err)
+		h.Require().Zero(i)
+		h.Require().Equal("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML", ledgerEntry.Data.Account.AccountId.Address())
+		h.Require().Equal(uint32(50), uint32(ledgerEntry.Data.Account.Balance))
 		i++
 	}
 }
@@ -269,7 +333,7 @@ func (h *HotArchiveIteratorTestSuite) TestMetaEntryNotFirst() {
 		context.Background(),
 		h.mockArchive,
 		h.ledgerSeq,
-		false,
+		DisableBucketListValidation,
 	) {
 		if i == 0 {
 			h.Require().NoError(err)
@@ -312,7 +376,7 @@ func (h *HotArchiveIteratorTestSuite) TestMissingBucketListType() {
 		context.Background(),
 		h.mockArchive,
 		h.ledgerSeq,
-		false,
+		DisableBucketListValidation,
 	) {
 		h.Require().Zero(i)
 		h.Require().ErrorContains(err, "METAENTRY missing bucket list type")
@@ -355,7 +419,7 @@ func (h *HotArchiveIteratorTestSuite) TestInvalidBucketListType() {
 		context.Background(),
 		h.mockArchive,
 		h.ledgerSeq,
-		false,
+		DisableBucketListValidation,
 	) {
 		h.Require().Zero(i)
 		h.Require().ErrorContains(err, "expected bucket list type to be hot-")

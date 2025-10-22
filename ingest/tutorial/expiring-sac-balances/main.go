@@ -40,7 +40,7 @@ type balance struct {
 
 func findEvictedBalances(ctx context.Context, arch historyarchive.ArchiveInterface, checkpointLedger uint32, targetAssets map[string]string) []balance {
 	var balances []balance
-	for ledgerEntry, err := range ingest.NewHotArchiveIterator(ctx, arch, checkpointLedger, true) {
+	for ledgerEntry, err := range ingest.NewHotArchiveIterator(ctx, arch, checkpointLedger) {
 		if err != nil {
 			log.Fatalf("error while reading hot archive ledger entries: %v", err)
 		}
