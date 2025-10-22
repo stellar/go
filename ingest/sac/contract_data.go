@@ -178,6 +178,21 @@ func AssetFromContractData(ledgerEntry xdr.LedgerEntry, passphrase string) (xdr.
 	return asset, true
 }
 
+// ValidAssetEntryLedgerKey checks if a given ledger key could correspond
+// to a valid asset entry for a contract.
+func ValidAssetEntryLedgerKey(ledgerKey xdr.LedgerKey) bool {
+	if ledgerKey.Type != xdr.LedgerEntryTypeContractData {
+		return false
+	}
+	if ledgerKey.ContractData.Key.Type != xdr.ScValTypeScvLedgerKeyContractInstance {
+		return false
+	}
+	if ledgerKey.ContractData.Durability != xdr.ContractDataDurabilityPersistent {
+		return false
+	}
+	return true
+}
+
 // ContractBalanceFromContractData takes a ledger entry and verifies that the
 // ledger entry corresponds to the balance entry written to contract storage by
 // the Stellar Asset Contract.
@@ -257,6 +272,31 @@ func ContractBalanceFromContractData(ledgerEntry xdr.LedgerEntry, passphrase str
 	amt := new(big.Int).Lsh(new(big.Int).SetInt64(int64(amount.Hi)), 64)
 	amt.Add(amt, new(big.Int).SetUint64(uint64(amount.Lo)))
 	return holder, amt, true
+}
+
+// ValidContractBalanceLedgerKey verifies if the provided ledgerKey could represent
+// a valid contract balance ledger key.
+func ValidContractBalanceLedgerKey(ledgerKey xdr.LedgerKey) bool {
+	if ledgerKey.Type != xdr.LedgerEntryTypeContractData {
+		return false
+	}
+	if ledgerKey.ContractData.Durability != xdr.ContractDataDurabilityPersistent {
+		return false
+	}
+	keyEnumVecPtr, ok := ledgerKey.ContractData.Key.GetVec()
+	if !ok || keyEnumVecPtr == nil {
+		return false
+	}
+	keyEnumVec := *keyEnumVecPtr
+	if len(keyEnumVec) != 2 || !keyEnumVec[0].Equals(
+		xdr.ScVal{
+			Type: xdr.ScValTypeScvSymbol,
+			Sym:  &balanceMetadataSym,
+		},
+	) {
+		return false
+	}
+	return true
 }
 
 func metadataObjFromAsset(isNative bool, code, issuer string) (*xdr.ScMap, error) {

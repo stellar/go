@@ -65,13 +65,11 @@ func (s *CheckpointChangeReaderTestSuite) SetupTest() {
 		ctx,
 		s.mockArchive,
 		ledgerSeq,
+		DisableBucketListValidation,
 	)
 	s.Require().NotNil(s.reader)
 	s.Require().NoError(err)
 	s.Assert().Equal(ledgerSeq, s.reader.sequence)
-
-	// Disable hash validation. We trust historyarchive.Stream tests here.
-	s.reader.disableBucketListHashValidation = true
 }
 
 func (s *CheckpointChangeReaderTestSuite) TearDownTest() {
@@ -536,6 +534,73 @@ func (s *CheckpointChangeReaderTestSuite) TestMalformedBucketListType() {
 	_, err := s.reader.Read()
 	s.Require().NotNil(err)
 	s.Assert().EqualError(err, "expected bucket list type to be live (instead got BucketListTypeHotArchive) in the bucket hash '517bea4c6627a688a8ce501febd8c562e737e3d86b29689d9956217640f3c74b'")
+}
+
+// TestFilter exercises the WithFilter functionality by ignoring a DEADENTRY
+// for a specific account in a newer bucket so that an older LIVEENTRY for
+// that account is yielded.
+func (s *CheckpointChangeReaderTestSuite) TestFilter() {
+	// Prepare streams: newer bucket has a DEADENTRY for A; older bucket has LIVEENTRY for A.
+	curr1 := createXdrStream(
+		entryAccount(xdr.BucketEntryTypeDeadentry, "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML", 1),
+		entryCB(xdr.BucketEntryTypeInitentry, xdr.Hash{1, 2, 3}, 100),
+	)
+	snap1 := createXdrStream(
+		entryAccount(xdr.BucketEntryTypeLiveentry, "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML", 1),
+	)
+
+	nextBucket := createBucketChannel(s.has.CurrentBuckets)
+
+	// Mock to return curr1 then snap1 for the first two buckets...
+	s.mockArchive.
+		On("GetXdrStreamForHash", <-nextBucket).
+		Return(curr1, nil).Once()
+
+	s.mockArchive.
+		On("GetXdrStreamForHash", <-nextBucket).
+		Return(snap1, nil).Once()
+
+	// ...and empty streams for the rest of the buckets.
+	for hash := range nextBucket {
+		s.mockArchive.
+			On("GetXdrStreamForHash", hash).
+			Return(createXdrStream(), nil).Once()
+	}
+
+	// Recreate reader with a filter that ignores the DEADENTRY for account A.
+	ctx := context.Background()
+	var err error
+	s.reader, err = NewCheckpointChangeReader(
+		ctx,
+		s.mockArchive,
+		s.reader.sequence,
+		DisableBucketListValidation,
+		WithFilter(
+			// accept all live entries
+			func(le xdr.LedgerEntry) bool {
+				return le.Data.Type != xdr.LedgerEntryTypeClaimableBalance
+			},
+			// ignore DEADENTRY for our target account
+			func(key xdr.LedgerKey) bool {
+				if key.Type != xdr.LedgerEntryTypeAccount {
+					return true
+				}
+				return key.Account.AccountId.Address() != "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"
+			},
+		),
+	)
+	s.Require().NoError(err)
+
+	// We should now receive the older LIVEENTRY for the account because the
+	// newer DEADENTRY was filtered out.
+	change, err := s.reader.Read()
+	s.Require().NoError(err)
+	id := change.Post.Data.MustAccount().AccountId
+	s.Assert().Equal("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML", id.Address())
+
+	// Then EOF
+	_, err = s.reader.Read()
+	s.Require().Equal(err, io.EOF)
 }
 
 func TestBucketExistsTestSuite(t *testing.T) {

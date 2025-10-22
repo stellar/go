@@ -46,6 +46,9 @@ type CheckpointChangeReader struct {
 
 	bucketListType xdr.BucketListType
 
+	ledgerEntryFilter func(xdr.LedgerEntry) bool
+	ledgerKeyFilter   func(key xdr.LedgerKey) bool
+
 	// This should be set to true in tests only
 	disableBucketListHashValidation bool
 	sleep                           func(time.Duration)
@@ -61,6 +64,31 @@ const (
 	msrBufferSize    = 50000
 )
 
+// CheckpointReaderOption configures a CheckpointChangeReader's behavior.
+// Multiple options can be provided; when conflicting options are given, the last one wins.
+type CheckpointReaderOption func(*CheckpointChangeReader)
+
+// DisableBucketListValidation disables validation of the bucket list
+// while streaming from the history archives.
+var DisableBucketListValidation = func(r *CheckpointChangeReader) {
+	r.disableBucketListHashValidation = true
+}
+
+// WithFilter configures a filter on the CheckpointChangeReader so irrelevant
+// ledger entries / ledger keys can be omitted when streaming from the
+// history archives.
+// nil values are equivalent to functions which returns true for all ledger
+// entries.
+func WithFilter(
+	ledgerEntryFilter func(xdr.LedgerEntry) bool,
+	ledgerKeyFilter func(key xdr.LedgerKey) bool,
+) CheckpointReaderOption {
+	return func(r *CheckpointChangeReader) {
+		r.ledgerEntryFilter = ledgerEntryFilter
+		r.ledgerKeyFilter = ledgerKeyFilter
+	}
+}
+
 // NewCheckpointChangeReader constructs a new CheckpointChangeReader instance
 // which enumerates ledger entries from the live bucket list.
 //
@@ -72,8 +100,15 @@ func NewCheckpointChangeReader(
 	ctx context.Context,
 	archive historyarchive.ArchiveInterface,
 	sequence uint32,
+	opts ...CheckpointReaderOption,
 ) (*CheckpointChangeReader, error) {
-	return newCheckpointChangeReaderWithBucketList(ctx, archive, sequence, xdr.BucketListTypeLive)
+	return newCheckpointChangeReaderWithBucketList(
+		ctx,
+		archive,
+		sequence,
+		xdr.BucketListTypeLive,
+		opts...,
+	)
 }
 
 // NewHotArchiveIterator constructs an iterator which enumerates
@@ -87,16 +122,21 @@ func NewHotArchiveIterator(
 	ctx context.Context,
 	archive historyarchive.ArchiveInterface,
 	sequence uint32,
-	validateBucketListHash bool,
+	opts ...CheckpointReaderOption,
 ) iter.Seq2[xdr.LedgerEntry, error] {
 	return func(yield func(xdr.LedgerEntry, error) bool) {
-		r, err := newCheckpointChangeReaderWithBucketList(ctx, archive, sequence, xdr.BucketListTypeHotArchive)
+		r, err := newCheckpointChangeReaderWithBucketList(
+			ctx,
+			archive,
+			sequence,
+			xdr.BucketListTypeHotArchive,
+			opts...,
+		)
 		if err != nil {
 			yield(xdr.LedgerEntry{}, err)
 			return
 		}
 		defer r.closeReadChan()
-		r.disableBucketListHashValidation = !validateBucketListHash
 
 		go r.streamBucketList()
 
@@ -122,6 +162,7 @@ func newCheckpointChangeReaderWithBucketList(
 	archive historyarchive.ArchiveInterface,
 	sequence uint32,
 	bucketListType xdr.BucketListType,
+	opts ...CheckpointReaderOption,
 ) (*CheckpointChangeReader, error) {
 	manager := archive.GetCheckpointManager()
 
@@ -143,7 +184,7 @@ func newCheckpointChangeReaderWithBucketList(
 
 	var cancel context.CancelCauseFunc
 	ctx, cancel = context.WithCancelCause(ctx)
-	return &CheckpointChangeReader{
+	r := &CheckpointChangeReader{
 		ctx:               ctx,
 		has:               &has,
 		archive:           archive,
@@ -154,7 +195,13 @@ func newCheckpointChangeReaderWithBucketList(
 		encodingBuffer:    xdr.NewEncodingBuffer(),
 		bucketListType:    bucketListType,
 		sleep:             time.Sleep,
-	}, nil
+	}
+
+	for _, opt := range opts {
+		opt(r)
+	}
+
+	return r, nil
 }
 
 // VerifyBucketList verifies that the bucket list hash computed from the history archive snapshot
@@ -389,6 +436,9 @@ func (r *CheckpointChangeReader) streamHotArchiveBucket(rdr *xdr.Stream, hash hi
 			switch entry.Type {
 			case xdr.HotArchiveBucketEntryTypeHotArchiveArchived:
 				ledgerEntry := entry.MustArchivedEntry()
+				if r.ledgerEntryFilter != nil && !r.ledgerEntryFilter(ledgerEntry) {
+					continue
+				}
 				k, err := ledgerEntry.LedgerKey()
 				if err != nil {
 					yield(xdr.LedgerEntry{}, errors.Wrapf(err, "Error generating ledger key for XDR record %d of hash '%s'", n, hash.String()))
@@ -397,6 +447,9 @@ func (r *CheckpointChangeReader) streamHotArchiveBucket(rdr *xdr.Stream, hash hi
 				key = k
 			case xdr.HotArchiveBucketEntryTypeHotArchiveLive:
 				key = entry.MustKey()
+				if r.ledgerKeyFilter != nil && !r.ledgerKeyFilter(key) {
+					continue
+				}
 			default:
 				yield(xdr.LedgerEntry{}, errors.Errorf("Unknown HotArchiveBucketEntryType=%d: %d@%s", entry.Type, n, hash.String()))
 				return
@@ -466,6 +519,9 @@ func (r *CheckpointChangeReader) streamLiveBucket(rdr *xdr.Stream, hash historya
 			switch entry.Type {
 			case xdr.BucketEntryTypeLiveentry, xdr.BucketEntryTypeInitentry:
 				liveEntry := entry.MustLiveEntry()
+				if r.ledgerEntryFilter != nil && !r.ledgerEntryFilter(liveEntry) {
+					continue
+				}
 				k, err := liveEntry.LedgerKey()
 				if err != nil {
 					yield(xdr.LedgerEntry{}, errors.Wrapf(err, "Error generating ledger key for XDR record %d of hash '%s'", n, hash.String()))
@@ -474,6 +530,9 @@ func (r *CheckpointChangeReader) streamLiveBucket(rdr *xdr.Stream, hash historya
 				key = k
 			case xdr.BucketEntryTypeDeadentry:
 				key = entry.MustDeadEntry()
+				if r.ledgerKeyFilter != nil && !r.ledgerKeyFilter(key) {
+					continue
+				}
 			default:
 				yield(xdr.LedgerEntry{}, errors.Errorf("Unknown BucketEntryType=%d: %d@%s", entry.Type, n, hash.String()))
 				return
