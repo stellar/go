@@ -168,7 +168,7 @@ func (a *App) init(ctx context.Context, runtimeSettings RuntimeSettings) error {
 		a.config.CoreVersion); err != nil {
 		return err
 	}
-	a.uploader = NewUploader(a.dataStore, queue, registry)
+	a.uploader = NewUploader(a.dataStore, queue, registry, a.config.Mode == Replace)
 
 	if a.config.AdminPort != 0 {
 		a.adminServer = newAdminServer(a.config.AdminPort, registry)

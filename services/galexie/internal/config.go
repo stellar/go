@@ -33,6 +33,7 @@ const (
 	_        Mode = iota
 	ScanFill Mode = iota
 	Append
+	Replace
 	LoadTest
 )
 
@@ -42,6 +43,8 @@ func (mode Mode) Name() string {
 		return "Scan and Fill"
 	case Append:
 		return "Append"
+	case Replace:
+		return "Replace"
 	case LoadTest:
 		return "Load Test"
 	}
@@ -164,7 +167,7 @@ func (config *Config) ValidateAndSetLedgerRange(ctx context.Context, archive his
 		return errors.New("invalid start value, must be greater than one.")
 	}
 
-	if config.Mode == ScanFill && config.EndLedger == 0 {
+	if (config.Mode == ScanFill || config.Mode == Replace) && config.EndLedger == 0 {
 		return errors.New("invalid end value, unbounded mode not supported, end must be greater than start.")
 	}
 

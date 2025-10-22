@@ -67,6 +67,24 @@ func defineCommands() *cobra.Command {
 			return galexieCmdRunner(settings)
 		},
 	}
+	var ReplaceCmd = &cobra.Command{
+		Use:   "replace",
+		Short: "Re-exports all ledgers, replacing existing files in the data lake.",
+		Long: "Performs a full re-export of all ledgers within the bounded range (defined by 'start' and 'end' flags)." +
+			" This command will overwrite any existing files at the destination path within the data lake",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			settings := bindCliParameters(cmd.PersistentFlags().Lookup("start"),
+				cmd.PersistentFlags().Lookup("end"),
+				cmd.PersistentFlags().Lookup("config-file"),
+			)
+			settings.Mode = Replace
+			settings.Ctx = cmd.Context()
+			if settings.Ctx == nil {
+				settings.Ctx = context.Background()
+			}
+			return galexieCmdRunner(settings)
+		},
+	}
 
 	var loadTestCmd = &cobra.Command{
 		Use: "load-test",
@@ -93,12 +111,19 @@ func defineCommands() *cobra.Command {
 
 	rootCmd.AddCommand(scanAndFillCmd)
 	rootCmd.AddCommand(appendCmd)
+	rootCmd.AddCommand(ReplaceCmd)
 	rootCmd.AddCommand(loadTestCmd)
 
-	scanAndFillCmd.PersistentFlags().Uint32P("start", "s", 0, "Starting ledger (inclusive), must be set to a value greater than 1")
-	scanAndFillCmd.PersistentFlags().Uint32P("end", "e", 0, "Ending ledger (inclusive), must be set to value greater than 'start' and less than the network's current ledger")
-	scanAndFillCmd.PersistentFlags().String("config-file", "config.toml", "Path to the TOML config file. Defaults to 'config.toml' on runtime working directory path.")
+	commonFlags := pflag.NewFlagSet("common_flags", pflag.ExitOnError)
+	commonFlags.Uint32P("start", "s", 0, "Starting ledger (inclusive), must be set to a value greater than 1")
+	commonFlags.Uint32P("end", "e", 0, "Ending ledger (inclusive), must be set to value greater than 'start' and less than the network's current ledger")
+	commonFlags.String("config-file", "config.toml", "Path to the TOML config file. Defaults to 'config.toml' on runtime working directory path.")
+
+	scanAndFillCmd.PersistentFlags().AddFlagSet(commonFlags)
 	viper.BindPFlags(scanAndFillCmd.PersistentFlags())
+
+	ReplaceCmd.PersistentFlags().AddFlagSet(commonFlags)
+	viper.BindPFlags(ReplaceCmd.PersistentFlags())
 
 	appendCmd.PersistentFlags().Uint32P("start", "s", 0, "Starting ledger (inclusive), must be set to a value greater than 1")
 	appendCmd.PersistentFlags().Uint32P("end", "e", 0, "Ending ledger (inclusive), optional, setting to non-zero means bounded mode, "+

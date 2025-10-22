@@ -2,11 +2,11 @@ package galexie
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"strconv"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/stellar/go/support/compressxdr"
@@ -20,6 +20,7 @@ type Uploader struct {
 	uploadDurationMetric *prometheus.SummaryVec
 	objectSizeMetrics    *prometheus.SummaryVec
 	latestLedgerMetric   prometheus.Gauge
+	overwriteExisting    bool
 }
 
 // NewUploader constructs a new Uploader instance
@@ -27,6 +28,7 @@ func NewUploader(
 	destination datastore.DataStore,
 	queue UploadQueue,
 	prometheusRegistry *prometheus.Registry,
+	overwriteExisting bool,
 ) Uploader {
 	uploadDurationMetric := prometheus.NewSummaryVec(
 		prometheus.SummaryOpts{
@@ -55,6 +57,7 @@ func NewUploader(
 		uploadDurationMetric: uploadDurationMetric,
 		objectSizeMetrics:    objectSizeMetrics,
 		latestLedgerMetric:   latestLedgerMetric,
+		overwriteExisting:    overwriteExisting,
 	}
 }
 
@@ -86,7 +89,7 @@ func (r *writerToRecorder) WriteTo(w io.Writer) (int64, error) {
 
 // Upload uploads the serialized binary data of ledger TxMeta to the specified destination.
 func (u Uploader) Upload(ctx context.Context, metaArchive *LedgerMetaArchive) error {
-	logger.Infof("Uploading: %s", metaArchive.ObjectKey)
+	logger.Infof("Uploading %s, overwrite=%t", metaArchive.ObjectKey, u.overwriteExisting)
 	startTime := time.Now()
 	numLedgers := strconv.FormatUint(uint64(len(metaArchive.Data.LedgerCloseMetas)), 10)
 
@@ -95,13 +98,29 @@ func (u Uploader) Upload(ctx context.Context, metaArchive *LedgerMetaArchive) er
 	writerTo := &writerToRecorder{
 		WriterTo: xdrEncoder,
 	}
-	ok, err := u.dataStore.PutFileIfNotExists(ctx, metaArchive.ObjectKey, writerTo, metaArchive.metaData.ToMap())
-	if err != nil {
-		return errors.Wrapf(err, "error uploading %s", metaArchive.ObjectKey)
-	}
 
-	logger.Infof("Uploaded %s successfully", metaArchive.ObjectKey)
-	alreadyExists := strconv.FormatBool(!ok)
+	var uploaded bool
+	var err error
+	var alreadyExists string
+	if u.overwriteExisting {
+		// Overwrite unconditionally.
+		if err = u.dataStore.PutFile(ctx, metaArchive.ObjectKey, writerTo, metaArchive.metaData.ToMap()); err != nil {
+			return fmt.Errorf("error uploading %s (overwrite): %w", metaArchive.ObjectKey, err)
+		}
+		logger.Infof("Uploaded %s successfully", metaArchive.ObjectKey)
+	} else {
+		// Create only if it doesn't already exist.
+		uploaded, err = u.dataStore.PutFileIfNotExists(ctx, metaArchive.ObjectKey, writerTo, metaArchive.metaData.ToMap())
+		if err != nil {
+			return fmt.Errorf("error uploading %s: %w", metaArchive.ObjectKey, err)
+		}
+		if uploaded {
+			logger.Infof("Uploaded %s successfully", metaArchive.ObjectKey)
+		} else {
+			logger.Infof("Skipped %s (already exists)", metaArchive.ObjectKey)
+		}
+		alreadyExists = strconv.FormatBool(!uploaded)
+	}
 
 	u.uploadDurationMetric.With(prometheus.Labels{
 		"ledgers":        numLedgers,
