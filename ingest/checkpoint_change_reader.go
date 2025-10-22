@@ -19,14 +19,22 @@ import (
 // snapshot. The Changes produced by a CheckpointChangeReader reflect the state of the Stellar
 // network at a particular checkpoint ledger sequence.
 type CheckpointChangeReader struct {
-	ctx               context.Context
 	has               *historyarchive.HistoryArchiveState
 	archive           historyarchive.ArchiveInterface
 	visitedLedgerKeys set.Set[string]
 	sequence          uint32
-	readChan          chan xdr.LedgerEntry
-	streamOnce        sync.Once
-	cancel            context.CancelCauseFunc
+	// readChan is used to buffer ledger entries while streaming
+	// from the history archives.
+	readChan chan xdr.LedgerEntry
+	// ctx is used to terminate early in case of errors while streaming
+	// or if the reader is closed.
+	// To avoid goroutine leaks and deadlocks, every time readChan is
+	// read from or written to we should also include ctx.Done() in the
+	// select statement so we eliminate the possibility of blocking
+	// indefinitely.
+	ctx        context.Context
+	streamOnce sync.Once
+	cancel     context.CancelCauseFunc
 
 	readBytesMutex sync.RWMutex
 	totalRead      int64

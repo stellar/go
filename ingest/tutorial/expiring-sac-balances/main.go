@@ -190,23 +190,27 @@ func main() {
 	}
 
 	for _, b := range findExpiringBalances(context.Background(), arch, seq, cutoffLedger, targetAssets) {
-		csvw.Write([]string{
+		if err = csvw.Write([]string{
 			b.asset,
 			b.ledgerKey,
 			b.holderAddress,
 			b.amount,
 			b.ttl,
-		})
+		}); err != nil {
+			log.Fatalf("failed writing CSV: %v", err)
+		}
 	}
 
 	for _, b := range findEvictedBalances(context.Background(), arch, seq, targetAssets) {
-		csvw.Write([]string{
+		if err = csvw.Write([]string{
 			b.asset,
 			b.ledgerKey,
 			b.holderAddress,
 			b.amount,
 			b.ttl,
-		})
+		}); err != nil {
+			log.Fatalf("failed writing CSV: %v", err)
+		}
 	}
 
 	csvw.Flush()
