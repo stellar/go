@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 
 	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/xdr"
@@ -148,33 +149,48 @@ func archivedLiveEntry(id string) xdr.HotArchiveBucketEntry {
 	}
 }
 
-func TestHotArchiveIterator(t *testing.T) {
-	mockArchive := &historyarchive.MockArchive{}
-	var has historyarchive.HistoryArchiveState
-	err := json.Unmarshal([]byte(hasWithHotArchiveExample), &has)
-	require.NoError(t, err)
+func TestHotArchiveIteratorTestSuite(t *testing.T) {
+	suite.Run(t, new(HotArchiveIteratorTestSuite))
+}
 
-	ledgerSeq := uint32(24123007)
+type HotArchiveIteratorTestSuite struct {
+	suite.Suite
+	mockArchive *historyarchive.MockArchive
+	has         historyarchive.HistoryArchiveState
+	ledgerSeq   uint32
+}
 
-	mockArchive.
-		On("GetCheckpointHAS", ledgerSeq).
-		Return(has, nil)
+func (h *HotArchiveIteratorTestSuite) SetupTest() {
+	require.NoError(h.T(), json.Unmarshal([]byte(hasWithHotArchiveExample), &h.has))
+
+	h.mockArchive = &historyarchive.MockArchive{}
+	h.ledgerSeq = 24123007
+
+	h.mockArchive.
+		On("GetCheckpointHAS", h.ledgerSeq).
+		Return(h.has, nil)
 
 	// BucketExists should be called 21 times (11 levels, last without `snap`)
-	mockArchive.
+	h.mockArchive.
 		On("BucketExists", mock.AnythingOfType("historyarchive.Hash")).
 		Return(true, nil).Times(21)
 
 	// BucketSize should be called 21 times (11 levels, last without `snap`)
-	mockArchive.
+	h.mockArchive.
 		On("BucketSize", mock.AnythingOfType("historyarchive.Hash")).
 		Return(int64(100), nil).Times(21)
 
-	mockArchive.
+	h.mockArchive.
 		On("GetCheckpointManager").
 		Return(historyarchive.NewCheckpointManager(
 			historyarchive.DefaultCheckpointFrequency))
+}
 
+func (h *HotArchiveIteratorTestSuite) TearDownTest() {
+	h.mockArchive.AssertExpectations(h.T())
+}
+
+func (h *HotArchiveIteratorTestSuite) TestIteration() {
 	curr1 := createXdrStream(
 		hotArchiveMetaEntry(24),
 		archivedBucketEntry("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML", 1),
@@ -189,20 +205,20 @@ func TestHotArchiveIterator(t *testing.T) {
 		archivedBucketEntry("GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H", 600),
 	)
 
-	nextBucket := createBucketChannel(has.HotArchiveBuckets)
+	nextBucket := createBucketChannel(h.has.HotArchiveBuckets)
 
 	// Return curr1 and snap1 stream for the first two bucket...
-	mockArchive.
+	h.mockArchive.
 		On("GetXdrStreamForHash", <-nextBucket).
 		Return(curr1, nil).Once()
 
-	mockArchive.
+	h.mockArchive.
 		On("GetXdrStreamForHash", <-nextBucket).
 		Return(snap1, nil).Once()
 
 	// ...and empty streams for the rest of the buckets.
 	for hash := range nextBucket {
-		mockArchive.
+		h.mockArchive.
 			On("GetXdrStreamForHash", hash).
 			Return(createXdrStream(), nil).Once()
 	}
@@ -216,15 +232,133 @@ func TestHotArchiveIterator(t *testing.T) {
 	i := 0
 	for ledgerEntry, err := range NewHotArchiveIterator(
 		context.Background(),
-		mockArchive,
-		ledgerSeq,
+		h.mockArchive,
+		h.ledgerSeq,
 		false,
 	) {
-		require.NoError(t, err)
-		require.Less(t, i, len(expectedAccounts))
-		require.Equal(t, expectedAccounts[i], ledgerEntry.Data.Account.AccountId.Address())
-		require.Equal(t, expectedBalances[i], uint32(ledgerEntry.Data.Account.Balance))
+		h.Require().NoError(err)
+		h.Require().Less(i, len(expectedAccounts))
+		h.Require().Equal(expectedAccounts[i], ledgerEntry.Data.Account.AccountId.Address())
+		h.Require().Equal(expectedBalances[i], uint32(ledgerEntry.Data.Account.Balance))
 		i++
 	}
-	mockArchive.AssertExpectations(t)
+}
+
+func (h *HotArchiveIteratorTestSuite) TestMetaEntryNotFirst() {
+	curr1 := createXdrStream(
+		archivedBucketEntry("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML", 1),
+		hotArchiveMetaEntry(24),
+	)
+
+	nextBucket := createBucketChannel(h.has.HotArchiveBuckets)
+
+	// Return curr1 stream for the first bucket...
+	h.mockArchive.
+		On("GetXdrStreamForHash", <-nextBucket).
+		Return(curr1, nil).Once()
+
+	// ...and empty streams for the rest of the buckets.
+	for hash := range nextBucket {
+		h.mockArchive.
+			On("GetXdrStreamForHash", hash).
+			Return(createXdrStream(), nil).Maybe()
+	}
+
+	i := 0
+	for _, err := range NewHotArchiveIterator(
+		context.Background(),
+		h.mockArchive,
+		h.ledgerSeq,
+		false,
+	) {
+		if i == 0 {
+			h.Require().NoError(err)
+		} else if i == 1 {
+			h.Require().ErrorContains(err, "METAENTRY not the first entry (n=1)")
+		} else {
+			h.Require().FailNow("expected at most 2 elements")
+		}
+		i++
+	}
+}
+
+func (h *HotArchiveIteratorTestSuite) TestMissingBucketListType() {
+	curr1 := createXdrStream(
+		xdr.HotArchiveBucketEntry{
+			Type: xdr.HotArchiveBucketEntryTypeHotArchiveMetaentry,
+			MetaEntry: &xdr.BucketMetadata{
+				LedgerVersion: xdr.Uint32(24),
+			},
+		},
+		archivedBucketEntry("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML", 1),
+	)
+
+	nextBucket := createBucketChannel(h.has.HotArchiveBuckets)
+
+	// Return curr1 stream for the first bucket...
+	h.mockArchive.
+		On("GetXdrStreamForHash", <-nextBucket).
+		Return(curr1, nil).Once()
+
+	// ...and empty streams for the rest of the buckets.
+	for hash := range nextBucket {
+		h.mockArchive.
+			On("GetXdrStreamForHash", hash).
+			Return(createXdrStream(), nil).Maybe()
+	}
+
+	i := 0
+	for _, err := range NewHotArchiveIterator(
+		context.Background(),
+		h.mockArchive,
+		h.ledgerSeq,
+		false,
+	) {
+		h.Require().Zero(i)
+		h.Require().ErrorContains(err, "METAENTRY missing bucket list type")
+		i++
+	}
+}
+
+func (h *HotArchiveIteratorTestSuite) TestInvalidBucketListType() {
+	listType := xdr.BucketListTypeLive
+	curr1 := createXdrStream(
+		xdr.HotArchiveBucketEntry{
+			Type: xdr.HotArchiveBucketEntryTypeHotArchiveMetaentry,
+			MetaEntry: &xdr.BucketMetadata{
+				LedgerVersion: xdr.Uint32(24),
+				Ext: xdr.BucketMetadataExt{
+					V:              1,
+					BucketListType: &listType,
+				},
+			},
+		},
+		archivedBucketEntry("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML", 1),
+	)
+
+	nextBucket := createBucketChannel(h.has.HotArchiveBuckets)
+
+	// Return curr1 stream for the first bucket...
+	h.mockArchive.
+		On("GetXdrStreamForHash", <-nextBucket).
+		Return(curr1, nil).Once()
+
+	// ...and empty streams for the rest of the buckets.
+	for hash := range nextBucket {
+		h.mockArchive.
+			On("GetXdrStreamForHash", hash).
+			Return(createXdrStream(), nil).Maybe()
+	}
+
+	i := 0
+	for _, err := range NewHotArchiveIterator(
+		context.Background(),
+		h.mockArchive,
+		h.ledgerSeq,
+		false,
+	) {
+		h.Require().Zero(i)
+		h.Require().ErrorContains(err, "expected bucket list type to be hot-")
+		i++
+	}
 }

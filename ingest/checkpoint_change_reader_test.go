@@ -81,10 +81,10 @@ func (s *CheckpointChangeReaderTestSuite) TearDownTest() {
 // TestSimple test reading buckets with a single live entry.
 func (s *CheckpointChangeReaderTestSuite) TestSimple() {
 	meta := metaEntry(23)
-	liveArchiveType := xdr.BucketListTypeLive
+	liveType := xdr.BucketListTypeLive
 	meta.MetaEntry.Ext = xdr.BucketMetadataExt{
 		V:              1,
-		BucketListType: &liveArchiveType,
+		BucketListType: &liveType,
 	}
 	curr1 := createXdrStream(
 		meta,
@@ -119,10 +119,10 @@ func (s *CheckpointChangeReaderTestSuite) TestSimple() {
 
 func (s *CheckpointChangeReaderTestSuite) TestReadAfterClose() {
 	meta := metaEntry(23)
-	liveArchiveType := xdr.BucketListTypeLive
+	liveType := xdr.BucketListTypeLive
 	meta.MetaEntry.Ext = xdr.BucketMetadataExt{
 		V:              1,
-		BucketListType: &liveArchiveType,
+		BucketListType: &liveType,
 	}
 	curr1 := createXdrStream(
 		meta,
@@ -171,10 +171,10 @@ func (s *CheckpointChangeReaderTestSuite) TestReadAfterClose() {
 
 func (s *CheckpointChangeReaderTestSuite) TestContextCanceled() {
 	meta := metaEntry(23)
-	liveArchiveType := xdr.BucketListTypeLive
+	liveType := xdr.BucketListTypeLive
 	meta.MetaEntry.Ext = xdr.BucketMetadataExt{
 		V:              1,
-		BucketListType: &liveArchiveType,
+		BucketListType: &liveType,
 	}
 	curr1 := createXdrStream(
 		meta,
