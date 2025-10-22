@@ -101,27 +101,27 @@ func (u Uploader) Upload(ctx context.Context, metaArchive *LedgerMetaArchive) er
 
 	var uploaded bool
 	var err error
+	var alreadyExists string
 	if u.overwriteExisting {
 		// Overwrite unconditionally.
 		if err = u.dataStore.PutFile(ctx, metaArchive.ObjectKey, writerTo, metaArchive.metaData.ToMap()); err != nil {
 			return fmt.Errorf("error uploading %s (overwrite): %w", metaArchive.ObjectKey, err)
 		}
-		uploaded = true
+		logger.Infof("Uploaded %s successfully", metaArchive.ObjectKey)
 	} else {
 		// Create only if it doesn't already exist.
 		uploaded, err = u.dataStore.PutFileIfNotExists(ctx, metaArchive.ObjectKey, writerTo, metaArchive.metaData.ToMap())
 		if err != nil {
 			return fmt.Errorf("error uploading %s: %w", metaArchive.ObjectKey, err)
 		}
+		if uploaded {
+			logger.Infof("Uploaded %s successfully", metaArchive.ObjectKey)
+		} else {
+			logger.Infof("Skipped %s (already exists)", metaArchive.ObjectKey)
+		}
+		alreadyExists = strconv.FormatBool(!uploaded)
 	}
 
-	if uploaded {
-		logger.Infof("Uploaded %s successfully", metaArchive.ObjectKey)
-	} else {
-		logger.Infof("Skipped %s (already exists)", metaArchive.ObjectKey)
-	}
-
-	alreadyExists := strconv.FormatBool(!uploaded)
 	u.uploadDurationMetric.With(prometheus.Labels{
 		"ledgers":        numLedgers,
 		"already_exists": alreadyExists,

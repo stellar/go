@@ -89,7 +89,7 @@ func (s *UploaderSuite) TestUploadPaths() {
 	cases := []tc{
 		{name: "scan-and-fill: created (not exists)", overwrite: false, alreadyExists: false},
 		{name: "scan-and-fill: skipped (already exists)", overwrite: false, alreadyExists: true},
-		{name: "scan-and-replace: always write", overwrite: true, alreadyExists: false},
+		{name: "replace: always write", overwrite: true, alreadyExists: false},
 	}
 
 	for _, c := range cases {
@@ -129,69 +129,83 @@ func (s *UploaderSuite) TestUploadPaths() {
 			s.Require().Equal(key, capturedKey)
 			s.Require().Equal(archive.Data, decodedArchive.Data)
 
-			assertMetrics := func(ledgers string, compressor string, compressedBytes int, uncompressedBytes int,
-				alreadyExists bool) {
+			// overwrite=true => "", else "true"/"false"
+			expectedAlreadyExists := ""
+			if !c.overwrite {
+				expectedAlreadyExists = strconv.FormatBool(c.alreadyExists)
+			}
 
+			assertMetrics := func(ledgers string, compressor string, compressedBytes int, uncompressedBytes int,
+				alreadyExistsLabel string) {
 				m, err := uploader.uploadDurationMetric.MetricVec.GetMetricWith(
 					prometheus.Labels{
 						"ledgers":        ledgers,
-						"already_exists": strconv.FormatBool(alreadyExists),
+						"already_exists": alreadyExistsLabel,
 					},
 				)
 				s.Require().NoError(err)
 				s.Require().Equal(uint64(1), getMetricValue(m).GetSummary().GetSampleCount())
 				s.Require().Positive(getMetricValue(m).GetSummary().GetSampleSum())
 
-				m, err = uploader.uploadDurationMetric.MetricVec.GetMetricWith(
-					prometheus.Labels{
-						"ledgers":        ledgers,
-						"already_exists": strconv.FormatBool(!alreadyExists),
-					},
-				)
-				s.Require().NoError(err)
-				s.Require().Equal(uint64(0), getMetricValue(m).GetSummary().GetSampleCount())
+				if alreadyExistsLabel != "" {
+					opp := strconv.FormatBool(!c.alreadyExists)
+					m, err = uploader.uploadDurationMetric.MetricVec.GetMetricWith(
+						prometheus.Labels{
+							"ledgers":        ledgers,
+							"already_exists": opp,
+						},
+					)
+					s.Require().NoError(err)
+					s.Require().Equal(uint64(0), getMetricValue(m).GetSummary().GetSampleCount())
+				}
 
 				m, err = uploader.objectSizeMetrics.MetricVec.GetMetricWith(
 					prometheus.Labels{
 						"ledgers":        ledgers,
 						"compression":    compressor,
-						"already_exists": strconv.FormatBool(alreadyExists),
+						"already_exists": alreadyExistsLabel,
 					},
 				)
 				s.Require().NoError(err)
 				s.Require().Equal(uint64(1), getMetricValue(m).GetSummary().GetSampleCount())
 				s.Require().Equal(float64(compressedBytes), getMetricValue(m).GetSummary().GetSampleSum())
 
-				m, err = uploader.objectSizeMetrics.MetricVec.GetMetricWith(
-					prometheus.Labels{
-						"ledgers":        ledgers,
-						"compression":    compressor,
-						"already_exists": strconv.FormatBool(!alreadyExists),
-					},
-				)
-				s.Require().NoError(err)
-				s.Require().Equal(uint64(0), getMetricValue(m).GetSummary().GetSampleCount())
+				if alreadyExistsLabel != "" {
+					opp := strconv.FormatBool(!c.alreadyExists)
+					m, err = uploader.objectSizeMetrics.MetricVec.GetMetricWith(
+						prometheus.Labels{
+							"ledgers":        ledgers,
+							"compression":    compressor,
+							"already_exists": opp,
+						},
+					)
+					s.Require().NoError(err)
+					s.Require().Equal(uint64(0), getMetricValue(m).GetSummary().GetSampleCount())
+				}
 
 				m, err = uploader.objectSizeMetrics.MetricVec.GetMetricWith(
 					prometheus.Labels{
 						"ledgers":        ledgers,
 						"compression":    "none",
-						"already_exists": strconv.FormatBool(alreadyExists),
+						"already_exists": alreadyExistsLabel,
 					},
 				)
 				s.Require().NoError(err)
 				s.Require().Equal(uint64(1), getMetricValue(m).GetSummary().GetSampleCount())
 				s.Require().Equal(float64(uncompressedBytes), getMetricValue(m).GetSummary().GetSampleSum())
 
-				m, err = uploader.objectSizeMetrics.MetricVec.GetMetricWith(
-					prometheus.Labels{
-						"ledgers":        ledgers,
-						"compression":    "none",
-						"already_exists": strconv.FormatBool(!alreadyExists),
-					},
-				)
-				s.Require().NoError(err)
-				s.Require().Equal(uint64(0), getMetricValue(m).GetSummary().GetSampleCount())
+				if alreadyExistsLabel != "" {
+					opp := strconv.FormatBool(!c.alreadyExists)
+					m, err = uploader.objectSizeMetrics.MetricVec.GetMetricWith(
+						prometheus.Labels{
+							"ledgers":        ledgers,
+							"compression":    "none",
+							"already_exists": opp,
+						},
+					)
+					s.Require().NoError(err)
+					s.Require().Equal(uint64(0), getMetricValue(m).GetSummary().GetSampleCount())
+				}
 			}
 
 			uncompressedPayload, err := decodedArchive.Data.MarshalBinary()
@@ -202,7 +216,7 @@ func (s *UploaderSuite) TestUploadPaths() {
 				xdrDecoder.Compressor.Name(),
 				expectedCompressedLength,
 				len(uncompressedPayload),
-				c.alreadyExists,
+				expectedAlreadyExists,
 			)
 
 			s.Require().Equal(

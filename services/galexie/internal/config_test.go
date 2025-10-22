@@ -280,47 +280,47 @@ func TestValidateStartAndEndLedger(t *testing.T) {
 				latestNetworkLedger+latestNetworkLedgerPadding+1, latestNetworkLedger+latestNetworkLedgerPadding),
 		},
 		{
-			name:        "ScanReplace: End ledger same as start ledger (error)",
+			name:        "Replace: End ledger same as start ledger (error)",
 			startLedger: 512,
 			endLedger:   512,
-			mode:        ScanReplace,
+			mode:        Replace,
 			errMsg:      "invalid end value, must be greater than start",
 			mockHas:     false,
 		},
 		{
-			name:        "ScanReplace: End ledger greater than start ledger (pass)",
+			name:        "Replace: End ledger greater than start ledger (pass)",
 			startLedger: 512,
 			endLedger:   600,
-			mode:        ScanReplace,
+			mode:        Replace,
 			errMsg:      "",
 			mockHas:     true,
 		},
 		{
-			name:        "ScanReplace: No end ledger provided (error)",
+			name:        "Replace: No end ledger provided (error)",
 			startLedger: 512,
 			endLedger:   0,
-			mode:        ScanReplace,
+			mode:        Replace,
 			errMsg:      "invalid end value, unbounded mode not supported, end must be greater than start.",
 		},
 		{
-			name:        "ScanReplace: End ledger before start ledger (error)",
+			name:        "Replace: End ledger before start ledger (error)",
 			startLedger: 512,
 			endLedger:   2,
-			mode:        ScanReplace,
+			mode:        Replace,
 			errMsg:      "invalid end value, must be greater than start",
 		},
 		{
-			name:        "ScanReplace: Start ledger 0 (error)",
+			name:        "Replace: Start ledger 0 (error)",
 			startLedger: 0,
 			endLedger:   2,
-			mode:        ScanReplace,
+			mode:        Replace,
 			errMsg:      "invalid start value, must be greater than one.",
 		},
 		{
-			name:        "ScanReplace: Start ledger exceeds latest ledger (error)",
+			name:        "Replace: Start ledger exceeds latest ledger (error)",
 			startLedger: latestNetworkLedger + latestNetworkLedgerPadding + 1,
 			endLedger:   latestNetworkLedger + latestNetworkLedgerPadding + 2,
-			mode:        ScanReplace,
+			mode:        Replace,
 			mockHas:     true,
 			errMsg: fmt.Sprintf("start %d exceeds latest network ledger %d",
 				latestNetworkLedger+latestNetworkLedgerPadding+1, latestNetworkLedger+latestNetworkLedgerPadding),
@@ -413,7 +413,7 @@ func TestAdjustedLedgerRangeBoundedMode(t *testing.T) {
 		Return(historyarchive.NewCheckpointManager(
 			historyarchive.DefaultCheckpointFrequency))
 
-	modes := []Mode{ScanFill, ScanReplace}
+	modes := []Mode{ScanFill, Replace}
 
 	for _, tt := range tests {
 		for _, mode := range modes {

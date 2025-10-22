@@ -131,7 +131,7 @@ func (s *GalexieTestSuite) TestScanAndFill() {
 	require.NoError(err)
 }
 
-func (s *GalexieTestSuite) TestScanAndReplace() {
+func (s *GalexieTestSuite) TesReplace() {
 	require := s.Require()
 
 	rootCmd := defineCommands()
@@ -161,9 +161,9 @@ func (s *GalexieTestSuite) TestScanAndReplace() {
 	// S3 timestamps have second level precision. Sleep for 1 second to ensure the new timestamp is different.
 	time.Sleep(1 * time.Second)
 
-	// now run scan-and-replace on an overlapping range, it will overwrite existing ledgers
+	// now run replace on an overlapping range, it will overwrite existing ledgers
 	rootCmd = defineCommands()
-	rootCmd.SetArgs([]string{"scan-and-replace", "--start", "4", "--end", "9", "--config-file", s.tempConfigFile})
+	rootCmd.SetArgs([]string{"replace", "--start", "4", "--end", "9", "--config-file", s.tempConfigFile})
 	errWriter.Reset()
 	rootCmd.SetErr(&errWriter)
 	outWriter.Reset()
