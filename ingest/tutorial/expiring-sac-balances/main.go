@@ -39,27 +39,16 @@ type balance struct {
 }
 
 func findEvictedBalances(ctx context.Context, arch historyarchive.ArchiveInterface, checkpointLedger uint32, targetAssets map[string]string) []balance {
-	reader, err := ingest.NewHotArchiveReader(ctx, arch, checkpointLedger)
-	if err != nil {
-		log.Fatalf("failed to create evicted checkpoint change reader: %v", err)
-	}
-	defer reader.Close()
 	var balances []balance
-	for {
-		change, err := reader.Read()
-		if err == io.EOF {
-			break
-		}
+	for ledgerEntry, err := range ingest.NewHotArchiveIterator(ctx, arch, checkpointLedger, true) {
 		if err != nil {
-			log.Fatalf("error while reading checkpoint changes: %v", err)
+			log.Fatalf("error while reading hot archive ledger entries: %v", err)
 		}
-
-		if change.Type != xdr.LedgerEntryTypeContractData || change.Post == nil {
+		if ledgerEntry.Data.Type != xdr.LedgerEntryTypeContractData {
 			continue
 		}
 
-		le := *change.Post
-		contractID, ok := le.Data.MustContractData().Contract.GetContractId()
+		contractID, ok := ledgerEntry.Data.MustContractData().Contract.GetContractId()
 		if !ok {
 			continue
 		}
@@ -69,12 +58,12 @@ func findEvictedBalances(ctx context.Context, arch historyarchive.ArchiveInterfa
 			continue
 		}
 
-		holder, amt, ok := sac.ContractBalanceFromContractData(le, network.PublicNetworkPassphrase)
+		holder, amt, ok := sac.ContractBalanceFromContractData(ledgerEntry, network.PublicNetworkPassphrase)
 		if !ok {
 			continue
 		}
 
-		ledgerKey, err := le.LedgerKey()
+		ledgerKey, err := ledgerEntry.LedgerKey()
 		if err != nil {
 			log.Fatalf("error while extracting ledger key: %v", err)
 		}

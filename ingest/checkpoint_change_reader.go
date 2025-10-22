@@ -66,19 +66,44 @@ func NewCheckpointChangeReader(
 	return newCheckpointChangeReaderWithBucketList(ctx, archive, sequence, xdr.BucketListTypeLive)
 }
 
-// NewHotArchiveReader constructs a new CheckpointChangeReader instance
-// which enumerates ledger entries from the hot archive bucket list.
+// NewHotArchiveIterator constructs an iterator which enumerates
+// ledger entries from the hot archive bucket list.
 //
 // The ledger sequence must be a checkpoint ledger. By default (see
 // `historyarchive.ConnectOptions.CheckpointFrequency` for configuring this),
 // its next sequence number would have to be a multiple of 64, e.g.
 // sequence=100031 is a checkpoint ledger, since: (100031+1) mod 64 == 0
-func NewHotArchiveReader(
+func NewHotArchiveIterator(
 	ctx context.Context,
 	archive historyarchive.ArchiveInterface,
 	sequence uint32,
-) (*CheckpointChangeReader, error) {
-	return newCheckpointChangeReaderWithBucketList(ctx, archive, sequence, xdr.BucketListTypeHotArchive)
+	validateBucketListHash bool,
+) iter.Seq2[xdr.LedgerEntry, error] {
+	return func(yield func(xdr.LedgerEntry, error) bool) {
+		r, err := newCheckpointChangeReaderWithBucketList(ctx, archive, sequence, xdr.BucketListTypeHotArchive)
+		if err != nil {
+			yield(xdr.LedgerEntry{}, err)
+			return
+		}
+		r.disableBucketListHashValidation = !validateBucketListHash
+
+		go r.streamBuckets()
+
+		for {
+			select {
+			case <-r.ctx.Done():
+				yield(xdr.LedgerEntry{}, context.Cause(r.ctx))
+				return
+			case entry, ok := <-r.readChan:
+				if !ok {
+					return
+				}
+				if !yield(entry, nil) {
+					return
+				}
+			}
+		}
+	}
 }
 
 func newCheckpointChangeReaderWithBucketList(

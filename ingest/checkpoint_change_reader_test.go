@@ -91,7 +91,7 @@ func (s *CheckpointChangeReaderTestSuite) TestSimple() {
 		entryAccount(xdr.BucketEntryTypeLiveentry, "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML", 1),
 	)
 
-	nextBucket := s.getNextBucketChannel()
+	nextBucket := createBucketChannel(s.has.CurrentBuckets)
 
 	// Return curr1 stream for the first bucket...
 	s.mockArchive.
@@ -130,7 +130,7 @@ func (s *CheckpointChangeReaderTestSuite) TestReadAfterClose() {
 		entryAccount(xdr.BucketEntryTypeLiveentry, "GCMNSW2UZMSH3ZFRLWP6TW2TG4UX4HLSYO5HNIKUSFMLN2KFSF26JKWF", 10),
 	)
 
-	nextBucket := s.getNextBucketChannel()
+	nextBucket := createBucketChannel(s.has.CurrentBuckets)
 
 	// Return curr1 stream for the first bucket...
 	s.mockArchive.
@@ -182,7 +182,7 @@ func (s *CheckpointChangeReaderTestSuite) TestContextCanceled() {
 		entryAccount(xdr.BucketEntryTypeLiveentry, "GCMNSW2UZMSH3ZFRLWP6TW2TG4UX4HLSYO5HNIKUSFMLN2KFSF26JKWF", 10),
 	)
 
-	nextBucket := s.getNextBucketChannel()
+	nextBucket := createBucketChannel(s.has.CurrentBuckets)
 
 	// Return curr1 stream for the first bucket...
 	s.mockArchive.
@@ -231,7 +231,7 @@ func (s *CheckpointChangeReaderTestSuite) TestRemoved() {
 		entryAccount(xdr.BucketEntryTypeLiveentry, "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML", 1),
 	)
 
-	nextBucket := s.getNextBucketChannel()
+	nextBucket := createBucketChannel(s.has.CurrentBuckets)
 
 	// Return curr1 and snap1 stream for the first two bucket...
 	s.mockArchive.
@@ -266,7 +266,7 @@ func (s *CheckpointChangeReaderTestSuite) TestConcurrentRead() {
 		entryAccount(xdr.BucketEntryTypeLiveentry, "GCK45YKCFNIOICB4TWPCOPWLQYNUKCJVV7OMMHH55AB3DD67K4E54STO", 1),
 	)
 
-	nextBucket := s.getNextBucketChannel()
+	nextBucket := createBucketChannel(s.has.CurrentBuckets)
 
 	// Return curr1 and snap1 stream for the first two bucket...
 	s.mockArchive.
@@ -311,7 +311,7 @@ func (s *CheckpointChangeReaderTestSuite) TestEnsureLatestLiveEntry() {
 		entryAccount(xdr.BucketEntryTypeInitentry, "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML", 2),
 	)
 
-	nextBucket := s.getNextBucketChannel()
+	nextBucket := createBucketChannel(s.has.CurrentBuckets)
 
 	// Return curr1 stream, rest won't be read due to an error
 	s.mockArchive.
@@ -353,7 +353,7 @@ func (s *CheckpointChangeReaderTestSuite) TestUniqueInitEntryOptimization() {
 		entryAccount(xdr.BucketEntryTypeInitentry, "GAIH3ULLFQ4DGSECF2AR555KZ4KNDGEKN4AFI4SU2M7B43MGK3QJZNSR", 1),
 	)
 
-	nextBucket := s.getNextBucketChannel()
+	nextBucket := createBucketChannel(s.has.CurrentBuckets)
 
 	// Return curr1 and snap1 stream for the first two bucket...
 	s.mockArchive.
@@ -476,7 +476,7 @@ func (s *CheckpointChangeReaderTestSuite) TestMalformedProtocol11Bucket() {
 		metaEntry(11),
 	)
 
-	nextBucket := s.getNextBucketChannel()
+	nextBucket := createBucketChannel(s.has.CurrentBuckets)
 
 	// Return curr1 stream, rest won't be read due to an error
 	s.mockArchive.
@@ -499,7 +499,7 @@ func (s *CheckpointChangeReaderTestSuite) TestMalformedProtocol11BucketNoMeta() 
 		entryAccount(xdr.BucketEntryTypeInitentry, "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML", 1),
 	)
 
-	nextBucket := s.getNextBucketChannel()
+	nextBucket := createBucketChannel(s.has.CurrentBuckets)
 
 	// Return curr1 stream, rest won't be read due to an error
 	s.mockArchive.
@@ -525,7 +525,7 @@ func (s *CheckpointChangeReaderTestSuite) TestMalformedBucketListType() {
 		entryAccount(xdr.BucketEntryTypeLiveentry, "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML", 1),
 	)
 
-	nextBucket := s.getNextBucketChannel()
+	nextBucket := createBucketChannel(s.has.CurrentBuckets)
 
 	// Return curr1 stream, rest won't be read due to an error
 	s.mockArchive.
@@ -1115,7 +1115,7 @@ func writeInvalidFrame(b *bytes.Buffer) {
 	b.Truncate(bufferSize + frameSize/2)
 }
 
-func createXdrStream(entries ...xdr.BucketEntry) *xdr.Stream {
+func createXdrStream(entries ...interface{}) *xdr.Stream {
 	b := &bytes.Buffer{}
 	for _, e := range entries {
 		err := xdr.MarshalFramed(b, e)
@@ -1131,15 +1131,15 @@ func xdrStreamFromBuffer(b *bytes.Buffer) *xdr.Stream {
 	return xdr.NewStream(ioutil.NopCloser(b))
 }
 
-// getNextBucket is a helper that returns next bucket hash in the order of processing.
+// createBucketChannel is a helper that returns next bucket hash in the order of processing.
 // This allows to write simpler test code that ensures that mocked calls are in a
 // correct order.
-func (s *CheckpointChangeReaderTestSuite) getNextBucketChannel() <-chan (historyarchive.Hash) {
+func createBucketChannel(buckets historyarchive.BucketList) <-chan (historyarchive.Hash) {
 	// 11 levels with 2 buckets each = buffer of 22
 	c := make(chan (historyarchive.Hash), 22)
 
-	for i := 0; i < len(s.has.CurrentBuckets); i++ {
-		b := s.has.CurrentBuckets[i]
+	for i := 0; i < len(buckets); i++ {
+		b := buckets[i]
 
 		curr := historyarchive.MustDecodeHash(b.Curr)
 		if !curr.IsZero() {
