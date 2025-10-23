@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"net/url"
 	"os/exec"
@@ -153,9 +154,7 @@ func (c *Client) UpgradeSorobanTxSetSize(ctx context.Context, maxTxSetSize uint3
 
 func (c *Client) setUpgradesAt(ctx context.Context, at time.Time, extraQueryParams url.Values) (err error) {
 	finalQueryParams := url.Values{}
-	for k, v := range extraQueryParams {
-		finalQueryParams[k] = v
-	}
+	maps.Copy(finalQueryParams, extraQueryParams)
 	finalQueryParams.Add("mode", "set")
 	finalQueryParams.Add("upgradetime", at.Format("2006-01-02T15:04:05Z"))
 	return c.upgrades(ctx, finalQueryParams)

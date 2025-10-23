@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"maps"
 	"time"
 
 	"github.com/stellar/go/ingest"
@@ -419,14 +420,10 @@ func (s *ProcessorRunner) runTransactionProcessorsOnLedger(registry nameRegistry
 	transactionStats.TransactionsFiltered = groupTransactionFilterers.droppedTransactions
 
 	transactionDurations = groupTransactionProcessors.processorsRunDurations
-	for key, duration := range groupFilteredOutProcessors.processorsRunDurations {
-		transactionDurations[key] = duration
-	}
+	maps.Copy(transactionDurations, groupFilteredOutProcessors.processorsRunDurations)
 	loaderStats = loaders.stats
 	loaderDurations = loaders.runDurations
-	for key, duration := range groupTransactionFilterers.runDurations {
-		transactionDurations[key] = duration
-	}
+	maps.Copy(transactionDurations, groupTransactionFilterers.runDurations)
 
 	tradeStats = groupTransactionProcessors.tradeProcessor.GetStats()
 
