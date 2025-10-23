@@ -412,7 +412,7 @@ func TestProcessorRunnerRunAllProcessorsOnLedgerProtocolVersionNotSupported(t *t
 		V0: &xdr.LedgerCloseMetaV0{
 			LedgerHeader: xdr.LedgerHeaderHistoryEntry{
 				Header: xdr.LedgerHeader{
-					LedgerVersion: 200,
+					LedgerVersion: xdr.Uint32(MaxSupportedProtocolVersion + 1),
 				},
 			},
 		},
@@ -467,7 +467,7 @@ func TestProcessorRunnerRunAllProcessorsOnLedgerProtocolVersionNotSupportedButAl
 		V0: &xdr.LedgerCloseMetaV0{
 			LedgerHeader: xdr.LedgerHeaderHistoryEntry{
 				Header: xdr.LedgerHeader{
-					LedgerVersion:  MaxSupportedProtocolVersion + 1,
+					LedgerVersion:  xdr.Uint32(MaxSupportedProtocolVersion + 1),
 					BucketListHash: xdr.Hash([32]byte{0, 1, 2}),
 					LedgerSeq:      23,
 				},
