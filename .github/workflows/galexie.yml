@@ -6,7 +6,7 @@ on:
   pull_request:
 
 jobs:
-  galexie:
+  run-integration-tests:
     name: Test ${{ matrix.storage_type }} integration
     runs-on: ubuntu-22.04
     strategy:
@@ -54,3 +54,23 @@ jobs:
       - name: Run tests - ${{ matrix.storage_type }} integration
         run: |
           go test -v -race -run "TestGalexie${{ matrix.storage_type }}TestSuite" ./services/galexie/...
+
+  build-and-push-container-image:
+    name: Build and Push Container Image
+    runs-on: ubuntu-22.04
+    needs: run-integration-tests
+    if: github.ref == 'refs/heads/master'
+    steps:
+    - name: Build docker
+      env:
+        STELLAR_CORE_VERSION: 24.0.0-2802.0d7b4345d.focal
+      run: make -C services/galexie docker-build
+
+    - name: Login to DockerHub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+    - name: Push to DockerHub
+      run: make -C services/galexie docker-push

@@ -65,5 +65,9 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Push to DockerHub
+      - name: Push version tag to DockerHub
         run: make -C services/galexie docker-push
+
+      - name: Push latest tag to DockerHub
+        if: ${{ ! contains(github.ref, '-rc') }}
+        run: make -C services/galexie docker-push-latest
