@@ -401,7 +401,7 @@ func TestProcessorRunnerRunAllProcessorsOnLedgerProtocolVersionNotSupported(t *t
 	maxBatchSize := 100000
 
 	config := Config{
-		NetworkPassphrase: network.PublicNetworkPassphrase,
+		NetworkPassphrase:        network.PublicNetworkPassphrase,
 		SkipProtocolVersionCheck: false,
 	}
 
@@ -455,7 +455,7 @@ func TestProcessorRunnerRunAllProcessorsOnLedgerProtocolVersionNotSupportedButAl
 	ctx := context.Background()
 
 	config := Config{
-		NetworkPassphrase: network.PublicNetworkPassphrase,
+		NetworkPassphrase:        network.PublicNetworkPassphrase,
 		SkipProtocolVersionCheck: true,
 	}
 
@@ -467,7 +467,7 @@ func TestProcessorRunnerRunAllProcessorsOnLedgerProtocolVersionNotSupportedButAl
 		V0: &xdr.LedgerCloseMetaV0{
 			LedgerHeader: xdr.LedgerHeaderHistoryEntry{
 				Header: xdr.LedgerHeader{
-					LedgerVersion: 200,
+					LedgerVersion:  200,
 					BucketListHash: xdr.Hash([32]byte{0, 1, 2}),
 					LedgerSeq:      23,
 				},
