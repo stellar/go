@@ -402,6 +402,7 @@ func TestProcessorRunnerRunAllProcessorsOnLedgerProtocolVersionNotSupported(t *t
 
 	config := Config{
 		NetworkPassphrase: network.PublicNetworkPassphrase,
+		SkipProtocolVersionCheck: false,
 	}
 
 	q := &mockDBQ{}
