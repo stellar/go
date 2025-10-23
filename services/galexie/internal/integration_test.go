@@ -131,6 +131,57 @@ func (s *GalexieTestSuite) TestScanAndFill() {
 	require.NoError(err)
 }
 
+func (s *GalexieTestSuite) TesReplace() {
+	require := s.Require()
+
+	rootCmd := defineCommands()
+
+	rootCmd.SetArgs([]string{"scan-and-fill", "--start", "4", "--end", "5", "--config-file", s.tempConfigFile})
+	var errWriter bytes.Buffer
+	var outWriter bytes.Buffer
+	rootCmd.SetErr(&errWriter)
+	rootCmd.SetOut(&outWriter)
+	err := rootCmd.ExecuteContext(s.ctx)
+	require.NoError(err)
+
+	output := outWriter.String()
+	errOutput := errWriter.String()
+	s.T().Log(output)
+	s.T().Log(errOutput)
+
+	datastore, err := datastore.NewDataStore(s.ctx, s.config.DataStoreConfig)
+	require.NoError(err)
+
+	_, err = datastore.GetFile(s.ctx, "FFFFFFFF--0-9/FFFFFFFA--5.xdr."+compressxdr.DefaultCompressor.Name())
+	require.NoError(err)
+
+	lastModified, err := datastore.GetFileLastModified(s.ctx, "FFFFFFFF--0-9/FFFFFFFA--5.xdr."+compressxdr.DefaultCompressor.Name())
+	require.NoError(err)
+
+	// S3 timestamps have second level precision. Sleep for 1 second to ensure the new timestamp is different.
+	time.Sleep(1 * time.Second)
+
+	// now run replace on an overlapping range, it will overwrite existing ledgers
+	rootCmd = defineCommands()
+	rootCmd.SetArgs([]string{"replace", "--start", "4", "--end", "9", "--config-file", s.tempConfigFile})
+	errWriter.Reset()
+	rootCmd.SetErr(&errWriter)
+	outWriter.Reset()
+	rootCmd.SetOut(&outWriter)
+	err = rootCmd.ExecuteContext(s.ctx)
+	require.NoError(err)
+
+	s.T().Log(outWriter.String())
+	s.T().Log(errWriter.String())
+
+	newLastModified, err := datastore.GetFileLastModified(s.ctx, "FFFFFFFF--0-9/FFFFFFFA--5.xdr."+compressxdr.DefaultCompressor.Name())
+	require.NoError(err)
+	require.NotEqual(lastModified, newLastModified)
+
+	_, err = datastore.GetFile(s.ctx, "FFFFFFFF--0-9/FFFFFFF6--9.xdr."+compressxdr.DefaultCompressor.Name())
+	require.NoError(err)
+}
+
 func (s *GalexieTestSuite) TestAppend() {
 	require := s.Require()
 

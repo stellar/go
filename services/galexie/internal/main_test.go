@@ -101,6 +101,38 @@ func TestFlagsOutput(t *testing.T) {
 			appRunner:         appRunnerError,
 		},
 		{
+			name:              "replace sub-command with start and end present",
+			commandArgs:       []string{"replace", "--start", "10", "--end", "20", "--config-file", "myfile"},
+			expectedErrOutput: "",
+			appRunner:         appRunnerSuccess,
+			expectedSettings: RuntimeSettings{
+				StartLedger:    10,
+				EndLedger:      20,
+				ConfigFilePath: "myfile",
+				Mode:           Replace,
+				Ctx:            ctx,
+			},
+		},
+		{
+			name:              "replace sub-command with start and end absent",
+			commandArgs:       []string{"replace", "--config-file", "myfile"},
+			expectedErrOutput: "",
+			appRunner:         appRunnerSuccess,
+			expectedSettings: RuntimeSettings{
+				StartLedger:    0,
+				EndLedger:      0,
+				ConfigFilePath: "myfile",
+				Mode:           Replace,
+				Ctx:            ctx,
+			},
+		},
+		{
+			name:              "replace sub-command prints app error",
+			commandArgs:       []string{"replace", "--start", "10", "--end", "20", "--config-file", "myfile"},
+			expectedErrOutput: "test error",
+			appRunner:         appRunnerError,
+		},
+		{
 			name:              "load-test sub-command with all parameters",
 			commandArgs:       []string{"load-test", "--start", "4", "--end", "5", "--merge", "--ledgers-path", "ledgers.xdr", "--close-duration", "3.5", "--config-file", "myfile"},
 			expectedErrOutput: "",

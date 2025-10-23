@@ -279,6 +279,52 @@ func TestValidateStartAndEndLedger(t *testing.T) {
 			errMsg: fmt.Sprintf("start %d exceeds latest network ledger %d",
 				latestNetworkLedger+latestNetworkLedgerPadding+1, latestNetworkLedger+latestNetworkLedgerPadding),
 		},
+		{
+			name:        "Replace: End ledger same as start ledger (error)",
+			startLedger: 512,
+			endLedger:   512,
+			mode:        Replace,
+			errMsg:      "invalid end value, must be greater than start",
+			mockHas:     false,
+		},
+		{
+			name:        "Replace: End ledger greater than start ledger (pass)",
+			startLedger: 512,
+			endLedger:   600,
+			mode:        Replace,
+			errMsg:      "",
+			mockHas:     true,
+		},
+		{
+			name:        "Replace: No end ledger provided (error)",
+			startLedger: 512,
+			endLedger:   0,
+			mode:        Replace,
+			errMsg:      "invalid end value, unbounded mode not supported, end must be greater than start.",
+		},
+		{
+			name:        "Replace: End ledger before start ledger (error)",
+			startLedger: 512,
+			endLedger:   2,
+			mode:        Replace,
+			errMsg:      "invalid end value, must be greater than start",
+		},
+		{
+			name:        "Replace: Start ledger 0 (error)",
+			startLedger: 0,
+			endLedger:   2,
+			mode:        Replace,
+			errMsg:      "invalid start value, must be greater than one.",
+		},
+		{
+			name:        "Replace: Start ledger exceeds latest ledger (error)",
+			startLedger: latestNetworkLedger + latestNetworkLedgerPadding + 1,
+			endLedger:   latestNetworkLedger + latestNetworkLedgerPadding + 2,
+			mode:        Replace,
+			mockHas:     true,
+			errMsg: fmt.Sprintf("start %d exceeds latest network ledger %d",
+				latestNetworkLedger+latestNetworkLedgerPadding+1, latestNetworkLedger+latestNetworkLedgerPadding),
+		},
 	}
 
 	ctx := context.Background()
@@ -367,17 +413,23 @@ func TestAdjustedLedgerRangeBoundedMode(t *testing.T) {
 		Return(historyarchive.NewCheckpointManager(
 			historyarchive.DefaultCheckpointFrequency))
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			config, err := NewConfig(
-				RuntimeSettings{StartLedger: tt.start, EndLedger: tt.end, ConfigFilePath: tt.configFile, Mode: ScanFill}, nil)
+	modes := []Mode{ScanFill, Replace}
 
-			require.NoError(t, err)
-			err = config.ValidateAndSetLedgerRange(ctx, mockArchive)
-			require.NoError(t, err)
-			require.EqualValues(t, tt.expectedStart, config.StartLedger)
-			require.EqualValues(t, tt.expectedEnd, config.EndLedger)
-		})
+	for _, tt := range tests {
+		for _, mode := range modes {
+			testName := fmt.Sprintf("%s_%s", tt.name, mode.Name())
+			t.Run(testName, func(t *testing.T) {
+				config, err := NewConfig(
+					// Use the current mode in RuntimeSettings
+					RuntimeSettings{StartLedger: tt.start, EndLedger: tt.end, ConfigFilePath: tt.configFile, Mode: mode}, nil)
+
+				require.NoError(t, err)
+				err = config.ValidateAndSetLedgerRange(ctx, mockArchive)
+				require.NoError(t, err)
+				require.EqualValues(t, tt.expectedStart, config.StartLedger)
+				require.EqualValues(t, tt.expectedEnd, config.EndLedger)
+			})
+		}
 	}
 	mockArchive.AssertExpectations(t)
 }

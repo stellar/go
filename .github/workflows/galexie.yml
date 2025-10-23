@@ -13,12 +13,12 @@ jobs:
       matrix:
         storage_type: [ GCS, S3 ]
     env:
-      CAPTIVE_CORE_DEBIAN_PKG_VERSION: 23.0.0-2634.d5cbc0793.focal
+      CAPTIVE_CORE_DEBIAN_PKG_VERSION: 24.0.0-2802.0d7b4345d.focal
       GALEXIE_INTEGRATION_TESTS_ENABLED: "true"
       GALEXIE_INTEGRATION_TESTS_CAPTIVE_CORE_BIN: /usr/bin/stellar-core
       # this pins to a version of quickstart:testing that has the same version as GALEXIE_INTEGRATION_TESTS_CAPTIVE_CORE_BIN
       # this is the multi-arch index sha, get it by 'docker buildx imagetools inspect stellar/quickstart:future'
-      GALEXIE_INTEGRATION_TESTS_QUICKSTART_IMAGE: docker.io/stellar/quickstart:future@sha256:ea7f4dd4c8e1dc4eb69194ef5b9659aa73e08a89146ea80acfc2fdc073fffb32
+      GALEXIE_INTEGRATION_TESTS_QUICKSTART_IMAGE: stellar/quickstart:pr799-future
       GALEXIE_INTEGRATION_TESTS_QUICKSTART_IMAGE_PULL: "false"
       GALEXIE_INTEGRATION_TESTS_LOCALSTACK_IMAGE_TAG: "4.6.0"
       GALEXIE_INTEGRATION_TESTS_LOCALSTACK_IMAGE_PULL: "false"
