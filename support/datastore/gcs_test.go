@@ -427,7 +427,7 @@ func TestGCSListFilePaths(t *testing.T) {
 	})
 	defer server.Stop()
 
-	store, err := FromGCSClient(context.Background(), server.Client(), "test-bucket/objects/testnet")
+	store, err := FromGCSClient(context.Background(), server.Client(), "test-bucket/objects/testnet/")
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = store.Close() })
 
