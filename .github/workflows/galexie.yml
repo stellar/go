@@ -62,6 +62,8 @@ jobs:
     if: github.ref == 'refs/heads/master'
     steps:
     - name: Build docker
+      env:
+        STELLAR_CORE_VERSION: 24.0.0-2802.0d7b4345d.focal
       run: make -C services/galexie docker-build
 
     - name: Login to DockerHub
