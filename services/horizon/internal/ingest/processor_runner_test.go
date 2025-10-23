@@ -445,7 +445,8 @@ func TestProcessorRunnerRunAllProcessorsOnLedgerProtocolVersionNotSupported(t *t
 	_, err := runner.RunAllProcessorsOnLedger(ledger)
 	assert.EqualError(t, err,
 		fmt.Sprintf(
-			"Error while checking for supported protocol version: This Horizon version does not support protocol version 200. The latest supported protocol version is %d. Please upgrade to the latest Horizon version.",
+			"Error while checking for supported protocol version: This Horizon version does not support protocol version %d. The latest supported protocol version is %d. Please upgrade to the latest Horizon version.",
+			MaxSupportedProtocolVersion+1,
 			MaxSupportedProtocolVersion,
 		),
 	)
