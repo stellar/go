@@ -184,6 +184,9 @@ func (s *ProcessorRunner) buildFilteredOutProcessor() *groupTransactionProcessor
 // checkIfProtocolVersionSupported checks if this Horizon version supports the
 // protocol version of a ledger with the given sequence number.
 func (s *ProcessorRunner) checkIfProtocolVersionSupported(ledgerProtocolVersion uint32) error {
+	if s.config.SkipProtocolVersionCheck {
+		return nil
+	}
 	if ledgerProtocolVersion > MaxSupportedProtocolVersion {
 		return fmt.Errorf(
 			"This Horizon version does not support protocol version %d. "+

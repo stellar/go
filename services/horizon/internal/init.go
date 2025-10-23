@@ -100,6 +100,7 @@ func initIngester(app *App) {
 		StateVerificationTimeout:             app.config.IngestStateVerificationTimeout,
 		ReapLookupTables:                     app.config.ReapLookupTables && app.config.HistoryRetentionCount > 0,
 		EnableExtendedLogLedgerStats:         app.config.IngestEnableExtendedLogLedgerStats,
+		SkipProtocolVersionCheck:             app.config.IngestSkipProtocolVersionCheck,
 		RoundingSlippageFilter:               app.config.RoundingSlippageFilter,
 		SkipTxmeta:                           app.config.SkipTxmeta,
 		ReapConfig: ingest.ReapConfig{
