@@ -27,9 +27,6 @@ keystore:
 ticker:
 	$(MAKE) -C services/ticker/ docker-build
 
-friendbot:
-	$(MAKE) -C services/friendbot/ docker-build
-
 horizon:
 	$(MAKE) -C services/horizon/ binary-build
 

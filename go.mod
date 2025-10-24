@@ -68,8 +68,6 @@ require (
 	github.com/docker/docker v27.3.1+incompatible
 	github.com/docker/go-connections v0.5.0
 	github.com/fsouza/fake-gcs-server v1.49.2
-	github.com/go-chi/chi/v5 v5.1.0
-	github.com/riandyrn/otelchi v0.12.1
 	github.com/stellar/stellar-rpc v0.9.6-0.20250130160539-be7702aa01ba
 	go.opentelemetry.io/otel v1.34.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.28.0
