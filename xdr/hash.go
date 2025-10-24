@@ -1,6 +1,10 @@
 package xdr
 
-import "encoding/hex"
+import (
+	"encoding/hex"
+
+	"github.com/stellar/go/strkey"
+)
 
 func (h Hash) HexString() string {
 	return hex.EncodeToString(h[:])
@@ -16,4 +20,10 @@ func (s Hash) Equals(o Hash) bool {
 		}
 	}
 	return true
+}
+
+// ToContractAddress converts a Hash to a Stellar contract address string.
+// Returns the contract address in strkey format (C...) and an error if encoding fails.
+func (h Hash) ToContractAddress() (string, error) {
+	return strkey.Encode(strkey.VersionByteContract, h[:])
 }
