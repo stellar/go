@@ -2,6 +2,7 @@ package effects
 
 import (
 	"encoding/base64"
+	"maps"
 	"time"
 
 	"fmt"
@@ -1474,9 +1475,7 @@ func (e *effectsWrapper) addInvokeHostFunctionEffects(events []contractevents.Ev
 			transferEvent := evt.(*contractevents.TransferEvent)
 			details["amount"] = amount.String128(transferEvent.Amount)
 			toDetails := map[string]interface{}{}
-			for key, val := range details {
-				toDetails[key] = val
-			}
+			maps.Copy(toDetails, details)
 
 			if strkey.IsValidEd25519PublicKey(transferEvent.From) {
 				e.add(

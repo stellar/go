@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"reflect"
 	"sort"
 	"strconv"
@@ -1483,9 +1484,7 @@ func (e *effectsWrapper) addInvokeHostFunctionEffects(events []xdr.ContractEvent
 		case contractevents.EventTypeTransfer:
 			details["amount"] = amount.String128(evt.Amount)
 			toDetails := map[string]interface{}{}
-			for key, val := range details {
-				toDetails[key] = val
-			}
+			maps.Copy(toDetails, details)
 
 			if strkey.IsValidEd25519PublicKey(evt.From) {
 				if err := e.add(
