@@ -48,11 +48,7 @@ func chunkifyDBTrades(sl []Trade, chunkSize int) [][]Trade {
 	length := len(sl)
 
 	for i := 0; i < numChunks; i++ {
-		end := start + chunkSize
-
-		if end > length {
-			end = length
-		}
+		end := min(start+chunkSize, length)
 		chunk := sl[start:end]
 		chunkedSlice = append(chunkedSlice, chunk)
 		start = end

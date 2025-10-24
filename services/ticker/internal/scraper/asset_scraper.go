@@ -272,10 +272,7 @@ func (c *ScraperConfig) parallelProcessAssets(assets []hProtocol.AssetStat, para
 		go func(start int) {
 			defer wg.Done()
 
-			end := start + chunkSize
-			if end > numAssets {
-				end = numAssets
-			}
+			end := min(start+chunkSize, numAssets)
 
 			// Each routine running concurrently has a separate cache of TOMLs
 			// loaded. A single shared cache would be better, but this is a
