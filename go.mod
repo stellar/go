@@ -21,7 +21,6 @@ require (
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/schema v1.4.1
-	github.com/graph-gophers/graphql-go v1.3.0
 	github.com/guregu/null v4.0.0+incompatible
 	github.com/holiman/uint256 v1.2.3
 	github.com/howeyc/gopass v0.0.0-20170109162249-bf9dde6d0d2c
@@ -176,7 +175,6 @@ require (
 	github.com/magiconair/properties v1.8.7 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/moul/http2curl v0.0.0-20161031194548-4e24498b31db // indirect
-	github.com/opentracing/opentracing-go v1.1.0 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/prometheus/common v0.45.0 // indirect
 	github.com/prometheus/procfs v0.12.0 // indirect
