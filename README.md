@@ -20,13 +20,15 @@ This repo contains various tools and services that you can use and deploy, as we
 * [Horizon Server](services/horizon): Full-featured API server for Stellar network
 * [Go Horizon SDK - horizonclient](clients/horizonclient): Client for Horizon server (queries and transaction submission)
 * [Go Horizon SDK - txnbuild](txnbuild): Construct Stellar transactions and operations
-* [Ticker](services/ticker): An API server that provides statistics about assets and markets on the Stellar network
-* [Keystore](services/keystore): An API server that is used to store and manage encrypted keys for Stellar client applications
-* Servers for Anchors & Financial Institutions
-  * [Compliance Server](services/compliance): Allows financial institutions to exchange KYC information
-  * [Federation Server](services/federation): Allows organizations to provide addresses for users (`jane*examplebank.com`)
 
 ## Dependencies
+
+The following services have been deprecated as of tag [**stellar-go-2025-10-29_10-56-50**](https://github.com/stellar/go/releases/tag/stellar-go-2025-10-29_10-56-50):
+* [Ticker](https://github.com/stellar/go/tree/stellar-go-2025-10-29_10-56-50/services/ticker): An API server that provides statistics about assets and markets on the Stellar network. **Deprecated as of  [**stellar-go-2025-10-29_10-56-50**](https://github.com/stellar/go/releases/tag/stellar-go-2025-10-29_10-56-50)**
+* [Keystore](https://github.com/stellar/go/tree/stellar-go-2025-10-29_10-56-50/services/keystore): An API server that is used to store and manage encrypted keys for Stellar client applications. **Deprecated as of  [**stellar-go-2025-10-29_10-56-50**](https://github.com/stellar/go/releases/tag/stellar-go-2025-10-29_10-56-50)**
+* Servers for Anchors & Financial Institutions
+  * [Federation Server](https://github.com/stellar/go/tree/stellar-go-2025-10-29_10-56-50/services/federation): Allows organizations to provide addresses for users (`jane*examplebank.com`). **Deprecated as of  [**stellar-go-2025-10-29_10-56-50**](https://github.com/stellar/go/releases/tag/stellar-go-2025-10-29_10-56-50)**
+
 
 This repository is officially supported on the last two releases of Go.
 
