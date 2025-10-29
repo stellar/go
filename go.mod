@@ -3,9 +3,7 @@ module github.com/stellar/go
 go 1.23
 
 require (
-	cloud.google.com/go/firestore v1.15.0 // indirect
 	cloud.google.com/go/storage v1.42.0
-	firebase.google.com/go v3.12.0+incompatible
 	github.com/2opremio/pretty v0.2.2-0.20230601220618-e1d5758b2a95
 	github.com/BurntSushi/toml v1.3.2
 	github.com/Masterminds/squirrel v1.5.4
@@ -18,10 +16,8 @@ require (
 	github.com/getsentry/raven-go v0.2.0
 	github.com/go-chi/chi v4.1.2+incompatible
 	github.com/go-errors/errors v1.5.1
-	github.com/golang-jwt/jwt v3.2.2+incompatible
-	github.com/google/uuid v1.6.0
+	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/schema v1.4.1
-	github.com/graph-gophers/graphql-go v1.3.0
 	github.com/guregu/null v4.0.0+incompatible
 	github.com/holiman/uint256 v1.2.3
 	github.com/howeyc/gopass v0.0.0-20170109162249-bf9dde6d0d2c
@@ -51,7 +47,6 @@ require (
 	github.com/xdrpp/goxdr v0.1.1
 	google.golang.org/api v0.183.0
 	gopkg.in/gavv/httpexpect.v1 v1.0.0-20170111145843-40724cf1e4a0
-	gopkg.in/square/go-jose.v2 v2.6.0
 	gopkg.in/tylerb/graceful.v1 v1.2.15
 )
 
@@ -81,7 +76,6 @@ require (
 	cloud.google.com/go/auth/oauth2adapt v0.2.2 // indirect
 	cloud.google.com/go/compute/metadata v0.3.0 // indirect
 	cloud.google.com/go/iam v1.1.8 // indirect
-	cloud.google.com/go/longrunning v0.5.7 // indirect
 	cloud.google.com/go/pubsub v1.38.0 // indirect
 	github.com/andybalholm/brotli v1.0.4 // indirect
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.6.11 // indirect
@@ -174,7 +168,6 @@ require (
 	github.com/magiconair/properties v1.8.7 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/moul/http2curl v0.0.0-20161031194548-4e24498b31db // indirect
-	github.com/opentracing/opentracing-go v1.1.0 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/prometheus/common v0.45.0 // indirect
 	github.com/prometheus/procfs v0.12.0 // indirect
@@ -199,7 +192,6 @@ require (
 	golang.org/x/term v0.27.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
 	golang.org/x/time v0.5.0
-	google.golang.org/appengine v1.6.8 // indirect
 	google.golang.org/genproto v0.0.0-20240528184218-531527333157 // indirect
 	google.golang.org/grpc v1.64.1 // indirect
 	google.golang.org/protobuf v1.34.2

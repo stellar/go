@@ -134,6 +134,7 @@ type Config struct {
 	DisableStateVerification     bool
 	ReapLookupTables             bool
 	EnableExtendedLogLedgerStats bool
+	SkipProtocolVersionCheck     bool
 
 	MaxReingestRetries          int
 	ReingestRetryBackoffSeconds int

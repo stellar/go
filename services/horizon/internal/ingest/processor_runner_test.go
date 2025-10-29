@@ -401,7 +401,8 @@ func TestProcessorRunnerRunAllProcessorsOnLedgerProtocolVersionNotSupported(t *t
 	maxBatchSize := 100000
 
 	config := Config{
-		NetworkPassphrase: network.PublicNetworkPassphrase,
+		NetworkPassphrase:        network.PublicNetworkPassphrase,
+		SkipProtocolVersionCheck: false,
 	}
 
 	q := &mockDBQ{}
@@ -411,7 +412,7 @@ func TestProcessorRunnerRunAllProcessorsOnLedgerProtocolVersionNotSupported(t *t
 		V0: &xdr.LedgerCloseMetaV0{
 			LedgerHeader: xdr.LedgerHeaderHistoryEntry{
 				Header: xdr.LedgerHeader{
-					LedgerVersion: 200,
+					LedgerVersion: xdr.Uint32(MaxSupportedProtocolVersion + 1),
 				},
 			},
 		},
@@ -444,10 +445,83 @@ func TestProcessorRunnerRunAllProcessorsOnLedgerProtocolVersionNotSupported(t *t
 	_, err := runner.RunAllProcessorsOnLedger(ledger)
 	assert.EqualError(t, err,
 		fmt.Sprintf(
-			"Error while checking for supported protocol version: This Horizon version does not support protocol version 200. The latest supported protocol version is %d. Please upgrade to the latest Horizon version.",
+			"Error while checking for supported protocol version: This Horizon version does not support protocol version %d. The latest supported protocol version is %d. Please upgrade to the latest Horizon version.",
+			MaxSupportedProtocolVersion+1,
 			MaxSupportedProtocolVersion,
 		),
 	)
+}
+
+func TestProcessorRunnerRunAllProcessorsOnLedgerProtocolVersionNotSupportedButAllowed(t *testing.T) {
+	ctx := context.Background()
+
+	config := Config{
+		NetworkPassphrase:        network.PublicNetworkPassphrase,
+		SkipProtocolVersionCheck: true,
+	}
+
+	mockSession := &db.MockSession{}
+	q := &mockDBQ{}
+	defer mock.AssertExpectationsForObjects(t, q)
+
+	ledger := xdr.LedgerCloseMeta{
+		V0: &xdr.LedgerCloseMetaV0{
+			LedgerHeader: xdr.LedgerHeaderHistoryEntry{
+				Header: xdr.LedgerHeader{
+					LedgerVersion:  xdr.Uint32(MaxSupportedProtocolVersion + 1),
+					BucketListHash: xdr.Hash([32]byte{0, 1, 2}),
+					LedgerSeq:      23,
+				},
+			},
+		},
+	}
+
+	// Batches
+	defer mock.AssertExpectationsForObjects(t, mockTxProcessorBatchBuilders(q, mockSession, ctx)...)
+	defer mock.AssertExpectationsForObjects(t, mockChangeProcessorBatchBuilders(q, ctx, true)...)
+	defer mock.AssertExpectationsForObjects(t, mockFilteredOutProcessorsForNoRules(q, mockSession, ctx)...)
+
+	mockBatchInsertBuilder := &history.MockLedgersBatchInsertBuilder{}
+	q.MockQLedgers.On("NewLedgerBatchInsertBuilder").Return(mockBatchInsertBuilder)
+	mockBatchInsertBuilder.On(
+		"Add",
+		ledger.V0.LedgerHeader, 0, 0, 0, 0, CurrentVersion).Return(nil).Once()
+	mockBatchInsertBuilder.On(
+		"Exec",
+		ctx,
+		mockSession,
+	).Return(nil).Once()
+
+	defer mock.AssertExpectationsForObjects(t, mockBatchInsertBuilder)
+
+	q.MockQAssetStats.On("InsertAssetContracts", ctx, []history.AssetContract(nil)).
+		Return(nil).Once()
+	q.MockQAssetStats.On("UpdateAssetContractExpirations", ctx, []xdr.Hash{}, []uint32{}).
+		Return(nil).Once()
+	q.MockQAssetStats.On("DeleteAssetContractsExpiringAt", ctx, uint32(22)).
+		Return(int64(0), nil).Once()
+
+	q.MockQAssetStats.On("RemoveContractAssetBalances", ctx, []xdr.Hash(nil)).
+		Return(nil).Once()
+	q.MockQAssetStats.On("UpdateContractAssetBalanceAmounts", ctx, []xdr.Hash{}, []string{}).
+		Return(nil).Once()
+	q.MockQAssetStats.On("InsertContractAssetBalances", ctx, []history.ContractAssetBalance(nil)).
+		Return(nil).Once()
+	q.MockQAssetStats.On("UpdateContractAssetBalanceExpirations", ctx, []xdr.Hash{}, []uint32{}).
+		Return(nil).Once()
+	q.MockQAssetStats.On("DeleteContractAssetBalancesExpiringAt", ctx, uint32(22)).
+		Return([]history.ContractAssetBalance{}, nil).Once()
+
+	runner := ProcessorRunner{
+		ctx:      ctx,
+		config:   config,
+		historyQ: q,
+		session:  mockSession,
+		filters:  &MockFilters{},
+	}
+
+	_, err := runner.RunAllProcessorsOnLedger(ledger)
+	assert.NoError(t, err)
 }
 
 func mockTxProcessorBatchBuilders(q *mockDBQ, mockSession *db.MockSession, ctx context.Context) []interface{} {
