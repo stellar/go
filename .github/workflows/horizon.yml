@@ -122,7 +122,7 @@ jobs:
     name: Test (and push) verify-range image
     runs-on: ubuntu-22.04
     env:
-      GO_VERSION: 1.24
+      GO_VERSION: 1.24.9
       STELLAR_CORE_VERSION: 24.0.0-2802.0d7b4345d.jammy
     steps:
       - uses: actions/checkout@v3
