@@ -22,10 +22,15 @@ This repo contains various tools and services that you can use and deploy, as we
 * [Go Horizon SDK - txnbuild](txnbuild): Construct Stellar transactions and operations
 * [Go RPC SDK - horizonclient](clients/rpcclient): Client for RPC server (queries and transaction submission).
 
+## Relocated
+
+The following services no longer reside in this repository and have been moved to their own independent repositories:
+* [Horizon](services/horizon): Full-featured API server for Stellar network. Horizon will be built and deployed from its new place in the [**stellar-horizon**](https://github.com/stellar/stellar-horizon) repository.
+* [Galexie](services/galexie): Lightweight ledger exporter to write network ledger data to an external data store. Galexie will be built and deployed from its new place in the [**stellar-galexie**](https://github.com/stellar/stellar-galexie) repository.
+
 ## Deprecated
 
 The following services have been deprecated and removed from this repository as of tag [**stellar-go-2025-10-29_10-56-50**](https://github.com/stellar/go/releases/tag/stellar-go-2025-10-29_10-56-50):
-* [Horizon Server](services/horizon): Full-featured API server for Stellar network. Horizon will be built and deployed from its new place in the [**stellar-horizon**](https://github.com/stellar/stellar-horizon) repository.
 * [Ticker](https://github.com/stellar/go/tree/stellar-go-2025-10-29_10-56-50/services/ticker): An API server that provides statistics about assets and markets on the Stellar network. **Deprecated as of  [**stellar-go-2025-10-29_10-56-50**](https://github.com/stellar/go/releases/tag/stellar-go-2025-10-29_10-56-50)**
 * [Keystore](https://github.com/stellar/go/tree/stellar-go-2025-10-29_10-56-50/services/keystore): An API server that is used to store and manage encrypted keys for Stellar client applications. **Deprecated as of  [**stellar-go-2025-10-29_10-56-50**](https://github.com/stellar/go/releases/tag/stellar-go-2025-10-29_10-56-50)**
 * Servers for Anchors & Financial Institutions
