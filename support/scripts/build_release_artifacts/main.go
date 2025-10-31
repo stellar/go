@@ -71,12 +71,11 @@ func getGitHubTagName() string {
 	return strings.TrimPrefix(ref, githubTagRefPrefix)
 }
 
-// package searches the `tools` and `services` packages of this repo to find
+// package searches the `tools` packages of this repo to find
 // the source directory.  This is used within the script to find the README and
 // other files that should be packaged with the binary.
 func binPkgNames() []string {
 	result := []string{}
-	result = append(result, binNamesForDir("services")...)
 	result = append(result, binNamesForDir("tools")...)
 	return result
 }
@@ -275,12 +274,11 @@ func packageArchive(dest, buildOS string) {
 	}
 }
 
-// package searches the `tools` and `services` packages of this repo to find
+// package searches the `tools` packages of this repo to find
 // the source directory.  This is used within the script to find the README and
 // other files that should be packaged with the binary.
 func packageName(binName string) string {
 	targets := []string{
-		filepath.Join("services", binName),
 		filepath.Join("tools", binName),
 	}
 
