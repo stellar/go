@@ -73,14 +73,14 @@ func ParseCursor(input string) (Cursor, error) {
 	}
 
 	// Parse the first part (toid)
-	idInt, err := strconv.ParseInt(parts[0], 10, 64) //lint:ignore gomnd
+	idInt, err := strconv.ParseInt(parts[0], 10, 64) //lint:ignore gomnd creating a constant for 64 bits is overkill
 	if err != nil {
 		return Cursor{}, fmt.Errorf("invalid event id %s: %w", input, err)
 	}
 	parsed := toid.Parse(idInt)
 
 	// Parse the second part (event order)
-	eventOrder, err := strconv.ParseUint(parts[1], 10, 32) //lint:ignore gomnd
+	eventOrder, err := strconv.ParseUint(parts[1], 10, 32) //lint:ignore gomnd creating a constant for 32 bits is overkill
 	if err != nil {
 		return Cursor{}, fmt.Errorf("invalid event id %s: %w", input, err)
 	}
