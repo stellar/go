@@ -9,9 +9,9 @@ import (
 	"sync/atomic"
 	"time"
 
+	rpc "github.com/stellar/go/clients/rpcclient"
+	"github.com/stellar/go/protocols/rpc"
 	"github.com/stellar/go/xdr"
-	rpc "github.com/stellar/stellar-rpc/client"
-	"github.com/stellar/stellar-rpc/protocol"
 )
 
 const rpcBackendDefaultBufferSize uint32 = 10
