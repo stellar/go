@@ -348,7 +348,7 @@ func NewSystem(config Config) (System, error) {
 	}
 
 	historyQ := &history.Q{config.HistorySession.Clone()}
-	historyAdapter := newHistoryArchiveAdapter(archive)
+	historyAdapter := newHistoryArchiveAdapter(archive, config.NetworkPassphrase)
 	filters := filters.NewFilters()
 	loadtestSnapshot := &loadTestSnapshot{HistoryQ: historyQ}
 
