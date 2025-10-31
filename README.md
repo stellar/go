@@ -17,13 +17,15 @@ This repo contains various tools and services that you can use and deploy, as we
 
 ## Package Index
 
-* [Horizon Server](services/horizon): Full-featured API server for Stellar network
+
 * [Go Horizon SDK - horizonclient](clients/horizonclient): Client for Horizon server (queries and transaction submission)
 * [Go Horizon SDK - txnbuild](txnbuild): Construct Stellar transactions and operations
+* [Go RPC SDK - horizonclient](clients/rpcclient): Client for RPC server (queries and transaction submission).
 
 ## Deprecated
 
-The following services have been deprecated as of tag [**stellar-go-2025-10-29_10-56-50**](https://github.com/stellar/go/releases/tag/stellar-go-2025-10-29_10-56-50):
+The following services have been deprecated and removed from this repository as of tag [**stellar-go-2025-10-29_10-56-50**](https://github.com/stellar/go/releases/tag/stellar-go-2025-10-29_10-56-50):
+* [Horizon Server](services/horizon): Full-featured API server for Stellar network. Horizon will be built and deployed from its new place in the [**stellar-horizon**](https://github.com/stellar/stellar-horizon) repository.
 * [Ticker](https://github.com/stellar/go/tree/stellar-go-2025-10-29_10-56-50/services/ticker): An API server that provides statistics about assets and markets on the Stellar network. **Deprecated as of  [**stellar-go-2025-10-29_10-56-50**](https://github.com/stellar/go/releases/tag/stellar-go-2025-10-29_10-56-50)**
 * [Keystore](https://github.com/stellar/go/tree/stellar-go-2025-10-29_10-56-50/services/keystore): An API server that is used to store and manage encrypted keys for Stellar client applications. **Deprecated as of  [**stellar-go-2025-10-29_10-56-50**](https://github.com/stellar/go/releases/tag/stellar-go-2025-10-29_10-56-50)**
 * Servers for Anchors & Financial Institutions
@@ -81,9 +83,5 @@ Often, we provide test packages that aid in the creation of tests that interact 
 ### Contributing
 
 Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for more details.
-
-### Developing
-
-See [GUIDE_FOR_DEVELOPERS.md](/services/horizon/internal/docs/GUIDE_FOR_DEVELOPERS.md) for helpful instructions for getting started developing code in this repository.
 
 [Stellar Development Foundation]: https://stellar.org
