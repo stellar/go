@@ -36,7 +36,7 @@ func bufReadCloser(in io.ReadCloser) io.ReadCloser {
 
 func copyPath(src *Archive, dst *Archive, pth string, opts *CommandOptions) error {
 	if opts.DryRun {
-		log.Printf("dryrun skipping " + pth)
+		log.Printf("dryrun skipping %s", pth)
 		return nil
 	}
 	exists, err := dst.backend.Exists(pth)
@@ -44,7 +44,7 @@ func copyPath(src *Archive, dst *Archive, pth string, opts *CommandOptions) erro
 		return err
 	}
 	if exists && !opts.Force {
-		log.Printf("skipping existing " + pth)
+		log.Printf("skipping existing %s", pth)
 		return nil
 	}
 	rdr, err := src.backend.GetFile(pth)
@@ -124,7 +124,7 @@ func makeErrorPump(in chan error) chan error {
 
 func noteError(e error) uint32 {
 	if e != nil {
-		log.Errorf("Error: " + e.Error())
+		log.Errorf("Error: %s", e.Error())
 		return 1
 	}
 	return 0

@@ -164,7 +164,7 @@ func (c ClaimPredicate) toJSON() (claimPredicateJSON, error) {
 		relBefore := int64(c.MustRelBefore())
 		payload.RelBefore = &relBefore
 	default:
-		err = fmt.Errorf("invalid predicate type: " + c.Type.String())
+		err = fmt.Errorf("invalid predicate type: %s", c.Type.String())
 	}
 	return payload, err
 }
