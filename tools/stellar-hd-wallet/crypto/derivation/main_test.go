@@ -5,11 +5,12 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/stellar/go/keypair"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/stellar/go/keypair"
 )
 
-func ExampleDeriveFromPath() {
+func ExampleDeriveForPath() {
 	seed, _ := hex.DecodeString("000102030405060708090a0b0c0d0e0f")
 	key, err := DeriveForPath(StellarPrimaryAccountPath, seed)
 	if err != nil {
@@ -29,7 +30,7 @@ func ExampleDeriveFromPath() {
 	// GCWSJRG6YZSA374IY7LF53PIGTO6JD6BP5CNMUAVNWL3YYE636F3APML
 }
 
-func ExampleDeriveMultipleKeys() {
+func ExampleDeriveForPath_multipleKeys() {
 	seed, _ := hex.DecodeString("000102030405060708090a0b0c0d0e0f")
 
 	for i := 0; i < 10; i++ {
@@ -60,7 +61,7 @@ func ExampleDeriveMultipleKeys() {
 	// m/44'/148'/9' SCK6ZQ7F2P44HJ3DGVQA3AQJX7YRYGTKHY3D273AYZMPH3HVE3SB5VLP GDCRJ5F3WRZ47GHPAKLOO3WECAFBU2LRH4YUGIFLAKQTXC3MYC2GVYQU
 }
 
-func ExampleDeriveMultipleKeysFaster() {
+func ExampleDeriveForPath_fast() {
 	seed, _ := hex.DecodeString("000102030405060708090a0b0c0d0e0f")
 	mainKey, err := DeriveForPath(StellarAccountPrefix, seed)
 	if err != nil {
