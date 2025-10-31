@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/stellar/go/xdr"
-	"github.com/stellar/stellar-rpc/protocol"
+	"github.com/stellar/go/protocols/rpc"
 )
 
 type MockRPCClient struct {
