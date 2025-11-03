@@ -6,12 +6,10 @@ For details about what's in this repository and how it is organized read the [RE
 
 If you're aiming to submit a contribution make sure to also read the [contributing guidelines](CONTRIBUTING.md).
 
-If you're making changes to Horizon, look for documentation in its [docs](services/horizon/internal/docs) directory for specific instructions.
-
 ## Requirements
 To checkout, build, and run most tests these tools are required:
 - Git
-- [Go](https://golang.org/dl) (this repository is officially supported on the last two releases of Go)
+- [Go](https://golang.org/dl)
 
 To run some tests these tools are also required:
 - PostgreSQL 12+ server running locally, or set [environment variables](https://www.postgresql.org/docs/12/libpq-envars.html) (e.g. `PGHOST`, etc) for alternative host.
@@ -25,33 +23,23 @@ Check the code out anywhere, using a `GOPATH` is not required.
 git clone https://github.com/stellar/go
 ```
 
-## Installing dependencies
-
-Dependencies are managed using [Modules](https://github.com/golang/go/wiki/Modules). Dependencies for the packages you are building will be installed automatically when running any Go command that requires them. If you need to pre-download all dependencies for the repository for offline development, run `go mod download`.
-
-See [Dependency management](#dependency-management) for more details.
-
 ## Running tests
 
 ```
 go test ./...
 ```
 
-## Running services/tools
-
-```
-go run ./services/<service>
-```
+## Running tools
 
 ```
 go run ./tools/<tool>
 ```
 
-## Dependency management
+## Managing dependencies
 
-Dependencies are managed using [Modules](https://github.com/golang/go/wiki/Modules) and are tracked in the repository across two files:
-- [go.mod](go.mod): Contains a list of direct dependencies, and some indirect dependencies (see [why](https://github.com/golang/go/wiki/Modules#why-does-go-mod-tidy-record-indirect-and-test-dependencies-in-my-gomod)).
-- [go.sum](go.sum): Contains hashes for dependencies that are used for verifying downloaded dependencies.
+* Supported on the two latest major Go releases
+* Uses [Go Modules](https://github.com/golang/go/wiki/Modules) for dependency management (see [go.mod](./go.mod))
+* Standard go build, go test, and go run workflows apply
 
 ### Adding/Removing dependencies
 
@@ -95,5 +83,26 @@ go list -m -json all > go.list.master
 git checkout <branch>
 golistcmp go.list.master <(go list -m -json all)
 ```
+
+## Package source layout
+
+While much of the code in individual packages is organized based upon different developers' personal preferences, many of the packages follow a simple convention for organizing the declarations inside of a package that aim to aid in your ability to find code.
+
+In each package, there may be one or more of a set of common files:
+
+- *errors.go*: This file should contains declarations (both types and vars) for errors that are used by the package.
+- *example_test.go*: This file should contains example tests, as described at https://blog.golang.org/examples.
+- *main.go/internal.go* (**deprecated**): Older packages may have a `main.go` (public symbols) or `internal.go` (private symbols).  These files contain, respectively, the exported and unexported vars, consts, types and funcs for the package. New packages do not follow this pattern, and instead follow the standard Go convention to co-locate structs and their methods in the same files. 
+- *main.go* (**new convention**): If present, this file contains a `main` function as part of an executable `main` package.
+
+In addition to the above files, a package often has files that contains code that is specific to one declared type.  This file uses the snake case form of the type name (for example `loggly_hook.go` would correspond to the type `LogglyHook`).  This file should contain method declarations, interface implementation assertions and any other declarations that are tied solely to that type.
+
+Each non-test file can have a test counterpart like normal, whose name ends with `_test.go`.  The common files described above also have their own test counterparts... for example `internal_test.go` should contains tests that test unexported behavior and more commonly test helpers that are unexported.
+
+Generally, file contents are sorted by exported/unexported, then declaration type  (ordered as consts, vars, types, then funcs), then finally alphabetically.
+
+### Test helpers
+
+Often, we provide test packages that aid in the creation of tests that interact with our other packages.  For example, the `support/db` package has the `support/db/dbtest` package underneath it that contains elements that make it easier to test code that accesses a SQL database.  We've found that this pattern of having a separate test package maximizes flexibility and simplifies package dependencies.
 
 [golistcmp]: https://github.com/stellar/golistcmp

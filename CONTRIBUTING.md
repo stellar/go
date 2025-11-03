@@ -15,8 +15,7 @@ Check out the [Stellar Contribution Guide](https://github.com/stellar/.github/bl
 
 * Issues and PR titles start with:
   * The package name most affected, ex. `ingest: fix...`.
-  * Or, for services and tools, the service most affected, ex. `services/horizon: fix...`, `services/ticker: add...`
-  * Or, multiple package names separated by a comma when the fix addresses multiple packages worth noting, ex. `services/horizon, services/friendbot: fix...`.
+  * Or, multiple package names separated by a comma when the fix addresses multiple packages worth noting, ex. `ingest, processors: fix...`.
   * Or, `all:` when changes or an issue are broad, ex. `all: update...`.
   * Or, `doc:` when changes or an issue are isolated to non-code documentation not limited to a single package.
 * Label issues with `bug` if they're clearly a bug.
