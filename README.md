@@ -51,8 +51,4 @@ As of tag [**stellar-go-2025-10-29_10-56-50**](https://github.com/stellar/go/rel
 
 Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for more details.
 
-## Go Versions Supported
-
-The packages in this repository are tested against the two most recent major versions of Go, because only [the two most recent major versions of Go receive security updates](https://go.dev/doc/security/policy).
-
 [Stellar Development Foundation]: https://stellar.org
