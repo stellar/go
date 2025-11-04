@@ -33,7 +33,8 @@ The following services have been moved to their own repositories and are no long
 | Service | New Repository | Description |
 |-----------|-----------|-----------|
 | Horizon | [stellar-horizon](https://github.com/stellar/stellar-horizon) | Full-featured API server for querying Stellar network data |
-| Galexie | [stellar-galexie](https://github.com/stellar/stellar-galexie) | Ledger exporter that writes network data to external data stores
+| Galexie | [stellar-galexie](https://github.com/stellar/stellar-galexie) | Ledger exporter that writes network data to external data stores |
+| Friendbot | [friendbot](https://github.com/stellar/friendbot) | Stellar's test network native asset faucet |
 
 If you build or deploy these services from source, please use their new repositories. Pre-built Debian packages and Docker images continue to be distributed through the same channels.
 
