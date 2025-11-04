@@ -48,7 +48,7 @@ As of tag [**stellar-go-2025-10-29_10-56-50**](https://github.com/stellar/go/rel
 | [Keystore](https://github.com/stellar/go/tree/stellar-go-2025-10-29_10-56-50/services/keystore) | Encrypted key-management API server |
 | [Federation Server](https://github.com/stellar/go/tree/stellar-go-2025-10-29_10-56-50/services/federation) | Address-lookup service for anchors and financial institutions | 
 
-### Contributing
+## Contributing
 
 Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for more details.
 
