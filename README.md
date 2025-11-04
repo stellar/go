@@ -9,7 +9,7 @@
 <a href="https://goreportcard.com/report/github.com/stellar/go"><img alt="Go Report Card" src="https://goreportcard.com/badge/github.com/stellar/go" /></a>
 </p>
 
-This repository contains the *official Go SDK for Stellar*, maintained by the [Stellar Development Foundation].
+This repository contains the *official Golang SDK for Stellar*, maintained by the [Stellar Development Foundation].
 
 It provides all the tools developers need to build applications that integrate with the Stellar network, including APIs for Horizon and Stellar RPC, as well as foundational utilities and ingestion libraries for working with raw ledger data.
 
