@@ -9,7 +9,7 @@
 <a href="https://goreportcard.com/report/github.com/stellar/go"><img alt="Go Report Card" src="https://goreportcard.com/badge/github.com/stellar/go" /></a>
 </p>
 
-This repository contains the *official Golang SDK for Stellar*, maintained by the [Stellar Development Foundation].
+This repository contains the *official Go SDK for Stellar*, maintained by the [Stellar Development Foundation].
 
 It provides all the tools developers need to build applications that integrate with the Stellar network, including APIs for Horizon and Stellar RPC, as well as foundational utilities and ingestion libraries for working with raw ledger data.
 
@@ -19,8 +19,8 @@ This repo previously served as the “Go Monorepo” for all SDF Go projects. As
 
 | Package | Description |
 |-----------|-----------|
+| [Transaction Builder](txnbuild) | Builder for creating Stellar transactions and operations |
 | [Horizon API Client](clients/horizonclient) | Client for querying and submitting transactions via a Horizon instance |
-| [Horizon TxSub Client](txnbuild) | Builder for creating Stellar transactions and operations |
 | [RPC API Client](clients/rpcclient) | Client for interacting with a Stellar RPC instance |
 | [Ingest SDK](ingest) | Library for parsing raw ledger data from Captive Core, a Galexie Data Lake, or RPC |
 | [xdr](xdr) / [strkey](strkey) | Core network primitives and encoding helpers |
