@@ -27,8 +27,8 @@ go get github.com/stellar/go@latest
 
 | Package | Description |
 |-----------|-----------|
+| [Transaction Builder](txnbuild) | Builder for creating Stellar transactions and operations |
 | [Horizon API Client](clients/horizonclient) | Client for querying and submitting transactions via a Horizon instance |
-| [Horizon TxSub Client](txnbuild) | Builder for creating Stellar transactions and operations |
 | [RPC API Client](clients/rpcclient) | Client for interacting with a Stellar RPC instance |
 | [Ingest SDK](ingest) | Library for parsing raw ledger data from Captive Core, a Galexie Data Lake, or RPC |
 | [xdr](xdr) / [strkey](strkey) | Core network primitives and encoding helpers |
@@ -56,7 +56,7 @@ As of tag [**stellar-go-2025-10-29_10-56-50**](https://github.com/stellar/go/rel
 | [Keystore](https://github.com/stellar/go/tree/stellar-go-2025-10-29_10-56-50/services/keystore) | Encrypted key-management API server |
 | [Federation Server](https://github.com/stellar/go/tree/stellar-go-2025-10-29_10-56-50/services/federation) | Address-lookup service for anchors and financial institutions | 
 
-### Contributing
+## Contributing
 
 Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for more details.
 
