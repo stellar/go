@@ -19,8 +19,8 @@ This repo previously served as the “Go Monorepo” for all SDF Go projects. As
 
 | Package | Description |
 |-----------|-----------|
+| [Transaction Builder](txnbuild) | Builder for creating Stellar transactions and operations |
 | [Horizon API Client](clients/horizonclient) | Client for querying and submitting transactions via a Horizon instance |
-| [Horizon TxSub Client](txnbuild) | Builder for creating Stellar transactions and operations |
 | [RPC API Client](clients/rpcclient) | Client for interacting with a Stellar RPC instance |
 | [Ingest SDK](ingest) | Library for parsing raw ledger data from Captive Core, a Galexie Data Lake, or RPC |
 | [xdr](xdr) / [strkey](strkey) | Core network primitives and encoding helpers |
