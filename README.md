@@ -9,7 +9,7 @@
 <a href="https://goreportcard.com/report/github.com/stellar/go"><img alt="Go Report Card" src="https://goreportcard.com/badge/github.com/stellar/go" /></a>
 </p>
 
-This repository contains the *official Golang SDK for Stellar*, maintained by the [Stellar Development Foundation].
+This repository contains the *official Go SDK for Stellar*, maintained by the [Stellar Development Foundation].
 
 It provides all the tools developers need to build applications that integrate with the Stellar network, including APIs for Horizon and Stellar RPC, as well as foundational utilities and ingestion libraries for working with raw ledger data.
 
@@ -33,7 +33,8 @@ The following services have been moved to their own repositories and are no long
 | Service | New Repository | Description |
 |-----------|-----------|-----------|
 | Horizon | [stellar-horizon](https://github.com/stellar/stellar-horizon) | Full-featured API server for querying Stellar network data |
-| Galexie | [stellar-galexie](https://github.com/stellar/stellar-galexie) | Ledger exporter that writes network data to external data stores
+| Galexie | [stellar-galexie](https://github.com/stellar/stellar-galexie) | Ledger exporter that writes network data to external data stores |
+| Friendbot | [friendbot](https://github.com/stellar/friendbot) | Stellar's test network native asset faucet |
 
 If you build or deploy these services from source, please use their new repositories. Pre-built Debian packages and Docker images continue to be distributed through the same channels.
 
