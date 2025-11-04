@@ -15,6 +15,14 @@ It provides all the tools developers need to build applications that integrate w
 
 This repo previously served as the “Go Monorepo” for all SDF Go projects. As of October 2025, it has been refactored to focus exclusively on developer-facing SDK packages. Services that are still maintained have been moved to their own dedicated repositories.
 
+## Usage
+
+Run the following command inside your Go project.
+
+```
+go get github.com/stellar/go@latest
+```
+
 ## Package Index
 
 | Package | Description |
