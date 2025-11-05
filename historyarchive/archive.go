@@ -166,7 +166,7 @@ func (a *Archive) PutPathHAS(path string, has HistoryArchiveState, opts *Command
 		return err
 	}
 	if exists && !opts.Force {
-		log.Printf("skipping existing " + path)
+		log.Printf("skipping existing %s", path)
 		return nil
 	}
 	buf, err := json.MarshalIndent(has, "", "    ")

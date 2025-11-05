@@ -260,7 +260,8 @@ func (b GCSDataStore) ListFilePaths(ctx context.Context, options ListFileOptions
 		}
 
 		// Trim the configured prefix and any leading slash before appending
-		relative := strings.TrimPrefix(attrs.Name, b.prefix+"/")
+		relative := strings.TrimPrefix(attrs.Name, b.prefix)
+		relative = strings.TrimLeft(relative, "/")
 		keys = append(keys, relative)
 
 		remaining--

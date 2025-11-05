@@ -1,8 +1,6 @@
 <div align="center">
 <a href="https://stellar.org"><img alt="Stellar" src="https://github.com/stellar/.github/raw/master/stellar-logo.png" width="558" /></a>
 <br/>
-<strong>Creating equitable access to the global financial system</strong>
-<h1>Stellar Go Monorepo</h1>
 </div>
 <p align="center">
  
@@ -11,76 +9,59 @@
 <a href="https://goreportcard.com/report/github.com/stellar/go"><img alt="Go Report Card" src="https://goreportcard.com/badge/github.com/stellar/go" /></a>
 </p>
 
-This repo is the home for all of the public Go code produced by the [Stellar Development Foundation].
+This repository contains the *official Go SDK for Stellar*, maintained by the [Stellar Development Foundation].
 
-This repo contains various tools and services that you can use and deploy, as well as the SDK you can use to develop applications that integrate with the Stellar network.
+It provides all the tools developers need to build applications that integrate with the Stellar network, including APIs for Horizon and Stellar RPC, as well as foundational utilities and ingestion libraries for working with raw ledger data.
+
+This repo previously served as the “Go Monorepo” for all SDF Go projects. As of October 2025, it has been refactored to focus exclusively on developer-facing SDK packages. Services that are still maintained have been moved to their own dedicated repositories.
+
+## Usage
+
+Run the following command inside your Go project.
+
+```
+go get github.com/stellar/go@latest
+```
 
 ## Package Index
 
-* [Horizon Server](services/horizon): Full-featured API server for Stellar network
-* [Go Horizon SDK - horizonclient](clients/horizonclient): Client for Horizon server (queries and transaction submission)
-* [Go Horizon SDK - txnbuild](txnbuild): Construct Stellar transactions and operations
-* [Ticker](services/ticker): An API server that provides statistics about assets and markets on the Stellar network
-* [Keystore](services/keystore): An API server that is used to store and manage encrypted keys for Stellar client applications
-* Servers for Anchors & Financial Institutions
-  * [Compliance Server](services/compliance): Allows financial institutions to exchange KYC information
-  * [Federation Server](services/federation): Allows organizations to provide addresses for users (`jane*examplebank.com`)
+| Package | Description |
+|-----------|-----------|
+| [Transaction Builder](txnbuild) | Builder for creating Stellar transactions and operations |
+| [Horizon API Client](clients/horizonclient) | Client for querying and submitting transactions via a Horizon instance |
+| [RPC API Client](clients/rpcclient) | Client for interacting with a Stellar RPC instance |
+| [Ingest SDK](ingest) | Library for parsing raw ledger data from Captive Core, a Galexie Data Lake, or RPC |
+| [xdr](xdr) / [strkey](strkey) | Core network primitives and encoding helpers |
+| [Processors Library](processors) | Reusable data abstractions and ETL-style processors |
 
-## Dependencies
+## Relocated
 
-This repository is officially supported on the last two releases of Go.
+The following services have been moved to their own repositories and are no longer built from this SDK:
 
-It depends on a [number of external dependencies](./go.mod), and uses Go [Modules](https://github.com/golang/go/wiki/Modules) to manage them. Running any `go` command will automatically download dependencies required for that operation.
+| Service | New Repository | Description |
+|-----------|-----------|-----------|
+| Horizon | [stellar-horizon](https://github.com/stellar/stellar-horizon) | Full-featured API server for querying Stellar network data |
+| Galexie | [stellar-galexie](https://github.com/stellar/stellar-galexie) | Ledger exporter that writes network data to external data stores |
+| Friendbot | [friendbot](https://github.com/stellar/friendbot) | Stellar's test network native asset faucet |
 
-You can choose to checkout this repository into a [GOPATH](https://github.com/golang/go/wiki/GOPATH) or into any directory.
+If you build or deploy these services from source, please use their new repositories. Pre-built Debian packages and Docker images continue to be distributed through the same channels.
 
-## Directory Layout
+## Deprecated Services
 
-In addition to the other top-level packages, there are a few special directories that contain specific types of packages:
+As of tag [**stellar-go-2025-10-29_10-56-50**](https://github.com/stellar/go/releases/tag/stellar-go-2025-10-29_10-56-50), several legacy services have been deprecated and removed. They remain available in Git history for archival or fork purposes.
 
-* **clients** contains packages that provide client packages to the various Stellar services.
-* **exp** contains experimental packages.  Use at your own risk.
-* **handlers** contains packages that provide pluggable implementors of `http.Handler` that make it easier to incorporate portions of the Stellar protocol into your own http server. 
-* **support** contains packages that are not intended for consumption outside of Stellar's other packages.  Packages that provide common infrastructure for use in our services and tools should go here, such as `db` or `log`. 
-* **support/scripts** contains single-file go programs and bash scripts used to support the development of this repo. 
-* **services** contains packages that compile to applications that are long-running processes (such as API servers).
-* **tools** contains packages that compile to command line applications.
-* **protos** contains the protobuf definitions for data-models that we want to generate for use with external stakeholders. Refer to [protos/README.md](./protos/README.md) for more information about code structure in `protos` directory
+| Service | Description |
+|-----------|-----------|
+| [Ticker](https://github.com/stellar/go/tree/stellar-go-2025-10-29_10-56-50/services/ticker) | API server providing asset and market statistics |
+| [Keystore](https://github.com/stellar/go/tree/stellar-go-2025-10-29_10-56-50/services/keystore) | Encrypted key-management API server |
+| [Federation Server](https://github.com/stellar/go/tree/stellar-go-2025-10-29_10-56-50/services/federation) | Address-lookup service for anchors and financial institutions | 
 
-Each of these directories have their own README file that explain further the nature of their contents.
-
-### Other packages
-
-In addition to the packages described above, this repository contains various packages related to working with the Stellar network from a go program.  It's recommended that you use [godoc](https://godoc.org/github.com/stellar/go#pkg-subdirectories) to browse the documentation for each.
-
-
-## Package source layout
-
-While much of the code in individual packages is organized based upon different developers' personal preferences, many of the packages follow a simple convention for organizing the declarations inside of a package that aim to aid in your ability to find code.
-
-In each package, there may be one or more of a set of common files:
-
-- *errors.go*: This file should contains declarations (both types and vars) for errors that are used by the package.
-- *example_test.go*: This file should contains example tests, as described at https://blog.golang.org/examples.
-- *main.go/internal.go* (**deprecated**): Older packages may have a `main.go` (public symbols) or `internal.go` (private symbols).  These files contain, respectively, the exported and unexported vars, consts, types and funcs for the package. New packages do not follow this pattern, and instead follow the standard Go convention to co-locate structs and their methods in the same files. 
-- *main.go* (**new convention**): If present, this file contains a `main` function as part of an executable `main` package.
-
-In addition to the above files, a package often has files that contains code that is specific to one declared type.  This file uses the snake case form of the type name (for example `loggly_hook.go` would correspond to the type `LogglyHook`).  This file should contain method declarations, interface implementation assertions and any other declarations that are tied solely to that type.
-
-Each non-test file can have a test counterpart like normal, whose name ends with `_test.go`.  The common files described above also have their own test counterparts... for example `internal_test.go` should contains tests that test unexported behavior and more commonly test helpers that are unexported.
-
-Generally, file contents are sorted by exported/unexported, then declaration type  (ordered as consts, vars, types, then funcs), then finally alphabetically.
-
-### Test helpers
-
-Often, we provide test packages that aid in the creation of tests that interact with our other packages.  For example, the `support/db` package has the `support/db/dbtest` package underneath it that contains elements that make it easier to test code that accesses a SQL database.  We've found that this pattern of having a separate test package maximizes flexibility and simplifies package dependencies.
-
-### Contributing
+## Contributing
 
 Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for more details.
 
-### Developing
+## Go Versions Supported
 
-See [GUIDE_FOR_DEVELOPERS.md](/services/horizon/internal/docs/GUIDE_FOR_DEVELOPERS.md) for helpful instructions for getting started developing code in this repository.
+The packages in this repository are tested against the two most recent major versions of Go, because only [the two most recent major versions of Go receive security updates](https://go.dev/doc/security/policy).
 
 [Stellar Development Foundation]: https://stellar.org
