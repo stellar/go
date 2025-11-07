@@ -78,7 +78,7 @@ var DisableBucketListValidation = func(r *CheckpointChangeReader) {
 // WithFilter configures a filter on the CheckpointChangeReader so irrelevant
 // ledger entries / ledger keys can be omitted when streaming from the
 // history archives.
-// nil values are equivalent to functions which returns true for all ledger
+// nil values are equivalent to functions which return true for all ledger
 // entries.
 func WithFilter(
 	ledgerEntryFilter func(xdr.LedgerEntry) bool,
