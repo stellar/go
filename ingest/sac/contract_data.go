@@ -275,7 +275,9 @@ func ContractBalanceFromContractData(ledgerEntry xdr.LedgerEntry, passphrase str
 }
 
 // ValidContractBalanceLedgerKey verifies if the provided ledgerKey could represent
-// a valid contract balance ledger key.
+// a valid contract balance ledger key. Specifically, a valid contract balance ledger key:
+//   - Is of type ContractData with Persistent durability.
+//   - Has a key that is a 2-element vector, where the first element is the balance metadata symbol ("Balance").
 func ValidContractBalanceLedgerKey(ledgerKey xdr.LedgerKey) bool {
 	if ledgerKey.Type != xdr.LedgerEntryTypeContractData {
 		return false
