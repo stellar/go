@@ -34,9 +34,10 @@ type CheckpointChangeReader struct {
 	// read from or written to we should also include ctx.Done() in the
 	// select statement so we eliminate the possibility of blocking
 	// indefinitely.
-	ctx        context.Context
-	streamOnce sync.Once
-	cancel     context.CancelCauseFunc
+	ctx             context.Context
+	streamOnce      sync.Once
+	streamWaitGroup sync.WaitGroup
+	cancel          context.CancelCauseFunc
 
 	readBytesMutex sync.RWMutex
 	totalRead      int64
@@ -136,9 +137,15 @@ func NewHotArchiveIterator(
 			yield(xdr.LedgerEntry{}, err)
 			return
 		}
-		defer r.closeReadChan()
-
+		r.streamWaitGroup.Add(1)
 		go r.streamBucketList()
+		defer func() {
+			// the streamBucketList go routine writes to readChan
+			// so it is only safe to close it once that go routine
+			// terminates
+			r.streamWaitGroup.Wait()
+			r.closeReadChan()
+		}()
 
 		for {
 			select {
@@ -257,6 +264,7 @@ func (r *CheckpointChangeReader) bucketExists(hash historyarchive.Hash) (bool, e
 func (r *CheckpointChangeReader) streamBucketList() {
 	defer func() {
 		r.visitedLedgerKeys = nil
+		r.streamWaitGroup.Done()
 	}()
 
 	var buckets []historyarchive.Hash
@@ -646,11 +654,16 @@ func (r *CheckpointChangeReader) streamBucket(hash historyarchive.Hash, oldestBu
 // Read returns a new ledger entry change on each call, returning io.EOF when the stream ends.
 func (r *CheckpointChangeReader) Read() (Change, error) {
 	r.streamOnce.Do(func() {
+		r.streamWaitGroup.Add(1)
 		go r.streamBucketList()
 	})
 
 	select {
 	case <-r.ctx.Done():
+		// the streamBucketList go routine writes to readChan
+		// so it is only safe to close it once that go routine
+		// terminates
+		r.streamWaitGroup.Wait()
 		r.closeReadChan()
 		return Change{}, context.Cause(r.ctx)
 	case entry, ok := <-r.readChan:
