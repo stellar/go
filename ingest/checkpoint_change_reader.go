@@ -26,6 +26,8 @@ type CheckpointChangeReader struct {
 	// readChan is used to buffer ledger entries while streaming
 	// from the history archives.
 	readChan chan xdr.LedgerEntry
+	// closeChanOnce is used to ensure readChan is only closed once
+	closeChanOnce sync.Once
 	// ctx is used to terminate early in case of errors while streaming
 	// or if the reader is closed.
 	// To avoid goroutine leaks and deadlocks, every time readChan is
@@ -93,9 +95,10 @@ func NewHotArchiveIterator(
 			yield(xdr.LedgerEntry{}, err)
 			return
 		}
+		defer r.closeReadChan()
 		r.disableBucketListHashValidation = !validateBucketListHash
 
-		go r.streamBuckets()
+		go r.streamBucketList()
 
 		for {
 			select {
@@ -147,7 +150,6 @@ func newCheckpointChangeReaderWithBucketList(
 		visitedLedgerKeys: set.Set[string]{},
 		sequence:          sequence,
 		readChan:          make(chan xdr.LedgerEntry, msrBufferSize),
-		streamOnce:        sync.Once{},
 		cancel:            cancel,
 		encodingBuffer:    xdr.NewEncodingBuffer(),
 		bucketListType:    bucketListType,
@@ -182,7 +184,7 @@ func (r *CheckpointChangeReader) bucketExists(hash historyarchive.Hash) (bool, e
 	return r.archive.BucketExists(hash)
 }
 
-// streamBuckets is internal method that streams buckets from the given HAS.
+// streamBucketList is internal method that streams buckets from the given HAS.
 //
 // Buckets should be processed from oldest to newest, `snap` and then `curr` at
 // each level. The correct value of ledger entry is the latest seen
@@ -205,7 +207,7 @@ func (r *CheckpointChangeReader) bucketExists(hash historyarchive.Hash) (bool, e
 // In such algorithm we just need to store a set of keys that require much less space.
 // The memory requirements will be lowered when CAP-0020 is live and older buckets are
 // rewritten. Then, we will only need to keep track of `DEADENTRY`.
-func (r *CheckpointChangeReader) streamBuckets() {
+func (r *CheckpointChangeReader) streamBucketList() {
 	defer func() {
 		r.visitedLedgerKeys = nil
 	}()
@@ -264,7 +266,7 @@ func (r *CheckpointChangeReader) streamBuckets() {
 
 	for i, hash := range buckets {
 		oldestBucket := i == len(buckets)-1
-		for ledgerEntry, err := range r.streamBucketList(hash, oldestBucket) {
+		for ledgerEntry, err := range r.streamBucket(hash, oldestBucket) {
 			if err != nil {
 				r.cancel(err)
 				return
@@ -278,7 +280,13 @@ func (r *CheckpointChangeReader) streamBuckets() {
 		}
 	}
 
-	close(r.readChan)
+	r.closeReadChan()
+}
+
+func (r *CheckpointChangeReader) closeReadChan() {
+	r.closeChanOnce.Do(func() {
+		close(r.readChan)
+	})
 }
 
 // readBucketRecord attempts to read a single XDR record of type T from `stream`.
@@ -342,7 +350,7 @@ func (r *CheckpointChangeReader) newXDRStream(hash historyarchive.Hash) (
 	return rdr, e
 }
 
-func (r *CheckpointChangeReader) hotArchiveIterator(rdr *xdr.Stream, hash historyarchive.Hash, oldestBucket bool) iter.Seq2[xdr.LedgerEntry, error] {
+func (r *CheckpointChangeReader) streamHotArchiveBucket(rdr *xdr.Stream, hash historyarchive.Hash, oldestBucket bool) iter.Seq2[xdr.LedgerEntry, error] {
 	return func(yield func(xdr.LedgerEntry, error) bool) {
 		for n := 0; ; n++ {
 			var entry xdr.HotArchiveBucketEntry
@@ -420,7 +428,7 @@ func (r *CheckpointChangeReader) hotArchiveIterator(rdr *xdr.Stream, hash histor
 	}
 }
 
-func (r *CheckpointChangeReader) liveIterator(rdr *xdr.Stream, hash historyarchive.Hash, oldestBucket bool) iter.Seq2[xdr.LedgerEntry, error] {
+func (r *CheckpointChangeReader) streamLiveBucket(rdr *xdr.Stream, hash historyarchive.Hash, oldestBucket bool) iter.Seq2[xdr.LedgerEntry, error] {
 	// bucketProtocolVersion is a protocol version read from METAENTRY or 0 when no METAENTRY.
 	// No METAENTRY means that bucket originates from before protocol version 11.
 	bucketProtocolVersion := uint32(0)
@@ -528,10 +536,10 @@ func (r *CheckpointChangeReader) liveIterator(rdr *xdr.Stream, hash historyarchi
 	}
 }
 
-// streamBucketList returns an iterator over ledger entries for the given bucket hash.
+// streamBucket returns an iterator over ledger entries for the given bucket hash.
 // Any errors encountered during setup or iteration will be yielded via the iterator
 // as an error value alongside a zero xdr.LedgerEntry.
-func (r *CheckpointChangeReader) streamBucketList(hash historyarchive.Hash, oldestBucket bool) iter.Seq2[xdr.LedgerEntry, error] {
+func (r *CheckpointChangeReader) streamBucket(hash historyarchive.Hash, oldestBucket bool) iter.Seq2[xdr.LedgerEntry, error] {
 	return func(yield func(xdr.LedgerEntry, error) bool) {
 		rdr, e := r.newXDRStream(hash)
 		if e != nil {
@@ -551,9 +559,9 @@ func (r *CheckpointChangeReader) streamBucketList(hash historyarchive.Hash, olde
 		var iterator iter.Seq2[xdr.LedgerEntry, error]
 		switch r.bucketListType {
 		case xdr.BucketListTypeLive:
-			iterator = r.liveIterator(rdr, hash, oldestBucket)
+			iterator = r.streamLiveBucket(rdr, hash, oldestBucket)
 		case xdr.BucketListTypeHotArchive:
-			iterator = r.hotArchiveIterator(rdr, hash, oldestBucket)
+			iterator = r.streamHotArchiveBucket(rdr, hash, oldestBucket)
 		default:
 			yield(xdr.LedgerEntry{}, errors.Errorf("Unsupported bucket list type: %d", r.bucketListType))
 			return
@@ -579,11 +587,12 @@ func (r *CheckpointChangeReader) streamBucketList(hash historyarchive.Hash, olde
 // Read returns a new ledger entry change on each call, returning io.EOF when the stream ends.
 func (r *CheckpointChangeReader) Read() (Change, error) {
 	r.streamOnce.Do(func() {
-		go r.streamBuckets()
+		go r.streamBucketList()
 	})
 
 	select {
 	case <-r.ctx.Done():
+		r.closeReadChan()
 		return Change{}, context.Cause(r.ctx)
 	case entry, ok := <-r.readChan:
 		if !ok {
