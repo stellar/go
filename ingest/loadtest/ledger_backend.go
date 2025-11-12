@@ -2,6 +2,7 @@ package loadtest
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -74,6 +75,31 @@ func (r *LedgerBackend) GetLatestLedgerSequence(ctx context.Context) (uint32, er
 	return r.latestLedgerSeq, nil
 }
 
+func countLedgers(ledgersFile string) (int, error) {
+	generatedLedgersFile, err := os.Open(ledgersFile)
+	if err != nil {
+		return 0, fmt.Errorf("could not open ledgers file: %w", err)
+	}
+	generatedLedgers, err := xdr.NewZstdStream(generatedLedgersFile)
+	if err != nil {
+		return 0, fmt.Errorf("could not open zstd stream for ledgers file: %w", err)
+	}
+	defer generatedLedgers.Close()
+
+	count := 0
+
+	for {
+		var generatedLedger xdr.LedgerCloseMeta
+		if err = generatedLedgers.ReadOne(&generatedLedger); err == io.EOF {
+			break
+		} else if err != nil {
+			return 0, fmt.Errorf("could not get generated ledger: %w", err)
+		}
+		count++
+	}
+	return count, nil
+}
+
 func (r *LedgerBackend) PrepareRange(ctx context.Context, ledgerRange ledgerbackend.Range) error {
 	r.lock.Lock()
 	defer r.lock.Unlock()
@@ -87,6 +113,16 @@ func (r *LedgerBackend) PrepareRange(ctx context.Context, ledgerRange ledgerback
 		}
 		return fmt.Errorf("PrepareRange() already called")
 	}
+
+	ledgerCount, err := countLedgers(r.config.LedgersFilePath)
+	if err != nil {
+		return fmt.Errorf("could not count ledgers in file: %w", err)
+	}
+	if ledgerCount == 0 {
+		return fmt.Errorf("no ledgers found in file %s", r.config.LedgersFilePath)
+	}
+	latestLedgerSeq := ledgerRange.From() + uint32(ledgerCount-1)
+
 	generatedLedgersFile, err := os.Open(r.config.LedgersFilePath)
 	if err != nil {
 		return fmt.Errorf("could not open ledgers file: %w", err)
@@ -114,7 +150,6 @@ func (r *LedgerBackend) PrepareRange(ctx context.Context, ledgerRange ledgerback
 		return fmt.Errorf("could not create zstd writer for merged ledgers file: %w", err)
 	}
 
-	var latestLedgerSeq uint32
 	var firstLedger xdr.LedgerCloseMeta
 	var validatedGeneratedLedgers, validatedNetworkLedgers bool
 	for cur := ledgerRange.From(); !ledgerRange.Bounded() || cur <= ledgerRange.To(); cur++ {
@@ -157,7 +192,7 @@ func (r *LedgerBackend) PrepareRange(ctx context.Context, ledgerRange ledgerback
 		var ledger xdr.LedgerCloseMeta
 		if r.config.LedgerBackend != nil {
 			if cur == ledgerRange.From() {
-				err = r.config.LedgerBackend.PrepareRange(ctx, ledgerRange)
+				err = r.optimizedPrepareRange(ctx, ledgerRange, ledgerCount)
 				if err != nil {
 					return fmt.Errorf("could not prepare range using real ledger backend: %w", err)
 				}
@@ -199,7 +234,6 @@ func (r *LedgerBackend) PrepareRange(ctx context.Context, ledgerRange ledgerback
 				return fmt.Errorf("could not marshal ledger to stream: %w", err)
 			}
 		}
-		latestLedgerSeq = cur
 	}
 	if err = generatedLedgers.Close(); err != nil {
 		return fmt.Errorf("could not close generated ledgers xdr stream: %w", err)
@@ -234,6 +268,31 @@ func (r *LedgerBackend) PrepareRange(ctx context.Context, ledgerRange ledgerback
 		WithField("end", latestLedgerSeq).
 		Info("ingesting ledgers from loadtest ledger backend")
 	return nil
+}
+
+func (r *LedgerBackend) optimizedPrepareRange(ctx context.Context, ledgerRange ledgerbackend.Range, ledgerCount int) error {
+	// we have ledgerCount synthetic ledgers so there is no use in preparing a larger ledger range
+	maxBoundedRange := ledgerbackend.BoundedRange(ledgerRange.From(), ledgerRange.From()+uint32(ledgerCount-1))
+	if ledgerRange.Bounded() && ledgerRange.Contains(maxBoundedRange) {
+		// The requested ledger range contains more ledgers than what we have.
+		// In that case, clamp down the ledger range to only contain the total amount
+		// of synthetic ledgers we have.
+		return r.config.LedgerBackend.PrepareRange(ctx, maxBoundedRange)
+	} else if _, isCaptiveCore := r.config.LedgerBackend.(*ledgerbackend.CaptiveStellarCore); !ledgerRange.Bounded() && isCaptiveCore {
+		// it is faster to run stellar-core catchup than stellar-core run
+		// because the run command has to sync to the latest ledger in consensus
+		err := r.config.LedgerBackend.PrepareRange(ctx, maxBoundedRange)
+		if err == nil {
+			return nil
+		}
+		// if maxBoundedRange overlaps with the latest ledgers in the network which
+		// are ahead of the most recent checkpoint ledger we must use the
+		// stellar-core run command
+		if !errors.Is(err, ledgerbackend.ErrCannotCatchupAheadLatestCheckpoint) {
+			return err
+		}
+	}
+	return r.config.LedgerBackend.PrepareRange(ctx, ledgerRange)
 }
 
 func validateNetworkPassphrase(networkPassphrase string, ledger xdr.LedgerCloseMeta) error {
