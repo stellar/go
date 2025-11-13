@@ -405,6 +405,24 @@ func (r *CheckpointChangeReader) newXDRStream(hash historyarchive.Hash) (
 	return rdr, e
 }
 
+func validateHotArchiveMetaEntry(index int, meta xdr.BucketMetadata, hash historyarchive.Hash) error {
+	if index != 0 {
+		return errors.Errorf(
+			"METAENTRY not the first entry (n=%d) in the bucket hash '%s'",
+			index, hash.String(),
+		)
+	}
+	if bucketListType, ok := meta.Ext.GetBucketListType(); !ok {
+		return errors.Errorf("METAENTRY missing bucket list type in the bucket hash '%s'", hash.String())
+	} else if bucketListType != xdr.BucketListTypeHotArchive {
+		return errors.Errorf(
+			"expected bucket list type to be hot-archive (instead got %s) in the bucket hash '%s'",
+			bucketListType.String(), hash.String(),
+		)
+	}
+	return nil
+}
+
 func (r *CheckpointChangeReader) streamHotArchiveBucket(rdr *xdr.Stream, hash historyarchive.Hash, oldestBucket bool) iter.Seq2[xdr.LedgerEntry, error] {
 	return func(yield func(xdr.LedgerEntry, error) bool) {
 		for n := 0; ; n++ {
@@ -417,27 +435,19 @@ func (r *CheckpointChangeReader) streamHotArchiveBucket(rdr *xdr.Stream, hash hi
 			}
 
 			if entry.Type == xdr.HotArchiveBucketEntryTypeHotArchiveMetaentry {
-				if n != 0 {
-					yield(xdr.LedgerEntry{}, errors.Errorf(
-						"METAENTRY not the first entry (n=%d) in the bucket hash '%s'",
-						n, hash.String(),
-					))
-					return
-				}
-				meta := entry.MustMetaEntry()
-				if bucketListType, ok := meta.Ext.GetBucketListType(); !ok {
-					yield(xdr.LedgerEntry{},
-						errors.Errorf("METAENTRY missing bucket list type in the bucket hash '%s'", hash.String()),
-					)
-					return
-				} else if bucketListType != xdr.BucketListTypeHotArchive {
-					yield(xdr.LedgerEntry{}, errors.Errorf(
-						"expected bucket list type to be hot-archive (instead got %s) in the bucket hash '%s'",
-						bucketListType.String(), hash.String(),
-					))
+				if err := validateHotArchiveMetaEntry(n, entry.MustMetaEntry(), hash); err != nil {
+					yield(xdr.LedgerEntry{}, err)
 					return
 				}
 				continue
+			} else if n == 0 {
+				yield(xdr.LedgerEntry{},
+					errors.Errorf(
+						"METAENTRY not the first entry in the bucket hash '%s'",
+						hash.String(),
+					),
+				)
+				return
 			}
 
 			var key xdr.LedgerKey
@@ -489,6 +499,22 @@ func (r *CheckpointChangeReader) streamHotArchiveBucket(rdr *xdr.Stream, hash hi
 	}
 }
 
+func validateLiveMetaEntry(index int, meta xdr.BucketMetadata, hash historyarchive.Hash) error {
+	if index != 0 {
+		return errors.Errorf(
+			"METAENTRY not the first entry (n=%d) in the bucket hash '%s'",
+			index, hash.String(),
+		)
+	}
+	if bucketListType, ok := meta.Ext.GetBucketListType(); ok && bucketListType != xdr.BucketListTypeLive {
+		return errors.Errorf(
+			"expected bucket list type to be live (instead got %s) in the bucket hash '%s'",
+			bucketListType.String(), hash.String(),
+		)
+	}
+	return nil
+}
+
 func (r *CheckpointChangeReader) streamLiveBucket(rdr *xdr.Stream, hash historyarchive.Hash, oldestBucket bool) iter.Seq2[xdr.LedgerEntry, error] {
 	// bucketProtocolVersion is a protocol version read from METAENTRY or 0 when no METAENTRY.
 	// No METAENTRY means that bucket originates from before protocol version 11.
@@ -504,20 +530,10 @@ func (r *CheckpointChangeReader) streamLiveBucket(rdr *xdr.Stream, hash historya
 			}
 
 			if entry.Type == xdr.BucketEntryTypeMetaentry {
-				if n != 0 {
-					yield(xdr.LedgerEntry{}, errors.Errorf(
-						"METAENTRY not the first entry (n=%d) in the bucket hash '%s'",
-						n, hash.String(),
-					))
-					return
-				}
 				metaEntry := entry.MustMetaEntry()
 				bucketProtocolVersion = uint32(metaEntry.LedgerVersion)
-				if bucketListType, ok := metaEntry.Ext.GetBucketListType(); ok && bucketListType != xdr.BucketListTypeLive {
-					yield(xdr.LedgerEntry{}, errors.Errorf(
-						"expected bucket list type to be live (instead got %s) in the bucket hash '%s'",
-						bucketListType.String(), hash.String(),
-					))
+				if err := validateLiveMetaEntry(n, metaEntry, hash); err != nil {
+					yield(xdr.LedgerEntry{}, err)
 					return
 				}
 				continue

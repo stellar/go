@@ -336,11 +336,9 @@ func (h *HotArchiveIteratorTestSuite) TestMetaEntryNotFirst() {
 		DisableBucketListValidation,
 	) {
 		if i == 0 {
-			h.Require().NoError(err)
-		} else if i == 1 {
-			h.Require().ErrorContains(err, "METAENTRY not the first entry (n=1)")
+			h.Require().ErrorContains(err, "METAENTRY not the first entry in the bucket hash")
 		} else {
-			h.Require().FailNow("expected at most 2 elements")
+			h.Require().FailNow("expected at most 1 element")
 		}
 		i++
 	}
