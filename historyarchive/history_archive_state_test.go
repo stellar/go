@@ -81,3 +81,60 @@ func TestHashValidation(t *testing.T) {
 		})
 	}
 }
+
+func countBuckets(buckets BucketList) int {
+	count := 0
+	for _, level := range buckets {
+		for _, bs := range []string{level.Curr, level.Snap, level.Next.Output} {
+			if bs != "" && bs != "0000000000000000000000000000000000000000000000000000000000000000" {
+				count++
+			}
+		}
+	}
+	return count
+}
+
+func TestBucketsIncludesHotArchiveBuckets(t *testing.T) {
+	for _, testCase := range []struct {
+		inputFile       string
+		expectedVersion int
+	}{
+		{
+			inputFile:       "testdata/historyV1.json",
+			expectedVersion: 1,
+		},
+		{
+			inputFile:       "testdata/historyV2.json",
+			expectedVersion: HistoryArchiveStateVersionForProtocol23,
+		},
+	} {
+		t.Run(testCase.inputFile, func(t *testing.T) {
+			inputBytes, err := os.ReadFile(testCase.inputFile)
+			require.NoError(t, err)
+
+			var state HistoryArchiveState
+			require.NoError(t, json.Unmarshal(inputBytes, &state))
+
+			// Verify the version
+			assert.Equal(t, testCase.expectedVersion, state.Version)
+
+			// Verify that the Buckets() method includes hot archive buckets for V2
+			buckets, err := state.Buckets()
+			require.NoError(t, err)
+
+			currentBucketCount := countBuckets(state.CurrentBuckets)
+			hotArchiveBucketCount := countBuckets(state.HotArchiveBuckets)
+
+			if testCase.expectedVersion >= HistoryArchiveStateVersionForProtocol23 {
+				expectedTotal := currentBucketCount + hotArchiveBucketCount
+				assert.Equal(t, expectedTotal, len(buckets),
+					"Buckets() should include both currentBuckets and hotArchiveBuckets for V2+")
+			} else {
+				assert.Equal(t, 0, hotArchiveBucketCount,
+					"V1 should have 0 hot archive buckets")
+				assert.Equal(t, currentBucketCount, len(buckets),
+					"Buckets() should only include currentBuckets for V1")
+			}
+		})
+	}
+}
