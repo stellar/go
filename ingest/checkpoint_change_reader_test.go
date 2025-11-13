@@ -27,6 +27,7 @@ type CheckpointChangeReaderTestSuite struct {
 	mockArchive          *historyarchive.MockArchive
 	reader               *CheckpointChangeReader
 	has                  historyarchive.HistoryArchiveState
+	parentCtxCancel      context.CancelFunc
 	mockBucketExistsCall *mock.Call
 	mockBucketSizeCall   *mock.Call
 }
@@ -58,17 +59,17 @@ func (s *CheckpointChangeReaderTestSuite) SetupTest() {
 		Return(historyarchive.NewCheckpointManager(
 			historyarchive.DefaultCheckpointFrequency))
 
+	var ctx context.Context
+	ctx, s.parentCtxCancel = context.WithCancel(context.Background())
 	s.reader, err = NewCheckpointChangeReader(
-		context.Background(),
+		ctx,
 		s.mockArchive,
 		ledgerSeq,
+		DisableBucketListValidation,
 	)
 	s.Require().NotNil(s.reader)
 	s.Require().NoError(err)
 	s.Assert().Equal(ledgerSeq, s.reader.sequence)
-
-	// Disable hash validation. We trust historyarchive.Stream tests here.
-	s.reader.disableBucketListHashValidation = true
 }
 
 func (s *CheckpointChangeReaderTestSuite) TearDownTest() {
@@ -78,17 +79,17 @@ func (s *CheckpointChangeReaderTestSuite) TearDownTest() {
 // TestSimple test reading buckets with a single live entry.
 func (s *CheckpointChangeReaderTestSuite) TestSimple() {
 	meta := metaEntry(23)
-	liveArchiveType := xdr.BucketListTypeLive
+	liveType := xdr.BucketListTypeLive
 	meta.MetaEntry.Ext = xdr.BucketMetadataExt{
 		V:              1,
-		BucketListType: &liveArchiveType,
+		BucketListType: &liveType,
 	}
 	curr1 := createXdrStream(
 		meta,
 		entryAccount(xdr.BucketEntryTypeLiveentry, "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML", 1),
 	)
 
-	nextBucket := s.getNextBucketChannel()
+	nextBucket := createBucketChannel(s.has.CurrentBuckets)
 
 	// Return curr1 stream for the first bucket...
 	s.mockArchive.
@@ -114,6 +115,110 @@ func (s *CheckpointChangeReaderTestSuite) TestSimple() {
 	s.Require().Equal(err, io.EOF)
 }
 
+func (s *CheckpointChangeReaderTestSuite) TestReadAfterClose() {
+	meta := metaEntry(23)
+	liveType := xdr.BucketListTypeLive
+	meta.MetaEntry.Ext = xdr.BucketMetadataExt{
+		V:              1,
+		BucketListType: &liveType,
+	}
+	curr1 := createXdrStream(
+		meta,
+		entryAccount(xdr.BucketEntryTypeLiveentry, "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML", 1),
+		entryAccount(xdr.BucketEntryTypeLiveentry, "GCMNSW2UZMSH3ZFRLWP6TW2TG4UX4HLSYO5HNIKUSFMLN2KFSF26JKWF", 10),
+	)
+
+	nextBucket := createBucketChannel(s.has.CurrentBuckets)
+
+	// Return curr1 stream for the first bucket...
+	s.mockArchive.
+		On("GetXdrStreamForHash", <-nextBucket).
+		Return(curr1, nil).Once()
+
+	// ...and empty streams for the rest of the buckets.
+	for hash := range nextBucket {
+		s.mockArchive.
+			On("GetXdrStreamForHash", hash).
+			Return(createXdrStream(), nil).Maybe()
+	}
+
+	var e Change
+	var err error
+	e, err = s.reader.Read()
+	s.Require().NoError(err)
+
+	id := e.Post.Data.MustAccount().AccountId
+	s.Assert().Equal("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML", id.Address())
+
+	s.Require().NoError(s.reader.Close())
+
+	// there is a race condition because we are selecting on either
+	// the read channel or the context done channel so it is possible
+	// we receive the 2nd ledger entry before the context cancel error
+	for i := 0; i < 2; i++ {
+		e, err = s.reader.Read()
+		if err == nil {
+			id = e.Post.Data.MustAccount().AccountId
+			s.Assert().Equal("GCMNSW2UZMSH3ZFRLWP6TW2TG4UX4HLSYO5HNIKUSFMLN2KFSF26JKWF", id.Address())
+			continue
+		}
+		break
+	}
+	s.Require().ErrorContains(err, "reader is closed")
+}
+
+func (s *CheckpointChangeReaderTestSuite) TestContextCanceled() {
+	meta := metaEntry(23)
+	liveType := xdr.BucketListTypeLive
+	meta.MetaEntry.Ext = xdr.BucketMetadataExt{
+		V:              1,
+		BucketListType: &liveType,
+	}
+	curr1 := createXdrStream(
+		meta,
+		entryAccount(xdr.BucketEntryTypeLiveentry, "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML", 1),
+		entryAccount(xdr.BucketEntryTypeLiveentry, "GCMNSW2UZMSH3ZFRLWP6TW2TG4UX4HLSYO5HNIKUSFMLN2KFSF26JKWF", 10),
+	)
+
+	nextBucket := createBucketChannel(s.has.CurrentBuckets)
+
+	// Return curr1 stream for the first bucket...
+	s.mockArchive.
+		On("GetXdrStreamForHash", <-nextBucket).
+		Return(curr1, nil).Once()
+
+	// ...and empty streams for the rest of the buckets.
+	for hash := range nextBucket {
+		s.mockArchive.
+			On("GetXdrStreamForHash", hash).
+			Return(createXdrStream(), nil).Maybe()
+	}
+
+	var e Change
+	var err error
+	e, err = s.reader.Read()
+	s.Require().NoError(err)
+
+	id := e.Post.Data.MustAccount().AccountId
+	s.Assert().Equal("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML", id.Address())
+
+	s.parentCtxCancel()
+
+	// there is a race condition because we are selecting on either
+	// the read channel or the context done channel so it is possible
+	// we receive the 2nd ledger entry before the context cancel error
+	for i := 0; i < 2; i++ {
+		e, err = s.reader.Read()
+		if err == nil {
+			id = e.Post.Data.MustAccount().AccountId
+			s.Assert().Equal("GCMNSW2UZMSH3ZFRLWP6TW2TG4UX4HLSYO5HNIKUSFMLN2KFSF26JKWF", id.Address())
+			continue
+		}
+		break
+	}
+	s.Require().ErrorContains(err, "context canceled")
+}
+
 // TestRemoved test reading buckets with a single live entry that was removed.
 func (s *CheckpointChangeReaderTestSuite) TestRemoved() {
 	curr1 := createXdrStream(
@@ -124,7 +229,7 @@ func (s *CheckpointChangeReaderTestSuite) TestRemoved() {
 		entryAccount(xdr.BucketEntryTypeLiveentry, "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML", 1),
 	)
 
-	nextBucket := s.getNextBucketChannel()
+	nextBucket := createBucketChannel(s.has.CurrentBuckets)
 
 	// Return curr1 and snap1 stream for the first two bucket...
 	s.mockArchive.
@@ -159,7 +264,7 @@ func (s *CheckpointChangeReaderTestSuite) TestConcurrentRead() {
 		entryAccount(xdr.BucketEntryTypeLiveentry, "GCK45YKCFNIOICB4TWPCOPWLQYNUKCJVV7OMMHH55AB3DD67K4E54STO", 1),
 	)
 
-	nextBucket := s.getNextBucketChannel()
+	nextBucket := createBucketChannel(s.has.CurrentBuckets)
 
 	// Return curr1 and snap1 stream for the first two bucket...
 	s.mockArchive.
@@ -204,7 +309,7 @@ func (s *CheckpointChangeReaderTestSuite) TestEnsureLatestLiveEntry() {
 		entryAccount(xdr.BucketEntryTypeInitentry, "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML", 2),
 	)
 
-	nextBucket := s.getNextBucketChannel()
+	nextBucket := createBucketChannel(s.has.CurrentBuckets)
 
 	// Return curr1 stream, rest won't be read due to an error
 	s.mockArchive.
@@ -246,7 +351,7 @@ func (s *CheckpointChangeReaderTestSuite) TestUniqueInitEntryOptimization() {
 		entryAccount(xdr.BucketEntryTypeInitentry, "GAIH3ULLFQ4DGSECF2AR555KZ4KNDGEKN4AFI4SU2M7B43MGK3QJZNSR", 1),
 	)
 
-	nextBucket := s.getNextBucketChannel()
+	nextBucket := createBucketChannel(s.has.CurrentBuckets)
 
 	// Return curr1 and snap1 stream for the first two bucket...
 	s.mockArchive.
@@ -266,7 +371,7 @@ func (s *CheckpointChangeReaderTestSuite) TestUniqueInitEntryOptimization() {
 
 	// replace readChan with an unbuffered channel so we can test behavior of when items are added / removed
 	// from visitedLedgerKeys
-	s.reader.readChan = make(chan readResult, 0)
+	s.reader.readChan = make(chan xdr.LedgerEntry, 0)
 
 	change, err := s.reader.Read()
 	s.Require().NoError(err)
@@ -369,7 +474,7 @@ func (s *CheckpointChangeReaderTestSuite) TestMalformedProtocol11Bucket() {
 		metaEntry(11),
 	)
 
-	nextBucket := s.getNextBucketChannel()
+	nextBucket := createBucketChannel(s.has.CurrentBuckets)
 
 	// Return curr1 stream, rest won't be read due to an error
 	s.mockArchive.
@@ -383,7 +488,7 @@ func (s *CheckpointChangeReaderTestSuite) TestMalformedProtocol11Bucket() {
 	// Meta entry
 	_, err = s.reader.Read()
 	s.Require().NotNil(err)
-	s.Assert().Equal("Error while reading from buckets: METAENTRY not the first entry (n=1) in the bucket hash '517bea4c6627a688a8ce501febd8c562e737e3d86b29689d9956217640f3c74b'", err.Error())
+	s.Assert().Equal("METAENTRY not the first entry (n=1) in the bucket hash '517bea4c6627a688a8ce501febd8c562e737e3d86b29689d9956217640f3c74b'", err.Error())
 }
 
 // TestMalformedProtocol11BucketNoMeta tests a buggy protocol 11 bucket (no meta entry)
@@ -392,7 +497,7 @@ func (s *CheckpointChangeReaderTestSuite) TestMalformedProtocol11BucketNoMeta() 
 		entryAccount(xdr.BucketEntryTypeInitentry, "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML", 1),
 	)
 
-	nextBucket := s.getNextBucketChannel()
+	nextBucket := createBucketChannel(s.has.CurrentBuckets)
 
 	// Return curr1 stream, rest won't be read due to an error
 	s.mockArchive.
@@ -402,7 +507,7 @@ func (s *CheckpointChangeReaderTestSuite) TestMalformedProtocol11BucketNoMeta() 
 	// Init entry without meta
 	_, err := s.reader.Read()
 	s.Require().NotNil(err)
-	s.Assert().Equal("Error while reading from buckets: Read INITENTRY from version <11 bucket: 0@517bea4c6627a688a8ce501febd8c562e737e3d86b29689d9956217640f3c74b", err.Error())
+	s.Assert().Equal("Read INITENTRY from version <11 bucket: 0@517bea4c6627a688a8ce501febd8c562e737e3d86b29689d9956217640f3c74b", err.Error())
 }
 
 // TestMalformedBucketListType ensures the checkpoint change reader asserts its reading from the live bucketlist
@@ -418,7 +523,7 @@ func (s *CheckpointChangeReaderTestSuite) TestMalformedBucketListType() {
 		entryAccount(xdr.BucketEntryTypeLiveentry, "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML", 1),
 	)
 
-	nextBucket := s.getNextBucketChannel()
+	nextBucket := createBucketChannel(s.has.CurrentBuckets)
 
 	// Return curr1 stream, rest won't be read due to an error
 	s.mockArchive.
@@ -428,7 +533,74 @@ func (s *CheckpointChangeReaderTestSuite) TestMalformedBucketListType() {
 	// Meta entry
 	_, err := s.reader.Read()
 	s.Require().NotNil(err)
-	s.Assert().EqualError(err, "Error while reading from buckets: expected bucket list type to be live (instead got BucketListTypeHotArchive) in the bucket hash '517bea4c6627a688a8ce501febd8c562e737e3d86b29689d9956217640f3c74b'")
+	s.Assert().EqualError(err, "expected bucket list type to be live (instead got BucketListTypeHotArchive) in the bucket hash '517bea4c6627a688a8ce501febd8c562e737e3d86b29689d9956217640f3c74b'")
+}
+
+// TestFilter exercises the WithFilter functionality by ignoring a DEADENTRY
+// for a specific account in a newer bucket so that an older LIVEENTRY for
+// that account is yielded.
+func (s *CheckpointChangeReaderTestSuite) TestFilter() {
+	// Prepare streams: newer bucket has a DEADENTRY for A; older bucket has LIVEENTRY for A.
+	curr1 := createXdrStream(
+		entryAccount(xdr.BucketEntryTypeDeadentry, "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML", 1),
+		entryCB(xdr.BucketEntryTypeInitentry, xdr.Hash{1, 2, 3}, 100),
+	)
+	snap1 := createXdrStream(
+		entryAccount(xdr.BucketEntryTypeLiveentry, "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML", 1),
+	)
+
+	nextBucket := createBucketChannel(s.has.CurrentBuckets)
+
+	// Mock to return curr1 then snap1 for the first two buckets...
+	s.mockArchive.
+		On("GetXdrStreamForHash", <-nextBucket).
+		Return(curr1, nil).Once()
+
+	s.mockArchive.
+		On("GetXdrStreamForHash", <-nextBucket).
+		Return(snap1, nil).Once()
+
+	// ...and empty streams for the rest of the buckets.
+	for hash := range nextBucket {
+		s.mockArchive.
+			On("GetXdrStreamForHash", hash).
+			Return(createXdrStream(), nil).Once()
+	}
+
+	// Recreate reader with a filter that ignores the DEADENTRY for account A.
+	ctx := context.Background()
+	var err error
+	s.reader, err = NewCheckpointChangeReader(
+		ctx,
+		s.mockArchive,
+		s.reader.sequence,
+		DisableBucketListValidation,
+		WithFilter(
+			// accept all live entries
+			func(le xdr.LedgerEntry) bool {
+				return le.Data.Type != xdr.LedgerEntryTypeClaimableBalance
+			},
+			// ignore DEADENTRY for our target account
+			func(key xdr.LedgerKey) bool {
+				if key.Type != xdr.LedgerEntryTypeAccount {
+					return true
+				}
+				return key.Account.AccountId.Address() != "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"
+			},
+		),
+	)
+	s.Require().NoError(err)
+
+	// We should now receive the older LIVEENTRY for the account because the
+	// newer DEADENTRY was filtered out.
+	change, err := s.reader.Read()
+	s.Require().NoError(err)
+	id := change.Post.Data.MustAccount().AccountId
+	s.Assert().Equal("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML", id.Address())
+
+	// Then EOF
+	_, err = s.reader.Read()
+	s.Require().Equal(err, io.EOF)
 }
 
 func TestBucketExistsTestSuite(t *testing.T) {
@@ -561,15 +733,16 @@ func (s *ReadBucketEntryTestSuite) TestReadAllEntries() {
 	stream, err := s.reader.newXDRStream(emptyHash)
 	s.Require().NoError(err)
 
-	entry, err := s.reader.readBucketEntry(stream, emptyHash)
+	var entry xdr.BucketEntry
+	err = s.reader.readBucketRecord(stream, emptyHash, &entry)
 	s.Require().NoError(err)
 	s.Require().Equal(entry, firstEntry)
 
-	entry, err = s.reader.readBucketEntry(stream, emptyHash)
+	err = s.reader.readBucketRecord(stream, emptyHash, &entry)
 	s.Require().NoError(err)
 	s.Require().Equal(entry, secondEntry)
 
-	_, err = s.reader.readBucketEntry(stream, emptyHash)
+	err = s.reader.readBucketRecord(stream, emptyHash, &entry)
 	s.Require().Equal(io.EOF, err)
 }
 
@@ -585,7 +758,8 @@ func (s *ReadBucketEntryTestSuite) TestFirstReadFailsWithContextError() {
 	s.Require().NoError(err)
 	s.cancel()
 
-	_, err = s.reader.readBucketEntry(stream, emptyHash)
+	var entry xdr.BucketEntry
+	err = s.reader.readBucketRecord(stream, emptyHash, &entry)
 	s.Require().Equal(context.Canceled, err)
 }
 
@@ -600,12 +774,13 @@ func (s *ReadBucketEntryTestSuite) TestSecondReadFailsWithContextError() {
 	stream, err := s.reader.newXDRStream(emptyHash)
 	s.Require().NoError(err)
 
-	entry, err := s.reader.readBucketEntry(stream, emptyHash)
+	var entry xdr.BucketEntry
+	err = s.reader.readBucketRecord(stream, emptyHash, &entry)
 	s.Require().NoError(err)
 	s.Require().Equal(entry, firstEntry)
 	s.cancel()
 
-	_, err = s.reader.readBucketEntry(stream, emptyHash)
+	err = s.reader.readBucketRecord(stream, emptyHash, &entry)
 	s.Require().Equal(context.Canceled, err)
 }
 
@@ -621,7 +796,8 @@ func (s *ReadBucketEntryTestSuite) TestReadEntryAllRetriesFail() {
 	stream, err := s.reader.newXDRStream(emptyHash)
 	s.Require().NoError(err)
 
-	_, err = s.reader.readBucketEntry(stream, emptyHash)
+	var entry xdr.BucketEntry
+	err = s.reader.readBucketRecord(stream, emptyHash, &entry)
 	s.Require().EqualError(err, "Read wrong number of bytes from XDR")
 }
 
@@ -643,7 +819,8 @@ func (s *ReadBucketEntryTestSuite) TestReadEntryRetryIgnoresProtocolCloseError()
 	stream, err := s.reader.newXDRStream(emptyHash)
 	s.Require().NoError(err)
 
-	entry, err := s.reader.readBucketEntry(stream, emptyHash)
+	var entry xdr.BucketEntry
+	err = s.reader.readBucketRecord(stream, emptyHash, &entry)
 	s.Require().NoError(err)
 	s.Require().Equal(entry, expectedEntry)
 
@@ -651,7 +828,7 @@ func (s *ReadBucketEntryTestSuite) TestReadEntryRetryIgnoresProtocolCloseError()
 	s.Require().Equal(historyarchive.Hash(hash), emptyHash)
 	s.Require().True(ok)
 
-	_, err = s.reader.readBucketEntry(stream, emptyHash)
+	err = s.reader.readBucketRecord(stream, emptyHash, &entry)
 	s.Require().Equal(err, io.EOF)
 }
 
@@ -670,7 +847,8 @@ func (s *ReadBucketEntryTestSuite) TestReadEntryRetryFailsToCreateNewStream() {
 	stream, err := s.reader.newXDRStream(emptyHash)
 	s.Require().NoError(err)
 
-	_, err = s.reader.readBucketEntry(stream, emptyHash)
+	var entry xdr.BucketEntry
+	err = s.reader.readBucketRecord(stream, emptyHash, &entry)
 	s.Require().EqualError(err, "Error creating new xdr stream: cannot create new stream")
 }
 
@@ -695,11 +873,12 @@ func (s *ReadBucketEntryTestSuite) TestReadEntryRetrySucceedsAfterFailsToCreateN
 	stream, err := s.reader.newXDRStream(emptyHash)
 	s.Require().NoError(err)
 
-	entry, err := s.reader.readBucketEntry(stream, emptyHash)
+	var entry xdr.BucketEntry
+	err = s.reader.readBucketRecord(stream, emptyHash, &entry)
 	s.Require().NoError(err)
 	s.Require().Equal(entry, firstEntry)
 
-	_, err = s.reader.readBucketEntry(stream, emptyHash)
+	err = s.reader.readBucketRecord(stream, emptyHash, &entry)
 	s.Require().Equal(io.EOF, err)
 }
 
@@ -722,7 +901,8 @@ func (s *ReadBucketEntryTestSuite) TestReadEntryRetrySucceeds() {
 	stream, err := s.reader.newXDRStream(emptyHash)
 	s.Require().NoError(err)
 
-	entry, err := s.reader.readBucketEntry(stream, emptyHash)
+	var entry xdr.BucketEntry
+	err = s.reader.readBucketRecord(stream, emptyHash, &entry)
 	s.Require().NoError(err)
 	s.Require().Equal(entry, expectedEntry)
 
@@ -730,7 +910,7 @@ func (s *ReadBucketEntryTestSuite) TestReadEntryRetrySucceeds() {
 	s.Require().Equal(historyarchive.Hash(hash), emptyHash)
 	s.Require().True(ok)
 
-	_, err = s.reader.readBucketEntry(stream, emptyHash)
+	err = s.reader.readBucketRecord(stream, emptyHash, &entry)
 	s.Require().Equal(err, io.EOF)
 }
 
@@ -755,11 +935,12 @@ func (s *ReadBucketEntryTestSuite) TestReadEntryRetrySucceedsWithDiscard() {
 	stream, err := s.reader.newXDRStream(emptyHash)
 	s.Require().NoError(err)
 
-	entry, err := s.reader.readBucketEntry(stream, emptyHash)
+	var entry xdr.BucketEntry
+	err = s.reader.readBucketRecord(stream, emptyHash, &entry)
 	s.Require().NoError(err)
 	s.Require().Equal(entry, firstEntry)
 
-	entry, err = s.reader.readBucketEntry(stream, emptyHash)
+	err = s.reader.readBucketRecord(stream, emptyHash, &entry)
 	s.Require().NoError(err)
 	s.Require().Equal(entry, secondEntry)
 
@@ -767,7 +948,7 @@ func (s *ReadBucketEntryTestSuite) TestReadEntryRetrySucceedsWithDiscard() {
 	s.Require().Equal(historyarchive.Hash(hash), emptyHash)
 	s.Require().True(ok)
 
-	_, err = s.reader.readBucketEntry(stream, emptyHash)
+	err = s.reader.readBucketRecord(stream, emptyHash, &entry)
 	s.Require().Equal(err, io.EOF)
 }
 
@@ -790,11 +971,12 @@ func (s *ReadBucketEntryTestSuite) TestReadEntryRetryFailsWithDiscardError() {
 	stream, err := s.reader.newXDRStream(emptyHash)
 	s.Require().NoError(err)
 
-	entry, err := s.reader.readBucketEntry(stream, emptyHash)
+	var entry xdr.BucketEntry
+	err = s.reader.readBucketRecord(stream, emptyHash, &entry)
 	s.Require().NoError(err)
 	s.Require().Equal(entry, firstEntry)
 
-	_, err = s.reader.readBucketEntry(stream, emptyHash)
+	err = s.reader.readBucketRecord(stream, emptyHash, &entry)
 	s.Require().EqualError(err, "Error discarding from xdr stream: EOF")
 }
 
@@ -826,15 +1008,16 @@ func (s *ReadBucketEntryTestSuite) TestReadEntryRetrySucceedsAfterDiscardError()
 	stream, err := s.reader.newXDRStream(emptyHash)
 	s.Require().NoError(err)
 
-	entry, err := s.reader.readBucketEntry(stream, emptyHash)
+	var entry xdr.BucketEntry
+	err = s.reader.readBucketRecord(stream, emptyHash, &entry)
 	s.Require().NoError(err)
 	s.Require().Equal(entry, firstEntry)
 
-	entry, err = s.reader.readBucketEntry(stream, emptyHash)
+	err = s.reader.readBucketRecord(stream, emptyHash, &entry)
 	s.Require().NoError(err)
 	s.Require().Equal(entry, secondEntry)
 
-	_, err = s.reader.readBucketEntry(stream, emptyHash)
+	err = s.reader.readBucketRecord(stream, emptyHash, &entry)
 	s.Require().Equal(io.EOF, err)
 }
 
@@ -997,7 +1180,7 @@ func writeInvalidFrame(b *bytes.Buffer) {
 	b.Truncate(bufferSize + frameSize/2)
 }
 
-func createXdrStream(entries ...xdr.BucketEntry) *xdr.Stream {
+func createXdrStream(entries ...interface{}) *xdr.Stream {
 	b := &bytes.Buffer{}
 	for _, e := range entries {
 		err := xdr.MarshalFramed(b, e)
@@ -1013,15 +1196,15 @@ func xdrStreamFromBuffer(b *bytes.Buffer) *xdr.Stream {
 	return xdr.NewStream(ioutil.NopCloser(b))
 }
 
-// getNextBucket is a helper that returns next bucket hash in the order of processing.
+// createBucketChannel is a helper that returns next bucket hash in the order of processing.
 // This allows to write simpler test code that ensures that mocked calls are in a
 // correct order.
-func (s *CheckpointChangeReaderTestSuite) getNextBucketChannel() <-chan (historyarchive.Hash) {
+func createBucketChannel(buckets historyarchive.BucketList) <-chan (historyarchive.Hash) {
 	// 11 levels with 2 buckets each = buffer of 22
 	c := make(chan (historyarchive.Hash), 22)
 
-	for i := 0; i < len(s.has.CurrentBuckets); i++ {
-		b := s.has.CurrentBuckets[i]
+	for i := 0; i < len(buckets); i++ {
+		b := buckets[i]
 
 		curr := historyarchive.MustDecodeHash(b.Curr)
 		if !curr.IsZero() {

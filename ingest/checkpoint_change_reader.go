@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"iter"
 	"sync"
 	"time"
 
@@ -14,31 +15,40 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-// readResult is the result of reading a bucket value
-type readResult struct {
-	entryChange xdr.LedgerEntryChange
-	e           error
-}
-
 // CheckpointChangeReader is a ChangeReader which returns Changes from a history archive
 // snapshot. The Changes produced by a CheckpointChangeReader reflect the state of the Stellar
 // network at a particular checkpoint ledger sequence.
 type CheckpointChangeReader struct {
-	ctx               context.Context
 	has               *historyarchive.HistoryArchiveState
 	archive           historyarchive.ArchiveInterface
 	visitedLedgerKeys set.Set[string]
 	sequence          uint32
-	readChan          chan readResult
-	streamOnce        sync.Once
-	closeOnce         sync.Once
-	done              chan bool
+	// readChan is used to buffer ledger entries while streaming
+	// from the history archives.
+	readChan chan xdr.LedgerEntry
+	// closeChanOnce is used to ensure readChan is only closed once
+	closeChanOnce sync.Once
+	// ctx is used to terminate early in case of errors while streaming
+	// or if the reader is closed.
+	// To avoid goroutine leaks and deadlocks, every time readChan is
+	// read from or written to we should also include ctx.Done() in the
+	// select statement so we eliminate the possibility of blocking
+	// indefinitely.
+	ctx             context.Context
+	streamOnce      sync.Once
+	streamWaitGroup sync.WaitGroup
+	cancel          context.CancelCauseFunc
 
 	readBytesMutex sync.RWMutex
 	totalRead      int64
 	totalSize      int64
 
 	encodingBuffer *xdr.EncodingBuffer
+
+	bucketListType xdr.BucketListType
+
+	ledgerEntryFilter func(xdr.LedgerEntry) bool
+	ledgerKeyFilter   func(key xdr.LedgerKey) bool
 
 	// This should be set to true in tests only
 	disableBucketListHashValidation bool
@@ -55,7 +65,33 @@ const (
 	msrBufferSize    = 50000
 )
 
-// NewCheckpointChangeReader constructs a new CheckpointChangeReader instance.
+// CheckpointReaderOption configures a CheckpointChangeReader's behavior.
+// Multiple options can be provided; when conflicting options are given, the last one wins.
+type CheckpointReaderOption func(*CheckpointChangeReader)
+
+// DisableBucketListValidation disables validation of the bucket list
+// while streaming from the history archives.
+var DisableBucketListValidation = func(r *CheckpointChangeReader) {
+	r.disableBucketListHashValidation = true
+}
+
+// WithFilter configures a filter on the CheckpointChangeReader so irrelevant
+// ledger entries / ledger keys can be omitted when streaming from the
+// history archives.
+// nil values are equivalent to functions which return true for all ledger
+// entries.
+func WithFilter(
+	ledgerEntryFilter func(xdr.LedgerEntry) bool,
+	ledgerKeyFilter func(key xdr.LedgerKey) bool,
+) CheckpointReaderOption {
+	return func(r *CheckpointChangeReader) {
+		r.ledgerEntryFilter = ledgerEntryFilter
+		r.ledgerKeyFilter = ledgerKeyFilter
+	}
+}
+
+// NewCheckpointChangeReader constructs a new CheckpointChangeReader instance
+// which enumerates ledger entries from the live bucket list.
 //
 // The ledger sequence must be a checkpoint ledger. By default (see
 // `historyarchive.ConnectOptions.CheckpointFrequency` for configuring this),
@@ -65,6 +101,75 @@ func NewCheckpointChangeReader(
 	ctx context.Context,
 	archive historyarchive.ArchiveInterface,
 	sequence uint32,
+	opts ...CheckpointReaderOption,
+) (*CheckpointChangeReader, error) {
+	return newCheckpointChangeReaderWithBucketList(
+		ctx,
+		archive,
+		sequence,
+		xdr.BucketListTypeLive,
+		opts...,
+	)
+}
+
+// NewHotArchiveIterator constructs an iterator which enumerates
+// ledger entries from the hot archive bucket list.
+//
+// The ledger sequence must be a checkpoint ledger. By default (see
+// `historyarchive.ConnectOptions.CheckpointFrequency` for configuring this),
+// its next sequence number would have to be a multiple of 64, e.g.
+// sequence=100031 is a checkpoint ledger, since: (100031+1) mod 64 == 0
+func NewHotArchiveIterator(
+	ctx context.Context,
+	archive historyarchive.ArchiveInterface,
+	sequence uint32,
+	opts ...CheckpointReaderOption,
+) iter.Seq2[xdr.LedgerEntry, error] {
+	return func(yield func(xdr.LedgerEntry, error) bool) {
+		r, err := newCheckpointChangeReaderWithBucketList(
+			ctx,
+			archive,
+			sequence,
+			xdr.BucketListTypeHotArchive,
+			opts...,
+		)
+		if err != nil {
+			yield(xdr.LedgerEntry{}, err)
+			return
+		}
+		r.streamWaitGroup.Add(1)
+		go r.streamBucketList()
+		defer func() {
+			// the streamBucketList go routine writes to readChan
+			// so it is only safe to close it once that go routine
+			// terminates
+			r.streamWaitGroup.Wait()
+			r.closeReadChan()
+		}()
+
+		for {
+			select {
+			case <-r.ctx.Done():
+				yield(xdr.LedgerEntry{}, context.Cause(r.ctx))
+				return
+			case entry, ok := <-r.readChan:
+				if !ok {
+					return
+				}
+				if !yield(entry, nil) {
+					return
+				}
+			}
+		}
+	}
+}
+
+func newCheckpointChangeReaderWithBucketList(
+	ctx context.Context,
+	archive historyarchive.ArchiveInterface,
+	sequence uint32,
+	bucketListType xdr.BucketListType,
+	opts ...CheckpointReaderOption,
 ) (*CheckpointChangeReader, error) {
 	manager := archive.GetCheckpointManager()
 
@@ -84,19 +189,26 @@ func NewCheckpointChangeReader(
 		return nil, errors.Wrapf(err, "unable to get checkpoint HAS at ledger sequence %d", sequence)
 	}
 
-	return &CheckpointChangeReader{
+	var cancel context.CancelCauseFunc
+	ctx, cancel = context.WithCancelCause(ctx)
+	r := &CheckpointChangeReader{
 		ctx:               ctx,
 		has:               &has,
 		archive:           archive,
 		visitedLedgerKeys: set.Set[string]{},
 		sequence:          sequence,
-		readChan:          make(chan readResult, msrBufferSize),
-		streamOnce:        sync.Once{},
-		closeOnce:         sync.Once{},
-		done:              make(chan bool),
+		readChan:          make(chan xdr.LedgerEntry, msrBufferSize),
+		cancel:            cancel,
 		encodingBuffer:    xdr.NewEncodingBuffer(),
+		bucketListType:    bucketListType,
 		sleep:             time.Sleep,
-	}, nil
+	}
+
+	for _, opt := range opts {
+		opt(r)
+	}
+
+	return r, nil
 }
 
 // VerifyBucketList verifies that the bucket list hash computed from the history archive snapshot
@@ -126,7 +238,7 @@ func (r *CheckpointChangeReader) bucketExists(hash historyarchive.Hash) (bool, e
 	return r.archive.BucketExists(hash)
 }
 
-// streamBuckets is internal method that streams buckets from the given HAS.
+// streamBucketList is internal method that streams buckets from the given HAS.
 //
 // Buckets should be processed from oldest to newest, `snap` and then `curr` at
 // each level. The correct value of ledger entry is the latest seen
@@ -149,21 +261,30 @@ func (r *CheckpointChangeReader) bucketExists(hash historyarchive.Hash) (bool, e
 // In such algorithm we just need to store a set of keys that require much less space.
 // The memory requirements will be lowered when CAP-0020 is live and older buckets are
 // rewritten. Then, we will only need to keep track of `DEADENTRY`.
-func (r *CheckpointChangeReader) streamBuckets() {
+func (r *CheckpointChangeReader) streamBucketList() {
 	defer func() {
 		r.visitedLedgerKeys = nil
-
-		r.closeOnce.Do(r.close)
-		close(r.readChan)
+		r.streamWaitGroup.Done()
 	}()
 
 	var buckets []historyarchive.Hash
-	for i := 0; i < len(r.has.CurrentBuckets); i++ {
-		b := r.has.CurrentBuckets[i]
+	// Select the bucket list based on configuration
+	var list historyarchive.BucketList
+	switch r.bucketListType {
+	case xdr.BucketListTypeLive:
+		list = r.has.CurrentBuckets
+	case xdr.BucketListTypeHotArchive:
+		list = r.has.HotArchiveBuckets
+	default:
+		r.cancel(errors.Errorf("Unsupported bucket list type: %d", r.bucketListType))
+		return
+	}
+	for i := 0; i < len(list); i++ {
+		b := list[i]
 		for _, hashString := range []string{b.Curr, b.Snap} {
 			hash, err := historyarchive.DecodeHash(hashString)
 			if err != nil {
-				r.readChan <- r.error(errors.Wrap(err, "Error decoding bucket hash"))
+				r.cancel(errors.Wrap(err, "Error decoding bucket hash"))
 				return
 			}
 
@@ -178,24 +299,18 @@ func (r *CheckpointChangeReader) streamBuckets() {
 	for _, hash := range buckets {
 		exists, err := r.bucketExists(hash)
 		if err != nil {
-			r.readChan <- r.error(
-				errors.Wrapf(err, "error checking if bucket exists: %s", hash),
-			)
+			r.cancel(errors.Wrapf(err, "error checking if bucket exists: %s", hash))
 			return
 		}
 
 		if !exists {
-			r.readChan <- r.error(
-				errors.Errorf("bucket hash does not exist: %s", hash),
-			)
+			r.cancel(errors.Errorf("bucket hash does not exist: %s", hash))
 			return
 		}
 
 		size, err := r.archive.BucketSize(hash)
 		if err != nil {
-			r.readChan <- r.error(
-				errors.Wrapf(err, "error checking bucket size: %s", hash),
-			)
+			r.cancel(errors.Wrapf(err, "error checking bucket size: %s", hash))
 			return
 		}
 
@@ -206,32 +321,44 @@ func (r *CheckpointChangeReader) streamBuckets() {
 
 	for i, hash := range buckets {
 		oldestBucket := i == len(buckets)-1
-		if shouldContinue := r.streamBucketContents(hash, oldestBucket); !shouldContinue {
-			break
+		for ledgerEntry, err := range r.streamBucket(hash, oldestBucket) {
+			if err != nil {
+				r.cancel(err)
+				return
+			}
+
+			select {
+			case r.readChan <- ledgerEntry:
+			case <-r.ctx.Done():
+				return
+			}
 		}
 	}
+
+	r.closeReadChan()
 }
 
-// readBucketEntry will attempt to read a bucket entry from `stream`.
-// If any errors are encountered while reading from `stream`, readBucketEntry will
-// retry the operation using a new *historyarchive.XdrStream.
-// The total number of retries will not exceed `maxStreamRetries`.
-func (r *CheckpointChangeReader) readBucketEntry(stream *xdr.Stream, hash historyarchive.Hash) (
-	xdr.BucketEntry,
-	error,
-) {
-	var entry xdr.BucketEntry
+func (r *CheckpointChangeReader) closeReadChan() {
+	r.closeChanOnce.Do(func() {
+		close(r.readChan)
+	})
+}
+
+// readBucketRecord attempts to read a single XDR record of type T from `stream`.
+// If any errors are encountered while reading from `stream`, it retries the operation
+// using a new *historyarchive.XdrStream. The total number of retries will not exceed
+// `maxStreamRetries`.
+func (r *CheckpointChangeReader) readBucketRecord(stream *xdr.Stream, hash historyarchive.Hash, entry xdr.DecoderFrom) error {
 	var err error
 	currentPosition := stream.BytesRead()
 	gzipCurrentPosition := stream.CompressedBytesRead()
 
 	for attempts := 0; ; attempts++ {
 		if r.ctx.Err() != nil {
-			err = r.ctx.Err()
-			break
+			return r.ctx.Err()
 		}
 		if err == nil {
-			err = stream.ReadOne(&entry)
+			err = stream.ReadOne(entry)
 			if err == nil || err == io.EOF {
 				r.readBytesMutex.Lock()
 				r.totalRead += stream.CompressedBytesRead() - gzipCurrentPosition
@@ -261,7 +388,7 @@ func (r *CheckpointChangeReader) readBucketEntry(stream *xdr.Stream, hash histor
 		}
 	}
 
-	return entry, err
+	return err
 }
 
 func (r *CheckpointChangeReader) newXDRStream(hash historyarchive.Hash) (
@@ -278,201 +405,294 @@ func (r *CheckpointChangeReader) newXDRStream(hash historyarchive.Hash) (
 	return rdr, e
 }
 
-// streamBucketContents pushes value onto the read channel, returning false when the channel needs to be closed otherwise true
-func (r *CheckpointChangeReader) streamBucketContents(hash historyarchive.Hash, oldestBucket bool) bool {
-	rdr, e := r.newXDRStream(hash)
-	if e != nil {
-		r.readChan <- r.error(
-			errors.Wrapf(e, "cannot get xdr stream for hash '%s'", hash.String()),
+func validateHotArchiveMetaEntry(index int, meta xdr.BucketMetadata, hash historyarchive.Hash) error {
+	if index != 0 {
+		return errors.Errorf(
+			"METAENTRY not the first entry (n=%d) in the bucket hash '%s'",
+			index, hash.String(),
 		)
-		return false
 	}
+	if bucketListType, ok := meta.Ext.GetBucketListType(); !ok {
+		return errors.Errorf("METAENTRY missing bucket list type in the bucket hash '%s'", hash.String())
+	} else if bucketListType != xdr.BucketListTypeHotArchive {
+		return errors.Errorf(
+			"expected bucket list type to be hot-archive (instead got %s) in the bucket hash '%s'",
+			bucketListType.String(), hash.String(),
+		)
+	}
+	return nil
+}
 
-	defer func() {
-		err := rdr.Close()
-		if err != nil {
-			r.readChan <- r.error(errors.Wrap(err, "Error closing xdr stream"))
-			// Stop streaming from the rest of the files.
-			r.Close()
+func (r *CheckpointChangeReader) streamHotArchiveBucket(rdr *xdr.Stream, hash historyarchive.Hash, oldestBucket bool) iter.Seq2[xdr.LedgerEntry, error] {
+	return func(yield func(xdr.LedgerEntry, error) bool) {
+		for n := 0; ; n++ {
+			var entry xdr.HotArchiveBucketEntry
+			if err := r.readBucketRecord(rdr, hash, &entry); err != nil {
+				if err != io.EOF {
+					yield(xdr.LedgerEntry{}, errors.Wrapf(err, "Error on XDR record %d of hash '%s'", n, hash.String()))
+				}
+				return
+			}
+
+			if entry.Type == xdr.HotArchiveBucketEntryTypeHotArchiveMetaentry {
+				if err := validateHotArchiveMetaEntry(n, entry.MustMetaEntry(), hash); err != nil {
+					yield(xdr.LedgerEntry{}, err)
+					return
+				}
+				continue
+			} else if n == 0 {
+				yield(xdr.LedgerEntry{},
+					errors.Errorf(
+						"METAENTRY not the first entry in the bucket hash '%s'",
+						hash.String(),
+					),
+				)
+				return
+			}
+
+			var key xdr.LedgerKey
+			switch entry.Type {
+			case xdr.HotArchiveBucketEntryTypeHotArchiveArchived:
+				ledgerEntry := entry.MustArchivedEntry()
+				if r.ledgerEntryFilter != nil && !r.ledgerEntryFilter(ledgerEntry) {
+					continue
+				}
+				k, err := ledgerEntry.LedgerKey()
+				if err != nil {
+					yield(xdr.LedgerEntry{}, errors.Wrapf(err, "Error generating ledger key for XDR record %d of hash '%s'", n, hash.String()))
+					return
+				}
+				key = k
+			case xdr.HotArchiveBucketEntryTypeHotArchiveLive:
+				key = entry.MustKey()
+				if r.ledgerKeyFilter != nil && !r.ledgerKeyFilter(key) {
+					continue
+				}
+			default:
+				yield(xdr.LedgerEntry{}, errors.Errorf("Unknown HotArchiveBucketEntryType=%d: %d@%s", entry.Type, n, hash.String()))
+				return
+			}
+
+			// We're using compressed keys here
+			// Safe, since we are converting to string right away
+			keyBytes, err := r.encodingBuffer.LedgerKeyUnsafeMarshalBinaryCompress(key)
+			if err != nil {
+				yield(xdr.LedgerEntry{}, errors.Wrapf(err, "Error marshaling XDR record %d of hash '%s'", n, hash.String()))
+				return
+			}
+			h := string(keyBytes)
+			if !r.visitedLedgerKeys.Contains(h) {
+				// We skip adding entries from the last bucket to visitedLedgerKeys because:
+				// 1. Ledger keys are unique within a single bucket.
+				// 2. This is the last bucket we process so there's no need to track
+				//    seen last entries in this bucket.
+				if !oldestBucket {
+					r.visitedLedgerKeys.Add(h)
+				}
+				if entry.Type == xdr.HotArchiveBucketEntryTypeHotArchiveArchived {
+					if !yield(entry.MustArchivedEntry(), nil) {
+						return
+					}
+				}
+			}
 		}
-	}()
+	}
+}
 
+func validateLiveMetaEntry(index int, meta xdr.BucketMetadata, hash historyarchive.Hash) error {
+	if index != 0 {
+		return errors.Errorf(
+			"METAENTRY not the first entry (n=%d) in the bucket hash '%s'",
+			index, hash.String(),
+		)
+	}
+	if bucketListType, ok := meta.Ext.GetBucketListType(); ok && bucketListType != xdr.BucketListTypeLive {
+		return errors.Errorf(
+			"expected bucket list type to be live (instead got %s) in the bucket hash '%s'",
+			bucketListType.String(), hash.String(),
+		)
+	}
+	return nil
+}
+
+func (r *CheckpointChangeReader) streamLiveBucket(rdr *xdr.Stream, hash historyarchive.Hash, oldestBucket bool) iter.Seq2[xdr.LedgerEntry, error] {
 	// bucketProtocolVersion is a protocol version read from METAENTRY or 0 when no METAENTRY.
 	// No METAENTRY means that bucket originates from before protocol version 11.
 	bucketProtocolVersion := uint32(0)
-
-	for n := 0; ; n++ {
-		var entry xdr.BucketEntry
-		entry, e = r.readBucketEntry(rdr, hash)
-		if e != nil {
-			if e == io.EOF {
-				// No entries loaded for this batch, nothing more to process
-				return true
-			}
-			r.readChan <- r.error(
-				errors.Wrapf(e, "Error on XDR record %d of hash '%s'", n, hash.String()),
-			)
-			return false
-		}
-
-		if entry.Type == xdr.BucketEntryTypeMetaentry {
-			if n != 0 {
-				r.readChan <- r.error(
-					errors.Errorf(
-						"METAENTRY not the first entry (n=%d) in the bucket hash '%s'",
-						n, hash.String(),
-					),
-				)
-				return false
-			}
-			metaEntry := entry.MustMetaEntry()
-			bucketProtocolVersion = uint32(metaEntry.LedgerVersion)
-			bucketListType, ok := metaEntry.Ext.GetBucketListType()
-			if ok && bucketListType != xdr.BucketListTypeLive {
-				r.readChan <- r.error(
-					errors.Errorf(
-						"expected bucket list type to be live (instead got %s) in the bucket hash '%s'",
-						bucketListType.String(), hash.String(),
-					),
-				)
-				return false
-			}
-			continue
-		}
-
-		var key xdr.LedgerKey
-		var err error
-
-		switch entry.Type {
-		case xdr.BucketEntryTypeLiveentry, xdr.BucketEntryTypeInitentry:
-			liveEntry := entry.MustLiveEntry()
-			key, err = liveEntry.LedgerKey()
-			if err != nil {
-				r.readChan <- r.error(
-					errors.Wrapf(err, "Error generating ledger key for XDR record %d of hash '%s'", n, hash.String()),
-				)
-				return false
-			}
-		case xdr.BucketEntryTypeDeadentry:
-			key = entry.MustDeadEntry()
-		default:
-			r.readChan <- r.error(
-				errors.Errorf("Unknown BucketEntryType=%d: %d@%s", entry.Type, n, hash.String()),
-			)
-			return false
-		}
-
-		// We're using compressed keys here
-		// Safe, since we are converting to string right away
-		keyBytes, e := r.encodingBuffer.LedgerKeyUnsafeMarshalBinaryCompress(key)
-		if e != nil {
-			r.readChan <- r.error(
-				errors.Wrapf(
-					e, "Error marshaling XDR record %d of hash '%s'", n, hash.String(),
-				),
-			)
-			return false
-		}
-
-		h := string(keyBytes)
-		// claimable balances and offers have unique ids
-		// once a claimable balance or offer is created we can assume that
-		// the id can never be recreated again, unlike, for example, trustlines
-		// which can be deleted and then recreated
-		unique := key.Type == xdr.LedgerEntryTypeClaimableBalance ||
-			key.Type == xdr.LedgerEntryTypeOffer
-
-		switch entry.Type {
-		case xdr.BucketEntryTypeLiveentry, xdr.BucketEntryTypeInitentry:
-			if entry.Type == xdr.BucketEntryTypeInitentry && bucketProtocolVersion < 11 {
-				r.readChan <- r.error(
-					errors.Errorf("Read INITENTRY from version <11 bucket: %d@%s", n, hash.String()),
-				)
-				return false
+	return func(yield func(xdr.LedgerEntry, error) bool) {
+		for n := 0; ; n++ {
+			var entry xdr.BucketEntry
+			if err := r.readBucketRecord(rdr, hash, &entry); err != nil {
+				if err != io.EOF {
+					yield(xdr.LedgerEntry{}, errors.Wrapf(err, "Error on XDR record %d of hash '%s'", n, hash.String()))
+				}
+				return
 			}
 
-			if !r.visitedLedgerKeys.Contains(h) {
-				// Return LEDGER_ENTRY_STATE changes only now.
+			if entry.Type == xdr.BucketEntryTypeMetaentry {
+				metaEntry := entry.MustMetaEntry()
+				bucketProtocolVersion = uint32(metaEntry.LedgerVersion)
+				if err := validateLiveMetaEntry(n, metaEntry, hash); err != nil {
+					yield(xdr.LedgerEntry{}, err)
+					return
+				}
+				continue
+			}
+
+			var key xdr.LedgerKey
+			switch entry.Type {
+			case xdr.BucketEntryTypeLiveentry, xdr.BucketEntryTypeInitentry:
 				liveEntry := entry.MustLiveEntry()
-				entryChange := xdr.LedgerEntryChange{
-					Type:  xdr.LedgerEntryChangeTypeLedgerEntryState,
-					State: &liveEntry,
+				if r.ledgerEntryFilter != nil && !r.ledgerEntryFilter(liveEntry) {
+					continue
 				}
-				r.readChan <- readResult{entryChange, nil}
-
-				// We don't update `visitedLedgerKeys` for INITENTRY because CAP-20 says:
-				// > a bucket entry marked INITENTRY implies that either no entry
-				// > with the same ledger key exists in an older bucket, or else
-				// > that the (chronologically) preceding entry with the same ledger
-				// > key was DEADENTRY.
-				if entry.Type == xdr.BucketEntryTypeLiveentry {
-					// We skip adding entries from the last bucket to visitedLedgerKeys because:
-					// 1. Ledger keys are unique within a single bucket.
-					// 2. This is the last bucket we process so there's no need to track
-					//    seen last entries in this bucket.
-					if oldestBucket {
-						continue
-					}
-					r.visitedLedgerKeys.Add(h)
+				k, err := liveEntry.LedgerKey()
+				if err != nil {
+					yield(xdr.LedgerEntry{}, errors.Wrapf(err, "Error generating ledger key for XDR record %d of hash '%s'", n, hash.String()))
+					return
 				}
-			} else if entry.Type == xdr.BucketEntryTypeInitentry && unique {
-				// we can remove the ledger key because we know that it's unique in the ledger
-				// and cannot be recreated
-				r.visitedLedgerKeys.Remove(h)
+				key = k
+			case xdr.BucketEntryTypeDeadentry:
+				key = entry.MustDeadEntry()
+				if r.ledgerKeyFilter != nil && !r.ledgerKeyFilter(key) {
+					continue
+				}
+			default:
+				yield(xdr.LedgerEntry{}, errors.Errorf("Unknown BucketEntryType=%d: %d@%s", entry.Type, n, hash.String()))
+				return
 			}
-		case xdr.BucketEntryTypeDeadentry:
-			r.visitedLedgerKeys.Add(h)
-		default:
-			r.readChan <- r.error(
-				errors.Errorf("Unexpected entry type %d: %d@%s", entry.Type, n, hash.String()),
-			)
-			return false
-		}
 
-		select {
-		case <-r.done:
-			// Close() called: stop processing buckets.
-			return false
-		default:
-			continue
+			// We're using compressed keys here
+			// Safe, since we are converting to string right away
+			keyBytes, err := r.encodingBuffer.LedgerKeyUnsafeMarshalBinaryCompress(key)
+			if err != nil {
+				yield(xdr.LedgerEntry{}, errors.Wrapf(
+					err, "Error marshaling XDR record %d of hash '%s'", n, hash.String(),
+				))
+				return
+			}
+			h := string(keyBytes)
+			// claimable balances and offers have unique ids
+			// once a claimable balance or offer is created we can assume that
+			// the id can never be recreated again, unlike, for example, trustlines
+			// which can be deleted and then recreated
+			unique := key.Type == xdr.LedgerEntryTypeClaimableBalance ||
+				key.Type == xdr.LedgerEntryTypeOffer
+
+			switch entry.Type {
+			case xdr.BucketEntryTypeLiveentry, xdr.BucketEntryTypeInitentry:
+				if entry.Type == xdr.BucketEntryTypeInitentry && bucketProtocolVersion < 11 {
+					yield(xdr.LedgerEntry{}, errors.Errorf("Read INITENTRY from version <11 bucket: %d@%s", n, hash.String()))
+					return
+				}
+				if !r.visitedLedgerKeys.Contains(h) {
+					liveEntry := entry.MustLiveEntry()
+					if !yield(liveEntry, nil) {
+						return
+					}
+					// We don't update `visitedLedgerKeys` for INITENTRY because CAP-20 says:
+					// > a bucket entry marked INITENTRY implies that either no entry
+					// > with the same ledger key exists in an older bucket, or else
+					// > that the (chronologically) preceding entry with the same ledger
+					// > key was DEADENTRY.
+					if entry.Type == xdr.BucketEntryTypeLiveentry {
+						// We skip adding entries from the last bucket to visitedLedgerKeys because:
+						// 1. Ledger keys are unique within a single bucket.
+						// 2. This is the last bucket we process so there's no need to track
+						//    seen last entries in this bucket.
+						if !oldestBucket {
+							r.visitedLedgerKeys.Add(h)
+						}
+					}
+				} else if entry.Type == xdr.BucketEntryTypeInitentry && unique {
+					// we can remove the ledger key because we know that it's unique in the ledger
+					// and cannot be recreated
+					r.visitedLedgerKeys.Remove(h)
+				}
+			case xdr.BucketEntryTypeDeadentry:
+				r.visitedLedgerKeys.Add(h)
+			default:
+				yield(xdr.LedgerEntry{}, errors.Errorf("Unexpected entry type %d: %d@%s", entry.Type, n, hash.String()))
+				return
+			}
 		}
 	}
+}
 
-	panic("Shouldn't happen")
+// streamBucket returns an iterator over ledger entries for the given bucket hash.
+// Any errors encountered during setup or iteration will be yielded via the iterator
+// as an error value alongside a zero xdr.LedgerEntry.
+func (r *CheckpointChangeReader) streamBucket(hash historyarchive.Hash, oldestBucket bool) iter.Seq2[xdr.LedgerEntry, error] {
+	return func(yield func(xdr.LedgerEntry, error) bool) {
+		rdr, e := r.newXDRStream(hash)
+		if e != nil {
+			yield(xdr.LedgerEntry{}, errors.Wrapf(e, "cannot get xdr stream for hash '%s'", hash.String()))
+			return
+		}
+		var closed bool
+		closeRdr := func() error {
+			if !closed {
+				closed = true
+				return rdr.Close()
+			}
+			return nil
+		}
+		defer closeRdr()
+
+		var iterator iter.Seq2[xdr.LedgerEntry, error]
+		switch r.bucketListType {
+		case xdr.BucketListTypeLive:
+			iterator = r.streamLiveBucket(rdr, hash, oldestBucket)
+		case xdr.BucketListTypeHotArchive:
+			iterator = r.streamHotArchiveBucket(rdr, hash, oldestBucket)
+		default:
+			yield(xdr.LedgerEntry{}, errors.Errorf("Unsupported bucket list type: %d", r.bucketListType))
+			return
+		}
+
+		// Enumerate inner iterator and forward values.
+		for ledgerEntry, err := range iterator {
+			if !yield(ledgerEntry, err) {
+				return
+			}
+			if err != nil {
+				return
+			}
+		}
+
+		// After iteration completes, close the stream and propagate close error if any.
+		if err := closeRdr(); err != nil {
+			_ = yield(xdr.LedgerEntry{}, errors.Wrap(err, "Error closing xdr stream"))
+		}
+	}
 }
 
 // Read returns a new ledger entry change on each call, returning io.EOF when the stream ends.
 func (r *CheckpointChangeReader) Read() (Change, error) {
 	r.streamOnce.Do(func() {
-		go r.streamBuckets()
+		r.streamWaitGroup.Add(1)
+		go r.streamBucketList()
 	})
 
-	// blocking call. anytime we consume from this channel, the background goroutine will stream in the next value
-	result, ok := <-r.readChan
-	if !ok {
-		// when channel is closed then return io.EOF
-		return Change{}, io.EOF
+	select {
+	case <-r.ctx.Done():
+		// the streamBucketList go routine writes to readChan
+		// so it is only safe to close it once that go routine
+		// terminates
+		r.streamWaitGroup.Wait()
+		r.closeReadChan()
+		return Change{}, context.Cause(r.ctx)
+	case entry, ok := <-r.readChan:
+		if !ok {
+			// when channel is closed then return io.EOF
+			return Change{}, io.EOF
+		}
+		return Change{
+			Type:       entry.Data.Type,
+			ChangeType: xdr.LedgerEntryChangeTypeLedgerEntryCreated,
+			Post:       &entry,
+		}, nil
 	}
-
-	if result.e != nil {
-		return Change{}, errors.Wrap(result.e, "Error while reading from buckets")
-	}
-	entryType, err := result.entryChange.EntryType()
-	if err != nil {
-		return Change{}, errors.Wrap(err, "Error getting entry type")
-	}
-	return Change{
-		Type: entryType,
-		Post: result.entryChange.State,
-	}, nil
-}
-
-func (r *CheckpointChangeReader) error(err error) readResult {
-	return readResult{xdr.LedgerEntryChange{}, err}
-}
-
-func (r *CheckpointChangeReader) close() {
-	close(r.done)
 }
 
 // Progress returns progress reading all buckets in percents.
@@ -484,6 +704,6 @@ func (r *CheckpointChangeReader) Progress() float64 {
 
 // Close should be called when reading is finished.
 func (r *CheckpointChangeReader) Close() error {
-	r.closeOnce.Do(r.close)
+	r.cancel(errors.New("reader is closed"))
 	return nil
 }
