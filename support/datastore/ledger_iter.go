@@ -16,7 +16,7 @@ type LedgerFile struct {
 }
 
 // LedgerFileIter returns an iterator (iter.Seq2) over ledger files whose file
-// paths fall in the lexicographic range [startAfter, stopAfter]. Paths are
+// paths fall in the lexicographic range (startAfter, stopAfter]. Paths are
 // listed in ascending lexicographic order.
 //
 // Both bounds are optional:
