@@ -2,6 +2,7 @@ package datastore
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"testing"
 
@@ -19,6 +20,31 @@ func TestParseRangeFromFilename_SingleAndRange(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, uint32(11), low)
 	require.Equal(t, uint32(20), high)
+}
+
+func TestObjectKeyRoundTrip_SimpleSchemas(t *testing.T) {
+	cases := []DataStoreSchema{
+		{LedgersPerFile: 1, FilesPerPartition: 1},
+		{LedgersPerFile: 16, FilesPerPartition: 1},
+		{LedgersPerFile: 64, FilesPerPartition: 4},
+	}
+
+	ledgerSeqs := []uint32{1, 2, 15, 16, 17, 63, 64, 65, 1000}
+
+	for _, schema := range cases {
+		t.Run(fmt.Sprintf("lpf=%d,fpp=%d", schema.LedgersPerFile, schema.FilesPerPartition), func(t *testing.T) {
+			for _, seq := range ledgerSeqs {
+				start := schema.GetSequenceNumberStartBoundary(seq)
+				end := schema.GetSequenceNumberEndBoundary(seq)
+
+				key := schema.GetObjectKeyFromSequenceNumber(seq)
+				low, high, err := ParseRangeFromObjectKey(key)
+				require.NoError(t, err)
+				require.Equal(t, start, low)
+				require.Equal(t, end, high)
+			}
+		})
+	}
 }
 
 func TestLedgerKeyIter_Pagination(t *testing.T) {
