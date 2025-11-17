@@ -78,7 +78,7 @@ var keyRangeRE = regexp.MustCompile(`--(\d+)(?:-(\d+))?\.xdr\.`)
 
 func ParseRangeFromObjectKey(base string) (uint32, uint32, error) {
 	m := keyRangeRE.FindStringSubmatch(base)
-	if m == nil || len(m) < 2 {
+	if len(m) < 2 {
 		return 0, 0, fmt.Errorf("invalid file name %q", base)
 	}
 
