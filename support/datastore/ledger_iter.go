@@ -76,30 +76,27 @@ func LedgerFileIter(ctx context.Context, ds DataStore, startAfter,
 
 var keyRangeRE = regexp.MustCompile(`--(\d+)(?:-(\d+))?\.xdr\.`)
 
+func parseUint32(s, label string) (uint32, error) {
+	u, err := strconv.ParseUint(s, 10, 32)
+	if err != nil {
+		return 0, fmt.Errorf("error parsing %s %q: %w", label, s, err)
+	}
+	return uint32(u), nil
+}
+
 func ParseRangeFromObjectKey(base string) (uint32, uint32, error) {
 	m := keyRangeRE.FindStringSubmatch(base)
 	if len(m) < 2 {
 		return 0, 0, fmt.Errorf("invalid file name %q", base)
 	}
 
-	parseUint32 := func(s, label string) (uint32, error) {
-		u, err := strconv.ParseUint(s, 10, 32)
-		if err != nil {
-			return 0, fmt.Errorf("error parsing %s %q: %w", label, s, err)
-		}
-		return uint32(u), nil
-	}
-
-	var low uint32
-	var high uint32
-	var err error
-
-	low, err = parseUint32(m[1], "low")
+	low, err := parseUint32(m[1], "low")
 	if err != nil {
 		return 0, 0, err
 	}
 
 	// If low is present and non-empty, parse it; otherwise low == high.
+	var high uint32
 	if len(m) >= 3 && m[2] != "" {
 		high, err = parseUint32(m[2], "high")
 		if err != nil {
