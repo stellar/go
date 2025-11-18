@@ -84,6 +84,9 @@ func parseUint32(s, label string) (uint32, error) {
 	return uint32(u), nil
 }
 
+// ParseRangeFromObjectKey extracts the [low, high] ledger sequence range from
+// a datastore object key. The expected filename format is defined by SEP-54:
+// https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0054.md#key-format
 func ParseRangeFromObjectKey(base string) (uint32, uint32, error) {
 	m := keyRangeRE.FindStringSubmatch(base)
 	if len(m) < 2 {
