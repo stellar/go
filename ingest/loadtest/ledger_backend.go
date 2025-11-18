@@ -121,6 +121,9 @@ func (r *LedgerBackend) PrepareRange(ctx context.Context, ledgerRange ledgerback
 	if ledgerCount == 0 {
 		return fmt.Errorf("no ledgers found in file %s", r.config.LedgersFilePath)
 	}
+	if ledgerRange.From() > math.MaxUint32-uint32(ledgerCount-1) {
+		return fmt.Errorf("ledger range would overflow: from=%d, count=%d", ledgerRange.From(), ledgerCount)
+	}
 	latestLedgerSeq := ledgerRange.From() + uint32(ledgerCount-1)
 
 	generatedLedgersFile, err := os.Open(r.config.LedgersFilePath)
