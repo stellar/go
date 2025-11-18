@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"path/filepath"
 	"sort"
 )
 
@@ -14,33 +13,13 @@ var ErrNoValidLedgerFiles = errors.New("no valid ledger files found on the data 
 // found within a list of files. This implementation assumes the
 // datastore returns files in reverse lexicographical order, so the first
 // matching file in the list is the latest.
-func findLatestLedger(ctx context.Context, datastore DataStore, options ListFileOptions) (uint32, error) {
-	files, err := datastore.ListFilePaths(ctx, options)
-	if err != nil {
-		return 0, fmt.Errorf("failed to list files: %w", err)
-	}
-
-	for _, file := range files {
-		baseFileName := filepath.Base(file)
-		if !ledgerFilenameRe.MatchString(baseFileName) {
-			continue
-		}
-
-		metadataMap, err := datastore.GetFileMetadata(ctx, file)
+func findLatestLedger(ctx context.Context, ds DataStore, options ListFileOptions) (uint32, error) {
+	it := LedgerFileIter(ctx, ds, options.StartAfter, "")
+	for lf, err := range it {
 		if err != nil {
-			return 0, fmt.Errorf("failed to get metadata for file %s: %w", file, err)
+			return 0, err
 		}
-
-		meta, err := NewMetaDataFromMap(metadataMap)
-		if err != nil {
-			return 0, fmt.Errorf("failed to parse metadata for file %s: %w", file, err)
-		}
-
-		if meta.EndLedger == 0 {
-			return 0, fmt.Errorf("failed to extract ledger sequence from metadata for %s", file)
-		}
-
-		return meta.EndLedger, nil
+		return lf.High, nil
 	}
 	return 0, ErrNoValidLedgerFiles
 

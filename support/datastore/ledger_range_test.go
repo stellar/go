@@ -3,7 +3,6 @@ package datastore
 import (
 	"context"
 	"errors"
-	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -22,8 +21,6 @@ func TestFindLatestLedger(t *testing.T) {
 
 	mds.On("ListFilePaths", ctx, ListFileOptions{}).
 		Return([]string{name}, nil).Once()
-	mds.On("GetFileMetadata", ctx, name).
-		Return(map[string]string{"end-ledger": "10"}, nil).Once()
 
 	got, err := findLatestLedger(ctx, mds, ListFileOptions{})
 	assert.NoError(t, err)
@@ -47,10 +44,6 @@ func TestFindLatestLedger_Success(t *testing.T) {
 	mds.On("ListFilePaths", ctx, ListFileOptions{}).
 		Return([]string{nonMatching, latestKey, key1, key2}, nil).Once()
 
-	// Only the latest matching key should be queried for metadata.
-	mds.On("GetFileMetadata", ctx, latestKey).
-		Return(map[string]string{"end-ledger": "10"}, nil).Once()
-
 	got, err := findLatestLedger(ctx, mds, ListFileOptions{})
 	require.NoError(t, err)
 	require.Equal(t, end, got)
@@ -67,7 +60,7 @@ func TestFindLatestLedger_ListError(t *testing.T) {
 
 	_, err := findLatestLedger(ctx, mds, ListFileOptions{})
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to list files")
+	assert.Contains(t, err.Error(), "boom")
 
 	mds.AssertExpectations(t)
 }
@@ -79,44 +72,11 @@ func TestFindLatestLedger_NoMatchingFiles(t *testing.T) {
 	// Non-matching base names are skipped; ErrNoValidLedgerFiles
 	mds.On("ListFilePaths", ctx, ListFileOptions{}).
 		Return([]string{"/bucket/ledgers/README.txt", "/bucket/foo/bar.txt"}, nil).Once()
+	mds.On("ListFilePaths", ctx, ListFileOptions{StartAfter: "/bucket/foo/bar.txt"}).
+		Return([]string{}, nil).Once()
 
-	_, err := findLatestLedger(ctx, mds, ListFileOptions{})
+	_, err := FindLatestLedgerSequence(ctx, mds)
 	assert.ErrorIs(t, err, ErrNoValidLedgerFiles)
-
-	mds.AssertExpectations(t)
-}
-
-func TestFindLatestLedger_MetadataError(t *testing.T) {
-	ctx := context.Background()
-	mds := new(MockDataStore)
-
-	name := schema.GetObjectKeyFromSequenceNumber(42)
-	mds.On("ListFilePaths", ctx, ListFileOptions{}).
-		Return([]string{name}, nil).Once()
-	mds.On("GetFileMetadata", ctx, name).
-		Return(map[string]string(nil), errors.New("metadata failed")).Once()
-
-	_, err := findLatestLedger(ctx, mds, ListFileOptions{})
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to get metadata")
-
-	mds.AssertExpectations(t)
-}
-
-func TestFindLatestLedger_BadMetadataParse(t *testing.T) {
-	ctx := context.Background()
-	mds := new(MockDataStore)
-
-	name := schema.GetObjectKeyFromSequenceNumber(11)
-
-	mds.On("ListFilePaths", ctx, ListFileOptions{}).
-		Return([]string{name}, nil).Once()
-	mds.On("GetFileMetadata", ctx, name).
-		Return(map[string]string{"unexpected": "value"}, nil).Once()
-
-	_, err := findLatestLedger(ctx, mds, ListFileOptions{})
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to extract ledger sequence")
 
 	mds.AssertExpectations(t)
 }
@@ -130,8 +90,6 @@ func TestFindLatestLedgerUpToSequence(t *testing.T) {
 
 	mds.On("ListFilePaths", ctx, ListFileOptions{StartAfter: schema.GetObjectKeyFromSequenceNumber(end + 1)}).
 		Return([]string{name}, nil).Once()
-	mds.On("GetFileMetadata", ctx, name).
-		Return(map[string]string{"end-ledger": "50"}, nil).Once()
 
 	got, err := FindLatestLedgerUpToSequence(ctx, mds, end, schema)
 	assert.NoError(t, err)
@@ -154,8 +112,6 @@ func TestFindLatestLedgerUpToSequence_MultipleLedgersPerFile(t *testing.T) {
 
 	mds.On("ListFilePaths", ctx, ListFileOptions{StartAfter: "FFFFFFFF--0-99/FFFFFFC3--60-69.xdr.zst"}).
 		Return([]string{name}, nil).Once()
-	mds.On("GetFileMetadata", ctx, name).
-		Return(map[string]string{"end-ledger": "50"}, nil).Once()
 
 	got, err := FindLatestLedgerUpToSequence(ctx, mds, end, testSchema)
 	assert.NoError(t, err)
@@ -190,11 +146,6 @@ func TestFindOldestLedgerSequence_InvalidLatest(t *testing.T) {
 
 	tests := []tc{
 		{
-			name:        "latest=0_metadata_extract_error",
-			latest:      0,
-			errContains: "failed to extract ledger sequence from metadata for",
-		},
-		{
 			name:   "latest=1_invalid",
 			latest: 1,
 			errIs:  ErrNoValidLedgerFiles,
@@ -215,8 +166,6 @@ func TestFindOldestLedgerSequence_InvalidLatest(t *testing.T) {
 
 			mds.On("ListFilePaths", ctx, ListFileOptions{}).
 				Return([]string{latestKey}, nil).Once()
-			mds.On("GetFileMetadata", ctx, latestKey).
-				Return(map[string]string{"end-ledger": strconv.Itoa(int(tt.latest))}, nil).Once()
 
 			for seq, ok := range tt.exists {
 				key := schema.GetObjectKeyFromSequenceNumber(seq)
@@ -251,8 +200,6 @@ func TestFindOldestLedgerSequence_FindsFirstExisting(t *testing.T) {
 
 	mds.On("ListFilePaths", ctx, ListFileOptions{}).
 		Return([]string{latestKey}, nil).Once()
-	mds.On("GetFileMetadata", ctx, latestKey).
-		Return(map[string]string{"end-ledger": "6"}, nil).Once()
 
 	for seq := uint32(2); seq <= 6; seq++ {
 		key := schema.GetObjectKeyFromSequenceNumber(seq)
@@ -277,8 +224,6 @@ func TestFindOldestLedgerSequence_ExistsError(t *testing.T) {
 
 	mds.On("ListFilePaths", ctx, ListFileOptions{}).
 		Return([]string{latestName}, nil).Once()
-	mds.On("GetFileMetadata", ctx, latestName).
-		Return(map[string]string{"end-ledger": "3"}, nil).Once()
 
 	mds.On("Exists", ctx, mock.Anything).
 		Return(false, errors.New("check failed")).Once()
@@ -300,8 +245,6 @@ func TestFindOldestLedgerSequence_NoLedgersExist(t *testing.T) {
 
 	mds.On("ListFilePaths", ctx, ListFileOptions{}).
 		Return([]string{latestName}, nil).Once()
-	mds.On("GetFileMetadata", ctx, latestName).
-		Return(map[string]string{"end-ledger": "2"}, nil).Once()
 
 	mds.On("Exists", ctx, mock.Anything).
 		Return(false, nil).Maybe()
@@ -334,8 +277,6 @@ func TestFindOldestLedgerSequence_InvalidLatestLedger(t *testing.T) {
 
 	mds.On("ListFilePaths", ctx, ListFileOptions{}).
 		Return([]string{latestName}, nil).Once()
-	mds.On("GetFileMetadata", ctx, latestName).
-		Return(map[string]string{"end-ledger": "1"}, nil).Once()
 
 	mds.On("Exists", ctx, mock.Anything).
 		Return(false, nil).Maybe()
@@ -356,8 +297,6 @@ func TestFindOldestLedgerSequence_LargeRange(t *testing.T) {
 
 	mds.On("ListFilePaths", ctx, ListFileOptions{}).
 		Return([]string{latestKey}, nil).Once()
-	mds.On("GetFileMetadata", ctx, latestKey).
-		Return(map[string]string{"end-ledger": "150"}, nil).Once()
 
 	for seq := uint32(2); seq <= latest; seq++ {
 		key := schema.GetObjectKeyFromSequenceNumber(seq)
