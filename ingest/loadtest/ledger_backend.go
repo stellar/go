@@ -40,6 +40,7 @@ type LedgerBackend struct {
 	cachedLedger          xdr.LedgerCloseMeta
 	done                  bool
 	lock                  sync.RWMutex
+	isCaptiveCore         bool
 }
 
 // LedgerBackendConfig configures LedgerBackend
@@ -59,8 +60,13 @@ type LedgerBackendConfig struct {
 
 // NewLedgerBackend constructs an LedgerBackend instance
 func NewLedgerBackend(config LedgerBackendConfig) *LedgerBackend {
+	var isCaptiveCore bool
+	if config.LedgerBackend != nil {
+		_, isCaptiveCore = config.LedgerBackend.(*ledgerbackend.CaptiveStellarCore)
+	}
 	return &LedgerBackend{
-		config: config,
+		config:        config,
+		isCaptiveCore: isCaptiveCore,
 	}
 }
 
@@ -281,7 +287,7 @@ func (r *LedgerBackend) optimizedPrepareRange(ctx context.Context, ledgerRange l
 		// In that case, clamp down the ledger range to only contain the total amount
 		// of synthetic ledgers we have.
 		return r.config.LedgerBackend.PrepareRange(ctx, maxBoundedRange)
-	} else if _, isCaptiveCore := r.config.LedgerBackend.(*ledgerbackend.CaptiveStellarCore); !ledgerRange.Bounded() && isCaptiveCore {
+	} else if !ledgerRange.Bounded() && r.isCaptiveCore {
 		// it is faster to run stellar-core catchup than stellar-core run
 		// because the run command has to sync to the latest ledger in consensus
 		err := r.config.LedgerBackend.PrepareRange(ctx, maxBoundedRange)
