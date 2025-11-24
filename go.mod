@@ -1,3 +1,5 @@
+// Deprecated: Use github.com/stellar/go-stellar-sdk instead
+// See https://github.com/stellar/go/blob/master/MIGRATION.md for migration instructions.
 module github.com/stellar/go
 
 go 1.24
