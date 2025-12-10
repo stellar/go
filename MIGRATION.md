@@ -11,11 +11,6 @@ Go client applications that were using SDK packages from `github.com/stellar/go`
 ```bash
 # Add the new module name
 go get github.com/stellar/go-stellar-sdk@latest
-
-# Remove the old module name
-go mod edit -droprequire github.com/stellar/go
-
-go mod tidy
 ```
 
 ### 2. Update imports in your code
@@ -30,19 +25,19 @@ import "github.com/stellar/go/.."
 import "github.com/stellar/go-stellar-sdk/.."
 ```
 
-### 3. Update git remote (if you have the repo cloned)
+### 3. Tidy up
 ```bash
-git remote set-url origin https://github.com/stellar/go-stellar-sdk.git
+go mod tidy
 ```
 
-### 4. API Changes
+### 4. SDK Changes
 
-No breaking API changes - all functions remain the same.
+No breaking SDK changes - all functions remain the same.
 
 ### 5. Verify
 ```bash
-go mod tidy
-go test ./...
+go list -m github.com/stellar/go
+go: module github.com/stellar/go: not a known dependency
 ```
 
 ## Need Help?
